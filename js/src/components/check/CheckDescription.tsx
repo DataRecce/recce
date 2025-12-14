@@ -1,4 +1,3 @@
-import { Button, Flex, Link, Text, Textarea } from "@chakra-ui/react";
 import {
   ChangeEvent,
   ChangeEventHandler,
@@ -7,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { Button, Flex, Link, Text, Textarea } from "@/components/ui/mui";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 interface CheckDescriptionProps {

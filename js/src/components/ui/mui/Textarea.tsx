@@ -30,6 +30,8 @@ export interface TextareaProps
   minRows?: number;
   /** Maximum number of rows for auto-resize */
   maxRows?: number;
+  /** Flex value for layout */
+  flex?: number | string;
 }
 
 const sizeToMui: Record<string, "small" | "medium"> = {
@@ -58,6 +60,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
       rows,
       minRows,
       maxRows,
+      flex,
+      sx,
       ...props
     },
     ref,
@@ -79,6 +83,10 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           },
         }}
         required={isRequired}
+        sx={{
+          ...(flex !== undefined && { flex }),
+          ...sx,
+        }}
         {...props}
       />
     );

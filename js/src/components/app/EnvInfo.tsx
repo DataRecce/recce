@@ -1,3 +1,8 @@
+import { format, formatDistance, parseISO } from "date-fns";
+import { isEmpty } from "lodash";
+import React, { useEffect, useRef } from "react";
+import { LuExternalLink } from "react-icons/lu";
+import { LineageGraph } from "@/components/lineage/lineage";
 import {
   Button,
   CloseButton,
@@ -13,12 +18,7 @@ import {
   Table,
   Text,
   useDisclosure,
-} from "@chakra-ui/react";
-import { format, formatDistance, parseISO } from "date-fns";
-import { isEmpty } from "lodash";
-import React, { useEffect, useRef } from "react";
-import { LuExternalLink } from "react-icons/lu";
-import { LineageGraph } from "@/components/lineage/lineage";
+} from "@/components/ui/mui";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   type EnvironmentConfigProps,

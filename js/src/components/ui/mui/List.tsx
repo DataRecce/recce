@@ -26,9 +26,11 @@ export interface ListItemProps extends Omit<MuiListItemProps, "ref"> {
   icon?: ReactNode;
   /** Children content */
   children?: ReactNode;
+  /** Margin left */
+  ml?: string | number;
 }
 
-export const List = forwardRef<HTMLUListElement, ListProps>(function List(
+const ListBase = forwardRef<HTMLUListElement, ListProps>(function List(
   { spacing, ordered, sx, ...props },
   ref,
 ) {
@@ -50,10 +52,15 @@ export const List = forwardRef<HTMLUListElement, ListProps>(function List(
 });
 
 export const ListItem = forwardRef<HTMLLIElement, ListItemProps>(
-  function ListItem({ icon, children, ...props }, ref) {
+  function ListItem({ icon, children, ml, sx, ...props }, ref) {
+    const styles = {
+      ...(ml !== undefined && { ml }),
+      ...sx,
+    };
+
     if (icon) {
       return (
-        <MuiListItem ref={ref} {...props}>
+        <MuiListItem ref={ref} sx={styles} {...props}>
           <MuiListItemIcon>{icon}</MuiListItemIcon>
           {typeof children === "string" ? (
             <MuiListItemText primary={children} />
@@ -65,7 +72,7 @@ export const ListItem = forwardRef<HTMLLIElement, ListItemProps>(
     }
 
     return (
-      <MuiListItem ref={ref} {...props}>
+      <MuiListItem ref={ref} sx={styles} {...props}>
         {typeof children === "string" ? (
           <MuiListItemText primary={children} />
         ) : (
@@ -78,5 +85,17 @@ export const ListItem = forwardRef<HTMLLIElement, ListItemProps>(
 
 // Re-exports
 export { MuiListItemIcon as ListIcon, MuiListItemText as ListItemText };
+
+// Compound component with proper typing
+type ListWithCompound = typeof ListBase & {
+  Root: typeof ListBase;
+  Item: typeof ListItem;
+};
+
+// Create compound component
+export const List = Object.assign(ListBase, {
+  Root: ListBase,
+  Item: ListItem,
+}) as ListWithCompound;
 
 export default List;

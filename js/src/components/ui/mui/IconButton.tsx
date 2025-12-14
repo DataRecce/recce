@@ -11,8 +11,11 @@ import { forwardRef, type ReactNode } from "react";
  * A button component designed to hold only an icon.
  */
 
-export interface IconButtonProps extends Omit<MuiIconButtonProps, "ref"> {
+export interface IconButtonProps
+  extends Omit<MuiIconButtonProps, "ref" | "size"> {
   children?: ReactNode;
+  /** Size of the button - Chakra sizes map to MUI */
+  size?: "xs" | "sm" | "md" | "lg" | "small" | "medium" | "large";
   /** Chakra colorPalette - maps to MUI color */
   colorPalette?:
     | "iochmara"
@@ -46,10 +49,21 @@ const colorPaletteToMui: Record<string, MuiIconButtonProps["color"]> = {
   brand: "primary",
 };
 
+const sizeToMui: Record<string, MuiIconButtonProps["size"]> = {
+  xs: "small",
+  sm: "small",
+  md: "medium",
+  lg: "large",
+  small: "small",
+  medium: "medium",
+  large: "large",
+};
+
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
   function IconButton(
     {
       children,
+      size = "md",
       colorPalette = "gray",
       loading = false,
       icon,
@@ -60,11 +74,13 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
     ref,
   ) {
     const muiColor = colorPaletteToMui[colorPalette] || "default";
+    const muiSize = sizeToMui[size] || "medium";
 
     return (
       <MuiIconButton
         ref={ref}
         color={muiColor}
+        size={muiSize}
         disabled={disabled || loading}
         sx={sx}
         {...props}

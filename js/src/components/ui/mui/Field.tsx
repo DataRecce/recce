@@ -31,7 +31,7 @@ export interface FieldProps extends Omit<FormControlProps, "ref"> {
   children?: ReactNode;
 }
 
-export const Field = forwardRef<HTMLDivElement, FieldProps>(function Field(
+const FieldBase = forwardRef<HTMLDivElement, FieldProps>(function Field(
   {
     label,
     helperText,
@@ -66,5 +66,39 @@ export const Field = forwardRef<HTMLDivElement, FieldProps>(function Field(
 export const FieldLabel = FormLabel;
 export const FieldHelperText = FormHelperText;
 export const FieldErrorText = FormHelperText;
+
+// Field compound component with Root pattern
+interface FieldRootProps extends Omit<FormControlProps, "ref"> {
+  /** Whether the field is invalid */
+  invalid?: boolean;
+  children?: ReactNode;
+}
+
+const FieldRoot = forwardRef<HTMLDivElement, FieldRootProps>(function FieldRoot(
+  { invalid, children, ...props },
+  ref,
+) {
+  return (
+    <FormControl ref={ref} error={invalid} {...props}>
+      {children}
+    </FormControl>
+  );
+});
+
+// Compound component with proper typing
+type FieldWithCompound = typeof FieldBase & {
+  Root: typeof FieldRoot;
+  Label: typeof FieldLabel;
+  HelperText: typeof FieldHelperText;
+  ErrorText: typeof FieldErrorText;
+};
+
+// Create compound component
+export const Field = Object.assign(FieldBase, {
+  Root: FieldRoot,
+  Label: FieldLabel,
+  HelperText: FieldHelperText,
+  ErrorText: FieldErrorText,
+}) as FieldWithCompound;
 
 export default Field;

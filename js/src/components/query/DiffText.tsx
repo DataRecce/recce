@@ -1,7 +1,7 @@
-import { Box, Flex, IconButton } from "@chakra-ui/react";
 import { ReactNode, useState } from "react";
 import { PiCopy } from "react-icons/pi";
 import { useCopyToClipboard } from "usehooks-ts";
+import { Box, Flex, IconButton } from "@/components/ui/mui";
 
 interface DiffTextProps {
   value: string;
@@ -22,18 +22,20 @@ export const DiffText = ({
 
   return (
     <Flex
-      p="2px 5px"
-      minWidth="30px"
-      maxWidth="200px"
-      overflow="hidden"
-      textOverflow="ellipsis"
-      color={`${colorPalette}.800`}
-      backgroundColor={`${colorPalette}.100`}
-      alignItems="center"
-      gap="2px"
-      rounded="md"
-      fontSize={fontSize}
-      flexShrink={noCopy ? "0" : "inherit"}
+      sx={{
+        p: "2px 5px",
+        minWidth: "30px",
+        maxWidth: "200px",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        color: `${colorPalette}.800`,
+        bgcolor: `${colorPalette}.100`,
+        alignItems: "center",
+        gap: "2px",
+        borderRadius: "8px",
+        fontSize,
+        flexShrink: noCopy ? 0 : "inherit",
+      }}
       onMouseEnter={() => {
         setIsHovered(true);
       }}
@@ -42,9 +44,11 @@ export const DiffText = ({
       }}
     >
       <Box
-        overflow="hidden"
-        textOverflow="ellipsis"
-        color={grayOut ? "gray" : "inherit"}
+        sx={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          color: grayOut ? "gray" : "inherit",
+        }}
       >
         {value}
       </Box>
@@ -91,13 +95,15 @@ function CopyControl({
     <IconButton
       aria-label="Copy"
       size="xs"
-      minW="10px"
-      h="10px"
       variant="plain"
       onClick={() => copyToClipboard(value)}
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
+      sx={{
+        minWidth: "10px",
+        height: "10px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
     >
       <PiCopy size="10px" />
     </IconButton>

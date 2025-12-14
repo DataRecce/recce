@@ -14,10 +14,19 @@ export interface LinkProps extends Omit<MuiLinkProps, "ref"> {
   children?: ReactNode;
   /** External link indicator */
   isExternal?: boolean;
+  /** Chakra colorPalette */
+  colorPalette?: "blue" | "gray" | "green" | "red";
 }
 
+const colorPaletteToColor: Record<string, string> = {
+  blue: "primary.main",
+  gray: "text.secondary",
+  green: "success.main",
+  red: "error.main",
+};
+
 export const Link = forwardRef<HTMLAnchorElement, LinkProps>(function Link(
-  { children, isExternal, ...props },
+  { children, isExternal, colorPalette, sx, ...props },
   ref,
 ) {
   const externalProps = isExternal
@@ -25,7 +34,18 @@ export const Link = forwardRef<HTMLAnchorElement, LinkProps>(function Link(
     : {};
 
   return (
-    <MuiLink ref={ref} {...externalProps} {...props}>
+    <MuiLink
+      ref={ref}
+      {...externalProps}
+      sx={{
+        ...(colorPalette && {
+          color: colorPaletteToColor[colorPalette] || colorPalette,
+        }),
+        cursor: "pointer",
+        ...sx,
+      }}
+      {...props}
+    >
       {children}
     </MuiLink>
   );

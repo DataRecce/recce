@@ -11,7 +11,8 @@ import { forwardRef, type ReactNode } from "react";
  * A button component with Chakra-compatible props.
  */
 
-export interface ButtonProps extends Omit<MuiButtonProps, "ref" | "size"> {
+export interface ButtonProps
+  extends Omit<MuiButtonProps, "ref" | "size" | "variant"> {
   children?: ReactNode;
   /** Size of the button - Chakra sizes map to MUI */
   size?:
@@ -43,6 +44,23 @@ export interface ButtonProps extends Omit<MuiButtonProps, "ref" | "size"> {
   leftIcon?: ReactNode;
   /** Icon displayed after button text */
   rightIcon?: ReactNode;
+  /** Margin right */
+  mr?: number | string;
+  /** Margin left */
+  ml?: number | string;
+  /** Margin top */
+  mt?: number | string;
+  /** Margin bottom */
+  mb?: number | string;
+  /** Visual variant - supports both Chakra and MUI names */
+  variant?:
+    | "solid"
+    | "outline"
+    | "ghost"
+    | "link"
+    | "contained"
+    | "outlined"
+    | "text";
 }
 
 const colorPaletteToMui: Record<string, MuiButtonProps["color"]> = {
@@ -88,6 +106,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       variant = "contained",
       size = "md",
       disabled,
+      mr,
+      ml,
+      mt,
+      mb,
       sx,
       ...props
     },
@@ -112,7 +134,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           loading ? <CircularProgress size={16} color="inherit" /> : leftIcon
         }
         endIcon={!loading ? rightIcon : undefined}
-        sx={sx}
+        sx={{
+          ...(mr !== undefined && { mr }),
+          ...(ml !== undefined && { ml }),
+          ...(mt !== undefined && { mt }),
+          ...(mb !== undefined && { mb }),
+          ...sx,
+        }}
         {...props}
       >
         {loading && loadingText ? loadingText : children}

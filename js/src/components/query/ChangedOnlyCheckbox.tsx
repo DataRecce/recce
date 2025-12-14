@@ -1,4 +1,4 @@
-import { Checkbox } from "@chakra-ui/react";
+import { Checkbox } from "@/components/ui/mui";
 
 interface ChangedOnlyCheckboxProps {
   changedOnly?: boolean;

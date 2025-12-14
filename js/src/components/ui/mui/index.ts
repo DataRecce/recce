@@ -37,6 +37,7 @@ export {
 } from "./Breadcrumb";
 // Button Components
 export { Button, type ButtonProps } from "./Button";
+export { ButtonGroup, type ButtonGroupProps } from "./ButtonGroup";
 export { Center, type CenterProps } from "./Center";
 // Form Components
 export { Checkbox, type CheckboxProps } from "./Checkbox";
