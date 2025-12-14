@@ -88,6 +88,7 @@ export { Flex, type FlexProps } from "./Flex";
 export { Grid, GridItem, type GridItemProps, type GridProps } from "./Grid";
 // Typography Components
 export { Heading, type HeadingProps } from "./Heading";
+export { Highlight, type HighlightProps } from "./Highlight";
 export { Icon, type IconProps } from "./Icon";
 export { IconButton, type IconButtonProps } from "./IconButton";
 export { Image, type ImageProps } from "./Image";

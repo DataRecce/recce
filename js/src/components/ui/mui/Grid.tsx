@@ -19,10 +19,12 @@ export interface GridProps extends Omit<MuiBoxProps, "ref"> {
   templateRows?: string;
   /** Gap between grid items */
   gap?: number | string;
+  /** Height (shorthand) */
+  h?: string | number;
 }
 
 export const Grid = forwardRef<HTMLDivElement, GridProps>(function Grid(
-  { children, templateColumns, templateRows, gap, sx, ...props },
+  { children, templateColumns, templateRows, gap, h, sx, ...props },
   ref,
 ) {
   return (
@@ -33,6 +35,7 @@ export const Grid = forwardRef<HTMLDivElement, GridProps>(function Grid(
         gridTemplateColumns: templateColumns,
         gridTemplateRows: templateRows,
         gap,
+        ...(h !== undefined && { height: h }),
         ...sx,
       }}
       {...props}

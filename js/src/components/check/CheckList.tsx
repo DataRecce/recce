@@ -11,7 +11,7 @@ import {
   Separator,
   useDisclosure,
   VStack,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import {
   DragDropContext,
   Draggable,

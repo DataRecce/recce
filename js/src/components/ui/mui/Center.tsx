@@ -12,10 +12,14 @@ import { forwardRef, type ReactNode } from "react";
 
 export interface CenterProps extends Omit<MuiBoxProps, "ref"> {
   children?: ReactNode;
+  /** Height (shorthand) */
+  h?: string | number;
+  /** Background color */
+  bg?: string;
 }
 
 export const Center = forwardRef<HTMLDivElement, CenterProps>(function Center(
-  { children, sx, ...props },
+  { children, h, bg, sx, ...props },
   ref,
 ) {
   return (
@@ -25,6 +29,8 @@ export const Center = forwardRef<HTMLDivElement, CenterProps>(function Center(
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        ...(h !== undefined && { height: h }),
+        ...(bg && { backgroundColor: bg }),
         ...sx,
       }}
       {...props}

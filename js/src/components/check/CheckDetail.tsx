@@ -23,7 +23,7 @@ import {
   Text,
   useDisclosure,
   VStack,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { stripIndents } from "common-tags";
 import { formatDistanceToNow } from "date-fns";
