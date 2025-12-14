@@ -37,6 +37,10 @@ export interface TextProps extends Omit<MuiTypographyProps, "ref"> {
   cursor?: string;
   /** Hover styles */
   _hover?: Record<string, unknown>;
+  /** Opacity */
+  opacity?: number;
+  /** Text style preset (Chakra compatibility - accepted but mapped to fontSize) */
+  textStyle?: string;
 }
 
 const sizeMap: Record<string, MuiTypographyProps["variant"]> = {
@@ -64,6 +68,8 @@ export const Text = forwardRef<HTMLSpanElement, TextProps>(function Text(
     textAlign,
     cursor,
     _hover,
+    opacity,
+    textStyle,
     sx,
     ...props
   },
@@ -119,12 +125,23 @@ export const Text = forwardRef<HTMLSpanElement, TextProps>(function Text(
       styles["&:hover"] = _hover;
     }
 
+    if (opacity !== undefined) {
+      styles.opacity = opacity;
+    }
+
+    // textStyle is a Chakra concept - map to fontSize if it looks like a size
+    if (textStyle === "sm") {
+      styles.fontSize = "0.875rem";
+    } else if (textStyle === "xs") {
+      styles.fontSize = "0.75rem";
+    }
+
     if (sx && typeof sx === "object" && !Array.isArray(sx)) {
       return { ...styles, ...sx } as SxProps<Theme>;
     }
 
     return styles as SxProps<Theme>;
-  }, [fontWeight, truncate, lineClamp, wordBreak, display, gap, fontSize, textAlign, cursor, _hover, sx]);
+  }, [fontWeight, truncate, lineClamp, wordBreak, display, gap, fontSize, textAlign, cursor, _hover, opacity, textStyle, sx]);
 
   return (
     <MuiTypography

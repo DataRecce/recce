@@ -126,9 +126,9 @@ const CheckboxSimple = forwardRef<HTMLButtonElement, CheckboxProps>(
 // Compound pattern components
 export interface CheckboxRootProps extends Omit<BoxProps, "ref" | "onChange"> {
   children?: ReactNode;
-  checked?: boolean;
+  checked?: boolean | "indeterminate";
   defaultChecked?: boolean;
-  onCheckedChange?: (details: { checked: boolean }) => void;
+  onCheckedChange?: (details: { checked: boolean }) => void | (() => void);
   size?: "xs" | "sm" | "md" | "lg";
   /** Chakra colorPalette - maps to MUI color */
   colorPalette?:
@@ -231,15 +231,17 @@ interface CheckboxLabelProps {
   children?: ReactNode;
   fontWeight?: string | number;
   pt?: string | number;
+  className?: string;
 }
 
-function CheckboxLabel({ children, fontWeight, pt }: CheckboxLabelProps) {
+function CheckboxLabel({ children, fontWeight, pt, className }: CheckboxLabelProps) {
   const context = useCheckboxContext();
   const fontSize = context?.size === "xs" ? "0.75rem" : "0.875rem";
 
   return (
     <Box
       component="span"
+      className={className}
       sx={{
         fontSize,
         ...(fontWeight && { fontWeight }),

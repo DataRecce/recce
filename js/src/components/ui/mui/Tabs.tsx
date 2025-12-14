@@ -176,9 +176,11 @@ export interface TabContentProps {
   pt?: string | number;
   /** Width */
   width?: string | number;
+  /** Overflow Y */
+  overflowY?: string;
 }
 
-function TabContent({ index, value, children, height, fontSize, p, pt, width }: TabContentProps) {
+function TabContent({ index, value, children, height, fontSize, p, pt, width, overflowY }: TabContentProps) {
   const context = useTabsContext();
   const currentValue = context.value;
   const panelValue = value ?? index ?? 0;
@@ -196,6 +198,7 @@ function TabContent({ index, value, children, height, fontSize, p, pt, width }: 
         ...(p !== undefined && { p }),
         ...(pt !== undefined && { pt }),
         ...(width !== undefined && { width }),
+        ...(overflowY !== undefined && { overflowY }),
       }}
     >
       {children}
@@ -212,11 +215,13 @@ export interface TabContentGroupProps {
   flex?: string | number;
   /** Style for additional CSS */
   style?: React.CSSProperties;
+  /** Overflow */
+  overflow?: string;
 }
 
-function TabContentGroup({ children, height, flex, style }: TabContentGroupProps) {
+function TabContentGroup({ children, height, flex, style, overflow }: TabContentGroupProps) {
   return (
-    <Box sx={{ ...(height !== undefined && { height }), ...(flex !== undefined && { flex }) }} style={style}>
+    <Box sx={{ ...(height !== undefined && { height }), ...(flex !== undefined && { flex }), ...(overflow !== undefined && { overflow }) }} style={style}>
       {children}
     </Box>
   );

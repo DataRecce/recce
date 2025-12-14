@@ -26,6 +26,10 @@ export interface InputProps
   isRequired?: boolean;
   /** Width of the input */
   width?: string | number;
+  /** Height of the input */
+  height?: string | number;
+  /** Font size */
+  fontSize?: string | number;
 }
 
 const sizeToMui: Record<string, "small" | "medium"> = {
@@ -52,6 +56,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     isDisabled,
     isReadOnly,
     isRequired,
+    height,
+    fontSize,
+    sx,
     ...props
   },
   ref,
@@ -69,6 +76,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         },
       }}
       required={isRequired}
+      sx={{
+        ...(height !== undefined && { "& .MuiInputBase-root": { height } }),
+        ...(fontSize !== undefined && { "& .MuiInputBase-input": { fontSize } }),
+        ...sx,
+      }}
       {...props}
     />
   );
