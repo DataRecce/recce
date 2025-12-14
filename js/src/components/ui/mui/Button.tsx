@@ -56,10 +56,14 @@ export interface ButtonProps
   me?: number | string;
   /** Background color */
   bgColor?: string;
+  /** Background color (alias) */
+  backgroundColor?: string;
   /** Text/icon color */
   color?: string;
   /** Width */
   width?: string | number;
+  /** Padding */
+  padding?: string | number;
   /** Padding top */
   paddingTop?: string | number;
   /** Font size */
@@ -72,6 +76,7 @@ export interface ButtonProps
     | "outline"
     | "ghost"
     | "link"
+    | "subtle"
     | "contained"
     | "outlined"
     | "text";
@@ -94,6 +99,7 @@ const chakraVariantToMui: Record<string, MuiButtonProps["variant"]> = {
   outline: "outlined",
   ghost: "text",
   link: "text",
+  subtle: "text",
 };
 
 const sizeToMui: Record<string, MuiButtonProps["size"]> = {
@@ -126,8 +132,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       mb,
       me,
       bgColor,
+      backgroundColor,
       color,
       width,
+      padding,
       paddingTop,
       fontSize,
       justifyContent,
@@ -162,8 +170,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           ...(mb !== undefined && { mb }),
           ...(me !== undefined && { marginInlineEnd: me }),
           ...(bgColor !== undefined && { backgroundColor: bgColor }),
+          ...(backgroundColor !== undefined && { backgroundColor }),
           ...(color !== undefined && { color }),
           ...(width !== undefined && { width }),
+          ...(padding !== undefined && { padding }),
           ...(paddingTop !== undefined && { paddingTop }),
           ...(fontSize !== undefined && { fontSize }),
           ...(justifyContent !== undefined && { justifyContent }),

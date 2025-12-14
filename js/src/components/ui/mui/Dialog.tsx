@@ -30,7 +30,7 @@ export interface DialogRootProps
   extends Omit<MuiDialogProps, "ref" | "onClose"> {
   children?: ReactNode;
   /** Called when dialog should close (Chakra compatibility) */
-  onOpenChange?: (open: boolean) => void;
+  onOpenChange?: (details: { open: boolean }) => void;
   /** Chakra-style onClose */
   onClose?: () => void;
   /** Chakra size prop */
@@ -39,6 +39,8 @@ export interface DialogRootProps
   placement?: "center" | "top" | "bottom";
   /** Initial focus element function */
   initialFocusEl?: () => HTMLElement | null;
+  /** Lazy mount - only render content when open */
+  lazyMount?: boolean;
 }
 
 const sizeToMaxWidth: Record<string, MuiDialogProps["maxWidth"]> = {
@@ -59,12 +61,13 @@ export const DialogRoot = forwardRef<HTMLDivElement, DialogRootProps>(
       size = "md",
       placement,
       initialFocusEl,
+      lazyMount: _lazyMount,
       ...props
     },
     ref,
   ) {
     const handleClose = () => {
-      onOpenChange?.(false);
+      onOpenChange?.({ open: false });
       onClose?.();
     };
 
@@ -107,10 +110,12 @@ export interface DialogContentProps {
   overflowY?: string;
   height?: string;
   width?: string;
+  /** Border radius */
+  borderRadius?: string;
 }
 
 export const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
-  function DialogContent({ children, overflowY, height, width }, ref) {
+  function DialogContent({ children, overflowY, height, width, borderRadius }, ref) {
     return (
       <Box
         ref={ref}
@@ -120,6 +125,7 @@ export const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
           ...(overflowY && { overflowY }),
           ...(height && { height }),
           ...(width && { width }),
+          ...(borderRadius && { borderRadius }),
         }}
       >
         {children}
@@ -131,14 +137,21 @@ export const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
 // Dialog Header (Title area)
 export interface DialogHeaderProps extends Omit<MuiDialogTitleProps, "ref"> {
   children?: ReactNode;
+  /** Font size */
+  fontSize?: string;
 }
 
 export const DialogHeader = forwardRef<HTMLDivElement, DialogHeaderProps>(
-  function DialogHeader({ children, sx, ...props }, ref) {
+  function DialogHeader({ children, fontSize, sx, ...props }, ref) {
     return (
       <MuiDialogTitle
         ref={ref}
-        sx={{ display: "flex", alignItems: "center", ...sx }}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          ...(fontSize && { fontSize }),
+          ...sx,
+        }}
         {...props}
       >
         {children}
@@ -239,6 +252,26 @@ export const DialogCloseTrigger = forwardRef<
   return <CloseButton ref={ref} onClick={onClick} />;
 });
 
+// Dialog Action Trigger - wraps action buttons that should close the dialog
+export interface DialogActionTriggerProps {
+  children?: ReactNode;
+  /** Render as child element (Chakra compatibility) */
+  asChild?: boolean;
+}
+
+export const DialogActionTrigger = forwardRef<
+  HTMLDivElement,
+  DialogActionTriggerProps
+>(function DialogActionTrigger({ children, asChild }, ref) {
+  // ActionTrigger typically wraps a button that closes the dialog when clicked
+  // In MUI, the parent Dialog handles this through onClose
+  // This wrapper maintains API compatibility with Chakra
+  if (asChild && children && isValidElement(children)) {
+    return children;
+  }
+  return <div ref={ref}>{children}</div>;
+});
+
 // Combined Dialog namespace for Chakra-like usage
 export const Dialog = {
   Root: DialogRoot,
@@ -250,6 +283,7 @@ export const Dialog = {
   Body: DialogBody,
   Footer: DialogFooter,
   CloseTrigger: DialogCloseTrigger,
+  ActionTrigger: DialogActionTrigger,
 };
 
 export default Dialog;

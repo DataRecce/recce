@@ -1,4 +1,4 @@
-import { Button, Heading, Icon, Text } from "@chakra-ui/react";
+import { Button, Heading, Icon, Text } from "@/components/ui/mui";
 import { useQuery } from "@tanstack/react-query";
 import { RiTerminalBoxLine } from "react-icons/ri";
 import { cacheKeys } from "@/lib/api/cacheKeys";

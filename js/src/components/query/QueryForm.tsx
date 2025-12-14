@@ -1,4 +1,4 @@
-import { Field, Flex, FlexProps } from "@chakra-ui/react";
+import { Field, Flex, type FlexProps } from "@/components/ui/mui";
 import { useMemo } from "react";
 import { PiInfo } from "react-icons/pi";
 import { Tooltip } from "@/components/ui/tooltip";

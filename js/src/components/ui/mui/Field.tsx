@@ -63,7 +63,29 @@ const FieldBase = forwardRef<HTMLDivElement, FieldProps>(function Field(
 });
 
 // Sub-components for compound pattern compatibility
-export const FieldLabel = FormLabel;
+interface FieldLabelProps {
+  children?: ReactNode;
+  fontSize?: string;
+  margin?: string | number;
+}
+
+export const FieldLabel = forwardRef<HTMLLabelElement, FieldLabelProps>(
+  function FieldLabel({ children, fontSize, margin, ...props }, ref) {
+    return (
+      <FormLabel
+        ref={ref}
+        sx={{
+          ...(fontSize && { fontSize }),
+          ...(margin !== undefined && { margin }),
+        }}
+        {...props}
+      >
+        {children}
+      </FormLabel>
+    );
+  },
+);
+
 export const FieldHelperText = FormHelperText;
 export const FieldErrorText = FormHelperText;
 
@@ -72,14 +94,27 @@ interface FieldRootProps extends Omit<FormControlProps, "ref"> {
   /** Whether the field is invalid */
   invalid?: boolean;
   children?: ReactNode;
+  /** Margin shorthand */
+  m?: string | number;
+  /** Gap between elements */
+  gap?: string | number;
 }
 
 const FieldRoot = forwardRef<HTMLDivElement, FieldRootProps>(function FieldRoot(
-  { invalid, children, ...props },
+  { invalid, children, m, gap, sx, ...props },
   ref,
 ) {
   return (
-    <FormControl ref={ref} error={invalid} {...props}>
+    <FormControl
+      ref={ref}
+      error={invalid}
+      sx={{
+        ...(m !== undefined && { m }),
+        ...(gap !== undefined && { gap }),
+        ...sx,
+      }}
+      {...props}
+    >
       {children}
     </FormControl>
   );

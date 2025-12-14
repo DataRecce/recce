@@ -28,10 +28,12 @@ export interface ImageProps
   ignoreFallback?: boolean;
   /** Error handler */
   onError?: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void;
+  /** Height (shorthand) */
+  h?: string | number;
 }
 
 export const Image = forwardRef<HTMLImageElement, ImageProps>(function Image(
-  { fit, align, fallbackSrc, onError, ...props },
+  { fit, align, fallbackSrc, onError, h, sx, ...props },
   ref,
 ) {
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
@@ -48,6 +50,8 @@ export const Image = forwardRef<HTMLImageElement, ImageProps>(function Image(
       sx={{
         objectFit: fit,
         objectPosition: align,
+        ...(h !== undefined && { height: h }),
+        ...sx,
       }}
       onError={handleError}
       {...props}

@@ -61,6 +61,8 @@ export { Code, type CodeProps } from "./Code";
 // Overlay Components
 export {
   Dialog,
+  DialogActionTrigger,
+  type DialogActionTriggerProps,
   DialogBody,
   type DialogBodyProps,
   DialogCloseTrigger,

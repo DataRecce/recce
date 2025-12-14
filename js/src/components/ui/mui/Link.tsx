@@ -10,7 +10,7 @@ import { forwardRef, type ReactNode } from "react";
  * An accessible anchor element for navigation.
  */
 
-export interface LinkProps extends Omit<MuiLinkProps, "ref"> {
+export interface LinkProps extends Omit<MuiLinkProps, "ref" | "variant"> {
   children?: ReactNode;
   /** External link indicator */
   isExternal?: boolean;
@@ -18,6 +18,10 @@ export interface LinkProps extends Omit<MuiLinkProps, "ref"> {
   colorPalette?: "blue" | "gray" | "green" | "red";
   /** Text decoration style */
   textDecoration?: string;
+  /** Chakra variant */
+  variant?: "underline" | "plain";
+  /** Focus styles (Chakra compatibility) */
+  _focus?: Record<string, unknown>;
 }
 
 const colorPaletteToColor: Record<string, string> = {
@@ -28,7 +32,16 @@ const colorPaletteToColor: Record<string, string> = {
 };
 
 export const Link = forwardRef<HTMLAnchorElement, LinkProps>(function Link(
-  { children, isExternal, colorPalette, textDecoration, sx, ...props },
+  {
+    children,
+    isExternal,
+    colorPalette,
+    textDecoration,
+    variant,
+    _focus,
+    sx,
+    ...props
+  },
   ref,
 ) {
   const externalProps = isExternal
@@ -39,12 +52,14 @@ export const Link = forwardRef<HTMLAnchorElement, LinkProps>(function Link(
     <MuiLink
       ref={ref}
       {...externalProps}
+      underline={variant === "underline" ? "always" : "hover"}
       sx={{
         ...(colorPalette && {
           color: colorPaletteToColor[colorPalette] || colorPalette,
         }),
         ...(textDecoration && { textDecoration }),
         cursor: "pointer",
+        ...(_focus && { "&:focus": _focus }),
         ...sx,
       }}
       {...props}

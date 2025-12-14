@@ -25,6 +25,14 @@ export interface TextProps extends Omit<MuiTypographyProps, "ref"> {
   as?: React.ElementType;
   /** Word break style */
   wordBreak?: string;
+  /** Display property */
+  display?: string;
+  /** Gap between items */
+  gap?: number | string;
+  /** Font size override */
+  fontSize?: string | number;
+  /** Text alignment */
+  textAlign?: "left" | "center" | "right" | "justify";
 }
 
 const sizeMap: Record<string, MuiTypographyProps["variant"]> = {
@@ -46,6 +54,10 @@ export const Text = forwardRef<HTMLSpanElement, TextProps>(function Text(
     variant,
     as,
     wordBreak,
+    display,
+    gap,
+    fontSize,
+    textAlign,
     sx,
     ...props
   },
@@ -77,12 +89,28 @@ export const Text = forwardRef<HTMLSpanElement, TextProps>(function Text(
       styles.wordBreak = wordBreak;
     }
 
+    if (display) {
+      styles.display = display;
+    }
+
+    if (gap !== undefined) {
+      styles.gap = gap;
+    }
+
+    if (fontSize) {
+      styles.fontSize = fontSize;
+    }
+
+    if (textAlign) {
+      styles.textAlign = textAlign;
+    }
+
     if (sx && typeof sx === "object" && !Array.isArray(sx)) {
       return { ...styles, ...sx } as SxProps<Theme>;
     }
 
     return styles as SxProps<Theme>;
-  }, [fontWeight, truncate, lineClamp, wordBreak, sx]);
+  }, [fontWeight, truncate, lineClamp, wordBreak, display, gap, fontSize, textAlign, sx]);
 
   return (
     <MuiTypography

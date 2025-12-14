@@ -8,7 +8,7 @@ import {
   Portal,
   Text,
   VStack,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import Cookies from "js-cookie";
 import { StaticImageData } from "next/image";
 import ReloadImage from "public/imgs/reload-image.svg";
