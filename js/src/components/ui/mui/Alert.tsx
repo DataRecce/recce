@@ -37,7 +37,7 @@ const variantToMui: Record<string, MuiAlertProps["variant"]> = {
   surface: "standard",
 };
 
-export const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
+export const AlertBase = forwardRef<HTMLDivElement, AlertProps>(function Alert(
   { status = "info", title, variant = "subtle", children, ...props },
   ref,
 ) {
@@ -52,7 +52,34 @@ export const Alert = forwardRef<HTMLDivElement, AlertProps>(function Alert(
   );
 });
 
-// Sub-components for compound pattern compatibility
+// Compound components for Chakra compatibility
+export interface AlertRootProps extends AlertProps {}
+
+const AlertRoot = forwardRef<HTMLDivElement, AlertRootProps>(function AlertRoot(
+  props,
+  ref,
+) {
+  return <AlertBase ref={ref} {...props} />;
+});
+
+function AlertIndicator() {
+  // MUI Alert has built-in icon, this is for API compatibility
+  return null;
+}
+
+// Compound Alert export
+type AlertWithCompound = typeof AlertBase & {
+  Root: typeof AlertRoot;
+  Indicator: typeof AlertIndicator;
+  Title: typeof AlertTitle;
+};
+
+export const Alert = Object.assign(AlertBase, {
+  Root: AlertRoot,
+  Indicator: AlertIndicator,
+  Title: AlertTitle,
+}) as AlertWithCompound;
+
 export { AlertTitle };
 
 export default Alert;

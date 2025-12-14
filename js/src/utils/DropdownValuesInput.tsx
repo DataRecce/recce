@@ -9,7 +9,7 @@ import {
   Tag,
   Wrap,
   WrapItem,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import _ from "lodash";
 import React, { useRef, useState } from "react";
 import { Tooltip } from "@/components/ui/tooltip";

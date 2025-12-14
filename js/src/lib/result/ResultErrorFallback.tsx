@@ -1,4 +1,4 @@
-import { Alert, Box, Center, Flex, Heading } from "@chakra-ui/react";
+import { Alert } from "@/components/ui/mui";
 import { FallbackRender } from "@sentry/react";
 import * as React from "react";
 

@@ -5,7 +5,7 @@ import {
   HStack,
   SimpleGrid,
   Text,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import { useEffect, useState } from "react";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { LineageGraph, LineageGraphNode } from "../lineage/lineage";

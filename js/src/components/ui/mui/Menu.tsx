@@ -250,6 +250,15 @@ export const MenuSeparator = forwardRef<HTMLHRElement, MenuSeparatorProps>(
   },
 );
 
+// Menu Item Group - Groups related menu items
+export interface MenuItemGroupProps {
+  children?: ReactNode;
+}
+
+function MenuItemGroup({ children }: MenuItemGroupProps) {
+  return <>{children}</>;
+}
+
 // Combined Menu namespace for Chakra-like usage
 export const Menu = {
   Root: MenuRoot,
@@ -257,6 +266,7 @@ export const Menu = {
   Positioner: MenuPositioner,
   Content: MenuContent,
   Item: MenuItem,
+  ItemGroup: MenuItemGroup,
   Separator: MenuSeparator,
 };
 

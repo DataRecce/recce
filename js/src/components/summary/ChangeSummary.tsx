@@ -1,4 +1,4 @@
-import { Box, Flex, Grid, Icon, Text, VStack } from "@chakra-ui/react";
+import { Box, Flex, Grid, Icon, Text, VStack } from "@/components/ui/mui";
 import { ReactNode } from "react";
 import { IconType } from "react-icons";
 import { FiInfo } from "react-icons/fi";
