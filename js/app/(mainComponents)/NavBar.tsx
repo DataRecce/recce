@@ -1,15 +1,15 @@
 "use client";
 
-import { Box, Flex, Link, Tabs } from "@chakra-ui/react";
 import { useQuery } from "@tanstack/react-query";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
-import React, { Activity, ReactNode, useEffect, useMemo, useRef } from "react";
+import React, { type ReactNode, useEffect, useMemo, useRef } from "react";
 import { EnvInfo } from "@/components/app/EnvInfo";
 import { Filename } from "@/components/app/Filename";
 import { StateExporter } from "@/components/app/StateExporter";
 import { TopLevelShare } from "@/components/app/StateSharing";
 import { StateSynchronizer } from "@/components/app/StateSynchronizer";
+import { Box, Flex, Tabs } from "@/components/ui/mui";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, listChecks } from "@/lib/api/checks";
 import { trackNavigation } from "@/lib/api/track";
@@ -53,15 +53,17 @@ function TabBadge<T>({
 
   return (
     <Box
-      ml="2px"
-      maxH={"20px"}
-      height="80%"
-      aspectRatio={1}
-      borderRadius="full"
-      bg="tomato"
-      alignContent={"center"}
-      color="white"
-      fontSize="xs"
+      sx={{
+        ml: "2px",
+        maxHeight: "20px",
+        height: "80%",
+        aspectRatio: 1,
+        borderRadius: "50%",
+        bgcolor: "tomato",
+        alignContent: "center",
+        color: "white",
+        fontSize: "xs",
+      }}
     >
       {count}
     </Box>
@@ -107,17 +109,18 @@ export default function NavBar() {
       value={currentTab}
       size="sm"
       variant="line"
-      borderBottom="1px solid lightgray"
-      px="12px"
+      sx={{ borderBottom: "1px solid lightgray", px: "12px" }}
     >
       <Tabs.List
-        display="grid"
-        gridTemplateColumns="1fr auto 1fr"
-        width="100%"
-        borderBottom="none"
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "1fr auto 1fr",
+          width: "100%",
+          borderBottom: "none",
+        }}
       >
         {/* Left section: Tabs */}
-        <Box display="flex" alignItems="center" gap="4px">
+        <Box sx={{ display: "flex", alignItems: "center", gap: "4px" }}>
           {ROUTE_CONFIG.map(({ path, name }) => {
             const disable = name === "Query" && flag?.single_env_onboarding;
 
@@ -128,19 +131,22 @@ export default function NavBar() {
                 disabled={isLoading || isFlagLoading || disable}
                 hidden={disable}
               >
-                <Link asChild>
-                  <NextLink href={path}>{name}</NextLink>
-                </Link>
-                <Activity mode={name === "Checklist" ? "visible" : "hidden"}>
-                  {ChecklistBadge}
-                </Activity>
+                <NextLink
+                  href={path}
+                  style={{ textDecoration: "none", color: "inherit" }}
+                >
+                  {name}
+                </NextLink>
+                {name === "Checklist" && ChecklistBadge}
               </Tabs.Trigger>
             );
           })}
         </Box>
 
         {/* Center section: Filename and TopLevelShare */}
-        <Flex alignItems="center" gap="12px" justifyContent="center">
+        <Flex
+          sx={{ alignItems: "center", gap: "12px", justifyContent: "center" }}
+        >
           {!isLoading && !isDemoSite && <Filename />}
           {!isLoading &&
             !isDemoSite &&
@@ -150,7 +156,9 @@ export default function NavBar() {
 
         {/* Right section: EnvInfo, StateSynchronizer, StateExporter */}
         {!isLoading && (
-          <Flex justifyContent="right" alignItems="center" mr="8px">
+          <Flex
+            sx={{ justifyContent: "right", alignItems: "center", mr: "8px" }}
+          >
             <EnvInfo />
             {cloudMode && <StateSynchronizer />}
             <StateExporter />

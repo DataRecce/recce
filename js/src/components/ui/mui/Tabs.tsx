@@ -1,5 +1,6 @@
 "use client";
 
+import type { BoxProps } from "@mui/material/Box";
 import Box from "@mui/material/Box";
 import type { TabProps as MuiTabProps } from "@mui/material/Tab";
 import MuiTab from "@mui/material/Tab";
@@ -17,11 +18,14 @@ import {
  * Tabs Component - MUI equivalent of Chakra's Tabs
  *
  * A tabbed interface component using compound pattern.
+ * Supports both numeric indices and string values for tab selection.
  */
 
+type TabValue = string | number;
+
 interface TabsContextValue {
-  value: number;
-  onChange: (event: React.SyntheticEvent, newValue: number) => void;
+  value: TabValue;
+  onChange: (event: React.SyntheticEvent, newValue: TabValue) => void;
 }
 
 const TabsContext = createContext<TabsContextValue | null>(null);
@@ -35,17 +39,23 @@ function useTabsContext() {
 }
 
 // Root component
-export interface TabsRootProps {
-  /** Default selected tab index */
+export interface TabsRootProps extends Omit<BoxProps, "onChange"> {
+  /** Default selected tab index (for numeric mode) */
   defaultIndex?: number;
-  /** Controlled selected tab index */
+  /** Default selected tab value (for string mode) */
+  defaultValue?: TabValue;
+  /** Controlled selected tab index (numeric mode) */
   index?: number;
-  /** Callback when tab changes */
-  onChange?: (index: number) => void;
+  /** Controlled selected tab value (string mode) - Chakra compatibility */
+  value?: TabValue;
+  /** Callback when tab changes - receives index or value depending on mode */
+  onChange?: (value: TabValue) => void;
   /** Children */
   children?: ReactNode;
   /** Chakra variant */
   variant?: "line" | "enclosed" | "soft-rounded" | "solid-rounded";
+  /** Chakra size */
+  size?: "sm" | "md" | "lg";
   /** Whether tabs should take full width */
   fitted?: boolean;
   /** Chakra colorPalette */
@@ -53,24 +63,40 @@ export interface TabsRootProps {
 }
 
 function TabsRoot({
-  defaultIndex = 0,
+  defaultIndex,
+  defaultValue,
   index,
+  value,
   onChange,
   children,
+  variant,
+  size,
+  fitted,
+  colorPalette,
+  sx,
+  ...boxProps
 }: TabsRootProps) {
-  const [internalValue, setInternalValue] = useState(defaultIndex);
-  const value = index !== undefined ? index : internalValue;
+  // Determine initial value - prefer string value over numeric index
+  const initialValue = value ?? defaultValue ?? index ?? defaultIndex ?? 0;
+  const [internalValue, setInternalValue] = useState<TabValue>(initialValue);
 
-  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
-    if (index === undefined) {
+  // Controlled value takes precedence
+  const currentValue = value ?? index ?? internalValue;
+
+  const handleChange = (_event: React.SyntheticEvent, newValue: TabValue) => {
+    if (value === undefined && index === undefined) {
       setInternalValue(newValue);
     }
     onChange?.(newValue);
   };
 
   return (
-    <TabsContext.Provider value={{ value, onChange: handleChange }}>
-      <Box>{children}</Box>
+    <TabsContext.Provider
+      value={{ value: currentValue, onChange: handleChange }}
+    >
+      <Box sx={sx} {...boxProps}>
+        {children}
+      </Box>
     </TabsContext.Provider>
   );
 }
@@ -95,31 +121,36 @@ const TabList = forwardRef<HTMLDivElement, TabListProps>(function TabList(
 });
 
 // Individual tab component
-export interface TabTriggerProps extends Omit<MuiTabProps, "ref" | "children"> {
+export interface TabTriggerProps
+  extends Omit<MuiTabProps, "ref" | "children" | "value"> {
   children?: ReactNode;
+  /** Value for this tab (string or number) */
+  value?: TabValue;
 }
 
 const TabTrigger = forwardRef<HTMLDivElement, TabTriggerProps>(
-  function TabTrigger({ children, label, ...props }, ref) {
-    return <MuiTab ref={ref} label={label || children} {...props} />;
+  function TabTrigger({ children, label, value, ...props }, ref) {
+    return (
+      <MuiTab ref={ref} label={label || children} value={value} {...props} />
+    );
   },
 );
 
 // Tab content wrapper
 export interface TabContentProps {
-  /** Index of this tab panel */
+  /** Index of this tab panel (for numeric mode) */
   index?: number;
   /** Value to match against */
-  value?: number;
+  value?: TabValue;
   children?: ReactNode;
 }
 
 function TabContent({ index, value, children }: TabContentProps) {
   const context = useTabsContext();
-  const currentIndex = value ?? context.value;
-  const panelIndex = index ?? 0;
+  const currentValue = context.value;
+  const panelValue = value ?? index ?? 0;
 
-  if (currentIndex !== panelIndex) {
+  if (currentValue !== panelValue) {
     return null;
   }
 
