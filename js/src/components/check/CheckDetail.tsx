@@ -337,7 +337,7 @@ export function CheckDetail({
 
               <Menu.Root>
                 <Menu.Trigger asChild>
-                  <IconButton rounded="full" variant="ghost" size="sm">
+                  <IconButton rounded="full" variant="ghost" size="sm" aria-label="Check actions">
                     <Icon as={VscKebabVertical} />
                   </IconButton>
                 </Menu.Trigger>

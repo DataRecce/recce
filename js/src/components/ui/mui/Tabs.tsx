@@ -50,6 +50,8 @@ export interface TabsRootProps extends Omit<BoxProps, "onChange"> {
   value?: TabValue;
   /** Callback when tab changes - receives index or value depending on mode */
   onChange?: (value: TabValue) => void;
+  /** Chakra callback - alias for onChange with object parameter */
+  onValueChange?: (details: { value: TabValue }) => void;
   /** Children */
   children?: ReactNode;
   /** Chakra variant */
@@ -60,6 +62,8 @@ export interface TabsRootProps extends Omit<BoxProps, "onChange"> {
   fitted?: boolean;
   /** Chakra colorPalette */
   colorPalette?: string;
+  /** Height */
+  height?: string | number;
 }
 
 function TabsRoot({
@@ -68,11 +72,13 @@ function TabsRoot({
   index,
   value,
   onChange,
+  onValueChange,
   children,
   variant,
   size,
   fitted,
   colorPalette,
+  height,
   sx,
   ...boxProps
 }: TabsRootProps) {
@@ -88,13 +94,14 @@ function TabsRoot({
       setInternalValue(newValue);
     }
     onChange?.(newValue);
+    onValueChange?.({ value: newValue });
   };
 
   return (
     <TabsContext.Provider
       value={{ value: currentValue, onChange: handleChange }}
     >
-      <Box sx={sx} {...boxProps}>
+      <Box sx={{ ...(height !== undefined && { height }), ...sx }} {...boxProps}>
         {children}
       </Box>
     </TabsContext.Provider>
@@ -105,16 +112,24 @@ function TabsRoot({
 export interface TabListProps
   extends Omit<MuiTabsProps, "ref" | "value" | "onChange"> {
   children?: ReactNode;
+  /** Height */
+  height?: string | number;
 }
 
 const TabList = forwardRef<HTMLDivElement, TabListProps>(function TabList(
-  { children, ...props },
+  { children, height, sx, ...props },
   ref,
 ) {
   const { value, onChange } = useTabsContext();
 
   return (
-    <MuiTabs ref={ref} value={value} onChange={onChange} {...props}>
+    <MuiTabs
+      ref={ref}
+      value={value}
+      onChange={onChange}
+      sx={{ ...(height !== undefined && { height }), ...sx }}
+      {...props}
+    >
       {children}
     </MuiTabs>
   );
@@ -126,12 +141,20 @@ export interface TabTriggerProps
   children?: ReactNode;
   /** Value for this tab (string or number) */
   value?: TabValue;
+  /** Font size */
+  fontSize?: string | number;
 }
 
 const TabTrigger = forwardRef<HTMLDivElement, TabTriggerProps>(
-  function TabTrigger({ children, label, value, ...props }, ref) {
+  function TabTrigger({ children, label, value, fontSize, sx, ...props }, ref) {
     return (
-      <MuiTab ref={ref} label={label || children} value={value} {...props} />
+      <MuiTab
+        ref={ref}
+        label={label || children}
+        value={value}
+        sx={{ ...(fontSize !== undefined && { fontSize }), ...sx }}
+        {...props}
+      />
     );
   },
 );
@@ -143,9 +166,19 @@ export interface TabContentProps {
   /** Value to match against */
   value?: TabValue;
   children?: ReactNode;
+  /** Height */
+  height?: string | number;
+  /** Font size */
+  fontSize?: string | number;
+  /** Padding */
+  p?: string | number;
+  /** Padding top */
+  pt?: string | number;
+  /** Width */
+  width?: string | number;
 }
 
-function TabContent({ index, value, children }: TabContentProps) {
+function TabContent({ index, value, children, height, fontSize, p, pt, width }: TabContentProps) {
   const context = useTabsContext();
   const currentValue = context.value;
   const panelValue = value ?? index ?? 0;
@@ -154,7 +187,39 @@ function TabContent({ index, value, children }: TabContentProps) {
     return null;
   }
 
-  return <Box sx={{ py: 2 }}>{children}</Box>;
+  return (
+    <Box
+      sx={{
+        py: p === undefined && pt === undefined ? 2 : undefined,
+        ...(height !== undefined && { height }),
+        ...(fontSize !== undefined && { fontSize }),
+        ...(p !== undefined && { p }),
+        ...(pt !== undefined && { pt }),
+        ...(width !== undefined && { width }),
+      }}
+    >
+      {children}
+    </Box>
+  );
+}
+
+// Content group - container for multiple tab content panels
+export interface TabContentGroupProps {
+  children?: ReactNode;
+  /** Height */
+  height?: string | number;
+  /** Flex */
+  flex?: string | number;
+  /** Style for additional CSS */
+  style?: React.CSSProperties;
+}
+
+function TabContentGroup({ children, height, flex, style }: TabContentGroupProps) {
+  return (
+    <Box sx={{ ...(height !== undefined && { height }), ...(flex !== undefined && { flex }) }} style={style}>
+      {children}
+    </Box>
+  );
 }
 
 // Tab panels container
@@ -189,10 +254,11 @@ export const Tabs = {
   List: TabList,
   Trigger: TabTrigger,
   Content: TabContent,
+  ContentGroup: TabContentGroup,
   Panels: TabPanels,
 };
 
 // Direct exports for backward compatibility
-export { TabsRoot, TabList, TabTrigger, TabContent, TabPanels };
+export { TabsRoot, TabList, TabTrigger, TabContent, TabContentGroup, TabPanels };
 
 export default Tabs;

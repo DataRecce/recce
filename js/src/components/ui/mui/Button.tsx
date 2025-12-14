@@ -80,6 +80,8 @@ export interface ButtonProps
     | "contained"
     | "outlined"
     | "text";
+  /** Flex shorthand */
+  flex?: string | number;
 }
 
 const colorPaletteToMui: Record<string, MuiButtonProps["color"]> = {
@@ -139,6 +141,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       paddingTop,
       fontSize,
       justifyContent,
+      flex,
       sx,
       ...props
     },
@@ -177,6 +180,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           ...(paddingTop !== undefined && { paddingTop }),
           ...(fontSize !== undefined && { fontSize }),
           ...(justifyContent !== undefined && { justifyContent }),
+          ...(flex !== undefined && { flex }),
           ...sx,
         }}
         {...props}

@@ -44,6 +44,20 @@ export interface FlexProps extends Omit<MuiBoxProps, "ref"> {
   w?: string | number;
   /** Height (shorthand) */
   h?: string | number;
+  /** Padding (shorthand) */
+  p?: string | number;
+  /** Cursor style */
+  cursor?: string;
+  /** Hover styles */
+  _hover?: Record<string, unknown>;
+  /** Text style preset */
+  textStyle?: string;
+  /** Border block end width */
+  borderBlockEndWidth?: string;
+  /** Border left width */
+  borderLeftWidth?: string;
+  /** Border left color */
+  borderLeftColor?: string;
 }
 
 export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
@@ -64,6 +78,13 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     backgroundColor,
     w,
     h,
+    p,
+    cursor,
+    _hover,
+    textStyle,
+    borderBlockEndWidth,
+    borderLeftWidth,
+    borderLeftColor,
     sx,
     ...props
   },
@@ -89,6 +110,12 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     if (backgroundColor) styles.backgroundColor = backgroundColor;
     if (w !== undefined) styles.width = w;
     if (h !== undefined) styles.height = h;
+    if (p !== undefined) styles.padding = p;
+    if (cursor) styles.cursor = cursor;
+    if (_hover) styles["&:hover"] = _hover;
+    if (borderBlockEndWidth) styles.borderBlockEndWidth = borderBlockEndWidth;
+    if (borderLeftWidth) styles.borderLeftWidth = borderLeftWidth;
+    if (borderLeftColor) styles.borderLeftColor = borderLeftColor;
 
     if (sx && typeof sx === "object" && !Array.isArray(sx)) {
       return { ...styles, ...sx } as SxProps<Theme>;
@@ -111,6 +138,12 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     backgroundColor,
     w,
     h,
+    p,
+    cursor,
+    _hover,
+    borderBlockEndWidth,
+    borderLeftWidth,
+    borderLeftColor,
     sx,
   ]);
 

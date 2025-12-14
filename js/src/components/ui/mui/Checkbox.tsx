@@ -25,6 +25,7 @@ interface CheckboxContextValue {
   checked: boolean;
   onChange: (checked: boolean) => void;
   size: "xs" | "sm" | "md" | "lg";
+  disabled?: boolean;
 }
 
 const CheckboxContext = createContext<CheckboxContextValue | null>(null);
@@ -129,6 +130,19 @@ export interface CheckboxRootProps extends Omit<BoxProps, "ref" | "onChange"> {
   defaultChecked?: boolean;
   onCheckedChange?: (details: { checked: boolean }) => void;
   size?: "xs" | "sm" | "md" | "lg";
+  /** Chakra colorPalette - maps to MUI color */
+  colorPalette?:
+    | "iochmara"
+    | "blue"
+    | "cyan"
+    | "green"
+    | "amber"
+    | "red"
+    | "gray";
+  /** Visual variant */
+  variant?: "outline" | "subtle" | "solid";
+  /** Disabled state */
+  disabled?: boolean;
 }
 
 const CheckboxRoot = forwardRef<HTMLDivElement, CheckboxRootProps>(
@@ -139,6 +153,7 @@ const CheckboxRoot = forwardRef<HTMLDivElement, CheckboxRootProps>(
       defaultChecked,
       onCheckedChange,
       size = "md",
+      disabled,
       sx,
       ...props
     },
@@ -159,7 +174,7 @@ const CheckboxRoot = forwardRef<HTMLDivElement, CheckboxRootProps>(
 
     return (
       <CheckboxContext.Provider
-        value={{ checked: currentChecked, onChange: handleChange, size }}
+        value={{ checked: currentChecked, onChange: handleChange, size, disabled }}
       >
         <Box
           ref={ref}
@@ -167,7 +182,8 @@ const CheckboxRoot = forwardRef<HTMLDivElement, CheckboxRootProps>(
           sx={{
             display: "inline-flex",
             alignItems: "center",
-            cursor: "pointer",
+            cursor: disabled ? "not-allowed" : "pointer",
+            opacity: disabled ? 0.6 : 1,
             ...sx,
           }}
           {...props}
@@ -184,7 +200,12 @@ function CheckboxHiddenInput() {
   return null;
 }
 
-function CheckboxControl() {
+interface CheckboxControlProps {
+  borderColor?: string;
+  backgroundColor?: string;
+}
+
+function CheckboxControl({ borderColor, backgroundColor }: CheckboxControlProps) {
   const context = useCheckboxContext();
   if (!context) return null;
 
@@ -195,7 +216,13 @@ function CheckboxControl() {
       checked={context.checked}
       onChange={(e) => context.onChange(e.target.checked)}
       size={muiSize}
-      sx={{ p: 0, mr: 0.5 }}
+      disabled={context.disabled}
+      sx={{
+        p: 0,
+        mr: 0.5,
+        ...(borderColor && { "& .MuiSvgIcon-root": { borderColor } }),
+        ...(backgroundColor && { backgroundColor }),
+      }}
     />
   );
 }

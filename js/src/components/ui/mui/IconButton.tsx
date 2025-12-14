@@ -39,6 +39,8 @@ export interface IconButtonProps
   pt?: string | number;
   /** Padding */
   p?: string | number;
+  /** Border radius */
+  rounded?: string;
 }
 
 const colorPaletteToMui: Record<string, MuiIconButtonProps["color"]> = {
@@ -75,6 +77,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       disabled,
       pt,
       p,
+      rounded,
       sx,
       ...props
     },
@@ -92,6 +95,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         sx={{
           ...(pt !== undefined && { pt }),
           ...(p !== undefined && { p }),
+          ...(rounded && { borderRadius: rounded === "full" ? "9999px" : rounded }),
           ...sx,
         }}
         {...props}

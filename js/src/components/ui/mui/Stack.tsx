@@ -44,6 +44,8 @@ export interface StackProps extends Omit<MuiStackProps, "ref" | "divider"> {
   rounded?: string;
   /** Box shadow */
   shadow?: string;
+  /** Width (shorthand) */
+  w?: string | number;
 }
 
 export const Stack = forwardRef<HTMLDivElement, StackProps>(function Stack(
@@ -64,6 +66,7 @@ export const Stack = forwardRef<HTMLDivElement, StackProps>(function Stack(
     bg,
     rounded,
     shadow,
+    w,
     sx,
     ...props
   },
@@ -86,6 +89,7 @@ export const Stack = forwardRef<HTMLDivElement, StackProps>(function Stack(
     if (rounded !== undefined)
       styles.borderRadius = rounded === "md" ? "4px" : rounded;
     if (shadow !== undefined) styles.boxShadow = shadow;
+    if (w !== undefined) styles.width = w;
     if (sx && typeof sx === "object" && !Array.isArray(sx)) {
       return { ...styles, ...sx } as SxProps<Theme>;
     }
@@ -105,6 +109,7 @@ export const Stack = forwardRef<HTMLDivElement, StackProps>(function Stack(
     bg,
     rounded,
     shadow,
+    w,
     sx,
   ]);
 

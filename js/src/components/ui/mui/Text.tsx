@@ -33,6 +33,10 @@ export interface TextProps extends Omit<MuiTypographyProps, "ref"> {
   fontSize?: string | number;
   /** Text alignment */
   textAlign?: "left" | "center" | "right" | "justify";
+  /** Cursor style */
+  cursor?: string;
+  /** Hover styles */
+  _hover?: Record<string, unknown>;
 }
 
 const sizeMap: Record<string, MuiTypographyProps["variant"]> = {
@@ -58,6 +62,8 @@ export const Text = forwardRef<HTMLSpanElement, TextProps>(function Text(
     gap,
     fontSize,
     textAlign,
+    cursor,
+    _hover,
     sx,
     ...props
   },
@@ -105,12 +111,20 @@ export const Text = forwardRef<HTMLSpanElement, TextProps>(function Text(
       styles.textAlign = textAlign;
     }
 
+    if (cursor) {
+      styles.cursor = cursor;
+    }
+
+    if (_hover) {
+      styles["&:hover"] = _hover;
+    }
+
     if (sx && typeof sx === "object" && !Array.isArray(sx)) {
       return { ...styles, ...sx } as SxProps<Theme>;
     }
 
     return styles as SxProps<Theme>;
-  }, [fontWeight, truncate, lineClamp, wordBreak, display, gap, fontSize, textAlign, sx]);
+  }, [fontWeight, truncate, lineClamp, wordBreak, display, gap, fontSize, textAlign, cursor, _hover, sx]);
 
   return (
     <MuiTypography
