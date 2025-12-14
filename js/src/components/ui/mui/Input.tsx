@@ -56,6 +56,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     isDisabled,
     isReadOnly,
     isRequired,
+    width,
     height,
     fontSize,
     sx,
@@ -77,6 +78,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       }}
       required={isRequired}
       sx={{
+        ...(width !== undefined && { width }),
         ...(height !== undefined && { "& .MuiInputBase-root": { height } }),
         ...(fontSize !== undefined && {
           "& .MuiInputBase-input": { fontSize },

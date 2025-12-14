@@ -120,7 +120,7 @@ export interface TabListProps
 }
 
 const TabList = forwardRef<HTMLDivElement, TabListProps>(function TabList(
-  { children, height, sx, ...props },
+  { children, height, sx, textColor, indicatorColor, ...props },
   ref,
 ) {
   const { value, onChange } = useTabsContext();
@@ -130,6 +130,8 @@ const TabList = forwardRef<HTMLDivElement, TabListProps>(function TabList(
       ref={ref}
       value={value}
       onChange={onChange}
+      textColor={textColor}
+      indicatorColor={indicatorColor}
       sx={{ ...(height !== undefined && { height }), ...sx }}
       {...props}
     >
@@ -146,10 +148,20 @@ export interface TabTriggerProps
   value?: TabValue;
   /** Font size */
   fontSize?: string | number;
+  /** Whether the tab is hidden */
+  hidden?: boolean;
 }
 
 const TabTrigger = forwardRef<HTMLDivElement, TabTriggerProps>(
-  function TabTrigger({ children, label, value, fontSize, sx, ...props }, ref) {
+  function TabTrigger(
+    { children, label, value, fontSize, sx, hidden, ...props },
+    ref,
+  ) {
+    // If hidden, don't render the tab at all
+    if (hidden) {
+      return null;
+    }
+
     return (
       <MuiTab
         ref={ref}
