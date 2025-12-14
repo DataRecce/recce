@@ -72,10 +72,9 @@ export default function TopBar() {
             alt="recce-logo-white"
           />
           <Heading
-            as="h1"
+            as="h4"
             sx={{
               fontFamily: '"Montserrat", sans-serif',
-              fontSize: "lg",
               color: "white",
             }}
           >

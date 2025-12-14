@@ -69,13 +69,11 @@ const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
           minWidth="100px"
           size="2xs"
           variant="outline"
+          startIcon={<Icon as={getIconForResourceType("model").icon} />}
+          endIcon={<PiCaretDown />}
           disabled={isDisabled}
         >
-          <Stack direction="row" spacing={1} display="flex" alignItems="center">
-            <Icon as={getIconForResourceType("model").icon} />
-            <span>{label}</span>
-            <PiCaretDown />
-          </Stack>
+          {label}
         </Button>
       </Menu.Trigger>
       <Portal>
@@ -168,10 +166,12 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
         <Button
           minWidth="100px"
           size="2xs"
+          startIcon={<FiPackage />}
+          endIcon={<PiCaretDown />}
           variant="outline"
           disabled={isDisabled}
         >
-          <Icon as={FiPackage} /> {label} <PiCaretDown />
+          {label}
         </Button>
       </Menu.Trigger>
       <Portal>
@@ -389,8 +389,8 @@ export const LineageViewTopBar = () => {
                 <ButtonGroup attached variant="outline">
                   <Menu.Root positioning={{ placement: "bottom-end" }}>
                     <Menu.Trigger asChild>
-                      <Button size="2xs">
-                        Actions <PiCaretDown />
+                      <Button size="2xs" endIcon={<PiCaretDown />}>
+                        Actions
                       </Button>
                     </Menu.Trigger>
                     <Portal>
@@ -425,8 +425,9 @@ export const LineageViewTopBar = () => {
                   <Button
                     size="2xs"
                     disabled={featureToggles.disableViewActionDropdown}
+                    endIcon={<PiCaretDown />}
                   >
-                    Actions <PiCaretDown />
+                    Actions
                   </Button>
                 </Menu.Trigger>
                 <Portal>

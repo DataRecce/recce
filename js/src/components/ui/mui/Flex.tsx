@@ -45,7 +45,7 @@ export interface FlexProps extends Omit<MuiBoxProps, "ref"> {
   /** Border */
   border?: string;
   /** Border radius (alias for rounded) */
-  borderRadius?: string;
+  borderRadius?: string | number;
   /** Border color */
   borderColor?: string;
   /** Background color */
@@ -103,7 +103,7 @@ export interface FlexProps extends Omit<MuiBoxProps, "ref"> {
   /** Overflow */
   overflow?: string;
   /** Box shadow */
-  boxShadow?: string;
+  boxShadow?: string | number;
 }
 
 export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(

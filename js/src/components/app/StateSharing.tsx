@@ -84,14 +84,15 @@ export function TopLevelShare() {
         size="xs"
         variant="outline"
         colorPalette="neutral"
+        startIcon={<TbCloudUpload />}
+        endIcon={shareUrl ? <PiCheckCircle color="green" /> : undefined}
         onClick={async () => {
           await handleShareClick();
           trackShareState({ name: "create" });
         }}
         loading={isLoading}
       >
-        <TbCloudUpload /> Share{" "}
-        {shareUrl ? <PiCheckCircle color="green" /> : undefined}
+        Share
       </Button>
       {isLoading && (
         <Text fontSize="14" color="gray.500">

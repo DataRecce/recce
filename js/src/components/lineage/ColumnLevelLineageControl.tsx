@@ -195,13 +195,7 @@ export const ColumnLevelLineageControl = ({
   return (
     <Flex direction="row" gap="5px">
       {!singleEnv && (
-        <Box
-          borderRadius="md"
-          boxShadow="md"
-          border="1px solid"
-          borderColor="gray.200"
-          bg="white"
-        >
+        <Box borderRadius={1} boxShadow={3}>
           <Tooltip
             openDelay={50}
             content="Please provide catalog.json to enable Impact Radius"
@@ -210,10 +204,14 @@ export const ColumnLevelLineageControl = ({
           >
             <Button
               size="sm"
-              variant="ghost"
+              variant="outline"
+              sx={{
+                borderColor: "neutral.light",
+              }}
               whiteSpace="nowrap"
               display="inline-flex"
               disabled={!interactive || noCatalogCurrent}
+              startIcon={<FaRegDotCircle />}
               onClick={() => {
                 void showColumnLevelLineage({
                   no_upstream: true,
@@ -221,17 +219,19 @@ export const ColumnLevelLineageControl = ({
                 });
               }}
             >
-              <FaRegDotCircle /> Impact Radius
+              Impact Radius
             </Button>
           </Tooltip>
         </Box>
       )}
       {viewOptions.column_level_lineage && (
         <Flex
-          borderRadius="md"
-          boxShadow="md"
+          borderRadius={1}
+          boxShadow={3}
           border="1px solid"
-          borderColor="gray.200"
+          sx={{
+            borderColor: "neutral.light",
+          }}
           bg="white"
           fontSize="0.8rem"
           p="0 0.625rem"
