@@ -22,7 +22,7 @@ import {
   Portal,
   Text,
   Textarea,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { Activity, useState } from "react";

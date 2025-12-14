@@ -8,7 +8,7 @@
  * - XSS-safe rendering (no dangerouslySetInnerHTML)
  */
 
-import { Box, Code, Link, Text } from "@chakra-ui/react";
+import { Box, Code, Link, Text } from "@/components/ui/mui";
 import React, { useState } from "react";
 import Markdown, { Components } from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";

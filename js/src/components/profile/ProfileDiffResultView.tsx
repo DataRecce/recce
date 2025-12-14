@@ -1,4 +1,4 @@
-import { Center, Flex } from "@chakra-ui/react";
+import { Center, Flex } from "@/components/ui/mui";
 import { forwardRef, Ref, useMemo } from "react";
 import { DataGridHandle } from "react-data-grid";
 import { ProfileDiffViewOptions } from "@/lib/api/profile";

@@ -2,7 +2,7 @@
  * CommentInput - Text area for adding new comments to a check timeline.
  */
 
-import { Box, Button, Flex, Textarea } from "@chakra-ui/react";
+import { Box, Button, Flex, Textarea } from "@/components/ui/mui";
 import { useState } from "react";
 
 interface CommentInputProps {

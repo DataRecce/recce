@@ -7,7 +7,7 @@ import {
   Portal,
   Spacer,
   Spinner,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import { VscKebabVertical } from "react-icons/vsc";
 import { Tooltip } from "@/components/ui/tooltip";
 import { NodeData } from "@/lib/api/info";

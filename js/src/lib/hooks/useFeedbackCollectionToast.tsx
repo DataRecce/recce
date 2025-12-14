@@ -1,4 +1,4 @@
-import { Flex, HStack, IconButton, Image, Link } from "@chakra-ui/react";
+import { Flex, HStack, IconButton, Image, Link } from "@/components/ui/mui";
 import React, { useState } from "react";
 import { LuExternalLink } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";

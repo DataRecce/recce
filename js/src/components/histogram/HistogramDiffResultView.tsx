@@ -1,4 +1,4 @@
-import { Box, Flex, HStack, Spacer } from "@chakra-ui/react";
+import { Box, Flex, HStack, Spacer } from "@/components/ui/mui";
 import { forwardRef, Ref } from "react";
 import { HistogramDiffParams, HistogramDiffResult } from "@/lib/api/profile";
 import { isHistogramDiffRun } from "@/lib/api/types";

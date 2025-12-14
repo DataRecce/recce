@@ -9,7 +9,7 @@
  * with toDiffColumn.tsx which imports this component.
  */
 
-import { Text } from "@chakra-ui/react";
+import { Text } from "@/components/ui/mui";
 import { CalculatedColumn, RenderCellProps } from "react-data-grid";
 import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
 // Import directly from gridUtils to avoid circular dependency

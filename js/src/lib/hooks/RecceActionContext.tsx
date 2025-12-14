@@ -1,4 +1,4 @@
-import { useDisclosure } from "@chakra-ui/react";
+import { useDisclosure } from "@/components/ui/mui-utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
 import React, {

@@ -1,6 +1,6 @@
 import "react-data-grid/lib/styles.css";
 
-import { Center, Flex } from "@chakra-ui/react";
+import { Center, Flex } from "@/components/ui/mui";
 import { forwardRef, Ref, useMemo } from "react";
 
 import "../query/styles.css";

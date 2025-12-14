@@ -1,6 +1,6 @@
 import { forwardRef, Key, Ref, useMemo, useState } from "react";
 import "react-data-grid/lib/styles.css";
-import { Alert, Flex } from "@chakra-ui/react";
+import { Alert, Flex } from "@/components/ui/mui";
 import { CellMouseArgs, DataGridHandle } from "react-data-grid";
 import { NodeData } from "@/lib/api/info";
 import { trackColumnLevelLineage } from "@/lib/api/track";

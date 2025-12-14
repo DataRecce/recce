@@ -12,7 +12,7 @@ import {
   Dialog,
   Portal,
   Text,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import { useRef } from "react";
 import { PiWarning } from "react-icons/pi";
 

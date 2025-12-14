@@ -4,8 +4,8 @@ import {
   Dialog,
   Portal,
   Text,
-  useDisclosure,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
+import { useDisclosure } from "@/components/ui/mui-utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import path from "path";
 import React, {

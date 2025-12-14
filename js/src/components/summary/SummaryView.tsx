@@ -1,4 +1,4 @@
-import { Flex, Heading, Separator } from "@chakra-ui/react";
+import { Flex, Heading, Separator } from "@/components/ui/mui";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { ChangeSummary } from "./ChangeSummary";
 import { SchemaSummary } from "./SchemaSummary";

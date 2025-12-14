@@ -15,7 +15,7 @@ import {
   Spinner,
   Text,
   VStack,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import { useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { fetchUser } from "@/lib/api/user";

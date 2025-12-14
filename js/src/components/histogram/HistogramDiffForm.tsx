@@ -1,4 +1,4 @@
-import { Box, Field, NativeSelect } from "@chakra-ui/react";
+import { Box, Field, NativeSelect } from "@/components/ui/mui";
 import { HistogramDiffParams } from "@/lib/api/profile";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { RunFormProps } from "../run/types";

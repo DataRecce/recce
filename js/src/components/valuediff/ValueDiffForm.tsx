@@ -1,4 +1,4 @@
-import { Box, Checkbox, Field, Input, VStack } from "@chakra-ui/react";
+import { Box, Checkbox, Field, Input, VStack } from "@/components/ui/mui";
 import { Select } from "chakra-react-select";
 import { useEffect, useState } from "react";
 import useModelColumns from "@/lib/hooks/useModelColumns";

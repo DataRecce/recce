@@ -19,7 +19,7 @@ import {
   Menu,
   Portal,
   Spacer,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import React from "react";
 import { RenderCellProps } from "react-data-grid";
 import { PiDotsThreeVertical } from "react-icons/pi";

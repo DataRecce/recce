@@ -6,7 +6,7 @@ import {
   Flex,
   ProgressCircle,
   VStack,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import React, { forwardRef } from "react";
 import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
 import {

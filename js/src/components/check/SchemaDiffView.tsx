@@ -1,4 +1,4 @@
-import { Box, Center, Flex, Icon, List } from "@chakra-ui/react";
+import { Box, Center, Flex, Icon, List } from "@/components/ui/mui";
 import { useQuery } from "@tanstack/react-query";
 import React, { forwardRef, useMemo, useState } from "react";
 import { DataGridHandle } from "react-data-grid";

@@ -1,4 +1,4 @@
-import { Box, Button, Flex, Spacer, Switch } from "@chakra-ui/react";
+import { Box, Button, Flex, Spacer, Switch } from "@/components/ui/mui";
 import { useMutation } from "@tanstack/react-query";
 import React, { useMemo } from "react";
 import { PiInfoFill } from "react-icons/pi";

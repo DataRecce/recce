@@ -9,7 +9,7 @@ import {
   Link,
   Popover,
   Portal,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import { ComponentType, useRef, useState } from "react";
 import { IconInfo } from "@/components/icons";
 import { RunFormParamTypes, RunType } from "@/components/run/registry";

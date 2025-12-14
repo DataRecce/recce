@@ -8,7 +8,7 @@
  * - Number column precision options menu
  */
 
-import { Box, Flex, Icon, IconButton, Menu, Portal } from "@chakra-ui/react";
+import { Box, Flex, Icon, IconButton, Menu, Portal } from "@/components/ui/mui";
 import React from "react";
 import {
   VscClose,

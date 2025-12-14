@@ -8,8 +8,8 @@ import {
   Spacer,
   Tabs,
   Text,
-  useDisclosure,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
+import { useDisclosure } from "@/components/ui/mui-utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { ReactNode, Ref, useCallback, useState } from "react";
 import { PiCaretDown, PiCheck, PiCopy, PiRepeat } from "react-icons/pi";

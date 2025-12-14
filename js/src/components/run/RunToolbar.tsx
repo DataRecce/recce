@@ -1,4 +1,4 @@
-import { Box, Flex, Spacer, VStack } from "@chakra-ui/react";
+import { Box, Flex, Spacer, VStack } from "@/components/ui/mui";
 import _ from "lodash";
 import { ReactNode } from "react";
 import { PiWarning } from "react-icons/pi";

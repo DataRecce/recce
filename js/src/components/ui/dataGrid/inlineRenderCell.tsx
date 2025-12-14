@@ -9,7 +9,7 @@
  * with toDiffColumn.tsx which imports this component.
  */
 
-import { Flex, Text } from "@chakra-ui/react";
+import { Flex, Text } from "@/components/ui/mui";
 import { CalculatedColumn, RenderCellProps } from "react-data-grid";
 import { DiffText } from "@/components/query/DiffText";
 import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";

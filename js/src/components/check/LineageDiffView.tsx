@@ -1,4 +1,4 @@
-import { Flex } from "@chakra-ui/react";
+import { Flex } from "@/components/ui/mui";
 import { ReactFlowProvider } from "@xyflow/react";
 import { forwardRef, Ref } from "react";
 import { Check } from "@/lib/api/checks";

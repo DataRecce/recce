@@ -6,8 +6,8 @@ import {
   Image,
   Portal,
   Text,
-  useDisclosure,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
+import { useDisclosure } from "@/components/ui/mui-utils";
 import { format } from "date-fns";
 import saveAs from "file-saver";
 import { toCanvas } from "html-to-image";

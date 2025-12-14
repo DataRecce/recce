@@ -1,4 +1,4 @@
-import { Flex, Heading, HStack, Link, Spacer } from "@chakra-ui/react";
+import { Flex, Heading, HStack, Link, Spacer } from "@/components/ui/mui";
 import { forwardRef, Ref, useState } from "react";
 import { TopKDiffParams, TopKDiffResult } from "@/lib/api/profile";
 import { TopKSummaryBarChart } from "../charts/TopKSummaryList";

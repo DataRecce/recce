@@ -1,4 +1,4 @@
-import { Box, Field, NativeSelect } from "@chakra-ui/react";
+import { Box, Field, NativeSelect } from "@/components/ui/mui";
 import { useEffect } from "react";
 import { TopKDiffParams } from "@/lib/api/profile";
 import useModelColumns from "@/lib/hooks/useModelColumns";

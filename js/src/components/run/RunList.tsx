@@ -9,7 +9,7 @@ import {
   IconButton,
   Spacer,
   Text,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { ReactNode, useCallback } from "react";
 import { IconType } from "react-icons";
