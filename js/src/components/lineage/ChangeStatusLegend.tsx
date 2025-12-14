@@ -1,4 +1,4 @@
-import { Box, Flex, Icon } from "@chakra-ui/react";
+import { Box, Flex, Icon } from "@/components/ui/mui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { getIconForChangeStatus } from "./styles";
 
@@ -13,11 +13,13 @@ export function ChangeStatusLegend() {
 
   return (
     <Box
-      bg="white"
-      padding="12px"
-      borderWidth="1px"
-      borderColor="gray.200"
-      fontSize="sm"
+      sx={{
+        bgcolor: "white",
+        padding: "12px",
+        border: "1px solid",
+        borderColor: "grey.200",
+        fontSize: "sm",
+      }}
     >
       {(
         Object.entries(CHANGE_STATUS_MSGS) as [ChangeStatus, [string, string]][]
@@ -26,7 +28,7 @@ export function ChangeStatusLegend() {
 
         return (
           <Tooltip content={tip} key={key} positioning={{ placement: "right" }}>
-            <Flex alignItems="center" gap="6px" marginBottom="2px">
+            <Flex sx={{ alignItems: "center", gap: "6px", mb: "2px" }}>
               <Icon color={color} as={icon} /> {label}
             </Flex>
           </Tooltip>

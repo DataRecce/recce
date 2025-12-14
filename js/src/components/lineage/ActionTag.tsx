@@ -1,6 +1,6 @@
-import { Box, Flex, ProgressCircle, Tag } from "@chakra-ui/react";
 import { PiInfo, PiWarning } from "react-icons/pi";
 import { LineageGraphNode } from "@/components/lineage/lineage";
+import { Box, Flex, ProgressCircle, Tag } from "@/components/ui/mui";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   isRowCountDiffRun,
@@ -31,9 +31,16 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
 
   if (status === "skipped") {
     return (
-      <Tag.Root backgroundColor={"gray.100"}>
+      <Tag.Root backgroundColor="grey.100">
         <Tag.Label>
-          <Flex fontSize="10pt" color="gray.500" alignItems="center" gap="3px">
+          <Flex
+            sx={{
+              fontSize: "10pt",
+              color: "grey.500",
+              alignItems: "center",
+              gap: "3px",
+            }}
+          >
             <Box>Skipped</Box>
             {skipReason && (
               <Tooltip content={skipReason}>
@@ -83,7 +90,7 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
 
   if (error) {
     return (
-      <Flex fontSize="10pt" color="gray">
+      <Flex sx={{ fontSize: "10pt", color: "gray" }}>
         <Box>Error</Box>
         {skipReason && (
           <Tooltip content={error}>
@@ -105,13 +112,17 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
     }
 
     return (
-      <Tag.Root backgroundColor={mismatched > 0 ? "red.100" : "green.100"}>
+      <Tag.Root
+        backgroundColor={mismatched > 0 ? "error.light" : "success.light"}
+      >
         <Tag.Label>
           <Flex
-            fontSize="10pt"
-            color={mismatched > 0 ? "red" : "green"}
-            alignItems="center"
-            gap="3px"
+            sx={{
+              fontSize: "10pt",
+              color: mismatched > 0 ? "error.main" : "success.main",
+              alignItems: "center",
+              gap: "3px",
+            }}
           >
             {mismatched > 0
               ? `${mismatched} columns mismatched`

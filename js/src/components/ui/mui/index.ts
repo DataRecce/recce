@@ -105,6 +105,14 @@ export {
   type PopoverTriggerProps,
 } from "./Popover";
 export { Portal, type PortalProps } from "./Portal";
+export {
+  ProgressCircle,
+  ProgressCircleCircle,
+  ProgressCircleRange,
+  ProgressCircleRoot,
+  type ProgressCircleRootProps,
+  ProgressCircleTrack,
+} from "./ProgressCircle";
 export { Select, SelectItem, type SelectProps } from "./Select";
 export { Spacer } from "./Spacer";
 export { Spinner, type SpinnerProps } from "./Spinner";
