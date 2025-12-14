@@ -115,8 +115,8 @@ const chakraVariantToMui: Record<string, MuiButtonProps["variant"]> = {
 };
 
 const sizeToMui: Record<string, MuiButtonProps["size"]> = {
-  "2xs": "small",
-  xs: "small",
+  "2xs": "xsmall",
+  xs: "xsmall",
   sm: "small",
   md: "medium",
   lg: "large",

@@ -12,7 +12,7 @@ import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";
 import React, { ReactNode } from "react";
-import { theme } from "@/components/ui/theme";
+import { lightTheme as theme } from "@/components/ui/mui-theme";
 import {
   MatchedPercentCell,
   PrimaryKeyIndicatorCell,

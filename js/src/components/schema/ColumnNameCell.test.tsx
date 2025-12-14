@@ -4,7 +4,7 @@ import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";
 import React from "react";
-import { theme } from "@/components/ui/theme";
+import { lightTheme as theme } from "@/components/ui/mui-theme";
 import { NodeData } from "@/lib/api/info";
 import { SchemaDiffRow } from "@/lib/dataGrid/generators/toSchemaDataGrid";
 import { ColumnNameCell } from "./ColumnNameCell";

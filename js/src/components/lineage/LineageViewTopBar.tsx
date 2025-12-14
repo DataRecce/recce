@@ -1,3 +1,4 @@
+import Stack from "@mui/material/Stack";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { FiPackage } from "react-icons/fi";
 import { PiCaretDown } from "react-icons/pi";
@@ -70,8 +71,11 @@ const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
           variant="outline"
           disabled={isDisabled}
         >
-          <Icon as={getIconForResourceType("model").icon} /> {label}{" "}
-          <PiCaretDown />
+          <Stack direction="row" spacing={1} display="flex" alignItems="center">
+            <Icon as={getIconForResourceType("model").icon} />
+            <span>{label}</span>
+            <PiCaretDown />
+          </Stack>
         </Button>
       </Menu.Trigger>
       <Portal>

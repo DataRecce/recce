@@ -139,13 +139,26 @@ const componentOverrides: ThemeOptions["components"] = {
     defaultProps: {
       disableElevation: true, // Match Chakra's flat button style
     },
+    // Size variants to match Chakra's sizes
+    variants: [
+      {
+        props: { size: "xsmall" },
+        style: {
+          padding: "0 0.5rem",
+          fontSize: "0.75rem",
+          fontWeight: 500,
+          borderRadius: "0.25rem",
+          minHeight: "unset", // Remove default minHeight constraint
+          lineHeight: 1.5, // Ensure proper text alignment
+        },
+      },
+    ],
     styleOverrides: {
       root: {
         textTransform: "none",
         fontWeight: 500,
         borderRadius: 6,
       },
-      // Size variants to match Chakra's sizes
       sizeSmall: {
         padding: "4px 12px",
         fontSize: "0.875rem",
@@ -385,6 +398,10 @@ const componentOverrides: ThemeOptions["components"] = {
   },
   // Link overrides
   MuiLink: {
+    defaultProps: {
+      underline: "hover",
+      fontWeight: 500,
+    },
     styleOverrides: {
       root: {
         color: colors.iochmara[600],
@@ -615,3 +632,39 @@ lightTheme.palette.envCurrent = customPaletteAdditions.envCurrent;
 darkTheme.palette.brand = customPaletteAdditions.brand;
 darkTheme.palette.envBase = customPaletteAdditions.envBase;
 darkTheme.palette.envCurrent = customPaletteAdditions.envCurrent;
+
+/**
+ * Token lookup function to mimic Chakra UI's token API
+ * Usage: token("colors.green.solid") => "#16A34A"
+ */
+export function token(path: string): string | undefined {
+  const parts = path.split(".");
+
+  // Handle "colors.X.Y" paths
+  if (parts[0] === "colors" && parts.length >= 3) {
+    const colorName = parts[1];
+    const variant = parts[2];
+
+    // Try semantic colors first
+    if (colorName in semanticColors) {
+      const semantic = semanticColors[colorName as keyof typeof semanticColors];
+      if (typeof semantic === "object" && variant in semantic) {
+        return (semantic as Record<string, string>)[variant];
+      }
+    }
+
+    // Then try base colors
+    if (colorName in colors) {
+      const color = colors[colorName as keyof typeof colors];
+      if (typeof color === "object" && variant in color) {
+        return (color as Record<string, string>)[variant];
+      }
+    }
+
+    // Handle "colors.white" and other special cases
+    if (colorName === "white") return "#FFFFFF";
+    if (colorName === "black") return "#000000";
+  }
+
+  return undefined;
+}

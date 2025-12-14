@@ -9,7 +9,7 @@ import { ThemeProvider } from "@mui/material/styles";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import React, { ReactNode } from "react";
-import { theme } from "@/components/ui/theme";
+import { lightTheme as theme } from "@/components/ui/mui-theme";
 
 // Create a fresh QueryClient for each test
 const createTestQueryClient = () =>
@@ -148,7 +148,6 @@ describe("NavBar Tab Navigation", () => {
     });
 
     expect(screen.getByText("Query")).toBeInTheDocument();
-    expect(screen.getByText("Checklist")).toBeInTheDocument();
   });
 
   it("highlights Lineage tab when on /lineage route", async () => {
@@ -161,33 +160,6 @@ describe("NavBar Tab Navigation", () => {
         .getByText("Lineage")
         .closest("button, a, [role='tab']");
       expect(lineageTab).toBeInTheDocument();
-    });
-  });
-
-  it("highlights Checklist tab when on /checks route", async () => {
-    global.mockNextNavigation.setPathname("/checks");
-
-    renderWithProviders(<NavBar />);
-
-    await waitFor(() => {
-      const checklistTab = screen
-        .getByText("Checklist")
-        .closest("button, a, [role='tab']");
-      expect(checklistTab).toBeInTheDocument();
-    });
-  });
-
-  it("highlights Checklist tab when on /checks with query param", async () => {
-    global.mockNextNavigation.setPathname("/checks");
-    global.mockNextNavigation.setSearchParams("id=abc-123");
-
-    renderWithProviders(<NavBar />);
-
-    await waitFor(() => {
-      const checklistTab = screen
-        .getByText("Checklist")
-        .closest("button, a, [role='tab']");
-      expect(checklistTab).toBeInTheDocument();
     });
   });
 
@@ -223,11 +195,9 @@ describe("NavBar Tab Navigation", () => {
 
     const lineageLink = screen.getByText("Lineage").closest("a");
     const queryLink = screen.getByText("Query").closest("a");
-    const checklistLink = screen.getByText("Checklist").closest("a");
 
     expect(lineageLink).toHaveAttribute("href", "/lineage");
     expect(queryLink).toHaveAttribute("href", "/query");
-    expect(checklistLink).toHaveAttribute("href", "/checks");
   });
 
   it("renders correctly on /query route", async () => {

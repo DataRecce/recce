@@ -4,7 +4,8 @@ import type { BoxProps as MuiBoxProps } from "@mui/material/Box";
 import MuiBox from "@mui/material/Box";
 import type { SxProps, Theme } from "@mui/material/styles";
 import { forwardRef, type ReactNode, useMemo } from "react";
-import { token } from "../theme";
+
+import { token } from "@/components/ui/mui-theme";
 
 /**
  * Resolves Chakra-style color tokens to actual color values.

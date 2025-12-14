@@ -14,7 +14,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode } from "react";
 import { MuiProvider } from "@/components/ui/mui-provider";
-import { Provider } from "@/components/ui/provider";
 import { Toaster } from "@/components/ui/toaster";
 import { reactQueryClient } from "@/lib/api/axiosClient";
 import { IdleTimeoutProvider } from "@/lib/hooks/IdleTimeoutContext";
@@ -29,17 +28,15 @@ interface ProvidersProps {
 
 export default function Providers({ children, lineage }: ProvidersProps) {
   return (
-    <Provider forcedTheme="light">
-      <MuiProvider forcedTheme="light">
-        <QueryClientProvider client={reactQueryClient}>
-          <IdleTimeoutProvider>
-            <RecceContextProvider>
-              <MainLayout lineage={lineage}>{children}</MainLayout>
-              <Toaster />
-            </RecceContextProvider>
-          </IdleTimeoutProvider>
-        </QueryClientProvider>
-      </MuiProvider>
-    </Provider>
+    <MuiProvider forcedTheme="light" enableCssBaseline>
+      <QueryClientProvider client={reactQueryClient}>
+        <IdleTimeoutProvider>
+          <RecceContextProvider>
+            <MainLayout lineage={lineage}>{children}</MainLayout>
+            <Toaster />
+          </RecceContextProvider>
+        </IdleTimeoutProvider>
+      </QueryClientProvider>
+    </MuiProvider>
   );
 }

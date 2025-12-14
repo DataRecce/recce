@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
@@ -30,12 +31,14 @@ interface TabBadgeProps<T> {
   queryKey: string[];
   fetchCallback: () => Promise<T>;
   selectCallback?: (data: T) => number;
+  children: ReactNode;
 }
 
 function TabBadge<T>({
   queryKey,
   fetchCallback,
   selectCallback,
+  children,
 }: TabBadgeProps<T>): ReactNode {
   const {
     data: count,
@@ -52,21 +55,27 @@ function TabBadge<T>({
   }
 
   return (
-    <Box
-      sx={{
-        ml: "2px",
-        maxHeight: "20px",
-        height: "80%",
-        aspectRatio: 1,
-        borderRadius: "50%",
-        bgcolor: "tomato",
-        alignContent: "center",
-        color: "white",
-        fontSize: "xs",
+    <Badge
+      badgeContent={count}
+      color="primary"
+      anchorOrigin={{ vertical: "top", horizontal: "right" }}
+    >
+      {children}
+    </Badge>
+  );
+}
+
+function ChecklistBadge({ children }: { children: ReactNode }): ReactNode {
+  return (
+    <TabBadge<Check[]>
+      queryKey={cacheKeys.checks()}
+      fetchCallback={listChecks}
+      selectCallback={(checks: Check[]) => {
+        return checks.filter((check) => !check.is_checked).length;
       }}
     >
-      {count}
-    </Box>
+      {children}
+    </TabBadge>
   );
 }
 
@@ -76,15 +85,6 @@ export default function NavBar() {
   const { isDemoSite, isLoading, cloudMode } = useLineageGraphContext();
   const { featureToggles } = useRecceInstanceContext();
   const { data: flag, isLoading: isFlagLoading } = useRecceServerFlag();
-  const ChecklistBadge = (
-    <TabBadge<Check[]>
-      queryKey={cacheKeys.checks()}
-      fetchCallback={listChecks}
-      selectCallback={(checks: Check[]) => {
-        return checks.filter((check) => !check.is_checked).length;
-      }}
-    />
-  );
 
   // Track navigation changes with previous pathname
   const prevPathnameRef = useRef<string | null>(null);
@@ -125,6 +125,26 @@ export default function NavBar() {
           {ROUTE_CONFIG.map(({ path, name }) => {
             const disable = name === "Query" && flag?.single_env_onboarding;
 
+            if (name === "Checklist" && ChecklistBadge) {
+              return (
+                <Tabs.Trigger
+                  key={path}
+                  value={path}
+                  disabled={isLoading || isFlagLoading || disable}
+                  hidden={disable}
+                >
+                  <ChecklistBadge>
+                    <NextLink
+                      href={path}
+                      style={{ textDecoration: "none", color: "inherit" }}
+                    >
+                      {name}
+                    </NextLink>
+                  </ChecklistBadge>
+                </Tabs.Trigger>
+              );
+            }
+
             return (
               <Tabs.Trigger
                 key={path}
@@ -138,7 +158,6 @@ export default function NavBar() {
                 >
                   {name}
                 </NextLink>
-                {name === "Checklist" && ChecklistBadge}
               </Tabs.Trigger>
             );
           })}

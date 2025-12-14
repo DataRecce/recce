@@ -2,7 +2,8 @@
 
 import Box from "@mui/material/Box";
 import { type ComponentType, forwardRef, type SVGProps } from "react";
-import { token } from "../theme";
+
+import { token } from "@/components/ui/mui-theme";
 
 /**
  * Resolves Chakra-style color tokens to actual color values.

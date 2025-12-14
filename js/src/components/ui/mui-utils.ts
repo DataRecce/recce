@@ -210,6 +210,11 @@ export const layoutSx = {
 declare module "@mui/material/Button" {
   interface ButtonPropsColorOverrides {
     brand: true;
+    neutral: true;
+  }
+  // Add this interface to enable the xsmall size
+  interface ButtonPropsSizeOverrides {
+    xsmall: true;
   }
 }
 

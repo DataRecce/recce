@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { Flex, Spinner, Text } from "@/components/ui/mui";
-import { token } from "@/components/ui/theme";
+import { token } from "@/components/ui/mui-theme";
 import { Run } from "@/lib/api/types";
 
 export function formatRunDate(date: Date | null) {
