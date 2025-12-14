@@ -129,7 +129,7 @@ export interface CheckboxRootProps extends Omit<BoxProps, "ref" | "onChange"> {
   children?: ReactNode;
   checked?: boolean | "indeterminate";
   defaultChecked?: boolean;
-  onCheckedChange?: (details?: { checked: boolean }) => void;
+  onCheckedChange?: (details: { checked: boolean }) => void;
   size?: "xs" | "sm" | "md" | "lg";
   /** Chakra colorPalette - maps to MUI color */
   colorPalette?:

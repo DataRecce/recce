@@ -19,7 +19,7 @@ import {
 export interface ToastOptions {
   id?: string;
   title?: string;
-  description?: string;
+  description?: ReactNode;
   type?: "success" | "error" | "warning" | "info" | "loading";
   duration?: number;
   closable?: boolean;
@@ -129,7 +129,9 @@ export function ToasterProvider({ children }: { children: ReactNode }) {
                 </Typography>
               )}
               {toast.description && (
-                <Typography variant="body2">{toast.description}</Typography>
+                <Typography variant="body2" component="div">
+                  {toast.description}
+                </Typography>
               )}
             </Stack>
           </Alert>
@@ -181,6 +183,10 @@ export const toaster = {
   loading: (options: Omit<ToastOptions, "type">) =>
     toaster.create({ ...options, type: "loading" }),
   dismiss: (id: string) => {
+    listeners.forEach((listener) => listener({ type: "dismiss", id }));
+  },
+  // Alias for dismiss (for backward compatibility)
+  remove: (id: string) => {
     listeners.forEach((listener) => listener({ type: "dismiss", id }));
   },
   update: (id: string, options: Partial<ToastOptions>) => {
@@ -269,7 +275,9 @@ export function Toaster() {
                 </Typography>
               )}
               {toast.description && (
-                <Typography variant="body2">{toast.description}</Typography>
+                <Typography variant="body2" component="div">
+                  {toast.description}
+                </Typography>
               )}
             </Stack>
           </Alert>

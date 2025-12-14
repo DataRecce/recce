@@ -95,12 +95,12 @@ export function useFeedbackCollectionToast(options: {
               description={description}
               onLike={() => {
                 onFeedbackSubmit("like");
-                toaster.dismiss(toastId);
+                toaster.dismiss(feedbackId);
                 localStorage.setItem(feedbackId, "true");
               }}
               onDislike={() => {
                 onFeedbackSubmit("dislike");
-                toaster.dismiss(toastId);
+                toaster.dismiss(feedbackId);
                 localStorage.setItem(feedbackId, "true");
               }}
               externalLink={externalLink}
@@ -118,7 +118,7 @@ export function useFeedbackCollectionToast(options: {
   return {
     feedbackToast: feedBackCollectionToast,
     closeToast: () => {
-      toaster.dismiss(toastId);
+      if (toastId) toaster.dismiss(toastId);
     },
   };
 }

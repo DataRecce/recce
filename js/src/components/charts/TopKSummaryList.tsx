@@ -101,7 +101,7 @@ function TopKChartTooltip({
       }
       showArrow
     >
-      {children}
+      <span>{children}</span>
     </Tooltip>
   );
 }

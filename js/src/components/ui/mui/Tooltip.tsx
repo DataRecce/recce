@@ -1,5 +1,6 @@
 "use client";
 
+import type { SxProps, Theme } from "@mui/material/styles";
 import type { TooltipProps as MuiTooltipProps } from "@mui/material/Tooltip";
 import MuiTooltip from "@mui/material/Tooltip";
 import { forwardRef, type ReactElement, type ReactNode } from "react";
@@ -29,6 +30,21 @@ export interface TooltipProps
   positioning?: {
     placement?: MuiTooltipProps["placement"];
   };
+  /** Delay before showing the tooltip in milliseconds */
+  openDelay?: number;
+  /** Props to style the tooltip content */
+  contentProps?: {
+    width?: string | number;
+    padding?: number | string;
+    shadow?: string;
+    borderWidth?: number | string;
+    rounded?: string;
+    color?: string;
+    backgroundColor?: string;
+    sx?: SxProps<Theme>;
+  };
+  /** Whether to close the tooltip on click */
+  closeOnClick?: boolean;
 }
 
 export const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
@@ -39,6 +55,10 @@ export const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
       showArrow = false,
       disabled = false,
       positioning,
+      openDelay,
+      contentProps,
+      closeOnClick,
+      slotProps,
       ...props
     },
     ref,
@@ -47,12 +67,39 @@ export const Tooltip = forwardRef<HTMLDivElement, TooltipProps>(
       return children;
     }
 
+    // Convert contentProps to MUI sx styles
+    const tooltipSx: SxProps<Theme> | undefined = contentProps
+      ? {
+          width: contentProps.width,
+          padding: contentProps.padding,
+          boxShadow: contentProps.shadow === "md" ? 2 : undefined,
+          borderWidth: contentProps.borderWidth,
+          borderStyle: contentProps.borderWidth ? "solid" : undefined,
+          borderColor: contentProps.borderWidth ? "divider" : undefined,
+          borderRadius: contentProps.rounded === "md" ? 1 : undefined,
+          color: contentProps.color,
+          backgroundColor: contentProps.backgroundColor,
+          ...contentProps.sx,
+        }
+      : undefined;
+
     return (
       <MuiTooltip
         ref={ref}
         title={content}
         arrow={showArrow}
         placement={positioning?.placement}
+        enterDelay={openDelay}
+        disableInteractive={closeOnClick === false ? false : undefined}
+        slotProps={{
+          ...slotProps,
+          tooltip: tooltipSx
+            ? {
+                ...slotProps?.tooltip,
+                sx: tooltipSx,
+              }
+            : slotProps?.tooltip,
+        }}
         {...props}
       >
         {children}

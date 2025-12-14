@@ -98,6 +98,19 @@ export const colors = {
     900: "#881337",
     950: "#4C0519",
   },
+  orange: {
+    50: "#FFF7ED",
+    100: "#FFEDD5",
+    200: "#FED7AA",
+    300: "#FDBA74",
+    400: "#FB923C",
+    500: "#F97316",
+    600: "#EA580C",
+    700: "#C2410C",
+    800: "#9A3412",
+    900: "#7C2D12",
+    950: "#431407",
+  },
   brand: {
     50: "#FFDED5",
     100: "#FFC1B0",
@@ -188,6 +201,15 @@ export const semanticColors = {
     muted: colors.brand[200],
     emphasized: colors.brand[300],
     focusRing: colors.brand[500],
+  },
+  orange: {
+    solid: colors.orange[500],
+    contrast: "#FFFFFF",
+    fg: colors.orange[700],
+    subtle: colors.orange[100],
+    muted: colors.orange[200],
+    emphasized: colors.orange[300],
+    focusRing: colors.orange[400],
   },
   // Aliases
   blue: {
@@ -283,7 +305,46 @@ export const theme: Theme = createTheme({
   },
 });
 
-// Export theme as system for backward compatibility
-export const system = theme;
+/**
+ * Token lookup function to mimic Chakra UI's token API
+ * Usage: token("colors.green.solid") => "#16A34A"
+ */
+export function token(path: string): string | undefined {
+  const parts = path.split(".");
+
+  // Handle "colors.X.Y" paths
+  if (parts[0] === "colors" && parts.length >= 3) {
+    const colorName = parts[1];
+    const variant = parts[2];
+
+    // Try semantic colors first
+    if (colorName in semanticColors) {
+      const semantic = semanticColors[colorName as keyof typeof semanticColors];
+      if (typeof semantic === "object" && variant in semantic) {
+        return (semantic as Record<string, string>)[variant];
+      }
+    }
+
+    // Then try base colors
+    if (colorName in colors) {
+      const color = colors[colorName as keyof typeof colors];
+      if (typeof color === "object" && variant in color) {
+        return (color as Record<string, string>)[variant];
+      }
+    }
+
+    // Handle "colors.white" and other special cases
+    if (colorName === "white") return "#FFFFFF";
+    if (colorName === "black") return "#000000";
+  }
+
+  return undefined;
+}
+
+// Export system object with token method for backward compatibility
+export const system = {
+  ...theme,
+  token,
+};
 
 export default theme;

@@ -1,8 +1,16 @@
 import { useEffect, useState } from "react";
-import ReactSelect from "react-select";
+import ReactSelect, {
+  type CSSObjectWithLabel,
+  type MultiValue,
+} from "react-select";
 import { Box, Checkbox, Field, Input, VStack } from "@/components/ui/mui";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { RunFormProps } from "../run/types";
+
+interface ColumnOption {
+  label: string;
+  value: string;
+}
 
 export interface ValueDiffFormParams {
   model: string;
@@ -80,11 +88,13 @@ export function ValueDiffForm({
           isMulti
           closeMenuOnSelect={false}
           options={columnNames.map((c) => ({ label: c, value: c }))}
-          value={(primaryKeys ?? []).map((c) => ({
-            label: c,
-            value: c,
-          }))}
-          onChange={(options) => {
+          value={(primaryKeys ?? [])
+            .filter((c): c is string => c !== undefined)
+            .map((c) => ({
+              label: c,
+              value: c,
+            }))}
+          onChange={(options: MultiValue<ColumnOption>) => {
             const optionsArray = Array.isArray(options) ? options : [];
             onParamsChanged({
               ...params,
@@ -95,8 +105,14 @@ export function ValueDiffForm({
             });
           }}
           styles={{
-            container: (base) => ({ ...base, width: "100%" }),
-            control: (base) => ({ ...base, minHeight: "40px" }),
+            container: (base: CSSObjectWithLabel) => ({
+              ...base,
+              width: "100%",
+            }),
+            control: (base: CSSObjectWithLabel) => ({
+              ...base,
+              minHeight: "40px",
+            }),
           }}
         />
       </Field.Root>
@@ -128,7 +144,7 @@ export function ValueDiffForm({
               label: c,
               value: c,
             }))}
-            onChange={(newValue) => {
+            onChange={(newValue: MultiValue<ColumnOption>) => {
               let cols: string[] | undefined;
               const newCols = Array.isArray(newValue)
                 ? newValue.map((v) => v.value)
@@ -144,8 +160,14 @@ export function ValueDiffForm({
               });
             }}
             styles={{
-              container: (base) => ({ ...base, width: "100%" }),
-              control: (base) => ({ ...base, minHeight: "40px" }),
+              container: (base: CSSObjectWithLabel) => ({
+                ...base,
+                width: "100%",
+              }),
+              control: (base: CSSObjectWithLabel) => ({
+                ...base,
+                minHeight: "40px",
+              }),
             }}
           />
         )}
