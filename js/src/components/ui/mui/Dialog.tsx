@@ -122,7 +122,10 @@ export interface DialogContentProps {
 }
 
 export const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
-  function DialogContent({ children, overflowY, height, width, borderRadius, minHeight }, ref) {
+  function DialogContent(
+    { children, overflowY, height, width, borderRadius, minHeight },
+    ref,
+  ) {
     return (
       <Box
         ref={ref}
@@ -158,7 +161,10 @@ export interface DialogHeaderProps extends Omit<MuiDialogTitleProps, "ref"> {
 }
 
 export const DialogHeader = forwardRef<HTMLDivElement, DialogHeaderProps>(
-  function DialogHeader({ children, fontSize, bg, px, py, height, sx, ...props }, ref) {
+  function DialogHeader(
+    { children, fontSize, bg, px, py, height, sx, ...props },
+    ref,
+  ) {
     return (
       <MuiDialogTitle
         ref={ref}
@@ -200,7 +206,19 @@ export interface DialogTitleProps {
 }
 
 export const DialogTitle = forwardRef<HTMLSpanElement, DialogTitleProps>(
-  function DialogTitle({ children, as: _as, fontFamily, fontSize, color, display, alignItems, gap }, ref) {
+  function DialogTitle(
+    {
+      children,
+      as: _as,
+      fontFamily,
+      fontSize,
+      color,
+      display,
+      alignItems,
+      gap,
+    },
+    ref,
+  ) {
     return (
       <span
         ref={ref}
@@ -244,7 +262,20 @@ export interface DialogBodyProps extends Omit<MuiDialogContentProps, "ref"> {
 
 export const DialogBody = forwardRef<HTMLDivElement, DialogBodyProps>(
   function DialogBody(
-    { children, borderTop, borderBottom, borderY, p, gap, as: _as, direction, h, overflow, sx, ...props },
+    {
+      children,
+      borderTop,
+      borderBottom,
+      borderY,
+      p,
+      gap,
+      as: _as,
+      direction,
+      h,
+      overflow,
+      sx,
+      ...props
+    },
     ref,
   ) {
     const combinedSx = useMemo((): SxProps<Theme> => {
@@ -270,11 +301,7 @@ export const DialogBody = forwardRef<HTMLDivElement, DialogBodyProps>(
     }, [borderTop, borderBottom, borderY, p, gap, direction, h, overflow, sx]);
 
     return (
-      <MuiDialogContent
-        ref={ref}
-        sx={combinedSx}
-        {...props}
-      >
+      <MuiDialogContent ref={ref} sx={combinedSx} {...props}>
         {children}
       </MuiDialogContent>
     );

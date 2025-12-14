@@ -320,7 +320,10 @@ interface MenuItemGroupLabelProps {
 
 function MenuItemGroupLabel({ children }: MenuItemGroupLabelProps) {
   return (
-    <MuiMenuItem disabled sx={{ opacity: 0.6, fontSize: "0.75rem", fontWeight: 600 }}>
+    <MuiMenuItem
+      disabled
+      sx={{ opacity: 0.6, fontSize: "0.75rem", fontWeight: 600 }}
+    >
       {children}
     </MuiMenuItem>
   );
@@ -333,7 +336,11 @@ interface MenuRadioItemGroupProps {
   onValueChange?: (details: { value: string }) => void;
 }
 
-function MenuRadioItemGroup({ children, value, onValueChange }: MenuRadioItemGroupProps) {
+function MenuRadioItemGroup({
+  children,
+  value,
+  onValueChange,
+}: MenuRadioItemGroupProps) {
   // For now, just render children - radio functionality can be enhanced later
   return <>{children}</>;
 }
@@ -345,11 +352,7 @@ interface MenuRadioItemProps {
 }
 
 function MenuRadioItem({ children, value }: MenuRadioItemProps) {
-  return (
-    <MuiMenuItem value={value}>
-      {children}
-    </MuiMenuItem>
-  );
+  return <MuiMenuItem value={value}>{children}</MuiMenuItem>;
 }
 
 // Menu Item Indicator - Visual indicator for selected items

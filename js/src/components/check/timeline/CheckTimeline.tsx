@@ -7,6 +7,7 @@
  * This component is only rendered when connected to Recce Cloud.
  */
 
+import { useQuery } from "@tanstack/react-query";
 import {
   Box,
   Center,
@@ -16,7 +17,6 @@ import {
   Text,
   VStack,
 } from "@/components/ui/mui";
-import { useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { fetchUser } from "@/lib/api/user";
 import { useCheckEvents } from "@/lib/hooks/useCheckEvents";

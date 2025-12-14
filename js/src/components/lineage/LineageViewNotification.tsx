@@ -1,5 +1,5 @@
-import { CloseButton, Flex, Spacer } from "@/components/ui/mui";
 import React, { useState } from "react";
+import { CloseButton, Flex, Spacer } from "@/components/ui/mui";
 import { sessionStorageKeys } from "@/lib/api/sessionStorageKeys";
 
 interface NotificationProps {

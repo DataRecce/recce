@@ -1,3 +1,10 @@
+import React, { forwardRef } from "react";
+import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
+import {
+  RefTypes,
+  RegistryEntry,
+  ViewOptionTypes,
+} from "@/components/run/registry";
 import {
   Alert,
   Box,
@@ -7,13 +14,6 @@ import {
   ProgressCircle,
   VStack,
 } from "@/components/ui/mui";
-import React, { forwardRef } from "react";
-import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
-import {
-  RefTypes,
-  RegistryEntry,
-  ViewOptionTypes,
-} from "@/components/run/registry";
 import { Run } from "@/lib/api/types";
 import ResultErrorFallback from "@/lib/result/ResultErrorFallback";
 import { RunResultViewProps } from "./types";

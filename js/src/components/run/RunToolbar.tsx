@@ -1,7 +1,7 @@
-import { Box, Flex, Spacer, VStack } from "@/components/ui/mui";
 import _ from "lodash";
 import { ReactNode } from "react";
 import { PiWarning } from "react-icons/pi";
+import { Box, Flex, Spacer, VStack } from "@/components/ui/mui";
 import { RunResultViewProps } from "./types";
 
 export interface DiffViewOptions {

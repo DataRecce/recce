@@ -1,6 +1,6 @@
-import { Box, Flex, Icon, IconButton, Menu, Portal } from "@/components/ui/mui";
 import { PiDotsThreeVertical } from "react-icons/pi";
 import { VscPin, VscPinned } from "react-icons/vsc";
+import { Box, Flex, Icon, IconButton, Menu, Portal } from "@/components/ui/mui";
 import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
 import { ColumnRenderMode, ColumnType } from "@/lib/api/types";
 

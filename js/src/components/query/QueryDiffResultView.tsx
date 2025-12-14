@@ -1,7 +1,7 @@
 import "react-data-grid/lib/styles.css";
 
-import { Center, Flex } from "@/components/ui/mui";
 import { ForwardedRef, forwardRef, Ref, useMemo } from "react";
+import { Center, Flex } from "@/components/ui/mui";
 import {
   QueryDiffViewOptions,
   QueryPreviewChangeParams,

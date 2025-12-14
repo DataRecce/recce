@@ -1,6 +1,6 @@
-import { Flex } from "@/components/ui/mui";
 import { ReactFlowProvider } from "@xyflow/react";
 import { forwardRef, Ref } from "react";
+import { Flex } from "@/components/ui/mui";
 import { Check } from "@/lib/api/checks";
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { LineageView, LineageViewRef } from "../lineage/LineageView";

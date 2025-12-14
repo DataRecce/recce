@@ -1,6 +1,6 @@
-import { Alert } from "@/components/ui/mui";
 import { FallbackRender } from "@sentry/react";
 import * as React from "react";
+import { Alert } from "@/components/ui/mui";
 
 const ResultErrorFallback: FallbackRender = (errorData) => {
   return (

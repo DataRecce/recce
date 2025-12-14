@@ -42,7 +42,16 @@ const variantToMui: Record<string, MuiAlertProps["variant"]> = {
 };
 
 export const AlertBase = forwardRef<HTMLDivElement, AlertProps>(function Alert(
-  { status = "info", title, variant = "subtle", fontSize, p, children, sx, ...props },
+  {
+    status = "info",
+    title,
+    variant = "subtle",
+    fontSize,
+    p,
+    children,
+    sx,
+    ...props
+  },
   ref,
 ) {
   const severity = statusToSeverity[status] || "info";
@@ -77,12 +86,11 @@ function AlertDescription({ children }: AlertDescriptionProps) {
   return <>{children}</>;
 }
 
-const AlertRoot = forwardRef<HTMLDivElement, AlertRootProps>(function AlertRoot(
-  props,
-  ref,
-) {
-  return <AlertBase ref={ref} {...props} />;
-});
+const AlertRoot = forwardRef<HTMLDivElement, AlertRootProps>(
+  function AlertRoot(props, ref) {
+    return <AlertBase ref={ref} {...props} />;
+  },
+);
 
 function AlertIndicator() {
   // MUI Alert has built-in icon, this is for API compatibility

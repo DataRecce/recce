@@ -1,6 +1,6 @@
-import { Button, Heading, Icon, Text } from "@/components/ui/mui";
 import { useQuery } from "@tanstack/react-query";
 import { RiTerminalBoxLine } from "react-icons/ri";
+import { Button, Heading, Icon, Text } from "@/components/ui/mui";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { getRecceInstanceInfo } from "@/lib/api/instanceInfo";
 import { getSettingsUrl } from "@/lib/utils/urls";

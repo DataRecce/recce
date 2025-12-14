@@ -1,11 +1,11 @@
 "use client";
 
-import MuiCard from "@mui/material/Card";
+import MuiBox from "@mui/material/Box";
 import type { CardProps as MuiCardProps } from "@mui/material/Card";
+import MuiCard from "@mui/material/Card";
+import MuiCardActions from "@mui/material/CardActions";
 import MuiCardContent from "@mui/material/CardContent";
 import MuiCardHeader from "@mui/material/CardHeader";
-import MuiCardActions from "@mui/material/CardActions";
-import MuiBox from "@mui/material/Box";
 import { forwardRef, type ReactNode } from "react";
 
 /**

@@ -1,7 +1,7 @@
 import "react-data-grid/lib/styles.css";
-import { Flex, Text } from "@/components/ui/mui";
 import React, { forwardRef } from "react";
 import { DataGrid, DataGridHandle, DataGridProps } from "react-data-grid";
+import { Flex, Text } from "@/components/ui/mui";
 import { RowObjectType } from "@/lib/api/types";
 
 export const ScreenshotDataGrid = forwardRef(

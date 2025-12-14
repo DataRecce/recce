@@ -1,8 +1,8 @@
-import { Button, Flex, Spacer, Stack, Text } from "@/components/ui/mui";
 import React, { useMemo } from "react";
 import { FaPlay } from "react-icons/fa6";
 import { extractSchemas, formatTimeToNow } from "@/components/app/EnvInfo";
 import { CodeEditor } from "@/components/editor";
+import { Button, Flex, Spacer, Stack, Text } from "@/components/ui/mui";
 import { ManifestMetadata } from "@/lib/api/info";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";

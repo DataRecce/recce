@@ -1,15 +1,4 @@
 import {
-  Box,
-  Button,
-  Center,
-  Flex,
-  Icon,
-  Spinner,
-  StackSeparator,
-  Text,
-  VStack,
-} from "@/components/ui/mui";
-import {
   Background,
   ControlButton,
   Controls,
@@ -34,6 +23,17 @@ import React, {
   useRef,
   useState,
 } from "react";
+import {
+  Box,
+  Button,
+  Center,
+  Flex,
+  Icon,
+  Spinner,
+  StackSeparator,
+  Text,
+  VStack,
+} from "@/components/ui/mui";
 import {
   isLineageGraphColumnNode,
   isLineageGraphNode,

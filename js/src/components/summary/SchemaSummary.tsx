@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Card,
   Flex,
@@ -6,7 +7,6 @@ import {
   SimpleGrid,
   Text,
 } from "@/components/ui/mui";
-import { useEffect, useState } from "react";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { LineageGraph, LineageGraphNode } from "../lineage/lineage";
 import { ResourceTypeTag, RowCountDiffTag } from "../lineage/NodeTag";

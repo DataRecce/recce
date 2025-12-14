@@ -1,6 +1,6 @@
-import { Field, Flex, type FlexProps } from "@/components/ui/mui";
 import { useMemo } from "react";
 import { PiInfo } from "react-icons/pi";
+import { Field, Flex, type FlexProps } from "@/components/ui/mui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { NodeColumnData } from "@/lib/api/info";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";

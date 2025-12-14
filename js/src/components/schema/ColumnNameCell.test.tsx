@@ -1,12 +1,12 @@
 // js/src/components/schema/ColumnNameCell.test.tsx
 
-import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
+import { ThemeProvider } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";
 import React from "react";
+import { theme } from "@/components/ui/theme";
 import { NodeData } from "@/lib/api/info";
 import { SchemaDiffRow } from "@/lib/dataGrid/generators/toSchemaDataGrid";
-import { theme } from "@/components/ui/theme";
 import { ColumnNameCell } from "./ColumnNameCell";
 
 // Mock dependencies

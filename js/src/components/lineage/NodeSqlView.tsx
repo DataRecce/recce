@@ -1,3 +1,6 @@
+import React, { useState } from "react";
+import { FaExpandArrowsAlt } from "react-icons/fa";
+import { CodeEditor, DiffEditor } from "@/components/editor";
 import {
   Box,
   CloseButton,
@@ -6,9 +9,6 @@ import {
   Portal,
   useDisclosure,
 } from "@/components/ui/mui";
-import React, { useState } from "react";
-import { FaExpandArrowsAlt } from "react-icons/fa";
-import { CodeEditor, DiffEditor } from "@/components/editor";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { LineageGraphNode } from "./lineage";
 

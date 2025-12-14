@@ -1,5 +1,17 @@
 "use client";
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { stripIndents } from "common-tags";
+import { formatDistanceToNow } from "date-fns";
+import React, { ReactNode, Ref, useCallback, useRef, useState } from "react";
+import { CiBookmark } from "react-icons/ci";
+import { IoMdCodeWorking } from "react-icons/io";
+import { IoBookmarksOutline } from "react-icons/io5";
+import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
+import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
+import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
+import { CheckTimeline } from "@/components/check/timeline";
+import { isDisabledByNoResult } from "@/components/check/utils";
 import {
   Box,
   Button,
@@ -24,18 +36,6 @@ import {
   useDisclosure,
   VStack,
 } from "@/components/ui/mui";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { stripIndents } from "common-tags";
-import { formatDistanceToNow } from "date-fns";
-import React, { ReactNode, Ref, useCallback, useRef, useState } from "react";
-import { CiBookmark } from "react-icons/ci";
-import { IoMdCodeWorking } from "react-icons/io";
-import { IoBookmarksOutline } from "react-icons/io5";
-import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
-import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
-import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
-import { CheckTimeline } from "@/components/check/timeline";
-import { isDisabledByNoResult } from "@/components/check/utils";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   QueryDiffParams,
@@ -337,7 +337,12 @@ export function CheckDetail({
 
               <Menu.Root>
                 <Menu.Trigger asChild>
-                  <IconButton rounded="full" variant="ghost" size="sm" aria-label="Check actions">
+                  <IconButton
+                    rounded="full"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Check actions"
+                  >
                     <Icon as={VscKebabVertical} />
                   </IconButton>
                 </Menu.Trigger>

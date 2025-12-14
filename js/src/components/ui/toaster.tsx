@@ -7,10 +7,10 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useState,
-  type ReactNode,
 } from "react";
 
 /**
@@ -60,7 +60,7 @@ export function ToasterProvider({ children }: { children: ReactNode }) {
     const newToast: ToastState = {
       id,
       open: true,
-      duration: options.type === "loading" ? null : options.duration ?? 5000,
+      duration: options.type === "loading" ? null : (options.duration ?? 5000),
       closable: options.closable ?? true,
       ...options,
     } as ToastState;
@@ -113,11 +113,7 @@ export function ToasterProvider({ children }: { children: ReactNode }) {
           anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         >
           <Alert
-            severity={
-              toast.type === "loading"
-                ? "info"
-                : toast.type || "info"
-            }
+            severity={toast.type === "loading" ? "info" : toast.type || "info"}
             onClose={toast.closable ? () => dismiss(toast.id) : undefined}
             icon={
               toast.type === "loading" ? (
@@ -158,11 +154,11 @@ export function useToaster(): ToasterContextValue {
  * Standalone toaster instance for use outside React context
  * Uses a simple event-based system
  */
-type ToastEvent = {
+interface ToastEvent {
   type: "create" | "dismiss" | "update";
   options?: ToastOptions;
   id?: string;
-};
+}
 
 const listeners: Set<(event: ToastEvent) => void> = new Set();
 
@@ -188,9 +184,7 @@ export const toaster = {
     listeners.forEach((listener) => listener({ type: "dismiss", id }));
   },
   update: (id: string, options: Partial<ToastOptions>) => {
-    listeners.forEach((listener) =>
-      listener({ type: "update", id, options }),
-    );
+    listeners.forEach((listener) => listener({ type: "update", id, options }));
   },
   subscribe: (listener: (event: ToastEvent) => void) => {
     listeners.add(listener);
@@ -214,7 +208,7 @@ export function Toaster() {
           duration:
             event.options.type === "loading"
               ? undefined
-              : event.options.duration ?? 5000,
+              : (event.options.duration ?? 5000),
           closable: event.options.closable ?? true,
           ...event.options,
         } as ToastState;
@@ -232,9 +226,7 @@ export function Toaster() {
         }, 300);
       } else if (event.type === "update" && event.id && event.options) {
         setToasts((prev) =>
-          prev.map((t) =>
-            t.id === event.id ? { ...t, ...event.options } : t,
-          ),
+          prev.map((t) => (t.id === event.id ? { ...t, ...event.options } : t)),
         );
       }
     });
@@ -261,9 +253,7 @@ export function Toaster() {
           anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         >
           <Alert
-            severity={
-              toast.type === "loading" ? "info" : toast.type || "info"
-            }
+            severity={toast.type === "loading" ? "info" : toast.type || "info"}
             onClose={toast.closable ? () => handleClose(toast.id) : undefined}
             icon={
               toast.type === "loading" ? (

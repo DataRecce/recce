@@ -46,7 +46,10 @@ const colorPaletteToMui: Record<string, MuiCircularProgressProps["color"]> = {
 };
 
 export const Spinner = forwardRef<HTMLSpanElement, SpinnerProps>(
-  function Spinner({ size = "md", colorPalette = "iochmara", ml, sx, ...props }, ref) {
+  function Spinner(
+    { size = "md", colorPalette = "iochmara", ml, sx, ...props },
+    ref,
+  ) {
     const pixelSize = typeof size === "number" ? size : sizeMap[size] || 24;
     const muiColor = colorPaletteToMui[colorPalette] || "primary";
 

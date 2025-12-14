@@ -1,6 +1,6 @@
-import { Center, Flex } from "@/components/ui/mui";
 import { forwardRef, Ref, useMemo } from "react";
 import { DataGridHandle } from "react-data-grid";
+import { Center, Flex } from "@/components/ui/mui";
 import { ProfileDiffViewOptions } from "@/lib/api/profile";
 import {
   ColumnRenderMode,

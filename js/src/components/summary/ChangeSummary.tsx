@@ -1,7 +1,7 @@
-import { Box, Flex, Grid, Icon, Text, VStack } from "@/components/ui/mui";
 import { ReactNode } from "react";
 import { IconType } from "react-icons";
 import { FiInfo } from "react-icons/fi";
+import { Box, Flex, Grid, Icon, Text, VStack } from "@/components/ui/mui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { NodeData } from "@/lib/api/info";
 import { LineageGraph } from "../lineage/lineage";

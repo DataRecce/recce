@@ -1,3 +1,7 @@
+import { FiArrowRight, FiFrown } from "react-icons/fi";
+import { PiRepeat } from "react-icons/pi";
+import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
+import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import {
   Flex,
   HStack,
@@ -7,10 +11,6 @@ import {
   Tag,
   Text,
 } from "@/components/ui/mui";
-import { FiArrowRight, FiFrown } from "react-icons/fi";
-import { PiRepeat } from "react-icons/pi";
-import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
-import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { Tooltip } from "@/components/ui/tooltip";
 import { RowCount, RowCountDiff } from "@/lib/api/models";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";

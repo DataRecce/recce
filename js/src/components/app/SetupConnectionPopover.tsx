@@ -1,5 +1,5 @@
-import { Box, Link, Popover, Portal } from "@/components/ui/mui";
 import { ReactElement, useCallback, useRef, useState } from "react";
+import { Box, Link, Popover, Portal } from "@/components/ui/mui";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 
 interface SetupConnectionPopoverProps {

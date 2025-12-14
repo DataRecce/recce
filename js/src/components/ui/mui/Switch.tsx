@@ -181,47 +181,45 @@ function SwitchThumb() {
 }
 
 // Basic Switch Component
-const SwitchBase = forwardRef<HTMLButtonElement, SwitchProps>(
-  function Switch(
-    {
-      children,
-      size = "md",
-      colorPalette = "iochmara",
-      isChecked,
-      isDisabled,
-      isRequired,
-      ...props
-    },
-    ref,
-  ) {
-    const muiSize = sizeToMui[size] || "medium";
-    const muiColor = colorPaletteToMui[colorPalette] || "primary";
+const SwitchBase = forwardRef<HTMLButtonElement, SwitchProps>(function Switch(
+  {
+    children,
+    size = "md",
+    colorPalette = "iochmara",
+    isChecked,
+    isDisabled,
+    isRequired,
+    ...props
+  },
+  ref,
+) {
+  const muiSize = sizeToMui[size] || "medium";
+  const muiColor = colorPaletteToMui[colorPalette] || "primary";
 
-    const switchElement = (
-      <MuiSwitch
-        ref={ref}
-        size={muiSize}
-        color={muiColor}
-        checked={isChecked}
+  const switchElement = (
+    <MuiSwitch
+      ref={ref}
+      size={muiSize}
+      color={muiColor}
+      checked={isChecked}
+      disabled={isDisabled}
+      required={isRequired}
+      {...props}
+    />
+  );
+
+  if (children) {
+    return (
+      <FormControlLabel
+        control={switchElement}
+        label={children}
         disabled={isDisabled}
-        required={isRequired}
-        {...props}
       />
     );
+  }
 
-    if (children) {
-      return (
-        <FormControlLabel
-          control={switchElement}
-          label={children}
-          disabled={isDisabled}
-        />
-      );
-    }
-
-    return switchElement;
-  },
-);
+  return switchElement;
+});
 
 // Compound Switch type
 type SwitchWithCompound = typeof SwitchBase & {

@@ -1,5 +1,15 @@
 import "react-data-grid/lib/styles.css";
 import {
+  DragDropContext,
+  Draggable,
+  Droppable,
+  DropResult,
+} from "@hello-pangea/dnd";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { useState } from "react";
+import { IconType } from "react-icons";
+import { isDisabledByNoResult } from "@/components/check/utils";
+import {
   Box,
   Button,
   Checkbox,
@@ -12,16 +22,6 @@ import {
   useDisclosure,
   VStack,
 } from "@/components/ui/mui";
-import {
-  DragDropContext,
-  Draggable,
-  Droppable,
-  DropResult,
-} from "@hello-pangea/dnd";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import React, { useState } from "react";
-import { IconType } from "react-icons";
-import { isDisabledByNoResult } from "@/components/check/utils";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, updateCheck } from "@/lib/api/checks";

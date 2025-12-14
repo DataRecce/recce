@@ -161,7 +161,39 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
       return { ...styles, ...sx } as SxProps<Theme>;
     }
     return styles as SxProps<Theme>;
-  }, [bg, backgroundColor, rounded, cursor, shadow, overflowX, overflowY, blockSize, borderWidth, borderTopWidth, borderBottomWidth, borderBottomRadius, borderLeftWidth, borderLeftColor, p, pl, px, py, my, mb, opacity, borderColor, w, h, fontStyle, fontWeight, listStyleType, textAlign, boxSize, color, sx]);
+  }, [
+    bg,
+    backgroundColor,
+    rounded,
+    cursor,
+    shadow,
+    overflowX,
+    overflowY,
+    blockSize,
+    borderWidth,
+    borderTopWidth,
+    borderBottomWidth,
+    borderBottomRadius,
+    borderLeftWidth,
+    borderLeftColor,
+    p,
+    pl,
+    px,
+    py,
+    my,
+    mb,
+    opacity,
+    borderColor,
+    w,
+    h,
+    fontStyle,
+    fontWeight,
+    listStyleType,
+    textAlign,
+    boxSize,
+    color,
+    sx,
+  ]);
 
   return (
     <MuiBox ref={ref} component={as} sx={combinedSx} {...props}>

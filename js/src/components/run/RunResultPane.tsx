@@ -1,3 +1,10 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { ReactNode, Ref, useCallback, useState } from "react";
+import { PiCaretDown, PiCheck, PiCopy, PiRepeat } from "react-icons/pi";
+import { TbCloudUpload } from "react-icons/tb";
+import YAML from "yaml";
+import AuthModal from "@/components/AuthModal/AuthModal";
+import { CodeEditor } from "@/components/editor";
 import {
   Button,
   CloseButton,
@@ -10,13 +17,6 @@ import {
   Text,
 } from "@/components/ui/mui";
 import { useDisclosure } from "@/components/ui/mui-utils";
-import { useQueryClient } from "@tanstack/react-query";
-import { ReactNode, Ref, useCallback, useState } from "react";
-import { PiCaretDown, PiCheck, PiCopy, PiRepeat } from "react-icons/pi";
-import { TbCloudUpload } from "react-icons/tb";
-import YAML from "yaml";
-import AuthModal from "@/components/AuthModal/AuthModal";
-import { CodeEditor } from "@/components/editor";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { createCheckByRun } from "@/lib/api/checks";
 import { trackCopyToClipboard, trackShareState } from "@/lib/api/track";

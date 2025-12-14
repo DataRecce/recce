@@ -1,6 +1,5 @@
 "use client";
 
-import type { ReactNode } from "react";
 import { forwardRef } from "react";
 
 /**
@@ -35,14 +34,14 @@ export const Highlight = forwardRef<HTMLSpanElement, HighlightProps>(
 
     return (
       <span ref={ref}>
-        {parts.map((part, index) => {
+        {parts.map((part) => {
           const isHighlighted = queries.some(
             (q) => q.toLowerCase() === part.toLowerCase(),
           );
           if (isHighlighted) {
             return (
               <mark
-                key={index}
+                key={part}
                 style={{
                   backgroundColor: "#FEEBC8",
                   padding: "0 2px",

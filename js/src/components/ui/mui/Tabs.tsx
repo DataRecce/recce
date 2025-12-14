@@ -101,7 +101,10 @@ function TabsRoot({
     <TabsContext.Provider
       value={{ value: currentValue, onChange: handleChange }}
     >
-      <Box sx={{ ...(height !== undefined && { height }), ...sx }} {...boxProps}>
+      <Box
+        sx={{ ...(height !== undefined && { height }), ...sx }}
+        {...boxProps}
+      >
         {children}
       </Box>
     </TabsContext.Provider>
@@ -180,7 +183,17 @@ export interface TabContentProps {
   overflowY?: string;
 }
 
-function TabContent({ index, value, children, height, fontSize, p, pt, width, overflowY }: TabContentProps) {
+function TabContent({
+  index,
+  value,
+  children,
+  height,
+  fontSize,
+  p,
+  pt,
+  width,
+  overflowY,
+}: TabContentProps) {
   const context = useTabsContext();
   const currentValue = context.value;
   const panelValue = value ?? index ?? 0;
@@ -198,11 +211,7 @@ function TabContent({ index, value, children, height, fontSize, p, pt, width, ov
   if (width !== undefined) sxStyles.width = width;
   if (overflowY !== undefined) sxStyles.overflowY = overflowY;
 
-  return (
-    <Box sx={sxStyles}>
-      {children}
-    </Box>
-  );
+  return <Box sx={sxStyles}>{children}</Box>;
 }
 
 // Content group - container for multiple tab content panels
@@ -218,9 +227,22 @@ export interface TabContentGroupProps {
   overflow?: string;
 }
 
-function TabContentGroup({ children, height, flex, style, overflow }: TabContentGroupProps) {
+function TabContentGroup({
+  children,
+  height,
+  flex,
+  style,
+  overflow,
+}: TabContentGroupProps) {
   return (
-    <Box sx={{ ...(height !== undefined && { height }), ...(flex !== undefined && { flex }), ...(overflow !== undefined && { overflow }) }} style={style}>
+    <Box
+      sx={{
+        ...(height !== undefined && { height }),
+        ...(flex !== undefined && { flex }),
+        ...(overflow !== undefined && { overflow }),
+      }}
+      style={style}
+    >
       {children}
     </Box>
   );
@@ -263,6 +285,13 @@ export const Tabs = {
 };
 
 // Direct exports for backward compatibility
-export { TabsRoot, TabList, TabTrigger, TabContent, TabContentGroup, TabPanels };
+export {
+  TabsRoot,
+  TabList,
+  TabTrigger,
+  TabContent,
+  TabContentGroup,
+  TabPanels,
+};
 
 export default Tabs;

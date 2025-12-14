@@ -1,6 +1,6 @@
-import { Box, Flex, Icon, Spacer, Tag } from "@/components/ui/mui";
 import { Handle, NodeProps, Position, useStore } from "@xyflow/react";
 import React from "react";
+import { Box, Flex, Icon, Spacer, Tag } from "@/components/ui/mui";
 import { COLUMN_HEIGHT, LineageGraphColumnNode } from "./lineage";
 
 import "./styles.css";

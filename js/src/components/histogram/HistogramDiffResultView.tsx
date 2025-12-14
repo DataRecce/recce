@@ -1,5 +1,5 @@
-import { Box, Flex, HStack, Spacer } from "@/components/ui/mui";
 import { forwardRef, Ref } from "react";
+import { Box, Flex, HStack, Spacer } from "@/components/ui/mui";
 import { HistogramDiffParams, HistogramDiffResult } from "@/lib/api/profile";
 import { isHistogramDiffRun } from "@/lib/api/types";
 import { HistogramChart } from "../charts/HistogramChart";

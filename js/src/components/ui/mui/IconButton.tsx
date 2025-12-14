@@ -107,7 +107,9 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         sx={{
           ...(pt !== undefined && { pt }),
           ...(p !== undefined && { p }),
-          ...(rounded && { borderRadius: rounded === "full" ? "9999px" : rounded }),
+          ...(rounded && {
+            borderRadius: rounded === "full" ? "9999px" : rounded,
+          }),
           ...(ml !== undefined && { ml }),
           ...(width !== undefined && { width }),
           ...(height !== undefined && { height }),

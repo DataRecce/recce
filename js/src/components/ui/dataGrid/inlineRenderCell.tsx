@@ -9,9 +9,9 @@
  * with toDiffColumn.tsx which imports this component.
  */
 
-import { Flex, Text } from "@/components/ui/mui";
 import { CalculatedColumn, RenderCellProps } from "react-data-grid";
 import { DiffText } from "@/components/query/DiffText";
+import { Flex, Text } from "@/components/ui/mui";
 import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
 // Import directly from gridUtils to avoid circular dependency
 import { toRenderedValue } from "@/lib/dataGrid/shared/gridUtils";

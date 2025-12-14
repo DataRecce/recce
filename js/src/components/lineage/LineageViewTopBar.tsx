@@ -1,3 +1,8 @@
+import { CSSProperties, useEffect, useRef, useState } from "react";
+import { FiPackage } from "react-icons/fi";
+import { PiCaretDown } from "react-icons/pi";
+import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
+import HistoryToggle from "@/components/shared/HistoryToggle";
 import {
   Box,
   Button,
@@ -13,11 +18,6 @@ import {
   Text,
   VStack,
 } from "@/components/ui/mui";
-import { CSSProperties, useEffect, useRef, useState } from "react";
-import { FiPackage } from "react-icons/fi";
-import { PiCaretDown } from "react-icons/pi";
-import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
-import HistoryToggle from "@/components/shared/HistoryToggle";
 import { Tooltip } from "@/components/ui/tooltip";
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";

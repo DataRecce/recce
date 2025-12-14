@@ -129,7 +129,7 @@ export interface CheckboxRootProps extends Omit<BoxProps, "ref" | "onChange"> {
   children?: ReactNode;
   checked?: boolean | "indeterminate";
   defaultChecked?: boolean;
-  onCheckedChange?: (details: { checked: boolean }) => void | (() => void);
+  onCheckedChange?: (details?: { checked: boolean }) => void;
   size?: "xs" | "sm" | "md" | "lg";
   /** Chakra colorPalette - maps to MUI color */
   colorPalette?:
@@ -165,7 +165,7 @@ const CheckboxRoot = forwardRef<HTMLDivElement, CheckboxRootProps>(
     );
     const isControlled = checked !== undefined;
     const isIndeterminate = checked === "indeterminate";
-    const currentChecked = isControlled ? (checked === true) : internalChecked;
+    const currentChecked = isControlled ? checked === true : internalChecked;
 
     const handleChange = (newChecked: boolean) => {
       if (!isControlled) {
@@ -176,7 +176,13 @@ const CheckboxRoot = forwardRef<HTMLDivElement, CheckboxRootProps>(
 
     return (
       <CheckboxContext.Provider
-        value={{ checked: currentChecked, indeterminate: isIndeterminate, onChange: handleChange, size, disabled }}
+        value={{
+          checked: currentChecked,
+          indeterminate: isIndeterminate,
+          onChange: handleChange,
+          size,
+          disabled,
+        }}
       >
         <Box
           ref={ref}
@@ -207,7 +213,10 @@ interface CheckboxControlProps {
   backgroundColor?: string;
 }
 
-function CheckboxControl({ borderColor, backgroundColor }: CheckboxControlProps) {
+function CheckboxControl({
+  borderColor,
+  backgroundColor,
+}: CheckboxControlProps) {
   const context = useCheckboxContext();
   if (!context) return null;
 
@@ -237,7 +246,12 @@ interface CheckboxLabelProps {
   className?: string;
 }
 
-function CheckboxLabel({ children, fontWeight, pt, className }: CheckboxLabelProps) {
+function CheckboxLabel({
+  children,
+  fontWeight,
+  pt,
+  className,
+}: CheckboxLabelProps) {
   const context = useCheckboxContext();
   const fontSize = context?.size === "xs" ? "0.75rem" : "0.875rem";
 

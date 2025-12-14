@@ -10,6 +10,10 @@
  * Also exports render functions for use in toValueDataGrid.ts generator.
  */
 
+import React from "react";
+import { RenderCellProps } from "react-data-grid";
+import { PiDotsThreeVertical } from "react-icons/pi";
+import { VscKey } from "react-icons/vsc";
 import {
   Box,
   Center,
@@ -20,10 +24,6 @@ import {
   Portal,
   Spacer,
 } from "@/components/ui/mui";
-import React from "react";
-import { RenderCellProps } from "react-data-grid";
-import { PiDotsThreeVertical } from "react-icons/pi";
-import { VscKey } from "react-icons/vsc";
 import { RowObjectType } from "@/lib/api/types";
 import { ValueDiffParams } from "@/lib/api/valuediff";
 import {

@@ -1,7 +1,7 @@
 "use client";
 
-import MuiGrid from "@mui/material/Grid";
 import type { GridProps as MuiGridProps } from "@mui/material/Grid";
+import MuiGrid from "@mui/material/Grid";
 import { forwardRef, type ReactNode } from "react";
 
 /**
@@ -26,7 +26,16 @@ export interface SimpleGridProps extends Omit<MuiGridProps, "ref"> {
 
 export const SimpleGrid = forwardRef<HTMLDivElement, SimpleGridProps>(
   function SimpleGrid(
-    { children, minChildWidth, gap, padding, width, backgroundColor, sx, ...props },
+    {
+      children,
+      minChildWidth,
+      gap,
+      padding,
+      width,
+      backgroundColor,
+      sx,
+      ...props
+    },
     ref,
   ) {
     return (

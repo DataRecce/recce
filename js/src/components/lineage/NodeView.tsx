@@ -1,3 +1,6 @@
+import { useCallback } from "react";
+import { PiCaretDown } from "react-icons/pi";
+import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import {
   Box,
   Button,
@@ -13,9 +16,6 @@ import {
   Text,
   useDisclosure,
 } from "@/components/ui/mui";
-import { useCallback } from "react";
-import { PiCaretDown } from "react-icons/pi";
-import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { Tooltip } from "@/components/ui/tooltip";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";

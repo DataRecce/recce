@@ -1,7 +1,7 @@
-import { CloseButton, Flex, Icon, Link, Spacer } from "@/components/ui/mui";
 import { PropsWithChildren } from "react";
 import { FiInfo } from "react-icons/fi";
 import { LuExternalLink } from "react-icons/lu";
+import { CloseButton, Flex, Icon, Link, Spacer } from "@/components/ui/mui";
 
 export const RecceNotification = (
   props: PropsWithChildren<{

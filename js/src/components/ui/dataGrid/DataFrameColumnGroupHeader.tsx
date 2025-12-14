@@ -8,7 +8,6 @@
  * - Number column precision options menu
  */
 
-import { Box, Flex, Icon, IconButton, Menu, Portal } from "@/components/ui/mui";
 import React from "react";
 import {
   VscClose,
@@ -17,6 +16,7 @@ import {
   VscPin,
   VscPinned,
 } from "react-icons/vsc";
+import { Box, Flex, Icon, IconButton, Menu, Portal } from "@/components/ui/mui";
 import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
 import { ColumnRenderMode, ColumnType } from "@/lib/api/types";
 

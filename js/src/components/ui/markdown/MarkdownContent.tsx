@@ -8,12 +8,12 @@
  * - XSS-safe rendering (no dangerouslySetInnerHTML)
  */
 
-import { Box, Code, Link, Text } from "@/components/ui/mui";
 import React, { useState } from "react";
 import Markdown, { Components } from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import remarkGfm from "remark-gfm";
+import { Box, Code, Link, Text } from "@/components/ui/mui";
 import { ExternalLinkConfirmDialog } from "./ExternalLinkConfirmDialog";
 
 interface MarkdownContentProps {

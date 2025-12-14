@@ -41,7 +41,17 @@ export interface ListItemProps extends Omit<MuiListItemProps, "ref"> {
 }
 
 const ListBase = forwardRef<HTMLUListElement, ListProps>(function List(
-  { spacing, ordered, ps, overflow, backgroundColor, as, listStyle, sx, ...props },
+  {
+    spacing,
+    ordered,
+    ps,
+    overflow,
+    backgroundColor,
+    as,
+    listStyle,
+    sx,
+    ...props
+  },
   ref,
 ) {
   // Determine component type: explicit 'as' > ordered > default ul

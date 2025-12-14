@@ -10,19 +10,6 @@
  * - preset_applied: Shows preset application
  */
 
-import {
-  Avatar,
-  Box,
-  Button,
-  Flex,
-  HStack,
-  Icon,
-  IconButton,
-  Popover,
-  Portal,
-  Text,
-  Textarea,
-} from "@/components/ui/mui";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { Activity, useState } from "react";
@@ -37,6 +24,19 @@ import {
   PiTrashSimple,
 } from "react-icons/pi";
 import { MarkdownContent } from "@/components/ui/markdown/MarkdownContent";
+import {
+  Avatar,
+  Box,
+  Button,
+  Flex,
+  HStack,
+  Icon,
+  IconButton,
+  Popover,
+  Portal,
+  Text,
+  Textarea,
+} from "@/components/ui/mui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { CheckEvent, getEventIconType } from "@/lib/api/checkEvents";
 import { fetchGitHubAvatar } from "@/lib/api/user";

@@ -100,9 +100,13 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         required={isRequired}
         sx={{
           ...(flex !== undefined && { flex }),
-          ...(minH !== undefined && { "& .MuiInputBase-root": { minHeight: minH } }),
+          ...(minH !== undefined && {
+            "& .MuiInputBase-root": { minHeight: minH },
+          }),
           ...(bg && { "& .MuiInputBase-root": { backgroundColor: bg } }),
-          ...(borderColor && { "& .MuiOutlinedInput-notchedOutline": { borderColor } }),
+          ...(borderColor && {
+            "& .MuiOutlinedInput-notchedOutline": { borderColor },
+          }),
           ...(resize && { "& .MuiInputBase-input": { resize } }),
           ...(_focus && { "&:focus-within": _focus }),
           ...sx,

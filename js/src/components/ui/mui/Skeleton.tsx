@@ -1,7 +1,7 @@
 "use client";
 
-import MuiSkeleton from "@mui/material/Skeleton";
 import type { SkeletonProps as MuiSkeletonProps } from "@mui/material/Skeleton";
+import MuiSkeleton from "@mui/material/Skeleton";
 import { forwardRef, type ReactNode } from "react";
 
 /**
@@ -89,7 +89,10 @@ export interface SkeletonCircleProps extends Omit<MuiSkeletonProps, "ref"> {
 }
 
 export const SkeletonCircle = forwardRef<HTMLSpanElement, SkeletonCircleProps>(
-  function SkeletonCircle({ children, loading = true, size = 40, ...props }, ref) {
+  function SkeletonCircle(
+    { children, loading = true, size = 40, ...props },
+    ref,
+  ) {
     if (!loading) {
       return <>{children}</>;
     }

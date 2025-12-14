@@ -4,6 +4,8 @@
  * Shows a warning when users click on links that navigate outside of Recce.
  */
 
+import { useRef } from "react";
+import { PiWarning } from "react-icons/pi";
 import {
   Box,
   Button,
@@ -13,8 +15,6 @@ import {
   Portal,
   Text,
 } from "@/components/ui/mui";
-import { useRef } from "react";
-import { PiWarning } from "react-icons/pi";
 
 interface ExternalLinkConfirmDialogProps {
   /** Whether the dialog is open */

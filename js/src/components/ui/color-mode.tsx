@@ -77,7 +77,9 @@ export const ColorModeButton = React.forwardRef<
 >(function ColorModeButton(props, ref) {
   const { toggleColorMode } = useColorMode();
   return (
-    <ClientOnly fallback={<Skeleton variant="circular" width={32} height={32} />}>
+    <ClientOnly
+      fallback={<Skeleton variant="circular" width={32} height={32} />}
+    >
       <MuiIconButton
         onClick={toggleColorMode}
         aria-label="Toggle color mode"

@@ -102,8 +102,8 @@ export {
   MenuContent,
   type MenuContentProps,
   MenuItem,
-  type MenuItemProps,
   type MenuItemGroupProps,
+  type MenuItemProps,
   MenuRoot,
   type MenuRootProps,
   MenuSeparator,
@@ -122,17 +122,6 @@ export {
   PopoverTrigger,
   type PopoverTriggerProps,
 } from "./Popover";
-export {
-  RadioGroup,
-  RadioGroupItem,
-  type RadioGroupItemProps,
-  RadioGroupItemHiddenInput,
-  RadioGroupItemIndicator,
-  RadioGroupItemText,
-  type RadioGroupItemTextProps,
-  RadioGroupRoot,
-  type RadioGroupRootProps,
-} from "./RadioGroup";
 export { Portal, type PortalProps } from "./Portal";
 export {
   ProgressCircle,
@@ -142,6 +131,17 @@ export {
   type ProgressCircleRootProps,
   ProgressCircleTrack,
 } from "./ProgressCircle";
+export {
+  RadioGroup,
+  RadioGroupItem,
+  RadioGroupItemHiddenInput,
+  RadioGroupItemIndicator,
+  type RadioGroupItemProps,
+  RadioGroupItemText,
+  type RadioGroupItemTextProps,
+  RadioGroupRoot,
+  type RadioGroupRootProps,
+} from "./RadioGroup";
 export { Select, SelectItem, type SelectProps } from "./Select";
 export { SimpleGrid, type SimpleGridProps } from "./SimpleGrid";
 export {
@@ -195,4 +195,4 @@ export {
 export { Text, type TextProps } from "./Text";
 export { Textarea, type TextareaProps } from "./Textarea";
 export { Tooltip, type TooltipProps } from "./Tooltip";
-export { Wrap, WrapItem, type WrapProps, type WrapItemProps } from "./Wrap";
+export { Wrap, WrapItem, type WrapItemProps, type WrapProps } from "./Wrap";

@@ -143,12 +143,25 @@ const colorPaletteToTagBg: Record<string, string> = {
 };
 
 const TagRoot = forwardRef<HTMLDivElement, TagRootProps>(function TagRoot(
-  { children, backgroundColor, asChild, paddingX, size = "md", colorPalette, borderRadius, fontSize, sx, ...props },
+  {
+    children,
+    backgroundColor,
+    asChild,
+    paddingX,
+    size = "md",
+    colorPalette,
+    borderRadius,
+    fontSize,
+    sx,
+    ...props
+  },
   ref,
 ) {
   // asChild is accepted for API compatibility but not implemented
   // MUI doesn't have the same polymorphic pattern as Chakra
-  const bgColor = backgroundColor || (colorPalette ? colorPaletteToTagBg[colorPalette] : "grey.100");
+  const bgColor =
+    backgroundColor ||
+    (colorPalette ? colorPaletteToTagBg[colorPalette] : "grey.100");
 
   return (
     <Box
@@ -157,7 +170,8 @@ const TagRoot = forwardRef<HTMLDivElement, TagRootProps>(function TagRoot(
       sx={{
         display: "inline-flex",
         alignItems: "center",
-        borderRadius: borderRadius === "full" ? "9999px" : borderRadius || "16px",
+        borderRadius:
+          borderRadius === "full" ? "9999px" : borderRadius || "16px",
         px: paddingX || 1,
         py: 0.25,
         fontSize: fontSize || sizeToFontSize[size] || "0.75rem",
@@ -177,7 +191,10 @@ function TagLabel({ children }: { children?: ReactNode }) {
 
 function TagStartElement({ children }: { children?: ReactNode }) {
   return (
-    <Box component="span" sx={{ mr: 0.5, display: "flex", alignItems: "center" }}>
+    <Box
+      component="span"
+      sx={{ mr: 0.5, display: "flex", alignItems: "center" }}
+    >
       {children}
     </Box>
   );
@@ -185,7 +202,10 @@ function TagStartElement({ children }: { children?: ReactNode }) {
 
 function TagEndElement({ children }: { children?: ReactNode }) {
   return (
-    <Box component="span" sx={{ ml: 0.5, display: "flex", alignItems: "center" }}>
+    <Box
+      component="span"
+      sx={{ ml: 0.5, display: "flex", alignItems: "center" }}
+    >
       {children}
     </Box>
   );

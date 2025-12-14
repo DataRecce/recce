@@ -1,11 +1,3 @@
-import {
-  Button,
-  CloseButton,
-  Dialog,
-  Portal,
-  Text,
-} from "@/components/ui/mui";
-import { useDisclosure } from "@/components/ui/mui-utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import path from "path";
 import React, {
@@ -22,6 +14,8 @@ import {
   RecceInstanceDisconnectedModalContent,
   ServerDisconnectedModalContent,
 } from "@/components/lineage/ServerDisconnectedModalContent";
+import { Button, CloseButton, Dialog, Portal, Text } from "@/components/ui/mui";
+import { useDisclosure } from "@/components/ui/mui-utils";
 import { toaster } from "@/components/ui/toaster";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { cacheKeys } from "../api/cacheKeys";

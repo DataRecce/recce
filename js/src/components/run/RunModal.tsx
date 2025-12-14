@@ -1,3 +1,6 @@
+import { ComponentType, useRef, useState } from "react";
+import { IconInfo } from "@/components/icons";
+import { RunFormParamTypes, RunType } from "@/components/run/registry";
 import {
   Box,
   Button,
@@ -10,9 +13,6 @@ import {
   Popover,
   Portal,
 } from "@/components/ui/mui";
-import { ComponentType, useRef, useState } from "react";
-import { IconInfo } from "@/components/icons";
-import { RunFormParamTypes, RunType } from "@/components/run/registry";
 import {
   EXPLORE_FORM_EVENT,
   isExploreAction,

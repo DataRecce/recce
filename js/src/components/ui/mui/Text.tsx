@@ -124,7 +124,12 @@ export const Text = forwardRef<HTMLSpanElement, TextProps>(function Text(
 
     if (textAlign) {
       // Map logical values to physical values for compatibility
-      const mappedAlign = textAlign === "end" ? "right" : textAlign === "start" ? "left" : textAlign;
+      const mappedAlign =
+        textAlign === "end"
+          ? "right"
+          : textAlign === "start"
+            ? "left"
+            : textAlign;
       styles.textAlign = mappedAlign;
     }
 
@@ -164,7 +169,24 @@ export const Text = forwardRef<HTMLSpanElement, TextProps>(function Text(
     }
 
     return styles as SxProps<Theme>;
-  }, [fontWeight, truncate, lineClamp, wordBreak, display, gap, fontSize, textAlign, cursor, _hover, opacity, textStyle, textDecoration, _last, mb, sx]);
+  }, [
+    fontWeight,
+    truncate,
+    lineClamp,
+    wordBreak,
+    display,
+    gap,
+    fontSize,
+    textAlign,
+    cursor,
+    _hover,
+    opacity,
+    textStyle,
+    textDecoration,
+    _last,
+    mb,
+    sx,
+  ]);
 
   return (
     <MuiTypography

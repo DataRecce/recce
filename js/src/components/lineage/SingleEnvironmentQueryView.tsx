@@ -1,3 +1,5 @@
+import { LuExternalLink } from "react-icons/lu";
+import { RiMindMap, RiTerminalBoxLine } from "react-icons/ri";
 import {
   Button,
   Flex,
@@ -7,8 +9,6 @@ import {
   List,
   Text,
 } from "@/components/ui/mui";
-import { LuExternalLink } from "react-icons/lu";
-import { RiMindMap, RiTerminalBoxLine } from "react-icons/ri";
 
 export function BaseEnvironmentSetupGuide() {
   return (

@@ -64,7 +64,21 @@ const colorPaletteToColor: Record<string, string> = {
 };
 
 export const Code = forwardRef<HTMLElement, CodeProps>(function Code(
-  { children, colorPalette = "gray", cursor, onClick, fontSize, bg, px, py, borderRadius, wordBreak, whiteSpace, sx, ...props },
+  {
+    children,
+    colorPalette = "gray",
+    cursor,
+    onClick,
+    fontSize,
+    bg,
+    px,
+    py,
+    borderRadius,
+    wordBreak,
+    whiteSpace,
+    sx,
+    ...props
+  },
   ref,
 ) {
   const combinedSx = useMemo((): SxProps<Theme> => {
@@ -74,7 +88,8 @@ export const Code = forwardRef<HTMLElement, CodeProps>(function Code(
       px: px !== undefined ? px : 1,
       py: py !== undefined ? py : 0.5,
       borderRadius: borderRadius || 0.5,
-      backgroundColor: bg || colorPaletteToBg[colorPalette] || colorPaletteToBg.gray,
+      backgroundColor:
+        bg || colorPaletteToBg[colorPalette] || colorPaletteToBg.gray,
       color: colorPaletteToColor[colorPalette] || colorPaletteToColor.gray,
     };
     if (cursor) styles.cursor = cursor;
@@ -84,7 +99,18 @@ export const Code = forwardRef<HTMLElement, CodeProps>(function Code(
       return { ...styles, ...sx } as SxProps<Theme>;
     }
     return styles as SxProps<Theme>;
-  }, [colorPalette, cursor, fontSize, bg, px, py, borderRadius, wordBreak, whiteSpace, sx]);
+  }, [
+    colorPalette,
+    cursor,
+    fontSize,
+    bg,
+    px,
+    py,
+    borderRadius,
+    wordBreak,
+    whiteSpace,
+    sx,
+  ]);
 
   return (
     <Box
