@@ -28,6 +28,18 @@ export interface CodeProps extends Omit<BoxProps<"code">, "ref" | "component"> {
   onClick?: () => void;
   /** Font size */
   fontSize?: string;
+  /** Background color */
+  bg?: string;
+  /** Padding x */
+  px?: number | string;
+  /** Padding y */
+  py?: number | string;
+  /** Border radius */
+  borderRadius?: string;
+  /** Word break */
+  wordBreak?: string;
+  /** White space */
+  whiteSpace?: string;
 }
 
 const colorPaletteToBg: Record<string, string> = {
@@ -51,7 +63,7 @@ const colorPaletteToColor: Record<string, string> = {
 };
 
 export const Code = forwardRef<HTMLElement, CodeProps>(function Code(
-  { children, colorPalette = "gray", cursor, onClick, fontSize, sx, ...props },
+  { children, colorPalette = "gray", cursor, onClick, fontSize, bg, px, py, borderRadius, wordBreak, whiteSpace, sx, ...props },
   ref,
 ) {
   return (
@@ -62,13 +74,14 @@ export const Code = forwardRef<HTMLElement, CodeProps>(function Code(
       sx={{
         fontFamily: "monospace",
         fontSize: fontSize || "0.875em",
-        px: 1,
-        py: 0.5,
-        borderRadius: 0.5,
-        backgroundColor:
-          colorPaletteToBg[colorPalette] || colorPaletteToBg.gray,
+        px: px !== undefined ? px : 1,
+        py: py !== undefined ? py : 0.5,
+        borderRadius: borderRadius || 0.5,
+        backgroundColor: bg || colorPaletteToBg[colorPalette] || colorPaletteToBg.gray,
         color: colorPaletteToColor[colorPalette] || colorPaletteToColor.gray,
         ...(cursor && { cursor }),
+        ...(wordBreak && { wordBreak }),
+        ...(whiteSpace && { whiteSpace }),
         ...sx,
       }}
       {...props}

@@ -21,6 +21,10 @@ export interface AlertProps
   children?: ReactNode;
   /** Chakra variant - maps to MUI variant */
   variant?: "subtle" | "solid" | "outline" | "surface";
+  /** Font size */
+  fontSize?: string;
+  /** Padding */
+  p?: string | number;
 }
 
 const statusToSeverity: Record<string, MuiAlertProps["severity"]> = {
@@ -38,14 +42,24 @@ const variantToMui: Record<string, MuiAlertProps["variant"]> = {
 };
 
 export const AlertBase = forwardRef<HTMLDivElement, AlertProps>(function Alert(
-  { status = "info", title, variant = "subtle", children, ...props },
+  { status = "info", title, variant = "subtle", fontSize, p, children, sx, ...props },
   ref,
 ) {
   const severity = statusToSeverity[status] || "info";
   const muiVariant = variantToMui[variant] || "standard";
 
   return (
-    <MuiAlert ref={ref} severity={severity} variant={muiVariant} {...props}>
+    <MuiAlert
+      ref={ref}
+      severity={severity}
+      variant={muiVariant}
+      sx={{
+        ...(fontSize && { fontSize }),
+        ...(p !== undefined && { p }),
+        ...sx,
+      }}
+      {...props}
+    >
       {title && <AlertTitle>{title}</AlertTitle>}
       {children}
     </MuiAlert>
@@ -54,6 +68,14 @@ export const AlertBase = forwardRef<HTMLDivElement, AlertProps>(function Alert(
 
 // Compound components for Chakra compatibility
 export interface AlertRootProps extends AlertProps {}
+
+interface AlertDescriptionProps {
+  children?: ReactNode;
+}
+
+function AlertDescription({ children }: AlertDescriptionProps) {
+  return <>{children}</>;
+}
 
 const AlertRoot = forwardRef<HTMLDivElement, AlertRootProps>(function AlertRoot(
   props,
@@ -72,12 +94,14 @@ type AlertWithCompound = typeof AlertBase & {
   Root: typeof AlertRoot;
   Indicator: typeof AlertIndicator;
   Title: typeof AlertTitle;
+  Description: typeof AlertDescription;
 };
 
 export const Alert = Object.assign(AlertBase, {
   Root: AlertRoot,
   Indicator: AlertIndicator,
   Title: AlertTitle,
+  Description: AlertDescription,
 }) as AlertWithCompound;
 
 export { AlertTitle };

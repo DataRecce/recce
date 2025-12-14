@@ -41,6 +41,12 @@ export interface TextProps extends Omit<MuiTypographyProps, "ref"> {
   opacity?: number;
   /** Text style preset (Chakra compatibility - accepted but mapped to fontSize) */
   textStyle?: string;
+  /** Text decoration */
+  textDecoration?: string;
+  /** Last element styles */
+  _last?: Record<string, unknown>;
+  /** Margin bottom */
+  mb?: number | string;
 }
 
 const sizeMap: Record<string, MuiTypographyProps["variant"]> = {
@@ -70,6 +76,9 @@ export const Text = forwardRef<HTMLSpanElement, TextProps>(function Text(
     _hover,
     opacity,
     textStyle,
+    textDecoration,
+    _last,
+    mb,
     sx,
     ...props
   },
@@ -136,12 +145,24 @@ export const Text = forwardRef<HTMLSpanElement, TextProps>(function Text(
       styles.fontSize = "0.75rem";
     }
 
+    if (textDecoration) {
+      styles.textDecoration = textDecoration;
+    }
+
+    if (_last) {
+      styles["&:last-child"] = _last;
+    }
+
+    if (mb !== undefined) {
+      styles.mb = mb;
+    }
+
     if (sx && typeof sx === "object" && !Array.isArray(sx)) {
       return { ...styles, ...sx } as SxProps<Theme>;
     }
 
     return styles as SxProps<Theme>;
-  }, [fontWeight, truncate, lineClamp, wordBreak, display, gap, fontSize, textAlign, cursor, _hover, opacity, textStyle, sx]);
+  }, [fontWeight, truncate, lineClamp, wordBreak, display, gap, fontSize, textAlign, cursor, _hover, opacity, textStyle, textDecoration, _last, mb, sx]);
 
   return (
     <MuiTypography

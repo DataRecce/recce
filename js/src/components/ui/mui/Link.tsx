@@ -22,6 +22,8 @@ export interface LinkProps extends Omit<MuiLinkProps, "ref" | "variant"> {
   variant?: "underline" | "plain";
   /** Focus styles (Chakra compatibility) */
   _focus?: Record<string, unknown>;
+  /** Hover styles (Chakra compatibility) */
+  _hover?: Record<string, unknown>;
 }
 
 const colorPaletteToColor: Record<string, string> = {
@@ -39,6 +41,7 @@ export const Link = forwardRef<HTMLAnchorElement, LinkProps>(function Link(
     textDecoration,
     variant,
     _focus,
+    _hover,
     sx,
     ...props
   },
@@ -60,6 +63,7 @@ export const Link = forwardRef<HTMLAnchorElement, LinkProps>(function Link(
         ...(textDecoration && { textDecoration }),
         cursor: "pointer",
         ...(_focus && { "&:focus": _focus }),
+        ...(_hover && { "&:hover": _hover }),
         ...sx,
       }}
       {...props}

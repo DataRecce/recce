@@ -16,6 +16,8 @@ export interface BoxProps extends Omit<MuiBoxProps, "ref"> {
   children?: ReactNode;
   /** Chakra compatibility: className for group hover patterns */
   className?: string;
+  /** Render as different element */
+  as?: React.ElementType;
   /** Background color shorthand */
   bg?: string;
   /** Border radius shorthand */
@@ -36,19 +38,48 @@ export interface BoxProps extends Omit<MuiBoxProps, "ref"> {
   borderWidth?: string;
   /** Border top width */
   borderTopWidth?: number | string;
+  /** Border bottom width */
+  borderBottomWidth?: string;
   /** Border bottom radius */
   borderBottomRadius?: number | string;
+  /** Border left width */
+  borderLeftWidth?: string;
+  /** Border left color */
+  borderLeftColor?: string;
   /** Padding shorthand */
   p?: string | number;
+  /** Padding left */
+  pl?: string | number;
+  /** Padding x */
+  px?: string | number;
+  /** Padding y */
+  py?: string | number;
+  /** Margin y */
+  my?: string | number;
+  /** Margin bottom */
+  mb?: number | string;
   /** Opacity */
   opacity?: number;
   /** Border color */
   borderColor?: string;
+  /** Width shorthand */
+  w?: string | number;
+  /** Height shorthand */
+  h?: string | number;
+  /** Font style */
+  fontStyle?: string;
+  /** Font weight */
+  fontWeight?: string | number;
+  /** List style type */
+  listStyleType?: string;
+  /** Text align */
+  textAlign?: "left" | "center" | "right" | "justify";
 }
 
 export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
   {
     children,
+    as,
     bg,
     rounded,
     cursor,
@@ -59,10 +90,24 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
     backgroundColor,
     borderWidth,
     borderTopWidth,
+    borderBottomWidth,
     borderBottomRadius,
+    borderLeftWidth,
+    borderLeftColor,
     p,
+    pl,
+    px,
+    py,
+    my,
+    mb,
     opacity,
     borderColor,
+    w,
+    h,
+    fontStyle,
+    fontWeight,
+    listStyleType,
+    textAlign,
     sx,
     ...props
   },
@@ -80,21 +125,35 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
     if (blockSize) styles.blockSize = blockSize;
     if (borderWidth) styles.borderWidth = borderWidth;
     if (borderTopWidth !== undefined) styles.borderTopWidth = borderTopWidth;
+    if (borderBottomWidth) styles.borderBottomWidth = borderBottomWidth;
     if (borderBottomRadius !== undefined) {
       styles.borderBottomLeftRadius = borderBottomRadius;
       styles.borderBottomRightRadius = borderBottomRadius;
     }
+    if (borderLeftWidth) styles.borderLeftWidth = borderLeftWidth;
+    if (borderLeftColor) styles.borderLeftColor = borderLeftColor;
     if (p !== undefined) styles.p = p;
+    if (pl !== undefined) styles.pl = pl;
+    if (px !== undefined) styles.px = px;
+    if (py !== undefined) styles.py = py;
+    if (my !== undefined) styles.my = my;
+    if (mb !== undefined) styles.mb = mb;
     if (opacity !== undefined) styles.opacity = opacity;
     if (borderColor) styles.borderColor = borderColor;
+    if (w !== undefined) styles.width = w;
+    if (h !== undefined) styles.height = h;
+    if (fontStyle) styles.fontStyle = fontStyle;
+    if (fontWeight !== undefined) styles.fontWeight = fontWeight;
+    if (listStyleType) styles.listStyleType = listStyleType;
+    if (textAlign) styles.textAlign = textAlign;
     if (sx && typeof sx === "object" && !Array.isArray(sx)) {
       return { ...styles, ...sx } as SxProps<Theme>;
     }
     return styles as SxProps<Theme>;
-  }, [bg, backgroundColor, rounded, cursor, shadow, overflowX, overflowY, blockSize, borderWidth, borderTopWidth, borderBottomRadius, p, opacity, borderColor, sx]);
+  }, [bg, backgroundColor, rounded, cursor, shadow, overflowX, overflowY, blockSize, borderWidth, borderTopWidth, borderBottomWidth, borderBottomRadius, borderLeftWidth, borderLeftColor, p, pl, px, py, my, mb, opacity, borderColor, w, h, fontStyle, fontWeight, listStyleType, textAlign, sx]);
 
   return (
-    <MuiBox ref={ref} sx={combinedSx} {...props}>
+    <MuiBox ref={ref} component={as} sx={combinedSx} {...props}>
       {children}
     </MuiBox>
   );

@@ -46,6 +46,24 @@ export interface StackProps extends Omit<MuiStackProps, "ref" | "divider"> {
   shadow?: string;
   /** Width (shorthand) */
   w?: string | number;
+  /** Height (shorthand) */
+  h?: string | number;
+  /** Opacity */
+  opacity?: number;
+  /** Group hover styles */
+  _groupHover?: Record<string, unknown>;
+  /** Transition */
+  transition?: string;
+  /** Position */
+  position?: "relative" | "absolute" | "fixed" | "sticky" | "static";
+  /** Top */
+  top?: string | number;
+  /** Right */
+  right?: string | number;
+  /** Border left */
+  borderLeft?: string;
+  /** Border color */
+  borderColor?: string;
 }
 
 export const Stack = forwardRef<HTMLDivElement, StackProps>(function Stack(
@@ -67,6 +85,15 @@ export const Stack = forwardRef<HTMLDivElement, StackProps>(function Stack(
     rounded,
     shadow,
     w,
+    h,
+    opacity,
+    _groupHover,
+    transition,
+    position,
+    top,
+    right,
+    borderLeft,
+    borderColor,
     sx,
     ...props
   },
@@ -90,6 +117,15 @@ export const Stack = forwardRef<HTMLDivElement, StackProps>(function Stack(
       styles.borderRadius = rounded === "md" ? "4px" : rounded;
     if (shadow !== undefined) styles.boxShadow = shadow;
     if (w !== undefined) styles.width = w;
+    if (h !== undefined) styles.height = h;
+    if (opacity !== undefined) styles.opacity = opacity;
+    if (_groupHover) styles[".group:hover &"] = _groupHover;
+    if (transition) styles.transition = transition;
+    if (position) styles.position = position;
+    if (top !== undefined) styles.top = top;
+    if (right !== undefined) styles.right = right;
+    if (borderLeft) styles.borderLeft = borderLeft;
+    if (borderColor) styles.borderColor = borderColor;
     if (sx && typeof sx === "object" && !Array.isArray(sx)) {
       return { ...styles, ...sx } as SxProps<Theme>;
     }
@@ -110,6 +146,15 @@ export const Stack = forwardRef<HTMLDivElement, StackProps>(function Stack(
     rounded,
     shadow,
     w,
+    h,
+    opacity,
+    _groupHover,
+    transition,
+    position,
+    top,
+    right,
+    borderLeft,
+    borderColor,
     sx,
   ]);
 
