@@ -4,10 +4,12 @@
  * Tests that navigation between main routes works correctly
  */
 
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import React, { ReactNode } from "react";
+import { theme } from "@/components/ui/theme";
 
 // Create a fresh QueryClient for each test
 const createTestQueryClient = () =>
@@ -110,7 +112,10 @@ function TestWrapper({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        {children}
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

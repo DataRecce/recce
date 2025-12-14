@@ -1,10 +1,12 @@
 // js/src/components/schema/ColumnNameCell.test.tsx
 
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
 import { render, screen } from "@testing-library/react";
 import React from "react";
 import { NodeData } from "@/lib/api/info";
 import { SchemaDiffRow } from "@/lib/dataGrid/generators/toSchemaDataGrid";
+import { theme } from "@/components/ui/theme";
 import { ColumnNameCell } from "./ColumnNameCell";
 
 // Mock dependencies
@@ -47,16 +49,21 @@ const createMockRow = (
 });
 
 /**
- * Wrapper component that provides Chakra context
+ * Wrapper component that provides MUI theme context
  */
 function TestWrapper({ children }: { children: React.ReactNode }) {
-  return <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>;
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      {children}
+    </ThemeProvider>
+  );
 }
 
 /**
- * Custom render function with Chakra provider
+ * Custom render function with MUI provider
  */
-function renderWithChakra(ui: React.ReactElement) {
+function renderWithMui(ui: React.ReactElement) {
   return render(ui, { wrapper: TestWrapper });
 }
 
@@ -67,7 +74,7 @@ function renderWithChakra(ui: React.ReactElement) {
 describe("ColumnNameCell", () => {
   describe("showMenu prop", () => {
     test("renders menu button when showMenu is true (default)", () => {
-      renderWithChakra(
+      renderWithMui(
         <ColumnNameCell model={createMockModel()} row={createMockRow()} />,
       );
 
@@ -77,7 +84,7 @@ describe("ColumnNameCell", () => {
     });
 
     test("renders menu button when showMenu is explicitly true", () => {
-      renderWithChakra(
+      renderWithMui(
         <ColumnNameCell
           model={createMockModel()}
           row={createMockRow()}
@@ -90,7 +97,7 @@ describe("ColumnNameCell", () => {
     });
 
     test("does not render menu button when showMenu is false", () => {
-      renderWithChakra(
+      renderWithMui(
         <ColumnNameCell
           model={createMockModel()}
           row={createMockRow()}
@@ -104,7 +111,7 @@ describe("ColumnNameCell", () => {
     });
 
     test("does not render menu for source resource type regardless of showMenu", () => {
-      renderWithChakra(
+      renderWithMui(
         <ColumnNameCell
           model={createMockModel("source")}
           row={createMockRow()}
@@ -117,7 +124,7 @@ describe("ColumnNameCell", () => {
     });
 
     test("does not render menu when singleEnv is true regardless of showMenu", () => {
-      renderWithChakra(
+      renderWithMui(
         <ColumnNameCell
           model={createMockModel()}
           row={createMockRow()}
@@ -133,7 +140,7 @@ describe("ColumnNameCell", () => {
 
   describe("column name display", () => {
     test("renders column name", () => {
-      renderWithChakra(
+      renderWithMui(
         <ColumnNameCell
           model={createMockModel()}
           row={createMockRow({ name: "email_address" })}
@@ -145,7 +152,7 @@ describe("ColumnNameCell", () => {
     });
 
     test("renders spinner when cllRunning is true", () => {
-      renderWithChakra(
+      renderWithMui(
         <ColumnNameCell
           model={createMockModel()}
           row={createMockRow()}
@@ -154,8 +161,8 @@ describe("ColumnNameCell", () => {
         />,
       );
 
-      // Chakra Spinner renders with aria-busy
-      const spinner = document.querySelector(".chakra-spinner");
+      // MUI CircularProgress renders with role="progressbar"
+      const spinner = screen.getByRole("progressbar");
       expect(spinner).toBeInTheDocument();
     });
   });

@@ -1,5 +1,5 @@
 import { Box, Checkbox, Field, Input, VStack } from "@/components/ui/mui";
-import { Select } from "chakra-react-select";
+import ReactSelect from "react-select";
 import { useEffect, useState } from "react";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { RunFormProps } from "../run/types";
@@ -74,7 +74,7 @@ export function ValueDiffForm({
       </Field.Root>
       <Field.Root>
         <Field.Label>Primary key</Field.Label>
-        <Select
+        <ReactSelect
           placeholder="Select primary key"
           className="no-track-pii-safe"
           isMulti
@@ -85,15 +85,20 @@ export function ValueDiffForm({
             value: c,
           }))}
           onChange={(options) => {
+            const optionsArray = Array.isArray(options) ? options : [];
             onParamsChanged({
               ...params,
               primary_key:
-                options.length == 1
-                  ? options[0].value
-                  : options.map((v) => v.value),
+                optionsArray.length == 1
+                  ? optionsArray[0].value
+                  : optionsArray.map((v) => v.value),
             });
           }}
-        ></Select>
+          styles={{
+            container: (base) => ({ ...base, width: "100%" }),
+            control: (base) => ({ ...base, minHeight: "40px" }),
+          }}
+        />
       </Field.Root>
       <Field.Root>
         <Field.Label>Columns</Field.Label>
@@ -114,7 +119,7 @@ export function ValueDiffForm({
           <Checkbox.Label>All columns</Checkbox.Label>
         </Checkbox.Root>
         {!allColumns && (
-          <Select
+          <ReactSelect
             isMulti
             className="no-track-pii-safe"
             closeMenuOnSelect={false}
@@ -125,7 +130,9 @@ export function ValueDiffForm({
             }))}
             onChange={(newValue) => {
               let cols: string[] | undefined;
-              const newCols = newValue.map((v) => v.value);
+              const newCols = Array.isArray(newValue)
+                ? newValue.map((v) => v.value)
+                : [];
               if (newCols.length === 0) {
                 cols = undefined;
               } else {
@@ -136,7 +143,11 @@ export function ValueDiffForm({
                 columns: cols,
               });
             }}
-          ></Select>
+            styles={{
+              container: (base) => ({ ...base, width: "100%" }),
+              control: (base) => ({ ...base, minHeight: "40px" }),
+            }}
+          />
         )}
       </Field.Root>
     </VStack>

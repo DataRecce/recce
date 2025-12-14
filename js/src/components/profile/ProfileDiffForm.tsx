@@ -1,5 +1,5 @@
 import { Box, Checkbox, Field, Input, VStack } from "@/components/ui/mui";
-import { Select } from "chakra-react-select";
+import ReactSelect from "react-select";
 import { useEffect, useState } from "react";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { RunFormProps } from "../run/types";
@@ -68,7 +68,7 @@ export function ProfileDiffForm({
           <Checkbox.Label>All columns</Checkbox.Label>
         </Checkbox.Root>
         {!allColumns && (
-          <Select
+          <ReactSelect
             isMulti
             className="no-track-pii-safe"
             closeMenuOnSelect={false}
@@ -79,7 +79,9 @@ export function ProfileDiffForm({
             }))}
             onChange={(newValue) => {
               let cols: string[] | undefined;
-              const newCols = newValue.map((v) => v.value);
+              const newCols = Array.isArray(newValue)
+                ? newValue.map((v) => v.value)
+                : [];
               if (newCols.length === 0) {
                 cols = undefined;
               } else {
@@ -90,7 +92,11 @@ export function ProfileDiffForm({
                 columns: cols,
               });
             }}
-          ></Select>
+            styles={{
+              container: (base) => ({ ...base, width: "100%" }),
+              control: (base) => ({ ...base, minHeight: "40px" }),
+            }}
+          />
         )}
       </Field.Root>
     </VStack>

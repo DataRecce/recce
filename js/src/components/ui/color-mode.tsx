@@ -1,7 +1,7 @@
 "use client";
 
-import type { IconButtonProps, SpanProps } from "@chakra-ui/react";
-import { ClientOnly, IconButton, Skeleton, Span } from "@chakra-ui/react";
+import MuiIconButton from "@mui/material/IconButton";
+import Skeleton from "@mui/material/Skeleton";
 import type { ThemeProviderProps } from "next-themes";
 import { ThemeProvider, useTheme } from "next-themes";
 import * as React from "react";
@@ -46,7 +46,30 @@ export function ColorModeIcon() {
   return colorMode === "dark" ? <LuMoon /> : <LuSun />;
 }
 
-type ColorModeButtonProps = Omit<IconButtonProps, "aria-label">;
+interface ColorModeButtonProps {
+  className?: string;
+}
+
+// Client-only wrapper component
+function ClientOnly({
+  children,
+  fallback,
+}: {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}) {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return fallback ?? null;
+  }
+
+  return <>{children}</>;
+}
 
 export const ColorModeButton = React.forwardRef<
   HTMLButtonElement,
@@ -54,55 +77,57 @@ export const ColorModeButton = React.forwardRef<
 >(function ColorModeButton(props, ref) {
   const { toggleColorMode } = useColorMode();
   return (
-    <ClientOnly fallback={<Skeleton boxSize="8" />}>
-      <IconButton
+    <ClientOnly fallback={<Skeleton variant="circular" width={32} height={32} />}>
+      <MuiIconButton
         onClick={toggleColorMode}
-        variant="ghost"
         aria-label="Toggle color mode"
-        size="sm"
+        size="small"
         ref={ref}
         {...props}
-        css={{
-          _icon: {
-            width: "5",
-            height: "5",
-          },
+        sx={{
+          width: 32,
+          height: 32,
         }}
       >
         <ColorModeIcon />
-      </IconButton>
+      </MuiIconButton>
     </ClientOnly>
   );
 });
 
-export const LightMode = React.forwardRef<HTMLSpanElement, SpanProps>(
-  function LightMode(props, ref) {
+interface LightDarkModeProps {
+  children?: React.ReactNode;
+  className?: string;
+}
+
+export const LightMode = React.forwardRef<HTMLSpanElement, LightDarkModeProps>(
+  function LightMode({ children, ...props }, ref) {
     return (
-      <Span
-        color="fg"
-        display="contents"
-        className="chakra-theme light"
-        colorPalette="gray"
-        colorScheme="light"
+      <span
         ref={ref}
+        style={{ display: "contents" }}
+        className="light-mode"
+        data-theme="light"
         {...props}
-      />
+      >
+        {children}
+      </span>
     );
   },
 );
 
-export const DarkMode = React.forwardRef<HTMLSpanElement, SpanProps>(
-  function DarkMode(props, ref) {
+export const DarkMode = React.forwardRef<HTMLSpanElement, LightDarkModeProps>(
+  function DarkMode({ children, ...props }, ref) {
     return (
-      <Span
-        color="fg"
-        display="contents"
-        className="chakra-theme dark"
-        colorPalette="gray"
-        colorScheme="dark"
+      <span
         ref={ref}
+        style={{ display: "contents" }}
+        className="dark-mode"
+        data-theme="dark"
         {...props}
-      />
+      >
+        {children}
+      </span>
     );
   },
 );

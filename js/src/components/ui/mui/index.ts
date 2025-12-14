@@ -1,16 +1,10 @@
 /**
  * MUI Component Library for Recce
  *
- * This directory provides MUI-based components with APIs similar to Chakra UI
- * to facilitate gradual migration. Import from this module instead of @chakra-ui/react
- * for new code or when migrating existing components.
+ * This directory provides MUI-based components with Chakra-like APIs.
  *
  * Usage:
  * ```tsx
- * // Instead of:
- * import { Box, Flex, Text } from "@chakra-ui/react";
- *
- * // Use:
  * import { Box, Flex, Text } from "@/components/ui/mui";
  * ```
  */

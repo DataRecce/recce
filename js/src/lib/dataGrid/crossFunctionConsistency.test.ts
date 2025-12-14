@@ -25,8 +25,8 @@ jest.mock("react-data-grid", () => ({
   textEditor: jest.fn(),
 }));
 
-// Mock Chakra UI
-jest.mock("@chakra-ui/react", () => ({
+// Mock MUI wrapper components
+jest.mock("@/components/ui/mui", () => ({
   Box: ({ children }: { children: React.ReactNode }) => children,
   Center: ({ children }: { children: React.ReactNode }) => children,
   Flex: ({ children }: { children: React.ReactNode }) => children,
