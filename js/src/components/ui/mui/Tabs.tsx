@@ -189,18 +189,17 @@ function TabContent({ index, value, children, height, fontSize, p, pt, width, ov
     return null;
   }
 
+  const sxStyles: Record<string, unknown> = {};
+  if (p === undefined && pt === undefined) sxStyles.py = 2;
+  if (height !== undefined) sxStyles.height = height;
+  if (fontSize !== undefined) sxStyles.fontSize = fontSize;
+  if (p !== undefined) sxStyles.p = p;
+  if (pt !== undefined) sxStyles.pt = pt;
+  if (width !== undefined) sxStyles.width = width;
+  if (overflowY !== undefined) sxStyles.overflowY = overflowY;
+
   return (
-    <Box
-      sx={{
-        py: p === undefined && pt === undefined ? 2 : undefined,
-        ...(height !== undefined && { height }),
-        ...(fontSize !== undefined && { fontSize }),
-        ...(p !== undefined && { p }),
-        ...(pt !== undefined && { pt }),
-        ...(width !== undefined && { width }),
-        ...(overflowY !== undefined && { overflowY }),
-      }}
-    >
+    <Box sx={sxStyles}>
       {children}
     </Box>
   );

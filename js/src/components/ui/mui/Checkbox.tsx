@@ -23,6 +23,7 @@ import {
 // Context for compound pattern
 interface CheckboxContextValue {
   checked: boolean;
+  indeterminate?: boolean;
   onChange: (checked: boolean) => void;
   size: "xs" | "sm" | "md" | "lg";
   disabled?: boolean;
@@ -163,7 +164,8 @@ const CheckboxRoot = forwardRef<HTMLDivElement, CheckboxRootProps>(
       defaultChecked ?? false,
     );
     const isControlled = checked !== undefined;
-    const currentChecked = isControlled ? checked : internalChecked;
+    const isIndeterminate = checked === "indeterminate";
+    const currentChecked = isControlled ? (checked === true) : internalChecked;
 
     const handleChange = (newChecked: boolean) => {
       if (!isControlled) {
@@ -174,7 +176,7 @@ const CheckboxRoot = forwardRef<HTMLDivElement, CheckboxRootProps>(
 
     return (
       <CheckboxContext.Provider
-        value={{ checked: currentChecked, onChange: handleChange, size, disabled }}
+        value={{ checked: currentChecked, indeterminate: isIndeterminate, onChange: handleChange, size, disabled }}
       >
         <Box
           ref={ref}
@@ -214,6 +216,7 @@ function CheckboxControl({ borderColor, backgroundColor }: CheckboxControlProps)
   return (
     <MuiCheckbox
       checked={context.checked}
+      indeterminate={context.indeterminate}
       onChange={(e) => context.onChange(e.target.checked)}
       size={muiSize}
       disabled={context.disabled}

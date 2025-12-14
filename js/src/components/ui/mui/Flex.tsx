@@ -77,7 +77,7 @@ export interface FlexProps extends Omit<MuiBoxProps, "ref"> {
   /** Align self */
   alignSelf?: string;
   /** Text align */
-  textAlign?: string;
+  textAlign?: "left" | "center" | "right" | "justify" | "start" | "end";
   /** Font weight */
   fontWeight?: string | number;
   /** Flex property */
@@ -86,6 +86,12 @@ export interface FlexProps extends Omit<MuiBoxProps, "ref"> {
   mx?: string | number;
   /** Padding bottom */
   paddingBottom?: string | number;
+  /** Overflow Y */
+  overflowY?: string;
+  /** Overflow */
+  overflow?: string;
+  /** Box shadow */
+  boxShadow?: string;
 }
 
 export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
@@ -127,6 +133,9 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     flex,
     mx,
     paddingBottom,
+    overflowY,
+    overflow,
+    boxShadow,
     sx,
     ...props
   },
@@ -178,6 +187,9 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     if (flex !== undefined) styles.flex = flex;
     if (mx !== undefined) styles.mx = mx;
     if (paddingBottom !== undefined) styles.paddingBottom = paddingBottom;
+    if (overflowY) styles.overflowY = overflowY;
+    if (overflow) styles.overflow = overflow;
+    if (boxShadow) styles.boxShadow = boxShadow;
 
     if (sx && typeof sx === "object" && !Array.isArray(sx)) {
       return { ...styles, ...sx } as SxProps<Theme>;
@@ -220,6 +232,9 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     flex,
     mx,
     paddingBottom,
+    overflowY,
+    overflow,
+    boxShadow,
     sx,
   ]);
 

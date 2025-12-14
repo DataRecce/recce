@@ -115,7 +115,7 @@ export interface TagRootProps extends Omit<BoxProps, "ref" | "size"> {
   /** Size */
   size?: "sm" | "md" | "lg";
   /** Color palette - maps to background color */
-  colorPalette?: "gray" | "green" | "red" | "blue" | "orange" | "amber" | "cyan";
+  colorPalette?: string;
   /** Border radius */
   borderRadius?: string;
   /** Font size override */
