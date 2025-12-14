@@ -342,7 +342,7 @@ export const LineageViewTopBar = () => {
   const isFilterDisabled = isMultiSelect;
 
   return (
-    <HStack width="100%" padding="4pt 8pt" className="chakra-style-reset">
+    <HStack width="100%" padding="4pt 8pt">
       <HStack flex="1">
         <HistoryToggle />
         <ControlItem label="Mode" style={{ flexShrink: "1" }}>
