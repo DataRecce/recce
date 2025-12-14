@@ -52,6 +52,8 @@ export interface ButtonProps
   mt?: number | string;
   /** Margin bottom */
   mb?: number | string;
+  /** Background color */
+  bgColor?: string;
   /** Visual variant - supports both Chakra and MUI names */
   variant?:
     | "solid"
@@ -110,6 +112,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ml,
       mt,
       mb,
+      bgColor,
       sx,
       ...props
     },
@@ -139,6 +142,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           ...(ml !== undefined && { ml }),
           ...(mt !== undefined && { mt }),
           ...(mb !== undefined && { mb }),
+          ...(bgColor !== undefined && { backgroundColor: bgColor }),
           ...sx,
         }}
         {...props}

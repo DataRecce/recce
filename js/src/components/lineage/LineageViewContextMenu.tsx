@@ -1,4 +1,4 @@
-import { Icon, Menu, Portal, useDisclosure } from "@chakra-ui/react";
+import { Icon, Menu, Portal, useDisclosure } from "@/components/ui/mui";
 import { ReactNode, useState } from "react";
 import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
 import { FaRegDotCircle } from "react-icons/fa";

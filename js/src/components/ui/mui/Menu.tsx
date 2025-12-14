@@ -21,6 +21,10 @@ import {
 // Menu Root - Container that manages menu state
 export interface MenuRootProps {
   children?: ReactNode;
+  /** Controlled open state (for external control) */
+  open?: boolean;
+  /** Callback when open state changes */
+  onOpenChange?: (open: boolean) => void;
   /** Positioning configuration */
   positioning?: {
     placement?:
@@ -36,16 +40,31 @@ export interface MenuRootProps {
 }
 
 export const MenuRoot = forwardRef<HTMLDivElement, MenuRootProps>(
-  function MenuRoot({ children, positioning }, ref) {
+  function MenuRoot(
+    { children, positioning, open: controlledOpen, onOpenChange },
+    ref,
+  ) {
     const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-    const open = Boolean(anchorEl);
+    const [internalOpen, setInternalOpen] = useState(false);
+
+    // Use controlled state if provided, otherwise use internal state
+    const isControlled = controlledOpen !== undefined;
+    const open = isControlled ? controlledOpen : internalOpen;
 
     const handleOpen = (event: MouseEvent<HTMLElement>) => {
       setAnchorEl(event.currentTarget);
+      if (!isControlled) {
+        setInternalOpen(true);
+      }
+      onOpenChange?.(true);
     };
 
     const handleClose = () => {
       setAnchorEl(null);
+      if (!isControlled) {
+        setInternalOpen(false);
+      }
+      onOpenChange?.(false);
     };
 
     // Clone children and inject menu context
@@ -138,6 +157,12 @@ export interface MenuContentProps extends Omit<MuiMenuProps, "ref" | "open"> {
   boxShadow?: string;
   /** Minimum width */
   minW?: string;
+  /** Font size */
+  fontSize?: string;
+  /** Position */
+  position?: string;
+  /** Width */
+  width?: string;
 }
 
 const placementToAnchorOrigin: Record<string, MuiMenuProps["anchorOrigin"]> = {
@@ -161,6 +186,9 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(
       borderColor,
       boxShadow,
       minW,
+      fontSize,
+      position,
+      width,
       sx,
       ...props
     },
@@ -182,6 +210,9 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(
             ...(borderColor && { borderColor }),
             ...(boxShadow && { boxShadow }),
             ...(minW && { minWidth: minW }),
+            ...(fontSize && { fontSize }),
+            ...(position && { position }),
+            ...(width && { width }),
           },
           ...sx,
         }}

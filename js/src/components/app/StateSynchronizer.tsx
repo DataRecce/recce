@@ -10,7 +10,7 @@ import {
   Spinner,
   Stack,
   useDisclosure,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useState } from "react";
 import { PiInfo } from "react-icons/pi";

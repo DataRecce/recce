@@ -22,10 +22,12 @@ export interface BoxProps extends Omit<MuiBoxProps, "ref"> {
   rounded?: string;
   /** Cursor style */
   cursor?: string;
+  /** Box shadow shorthand */
+  shadow?: string;
 }
 
 export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
-  { children, bg, rounded, cursor, sx, ...props },
+  { children, bg, rounded, cursor, shadow, sx, ...props },
   ref,
 ) {
   return (
@@ -37,6 +39,7 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
           borderRadius: rounded === "full" ? "9999px" : rounded,
         }),
         ...(cursor && { cursor }),
+        ...(shadow && { boxShadow: shadow }),
         ...sx,
       }}
       {...props}

@@ -1,8 +1,10 @@
 "use client";
 
+import MuiDivider from "@mui/material/Divider";
 import type { StackProps as MuiStackProps } from "@mui/material/Stack";
 import MuiStack from "@mui/material/Stack";
-import { forwardRef, type ReactNode } from "react";
+import type { SxProps, Theme } from "@mui/material/styles";
+import { forwardRef, type ReactNode, useMemo } from "react";
 
 /**
  * Stack Component - MUI equivalent of Chakra's Stack/VStack/HStack
@@ -10,28 +12,104 @@ import { forwardRef, type ReactNode } from "react";
  * A component that lays out children with consistent spacing.
  */
 
-export interface StackProps extends Omit<MuiStackProps, "ref"> {
+export interface StackProps extends Omit<MuiStackProps, "ref" | "divider"> {
   children?: ReactNode;
   /** Shorthand for alignItems */
   align?: MuiStackProps["alignItems"];
   /** Shorthand for justifyContent */
   justify?: MuiStackProps["justifyContent"];
+  /** Chakra separator prop - adds divider between children */
+  separator?: ReactNode;
+  /** Padding shorthand */
+  p?: string | number;
+  /** Padding top */
+  pt?: string | number;
+  /** Padding bottom */
+  pb?: string | number;
+  /** Padding left */
+  pl?: string | number;
+  /** Padding right */
+  pr?: string | number;
+  /** Padding X (horizontal) */
+  px?: string | number;
+  /** Padding Y (vertical) */
+  py?: string | number;
+  /** Margin top */
+  mt?: string | number;
+  /** Margin bottom */
+  mb?: string | number;
+  /** Background color */
+  bg?: string;
+  /** Border radius */
+  rounded?: string;
+  /** Box shadow */
+  shadow?: string;
 }
 
 export const Stack = forwardRef<HTMLDivElement, StackProps>(function Stack(
-  { children, align, justify, sx, ...props },
+  {
+    children,
+    align,
+    justify,
+    separator,
+    p,
+    pt,
+    pb,
+    pl,
+    pr,
+    px,
+    py,
+    mt,
+    mb,
+    bg,
+    rounded,
+    shadow,
+    sx,
+    ...props
+  },
   ref,
 ) {
+  const combinedSx = useMemo((): SxProps<Theme> => {
+    const styles: Record<string, unknown> = {};
+    if (align !== undefined) styles.alignItems = align;
+    if (justify !== undefined) styles.justifyContent = justify;
+    if (p !== undefined) styles.p = p;
+    if (pt !== undefined) styles.pt = pt;
+    if (pb !== undefined) styles.pb = pb;
+    if (pl !== undefined) styles.pl = pl;
+    if (pr !== undefined) styles.pr = pr;
+    if (px !== undefined) styles.px = px;
+    if (py !== undefined) styles.py = py;
+    if (mt !== undefined) styles.mt = mt;
+    if (mb !== undefined) styles.mb = mb;
+    if (bg !== undefined) styles.backgroundColor = bg;
+    if (rounded !== undefined)
+      styles.borderRadius = rounded === "md" ? "4px" : rounded;
+    if (shadow !== undefined) styles.boxShadow = shadow;
+    if (sx && typeof sx === "object" && !Array.isArray(sx)) {
+      return { ...styles, ...sx } as SxProps<Theme>;
+    }
+    return styles as SxProps<Theme>;
+  }, [
+    align,
+    justify,
+    p,
+    pt,
+    pb,
+    pl,
+    pr,
+    px,
+    py,
+    mt,
+    mb,
+    bg,
+    rounded,
+    shadow,
+    sx,
+  ]);
+
   return (
-    <MuiStack
-      ref={ref}
-      sx={{
-        alignItems: align,
-        justifyContent: justify,
-        ...sx,
-      }}
-      {...props}
-    >
+    <MuiStack ref={ref} divider={separator} sx={combinedSx} {...props}>
       {children}
     </MuiStack>
   );
@@ -66,5 +144,29 @@ export const HStack = forwardRef<HTMLDivElement, StackProps>(function HStack(
     </Stack>
   );
 });
+
+/**
+ * StackSeparator - Divider component for use with Stack separator prop
+ * Equivalent to Chakra's StackSeparator
+ */
+export interface StackSeparatorProps {
+  borderColor?: string;
+  orientation?: "horizontal" | "vertical";
+}
+
+export const StackSeparator = forwardRef<HTMLHRElement, StackSeparatorProps>(
+  function StackSeparator({ borderColor, orientation = "vertical" }, ref) {
+    return (
+      <MuiDivider
+        ref={ref}
+        orientation={orientation}
+        flexItem
+        sx={{
+          ...(borderColor && { borderColor }),
+        }}
+      />
+    );
+  },
+);
 
 export default Stack;

@@ -86,12 +86,16 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(function Badge(
 export interface TagRootProps extends Omit<BoxProps, "ref"> {
   children?: ReactNode;
   backgroundColor?: string;
+  /** Render as child component (Chakra compatibility - prop is accepted but ignored) */
+  asChild?: boolean;
 }
 
 const TagRoot = forwardRef<HTMLDivElement, TagRootProps>(function TagRoot(
-  { children, backgroundColor, sx, ...props },
+  { children, backgroundColor, asChild, sx, ...props },
   ref,
 ) {
+  // asChild is accepted for API compatibility but not implemented
+  // MUI doesn't have the same polymorphic pattern as Chakra
   return (
     <Box
       ref={ref}
@@ -117,10 +121,28 @@ function TagLabel({ children }: { children?: ReactNode }) {
   return <>{children}</>;
 }
 
+function TagStartElement({ children }: { children?: ReactNode }) {
+  return (
+    <Box component="span" sx={{ mr: 0.5, display: "flex", alignItems: "center" }}>
+      {children}
+    </Box>
+  );
+}
+
+function TagEndElement({ children }: { children?: ReactNode }) {
+  return (
+    <Box component="span" sx={{ ml: 0.5, display: "flex", alignItems: "center" }}>
+      {children}
+    </Box>
+  );
+}
+
 // Compound Tag export
 export const Tag = Object.assign(Badge, {
   Root: TagRoot,
   Label: TagLabel,
+  StartElement: TagStartElement,
+  EndElement: TagEndElement,
 });
 
 export default Badge;

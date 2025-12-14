@@ -16,6 +16,8 @@ export interface LinkProps extends Omit<MuiLinkProps, "ref"> {
   isExternal?: boolean;
   /** Chakra colorPalette */
   colorPalette?: "blue" | "gray" | "green" | "red";
+  /** Text decoration style */
+  textDecoration?: string;
 }
 
 const colorPaletteToColor: Record<string, string> = {
@@ -26,7 +28,7 @@ const colorPaletteToColor: Record<string, string> = {
 };
 
 export const Link = forwardRef<HTMLAnchorElement, LinkProps>(function Link(
-  { children, isExternal, colorPalette, sx, ...props },
+  { children, isExternal, colorPalette, textDecoration, sx, ...props },
   ref,
 ) {
   const externalProps = isExternal
@@ -41,6 +43,7 @@ export const Link = forwardRef<HTMLAnchorElement, LinkProps>(function Link(
         ...(colorPalette && {
           color: colorPaletteToColor[colorPalette] || colorPalette,
         }),
+        ...(textDecoration && { textDecoration }),
         cursor: "pointer",
         ...sx,
       }}

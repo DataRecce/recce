@@ -1,4 +1,4 @@
-import { Button, HStack, Text } from "@chakra-ui/react";
+import { Button, HStack, Text } from "@/components/ui/mui";
 import { useQuery } from "@tanstack/react-query";
 import { PiInfo } from "react-icons/pi";
 import { cacheKeys } from "@/lib/api/cacheKeys";

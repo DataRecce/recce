@@ -1,4 +1,4 @@
-import { Box, Link, Popover, Portal } from "@chakra-ui/react";
+import { Box, Link, Popover, Portal } from "@/components/ui/mui";
 import { ReactElement, useCallback, useRef, useState } from "react";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 
@@ -16,7 +16,7 @@ export default function SetupConnectionPopover({
 }: SetupConnectionPopoverProps) {
   const [hovered, setHovered] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const ref = useRef<HTMLElement | null>(null);
+  const ref = useRef<HTMLDivElement | null>(null);
   const getAnchorRect = () => ref.current?.getBoundingClientRect() ?? null;
 
   const handleMouseEnter = useCallback(() => {

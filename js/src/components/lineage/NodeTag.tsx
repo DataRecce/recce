@@ -6,7 +6,7 @@ import {
   SkeletonText,
   Tag,
   Text,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import { FiArrowRight, FiFrown } from "react-icons/fi";
 import { PiRepeat } from "react-icons/pi";
 import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";

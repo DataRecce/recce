@@ -37,6 +37,8 @@ export interface IconButtonProps
   variant?: "ghost" | "outline" | "solid" | "plain";
   /** Padding top */
   pt?: string | number;
+  /** Padding */
+  p?: string | number;
 }
 
 const colorPaletteToMui: Record<string, MuiIconButtonProps["color"]> = {
@@ -72,6 +74,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       icon,
       disabled,
       pt,
+      p,
       sx,
       ...props
     },
@@ -88,6 +91,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         disabled={disabled || loading}
         sx={{
           ...(pt !== undefined && { pt }),
+          ...(p !== undefined && { p }),
           ...sx,
         }}
         {...props}

@@ -1,4 +1,4 @@
-import { Box, Button, HStack, StackSeparator } from "@chakra-ui/react";
+import { Box, Button, HStack, StackSeparator } from "@/components/ui/mui";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 
 export interface ActionControlProps {
