@@ -402,7 +402,7 @@ def download(target_path, session_id, prod, dry_run, force):
 
         console.print()
         console.print("[cyan]Download destination:[/cyan]")
-        console.print("  • Target path: {os.path.abspath(target_path)}")
+        console.print(f"  • Target path: {os.path.abspath(target_path)}")
         console.print("  • Files: manifest.json, catalog.json")
         if force:
             console.print("  • Will overwrite existing files")
