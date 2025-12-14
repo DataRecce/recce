@@ -28,6 +28,16 @@ export interface FlexProps extends Omit<MuiBoxProps, "ref"> {
   overflowX?: string;
   /** Border radius */
   rounded?: string;
+  /** Minimum height */
+  minH?: string;
+  /** Border */
+  border?: string;
+  /** Border radius (alias for rounded) */
+  borderRadius?: string;
+  /** Border color */
+  borderColor?: string;
+  /** Background color */
+  bg?: string;
 }
 
 export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
@@ -40,6 +50,11 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     gap,
     overflowX,
     rounded,
+    minH,
+    border,
+    borderRadius,
+    borderColor,
+    bg,
     sx,
     ...props
   },
@@ -57,13 +72,32 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     if (gap !== undefined) styles.gap = gap;
     if (overflowX) styles.overflowX = overflowX;
     if (rounded) styles.borderRadius = rounded === "full" ? "9999px" : rounded;
+    if (minH) styles.minHeight = minH;
+    if (border) styles.border = border;
+    if (borderRadius) styles.borderRadius = borderRadius;
+    if (borderColor) styles.borderColor = borderColor;
+    if (bg) styles.backgroundColor = bg;
 
     if (sx && typeof sx === "object" && !Array.isArray(sx)) {
       return { ...styles, ...sx } as SxProps<Theme>;
     }
 
     return styles as SxProps<Theme>;
-  }, [align, justify, wrap, direction, gap, overflowX, rounded, sx]);
+  }, [
+    align,
+    justify,
+    wrap,
+    direction,
+    gap,
+    overflowX,
+    rounded,
+    minH,
+    border,
+    borderRadius,
+    borderColor,
+    bg,
+    sx,
+  ]);
 
   return (
     <MuiBox ref={ref} sx={combinedSx} {...props}>

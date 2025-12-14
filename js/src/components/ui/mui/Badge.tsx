@@ -23,6 +23,7 @@ export interface BadgeProps
     | "cyan"
     | "green"
     | "amber"
+    | "orange"
     | "red"
     | "gray"
     | "brand";
@@ -30,6 +31,16 @@ export interface BadgeProps
   variant?: "solid" | "subtle" | "outline" | "filled" | "outlined";
   /** Background color (for Chakra compatibility) */
   backgroundColor?: string;
+  /** Display */
+  display?: string;
+  /** Align items */
+  alignItems?: string;
+  /** Gap */
+  gap?: number | string;
+  /** Font size */
+  fontSize?: string;
+  /** Margin right */
+  mr?: number | string;
 }
 
 const colorPaletteToMui: Record<string, MuiChipProps["color"]> = {
@@ -38,6 +49,7 @@ const colorPaletteToMui: Record<string, MuiChipProps["color"]> = {
   cyan: "secondary",
   green: "success",
   amber: "warning",
+  orange: "warning",
   red: "error",
   gray: "default",
   brand: "primary",
@@ -58,6 +70,11 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(function Badge(
     variant = "filled",
     label,
     backgroundColor,
+    display,
+    alignItems,
+    gap,
+    fontSize,
+    mr,
     sx,
     ...props
   },
@@ -75,6 +92,11 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(function Badge(
       size="small"
       sx={{
         ...(backgroundColor && { bgcolor: backgroundColor }),
+        ...(display && { display }),
+        ...(alignItems && { alignItems }),
+        ...(gap !== undefined && { gap }),
+        ...(fontSize && { fontSize }),
+        ...(mr !== undefined && { mr }),
         ...sx,
       }}
       {...props}

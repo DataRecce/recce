@@ -1,4 +1,4 @@
-import { Button, Dialog, Text } from "@chakra-ui/react";
+import { Button, Dialog, Text } from "@/components/ui/mui";
 import NextLink from "next/link";
 import React from "react";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";

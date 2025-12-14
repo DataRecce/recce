@@ -1,4 +1,4 @@
-import { Box, BoxProps } from "@chakra-ui/react";
+import { Box, BoxProps } from "@/components/ui/mui";
 import { forwardRef, Ref } from "react";
 
 interface ScreenshotBoxProps extends BoxProps {

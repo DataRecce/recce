@@ -29,6 +29,10 @@ export interface IconProps {
   ml?: number | string;
   /** Cursor style */
   cursor?: string;
+  /** Width */
+  width?: string | number;
+  /** Height */
+  height?: string | number;
 }
 
 export const Icon = forwardRef<HTMLSpanElement, IconProps>(function Icon(
@@ -42,6 +46,8 @@ export const Icon = forwardRef<HTMLSpanElement, IconProps>(function Icon(
     mr,
     ml,
     cursor,
+    width,
+    height,
   },
   ref,
 ) {
@@ -49,8 +55,8 @@ export const Icon = forwardRef<HTMLSpanElement, IconProps>(function Icon(
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    width: boxSize,
-    height: boxSize,
+    width: width ?? boxSize,
+    height: height ?? boxSize,
     color,
     verticalAlign,
     ...(mr !== undefined && { mr }),

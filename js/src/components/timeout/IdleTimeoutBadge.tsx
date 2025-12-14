@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Icon } from "@chakra-ui/react";
+import { Badge, Icon } from "@/components/ui/mui";
 import { IoWarning } from "react-icons/io5";
 import { useIdleTimeout } from "@/lib/hooks/IdleTimeoutContext";
 import { formatDuration } from "@/lib/utils/formatTime";
