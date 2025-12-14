@@ -251,12 +251,23 @@ export interface MenuItemProps extends Omit<MuiMenuItemProps, "ref"> {
   children?: ReactNode;
   /** Value for the menu item */
   value?: string;
+  /** Font size */
+  fontSize?: string;
+  /** Render as child (Chakra compatibility - accepted but ignored) */
+  asChild?: boolean;
 }
 
 export const MenuItem = forwardRef<HTMLLIElement, MenuItemProps>(
-  function MenuItem({ children, ...props }, ref) {
+  function MenuItem({ children, fontSize, asChild, sx, ...props }, ref) {
     return (
-      <MuiMenuItem ref={ref} {...props}>
+      <MuiMenuItem
+        ref={ref}
+        sx={{
+          ...(fontSize && { fontSize }),
+          ...sx,
+        }}
+        {...props}
+      >
         {children}
       </MuiMenuItem>
     );
@@ -275,10 +286,61 @@ export const MenuSeparator = forwardRef<HTMLHRElement, MenuSeparatorProps>(
 // Menu Item Group - Groups related menu items
 export interface MenuItemGroupProps {
   children?: ReactNode;
+  /** Margin */
+  m?: string | number;
+  /** Padding */
+  p?: string | number;
+  /** Padding X */
+  px?: string | number;
 }
 
 function MenuItemGroup({ children }: MenuItemGroupProps) {
   return <>{children}</>;
+}
+
+// Menu Item Group Label
+interface MenuItemGroupLabelProps {
+  children?: ReactNode;
+}
+
+function MenuItemGroupLabel({ children }: MenuItemGroupLabelProps) {
+  return (
+    <MuiMenuItem disabled sx={{ opacity: 0.6, fontSize: "0.75rem", fontWeight: 600 }}>
+      {children}
+    </MuiMenuItem>
+  );
+}
+
+// Menu Radio Item Group - Container for radio items
+interface MenuRadioItemGroupProps {
+  children?: ReactNode;
+  value?: string;
+  onValueChange?: (details: { value: string }) => void;
+}
+
+function MenuRadioItemGroup({ children, value, onValueChange }: MenuRadioItemGroupProps) {
+  // For now, just render children - radio functionality can be enhanced later
+  return <>{children}</>;
+}
+
+// Menu Radio Item
+interface MenuRadioItemProps {
+  children?: ReactNode;
+  value: string;
+}
+
+function MenuRadioItem({ children, value }: MenuRadioItemProps) {
+  return (
+    <MuiMenuItem value={value}>
+      {children}
+    </MuiMenuItem>
+  );
+}
+
+// Menu Item Indicator - Visual indicator for selected items
+function MenuItemIndicator() {
+  // Placeholder for selected indicator - MUI uses checkmarks automatically
+  return null;
 }
 
 // Combined Menu namespace for Chakra-like usage
@@ -289,7 +351,11 @@ export const Menu = {
   Content: MenuContent,
   Item: MenuItem,
   ItemGroup: MenuItemGroup,
+  ItemGroupLabel: MenuItemGroupLabel,
   Separator: MenuSeparator,
+  RadioItemGroup: MenuRadioItemGroup,
+  RadioItem: MenuRadioItem,
+  ItemIndicator: MenuItemIndicator,
 };
 
 export default Menu;
