@@ -239,7 +239,7 @@ export const PrivateLoadableRunView = ({
           <Tabs.Trigger value="params">Params</Tabs.Trigger>
           {isQuery && <Tabs.Trigger value="query">Query</Tabs.Trigger>}
           <Spacer />
-          <HStack overflow="hidden">
+          <HStack overflow="hidden" gap="0.5rem">
             {run && <RunStatusAndDate run={run} />}
             <Button
               variant="outline"

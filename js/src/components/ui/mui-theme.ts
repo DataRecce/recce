@@ -478,7 +478,8 @@ const baseThemeOptions: ThemeOptions = {
     },
   },
   typography: {
-    fontFamily: '"Montserrat", "Helvetica", "Arial", sans-serif',
+    fontFamily:
+      'ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"',
     // Match Chakra's default font weights
     fontWeightLight: 300,
     fontWeightRegular: 400,

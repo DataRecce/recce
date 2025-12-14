@@ -162,10 +162,19 @@ const TabTrigger = forwardRef<HTMLDivElement, TabTriggerProps>(
       return null;
     }
 
+    // Wrap children in flex container to ensure horizontal layout (for badges)
+    const tabLabel =
+      label ||
+      (children ? (
+        <Box sx={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          {children}
+        </Box>
+      ) : undefined);
+
     return (
       <MuiTab
         ref={ref}
-        label={label || children}
+        label={tabLabel}
         value={value}
         sx={{ ...(fontSize !== undefined && { fontSize }), ...sx }}
         {...props}

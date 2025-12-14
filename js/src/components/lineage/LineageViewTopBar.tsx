@@ -342,8 +342,8 @@ export const LineageViewTopBar = () => {
   const isFilterDisabled = isMultiSelect;
 
   return (
-    <HStack width="100%" padding="4pt 8pt">
-      <HStack flex="1">
+    <HStack width="100%" padding="4pt 8pt" gap="0.5rem">
+      <HStack flex="1" gap="0.5rem">
         <HistoryToggle />
         <ControlItem label="Mode" style={{ flexShrink: "1" }}>
           <ViewModeSelectMenu isDisabled={isFilterDisabled} />

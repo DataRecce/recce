@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { Flex, Spinner, Text } from "@/components/ui/mui";
+import { token } from "@/components/ui/theme";
 import { Run } from "@/lib/api/types";
 
 export function formatRunDate(date: Date | null) {
@@ -85,7 +86,9 @@ export const RunStatusAndDate = ({ run }: { run: Run }) => {
           colorPalette={color as "blue" | "green" | "red" | "gray"}
         />
       )}
-      <Text sx={{ fontWeight: 500, color: `${color}.400` }}>{message}</Text>
+      <Text sx={{ fontWeight: 500, color: token(`colors.${color}.400`) }}>
+        {message}
+      </Text>
       <Text>•</Text>
       <Text
         sx={{
