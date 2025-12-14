@@ -32,6 +32,18 @@ export interface BoxProps extends Omit<MuiBoxProps, "ref"> {
   blockSize?: string;
   /** Background color (alias for bg) */
   backgroundColor?: string;
+  /** Border width */
+  borderWidth?: string;
+  /** Border top width */
+  borderTopWidth?: number | string;
+  /** Border bottom radius */
+  borderBottomRadius?: number | string;
+  /** Padding shorthand */
+  p?: string | number;
+  /** Opacity */
+  opacity?: number;
+  /** Border color */
+  borderColor?: string;
 }
 
 export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
@@ -45,6 +57,12 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
     overflowY,
     blockSize,
     backgroundColor,
+    borderWidth,
+    borderTopWidth,
+    borderBottomRadius,
+    p,
+    opacity,
+    borderColor,
     sx,
     ...props
   },
@@ -60,11 +78,20 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
     if (overflowX) styles.overflowX = overflowX;
     if (overflowY) styles.overflowY = overflowY;
     if (blockSize) styles.blockSize = blockSize;
+    if (borderWidth) styles.borderWidth = borderWidth;
+    if (borderTopWidth !== undefined) styles.borderTopWidth = borderTopWidth;
+    if (borderBottomRadius !== undefined) {
+      styles.borderBottomLeftRadius = borderBottomRadius;
+      styles.borderBottomRightRadius = borderBottomRadius;
+    }
+    if (p !== undefined) styles.p = p;
+    if (opacity !== undefined) styles.opacity = opacity;
+    if (borderColor) styles.borderColor = borderColor;
     if (sx && typeof sx === "object" && !Array.isArray(sx)) {
       return { ...styles, ...sx } as SxProps<Theme>;
     }
     return styles as SxProps<Theme>;
-  }, [bg, backgroundColor, rounded, cursor, shadow, overflowX, overflowY, blockSize, sx]);
+  }, [bg, backgroundColor, rounded, cursor, shadow, overflowX, overflowY, blockSize, borderWidth, borderTopWidth, borderBottomRadius, p, opacity, borderColor, sx]);
 
   return (
     <MuiBox ref={ref} sx={combinedSx} {...props}>

@@ -10,12 +10,14 @@ import type { DialogContentProps as MuiDialogContentProps } from "@mui/material/
 import MuiDialogContent from "@mui/material/DialogContent";
 import type { DialogTitleProps as MuiDialogTitleProps } from "@mui/material/DialogTitle";
 import MuiDialogTitle from "@mui/material/DialogTitle";
+import type { SxProps, Theme } from "@mui/material/styles";
 import {
   cloneElement,
   forwardRef,
   isValidElement,
   type ReactElement,
   type ReactNode,
+  useMemo,
 } from "react";
 import { CloseButton } from "./CloseButton";
 
@@ -34,7 +36,7 @@ export interface DialogRootProps
   /** Chakra-style onClose */
   onClose?: () => void;
   /** Chakra size prop */
-  size?: "xs" | "sm" | "md" | "lg" | "xl" | "full";
+  size?: "xs" | "sm" | "md" | "lg" | "xl" | "full" | "cover";
   /** Chakra placement prop */
   placement?: "center" | "top" | "bottom";
   /** Initial focus element function */
@@ -77,7 +79,7 @@ export const DialogRoot = forwardRef<HTMLDivElement, DialogRootProps>(
         onClose={handleClose}
         maxWidth={sizeToMaxWidth[size] ?? "md"}
         fullWidth
-        fullScreen={size === "full"}
+        fullScreen={size === "full" || size === "cover"}
         {...props}
       >
         {children}
@@ -139,10 +141,18 @@ export interface DialogHeaderProps extends Omit<MuiDialogTitleProps, "ref"> {
   children?: ReactNode;
   /** Font size */
   fontSize?: string;
+  /** Background color */
+  bg?: string;
+  /** Padding X */
+  px?: number | string;
+  /** Padding Y */
+  py?: number | string;
+  /** Height */
+  height?: string | number;
 }
 
 export const DialogHeader = forwardRef<HTMLDivElement, DialogHeaderProps>(
-  function DialogHeader({ children, fontSize, sx, ...props }, ref) {
+  function DialogHeader({ children, fontSize, bg, px, py, height, sx, ...props }, ref) {
     return (
       <MuiDialogTitle
         ref={ref}
@@ -150,6 +160,10 @@ export const DialogHeader = forwardRef<HTMLDivElement, DialogHeaderProps>(
           display: "flex",
           alignItems: "center",
           ...(fontSize && { fontSize }),
+          ...(bg && { backgroundColor: bg }),
+          ...(px !== undefined && { px }),
+          ...(py !== undefined && { py }),
+          ...(height !== undefined && { height }),
           ...sx,
         }}
         {...props}
@@ -163,12 +177,28 @@ export const DialogHeader = forwardRef<HTMLDivElement, DialogHeaderProps>(
 // Dialog Title
 export interface DialogTitleProps {
   children?: ReactNode;
+  /** Element type to render as */
+  as?: string;
+  /** Font family */
+  fontFamily?: string;
+  /** Font size */
+  fontSize?: string;
+  /** Color */
+  color?: string;
 }
 
 export const DialogTitle = forwardRef<HTMLSpanElement, DialogTitleProps>(
-  function DialogTitle({ children }, ref) {
+  function DialogTitle({ children, as: _as, fontFamily, fontSize, color }, ref) {
     return (
-      <span ref={ref} style={{ flex: 1 }}>
+      <span
+        ref={ref}
+        style={{
+          flex: 1,
+          ...(fontFamily && { fontFamily }),
+          ...(fontSize && { fontSize }),
+          ...(color && { color }),
+        }}
+      >
         {children}
       </span>
     );
@@ -181,21 +211,41 @@ export interface DialogBodyProps extends Omit<MuiDialogContentProps, "ref"> {
   /** Border styling */
   borderTop?: string;
   borderBottom?: string;
+  /** Padding */
+  p?: number | string;
+  /** Gap */
+  gap?: string | number;
+  /** Render as component (Chakra compatibility) */
+  as?: React.ElementType;
+  /** Flex direction */
+  direction?: string;
 }
 
 export const DialogBody = forwardRef<HTMLDivElement, DialogBodyProps>(
   function DialogBody(
-    { children, borderTop, borderBottom, sx, ...props },
+    { children, borderTop, borderBottom, p, gap, as: _as, direction, sx, ...props },
     ref,
   ) {
+    const combinedSx = useMemo((): SxProps<Theme> => {
+      const styles: Record<string, unknown> = {};
+      if (borderTop) styles.borderTop = borderTop;
+      if (borderBottom) styles.borderBottom = borderBottom;
+      if (p !== undefined) styles.p = p;
+      if (gap !== undefined) {
+        styles.gap = gap;
+        styles.display = "flex";
+        styles.flexDirection = direction || "column";
+      }
+      if (sx && typeof sx === "object" && !Array.isArray(sx)) {
+        return { ...styles, ...sx } as SxProps<Theme>;
+      }
+      return styles as SxProps<Theme>;
+    }, [borderTop, borderBottom, p, gap, direction, sx]);
+
     return (
       <MuiDialogContent
         ref={ref}
-        sx={{
-          ...(borderTop && { borderTop }),
-          ...(borderBottom && { borderBottom }),
-          ...sx,
-        }}
+        sx={combinedSx}
         {...props}
       >
         {children}

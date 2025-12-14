@@ -32,7 +32,11 @@ export interface UseDisclosureReturn {
   setOpen: (open: boolean) => void;
 }
 
-export function useDisclosure(defaultOpen = false): UseDisclosureReturn {
+export function useDisclosure(
+  options: boolean | { defaultOpen?: boolean } = false,
+): UseDisclosureReturn {
+  const defaultOpen =
+    typeof options === "boolean" ? options : (options.defaultOpen ?? false);
   const [open, setOpen] = useState(defaultOpen);
 
   const onOpen = useCallback(() => setOpen(true), []);

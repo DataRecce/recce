@@ -30,10 +30,14 @@ export interface ImageProps
   onError?: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void;
   /** Height (shorthand) */
   h?: string | number;
+  /** Box size (sets both width and height) */
+  boxSize?: string | number;
+  /** Margin left */
+  ml?: string | number;
 }
 
 export const Image = forwardRef<HTMLImageElement, ImageProps>(function Image(
-  { fit, align, fallbackSrc, onError, h, sx, ...props },
+  { fit, align, fallbackSrc, onError, h, boxSize, ml, sx, ...props },
   ref,
 ) {
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
@@ -51,6 +55,8 @@ export const Image = forwardRef<HTMLImageElement, ImageProps>(function Image(
         objectFit: fit,
         objectPosition: align,
         ...(h !== undefined && { height: h }),
+        ...(boxSize !== undefined && { width: boxSize, height: boxSize }),
+        ...(ml !== undefined && { ml }),
         ...sx,
       }}
       onError={handleError}

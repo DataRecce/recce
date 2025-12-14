@@ -19,6 +19,8 @@ export interface ListProps extends Omit<MuiListProps, "ref"> {
   spacing?: number;
   /** Whether to use ordered list styling */
   ordered?: boolean;
+  /** Padding start (logical padding-left in LTR) */
+  ps?: string | number;
 }
 
 export interface ListItemProps extends Omit<MuiListItemProps, "ref"> {
@@ -31,7 +33,7 @@ export interface ListItemProps extends Omit<MuiListItemProps, "ref"> {
 }
 
 const ListBase = forwardRef<HTMLUListElement, ListProps>(function List(
-  { spacing, ordered, sx, ...props },
+  { spacing, ordered, ps, sx, ...props },
   ref,
 ) {
   return (
@@ -44,6 +46,7 @@ const ListBase = forwardRef<HTMLUListElement, ListProps>(function List(
             marginBottom: spacing,
           },
         }),
+        ...(ps !== undefined && { paddingInlineStart: ps }),
         ...sx,
       }}
       {...props}

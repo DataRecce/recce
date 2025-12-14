@@ -57,7 +57,7 @@ export interface TabsRootProps extends Omit<BoxProps, "onChange"> {
   /** Chakra variant */
   variant?: "line" | "enclosed" | "soft-rounded" | "solid-rounded";
   /** Chakra size */
-  size?: "sm" | "md" | "lg";
+  size?: "2xs" | "xs" | "sm" | "md" | "lg";
   /** Whether tabs should take full width */
   fitted?: boolean;
   /** Chakra colorPalette */

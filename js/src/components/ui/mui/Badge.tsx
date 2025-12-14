@@ -13,7 +13,7 @@ import { forwardRef, type ReactNode } from "react";
  */
 
 export interface BadgeProps
-  extends Omit<MuiChipProps, "ref" | "children" | "variant"> {
+  extends Omit<MuiChipProps, "ref" | "children" | "variant" | "color"> {
   /** Content to display (used as label) */
   children?: ReactNode;
   /** Chakra colorPalette - maps to MUI color */
@@ -31,6 +31,8 @@ export interface BadgeProps
   variant?: "solid" | "subtle" | "outline" | "filled" | "outlined";
   /** Background color (for Chakra compatibility) */
   backgroundColor?: string;
+  /** Text color (for Chakra compatibility) */
+  color?: string;
   /** Display */
   display?: string;
   /** Align items */
@@ -70,6 +72,7 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(function Badge(
     variant = "filled",
     label,
     backgroundColor,
+    color,
     display,
     alignItems,
     gap,
@@ -92,6 +95,7 @@ export const Badge = forwardRef<HTMLDivElement, BadgeProps>(function Badge(
       size="small"
       sx={{
         ...(backgroundColor && { bgcolor: backgroundColor }),
+        ...(color && { color }),
         ...(display && { display }),
         ...(alignItems && { alignItems }),
         ...(gap !== undefined && { gap }),

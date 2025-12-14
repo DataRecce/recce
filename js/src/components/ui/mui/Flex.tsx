@@ -29,7 +29,7 @@ export interface FlexProps extends Omit<MuiBoxProps, "ref"> {
   /** Border radius */
   rounded?: string;
   /** Minimum height */
-  minH?: string;
+  minH?: string | number;
   /** Border */
   border?: string;
   /** Border radius (alias for rounded) */
@@ -153,7 +153,7 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     if (gap !== undefined) styles.gap = gap;
     if (overflowX) styles.overflowX = overflowX;
     if (rounded) styles.borderRadius = rounded === "full" ? "9999px" : rounded;
-    if (minH) styles.minHeight = minH;
+    if (minH !== undefined) styles.minHeight = minH;
     if (border) styles.border = border;
     if (borderRadius) styles.borderRadius = borderRadius;
     if (borderColor) styles.borderColor = borderColor;

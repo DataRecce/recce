@@ -88,6 +88,8 @@ export interface ButtonProps
   display?: string;
   /** Min width */
   minWidth?: string | number;
+  /** Margin top (long form) */
+  marginTop?: string | number;
 }
 
 const colorPaletteToMui: Record<string, MuiButtonProps["color"]> = {
@@ -151,6 +153,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       whiteSpace,
       display,
       minWidth,
+      marginTop,
       sx,
       ...props
     },
@@ -193,6 +196,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           ...(whiteSpace !== undefined && { whiteSpace }),
           ...(display !== undefined && { display }),
           ...(minWidth !== undefined && { minWidth }),
+          ...(marginTop !== undefined && { marginTop }),
           ...sx,
         }}
         {...props}
