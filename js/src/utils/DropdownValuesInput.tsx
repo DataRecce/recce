@@ -157,9 +157,8 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                         setIsTyping(true);
                       }}
                       onKeyDown={(e) => {
-                        const newText = e.currentTarget.value
-                          .trim()
-                          .replace(",", "");
+                        const target = e.target as HTMLInputElement;
+                        const newText = target.value.trim().replace(",", "");
                         switch (e.key) {
                           case ",":
                           case "Enter":
@@ -167,10 +166,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                             setFilter("");
                             break;
                           case "Backspace":
-                            if (
-                              e.currentTarget.value === "" &&
-                              values.length > 0
-                            ) {
+                            if (target.value === "" && values.length > 0) {
                               setValues(values.slice(0, -1));
                               onValuesChange(values.slice(0, -1));
                             }

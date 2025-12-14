@@ -38,6 +38,8 @@ export interface FlexProps extends Omit<MuiBoxProps, "ref"> {
   borderColor?: string;
   /** Background color */
   bg?: string;
+  /** Width (shorthand) */
+  w?: string | number;
 }
 
 export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
@@ -55,6 +57,7 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     borderRadius,
     borderColor,
     bg,
+    w,
     sx,
     ...props
   },
@@ -77,6 +80,7 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     if (borderRadius) styles.borderRadius = borderRadius;
     if (borderColor) styles.borderColor = borderColor;
     if (bg) styles.backgroundColor = bg;
+    if (w !== undefined) styles.width = w;
 
     if (sx && typeof sx === "object" && !Array.isArray(sx)) {
       return { ...styles, ...sx } as SxProps<Theme>;
@@ -96,6 +100,7 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     borderRadius,
     borderColor,
     bg,
+    w,
     sx,
   ]);
 

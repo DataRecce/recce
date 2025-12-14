@@ -27,6 +27,8 @@ export interface IconProps {
   mr?: number | string;
   /** Margin left */
   ml?: number | string;
+  /** Margin X (horizontal) */
+  mx?: number | string;
   /** Cursor style */
   cursor?: string;
   /** Width */
@@ -45,6 +47,7 @@ export const Icon = forwardRef<HTMLSpanElement, IconProps>(function Icon(
     children,
     mr,
     ml,
+    mx,
     cursor,
     width,
     height,
@@ -61,6 +64,7 @@ export const Icon = forwardRef<HTMLSpanElement, IconProps>(function Icon(
     verticalAlign,
     ...(mr !== undefined && { mr }),
     ...(ml !== undefined && { ml }),
+    ...(mx !== undefined && { mx }),
     ...(cursor && { cursor }),
     "& svg": {
       width: "100%",

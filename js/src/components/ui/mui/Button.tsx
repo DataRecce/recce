@@ -12,7 +12,7 @@ import { forwardRef, type ReactNode } from "react";
  */
 
 export interface ButtonProps
-  extends Omit<MuiButtonProps, "ref" | "size" | "variant"> {
+  extends Omit<MuiButtonProps, "ref" | "size" | "variant" | "color"> {
   children?: ReactNode;
   /** Size of the button - Chakra sizes map to MUI */
   size?:
@@ -52,8 +52,20 @@ export interface ButtonProps
   mt?: number | string;
   /** Margin bottom */
   mb?: number | string;
+  /** Margin end (logical margin-right in LTR) */
+  me?: number | string;
   /** Background color */
   bgColor?: string;
+  /** Text/icon color */
+  color?: string;
+  /** Width */
+  width?: string | number;
+  /** Padding top */
+  paddingTop?: string | number;
+  /** Font size */
+  fontSize?: string | number;
+  /** Justify content */
+  justifyContent?: string;
   /** Visual variant - supports both Chakra and MUI names */
   variant?:
     | "solid"
@@ -112,7 +124,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ml,
       mt,
       mb,
+      me,
       bgColor,
+      color,
+      width,
+      paddingTop,
+      fontSize,
+      justifyContent,
       sx,
       ...props
     },
@@ -142,7 +160,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           ...(ml !== undefined && { ml }),
           ...(mt !== undefined && { mt }),
           ...(mb !== undefined && { mb }),
+          ...(me !== undefined && { marginInlineEnd: me }),
           ...(bgColor !== undefined && { backgroundColor: bgColor }),
+          ...(color !== undefined && { color }),
+          ...(width !== undefined && { width }),
+          ...(paddingTop !== undefined && { paddingTop }),
+          ...(fontSize !== undefined && { fontSize }),
+          ...(justifyContent !== undefined && { justifyContent }),
           ...sx,
         }}
         {...props}

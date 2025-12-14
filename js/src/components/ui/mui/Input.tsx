@@ -13,9 +13,9 @@ import { forwardRef } from "react";
 export interface InputProps
   extends Omit<MuiTextFieldProps, "ref" | "variant" | "size"> {
   /** Size of the input */
-  size?: "xs" | "sm" | "md" | "lg";
+  size?: "2xs" | "xs" | "sm" | "md" | "lg";
   /** Chakra variant - maps to MUI variant */
-  variant?: "outline" | "filled" | "flushed" | "unstyled";
+  variant?: "outline" | "filled" | "flushed" | "unstyled" | "subtle";
   /** Whether the input is invalid */
   isInvalid?: boolean;
   /** Whether the input is disabled */
@@ -24,9 +24,12 @@ export interface InputProps
   isReadOnly?: boolean;
   /** Whether the input is required */
   isRequired?: boolean;
+  /** Width of the input */
+  width?: string | number;
 }
 
 const sizeToMui: Record<string, "small" | "medium"> = {
+  "2xs": "small",
   xs: "small",
   sm: "small",
   md: "medium",
@@ -38,6 +41,7 @@ const variantToMui: Record<string, MuiTextFieldProps["variant"]> = {
   filled: "filled",
   flushed: "standard",
   unstyled: "standard",
+  subtle: "standard",
 };
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(

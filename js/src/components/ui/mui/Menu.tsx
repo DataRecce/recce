@@ -24,7 +24,13 @@ export interface MenuRootProps {
   /** Controlled open state (for external control) */
   open?: boolean;
   /** Callback when open state changes */
-  onOpenChange?: (open: boolean) => void;
+  onOpenChange?: (details: { open: boolean }) => void;
+  /** Menu size */
+  size?: "sm" | "md" | "lg";
+  /** Lazy mount - render content only when open */
+  lazyMount?: boolean;
+  /** Close menu on item select */
+  closeOnSelect?: boolean;
   /** Positioning configuration */
   positioning?: {
     placement?:
@@ -41,7 +47,15 @@ export interface MenuRootProps {
 
 export const MenuRoot = forwardRef<HTMLDivElement, MenuRootProps>(
   function MenuRoot(
-    { children, positioning, open: controlledOpen, onOpenChange },
+    {
+      children,
+      positioning,
+      open: controlledOpen,
+      onOpenChange,
+      size: _size,
+      lazyMount: _lazyMount,
+      closeOnSelect = true,
+    },
     ref,
   ) {
     const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
@@ -56,7 +70,7 @@ export const MenuRoot = forwardRef<HTMLDivElement, MenuRootProps>(
       if (!isControlled) {
         setInternalOpen(true);
       }
-      onOpenChange?.(true);
+      onOpenChange?.({ open: true });
     };
 
     const handleClose = () => {
@@ -64,7 +78,7 @@ export const MenuRoot = forwardRef<HTMLDivElement, MenuRootProps>(
       if (!isControlled) {
         setInternalOpen(false);
       }
-      onOpenChange?.(false);
+      onOpenChange?.({ open: false });
     };
 
     // Clone children and inject menu context
@@ -162,7 +176,11 @@ export interface MenuContentProps extends Omit<MuiMenuProps, "ref" | "open"> {
   /** Position */
   position?: string;
   /** Width */
-  width?: string;
+  width?: string | number;
+  /** Z-index */
+  zIndex?: string | number;
+  /** Class name */
+  className?: string;
 }
 
 const placementToAnchorOrigin: Record<string, MuiMenuProps["anchorOrigin"]> = {
@@ -189,6 +207,8 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(
       fontSize,
       position,
       width,
+      zIndex,
+      className,
       sx,
       ...props
     },
@@ -204,7 +224,9 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(
         open={open}
         onClose={onClose}
         anchorOrigin={anchorOrigin}
+        className={className}
         sx={{
+          ...(zIndex !== undefined && { zIndex }),
           "& .MuiPaper-root": {
             ...(bg && { backgroundColor: bg }),
             ...(borderColor && { borderColor }),
