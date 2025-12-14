@@ -1,34 +1,36 @@
-import { Box, Button, Center, Flex, Heading } from "@chakra-ui/react";
 import {
   FallbackRender,
   ErrorBoundary as SentryErrorBoundary,
 } from "@sentry/react";
 import * as React from "react";
 import { ReactNode, useState } from "react";
+import { Box, Button, Center, Flex, Heading } from "@/components/ui/mui";
 
 const Fallback: FallbackRender = (errorData) => {
   return (
-    <Center height="100%" backgroundColor="gray.50">
+    <Center sx={{ height: "100%", bgcolor: "grey.50" }}>
       <Flex
-        p={4}
-        direction="column"
-        justifyContent="flex-start"
-        backgroundColor="white"
-        border="solid lightgray 1px"
-        minHeight="200px"
+        sx={{
+          p: 4,
+          flexDirection: "column",
+          justifyContent: "flex-start",
+          bgcolor: "white",
+          border: "solid lightgray 1px",
+          minHeight: "200px",
+        }}
       >
-        <Heading width="800px" size="md">
+        <Heading sx={{ width: "800px" }} size="md">
           You have encountered an error
         </Heading>
 
-        <Box flex="1" fontSize="10pt">
-          {String(errorData.error)}
-        </Box>
+        <Box sx={{ flex: 1, fontSize: "10pt" }}>{String(errorData.error)}</Box>
 
         <Button
-          justifySelf="center"
-          alignSelf={"center"}
-          mt="20px"
+          sx={{
+            justifySelf: "center",
+            alignSelf: "center",
+            mt: "20px",
+          }}
           colorPalette="blue"
           size="sm"
           onClick={() => {
@@ -49,11 +51,10 @@ export const ErrorButton = () => {
 
   return (
     <Button
-      pos="absolute"
+      sx={{ position: "absolute", zIndex: 1 }}
       onClick={() => {
         setA(undefined);
       }}
-      zIndex={1}
     >
       {a?.foo}
     </Button>

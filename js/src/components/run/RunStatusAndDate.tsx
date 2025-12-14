@@ -1,5 +1,5 @@
-import { Flex, Spinner, Text } from "@chakra-ui/react";
 import { format } from "date-fns";
+import { Flex, Spinner, Text } from "@/components/ui/mui";
 import { Run } from "@/lib/api/types";
 
 export function formatRunDate(date: Date | null) {
@@ -70,19 +70,30 @@ export const RunStatusAndDate = ({ run }: { run: Run }) => {
 
   return (
     <Flex
-      justifyContent="start"
-      fontSize="11pt"
-      color="gray.500"
-      gap="3px"
-      alignItems={"center"}
-      overflow={"hidden"}
+      sx={{
+        justifyContent: "start",
+        fontSize: "11pt",
+        color: "grey.500",
+        gap: "3px",
+        alignItems: "center",
+        overflow: "hidden",
+      }}
     >
-      {isRunning && <Spinner size="xs" color={`${color}.400`} />}
-      <Text fontWeight={500} color={`${color}.400`}>
-        {message}
-      </Text>
+      {isRunning && (
+        <Spinner
+          size="xs"
+          colorPalette={color as "blue" | "green" | "red" | "gray"}
+        />
+      )}
+      <Text sx={{ fontWeight: 500, color: `${color}.400` }}>{message}</Text>
       <Text>•</Text>
-      <Text textOverflow={"ellipsis"} overflow={"hidden"} whiteSpace="nowrap">
+      <Text
+        sx={{
+          textOverflow: "ellipsis",
+          overflow: "hidden",
+          whiteSpace: "nowrap",
+        }}
+      >
         {dateTime}
       </Text>
     </Flex>

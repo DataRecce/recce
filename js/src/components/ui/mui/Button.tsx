@@ -11,8 +11,19 @@ import { forwardRef, type ReactNode } from "react";
  * A button component with Chakra-compatible props.
  */
 
-export interface ButtonProps extends Omit<MuiButtonProps, "ref"> {
+export interface ButtonProps extends Omit<MuiButtonProps, "ref" | "size"> {
   children?: ReactNode;
+  /** Size of the button - Chakra sizes map to MUI */
+  size?:
+    | "xs"
+    | "2xs"
+    | "sm"
+    | "md"
+    | "lg"
+    | "xl"
+    | "small"
+    | "medium"
+    | "large";
   /** Chakra colorPalette - maps to MUI color */
   colorPalette?:
     | "iochmara"
@@ -53,6 +64,18 @@ const chakraVariantToMui: Record<string, MuiButtonProps["variant"]> = {
   link: "text",
 };
 
+const sizeToMui: Record<string, MuiButtonProps["size"]> = {
+  "2xs": "small",
+  xs: "small",
+  sm: "small",
+  md: "medium",
+  lg: "large",
+  xl: "large",
+  small: "small",
+  medium: "medium",
+  large: "large",
+};
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   function Button(
     {
@@ -63,6 +86,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       leftIcon,
       rightIcon,
       variant = "contained",
+      size = "md",
       disabled,
       sx,
       ...props
@@ -75,12 +99,14 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       typeof variant === "string"
         ? chakraVariantToMui[variant] || variant
         : variant;
+    const muiSize = sizeToMui[size] || "medium";
 
     return (
       <MuiButton
         ref={ref}
         variant={muiVariant as MuiButtonProps["variant"]}
         color={muiColor}
+        size={muiSize}
         disabled={disabled || loading}
         startIcon={
           loading ? <CircularProgress size={16} color="inherit" /> : leftIcon
