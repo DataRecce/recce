@@ -14,7 +14,7 @@ import {
   Stack,
   Text,
   useDisclosure,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import { useMutation } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import React, { useState } from "react";

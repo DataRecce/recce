@@ -6,7 +6,7 @@ import {
   Link,
   List,
   Text,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import { LuExternalLink } from "react-icons/lu";
 import { RiMindMap, RiTerminalBoxLine } from "react-icons/ri";
 

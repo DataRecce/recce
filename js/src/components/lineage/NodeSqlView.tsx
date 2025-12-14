@@ -5,7 +5,7 @@ import {
   IconButton,
   Portal,
   useDisclosure,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import React, { useState } from "react";
 import { FaExpandArrowsAlt } from "react-icons/fa";
 import { CodeEditor, DiffEditor } from "@/components/editor";

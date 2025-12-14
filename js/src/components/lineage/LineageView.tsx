@@ -8,7 +8,7 @@ import {
   StackSeparator,
   Text,
   VStack,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import {
   Background,
   ControlButton,

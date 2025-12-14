@@ -82,6 +82,12 @@ export interface ButtonProps
     | "text";
   /** Flex shorthand */
   flex?: string | number;
+  /** White space */
+  whiteSpace?: string;
+  /** Display */
+  display?: string;
+  /** Min width */
+  minWidth?: string | number;
 }
 
 const colorPaletteToMui: Record<string, MuiButtonProps["color"]> = {
@@ -142,6 +148,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       fontSize,
       justifyContent,
       flex,
+      whiteSpace,
+      display,
+      minWidth,
       sx,
       ...props
     },
@@ -181,6 +190,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           ...(fontSize !== undefined && { fontSize }),
           ...(justifyContent !== undefined && { justifyContent }),
           ...(flex !== undefined && { flex }),
+          ...(whiteSpace !== undefined && { whiteSpace }),
+          ...(display !== undefined && { display }),
+          ...(minWidth !== undefined && { minWidth }),
           ...sx,
         }}
         {...props}

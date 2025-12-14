@@ -12,7 +12,7 @@ import {
   Tabs,
   Text,
   useDisclosure,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import { useCallback } from "react";
 import { PiCaretDown } from "react-icons/pi";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";

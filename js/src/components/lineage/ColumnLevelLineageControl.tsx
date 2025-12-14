@@ -10,7 +10,7 @@ import {
   Portal,
   Spinner,
   Text,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import { UseMutationResult } from "@tanstack/react-query";
 import { useState } from "react";
 import { FaRegDotCircle } from "react-icons/fa";

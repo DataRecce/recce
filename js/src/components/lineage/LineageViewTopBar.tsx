@@ -12,7 +12,7 @@ import {
   Spacer,
   Text,
   VStack,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { FiPackage } from "react-icons/fi";
 import { PiCaretDown } from "react-icons/pi";

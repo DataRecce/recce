@@ -58,6 +58,34 @@ export interface FlexProps extends Omit<MuiBoxProps, "ref"> {
   borderLeftWidth?: string;
   /** Border left color */
   borderLeftColor?: string;
+  /** CSS filter */
+  filter?: string;
+  /** Transition */
+  transition?: string;
+  /** Border width */
+  borderWidth?: string;
+  /** Border top radius */
+  borderTopRadius?: number | string;
+  /** Border bottom radius */
+  borderBottomRadius?: number | string;
+  /** Border right width */
+  borderRightWidth?: string;
+  /** Visibility */
+  visibility?: "visible" | "hidden" | "inherit";
+  /** Padding string */
+  padding?: string | number;
+  /** Align self */
+  alignSelf?: string;
+  /** Text align */
+  textAlign?: string;
+  /** Font weight */
+  fontWeight?: string | number;
+  /** Flex property */
+  flex?: string | number;
+  /** Margin X */
+  mx?: string | number;
+  /** Padding bottom */
+  paddingBottom?: string | number;
 }
 
 export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
@@ -85,6 +113,20 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     borderBlockEndWidth,
     borderLeftWidth,
     borderLeftColor,
+    filter,
+    transition,
+    borderWidth,
+    borderTopRadius,
+    borderBottomRadius,
+    borderRightWidth,
+    visibility,
+    padding,
+    alignSelf,
+    textAlign,
+    fontWeight,
+    flex,
+    mx,
+    paddingBottom,
     sx,
     ...props
   },
@@ -116,6 +158,26 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     if (borderBlockEndWidth) styles.borderBlockEndWidth = borderBlockEndWidth;
     if (borderLeftWidth) styles.borderLeftWidth = borderLeftWidth;
     if (borderLeftColor) styles.borderLeftColor = borderLeftColor;
+    if (filter) styles.filter = filter;
+    if (transition) styles.transition = transition;
+    if (borderWidth) styles.borderWidth = borderWidth;
+    if (borderTopRadius !== undefined) {
+      styles.borderTopLeftRadius = borderTopRadius;
+      styles.borderTopRightRadius = borderTopRadius;
+    }
+    if (borderBottomRadius !== undefined) {
+      styles.borderBottomLeftRadius = borderBottomRadius;
+      styles.borderBottomRightRadius = borderBottomRadius;
+    }
+    if (borderRightWidth) styles.borderRightWidth = borderRightWidth;
+    if (visibility) styles.visibility = visibility;
+    if (padding !== undefined) styles.padding = padding;
+    if (alignSelf) styles.alignSelf = alignSelf;
+    if (textAlign) styles.textAlign = textAlign;
+    if (fontWeight !== undefined) styles.fontWeight = fontWeight;
+    if (flex !== undefined) styles.flex = flex;
+    if (mx !== undefined) styles.mx = mx;
+    if (paddingBottom !== undefined) styles.paddingBottom = paddingBottom;
 
     if (sx && typeof sx === "object" && !Array.isArray(sx)) {
       return { ...styles, ...sx } as SxProps<Theme>;
@@ -144,6 +206,20 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     borderBlockEndWidth,
     borderLeftWidth,
     borderLeftColor,
+    filter,
+    transition,
+    borderWidth,
+    borderTopRadius,
+    borderBottomRadius,
+    borderRightWidth,
+    visibility,
+    padding,
+    alignSelf,
+    textAlign,
+    fontWeight,
+    flex,
+    mx,
+    paddingBottom,
     sx,
   ]);
 

@@ -1,4 +1,4 @@
-import { Box, Flex, Icon, Spacer, Tag } from "@chakra-ui/react";
+import { Box, Flex, Icon, Spacer, Tag } from "@/components/ui/mui";
 import { Handle, NodeProps, Position, useStore } from "@xyflow/react";
 import React from "react";
 import { COLUMN_HEIGHT, LineageGraphColumnNode } from "./lineage";

@@ -310,13 +310,22 @@ export const PopoverContent = forwardRef<HTMLDivElement, PopoverContentProps>(
 // Popover Body - Container for popover content
 export interface PopoverBodyProps {
   children?: ReactNode;
+  /** Font size */
+  fontSize?: string;
 }
 
 export const PopoverBody = forwardRef<HTMLDivElement, PopoverBodyProps>(
-  function PopoverBody({ children }, ref) {
-    return <MuiBox ref={ref}>{children}</MuiBox>;
+  function PopoverBody({ children, fontSize }, ref) {
+    return <MuiBox ref={ref} sx={{ ...(fontSize && { fontSize }) }}>{children}</MuiBox>;
   },
 );
+
+// Popover Arrow - Visual arrow pointing to trigger (for API compatibility)
+function PopoverArrow() {
+  // MUI doesn't have built-in arrow support for Popover
+  // This is a placeholder for API compatibility
+  return null;
+}
 
 // Combined Popover namespace
 export const Popover = {
@@ -325,6 +334,7 @@ export const Popover = {
   Positioner: PopoverPositioner,
   Content: PopoverContent,
   Body: PopoverBody,
+  Arrow: PopoverArrow,
 };
 
 export default Popover;

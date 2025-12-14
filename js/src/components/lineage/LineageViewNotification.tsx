@@ -1,4 +1,4 @@
-import { CloseButton, Flex, Spacer } from "@chakra-ui/react";
+import { CloseButton, Flex, Spacer } from "@/components/ui/mui";
 import React, { useState } from "react";
 import { sessionStorageKeys } from "@/lib/api/sessionStorageKeys";
 

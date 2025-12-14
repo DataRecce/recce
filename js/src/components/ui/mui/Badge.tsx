@@ -114,6 +114,12 @@ export interface TagRootProps extends Omit<BoxProps, "ref" | "size"> {
   paddingX?: string;
   /** Size */
   size?: "sm" | "md" | "lg";
+  /** Color palette - maps to background color */
+  colorPalette?: "gray" | "green" | "red" | "blue" | "orange" | "amber" | "cyan";
+  /** Border radius */
+  borderRadius?: string;
+  /** Font size override */
+  fontSize?: string;
 }
 
 const sizeToFontSize: Record<string, string> = {
@@ -122,12 +128,24 @@ const sizeToFontSize: Record<string, string> = {
   lg: "0.875rem",
 };
 
+const colorPaletteToTagBg: Record<string, string> = {
+  gray: "grey.100",
+  green: "success.light",
+  red: "error.light",
+  blue: "primary.light",
+  orange: "warning.light",
+  amber: "warning.light",
+  cyan: "secondary.light",
+};
+
 const TagRoot = forwardRef<HTMLDivElement, TagRootProps>(function TagRoot(
-  { children, backgroundColor, asChild, paddingX, size = "md", sx, ...props },
+  { children, backgroundColor, asChild, paddingX, size = "md", colorPalette, borderRadius, fontSize, sx, ...props },
   ref,
 ) {
   // asChild is accepted for API compatibility but not implemented
   // MUI doesn't have the same polymorphic pattern as Chakra
+  const bgColor = backgroundColor || (colorPalette ? colorPaletteToTagBg[colorPalette] : "grey.100");
+
   return (
     <Box
       ref={ref}
@@ -135,11 +153,11 @@ const TagRoot = forwardRef<HTMLDivElement, TagRootProps>(function TagRoot(
       sx={{
         display: "inline-flex",
         alignItems: "center",
-        borderRadius: "16px",
+        borderRadius: borderRadius === "full" ? "9999px" : borderRadius || "16px",
         px: paddingX || 1,
         py: 0.25,
-        fontSize: sizeToFontSize[size] || "0.75rem",
-        bgcolor: backgroundColor || "grey.100",
+        fontSize: fontSize || sizeToFontSize[size] || "0.75rem",
+        bgcolor: bgColor,
         ...sx,
       }}
       {...props}

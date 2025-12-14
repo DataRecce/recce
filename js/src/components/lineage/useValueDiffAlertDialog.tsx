@@ -6,7 +6,7 @@ import {
   Flex,
   Portal,
   useDisclosure,
-} from "@chakra-ui/react";
+} from "@/components/ui/mui";
 import React, { useCallback, useRef, useState } from "react";
 import {
   EXPLORE_ACTION,

@@ -22,6 +22,12 @@ export interface CodeProps extends Omit<BoxProps<"code">, "ref" | "component"> {
     | "amber"
     | "red"
     | "gray";
+  /** Cursor style */
+  cursor?: string;
+  /** Click handler */
+  onClick?: () => void;
+  /** Font size */
+  fontSize?: string;
 }
 
 const colorPaletteToBg: Record<string, string> = {
@@ -45,22 +51,24 @@ const colorPaletteToColor: Record<string, string> = {
 };
 
 export const Code = forwardRef<HTMLElement, CodeProps>(function Code(
-  { children, colorPalette = "gray", sx, ...props },
+  { children, colorPalette = "gray", cursor, onClick, fontSize, sx, ...props },
   ref,
 ) {
   return (
     <Box
       ref={ref}
       component="code"
+      onClick={onClick}
       sx={{
         fontFamily: "monospace",
-        fontSize: "0.875em",
+        fontSize: fontSize || "0.875em",
         px: 1,
         py: 0.5,
         borderRadius: 0.5,
         backgroundColor:
           colorPaletteToBg[colorPalette] || colorPaletteToBg.gray,
         color: colorPaletteToColor[colorPalette] || colorPaletteToColor.gray,
+        ...(cursor && { cursor }),
         ...sx,
       }}
       {...props}

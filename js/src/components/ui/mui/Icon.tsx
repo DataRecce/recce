@@ -35,6 +35,16 @@ export interface IconProps {
   width?: string | number;
   /** Height */
   height?: string | number;
+  /** Display */
+  display?: string;
+  /** Hover styles */
+  _hover?: Record<string, unknown>;
+  /** Mouse enter handler */
+  onMouseEnter?: () => void;
+  /** Mouse leave handler */
+  onMouseLeave?: () => void;
+  /** Click handler */
+  onClick?: (e: React.MouseEvent) => void;
 }
 
 export const Icon = forwardRef<HTMLSpanElement, IconProps>(function Icon(
@@ -51,11 +61,16 @@ export const Icon = forwardRef<HTMLSpanElement, IconProps>(function Icon(
     cursor,
     width,
     height,
+    display,
+    _hover,
+    onMouseEnter,
+    onMouseLeave,
+    onClick,
   },
   ref,
 ) {
   const commonSx = {
-    display: "inline-flex",
+    display: display ?? "inline-flex",
     alignItems: "center",
     justifyContent: "center",
     width: width ?? boxSize,
@@ -66,6 +81,7 @@ export const Icon = forwardRef<HTMLSpanElement, IconProps>(function Icon(
     ...(ml !== undefined && { ml }),
     ...(mx !== undefined && { mx }),
     ...(cursor && { cursor }),
+    ...(_hover && { "&:hover": _hover }),
     "& svg": {
       width: "100%",
       height: "100%",
@@ -75,7 +91,15 @@ export const Icon = forwardRef<HTMLSpanElement, IconProps>(function Icon(
   // If children are provided directly (e.g., <Icon><SomeIcon /></Icon>)
   if (children && !IconComponent) {
     return (
-      <Box component="span" ref={ref} className={className} sx={commonSx}>
+      <Box
+        component="span"
+        ref={ref}
+        className={className}
+        sx={commonSx}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        onClick={onClick}
+      >
         {children}
       </Box>
     );
@@ -84,7 +108,15 @@ export const Icon = forwardRef<HTMLSpanElement, IconProps>(function Icon(
   // If an icon component is passed via the `as` prop
   if (IconComponent) {
     return (
-      <Box component="span" ref={ref} className={className} sx={commonSx}>
+      <Box
+        component="span"
+        ref={ref}
+        className={className}
+        sx={commonSx}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        onClick={onClick}
+      >
         <IconComponent />
       </Box>
     );
