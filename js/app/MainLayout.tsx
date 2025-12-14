@@ -7,13 +7,13 @@
 
 "use client";
 
-import { Box, Center, Flex, Spinner } from "@chakra-ui/react";
 import { usePathname } from "next/navigation";
 import React, { ReactNode, Suspense, useEffect } from "react";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { RunList } from "@/components/run/RunList";
 import { RunResultPane } from "@/components/run/RunResultPane";
 import { HSplit, VSplit } from "@/components/split/Split";
+import { Box, Center, Flex, Spinner } from "@/components/ui/mui";
 import { trackInit } from "@/lib/api/track";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
@@ -32,12 +32,14 @@ interface MainLayoutProps {
 function MainContentLoading(): ReactNode {
   return (
     <Flex
-      height="100%"
-      align="center"
-      justify="center"
-      style={{ contain: "size" }}
+      sx={{
+        height: "100%",
+        alignItems: "center",
+        justifyContent: "center",
+        contain: "size",
+      }}
     >
-      <Center h="100%">
+      <Center sx={{ height: "100%" }}>
         <Spinner size="xl" />
       </Center>
     </Flex>
@@ -57,7 +59,7 @@ export function MainLayout({ children, lineage }: MainLayoutProps) {
   }, []);
 
   return (
-    <Flex direction="column" height="100vh" overflow="hidden">
+    <Flex sx={{ flexDirection: "column", height: "100vh", overflow: "hidden" }}>
       <TopBar />
       <NavBar />
       <Main isLineageRoute={isLineageRoute} lineage={lineage}>
@@ -107,16 +109,18 @@ function Main({ children, lineage, isLineageRoute }: MainProps) {
         <Suspense fallback={<MainContentLoading />}>
           {/* suppressHydrationWarning: react-split adds inline styles (height, width)
               to children after mount, causing expected server/client mismatches */}
-          <Box p={0} style={{ contain: "content" }} suppressHydrationWarning>
+          <Box sx={{ p: 0, contain: "content" }} suppressHydrationWarning>
             {/*
              * Lineage parallel route - always mounted but visibility controlled
              * This replaces the old RouteAlwaysMount pattern
              */}
             <Box
-              display={isLineageRoute ? "block" : "none"}
-              height="100%"
-              position={isLineageRoute ? "relative" : "absolute"}
-              inset={0}
+              sx={{
+                display: isLineageRoute ? "block" : "none",
+                height: "100%",
+                position: isLineageRoute ? "relative" : "absolute",
+                inset: 0,
+              }}
             >
               {lineage}
             </Box>
@@ -126,7 +130,7 @@ function Main({ children, lineage, isLineageRoute }: MainProps) {
           </Box>
         </Suspense>
         {/* suppressHydrationWarning: react-split adds inline styles after mount */}
-        <Box height="100%" suppressHydrationWarning>
+        <Box sx={{ height: "100%" }} suppressHydrationWarning>
           {_isRunResultOpen ? (
             <RunResultPane
               onClose={closeRunResult}

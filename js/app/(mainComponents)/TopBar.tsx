@@ -1,16 +1,3 @@
-import {
-  Badge,
-  Box,
-  Flex,
-  Heading,
-  HStack,
-  Icon,
-  Image,
-  Link,
-  LinkProps,
-  Spacer,
-  Text,
-} from "@chakra-ui/react";
 import RecceVersionBadge from "app/(mainComponents)/RecceVersionBadge";
 import React, { useState } from "react";
 import { IconType } from "react-icons";
@@ -19,6 +6,18 @@ import { VscGitPullRequest } from "react-icons/vsc";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import AvatarDropdown from "@/components/app/AvatarDropdown";
 import { IdleTimeoutBadge } from "@/components/timeout/IdleTimeoutBadge";
+import {
+  Badge,
+  Box,
+  Flex,
+  Heading,
+  HStack,
+  Image,
+  Link,
+  type LinkProps,
+  Spacer,
+  Text,
+} from "@/components/ui/mui";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
@@ -27,10 +26,15 @@ interface LinkIconProps extends LinkProps {
   href: string;
 }
 
-function LinkIcon({ icon, href, ...prob }: LinkIconProps) {
+function LinkIcon({ icon: IconComponent, href, ...props }: LinkIconProps) {
   return (
-    <Link height="20px" color="white" href={href} target="_blank" {...prob}>
-      <Icon color="white" boxSize="20px" as={icon} />
+    <Link
+      sx={{ height: "20px", color: "white" }}
+      href={href}
+      target="_blank"
+      {...props}
+    >
+      <IconComponent style={{ color: "white", width: 20, height: 20 }} />
     </Link>
   );
 }
@@ -49,28 +53,31 @@ export default function TopBar() {
 
   return (
     <Flex
-      gap="10px"
-      minHeight="40px"
-      alignItems="center"
-      bg="rgb(255, 110, 66)"
+      sx={{
+        gap: "10px",
+        minHeight: "40px",
+        alignItems: "center",
+        bgcolor: "rgb(255, 110, 66)",
+      }}
     >
       <Link
         href={brandLink}
         target="_blank"
-        _hover={{ textDecoration: "none" }}
+        sx={{ "&:hover": { textDecoration: "none" } }}
       >
-        <Flex gap="10px" alignItems="center">
+        <Flex sx={{ gap: "10px", alignItems: "center" }}>
           <Image
-            boxSize="20px"
-            ml="18px"
+            sx={{ width: 20, height: 20, ml: "18px" }}
             src="/logo/recce-logo-white.png"
             alt="recce-logo-white"
-          ></Image>
+          />
           <Heading
             as="h1"
-            fontFamily={`"Montserrat", sans-serif`}
-            fontSize="lg"
-            color="white"
+            sx={{
+              fontFamily: '"Montserrat", sans-serif',
+              fontSize: "lg",
+              color: "white",
+            }}
           >
             RECCE
           </Heading>
@@ -79,42 +86,55 @@ export default function TopBar() {
       <RecceVersionBadge />
       {(featureToggles.mode ?? reviewMode) && (
         <Badge
-          fontSize="sm"
-          color="white/80"
-          variant="outline"
-          textTransform="uppercase"
+          variant="outlined"
+          sx={{
+            fontSize: "sm",
+            color: "rgba(255,255,255,0.8)",
+            textTransform: "uppercase",
+            borderColor: "rgba(255,255,255,0.8)",
+          }}
         >
           {featureToggles.mode ?? "review mode"}
         </Badge>
       )}
       {cloudMode && prID && (
         <Badge
-          fontSize="sm"
-          color="white/80"
-          variant="outline"
-          textTransform="uppercase"
+          variant="outlined"
+          sx={{
+            fontSize: "sm",
+            color: "rgba(255,255,255,0.8)",
+            textTransform: "uppercase",
+            borderColor: "rgba(255,255,255,0.8)",
+          }}
         >
           <HStack>
             <Box>cloud mode</Box>
             <Box
-              borderLeftWidth="1px"
-              borderLeftColor="white/80"
-              paddingLeft="8px"
+              sx={{
+                borderLeftWidth: "1px",
+                borderLeftColor: "rgba(255,255,255,0.8)",
+                borderLeftStyle: "solid",
+                pl: "8px",
+              }}
             >
               <Link
                 href={prURL}
-                _hover={{ textDecoration: "none" }}
+                sx={{ "&:hover": { textDecoration: "none" } }}
                 target="_blank"
               >
-                <Icon
-                  color="white/80"
-                  as={VscGitPullRequest}
-                  boxSize="3"
-                  marginRight={0.5}
-                  fontWeight="extrabold"
-                  strokeWidth="1"
+                <VscGitPullRequest
+                  style={{
+                    color: "rgba(255,255,255,0.8)",
+                    width: 12,
+                    height: 12,
+                    marginRight: 2,
+                    display: "inline",
+                    verticalAlign: "middle",
+                  }}
                 />
-                <Text color="white/80">{`#${String(prID)}`}</Text>
+                <Text
+                  sx={{ color: "rgba(255,255,255,0.8)", display: "inline" }}
+                >{`#${String(prID)}`}</Text>
               </Link>
             </Box>
           </HStack>
@@ -122,32 +142,42 @@ export default function TopBar() {
       )}
       {isDemoSite && prURL && demoPrId && (
         <Badge
-          fontSize="sm"
-          color="white/80"
-          variant="outline"
-          textTransform="uppercase"
+          variant="outlined"
+          sx={{
+            fontSize: "sm",
+            color: "rgba(255,255,255,0.8)",
+            textTransform: "uppercase",
+            borderColor: "rgba(255,255,255,0.8)",
+          }}
         >
           <HStack>
             <Box>demo mode</Box>
             <Box
-              borderLeftWidth="1px"
-              borderLeftColor="white/80"
-              paddingLeft="8px"
+              sx={{
+                borderLeftWidth: "1px",
+                borderLeftColor: "rgba(255,255,255,0.8)",
+                borderLeftStyle: "solid",
+                pl: "8px",
+              }}
             >
               <Link
                 href={prURL}
-                _hover={{ textDecoration: "none" }}
+                sx={{ "&:hover": { textDecoration: "none" } }}
                 target="_blank"
               >
-                <Icon
-                  color="white/80"
-                  as={VscGitPullRequest}
-                  boxSize="3"
-                  marginRight={0.5}
-                  fontWeight="extrabold"
-                  strokeWidth="1"
+                <VscGitPullRequest
+                  style={{
+                    color: "rgba(255,255,255,0.8)",
+                    width: 12,
+                    height: 12,
+                    marginRight: 2,
+                    display: "inline",
+                    verticalAlign: "middle",
+                  }}
                 />
-                <Text color="white/80">{`#${demoPrId}`}</Text>
+                <Text
+                  sx={{ color: "rgba(255,255,255,0.8)", display: "inline" }}
+                >{`#${demoPrId}`}</Text>
               </Link>
             </Box>
           </HStack>
@@ -163,7 +193,7 @@ export default function TopBar() {
             href="https://getdbt.slack.com/archives/C05C28V7CPP"
           />
           <LinkIcon
-            mr={2}
+            sx={{ mr: 2 }}
             icon={FaQuestionCircle}
             href="https://docs.datarecce.io"
           />
@@ -173,22 +203,25 @@ export default function TopBar() {
         <>
           <IdleTimeoutBadge />
           {authed || cloudMode ? (
-            <Box mr={2}>
+            <Box sx={{ mr: 2 }}>
               <AvatarDropdown />
             </Box>
           ) : (
             <>
               <Box
-                as="button"
-                color="white"
-                fontSize="sm"
-                fontWeight="semibold"
-                bg="brand.700"
-                borderRadius="md"
-                px={3}
-                py={1}
-                mr={2}
-                cursor="pointer"
+                component="button"
+                sx={{
+                  color: "white",
+                  fontSize: "sm",
+                  fontWeight: "semibold",
+                  bgcolor: "brand.700",
+                  borderRadius: "md",
+                  px: 3,
+                  py: 1,
+                  mr: 2,
+                  cursor: "pointer",
+                  border: "none",
+                }}
                 onClick={() => {
                   setShowModal(true);
                 }}
