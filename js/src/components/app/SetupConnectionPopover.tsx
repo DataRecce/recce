@@ -1,5 +1,7 @@
+import Box from "@mui/material/Box";
+import Link from "@mui/material/Link";
 import { ReactElement, useCallback, useRef, useState } from "react";
-import { Box, Link, Popover, Portal } from "@/components/ui/mui";
+import { Popover, Portal } from "@/components/ui/mui";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 
 interface SetupConnectionPopoverProps {
@@ -54,7 +56,7 @@ export default function SetupConnectionPopover({
           ref={ref}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          display="contents"
+          sx={{ display: "contents" }}
         >
           {children}
         </Box>
@@ -73,9 +75,8 @@ export default function SetupConnectionPopover({
               Connect to a data warehouse to unlock Diff.{" "}
               <Link
                 href={RECCE_SUPPORT_CALENDAR_URL}
-                color="white"
                 target="_blank"
-                textDecoration="underline"
+                sx={{ color: "white", textDecoration: "underline" }}
               >
                 Learn more
               </Link>

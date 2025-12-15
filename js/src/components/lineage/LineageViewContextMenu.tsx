@@ -1,8 +1,9 @@
+import Box from "@mui/material/Box";
 import { ReactNode, useState } from "react";
 import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
 import { FaRegDotCircle } from "react-icons/fa";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
-import { Icon, Menu, Portal, useDisclosure } from "@/components/ui/mui";
+import { Menu, Portal } from "@/components/ui/mui";
 import { SubmitRunTrackProps } from "@/lib/api/runs";
 import {
   EXPLORE_ACTION,
@@ -204,7 +205,7 @@ export const ModelNodeContextMenu = ({
 
     menuItems.push({
       label: "Query",
-      itemIcon: <Icon as={run.icon} />,
+      itemIcon: <Box component={run.icon} sx={{ display: "inline-flex" }} />,
       isDisabled: isQueryDisabled,
       action: () => {
         setSqlQuery(query);
@@ -228,7 +229,9 @@ export const ModelNodeContextMenu = ({
 
         menuItems.push({
           label: "Query Related Columns",
-          itemIcon: <Icon as={run.icon} />,
+          itemIcon: (
+            <Box component={run.icon} sx={{ display: "inline-flex" }} />
+          ),
           isDisabled: isQueryDisabled,
           action: () => {
             const query = `select \n  ${Array.from(allColumns).join(",\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
@@ -258,7 +261,9 @@ export const ModelNodeContextMenu = ({
 
           menuItems.push({
             label: "Query Modified Columns",
-            itemIcon: <Icon as={run.icon} />,
+            itemIcon: (
+              <Box component={run.icon} sx={{ display: "inline-flex" }} />
+            ),
             isDisabled: isQueryDisabled,
             action: () => {
               const query = `select \n  ${Array.from(allColumns).join(",\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
@@ -282,7 +287,12 @@ export const ModelNodeContextMenu = ({
     );
     menuItems.push({
       label: rowCountAndRowCountRun.title,
-      itemIcon: <Icon as={rowCountAndRowCountRun.icon} />,
+      itemIcon: (
+        <Box
+          component={rowCountAndRowCountRun.icon}
+          sx={{ display: "inline-flex" }}
+        />
+      ),
       isDisabled: isQueryDisabled,
       action: () => {
         trackExploreAction({
@@ -306,7 +316,12 @@ export const ModelNodeContextMenu = ({
     );
     menuItems.push({
       label: profileAndProfileDiffRun.title,
-      itemIcon: <Icon as={profileAndProfileDiffRun.icon} />,
+      itemIcon: (
+        <Box
+          component={profileAndProfileDiffRun.icon}
+          sx={{ display: "inline-flex" }}
+        />
+      ),
       isDisabled: isQueryDisabled,
       action: () => {
         const columns = Array.from(getNodeColumnSet(node.id));
@@ -330,7 +345,9 @@ export const ModelNodeContextMenu = ({
       const valueDiffRun = findByRunType("value_diff");
       menuItems.push({
         label: valueDiffRun.title,
-        itemIcon: <Icon as={valueDiffRun.icon} />,
+        itemIcon: (
+          <Box component={valueDiffRun.icon} sx={{ display: "inline-flex" }} />
+        ),
         isDisabled: isQueryDisabled,
         action: () => {
           const columns = Array.from(getNodeColumnSet(node.id));
@@ -496,7 +513,7 @@ export const ColumnNodeContextMenu = ({
   const run = findByRunType(singleEnv ? "profile" : "profile_diff");
   menuItems.push({
     label: run.title,
-    itemIcon: <Icon as={run.icon} />,
+    itemIcon: <Box component={run.icon} sx={{ display: "inline-flex" }} />,
     action: handleProfileDiff,
     isDisabled:
       addedOrRemoved || !isActionAvailable("profile_diff") || isQueryDisabled,
@@ -506,7 +523,12 @@ export const ColumnNodeContextMenu = ({
     const isHistogramDiffRun = findByRunType("histogram_diff");
     menuItems.push({
       label: isHistogramDiffRun.title,
-      itemIcon: <Icon as={isHistogramDiffRun.icon} />,
+      itemIcon: (
+        <Box
+          component={isHistogramDiffRun.icon}
+          sx={{ display: "inline-flex" }}
+        />
+      ),
       action: handleHistogramDiff,
       isDisabled:
         addedOrRemoved ||
@@ -516,7 +538,9 @@ export const ColumnNodeContextMenu = ({
     const isTopKDiffRun = findByRunType("top_k_diff");
     menuItems.push({
       label: isTopKDiffRun.title,
-      itemIcon: <Icon as={isTopKDiffRun.icon} />,
+      itemIcon: (
+        <Box component={isTopKDiffRun.icon} sx={{ display: "inline-flex" }} />
+      ),
       action: handleTopkDiff,
       isDisabled: addedOrRemoved || isQueryDisabled,
     });
@@ -524,7 +548,9 @@ export const ColumnNodeContextMenu = ({
     const isValueDiffRun = findByRunType("value_diff");
     menuItems.push({
       label: isValueDiffRun.title,
-      itemIcon: <Icon as={isValueDiffRun.icon} />,
+      itemIcon: (
+        <Box component={isValueDiffRun.icon} sx={{ display: "inline-flex" }} />
+      ),
       action: handleValueDiff,
       isDisabled: addedOrRemoved || isQueryDisabled,
     });
@@ -577,7 +603,9 @@ export const LineageViewContextMenu = ({
 };
 
 export const useLineageViewContextMenu = () => {
-  const { open, onClose, onOpen } = useDisclosure();
+  const [open, setOpen] = useState(false);
+  const onOpen = () => setOpen(true);
+  const onClose = () => setOpen(false);
   const [position, setPosition] = useState<{ x: number; y: number }>({
     x: 0,
     y: 0,

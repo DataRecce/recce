@@ -1,8 +1,10 @@
+import Box from "@mui/material/Box";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
 import { useQuery } from "@tanstack/react-query";
 import React, { forwardRef, useMemo, useState } from "react";
 import { DataGridHandle } from "react-data-grid";
 import { IconType } from "react-icons";
-import { Box, Center, Flex, Icon, List } from "@/components/ui/mui";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check } from "@/lib/api/checks";
 import { select } from "@/lib/api/select";
@@ -58,35 +60,40 @@ const NodelistItem = ({
   }
 
   return (
-    <List.Item>
-      <Flex
-        width="100%"
-        fontSize="10pt"
-        p="5px 8px"
-        cursor="pointer"
-        _hover={{ bg: "gray.200" }}
-        bg={selected ? "gray.100" : "inherit"}
+    <ListItem disablePadding>
+      <Box
+        sx={{
+          display: "flex",
+          width: "100%",
+          fontSize: "10pt",
+          p: "5px 8px",
+          cursor: "pointer",
+          "&:hover": { bgcolor: "grey.200" },
+          bgcolor: selected ? "grey.100" : "inherit",
+          alignItems: "center",
+          gap: "5px",
+        }}
         onClick={() => {
           onSelect(node.id);
         }}
-        alignItems="center"
-        gap="5px"
       >
-        <Icon as={icon} />
+        {icon && <Box component={icon} />}
         <Box
-          flex="1"
-          textOverflow="ellipsis"
-          whiteSpace="nowrap"
-          overflow="hidden"
+          sx={{
+            flex: 1,
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+          }}
         >
           {node.data.name}
         </Box>
 
         {statusIcon && statusColor && (
-          <Icon as={statusIcon} color={statusColor} />
+          <Box component={statusIcon} sx={{ color: statusColor }} />
         )}
-      </Flex>
-    </List.Item>
+      </Box>
+    </ListItem>
   );
 };
 
@@ -190,21 +197,46 @@ export function PrivateSchemaDiffView(
 
   if (isLoading) {
     return (
-      <Center bg="rgb(249,249,249)" height="100%">
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: "rgb(249,249,249)",
+          height: "100%",
+        }}
+      >
         Loading...
-      </Center>
+      </Box>
     );
   } else if (error) {
     return (
-      <Center bg="rgb(249,249,249)" height="100%" className="no-track-pii-safe">
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: "rgb(249,249,249)",
+          height: "100%",
+        }}
+        className="no-track-pii-safe"
+      >
         Error: {error.message}
-      </Center>
+      </Box>
     );
   } else if (nodes.length == 0) {
     return (
-      <Center bg="rgb(249,249,249)" height="100%">
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: "rgb(249,249,249)",
+          height: "100%",
+        }}
+      >
         No nodes matched
-      </Center>
+      </Box>
     );
   } else if (selected < nodes.length) {
     const node = nodes[selected];
@@ -217,11 +249,12 @@ export function PrivateSchemaDiffView(
           showMenu={false}
           ref={ref}
         />
-        <List.Root
-          overflow="auto"
-          backgroundColor="white"
-          as="ul"
-          listStyle="none"
+        <List
+          sx={{
+            overflow: "auto",
+            bgcolor: "white",
+            listStyle: "none",
+          }}
         >
           {nodes.map((node, i) => (
             <NodelistItem
@@ -234,7 +267,7 @@ export function PrivateSchemaDiffView(
               }}
             />
           ))}
-        </List.Root>
+        </List>
       </HSplit>
     );
   }

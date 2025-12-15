@@ -1,11 +1,7 @@
-import React, {
-  ChangeEvent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import { Box, Breadcrumb, Input } from "@/components/ui/mui";
+import Box from "@mui/material/Box";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
+import TextField from "@mui/material/TextField";
+import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
 interface CheckBreadcrumbProps {
   name: string;
@@ -63,7 +59,7 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
   }, [isEditing, handleCommit]);
 
   return (
-    <Breadcrumb.Root
+    <Breadcrumbs
       sx={{
         flex: "0 1 auto",
         fontSize: "12pt",
@@ -72,17 +68,16 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
       }}
       className="no-track-pii-safe"
     >
-      <Breadcrumb.Item
-        sx={{ cursor: "pointer", flex: "0 1 auto", overflow: "hidden" }}
-      >
+      <Box sx={{ cursor: "pointer", flex: "0 1 auto", overflow: "hidden" }}>
         {isEditing ? (
-          <Input
-            ref={editInputRef}
+          <TextField
+            inputRef={editInputRef}
             value={editValue}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            size="sm"
+            size="small"
             sx={{ width: "100%" }}
+            variant="outlined"
           />
         ) : (
           <Box
@@ -97,7 +92,7 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
             {name}
           </Box>
         )}
-      </Breadcrumb.Item>
-    </Breadcrumb.Root>
+      </Box>
+    </Breadcrumbs>
   );
 }
