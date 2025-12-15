@@ -1,9 +1,13 @@
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import MuiSwitch from "@mui/material/Switch";
+import Typography from "@mui/material/Typography";
 import { useMutation } from "@tanstack/react-query";
 import React, { useMemo } from "react";
 import { PiInfoFill } from "react-icons/pi";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
-import { Box, Button, Flex, Spacer, Switch } from "@/components/ui/mui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import {
@@ -36,22 +40,27 @@ const QueryModeToggle = () => {
     "Custom queries allow you to use two SQL queries to compare results between current and base environments.";
   return (
     <Box>
-      <Flex fontSize="0.75rem" gap={1} alignItems="center">
-        Custom Queries{" "}
-        <Tooltip content={customQueriesDescription}>
-          <PiInfoFill color="gray.600" fontSize="1rem" />
-        </Tooltip>
-      </Flex>
-      <Switch.Root
-        size="sm"
-        colorPalette="iochmara"
-        checked={isCustomQueries}
-        onCheckedChange={handleToggle}
+      <Stack
+        direction="row"
+        spacing={0.5}
+        alignItems="center"
+        fontSize="0.75rem"
       >
-        <Switch.HiddenInput />
-        <Switch.Control />
-        <Switch.Label />
-      </Switch.Root>
+        <Typography variant="body2" sx={{ fontSize: "0.75rem" }}>
+          Custom Queries
+        </Typography>
+        <Tooltip content={customQueriesDescription}>
+          <Box component="span" sx={{ display: "flex", color: "grey.600" }}>
+            <PiInfoFill fontSize="1rem" />
+          </Box>
+        </Tooltip>
+      </Stack>
+      <MuiSwitch
+        size="small"
+        checked={isCustomQueries}
+        onChange={handleToggle}
+        color="primary"
+      />
     </Box>
   );
 };
@@ -137,28 +146,30 @@ export const QueryPage = () => {
 
   if (singleEnv || featureToggles.mode === "metadata only") {
     return (
-      <Flex direction="column" height="100%">
-        <Flex
-          justifyContent="right"
-          alignItems="center"
-          padding="4pt 8pt"
-          gap="5px"
-          height="54px"
-          borderBottom="1px solid lightgray"
+      <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "right",
+            alignItems: "center",
+            padding: "4pt 8pt",
+            gap: "5px",
+            height: "54px",
+            borderBottom: "1px solid lightgray",
+          }}
         >
           <HistoryToggle />
-          <Spacer />
+          <Box sx={{ flexGrow: 1 }} />
           {singleEnv ? (
             <Tooltip
               content="Please configure the base environment before running the diff"
               positioning={{ placement: "left" }}
             >
               <Button
-                colorPalette="iochmara"
+                variant="contained"
                 disabled
-                size="xs"
-                fontSize="14px"
-                marginTop={"16px"}
+                size="small"
+                sx={{ fontSize: "14px", mt: "16px" }}
               >
                 Run Diff
               </Button>
@@ -168,17 +179,16 @@ export const QueryPage = () => {
               display={featureToggles.mode === "metadata only"}
             >
               <Button
-                colorPalette="iochmara"
+                variant="contained"
                 disabled
-                size="xs"
-                fontSize="14px"
-                marginTop={"16px"}
+                size="small"
+                sx={{ fontSize: "14px", mt: "16px" }}
               >
                 Run Diff
               </Button>
             </SetupConnectionPopover>
           )}
-        </Flex>
+        </Box>
         <DualSqlEditor
           value={sqlQuery}
           onChange={setSqlQuery}
@@ -194,41 +204,44 @@ export const QueryPage = () => {
             )
           }
         />
-      </Flex>
+      </Box>
     );
   }
 
   return (
-    <Flex direction="column" height="100%">
-      <Flex
-        justifyContent="right"
-        alignItems="flex-end"
-        padding="4pt 8pt"
-        gap="5px"
-        height="54px"
-        borderBottom="1px solid lightgray"
-        flex="0 0 54px"
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "right",
+          alignItems: "flex-end",
+          padding: "4pt 8pt",
+          gap: "5px",
+          height: "54px",
+          borderBottom: "1px solid lightgray",
+          flex: "0 0 54px",
+        }}
       >
         <HistoryToggle />
         <QueryModeToggle />
-        <Spacer />
+        <Box sx={{ flexGrow: 1 }} />
         <QueryForm
           defaultPrimaryKeys={primaryKeys}
           onPrimaryKeysChange={setPrimaryKeys}
         />
         <Button
-          colorPalette="iochmara"
+          variant="contained"
           onClick={() => {
             runQuery("query_diff");
           }}
           disabled={isPending || featureToggles.disableDatabaseQuery}
-          size="2xs"
+          size="small"
         >
           Run Diff
         </Button>
-      </Flex>
+      </Box>
 
-      <Box width="100%" flex="1">
+      <Box sx={{ width: "100%", flex: 1 }}>
         {isCustomQueries ? (
           <DualSqlEditor
             value={sqlQuery}
@@ -258,6 +271,6 @@ export const QueryPage = () => {
           />
         )}
       </Box>
-    </Flex>
+    </Box>
   );
 };
