@@ -11,8 +11,6 @@
 
 // Re-export hooks from mui-utils
 export { type UseDisclosureReturn, useDisclosure } from "../mui-utils";
-// Feedback Components
-export { Alert, type AlertProps, AlertTitle } from "./Alert";
 // Display Components
 export { Avatar, AvatarGroup, type AvatarProps } from "./Avatar";
 export { Badge, type BadgeProps, Tag } from "./Badge";
