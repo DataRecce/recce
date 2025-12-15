@@ -1,4 +1,5 @@
-import { Checkbox } from "@/components/ui/mui";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
 
 interface ChangedOnlyCheckboxProps {
   changedOnly?: boolean;
@@ -9,16 +10,20 @@ export const ChangedOnlyCheckbox = ({
   onChange,
 }: ChangedOnlyCheckboxProps) => {
   return (
-    <Checkbox.Root
-      size="xs"
-      checked={changedOnly}
-      onCheckedChange={() => {
-        onChange();
+    <FormControlLabel
+      control={
+        <Checkbox
+          checked={changedOnly ?? false}
+          onChange={() => {
+            onChange();
+          }}
+          size="small"
+        />
+      }
+      label="Changed only"
+      slotProps={{
+        typography: { variant: "body2" },
       }}
-    >
-      <Checkbox.HiddenInput />
-      <Checkbox.Control />
-      <Checkbox.Label>Changed only</Checkbox.Label>
-    </Checkbox.Root>
+    />
   );
 };

@@ -1,9 +1,14 @@
+import Box from "@mui/material/Box";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
 import { useEffect, useState } from "react";
 import ReactSelect, {
   type CSSObjectWithLabel,
   type MultiValue,
 } from "react-select";
-import { Box, Checkbox, Field, Input, VStack } from "@/components/ui/mui";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { RunFormProps } from "../run/types";
 
@@ -75,13 +80,22 @@ export function ValueDiffForm({
   }
 
   return (
-    <VStack gap={5} m="8px 24px" paddingBottom="200px">
-      <Field.Root>
-        <Field.Label>Model</Field.Label>
-        <Input isReadOnly value={params.model} />
-      </Field.Root>
-      <Field.Root>
-        <Field.Label>Primary key</Field.Label>
+    <Stack spacing={5} sx={{ m: "8px 24px", pb: "200px" }}>
+      <Box>
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          Model
+        </Typography>
+        <TextField
+          fullWidth
+          size="small"
+          value={params.model}
+          slotProps={{ input: { readOnly: true } }}
+        />
+      </Box>
+      <Box>
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          Primary key
+        </Typography>
         <ReactSelect
           placeholder="Select primary key"
           className="no-track-pii-safe"
@@ -115,25 +129,28 @@ export function ValueDiffForm({
             }),
           }}
         />
-      </Field.Root>
-      <Field.Root>
-        <Field.Label>Columns</Field.Label>
-        <Checkbox.Root
-          marginBottom="10px"
-          size="xs"
-          checked={allColumns}
-          onCheckedChange={(e) => {
-            setAllColumns(Boolean(e.checked));
-            onParamsChanged({
-              ...params,
-              columns: undefined,
-            });
-          }}
-        >
-          <Checkbox.HiddenInput />
-          <Checkbox.Control />
-          <Checkbox.Label>All columns</Checkbox.Label>
-        </Checkbox.Root>
+      </Box>
+      <Box>
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          Columns
+        </Typography>
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={allColumns}
+              onChange={(e) => {
+                setAllColumns(e.target.checked);
+                onParamsChanged({
+                  ...params,
+                  columns: undefined,
+                });
+              }}
+              size="small"
+            />
+          }
+          label="All columns"
+          sx={{ mb: "10px" }}
+        />
         {!allColumns && (
           <ReactSelect
             isMulti
@@ -171,7 +188,7 @@ export function ValueDiffForm({
             }}
           />
         )}
-      </Field.Root>
-    </VStack>
+      </Box>
+    </Stack>
   );
 }
