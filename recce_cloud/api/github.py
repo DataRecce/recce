@@ -53,7 +53,7 @@ class GitHubRecceCloudClient(BaseRecceCloudClient):
         # Only include pr_number for "cr" type sessions
         # For "prod" type, omit pr_number even if cr_number is detected
         if session_type == "cr" and cr_number is not None:
-            payload["pr_number"] = str(cr_number)
+            payload["pr_number"] = cr_number
 
         return self._make_request("POST", url, json=payload)
 

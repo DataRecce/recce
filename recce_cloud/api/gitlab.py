@@ -57,7 +57,7 @@ class GitLabRecceCloudClient(BaseRecceCloudClient):
         # Only include mr_iid for "cr" type sessions
         # For "prod" type, omit mr_iid even if cr_number is detected
         if session_type == "cr" and cr_number is not None:
-            payload["mr_iid"] = str(cr_number)
+            payload["mr_iid"] = cr_number
 
         return self._make_request("POST", url, json=payload)
 
