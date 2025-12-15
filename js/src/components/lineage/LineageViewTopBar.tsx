@@ -128,8 +128,9 @@ const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
   return (
     <>
       <Button
-        size="small"
+        size="xsmall"
         variant="outlined"
+        color="neutral"
         onClick={handleClick}
         disabled={isDisabled}
         startIcon={ModelIcon && <ModelIcon />}
@@ -237,8 +238,9 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
   return (
     <>
       <Button
-        size="small"
+        size="xsmall"
         variant="outlined"
+        color="neutral"
         onClick={handleClick}
         disabled={isDisabled}
         startIcon={<FiPackage />}
@@ -293,7 +295,7 @@ const NodeSelectionInput = (props: {
     <Tooltip
       // Custom tooltip style
       contentProps={{
-        width: "300px",
+        width: "18.75rem",
         padding: 2,
         shadow: "md",
         borderWidth: 1,
@@ -331,8 +333,9 @@ const NodeSelectionInput = (props: {
         }}
         sx={{
           "& .MuiInputBase-root": {
+            width: "18.75rem",
             height: 24,
-            fontSize: "10pt",
+            fontSize: "0.75rem",
           },
           "& .MuiInputBase-input": {
             py: 0.5,
@@ -429,6 +432,8 @@ export const LineageViewTopBar = () => {
     <Stack
       direction="row"
       alignItems="center"
+      borderBottom={1}
+      borderColor="neutral.light"
       sx={{ width: "100%", p: "4pt 8pt", gap: "0.5rem" }}
     >
       <Stack
@@ -443,10 +448,10 @@ export const LineageViewTopBar = () => {
         <ControlItem label="Package" style={{ flexShrink: 1 }}>
           <PackageSelectMenu isDisabled={isFilterDisabled} />
         </ControlItem>
-        <ControlItem label="Select" style={{ flex: "100 1 auto" }}>
+        <ControlItem label="Select" style={{ flexShrink: 1 }}>
           <SelectFilter isDisabled={isFilterDisabled} />
         </ControlItem>
-        <ControlItem label="Exclude" style={{ flex: "100 1 auto" }}>
+        <ControlItem label="Exclude" style={{ flexShrink: 1 }}>
           <ExcludeFilter isDisabled={isFilterDisabled} />
         </ControlItem>
         <Box sx={{ flexGrow: 1 }} />
@@ -463,7 +468,8 @@ export const LineageViewTopBar = () => {
             <ControlItem label="">
               <Button
                 variant="outlined"
-                size="small"
+                color="neutral"
+                size="xsmall"
                 onClick={() => {
                   deselect();
                 }}
@@ -476,7 +482,8 @@ export const LineageViewTopBar = () => {
               <ControlItem label="Explore">
                 <Box sx={{ display: "inline-flex" }}>
                   <Button
-                    size="small"
+                    size="xsmall"
+                    color="neutral"
                     variant="outlined"
                     onClick={handleActionsClick}
                     endIcon={<PiCaretDown />}
@@ -513,7 +520,8 @@ export const LineageViewTopBar = () => {
           <ControlItem label="Explore">
             <Box sx={{ display: "inline-flex" }}>
               <Button
-                size="small"
+                size="xsmall"
+                color="neutral"
                 variant="outlined"
                 disabled={featureToggles.disableViewActionDropdown}
                 onClick={handleActionsClick}
