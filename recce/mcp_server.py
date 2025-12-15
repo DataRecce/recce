@@ -306,6 +306,20 @@ class RecceMCPServer:
                                 "properties": {},
                             },
                         ),
+                        Tool(
+                            name="run_check",
+                            description="Run a single check by ID and wait for completion. Returns execution status, results, and approval status.",
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "check_id": {
+                                        "type": "string",
+                                        "description": "The ID of the check to run",
+                                    },
+                                },
+                                "required": ["check_id"],
+                            },
+                        ),
                     ]
                 )
 
@@ -328,7 +342,14 @@ class RecceMCPServer:
 
             try:
                 # Check if tool is blocked in non-server mode
-                blocked_tools_in_non_server = {"row_count_diff", "query", "query_diff", "profile_diff", "list_checks"}
+                blocked_tools_in_non_server = {
+                    "row_count_diff",
+                    "query",
+                    "query_diff",
+                    "profile_diff",
+                    "list_checks",
+                    "run_check",
+                }
                 if self.mode != RecceServerMode.server and name in blocked_tools_in_non_server:
                     raise ValueError(
                         f"Tool '{name}' is not available in {self.mode.value} mode. "
@@ -349,6 +370,8 @@ class RecceMCPServer:
                     result = await self._tool_profile_diff(arguments)
                 elif name == "list_checks":
                     result = await self._tool_list_checks(arguments)
+                elif name == "run_check":
+                    result = await self._tool_run_check(arguments)
                 else:
                     raise ValueError(f"Unknown tool: {name}")
 
@@ -670,6 +693,85 @@ class RecceMCPServer:
             logger.exception("Error listing checks")
             raise
 
+    async def _tool_run_check(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Run a single check by ID"""
+        try:
+            from recce.apis.run_func import submit_run
+            from recce.models import CheckDAO
+            from recce.run import run_should_be_approved, schema_diff_should_be_approved
+
+            check_id = arguments.get("check_id")
+            if not check_id:
+                raise ValueError("check_id is required")
+
+            # Get the check from database
+            checks_dao = CheckDAO()
+            checks = checks_dao.list()
+            check = None
+            for c in checks:
+                if str(c.check_id) == check_id:
+                    check = c
+                    break
+
+            if not check:
+                raise ValueError(f"Check with ID {check_id} not found")
+
+            start_time = time.time()
+            result = {
+                "check_id": check_id,
+                "check_name": check.name,
+                "check_type": check.type.value,
+                "status": "success",
+                "execution_time": 0.0,
+                "is_approved": False,
+                "error": None,
+                "result": None,
+            }
+
+            try:
+                # For schema_diff and lineage_diff, don't execute query
+                if check.type.value in ["schema_diff", "lineage_diff"]:
+                    # Auto-approve schema_diff if no changes
+                    if check.type.value == "schema_diff":
+                        result["is_approved"] = schema_diff_should_be_approved(check.params or {})
+                else:
+                    # Submit and execute the run
+                    run, future = submit_run(check.type.value, params=check.params or {}, check_id=check_id)
+                    await future
+
+                    # Auto-approve based on results
+                    result["is_approved"] = run_should_be_approved(run)
+
+                    # Serialize result to dict if it's a Pydantic model
+                    if hasattr(run, "result") and run.result:
+                        if hasattr(run.result, "model_dump"):
+                            result["result"] = run.result.model_dump(mode="json")
+                        else:
+                            result["result"] = run.result
+                    else:
+                        result["result"] = None
+
+                    # Capture error if any
+                    if run.error:
+                        result["error"] = str(run.error)
+                        result["status"] = "failed"
+
+                # Update check's is_checked status if approved
+                if result["is_approved"]:
+                    check.is_checked = True
+                    check.updated_at = datetime.now(tz=timezone.utc).replace(microsecond=0)
+
+            except Exception as e:
+                result["status"] = "error"
+                result["error"] = str(e)
+
+            result["execution_time"] = round(time.time() - start_time, 2)
+            return result
+
+        except Exception:
+            logger.exception("Error running check")
+            raise
+
     async def run(self):
         """Run the MCP server in stdio mode"""
         async with stdio_server() as (read_stream, write_stream):
@@ -732,7 +834,12 @@ class RecceMCPServer:
         await server.serve()
 
 
-async def run_mcp_server(sse: bool = False, host: str = "localhost", port: int = 8000, **kwargs):
+async def run_mcp_server(
+    sse: bool = False,
+    host: str = "localhost",
+    port: int = 8000,
+    **kwargs,
+):
     """
     Entry point for running the MCP server
 
@@ -741,9 +848,11 @@ async def run_mcp_server(sse: bool = False, host: str = "localhost", port: int =
         host: Host to bind to in SSE mode (default: localhost)
         port: Port to bind to in SSE mode (default: 8000)
         **kwargs: Arguments for loading RecceContext (dbt options, etc.)
+               Optionally includes 'state_loader' for persisting state on shutdown
                Optionally includes 'mode' for server mode (server, preview, read-only)
                Optionally includes 'debug' flag for enabling MCP logging
     """
+    state_loader = kwargs.get("state_loader", None)
     # Setup logging
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
@@ -766,8 +875,28 @@ async def run_mcp_server(sse: bool = False, host: str = "localhost", port: int =
     # Create MCP server
     server = RecceMCPServer(context, mode=mode, debug=debug)
 
-    # Run in either stdio or SSE mode
-    if sse:
-        await server.run_sse(host=host, port=port)
-    else:
-        await server.run()
+    try:
+        # Run in either stdio or SSE mode
+        if sse:
+            await server.run_sse(host=host, port=port)
+        else:
+            await server.run()
+    finally:
+        # Export state on shutdown if state_loader is available
+        if state_loader:
+            try:
+                from rich.console import Console
+
+                console = Console()
+
+                # Export the state
+                msg = state_loader.export(context.export_state())
+                if msg is not None:
+                    console.print(f"[yellow]On shutdown:[/yellow] {msg}")
+                else:
+                    if hasattr(state_loader, "state_file") and state_loader.state_file:
+                        console.print(f"[yellow]On shutdown:[/yellow] State exported to '{state_loader.state_file}'")
+                    else:
+                        console.print("[yellow]On shutdown:[/yellow] State exported successfully")
+            except Exception as e:
+                logger.exception(f"Failed to export state on shutdown: {e}")
