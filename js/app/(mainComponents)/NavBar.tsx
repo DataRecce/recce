@@ -1,6 +1,5 @@
 "use client";
 
-import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Tab from "@mui/material/Tab";
 import MuiTabs from "@mui/material/Tabs";
@@ -33,14 +32,12 @@ interface TabBadgeProps<T> {
   queryKey: string[];
   fetchCallback: () => Promise<T>;
   selectCallback?: (data: T) => number;
-  children: ReactNode;
 }
 
 function TabBadge<T>({
   queryKey,
   fetchCallback,
   selectCallback,
-  children,
 }: TabBadgeProps<T>): ReactNode {
   const {
     data: count,
@@ -57,17 +54,23 @@ function TabBadge<T>({
   }
 
   return (
-    <Badge
-      badgeContent={count}
-      color="primary"
-      anchorOrigin={{ vertical: "top", horizontal: "right" }}
+    <Box
+      bgcolor="brand.main"
+      display="flex"
+      justifyContent="center"
+      alignItems="center"
+      p={1}
+      borderRadius="100%"
+      color="white"
+      fontWeight={700}
+      fontSize="0.75rem"
     >
-      {children}
-    </Badge>
+      <span>{count}</span>
+    </Box>
   );
 }
 
-function ChecklistBadge({ children }: { children: ReactNode }): ReactNode {
+function ChecklistBadge(): ReactNode {
   return (
     <TabBadge<Check[]>
       queryKey={cacheKeys.checks()}
@@ -75,9 +78,7 @@ function ChecklistBadge({ children }: { children: ReactNode }): ReactNode {
       selectCallback={(checks: Check[]) => {
         return checks.filter((check) => !check.is_checked).length;
       }}
-    >
-      {children}
-    </TabBadge>
+    />
   );
 }
 
@@ -135,18 +136,26 @@ export default function NavBar() {
                   key={path}
                   value={path}
                   disabled={isLoading || isFlagLoading}
+                  sx={{
+                    p: 0,
+                  }}
                   label={
                     <Box
                       sx={{ display: "flex", alignItems: "center", gap: "4px" }}
                     >
-                      <ChecklistBadge>
-                        <NextLink
-                          href={path}
-                          style={{ textDecoration: "none", color: "inherit" }}
-                        >
-                          {name}
-                        </NextLink>
-                      </ChecklistBadge>
+                      <NextLink
+                        href={path}
+                        style={{
+                          textDecoration: "none",
+                          color: "inherit",
+                          padding: "0.875rem 1.1875rem",
+                          display: "flex",
+                          gap: 3,
+                          alignItems: "center",
+                        }}
+                      >
+                        {name} <ChecklistBadge />
+                      </NextLink>
                     </Box>
                   }
                 />
@@ -158,13 +167,20 @@ export default function NavBar() {
                 key={path}
                 value={path}
                 disabled={isLoading || isFlagLoading}
+                sx={{
+                  p: 0,
+                }}
                 label={
                   <Box
                     sx={{ display: "flex", alignItems: "center", gap: "4px" }}
                   >
                     <NextLink
                       href={path}
-                      style={{ textDecoration: "none", color: "inherit" }}
+                      style={{
+                        textDecoration: "none",
+                        color: "inherit",
+                        padding: "0.875rem 1.1875rem",
+                      }}
                     >
                       {name}
                     </NextLink>
