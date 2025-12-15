@@ -298,6 +298,14 @@ class RecceMCPServer:
                                 "required": ["model"],
                             },
                         ),
+                        Tool(
+                            name="list_checks",
+                            description="List all checks in the current session. Returns check metadata including check IDs, names, types, parameters, and approval status.",
+                            inputSchema={
+                                "type": "object",
+                                "properties": {},
+                            },
+                        ),
                     ]
                 )
 
@@ -320,7 +328,7 @@ class RecceMCPServer:
 
             try:
                 # Check if tool is blocked in non-server mode
-                blocked_tools_in_non_server = {"row_count_diff", "query", "query_diff", "profile_diff"}
+                blocked_tools_in_non_server = {"row_count_diff", "query", "query_diff", "profile_diff", "list_checks"}
                 if self.mode != RecceServerMode.server and name in blocked_tools_in_non_server:
                     raise ValueError(
                         f"Tool '{name}' is not available in {self.mode.value} mode. "
@@ -339,6 +347,8 @@ class RecceMCPServer:
                     result = await self._tool_query_diff(arguments)
                 elif name == "profile_diff":
                     result = await self._tool_profile_diff(arguments)
+                elif name == "list_checks":
+                    result = await self._tool_list_checks(arguments)
                 else:
                     raise ValueError(f"Unknown tool: {name}")
 
@@ -620,6 +630,44 @@ class RecceMCPServer:
             return result
         except Exception:
             logger.exception("Error executing profile diff")
+            raise
+
+    async def _tool_list_checks(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """List all checks in the current session"""
+        try:
+            from recce.models import CheckDAO
+
+            # Get all checks
+            checks_dao = CheckDAO()
+            checks = checks_dao.list()
+
+            # Build checks list with relevant metadata
+            checks_list = []
+            for check in checks:
+                checks_list.append(
+                    {
+                        "check_id": str(check.check_id),
+                        "name": check.name,
+                        "type": check.type.value,
+                        "description": check.description or "",
+                        "params": check.params or {},
+                        "is_checked": check.is_checked,
+                        "is_preset": check.is_preset,
+                    }
+                )
+
+            # Get statistics
+            stats = checks_dao.status()
+
+            result = {
+                "checks": checks_list,
+                "total": stats["total"],
+                "approved": stats["approved"],
+            }
+
+            return result
+        except Exception:
+            logger.exception("Error listing checks")
             raise
 
     async def run(self):
