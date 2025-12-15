@@ -1,5 +1,5 @@
-import { Box, Flex } from "@/components/ui/mui";
-import { Tooltip } from "@/components/ui/tooltip";
+import Box from "@mui/material/Box";
+import Tooltip from "@mui/material/Tooltip";
 import { TransformationType } from "./GraphColumnNode";
 
 export function ColumnLevelLineageLegend() {
@@ -33,15 +33,22 @@ export function ColumnLevelLineageLegend() {
         padding: "12px",
         border: "1px solid",
         borderColor: "grey.200",
-        fontSize: "sm",
+        fontSize: "0.875rem",
       }}
     >
       {Object.entries(TRANSFORMATION_MSGS).map(([key, [label, tip]]) => {
         return (
-          <Tooltip content={tip} key={key} positioning={{ placement: "right" }}>
-            <Flex sx={{ alignItems: "center", gap: "6px", mb: "2px" }}>
+          <Tooltip title={tip} key={key} placement="right">
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                mb: "2px",
+              }}
+            >
               <TransformationType legend transformationType={key} /> {label}
-            </Flex>
+            </Box>
           </Tooltip>
         );
       })}

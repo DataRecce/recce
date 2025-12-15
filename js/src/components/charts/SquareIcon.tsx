@@ -1,4 +1,4 @@
-import { Box } from "@/components/ui/mui";
+import Box from "@mui/material/Box";
 
 export const CURRENT_BAR_COLOR = "#63B3ED";
 export const BASE_BAR_COLOR = "#F6AD55";
