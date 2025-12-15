@@ -1,7 +1,8 @@
+import MuiAlert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
 import { forwardRef, Key, Ref, useMemo, useState } from "react";
 import "react-data-grid/lib/styles.css";
 import { CellMouseArgs, DataGridHandle } from "react-data-grid";
-import { Alert, Flex } from "@/components/ui/mui";
 import { NodeData } from "@/lib/api/info";
 import { trackColumnLevelLineage } from "@/lib/api/track";
 import {
@@ -76,17 +77,15 @@ function PrivateSingleEnvSchemaView(
     : new Set();
 
   return (
-    <Flex direction="column">
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
       {catalogMissingMessage ? (
-        <Alert.Root status="warning" fontSize="12px" p="8px">
-          <Alert.Indicator />
-          <Alert.Description>{catalogMissingMessage}</Alert.Description>
-        </Alert.Root>
+        <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
+          {catalogMissingMessage}
+        </MuiAlert>
       ) : schemaMissingMessage ? (
-        <Alert.Root status="warning" fontSize="12px" p="8px">
-          <Alert.Indicator />
-          <Alert.Description>{schemaMissingMessage}</Alert.Description>
-        </Alert.Root>
+        <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
+          {schemaMissingMessage}
+        </MuiAlert>
       ) : (
         <></>
       )}
@@ -121,7 +120,7 @@ function PrivateSingleEnvSchemaView(
           }}
         />
       )}
-    </Flex>
+    </Box>
   );
 }
 
@@ -199,17 +198,15 @@ export function PrivateSchemaView(
     : new Set();
 
   return (
-    <Flex direction="column">
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
       {catalogMissingMessage ? (
-        <Alert.Root status="warning" fontSize="12px" p="8px">
-          <Alert.Indicator />
-          <Alert.Description>{catalogMissingMessage}</Alert.Description>
-        </Alert.Root>
+        <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
+          {catalogMissingMessage}
+        </MuiAlert>
       ) : schemaMissingMessage ? (
-        <Alert.Root status="warning" fontSize="12px" p="8px">
-          <Alert.Indicator />
-          <Alert.Description>{schemaMissingMessage}</Alert.Description>
-        </Alert.Root>
+        <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
+          {schemaMissingMessage}
+        </MuiAlert>
       ) : (
         <></>
       )}
@@ -259,7 +256,7 @@ export function PrivateSchemaView(
           }}
         />
       )}
-    </Flex>
+    </Box>
   );
 }
 
