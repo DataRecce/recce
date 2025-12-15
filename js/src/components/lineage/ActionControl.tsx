@@ -1,4 +1,7 @@
-import { Box, Button, HStack, StackSeparator } from "@/components/ui/mui";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Divider from "@mui/material/Divider";
+import Stack from "@mui/material/Stack";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 
 export interface ActionControlProps {
@@ -25,14 +28,14 @@ export function ActionControl({ onClose }: ActionControlProps) {
   };
 
   return (
-    <Box bg="white" rounded="md" shadow="dark-lg">
-      <HStack
-        p="5px 15px"
-        mt="4"
-        separator={<StackSeparator borderColor="gray.200" />}
-        gap={4}
+    <Box sx={{ bgcolor: "white", borderRadius: 1, boxShadow: 6 }}>
+      <Stack
+        direction="row"
+        divider={<Divider orientation="vertical" flexItem />}
+        spacing={2}
+        sx={{ p: "5px 15px", mt: 2 }}
       >
-        <Box fontSize="10pt">
+        <Box sx={{ fontSize: "10pt" }}>
           Progress: {getProgressMessage()}{" "}
           {actionState.status === "canceled" ? " (canceled)" : ""}
         </Box>
@@ -40,22 +43,21 @@ export function ActionControl({ onClose }: ActionControlProps) {
         {actionState.status === "running" ||
         actionState.status === "canceling" ? (
           <Button
-            size="xs"
-            variant="outline"
+            size="small"
+            variant="outlined"
             onClick={cancel}
-            loading={actionState.status === "canceling"}
-            loadingText="Canceling"
+            disabled={actionState.status === "canceling"}
           >
-            Cancel
+            {actionState.status === "canceling" ? "Canceling" : "Cancel"}
           </Button>
         ) : (
-          <HStack>
-            <Button size="xs" variant="outline" onClick={onClose}>
+          <Stack direction="row">
+            <Button size="small" variant="outlined" onClick={onClose}>
               Close
             </Button>
-          </HStack>
+          </Stack>
         )}
-      </HStack>
+      </Stack>
     </Box>
   );
 }

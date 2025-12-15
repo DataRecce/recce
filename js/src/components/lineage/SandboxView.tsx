@@ -1,26 +1,18 @@
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
+import MuiDialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
+import IconButton from "@mui/material/IconButton";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { useMutation } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import React, { useState } from "react";
 import { AiOutlineExperiment } from "react-icons/ai";
+import { IoClose } from "react-icons/io5";
 import { VscFeedback } from "react-icons/vsc";
 import { DiffEditor } from "@/components/editor";
-import {
-  Badge,
-  Box,
-  Button,
-  CloseButton,
-  Dialog,
-  Flex,
-  Heading,
-  Icon,
-  IconButton,
-  Image,
-  Portal,
-  Spacer,
-  Stack,
-  Text,
-  useDisclosure,
-} from "@/components/ui/mui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { QueryParams, submitQueryDiff } from "@/lib/api/adhocQuery";
 import { NodeData } from "@/lib/api/info";
@@ -65,46 +57,53 @@ function SandboxTopBar({
   isPending: boolean;
 }) {
   return (
-    <Flex
-      justifyContent="right"
+    <Stack
+      direction="row"
+      justifyContent="flex-end"
       alignItems="center"
-      padding="4pt 8pt"
-      gap="5px"
-      height="54px"
-      borderBottom="1px solid lightgray"
-      flex="0 0 54px"
+      sx={{
+        p: "4pt 8pt",
+        gap: "5px",
+        height: "54px",
+        borderBottom: "1px solid lightgray",
+        flex: "0 0 54px",
+      }}
     >
       <Box>
-        <Heading as="h2" size="md" display="flex" alignItems="center" gap="5px">
-          <Icon as={AiOutlineExperiment} boxSize="1.2em" />
+        <Typography
+          variant="h6"
+          component="h2"
+          sx={{ display: "flex", alignItems: "center", gap: "5px" }}
+        >
+          <Box component={AiOutlineExperiment} sx={{ fontSize: "1.2em" }} />
           Sandbox
-        </Heading>
-        <Text fontSize="xs" color="gray.500">
+        </Typography>
+        <Typography sx={{ fontSize: "0.75rem", color: "grey.500" }}>
           Compare the run results based on the modified SQL code of model{" "}
           <b>{current?.name}</b>
-        </Text>
+        </Typography>
       </Box>
-      <Spacer />
+      <Box sx={{ flexGrow: 1 }} />
       <QueryForm
         defaultPrimaryKeys={primaryKeys}
         onPrimaryKeysChange={setPrimaryKeys}
       />
       <Tooltip content="Run diff to see the changes">
         <Button
-          size="xs"
-          marginTop={"16px"}
-          fontSize="14px"
+          size="small"
+          sx={{ mt: "16px", fontSize: "14px" }}
           onClick={() => {
             onRunResultOpen();
             runQuery();
           }}
-          colorPalette="iochmara"
-          loading={isPending}
+          color="iochmara"
+          variant="contained"
+          disabled={isPending}
         >
-          Run Diff
+          {isPending ? "Running..." : "Run Diff"}
         </Button>
       </Tooltip>
-    </Flex>
+    </Stack>
   );
 }
 function SandboxEditorLabels({
@@ -135,26 +134,29 @@ function SandboxEditorLabels({
   }
 
   return (
-    <Flex
-      gap={0}
-      height={height}
-      flex={flex}
-      fontSize={"14px"}
-      align="center"
-      margin={"0"}
-      backgroundColor="#EDF2F880"
+    <Stack
+      direction="row"
+      sx={{
+        gap: 0,
+        height,
+        flex,
+        fontSize: "14px",
+        alignItems: "center",
+        m: 0,
+        bgcolor: "#EDF2F880",
+      }}
     >
-      <Stack width={widthOfBar}>
-        <Text as="b" margin={margin}>
+      <Stack sx={{ width: widthOfBar }}>
+        <Typography sx={{ fontWeight: "bold", margin }}>
           ORIGINAL (Schema: {schema}, Last Updated: {latestUpdateDistanceToNow})
-        </Text>
+        </Typography>
       </Stack>
-      <Stack width={widthOfBar}>
-        <Text as="b" margin={margin}>
+      <Stack sx={{ width: widthOfBar }}>
+        <Typography sx={{ fontWeight: "bold", margin }}>
           SANDBOX EDITOR
-        </Text>
+        </Typography>
       </Stack>
-    </Flex>
+    </Stack>
   );
 }
 
@@ -179,11 +181,7 @@ function SqlPreview({ current, onChange }: SqlPreviewProps) {
 }
 
 export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
-  const {
-    open: isRunResultOpen,
-    onClose: onRunResultClose,
-    onOpen: onRunResultOpen,
-  } = useDisclosure();
+  const [isRunResultOpen, setIsRunResultOpen] = useState(false);
   const [modifiedCode, setModifiedCode] = useState<string>(
     current?.raw_code ?? "",
   );
@@ -287,102 +285,138 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
     }
   }
 
+  const handleClose = () => {
+    onClose();
+    setIsRunResultOpen(false);
+    clearRunResult();
+    closeToast();
+    closeGuideToast();
+    trackPreviewChange({ action: "close", node: current?.name });
+  };
+
   return (
-    <Dialog.Root
+    <MuiDialog
       open={isOpen}
-      size="cover"
-      onOpenChange={() => {
-        onClose();
-        onRunResultClose();
-        clearRunResult();
-        closeToast();
-        closeGuideToast();
-        trackPreviewChange({ action: "close", node: current?.name });
+      onClose={handleClose}
+      maxWidth={false}
+      fullWidth
+      PaperProps={{
+        sx: {
+          width: "100%",
+          height: "100%",
+          maxWidth: "100%",
+          maxHeight: "100%",
+          m: 0,
+        },
       }}
     >
-      <Portal>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content height={"100%"}>
-            <Dialog.Header height={"40px"} bg="rgb(77, 209, 176)" px={0} py={4}>
-              <Flex alignItems="center" height={"100%"} gap={"10px"}>
-                <Image
-                  boxSize="20px"
-                  ml="18px"
-                  src="/logo/recce-logo-white.png"
-                  alt="recce-logo-white"
-                />
-                <Dialog.Title
-                  as="h1"
-                  fontFamily={`"Montserrat", sans-serif`}
-                  fontSize="lg"
-                  color="white"
-                >
-                  RECCE
-                </Dialog.Title>
-                <Badge fontSize="sm" color="white/80" variant="outline">
-                  Experiment
-                </Badge>
-              </Flex>
-              <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
-              </Dialog.CloseTrigger>
-            </Dialog.Header>
-            <Dialog.Body p={0}>
-              <VSplit
-                sizes={isRunResultOpen ? [50, 50] : [100, 0]}
-                minSize={isRunResultOpen ? 100 : 0}
-                gutterSize={isRunResultOpen ? 5 : 0}
-                style={{
-                  flex: "1",
-                  contain: "size",
-                  height: "100%",
-                }}
-              >
-                <Flex direction="column" height="100%" m={0} p={0}>
-                  <SandboxTopBar
-                    current={current}
-                    primaryKeys={primaryKeys ?? []}
-                    setPrimaryKeys={setPrimaryKeys}
-                    onRunResultOpen={onRunResultOpen}
-                    runQuery={runQuery}
-                    isPending={isPending}
-                  />
-                  <SandboxEditorLabels
-                    height="32pxs"
-                    flex="0 0 auto"
-                    currentModelID={current?.id ?? ""}
-                  />
-                  <SqlPreview current={current} onChange={setModifiedCode} />
-                </Flex>
-                {isRunResultOpen ? (
-                  <RunResultPane
-                    onClose={onRunResultClose}
-                    disableAddToChecklist
-                  />
-                ) : (
-                  <Box></Box>
-                )}
-              </VSplit>
-            </Dialog.Body>
-            {/* Fixed position button */}
-            <Box position="fixed" bottom="4" right="4" opacity={0.5}>
-              <Tooltip content="Give us feedback">
-                <IconButton
-                  aria-label="feedback"
-                  variant="ghost"
-                  size="md"
-                  onClick={() => {
-                    feedbackToast(true);
-                  }}
-                >
-                  <VscFeedback />
-                </IconButton>
-              </Tooltip>
-            </Box>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Portal>
-    </Dialog.Root>
+      <Box
+        sx={{
+          height: "40px",
+          bgcolor: "rgb(77, 209, 176)",
+          px: 0,
+          py: 2,
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        <Stack
+          direction="row"
+          alignItems="center"
+          sx={{ height: "100%", gap: "10px" }}
+        >
+          <Box
+            component="img"
+            sx={{ width: "20px", height: "20px", ml: "18px" }}
+            src="/logo/recce-logo-white.png"
+            alt="recce-logo-white"
+          />
+          <Typography
+            variant="h6"
+            component="h1"
+            sx={{
+              fontFamily: '"Montserrat", sans-serif',
+              fontSize: "1.125rem",
+              color: "white",
+            }}
+          >
+            RECCE
+          </Typography>
+          <Chip
+            label="Experiment"
+            size="small"
+            variant="outlined"
+            sx={{
+              fontSize: "0.875rem",
+              color: "white",
+              borderColor: "rgba(255,255,255,0.5)",
+            }}
+          />
+        </Stack>
+        <IconButton
+          aria-label="close"
+          onClick={handleClose}
+          sx={{
+            position: "absolute",
+            right: 8,
+            top: 4,
+            color: "white",
+          }}
+        >
+          <IoClose />
+        </IconButton>
+      </Box>
+      <DialogContent sx={{ p: 0 }}>
+        <VSplit
+          sizes={isRunResultOpen ? [50, 50] : [100, 0]}
+          minSize={isRunResultOpen ? 100 : 0}
+          gutterSize={isRunResultOpen ? 5 : 0}
+          style={{
+            flex: "1",
+            contain: "size",
+            height: "100%",
+          }}
+        >
+          <Stack sx={{ height: "100%", m: 0, p: 0 }}>
+            <SandboxTopBar
+              current={current}
+              primaryKeys={primaryKeys ?? []}
+              setPrimaryKeys={setPrimaryKeys}
+              onRunResultOpen={() => setIsRunResultOpen(true)}
+              runQuery={runQuery}
+              isPending={isPending}
+            />
+            <SandboxEditorLabels
+              height="32px"
+              flex="0 0 auto"
+              currentModelID={current?.id ?? ""}
+            />
+            <SqlPreview current={current} onChange={setModifiedCode} />
+          </Stack>
+          {isRunResultOpen ? (
+            <RunResultPane
+              onClose={() => setIsRunResultOpen(false)}
+              disableAddToChecklist
+            />
+          ) : (
+            <Box></Box>
+          )}
+        </VSplit>
+      </DialogContent>
+      {/* Fixed position button */}
+      <Box sx={{ position: "fixed", bottom: 16, right: 16, opacity: 0.5 }}>
+        <Tooltip content="Give us feedback">
+          <IconButton
+            aria-label="feedback"
+            size="medium"
+            onClick={() => {
+              feedbackToast(true);
+            }}
+          >
+            <VscFeedback />
+          </IconButton>
+        </Tooltip>
+      </Box>
+    </MuiDialog>
   );
 }

@@ -9,9 +9,11 @@
 
 "use client";
 
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
 import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
-import { Box, Button, Center, Flex, Heading } from "@/components/ui/mui";
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -37,10 +39,19 @@ export default function Error({ error, reset }: ErrorProps) {
   }, [error]);
 
   return (
-    <Center sx={{ height: "100%", bgcolor: "grey.50" }}>
-      <Flex
+    <Box
+      sx={{
+        height: "100%",
+        bgcolor: "grey.50",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Box
         sx={{
           p: 2,
+          display: "flex",
           flexDirection: "column",
           justifyContent: "flex-start",
           bgcolor: "white",
@@ -50,9 +61,9 @@ export default function Error({ error, reset }: ErrorProps) {
           boxShadow: 3,
         }}
       >
-        <Heading sx={{ width: "800px", mb: 2 }} size="md">
+        <Typography variant="h6" sx={{ width: "800px", mb: 2 }}>
           You have encountered an error
-        </Heading>
+        </Typography>
 
         <Box sx={{ flex: 1, fontSize: "10pt", color: "grey.600", mb: 2 }}>
           {error.message || String(error)}
@@ -66,8 +77,9 @@ export default function Error({ error, reset }: ErrorProps) {
 
         <Button
           sx={{ justifySelf: "center", alignSelf: "center", mt: "20px" }}
-          colorPalette="iochmara"
-          size="sm"
+          color="iochmara"
+          variant="contained"
+          size="small"
           onClick={() => {
             // Attempt to recover by re-rendering the route segment
             reset();
@@ -75,7 +87,7 @@ export default function Error({ error, reset }: ErrorProps) {
         >
           Try again
         </Button>
-      </Flex>
-    </Center>
+      </Box>
+    </Box>
   );
 }

@@ -1,82 +1,91 @@
-import { LuExternalLink } from "react-icons/lu";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Link from "@mui/material/Link";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { RiMindMap, RiTerminalBoxLine } from "react-icons/ri";
-import {
-  Button,
-  Flex,
-  Heading,
-  Icon,
-  Link,
-  List,
-  Text,
-} from "@/components/ui/mui";
 
 export function BaseEnvironmentSetupGuide() {
   return (
-    <Flex
-      flex="1"
-      h="100%"
-      minH={0}
-      m="2"
-      p="4"
-      bg="iochmara.50"
-      borderRadius="lg"
-      boxShadow="md"
-      justifyContent={"center"}
+    <Stack
+      sx={{
+        flex: 1,
+        height: "100%",
+        minHeight: 0,
+        m: 1,
+        p: 2,
+        bgcolor: "iochmara.50",
+        borderRadius: 2,
+        boxShadow: 2,
+        justifyContent: "center",
+      }}
     >
-      <Flex w="80%" direction="column" overflowY="auto" gap={6} px={8} pb={8}>
-        <Flex direction="column" alignItems={"center"} gap={4}>
-          <Flex
-            p={2}
-            bg="white"
-            borderRadius="full"
-            alignItems="center"
-            justifyContent="center"
-            boxShadow="md"
+      <Stack
+        sx={{ width: "80%", overflowY: "auto", gap: 3, px: 4, pb: 4 }}
+        alignSelf="center"
+      >
+        <Stack alignItems="center" spacing={2}>
+          <Box
+            sx={{
+              p: 1,
+              bgcolor: "white",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: 2,
+            }}
           >
-            <Icon as={RiTerminalBoxLine} boxSize={7} color="iochmara.500" />
-          </Flex>
-          <Heading mt="4" size="lg">
+            <Box
+              component={RiTerminalBoxLine}
+              sx={{ fontSize: 28, color: "iochmara.500" }}
+            />
+          </Box>
+          <Typography variant="h5" sx={{ mt: 2 }}>
             Wait, there's more!
-          </Heading>
-          <Text fontSize="md" textAlign="center">
+          </Typography>
+          <Typography sx={{ textAlign: "center" }}>
             Recce is currently running in{" "}
-            <Text fontWeight="bold" as="span">
+            <Typography component="span" sx={{ fontWeight: "bold" }}>
               limited functionality mode
-            </Text>{" "}
+            </Typography>{" "}
             so you can run queries but{" "}
-            <Text fontWeight="bold" as="span">
+            <Typography component="span" sx={{ fontWeight: "bold" }}>
               can't diff the results yet!
-            </Text>
-          </Text>
-        </Flex>
-        <Flex direction="column" gap={2}>
-          <Text fontSize="md">
+            </Typography>
+          </Typography>
+        </Stack>
+        <Stack spacing={1}>
+          <Typography>
             To unlock the full power of Recce, set up a base environment of dbt
             artifacts for comparison.
-          </Text>
-          <Text>Once configured, you'll be able to:</Text>
-          <List.Root>
-            <List.Item>
-              <Text>Run statistical data diffs</Text>
-            </List.Item>
-            <List.Item>
-              <Text>Run query diffs</Text>
-            </List.Item>
-            <List.Item>
-              <Text>Save checks to your Recce Checklist</Text>
-            </List.Item>
-            <List.Item>
-              <Text>...and more!</Text>
-            </List.Item>
-          </List.Root>
-          <Text fontSize="md">
+          </Typography>
+          <Typography>Once configured, you'll be able to:</Typography>
+          <List sx={{ listStyleType: "disc", pl: 2 }}>
+            <ListItem sx={{ display: "list-item", p: 0 }}>
+              <Typography>Run statistical data diffs</Typography>
+            </ListItem>
+            <ListItem sx={{ display: "list-item", p: 0 }}>
+              <Typography>Run query diffs</Typography>
+            </ListItem>
+            <ListItem sx={{ display: "list-item", p: 0 }}>
+              <Typography>Save checks to your Recce Checklist</Typography>
+            </ListItem>
+            <ListItem sx={{ display: "list-item", p: 0 }}>
+              <Typography>...and more!</Typography>
+            </ListItem>
+          </List>
+          <Typography>
             Take the next step toward better data impact assessment.
-          </Text>
-        </Flex>
-        <Flex w="100%" direction="column" mt={6}>
+          </Typography>
+        </Stack>
+        <Stack sx={{ width: "100%", mt: 3 }}>
           <Button
-            colorPalette="iochmara"
-            size="lg"
+            color="iochmara"
+            variant="contained"
+            size="large"
             onClick={() => {
               window.open(
                 "https://docs.datarecce.io/get-started/#prepare-dbt-artifacts",
@@ -86,50 +95,52 @@ export function BaseEnvironmentSetupGuide() {
           >
             Start Now
           </Button>
-        </Flex>
-      </Flex>
-    </Flex>
+        </Stack>
+      </Stack>
+    </Stack>
   );
 }
 
 export function BaseEnvironmentSetupNotification() {
   return (
-    <Flex direction="row" gap="10px" alignItems={"flex-start"}>
-      <Icon as={RiMindMap} color="iochmara.500" boxSize="5" />
-      <Flex direction="column" gap="5px">
-        <Text fontWeight="bold">
+    <Stack direction="row" spacing="10px" alignItems="flex-start">
+      <Box component={RiMindMap} sx={{ color: "iochmara.500", fontSize: 20 }} />
+      <Stack spacing="5px">
+        <Typography sx={{ fontWeight: "bold" }}>
           Single Environment Mode{" "}
-          <Text color="red" as="span">
+          <Typography component="span" sx={{ color: "error.main" }}>
             Limited Functionality
-          </Text>
-        </Text>
+          </Typography>
+        </Typography>
 
-        <Text fontSize="sm">
+        <Typography sx={{ fontSize: "0.875rem" }}>
           Single Environment Mode allows you to explore your dbt project but
           won't show data comparisons between environments.
-        </Text>
-        <Text fontSize="sm">To set up full environment comparison:</Text>
-        <List.Root ps="4">
-          <List.Item>
-            <Text fontSize="sm">Run `recce debug` for setup assistance</Text>
-          </List.Item>
-          <List.Item>
-            <Text fontSize="sm">
+        </Typography>
+        <Typography sx={{ fontSize: "0.875rem" }}>
+          To set up full environment comparison:
+        </Typography>
+        <List sx={{ pl: 2 }}>
+          <ListItem sx={{ p: 0, display: "list-item" }}>
+            <Typography sx={{ fontSize: "0.875rem" }}>
+              Run `recce debug` for setup assistance
+            </Typography>
+          </ListItem>
+          <ListItem sx={{ p: 0, display: "list-item" }}>
+            <Typography sx={{ fontSize: "0.875rem" }}>
               Visit{" "}
               <Link
-                color="primary"
-                fontSize="sm"
-                fontWeight="medium"
+                sx={{ color: "primary.main", fontWeight: 500 }}
                 target="_blank"
                 href="https://docs.datarecce.io/configure-diff/"
               >
                 docs
               </Link>{" "}
               for configuration details
-            </Text>
-          </List.Item>
-        </List.Root>
-      </Flex>
-    </Flex>
+            </Typography>
+          </ListItem>
+        </List>
+      </Stack>
+    </Stack>
   );
 }

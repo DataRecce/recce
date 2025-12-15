@@ -1,13 +1,13 @@
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import MuiDialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import IconButton from "@mui/material/IconButton";
+import Stack from "@mui/material/Stack";
 import React, { useCallback, useRef, useState } from "react";
-import {
-  Box,
-  Button,
-  CloseButton,
-  Dialog,
-  Flex,
-  Portal,
-  useDisclosure,
-} from "@/components/ui/mui";
+import { IoClose } from "react-icons/io5";
 import {
   EXPLORE_ACTION,
   EXPLORE_FORM_EVENT,
@@ -15,22 +15,19 @@ import {
 } from "@/lib/api/track";
 
 function useValueDiffAlertDialog() {
-  const { open, onOpen, onClose } = useDisclosure();
+  const [open, setOpen] = useState(false);
   const [nodeCount, setNodeCount] = useState(0);
   const [resolvePromise, setResolvePromise] =
     useState<(value: boolean) => void>();
   const cancelRef = useRef<HTMLButtonElement>(null);
 
-  const confirm = useCallback(
-    (nodeCount: number) => {
-      setNodeCount(nodeCount);
-      return new Promise<boolean>((resolve) => {
-        setResolvePromise(() => resolve);
-        onOpen();
-      });
-    },
-    [onOpen],
-  );
+  const confirm = useCallback((nodeCount: number) => {
+    setNodeCount(nodeCount);
+    return new Promise<boolean>((resolve) => {
+      setResolvePromise(() => resolve);
+      setOpen(true);
+    });
+  }, []);
 
   const handleConfirm = () => {
     trackExploreActionForm({
@@ -38,7 +35,7 @@ function useValueDiffAlertDialog() {
       event: EXPLORE_FORM_EVENT.EXECUTE,
     });
     resolvePromise?.(true);
-    onClose();
+    setOpen(false);
   };
 
   const handleCancel = () => {
@@ -47,54 +44,62 @@ function useValueDiffAlertDialog() {
       event: EXPLORE_FORM_EVENT.CANCEL,
     });
     resolvePromise?.(false);
-    onClose();
+    setOpen(false);
   };
 
   const ValueDiffAlertDialog = (
-    <Dialog.Root
-      size={"xl"}
+    <MuiDialog
       open={open}
-      role="alertdialog"
-      initialFocusEl={() => {
-        return cancelRef.current;
-      }}
-      onOpenChange={handleCancel}
+      onClose={handleCancel}
+      maxWidth="md"
+      fullWidth
+      aria-labelledby="value-diff-alert-dialog-title"
     >
-      <Portal>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content>
-            <Dialog.Header fontSize="lg" fontWeight="bold">
-              <Dialog.Title>Value Diff on {nodeCount} nodes</Dialog.Title>
-            </Dialog.Header>
-
-            <Dialog.Body gap="20px" as={Flex} direction="column">
-              <Box>
-                Value diff will be executed on {nodeCount} nodes in the Lineage,
-                which can add extra costs to your bill.
-              </Box>
-            </Dialog.Body>
-
-            <Dialog.Footer gap={1}>
-              <Button
-                ref={cancelRef}
-                onClick={handleCancel}
-                variant="outline"
-                colorPalette="neutral"
-              >
-                Cancel
-              </Button>
-              <Button colorPalette="iochmara" onClick={handleConfirm} ml={3}>
-                Execute
-              </Button>
-            </Dialog.Footer>
-            <Dialog.CloseTrigger asChild>
-              <CloseButton size="sm" />
-            </Dialog.CloseTrigger>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Portal>
-    </Dialog.Root>
+      <DialogTitle
+        id="value-diff-alert-dialog-title"
+        sx={{ fontSize: "1.125rem", fontWeight: "bold" }}
+      >
+        Value Diff on {nodeCount} nodes
+      </DialogTitle>
+      <IconButton
+        aria-label="close"
+        onClick={handleCancel}
+        sx={{
+          position: "absolute",
+          right: 8,
+          top: 8,
+          color: "grey.500",
+        }}
+      >
+        <IoClose />
+      </IconButton>
+      <DialogContent>
+        <Stack spacing="20px">
+          <Box>
+            Value diff will be executed on {nodeCount} nodes in the Lineage,
+            which can add extra costs to your bill.
+          </Box>
+        </Stack>
+      </DialogContent>
+      <DialogActions sx={{ gap: 0.5 }}>
+        <Button
+          ref={cancelRef}
+          onClick={handleCancel}
+          variant="outlined"
+          color="neutral"
+        >
+          Cancel
+        </Button>
+        <Button
+          color="iochmara"
+          variant="contained"
+          onClick={handleConfirm}
+          sx={{ ml: 1.5 }}
+        >
+          Execute
+        </Button>
+      </DialogActions>
+    </MuiDialog>
   );
 
   return { confirm, AlertDialog: ValueDiffAlertDialog };

@@ -2,8 +2,11 @@
  * CommentInput - Text area for adding new comments to a check timeline.
  */
 
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
 import { useState } from "react";
-import { Box, Button, Flex, Textarea } from "@/components/ui/mui";
 
 interface CommentInputProps {
   onSubmit: (content: string) => void;
@@ -36,30 +39,40 @@ export function CommentInput({
 
   return (
     <Box>
-      <Textarea
+      <TextField
         value={content}
         onChange={(e) => setContent(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        size="sm"
-        resize="vertical"
-        minH="80px"
-        bg="white"
-        borderColor="gray.200"
-        _focus={{ borderColor: "iochmara.400", boxShadow: "0 0 0 1px #4299E1" }}
+        size="small"
+        multiline
+        fullWidth
+        minRows={3}
         disabled={isSubmitting}
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            bgcolor: "white",
+            "&:hover .MuiOutlinedInput-notchedOutline": {
+              borderColor: "grey.400",
+            },
+            "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+              borderColor: "iochmara.400",
+              boxShadow: "0 0 0 1px #4299E1",
+            },
+          },
+        }}
       />
-      <Flex justify="flex-end" mt={2}>
+      <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
         <Button
-          size="sm"
-          colorPalette="iochmara"
+          size="small"
+          color="iochmara"
+          variant="contained"
           onClick={handleSubmit}
           disabled={!content.trim() || isSubmitting}
-          loading={isSubmitting}
         >
-          Comment
+          {isSubmitting ? "Submitting..." : "Comment"}
         </Button>
-      </Flex>
+      </Stack>
     </Box>
   );
 }

@@ -1,17 +1,28 @@
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
 import {
   FallbackRender,
   ErrorBoundary as SentryErrorBoundary,
 } from "@sentry/react";
 import * as React from "react";
 import { ReactNode, useState } from "react";
-import { Box, Button, Center, Flex, Heading } from "@/components/ui/mui";
 
 const Fallback: FallbackRender = (errorData) => {
   return (
-    <Center sx={{ height: "100%", bgcolor: "grey.50" }}>
-      <Flex
+    <Box
+      sx={{
+        height: "100%",
+        bgcolor: "grey.50",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Box
         sx={{
           p: 4,
+          display: "flex",
           flexDirection: "column",
           justifyContent: "flex-start",
           bgcolor: "white",
@@ -19,9 +30,9 @@ const Fallback: FallbackRender = (errorData) => {
           minHeight: "200px",
         }}
       >
-        <Heading sx={{ width: "800px" }} size="md">
+        <Typography variant="h6" sx={{ width: "800px" }}>
           You have encountered an error
-        </Heading>
+        </Typography>
 
         <Box sx={{ flex: 1, fontSize: "10pt" }}>{String(errorData.error)}</Box>
 
@@ -31,16 +42,17 @@ const Fallback: FallbackRender = (errorData) => {
             alignSelf: "center",
             mt: "20px",
           }}
-          colorPalette="iochmara"
-          size="sm"
+          color="iochmara"
+          variant="contained"
+          size="small"
           onClick={() => {
             errorData.resetError();
           }}
         >
           Reset
         </Button>
-      </Flex>
-    </Center>
+      </Box>
+    </Box>
   );
 };
 
