@@ -1,6 +1,6 @@
+import Box from "@mui/material/Box";
 import { forwardRef, Ref, useMemo } from "react";
 import { DataGridHandle } from "react-data-grid";
-import { Center, Flex } from "@/components/ui/mui";
 import { ProfileDiffViewOptions } from "@/lib/api/profile";
 import {
   ColumnRenderMode,
@@ -80,14 +80,28 @@ const PrivateProfileDiffResultView = (
   ]);
 
   if (gridData.columns.length === 0) {
-    return <Center height="100%">No data</Center>;
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+        }}
+      >
+        No data
+      </Box>
+    );
   }
 
   return (
-    <Flex
-      direction="column"
-      backgroundColor="rgb(249, 249, 249)"
-      height={"100%"}
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        bgcolor: "rgb(249, 249, 249)",
+        height: "100%",
+      }}
     >
       <RunToolbar run={run}>
         <DiffDisplayModeSwitch
@@ -110,7 +124,7 @@ const PrivateProfileDiffResultView = (
         defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
         className="rdg-light"
       />
-    </Flex>
+    </Box>
   );
 };
 
@@ -173,14 +187,28 @@ const PrivateProfileResultView = (
   ]);
 
   if (gridData.columns.length === 0) {
-    return <Center height="100%">No data</Center>;
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+        }}
+      >
+        No data
+      </Box>
+    );
   }
 
   return (
-    <Flex
-      direction="column"
-      backgroundColor="rgb(249, 249, 249)"
-      height={"100%"}
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        bgcolor: "rgb(249, 249, 249)",
+        height: "100%",
+      }}
     >
       <ScreenshotDataGrid
         ref={ref}
@@ -190,7 +218,7 @@ const PrivateProfileResultView = (
         defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
         className="rdg-light"
       />
-    </Flex>
+    </Box>
   );
 };
 

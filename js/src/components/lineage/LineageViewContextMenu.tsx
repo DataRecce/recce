@@ -1,9 +1,11 @@
 import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
 import { ReactNode, useState } from "react";
 import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
 import { FaRegDotCircle } from "react-icons/fa";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
-import { Menu, Portal } from "@/components/ui/mui";
 import { SubmitRunTrackProps } from "@/lib/api/runs";
 import {
   EXPLORE_ACTION,
@@ -59,65 +61,60 @@ const ContextMenu = ({ menuItems, open, onClose, x, y }: ContextMenuProps) => {
   const { featureToggles } = useRecceInstanceContext();
 
   return (
-    <Menu.Root open={open} onOpenChange={onClose}>
-      <Portal>
-        <Menu.Positioner>
-          <Menu.Content
-            fontSize="0.85rem"
-            position="absolute"
-            width="250px"
-            style={{
-              left: `${x}px`,
-              top: `${y}px`,
-            }}
-          >
-            {menuItems.length === 0 ? (
-              <Menu.Item value="no-action" disabled key="no action">
-                No action available
-              </Menu.Item>
-            ) : (
-              menuItems.map(
-                ({ isSeparator, label, isDisabled, action, itemIcon }) => {
-                  if (isSeparator) {
-                    return <Menu.Separator key={label} />;
-                  } else {
-                    const menuItem = (
-                      <Menu.Item
-                        value={String(label)}
-                        key={label}
-                        disabled={isDisabled}
-                        onClick={() => {
-                          if (action) {
-                            action();
-                          }
-                          onClose();
-                        }}
-                      >
-                        {itemIcon} {label}
-                      </Menu.Item>
-                    );
-
-                    // Wrap disabled items with SetupConnectionPopover
-                    if (isDisabled) {
-                      return (
-                        <SetupConnectionPopover
-                          display={featureToggles.mode === "metadata only"}
-                          key={label}
-                        >
-                          {menuItem}
-                        </SetupConnectionPopover>
-                      );
+    <Menu
+      open={open}
+      onClose={onClose}
+      anchorReference="anchorPosition"
+      anchorPosition={{ top: y, left: x }}
+      slotProps={{
+        paper: {
+          sx: { fontSize: "0.85rem", width: "250px" },
+        },
+      }}
+    >
+      {menuItems.length === 0 ? (
+        <MenuItem disabled key="no action">
+          No action available
+        </MenuItem>
+      ) : (
+        menuItems.map(
+          ({ isSeparator, label, isDisabled, action, itemIcon }) => {
+            if (isSeparator) {
+              return <Divider key={label} />;
+            } else {
+              const menuItem = (
+                <MenuItem
+                  key={label}
+                  disabled={isDisabled}
+                  onClick={() => {
+                    if (action) {
+                      action();
                     }
+                    onClose();
+                  }}
+                >
+                  {itemIcon} {label}
+                </MenuItem>
+              );
 
-                    return menuItem;
-                  }
-                },
-              )
-            )}
-          </Menu.Content>
-        </Menu.Positioner>
-      </Portal>
-    </Menu.Root>
+              // Wrap disabled items with SetupConnectionPopover
+              if (isDisabled) {
+                return (
+                  <SetupConnectionPopover
+                    display={featureToggles.mode === "metadata only"}
+                    key={label}
+                  >
+                    {menuItem}
+                  </SetupConnectionPopover>
+                );
+              }
+
+              return menuItem;
+            }
+          },
+        )
+      )}
+    </Menu>
   );
 };
 

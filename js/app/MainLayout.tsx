@@ -7,13 +7,14 @@
 
 "use client";
 
+import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
 import { usePathname } from "next/navigation";
 import React, { ReactNode, Suspense, useEffect } from "react";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { RunList } from "@/components/run/RunList";
 import { RunResultPane } from "@/components/run/RunResultPane";
 import { HSplit, VSplit } from "@/components/split/Split";
-import { Box, Center, Flex, Spinner } from "@/components/ui/mui";
 import { trackInit } from "@/lib/api/track";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
@@ -31,18 +32,26 @@ interface MainLayoutProps {
 
 function MainContentLoading(): ReactNode {
   return (
-    <Flex
+    <Box
       sx={{
+        display: "flex",
         height: "100%",
         alignItems: "center",
         justifyContent: "center",
         contain: "size",
       }}
     >
-      <Center sx={{ height: "100%" }}>
-        <Spinner size="xl" />
-      </Center>
-    </Flex>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+        }}
+      >
+        <CircularProgress size={48} />
+      </Box>
+    </Box>
   );
 }
 
@@ -59,7 +68,14 @@ export function MainLayout({ children, lineage }: MainLayoutProps) {
   }, []);
 
   return (
-    <Flex sx={{ flexDirection: "column", height: "100vh", overflow: "hidden" }}>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        overflow: "hidden",
+      }}
+    >
       <TopBar />
       <NavBar />
       <Main isLineageRoute={isLineageRoute} lineage={lineage}>
@@ -69,7 +85,7 @@ export function MainLayout({ children, lineage }: MainLayoutProps) {
         !isDemoSite &&
         !isCodespace &&
         featureToggles.mode === null && <AuthModal />}
-    </Flex>
+    </Box>
   );
 }
 

@@ -1,7 +1,7 @@
 import "react-data-grid/lib/styles.css";
 
+import Box from "@mui/material/Box";
 import { ForwardedRef, forwardRef, Ref, useMemo } from "react";
-import { Center, Flex } from "@/components/ui/mui";
 import {
   QueryDiffViewOptions,
   QueryPreviewChangeParams,
@@ -151,14 +151,28 @@ const PrivateQueryDiffResultView = (
   }
 
   if (gridData.columns.length === 0) {
-    return <Center height="100%">No data</Center>;
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+        }}
+      >
+        No data
+      </Box>
+    );
   }
 
   return (
-    <Flex
-      direction="column"
-      backgroundColor="rgb(249, 249, 249)"
-      height={"100%"}
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        bgcolor: "rgb(249, 249, 249)",
+        height: "100%",
+      }}
     >
       <RunToolbar
         run={run}
@@ -208,7 +222,7 @@ const PrivateQueryDiffResultView = (
         }}
         className="rdg-light"
       />
-    </Flex>
+    </Box>
   );
 };
 
@@ -303,15 +317,29 @@ const PrivateQueryDiffJoinResultView = (
   }
 
   if (gridData.columns.length === 0) {
-    return <Center height="100%">No data</Center>;
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+        }}
+      >
+        No data
+      </Box>
+    );
   }
 
   if (changedOnly && gridData.rows.length === 0) {
     return (
-      <Flex
-        direction="column"
-        backgroundColor="rgb(249, 249, 249)"
-        height={"100%"}
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          bgcolor: "rgb(249, 249, 249)",
+          height: "100%",
+        }}
       >
         <RunToolbar
           run={run}
@@ -319,16 +347,28 @@ const PrivateQueryDiffJoinResultView = (
           onViewOptionsChanged={onViewOptionsChanged}
           warnings={warnings}
         />
-        <Center height="100%">No change</Center>
-      </Flex>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100%",
+          }}
+        >
+          No change
+        </Box>
+      </Box>
     );
   }
 
   return (
-    <Flex
-      direction="column"
-      backgroundColor="rgb(249, 249, 249)"
-      height={"100%"}
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        bgcolor: "rgb(249, 249, 249)",
+        height: "100%",
+      }}
     >
       <RunToolbar
         run={run}
@@ -378,7 +418,7 @@ const PrivateQueryDiffJoinResultView = (
         }}
         className="rdg-light"
       />
-    </Flex>
+    </Box>
   );
 };
 
