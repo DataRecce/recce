@@ -83,10 +83,10 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
       <MuiDialog
         open={isOpen}
         onClose={() => setIsOpen(false)}
-        maxWidth="xl"
+        maxWidth="sm"
         fullWidth
-        PaperProps={{
-          sx: { height: "75%", overflowY: "auto" },
+        slotProps={{
+          paper: { sx: { height: "75%", overflowY: "auto" } },
         }}
       >
         <DialogTitle sx={{ display: "flex", alignItems: "center" }}>

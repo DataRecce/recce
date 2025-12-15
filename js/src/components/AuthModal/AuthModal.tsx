@@ -79,8 +79,8 @@ export default function AuthModal({
       onClose={handleClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        sx: { borderRadius: "16px" },
+      slotProps={{
+        paper: { sx: { borderRadius: "1rem" } },
       }}
     >
       {authState !== "authenticating" && (

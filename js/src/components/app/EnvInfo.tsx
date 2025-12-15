@@ -214,7 +214,7 @@ export function EnvInfo() {
           </IconButton>
         </div>
       </MuiTooltip>
-      <MuiDialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
+      <MuiDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ display: "flex", alignItems: "center" }}>
           Environment Information
           <Box sx={{ flexGrow: 1 }} />

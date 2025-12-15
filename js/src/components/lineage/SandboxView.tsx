@@ -300,13 +300,15 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
       onClose={handleClose}
       maxWidth={false}
       fullWidth
-      PaperProps={{
-        sx: {
-          width: "100%",
-          height: "100%",
-          maxWidth: "100%",
-          maxHeight: "100%",
-          m: 0,
+      slotProps={{
+        paper: {
+          sx: {
+            width: "100%",
+            height: "100%",
+            maxWidth: "100%",
+            maxHeight: "100%",
+            m: 0,
+          },
         },
       }}
     >

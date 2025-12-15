@@ -313,7 +313,7 @@ export function useImageDownloadModal() {
     };
 
     return (
-      <MuiDialog open={open} onClose={onClose} maxWidth="xl" fullWidth>
+      <MuiDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
         <DialogTitle>Screenshot Preview</DialogTitle>
         <IconButton
           aria-label="close"

@@ -75,11 +75,11 @@ export const RunModal = ({
     <MuiDialog
       open={isOpen}
       onClose={handleClose}
-      maxWidth="xl"
+      maxWidth="sm"
       fullWidth
       scroll="paper"
-      PaperProps={{
-        sx: { height: "75%", minHeight: "400px" },
+      slotProps={{
+        paper: { sx: { height: "75%", minHeight: "400px" } },
       }}
     >
       <DialogTitle sx={{ display: "flex", alignItems: "center" }}>

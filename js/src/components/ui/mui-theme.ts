@@ -374,15 +374,15 @@ const componentOverrides: ThemeOptions["components"] = {
         borderRadius: 6,
       },
       sizeSmall: {
-        padding: "4px 12px",
+        padding: "0.25rem 0.75rem",
         fontSize: "0.875rem",
       },
       sizeMedium: {
-        padding: "8px 16px",
+        padding: "0.5rem 1rem",
         fontSize: "1rem",
       },
       sizeLarge: {
-        padding: "12px 24px",
+        padding: "0.75rem 1.5rem",
         fontSize: "1.125rem",
       },
       // Contained variant (solid in Chakra)
@@ -501,7 +501,7 @@ const componentOverrides: ThemeOptions["components"] = {
     styleOverrides: {
       root: {
         fontSize: "0.875rem",
-        padding: "8px 12px",
+        padding: "0.5rem 0.75rem",
         "&:hover": {
           backgroundColor: colors.neutral[100],
         },
@@ -549,7 +549,7 @@ const componentOverrides: ThemeOptions["components"] = {
       tooltip: {
         backgroundColor: colors.neutral[800],
         fontSize: "0.75rem",
-        padding: "4px 8px",
+        padding: "0.25rem 0.5rem",
         borderRadius: 4,
       },
       arrow: {
@@ -773,9 +773,9 @@ const baseThemeOptions: ThemeOptions = {
     },
   },
   shape: {
-    borderRadius: 6, // Match Chakra's default border radius
+    borderRadius: 6, // Base border radius value (used by MUI's spacing multiplier)
   },
-  spacing: 4, // Base spacing unit (4px), similar to Chakra
+  spacing: 4, // Base spacing unit (used by MUI's spacing multiplier)
   components: componentOverrides,
 };
 
