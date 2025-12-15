@@ -2,13 +2,13 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import MuiSwitch from "@mui/material/Switch";
+import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMutation } from "@tanstack/react-query";
 import React, { useMemo } from "react";
 import { PiInfoFill } from "react-icons/pi";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
-import { Tooltip } from "@/components/ui/tooltip";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import {
   QueryParams,
@@ -49,11 +49,11 @@ const QueryModeToggle = () => {
         <Typography variant="body2" sx={{ fontSize: "0.75rem" }}>
           Custom Queries
         </Typography>
-        <Tooltip content={customQueriesDescription}>
+        <MuiTooltip title={customQueriesDescription}>
           <Box component="span" sx={{ display: "flex", color: "grey.600" }}>
             <PiInfoFill fontSize="1rem" />
           </Box>
-        </Tooltip>
+        </MuiTooltip>
       </Stack>
       <MuiSwitch
         size="small"
@@ -161,19 +161,21 @@ export const QueryPage = () => {
           <HistoryToggle />
           <Box sx={{ flexGrow: 1 }} />
           {singleEnv ? (
-            <Tooltip
-              content="Please configure the base environment before running the diff"
-              positioning={{ placement: "left" }}
+            <MuiTooltip
+              title="Please configure the base environment before running the diff"
+              placement="left"
             >
-              <Button
-                variant="contained"
-                disabled
-                size="small"
-                sx={{ fontSize: "14px", mt: "16px" }}
-              >
-                Run Diff
-              </Button>
-            </Tooltip>
+              <span>
+                <Button
+                  variant="contained"
+                  disabled
+                  size="small"
+                  sx={{ fontSize: "14px", mt: "16px" }}
+                >
+                  Run Diff
+                </Button>
+              </span>
+            </MuiTooltip>
           ) : (
             <SetupConnectionPopover
               display={featureToggles.mode === "metadata only"}

@@ -10,6 +10,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
+import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import {
   type MouseEvent,
@@ -20,7 +21,6 @@ import {
 import { IoClose } from "react-icons/io5";
 import { PiCaretDown } from "react-icons/pi";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
-import { Tooltip } from "@/components/ui/tooltip";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import {
@@ -320,32 +320,34 @@ function SingleEnvironmentMenuButton({
             </ListItemIcon>
             <ListItemText>Row Count</ListItemText>
           </MenuItem>
-          <Tooltip
-            content={disableReason(isAddedOrRemoved, "profile")}
-            positioning={{ placement: "left" }}
+          <MuiTooltip
+            title={disableReason(isAddedOrRemoved, "profile")}
+            placement="left"
           >
-            <MenuItem
-              disabled={isAddedOrRemoved}
-              onClick={() => {
-                trackExploreAction({
-                  action: EXPLORE_ACTION.PROFILE,
-                  source: EXPLORE_SOURCE.NODE_SIDEBAR_SINGLE_ENV,
-                  node_count: 1,
-                });
-                runAction(
-                  "profile",
-                  { model: node.data.name },
-                  { showForm: true, showLast: false },
-                );
-                handleClose();
-              }}
-            >
-              <ListItemIcon>
-                <ProfileIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Profile</ListItemText>
-            </MenuItem>
-          </Tooltip>
+            <span>
+              <MenuItem
+                disabled={isAddedOrRemoved}
+                onClick={() => {
+                  trackExploreAction({
+                    action: EXPLORE_ACTION.PROFILE,
+                    source: EXPLORE_SOURCE.NODE_SIDEBAR_SINGLE_ENV,
+                    node_count: 1,
+                  });
+                  runAction(
+                    "profile",
+                    { model: node.data.name },
+                    { showForm: true, showLast: false },
+                  );
+                  handleClose();
+                }}
+              >
+                <ListItemIcon>
+                  <ProfileIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Profile</ListItemText>
+              </MenuItem>
+            </span>
+          </MuiTooltip>
         </Menu>
       </>
     );
@@ -421,13 +423,9 @@ function ExploreChangeMenuButton({
 
     const tooltipContent = disableReason(isAddedOrRemoved, runType);
     return (
-      <Tooltip
-        disabled={tooltipContent === ""}
-        content={tooltipContent}
-        positioning={{ placement: "left" }}
-      >
-        {menuItem}
-      </Tooltip>
+      <MuiTooltip title={tooltipContent} placement="left">
+        <span>{menuItem}</span>
+      </MuiTooltip>
     );
   };
 

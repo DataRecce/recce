@@ -14,6 +14,7 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
+import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { format, formatDistance, parseISO } from "date-fns";
 import { isEmpty } from "lodash";
@@ -21,7 +22,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { LuExternalLink } from "react-icons/lu";
 import { LineageGraph } from "@/components/lineage/lineage";
-import { Tooltip } from "@/components/ui/tooltip";
 import {
   type EnvironmentConfigProps,
   trackEnvironmentConfig,
@@ -179,10 +179,7 @@ export function EnvInfo() {
 
   return (
     <>
-      <Tooltip
-        content="Environment Info"
-        positioning={{ placement: "bottom-end" }}
-      >
+      <MuiTooltip title="Environment Info" placement="bottom-end">
         <div
           className="flex items-center hover:cursor-pointer hover:text-black"
           onClick={handleOpen}
@@ -216,7 +213,7 @@ export function EnvInfo() {
             />
           </IconButton>
         </div>
-      </Tooltip>
+      </MuiTooltip>
       <MuiDialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
         <DialogTitle sx={{ display: "flex", alignItems: "center" }}>
           Environment Information
@@ -280,24 +277,24 @@ export function EnvInfo() {
                         <TableCell>schema</TableCell>
                         <TableCell className="no-track-pii-safe">
                           {Array.from(baseSchemas).map((item) => (
-                            <Tooltip
+                            <MuiTooltip
                               key={item}
-                              content={item}
-                              positioning={{ placement: "bottom" }}
+                              title={item}
+                              placement="bottom"
                             >
                               <div className="max-w-72 truncate">{item}</div>
-                            </Tooltip>
+                            </MuiTooltip>
                           ))}
                         </TableCell>
                         <TableCell className="no-track-pii-safe">
                           {Array.from(currentSchemas).map((item) => (
-                            <Tooltip
+                            <MuiTooltip
                               key={item}
-                              content={item}
-                              positioning={{ placement: "bottom" }}
+                              title={item}
+                              placement="bottom"
                             >
                               <div className="max-w-72 truncate">{item}</div>
-                            </Tooltip>
+                            </MuiTooltip>
                           ))}
                         </TableCell>
                       </TableRow>

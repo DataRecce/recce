@@ -2,12 +2,12 @@ import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
+import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { FiArrowRight, FiFrown } from "react-icons/fi";
 import { PiRepeat } from "react-icons/pi";
 import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
-import { Tooltip } from "@/components/ui/tooltip";
 import { RowCount, RowCountDiff } from "@/lib/api/models";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
@@ -38,7 +38,7 @@ export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
     node.data.resourceType,
   );
   return (
-    <Tooltip showArrow content="Type of resource">
+    <MuiTooltip arrow title="Type of resource">
       <Box component="span" sx={tagRootSx}>
         {ResourceTypeIcon && (
           <Box component="span" sx={tagStartElementSx}>
@@ -47,7 +47,7 @@ export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
         )}
         {node.data.resourceType}
       </Box>
-    </Tooltip>
+    </MuiTooltip>
   );
 }
 
@@ -147,9 +147,9 @@ export function ModelRowCount({ rowCount }: ModelRowCountProps) {
   const label = `${base} -> ${current} rows`;
 
   return (
-    <Tooltip showArrow content={label}>
+    <MuiTooltip arrow title={label}>
       <_RowCountByRate rowCount={rowCount} />
-    </Tooltip>
+    </MuiTooltip>
   );
 }
 
@@ -182,7 +182,7 @@ export function RowCountDiffTag({
 
   // TODO isFetching is not hooked up, so disabling it on the skeleton for now
   return (
-    <Tooltip content={label}>
+    <MuiTooltip title={label}>
       <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
         <Box
           component="span"
@@ -216,7 +216,7 @@ export function RowCountDiffTag({
           )}
         </Box>
       </SetupConnectionPopover>
-    </Tooltip>
+    </MuiTooltip>
   );
 }
 

@@ -1,9 +1,9 @@
 import Box, { type BoxProps } from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
+import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMemo } from "react";
 import { PiInfo } from "react-icons/pi";
-import { Tooltip } from "@/components/ui/tooltip";
 import { NodeColumnData } from "@/lib/api/info";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { DropdownValuesInput } from "@/utils/DropdownValuesInput";
@@ -54,17 +54,14 @@ export const QueryForm = ({
           >
             Diff with Primary Key(s) (suggested)
           </Typography>
-          <Tooltip
-            content={labelInfo}
-            positioning={{ placement: "bottom-end" }}
-          >
+          <MuiTooltip title={labelInfo} placement="bottom-end">
             <Box
               component="span"
               sx={{ display: "flex", color: "grey.600", cursor: "help" }}
             >
               <PiInfo fontSize="0.75rem" />
             </Box>
-          </Tooltip>
+          </MuiTooltip>
         </Stack>
         <DropdownValuesInput
           className="no-track-pii-safe"

@@ -15,8 +15,8 @@ import { Run } from "@/lib/api/types";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { findByRunType } from "../run/registry";
 import "simplebar/dist/simplebar.min.css";
+import MuiTooltip from "@mui/material/Tooltip";
 import { PiX } from "react-icons/pi";
-import { Tooltip } from "@/components/ui/tooltip";
 import { trackHistoryAction } from "@/lib/api/track";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
@@ -90,9 +90,10 @@ const RunListItem = ({
           {(run.name ?? "").trim() || "<no name>"}
         </Box>
         {checkId ? (
-          <Tooltip content="Go to Check" aria-label="Go to Check">
+          <MuiTooltip title="Go to Check">
             <Typography
               component="span"
+              aria-label="Go to Check"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -101,11 +102,12 @@ const RunListItem = ({
             >
               <FaCheckCircle color="green" />
             </Typography>
-          </Tooltip>
+          </MuiTooltip>
         ) : !hideAddToChecklist ? (
-          <Tooltip content="Add to Checklist" aria-label="Add to Checklist">
+          <MuiTooltip title="Add to Checklist">
             <Typography
               component="span"
+              aria-label="Add to Checklist"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -115,7 +117,7 @@ const RunListItem = ({
             >
               <FaRegCheckCircle />
             </Typography>
-          </Tooltip>
+          </MuiTooltip>
         ) : null}
       </Box>
       <Box

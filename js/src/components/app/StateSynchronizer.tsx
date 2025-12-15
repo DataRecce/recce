@@ -10,13 +10,13 @@ import IconButton from "@mui/material/IconButton";
 import Radio from "@mui/material/Radio";
 import RadioGroup from "@mui/material/RadioGroup";
 import Stack from "@mui/material/Stack";
+import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { PiInfo } from "react-icons/pi";
 import { toaster } from "@/components/ui/toaster";
-import { Tooltip } from "@/components/ui/tooltip";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { isStateSyncing, SyncStateInput, syncState } from "@/lib/api/state";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
@@ -31,11 +31,11 @@ function isCheckDetailPage(href: string): boolean {
 
 export function StateSpinner() {
   return (
-    <Tooltip content="Syncing">
+    <MuiTooltip title="Syncing">
       <Box sx={{ mx: "10px" }}>
         <CircularProgress size={20} />
       </Box>
-    </Tooltip>
+    </MuiTooltip>
   );
 }
 
@@ -91,7 +91,7 @@ export function StateSynchronizer() {
   if (isSyncing) return <StateSpinner />;
   return (
     <>
-      <Tooltip content="Sync with Cloud">
+      <MuiTooltip title="Sync with Cloud">
         <IconButton
           size="small"
           aria-label="Sync state"
@@ -104,7 +104,7 @@ export function StateSynchronizer() {
             sx={{ fontSize: 16, verticalAlign: "middle" }}
           />
         </IconButton>
-      </Tooltip>
+      </MuiTooltip>
       <MuiDialog open={open} onClose={handleClose}>
         <DialogTitle
           sx={{ display: "flex", alignItems: "center", fontWeight: "bold" }}
@@ -137,12 +137,12 @@ export function StateSynchronizer() {
                   label={
                     <Stack direction="row" alignItems="center">
                       Merge
-                      <Tooltip content="This will merge the local and remote states.">
+                      <MuiTooltip title="This will merge the local and remote states.">
                         <Box
                           component={PiInfo}
                           sx={{ ml: 2, cursor: "pointer" }}
                         />
-                      </Tooltip>
+                      </MuiTooltip>
                     </Stack>
                   }
                 />
@@ -154,12 +154,12 @@ export function StateSynchronizer() {
                   label={
                     <Stack direction="row" alignItems="center">
                       Overwrite
-                      <Tooltip content="This will overwrite the remote state file with the local state.">
+                      <MuiTooltip title="This will overwrite the remote state file with the local state.">
                         <Box
                           component={PiInfo}
                           sx={{ ml: 2, cursor: "pointer" }}
                         />
-                      </Tooltip>
+                      </MuiTooltip>
                     </Stack>
                   }
                 />
@@ -171,12 +171,12 @@ export function StateSynchronizer() {
                   label={
                     <Stack direction="row" alignItems="center">
                       Revert
-                      <Tooltip content="This will discard local changes and revert to the cloud state.">
+                      <MuiTooltip title="This will discard local changes and revert to the cloud state.">
                         <Box
                           component={PiInfo}
                           sx={{ ml: 2, cursor: "pointer" }}
                         />
-                      </Tooltip>
+                      </MuiTooltip>
                     </Stack>
                   }
                 />

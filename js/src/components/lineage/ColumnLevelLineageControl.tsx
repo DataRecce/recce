@@ -5,6 +5,7 @@ import IconButton from "@mui/material/IconButton";
 import Link from "@mui/material/Link";
 import MuiPopover from "@mui/material/Popover";
 import Stack from "@mui/material/Stack";
+import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { UseMutationResult } from "@tanstack/react-query";
 import { useState } from "react";
@@ -13,7 +14,6 @@ import { PiInfo, PiX } from "react-icons/pi";
 import { CllInput, ColumnLineageData } from "@/lib/api/cll";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
-import { Tooltip } from "../ui/tooltip";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 
 const _AnalyzeChangeHint = ({ ml }: { ml?: number }) => {
@@ -235,32 +235,37 @@ export const ColumnLevelLineageControl = ({
     <Stack direction="row" spacing="5px">
       {!singleEnv && (
         <Box sx={{ borderRadius: 1, boxShadow: 3 }}>
-          <Tooltip
-            openDelay={50}
-            content="Please provide catalog.json to enable Impact Radius"
-            disabled={!noCatalogCurrent}
-            positioning={{ placement: "top" }}
+          <MuiTooltip
+            enterDelay={50}
+            title={
+              noCatalogCurrent
+                ? "Please provide catalog.json to enable Impact Radius"
+                : ""
+            }
+            placement="top"
           >
-            <Button
-              size="small"
-              variant="outlined"
-              sx={{
-                borderColor: "neutral.light",
-                whiteSpace: "nowrap",
-                display: "inline-flex",
-              }}
-              disabled={!interactive || noCatalogCurrent}
-              startIcon={<FaRegDotCircle />}
-              onClick={() => {
-                void showColumnLevelLineage({
-                  no_upstream: true,
-                  change_analysis: true,
-                });
-              }}
-            >
-              Impact Radius
-            </Button>
-          </Tooltip>
+            <span>
+              <Button
+                size="small"
+                variant="outlined"
+                sx={{
+                  borderColor: "neutral.light",
+                  whiteSpace: "nowrap",
+                  display: "inline-flex",
+                }}
+                disabled={!interactive || noCatalogCurrent}
+                startIcon={<FaRegDotCircle />}
+                onClick={() => {
+                  void showColumnLevelLineage({
+                    no_upstream: true,
+                    change_analysis: true,
+                  });
+                }}
+              >
+                Impact Radius
+              </Button>
+            </span>
+          </MuiTooltip>
         </Box>
       )}
       {viewOptions.column_level_lineage && (
@@ -279,9 +284,9 @@ export const ColumnLevelLineageControl = ({
         >
           <ModeMessage />
           {action.isError && (
-            <Tooltip
-              content={`Error: ${action.error.message}`}
-              positioning={{ placement: "bottom" }}
+            <MuiTooltip
+              title={`Error: ${action.error.message}`}
+              placement="bottom"
             >
               <Typography
                 component="span"
@@ -297,7 +302,7 @@ export const ColumnLevelLineageControl = ({
                   sx={{ color: "error.main", fontSize: "14px" }}
                 />
               </Typography>
-            </Tooltip>
+            </MuiTooltip>
           )}
 
           {action.isPending ? (

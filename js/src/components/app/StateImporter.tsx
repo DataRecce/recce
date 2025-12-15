@@ -6,13 +6,13 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
+import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { ChangeEvent, useCallback, useRef, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { PiInfo } from "react-icons/pi";
 import { toaster } from "@/components/ui/toaster";
-import { Tooltip } from "@/components/ui/tooltip";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { importState } from "@/lib/api/state";
 import { trackStateAction } from "@/lib/api/track";
@@ -100,8 +100,8 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   const { isDemoSite } = useLineageGraphContext();
   return (
     <>
-      <Tooltip
-        content={
+      <MuiTooltip
+        title={
           "Import Checklist from State File" +
           (isDemoSite ? " (Disabled in the demo site)" : "")
         }
@@ -117,7 +117,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
         >
           <Box component={IconImport} sx={{ fontSize: 20 }} />
         </IconButton>
-      </Tooltip>
+      </MuiTooltip>
       <input
         type="file"
         style={{ display: "none" }}

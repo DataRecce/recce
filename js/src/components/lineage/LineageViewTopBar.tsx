@@ -12,6 +12,7 @@ import Radio from "@mui/material/Radio";
 import RadioGroup from "@mui/material/RadioGroup";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
+import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import {
   type CSSProperties,
@@ -24,7 +25,6 @@ import { FiPackage } from "react-icons/fi";
 import { PiCaretDown } from "react-icons/pi";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
-import { Tooltip } from "@/components/ui/tooltip";
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
@@ -293,21 +293,22 @@ const NodeSelectionInput = (props: {
   }, [props.value]);
 
   return (
-    <Tooltip
-      // Custom tooltip style
-      contentProps={{
-        width: "18.75rem",
-        padding: 2,
-        shadow: "md",
-        borderWidth: 1,
-        rounded: "md",
-        color: "black",
-        backgroundColor: "white",
+    <MuiTooltip
+      title={flags?.single_env_onboarding ? props.tooltipComponent : ""}
+      placement="bottom-start"
+      slotProps={{
+        tooltip: {
+          sx: {
+            width: "18.75rem",
+            p: 2,
+            boxShadow: 3,
+            border: 1,
+            borderRadius: 1,
+            color: "black",
+            bgcolor: "white",
+          },
+        },
       }}
-      content={props.tooltipComponent}
-      positioning={{ placement: "bottom-start" }}
-      closeOnClick={false}
-      disabled={!flags?.single_env_onboarding}
     >
       <TextField
         inputRef={inputRef}
@@ -344,7 +345,7 @@ const NodeSelectionInput = (props: {
           },
         }}
       />
-    </Tooltip>
+    </MuiTooltip>
   );
 };
 

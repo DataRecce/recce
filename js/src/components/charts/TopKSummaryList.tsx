@@ -1,5 +1,6 @@
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
+import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import {
   AnimationOptions,
@@ -12,7 +13,6 @@ import {
 } from "chart.js";
 import { Fragment } from "react";
 import { Bar } from "react-chartjs-2";
-import { Tooltip } from "@/components/ui/tooltip";
 import { TopKDiffResult, TopKResult } from "@/lib/api/profile";
 import {
   formatAsAbbreviatedNumber,
@@ -88,8 +88,8 @@ function TopKChartTooltip({
   children?: React.ReactNode;
 }) {
   return (
-    <Tooltip
-      content={
+    <MuiTooltip
+      title={
         <Box>
           <Typography>
             <SquareIcon color={CURRENT_BAR_COLOR} />
@@ -101,10 +101,10 @@ function TopKChartTooltip({
           </Typography>
         </Box>
       }
-      showArrow
+      arrow
     >
       <span>{children}</span>
-    </Tooltip>
+    </MuiTooltip>
   );
 }
 
@@ -280,10 +280,7 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
                     px: 1.5,
                   }}
                 >
-                  <Tooltip
-                    content={topkLabel}
-                    positioning={{ placement: "top-start" }}
-                  >
+                  <MuiTooltip title={topkLabel} placement="top-start">
                     <Typography
                       sx={{
                         width: "14em",
@@ -299,7 +296,7 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
                     >
                       {topkLabel}
                     </Typography>
-                  </Tooltip>
+                  </MuiTooltip>
                   <Box sx={{ display: "flex", height: "2em", width: "10em" }}>
                     <CategoricalBarChart
                       topkCount={topkCount}
@@ -307,10 +304,7 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
                       valids={valids}
                     />
                   </Box>
-                  <Tooltip
-                    content={displayTopkCount}
-                    positioning={{ placement: "top-start" }}
-                  >
+                  <MuiTooltip title={displayTopkCount} placement="top-start">
                     <Typography
                       sx={{
                         ml: 2.5,
@@ -324,11 +318,8 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
                     >
                       {displayTopkCount}
                     </Typography>
-                  </Tooltip>
-                  <Tooltip
-                    content={displayTopkRatio}
-                    positioning={{ placement: "top-start" }}
-                  >
+                  </MuiTooltip>
+                  <MuiTooltip title={displayTopkRatio} placement="top-start">
                     <Typography
                       sx={{
                         color: "grey.400",
@@ -338,7 +329,7 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
                     >
                       {displayTopkRatio}
                     </Typography>
-                  </Tooltip>
+                  </MuiTooltip>
                 </Box>
                 <Divider />
               </>

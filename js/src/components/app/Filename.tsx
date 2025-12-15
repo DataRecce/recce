@@ -9,13 +9,13 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
+import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import React, { useEffect, useRef, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { toaster } from "@/components/ui/toaster";
-import { Tooltip } from "@/components/ui/tooltip";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useChecks } from "@/lib/api/checks";
 import { localStorageKeys } from "@/lib/api/localStorageKeys";
@@ -205,9 +205,9 @@ export const Filename = () => {
           {titleReadOnlyState ?? fileName ?? titleNewInstance}
         </Box>
         {!featureToggles.disableSaveToFile && (
-          <Tooltip
-            content={fileName ? "Change Filename" : "Save"}
-            openDelay={1000}
+          <MuiTooltip
+            title={fileName ? "Change Filename" : "Save"}
+            enterDelay={1000}
           >
             <IconButton
               onClick={handleOpen}
@@ -219,7 +219,7 @@ export const Filename = () => {
                 sx={{ fontSize: 16, verticalAlign: "middle" }}
               />
             </IconButton>
-          </Tooltip>
+          </MuiTooltip>
         )}
       </Stack>
       <MuiDialog open={modalOpen} onClose={handleModalClose}>

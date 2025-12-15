@@ -5,10 +5,10 @@ import Divider from "@mui/material/Divider";
 import InputBase from "@mui/material/InputBase";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import _ from "lodash";
 import React, { type MouseEvent, useRef, useState } from "react";
-import { Tooltip } from "@/components/ui/tooltip";
 
 export interface DropdownValuesInputProps {
   unitName: string;
@@ -282,14 +282,14 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
           </MenuItem>
         ))}
         {filteredList.length > limit && (
-          <Tooltip
-            content="Please use filter to find more items"
-            positioning={{ placement: "top" }}
+          <MuiTooltip
+            title="Please use filter to find more items"
+            placement="top"
           >
             <Box px={1.5} py={0.5} color="text.secondary" fontSize="8pt">
               and {filteredList.length - limit} more items...
             </Box>
-          </Tooltip>
+          </MuiTooltip>
         )}
       </Menu>
     </Box>

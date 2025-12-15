@@ -16,13 +16,13 @@ import Divider from "@mui/material/Divider";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
+import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
 import { IconType } from "react-icons";
 import { IoClose } from "react-icons/io5";
 import { isDisabledByNoResult } from "@/components/check/utils";
-import { Tooltip } from "@/components/ui/tooltip";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, updateCheck } from "@/lib/api/checks";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
@@ -96,12 +96,12 @@ const ChecklistItem = ({
           {check.name}
         </Box>
 
-        <Tooltip
-          content={
+        <MuiTooltip
+          title={
             isNoResult ? "Run the check first" : "Click to mark as approved"
           }
-          positioning={{ placement: "top" }}
-          showArrow
+          placement="top"
+          arrow
         >
           <Box>
             <Checkbox
@@ -125,7 +125,7 @@ const ChecklistItem = ({
               }}
             />
           </Box>
-        </Tooltip>
+        </MuiTooltip>
       </Box>
     </>
   );

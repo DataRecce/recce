@@ -17,6 +17,7 @@ import IconButton from "@mui/material/IconButton";
 import Popover from "@mui/material/Popover";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
+import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
@@ -32,7 +33,6 @@ import {
   PiTrashSimple,
 } from "react-icons/pi";
 import { MarkdownContent } from "@/components/ui/markdown/MarkdownContent";
-import { Tooltip } from "@/components/ui/tooltip";
 import { CheckEvent, getEventIconType } from "@/lib/api/checkEvents";
 import { fetchGitHubAvatar } from "@/lib/api/user";
 
@@ -369,7 +369,7 @@ function CommentEvent({
                 }}
               >
                 {onEdit && (
-                  <Tooltip content="Edit comment">
+                  <MuiTooltip title="Edit comment">
                     <IconButton
                       aria-label="Edit comment"
                       size="small"
@@ -377,11 +377,11 @@ function CommentEvent({
                     >
                       <PiPencilSimple />
                     </IconButton>
-                  </Tooltip>
+                  </MuiTooltip>
                 )}
                 {onDelete && (
                   <>
-                    <Tooltip content="Delete comment">
+                    <MuiTooltip title="Delete comment">
                       <IconButton
                         aria-label="Delete comment"
                         size="small"
@@ -390,7 +390,7 @@ function CommentEvent({
                       >
                         <PiTrashSimple />
                       </IconButton>
-                    </Tooltip>
+                    </MuiTooltip>
                     <Popover
                       open={isDeletePopoverOpen}
                       anchorEl={deleteAnchorEl}

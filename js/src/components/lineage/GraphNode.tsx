@@ -1,11 +1,11 @@
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
+import MuiTooltip from "@mui/material/Tooltip";
 import { Handle, NodeProps, Position, useStore } from "@xyflow/react";
 import React, { useState } from "react";
 import { FaCheckSquare, FaRegDotCircle, FaRegSquare } from "react-icons/fa";
 import { VscKebabVertical } from "react-icons/vsc";
-import { Tooltip } from "@/components/ui/tooltip";
 import { RowCountDiff } from "@/lib/api/models";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { deltaPercentageString } from "../rowcount/delta";
@@ -100,9 +100,9 @@ const NodeRunsAggregated = ({
   return (
     <Box sx={{ display: "flex", flex: 1, alignItems: "center" }}>
       {schemaChanged !== undefined && (
-        <Tooltip
-          content={`Schema (${schemaChanged ? "changed" : "no change"})`}
-          openDelay={500}
+        <MuiTooltip
+          title={`Schema (${schemaChanged ? "changed" : "no change"})`}
+          enterDelay={500}
         >
           <Box sx={{ height: 16 }}>
             {SchemaDiffIcon && (
@@ -112,20 +112,20 @@ const NodeRunsAggregated = ({
               />
             )}
           </Box>
-        </Tooltip>
+        </MuiTooltip>
       )}
       <Box sx={{ flexGrow: 1 }} />
       {runs?.row_count_diff && rowCountChanged !== undefined && (
-        <Tooltip
-          content={`Row count (${rowCountChanged ? "changed" : "="})`}
-          openDelay={500}
+        <MuiTooltip
+          title={`Row count (${rowCountChanged ? "changed" : "="})`}
+          enterDelay={500}
         >
           <Box>
             <_RowCountDiffTag
               rowCount={runs.row_count_diff.result as RowCountDiff}
             />
           </Box>
-        </Tooltip>
+        </MuiTooltip>
       )}
     </Box>
   );
@@ -176,12 +176,12 @@ const GraphNodeTitle = ({
         whiteSpace: "nowrap",
       }}
     >
-      <Tooltip
-        content={resourceType === "model" ? name : `${name} (${resourceType})`}
-        positioning={{ placement: "top" }}
+      <MuiTooltip
+        title={resourceType === "model" ? name : `${name} (${resourceType})`}
+        placement="top"
       >
         <span>{name}</span>
-      </Tooltip>
+      </MuiTooltip>
     </Box>
   );
 };
@@ -395,10 +395,10 @@ export function GraphNode(nodeProps: GraphNodeProps) {
             {isHovered ? (
               <>
                 {changeStatus === "modified" && (
-                  <Tooltip
-                    content="Show Impact Radius"
-                    positioning={{ placement: "top" }}
-                    openDelay={500}
+                  <MuiTooltip
+                    title="Show Impact Radius"
+                    placement="top"
+                    enterDelay={500}
                   >
                     <Box
                       sx={{
@@ -427,7 +427,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
                         }}
                       />
                     </Box>
-                  </Tooltip>
+                  </MuiTooltip>
                 )}
                 <Box
                   component={VscKebabVertical}

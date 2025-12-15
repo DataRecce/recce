@@ -17,6 +17,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
+import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { stripIndents } from "common-tags";
@@ -37,7 +38,6 @@ import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { CheckTimeline } from "@/components/check/timeline";
 import { isDisabledByNoResult } from "@/components/check/utils";
-import { Tooltip } from "@/components/ui/tooltip";
 import {
   QueryDiffParams,
   QueryParams,
@@ -354,14 +354,14 @@ export function CheckDetail({
               }}
             />
             {isPresetCheck && (
-              <Tooltip content="Preset Check defined in recce config">
+              <MuiTooltip title="Preset Check defined in recce config">
                 <Chip
                   size="small"
                   icon={<CiBookmark size="14px" />}
                   label="Preset"
                   sx={{ ml: 1, flex: "0 0 auto" }}
                 />
-              </Tooltip>
+              </MuiTooltip>
             )}
             <Box sx={{ flexGrow: 1 }} />
             <Stack direction="row" spacing={1} sx={{ mr: "10px" }}>
@@ -440,15 +440,15 @@ export function CheckDetail({
                 </MenuItem>
               </Menu>
 
-              <Tooltip
-                content={
+              <MuiTooltip
+                title={
                   isDisabledByNoResult(check.type, run)
                     ? "Run the check first"
                     : check.is_checked
                       ? "Mark as Pending"
                       : "Mark as Approved"
                 }
-                positioning={{ placement: "bottom-end" }}
+                placement="bottom-end"
               >
                 <Button
                   size="small"
@@ -472,7 +472,7 @@ export function CheckDetail({
                 >
                   {check.is_checked ? "Approved" : "Mark as Approved"}
                 </Button>
-              </Tooltip>
+              </MuiTooltip>
             </Stack>
           </Box>
 
@@ -529,7 +529,7 @@ export function CheckDetail({
             <Box sx={{ flexGrow: 1 }} />
             <Stack direction="row" spacing={1} sx={{ mr: "10px" }}>
               {RunResultView && (
-                <Tooltip content="Rerun">
+                <MuiTooltip title="Rerun">
                   <Button
                     variant="outlined"
                     size="small"
@@ -540,7 +540,7 @@ export function CheckDetail({
                   >
                     {isRunning ? "Running..." : "Rerun"}
                   </Button>
-                </Tooltip>
+                </MuiTooltip>
               )}
               <Button
                 variant="outlined"

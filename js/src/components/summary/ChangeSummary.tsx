@@ -1,11 +1,11 @@
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import Stack from "@mui/material/Stack";
+import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { ReactNode } from "react";
 import { IconType } from "react-icons";
 import { FiInfo } from "react-icons/fi";
-import { Tooltip } from "@/components/ui/tooltip";
 import { NodeData } from "@/lib/api/info";
 import { LineageGraph } from "../lineage/lineage";
 import {
@@ -78,14 +78,14 @@ function SummaryText({
       <Typography sx={{ fontSize: "0.875rem", color: "grey.600" }}>
         {name}
         {tip && (
-          <Tooltip content={tip}>
+          <MuiTooltip title={tip}>
             <Box sx={{ display: "inline-block" }}>
               <Box
                 component={FiInfo}
                 sx={{ mx: "2px", fontSize: 12, verticalAlign: "middle" }}
               />
             </Box>
-          </Tooltip>
+          </MuiTooltip>
         )}
       </Typography>
       {value}

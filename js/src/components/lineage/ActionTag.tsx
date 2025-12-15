@@ -2,9 +2,9 @@ import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
+import MuiTooltip from "@mui/material/Tooltip";
 import { PiInfo, PiWarning } from "react-icons/pi";
 import { LineageGraphNode } from "@/components/lineage/lineage";
-import { Tooltip } from "@/components/ui/tooltip";
 import {
   isRowCountDiffRun,
   isRowCountRun,
@@ -41,11 +41,11 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
           >
             <Box>Skipped</Box>
             {skipReason && (
-              <Tooltip content={skipReason}>
+              <MuiTooltip title={skipReason}>
                 <Box component="span" sx={{ display: "flex" }}>
                   <PiInfo />
                 </Box>
-              </Tooltip>
+              </MuiTooltip>
             )}
           </Stack>
         }
@@ -82,11 +82,11 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
       >
         <Box>Error</Box>
         {skipReason && (
-          <Tooltip content={error}>
+          <MuiTooltip title={error}>
             <Box component="span" sx={{ display: "flex" }}>
               <PiWarning />
             </Box>
-          </Tooltip>
+          </MuiTooltip>
         )}
       </Stack>
     );

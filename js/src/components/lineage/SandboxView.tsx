@@ -5,6 +5,7 @@ import MuiDialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
+import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMutation } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
@@ -13,7 +14,6 @@ import { AiOutlineExperiment } from "react-icons/ai";
 import { IoClose } from "react-icons/io5";
 import { VscFeedback } from "react-icons/vsc";
 import { DiffEditor } from "@/components/editor";
-import { Tooltip } from "@/components/ui/tooltip";
 import { QueryParams, submitQueryDiff } from "@/lib/api/adhocQuery";
 import { NodeData } from "@/lib/api/info";
 import { localStorageKeys } from "@/lib/api/localStorageKeys";
@@ -88,7 +88,7 @@ function SandboxTopBar({
         defaultPrimaryKeys={primaryKeys}
         onPrimaryKeysChange={setPrimaryKeys}
       />
-      <Tooltip content="Run diff to see the changes">
+      <MuiTooltip title="Run diff to see the changes">
         <Button
           size="small"
           sx={{ mt: "16px", fontSize: "14px" }}
@@ -102,7 +102,7 @@ function SandboxTopBar({
         >
           {isPending ? "Running..." : "Run Diff"}
         </Button>
-      </Tooltip>
+      </MuiTooltip>
     </Stack>
   );
 }
@@ -405,7 +405,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
       </DialogContent>
       {/* Fixed position button */}
       <Box sx={{ position: "fixed", bottom: 16, right: 16, opacity: 0.5 }}>
-        <Tooltip content="Give us feedback">
+        <MuiTooltip title="Give us feedback">
           <IconButton
             aria-label="feedback"
             size="medium"
@@ -415,7 +415,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
           >
             <VscFeedback />
           </IconButton>
-        </Tooltip>
+        </MuiTooltip>
       </Box>
     </MuiDialog>
   );
