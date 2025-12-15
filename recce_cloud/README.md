@@ -64,8 +64,6 @@ install:
 recce-upload:
   script:
     - recce-cloud upload
-  variables:
-    RECCE_API_TOKEN: $RECCE_API_TOKEN
 ```
 
 **Download artifacts:**
@@ -74,8 +72,6 @@ recce-upload:
 recce-download:
   script:
     - recce-cloud download --prod --target-path target-base
-  variables:
-    RECCE_API_TOKEN: $RECCE_API_TOKEN
 ```
 
 ## Upload Workflows
@@ -481,8 +477,6 @@ recce-upload:
   script:
     - pip install recce-cloud
     - recce-cloud upload
-  variables:
-    RECCE_API_TOKEN: $RECCE_API_TOKEN
   dependencies:
     - dbt-build
   only:
@@ -638,8 +632,6 @@ The CLI automatically detects self-hosted GitLab instances using `CI_SERVER_URL`
 recce-upload:
   script:
     - recce-cloud upload
-  variables:
-    RECCE_API_TOKEN: $RECCE_API_TOKEN
 ```
 
 **6. Target path already exists (download)**
