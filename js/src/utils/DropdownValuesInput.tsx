@@ -212,6 +212,12 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                 setIsTyping(true);
               }}
               onKeyDown={(e) => {
+                // Stop propagation to prevent MUI Menu's typeahead navigation
+                // from intercepting key presses (except Escape to close menu)
+                if (e.key !== "Escape") {
+                  e.stopPropagation();
+                }
+
                 const target = e.target as HTMLInputElement;
                 const newText = target.value.trim().replace(",", "");
                 switch (e.key) {
