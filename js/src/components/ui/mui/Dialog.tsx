@@ -1,22 +1,28 @@
 "use client";
 
-import Backdrop from "@mui/material/Backdrop";
 import Box from "@mui/material/Box";
-import type { DialogProps as MuiDialogProps } from "@mui/material/Dialog";
-import MuiDialog from "@mui/material/Dialog";
-import type { DialogActionsProps as MuiDialogActionsProps } from "@mui/material/DialogActions";
-import MuiDialogActions from "@mui/material/DialogActions";
-import type { DialogContentProps as MuiDialogContentProps } from "@mui/material/DialogContent";
-import MuiDialogContent from "@mui/material/DialogContent";
-import type { DialogTitleProps as MuiDialogTitleProps } from "@mui/material/DialogTitle";
-import MuiDialogTitle from "@mui/material/DialogTitle";
+import MuiDialog, {
+  type DialogProps as MuiDialogProps,
+} from "@mui/material/Dialog";
+import MuiDialogActions, {
+  type DialogActionsProps as MuiDialogActionsProps,
+} from "@mui/material/DialogActions";
+import MuiDialogContent, {
+  type DialogContentProps as MuiDialogContentProps,
+} from "@mui/material/DialogContent";
+import MuiDialogTitle, {
+  type DialogTitleProps as MuiDialogTitleProps,
+} from "@mui/material/DialogTitle";
 import type { SxProps, Theme } from "@mui/material/styles";
 import {
+  Children,
   cloneElement,
+  createContext,
   forwardRef,
   isValidElement,
   type ReactElement,
   type ReactNode,
+  useContext,
   useMemo,
 } from "react";
 import { CloseButton } from "./CloseButton";
@@ -24,8 +30,16 @@ import { CloseButton } from "./CloseButton";
 /**
  * Dialog Components - MUI equivalent of Chakra's Dialog compound components
  *
- * Provides a similar compound component API to Chakra's Dialog.
+ * MUI Dialog already handles:
+ * - Portal rendering (renders to body)
+ * - Backdrop overlay
+ * - Positioning (centered by default)
+ *
+ * So the Chakra patterns like Portal/Backdrop/Positioner are no-ops here.
  */
+
+// Context to pass onClose handler down to CloseTrigger
+const DialogCloseContext = createContext<(() => void) | undefined>(undefined);
 
 // Dialog Root
 export interface DialogRootProps
@@ -56,6 +70,42 @@ const sizeToMaxWidth: Record<string, MuiDialogProps["maxWidth"]> = {
   full: false,
 };
 
+/**
+ * Recursively extracts the actual dialog content from Chakra's
+ * Portal/Backdrop/Positioner/Content wrapper pattern.
+ */
+function extractDialogContent(children: ReactNode): ReactNode {
+  const childArray = Children.toArray(children);
+
+  // Process each child
+  return childArray.flatMap((child) => {
+    if (!isValidElement(child)) return child;
+
+    const displayName =
+      (child.type as { displayName?: string })?.displayName ||
+      (child.type as { name?: string })?.name ||
+      "";
+
+    // Skip Backdrop (MUI handles this)
+    if (displayName === "DialogBackdrop") {
+      return [];
+    }
+
+    // Unwrap Portal, Positioner, and Content - just extract their children
+    if (
+      displayName === "Portal" ||
+      displayName === "DialogPositioner" ||
+      displayName === "DialogContent"
+    ) {
+      const nestedChildren = (child.props as { children?: ReactNode }).children;
+      return extractDialogContent(nestedChildren);
+    }
+
+    // Keep Header, Body, Footer, and other elements
+    return child;
+  });
+}
+
 export const DialogRoot = forwardRef<HTMLDivElement, DialogRootProps>(
   function DialogRoot(
     {
@@ -63,8 +113,8 @@ export const DialogRoot = forwardRef<HTMLDivElement, DialogRootProps>(
       onOpenChange,
       onClose,
       size = "md",
-      placement,
-      initialFocusEl,
+      placement: _placement,
+      initialFocusEl: _initialFocusEl,
       lazyMount: _lazyMount,
       scrollBehavior: _scrollBehavior,
       ...props
@@ -76,17 +126,22 @@ export const DialogRoot = forwardRef<HTMLDivElement, DialogRootProps>(
       onClose?.();
     };
 
+    // Extract the actual content from Portal/Positioner/Content wrappers
+    const dialogContent = extractDialogContent(children);
+
     return (
-      <MuiDialog
-        ref={ref}
-        onClose={handleClose}
-        maxWidth={sizeToMaxWidth[size] ?? "md"}
-        fullWidth
-        fullScreen={size === "full" || size === "cover"}
-        {...props}
-      >
-        {children}
-      </MuiDialog>
+      <DialogCloseContext.Provider value={handleClose}>
+        <MuiDialog
+          ref={ref}
+          onClose={handleClose}
+          maxWidth={sizeToMaxWidth[size] ?? "md"}
+          fullWidth
+          fullScreen={size === "full" || size === "cover"}
+          {...props}
+        >
+          {dialogContent}
+        </MuiDialog>
+      </DialogCloseContext.Provider>
     );
   },
 );
@@ -95,21 +150,23 @@ export const DialogRoot = forwardRef<HTMLDivElement, DialogRootProps>(
 export const DialogBackdrop = forwardRef<
   HTMLDivElement,
   { bg?: string; backdropFilter?: string }
->(function DialogBackdrop({ bg, backdropFilter }, ref) {
+>(function DialogBackdrop(_props, _ref) {
   // MUI handles backdrop internally, this is for API compatibility
   return null;
 });
+DialogBackdrop.displayName = "DialogBackdrop";
 
 // Dialog Positioner (wrapper for API compatibility)
 export const DialogPositioner = forwardRef<
   HTMLDivElement,
   { children?: ReactNode }
->(function DialogPositioner({ children }, ref) {
+>(function DialogPositioner({ children }, _ref) {
   // MUI handles positioning internally
   return <>{children}</>;
 });
+DialogPositioner.displayName = "DialogPositioner";
 
-// Dialog Content (the actual content wrapper)
+// Dialog Content (wrapper for API compatibility)
 export interface DialogContentProps {
   children?: ReactNode;
   overflowY?: string;
@@ -122,28 +179,12 @@ export interface DialogContentProps {
 }
 
 export const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
-  function DialogContent(
-    { children, overflowY, height, width, borderRadius, minHeight },
-    ref,
-  ) {
-    return (
-      <Box
-        ref={ref}
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          ...(overflowY && { overflowY }),
-          ...(height && { height }),
-          ...(width && { width }),
-          ...(borderRadius && { borderRadius }),
-          ...(minHeight && { minHeight }),
-        }}
-      >
-        {children}
-      </Box>
-    );
+  function DialogContent({ children }, _ref) {
+    // Just pass through children - MUI Paper handles the content container
+    return <>{children}</>;
   },
 );
+DialogContent.displayName = "DialogContent";
 
 // Dialog Header (Title area)
 export interface DialogHeaderProps extends Omit<MuiDialogTitleProps, "ref"> {
@@ -185,6 +226,7 @@ export const DialogHeader = forwardRef<HTMLDivElement, DialogHeaderProps>(
     );
   },
 );
+DialogHeader.displayName = "DialogHeader";
 
 // Dialog Title
 export interface DialogTitleProps {
@@ -237,6 +279,7 @@ export const DialogTitle = forwardRef<HTMLSpanElement, DialogTitleProps>(
     );
   },
 );
+DialogTitle.displayName = "DialogTitle";
 
 // Dialog Body (Content area)
 export interface DialogBodyProps extends Omit<MuiDialogContentProps, "ref"> {
@@ -307,6 +350,7 @@ export const DialogBody = forwardRef<HTMLDivElement, DialogBodyProps>(
     );
   },
 );
+DialogBody.displayName = "DialogBody";
 
 // Dialog Footer (Actions area)
 export interface DialogFooterProps extends Omit<MuiDialogActionsProps, "ref"> {
@@ -331,6 +375,7 @@ export const DialogFooter = forwardRef<HTMLDivElement, DialogFooterProps>(
     );
   },
 );
+DialogFooter.displayName = "DialogFooter";
 
 // Dialog Close Trigger
 export interface DialogCloseTriggerProps {
@@ -344,17 +389,25 @@ export const DialogCloseTrigger = forwardRef<
   HTMLButtonElement,
   DialogCloseTriggerProps
 >(function DialogCloseTrigger({ children, onClick, asChild }, ref) {
+  const contextOnClose = useContext(DialogCloseContext);
+
+  const handleClick = () => {
+    onClick?.();
+    contextOnClose?.();
+  };
+
   if (asChild && children && isValidElement(children)) {
     // Clone the child and pass onClick
     return cloneElement(children as ReactElement<{ onClick?: () => void }>, {
-      onClick,
+      onClick: handleClick,
     });
   }
   if (children) {
-    return <>{children}</>;
+    return <Box onClick={handleClick}>{children}</Box>;
   }
-  return <CloseButton ref={ref} onClick={onClick} />;
+  return <CloseButton ref={ref} onClick={handleClick} />;
 });
+DialogCloseTrigger.displayName = "DialogCloseTrigger";
 
 // Dialog Action Trigger - wraps action buttons that should close the dialog
 export interface DialogActionTriggerProps {
@@ -367,14 +420,24 @@ export const DialogActionTrigger = forwardRef<
   HTMLDivElement,
   DialogActionTriggerProps
 >(function DialogActionTrigger({ children, asChild }, ref) {
-  // ActionTrigger typically wraps a button that closes the dialog when clicked
-  // In MUI, the parent Dialog handles this through onClose
-  // This wrapper maintains API compatibility with Chakra
+  const contextOnClose = useContext(DialogCloseContext);
+
+  // ActionTrigger wraps a button that closes the dialog when clicked
   if (asChild && children && isValidElement(children)) {
-    return children;
+    return cloneElement(children as ReactElement<{ onClick?: () => void }>, {
+      onClick: () => {
+        // Call original onClick if present
+        const originalOnClick = (
+          children as ReactElement<{ onClick?: () => void }>
+        ).props.onClick;
+        originalOnClick?.();
+        contextOnClose?.();
+      },
+    });
   }
   return <div ref={ref}>{children}</div>;
 });
+DialogActionTrigger.displayName = "DialogActionTrigger";
 
 // Combined Dialog namespace for Chakra-like usage
 export const Dialog = {
