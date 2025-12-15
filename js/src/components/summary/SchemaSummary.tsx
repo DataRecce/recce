@@ -1,12 +1,10 @@
+import Box from "@mui/material/Box";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CardHeader from "@mui/material/CardHeader";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { useEffect, useState } from "react";
-import {
-  Card,
-  Flex,
-  Heading,
-  HStack,
-  SimpleGrid,
-  Text,
-} from "@/components/ui/mui";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { LineageGraph, LineageGraphNode } from "../lineage/lineage";
 import { ResourceTypeTag, RowCountDiffTag } from "../lineage/NodeTag";
@@ -19,27 +17,31 @@ interface SchemaDiffCardProps {
 
 function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
   return (
-    <Card.Root maxWidth={"500px"}>
-      <Card.Header>
-        <Card.Title fontSize={18}>{props.title}</Card.Title>
-        <Card.Description>
-          <HStack gap={"8px"} p={"16px"}>
+    <Card sx={{ maxWidth: 500 }}>
+      <CardHeader
+        title={
+          <Typography sx={{ fontSize: 18, fontWeight: "bold" }}>
+            {props.title}
+          </Typography>
+        }
+        subheader={
+          <Stack direction="row" spacing="8px" sx={{ p: "16px" }}>
             <ResourceTypeTag node={node} />
             {node.data.resourceType === "model" && (
               <RowCountDiffTag node={node} />
             )}
-          </HStack>
-        </Card.Description>
-      </Card.Header>
-      <Card.Body>
-        <Flex>
+          </Stack>
+        }
+      />
+      <CardContent>
+        <Box sx={{ display: "flex" }}>
           <SchemaView
             base={node.data.data.base}
             current={node.data.data.current}
           />
-        </Flex>
-      </Card.Body>
-    </Card.Root>
+        </Box>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -76,43 +78,46 @@ export function SchemaSummary({ lineageGraph }: Props) {
 
   return (
     <>
-      <Flex
-        w={"100%"}
-        paddingBottom="10px"
-        marginBottom="20px"
-        marginTop="20px"
+      <Box
+        sx={{
+          width: "100%",
+          pb: "10px",
+          mb: "20px",
+          mt: "20px",
+        }}
       >
-        <Heading fontSize={24}>Schema Summary</Heading>
-      </Flex>
-      <Flex w={"100%"} paddingBottom="10px" marginBottom="20px">
+        <Typography variant="h5" sx={{ fontSize: 24 }}>
+          Schema Summary
+        </Typography>
+      </Box>
+      <Box sx={{ width: "100%", pb: "10px", mb: "20px" }}>
         {changedNodes.length === 0 ? (
-          <>
-            <Text fontSize={18} color={"gray"}>
-              No schema changes detected.
-            </Text>
-          </>
+          <Typography sx={{ fontSize: 18, color: "grey.600" }}>
+            No schema changes detected.
+          </Typography>
         ) : (
-          <>
-            <SimpleGrid
-              minChildWidth="400px"
-              gap={"2vw"}
-              padding={"2.5vw"}
-              width={"100%"}
-              backgroundColor={"lightgray"}
-            >
-              {changedNodes.map((node) => {
-                return (
-                  <SchemaDiffCard
-                    key={node.id}
-                    title={node.data.name}
-                    node={node}
-                  />
-                );
-              })}
-            </SimpleGrid>
-          </>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))",
+              gap: "2vw",
+              p: "2.5vw",
+              width: "100%",
+              bgcolor: "lightgray",
+            }}
+          >
+            {changedNodes.map((node) => {
+              return (
+                <SchemaDiffCard
+                  key={node.id}
+                  title={node.data.name}
+                  node={node}
+                />
+              );
+            })}
+          </Box>
         )}
-      </Flex>
+      </Box>
     </>
   );
 }

@@ -1,7 +1,10 @@
+import Box from "@mui/material/Box";
+import Grid from "@mui/material/Grid";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { ReactNode } from "react";
 import { IconType } from "react-icons";
 import { FiInfo } from "react-icons/fi";
-import { Box, Flex, Grid, Icon, Text, VStack } from "@/components/ui/mui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { NodeData } from "@/lib/api/info";
 import { LineageGraph } from "../lineage/lineage";
@@ -71,19 +74,22 @@ function SummaryText({
   tip?: ReactNode;
 }) {
   return (
-    <VStack alignItems="stretch">
-      <Text fontSize="sm" color="gray">
+    <Stack alignItems="stretch">
+      <Typography sx={{ fontSize: "0.875rem", color: "grey.600" }}>
         {name}
         {tip && (
           <Tooltip content={tip}>
-            <Box display="inline-block">
-              <Icon mx={"2px"} as={FiInfo} boxSize={3} />
+            <Box sx={{ display: "inline-block" }}>
+              <Box
+                component={FiInfo}
+                sx={{ mx: "2px", fontSize: 12, verticalAlign: "middle" }}
+              />
             </Box>
           </Tooltip>
         )}
-      </Text>
+      </Typography>
       {value}
-    </VStack>
+    </Stack>
   );
 }
 
@@ -98,13 +104,19 @@ function ChangeStatusCountLabel({
   const { icon, color } = getIconForChangeStatus(changeStatus);
 
   return (
-    <VStack alignItems="stretch">
-      <Flex alignItems="center" fontSize="sm" color="gray">
-        {icon && <Icon mr="5px" as={icon} color={color} />}
+    <Stack alignItems="stretch">
+      <Stack
+        direction="row"
+        alignItems="center"
+        sx={{ fontSize: "0.875rem", color: "grey.600" }}
+      >
+        {icon && (
+          <Box component={icon} sx={{ mr: "5px", color, fontSize: "1rem" }} />
+        )}
         {label}
-      </Flex>
-      <Text fontSize="sm">{value}</Text>
-    </VStack>
+      </Stack>
+      <Typography sx={{ fontSize: "0.875rem" }}>{value}</Typography>
+    </Stack>
   );
 }
 
@@ -180,54 +192,64 @@ export function ChangeSummary({ lineageGraph }: Props) {
 
   return (
     <Grid
-      templateColumns="1fr 1fr"
-      mb="10px"
-      borderTop="1px solid lightgray"
-      padding={"2.5vw"}
+      container
+      sx={{
+        mb: "10px",
+        borderTop: "1px solid lightgray",
+        p: "2.5vw",
+      }}
     >
-      <Box borderColor="lightgray">
+      <Grid size={6} sx={{ borderColor: "lightgray" }}>
         <SummaryText
           name="Code Changes"
           value={
-            <>
-              <Grid templateColumns="1fr 1fr 1fr" width="100%">
+            <Grid container sx={{ width: "100%" }}>
+              <Grid size={4}>
                 <ChangeStatusCountLabel changeStatus="added" value={adds} />
+              </Grid>
+              <Grid size={4}>
                 <ChangeStatusCountLabel
                   changeStatus="removed"
                   value={removes}
                 />
+              </Grid>
+              <Grid size={4}>
                 <ChangeStatusCountLabel
                   changeStatus="modified"
                   value={modifies}
                 />
               </Grid>
-            </>
+            </Grid>
           }
         />
-      </Box>
-      <Box borderLeft="1px" paddingLeft="12px" borderColor="lightgray">
+      </Grid>
+      <Grid size={6} sx={{ borderLeft: "1px solid lightgray", pl: "12px" }}>
         <SummaryText
           name="Column Changes"
           value={
-            <>
-              <Grid templateColumns="1fr 1fr 1fr" width="100%">
+            <Grid container sx={{ width: "100%" }}>
+              <Grid size={4}>
                 <ChangeStatusCountLabel
                   changeStatus="col_added"
                   value={col_added}
                 />
+              </Grid>
+              <Grid size={4}>
                 <ChangeStatusCountLabel
                   changeStatus="col_removed"
                   value={col_removed}
                 />
+              </Grid>
+              <Grid size={4}>
                 <ChangeStatusCountLabel
                   changeStatus="col_changed"
                   value={col_changed}
                 />
               </Grid>
-            </>
+            </Grid>
           }
         />
-      </Box>
+      </Grid>
     </Grid>
   );
 }
