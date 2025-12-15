@@ -1,7 +1,7 @@
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
+import MuiPopover from "@mui/material/Popover";
 import { ReactElement, useCallback, useRef, useState } from "react";
-import { Popover, Portal } from "@/components/ui/mui";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 
 interface SetupConnectionPopoverProps {
@@ -18,8 +18,7 @@ export default function SetupConnectionPopover({
 }: SetupConnectionPopoverProps) {
   const [hovered, setHovered] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const ref = useRef<HTMLDivElement | null>(null);
-  const getAnchorRect = () => ref.current?.getBoundingClientRect() ?? null;
+  const anchorRef = useRef<HTMLDivElement | null>(null);
 
   const handleMouseEnter = useCallback(() => {
     if (timeoutRef.current) {
@@ -40,51 +39,53 @@ export default function SetupConnectionPopover({
   }
 
   return (
-    <Popover.Root
-      open={hovered}
-      onFocusOutside={() => {
-        setHovered(false);
-      }}
-      positioning={{ getAnchorRect }}
-      lazyMount
-      unmountOnExit
-      size="xs"
-      autoFocus={false}
-    >
-      <Popover.Trigger asChild>
-        <Box
-          ref={ref}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-          sx={{ display: "contents" }}
+    <>
+      <Box
+        ref={anchorRef}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        sx={{ display: "contents" }}
+      >
+        {children}
+      </Box>
+      <MuiPopover
+        open={hovered}
+        anchorEl={anchorRef.current}
+        onClose={() => setHovered(false)}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "left",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "left",
+        }}
+        disableAutoFocus
+        disableEnforceFocus
+        sx={{ pointerEvents: "none" }}
+        slotProps={{
+          paper: {
+            onMouseEnter: handleMouseEnter,
+            onMouseLeave: handleMouseLeave,
+            sx: {
+              bgcolor: "grey.600",
+              color: "white",
+              p: 1.5,
+              pointerEvents: "auto",
+            },
+          },
+        }}
+      >
+        Connect to a data warehouse to unlock Diff.{" "}
+        <Link
+          href={RECCE_SUPPORT_CALENDAR_URL}
+          target="_blank"
+          sx={{ color: "white", textDecoration: "underline" }}
         >
-          {children}
-        </Box>
-      </Popover.Trigger>
-      <Portal>
-        <Popover.Positioner>
-          <Popover.Content
-            bg="gray.600"
-            color="white"
-            zIndex="popover"
-            width="auto"
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
-          >
-            <Popover.Body>
-              Connect to a data warehouse to unlock Diff.{" "}
-              <Link
-                href={RECCE_SUPPORT_CALENDAR_URL}
-                target="_blank"
-                sx={{ color: "white", textDecoration: "underline" }}
-              >
-                Learn more
-              </Link>
-              .
-            </Popover.Body>
-          </Popover.Content>
-        </Popover.Positioner>
-      </Portal>
-    </Popover.Root>
+          Learn more
+        </Link>
+        .
+      </MuiPopover>
+    </>
   );
 }
