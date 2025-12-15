@@ -449,8 +449,9 @@ function ExploreChangeMenuButton({
     return (
       <>
         <Button
-          size="small"
+          size="xsmall"
           variant="outlined"
+          color="neutral"
           onClick={handleClick}
           disabled={featureToggles.disableNodeActionDropdown}
           endIcon={<PiCaretDown />}
