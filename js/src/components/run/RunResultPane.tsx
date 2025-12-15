@@ -10,13 +10,13 @@ import {
   Text,
   useDisclosure,
 } from "@chakra-ui/react";
-import { Editor } from "@monaco-editor/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ReactNode, Ref, useCallback, useState } from "react";
 import { PiCaretDown, PiCheck, PiCopy, PiRepeat } from "react-icons/pi";
 import { TbCloudUpload } from "react-icons/tb";
 import YAML from "yaml";
 import AuthModal from "@/components/AuthModal/AuthModal";
+import { CodeEditor } from "@/components/editor";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { createCheckByRun } from "@/lib/api/checks";
 import { trackCopyToClipboard, trackShareState } from "@/lib/api/track";
@@ -56,25 +56,16 @@ interface RunPageProps {
 
 const _ParamView = (data: { type: string; params: RunParamTypes }) => {
   const yaml = YAML.stringify(data, null, 2);
-
   return (
-    <Editor
-      className="no-track-pii-safe"
-      height="100%"
-      language="yaml"
-      theme="vs"
+    <CodeEditor
       value={yaml}
-      options={{
-        extraEditorClassName: "no-track-pii-safe",
-        readOnly: true,
-        fontSize: 14,
-        lineNumbers: "off",
-        automaticLayout: true,
-        minimap: { enabled: false },
-        wordWrap: "on",
-        wrappingIndent: "same",
-        scrollBeyondLastLine: false,
-      }}
+      language="yaml"
+      readOnly={true}
+      lineNumbers={false}
+      wordWrap={true}
+      fontSize={14}
+      height="100%"
+      className="no-track-pii-safe"
     />
   );
 };

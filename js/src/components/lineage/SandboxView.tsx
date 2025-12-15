@@ -15,13 +15,12 @@ import {
   Text,
   useDisclosure,
 } from "@chakra-ui/react";
-import { DiffEditor } from "@monaco-editor/react";
 import { useMutation } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { editor } from "monaco-editor";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import { AiOutlineExperiment } from "react-icons/ai";
 import { VscFeedback } from "react-icons/vsc";
+import { DiffEditor } from "@/components/editor";
 import { Tooltip } from "@/components/ui/tooltip";
 import { QueryParams, submitQueryDiff } from "@/lib/api/adhocQuery";
 import { NodeData } from "@/lib/api/info";
@@ -159,60 +158,23 @@ function SandboxEditorLabels({
   );
 }
 
-interface UseDiffEditorSync {
-  onMount: (editor: editor.IStandaloneDiffEditor) => void;
-}
-
-function useDiffEditorSync(
-  value: string,
-  onChange: (value: string) => void,
-): UseDiffEditorSync {
-  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
-
-  useEffect(() => {
-    if (editorRef.current && value !== editorRef.current.getValue()) {
-      editorRef.current.setValue(value);
-    }
-  }, [value]);
-
-  return {
-    onMount(editor: editor.IStandaloneDiffEditor) {
-      const modified = editor.getModifiedEditor();
-      editorRef.current = modified;
-
-      modified.onDidChangeModelContent(() => {
-        onChange(modified.getValue());
-      });
-    },
-  };
-}
-
 interface SqlPreviewProps {
   current?: NodeData;
   onChange: (value: string) => void;
 }
 
 function SqlPreview({ current, onChange }: SqlPreviewProps) {
-  const diffEditorSync = useDiffEditorSync(current?.raw_code ?? "", onChange);
-
   return (
-    <Box flex={1} overflowY={"auto"}>
-      <DiffEditor
-        language="sql"
-        theme="vs"
-        original={current?.raw_code}
-        modified={current?.raw_code}
-        options={{
-          readOnly: false,
-          fontSize: 14,
-          lineNumbers: "on",
-          automaticLayout: true,
-          renderOverviewRuler: false,
-          minimap: { enabled: true },
-        }}
-        onMount={diffEditorSync.onMount}
-      />
-    </Box>
+    <DiffEditor
+      original={current?.raw_code ?? ""}
+      modified={current?.raw_code ?? ""}
+      language="sql"
+      readOnly={false}
+      lineNumbers={true}
+      sideBySide={true}
+      height="100%"
+      onModifiedChange={onChange}
+    />
   );
 }
 
