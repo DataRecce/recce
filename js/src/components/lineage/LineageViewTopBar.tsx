@@ -147,7 +147,7 @@ const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
           <MenuItem onClick={() => handleSelect("changed_models")}>
             <FormControlLabel
               value="changed_models"
-              control={<Radio size="small" />}
+              control={<Radio size="small" sx={{ py: 0 }} />}
               label="Changed Models"
               sx={{ m: 0 }}
             />
@@ -155,7 +155,7 @@ const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
           <MenuItem onClick={() => handleSelect("all")}>
             <FormControlLabel
               value="all"
-              control={<Radio size="small" />}
+              control={<Radio size="small" sx={{ py: 0 }} />}
               label="All"
               sx={{ m: 0 }}
             />
@@ -258,6 +258,7 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
             checked={isSelectAll}
             indeterminate={!isSelectAll && !isSelectNone}
             size="small"
+            sx={{ py: 0 }}
           />
           <ListItemText>Select All</ListItemText>
         </MenuItem>
@@ -266,7 +267,7 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
 
         {Array.from(available).map((pkg) => (
           <MenuItem key={pkg} onClick={() => handleSelect(pkg)}>
-            <Checkbox checked={selected.has(pkg)} size="small" />
+            <Checkbox checked={selected.has(pkg)} size="small" sx={{ py: 0 }} />
             <ListItemText className="no-track-pii-safe">{pkg}</ListItemText>
           </MenuItem>
         ))}
