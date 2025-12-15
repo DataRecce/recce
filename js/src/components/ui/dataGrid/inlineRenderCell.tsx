@@ -9,9 +9,10 @@
  * with toDiffColumn.tsx which imports this component.
  */
 
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 import { CalculatedColumn, RenderCellProps } from "react-data-grid";
 import { DiffText } from "@/components/query/DiffText";
-import { Flex, Text } from "@/components/ui/mui";
 import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
 // Import directly from gridUtils to avoid circular dependency
 import { toRenderedValue } from "@/lib/dataGrid/shared/gridUtils";
@@ -72,15 +73,26 @@ export const inlineRenderCell = ({
   // No change - render single value
   if (row[baseKey] === row[currentKey]) {
     return (
-      <Text style={{ color: currentGrayOut ? "gray" : "inherit" }}>
+      <Typography
+        component="span"
+        style={{ color: currentGrayOut ? "gray" : "inherit" }}
+      >
         {currentValue}
-      </Text>
+      </Typography>
     );
   }
 
   // Values differ - render inline diff with base (red) and current (green)
   return (
-    <Flex gap="5px" alignItems="center" lineHeight="normal" height="100%">
+    <Box
+      sx={{
+        display: "flex",
+        gap: "5px",
+        alignItems: "center",
+        lineHeight: "normal",
+        height: "100%",
+      }}
+    >
       {hasBase && (
         <DiffText value={baseValue} colorPalette="red" grayOut={baseGrayOut} />
       )}
@@ -91,6 +103,6 @@ export const inlineRenderCell = ({
           grayOut={currentGrayOut}
         />
       )}
-    </Flex>
+    </Box>
   );
 };

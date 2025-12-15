@@ -9,8 +9,8 @@
  * with toDiffColumn.tsx which imports this component.
  */
 
+import Typography from "@mui/material/Typography";
 import { CalculatedColumn, RenderCellProps } from "react-data-grid";
-import { Text } from "@/components/ui/mui";
 import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
 // Import directly from gridUtils to avoid circular dependency
 import { toRenderedValue } from "@/lib/dataGrid/shared/gridUtils";
@@ -48,6 +48,11 @@ export const defaultRenderCell = ({
   );
 
   return (
-    <Text style={{ color: grayOut ? "gray" : "inherit" }}>{renderedValue}</Text>
+    <Typography
+      component="span"
+      style={{ color: grayOut ? "gray" : "inherit" }}
+    >
+      {renderedValue}
+    </Typography>
   );
 };

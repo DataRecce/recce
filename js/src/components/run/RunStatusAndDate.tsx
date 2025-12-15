@@ -1,5 +1,7 @@
+import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
+import Typography from "@mui/material/Typography";
 import { format } from "date-fns";
-import { Flex, Spinner, Text } from "@/components/ui/mui";
 import { token } from "@/components/ui/mui-theme";
 import { Run } from "@/lib/api/types";
 
@@ -70,8 +72,9 @@ export const RunStatusAndDate = ({ run }: { run: Run }) => {
   const dateTime = run.run_at ? formatRunDateTime(new Date(run.run_at)) : null;
 
   return (
-    <Flex
+    <Box
       sx={{
+        display: "flex",
         justifyContent: "start",
         fontSize: "11pt",
         color: "grey.500",
@@ -80,17 +83,16 @@ export const RunStatusAndDate = ({ run }: { run: Run }) => {
         overflow: "hidden",
       }}
     >
-      {isRunning && (
-        <Spinner
-          size="xs"
-          colorPalette={color as "blue" | "green" | "red" | "gray"}
-        />
-      )}
-      <Text sx={{ fontWeight: 500, color: token(`colors.${color}.400`) }}>
+      {isRunning && <CircularProgress size={12} color="primary" />}
+      <Typography
+        component="span"
+        sx={{ fontWeight: 500, color: token(`colors.${color}.400`) }}
+      >
         {message}
-      </Text>
-      <Text>•</Text>
-      <Text
+      </Typography>
+      <Typography component="span">•</Typography>
+      <Typography
+        component="span"
         sx={{
           textOverflow: "ellipsis",
           overflow: "hidden",
@@ -98,7 +100,7 @@ export const RunStatusAndDate = ({ run }: { run: Run }) => {
         }}
       >
         {dateTime}
-      </Text>
-    </Flex>
+      </Typography>
+    </Box>
   );
 };
