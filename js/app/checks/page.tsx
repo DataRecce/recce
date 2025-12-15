@@ -1,5 +1,9 @@
 "use client";
 
+import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
+import Divider from "@mui/material/Divider";
+import Stack from "@mui/material/Stack";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import React, {
@@ -15,14 +19,6 @@ import { CheckDetail } from "@/components/check/CheckDetail";
 import { CheckEmptyState } from "@/components/check/CheckEmptyState";
 import { CheckList } from "@/components/check/CheckList";
 import { HSplit } from "@/components/split/Split";
-import {
-  Box,
-  Center,
-  Flex,
-  Separator,
-  Spinner,
-  VStack,
-} from "@/components/ui/mui";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { listChecks, reorderChecks } from "@/lib/api/checks";
 import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
@@ -49,14 +45,28 @@ function CheckPageLoading(): ReactNode {
         sx={{ borderRight: "lightgray solid 1px", height: "100%" }}
         style={{ contain: "size" }}
       >
-        <Center sx={{ height: "100%" }}>
-          <Spinner size="sm" />
-        </Center>
+        <Box
+          sx={{
+            height: "100%",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <CircularProgress size={20} />
+        </Box>
       </Box>
       <Box>
-        <Center sx={{ height: "100%" }}>
-          <Spinner size="sm" />
-        </Center>
+        <Box
+          sx={{
+            height: "100%",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <CircularProgress size={20} />
+        </Box>
       </Box>
     </HSplit>
   );
@@ -179,26 +189,46 @@ function CheckPageContent(): ReactNode {
           sx={{ borderRight: "lightgray solid 1px", height: "100%" }}
           style={{ contain: "size" }}
         >
-          <VStack
+          <Stack
             sx={{ height: "100%", alignItems: "stretch" }}
             style={{ contain: "strict" }}
             spacing={0}
           >
-            <Flex sx={{ justifyContent: "flex-end", padding: "0px 10px" }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "flex-end",
+                p: "0px 10px",
+              }}
+            >
               <StateImporter checksOnly />
-            </Flex>
-            <Separator />
-            <Center sx={{ height: "100%" }}>
+            </Box>
+            <Divider />
+            <Box
+              sx={{
+                height: "100%",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
               <Box sx={{ textAlign: "center", color: "grey.500" }}>
                 No checks
               </Box>
-            </Center>
-          </VStack>
+            </Box>
+          </Stack>
         </Box>
         <Box>
-          <Center sx={{ height: "100%" }}>
+          <Box
+            sx={{
+              height: "100%",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
             <CheckEmptyState />
-          </Center>
+          </Box>
         </Box>
       </HSplit>
     );
@@ -210,22 +240,24 @@ function CheckPageContent(): ReactNode {
         sx={{ borderRight: "lightgray solid 1px", height: "100%" }}
         style={{ contain: "size" }}
       >
-        <VStack
+        <Stack
           sx={{ height: "100%", alignItems: "stretch" }}
           style={{ contain: "strict" }}
           spacing={0}
         >
-          <Flex sx={{ justifyContent: "right", padding: "0px 10px" }}>
+          <Box
+            sx={{ display: "flex", justifyContent: "flex-end", p: "0px 10px" }}
+          >
             <StateImporter checksOnly />
-          </Flex>
-          <Separator />
+          </Box>
+          <Divider />
           <CheckList
             checks={orderedChecks}
             selectedItem={selectedItem}
             onCheckSelected={handleSelectItem}
             onChecksReordered={handleDragEnd}
           />
-        </VStack>
+        </Stack>
       </Box>
       <Box sx={{ height: "100%" }}>
         {/* isValidSelection already checks selectedItem, but TS needs explicit check for type narrowing */}

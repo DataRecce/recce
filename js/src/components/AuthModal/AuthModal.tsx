@@ -10,8 +10,6 @@ import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Cookies from "js-cookie";
-import { StaticImageData } from "next/image";
-import ReloadImage from "public/imgs/reload-image.svg";
 import { Dispatch, ReactNode, SetStateAction, useState } from "react";
 import { LuExternalLink } from "react-icons/lu";
 import { connectToCloud } from "@/lib/api/connectToCloud";
@@ -172,7 +170,7 @@ export default function AuthModal({
               <Box
                 component="img"
                 sx={{ height: "6rem", objectFit: "contain", mx: "auto", mb: 1 }}
-                src={(ReloadImage as StaticImageData).src}
+                src="/imgs/reload-image.svg"
                 alt="Reload"
               />
               <Typography sx={{ fontSize: "1.5rem", fontWeight: 500 }}>

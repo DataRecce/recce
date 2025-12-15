@@ -1,6 +1,7 @@
-import { Badge } from "@mui/material";
+import Box from "@mui/material/Box";
+import Link from "@mui/material/Link";
+import Typography from "@mui/material/Typography";
 import React, { useEffect, useMemo } from "react";
-import { Code, Link, Text } from "@/components/ui/mui";
 import { toaster } from "@/components/ui/toaster";
 import { useVersionNumber } from "@/lib/api/version";
 
@@ -29,8 +30,21 @@ export default function RecceVersionBadge() {
             <span>
               A new version of Recce (v{latestVersion}) is available.
               <br />
-              Please run <Code>pip install --upgrade recce</Code> to update
-              Recce.
+              Please run{" "}
+              <Box
+                component="code"
+                sx={{
+                  bgcolor: "grey.200",
+                  px: 0.5,
+                  py: 0.25,
+                  borderRadius: 0.5,
+                  fontFamily: "monospace",
+                  fontSize: "0.875em",
+                }}
+              >
+                pip install --upgrade recce
+              </Box>{" "}
+              to update Recce.
               <br />
               <Link
                 sx={{
@@ -46,13 +60,6 @@ export default function RecceVersionBadge() {
             </span>
           ),
           duration: 60 * 1000,
-          // TODO Fix this at a later update
-          // containerStyle: {
-          //   background: "rgba(20, 20, 20, 0.6)", // Semi-transparent black
-          //   color: "white", // Ensure text is visible
-          //   backdropFilter: "blur(10px)", // Frosted glass effect
-          //   borderRadius: "8px",
-          // },
           closable: true,
         });
         sessionStorage.setItem(storageKey, "true");
@@ -63,35 +70,32 @@ export default function RecceVersionBadge() {
   if (!versionFormatRegex.test(version)) {
     // If the version is not in the format of x.y.z, don't apply
     return (
-      <Badge
+      <Typography
+        component="span"
         sx={{
           fontSize: "sm",
           color: "rgba(255,255,255,0.8)",
           textTransform: "uppercase",
         }}
-        variant="standard"
       >
         {version}
-      </Badge>
+      </Typography>
     );
   }
 
   // Link to the release page on GitHub if the version is in the format of x.y.z
   return (
-    <Badge
+    <Link
+      href={`https://github.com/DataRecce/recce/releases/tag/v${version}`}
       sx={{
+        "&:hover": { textDecoration: "none" },
         fontSize: "sm",
         color: "rgba(255,255,255,0.8)",
         textTransform: "uppercase",
       }}
-      variant="standard"
+      target="_blank"
     >
-      <Link
-        href={`https://github.com/DataRecce/recce/releases/tag/v${version}`}
-        sx={{ "&:hover": { textDecoration: "none" } }}
-      >
-        <Text sx={{ color: "rgba(255,255,255,0.8)" }}>{version}</Text>
-      </Link>
-    </Badge>
+      {version}
+    </Link>
   );
 }

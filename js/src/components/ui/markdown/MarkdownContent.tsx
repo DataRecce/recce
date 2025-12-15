@@ -8,12 +8,14 @@
  * - XSS-safe rendering (no dangerouslySetInnerHTML)
  */
 
+import Box from "@mui/material/Box";
+import Link from "@mui/material/Link";
+import Typography from "@mui/material/Typography";
 import React, { useState } from "react";
 import Markdown, { Components } from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import remarkGfm from "remark-gfm";
-import { Box, Code, Link, Text } from "@/components/ui/mui";
 import { ExternalLinkConfirmDialog } from "./ExternalLinkConfirmDialog";
 
 interface MarkdownContentProps {
@@ -96,9 +98,11 @@ function MarkdownLink({
       <Link
         href={href}
         onClick={handleClick}
-        color="primary"
-        textDecoration="underline"
-        _hover={{ color: "iochmara.600" }}
+        sx={{
+          color: "primary.main",
+          textDecoration: "underline",
+          "&:hover": { color: "iochmara.600" },
+        }}
         target="_blank"
         rel={isExternal ? "noopener noreferrer" : undefined}
       >
@@ -121,7 +125,6 @@ function MarkdownLink({
 function CodeBlock({
   className,
   children,
-  ...props
 }: {
   className?: string;
   children?: React.ReactNode;
@@ -136,21 +139,26 @@ function CodeBlock({
 
   if (isInline) {
     return (
-      <Code
-        bg="gray.100"
-        px={1}
-        py={0.5}
-        borderRadius="sm"
-        fontSize="0.9em"
-        {...props}
+      <Box
+        component="code"
+        sx={{
+          bgcolor: "grey.100",
+          px: 1,
+          py: 0.5,
+          borderRadius: 0.5,
+          fontSize: "0.9em",
+          fontFamily: "monospace",
+        }}
       >
         {children}
-      </Code>
+      </Box>
     );
   }
 
   return (
-    <Box my={2} borderRadius="md" overflow="hidden" fontSize="sm">
+    <Box
+      sx={{ my: 2, borderRadius: 1, overflow: "hidden", fontSize: "0.875rem" }}
+    >
       <SyntaxHighlighter
         style={oneDark}
         language={language}
@@ -169,7 +177,7 @@ function CodeBlock({
 
 export function MarkdownContent({
   content,
-  fontSize = "sm",
+  fontSize = "0.875rem",
   internalDomains = [],
 }: MarkdownContentProps) {
   // Build the list of internal domains
@@ -195,41 +203,48 @@ export function MarkdownContent({
 
     // Paragraphs
     p: ({ children }) => (
-      <Text fontSize={fontSize} mb={2} _last={{ mb: 0 }}>
+      <Typography
+        component="p"
+        sx={{ fontSize, mb: 2, "&:last-child": { mb: 0 } }}
+      >
         {children}
-      </Text>
+      </Typography>
     ),
 
     // Headers
     h1: ({ children }) => (
-      <Text fontSize="xl" fontWeight="bold" mb={2} mt={3}>
+      <Typography
+        sx={{ fontSize: "1.25rem", fontWeight: "bold", mb: 2, mt: 3 }}
+      >
         {children}
-      </Text>
+      </Typography>
     ),
     h2: ({ children }) => (
-      <Text fontSize="lg" fontWeight="bold" mb={2} mt={3}>
+      <Typography
+        sx={{ fontSize: "1.125rem", fontWeight: "bold", mb: 2, mt: 3 }}
+      >
         {children}
-      </Text>
+      </Typography>
     ),
     h3: ({ children }) => (
-      <Text fontSize="md" fontWeight="semibold" mb={2} mt={2}>
+      <Typography sx={{ fontSize: "1rem", fontWeight: 600, mb: 2, mt: 2 }}>
         {children}
-      </Text>
+      </Typography>
     ),
 
     // Lists
     ul: ({ children }) => (
-      <Box as="ul" pl={4} mb={2} listStyleType="disc">
+      <Box component="ul" sx={{ pl: 4, mb: 2, listStyleType: "disc" }}>
         {children}
       </Box>
     ),
     ol: ({ children }) => (
-      <Box as="ol" pl={4} mb={2} listStyleType="decimal">
+      <Box component="ol" sx={{ pl: 4, mb: 2, listStyleType: "decimal" }}>
         {children}
       </Box>
     ),
     li: ({ children }) => (
-      <Box as="li" fontSize={fontSize} mb={1}>
+      <Box component="li" sx={{ fontSize, mb: 1 }}>
         {children}
       </Box>
     ),
@@ -237,13 +252,15 @@ export function MarkdownContent({
     // Blockquotes
     blockquote: ({ children }) => (
       <Box
-        borderLeftWidth="3px"
-        borderLeftColor="gray.300"
-        pl={3}
-        py={1}
-        my={2}
-        color="gray.600"
-        fontStyle="italic"
+        sx={{
+          borderLeft: "3px solid",
+          borderLeftColor: "grey.300",
+          pl: 3,
+          py: 1,
+          my: 2,
+          color: "grey.600",
+          fontStyle: "italic",
+        }}
       >
         {children}
       </Box>
@@ -251,63 +268,74 @@ export function MarkdownContent({
 
     // Tables
     table: ({ children }) => (
-      <Box overflowX="auto" my={2}>
+      <Box sx={{ overflowX: "auto", my: 2 }}>
         <Box
-          as="table"
-          width="100%"
-          fontSize={fontSize}
-          borderWidth="1px"
-          borderColor="gray.200"
-          borderRadius="md"
+          component="table"
+          sx={{
+            width: "100%",
+            fontSize,
+            border: "1px solid",
+            borderColor: "grey.200",
+            borderRadius: 1,
+          }}
         >
           {children}
         </Box>
       </Box>
     ),
     thead: ({ children }) => (
-      <Box as="thead" bg="gray.50">
+      <Box component="thead" sx={{ bgcolor: "grey.50" }}>
         {children}
       </Box>
     ),
-    tbody: ({ children }) => <Box as="tbody">{children}</Box>,
+    tbody: ({ children }) => <Box component="tbody">{children}</Box>,
     tr: ({ children }) => (
-      <Box as="tr" borderBottomWidth="1px" borderColor="gray.200">
+      <Box
+        component="tr"
+        sx={{ borderBottom: "1px solid", borderColor: "grey.200" }}
+      >
         {children}
       </Box>
     ),
     th: ({ children }) => (
-      <Box as="th" px={2} py={1} fontWeight="semibold" textAlign="left">
+      <Box
+        component="th"
+        sx={{ px: 2, py: 1, fontWeight: 600, textAlign: "left" }}
+      >
         {children}
       </Box>
     ),
     td: ({ children }) => (
-      <Box as="td" px={2} py={1}>
+      <Box component="td" sx={{ px: 2, py: 1 }}>
         {children}
       </Box>
     ),
 
     // Horizontal rule
-    hr: () => <Box as="hr" my={3} borderColor="gray.200" />,
+    hr: () => <Box component="hr" sx={{ my: 3, borderColor: "grey.200" }} />,
 
     // Strong/Bold
     strong: ({ children }) => (
-      <Text as="strong" fontWeight="semibold">
+      <Typography component="strong" sx={{ fontWeight: 600 }}>
         {children}
-      </Text>
+      </Typography>
     ),
 
     // Emphasis/Italic
     em: ({ children }) => (
-      <Text as="em" fontStyle="italic">
+      <Typography component="em" sx={{ fontStyle: "italic" }}>
         {children}
-      </Text>
+      </Typography>
     ),
 
     // Strikethrough
     del: ({ children }) => (
-      <Text as="del" textDecoration="line-through" color="gray.500">
+      <Typography
+        component="del"
+        sx={{ textDecoration: "line-through", color: "grey.500" }}
+      >
         {children}
-      </Text>
+      </Typography>
     ),
   };
 

@@ -1,3 +1,6 @@
+import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
+import Typography from "@mui/material/Typography";
 import {
   AnimationOptions,
   BarElement,
@@ -9,7 +12,6 @@ import {
 } from "chart.js";
 import { Fragment } from "react";
 import { Bar } from "react-chartjs-2";
-import { Box, Flex, Separator, Spacer, Text } from "@/components/ui/mui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { TopKDiffResult, TopKResult } from "@/lib/api/profile";
 import {
@@ -89,14 +91,14 @@ function TopKChartTooltip({
     <Tooltip
       content={
         <Box>
-          <Text>
+          <Typography>
             <SquareIcon color={CURRENT_BAR_COLOR} />
             Current: {current.count} ({current.displayRatio})
-          </Text>
-          <Text>
+          </Typography>
+          <Typography>
             <SquareIcon color={BASE_BAR_COLOR} />
             Base: {base.count} ({base.displayRatio})
-          </Text>
+          </Typography>
         </Box>
       }
       showArrow
@@ -116,16 +118,22 @@ export function TopKSummaryBarChart({
 
   return (
     <Box sx={{ width: "100%", px: 20, py: 2 }}>
-      <Flex sx={{ alignItems: "center", flexDirection: "row" }}>
-        <Spacer />
-        <Text component="h3" sx={{ fontSize: "sm", p: 1, color: "gray" }}>
+      <Box sx={{ display: "flex", alignItems: "center", flexDirection: "row" }}>
+        <Box sx={{ flex: 1 }} />
+        <Typography
+          component="h3"
+          sx={{ fontSize: "0.875rem", p: 1, color: "gray" }}
+        >
           <SquareIcon color={BASE_BAR_COLOR} /> Base
-        </Text>
-        <Text component="h3" sx={{ fontSize: "sm", p: 1, color: "gray" }}>
+        </Typography>
+        <Typography
+          component="h3"
+          sx={{ fontSize: "0.875rem", p: 1, color: "gray" }}
+        >
           <SquareIcon color={CURRENT_BAR_COLOR} /> Current
-        </Text>
-        <Spacer />
-      </Flex>
+        </Typography>
+        <Box sx={{ flex: 1 }} />
+      </Box>
       {currents.map((current, index) => {
         const base = bases[index];
         if (
@@ -139,18 +147,19 @@ export function TopKSummaryBarChart({
         return (
           <Fragment key={current.label}>
             <TopKChartTooltip base={base} current={current}>
-              <Flex
+              <Box
                 sx={{
+                  display: "flex",
                   alignItems: "center",
                   width: "100%",
                   "&:hover": { bgcolor: "action.hover" },
                   px: 2,
                 }}
               >
-                <Text
+                <Typography
                   sx={{
                     width: "10em",
-                    fontSize: "sm",
+                    fontSize: "0.875rem",
                     color: current.isSpecialLabel ? "grey.400" : "inherit",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -158,46 +167,74 @@ export function TopKSummaryBarChart({
                   }}
                 >
                   {current.label}
-                </Text>
-                <Flex sx={{ width: "70%", flexDirection: "column" }}>
+                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    width: "70%",
+                    flexDirection: "column",
+                  }}
+                >
                   {/* Current Top-K */}
-                  <Flex sx={{ height: "1em" }}>
+                  <Box sx={{ display: "flex", height: "1em" }}>
                     <CategoricalBarChart
                       topkCount={current.count}
                       topkLabel={current.label}
                       valids={topKDiff.current.valids}
                       color={CURRENT_BAR_COLOR}
                     />
-                    <Text sx={{ ml: 2.5, mr: 1, fontSize: "sm", width: "6em" }}>
+                    <Typography
+                      sx={{
+                        ml: 2.5,
+                        mr: 1,
+                        fontSize: "0.875rem",
+                        width: "6em",
+                      }}
+                    >
                       {current.displayCount}
-                    </Text>
-                    <Text
-                      sx={{ color: "grey.400", fontSize: "sm", width: "4em" }}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        color: "grey.400",
+                        fontSize: "0.875rem",
+                        width: "4em",
+                      }}
                     >
                       {current.displayRatio}
-                    </Text>
-                  </Flex>
+                    </Typography>
+                  </Box>
                   {/* Base Top-K */}
-                  <Flex sx={{ height: "1em" }}>
+                  <Box sx={{ display: "flex", height: "1em" }}>
                     <CategoricalBarChart
                       topkCount={base.count}
                       topkLabel={base.label}
                       valids={topKDiff.base.valids}
                       color={BASE_BAR_COLOR}
                     />
-                    <Text sx={{ ml: 2.5, mr: 1, fontSize: "sm", width: "6em" }}>
+                    <Typography
+                      sx={{
+                        ml: 2.5,
+                        mr: 1,
+                        fontSize: "0.875rem",
+                        width: "6em",
+                      }}
+                    >
                       {base.displayCount}
-                    </Text>
-                    <Text
-                      sx={{ color: "grey.400", fontSize: "sm", width: "4em" }}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        color: "grey.400",
+                        fontSize: "0.875rem",
+                        width: "4em",
+                      }}
                     >
                       {base.displayRatio}
-                    </Text>
-                  </Flex>
-                </Flex>
-              </Flex>
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
             </TopKChartTooltip>
-            <Separator />
+            <Divider />
           </Fragment>
         );
       })}
@@ -234,8 +271,9 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
           <Fragment key={topkLabel}>
             {!isLastItemOthers || topkCount > 0 ? (
               <>
-                <Flex
+                <Box
                   sx={{
+                    display: "flex",
                     alignItems: "center",
                     width: "100%",
                     "&:hover": { bgcolor: "action.hover" },
@@ -246,10 +284,10 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
                     content={topkLabel}
                     positioning={{ placement: "top-start" }}
                   >
-                    <Text
+                    <Typography
                       sx={{
                         width: "14em",
-                        fontSize: "sm",
+                        fontSize: "0.875rem",
                         color:
                           isLastItemOthers || catName.length === 0
                             ? "grey.400"
@@ -260,24 +298,24 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
                       }}
                     >
                       {topkLabel}
-                    </Text>
+                    </Typography>
                   </Tooltip>
-                  <Flex sx={{ height: "2em", width: "10em" }}>
+                  <Box sx={{ display: "flex", height: "2em", width: "10em" }}>
                     <CategoricalBarChart
                       topkCount={topkCount}
                       topkLabel={topkLabel}
                       valids={valids}
                     />
-                  </Flex>
+                  </Box>
                   <Tooltip
                     content={displayTopkCount}
                     positioning={{ placement: "top-start" }}
                   >
-                    <Text
+                    <Typography
                       sx={{
                         ml: 2.5,
                         mr: 1,
-                        fontSize: "sm",
+                        fontSize: "0.875rem",
                         width: "4em",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -285,20 +323,24 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
                       }}
                     >
                       {displayTopkCount}
-                    </Text>
+                    </Typography>
                   </Tooltip>
                   <Tooltip
                     content={displayTopkRatio}
                     positioning={{ placement: "top-start" }}
                   >
-                    <Text
-                      sx={{ color: "grey.400", fontSize: "sm", width: "4em" }}
+                    <Typography
+                      sx={{
+                        color: "grey.400",
+                        fontSize: "0.875rem",
+                        width: "4em",
+                      }}
                     >
                       {displayTopkRatio}
-                    </Text>
+                    </Typography>
                   </Tooltip>
-                </Flex>
-                <Separator />
+                </Box>
+                <Divider />
               </>
             ) : (
               <></>
