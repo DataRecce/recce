@@ -608,12 +608,6 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-_GitLab CI_
-```yaml
-variables:
-  RECCE_API_TOKEN: $RECCE_API_TOKEN
-```
-
 **3. Platform not supported**
 
 ```
