@@ -1,14 +1,8 @@
+import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
+import IconButton from "@mui/material/IconButton";
 import { VscKebabVertical } from "react-icons/vsc";
-import {
-  Box,
-  Flex,
-  Icon,
-  IconButton,
-  Menu,
-  Portal,
-  Spacer,
-  Spinner,
-} from "@/components/ui/mui";
+import { Menu, Portal } from "@/components/ui/mui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { NodeData } from "@/lib/api/info";
 import {
@@ -105,29 +99,32 @@ export function ColumnNameCell({
       showArrow
       disabled={isCllDisabled}
     >
-      <Flex alignItems={"center"} gap="3px">
-        <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+      <Box sx={{ display: "flex", alignItems: "center", gap: "3px" }}>
+        <Box
+          sx={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
           {name}
         </Box>
-        <Spacer />
-        {cllRunning && <Spinner size="xs" colorPalette="neutral" />}
+        <Box sx={{ flex: 1 }} />
+        {cllRunning && <CircularProgress size={12} color="inherit" />}
         {showMenu && !singleEnv && model.resource_type !== "source" && (
           <Menu.Root>
             <Menu.Trigger asChild>
               <IconButton
                 aria-label="Column options"
-                display="flex"
                 className="row-context-menu"
-                variant="plain"
-                size={"sm"}
-                colorPalette="neutral"
+                size="small"
                 disabled={featureToggles.disableDatabaseQuery}
                 onClick={(e) => {
                   // prevent the click event from propagating to the Cell clicking
                   e.stopPropagation();
                 }}
               >
-                <Icon as={VscKebabVertical} />
+                <VscKebabVertical />
               </IconButton>
             </Menu.Trigger>
 
@@ -179,7 +176,7 @@ export function ColumnNameCell({
             </Portal>
           </Menu.Root>
         )}
-      </Flex>
+      </Box>
     </Tooltip>
   );
 }

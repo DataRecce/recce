@@ -1,6 +1,9 @@
-import React, { useState } from "react";
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
+import Link from "@mui/material/Link";
+import Stack from "@mui/material/Stack";
+import { useState } from "react";
 import { LuExternalLink } from "react-icons/lu";
-import { Flex, HStack, IconButton, Image, Link } from "@/components/ui/mui";
 import { toaster } from "@/components/ui/toaster";
 
 function ReactionFeedback({
@@ -19,42 +22,45 @@ function ReactionFeedback({
   externalLinkText?: string;
 }) {
   return (
-    <Flex
-      gap={4}
-      justifyContent="center"
-      alignContent={"center"}
-      alignItems={"center"}
+    <Box
+      sx={{
+        display: "flex",
+        gap: 4,
+        justifyContent: "center",
+        alignContent: "center",
+        alignItems: "center",
+      }}
     >
       {description}
       <IconButton
         aria-label="thumbs up"
-        variant={"ghost"}
-        width={"32px"}
-        height={"32px"}
         onClick={onLike}
+        sx={{ width: "32px", height: "32px" }}
       >
-        <Image src="/imgs/feedback/thumbs-up.png" alt="like" />
+        <Box component="img" src="/imgs/feedback/thumbs-up.png" alt="like" />
       </IconButton>
       <IconButton
         aria-label="thumbs down"
-        variant={"ghost"}
-        width={"32px"}
-        height={"32px"}
         onClick={onDislike}
+        sx={{ width: "32px", height: "32px" }}
       >
-        <Image src="/imgs/feedback/thumbs-down.png" alt="dislike" />
+        <Box
+          component="img"
+          src="/imgs/feedback/thumbs-down.png"
+          alt="dislike"
+        />
       </IconButton>
       {externalLink && externalLinkText && (
         <Link
           href={externalLink}
           target="_blank"
-          textDecoration="underline"
           onClick={onClickLink}
+          sx={{ textDecoration: "underline" }}
         >
           {externalLinkText} <LuExternalLink />
         </Link>
       )}
-    </Flex>
+    </Box>
   );
 }
 
@@ -90,7 +96,7 @@ export function useFeedbackCollectionToast(options: {
         duration: undefined,
         type: "success",
         description: (
-          <HStack>
+          <Stack direction="row">
             <ReactionFeedback
               description={description}
               onLike={() => {
@@ -109,7 +115,7 @@ export function useFeedbackCollectionToast(options: {
                 onFeedbackSubmit("link");
               }}
             />
-          </HStack>
+          </Stack>
         ),
       }),
     );

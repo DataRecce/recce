@@ -10,20 +10,13 @@
  * Also exports render functions for use in toValueDataGrid.ts generator.
  */
 
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
 import React from "react";
 import { RenderCellProps } from "react-data-grid";
 import { PiDotsThreeVertical } from "react-icons/pi";
 import { VscKey } from "react-icons/vsc";
-import {
-  Box,
-  Center,
-  Flex,
-  Icon,
-  IconButton,
-  Menu,
-  Portal,
-  Spacer,
-} from "@/components/ui/mui";
+import { Menu, Portal } from "@/components/ui/mui";
 import { RowObjectType } from "@/lib/api/types";
 import { ValueDiffParams } from "@/lib/api/valuediff";
 import {
@@ -58,7 +51,18 @@ export function PrimaryKeyIndicatorCell({
 }: PrimaryKeyIndicatorCellProps) {
   const isPrimaryKey = primaryKeys.includes(columnName);
 
-  return <Center height="100%">{isPrimaryKey && <Icon as={VscKey} />}</Center>;
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100%",
+      }}
+    >
+      {isPrimaryKey && <VscKey />}
+    </Box>
+  );
 }
 
 // ============================================================================
@@ -105,19 +109,24 @@ export function ValueDiffColumnNameCell({
   };
 
   return (
-    <Flex>
-      <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+    <Box sx={{ display: "flex" }}>
+      <Box
+        sx={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
         {column}
       </Box>
-      <Spacer />
+      <Box sx={{ flex: 1 }} />
 
       <Menu.Root lazyMount>
         <Menu.Trigger asChild>
           <IconButton
             aria-label="Column options"
             className="row-context-menu"
-            variant="plain"
-            size="sm"
+            size="small"
             disabled={featureToggles.disableDatabaseQuery}
           >
             <PiDotsThreeVertical />
@@ -154,7 +163,7 @@ export function ValueDiffColumnNameCell({
           </Menu.Positioner>
         </Portal>
       </Menu.Root>
-    </Flex>
+    </Box>
   );
 }
 
@@ -194,7 +203,7 @@ export function MatchedPercentCell({ value }: MatchedPercentCellProps) {
     }
   }
 
-  return <Box textAlign="right">{displayValue}</Box>;
+  return <Box sx={{ textAlign: "right" }}>{displayValue}</Box>;
 }
 
 // ============================================================================

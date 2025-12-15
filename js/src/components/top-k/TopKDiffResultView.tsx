@@ -1,5 +1,8 @@
+import Box from "@mui/material/Box";
+import Link from "@mui/material/Link";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { forwardRef, Ref, useState } from "react";
-import { Flex, Heading, HStack, Link, Spacer } from "@/components/ui/mui";
 import { TopKDiffParams, TopKDiffResult } from "@/lib/api/profile";
 import { TopKSummaryBarChart } from "../charts/TopKSummaryList";
 import { RunResultViewProps } from "../run/types";
@@ -20,41 +23,39 @@ const PrivateTopKDiffResultView = (
   const currentTopK = result.current;
 
   return (
-    <Flex direction="column" height={"100%"}>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <ScreenshotBox ref={ref} blockSize={"auto"}>
-        <Heading
-          as="h1"
-          size="md"
-          paddingTop={4}
-          textAlign="center"
-          color="gray.600"
+        <Typography
+          variant="h5"
+          sx={{ pt: 4, textAlign: "center", color: "grey.600" }}
         >
           Model {params.model}.{params.column_name}
-        </Heading>
-        <HStack>
-          <Spacer />
+        </Typography>
+        <Stack direction="row" alignItems="center">
+          <Box sx={{ flex: 1 }} />
           <TopKSummaryBarChart
             topKDiff={result}
             valids={currentTopK.valids || 0}
             isDisplayTopTen={isDisplayTopTen}
           />
-          <Spacer />
-        </HStack>
+          <Box sx={{ flex: 1 }} />
+        </Stack>
       </ScreenshotBox>
-      <Spacer />
+      <Box sx={{ flex: 1 }} />
       {(baseTopK.values.length > 10 || currentTopK.values.length > 10) && (
-        <Flex p={5} justify={"start"}>
+        <Box sx={{ display: "flex", p: 5, justifyContent: "start" }}>
           <Link
+            component="button"
             onClick={() => {
               setIsDisplayTopTen((prevState) => !prevState);
             }}
-            colorPalette="iochmara"
+            sx={{ color: "iochmara.main", cursor: "pointer" }}
           >
             {isDisplayTopTen ? "View More Items" : "View Only Top-10"}
           </Link>
-        </Flex>
+        </Box>
       )}
-    </Flex>
+    </Box>
   );
 };
 

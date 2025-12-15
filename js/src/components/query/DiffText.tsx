@@ -1,7 +1,8 @@
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
 import { ReactNode, useState } from "react";
 import { PiCopy } from "react-icons/pi";
 import { useCopyToClipboard } from "usehooks-ts";
-import { Box, Flex, IconButton } from "@/components/ui/mui";
 
 interface DiffTextProps {
   value: string;
@@ -21,8 +22,9 @@ export const DiffText = ({
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <Flex
+    <Box
       sx={{
+        display: "flex",
         p: "2px 5px",
         minWidth: "30px",
         maxWidth: "200px",
@@ -59,7 +61,7 @@ export const DiffText = ({
         grayOut={grayOut}
         isHovered={isHovered}
       />
-    </Flex>
+    </Box>
   );
 };
 
@@ -94,8 +96,7 @@ function CopyControl({
   return (
     <IconButton
       aria-label="Copy"
-      size="xs"
-      variant="plain"
+      size="small"
       onClick={() => copyToClipboard(value)}
       sx={{
         minWidth: "10px",
@@ -103,6 +104,7 @@ function CopyControl({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        p: 0,
       }}
     >
       <PiCopy size="10px" />

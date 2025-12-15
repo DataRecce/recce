@@ -8,6 +8,8 @@
  * - Number column precision options menu
  */
 
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
 import React from "react";
 import {
   VscClose,
@@ -16,7 +18,7 @@ import {
   VscPin,
   VscPinned,
 } from "react-icons/vsc";
-import { Box, Flex, Icon, IconButton, Menu, Portal } from "@/components/ui/mui";
+import { Menu, Portal } from "@/components/ui/mui";
 import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
 import { ColumnRenderMode, ColumnType } from "@/lib/api/types";
 
@@ -138,38 +140,47 @@ export function DataFrameColumnGroupHeader({
   };
 
   return (
-    <Flex alignItems="center" gap="10px" className="grid-header">
+    <Box
+      sx={{ display: "flex", alignItems: "center", gap: "10px" }}
+      className="grid-header"
+    >
       {/* Primary key icon */}
-      {isPK && <Icon as={VscKey} />}
+      {isPK && <VscKey />}
 
       {/* Column name */}
       <Box
-        flex={1}
-        overflow="hidden"
-        textOverflow="ellipsis"
-        whiteSpace="nowrap"
+        sx={{
+          flex: 1,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
       >
         {name}
       </Box>
 
       {/* Primary key toggle (only when onPrimaryKeyChange is provided) */}
       {canBePk && onPrimaryKeyChange && (
-        <Icon
+        <Box
+          component={isPK ? VscClose : VscKey}
           className={isPK ? "close-icon" : "key-icon"}
-          display={isPK ? "block" : "none"}
-          cursor="pointer"
-          as={isPK ? VscClose : VscKey}
+          sx={{
+            display: isPK ? "block" : "none",
+            cursor: "pointer",
+          }}
           onClick={isPK ? handleRemovePk : handleAddPk}
         />
       )}
 
       {/* Pin/unpin toggle (only for non-PK columns when callback is provided) */}
       {!isPK && onPinnedColumnsChange && (
-        <Icon
+        <Box
+          component={isPinned ? VscPinned : VscPin}
           className={isPinned ? "unpin-icon" : "pin-icon"}
-          display={isPinned ? "block" : "none"}
-          cursor="pointer"
-          as={isPinned ? VscPinned : VscPin}
+          sx={{
+            display: isPinned ? "block" : "none",
+            cursor: "pointer",
+          }}
           onClick={isPinned ? handleUnpin : handlePin}
         />
       )}
@@ -180,7 +191,7 @@ export function DataFrameColumnGroupHeader({
           <Menu.Trigger asChild>
             <IconButton
               aria-label="Options"
-              variant="plain"
+              size="small"
               className="!size-4 !min-w-4"
             >
               <VscKebabVertical />
@@ -199,6 +210,6 @@ export function DataFrameColumnGroupHeader({
           </Portal>
         </Menu.Root>
       )}
-    </Flex>
+    </Box>
   );
 }

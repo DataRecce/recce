@@ -1,4 +1,8 @@
-import { Badge } from "@mui/material";
+import Badge from "@mui/material/Badge";
+import Box from "@mui/material/Box";
+import Link from "@mui/material/Link";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import RecceVersionBadge from "app/(mainComponents)/RecceVersionBadge";
 import React, { useState } from "react";
 import { IconType } from "react-icons";
@@ -7,29 +11,19 @@ import { VscGitPullRequest } from "react-icons/vsc";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import AvatarDropdown from "@/components/app/AvatarDropdown";
 import { IdleTimeoutBadge } from "@/components/timeout/IdleTimeoutBadge";
-import {
-  Box,
-  Flex,
-  Heading,
-  HStack,
-  Image,
-  Link,
-  type LinkProps,
-  Spacer,
-  Text,
-} from "@/components/ui/mui";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
-interface LinkIconProps extends LinkProps {
+interface LinkIconProps {
   icon: IconType;
   href: string;
+  sx?: object;
 }
 
-function LinkIcon({ icon: IconComponent, href, ...props }: LinkIconProps) {
+function LinkIcon({ icon: IconComponent, href, sx, ...props }: LinkIconProps) {
   return (
     <Link
-      sx={{ height: "20px", color: "white" }}
+      sx={{ height: "20px", color: "white", ...sx }}
       href={href}
       target="_blank"
       {...props}
@@ -52,8 +46,9 @@ export default function TopBar() {
   const [showModal, setShowModal] = useState(false);
 
   return (
-    <Flex
+    <Box
       sx={{
+        display: "flex",
         gap: "10px",
         minHeight: "40px",
         alignItems: "center",
@@ -65,29 +60,30 @@ export default function TopBar() {
         target="_blank"
         sx={{ "&:hover": { textDecoration: "none" } }}
       >
-        <Flex sx={{ gap: "10px", alignItems: "center" }}>
-          <Image
+        <Box sx={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <Box
+            component="img"
             sx={{ width: 20, height: 20, ml: "18px" }}
             src="/logo/recce-logo-white.png"
             alt="recce-logo-white"
           />
-          <Heading
-            as="h4"
+          <Typography
+            variant="h4"
             sx={{
               fontFamily: '"Montserrat", sans-serif',
               color: "white",
+              fontSize: "1.25rem",
             }}
           >
             RECCE
-          </Heading>
-        </Flex>
+          </Typography>
+        </Box>
       </Link>
       <RecceVersionBadge />
       {(featureToggles.mode ?? reviewMode) && (
         <Badge
-          variant="standard"
           sx={{
-            fontSize: "sm",
+            fontSize: "0.875rem",
             color: "rgba(255,255,255,0.8)",
             textTransform: "uppercase",
             borderColor: "rgba(255,255,255,0.8)",
@@ -98,21 +94,18 @@ export default function TopBar() {
       )}
       {cloudMode && prID && (
         <Badge
-          variant="standard"
           sx={{
-            fontSize: "sm",
+            fontSize: "0.875rem",
             color: "rgba(255,255,255,0.8)",
             textTransform: "uppercase",
             borderColor: "rgba(255,255,255,0.8)",
           }}
         >
-          <HStack>
+          <Stack direction="row" spacing={1} alignItems="center">
             <Box>cloud mode</Box>
             <Box
               sx={{
-                borderLeftWidth: "1px",
-                borderLeftColor: "rgba(255,255,255,0.8)",
-                borderLeftStyle: "solid",
+                borderLeft: "1px solid rgba(255,255,255,0.8)",
                 pl: "8px",
               }}
             >
@@ -131,31 +124,29 @@ export default function TopBar() {
                     verticalAlign: "middle",
                   }}
                 />
-                <Text
+                <Typography
+                  component="span"
                   sx={{ color: "rgba(255,255,255,0.8)", display: "inline" }}
-                >{`#${String(prID)}`}</Text>
+                >{`#${String(prID)}`}</Typography>
               </Link>
             </Box>
-          </HStack>
+          </Stack>
         </Badge>
       )}
       {isDemoSite && prURL && demoPrId && (
         <Badge
-          variant="standard"
           sx={{
-            fontSize: "sm",
+            fontSize: "0.875rem",
             color: "rgba(255,255,255,0.8)",
             textTransform: "uppercase",
             borderColor: "rgba(255,255,255,0.8)",
           }}
         >
-          <HStack>
+          <Stack direction="row" spacing={1} alignItems="center">
             <Box>demo mode</Box>
             <Box
               sx={{
-                borderLeftWidth: "1px",
-                borderLeftColor: "rgba(255,255,255,0.8)",
-                borderLeftStyle: "solid",
+                borderLeft: "1px solid rgba(255,255,255,0.8)",
                 pl: "8px",
               }}
             >
@@ -174,15 +165,16 @@ export default function TopBar() {
                     verticalAlign: "middle",
                   }}
                 />
-                <Text
+                <Typography
+                  component="span"
                   sx={{ color: "rgba(255,255,255,0.8)", display: "inline" }}
-                >{`#${demoPrId}`}</Text>
+                >{`#${demoPrId}`}</Typography>
               </Link>
             </Box>
-          </HStack>
+          </Stack>
         </Badge>
       )}
-      <Spacer />
+      <Box sx={{ flex: 1 }} />
 
       {(isDemoSite || featureToggles.mode === "read only") && (
         <>
@@ -211,10 +203,10 @@ export default function TopBar() {
                 component="button"
                 sx={{
                   color: "white",
-                  fontSize: "sm",
-                  fontWeight: "semibold",
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
                   bgcolor: "brand.700",
-                  borderRadius: "md",
+                  borderRadius: 1,
                   px: 3,
                   py: 1,
                   mr: 2,
@@ -239,6 +231,6 @@ export default function TopBar() {
           )}
         </>
       )}
-    </Flex>
+    </Box>
   );
 }

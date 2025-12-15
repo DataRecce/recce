@@ -1,6 +1,8 @@
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
 import { PiDotsThreeVertical } from "react-icons/pi";
 import { VscPin, VscPinned } from "react-icons/vsc";
-import { Box, Flex, Icon, IconButton, Menu, Portal } from "@/components/ui/mui";
+import { Menu, Portal } from "@/components/ui/mui";
 import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
 import { ColumnRenderMode, ColumnType } from "@/lib/api/types";
 
@@ -50,14 +52,16 @@ export function DataFrameColumnHeader({
   };
 
   return (
-    <Flex className="grid-header" alignItems="center">
-      <Box flex={1}>{name}</Box>
+    <Box sx={{ display: "flex", alignItems: "center" }} className="grid-header">
+      <Box sx={{ flex: 1 }}>{name}</Box>
 
-      <Icon
+      <Box
+        component={isPinned ? VscPinned : VscPin}
         className={isPinned ? "unpin-icon" : "pin-icon"}
-        display={isPinned ? "block" : "none"}
-        cursor="pointer"
-        as={isPinned ? VscPinned : VscPin}
+        sx={{
+          display: isPinned ? "block" : "none",
+          cursor: "pointer",
+        }}
         onClick={isPinned ? handleUnpin : handlePin}
       />
       {columnType === "number" && (
@@ -65,7 +69,7 @@ export function DataFrameColumnHeader({
           <Menu.Trigger asChild>
             <IconButton
               aria-label="Options"
-              variant="plain"
+              size="small"
               className="!size-4 !min-w-4"
             >
               <PiDotsThreeVertical />
@@ -84,6 +88,6 @@ export function DataFrameColumnHeader({
           </Portal>
         </Menu.Root>
       )}
-    </Flex>
+    </Box>
   );
 }
