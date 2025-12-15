@@ -1,8 +1,10 @@
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import { MouseEvent, useState } from "react";
 import { PiDotsThreeVertical } from "react-icons/pi";
 import { VscPin, VscPinned } from "react-icons/vsc";
-import { Menu, Portal } from "@/components/ui/mui";
 import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
 import { ColumnRenderMode, ColumnType } from "@/lib/api/types";
 
@@ -31,6 +33,17 @@ export function DataFrameColumnHeader({
   columnType,
   onColumnsRenderModeChanged,
 }: DataFrameColumnHeaderProps) {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const menuOpen = Boolean(anchorEl);
+
+  const handleMenuClick = (event: MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
   let selectOptions: { value: string; onClick: () => void }[] = [];
   if (onColumnsRenderModeChanged) {
     selectOptions = columnPrecisionSelectOptions(
@@ -65,28 +78,29 @@ export function DataFrameColumnHeader({
         onClick={isPinned ? handleUnpin : handlePin}
       />
       {columnType === "number" && (
-        <Menu.Root>
-          <Menu.Trigger asChild>
-            <IconButton
-              aria-label="Options"
-              size="small"
-              className="!size-4 !min-w-4"
-            >
-              <PiDotsThreeVertical />
-            </IconButton>
-          </Menu.Trigger>
-          <Portal>
-            <Menu.Positioner>
-              <Menu.Content>
-                {selectOptions.map((o) => (
-                  <Menu.Item key={o.value} value={o.value} onClick={o.onClick}>
-                    {o.value}
-                  </Menu.Item>
-                ))}
-              </Menu.Content>
-            </Menu.Positioner>
-          </Portal>
-        </Menu.Root>
+        <>
+          <IconButton
+            aria-label="Options"
+            size="small"
+            className="!size-4 !min-w-4"
+            onClick={handleMenuClick}
+          >
+            <PiDotsThreeVertical />
+          </IconButton>
+          <Menu anchorEl={anchorEl} open={menuOpen} onClose={handleMenuClose}>
+            {selectOptions.map((o) => (
+              <MenuItem
+                key={o.value}
+                onClick={() => {
+                  o.onClick();
+                  handleMenuClose();
+                }}
+              >
+                {o.value}
+              </MenuItem>
+            ))}
+          </Menu>
+        </>
       )}
     </Box>
   );
