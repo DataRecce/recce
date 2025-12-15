@@ -1,4 +1,4 @@
-import Stack from "@mui/material/Stack";
+import MuiButton from "@mui/material/Button";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { FiPackage } from "react-icons/fi";
 import { PiCaretDown } from "react-icons/pi";
@@ -65,16 +65,16 @@ const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
   return (
     <Menu.Root>
       <Menu.Trigger asChild>
-        <Button
-          minWidth="100px"
-          size="2xs"
-          variant="outline"
+        <MuiButton
+          size="xsmall"
+          variant="outlined"
+          color="neutral"
           startIcon={<Icon as={getIconForResourceType("model").icon} />}
           endIcon={<PiCaretDown />}
           disabled={isDisabled}
         >
           {label}
-        </Button>
+        </MuiButton>
       </Menu.Trigger>
       <Portal>
         <Menu.Positioner>
@@ -163,16 +163,16 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
   return (
     <Menu.Root closeOnSelect={false}>
       <Menu.Trigger asChild>
-        <Button
-          minWidth="100px"
-          size="2xs"
+        <MuiButton
+          size="xsmall"
           startIcon={<FiPackage />}
           endIcon={<PiCaretDown />}
-          variant="outline"
+          variant="outlined"
+          color="neutral"
           disabled={isDisabled}
         >
           {label}
-        </Button>
+        </MuiButton>
       </Menu.Trigger>
       <Portal>
         <Menu.Positioner>
@@ -258,9 +258,17 @@ const NodeSelectionInput = (props: {
     >
       <Input
         ref={inputRef}
-        height="24px"
-        fontSize="10pt"
+        height="1.25rem"
+        fontSize="0.8rem"
         placeholder="with selectors"
+        slotProps={{
+          htmlInput: {
+            sx: {
+              paddingTop: 0,
+              paddingBottom: 0,
+            },
+          },
+        }}
         disabled={props.isDisabled}
         value={inputValue}
         onChange={(event) => {
@@ -327,7 +335,7 @@ const ControlItem = (props: {
 }) => {
   return (
     <Box style={props.style} maxWidth="300px">
-      <Box fontSize="8pt">{(props.label ?? "").trim() || <>&nbsp;</>}</Box>
+      <Box fontSize="0.7rem">{(props.label ?? "").trim() || <>&nbsp;</>}</Box>
       {props.children}
     </Box>
   );
@@ -346,8 +354,14 @@ export const LineageViewTopBar = () => {
   const isFilterDisabled = isMultiSelect;
 
   return (
-    <HStack width="100%" padding="4pt 8pt" gap="0.5rem">
-      <HStack flex="1" gap="0.5rem">
+    <HStack
+      width="100%"
+      padding="4pt 8pt"
+      gap="0.5rem"
+      borderBottom="1px solid"
+      borderColor="grey.300"
+    >
+      <HStack flex="1" gap="0.5rem" height="2.625rem">
         <HistoryToggle />
         <ControlItem label="Mode" style={{ flexShrink: "1" }}>
           <ViewModeSelectMenu isDisabled={isFilterDisabled} />
@@ -355,10 +369,28 @@ export const LineageViewTopBar = () => {
         <ControlItem label="Package" style={{ flexShrink: "1" }}>
           <PackageSelectMenu isDisabled={isFilterDisabled} />
         </ControlItem>
-        <ControlItem label="Select" style={{ flex: "100 1 auto" }}>
+        <ControlItem
+          label="Select"
+          style={{
+            flexShrink: "1",
+            display: "flex",
+            height: "100%",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
           <SelectFilter isDisabled={isFilterDisabled} />
         </ControlItem>
-        <ControlItem label="Exclude" style={{ flex: "100 1 auto" }}>
+        <ControlItem
+          label="Exclude"
+          style={{
+            flexShrink: "1",
+            display: "flex",
+            height: "100%",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
           <ExcludeFilter isDisabled={isFilterDisabled} />
         </ControlItem>
         <Spacer />
@@ -373,25 +405,28 @@ export const LineageViewTopBar = () => {
             </ControlItem>
 
             <ControlItem label="">
-              <Button
-                variant={"outline"}
-                size="2xs"
-                fontSize="9pt"
+              <MuiButton
+                variant="outlined"
+                color="neutral"
+                size="xsmall"
+                sx={{
+                  fontSize: "0.75rem",
+                }}
                 onClick={() => {
                   deselect();
                 }}
               >
                 Deselect
-              </Button>
+              </MuiButton>
             </ControlItem>
             {isSingleEnvOnboarding && (
               <ControlItem label="Explore">
-                <ButtonGroup attached variant="outline">
+                <ButtonGroup attached variant="outlined">
                   <Menu.Root positioning={{ placement: "bottom-end" }}>
                     <Menu.Trigger asChild>
-                      <Button size="2xs" endIcon={<PiCaretDown />}>
+                      <MuiButton size="xsmall" endIcon={<PiCaretDown />}>
                         Actions
-                      </Button>
+                      </MuiButton>
                     </Menu.Trigger>
                     <Portal>
                       <Menu.Positioner>
@@ -419,16 +454,18 @@ export const LineageViewTopBar = () => {
         )}
         {!isSingleEnvOnboarding && (
           <ControlItem label="Explore">
-            <ButtonGroup attached variant="outline">
+            <ButtonGroup attached variant="outlined">
               <Menu.Root positioning={{ placement: "bottom-end" }}>
                 <Menu.Trigger asChild>
-                  <Button
-                    size="2xs"
+                  <MuiButton
+                    variant="outlined"
+                    color="neutral"
+                    size="xsmall"
                     disabled={featureToggles.disableViewActionDropdown}
                     endIcon={<PiCaretDown />}
                   >
                     Actions
-                  </Button>
+                  </MuiButton>
                 </Menu.Trigger>
                 <Portal>
                   <Menu.Positioner>

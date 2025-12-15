@@ -288,7 +288,7 @@ const buttonColorVariants = [
     props: { color: "neutral" as const, variant: "outlined" as const },
     style: {
       borderColor: colors.neutral[300], // Lighter border (neutral.light)
-      color: colors.neutral[700],
+      color: colors.neutral[900],
       "&:hover": {
         borderColor: colors.neutral[400],
         backgroundColor: colors.neutral[100],
@@ -760,11 +760,11 @@ const baseThemeOptions: ThemeOptions = {
       lineHeight: 1.5,
     },
     body1: {
-      fontSize: "1rem",
+      fontSize: "0.875rem",
       lineHeight: 1.5,
     },
     body2: {
-      fontSize: "0.875rem",
+      fontSize: "0.75rem",
       lineHeight: 1.5,
     },
     button: {
