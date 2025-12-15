@@ -1,16 +1,12 @@
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
+import Skeleton from "@mui/material/Skeleton";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { FiArrowRight, FiFrown } from "react-icons/fi";
 import { PiRepeat } from "react-icons/pi";
 import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
-import {
-  Flex,
-  HStack,
-  Icon,
-  IconButton,
-  SkeletonText,
-  Tag,
-  Text,
-} from "@/components/ui/mui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { RowCount, RowCountDiff } from "@/lib/api/models";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
@@ -20,20 +16,37 @@ import { findByRunType } from "../run/registry";
 import { LineageGraphNode } from "./lineage";
 import { getIconForResourceType } from "./styles";
 
+// Reusable tag styles
+const tagRootSx = {
+  display: "inline-flex",
+  alignItems: "center",
+  borderRadius: 16,
+  px: 1,
+  py: 0.25,
+  fontSize: "0.75rem",
+  bgcolor: "grey.100",
+};
+
+const tagStartElementSx = {
+  mr: 0.5,
+  display: "flex",
+  alignItems: "center",
+};
+
 export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
   const { icon: ResourceTypeIcon } = getIconForResourceType(
     node.data.resourceType,
   );
   return (
     <Tooltip showArrow content="Type of resource">
-      <Tag.Root>
+      <Box component="span" sx={tagRootSx}>
         {ResourceTypeIcon && (
-          <Tag.StartElement>
+          <Box component="span" sx={tagStartElementSx}>
             <ResourceTypeIcon />
-          </Tag.StartElement>
+          </Box>
         )}
-        <Tag.Label>{node.data.resourceType}</Tag.Label>
-      </Tag.Root>
+        {node.data.resourceType}
+      </Box>
     </Tooltip>
   );
 }
@@ -52,35 +65,65 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
     return <> Failed to load</>;
   } else if (base === null || current === null) {
     return (
-      <HStack>
-        <Text>{baseLabel}</Text>
-        <Icon as={FiArrowRight} />
-        <Text>{currentLabel}</Text>
-      </HStack>
+      <Stack direction="row" alignItems="center" spacing={0.5}>
+        <Typography variant="body2" component="span">
+          {baseLabel}
+        </Typography>
+        <FiArrowRight />
+        <Typography variant="body2" component="span">
+          {currentLabel}
+        </Typography>
+      </Stack>
     );
   } else if (base === current) {
     return (
-      <HStack>
-        <Text>{currentLabel}</Text>
-        <Icon as={RiSwapLine} color="gray.500" />
-        <Text color="gray.500">No Change</Text>
-      </HStack>
+      <Stack direction="row" alignItems="center" spacing={0.5}>
+        <Typography variant="body2" component="span">
+          {currentLabel}
+        </Typography>
+        <Box component="span" sx={{ color: "grey.500", display: "flex" }}>
+          <RiSwapLine />
+        </Box>
+        <Typography variant="body2" component="span" sx={{ color: "grey.500" }}>
+          No Change
+        </Typography>
+      </Stack>
     );
   } else if (base < current) {
     return (
-      <HStack>
-        <Text>{currentLabel}</Text>
-        <Icon as={RiArrowUpSFill} color="green.500" />
-        <Text color="green.500">{deltaPercentageString(base, current)}</Text>
-      </HStack>
+      <Stack direction="row" alignItems="center" spacing={0.5}>
+        <Typography variant="body2" component="span">
+          {currentLabel}
+        </Typography>
+        <Box component="span" sx={{ color: "success.main", display: "flex" }}>
+          <RiArrowUpSFill />
+        </Box>
+        <Typography
+          variant="body2"
+          component="span"
+          sx={{ color: "success.main" }}
+        >
+          {deltaPercentageString(base, current)}
+        </Typography>
+      </Stack>
     );
   } else {
     return (
-      <HStack>
-        <Text>{currentLabel}</Text>
-        <Icon as={RiArrowDownSFill} color="red.500" />
-        <Text color="red.500">{deltaPercentageString(base, current)}</Text>
-      </HStack>
+      <Stack direction="row" alignItems="center" spacing={0.5}>
+        <Typography variant="body2" component="span">
+          {currentLabel}
+        </Typography>
+        <Box component="span" sx={{ color: "error.main", display: "flex" }}>
+          <RiArrowDownSFill />
+        </Box>
+        <Typography
+          variant="body2"
+          component="span"
+          sx={{ color: "error.main" }}
+        >
+          {deltaPercentageString(base, current)}
+        </Typography>
+      </Stack>
     );
   }
 }
@@ -88,10 +131,14 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
 export function ModelRowCount({ rowCount }: ModelRowCountProps) {
   if (!rowCount) {
     return (
-      <HStack>
-        <Text>Failed to load</Text>
-        <Icon as={FiFrown} color="red.500" />
-      </HStack>
+      <Stack direction="row" alignItems="center" spacing={0.5}>
+        <Typography variant="body2" component="span">
+          Failed to load
+        </Typography>
+        <Box component="span" sx={{ color: "error.main", display: "flex" }}>
+          <FiFrown />
+        </Box>
+      </Stack>
     );
   }
 
@@ -137,40 +184,37 @@ export function RowCountDiffTag({
   return (
     <Tooltip content={label}>
       <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
-        <Tag.Root asChild>
-          <Flex direction="row" alignItems="center" gap="1">
-            <RunTypeIcon />
-            {rowsToShow != null || isFetching ? (
-              <SkeletonText
-                loading={false}
-                noOfLines={1}
-                minWidth={"30px"}
-                fontSize="xs"
-              >
-                {rowsToShow != null ? (
-                  <_RowCountByRate rowCount={rowsToShow} />
-                ) : (
-                  "row count"
-                )}
-              </SkeletonText>
+        <Box
+          component="span"
+          sx={{
+            ...tagRootSx,
+            gap: 0.5,
+          }}
+        >
+          <RunTypeIcon />
+          {rowsToShow != null || isFetching ? (
+            isFetching ? (
+              <Skeleton width={30} height={16} />
+            ) : rowsToShow != null ? (
+              <_RowCountByRate rowCount={rowsToShow} />
             ) : (
-              <Text fontSize="xs">row count</Text>
-            )}
-            {onRefresh && (
-              <IconButton
-                loading={isFetching}
-                aria-label="Query Row Count"
-                size="2xs"
-                p="0"
-                variant="ghost"
-                onClick={onRefresh}
-                disabled={featureToggles.disableDatabaseQuery}
-              >
-                <PiRepeat />
-              </IconButton>
-            )}
-          </Flex>
-        </Tag.Root>
+              <Typography variant="caption">row count</Typography>
+            )
+          ) : (
+            <Typography variant="caption">row count</Typography>
+          )}
+          {onRefresh && (
+            <IconButton
+              aria-label="Query Row Count"
+              size="small"
+              onClick={onRefresh}
+              disabled={featureToggles.disableDatabaseQuery}
+              sx={{ p: 0, ml: 0.5 }}
+            >
+              <PiRepeat size={12} />
+            </IconButton>
+          )}
+        </Box>
       </SetupConnectionPopover>
     </Tooltip>
   );
@@ -204,37 +248,30 @@ export function RowCountTag({
   }
 
   return (
-    <Tag.Root>
-      <Tag.StartElement>
+    <Box component="span" sx={tagRootSx}>
+      <Box component="span" sx={tagStartElementSx}>
         <RunTypeIcon />
-      </Tag.StartElement>
-      <Tag.Label>
-        {rowCount || isFetching ? (
-          <SkeletonText
-            loading={isFetching}
-            lineClamp={1}
-            height={2}
-            minWidth={"30px"}
-          >
-            {rowCount ? `${label}` : "row count"}
-          </SkeletonText>
+      </Box>
+      {rowCount || isFetching ? (
+        isFetching ? (
+          <Skeleton width={30} height={16} />
         ) : (
-          <>row count</>
-        )}
-      </Tag.Label>
+          <Typography variant="caption">{label}</Typography>
+        )
+      ) : (
+        <Typography variant="caption">row count</Typography>
+      )}
       {onRefresh && (
         <IconButton
-          loading={isFetching}
           aria-label="Query Row Count"
-          size="2xs"
-          p="0"
-          variant="ghost"
+          size="small"
           onClick={onRefresh}
           disabled={node.data.from === "base"}
+          sx={{ p: 0, ml: 0.5 }}
         >
-          <PiRepeat />
+          <PiRepeat size={12} />
         </IconButton>
       )}
-    </Tag.Root>
+    </Box>
   );
 }
