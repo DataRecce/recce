@@ -70,36 +70,44 @@ export function getIconForChangeStatus(
   icon: typeof IconAdded | undefined;
 } {
   if (changeStatus === "added") {
+    const color = String(token("colors.green.solid"));
+    const backgroundColor = String(token("colors.green.subtle"));
     return {
-      color: "green.solid",
-      hexColor: String(token("colors.green.solid")),
-      backgroundColor: "green.subtle",
-      hexBackgroundColor: String(token("colors.green.subtle")),
+      color,
+      hexColor: color,
+      backgroundColor,
+      hexBackgroundColor: backgroundColor,
       icon: IconAdded,
     };
   } else if (changeStatus === "removed") {
+    const color = String(token("colors.red.solid"));
+    const backgroundColor = String(token("colors.red.subtle"));
     return {
-      color: "red.solid",
-      hexColor: String(token("colors.red.solid")),
-      backgroundColor: "red.subtle",
-      hexBackgroundColor: String(token("colors.red.subtle")),
+      color,
+      hexColor: color,
+      backgroundColor,
+      hexBackgroundColor: backgroundColor,
       icon: IconRemoved,
     };
   } else if (changeStatus === "modified") {
+    const color = String(token("colors.orange.emphasized"));
+    const backgroundColor = String(token("colors.orange.subtle"));
     return {
-      color: "orange.emphasized",
-      hexColor: String(token("colors.orange.emphasized")),
-      backgroundColor: "orange.subtle",
-      hexBackgroundColor: String(token("colors.orange.subtle")),
+      color,
+      hexColor: color,
+      backgroundColor,
+      hexBackgroundColor: backgroundColor,
       icon: IconModified,
     };
   }
 
+  const color = String(token("colors.gray.focusRing"));
+  const backgroundColor = "#ffffff";
   return {
-    color: "gray.focusRing",
-    hexColor: String(token("colors.gray.focusRing")),
-    backgroundColor: "white",
-    hexBackgroundColor: String(token("colors.white")),
+    color,
+    hexColor: color,
+    backgroundColor,
+    hexBackgroundColor: backgroundColor,
     icon: undefined,
   };
 }

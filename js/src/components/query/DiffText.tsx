@@ -3,10 +3,11 @@ import IconButton from "@mui/material/IconButton";
 import { ReactNode, useState } from "react";
 import { PiCopy } from "react-icons/pi";
 import { useCopyToClipboard } from "usehooks-ts";
+import { colors } from "@/components/ui/mui-theme";
 
 interface DiffTextProps {
   value: string;
-  colorPalette: string;
+  colorPalette: "red" | "green";
   grayOut?: boolean;
   noCopy?: boolean;
   fontSize?: string;
@@ -21,6 +22,10 @@ export const DiffText = ({
 }: DiffTextProps) => {
   const [isHovered, setIsHovered] = useState(false);
 
+  // Get the color values from the theme colors
+  const textColor = colors[colorPalette][800];
+  const bgColor = colors[colorPalette][100];
+
   return (
     <Box
       sx={{
@@ -30,8 +35,8 @@ export const DiffText = ({
         maxWidth: "200px",
         overflow: "hidden",
         textOverflow: "ellipsis",
-        color: `${colorPalette}.800`,
-        bgcolor: `${colorPalette}.100`,
+        color: textColor,
+        bgcolor: bgColor,
         alignItems: "center",
         gap: "2px",
         borderRadius: "8px",
