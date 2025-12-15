@@ -1,5 +1,6 @@
+import { Badge } from "@mui/material";
 import React, { useEffect, useMemo } from "react";
-import { Badge, Code, Link, Text } from "@/components/ui/mui";
+import { Code, Link, Text } from "@/components/ui/mui";
 import { toaster } from "@/components/ui/toaster";
 import { useVersionNumber } from "@/lib/api/version";
 
@@ -68,7 +69,7 @@ export default function RecceVersionBadge() {
           color: "rgba(255,255,255,0.8)",
           textTransform: "uppercase",
         }}
-        variant="outline"
+        variant="standard"
       >
         {version}
       </Badge>
@@ -83,7 +84,7 @@ export default function RecceVersionBadge() {
         color: "rgba(255,255,255,0.8)",
         textTransform: "uppercase",
       }}
-      variant="outline"
+      variant="standard"
     >
       <Link
         href={`https://github.com/DataRecce/recce/releases/tag/v${version}`}

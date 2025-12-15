@@ -1,7 +1,8 @@
 "use client";
 
+import { Badge } from "@mui/material";
 import { IoWarning } from "react-icons/io5";
-import { Badge, Icon } from "@/components/ui/mui";
+import { Icon } from "@/components/ui/mui";
 import { useIdleTimeout } from "@/lib/hooks/IdleTimeoutContext";
 import { formatDuration } from "@/lib/utils/formatTime";
 
@@ -30,13 +31,15 @@ export function IdleTimeoutBadge() {
 
   return (
     <Badge
-      display="flex"
-      alignItems="center"
-      gap={1}
-      fontSize="sm"
-      colorPalette="amber"
-      variant="solid"
-      mr={2}
+      color="amber"
+      variant="standard"
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 1,
+        fontSize: "0.75rem",
+        mr: 2,
+      }}
     >
       <Icon as={IoWarning} />
       Idle timeout: {formatDuration(remainingSeconds, "compact")}

@@ -1,3 +1,4 @@
+import { Badge } from "@mui/material";
 import RecceVersionBadge from "app/(mainComponents)/RecceVersionBadge";
 import React, { useState } from "react";
 import { IconType } from "react-icons";
@@ -7,7 +8,6 @@ import AuthModal from "@/components/AuthModal/AuthModal";
 import AvatarDropdown from "@/components/app/AvatarDropdown";
 import { IdleTimeoutBadge } from "@/components/timeout/IdleTimeoutBadge";
 import {
-  Badge,
   Box,
   Flex,
   Heading,
@@ -85,7 +85,7 @@ export default function TopBar() {
       <RecceVersionBadge />
       {(featureToggles.mode ?? reviewMode) && (
         <Badge
-          variant="outlined"
+          variant="standard"
           sx={{
             fontSize: "sm",
             color: "rgba(255,255,255,0.8)",
@@ -98,7 +98,7 @@ export default function TopBar() {
       )}
       {cloudMode && prID && (
         <Badge
-          variant="outlined"
+          variant="standard"
           sx={{
             fontSize: "sm",
             color: "rgba(255,255,255,0.8)",
@@ -141,7 +141,7 @@ export default function TopBar() {
       )}
       {isDemoSite && prURL && demoPrId && (
         <Badge
-          variant="outlined"
+          variant="standard"
           sx={{
             fontSize: "sm",
             color: "rgba(255,255,255,0.8)",
