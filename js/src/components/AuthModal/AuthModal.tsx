@@ -1,26 +1,19 @@
 "use client";
 
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import MuiDialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import Link from "@mui/material/Link";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import Cookies from "js-cookie";
 import { StaticImageData } from "next/image";
 import ReloadImage from "public/imgs/reload-image.svg";
-import {
-  Dispatch,
-  ReactNode,
-  SetStateAction,
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import { Dispatch, ReactNode, SetStateAction, useState } from "react";
 import { LuExternalLink } from "react-icons/lu";
-import {
-  Button,
-  Dialog,
-  Image,
-  Link,
-  Portal,
-  Text,
-  VStack,
-} from "@/components/ui/mui";
 import { connectToCloud } from "@/lib/api/connectToCloud";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
@@ -75,137 +68,135 @@ export default function AuthModal({
 
   const content = contents[variant];
 
+  const handleClose = () => {
+    setOpen(false);
+    if (handleParentClose) {
+      handleParentClose(false);
+    }
+  };
+
   return (
-    <Dialog.Root
-      size="lg"
-      placement="center"
-      lazyMount
+    <MuiDialog
       open={open}
-      onOpenChange={(e) => {
-        setOpen(e.open);
-        if (handleParentClose) {
-          handleParentClose(e.open);
-        }
+      onClose={handleClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: { borderRadius: "16px" },
       }}
     >
-      <Portal>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content borderRadius="2xl">
-            {authState !== "authenticating" && (
-              <Dialog.Header className="text-center" fontSize="2xl">
-                <Dialog.Title>{content.title}</Dialog.Title>
-              </Dialog.Header>
+      {authState !== "authenticating" && (
+        <DialogTitle sx={{ textAlign: "center", fontSize: "1.5rem" }}>
+          {content.title}
+        </DialogTitle>
+      )}
+      {authState !== "authenticating" ? (
+        <>
+          <DialogContent className="space-y-2 font-light">
+            <Typography>
+              To enable sharing, get your token from Recce Cloud and launch your
+              local instance with it.
+            </Typography>
+            <ul className="list-inside list-disc">
+              <li>Share your instance with teammates via Recce Cloud.</li>
+              <li>
+                Your instance will be securely and freely hosted for sharing.
+              </li>
+              {variant === "auth" && (
+                <li>This step is recommended but optional.</li>
+              )}
+            </ul>
+            <Box sx={{ display: "flex", gap: 1 }}>
+              More directions
+              <Link
+                underline="always"
+                sx={{
+                  color: "primary.main",
+                  "&:focus": { outline: "none" },
+                }}
+                href="https://cloud.datarecce.io/connect-to-cloud"
+                target="_blank"
+              >
+                here <LuExternalLink style={{ display: "inline" }} />
+              </Link>
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ flexDirection: "column", gap: 1, px: 3, pb: 3 }}>
+            <Button
+              fullWidth
+              color="brand"
+              variant="contained"
+              sx={{ borderRadius: 2, fontWeight: 500 }}
+              onClick={async () => {
+                setAuthState("authenticating");
+                const { connection_url } = await connectToCloud();
+                // Open the connection URL in a new tab
+                window.open(connection_url, "_blank");
+              }}
+            >
+              {content.action} <LuExternalLink style={{ marginLeft: 4 }} />
+            </Button>
+            <Button
+              fullWidth
+              color="neutral"
+              variant="text"
+              size="small"
+              sx={{ borderRadius: 2, fontWeight: 500 }}
+              onClick={handleClose}
+            >
+              {variant === "auth" ? "Skip" : "Cancel"}
+            </Button>
+            {variant === "auth" && (
+              <Button
+                fullWidth
+                variant="text"
+                size="small"
+                sx={{ borderRadius: 2, fontWeight: 500, color: "text.primary" }}
+                onClick={() => {
+                  Cookies.set("authState", "ignored", {
+                    expires: 30,
+                  });
+                  setAuthState("ignored");
+                  handleClose();
+                }}
+              >
+                Snooze for 30 days
+              </Button>
             )}
-            {authState !== "authenticating" ? (
-              <>
-                <Dialog.Body className="space-y-2 font-light">
-                  <Text>
-                    To enable sharing, get your token from Recce Cloud and
-                    launch your local instance with it.
-                  </Text>
-                  <ul className="list-inside list-disc">
-                    <li>Share your instance with teammates via Recce Cloud.</li>
-                    <li>
-                      Your instance will be securely and freely hosted for
-                      sharing.
-                    </li>
-                    {variant === "auth" && (
-                      <li>This step is recommended but optional.</li>
-                    )}
-                  </ul>
-                  <Text display="flex" gap={1}>
-                    More directions
-                    <Link
-                      variant="underline"
-                      color="primary"
-                      _focus={{
-                        outline: "none",
-                      }}
-                      href="https://cloud.datarecce.io/connect-to-cloud"
-                      target="_blank"
-                    >
-                      here <LuExternalLink />
-                    </Link>
-                  </Text>
-                </Dialog.Body>
-                <Dialog.Footer>
-                  <div className="flex w-full flex-col gap-2">
-                    <Button
-                      className="w-full !rounded-lg !font-medium"
-                      colorPalette="brand"
-                      onClick={async () => {
-                        setAuthState("authenticating");
-                        const { connection_url } = await connectToCloud();
-                        // Open the connection URL in a new tab
-                        window.open(connection_url, "_blank");
-                      }}
-                    >
-                      {content.action} <LuExternalLink />
-                    </Button>
-                    <Dialog.ActionTrigger asChild>
-                      <Button
-                        className="!rounded-lg !font-medium"
-                        variant="subtle"
-                        colorPalette="neutral"
-                        size="sm"
-                      >
-                        {variant === "auth" ? "Skip" : "Cancel"}
-                      </Button>
-                    </Dialog.ActionTrigger>
-                    {variant === "auth" && (
-                      <Dialog.ActionTrigger asChild>
-                        <Button
-                          width="100%"
-                          className="!rounded-lg !font-medium !text-black"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            Cookies.set("authState", "ignored", {
-                              expires: 30,
-                            });
-                            setAuthState("ignored");
-                          }}
-                        >
-                          Snooze for 30 days
-                        </Button>
-                      </Dialog.ActionTrigger>
-                    )}
-                  </div>
-                </Dialog.Footer>
-              </>
-            ) : (
-              <>
-                <Dialog.Body className="space-y-2 self-center font-light">
-                  <VStack gap={4} paddingTop="1rem">
-                    <Image
-                      className="mx-auto mb-2"
-                      h="6rem"
-                      fit="contain"
-                      src={(ReloadImage as StaticImageData).src}
-                    />
-                    <Text fontSize="2xl" fontWeight="medium">
-                      Reload to Finish
-                    </Text>
-                    <Text>Reload to complete connection to Recce Cloud</Text>
-                  </VStack>
-                </Dialog.Body>
-                <Dialog.Footer>
-                  <Button
-                    className="w-full"
-                    colorPalette="brand"
-                    onClick={() => {
-                      window.location.reload();
-                    }}
-                  >
-                    Reload
-                  </Button>
-                </Dialog.Footer>
-              </>
-            )}
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Portal>
-    </Dialog.Root>
+          </DialogActions>
+        </>
+      ) : (
+        <>
+          <DialogContent className="space-y-2 self-center font-light">
+            <Stack spacing={2} alignItems="center" sx={{ pt: "1rem" }}>
+              <Box
+                component="img"
+                sx={{ height: "6rem", objectFit: "contain", mx: "auto", mb: 1 }}
+                src={(ReloadImage as StaticImageData).src}
+                alt="Reload"
+              />
+              <Typography sx={{ fontSize: "1.5rem", fontWeight: 500 }}>
+                Reload to Finish
+              </Typography>
+              <Typography>
+                Reload to complete connection to Recce Cloud
+              </Typography>
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3 }}>
+            <Button
+              fullWidth
+              color="brand"
+              variant="contained"
+              onClick={() => {
+                window.location.reload();
+              }}
+            >
+              Reload
+            </Button>
+          </DialogActions>
+        </>
+      )}
+    </MuiDialog>
   );
 }

@@ -1,20 +1,19 @@
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Checkbox from "@mui/material/Checkbox";
+import MuiDialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import IconButton from "@mui/material/IconButton";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import React, { useEffect, useRef, useState } from "react";
-import {
-  Box,
-  Button,
-  Checkbox,
-  CloseButton,
-  Dialog,
-  Field,
-  Flex,
-  Icon,
-  IconButton,
-  Input,
-  Portal,
-  useDisclosure,
-} from "@/components/ui/mui";
+import { IoClose } from "react-icons/io5";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -86,8 +85,8 @@ interface FilenameState {
 export const Filename = () => {
   const { featureToggles } = useRecceInstanceContext();
   const { fileName, cloudMode, isDemoSite, envInfo } = useLineageGraphContext();
-  const modalDisclosure = useDisclosure();
-  const overwriteDisclosure = useDisclosure();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [overwriteOpen, setOverwriteOpen] = useState(false);
   const isStateless = !fileName && !cloudMode && !isDemoSite;
   const { data: checks } = useChecks(isStateless);
   const hasNonPresetChecks =
@@ -112,8 +111,11 @@ export const Filename = () => {
       modified: !fileName,
     });
 
-    modalDisclosure.onOpen();
+    setModalOpen(true);
   };
+
+  const handleModalClose = () => setModalOpen(false);
+  const handleOverwriteClose = () => setOverwriteOpen(false);
 
   const handleAction = async (
     method: "save" | "rename",
@@ -155,7 +157,7 @@ export const Filename = () => {
             overwriteWithMethod: method,
           }));
 
-          overwriteDisclosure.onOpen();
+          setOverwriteOpen(true);
           return;
         }
       }
@@ -164,13 +166,13 @@ export const Filename = () => {
         error as Error,
       );
     } finally {
-      modalDisclosure.onClose();
+      handleModalClose();
     }
   };
 
   const handleOvewriteBack = () => {
-    overwriteDisclosure.onClose();
-    modalDisclosure.onOpen();
+    handleOverwriteClose();
+    setModalOpen(true);
     setState((s) => {
       return {
         ...s,
@@ -198,8 +200,8 @@ export const Filename = () => {
 
   return (
     <>
-      <Flex justifyContent="center" alignItems="center">
-        <Box fontWeight="600">
+      <Stack direction="row" alignItems="center" justifyContent="center">
+        <Box sx={{ fontWeight: 600 }}>
           {titleReadOnlyState ?? fileName ?? titleNewInstance}
         </Box>
         {!featureToggles.disableSaveToFile && (
@@ -210,191 +212,168 @@ export const Filename = () => {
             <IconButton
               onClick={handleOpen}
               aria-label={fileName ? "Change Filename" : "Save"}
-              variant="ghost"
-              size="sm"
-              colorPalette="neutral"
+              size="small"
             >
-              <Icon
-                as={fileName ? IconEdit : IconSave}
-                boxSize={"16px"}
-                verticalAlign="middle"
+              <Box
+                component={fileName ? IconEdit : IconSave}
+                sx={{ fontSize: 16, verticalAlign: "middle" }}
               />
             </IconButton>
           </Tooltip>
         )}
-      </Flex>
-      <Dialog.Root
-        open={modalDisclosure.open}
-        onOpenChange={modalDisclosure.onClose}
-        placement="center"
-      >
-        <Portal>
-          <Dialog.Backdrop />
-          <Dialog.Positioner>
-            <Dialog.Content>
-              <Dialog.Header>
-                <Dialog.Title>
-                  {fileName ? "Change Filename" : "Save File"}
-                </Dialog.Title>
-              </Dialog.Header>
-              <Dialog.Body
-                onKeyDown={(e) => {
-                  e.stopPropagation();
+      </Stack>
+      <MuiDialog open={modalOpen} onClose={handleModalClose}>
+        <DialogTitle sx={{ display: "flex", alignItems: "center" }}>
+          {fileName ? "Change Filename" : "Save File"}
+          <Box sx={{ flexGrow: 1 }} />
+          <IconButton size="small" onClick={handleModalClose}>
+            <IoClose />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent
+          onKeyDown={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          <TextField
+            inputRef={inputRef}
+            value={newFileName}
+            label="File name"
+            placeholder="Enter filename"
+            error={!!errorMessage}
+            helperText={errorMessage}
+            fullWidth
+            size="small"
+            sx={{ mt: 1 }}
+            onChange={(e) => {
+              const value = e.target.value;
+              let newErrorMessage: string | undefined = undefined;
+
+              if (!value) {
+                newErrorMessage = "Filename cannot be empty.";
+              } else if (!value.endsWith(".json")) {
+                newErrorMessage = "Filename must end with .json.";
+              } else if (!/^[a-zA-Z0-9 _-]+\.json$/.test(value)) {
+                newErrorMessage =
+                  "Invalid filename. Only alphanumeric, space, _ and - are allowed.";
+              } else if (fileName && value === fileName) {
+                newErrorMessage = "Filename is the same as the current one.";
+              }
+
+              setState((s) => {
+                return {
+                  ...s,
+                  modified: true,
+                  newFileName: value,
+                  errorMessage: newErrorMessage,
+                };
+              });
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                if (errorMessage) {
+                  return;
+                }
+
+                if (!fileName) {
+                  void handleAction("save");
+                } else {
+                  void handleAction("rename");
+                }
+              } else if (e.key === "Escape") {
+                handleModalClose();
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ gap: "5px" }}>
+          <Button
+            size="small"
+            color={fileName ? "inherit" : "iochmara"}
+            variant="contained"
+            onClick={async () => {
+              await handleAction("save");
+            }}
+            disabled={!newFileName || !!errorMessage || !modified}
+          >
+            {fileName ? "Save as New File" : "Confirm"}
+          </Button>
+          {fileName && (
+            <Button
+              size="small"
+              color="iochmara"
+              variant="contained"
+              onClick={async () => {
+                await handleAction("rename");
+              }}
+              disabled={!newFileName || !!errorMessage || !modified}
+            >
+              Rename
+            </Button>
+          )}
+        </DialogActions>
+      </MuiDialog>
+      <MuiDialog open={overwriteOpen} onClose={handleOverwriteClose}>
+        <DialogTitle sx={{ display: "flex", alignItems: "center" }}>
+          Overwrite File?
+          <Box sx={{ flexGrow: 1 }} />
+          <IconButton size="small" onClick={handleOverwriteClose}>
+            <IoClose />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent
+          sx={{
+            borderTop: "solid 1px lightgray",
+            borderBottom: "solid 1px lightgray",
+          }}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          <Typography sx={{ fontSize: "12pt" }}>
+            {overwriteWithMethod === "save"
+              ? "Saving a file with this name will overwrite the existing file. Are you sure you wish to continue?"
+              : "Renaming the file with this name will overwrite the existing file. Are you sure you wish to continue?"}
+          </Typography>
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                size="small"
+                checked={bypass}
+                onChange={(e) => {
+                  setState((s) => ({ ...s, bypass: e.target.checked }));
                 }}
-              >
-                <Field.Root invalid={!!errorMessage}>
-                  <Field.Label>File name:</Field.Label>
-                  <Input
-                    ref={inputRef}
-                    value={newFileName}
-                    placeholder="Enter filename"
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      let newErrorMessage: string | undefined = undefined;
+              />
+            }
+            label={
+              <Typography sx={{ fontWeight: "bold", pt: "8px" }}>
+                Don&apos;t show this again
+              </Typography>
+            }
+          />
+        </DialogContent>
+        <DialogActions sx={{ gap: "5px" }}>
+          <Button variant="outlined" onClick={handleOvewriteBack} size="small">
+            Back
+          </Button>
+          <Button
+            size="small"
+            color="iochmara"
+            variant="contained"
+            onClick={() => {
+              if (!overwriteWithMethod) {
+                return;
+              }
 
-                      if (!value) {
-                        newErrorMessage = "Filename cannot be empty.";
-                      } else if (!value.endsWith(".json")) {
-                        newErrorMessage = "Filename must end with .json.";
-                      } else if (!/^[a-zA-Z0-9 _-]+\.json$/.test(value)) {
-                        newErrorMessage =
-                          "Invalid filename. Only alphanumeric, space, _ and - are allowed.";
-                      } else if (fileName && value === fileName) {
-                        newErrorMessage =
-                          "Filename is the same as the current one.";
-                      }
-
-                      setState((s) => {
-                        return {
-                          ...s,
-                          modified: true,
-                          newFileName: value,
-                          errorMessage: newErrorMessage,
-                        };
-                      });
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        if (errorMessage) {
-                          return;
-                        }
-
-                        if (!fileName) {
-                          void handleAction("save");
-                        } else {
-                          void handleAction("rename");
-                        }
-                      } else if (e.key === "Escape") {
-                        modalDisclosure.onClose();
-                      }
-                    }}
-                  />
-                  <Field.ErrorText>{errorMessage}</Field.ErrorText>
-                </Field.Root>
-              </Dialog.Body>
-              <Dialog.Footer gap="5px">
-                <Button
-                  size="sm"
-                  colorPalette={fileName ? undefined : "blue"}
-                  onClick={async () => {
-                    await handleAction("save");
-                  }}
-                  disabled={!newFileName || !!errorMessage || !modified}
-                >
-                  {fileName ? "Save as New File" : "Confirm"}
-                </Button>
-                {fileName && (
-                  <Button
-                    size="sm"
-                    colorPalette="iochmara"
-                    onClick={async () => {
-                      await handleAction("rename");
-                    }}
-                    disabled={!newFileName || !!errorMessage || !modified}
-                  >
-                    Rename
-                  </Button>
-                )}
-              </Dialog.Footer>
-              <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
-              </Dialog.CloseTrigger>
-            </Dialog.Content>
-          </Dialog.Positioner>
-        </Portal>
-      </Dialog.Root>
-      <Dialog.Root
-        open={overwriteDisclosure.open}
-        onOpenChange={overwriteDisclosure.onClose}
-        initialFocusEl={() => {
-          return inputRef.current;
-        }}
-        placement="center"
-      >
-        <Portal>
-          <Dialog.Backdrop />
-          <Dialog.Positioner>
-            <Dialog.Content>
-              <Dialog.Header>
-                <Dialog.Title>Overwrite File?</Dialog.Title>
-              </Dialog.Header>
-              <Dialog.Body
-                borderTop="solid 1px lightgray"
-                borderBottom="solid 1px lightgray"
-                onKeyDown={(e) => {
-                  e.stopPropagation();
-                }}
-              >
-                <Box fontSize="12pt">
-                  {overwriteWithMethod === "save"
-                    ? "Saving a file with this name will overwrite the existing file. Are you sure you wish to continue?"
-                    : "Renaming the file with this name will overwrite the existing file. Are you sure you wish to continue?"}
-                </Box>
-
-                <Checkbox.Root
-                  size="xs"
-                  checked={bypass}
-                  onCheckedChange={(e) => {
-                    setState((s) => ({ ...s, bypass: Boolean(e.checked) }));
-                  }}
-                >
-                  <Checkbox.HiddenInput />
-                  <Checkbox.Control />
-                  <Checkbox.Label fontWeight="bold" pt="8px">
-                    Don&apos;t show this again
-                  </Checkbox.Label>
-                </Checkbox.Root>
-              </Dialog.Body>
-              <Dialog.Footer gap="5px">
-                <Button
-                  variant="outline"
-                  onClick={handleOvewriteBack}
-                  size="sm"
-                >
-                  Back
-                </Button>
-                <Button
-                  size="sm"
-                  colorPalette="iochmara"
-                  onClick={() => {
-                    if (!overwriteWithMethod) {
-                      return;
-                    }
-
-                    void handleAction(overwriteWithMethod, true);
-                    overwriteDisclosure.onClose();
-                  }}
-                >
-                  Overwrite
-                </Button>
-              </Dialog.Footer>
-              <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
-              </Dialog.CloseTrigger>
-            </Dialog.Content>
-          </Dialog.Positioner>
-        </Portal>
-      </Dialog.Root>
+              void handleAction(overwriteWithMethod, true);
+              handleOverwriteClose();
+            }}
+          >
+            Overwrite
+          </Button>
+        </DialogActions>
+      </MuiDialog>
     </>
   );
 };
