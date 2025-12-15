@@ -1,19 +1,8 @@
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import Stack from "@mui/material/Stack";
 import { Handle, NodeProps, Position, useStore } from "@xyflow/react";
 import React, { useState } from "react";
-import {
-  Box,
-  Center,
-  Flex,
-  HStack,
-  Icon,
-  Spacer,
-  Tag,
-} from "@/components/ui/mui";
-import { COLUMN_HEIGHT, LineageGraphNode } from "./lineage";
-import { getIconForChangeStatus, getIconForResourceType } from "./styles";
-
-import "./styles.css";
-
 import { FaCheckSquare, FaRegDotCircle, FaRegSquare } from "react-icons/fa";
 import { VscKebabVertical } from "react-icons/vsc";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -24,6 +13,10 @@ import { findByRunType } from "../run/registry";
 import { isSchemaChanged } from "../schema/schemaDiff";
 import { ActionTag } from "./ActionTag";
 import { useLineageViewContextSafe } from "./LineageViewContext";
+import { COLUMN_HEIGHT, LineageGraphNode } from "./lineage";
+import { getIconForChangeStatus, getIconForResourceType } from "./styles";
+
+import "./styles.css";
 
 export type GraphNodeProps = NodeProps<LineageGraphNode>;
 
@@ -34,28 +27,31 @@ function _RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
   const currentLabel = rowCount.curr === null ? "N/A" : `${rowCount.curr} Rows`;
 
   let tagLabel;
-  let colorPalette;
+  let chipColor: "default" | "success" | "error" = "default";
   if (base === null && current === null) {
     tagLabel = "Failed to load";
-    colorPalette = "gray";
+    chipColor = "default";
   } else if (base === null || current === null) {
     tagLabel = `${baseLabel} -> ${currentLabel}`;
-    colorPalette = base === null ? "green" : "red";
+    chipColor = base === null ? "success" : "error";
   } else if (base === current) {
     tagLabel = "=";
-    colorPalette = "gray";
+    chipColor = "default";
   } else if (base !== current) {
     tagLabel = `${deltaPercentageString(base, current)} Rows`;
-    colorPalette = base < current ? "green" : "red";
+    chipColor = base < current ? "success" : "error";
   }
 
+  const RowCountIcon = findByRunType("row_count_diff").icon;
+
   return (
-    <Tag.Root colorPalette={colorPalette}>
-      <Flex gap={1} alignItems="center">
-        <Icon as={findByRunType("row_count_diff").icon} />
-        <Tag.Label>{tagLabel}</Tag.Label>
-      </Flex>
-    </Tag.Root>
+    <Chip
+      size="small"
+      color={chipColor}
+      icon={RowCountIcon ? <RowCountIcon /> : undefined}
+      label={tagLabel}
+      sx={{ height: 20, fontSize: "0.7rem" }}
+    />
   );
 }
 
@@ -99,22 +95,26 @@ const NodeRunsAggregated = ({
     : getIconForChangeStatus("modified").color;
   const colorUnchanged = inverted ? "gray" : "gray.100";
 
+  const SchemaDiffIcon = findByRunType("schema_diff").icon;
+
   return (
-    <Flex flex="1">
+    <Box sx={{ display: "flex", flex: 1, alignItems: "center" }}>
       {schemaChanged !== undefined && (
         <Tooltip
           content={`Schema (${schemaChanged ? "changed" : "no change"})`}
           openDelay={500}
         >
-          <Box height="16px">
-            <Icon
-              as={findByRunType("schema_diff").icon}
-              color={schemaChanged ? colorChanged : colorUnchanged}
-            />
+          <Box sx={{ height: 16 }}>
+            {SchemaDiffIcon && (
+              <Box
+                component={SchemaDiffIcon}
+                sx={{ color: schemaChanged ? colorChanged : colorUnchanged }}
+              />
+            )}
           </Box>
         </Tooltip>
       )}
-      <Spacer />
+      <Box sx={{ flexGrow: 1 }} />
       {runs?.row_count_diff && rowCountChanged !== undefined && (
         <Tooltip
           content={`Row count (${rowCountChanged ? "changed" : "="})`}
@@ -127,7 +127,7 @@ const NodeRunsAggregated = ({
           </Box>
         </Tooltip>
       )}
-    </Flex>
+    </Box>
   );
 };
 
@@ -139,18 +139,21 @@ const GraphNodeCheckbox = ({
   onClick?: React.MouseEventHandler;
 }) => {
   return (
-    <Flex
+    <Box
       onClick={onClick}
-      alignSelf="center"
-      alignItems="center"
-      cursor={"pointer"}
+      sx={{
+        alignSelf: "center",
+        display: "flex",
+        alignItems: "center",
+        cursor: "pointer",
+      }}
     >
       {checked ? (
-        <Icon boxSize="20px" as={FaCheckSquare} />
+        <Box component={FaCheckSquare} sx={{ fontSize: 20 }} />
       ) : (
-        <Icon boxSize="20px" as={FaRegSquare} />
+        <Box component={FaRegSquare} sx={{ fontSize: 20 }} />
       )}
-    </Flex>
+    </Box>
   );
 };
 
@@ -165,11 +168,13 @@ const GraphNodeTitle = ({
 }) => {
   return (
     <Box
-      flex="1"
-      color={color}
-      overflow="hidden"
-      textOverflow="ellipsis"
-      whiteSpace="nowrap"
+      sx={{
+        flex: 1,
+        color,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+      }}
     >
       <Tooltip
         content={resourceType === "model" ? name : `${name} (${resourceType})`}
@@ -187,7 +192,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
 
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
-  const { icon: resourceIcon } = getIconForResourceType(resourceType);
+  const { icon: ResourceIcon } = getIconForResourceType(resourceType);
   const [isHovered, setIsHovered] = useState(false);
   const {
     interactive,
@@ -218,7 +223,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
 
   // text color, icon
   const {
-    icon: iconChangeStatus,
+    icon: IconChangeStatus,
     color: colorChangeStatus,
     backgroundColor: backgroundColorChangeStatus,
   } = changeStatus
@@ -291,21 +296,24 @@ export function GraphNode(nodeProps: GraphNodeProps) {
   })();
 
   return (
-    <Flex
-      cursor={selectMode === "selecting" ? "pointer" : "inherit"}
-      direction="column"
-      width="300px"
-      transition="box-shadow 0.2s ease-in-out"
-      padding={0}
-      filter={(function () {
-        if (selectMode === "action_result") {
-          return action ? "none" : "opacity(0.2) grayscale(50%)";
-        } else {
-          return isHighlighted || isFocused || isSelected || isHovered
-            ? "none"
-            : "opacity(0.2) grayscale(50%)";
-        }
-      })()}
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        width: 300,
+        cursor: selectMode === "selecting" ? "pointer" : "inherit",
+        transition: "box-shadow 0.2s ease-in-out",
+        padding: 0,
+        filter: (function () {
+          if (selectMode === "action_result") {
+            return action ? "none" : "opacity(0.2) grayscale(50%)";
+          } else {
+            return isHighlighted || isFocused || isSelected || isHovered
+              ? "none"
+              : "opacity(0.2) grayscale(50%)";
+          }
+        })(),
+      }}
       onMouseEnter={() => {
         setIsHovered(true);
       }}
@@ -313,21 +321,31 @@ export function GraphNode(nodeProps: GraphNodeProps) {
         setIsHovered(false);
       }}
     >
-      <Flex
-        borderColor={borderColor}
-        borderWidth={borderWidth}
-        borderTopRadius={8}
-        borderBottomRadius={showColumns ? 0 : 8}
-        backgroundColor={nodeBackgroundColor}
-        height="60px"
+      <Box
+        sx={{
+          display: "flex",
+          borderColor,
+          borderWidth,
+          borderStyle: "solid",
+          borderTopLeftRadius: 8,
+          borderTopRightRadius: 8,
+          borderBottomLeftRadius: showColumns ? 0 : 8,
+          borderBottomRightRadius: showColumns ? 0 : 8,
+          backgroundColor: nodeBackgroundColor,
+          height: 60,
+        }}
       >
-        <Flex
-          bg={colorChangeStatus}
-          padding={interactive ? "8px" : "2px"}
-          borderRightWidth={borderWidth}
-          borderColor={selectMode === "selecting" ? "#00000020" : borderColor}
-          alignItems="top"
-          visibility={showContent ? "inherit" : "hidden"}
+        <Box
+          sx={{
+            display: "flex",
+            bgcolor: colorChangeStatus,
+            padding: interactive ? "8px" : "2px",
+            borderRightWidth: borderWidth,
+            borderRightStyle: "solid",
+            borderColor: selectMode === "selecting" ? "#00000020" : borderColor,
+            alignItems: "top",
+            visibility: showContent ? "inherit" : "hidden",
+          }}
         >
           {interactive && (
             <GraphNodeCheckbox
@@ -344,18 +362,29 @@ export function GraphNode(nodeProps: GraphNodeProps) {
               }}
             />
           )}
-        </Flex>
+        </Box>
 
-        <Flex flex="1 0 auto" mx="1" width="100px" direction="column">
-          <Flex
-            width="100%"
-            textAlign="left"
-            fontWeight="600"
-            flex="1"
-            p={1}
-            gap="5px"
-            alignItems="center"
-            visibility={showContent ? "inherit" : "hidden"}
+        <Box
+          sx={{
+            display: "flex",
+            flex: "1 0 auto",
+            mx: 0.5,
+            width: 100,
+            flexDirection: "column",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              width: "100%",
+              textAlign: "left",
+              fontWeight: 600,
+              flex: 1,
+              p: 0.5,
+              gap: "5px",
+              alignItems: "center",
+              visibility: showContent ? "inherit" : "hidden",
+            }}
           >
             <GraphNodeTitle
               name={name}
@@ -371,14 +400,22 @@ export function GraphNode(nodeProps: GraphNodeProps) {
                     positioning={{ placement: "top" }}
                     openDelay={500}
                   >
-                    <Center>
-                      <Icon
-                        boxSize="14px"
-                        as={FaRegDotCircle}
-                        color="gray"
-                        cursor={"pointer"}
-                        _hover={{ color: "black" }}
-                        onClick={(e) => {
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Box
+                        component={FaRegDotCircle}
+                        sx={{
+                          fontSize: 14,
+                          color: "gray",
+                          cursor: "pointer",
+                          "&:hover": { color: "black" },
+                        }}
+                        onClick={(e: React.MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
 
@@ -389,15 +426,17 @@ export function GraphNode(nodeProps: GraphNodeProps) {
                           });
                         }}
                       />
-                    </Center>
+                    </Box>
                   </Tooltip>
                 )}
-                <Icon
-                  as={VscKebabVertical}
-                  color="gray"
-                  cursor={"pointer"}
-                  _hover={{ color: "black" }}
-                  onClick={(e) => {
+                <Box
+                  component={VscKebabVertical}
+                  sx={{
+                    color: "gray",
+                    cursor: "pointer",
+                    "&:hover": { color: "black" },
+                  }}
+                  onClick={(e: React.MouseEvent) => {
                     e.preventDefault();
                     e.stopPropagation();
                     showContextMenu(
@@ -409,29 +448,36 @@ export function GraphNode(nodeProps: GraphNodeProps) {
               </>
             ) : (
               <>
-                <Icon
-                  boxSize="16px"
-                  color={iconResourceColor}
-                  as={resourceIcon}
-                />
-                {changeStatus && (
-                  <Icon color={iconChangeStatusColor} as={iconChangeStatus} />
+                {ResourceIcon && (
+                  <Box
+                    component={ResourceIcon}
+                    sx={{ fontSize: 16, color: iconResourceColor }}
+                  />
+                )}
+                {changeStatus && IconChangeStatus && (
+                  <Box
+                    component={IconChangeStatus}
+                    sx={{ color: iconChangeStatusColor }}
+                  />
                 )}
               </>
             )}
-          </Flex>
+          </Box>
 
-          <Flex
-            flex="1 0 auto"
-            mx="1"
-            direction="column"
-            paddingBottom="1"
-            visibility={showContent ? "inherit" : "hidden"}
+          <Box
+            sx={{
+              display: "flex",
+              flex: "1 0 auto",
+              mx: 0.5,
+              flexDirection: "column",
+              paddingBottom: 0.5,
+              visibility: showContent ? "inherit" : "hidden",
+            }}
           >
-            <HStack gap={"8px"}>
+            <Stack direction="row" spacing={1}>
               {action ? (
                 <>
-                  <Spacer />
+                  <Box sx={{ flexGrow: 1 }} />
                   <ActionTag
                     node={data as unknown as LineageGraphNode}
                     action={action}
@@ -439,11 +485,13 @@ export function GraphNode(nodeProps: GraphNodeProps) {
                 </>
               ) : isShowingChangeAnalysis ? (
                 <Box
-                  height="20px"
-                  color="gray"
-                  fontSize="9pt"
-                  margin={0}
-                  fontWeight={600}
+                  sx={{
+                    height: 20,
+                    color: "gray",
+                    fontSize: "9pt",
+                    margin: 0,
+                    fontWeight: 600,
+                  }}
                 >
                   {changeCategory ? CHANGE_CATEGORY_MSGS[changeCategory] : ""}
                 </Box>
@@ -462,22 +510,28 @@ export function GraphNode(nodeProps: GraphNodeProps) {
               ) : (
                 <></>
               )}
-            </HStack>
-          </Flex>
-        </Flex>
-      </Flex>
+            </Stack>
+          </Box>
+        </Box>
+      </Box>
       {showColumns && (
         <Box
-          p="10px 10px"
-          borderColor={borderColor}
-          borderWidth={borderWidth}
-          borderTopWidth={0}
-          borderBottomRadius={8}
+          sx={{
+            p: "10px 10px",
+            borderColor,
+            borderWidth,
+            borderStyle: "solid",
+            borderTopWidth: 0,
+            borderBottomLeftRadius: 8,
+            borderBottomRightRadius: 8,
+          }}
         >
           <Box
-            height={`${columnSet.size * COLUMN_HEIGHT}px`}
-            overflow="auto"
-          ></Box>
+            sx={{
+              height: `${columnSet.size * COLUMN_HEIGHT}px`,
+              overflow: "auto",
+            }}
+          />
         </Box>
       )}
       {Object.keys(data.parents).length > 0 && (
@@ -486,6 +540,6 @@ export function GraphNode(nodeProps: GraphNodeProps) {
       {Object.keys(data.children).length > 0 && (
         <Handle type="source" position={Position.Right} isConnectable={false} />
       )}
-    </Flex>
+    </Box>
   );
 }

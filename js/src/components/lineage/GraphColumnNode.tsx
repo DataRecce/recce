@@ -1,13 +1,13 @@
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
 import { Handle, NodeProps, Position, useStore } from "@xyflow/react";
 import React from "react";
-import { Box, Flex, Icon, Spacer, Tag } from "@/components/ui/mui";
-import { COLUMN_HEIGHT, LineageGraphColumnNode } from "./lineage";
-
-import "./styles.css";
-
 import { VscKebabVertical } from "react-icons/vsc";
 import { useLineageViewContextSafe } from "./LineageViewContext";
+import { COLUMN_HEIGHT, LineageGraphColumnNode } from "./lineage";
 import { getIconForChangeStatus } from "./styles";
+
+import "./styles.css";
 
 type GrapeColumnNodeProps = NodeProps<LineageGraphColumnNode>;
 
@@ -20,15 +20,21 @@ export const ChangeStatus = ({
     return <></>;
   }
 
-  const { color: colorChangeStatus, icon: iconChangeStatus } =
+  const { color: colorChangeStatus, icon: IconChangeStatus } =
     getIconForChangeStatus(changeStatus);
 
+  if (!IconChangeStatus) {
+    return <></>;
+  }
+
   return (
-    <Icon
-      boxSize="14px"
-      display="inline-flex"
-      color={colorChangeStatus}
-      as={iconChangeStatus}
+    <Box
+      component={IconChangeStatus}
+      sx={{
+        fontSize: 14,
+        display: "inline-flex",
+        color: colorChangeStatus,
+      }}
     />
   );
 };
@@ -41,54 +47,43 @@ export const TransformationType = ({
   legend?: boolean;
 }) => {
   let letter = "U";
-  let color = "red";
+  let color: "default" | "error" | "warning" | "info" | "success" = "error";
 
   if (transformationType === "passthrough") {
     letter = "P";
-    color = "gray";
+    color = "default";
   } else if (transformationType === "renamed") {
     letter = "R";
-    color = "orange";
+    color = "warning";
   } else if (transformationType === "derived") {
     letter = "D";
-    color = "orange";
+    color = "warning";
   } else if (transformationType === "source") {
     letter = "S";
-    color = "blue";
+    color = "info";
   } else {
     letter = "U";
-    color = "red";
+    color = "error";
   }
 
   if (!transformationType) {
     return <></>;
   }
 
-  // # circle in color
   return (
-    <>
-      {legend ? (
-        <Tag.Root
-          fontSize="8pt"
-          size="sm"
-          colorPalette={color}
-          borderRadius="full"
-          paddingX="4px"
-        >
-          <Tag.Label>{letter}</Tag.Label>
-        </Tag.Root>
-      ) : (
-        <Tag.Root
-          fontSize="8pt"
-          size="sm"
-          colorPalette={color}
-          borderRadius="full"
-          paddingX="4px"
-        >
-          <Tag.Label>{letter}</Tag.Label>
-        </Tag.Root>
-      )}
-    </>
+    <Chip
+      label={letter}
+      size="small"
+      color={color}
+      sx={{
+        fontSize: "8pt",
+        height: 18,
+        minWidth: 18,
+        "& .MuiChip-label": {
+          px: 0.5,
+        },
+      }}
+    />
   );
 };
 
@@ -117,13 +112,18 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
   }
 
   return (
-    <Flex
-      width="280px"
-      padding="0px 10px"
-      border="1px solid gray"
-      backgroundColor={isFocus ? "#f0f0f0" : "inherit"}
-      _hover={{
-        backgroundColor: isFocus ? "#f0f0f0" : "#f0f0f0",
+    <Box
+      sx={{
+        display: "flex",
+        width: 280,
+        padding: "0px 10px",
+        border: "1px solid gray",
+        backgroundColor: isFocus ? "#f0f0f0" : "inherit",
+        "&:hover": {
+          backgroundColor: "#f0f0f0",
+        },
+        filter: isHighlighted ? "none" : "opacity(0.2) grayscale(50%)",
+        cursor: "pointer",
       }}
       onMouseEnter={() => {
         setIsHovered(true);
@@ -131,33 +131,36 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
       onMouseLeave={() => {
         setIsHovered(false);
       }}
-      filter={isHighlighted ? "none" : "opacity(0.2) grayscale(50%)"}
-      cursor="pointer"
     >
-      <Flex
-        fontSize="11px"
-        color="black"
-        width="100%"
-        gap="3px"
-        alignItems="center"
-        height={`${COLUMN_HEIGHT - 1}px`}
+      <Box
+        sx={{
+          display: "flex",
+          fontSize: "11px",
+          color: "black",
+          width: "100%",
+          gap: "3px",
+          alignItems: "center",
+          height: `${COLUMN_HEIGHT - 1}px`,
+        }}
       >
         {isShowingChangeAnalysis && changeStatus ? (
           <ChangeStatus changeStatus={changeStatus} />
         ) : (
           <TransformationType transformationType={transformationType} />
         )}
-        <Box height={`${COLUMN_HEIGHT + 1}px`}>{column}</Box>
-        <Spacer></Spacer>
+        <Box sx={{ height: `${COLUMN_HEIGHT + 1}px` }}>{column}</Box>
+        <Box sx={{ flexGrow: 1 }} />
 
         {isHovered ? (
-          <Icon
-            as={VscKebabVertical}
-            boxSize="14px"
-            display={"inline-flex"}
-            cursor={"pointer"}
-            _hover={{ color: "black" }}
-            onClick={(e) => {
+          <Box
+            component={VscKebabVertical}
+            sx={{
+              fontSize: 14,
+              display: "inline-flex",
+              cursor: "pointer",
+              "&:hover": { color: "black" },
+            }}
+            onClick={(e: React.MouseEvent) => {
               e.preventDefault();
               e.stopPropagation();
               showContextMenu(
@@ -167,9 +170,9 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
             }}
           />
         ) : (
-          <Box height={`${COLUMN_HEIGHT + 1} px`}>{type}</Box>
+          <Box sx={{ height: `${COLUMN_HEIGHT + 1} px` }}>{type}</Box>
         )}
-      </Flex>
+      </Box>
       <Handle
         type="target"
         position={Position.Left}
@@ -188,6 +191,6 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
           visibility: "hidden",
         }}
       />
-    </Flex>
+    </Box>
   );
 }

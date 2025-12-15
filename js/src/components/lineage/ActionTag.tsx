@@ -1,6 +1,9 @@
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
+import Stack from "@mui/material/Stack";
 import { PiInfo, PiWarning } from "react-icons/pi";
 import { LineageGraphNode } from "@/components/lineage/lineage";
-import { Box, Flex, ProgressCircle, Tag } from "@/components/ui/mui";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   isRowCountDiffRun,
@@ -19,21 +22,16 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
   const { status, skipReason, run } = action;
 
   if (status === "pending") {
-    return (
-      <ProgressCircle.Root value={0} size="xs">
-        <ProgressCircle.Circle>
-          <ProgressCircle.Track />
-          <ProgressCircle.Range />
-        </ProgressCircle.Circle>
-      </ProgressCircle.Root>
-    );
+    return <CircularProgress size={16} />;
   }
 
   if (status === "skipped") {
     return (
-      <Tag.Root backgroundColor="grey.100">
-        <Tag.Label>
-          <Flex
+      <Chip
+        size="small"
+        label={
+          <Stack
+            direction="row"
             sx={{
               fontSize: "10pt",
               color: "grey.500",
@@ -44,60 +42,53 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
             <Box>Skipped</Box>
             {skipReason && (
               <Tooltip content={skipReason}>
-                <PiInfo />
+                <Box component="span" sx={{ display: "flex" }}>
+                  <PiInfo />
+                </Box>
               </Tooltip>
             )}
-          </Flex>
-        </Tag.Label>
-      </Tag.Root>
+          </Stack>
+        }
+        sx={{ bgcolor: "grey.100" }}
+      />
     );
   }
 
   if (!run) {
-    return (
-      <ProgressCircle.Root value={null} size="xs">
-        <ProgressCircle.Circle>
-          <ProgressCircle.Track />
-          <ProgressCircle.Range />
-        </ProgressCircle.Circle>
-      </ProgressCircle.Root>
-    );
+    return <CircularProgress size={16} />;
   }
 
   const { error, run_id, progress } = run;
 
   if (status === "running") {
     if (progress?.percentage === undefined) {
-      return (
-        <ProgressCircle.Root value={null} size="xs">
-          <ProgressCircle.Circle>
-            <ProgressCircle.Track />
-            <ProgressCircle.Range />
-          </ProgressCircle.Circle>
-        </ProgressCircle.Root>
-      );
+      return <CircularProgress size={16} />;
     } else {
       return (
-        <ProgressCircle.Root value={progress.percentage * 100} size="xs">
-          <ProgressCircle.Circle>
-            <ProgressCircle.Track />
-            <ProgressCircle.Range />
-          </ProgressCircle.Circle>
-        </ProgressCircle.Root>
+        <CircularProgress
+          variant="determinate"
+          value={progress.percentage * 100}
+          size={16}
+        />
       );
     }
   }
 
   if (error) {
     return (
-      <Flex sx={{ fontSize: "10pt", color: "gray" }}>
+      <Stack
+        direction="row"
+        sx={{ fontSize: "10pt", color: "gray", alignItems: "center" }}
+      >
         <Box>Error</Box>
         {skipReason && (
           <Tooltip content={error}>
-            <PiWarning />
+            <Box component="span" sx={{ display: "flex" }}>
+              <PiWarning />
+            </Box>
           </Tooltip>
         )}
-      </Flex>
+      </Stack>
     );
   }
 
@@ -112,11 +103,14 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
     }
 
     return (
-      <Tag.Root
-        backgroundColor={mismatched > 0 ? "error.light" : "success.light"}
-      >
-        <Tag.Label>
-          <Flex
+      <Chip
+        size="small"
+        sx={{
+          bgcolor: mismatched > 0 ? "error.light" : "success.light",
+        }}
+        label={
+          <Stack
+            direction="row"
             sx={{
               fontSize: "10pt",
               color: mismatched > 0 ? "error.main" : "success.main",
@@ -127,9 +121,9 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
             {mismatched > 0
               ? `${mismatched} columns mismatched`
               : "All columns match"}
-          </Flex>
-        </Tag.Label>
-      </Tag.Root>
+          </Stack>
+        }
+      />
     );
   }
 
