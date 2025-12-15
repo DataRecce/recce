@@ -75,6 +75,7 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
       <Stack
         direction="column"
         alignItems="flex-end"
+        spacing={1}
         sx={{ height: "100%" }}
         className="no-track-pii-safe"
       >
@@ -92,7 +93,7 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
             },
           }}
         />
-        <Stack direction="row" spacing={1.5} alignItems="flex-end">
+        <Stack direction="row" spacing={4} alignItems="center">
           <Link
             onClick={handleCancel}
             sx={{ color: "primary.main", cursor: "pointer" }}

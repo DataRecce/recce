@@ -337,7 +337,12 @@ export function CheckDetail({
       >
         <Grid
           size={cloudMode ? 2 : 1}
-          sx={{ display: "flex", flexDirection: "column", overflow: "hidden" }}
+          sx={{
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}
         >
           <Box
             sx={{
@@ -532,6 +537,7 @@ export function CheckDetail({
                 <MuiTooltip title="Rerun">
                   <Button
                     variant="outlined"
+                    color="neutral"
                     size="small"
                     onClick={() => handleRerun()}
                     disabled={featureToggles.disableDatabaseQuery || isRunning}
@@ -544,6 +550,7 @@ export function CheckDetail({
               )}
               <Button
                 variant="outlined"
+                color="neutral"
                 disabled={
                   isDisabledByNoResult(check.type, run) || tabValue !== "result"
                 }

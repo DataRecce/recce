@@ -67,7 +67,7 @@ const ChecklistItem = ({
       <Box
         sx={{
           width: "100%",
-          p: "10px 20px",
+          p: "0.25rem 1.25rem",
           cursor: "pointer",
           "&:hover": { bgcolor: "Cornsilk" },
           bgcolor: selected ? "Floralwhite" : "inherit",
@@ -77,7 +77,7 @@ const ChecklistItem = ({
           borderLeftColor: selected ? "orange" : "transparent",
           display: "flex",
           alignItems: "center",
-          gap: "5px",
+          gap: "0.5rem",
         }}
         onClick={() => {
           onSelect(check.check_id);
