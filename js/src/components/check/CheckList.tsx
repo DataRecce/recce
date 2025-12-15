@@ -216,15 +216,15 @@ export const CheckList = ({
                 >
                   {(provided, snapshot) => {
                     // see https://github.com/atlassian/react-beautiful-dnd/issues/1881#issuecomment-691237307
-                    if (snapshot.isDragging) {
-                      const props = provided.draggableProps;
-                      if (props.style != null && "left" in props.style) {
-                        const offset = { x: 0, y: 80 };
-                        const x = props.style.left - offset.x;
-                        const y = props.style.top - offset.y;
-                        props.style.left = x;
-                        props.style.top = y;
-                      }
+                    // Create a new style object instead of mutating the read-only one
+                    let style = provided.draggableProps.style;
+                    if (snapshot.isDragging && style && "left" in style) {
+                      const offset = { x: 0, y: 80 };
+                      style = {
+                        ...style,
+                        left: (style.left as number) - offset.x,
+                        top: (style.top as number) - offset.y,
+                      };
                     }
 
                     return (
@@ -232,6 +232,7 @@ export const CheckList = ({
                         ref={provided.innerRef}
                         {...provided.draggableProps}
                         {...provided.dragHandleProps}
+                        style={style}
                         sx={{ width: "100%" }}
                       >
                         <ChecklistItem
