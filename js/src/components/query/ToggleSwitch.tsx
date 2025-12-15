@@ -15,11 +15,7 @@ export const ToggleSwitch = ({
   textOff,
 }: ToggleSwitchProps) => {
   return (
-    <ButtonGroup
-      variant="outlined"
-      size="small"
-      sx={{ borderRadius: "9999px" }}
-    >
+    <ButtonGroup variant="outlined" size="xsmall" sx={{ borderRadius: 1 }}>
       <Button
         onClick={() => {
           onChange(false);
@@ -27,7 +23,6 @@ export const ToggleSwitch = ({
         sx={{
           color: !value ? "black" : "grey.400",
           bgcolor: !value ? "white" : "grey.50",
-          borderRadius: "9999px 0 0 9999px",
         }}
       >
         {textOff ?? "Off"}
@@ -39,7 +34,6 @@ export const ToggleSwitch = ({
         sx={{
           color: value ? "black" : "grey.400",
           bgcolor: value ? "white" : "grey.50",
-          borderRadius: "0 9999px 9999px 0",
         }}
       >
         {textOn ?? "On"}

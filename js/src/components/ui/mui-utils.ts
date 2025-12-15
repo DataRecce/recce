@@ -243,6 +243,13 @@ declare module "@mui/material/Button" {
   }
 }
 
+declare module "@mui/material/ButtonGroup" {
+  interface ButtonGroupPropsColorOverrides extends ColorOverrides {}
+  interface ButtonGroupPropsSizeOverrides {
+    xsmall: true;
+  }
+}
+
 declare module "@mui/material/IconButton" {
   interface IconButtonPropsColorOverrides extends ColorOverrides {}
   interface IconButtonPropsSizeOverrides {

@@ -19,7 +19,7 @@ export default function HistoryToggle(): ReactNode {
       <Box sx={{ fontSize: "8pt" }}>History</Box>
 
       <Button
-        size="small"
+        size="xsmall"
         variant="outlined"
         startIcon={<VscHistory />}
         onClick={() => {
