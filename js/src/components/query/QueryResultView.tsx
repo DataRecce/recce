@@ -1,8 +1,10 @@
 import "react-data-grid/lib/styles.css";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
 import React, { forwardRef, Ref, useMemo } from "react";
 import { DataGridHandle } from "react-data-grid";
 import { PiWarning } from "react-icons/pi";
-import { Box, Button, Center, Flex, Spacer } from "@/components/ui/mui";
 import { QueryViewOptions } from "@/lib/api/adhocQuery";
 import {
   ColumnRenderMode,
@@ -84,7 +86,18 @@ const PrivateQueryResultView = (
   ]);
 
   if (gridData.columns.length === 0) {
-    return <Center height="100%">No data</Center>;
+    return (
+      <Box
+        sx={{
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        No data
+      </Box>
+    );
   }
 
   const limit = dataframe ? (dataframe.limit ?? 0) : 0;
@@ -95,28 +108,35 @@ const PrivateQueryResultView = (
   const showTopBar = onAddToChecklist ?? warning;
 
   return (
-    <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height="100%">
+    <Stack sx={{ bgcolor: "rgb(249, 249, 249)", height: "100%" }}>
       {showTopBar && (
-        <Flex
-          borderBottom="1px solid lightgray"
-          alignItems="center"
-          gap="5px"
-          px="10px"
-          bg={warning ? "amber.100" : "inherit"}
+        <Stack
+          direction="row"
+          sx={{
+            borderBottom: "1px solid lightgray",
+            alignItems: "center",
+            gap: "5px",
+            px: "10px",
+            bgcolor: warning ? "amber.100" : "inherit",
+          }}
         >
           {warning && (
             <>
-              <PiWarning color="amber.600" className="self-center" />{" "}
+              <Box
+                component={PiWarning}
+                sx={{ color: "amber.600", alignSelf: "center" }}
+              />{" "}
               <Box>{warning}</Box>
             </>
           )}
 
-          <Spacer minHeight="32px" />
+          <Box sx={{ flexGrow: 1, minHeight: "32px" }} />
           {onAddToChecklist && (
             <Button
-              marginBlock="5px"
-              size="xs"
-              colorPalette="iochmara"
+              sx={{ my: "5px" }}
+              size="small"
+              color="iochmara"
+              variant="contained"
               onClick={() => {
                 onAddToChecklist(run);
               }}
@@ -124,7 +144,7 @@ const PrivateQueryResultView = (
               Add to Checklist
             </Button>
           )}
-        </Flex>
+        </Stack>
       )}
       <ScreenshotDataGrid
         ref={ref}
@@ -139,7 +159,7 @@ const PrivateQueryResultView = (
         }}
         className="rdg-light"
       />
-    </Flex>
+    </Stack>
   );
 };
 

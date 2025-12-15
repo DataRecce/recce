@@ -1,4 +1,5 @@
-import { Button, ButtonGroup } from "@/components/ui/mui";
+import Button from "@mui/material/Button";
+import ButtonGroup from "@mui/material/ButtonGroup";
 import { DiffText } from "./DiffText";
 
 interface ToggleSwitchProps {
@@ -14,7 +15,11 @@ export const ToggleSwitch = ({
   textOff,
 }: ToggleSwitchProps) => {
   return (
-    <ButtonGroup attached variant="outline" borderRadius="full" size="xs">
+    <ButtonGroup
+      variant="outlined"
+      size="small"
+      sx={{ borderRadius: "9999px" }}
+    >
       <Button
         onClick={() => {
           onChange(false);
@@ -22,6 +27,7 @@ export const ToggleSwitch = ({
         sx={{
           color: !value ? "black" : "grey.400",
           bgcolor: !value ? "white" : "grey.50",
+          borderRadius: "9999px 0 0 9999px",
         }}
       >
         {textOff ?? "Off"}
@@ -33,6 +39,7 @@ export const ToggleSwitch = ({
         sx={{
           color: value ? "black" : "grey.400",
           bgcolor: value ? "white" : "grey.50",
+          borderRadius: "0 9999px 9999px 0",
         }}
       >
         {textOn ?? "On"}

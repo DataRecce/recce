@@ -1,18 +1,18 @@
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import MuiDialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import IconButton from "@mui/material/IconButton";
+import Link from "@mui/material/Link";
+import MuiPopover from "@mui/material/Popover";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { ComponentType, useRef, useState } from "react";
+import { IoClose } from "react-icons/io5";
 import { IconInfo } from "@/components/icons";
 import { RunFormParamTypes, RunType } from "@/components/run/registry";
-import {
-  Box,
-  Button,
-  CloseButton,
-  Dialog,
-  Flex,
-  Icon,
-  IconButton,
-  Link,
-  Popover,
-  Portal,
-} from "@/components/ui/mui";
 import {
   EXPLORE_FORM_EVENT,
   isExploreAction,
@@ -55,7 +55,7 @@ export const RunModal = ({
   const [params, setParams] = useState<Partial<RunFormParamTypes>>(
     defaultParams ?? {},
   );
-  const [hovered, setHovered] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [isReadyToExecute, setIsReadyToExecute] = useState(false);
   const documentationUrl = getDocumentationUrl(type);
   const executeClicked = useRef(false);
@@ -72,111 +72,119 @@ export const RunModal = ({
   };
 
   return (
-    <Dialog.Root
+    <MuiDialog
       open={isOpen}
-      onOpenChange={handleClose}
-      size="xl"
-      scrollBehavior="inside"
+      onClose={handleClose}
+      maxWidth="xl"
+      fullWidth
+      scroll="paper"
+      PaperProps={{
+        sx: { height: "75%", minHeight: "400px" },
+      }}
     >
-      <Portal>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content overflowY="auto" height="75%" minHeight={"400px"}>
-            <Dialog.Header>
-              <Dialog.Title display="flex" alignItems="center">
-                {title}{" "}
-                {documentationUrl && (
-                  <Popover.Root
-                    positioning={{ placement: "bottom-end" }}
-                    open={hovered}
-                    onFocusOutside={() => {
-                      setHovered(false);
-                    }}
-                  >
-                    <Popover.Trigger asChild>
-                      <IconButton
-                        display="flex"
-                        size="sm"
-                        variant="plain"
-                        aria-label="Click this button to learn more about the SQL behind"
-                        onMouseEnter={() => {
-                          setHovered(true);
-                        }}
-                        onClick={() => window.open(documentationUrl, "_blank")}
-                        onFocus={(e) => {
-                          e.preventDefault();
-                        }}
-                      >
-                        <Icon
-                          verticalAlign="middle"
-                          as={IconInfo}
-                          boxSize={"16px"}
-                        />
-                      </IconButton>
-                    </Popover.Trigger>
-                    <Popover.Positioner>
-                      <Popover.Content bg="black" color="white">
-                        <Popover.Body fontSize="sm" p={2}>
-                          Click{" "}
-                          <Link
-                            href={documentationUrl}
-                            target="_blank"
-                            textDecoration="underline"
-                            color="white"
-                            _hover={{ color: "iochmara.300" }}
-                          >
-                            here
-                          </Link>{" "}
-                          to learn more about the SQL behind
-                        </Popover.Body>
-                      </Popover.Content>
-                    </Popover.Positioner>
-                  </Popover.Root>
-                )}
-              </Dialog.Title>
-              <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
-              </Dialog.CloseTrigger>
-            </Dialog.Header>
-            <Dialog.Body
-              p="0px"
-              h="100%"
-              overflow="auto"
-              borderY="1px solid lightgray"
+      <DialogTitle sx={{ display: "flex", alignItems: "center" }}>
+        {title}{" "}
+        {documentationUrl && (
+          <>
+            <IconButton
+              size="small"
+              aria-label="Click this button to learn more about the SQL behind"
+              onMouseEnter={(e) => setAnchorEl(e.currentTarget)}
+              onMouseLeave={() => setAnchorEl(null)}
+              onClick={() => window.open(documentationUrl, "_blank")}
             >
-              <Box style={{ contain: "layout" }}>
-                {RunForm && (
-                  <RunForm
-                    params={params}
-                    onParamsChanged={setParams}
-                    setIsReadyToExecute={setIsReadyToExecute}
-                  />
-                )}
-              </Box>
-            </Dialog.Body>
-            <Dialog.Footer>
-              <Flex gap="10px">
-                <Button
-                  disabled={!isReadyToExecute}
-                  colorPalette="iochmara"
-                  onClick={() => {
-                    executeClicked.current = true;
-                    if (isExploreAction(type)) {
-                      trackExploreActionForm({
-                        action: type,
-                        event: EXPLORE_FORM_EVENT.EXECUTE,
-                      });
-                    }
-                    onExecute(type, params as RunFormParamTypes);
+              <Box component={IconInfo} sx={{ fontSize: "16px" }} />
+            </IconButton>
+            <MuiPopover
+              open={Boolean(anchorEl)}
+              anchorEl={anchorEl}
+              onClose={() => setAnchorEl(null)}
+              anchorOrigin={{
+                vertical: "bottom",
+                horizontal: "right",
+              }}
+              transformOrigin={{
+                vertical: "top",
+                horizontal: "right",
+              }}
+              disableRestoreFocus
+              sx={{ pointerEvents: "none" }}
+              slotProps={{
+                paper: {
+                  sx: { bgcolor: "black", color: "white", p: 1 },
+                },
+              }}
+            >
+              <Typography sx={{ fontSize: "0.875rem" }}>
+                Click{" "}
+                <Link
+                  href={documentationUrl}
+                  target="_blank"
+                  sx={{
+                    textDecoration: "underline",
+                    color: "white",
+                    "&:hover": { color: "iochmara.300" },
                   }}
                 >
-                  Execute
-                </Button>
-              </Flex>
-            </Dialog.Footer>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Portal>
-    </Dialog.Root>
+                  here
+                </Link>{" "}
+                to learn more about the SQL behind
+              </Typography>
+            </MuiPopover>
+          </>
+        )}
+      </DialogTitle>
+      <IconButton
+        aria-label="close"
+        onClick={handleClose}
+        sx={{
+          position: "absolute",
+          right: 8,
+          top: 8,
+          color: "grey.500",
+        }}
+      >
+        <IoClose />
+      </IconButton>
+      <DialogContent
+        sx={{
+          p: 0,
+          overflow: "auto",
+          borderTop: "1px solid lightgray",
+          borderBottom: "1px solid lightgray",
+        }}
+      >
+        <Box sx={{ contain: "layout" }}>
+          {RunForm && (
+            <RunForm
+              params={params}
+              onParamsChanged={setParams}
+              setIsReadyToExecute={setIsReadyToExecute}
+            />
+          )}
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Stack direction="row" spacing="10px">
+          <Button
+            disabled={!isReadyToExecute}
+            color="iochmara"
+            variant="contained"
+            onClick={() => {
+              executeClicked.current = true;
+              if (isExploreAction(type)) {
+                trackExploreActionForm({
+                  action: type,
+                  event: EXPLORE_FORM_EVENT.EXECUTE,
+                });
+              }
+              onExecute(type, params as RunFormParamTypes);
+            }}
+          >
+            Execute
+          </Button>
+        </Stack>
+      </DialogActions>
+    </MuiDialog>
   );
 };

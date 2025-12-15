@@ -1,3 +1,11 @@
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import MuiDialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import IconButton from "@mui/material/IconButton";
+import Typography from "@mui/material/Typography";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import path from "path";
 import React, {
@@ -9,13 +17,12 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { IoClose } from "react-icons/io5";
 import { buildLineageGraph, LineageGraph } from "@/components/lineage/lineage";
 import {
   RecceInstanceDisconnectedModalContent,
   ServerDisconnectedModalContent,
 } from "@/components/lineage/ServerDisconnectedModalContent";
-import { Button, CloseButton, Dialog, Portal, Text } from "@/components/ui/mui";
-import { useDisclosure } from "@/components/ui/mui-utils";
 import { toaster } from "@/components/ui/toaster";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { cacheKeys } from "../api/cacheKeys";
@@ -318,7 +325,6 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
 
   const { data: flags, isLoading } = useRecceServerFlag();
   const { featureToggles, shareUrl } = useRecceInstanceContext();
-  const { onClose } = useDisclosure();
   const [relaunchHintOpen, setRelaunchHintOpen] = useState<boolean>(false);
   const [prevRelaunchCondition, setPrevRelaunchCondition] =
     useState<boolean>(false);
@@ -355,6 +361,12 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     }
   }, [shouldShowRelaunch, relaunchHintOpen]);
 
+  const handleRelaunchClose = () => {
+    setRelaunchHintOpen(false);
+    void markRelaunchHintCompleted();
+    void queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
+  };
+
   return (
     <>
       <LineageGraphContext.Provider
@@ -383,81 +395,60 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
         {children}
       </LineageGraphContext.Provider>
 
-      <Dialog.Root
+      <MuiDialog
         open={connectionStatus === "disconnected"}
-        onOpenChange={() => {
-          return void 0;
-        }}
-        placement="center"
+        onClose={() => void 0}
       >
-        <Portal>
-          <Dialog.Backdrop />
-          <Dialog.Positioner>
-            {shareUrl && featureToggles.mode !== null ? (
-              <RecceInstanceDisconnectedModalContent
-                shareUrl={shareUrl}
-                mode={featureToggles.mode}
-              />
-            ) : (
-              <ServerDisconnectedModalContent
-                connect={connect}
-                idleSeconds={
-                  // Only show idle time if disconnected due to idle timeout
-                  // (idle timeout enabled AND remaining time was near zero)
-                  isEnabled &&
-                  idleTimeout !== null &&
-                  remainingSeconds !== null &&
-                  remainingSeconds <= 5
-                    ? idleTimeout - Math.max(0, remainingSeconds)
-                    : undefined
-                }
-              />
-            )}
-          </Dialog.Positioner>
-        </Portal>
-      </Dialog.Root>
+        {shareUrl && featureToggles.mode !== null ? (
+          <RecceInstanceDisconnectedModalContent
+            shareUrl={shareUrl}
+            mode={featureToggles.mode}
+          />
+        ) : (
+          <ServerDisconnectedModalContent
+            connect={connect}
+            idleSeconds={
+              // Only show idle time if disconnected due to idle timeout
+              // (idle timeout enabled AND remaining time was near zero)
+              isEnabled &&
+              idleTimeout !== null &&
+              remainingSeconds !== null &&
+              remainingSeconds <= 5
+                ? idleTimeout - Math.max(0, remainingSeconds)
+                : undefined
+            }
+          />
+        )}
+      </MuiDialog>
 
       {flags?.single_env_onboarding && (
-        <Dialog.Root
-          open={relaunchHintOpen}
-          onOpenChange={() => {
-            onClose();
-            void markRelaunchHintCompleted();
-            void queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
-          }}
-          placement="center"
-        >
-          <Portal>
-            <Dialog.Backdrop />
-            <Dialog.Positioner>
-              <Dialog.Content>
-                <Dialog.Header>
-                  <Dialog.Title>Target-base Added</Dialog.Title>
-                </Dialog.Header>
-                <Dialog.Body>
-                  <Text>Please restart the Recce server.</Text>
-                </Dialog.Body>
-                <Dialog.Footer>
-                  <Button
-                    colorPalette="iochmara"
-                    onClick={() => {
-                      onClose();
-                      void markRelaunchHintCompleted();
-                      void queryClient.invalidateQueries({
-                        queryKey: cacheKeys.flag(),
-                      });
-                    }}
-                  >
-                    Got it!
-                  </Button>
-                </Dialog.Footer>
-                <Dialog.CloseTrigger asChild>
-                  <CloseButton size="sm" />
-                </Dialog.CloseTrigger>
-              </Dialog.Content>
-            </Dialog.Positioner>
-          </Portal>
-        </Dialog.Root>
+        <MuiDialog open={relaunchHintOpen} onClose={handleRelaunchClose}>
+          <DialogTitle>Target-base Added</DialogTitle>
+          <IconButton
+            aria-label="close"
+            onClick={handleRelaunchClose}
+            sx={{
+              position: "absolute",
+              right: 8,
+              top: 8,
+              color: "grey.500",
+            }}
+          >
+            <IoClose />
+          </IconButton>
+          <DialogContent>
+            <Typography>Please restart the Recce server.</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              color="iochmara"
+              variant="contained"
+              onClick={handleRelaunchClose}
+            >
+              Got it!
+            </Button>
+          </DialogActions>
+        </MuiDialog>
       )}
     </>
   );

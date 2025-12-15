@@ -1,8 +1,9 @@
 "use client";
 
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import React, { ReactNode } from "react";
 import { VscHistory } from "react-icons/vsc";
-import { Box, Button } from "@/components/ui/mui";
 import { trackHistoryAction } from "@/lib/api/track";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 
@@ -18,7 +19,7 @@ export default function HistoryToggle(): ReactNode {
       <Box sx={{ fontSize: "8pt" }}>History</Box>
 
       <Button
-        size="xs"
+        size="small"
         variant="outlined"
         startIcon={<VscHistory />}
         onClick={() => {
