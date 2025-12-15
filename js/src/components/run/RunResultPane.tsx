@@ -1,21 +1,23 @@
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Divider from "@mui/material/Divider";
+import IconButton from "@mui/material/IconButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import Stack from "@mui/material/Stack";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
+import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
-import { ReactNode, Ref, useCallback, useState } from "react";
+import { type MouseEvent, ReactNode, Ref, useCallback, useState } from "react";
+import { IoClose } from "react-icons/io5";
 import { PiCaretDown, PiCheck, PiCopy, PiRepeat } from "react-icons/pi";
 import { TbCloudUpload } from "react-icons/tb";
 import YAML from "yaml";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { CodeEditor } from "@/components/editor";
-import {
-  Button,
-  CloseButton,
-  Flex,
-  HStack,
-  Menu,
-  Portal,
-  Spacer,
-  Tabs,
-  Text,
-} from "@/components/ui/mui";
 import { useDisclosure } from "@/components/ui/mui-utils";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { createCheckByRun } from "@/lib/api/checks";
@@ -84,20 +86,20 @@ const SingleEnvironmentSetupNotification = ({
     case "row_count":
       return (
         <RecceNotification onClose={onClose}>
-          <Text>
+          <Typography>
             Enable row count diffing, and other Recce features, by configuring a
             base dbt environment to compare against. <LearnHowLink />
-          </Text>
+          </Typography>
         </RecceNotification>
       );
     case "profile":
       return (
         <RecceNotification onClose={onClose}>
-          <Text>
+          <Typography>
             Enable data-profile diffing, and other Recce features, by
             configuring a base dbt environment to compare against.{" "}
             <LearnHowLink />
-          </Text>
+          </Typography>
         </RecceNotification>
       );
     default:
@@ -119,54 +121,72 @@ const RunResultShareMenu = ({
   const { authed } = useRecceInstanceContext();
   const { handleShareClick } = useRecceShareStateContext();
   const [showModal, setShowModal] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const open = Boolean(anchorEl);
+
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
 
   return (
     <>
-      <Menu.Root>
-        <Menu.Trigger asChild>
-          <Button size="xs" variant="outline" colorPalette="neutral">
-            Share <PiCaretDown />
-          </Button>
-        </Menu.Trigger>
-        <Portal>
-          <Menu.Positioner>
-            <Menu.Content minW="0">
-              <Menu.Item
-                value="copy-to-clipboard"
-                onClick={onCopyToClipboard}
-                onMouseEnter={onMouseEnter}
-                onMouseLeave={onMouseLeave}
-                disabled={disableCopyToClipboard}
-              >
-                <PiCopy /> Copy to Clipboard
-              </Menu.Item>
-              <Menu.Separator />
-              {authed ? (
-                <Menu.Item
-                  value="share-to-cloud"
-                  onClick={async () => {
-                    await handleShareClick();
-                    trackShareState({ name: "create" });
-                  }}
-                >
-                  <TbCloudUpload /> Share to Cloud
-                </Menu.Item>
-              ) : (
-                <>
-                  <Menu.Item
-                    value="share"
-                    onClick={() => {
-                      setShowModal(true);
-                    }}
-                  >
-                    <TbCloudUpload /> Share
-                  </Menu.Item>
-                </>
-              )}
-            </Menu.Content>
-          </Menu.Positioner>
-        </Portal>
-      </Menu.Root>
+      <Button
+        size="small"
+        variant="outlined"
+        color="neutral"
+        onClick={handleClick}
+        endIcon={<PiCaretDown />}
+        sx={{ textTransform: "none" }}
+      >
+        Share
+      </Button>
+      <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
+        <MenuItem
+          onClick={async () => {
+            await onCopyToClipboard();
+            handleClose();
+          }}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+          disabled={disableCopyToClipboard}
+        >
+          <ListItemIcon>
+            <PiCopy />
+          </ListItemIcon>
+          <ListItemText>Copy to Clipboard</ListItemText>
+        </MenuItem>
+        <Divider />
+        {authed ? (
+          <MenuItem
+            onClick={async () => {
+              await handleShareClick();
+              trackShareState({ name: "create" });
+              handleClose();
+            }}
+          >
+            <ListItemIcon>
+              <TbCloudUpload />
+            </ListItemIcon>
+            <ListItemText>Share to Cloud</ListItemText>
+          </MenuItem>
+        ) : (
+          <MenuItem
+            onClick={() => {
+              setShowModal(true);
+              handleClose();
+            }}
+          >
+            <ListItemIcon>
+              <TbCloudUpload />
+            </ListItemIcon>
+            <ListItemText>Share</ListItemText>
+          </MenuItem>
+        )}
+      </Menu>
       {showModal && (
         <AuthModal
           parentOpen={showModal}
@@ -220,82 +240,96 @@ export const PrivateLoadableRunView = ({
     !runId || !run?.result || !!error || tabValue !== "result";
 
   return (
-    <Flex direction="column" height="100%">
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {showSingleEnvironmentSetupNotification && (
         <SingleEnvironmentSetupNotification runType={run?.type} />
       )}
-      <Tabs.Root
-        size="lg"
-        colorPalette="iochmara"
-        value={tabValue}
-        onValueChange={(e) => {
-          setTabValue(e.value as TabValueItems);
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          borderBottom: 1,
+          borderColor: "divider",
+          mb: "1px",
         }}
-        flexDirection="column"
-        mb="1px"
       >
-        <Tabs.List>
-          <Tabs.Trigger value="result">Result</Tabs.Trigger>
-          <Tabs.Trigger value="params">Params</Tabs.Trigger>
-          {isQuery && <Tabs.Trigger value="query">Query</Tabs.Trigger>}
-          <Spacer />
-          <HStack overflow="hidden" gap="0.5rem">
-            {run && <RunStatusAndDate run={run} />}
+        <Tabs
+          value={tabValue}
+          onChange={(_, newValue) => setTabValue(newValue as TabValueItems)}
+        >
+          <Tab label="Result" value="result" />
+          <Tab label="Params" value="params" />
+          {isQuery && <Tab label="Query" value="query" />}
+        </Tabs>
+        <Box sx={{ flexGrow: 1 }} />
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ overflow: "hidden", pr: 1 }}
+          alignItems="center"
+        >
+          {run && <RunStatusAndDate run={run} />}
+          <Button
+            variant="outlined"
+            color="neutral"
+            disabled={
+              !runId || isRunning || featureToggles.disableDatabaseQuery
+            }
+            size="small"
+            onClick={handleRerun}
+            startIcon={<PiRepeat />}
+            sx={{ textTransform: "none" }}
+          >
+            Rerun
+          </Button>
+          {featureToggles.disableShare ? (
             <Button
-              variant="outline"
-              colorPalette="neutral"
+              variant="outlined"
+              color="neutral"
               disabled={
-                !runId || isRunning || featureToggles.disableDatabaseQuery
+                !runId || !run?.result || !!error || tabValue !== "result"
               }
-              size="xs"
-              onClick={handleRerun}
+              onMouseEnter={onMouseEnter}
+              onMouseLeave={onMouseLeave}
+              size="small"
+              onClick={onCopyToClipboard}
+              startIcon={<PiCopy />}
+              sx={{ textTransform: "none" }}
             >
-              <PiRepeat /> Rerun
+              Copy to Clipboard
             </Button>
-            {featureToggles.disableShare ? (
-              <Button
-                variant="outline"
-                disabled={
-                  !runId || !run?.result || !!error || tabValue !== "result"
-                }
-                onMouseEnter={onMouseEnter}
-                onMouseLeave={onMouseLeave}
-                size="sm"
-                onClick={onCopyToClipboard}
-              >
-                <PiCopy /> Copy to Clipboard
-              </Button>
-            ) : (
-              <RunResultShareMenu
-                disableCopyToClipboard={disableCopyToClipboard}
-                onCopyToClipboard={async () => {
-                  await onCopyToClipboard();
-                  trackCopyToClipboard({
-                    type: run?.type ?? "unknown",
-                    from: "run",
-                  });
-                }}
-                onMouseEnter={onMouseEnter}
-                onMouseLeave={onMouseLeave}
-              />
-            )}
-
-            <AddToCheckButton
-              runId={runId}
-              viewOptions={viewOptions as Record<string, unknown>}
-            />
-
-            <CloseButton
-              size="sm"
-              onClick={() => {
-                if (onClose) {
-                  onClose();
-                }
+          ) : (
+            <RunResultShareMenu
+              disableCopyToClipboard={disableCopyToClipboard}
+              onCopyToClipboard={async () => {
+                await onCopyToClipboard();
+                trackCopyToClipboard({
+                  type: run?.type ?? "unknown",
+                  from: "run",
+                });
               }}
+              onMouseEnter={onMouseEnter}
+              onMouseLeave={onMouseLeave}
             />
-          </HStack>
-        </Tabs.List>
-      </Tabs.Root>
+          )}
+
+          <AddToCheckButton
+            runId={runId}
+            viewOptions={viewOptions as Record<string, unknown>}
+          />
+
+          <IconButton
+            size="small"
+            onClick={() => {
+              if (onClose) {
+                onClose();
+              }
+            }}
+          >
+            <IoClose />
+          </IconButton>
+        </Stack>
+      </Box>
       {tabValue === "result" && (
         <RunView
           ref={ref as unknown as Ref<RefTypes>}
@@ -328,7 +362,7 @@ export const PrivateLoadableRunView = ({
             options={{ readOnly: true }}
           />
         ))}
-    </Flex>
+    </Box>
   );
 };
 
@@ -388,22 +422,26 @@ function AddToCheckButton({
     return (
       <Button
         disabled={!runId || !run.result || !!error}
-        size="sm"
-        colorPalette="iochmara"
+        size="small"
+        variant="contained"
         onClick={handleGoToCheck}
+        startIcon={<PiCheck />}
+        sx={{ textTransform: "none" }}
       >
-        <PiCheck /> Go to Check
+        Go to Check
       </Button>
     );
   }
   return (
     <Button
       disabled={!runId || !run?.result || !!error}
-      size="xs"
-      colorPalette="iochmara"
+      size="small"
+      variant="contained"
       onClick={handleAddToChecklist}
+      startIcon={<PiCheck />}
+      sx={{ textTransform: "none" }}
     >
-      <PiCheck /> Add to Checklist
+      Add to Checklist
     </Button>
   );
 }
