@@ -45,7 +45,6 @@ install:
   run: recce-cloud upload
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    RECCE_API_TOKEN: ${{ secrets.RECCE_API_TOKEN }}
 ```
 
 **Download artifacts:**
@@ -55,7 +54,6 @@ install:
   run: recce-cloud download --prod --target-path target-base
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    RECCE_API_TOKEN: ${{ secrets.RECCE_API_TOKEN }}
 ```
 
 ### GitLab CI
@@ -237,7 +235,7 @@ Upload dbt artifacts to Recce Cloud session.
 | ------------------ | ------------- | ------------------------------- |
 | `RECCE_API_TOKEN`  | Recommended   | Recce Cloud API token           |
 | `RECCE_SESSION_ID` | Optional      | Session ID for generic workflow |
-| `GITHUB_TOKEN`     | Auto-detected | GitHub authentication (Actions) |
+| `GITHUB_TOKEN`     | Explicit set  | GitHub authentication (Actions) |
 | `CI_JOB_TOKEN`     | Auto-detected | GitLab authentication (CI)      |
 
 **Exit Codes:**
@@ -270,7 +268,7 @@ Download dbt artifacts (manifest.json, catalog.json) from Recce Cloud session.
 | ------------------ | ------------- | ------------------------------- |
 | `RECCE_API_TOKEN`  | Recommended   | Recce Cloud API token           |
 | `RECCE_SESSION_ID` | Optional      | Session ID for generic workflow |
-| `GITHUB_TOKEN`     | Auto-detected | GitHub authentication (Actions) |
+| `GITHUB_TOKEN`     | Explicit set  | GitHub authentication (Actions) |
 | `CI_JOB_TOKEN`     | Auto-detected | GitLab authentication (CI)      |
 
 **Exit Codes:**
@@ -332,8 +330,8 @@ The CLI supports multiple authentication methods with the following priority:
 
 **GitHub Token:**
 
-- Automatically available as `${{ secrets.GITHUB_TOKEN }}` in Actions
-- No additional configuration needed
+- Available as `${{ secrets.GITHUB_TOKEN }}` in Actions
+- Must be explicitly set in `env:` section of your workflow
 
 **GitLab Token:**
 
@@ -412,7 +410,6 @@ jobs:
         run: recce-cloud upload
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RECCE_API_TOKEN: ${{ secrets.RECCE_API_TOKEN }}
 ```
 
 ### GitHub Actions - Download Workflow
@@ -442,6 +439,8 @@ jobs:
       # Download production/base artifacts
       - name: Download base artifacts from Recce Cloud
         run: recce-cloud download --prod --target-path target-base
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Build current PR version
       - name: Build dbt project (current)
@@ -453,6 +452,8 @@ jobs:
       # Upload current PR artifacts
       - name: Upload to Recce Cloud
         run: recce-cloud upload
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ### GitLab CI - Upload Workflow
@@ -585,14 +586,30 @@ Error: No authentication token provided
 Set RECCE_API_TOKEN environment variable or ensure CI token is available
 ```
 
-**Solution:** Set `RECCE_API_TOKEN` in your CI/CD secrets or ensure CI token permissions.
+**Solution:** Token requirements depend on your workflow type:
+
+**For Generic Workflow (with `--session-id`):**
+- Always requires explicit `RECCE_API_TOKEN`
+
+```bash
+# Set token and use session ID
+export RECCE_API_TOKEN=your_token_here
+recce-cloud upload --session-id abc123
+recce-cloud download --session-id abc123
+```
+
+**For Platform-Specific Workflow:**
+
+_GitHub CI_
+- Use `GITHUB_TOKEN` (explicitly set)
 
 ```yaml
-# GitHub Actions
 env:
-  RECCE_API_TOKEN: ${{ secrets.RECCE_API_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
 
-# GitLab CI
+_GitLab CI_
+```yaml
 variables:
   RECCE_API_TOKEN: $RECCE_API_TOKEN
 ```
