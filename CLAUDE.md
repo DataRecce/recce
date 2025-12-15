@@ -4,28 +4,95 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Recce is a data validation and review tool for dbt projects. It helps data teams preview, validate, and ship data changes with confidence by providing lineage visualization, data diffing, and collaborative review features.
+Recce is a data validation and review tool for dbt projects. It helps data teams preview, validate, and ship data
+changes with confidence by providing lineage visualization, data diffing, and collaborative review features.
 
 ## Critical Constraints & Guidelines
 
 ### Do NOT:
 
-- ❌ **Commit state files**: Never commit `recce_state.json` or any `state.json` files (contains user-specific runtime state)
-- ❌ **Edit generated files**: Never edit files in `recce/data/` directly (auto-generated from `js/out/` during frontend build)
-- ❌ **Break adapter interface**: All adapters must implement ALL `BaseAdapter` abstract methods (partial implementations will fail at runtime)
+- ❌ **Commit state files**: Never commit `recce_state.json` or any `state.json` files (contains user-specific runtime
+  state)
+- ❌ **Edit generated files**: Never edit files in `recce/data/` directly (auto-generated from `js/out/` during frontend
+  build)
+- ❌ **Break adapter interface**: All adapters must implement ALL `BaseAdapter` abstract methods (partial implementations
+  will fail at runtime)
 - ❌ **Skip Python version compatibility**: Any new dependencies must support Python 3.9+ (we test 3.9-3.13)
-- ❌ **Bypass frontend build**: If you modify frontend code, you MUST run `cd js && pnpm run build` to update `recce/data/` before testing with `recce server`
-- ❌ **Use interactive git commands**: Never use `git rebase -i`, `git add -i`, or similar (interactive prompts don't work in CLI context)
-- ❌ **Mix concerns across layers**: Keep strict separation between models, tasks, APIs, and adapters (see Code Organization Philosophy below)
+- ❌ **Bypass frontend build**: If you modify frontend code, you MUST run `cd js && pnpm run build` to update
+  `recce/data/` before testing with `recce server`
+- ❌ **Use interactive git commands**: Never use `git rebase -i`, `git add -i`, or similar (interactive prompts don't
+  work in CLI context)
+- ❌ **Mix concerns across layers**: Keep strict separation between models, tasks, APIs, and adapters (see Code
+  Organization Philosophy below)
 
 ### Always:
 
-- ✅ **Build frontend before testing**: When frontend changes are made, run `cd js && pnpm run build` then restart `recce server`
-- ✅ **Test across dbt versions**: For adapter changes, run `make test-tox` to verify against dbt 1.5-1.8
+- ✅ **Build frontend before testing**: When frontend changes are made, run `cd js && pnpm run build` then restart
+  `recce server`
+- ✅ **Test across dbt versions**: For adapter changes, run `make test-tox` to verify against dbt 1.6-1.9
 - ✅ **Use pre-commit hooks**: Automatically installed with `make install-dev` (handles Black, isort, flake8)
-- ✅ **Maintain state loader abstraction**: All state persistence must work with both `FileStateLoader` (local) and `CloudStateLoader` (Recce Cloud)
-- ✅ **Update both base and current**: When modifying check logic, ensure changes work for both environments being compared
-- ✅ **Follow monorepo structure**: Backend (Python) and frontend (TypeScript) are tightly coupled but maintain clear boundaries
+- ✅ **Maintain state loader abstraction**: All state persistence must work with both `FileStateLoader` (local) and
+  `CloudStateLoader` (Recce Cloud)
+- ✅ **Update both base and current**: When modifying check logic, ensure changes work for both environments being
+  compared
+- ✅ **Follow monorepo structure**: Backend (Python) and frontend (TypeScript) are tightly coupled but maintain clear
+  boundaries
+
+## Git Development Practices
+
+### Branch Naming
+
+All new code MUST be developed in a branch with one of these prefixes, branched directly from `main`:
+
+- `feature/` - New features or enhancements
+- `fix/` - Bug fixes
+- `hotfix/` - Critical production fixes
+
+```bash
+# Create a new feature branch
+git checkout main
+git pull origin main
+git checkout -b feature/my-new-feature
+```
+
+### Commit Requirements
+
+**1. Sign-off (DCO):** Every commit MUST include a "Signed-off-by:" line per
+the [Developer Certificate of Origin](https://developercertificate.org/):
+
+```bash
+git commit -s -m "Your commit message"
+```
+
+**2. Semantic/Conventional Commits:** Use structured commit messages:
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer]
+Signed-off-by: Your Name <your.email@example.com>
+```
+
+**Types:**
+
+- `feat` - New feature
+- `fix` - Bug fix
+- `docs` - Documentation only
+- `style` - Formatting, no code change
+- `refactor` - Code change that neither fixes a bug nor adds a feature
+- `test` - Adding or updating tests
+- `chore` - Maintenance tasks (deps, build, CI)
+
+**Examples:**
+
+```bash
+git commit -s -m "feat(check): add timeline component for check events"
+git commit -s -m "fix(adapter): normalize column casing for Snowflake"
+git commit -s -m "docs: update CLAUDE.md with git practices"
+git commit -s -m "refactor(dataGrid): extract shared utilities"
+```
 
 ## Code Organization Philosophy
 
@@ -65,7 +132,7 @@ recce/
 ### Where to Add New Code
 
 | What You're Adding | Where It Goes                                      | What to Import                  |
-| ------------------ | -------------------------------------------------- | ------------------------------- |
+|--------------------|----------------------------------------------------|---------------------------------|
 | New check type     | `tasks/` (new Task class)                          | Can use adapter, models         |
 | New API endpoint   | `apis/*_api.py` (route) + `apis/*_func.py` (logic) | Can use tasks, models, adapter  |
 | New data model     | `models/` (Pydantic class)                         | Only standard library           |
@@ -73,6 +140,166 @@ recce/
 | State storage      | `state/` (extend RecceStateLoader)                 | Can use models only             |
 | UI component       | `js/src/components/`                               | Use API clients from `lib/api/` |
 | API client         | `js/src/lib/api/`                                  | Axios, React Query              |
+
+## Architecture & Tech Stack
+
+### Monolithic Client-Server Application
+
+### Backend (Python)
+
+- **Python 3.9-3.13** (primary development: 3.10-3.12)
+- **FastAPI** - REST API server
+- **Click** - CLI framework
+- **Pydantic** - Data models and validation
+- **dbt adapters** - Platform-specific database connections
+
+- FastAPI REST server that serves static frontend and provides APIs for runs/checks
+- CLI built with Click (`recce server`, `recce run`)
+- Adapter pattern abstracts different data platforms (dbt-core, SQLMesh)
+- Task execution engine runs validation checks asynchronously
+- State management supports local file storage or Recce Cloud
+
+### Frontend (TypeScript/React)
+
+- **Node.js >=20** - JavaScript runtime
+- **pnpm 10.25.0** - Package manager (NOT npm or yarn)
+- **Next.js 16.0.10** - React framework with App Router
+- **React 19.2.3** - UI library with new JSX transform
+- **TypeScript 5.9** - Type safety
+- **Chakra UI 3** - Component library
+- **Biome 2.3** - Fast linter and formatter (replaces ESLint + Prettier)
+- **Tailwind CSS 4** - Utility-first CSS
+- **CodeMirror 6** - Code editor (SQL, YAML support)
+- **React Query 5** - API state management
+- **Reactflow 12** - Lineage graph visualization
+
+- Next.js 16 app built with React 19, compiled to static files
+- UI built with Chakra UI + Tailwind CSS
+- React Query handles API communication and state management
+- Reactflow for lineage graph visualization
+- Built frontend is embedded in Python package at `recce/data/`
+
+**Key Design Patterns:**
+
+- **Pluggable Adapter Pattern**: `BaseAdapter` interface allows support for different data platforms (dbt, SQLMesh).
+  Each adapter implements platform-specific lineage parsing, model retrieval, and SQL generation.
+- **In-Memory State with Persistence**: `RecceContext` holds runtime state (runs, checks, adapter). `CheckDAO` and
+  `RunDAO` provide in-memory storage. `RecceStateLoader` abstraction supports `FileStateLoader` (local JSON) or
+  `CloudStateLoader` (S3 sync).
+- **Task-Based Check Execution**: Each check type (profile_diff, value_diff, row_count_diff, etc.) maps to a `Task`
+  class. Tasks are submitted asynchronously via FastAPI, and frontend polls for completion.
+- **Static Frontend Bundling**: Next.js builds to static HTML/JS in `js/out/`, which is moved to `recce/data/` and
+  served by FastAPI at runtime. No Node.js needed in production.
+
+## Project Structure
+
+```
+recce/                     # Backend (Python)
+├── apis/                  # FastAPI route handlers
+├── adapter/               # dbt/SQLMesh adapter implementations
+├── models/                # Pydantic data models
+├── tasks/                 # Async check execution (QueryTask, DiffTask, etc.)
+├── state/                 # State persistence (FileStateLoader, CloudStateLoader)
+├── util/cloud/            # Recce Cloud API clients
+├── config.py              # recce.yml config loading
+└── data/                  # GENERATED - DO NOT EDIT (from js/out/)
+
+js/                        # Frontend (Next.js)
+├── src/
+│   ├── app/               # Next.js App Router pages
+│   ├── lib/
+│   │   ├── api/           # API client files (checks.ts, runs.ts, checkEvents.ts)
+│   │   └── hooks/         # React contexts & custom hooks
+│   ├── components/        # React components
+│   │   ├── lineage/       # Lineage visualization
+│   │   ├── check/         # Check management UI
+│   │   │   └── timeline/  # Check Events timeline (cloud-only)
+│   │   ├── run/           # Run execution UI
+│   │   └── editor/        # CodeMirror editor components
+│   ├── constants/
+│   └── utils/
+├── biome.json             # Biome linter & formatter config
+└── package.json
+```
+
+## Development Commands
+
+### Backend (Python)
+
+Note that `dbt-core` is
+currently [compatible with Python 3.13 for v1.11 and above](https://docs.getdbt.com/faqs/Core/install-python-compatibility).
+Use Python 3.12 for better compatibility.
+
+```bash
+# Install in development mode with dev dependencies
+make install-dev
+# OR
+pip install -e .[dev]
+pre-commit install
+
+# Run the server locally
+recce server
+
+# Code formatting (Black + isort) - ALWAYS run first
+make format
+
+# Code quality checks (no modifications)
+make check
+
+# Linting only
+make flake8
+
+# Run tests
+make test
+pytest tests
+
+# Run tests with coverage
+make test-coverage
+
+# Test across multiple dbt versions (1.6-1.9)
+make test-tox
+
+# Test across multiple Python versions (3.9-3.13)
+make test-tox-python-versions
+```
+
+### Frontend (TypeScript/React)
+
+```bash
+# Install frontend dependencies (pnpm ONLY, NOT npm or yarn)
+cd js
+pnpm install
+
+# Run Next.js dev server with Turbopack from js/ directory
+pnpm dev
+# OR from root
+make dev
+
+# Build frontend (outputs to js/out/, then moves to recce/data/) from js/ directory
+pnpm run build
+
+# Linting and formatting (Biome) from js/ directory
+pnpm lint          # Check for issues
+pnpm lint:fix      # Auto-fix issues
+
+# Type checking from js/ directory
+pnpm type:check
+
+# Tests from js/ directory
+pnpm test
+pnpm test:cov      # With coverage
+
+# Clean build artifacts from js/ directory
+pnpm run clean
+```
+
+### Full Build Workflow
+
+When you modify frontend code and want to test it with the Python backend:
+
+1. Build frontend: `cd js && pnpm run build`
+2. This automatically moves built files to `recce/data/`
+3. Run backend: `recce server`
 
 ## Architecture
 
@@ -88,169 +315,12 @@ recce/
 
 **Frontend (TypeScript/React):**
 
-- Next.js 15 app built with React 19, compiled to static files
-- UI built with Chakra UI + Tailwind CSS
+- Next.js 16 app built with React 19, compiled to static files
+- UI built with Chakra UI 3 + Tailwind CSS 4
 - React Query handles API communication and state management
 - Reactflow for lineage graph visualization
+- CodeMirror 6 for SQL/YAML editing
 - Built frontend is embedded in Python package at `recce/data/`
-
-**Key Design Patterns:**
-
-- **Pluggable Adapter Pattern**: `BaseAdapter` interface allows support for different data platforms (dbt, SQLMesh). Each adapter implements platform-specific lineage parsing, model retrieval, and SQL generation.
-- **In-Memory State with Persistence**: `RecceContext` holds runtime state (runs, checks, adapter). `CheckDAO` and `RunDAO` provide in-memory storage. `RecceStateLoader` abstraction supports `FileStateLoader` (local JSON) or `CloudStateLoader` (S3 sync).
-- **Task-Based Check Execution**: Each check type (profile_diff, value_diff, row_count_diff, etc.) maps to a `Task` class. Tasks are submitted asynchronously via FastAPI, and frontend polls for completion.
-- **Static Frontend Bundling**: Next.js builds to static HTML/JS in `js/out/`, which is moved to `recce/data/` and served by FastAPI at runtime. No Node.js needed in production.
-
-### Key Directories
-
-```
-recce/                      # Python backend package
-├── cli.py                  # Click CLI entry point
-├── server.py              # FastAPI application setup
-├── core.py                # RecceContext - central state manager
-├── run.py                 # Run execution logic
-├── config.py              # recce.yml configuration
-├── artifact.py            # dbt artifact management
-├── apis/                  # FastAPI route handlers
-│   ├── check_api.py       # /api/checks endpoints
-│   ├── run_api.py         # /api/runs endpoints
-│   ├── check_func.py      # Check creation/mutation logic
-│   └── run_func.py        # Run submission logic
-├── adapter/               # Platform abstraction layer
-│   ├── base.py            # BaseAdapter abstract class
-│   ├── dbt_adapter/       # dbt implementation (primary)
-│   └── sqlmesh_adapter.py # SQLMesh implementation (experimental)
-├── models/                # Pydantic data models
-│   ├── types.py           # Run, Check, RunType, RunStatus enums
-│   ├── check.py           # CheckDAO (in-memory storage)
-│   └── run.py             # RunDAO (in-memory storage)
-├── state/                 # State persistence layer
-│   ├── state_loader.py    # Abstract RecceStateLoader
-│   ├── local.py           # FileStateLoader (local JSON)
-│   └── cloud.py           # CloudStateLoader (Recce Cloud + S3)
-├── tasks/                 # Check execution tasks
-│   ├── core.py            # Task base class
-│   ├── query.py           # Query execution
-│   ├── profile.py         # Statistical profiling
-│   ├── valuediff.py       # Column value comparison
-│   └── ...
-├── event/                 # Telemetry (Sentry, Amplitude)
-├── util/                  # Utilities (Recce Cloud client, etc.)
-└── data/                  # Compiled frontend static assets (do not edit directly)
-
-js/                        # Frontend (Next.js)
-├── src/
-│   ├── lib/
-│   │   ├── api/           # API client files (checks.ts, runs.ts, etc.)
-│   │   └── hooks/         # React contexts & custom hooks
-│   ├── components/        # React components
-│   │   ├── lineage/       # Lineage visualization
-│   │   ├── check/         # Check management UI
-│   │   ├── run/           # Run execution UI
-│   │   └── ...
-│   ├── constants/
-│   └── utils/
-└── package.json
-```
-
-## Development Commands
-
-### Backend (Python)
-
-Note that `dbt-core` is currently [not compatible with Python 3.13](https://docs.getdbt.com/faqs/Core/install-python-compatibility). Please make sure to use Python 3.12.
-
-```bash
-# Install in development mode with dev dependencies
-make install-dev
-# OR
-pip install -e .[dev]
-pre-commit install
-
-# Run the server locally
-recce server
-
-# Code formatting (Black + isort)
-make format
-
-# Linting
-make flake8
-
-# Code quality checks (no modifications)
-make check
-
-# Run tests
-make test
-pytest tests
-
-# Run tests with coverage
-make test-coverage
-pytest --cov=recce --cov-report=html --cov-report=term tests
-
-# Test across multiple dbt versions
-make test-tox
-tox run-parallel
-
-# Test across multiple Python versions (3.9-3.13)
-make test-tox-python-versions
-tox run-parallel -e 3.9,3.10,3.11,3.12,3.13
-
-# Run a single test
-pytest tests/test_specific.py::test_function_name
-```
-
-### Frontend (TypeScript/React)
-
-```bash
-# Install frontend dependencies
-cd js
-pnpm install
-
-# Run Next.js dev server with Turbopack
-pnpm dev
-# OR
-make dev
-
-# Build frontend (outputs to js/out/, then moves to recce/data/)
-cd js
-pnpm run build
-
-# Linting
-pnpm run lint
-pnpm run lint:fix
-
-# Type checking
-pnpm run type:check
-
-# Tests
-pnpm test
-
-# Clean build artifacts
-pnpm run clean
-```
-
-### Full Build Workflow
-
-When you modify frontend code and want to test it with the Python backend:
-
-1. Build frontend: `cd js && pnpm run build`
-2. This automatically moves built files to `recce/data/`
-3. Run backend: `recce server`
-
-## Important Technical Details
-
-### State Management
-
-- **RecceContext** is the central singleton that holds:
-
-  - Current dbt project artifacts (manifest, catalog)
-  - Adapter instance (DbtAdapter or SQLMeshAdapter)
-  - CheckDAO and RunDAO for in-memory storage
-  - State loader for persistence
-
-- **State Persistence**:
-  - Local mode: Saves to `recce_state.json` in project directory
-  - Cloud mode: Syncs with Recce Cloud via S3 with server-side encryption
-  - State auto-saves on server termination
 
 ### Check Execution Flow
 
@@ -270,48 +340,76 @@ When you modify frontend code and want to test it with the Python backend:
   - `execute_sql()` - Run SQL queries
   - Platform-specific artifact parsing (manifest, catalog, etc.)
 
-### Version Management
+### Warehouse-Resilient Naming
 
-- Single source of truth: `recce/VERSION` file
-- Read by `setup.py` for package versioning
-- Frontend reads at runtime for display
-- Server checks PyPI on startup to notify about updates
+Different SQL warehouses return column names in different cases:
 
-### Configuration
+- **Snowflake**: UPPERCASE
+- **PostgreSQL/Redshift**: lowercase
+- **BigQuery**: preserves original case
 
-- `recce.yml` defines preset checks
-- Validated at startup with check-type-specific validators
-- Singleton pattern (`RecceConfig`) prevents multiple loads
-- Supports environment-specific settings
+Backend normalizes column names to ensure consistency:
 
-### Telemetry
+- `primary_keys` are normalized to match actual column casing
+- Boolean flag columns (`in_a`, `in_b`) are always lowercase
+- Quote stripping for SQL identifiers (`"col"`, `` `col` ``, `[col]`)
 
-- Sentry integration for error tracking (opt-out via env var)
-- Amplitude analytics for usage tracking (opt-in)
-- Event tracking decorators on critical paths
-- Different tracking for Recce Cloud instances (via `RECCE_CLOUD_INSTANCE` env var)
+See `recce/tasks/utils.py` for normalization functions.
+
+## Cloud-Only Features
+
+### Check Events Timeline
+
+GitHub PR-style discussion feature for checks, only available when connected to Recce Cloud.
+
+**Event Types:**
+
+- `check_created` - Initial check creation
+- `comment` - User comments (supports edit/delete)
+- `approval_change` - Check approval status changes
+- `description_change` - Check description updates
+- `name_change` - Check name updates
+- `preset_applied` - Preset configuration applied
+
+**Key Files:**
+
+- Backend: `recce/apis/check_events_api.py`, `recce/util/cloud/check_events.py`
+- Frontend: `js/src/lib/api/checkEvents.ts`, `js/src/lib/hooks/useCheckEvents.ts`
+- Components: `js/src/components/check/timeline/`
+
+## Code Style
+
+### Python
+
+- **Black** (line length 120) + **isort** (profile: black) + **flake8**
+- Pre-commit hooks configured in `.pre-commit-config.yaml`
+- Always run `make format` before `make check`
+
+### TypeScript/React
+
+- **Biome 2.3** - Fast linter and formatter (replaces ESLint + Prettier)
+- Double quotes for strings
+- Space indentation
+- React 19 JSX transform (no React import needed)
+- Key rules: `noExplicitAny`, `useExhaustiveDependencies`, `noUnusedVariables`
+- Git hooks: `.husky/pre-commit` runs `pnpm lint:staged` and `pnpm type:check`
 
 ## Testing Strategy
 
 - **Python Unit Tests**: `pytest` in `tests/` directory
-- **Frontend Tests**: Jest + React Testing Library in `js/`
+- **Frontend Tests**: Jest 30 + React Testing Library in `js/`
 - **Integration Tests**: Separate CI jobs in `integration_tests/` for dbt and SQLMesh
-- **Multi-Version Testing**: Tox for testing against dbt 1.5-1.8 and Python 3.9-3.13
+- **Multi-Version Testing**: Tox for testing against dbt 1.6-1.9 and Python 3.9-3.13
+- **Property-Based Testing**: fast-check for data grid utilities
 
 ## CI/CD
 
 - **tests-python.yaml**: Python unit tests on multiple versions
-- **tests-js.yaml**: Frontend linting and tests
+- **tests-js.yaml**: Frontend linting (Biome) and tests
 - **build-statics.yaml**: Auto-builds and commits frontend when merged to main
 - **integration-tests.yaml**: Full dbt project tests
 - **release.yaml**: Builds and publishes to PyPI on version tags
 - **nightly.yaml**: Runs full test matrix nightly
-
-## Code Style
-
-- **Python**: Black (line length 120) + isort + flake8
-- **TypeScript**: ESLint + Prettier
-- **Pre-commit hooks**: Configured to run formatters and linters
 
 ## Working with the Codebase
 
@@ -338,6 +436,7 @@ When you modify frontend code and want to test it with the Python backend:
 - Backend logs to console and `recce_error.log`
 - Frontend development: Use React DevTools and browser console
 - Use `recce server --debug` for verbose logging
+- Run `recce debug` to check artifact/connection issues
 
 ## Distribution
 
@@ -346,9 +445,39 @@ When you modify frontend code and want to test it with the Python backend:
 - **Embedded Frontend**: Static files bundled in Python package at install time
 - **Self-Contained**: Single pip install provides full stack (no separate Node deployment)
 
+## Version Management
+
+- Single source of truth: `recce/VERSION` file
+- Read by `setup.py` for package versioning
+- Frontend reads at runtime for display
+- Server checks PyPI on startup to notify about updates
+
+## Common Errors & Fixes
+
+**Frontend changes not appearing:**
+
+- Run `cd js && pnpm run build` then restart `recce server`
+
+**Python import errors:**
+
+- Run `pip install -e .[dev]` to reinstall in editable mode
+
+**Biome lint failures:**
+
+- Run `pnpm lint:fix` to auto-fix, then manually fix remaining issues
+
+**Type errors during build:**
+
+- Run `pnpm type:check` for detailed error messages
+
+**Test failures:**
+
+- Check if dbt artifacts exist in `integration_tests/dbt/target`
+- Try fresh install: `pip uninstall recce && make install-dev`
+
 ---
 
 ## Individual Preferences
 
 - @~/.claude/recce.md
-- signoff commmits with `git commit -h`
+- signoff commits with `git commit -h`
