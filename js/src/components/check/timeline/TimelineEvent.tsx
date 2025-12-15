@@ -10,9 +10,17 @@
  * - preset_applied: Shows preset application
  */
 
+import MuiAvatar from "@mui/material/Avatar";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import Popover from "@mui/material/Popover";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { Activity, useState } from "react";
+import { type MouseEvent, useState } from "react";
 import {
   PiBookmarkSimple,
   PiChatText,
@@ -24,19 +32,6 @@ import {
   PiTrashSimple,
 } from "react-icons/pi";
 import { MarkdownContent } from "@/components/ui/markdown/MarkdownContent";
-import {
-  Avatar,
-  Box,
-  Button,
-  Flex,
-  HStack,
-  Icon,
-  IconButton,
-  Popover,
-  Portal,
-  Text,
-  Textarea,
-} from "@/components/ui/mui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { CheckEvent, getEventIconType } from "@/lib/api/checkEvents";
 import { fetchGitHubAvatar } from "@/lib/api/user";
@@ -60,19 +55,19 @@ function EventIcon({ event }: { event: CheckEvent }) {
     preset: PiBookmarkSimple,
   };
 
-  const colorMap = {
-    create: "iochmara.500",
-    comment: "neutral.500",
-    approve: "green.500",
-    unapprove: "neutral.400",
-    edit: "amber.500",
-    preset: "fuchsia.500",
+  const colorMap: Record<string, string> = {
+    create: "primary.main",
+    comment: "grey.500",
+    approve: "success.main",
+    unapprove: "grey.400",
+    edit: "warning.main",
+    preset: "secondary.main",
   };
 
   const IconComponent = iconMap[iconType];
   const color = colorMap[iconType];
 
-  return <Icon as={IconComponent} color={color} boxSize="16px" />;
+  return <Box component={IconComponent} sx={{ color, fontSize: 16 }} />;
 }
 
 function UserAvatar({ event }: { event: CheckEvent }) {
@@ -91,10 +86,12 @@ function UserAvatar({ event }: { event: CheckEvent }) {
   const initials = displayName.charAt(0).toUpperCase();
 
   return (
-    <Avatar.Root size="xs">
-      <Avatar.Fallback name={displayName}>{initials}</Avatar.Fallback>
-      {avatarUrl && <Avatar.Image src={avatarUrl} />}
-    </Avatar.Root>
+    <MuiAvatar
+      src={avatarUrl || undefined}
+      sx={{ width: 24, height: 24, fontSize: "0.75rem" }}
+    >
+      {initials}
+    </MuiAvatar>
   );
 }
 
@@ -130,25 +127,30 @@ function StateChangeEvent({ event }: { event: CheckEvent }) {
   }
 
   return (
-    <Flex gap={2} alignItems="flex-start" py={2}>
-      <Box pt="2px">
+    <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start", py: 1 }}>
+      <Box sx={{ pt: "2px" }}>
         <EventIcon event={event} />
       </Box>
-      <Box flex={1}>
-        <HStack gap={1} flexWrap="wrap">
+      <Box sx={{ flex: 1 }}>
+        <Stack
+          direction="row"
+          spacing={0.5}
+          flexWrap="wrap"
+          alignItems="center"
+        >
           <UserAvatar event={event} />
-          <Text fontSize="sm" fontWeight="medium">
+          <Typography variant="body2" fontWeight="500">
             {actorName}
-          </Text>
-          <Text fontSize="sm" color="gray.600">
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
             {message}
-          </Text>
-          <Text fontSize="xs" color="gray.400">
+          </Typography>
+          <Typography variant="caption" color="text.disabled">
             {relativeTime}
-          </Text>
-        </HStack>
+          </Typography>
+        </Stack>
       </Box>
-    </Flex>
+    </Box>
   );
 }
 
@@ -167,7 +169,10 @@ function CommentEvent({
   const [editContent, setEditContent] = useState(event.content || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isDeletePopoverOpen, setIsDeletePopoverOpen] = useState(false);
+  const [deleteAnchorEl, setDeleteAnchorEl] = useState<HTMLElement | null>(
+    null,
+  );
+  const isDeletePopoverOpen = Boolean(deleteAnchorEl);
 
   const { actor } = event;
   const actorName = actor.fullname || actor.login || "Someone";
@@ -214,12 +219,20 @@ function CommentEvent({
     }
   };
 
+  const handleDeleteClick = (event: MouseEvent<HTMLButtonElement>) => {
+    setDeleteAnchorEl(event.currentTarget);
+  };
+
+  const handleDeleteClose = () => {
+    setDeleteAnchorEl(null);
+  };
+
   const handleDelete = async () => {
     if (onDelete) {
       setIsDeleting(true);
       try {
         await onDelete(event.id);
-        setIsDeletePopoverOpen(false);
+        handleDeleteClose();
       } finally {
         setIsDeleting(false);
       }
@@ -228,115 +241,138 @@ function CommentEvent({
 
   if (event.is_deleted) {
     return (
-      <Flex gap={2} alignItems="center" py={2}>
-        <Box pt="2px" display="flex" alignItems="center">
+      <Box sx={{ display: "flex", gap: 1, alignItems: "center", py: 1 }}>
+        <Box sx={{ pt: "2px", display: "flex", alignItems: "center" }}>
           <EventIcon event={event} />
         </Box>
-        <Box display="flex" flex={1} alignItems="center">
-          <Text fontSize="sm" color="gray.400" fontStyle="italic">
+        <Box sx={{ display: "flex", flex: 1, alignItems: "center" }}>
+          <Typography variant="body2" color="text.disabled" fontStyle="italic">
             Comment deleted
-          </Text>
+          </Typography>
         </Box>
-      </Flex>
+      </Box>
     );
   }
 
   return (
-    <Flex gap={2} alignItems="flex-start" py={2}>
-      <Box pt="2px">
+    <Box sx={{ display: "flex", gap: 1, alignItems: "flex-start", py: 1 }}>
+      <Box sx={{ pt: "2px" }}>
         <EventIcon event={event} />
       </Box>
-      <Box flex={1}>
-        <HStack gap={1} mb={1} flexWrap="wrap">
+      <Box sx={{ flex: 1 }}>
+        <Stack
+          direction="row"
+          spacing={0.5}
+          sx={{ mb: 0.5 }}
+          flexWrap="wrap"
+          alignItems="center"
+        >
           <UserAvatar event={event} />
-          <Text fontSize="sm" fontWeight="medium">
+          <Typography variant="body2" fontWeight="500">
             {actorName}
-            <Activity mode={isAuthor ? "visible" : "hidden"}>
-              {" "}
-              (Author)
-            </Activity>
-          </Text>
-          <Text fontSize="xs" color="gray.400">
+            {isAuthor && (
+              <Typography
+                component="span"
+                variant="body2"
+                color="text.secondary"
+              >
+                {" "}
+                (Author)
+              </Typography>
+            )}
+          </Typography>
+          <Typography variant="caption" color="text.disabled">
             {relativeTime}
-          </Text>
+          </Typography>
           {event.is_edited && (
-            <Text fontSize="xs" color="gray.400">
+            <Typography variant="caption" color="text.disabled">
               (edited)
-            </Text>
+            </Typography>
           )}
-        </HStack>
+        </Stack>
 
         {isEditing ? (
           // Edit mode
           <Box>
-            <Textarea
+            <TextField
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
               onKeyDown={handleKeyDown}
-              size="sm"
-              resize="vertical"
-              minH="80px"
-              bg="white"
-              borderColor="gray.300"
-              _focus={{
-                borderColor: "iochmara.400",
-                boxShadow: "0 0 0 1px #4299E1",
-              }}
+              size="small"
+              multiline
+              minRows={3}
+              fullWidth
               disabled={isSubmitting}
               autoFocus
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  bgcolor: "white",
+                  "&:focus-within": {
+                    borderColor: "primary.main",
+                  },
+                },
+              }}
             />
-            <HStack gap={2} mt={2} justify="flex-end">
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ mt: 1 }}
+              justifyContent="flex-end"
+            >
               <Button
-                size="xs"
-                variant="ghost"
+                size="small"
+                variant="text"
                 onClick={handleCancelEdit}
                 disabled={isSubmitting}
               >
                 Cancel
               </Button>
               <Button
-                size="xs"
-                colorPalette="iochmara"
+                size="small"
+                variant="contained"
                 onClick={handleSaveEdit}
                 disabled={!editContent.trim() || isSubmitting}
-                loading={isSubmitting}
               >
-                Save
+                {isSubmitting ? "Saving..." : "Save"}
               </Button>
-            </HStack>
+            </Stack>
           </Box>
         ) : (
           // View mode
           <Box
-            className="group"
-            bg="gray.50"
-            borderRadius="md"
-            p={2}
-            borderWidth="1px"
-            borderColor="gray.200"
-            position="relative"
+            sx={{
+              bgcolor: "grey.50",
+              borderRadius: 1,
+              p: 1,
+              border: "1px solid",
+              borderColor: "grey.200",
+              position: "relative",
+              "&:hover .comment-actions": {
+                opacity: 1,
+              },
+            }}
           >
             <MarkdownContent content={event.content || ""} fontSize="sm" />
 
             {/* Edit/Delete buttons - only visible to author on hover */}
-            <Activity
-              mode={isAuthor && (onEdit || onDelete) ? "visible" : "hidden"}
-            >
-              <HStack
-                position="absolute"
-                top={1}
-                right={1}
-                gap={0}
-                opacity={0}
-                _groupHover={{ opacity: 1 }}
-                transition="opacity 0.2s"
+            {isAuthor && (onEdit || onDelete) && (
+              <Stack
+                className="comment-actions"
+                direction="row"
+                spacing={0}
+                sx={{
+                  position: "absolute",
+                  top: 4,
+                  right: 4,
+                  opacity: 0,
+                  transition: "opacity 0.2s",
+                }}
               >
                 {onEdit && (
                   <Tooltip content="Edit comment">
                     <IconButton
                       aria-label="Edit comment"
-                      size="xs"
-                      variant="ghost"
+                      size="small"
                       onClick={handleStartEdit}
                     >
                       <PiPencilSimple />
@@ -344,64 +380,67 @@ function CommentEvent({
                   </Tooltip>
                 )}
                 {onDelete && (
-                  <Popover.Root
-                    open={isDeletePopoverOpen}
-                    onOpenChange={(e) => setIsDeletePopoverOpen(e.open)}
-                  >
-                    <Popover.Trigger asChild>
-                      <span>
-                        <Tooltip content="Delete comment">
-                          <IconButton
-                            aria-label="Delete comment"
-                            size="xs"
-                            variant="ghost"
-                            colorPalette="red"
+                  <>
+                    <Tooltip content="Delete comment">
+                      <IconButton
+                        aria-label="Delete comment"
+                        size="small"
+                        color="error"
+                        onClick={handleDeleteClick}
+                      >
+                        <PiTrashSimple />
+                      </IconButton>
+                    </Tooltip>
+                    <Popover
+                      open={isDeletePopoverOpen}
+                      anchorEl={deleteAnchorEl}
+                      onClose={handleDeleteClose}
+                      anchorOrigin={{
+                        vertical: "bottom",
+                        horizontal: "center",
+                      }}
+                      transformOrigin={{
+                        vertical: "top",
+                        horizontal: "center",
+                      }}
+                    >
+                      <Box sx={{ p: 2 }}>
+                        <Typography variant="body2" sx={{ mb: 2 }}>
+                          Delete this comment?
+                        </Typography>
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          justifyContent="flex-end"
+                        >
+                          <Button
+                            size="small"
+                            variant="text"
+                            onClick={handleDeleteClose}
+                            disabled={isDeleting}
                           >
-                            <PiTrashSimple />
-                          </IconButton>
-                        </Tooltip>
-                      </span>
-                    </Popover.Trigger>
-                    <Portal>
-                      <Popover.Positioner>
-                        <Popover.Content width="auto">
-                          <Popover.Arrow>
-                            <Popover.ArrowTip />
-                          </Popover.Arrow>
-                          <Popover.Body p={3}>
-                            <Text fontSize="sm" mb={3}>
-                              Delete this comment?
-                            </Text>
-                            <HStack gap={2} justify="flex-end">
-                              <Button
-                                size="xs"
-                                variant="ghost"
-                                onClick={() => setIsDeletePopoverOpen(false)}
-                                disabled={isDeleting}
-                              >
-                                Cancel
-                              </Button>
-                              <Button
-                                size="xs"
-                                colorPalette="red"
-                                onClick={handleDelete}
-                                loading={isDeleting}
-                              >
-                                Delete
-                              </Button>
-                            </HStack>
-                          </Popover.Body>
-                        </Popover.Content>
-                      </Popover.Positioner>
-                    </Portal>
-                  </Popover.Root>
+                            Cancel
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="error"
+                            onClick={handleDelete}
+                            disabled={isDeleting}
+                          >
+                            {isDeleting ? "Deleting..." : "Delete"}
+                          </Button>
+                        </Stack>
+                      </Box>
+                    </Popover>
+                  </>
                 )}
-              </HStack>
-            </Activity>
+              </Stack>
+            )}
           </Box>
         )}
       </Box>
-    </Flex>
+    </Box>
   );
 }
 
