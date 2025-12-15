@@ -25,7 +25,7 @@ export interface ButtonGroupProps extends Omit<BoxProps, "ref"> {
   /** Size for the button group */
   size?: "xs" | "sm" | "md" | "lg";
   /** Border radius for attached groups */
-  borderRadius?: string;
+  borderRadius?: number | "full";
   children?: ReactNode;
 }
 
@@ -44,12 +44,16 @@ export const ButtonGroup = forwardRef<HTMLDivElement, ButtonGroupProps>(
               borderRadius: 0,
             },
             "& > button:first-of-type": {
-              borderTopLeftRadius: borderRadius || "4px",
-              borderBottomLeftRadius: borderRadius || "4px",
+              borderTopLeftRadius:
+                borderRadius === "full" ? 9999 : (borderRadius ?? 4),
+              borderBottomLeftRadius:
+                borderRadius === "full" ? 9999 : (borderRadius ?? 4),
             },
             "& > button:last-of-type": {
-              borderTopRightRadius: borderRadius || "4px",
-              borderBottomRightRadius: borderRadius || "4px",
+              borderTopRightRadius:
+                borderRadius === "full" ? 9999 : (borderRadius ?? 4),
+              borderBottomRightRadius:
+                borderRadius === "full" ? 9999 : (borderRadius ?? 4),
             },
             "& > button:not(:first-of-type)": {
               marginLeft: "-1px",
@@ -57,16 +61,6 @@ export const ButtonGroup = forwardRef<HTMLDivElement, ButtonGroupProps>(
           }),
           ...(!attached && {
             gap: 1,
-          }),
-          ...(borderRadius === "full" && {
-            "& > button:first-of-type": {
-              borderTopLeftRadius: "9999px",
-              borderBottomLeftRadius: "9999px",
-            },
-            "& > button:last-of-type": {
-              borderTopRightRadius: "9999px",
-              borderBottomRightRadius: "9999px",
-            },
           }),
           ...sx,
         }}

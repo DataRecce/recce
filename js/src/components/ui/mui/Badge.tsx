@@ -170,8 +170,7 @@ const TagRoot = forwardRef<HTMLDivElement, TagRootProps>(function TagRoot(
       sx={{
         display: "inline-flex",
         alignItems: "center",
-        borderRadius:
-          borderRadius === "full" ? "9999px" : borderRadius || "16px",
+        borderRadius: borderRadius === "full" ? 9999 : (borderRadius ?? 16),
         px: paddingX || 1,
         py: 0.25,
         fontSize: fontSize || sizeToFontSize[size] || "0.75rem",

@@ -41,7 +41,7 @@ export interface StackProps extends Omit<MuiStackProps, "ref" | "divider"> {
   /** Background color */
   bg?: string;
   /** Border radius */
-  rounded?: string;
+  rounded?: number | "full" | "sm" | "md" | "lg" | "xl" | "2xl";
   /** Box shadow */
   shadow?: string;
   /** Width (shorthand) */
@@ -113,8 +113,18 @@ export const Stack = forwardRef<HTMLDivElement, StackProps>(function Stack(
     if (mt !== undefined) styles.mt = mt;
     if (mb !== undefined) styles.mb = mb;
     if (bg !== undefined) styles.backgroundColor = bg;
-    if (rounded !== undefined)
-      styles.borderRadius = rounded === "md" ? "4px" : rounded;
+    if (rounded !== undefined) {
+      const roundedMap: Record<string, number> = {
+        full: 9999,
+        sm: 2,
+        md: 4,
+        lg: 8,
+        xl: 12,
+        "2xl": 16,
+      };
+      styles.borderRadius =
+        typeof rounded === "number" ? rounded : (roundedMap[rounded] ?? 4);
+    }
     if (shadow !== undefined) styles.boxShadow = shadow;
     if (w !== undefined) styles.width = w;
     if (h !== undefined) styles.height = h;

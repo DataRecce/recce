@@ -39,7 +39,7 @@ export interface FlexProps extends Omit<MuiBoxProps, "ref"> {
   /** Overflow X */
   overflowX?: string;
   /** Border radius */
-  rounded?: string;
+  rounded?: number | "full" | "sm" | "md" | "lg" | "xl" | "2xl";
   /** Minimum height */
   minH?: string | number;
   /** Border */
@@ -164,7 +164,18 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     if (direction !== undefined) styles.flexDirection = direction;
     if (gap !== undefined) styles.gap = gap;
     if (overflowX) styles.overflowX = overflowX;
-    if (rounded) styles.borderRadius = rounded === "full" ? "9999px" : rounded;
+    if (rounded) {
+      const roundedMap: Record<string, number> = {
+        full: 9999,
+        sm: 2,
+        md: 4,
+        lg: 8,
+        xl: 12,
+        "2xl": 16,
+      };
+      styles.borderRadius =
+        typeof rounded === "number" ? rounded : (roundedMap[rounded] ?? 4);
+    }
     if (minH !== undefined) styles.minHeight = minH;
     if (border) styles.border = border;
     if (borderRadius) styles.borderRadius = borderRadius;

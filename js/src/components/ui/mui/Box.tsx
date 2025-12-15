@@ -36,7 +36,7 @@ export interface BoxProps extends Omit<MuiBoxProps, "ref"> {
   /** Background color shorthand */
   bg?: string;
   /** Border radius shorthand */
-  rounded?: string;
+  rounded?: number | "full" | "sm" | "md" | "lg" | "xl" | "2xl";
   /** Cursor style */
   cursor?: string;
   /** Box shadow shorthand */
@@ -138,7 +138,18 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
     const styles: Record<string, unknown> = {};
     if (bg) styles.backgroundColor = resolveColor(bg);
     if (backgroundColor) styles.backgroundColor = resolveColor(backgroundColor);
-    if (rounded) styles.borderRadius = rounded === "full" ? "9999px" : rounded;
+    if (rounded) {
+      const roundedMap: Record<string, number> = {
+        full: 9999,
+        sm: 2,
+        md: 4,
+        lg: 8,
+        xl: 12,
+        "2xl": 16,
+      };
+      styles.borderRadius =
+        typeof rounded === "number" ? rounded : (roundedMap[rounded] ?? 4);
+    }
     if (cursor) styles.cursor = cursor;
     if (shadow) styles.boxShadow = shadow;
     if (overflowX) styles.overflowX = overflowX;

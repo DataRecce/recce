@@ -287,10 +287,10 @@ const buttonColorVariants = [
   {
     props: { color: "neutral" as const, variant: "outlined" as const },
     style: {
-      borderColor: colors.neutral[400],
+      borderColor: colors.neutral[300], // Lighter border (neutral.light)
       color: colors.neutral[700],
       "&:hover": {
-        borderColor: colors.neutral[500],
+        borderColor: colors.neutral[400],
         backgroundColor: colors.neutral[100],
       },
     },
@@ -359,7 +359,7 @@ const componentOverrides: ThemeOptions["components"] = {
           padding: "0 0.5rem",
           fontSize: "0.75rem",
           fontWeight: 500,
-          borderRadius: "0.25rem",
+          borderRadius: 4,
           minHeight: "unset",
           lineHeight: 1.5,
         },
@@ -491,11 +491,10 @@ const componentOverrides: ThemeOptions["components"] = {
   // Menu overrides
   MuiMenu: {
     styleOverrides: {
-      paper: {
+      paper: ({ theme }) => ({
         borderRadius: 8,
-        boxShadow:
-          "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-      },
+        boxShadow: theme.shadows[3],
+      }),
     },
   },
   MuiMenuItem: {
@@ -651,11 +650,10 @@ const componentOverrides: ThemeOptions["components"] = {
   // Popover overrides
   MuiPopover: {
     styleOverrides: {
-      paper: {
+      paper: ({ theme }) => ({
         borderRadius: 8,
-        boxShadow:
-          "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-      },
+        boxShadow: theme.shadows[3],
+      }),
     },
   },
   // Divider overrides
@@ -878,7 +876,7 @@ const customPaletteAdditions = {
   fuchsia: createPaletteColor(colors.fuchsia),
   neutral: {
     main: colors.neutral[500],
-    light: colors.neutral[400],
+    light: colors.neutral[300], // Lighter shade for borders
     dark: colors.neutral[600],
     contrastText: "#FFFFFF",
   },
@@ -891,6 +889,27 @@ Object.assign(lightTheme.palette, customPaletteAdditions);
 Object.assign(darkTheme.palette, customPaletteAdditions);
 
 /**
+ * Semantic variant mappings from Chakra-style tokens to scale values
+ * These map semantic names to numeric scale values in the color palette
+ */
+const semanticVariantMap: Record<string, number> = {
+  solid: 600, // Dark, for text/icons
+  subtle: 50, // Light, for backgrounds
+  muted: 200, // Slightly muted
+  emphasized: 500, // Standard emphasis
+  focusRing: 400, // Focus ring color
+  light: 300, // Light variant (for neutral.light borders)
+};
+
+/**
+ * Color aliases - map Chakra color names to our color palette
+ */
+const colorAliases: Record<string, keyof typeof colors> = {
+  orange: "amber", // Chakra's orange maps to our amber
+  gray: "neutral", // Gray is an alias for neutral
+};
+
+/**
  * Token lookup function to mimic Chakra UI's token API
  * Usage: token("colors.green.solid") => "#16A34A"
  */
@@ -899,8 +918,17 @@ export function token(path: string): string | undefined {
 
   // Handle "colors.X.Y" paths
   if (parts[0] === "colors" && parts.length >= 3) {
-    const colorName = parts[1];
+    let colorName = parts[1];
     const variant = parts[2];
+
+    // Apply color aliases (e.g., orange -> amber, gray -> neutral)
+    if (colorName in colorAliases) {
+      colorName = colorAliases[colorName];
+    }
+
+    // Handle "colors.white" and other special cases
+    if (colorName === "white") return "#FFFFFF";
+    if (colorName === "black") return "#000000";
 
     // Try semantic colors first
     if (colorName in semanticColors) {
@@ -913,14 +941,20 @@ export function token(path: string): string | undefined {
     // Then try base colors
     if (colorName in colors) {
       const color = colors[colorName as keyof typeof colors];
+
+      // First check for numeric scale (e.g., "500")
       if (typeof color === "object" && variant in color) {
         return (color as Record<string, string>)[variant];
       }
-    }
 
-    // Handle "colors.white" and other special cases
-    if (colorName === "white") return "#FFFFFF";
-    if (colorName === "black") return "#000000";
+      // Then check for semantic variant mapping (e.g., "solid" -> 600)
+      if (variant in semanticVariantMap) {
+        const scaleValue = semanticVariantMap[variant];
+        if (typeof color === "object" && scaleValue in color) {
+          return (color as Record<string, string>)[scaleValue];
+        }
+      }
+    }
   }
 
   return undefined;
