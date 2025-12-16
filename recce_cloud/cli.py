@@ -322,8 +322,14 @@ def download(target_path, session_id, prod, dry_run, force):
             if ci_info.platform:
                 info_table.append(f"[cyan]Platform:[/cyan] {ci_info.platform}")
 
-            # Display CR number as PR or MR based on platform
-            if ci_info.cr_number is not None:
+            if ci_info.repository:
+                info_table.append(f"[cyan]Repository:[/cyan] {ci_info.repository}")
+
+            if ci_info.session_type:
+                info_table.append(f"[cyan]Session Type:[/cyan] {ci_info.session_type}")
+
+            # Only show CR number and URL for CR sessions (not for prod)
+            if ci_info.session_type == "cr" and ci_info.cr_number is not None:
                 if ci_info.platform == "github-actions":
                     info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.cr_number}")
                 elif ci_info.platform == "gitlab-ci":
@@ -331,25 +337,14 @@ def download(target_path, session_id, prod, dry_run, force):
                 else:
                     info_table.append(f"[cyan]CR Number:[/cyan] {ci_info.cr_number}")
 
-            # Display CR URL as PR URL or MR URL based on platform
-            if ci_info.cr_url:
+            # Only show CR URL for CR sessions
+            if ci_info.session_type == "cr" and ci_info.cr_url:
                 if ci_info.platform == "github-actions":
                     info_table.append(f"[cyan]PR URL:[/cyan] {ci_info.cr_url}")
                 elif ci_info.platform == "gitlab-ci":
                     info_table.append(f"[cyan]MR URL:[/cyan] {ci_info.cr_url}")
                 else:
                     info_table.append(f"[cyan]CR URL:[/cyan] {ci_info.cr_url}")
-
-            if ci_info.session_type:
-                info_table.append(f"[cyan]Session Type:[/cyan] {ci_info.session_type}")
-            if ci_info.commit_sha:
-                info_table.append(f"[cyan]Commit SHA:[/cyan] {ci_info.commit_sha[:8]}...")
-            if ci_info.base_branch:
-                info_table.append(f"[cyan]Base Branch:[/cyan] {ci_info.base_branch}")
-            if ci_info.source_branch:
-                info_table.append(f"[cyan]Source Branch:[/cyan] {ci_info.source_branch}")
-            if ci_info.repository:
-                info_table.append(f"[cyan]Repository:[/cyan] {ci_info.repository}")
 
             for line in info_table:
                 console.print(line)
@@ -376,12 +371,6 @@ def download(target_path, session_id, prod, dry_run, force):
                 console.print(f"  • Session Type: {ci_info.session_type}")
             if ci_info.session_type == "cr" and ci_info.cr_number is not None:
                 console.print(f"  • CR Number: {ci_info.cr_number}")
-            if ci_info.commit_sha:
-                console.print(f"  • Commit SHA: {ci_info.commit_sha[:8]}")
-            if ci_info.source_branch:
-                console.print(f"  • Source Branch: {ci_info.source_branch}")
-            if ci_info.base_branch:
-                console.print(f"  • Base Branch: {ci_info.base_branch}")
             console.print()
 
         # Display download summary
