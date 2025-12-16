@@ -173,12 +173,41 @@ class RecceCloudClient:
         data = response.json()
         return data.get("organizations", [])
 
-    def list_projects(self, org_id: str) -> list:
+    def _resolve_org_id(self, org: str) -> str:
+        """
+        Resolve organization name to ID.
+
+        Args:
+            org: Organization ID (numeric string) or name
+
+        Returns:
+            Organization ID as string
+
+        Raises:
+            RecceCloudException: If organization not found
+        """
+        # If org is numeric, assume it's already an ID
+        if org.isdigit():
+            return org
+
+        # Otherwise, look up by name
+        organizations = self.list_organizations()
+        for organization in organizations:
+            if organization.get("name") == org:
+                return str(organization.get("id"))
+
+        # Organization not found
+        raise RecceCloudException(
+            reason=f"Organization '{org}' not found",
+            status_code=404,
+        )
+
+    def list_projects(self, org: str) -> list:
         """
         List all projects in an organization.
 
         Args:
-            org_id: Organization ID or name
+            org: Organization ID or name
 
         Returns:
             list of dicts containing project information with keys:
@@ -188,8 +217,11 @@ class RecceCloudClient:
                 - ... other project fields
 
         Raises:
-            RecceCloudException: If the request fails
+            RecceCloudException: If the request fails or organization not found
         """
+        # Resolve org name to ID if necessary
+        org_id = self._resolve_org_id(org)
+
         api_url = f"{self.base_url_v2}/organizations/{org_id}/projects"
         response = self._request("GET", api_url)
         if response.status_code != 200:

@@ -35,7 +35,6 @@ class TestUploadDryRun(unittest.TestCase):
             "nodes": {},
         }
 
-
         with open(manifest_path, "w") as f:
             json.dump(manifest_content, f)
 
@@ -491,16 +490,31 @@ class TestListProjectsCommand(unittest.TestCase):
     def test_list_projects_success(self, mock_request):
         """Test successful list-projects command."""
 
-        # Mock successful response
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "projects": [
-                {"id": 10, "name": "project1", "display_name": "Project 1"},
-                {"id": 20, "name": "project2", "display_name": "Project 2"},
-            ]
-        }
-        mock_request.return_value = mock_response
+        def mock_request_handler(method, url, **kwargs):
+            mock_response = Mock()
+            if "/organizations" in url and "/projects" not in url:
+                # list_organizations call for name resolution
+                mock_response.status_code = 200
+                mock_response.json.return_value = {
+                    "organizations": [
+                        {"id": 1, "name": "myorg", "display_name": "My Organization"},
+                    ]
+                }
+            elif "/organizations/1/projects" in url:
+                # list_projects call
+                mock_response.status_code = 200
+                mock_response.json.return_value = {
+                    "projects": [
+                        {"id": 10, "name": "project1", "display_name": "Project 1"},
+                        {"id": 20, "name": "project2", "display_name": "Project 2"},
+                    ]
+                }
+            else:
+                mock_response.status_code = 404
+                mock_response.text = "Not found"
+            return mock_response
+
+        mock_request.side_effect = mock_request_handler
 
         env = {"RECCE_API_TOKEN": "rct-test-token"}
 
@@ -519,16 +533,31 @@ class TestListProjectsCommand(unittest.TestCase):
     def test_list_projects_json_output(self, mock_request):
         """Test list-projects command with JSON output."""
 
-        # Mock successful response
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "projects": [
-                {"id": 10, "name": "project1", "display_name": "Project 1"},
-                {"id": 20, "name": "project2", "display_name": "Project 2"},
-            ]
-        }
-        mock_request.return_value = mock_response
+        def mock_request_handler(method, url, **kwargs):
+            mock_response = Mock()
+            if "/organizations" in url and "/projects" not in url:
+                # list_organizations call for name resolution
+                mock_response.status_code = 200
+                mock_response.json.return_value = {
+                    "organizations": [
+                        {"id": 1, "name": "myorg", "display_name": "My Organization"},
+                    ]
+                }
+            elif "/organizations/1/projects" in url:
+                # list_projects call
+                mock_response.status_code = 200
+                mock_response.json.return_value = {
+                    "projects": [
+                        {"id": 10, "name": "project1", "display_name": "Project 1"},
+                        {"id": 20, "name": "project2", "display_name": "Project 2"},
+                    ]
+                }
+            else:
+                mock_response.status_code = 404
+                mock_response.text = "Not found"
+            return mock_response
+
+        mock_request.side_effect = mock_request_handler
 
         env = {"RECCE_API_TOKEN": "rct-test-token"}
 
@@ -549,11 +578,26 @@ class TestListProjectsCommand(unittest.TestCase):
     def test_list_projects_empty(self, mock_request):
         """Test list-projects command with no projects."""
 
-        # Mock empty response
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"projects": []}
-        mock_request.return_value = mock_response
+        def mock_request_handler(method, url, **kwargs):
+            mock_response = Mock()
+            if "/organizations" in url and "/projects" not in url:
+                # list_organizations call for name resolution
+                mock_response.status_code = 200
+                mock_response.json.return_value = {
+                    "organizations": [
+                        {"id": 1, "name": "emptyorg", "display_name": "Empty Org"},
+                    ]
+                }
+            elif "/organizations/1/projects" in url:
+                # list_projects call - empty
+                mock_response.status_code = 200
+                mock_response.json.return_value = {"projects": []}
+            else:
+                mock_response.status_code = 404
+                mock_response.text = "Not found"
+            return mock_response
+
+        mock_request.side_effect = mock_request_handler
 
         env = {"RECCE_API_TOKEN": "rct-test-token"}
 
@@ -608,11 +652,26 @@ class TestListProjectsCommand(unittest.TestCase):
     def test_list_projects_api_error(self, mock_request):
         """Test list-projects command with API error."""
 
-        # Mock error response
-        mock_response = Mock()
-        mock_response.status_code = 403
-        mock_response.text = "Access denied"
-        mock_request.return_value = mock_response
+        def mock_request_handler(method, url, **kwargs):
+            mock_response = Mock()
+            if "/organizations" in url and "/projects" not in url:
+                # list_organizations call for name resolution
+                mock_response.status_code = 200
+                mock_response.json.return_value = {
+                    "organizations": [
+                        {"id": 1, "name": "myorg", "display_name": "My Organization"},
+                    ]
+                }
+            elif "/organizations/1/projects" in url:
+                # list_projects call - returns error
+                mock_response.status_code = 403
+                mock_response.text = "Access denied"
+            else:
+                mock_response.status_code = 404
+                mock_response.text = "Not found"
+            return mock_response
+
+        mock_request.side_effect = mock_request_handler
 
         env = {"RECCE_API_TOKEN": "rct-test-token"}
 
@@ -622,6 +681,109 @@ class TestListProjectsCommand(unittest.TestCase):
         # Assertions
         self.assertEqual(result.exit_code, 1)
         self.assertIn("Error", result.output)
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_projects_with_org_name(self, mock_request):
+        """Test list-projects command with org name (not ID) resolves correctly."""
+
+        def mock_request_handler(method, url, **kwargs):
+            mock_response = Mock()
+            if "/organizations" in url and "/projects" not in url:
+                # list_organizations call
+                mock_response.status_code = 200
+                mock_response.json.return_value = {
+                    "organizations": [
+                        {"id": 8, "name": "even-wei", "display_name": "Even-Wei's Org"},
+                        {"id": 9, "name": "recce", "display_name": "Recce Dev"},
+                    ]
+                }
+            elif "/organizations/8/projects" in url:
+                # list_projects call with resolved ID
+                mock_response.status_code = 200
+                mock_response.json.return_value = {
+                    "projects": [
+                        {"id": 10, "name": "project1", "display_name": "Project 1"},
+                    ]
+                }
+            else:
+                mock_response.status_code = 404
+                mock_response.text = "Not found"
+            return mock_response
+
+        mock_request.side_effect = mock_request_handler
+
+        env = {"RECCE_API_TOKEN": "rct-test-token"}
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(cloud_cli, ["list-projects", "--org", "even-wei"])
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("project1", result.output)
+        self.assertIn("Project 1", result.output)
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_projects_with_numeric_org_id(self, mock_request):
+        """Test list-projects command with numeric org ID skips resolution."""
+
+        def mock_request_handler(method, url, **kwargs):
+            mock_response = Mock()
+            if "/organizations/8/projects" in url:
+                # Direct call with numeric ID
+                mock_response.status_code = 200
+                mock_response.json.return_value = {
+                    "projects": [
+                        {"id": 10, "name": "project1", "display_name": "Project 1"},
+                    ]
+                }
+            elif "/organizations" in url and "/projects" not in url:
+                # Should NOT be called when using numeric ID
+                raise AssertionError("list_organizations should not be called with numeric org ID")
+            else:
+                mock_response.status_code = 404
+                mock_response.text = "Not found"
+            return mock_response
+
+        mock_request.side_effect = mock_request_handler
+
+        env = {"RECCE_API_TOKEN": "rct-test-token"}
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(cloud_cli, ["list-projects", "--org", "8"])
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("project1", result.output)
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_projects_org_name_not_found(self, mock_request):
+        """Test list-projects command with non-existent org name."""
+
+        def mock_request_handler(method, url, **kwargs):
+            mock_response = Mock()
+            if "/organizations" in url and "/projects" not in url:
+                # list_organizations call
+                mock_response.status_code = 200
+                mock_response.json.return_value = {
+                    "organizations": [
+                        {"id": 8, "name": "even-wei", "display_name": "Even-Wei's Org"},
+                    ]
+                }
+            else:
+                mock_response.status_code = 404
+                mock_response.text = "Not found"
+            return mock_response
+
+        mock_request.side_effect = mock_request_handler
+
+        env = {"RECCE_API_TOKEN": "rct-test-token"}
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(cloud_cli, ["list-projects", "--org", "nonexistent-org"])
+
+        # Assertions
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Organization 'nonexistent-org' not found", result.output)
 
 
 if __name__ == "__main__":
