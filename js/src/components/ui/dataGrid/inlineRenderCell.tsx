@@ -159,6 +159,18 @@ export const inlineRenderCell = ({
     </Flex>
   );
 };
-function asNumber(data: RowDataTypes) {
-  return typeof data === "number" ? data : parseFloat(data?.toString() ?? "0");
+
+/*
+ * Converts row data values to a number
+ *
+ * @param data - The row data value (number, string, or other type)
+ * @returns The numeric value, or 0 if conversion fails or value is not numeric
+ */
+function asNumber(data: RowDataTypes): number {
+  if (typeof data === "number") return data;
+  if (typeof data === "string") {
+    const n = parseFloat(data);
+    return Number.isNaN(n) ? 0 : n;
+  }
+  return 0;
 }

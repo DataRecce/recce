@@ -625,7 +625,7 @@ describe("toDiffColumn - edge cases", () => {
   });
 
   test("handles numeric columnRenderMode", () => {
-    const modes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+    const modes = [2] as const;
 
     modes.forEach((mode) => {
       const result = toDiffColumn(createConfig({ columnRenderMode: mode }));

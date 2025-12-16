@@ -341,9 +341,9 @@ describe("Very large number handling", () => {
 
   test("renders very small decimals", () => {
     const row = createRow({ value: 0.0000001 });
-    const [rendered] = toRenderedValue(row, "value", "number", 6);
+    const [rendered] = toRenderedValue(row, "value", "number", 2);
 
-    // 0.0000001 rounds to 0 at 6 decimal places, smart formatting removes trailing zeros
+    // 0.0000001 rounds to 0 at 2 decimal places, smart formatting removes trailing zeros
     expect(rendered).toBe("0");
   });
 

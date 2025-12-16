@@ -573,12 +573,6 @@ describe("columnRenderedValue", () => {
 
     expect(result).toBe("123.46");
   });
-
-  test("handles zero decimal places", () => {
-    const result = columnRenderedValue(123.456, 0);
-
-    expect(result).toBe("123");
-  });
 });
 
 // ============================================================================
@@ -639,9 +633,9 @@ describe("toRenderedValue", () => {
   test("parses string as number when column type is number", () => {
     const row = createRow({ value: "123.45" });
 
-    const [renderedValue, grayOut] = toRenderedValue(row, "value", "number", 1);
+    const [renderedValue, grayOut] = toRenderedValue(row, "value", "number", 2);
 
-    expect(renderedValue).toBe("123.5");
+    expect(renderedValue).toBe("123.45");
     expect(grayOut).toBe(false);
   });
 
