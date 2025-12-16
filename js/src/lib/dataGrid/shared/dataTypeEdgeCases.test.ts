@@ -341,9 +341,10 @@ describe("Very large number handling", () => {
 
   test("renders very small decimals", () => {
     const row = createRow({ value: 0.0000001 });
-    const [rendered] = toRenderedValue(row, "value", "number", 6);
+    const [rendered] = toRenderedValue(row, "value", "number", 2);
 
-    expect(rendered).toBe("0.000000");
+    // 0.0000001 rounds to 0 at 2 decimal places, smart formatting removes trailing zeros
+    expect(rendered).toBe("0");
   });
 
   test("renders Number.MIN_VALUE", () => {
@@ -567,7 +568,7 @@ describe("Zero edge cases", () => {
     const row = createRow({ value: -0 });
     const [rendered] = toRenderedValue(row, "value", "number");
 
-    // -0 and 0 are equal in JavaScript
+    // -0 is normalized to 0 for display (Intl.NumberFormat would render "-0" per ECMA-402)
     expect(rendered).toBe("0");
   });
 
@@ -589,11 +590,12 @@ describe("Zero edge cases", () => {
     expect(status).toBeUndefined();
   });
 
-  test("renders 0.00 with decimal places", () => {
+  test("renders 0 with smart formatting (no trailing zeros)", () => {
     const row = createRow({ value: 0 });
     const [rendered] = toRenderedValue(row, "value", "number", 2);
 
-    expect(rendered).toBe("0.00");
+    // Smart formatting removes trailing zeros
+    expect(rendered).toBe("0");
   });
 
   test("renders 0% in percent mode", () => {

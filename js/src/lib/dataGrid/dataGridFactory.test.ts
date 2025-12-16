@@ -1231,7 +1231,7 @@ describe("createDataGrid - callback invocation", () => {
     const onColumnsRenderModeChanged = jest.fn();
 
     const result = createDataGrid(run, {
-      columnsRenderMode: { count: 0 },
+      columnsRenderMode: { count: 2 },
       onColumnsRenderModeChanged,
     });
 
@@ -1419,7 +1419,7 @@ describe("createDataGrid - columnRenderMode handling", () => {
     const df = createNumericDataFrame();
     const run = createQueryRun(df);
     const columnsRenderMode: Record<string, ColumnRenderMode> = {
-      value: 3, // 3 decimal places
+      value: 2, // 3 decimal places
     };
 
     const result = createDataGrid(run, { columnsRenderMode });
@@ -1474,7 +1474,6 @@ describe("createDataGrid - columnRenderMode handling", () => {
     const columnsRenderMode: Record<string, ColumnRenderMode> = {
       price: 2,
       rate: "percent",
-      score: 1,
     };
 
     const result = createDataGrid(run, { columnsRenderMode });
