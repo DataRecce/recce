@@ -26,7 +26,6 @@ export function columnPrecisionSelectOptions(
     {
       value: "Show with net change",
       onClick: () => {
-        console.log(`Setting delta mode for column: ${colName}`);
         onColumnsRenderModeChanged({ [colName]: "delta" });
       },
     },
