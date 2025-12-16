@@ -418,16 +418,19 @@ class TestDownloadDryRun(unittest.TestCase):
         self.assertIn("Platform Information:", result.output)
         self.assertIn("Platform: github-actions", result.output)
         self.assertIn("Repository: DataRecce/recce", result.output)
+        self.assertIn("Session Type: cr", result.output)
         self.assertIn("PR Number: 42", result.output)
-        self.assertIn("Commit SHA: abc123de", result.output)
-        self.assertIn("Source Branch: feature/test-branch", result.output)
-        self.assertIn("Base Branch: main", result.output)
         self.assertIn("Download Workflow:", result.output)
         self.assertIn("Auto-detect and download PR/MR session", result.output)
         self.assertIn("Platform-specific APIs will be used", result.output)
         self.assertIn("Download destination:", result.output)
         self.assertIn("manifest.json, catalog.json", result.output)
         self.assertIn("Dry run completed successfully", result.output)
+
+        # Download command should NOT show commit SHA or branches (irrelevant for download)
+        self.assertNotIn("Commit SHA:", result.output)
+        self.assertNotIn("Base Branch:", result.output)
+        self.assertNotIn("Source Branch:", result.output)
 
     def test_dry_run_gitlab_ci_mr_context(self):
         """Test dry-run with GitLab CI MR context."""
@@ -457,12 +460,15 @@ class TestDownloadDryRun(unittest.TestCase):
         self.assertIn("Platform Information:", result.output)
         self.assertIn("Platform: gitlab-ci", result.output)
         self.assertIn("Repository: recce/jaffle-shop", result.output)
+        self.assertIn("Session Type: cr", result.output)
         self.assertIn("MR Number: 5", result.output)
-        self.assertIn("Commit SHA: def456ab", result.output)
-        self.assertIn("Source Branch: feature/new-models", result.output)
-        self.assertIn("Base Branch: main", result.output)
         self.assertIn("Auto-detect and download PR/MR session", result.output)
         self.assertIn("Platform-specific APIs will be used", result.output)
+
+        # Download command should NOT show commit SHA or branches (irrelevant for download)
+        self.assertNotIn("Commit SHA:", result.output)
+        self.assertNotIn("Base Branch:", result.output)
+        self.assertNotIn("Source Branch:", result.output)
 
     def test_dry_run_with_prod_flag(self):
         """Test dry-run with --prod flag for production/base session."""
@@ -495,6 +501,15 @@ class TestDownloadDryRun(unittest.TestCase):
         self.assertIn("Dry run mode enabled", result.output)
         self.assertIn("Download project's production/base session", result.output)
         self.assertIn("Session Type: prod", result.output)
+
+        # Prod session should NOT show PR/CR number
+        self.assertNotIn("PR Number:", result.output)
+        self.assertNotIn("CR Number:", result.output)
+
+        # Download command should NOT show commit SHA or branches
+        self.assertNotIn("Commit SHA:", result.output)
+        self.assertNotIn("Base Branch:", result.output)
+        self.assertNotIn("Source Branch:", result.output)
 
     def test_dry_run_with_session_id(self):
         """Test dry-run with existing session ID (generic workflow)."""
@@ -639,12 +654,24 @@ class TestDownloadDryRun(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
         self.assertIn("Platform: gitlab-ci", result.output)
         self.assertIn("Repository: data-team/dbt-project", result.output)
+        self.assertIn("Session Type: cr", result.output)
         self.assertIn("MR Number: 25", result.output)
-        self.assertIn("Source Branch: develop", result.output)
-        self.assertIn("Base Branch: production", result.output)
+
+        # Download command should NOT show commit SHA or branches (irrelevant for download)
+        self.assertNotIn("Commit SHA:", result.output)
+        self.assertNotIn("Base Branch:", result.output)
+        self.assertNotIn("Source Branch:", result.output)
 
     def test_dry_run_github_main_branch(self):
-        """Test dry-run with GitHub Actions main branch (no PR)."""
+        """Test dry-run with GitHub Actions main branch (no PR).
+
+        Without --prod flag, the session type is auto-detected as 'prod' because:
+        1. No PR number (GITHUB_HEAD_REF is not set)
+        2. Branch is 'main' (from git command fallback, mocked in test)
+        3. determine_session_type(cr_number=None, source_branch='main') returns 'prod'
+
+        This allows download to work without explicit --prod flag on main branch.
+        """
         env = {
             "GITHUB_ACTIONS": "true",
             "GITHUB_REPOSITORY": "DataRecce/recce",
@@ -656,19 +683,31 @@ class TestDownloadDryRun(unittest.TestCase):
 
         download_dir = Path(self.temp_dir) / "download"
 
+        # Mock git command to return "main" branch
+        # This simulates the fallback when GITHUB_REF_NAME is not available
         with patch.dict(os.environ, env, clear=True):
-            result = self.runner.invoke(
-                cloud_cli,
-                ["download", "--target-path", str(download_dir), "--dry-run"],
-            )
+            with patch("recce_cloud.ci_providers.base.BaseCIProvider.run_git_command") as mock_git:
+                mock_git.return_value = "main"
+
+                result = self.runner.invoke(
+                    cloud_cli,
+                    ["download", "--target-path", str(download_dir), "--dry-run"],
+                )
 
         # Assertions
         self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
         self.assertIn("Platform: github-actions", result.output)
         self.assertIn("Repository: DataRecce/recce", result.output)
-        self.assertIn("Commit SHA: xyz789ab", result.output)
-        # Session type depends on git branch detection
-        self.assertIn("Session Type:", result.output)
+        self.assertIn("Session Type: prod", result.output)  # Auto-detected from main branch
+
+        # Prod session should NOT show CR number or PR number
+        self.assertNotIn("PR Number:", result.output)
+        self.assertNotIn("CR Number:", result.output)
+
+        # Download command should NOT show commit SHA or branches (irrelevant for download)
+        self.assertNotIn("Commit SHA:", result.output)
+        self.assertNotIn("Base Branch:", result.output)
+        self.assertNotIn("Source Branch:", result.output)
 
     def test_dry_run_custom_target_path(self):
         """Test dry-run with custom target path."""
