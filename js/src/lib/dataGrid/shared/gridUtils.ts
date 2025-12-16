@@ -233,18 +233,25 @@ export function determineRowStatus(
  */
 /**
  * Formats a number with up to maxDecimals decimal places, without trailing zeros
+ * Uses banker's rounding (round half to even) for unbiased rounding.
+ *
  * e.g., formatSmartDecimal(123, 2) => "123"
  *       formatSmartDecimal(123.4, 2) => "123.4"
  *       formatSmartDecimal(123.456, 2) => "123.46"
+ *       formatSmartDecimal(123.445, 2) => "123.44" (banker's rounding)
  */
 export function formatSmartDecimal(value: number, maxDecimals = 2): string {
   // Normalize -0 to 0 (Intl.NumberFormat renders -0 as "-0" per ECMA-402)
   const normalizedValue = Object.is(value, -0) ? 0 : value;
-  return (
+
+  const result =
     formatNumber(normalizedValue, "en-US", {
       maximumFractionDigits: maxDecimals,
-    }) ?? String(value)
-  );
+      roundingMode: "halfEven",
+    } as Intl.NumberFormatOptions) ?? String(value);
+
+  // Normalize "-0" to "0" (can happen when small negative numbers round to zero)
+  return result === "-0" ? "0" : result;
 }
 
 export function columnRenderedValue(

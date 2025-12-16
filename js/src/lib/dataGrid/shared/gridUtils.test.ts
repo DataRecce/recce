@@ -18,6 +18,7 @@ import {
   ColumnMapEntry,
   columnRenderedValue,
   determineRowStatus,
+  formatSmartDecimal,
   getCellClass,
   getHeaderCellClass,
   getPrimaryKeyValue,
@@ -646,5 +647,139 @@ describe("toRenderedValue", () => {
 
     expect(renderedValue).toBe("-");
     expect(grayOut).toBe(true);
+  });
+});
+
+// ============================================================================
+// formatSmartDecimal Tests
+// ============================================================================
+
+describe("formatSmartDecimal", () => {
+  // Import at top of file: import { formatSmartDecimal } from "./gridUtils";
+
+  describe("basic formatting", () => {
+    test("formats integer without trailing zeros", () => {
+      expect(formatSmartDecimal(123)).toBe("123");
+    });
+
+    test("formats integer with decimal places specified", () => {
+      expect(formatSmartDecimal(123, 2)).toBe("123");
+    });
+
+    test("formats number with fewer decimals than max", () => {
+      expect(formatSmartDecimal(123.4, 2)).toBe("123.4");
+    });
+
+    test("rounds number with more decimals than max", () => {
+      expect(formatSmartDecimal(123.456, 2)).toBe("123.46");
+    });
+
+    test("rounds to nearest even on .5 (banker's rounding)", () => {
+      // Intl.NumberFormat uses "halfEven" rounding by default
+      expect(formatSmartDecimal(123.445, 2)).toBe("123.44");
+      expect(formatSmartDecimal(123.455, 2)).toBe("123.46");
+    });
+
+    test("formats with custom maxDecimals", () => {
+      expect(formatSmartDecimal(123.456789, 4)).toBe("123.4568");
+    });
+
+    test("defaults to 2 decimal places", () => {
+      expect(formatSmartDecimal(123.456)).toBe("123.46");
+    });
+  });
+
+  describe("zero handling", () => {
+    test("formats zero", () => {
+      expect(formatSmartDecimal(0)).toBe("0");
+    });
+
+    test("normalizes negative zero to zero", () => {
+      expect(formatSmartDecimal(-0)).toBe("0");
+    });
+
+    test("formats zero with decimals", () => {
+      expect(formatSmartDecimal(0.0, 2)).toBe("0");
+    });
+  });
+
+  describe("negative numbers", () => {
+    test("formats negative integer", () => {
+      expect(formatSmartDecimal(-123)).toBe("-123");
+    });
+
+    test("formats negative decimal", () => {
+      expect(formatSmartDecimal(-123.456, 2)).toBe("-123.46");
+    });
+
+    test("formats small negative number", () => {
+      expect(formatSmartDecimal(-0.001, 2)).toBe("0");
+    });
+
+    test("formats small negative number with more precision", () => {
+      expect(formatSmartDecimal(-0.001, 3)).toBe("-0.001");
+    });
+  });
+
+  describe("large numbers", () => {
+    test("formats large numbers with thousand separators", () => {
+      expect(formatSmartDecimal(1234567)).toBe("1,234,567");
+    });
+
+    test("formats large decimal numbers", () => {
+      expect(formatSmartDecimal(1234567.89, 2)).toBe("1,234,567.89");
+    });
+
+    test("handles Number.MAX_SAFE_INTEGER", () => {
+      const result = formatSmartDecimal(Number.MAX_SAFE_INTEGER);
+      expect(result).toBe("9,007,199,254,740,991");
+    });
+  });
+
+  describe("small numbers", () => {
+    test("formats small decimal", () => {
+      expect(formatSmartDecimal(0.1, 2)).toBe("0.1");
+    });
+
+    test("formats very small decimal with appropriate precision", () => {
+      expect(formatSmartDecimal(0.001, 3)).toBe("0.001");
+    });
+
+    test("rounds very small decimal to zero when maxDecimals is small", () => {
+      expect(formatSmartDecimal(0.001, 2)).toBe("0");
+    });
+  });
+
+  describe("edge cases", () => {
+    test("formats with maxDecimals = 0", () => {
+      expect(formatSmartDecimal(123.456, 0)).toBe("123");
+    });
+
+    test("formats with maxDecimals = 0 rounds correctly", () => {
+      expect(formatSmartDecimal(123.567, 0)).toBe("124");
+    });
+
+    test("handles trailing zeros in input", () => {
+      expect(formatSmartDecimal(123.4, 2)).toBe("123.4");
+    });
+
+    test("handles exact boundary rounding", () => {
+      expect(formatSmartDecimal(0.995, 2)).toBe("1");
+    });
+  });
+
+  describe("special numeric values", () => {
+    test("formats NaN", () => {
+      // NaN passed through formatNumber returns fallback String(value)
+      expect(formatSmartDecimal(NaN)).toBe("NaN");
+    });
+
+    test("formats Infinity", () => {
+      expect(formatSmartDecimal(Infinity)).toBe("∞");
+    });
+
+    test("formats negative Infinity", () => {
+      expect(formatSmartDecimal(-Infinity)).toBe("-∞");
+    });
   });
 });

@@ -166,7 +166,7 @@ export const inlineRenderCell = ({
  * @param data - The row data value (number, string, or other type)
  * @returns The numeric value, or 0 if conversion fails or value is not numeric
  */
-function asNumber(data: RowDataTypes): number {
+export function asNumber(data: RowDataTypes): number {
   if (typeof data === "number") return data;
   if (typeof data === "string") {
     const n = parseFloat(data);
