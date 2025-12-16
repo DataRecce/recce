@@ -450,11 +450,11 @@ describe("getSimpleDisplayColumns", () => {
       columnMap: standardColumnMap,
       primaryKeys: [],
       pinnedColumns: [],
-      columnsRenderMode: { value: 3 },
+      columnsRenderMode: { value: 2 },
     });
 
     const valueCol = result.find((c) => c.name === "value");
-    expect(valueCol?.columnRenderMode).toBe(3);
+    expect(valueCol?.columnRenderMode).toBe(2);
   });
 
   test("does not duplicate PK and pinned columns", () => {

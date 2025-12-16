@@ -25,20 +25,7 @@ export type ColumnType =
   | "timedelta"
   | "unknown";
 
-export type ColumnRenderMode =
-  | "raw"
-  | "percent"
-  | 0
-  | 1
-  | 2
-  | 3
-  | 4
-  | 5
-  | 6
-  | 7
-  | 8
-  | 9;
-
+export type ColumnRenderMode = "raw" | "percent" | "delta" | 2;
 export interface DataFrame {
   columns: {
     key: string;
