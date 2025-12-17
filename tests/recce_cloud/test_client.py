@@ -268,6 +268,112 @@ class RecceCloudClientTests(unittest.TestCase):
         self.assertIn("host.docker.internal", result["catalog_url"])
         self.assertNotIn("localhost", result["manifest_url"])
 
+    @patch("recce_cloud.api.client.requests.request")
+    def test_get_download_urls_success(self, mock_request):
+        """Test successful get_download_urls_by_session_id call."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock successful response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "presigned_urls": {
+                "manifest_url": "https://s3.amazonaws.com/bucket/manifest.json?token=xyz",
+                "catalog_url": "https://s3.amazonaws.com/bucket/catalog.json?token=uvw",
+            }
+        }
+        mock_request.return_value = mock_response
+
+        result = client.get_download_urls_by_session_id(self.org_id, self.project_id, self.session_id)
+
+        self.assertIn("manifest_url", result)
+        self.assertIn("catalog_url", result)
+        self.assertIn("s3.amazonaws.com", result["manifest_url"])
+
+        # Verify request was made correctly
+        mock_request.assert_called_once()
+        call_args = mock_request.call_args
+        self.assertEqual(call_args[0][0], "GET")
+        self.assertIn(self.org_id, call_args[0][1])
+        self.assertIn(self.project_id, call_args[0][1])
+        self.assertIn(self.session_id, call_args[0][1])
+        self.assertIn("download-url", call_args[0][1])
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_get_download_urls_no_presigned_urls(self, mock_request):
+        """Test get_download_urls_by_session_id with no presigned URLs."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock response with null presigned_urls
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"presigned_urls": None}
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as context:
+            client.get_download_urls_by_session_id(self.org_id, self.project_id, self.session_id)
+
+        self.assertEqual(context.exception.status_code, 404)
+        self.assertIn("No presigned URLs", str(context.exception))
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_get_download_urls_failure(self, mock_request):
+        """Test get_download_urls_by_session_id with API failure."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock error response
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal server error"
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as context:
+            client.get_download_urls_by_session_id(self.org_id, self.project_id, self.session_id)
+
+        self.assertEqual(context.exception.status_code, 500)
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_get_download_urls_not_found(self, mock_request):
+        """Test get_download_urls_by_session_id with 404 response."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock 404 response
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_response.text = "Session not found"
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as context:
+            client.get_download_urls_by_session_id(self.org_id, self.project_id, self.session_id)
+
+        self.assertEqual(context.exception.status_code, 404)
+        self.assertIn("Session not found", str(context.exception))
+
+    @patch.dict("os.environ", {"RECCE_INSTANCE_ENV": "docker"})
+    @patch("recce_cloud.api.client.requests.request")
+    def test_get_download_urls_docker_internal_url_replacement(self, mock_request):
+        """Test localhost URL is replaced with docker internal URL for download URLs."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock response with localhost URL
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "presigned_urls": {
+                "manifest_url": "http://localhost:9000/download/manifest.json",
+                "catalog_url": "http://localhost:9000/download/catalog.json",
+            }
+        }
+        mock_request.return_value = mock_response
+
+        result = client.get_download_urls_by_session_id(self.org_id, self.project_id, self.session_id)
+
+        # URLs should be replaced with docker internal
+        self.assertIn("host.docker.internal", result["manifest_url"])
+        self.assertIn("host.docker.internal", result["catalog_url"])
+        self.assertNotIn("localhost", result["manifest_url"])
+        self.assertNotIn("localhost", result["catalog_url"])
+
 
 if __name__ == "__main__":
     unittest.main()
