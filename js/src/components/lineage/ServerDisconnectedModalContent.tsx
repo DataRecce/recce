@@ -1,4 +1,8 @@
-import { Button, Dialog, Text } from "@chakra-ui/react";
+import Button from "@mui/material/Button";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import Typography from "@mui/material/Typography";
 import NextLink from "next/link";
 import React from "react";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
@@ -19,34 +23,33 @@ export function ServerDisconnectedModalContent({
     idleSeconds !== undefined && idleSeconds !== null && idleSeconds > 0;
 
   return (
-    <Dialog.Content>
-      <Dialog.Header>
-        <Dialog.Title>Server Disconnected</Dialog.Title>
-      </Dialog.Header>
-      <Dialog.Body>
+    <>
+      <DialogTitle>Server Disconnected</DialogTitle>
+      <DialogContent>
         {isIdleTimeout ? (
-          <Text>
+          <Typography>
             The server has been idle for {formatDuration(idleSeconds)} and was
             automatically stopped. Please restart the Recce server to continue.
-          </Text>
+          </Typography>
         ) : (
-          <Text>
+          <Typography>
             The server connection has been lost. Please restart the Recce server
             and try again.
-          </Text>
+          </Typography>
         )}
-      </Dialog.Body>
-      <Dialog.Footer>
+      </DialogContent>
+      <DialogActions>
         <Button
-          colorPalette="iochmara"
+          color="iochmara"
+          variant="contained"
           onClick={() => {
             connect();
           }}
         >
           Retry
         </Button>
-      </Dialog.Footer>
-    </Dialog.Content>
+      </DialogActions>
+    </>
   );
 }
 
@@ -75,27 +78,28 @@ export function RecceInstanceDisconnectedModalContent({
   const content = contents[mode];
 
   return (
-    <Dialog.Content>
-      <Dialog.Header>
-        <Dialog.Title>{content.title}</Dialog.Title>
-      </Dialog.Header>
-      <Dialog.Body>
-        <Text>{content.body}</Text>
-      </Dialog.Body>
-      <Dialog.Footer>
+    <>
+      <DialogTitle>{content.title}</DialogTitle>
+      <DialogContent>
+        <Typography>{content.body}</Typography>
+      </DialogContent>
+      <DialogActions>
         {mode === "read only" ? (
           <NextLink href={content.link} passHref>
-            <Button colorPalette="blue">{content.action}</Button>
+            <Button color="iochmara" variant="contained">
+              {content.action}
+            </Button>
           </NextLink>
         ) : (
           <Button
-            colorPalette="blue"
+            color="iochmara"
+            variant="contained"
             onClick={() => window.open(content.link, "_blank")}
           >
             {content.action}
           </Button>
         )}
-      </Dialog.Footer>
-    </Dialog.Content>
+      </DialogActions>
+    </>
   );
 }

@@ -9,10 +9,11 @@
  * with toDiffColumn.tsx which imports this component.
  */
 
-import { Flex, Text } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import Tooltip from "@mui/material/Tooltip";
+import Typography from "@mui/material/Typography";
 import { CalculatedColumn, RenderCellProps } from "react-data-grid";
 import { DiffText } from "@/components/query/DiffText";
-import { Tooltip } from "@/components/ui/tooltip";
 import {
   ColumnRenderMode,
   ColumnType,
@@ -81,9 +82,12 @@ export const inlineRenderCell = ({
   // No change - render single value
   if (row[baseKey] === row[currentKey]) {
     return (
-      <Text style={{ color: currentGrayOut ? "gray" : "inherit" }}>
+      <Typography
+        component="span"
+        style={{ color: currentGrayOut ? "gray" : "inherit" }}
+      >
         {currentValue}
-      </Text>
+      </Typography>
     );
   }
 
@@ -120,24 +124,26 @@ export const inlineRenderCell = ({
 
       return (
         <Tooltip
-          content={tooltipText}
-          contentProps={{ css: { whiteSpace: "pre-line" } }}
-          openDelay={300}
-          positioning={{ placement: "top" }}
+          title={tooltipText}
+          slotProps={{
+            tooltip: { sx: { whiteSpace: "pre-line" } },
+          }}
+          enterDelay={300}
+          placement="top"
         >
-          <Flex gap="5px" alignItems="center" lineHeight="normal" height="100%">
+          <Box gap="5px" alignItems="center" lineHeight="normal" height="100%">
             <DiffText
               value={formattedCurrent}
               colorPalette="green"
               grayOut={currentGrayOut}
             />
-            <Text
-              fontSize="sm"
+            <Typography
+              fontSize="0.75rem"
               color={netChange >= 0 ? "green.600" : "red.600"}
             >
               {deltaText}
-            </Text>
-          </Flex>
+            </Typography>
+          </Box>
         </Tooltip>
       );
     }
@@ -145,7 +151,15 @@ export const inlineRenderCell = ({
 
   // Values differ - render inline diff with base (red) and current (green)
   return (
-    <Flex gap="5px" alignItems="center" lineHeight="normal" height="100%">
+    <Box
+      sx={{
+        display: "flex",
+        gap: "5px",
+        alignItems: "center",
+        lineHeight: "normal",
+        height: "100%",
+      }}
+    >
       {hasBase && (
         <DiffText value={baseValue} colorPalette="red" grayOut={baseGrayOut} />
       )}
@@ -156,7 +170,7 @@ export const inlineRenderCell = ({
           grayOut={currentGrayOut}
         />
       )}
-    </Flex>
+    </Box>
   );
 };
 

@@ -1,4 +1,7 @@
-import { Box, Field, NativeSelect } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import FormControl from "@mui/material/FormControl";
+import FormLabel from "@mui/material/FormLabel";
+import NativeSelect from "@mui/material/NativeSelect";
 import { HistogramDiffParams } from "@/lib/api/profile";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { RunFormProps } from "../run/types";
@@ -108,38 +111,37 @@ export function HistogramDiffForm({
   }
 
   return (
-    <Box m="16px">
-      <Field.Root>
-        <Field.Label>Pick a column to show Histogram Diff</Field.Label>
-        <NativeSelect.Root disabled={columns.length === 0}>
-          <NativeSelect.Field
-            value={params.column_name}
-            onChange={(e) => {
-              const columnName = e.target.value;
-              setIsReadyToExecute(!!columnName);
-              const columnType =
-                columns.find((c) => c.name === columnName)?.type ?? "";
-              onParamsChanged({
-                ...params,
-                column_name: columnName,
-                column_type: columnType,
-              });
-            }}
-            placeholder={
-              columns.length !== 0
-                ? "Select column"
-                : "No numeric column is available"
-            }
-          >
-            {columns.map((c) => (
-              <option key={c.name} value={c.name} className="no-track-pii-safe">
-                {c.name} : {c.type}
-              </option>
-            ))}
-          </NativeSelect.Field>
-          <NativeSelect.Indicator />
-        </NativeSelect.Root>
-      </Field.Root>
+    <Box sx={{ m: "16px" }}>
+      <FormControl fullWidth disabled={columns.length === 0}>
+        <FormLabel sx={{ mb: 1 }}>
+          Pick a column to show Histogram Diff
+        </FormLabel>
+        <NativeSelect
+          value={params.column_name}
+          onChange={(e) => {
+            const columnName = e.target.value;
+            setIsReadyToExecute(!!columnName);
+            const columnType =
+              columns.find((c) => c.name === columnName)?.type ?? "";
+            onParamsChanged({
+              ...params,
+              column_name: columnName,
+              column_type: columnType,
+            });
+          }}
+        >
+          <option value="">
+            {columns.length !== 0
+              ? "Select column"
+              : "No numeric column is available"}
+          </option>
+          {columns.map((c) => (
+            <option key={c.name} value={c.name} className="no-track-pii-safe">
+              {c.name} : {c.type}
+            </option>
+          ))}
+        </NativeSelect>
+      </FormControl>
     </Box>
   );
 }

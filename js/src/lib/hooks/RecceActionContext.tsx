@@ -1,4 +1,3 @@
-import { useDisclosure } from "@chakra-ui/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
 import React, {
@@ -101,22 +100,22 @@ export function RecceActionContextProvider({
   children,
 }: RecceActionContextProviderProps) {
   const [action, setAction] = useState<RunActionInternal>();
-  const {
-    open: isModalOpen,
-    onOpen: onModalOpen,
-    onClose: onModalClose,
-  } = useDisclosure();
-  const {
-    open: isRunResultOpen,
-    onOpen: onResultPaneOpen,
-    onClose: closeRunResult,
-  } = useDisclosure();
-  const {
-    open: isHistoryOpen,
-    onOpen: showHistory,
-    onClose: closeHistory,
-    setOpen: setHistoryOpen,
-  } = useDisclosure();
+
+  // Modal state
+  const [isModalOpen, setModalOpen] = useState(false);
+  const onModalOpen = useCallback(() => setModalOpen(true), []);
+  const onModalClose = useCallback(() => setModalOpen(false), []);
+
+  // Run result pane state
+  const [isRunResultOpen, setRunResultOpen] = useState(false);
+  const onResultPaneOpen = useCallback(() => setRunResultOpen(true), []);
+  const closeRunResult = useCallback(() => setRunResultOpen(false), []);
+
+  // History state
+  const [isHistoryOpen, setHistoryOpen] = useState(false);
+  const showHistory = useCallback(() => setHistoryOpen(true), []);
+  const closeHistory = useCallback(() => setHistoryOpen(false), []);
+
   const [runId, setRunId] = useState<string>();
   const [location, setLocation] = useAppLocation();
   const queryClient = useQueryClient();

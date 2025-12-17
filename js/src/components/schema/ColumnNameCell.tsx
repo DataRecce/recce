@@ -1,15 +1,12 @@
-import {
-  Box,
-  Flex,
-  Icon,
-  IconButton,
-  Menu,
-  Portal,
-  Spacer,
-  Spinner,
-} from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
+import IconButton from "@mui/material/IconButton";
+import ListSubheader from "@mui/material/ListSubheader";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import Tooltip from "@mui/material/Tooltip";
+import { MouseEvent, useState } from "react";
 import { VscKebabVertical } from "react-icons/vsc";
-import { Tooltip } from "@/components/ui/tooltip";
 import { NodeData } from "@/lib/api/info";
 import {
   EXPLORE_ACTION,
@@ -40,6 +37,17 @@ export function ColumnNameCell({
   const { featureToggles } = useRecceInstanceContext();
   const { name, baseType, currentType, baseIndex, currentIndex } = row;
   const columnType = currentType ?? baseType;
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const menuOpen = Boolean(anchorEl);
+
+  const handleMenuClick = (event: MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
 
   const handleProfileDiff = () => {
     trackExploreAction({
@@ -100,86 +108,91 @@ export function ColumnNameCell({
 
   return (
     <Tooltip
-      content="View column lineage"
-      positioning={{ placement: "top" }}
-      showArrow
-      disabled={isCllDisabled}
+      title="View column lineage"
+      placement="top"
+      disableHoverListener={isCllDisabled}
     >
-      <Flex alignItems={"center"} gap="3px">
-        <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+      <Box sx={{ display: "flex", alignItems: "center", gap: "3px" }}>
+        <Box
+          sx={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
           {name}
         </Box>
-        <Spacer />
-        {cllRunning && <Spinner size="xs" color="gray.400" />}
+        <Box sx={{ flex: 1 }} />
+        {cllRunning && <CircularProgress size={12} color="inherit" />}
         {showMenu && !singleEnv && model.resource_type !== "source" && (
-          <Menu.Root>
-            <Menu.Trigger asChild>
-              <IconButton
-                display="flex"
-                className="row-context-menu"
-                variant="plain"
-                size={"sm"}
-                color="gray"
-                _hover={{ color: "black" }}
-                disabled={featureToggles.disableDatabaseQuery}
-                onClick={(e) => {
-                  // prevent the click event from propagating to the Cell clicking
-                  e.stopPropagation();
+          <>
+            <IconButton
+              aria-label="Column options"
+              className="row-context-menu"
+              size="small"
+              disabled={featureToggles.disableDatabaseQuery}
+              onClick={handleMenuClick}
+            >
+              <VscKebabVertical />
+            </IconButton>
+            <Menu
+              anchorEl={anchorEl}
+              open={menuOpen}
+              onClose={handleMenuClose}
+              slotProps={{
+                list: { sx: { lineHeight: "20px" } },
+              }}
+            >
+              <ListSubheader sx={{ m: 0, p: "4px 12px", lineHeight: "20px" }}>
+                Diff
+              </ListSubheader>
+              <MenuItem
+                onClick={() => {
+                  handleProfileDiff();
+                  handleMenuClose();
                 }}
+                disabled={addedOrRemoved}
+                sx={{ fontSize: "0.85rem" }}
               >
-                <Icon as={VscKebabVertical} />
-              </IconButton>
-            </Menu.Trigger>
-
-            <Portal>
-              <Menu.Positioner>
-                <Menu.Content lineHeight="20px">
-                  {/* <MenuGroup title="Column" m="0" p="4px 12px">
-              <MenuItem fontSize="10pt">Set Alias Name</MenuItem>
-            </MenuGroup> */}
-                  <Menu.ItemGroup title="Diff" m="0" p="4px 12px">
-                    <Menu.Item
-                      value="profile-diff"
-                      fontSize="0.85rem"
-                      onClick={handleProfileDiff}
-                      disabled={addedOrRemoved}
-                    >
-                      Profile Diff
-                    </Menu.Item>
-                    <Menu.Item
-                      value="histogram-diff"
-                      fontSize="0.85rem"
-                      onClick={handleHistogramDiff}
-                      disabled={
-                        addedOrRemoved ||
-                        (columnType ? !supportsHistogramDiff(columnType) : true)
-                      }
-                    >
-                      Histogram Diff
-                    </Menu.Item>
-                    <Menu.Item
-                      value="top-k-diff"
-                      fontSize="0.85rem"
-                      onClick={handleTopkDiff}
-                      disabled={addedOrRemoved}
-                    >
-                      Top-k Diff
-                    </Menu.Item>
-                    <Menu.Item
-                      value="value-diff"
-                      fontSize="0.85rem"
-                      onClick={handleValueDiff}
-                      disabled={addedOrRemoved}
-                    >
-                      Value Diff
-                    </Menu.Item>
-                  </Menu.ItemGroup>
-                </Menu.Content>
-              </Menu.Positioner>
-            </Portal>
-          </Menu.Root>
+                Profile Diff
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  handleHistogramDiff();
+                  handleMenuClose();
+                }}
+                disabled={
+                  addedOrRemoved ||
+                  (columnType ? !supportsHistogramDiff(columnType) : true)
+                }
+                sx={{ fontSize: "0.85rem" }}
+              >
+                Histogram Diff
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  handleTopkDiff();
+                  handleMenuClose();
+                }}
+                disabled={addedOrRemoved}
+                sx={{ fontSize: "0.85rem" }}
+              >
+                Top-k Diff
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  handleValueDiff();
+                  handleMenuClose();
+                }}
+                disabled={addedOrRemoved}
+                sx={{ fontSize: "0.85rem" }}
+              >
+                Value Diff
+              </MenuItem>
+            </Menu>
+          </>
         )}
-      </Flex>
+      </Box>
     </Tooltip>
   );
 }

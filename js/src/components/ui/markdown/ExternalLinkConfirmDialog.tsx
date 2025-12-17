@@ -4,16 +4,16 @@
  * Shows a warning when users click on links that navigate outside of Recce.
  */
 
-import {
-  Box,
-  Button,
-  CloseButton,
-  Code,
-  Dialog,
-  Portal,
-  Text,
-} from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import MuiDialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import IconButton from "@mui/material/IconButton";
+import Typography from "@mui/material/Typography";
 import { useRef } from "react";
+import { IoClose } from "react-icons/io5";
 import { PiWarning } from "react-icons/pi";
 
 interface ExternalLinkConfirmDialogProps {
@@ -65,64 +65,70 @@ export function ExternalLinkConfirmDialog({
   const cancelRef = useRef<HTMLButtonElement>(null);
 
   return (
-    <Dialog.Root
+    <MuiDialog
       open={isOpen}
-      onOpenChange={(e) => {
-        if (!e.open) onCancel();
-      }}
-      role="alertdialog"
-      initialFocusEl={() => cancelRef.current}
-      size="md"
+      onClose={onCancel}
+      maxWidth="sm"
+      fullWidth
+      aria-labelledby="external-link-dialog-title"
     >
-      <Portal>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content>
-            <Dialog.Header>
-              <Dialog.Title display="flex" alignItems="center" gap={2}>
-                <Box as={PiWarning} color="orange.500" boxSize="20px" />
-                External Link
-              </Dialog.Title>
-            </Dialog.Header>
+      <DialogTitle
+        id="external-link-dialog-title"
+        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+      >
+        <Box component={PiWarning} sx={{ color: "amber.500", fontSize: 20 }} />
+        External Link
+      </DialogTitle>
+      <IconButton
+        aria-label="close"
+        onClick={onCancel}
+        sx={{
+          position: "absolute",
+          right: 8,
+          top: 8,
+          color: "grey.500",
+        }}
+      >
+        <IoClose />
+      </IconButton>
 
-            <Dialog.Body>
-              <Text mb={3}>
-                This link will take you to an external website outside of Recce.
-                Are you sure you want to continue?
-              </Text>
-              <Box
-                bg="gray.50"
-                p={2}
-                borderRadius="md"
-                borderWidth="1px"
-                borderColor="gray.200"
-              >
-                <Code
-                  fontSize="sm"
-                  wordBreak="break-all"
-                  whiteSpace="pre-wrap"
-                  bg="transparent"
-                >
-                  {truncateUrl(url, 100)}
-                </Code>
-              </Box>
-            </Dialog.Body>
+      <DialogContent>
+        <Typography sx={{ mb: 1.5 }}>
+          This link will take you to an external website outside of Recce. Are
+          you sure you want to continue?
+        </Typography>
+        <Box
+          sx={{
+            bgcolor: "grey.50",
+            p: 1,
+            borderRadius: 1,
+            border: "1px solid",
+            borderColor: "grey.200",
+          }}
+        >
+          <Box
+            component="code"
+            sx={{
+              fontSize: "0.875rem",
+              wordBreak: "break-all",
+              whiteSpace: "pre-wrap",
+              bgcolor: "transparent",
+              fontFamily: "monospace",
+            }}
+          >
+            {truncateUrl(url, 100)}
+          </Box>
+        </Box>
+      </DialogContent>
 
-            <Dialog.Footer gap={2}>
-              <Button ref={cancelRef} variant="outline" onClick={onCancel}>
-                Cancel
-              </Button>
-              <Button colorPalette="blue" onClick={onConfirm}>
-                Open Link
-              </Button>
-            </Dialog.Footer>
-
-            <Dialog.CloseTrigger asChild>
-              <CloseButton size="sm" />
-            </Dialog.CloseTrigger>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Portal>
-    </Dialog.Root>
+      <DialogActions sx={{ gap: 1 }}>
+        <Button ref={cancelRef} variant="outlined" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button color="iochmara" variant="contained" onClick={onConfirm}>
+          Open Link
+        </Button>
+      </DialogActions>
+    </MuiDialog>
   );
 }

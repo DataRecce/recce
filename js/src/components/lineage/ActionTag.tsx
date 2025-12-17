@@ -1,7 +1,10 @@
-import { Box, Flex, ProgressCircle, Tag } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
+import Stack from "@mui/material/Stack";
+import MuiTooltip from "@mui/material/Tooltip";
 import { PiInfo, PiWarning } from "react-icons/pi";
 import { LineageGraphNode } from "@/components/lineage/lineage";
-import { Tooltip } from "@/components/ui/tooltip";
 import {
   isRowCountDiffRun,
   isRowCountRun,
@@ -19,78 +22,73 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
   const { status, skipReason, run } = action;
 
   if (status === "pending") {
-    return (
-      <ProgressCircle.Root value={0} size="xs">
-        <ProgressCircle.Circle>
-          <ProgressCircle.Track />
-          <ProgressCircle.Range />
-        </ProgressCircle.Circle>
-      </ProgressCircle.Root>
-    );
+    return <CircularProgress size={16} />;
   }
 
   if (status === "skipped") {
     return (
-      <Tag.Root backgroundColor={"gray.100"}>
-        <Tag.Label>
-          <Flex fontSize="10pt" color="gray.500" alignItems="center" gap="3px">
+      <Chip
+        size="small"
+        label={
+          <Stack
+            direction="row"
+            sx={{
+              fontSize: "10pt",
+              color: "grey.500",
+              alignItems: "center",
+              gap: "3px",
+            }}
+          >
             <Box>Skipped</Box>
             {skipReason && (
-              <Tooltip content={skipReason}>
-                <PiInfo />
-              </Tooltip>
+              <MuiTooltip title={skipReason}>
+                <Box component="span" sx={{ display: "flex" }}>
+                  <PiInfo />
+                </Box>
+              </MuiTooltip>
             )}
-          </Flex>
-        </Tag.Label>
-      </Tag.Root>
+          </Stack>
+        }
+        sx={{ bgcolor: "grey.100" }}
+      />
     );
   }
 
   if (!run) {
-    return (
-      <ProgressCircle.Root value={null} size="xs">
-        <ProgressCircle.Circle>
-          <ProgressCircle.Track />
-          <ProgressCircle.Range />
-        </ProgressCircle.Circle>
-      </ProgressCircle.Root>
-    );
+    return <CircularProgress size={16} />;
   }
 
   const { error, run_id, progress } = run;
 
   if (status === "running") {
     if (progress?.percentage === undefined) {
-      return (
-        <ProgressCircle.Root value={null} size="xs">
-          <ProgressCircle.Circle>
-            <ProgressCircle.Track />
-            <ProgressCircle.Range />
-          </ProgressCircle.Circle>
-        </ProgressCircle.Root>
-      );
+      return <CircularProgress size={16} />;
     } else {
       return (
-        <ProgressCircle.Root value={progress.percentage * 100} size="xs">
-          <ProgressCircle.Circle>
-            <ProgressCircle.Track />
-            <ProgressCircle.Range />
-          </ProgressCircle.Circle>
-        </ProgressCircle.Root>
+        <CircularProgress
+          variant="determinate"
+          value={progress.percentage * 100}
+          size={16}
+        />
       );
     }
   }
 
   if (error) {
     return (
-      <Flex fontSize="10pt" color="gray">
+      <Stack
+        direction="row"
+        sx={{ fontSize: "10pt", color: "gray", alignItems: "center" }}
+      >
         <Box>Error</Box>
         {skipReason && (
-          <Tooltip content={error}>
-            <PiWarning />
-          </Tooltip>
+          <MuiTooltip title={error}>
+            <Box component="span" sx={{ display: "flex" }}>
+              <PiWarning />
+            </Box>
+          </MuiTooltip>
         )}
-      </Flex>
+      </Stack>
     );
   }
 
@@ -105,20 +103,27 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
     }
 
     return (
-      <Tag.Root backgroundColor={mismatched > 0 ? "red.100" : "green.100"}>
-        <Tag.Label>
-          <Flex
-            fontSize="10pt"
-            color={mismatched > 0 ? "red" : "green"}
-            alignItems="center"
-            gap="3px"
+      <Chip
+        size="small"
+        sx={{
+          bgcolor: mismatched > 0 ? "error.light" : "success.light",
+        }}
+        label={
+          <Stack
+            direction="row"
+            sx={{
+              fontSize: "10pt",
+              color: mismatched > 0 ? "error.main" : "success.main",
+              alignItems: "center",
+              gap: "3px",
+            }}
           >
             {mismatched > 0
               ? `${mismatched} columns mismatched`
               : "All columns match"}
-          </Flex>
-        </Tag.Label>
-      </Tag.Root>
+          </Stack>
+        }
+      />
     );
   }
 

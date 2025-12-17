@@ -2,7 +2,7 @@ import React from "react";
 import { FaCamera, FaCube, FaDatabase, FaSeedling } from "react-icons/fa";
 import { FaChartSimple, FaCircleNodes, FaGauge } from "react-icons/fa6";
 import { VscDiffAdded, VscDiffModified, VscDiffRemoved } from "react-icons/vsc";
-import { system as themeSystem } from "@/components/ui/theme";
+import { token } from "@/components/ui/mui-theme";
 
 export const IconAdded = VscDiffAdded;
 export const IconRemoved = VscDiffRemoved;
@@ -70,36 +70,44 @@ export function getIconForChangeStatus(
   icon: typeof IconAdded | undefined;
 } {
   if (changeStatus === "added") {
+    const color = String(token("colors.green.solid"));
+    const backgroundColor = String(token("colors.green.subtle"));
     return {
-      color: "green.solid",
-      hexColor: String(themeSystem.token("colors.green.solid")),
-      backgroundColor: "green.subtle",
-      hexBackgroundColor: String(themeSystem.token("colors.green.subtle")),
+      color,
+      hexColor: color,
+      backgroundColor,
+      hexBackgroundColor: backgroundColor,
       icon: IconAdded,
     };
   } else if (changeStatus === "removed") {
+    const color = String(token("colors.red.solid"));
+    const backgroundColor = String(token("colors.red.subtle"));
     return {
-      color: "red.solid",
-      hexColor: String(themeSystem.token("colors.red.solid")),
-      backgroundColor: "red.subtle",
-      hexBackgroundColor: String(themeSystem.token("colors.red.subtle")),
+      color,
+      hexColor: color,
+      backgroundColor,
+      hexBackgroundColor: backgroundColor,
       icon: IconRemoved,
     };
   } else if (changeStatus === "modified") {
+    const color = String(token("colors.orange.emphasized"));
+    const backgroundColor = String(token("colors.orange.subtle"));
     return {
-      color: "orange.emphasized",
-      hexColor: String(themeSystem.token("colors.orange.emphasized")),
-      backgroundColor: "orange.subtle",
-      hexBackgroundColor: String(themeSystem.token("colors.orange.subtle")),
+      color,
+      hexColor: color,
+      backgroundColor,
+      hexBackgroundColor: backgroundColor,
       icon: IconModified,
     };
   }
 
+  const color = String(token("colors.gray.focusRing"));
+  const backgroundColor = "#ffffff";
   return {
-    color: "gray.focusRing",
-    hexColor: String(themeSystem.token("colors.gray.focusRing")),
-    backgroundColor: "white",
-    hexBackgroundColor: String(themeSystem.token("colors.white")),
+    color,
+    hexColor: color,
+    backgroundColor,
+    hexBackgroundColor: backgroundColor,
     icon: undefined,
   };
 }
@@ -110,37 +118,37 @@ export function getIconForResourceType(resourceType?: string): {
 } {
   if (resourceType === "model") {
     return {
-      color: String(themeSystem.token("colors.cyan.subtle")),
+      color: String(token("colors.cyan.subtle")),
       icon: FaCube,
     };
   } else if (resourceType === "metric") {
     return {
-      color: String(themeSystem.token("colors.rose.subtle")),
+      color: String(token("colors.rose.subtle")),
       icon: FaChartSimple,
     };
   } else if (resourceType === "source") {
     return {
-      color: String(themeSystem.token("colors.green.muted")),
+      color: String(token("colors.green.muted")),
       icon: FaDatabase,
     };
   } else if (resourceType === "exposure") {
     return {
-      color: String(themeSystem.token("colors.rose.subtle")),
+      color: String(token("colors.rose.subtle")),
       icon: FaGauge,
     };
   } else if (resourceType === "semantic_model") {
     return {
-      color: String(themeSystem.token("colors.rose.focusRing")),
+      color: String(token("colors.rose.focusRing")),
       icon: FaCircleNodes,
     };
   } else if (resourceType === "seed") {
     return {
-      color: String(themeSystem.token("colors.green.emphasized")),
+      color: String(token("colors.green.emphasized")),
       icon: FaSeedling,
     };
   } else if (resourceType === "snapshot") {
     return {
-      color: String(themeSystem.token("colors.green.emphasized")),
+      color: String(token("colors.green.emphasized")),
       icon: FaCamera,
     };
   } else {

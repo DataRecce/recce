@@ -1,4 +1,7 @@
-import { Box, Field, NativeSelect } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import FormControl from "@mui/material/FormControl";
+import FormLabel from "@mui/material/FormLabel";
+import NativeSelect from "@mui/material/NativeSelect";
 import { useEffect } from "react";
 import { TopKDiffParams } from "@/lib/api/profile";
 import useModelColumns from "@/lib/hooks/useModelColumns";
@@ -32,26 +35,24 @@ export function TopKDiffForm({
   }
 
   return (
-    <Box m="16px">
-      <Field.Root>
-        <Field.Label>Pick a column to show top-k</Field.Label>
-        <NativeSelect.Root>
-          <NativeSelect.Field
-            placeholder="Select column"
-            value={params.column_name}
-            onChange={(e) => {
-              const column = e.target.value;
-              onParamsChanged({ ...params, column_name: column });
-            }}
-          >
-            {columnNames.map((c) => (
-              <option key={c} value={c} className="no-track-pii-safe">
-                {c}
-              </option>
-            ))}
-          </NativeSelect.Field>
-        </NativeSelect.Root>
-      </Field.Root>
+    <Box sx={{ m: "16px" }}>
+      <FormControl fullWidth>
+        <FormLabel sx={{ mb: 1 }}>Pick a column to show top-k</FormLabel>
+        <NativeSelect
+          value={params.column_name}
+          onChange={(e) => {
+            const column = e.target.value;
+            onParamsChanged({ ...params, column_name: column });
+          }}
+        >
+          <option value="">Select column</option>
+          {columnNames.map((c) => (
+            <option key={c} value={c} className="no-track-pii-safe">
+              {c}
+            </option>
+          ))}
+        </NativeSelect>
+      </FormControl>
     </Box>
   );
 }

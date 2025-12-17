@@ -1,24 +1,30 @@
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Checkbox from "@mui/material/Checkbox";
+import Divider from "@mui/material/Divider";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import ListSubheader from "@mui/material/ListSubheader";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import Radio from "@mui/material/Radio";
+import RadioGroup from "@mui/material/RadioGroup";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import MuiTooltip from "@mui/material/Tooltip";
+import Typography from "@mui/material/Typography";
 import {
-  Box,
-  Button,
-  ButtonGroup,
-  Checkbox,
-  Code,
-  HStack,
-  Icon,
-  Input,
-  Menu,
-  Portal,
-  Spacer,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
-import { CSSProperties, useEffect, useRef, useState } from "react";
+  type CSSProperties,
+  type MouseEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { FiPackage } from "react-icons/fi";
 import { PiCaretDown } from "react-icons/pi";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
-import { Tooltip } from "@/components/ui/tooltip";
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
@@ -29,78 +35,141 @@ import { getIconForResourceType } from "./styles";
 
 const SelectFilterTooltip = () => {
   return (
-    <VStack align={"start"} gap={0}>
-      <Text fontSize="10pt" color={"gray.500"} pb={1}>
+    <Stack alignItems="flex-start" spacing={0}>
+      <Typography fontSize="10pt" color="text.secondary" pb={1}>
         Select nodes by dbt node selector syntax
-      </Text>
-      <Text fontSize="8pt">
-        <Code fontSize={"8pt"}>model_name</Code> Select a node
-      </Text>
-      <Text fontSize="8pt">
-        <Code fontSize={"8pt"}>model_name+</Code> Select downstream nodes
-      </Text>
-      <Text fontSize="8pt">
-        <Code fontSize={"8pt"}>+model_name</Code> Select upstream nodes
-      </Text>
-      <Text fontSize="8pt">
-        <Code fontSize={"8pt"}>model*</Code> Select by wildcard
-      </Text>
-    </VStack>
+      </Typography>
+      <Typography fontSize="8pt">
+        <Box
+          component="code"
+          sx={{
+            fontSize: "8pt",
+            bgcolor: "grey.100",
+            px: 0.5,
+            borderRadius: 1,
+          }}
+        >
+          model_name
+        </Box>{" "}
+        Select a node
+      </Typography>
+      <Typography fontSize="8pt">
+        <Box
+          component="code"
+          sx={{
+            fontSize: "8pt",
+            bgcolor: "grey.100",
+            px: 0.5,
+            borderRadius: 1,
+          }}
+        >
+          model_name+
+        </Box>{" "}
+        Select downstream nodes
+      </Typography>
+      <Typography fontSize="8pt">
+        <Box
+          component="code"
+          sx={{
+            fontSize: "8pt",
+            bgcolor: "grey.100",
+            px: 0.5,
+            borderRadius: 1,
+          }}
+        >
+          +model_name
+        </Box>{" "}
+        Select upstream nodes
+      </Typography>
+      <Typography fontSize="8pt">
+        <Box
+          component="code"
+          sx={{
+            fontSize: "8pt",
+            bgcolor: "grey.100",
+            px: 0.5,
+            borderRadius: 1,
+          }}
+        >
+          model*
+        </Box>{" "}
+        Select by wildcard
+      </Typography>
+    </Stack>
   );
 };
 
 const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const open = Boolean(anchorEl);
+
   const { viewOptions, onViewOptionsChanged } = useLineageViewContextSafe();
   const viewMode = viewOptions.view_mode ?? "changed_models";
   const label = viewMode === "changed_models" ? "Changed Models" : "All";
 
-  const handleSelect = (viewMode: LineageDiffViewOptions["view_mode"]) => {
-    onViewOptionsChanged({
-      ...viewOptions,
-      view_mode: viewMode,
-    });
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
   };
 
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleSelect = (newViewMode: LineageDiffViewOptions["view_mode"]) => {
+    onViewOptionsChanged({
+      ...viewOptions,
+      view_mode: newViewMode,
+    });
+    handleClose();
+  };
+
+  const ModelIcon = getIconForResourceType("model").icon;
+
   return (
-    <Menu.Root>
-      <Menu.Trigger asChild>
-        <Button
-          minWidth="100px"
-          size="2xs"
-          variant="outline"
-          disabled={isDisabled}
-        >
-          <Icon as={getIconForResourceType("model").icon} /> {label}{" "}
-          <PiCaretDown />
-        </Button>
-      </Menu.Trigger>
-      <Portal>
-        <Menu.Positioner>
-          <Menu.Content>
-            <Menu.RadioItemGroup
-              value={viewMode}
-              onValueChange={(e) => {
-                handleSelect(e.value as typeof viewMode);
-              }}
-            >
-              <Menu.ItemGroupLabel>mode</Menu.ItemGroupLabel>
-              <Menu.RadioItem value="changed_models">
-                Changed Models
-                <Menu.ItemIndicator />
-              </Menu.RadioItem>
-              <Menu.RadioItem value="all">
-                All
-                <Menu.ItemIndicator />
-              </Menu.RadioItem>
-            </Menu.RadioItemGroup>
-          </Menu.Content>
-        </Menu.Positioner>
-      </Portal>
-    </Menu.Root>
+    <>
+      <Button
+        size="xsmall"
+        variant="outlined"
+        color="neutral"
+        onClick={handleClick}
+        disabled={isDisabled}
+        startIcon={ModelIcon && <ModelIcon />}
+        endIcon={<PiCaretDown />}
+        sx={{ minWidth: 100, textTransform: "none", fontSize: "0.75rem" }}
+      >
+        {label}
+      </Button>
+      <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
+        <ListSubheader sx={{ lineHeight: "32px", bgcolor: "transparent" }}>
+          mode
+        </ListSubheader>
+        <RadioGroup value={viewMode}>
+          <MenuItem onClick={() => handleSelect("changed_models")}>
+            <FormControlLabel
+              value="changed_models"
+              control={<Radio size="small" sx={{ py: 0 }} />}
+              label="Changed Models"
+              sx={{ m: 0 }}
+            />
+          </MenuItem>
+          <MenuItem onClick={() => handleSelect("all")}>
+            <FormControlLabel
+              value="all"
+              control={<Radio size="small" sx={{ py: 0 }} />}
+              label="All"
+              sx={{ m: 0 }}
+            />
+          </MenuItem>
+        </RadioGroup>
+      </Menu>
+    </>
   );
 };
 
 const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const open = Boolean(anchorEl);
+
   const { lineageGraph } = useLineageGraphContext();
   const { viewOptions, onViewOptionsChanged } = useLineageViewContextSafe();
 
@@ -131,6 +200,14 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
           ? "No Package"
           : `${selected.size} Packages`;
 
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
   const handleSelectAll = () => {
     if (isSelectAll) {
       onViewOptionsChanged({
@@ -159,63 +236,43 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
   };
 
   return (
-    <Menu.Root closeOnSelect={false}>
-      <Menu.Trigger asChild>
-        <Button
-          minWidth="100px"
-          size="2xs"
-          variant="outline"
-          disabled={isDisabled}
-        >
-          <Icon as={FiPackage} /> {label} <PiCaretDown />
-        </Button>
-      </Menu.Trigger>
-      <Portal>
-        <Menu.Positioner>
-          <Menu.Content>
-            <Menu.ItemGroup>
-              <Menu.ItemGroupLabel>Select Packages</Menu.ItemGroupLabel>
-              <Menu.Item value="" asChild>
-                <Checkbox.Root
-                  checked={
-                    !isSelectAll && !isSelectNone
-                      ? "indeterminate"
-                      : isSelectAll
-                  }
-                  onCheckedChange={handleSelectAll}
-                >
-                  <Checkbox.HiddenInput />
-                  <Checkbox.Control />
-                  <Checkbox.Label>Select All</Checkbox.Label>
-                </Checkbox.Root>
-              </Menu.Item>
+    <>
+      <Button
+        size="xsmall"
+        variant="outlined"
+        color="neutral"
+        onClick={handleClick}
+        disabled={isDisabled}
+        startIcon={<FiPackage />}
+        endIcon={<PiCaretDown />}
+        sx={{ minWidth: 100, textTransform: "none", fontSize: "0.75rem" }}
+      >
+        {label}
+      </Button>
+      <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
+        <ListSubheader sx={{ lineHeight: "32px", bgcolor: "transparent" }}>
+          Select Packages
+        </ListSubheader>
+        <MenuItem onClick={handleSelectAll}>
+          <Checkbox
+            checked={isSelectAll}
+            indeterminate={!isSelectAll && !isSelectNone}
+            size="small"
+            sx={{ py: 0 }}
+          />
+          <ListItemText>Select All</ListItemText>
+        </MenuItem>
 
-              <Menu.Separator />
+        <Divider />
 
-              {Array.from(available).map((pkg) => {
-                const thePkg = pkg;
-                return (
-                  <Menu.Item key={pkg} value={pkg}>
-                    <Checkbox.Root
-                      checked={selected.has(pkg)}
-                      onCheckedChange={() => {
-                        handleSelect(thePkg);
-                      }}
-                    >
-                      <Checkbox.HiddenInput />
-                      <Checkbox.Control />
-                      <Checkbox.Label className="no-track-pii-safe">
-                        {pkg}
-                      </Checkbox.Label>
-                    </Checkbox.Root>
-                  </Menu.Item>
-                );
-              })}
-            </Menu.ItemGroup>
-          </Menu.Content>
-        </Menu.Positioner>
-      </Portal>
-    </Menu.Root>
+        {Array.from(available).map((pkg) => (
+          <MenuItem key={pkg} onClick={() => handleSelect(pkg)}>
+            <Checkbox checked={selected.has(pkg)} size="small" sx={{ py: 0 }} />
+            <ListItemText className="no-track-pii-safe">{pkg}</ListItemText>
+          </MenuItem>
+        ))}
+      </Menu>
+    </>
   );
 };
 
@@ -236,26 +293,26 @@ const NodeSelectionInput = (props: {
   }, [props.value]);
 
   return (
-    <Tooltip
-      // Custom tooltip style
-      contentProps={{
-        width: "300px",
-        padding: 2,
-        shadow: "md",
-        borderWidth: 1,
-        rounded: "md",
-        color: "black",
-        backgroundColor: "white",
+    <MuiTooltip
+      title={flags?.single_env_onboarding ? props.tooltipComponent : ""}
+      placement="bottom-start"
+      slotProps={{
+        tooltip: {
+          sx: {
+            width: "18.75rem",
+            p: 2,
+            boxShadow: 3,
+            border: 1,
+            borderRadius: 1,
+            color: "black",
+            bgcolor: "white",
+          },
+        },
       }}
-      content={props.tooltipComponent}
-      positioning={{ placement: "bottom-start" }}
-      closeOnClick={false}
-      disabled={!flags?.single_env_onboarding}
     >
-      <Input
-        ref={inputRef}
-        height="24px"
-        fontSize="10pt"
+      <TextField
+        inputRef={inputRef}
+        size="small"
         placeholder="with selectors"
         disabled={props.isDisabled}
         value={inputValue}
@@ -276,8 +333,19 @@ const NodeSelectionInput = (props: {
         onBlur={() => {
           setInputValue(props.value);
         }}
+        sx={{
+          "& .MuiInputBase-root": {
+            width: "18.75rem",
+            height: 24,
+            fontSize: "0.75rem",
+          },
+          "& .MuiInputBase-input": {
+            py: 0.5,
+            px: 1,
+          },
+        }}
       />
-    </Tooltip>
+    </MuiTooltip>
   );
 };
 
@@ -322,8 +390,10 @@ const ControlItem = (props: {
   style?: CSSProperties;
 }) => {
   return (
-    <Box style={props.style} maxWidth="300px">
-      <Box fontSize="8pt">{(props.label ?? "").trim() || <>&nbsp;</>}</Box>
+    <Box style={props.style} sx={{ maxWidth: 300 }}>
+      <Typography fontSize="8pt">
+        {(props.label ?? "").trim() || <>&nbsp;</>}
+      </Typography>
       {props.children}
     </Box>
   );
@@ -336,180 +406,216 @@ export const LineageViewTopBar = () => {
   const { data: flags } = useRecceServerFlag();
   const isSingleEnvOnboarding = flags?.single_env_onboarding;
 
+  const [actionsAnchorEl, setActionsAnchorEl] = useState<HTMLElement | null>(
+    null,
+  );
+  const actionsOpen = Boolean(actionsAnchorEl);
+
   const isSingleSelect = !!focusedNode;
   const isMultiSelect = selectedNodes.length > 0;
   const isNoSelect = !isSingleSelect && !isMultiSelect;
   const isFilterDisabled = isMultiSelect;
 
+  const handleActionsClick = (event: MouseEvent<HTMLButtonElement>) => {
+    setActionsAnchorEl(event.currentTarget);
+  };
+
+  const handleActionsClose = () => {
+    setActionsAnchorEl(null);
+  };
+
+  // Get icons
+  const RowCountDiffIcon = findByRunType("row_count_diff").icon;
+  const ValueDiffIcon = findByRunType("value_diff").icon;
+  const LineageDiffIcon = findByRunType("lineage_diff").icon;
+  const SchemaDiffIcon = findByRunType("schema_diff").icon;
+
   return (
-    <HStack width="100%" padding="4pt 8pt" className="chakra-style-reset">
-      <HStack flex="1">
+    <Stack
+      direction="row"
+      alignItems="center"
+      borderBottom={1}
+      borderColor="neutral.light"
+      sx={{ width: "100%", p: "4pt 8pt", gap: "0.5rem" }}
+    >
+      <Stack
+        direction="row"
+        alignItems="center"
+        sx={{ flex: 1, gap: "0.5rem" }}
+      >
         <HistoryToggle />
-        <ControlItem label="Mode" style={{ flexShrink: "1" }}>
+        <ControlItem label="Mode" style={{ flexShrink: 1 }}>
           <ViewModeSelectMenu isDisabled={isFilterDisabled} />
         </ControlItem>
-        <ControlItem label="Package" style={{ flexShrink: "1" }}>
+        <ControlItem label="Package" style={{ flexShrink: 1 }}>
           <PackageSelectMenu isDisabled={isFilterDisabled} />
         </ControlItem>
-        <ControlItem label="Select" style={{ flex: "100 1 auto" }}>
+        <ControlItem label="Select" style={{ flexShrink: 1 }}>
           <SelectFilter isDisabled={isFilterDisabled} />
         </ControlItem>
-        <ControlItem label="Exclude" style={{ flex: "100 1 auto" }}>
+        <ControlItem label="Exclude" style={{ flexShrink: 1 }}>
           <ExcludeFilter isDisabled={isFilterDisabled} />
         </ControlItem>
-        <Spacer />
+        <Box sx={{ flexGrow: 1 }} />
         {isMultiSelect && (
           <>
-            <ControlItem label="" style={{ flexShrink: "0" }}>
-              <Text fontSize="9pt" color="gray.500">
+            <ControlItem label="" style={{ flexShrink: 0 }}>
+              <Typography fontSize="9pt" color="text.secondary">
                 {selectedNodes.length > 1
                   ? `${selectedNodes.length} nodes selected`
                   : `${selectedNodes.length} node selected`}
-              </Text>
+              </Typography>
             </ControlItem>
 
             <ControlItem label="">
               <Button
-                variant={"outline"}
-                size="2xs"
-                fontSize="9pt"
+                variant="outlined"
+                color="neutral"
+                size="xsmall"
                 onClick={() => {
                   deselect();
                 }}
+                sx={{ textTransform: "none", fontSize: "9pt" }}
               >
                 Deselect
               </Button>
             </ControlItem>
             {isSingleEnvOnboarding && (
               <ControlItem label="Explore">
-                <ButtonGroup attached variant="outline">
-                  <Menu.Root positioning={{ placement: "bottom-end" }}>
-                    <Menu.Trigger asChild>
-                      <Button size="2xs">
-                        Actions <PiCaretDown />
-                      </Button>
-                    </Menu.Trigger>
-                    <Portal>
-                      <Menu.Positioner>
-                        <Menu.Content>
-                          <Menu.Item
-                            value="row-count"
-                            disabled={featureToggles.disableDatabaseQuery}
-                            onClick={async () => {
-                              await lineageViewContext.runRowCount();
-                            }}
-                          >
-                            <Text textStyle="sm">
-                              <Icon as={findByRunType("row_count_diff").icon} />{" "}
-                              Row Count
-                            </Text>
-                          </Menu.Item>
-                        </Menu.Content>
-                      </Menu.Positioner>
-                    </Portal>
-                  </Menu.Root>
-                </ButtonGroup>
+                <Box sx={{ display: "inline-flex" }}>
+                  <Button
+                    size="xsmall"
+                    color="neutral"
+                    variant="outlined"
+                    onClick={handleActionsClick}
+                    endIcon={<PiCaretDown />}
+                    sx={{ textTransform: "none", fontSize: "0.75rem" }}
+                  >
+                    Actions
+                  </Button>
+                  <Menu
+                    anchorEl={actionsAnchorEl}
+                    open={actionsOpen}
+                    onClose={handleActionsClose}
+                    anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                    transformOrigin={{ vertical: "top", horizontal: "right" }}
+                  >
+                    <MenuItem
+                      disabled={featureToggles.disableDatabaseQuery}
+                      onClick={async () => {
+                        await lineageViewContext.runRowCount();
+                        handleActionsClose();
+                      }}
+                    >
+                      <ListItemIcon>
+                        <RowCountDiffIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>Row Count</ListItemText>
+                    </MenuItem>
+                  </Menu>
+                </Box>
               </ControlItem>
             )}
           </>
         )}
         {!isSingleEnvOnboarding && (
           <ControlItem label="Explore">
-            <ButtonGroup attached variant="outline">
-              <Menu.Root positioning={{ placement: "bottom-end" }}>
-                <Menu.Trigger asChild>
-                  <Button
-                    size="2xs"
-                    disabled={featureToggles.disableViewActionDropdown}
+            <Box sx={{ display: "inline-flex" }}>
+              <Button
+                size="xsmall"
+                color="neutral"
+                variant="outlined"
+                disabled={featureToggles.disableViewActionDropdown}
+                onClick={handleActionsClick}
+                endIcon={<PiCaretDown />}
+                sx={{ textTransform: "none", fontSize: "0.75rem" }}
+              >
+                Actions
+              </Button>
+              <Menu
+                anchorEl={actionsAnchorEl}
+                open={actionsOpen}
+                onClose={handleActionsClose}
+                anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                transformOrigin={{ vertical: "top", horizontal: "right" }}
+              >
+                <ListSubheader
+                  sx={{ lineHeight: "32px", bgcolor: "transparent" }}
+                >
+                  Diff
+                </ListSubheader>
+                <SetupConnectionPopover
+                  display={featureToggles.mode === "metadata only"}
+                >
+                  <MenuItem
+                    disabled={featureToggles.disableDatabaseQuery}
+                    onClick={async () => {
+                      await lineageViewContext.runRowCountDiff();
+                      handleActionsClose();
+                    }}
                   >
-                    Actions <PiCaretDown />
-                  </Button>
-                </Menu.Trigger>
-                <Portal>
-                  <Menu.Positioner>
-                    <Menu.Content>
-                      <Menu.ItemGroup m="0" p="4px 12px">
-                        <Menu.ItemGroupLabel>Diff</Menu.ItemGroupLabel>
-                        <SetupConnectionPopover
-                          display={featureToggles.mode === "metadata only"}
-                        >
-                          <Menu.Item
-                            value="row-count-diff"
-                            disabled={featureToggles.disableDatabaseQuery}
-                            onClick={async () => {
-                              await lineageViewContext.runRowCountDiff();
-                            }}
-                          >
-                            <Text textStyle="sm">
-                              <Icon as={findByRunType("row_count_diff").icon} />{" "}
-                              Row Count Diff
-                            </Text>
-                          </Menu.Item>
-                        </SetupConnectionPopover>
-                        <SetupConnectionPopover
-                          display={featureToggles.mode === "metadata only"}
-                        >
-                          <Menu.Item
-                            value="value-diff"
-                            disabled={featureToggles.disableDatabaseQuery}
-                            onClick={async () => {
-                              await lineageViewContext.runValueDiff();
-                            }}
-                          >
-                            <Text textStyle="sm">
-                              <Icon as={findByRunType("value_diff").icon} />{" "}
-                              Value Diff
-                            </Text>
-                          </Menu.Item>
-                        </SetupConnectionPopover>
-                      </Menu.ItemGroup>
+                    <ListItemIcon>
+                      <RowCountDiffIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Row Count Diff</ListItemText>
+                  </MenuItem>
+                </SetupConnectionPopover>
+                <SetupConnectionPopover
+                  display={featureToggles.mode === "metadata only"}
+                >
+                  <MenuItem
+                    disabled={featureToggles.disableDatabaseQuery}
+                    onClick={async () => {
+                      await lineageViewContext.runValueDiff();
+                      handleActionsClose();
+                    }}
+                  >
+                    <ListItemIcon>
+                      <ValueDiffIcon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>Value Diff</ListItemText>
+                  </MenuItem>
+                </SetupConnectionPopover>
 
-                      <Menu.Separator />
+                <Divider />
 
-                      <Menu.ItemGroup m="0" px="12px">
-                        <Menu.ItemGroupLabel>
-                          Add to Checklist
-                        </Menu.ItemGroupLabel>
-                        <Menu.Item
-                          value="lineage-diff"
-                          disabled={
-                            !(
-                              isNoSelect ||
-                              (isMultiSelect && selectedNodes.length > 1)
-                            )
-                          }
-                          onClick={() => {
-                            lineageViewContext.addLineageDiffCheck(
-                              lineageViewContext.viewOptions.view_mode,
-                            );
-                          }}
-                        >
-                          <Text textStyle="sm">
-                            <Icon as={findByRunType("lineage_diff").icon} />{" "}
-                            Lineage Diff
-                          </Text>
-                        </Menu.Item>
-                        <Menu.Item
-                          value="schema-diff"
-                          disabled={false}
-                          onClick={() => {
-                            lineageViewContext.addSchemaDiffCheck();
-                          }}
-                        >
-                          <Text textStyle="sm">
-                            <Icon as={findByRunType("schema_diff").icon} />{" "}
-                            Schema Diff
-                          </Text>
-                        </Menu.Item>
-                      </Menu.ItemGroup>
-                    </Menu.Content>
-                  </Menu.Positioner>
-                </Portal>
-              </Menu.Root>
-            </ButtonGroup>
+                <ListSubheader
+                  sx={{ lineHeight: "32px", bgcolor: "transparent" }}
+                >
+                  Add to Checklist
+                </ListSubheader>
+                <MenuItem
+                  disabled={
+                    !(isNoSelect || (isMultiSelect && selectedNodes.length > 1))
+                  }
+                  onClick={() => {
+                    lineageViewContext.addLineageDiffCheck(
+                      lineageViewContext.viewOptions.view_mode,
+                    );
+                    handleActionsClose();
+                  }}
+                >
+                  <ListItemIcon>
+                    <LineageDiffIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Lineage Diff</ListItemText>
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    lineageViewContext.addSchemaDiffCheck();
+                    handleActionsClose();
+                  }}
+                >
+                  <ListItemIcon>
+                    <SchemaDiffIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Schema Diff</ListItemText>
+                </MenuItem>
+              </Menu>
+            </Box>
           </ControlItem>
         )}
-      </HStack>
-    </HStack>
+      </Stack>
+    </Stack>
   );
 };

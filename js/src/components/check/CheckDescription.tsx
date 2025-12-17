@@ -1,4 +1,9 @@
-import { Button, Flex, Link, Text, Textarea } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Link from "@mui/material/Link";
+import Stack from "@mui/material/Stack";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
 import {
   ChangeEvent,
   ChangeEventHandler,
@@ -67,43 +72,63 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
 
   if (editing) {
     return (
-      <Flex
+      <Stack
         direction="column"
-        align="flex-end"
-        height="100%"
+        alignItems="flex-end"
+        spacing={1}
+        sx={{ height: "100%" }}
         className="no-track-pii-safe"
       >
-        <Textarea
+        <TextField
           value={tempValue}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          ref={textareaRef}
-          flex={1}
-        ></Textarea>
-        <Flex gap="12px" alignItems="flex-end">
-          <Link onClick={handleCancel} colorPalette="blue">
+          inputRef={textareaRef}
+          multiline
+          fullWidth
+          sx={{ flex: 1 }}
+          slotProps={{
+            input: {
+              sx: { height: "100%", alignItems: "flex-start" },
+            },
+          }}
+        />
+        <Stack direction="row" spacing={4} alignItems="center">
+          <Link
+            onClick={handleCancel}
+            sx={{ color: "primary.main", cursor: "pointer" }}
+          >
             cancel
           </Link>
-          <Button mt="8px" size="sm" colorPalette="blue" onClick={handleUpdate}>
+          <Button
+            sx={{ mt: "8px" }}
+            size="small"
+            color="iochmara"
+            variant="contained"
+            onClick={handleUpdate}
+          >
             Update
           </Button>
-        </Flex>
-      </Flex>
+        </Stack>
+      </Stack>
     );
   }
 
   return (
-    <Text
+    <Typography
       className="no-track-pii-safe"
-      height="100%"
-      overflow="auto"
-      fontSize="11pt"
+      sx={{
+        height: "100%",
+        overflow: "auto",
+        fontSize: "11pt",
+        whiteSpace: "pre-wrap",
+        wordBreak: "break-word",
+        color: !value ? "lightgray" : "inherit",
+        cursor: !featureToggles.disableUpdateChecklist ? "pointer" : "default",
+      }}
       onClick={!featureToggles.disableUpdateChecklist ? handleEdit : undefined}
-      whiteSpace="pre-wrap"
-      wordBreak="break-word"
-      color={!value ? "lightgray" : "inherit"}
     >
       {(value ?? "").trim() || "Add description here"}
-    </Text>
+    </Typography>
   );
 }

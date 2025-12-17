@@ -1,4 +1,8 @@
-import { Button, Flex, IconButton, Text } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import IconButton from "@mui/material/IconButton";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { useState } from "react";
 import { PiCheckCircle, PiCopy } from "react-icons/pi";
 import { TbCloudUpload } from "react-icons/tb";
@@ -55,16 +59,17 @@ export function TopLevelShare() {
 
   if (!authed) {
     return (
-      <Flex flex="1" alignItems="center">
+      <Stack direction="row" sx={{ flex: 1, alignItems: "center" }}>
         <Button
-          size="xs"
-          colorPalette="gray"
-          variant="outline"
+          size="xsmall"
+          color="neutral"
+          variant="outlined"
           onClick={() => {
             setShowModal(true);
           }}
+          startIcon={<TbCloudUpload />}
         >
-          <TbCloudUpload /> Share
+          Share
         </Button>
         {showModal && (
           <AuthModal
@@ -74,38 +79,49 @@ export function TopLevelShare() {
             variant="enable-share"
           />
         )}
-      </Flex>
+      </Stack>
     );
   }
 
   return (
-    <Flex flex="1" alignItems="center" gap="5px">
+    <Stack direction="row" sx={{ flex: 1, alignItems: "center", gap: "5px" }}>
       <Button
-        size="xs"
-        variant="outline"
-        colorPalette="gray"
+        size="xsmall"
+        variant="outlined"
+        color="neutral"
+        startIcon={<TbCloudUpload />}
+        endIcon={
+          shareUrl ? (
+            <Box component={PiCheckCircle} sx={{ color: "success.main" }} />
+          ) : undefined
+        }
         onClick={async () => {
           await handleShareClick();
           trackShareState({ name: "create" });
         }}
-        loading={isLoading}
+        disabled={isLoading}
       >
-        <TbCloudUpload /> Share{" "}
-        {shareUrl ? <PiCheckCircle color="green" /> : undefined}
+        {isLoading ? "Sharing..." : "Share"}
       </Button>
       {isLoading && (
-        <Text fontSize="14" color="gray.500">
+        <Typography sx={{ fontSize: 14, color: "grey.500" }}>
           {LOADING_MESSAGES[messageIndex]}
-        </Text>
+        </Typography>
       )}
-      <Flex gap="5px" alignItems="center">
+      <Stack direction="row" spacing={0.5} alignItems="center">
         {shareUrl && (
           <>
-            <Flex overflowX="auto" whiteSpace="nowrap" maxWidth="350px">
-              <Text fontSize="14">{shareUrl}</Text>
-            </Flex>
+            <Box
+              sx={{
+                overflowX: "auto",
+                whiteSpace: "nowrap",
+                maxWidth: "350px",
+              }}
+            >
+              <Typography sx={{ fontSize: 14 }}>{shareUrl}</Typography>
+            </Box>
             <IconButton
-              size="2xs"
+              size="small"
               aria-label="Copy the share URL"
               onClick={async () => {
                 await handleCopy();
@@ -117,11 +133,11 @@ export function TopLevelShare() {
           </>
         )}
         {error && (
-          <Text fontSize="14" color="red.500">
+          <Typography sx={{ fontSize: 14, color: "error.main" }}>
             {error}
-          </Text>
+          </Typography>
         )}
-      </Flex>
-    </Flex>
+      </Stack>
+    </Stack>
   );
 }
