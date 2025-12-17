@@ -57,7 +57,7 @@ class GitLabRecceCloudClient(BaseRecceCloudClient):
         # Only include mr_iid for "cr" type sessions
         # For "prod" type, omit mr_iid even if cr_number is detected
         if session_type == "cr" and cr_number is not None:
-            payload["mr_iid"] = str(cr_number)
+            payload["mr_iid"] = cr_number
 
         return self._make_request("POST", url, json=payload)
 
@@ -80,3 +80,32 @@ class GitLabRecceCloudClient(BaseRecceCloudClient):
         }
 
         return self._make_request("POST", url, json=payload)
+
+    def get_session_download_urls(
+        self,
+        cr_number: Optional[int] = None,
+        session_type: Optional[str] = None,
+    ) -> Dict:
+        """
+        Get download URLs for artifacts from a GitLab session.
+
+        Args:
+            cr_number: MR IID for merge request sessions
+            session_type: Session type ("cr", "prod", "dev")
+
+        Returns:
+            Dictionary containing session_id, manifest_url, catalog_url
+        """
+        url = f"{self.api_host}/api/v2/gitlab/{self.project_path}/session-download-url"
+
+        # Build query parameters
+        params = {}
+
+        # For prod session, set base=true
+        if session_type == "prod":
+            params["base"] = "true"
+        # For CR session, include mr_iid
+        elif session_type == "cr" and cr_number is not None:
+            params["mr_iid"] = cr_number
+
+        return self._make_request("GET", url, params=params)

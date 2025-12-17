@@ -109,3 +109,24 @@ class BaseRecceCloudClient(ABC):
             Empty dictionary or acknowledgement
         """
         pass
+
+    @abstractmethod
+    def get_session_download_urls(
+        self,
+        cr_number: Optional[int] = None,
+        session_type: Optional[str] = None,
+    ) -> Dict:
+        """
+        Get download URLs for artifacts from a session.
+
+        Args:
+            cr_number: Change request number (PR/MR number) for CR sessions
+            session_type: Session type ("cr", "prod", "dev")
+
+        Returns:
+            Dictionary containing:
+                - session_id: Session ID
+                - manifest_url: Presigned URL for manifest.json download
+                - catalog_url: Presigned URL for catalog.json download
+        """
+        pass

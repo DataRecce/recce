@@ -368,5 +368,368 @@ class TestUploadDryRun(unittest.TestCase):
         self.assertIn("catalog.json:", result.output)
 
 
+class TestDownloadDryRun(unittest.TestCase):
+    """Test cases for the --dry-run flag in download command."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        """Clean up test fixtures."""
+        import shutil
+
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    def test_dry_run_github_actions_pr_context(self):
+        """Test dry-run with GitHub Actions PR context."""
+        env = {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_REPOSITORY": "DataRecce/recce",
+            "GITHUB_EVENT_NAME": "pull_request",
+            "GITHUB_SHA": "abc123def456",
+            "GITHUB_HEAD_REF": "feature/test-branch",
+            "GITHUB_BASE_REF": "main",
+            "GITHUB_TOKEN": "test_token_123",
+        }
+
+        # Create mock event file
+        event_file = Path(self.temp_dir) / "github_event.json"
+        import json
+
+        with open(event_file, "w") as f:
+            json.dump({"pull_request": {"number": 42}}, f)
+
+        env["GITHUB_EVENT_PATH"] = str(event_file)
+
+        download_dir = Path(self.temp_dir) / "download"
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                ["download", "--target-path", str(download_dir), "--dry-run"],
+            )
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("Dry run mode enabled", result.output)
+        self.assertIn("Platform Information:", result.output)
+        self.assertIn("Platform: github-actions", result.output)
+        self.assertIn("Repository: DataRecce/recce", result.output)
+        self.assertIn("Session Type: cr", result.output)
+        self.assertIn("PR Number: 42", result.output)
+        self.assertIn("Download Workflow:", result.output)
+        self.assertIn("Auto-detect and download PR/MR session", result.output)
+        self.assertIn("Platform-specific APIs will be used", result.output)
+        self.assertIn("Download destination:", result.output)
+        self.assertIn("manifest.json, catalog.json", result.output)
+        self.assertIn("Dry run completed successfully", result.output)
+
+        # Download command should NOT show commit SHA or branches (irrelevant for download)
+        self.assertNotIn("Commit SHA:", result.output)
+        self.assertNotIn("Base Branch:", result.output)
+        self.assertNotIn("Source Branch:", result.output)
+
+    def test_dry_run_gitlab_ci_mr_context(self):
+        """Test dry-run with GitLab CI MR context."""
+        env = {
+            "GITLAB_CI": "true",
+            "CI_PROJECT_PATH": "recce/jaffle-shop",
+            "CI_PROJECT_URL": "https://gitlab.com/recce/jaffle-shop",
+            "CI_MERGE_REQUEST_IID": "5",
+            "CI_MERGE_REQUEST_SOURCE_BRANCH_NAME": "feature/new-models",
+            "CI_MERGE_REQUEST_TARGET_BRANCH_NAME": "main",
+            "CI_COMMIT_SHA": "def456abc789",
+            "CI_SERVER_URL": "https://gitlab.com",
+            "CI_JOB_TOKEN": "test_job_token_abc",
+        }
+
+        download_dir = Path(self.temp_dir) / "download"
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                ["download", "--target-path", str(download_dir), "--dry-run"],
+            )
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("Dry run mode enabled", result.output)
+        self.assertIn("Platform Information:", result.output)
+        self.assertIn("Platform: gitlab-ci", result.output)
+        self.assertIn("Repository: recce/jaffle-shop", result.output)
+        self.assertIn("Session Type: cr", result.output)
+        self.assertIn("MR Number: 5", result.output)
+        self.assertIn("Auto-detect and download PR/MR session", result.output)
+        self.assertIn("Platform-specific APIs will be used", result.output)
+
+        # Download command should NOT show commit SHA or branches (irrelevant for download)
+        self.assertNotIn("Commit SHA:", result.output)
+        self.assertNotIn("Base Branch:", result.output)
+        self.assertNotIn("Source Branch:", result.output)
+
+    def test_dry_run_with_prod_flag(self):
+        """Test dry-run with --prod flag for production/base session."""
+        env = {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_REPOSITORY": "DataRecce/recce",
+            "GITHUB_EVENT_NAME": "pull_request",
+            "GITHUB_SHA": "abc123",
+            "GITHUB_TOKEN": "test_token",
+        }
+
+        # Create mock event file
+        event_file = Path(self.temp_dir) / "github_event.json"
+        import json
+
+        with open(event_file, "w") as f:
+            json.dump({"pull_request": {"number": 42}}, f)
+
+        env["GITHUB_EVENT_PATH"] = str(event_file)
+        download_dir = Path(self.temp_dir) / "download"
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                ["download", "--target-path", str(download_dir), "--prod", "--dry-run"],
+            )
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("Dry run mode enabled", result.output)
+        self.assertIn("Download project's production/base session", result.output)
+        self.assertIn("Session Type: prod", result.output)
+
+        # Prod session should NOT show PR/CR number
+        self.assertNotIn("PR Number:", result.output)
+        self.assertNotIn("CR Number:", result.output)
+
+        # Download command should NOT show commit SHA or branches
+        self.assertNotIn("Commit SHA:", result.output)
+        self.assertNotIn("Base Branch:", result.output)
+        self.assertNotIn("Source Branch:", result.output)
+
+    def test_dry_run_with_session_id(self):
+        """Test dry-run with existing session ID (generic workflow)."""
+        env = {
+            "RECCE_API_TOKEN": "test_token_789",
+        }
+
+        download_dir = Path(self.temp_dir) / "download"
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                [
+                    "download",
+                    "--target-path",
+                    str(download_dir),
+                    "--session-id",
+                    "sess_abc123xyz",
+                    "--dry-run",
+                ],
+            )
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("Dry run mode enabled", result.output)
+        self.assertIn("Download Workflow:", result.output)
+        self.assertIn("Download from specific session ID", result.output)
+        self.assertIn("Session ID: sess_abc123xyz", result.output)
+
+    def test_dry_run_with_force_flag(self):
+        """Test dry-run with --force flag."""
+        env = {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_REPOSITORY": "DataRecce/recce",
+            "GITHUB_TOKEN": "test_token",
+        }
+
+        download_dir = Path(self.temp_dir) / "download"
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                ["download", "--target-path", str(download_dir), "--force", "--dry-run"],
+            )
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("Dry run mode enabled", result.output)
+        self.assertIn("Will overwrite existing files", result.output)
+
+    def test_dry_run_existing_target_path_without_force(self):
+        """Test dry-run with existing target path (without --force)."""
+        env = {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_REPOSITORY": "DataRecce/recce",
+            "GITHUB_TOKEN": "test_token",
+        }
+
+        # Create existing target directory
+        download_dir = Path(self.temp_dir) / "download"
+        download_dir.mkdir()
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                ["download", "--target-path", str(download_dir), "--dry-run"],
+            )
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("Warning: Target path exists (use --force to overwrite)", result.output)
+
+    def test_dry_run_session_id_with_prod_warning(self):
+        """Test dry-run shows warning when both --session-id and --prod are provided."""
+        env = {
+            "RECCE_API_TOKEN": "test_token",
+        }
+
+        download_dir = Path(self.temp_dir) / "download"
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                [
+                    "download",
+                    "--target-path",
+                    str(download_dir),
+                    "--session-id",
+                    "sess_123",
+                    "--prod",
+                    "--dry-run",
+                ],
+            )
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("Warning:", result.output)
+        self.assertIn("--prod is ignored when --session-id is provided", result.output)
+
+    def test_dry_run_no_ci_without_session_id(self):
+        """Test dry-run without CI environment and no session ID."""
+        env = {
+            "RECCE_API_TOKEN": "test_token",
+        }
+
+        download_dir = Path(self.temp_dir) / "download"
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                ["download", "--target-path", str(download_dir), "--dry-run"],
+            )
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("Dry run mode enabled", result.output)
+        self.assertIn("Warning: Platform not supported for auto-session discovery", result.output)
+
+    def test_dry_run_gitlab_ci_self_hosted(self):
+        """Test dry-run with self-hosted GitLab instance."""
+        env = {
+            "GITLAB_CI": "true",
+            "CI_PROJECT_PATH": "data-team/dbt-project",
+            "CI_PROJECT_URL": "https://gitlab.mycompany.com/data-team/dbt-project",
+            "CI_MERGE_REQUEST_IID": "25",
+            "CI_MERGE_REQUEST_SOURCE_BRANCH_NAME": "develop",
+            "CI_MERGE_REQUEST_TARGET_BRANCH_NAME": "production",
+            "CI_COMMIT_SHA": "fedcba987654",
+            "CI_SERVER_URL": "https://gitlab.mycompany.com",
+            "CI_JOB_TOKEN": "test_job_token_xyz",
+        }
+
+        download_dir = Path(self.temp_dir) / "download"
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                ["download", "--target-path", str(download_dir), "--dry-run"],
+            )
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("Platform: gitlab-ci", result.output)
+        self.assertIn("Repository: data-team/dbt-project", result.output)
+        self.assertIn("Session Type: cr", result.output)
+        self.assertIn("MR Number: 25", result.output)
+
+        # Download command should NOT show commit SHA or branches (irrelevant for download)
+        self.assertNotIn("Commit SHA:", result.output)
+        self.assertNotIn("Base Branch:", result.output)
+        self.assertNotIn("Source Branch:", result.output)
+
+    def test_dry_run_github_main_branch(self):
+        """Test dry-run with GitHub Actions main branch (no PR).
+
+        Without --prod flag, the session type is auto-detected as 'prod' because:
+        1. No PR number (GITHUB_HEAD_REF is not set)
+        2. Branch is 'main' (from git command fallback, mocked in test)
+        3. determine_session_type(cr_number=None, source_branch='main') returns 'prod'
+
+        This allows download to work without explicit --prod flag on main branch.
+        """
+        env = {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_REPOSITORY": "DataRecce/recce",
+            "GITHUB_EVENT_NAME": "push",
+            "GITHUB_REF": "refs/heads/main",
+            "GITHUB_SHA": "xyz789abc123",
+            "GITHUB_TOKEN": "test_token_456",
+        }
+
+        download_dir = Path(self.temp_dir) / "download"
+
+        # Mock git command to return "main" branch
+        # This simulates the fallback when GITHUB_REF_NAME is not available
+        with patch.dict(os.environ, env, clear=True):
+            with patch("recce_cloud.ci_providers.base.BaseCIProvider.run_git_command") as mock_git:
+                mock_git.return_value = "main"
+
+                result = self.runner.invoke(
+                    cloud_cli,
+                    ["download", "--target-path", str(download_dir), "--dry-run"],
+                )
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("Platform: github-actions", result.output)
+        self.assertIn("Repository: DataRecce/recce", result.output)
+        self.assertIn("Session Type: prod", result.output)  # Auto-detected from main branch
+
+        # Prod session should NOT show CR number or PR number
+        self.assertNotIn("PR Number:", result.output)
+        self.assertNotIn("CR Number:", result.output)
+
+        # Download command should NOT show commit SHA or branches (irrelevant for download)
+        self.assertNotIn("Commit SHA:", result.output)
+        self.assertNotIn("Base Branch:", result.output)
+        self.assertNotIn("Source Branch:", result.output)
+
+    def test_dry_run_custom_target_path(self):
+        """Test dry-run with custom target path."""
+        env = {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_REPOSITORY": "DataRecce/recce",
+            "GITHUB_TOKEN": "test_token",
+        }
+
+        custom_path = Path(self.temp_dir) / "custom" / "target"
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                ["download", "--target-path", str(custom_path), "--dry-run"],
+            )
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn(str(custom_path), result.output)
+        self.assertIn("manifest.json, catalog.json", result.output)
+
+
 if __name__ == "__main__":
     unittest.main()
