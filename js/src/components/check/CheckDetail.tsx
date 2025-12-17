@@ -8,7 +8,6 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
-import Grid from "@mui/material/Grid";
 import IconButton from "@mui/material/IconButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
@@ -30,6 +29,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { IconType } from "react-icons";
 import { CiBookmark } from "react-icons/ci";
 import { IoMdCodeWorking } from "react-icons/io";
 import { IoBookmarksOutline, IoClose } from "react-icons/io5";
@@ -324,50 +324,58 @@ export function CheckDetail({
     ? formatDistanceToNow(new Date(run.run_at), { addSuffix: true })
     : null;
 
+  // Get the icon for the check type
+  const checkTypeIcon: IconType | undefined = runTypeEntry?.icon;
+
   return (
     <VSplit
       minSize={100}
-      sizes={[30, 70]}
+      sizes={[40, 60]}
       style={{ height: "100%", width: "100%", maxHeight: "100%" }}
     >
-      <Grid
-        container
-        sx={{ height: "100%", contain: "strict" }}
-        columns={cloudMode ? 3 : 1}
+      <Box
+        sx={{
+          height: "100%",
+          contain: "strict",
+          display: "flex",
+          flexDirection: "row",
+        }}
       >
-        <Grid
-          size={cloudMode ? 2 : 1}
+        {/* Main content area - takes remaining space */}
+        <Box
           sx={{
+            flex: 1,
             height: "100%",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
+            minWidth: 0,
           }}
         >
+          {/* Title bar with icon, name, and actions */}
           <Box
             sx={{
               display: "flex",
               p: "0px 16px",
               alignItems: "center",
               height: 40,
+              borderBottom: "2px solid",
+              borderColor: "grey.300",
             }}
           >
+            {/* Check type icon */}
+            {checkTypeIcon && (
+              <Box
+                component={checkTypeIcon}
+                sx={{ fontSize: 20, mr: 1, flexShrink: 0 }}
+              />
+            )}
             <CheckBreadcrumb
               name={check.name}
               setName={(name) => {
                 mutate({ name });
               }}
             />
-            {isPresetCheck && (
-              <MuiTooltip title="Preset Check defined in recce config">
-                <Chip
-                  size="small"
-                  icon={<CiBookmark size="14px" />}
-                  label="Preset"
-                  sx={{ ml: 1, flex: "0 0 auto" }}
-                />
-              </MuiTooltip>
-            )}
             <Box sx={{ flexGrow: 1 }} />
             <Stack direction="row" spacing={1} sx={{ mr: "10px" }}>
               {relativeTime && (
@@ -383,6 +391,18 @@ export function CheckDetail({
                 >
                   {relativeTime}
                 </Box>
+              )}
+
+              {/* Preset label moved to the right */}
+              {isPresetCheck && (
+                <MuiTooltip title="This is a preset check">
+                  <Chip
+                    size="small"
+                    icon={<CiBookmark size="14px" />}
+                    label="Preset"
+                    sx={{ flex: "0 0 auto" }}
+                  />
+                </MuiTooltip>
               )}
 
               <IconButton size="small" onClick={handleMenuClick}>
@@ -449,9 +469,7 @@ export function CheckDetail({
                 title={
                   isDisabledByNoResult(check.type, run)
                     ? "Run the check first"
-                    : check.is_checked
-                      ? "Mark as Pending"
-                      : "Mark as Approved"
+                    : "Mark as Approved"
                 }
                 placement="bottom-end"
               >
@@ -475,12 +493,13 @@ export function CheckDetail({
                   }
                   sx={{ flex: "0 0 auto", textTransform: "none" }}
                 >
-                  {check.is_checked ? "Approved" : "Mark as Approved"}
+                  {check.is_checked ? "Approved" : "Pending"}
                 </Button>
               </MuiTooltip>
             </Stack>
           </Box>
 
+          {/* Description area */}
           <Box sx={{ flex: 1, p: "8px 16px", minHeight: 100 }}>
             <CheckDescription
               key={check.check_id}
@@ -488,14 +507,24 @@ export function CheckDetail({
               onChange={handleUpdateDescription}
             />
           </Box>
-        </Grid>
-        {/* Timeline panel - only shown when connected to cloud */}
+        </Box>
+        {/* Timeline/Activity panel - fixed 20% width, hidden on mobile */}
         {cloudMode && (
-          <Grid size={1} sx={{ height: "100%", overflow: "hidden" }}>
+          <Box
+            sx={{
+              width: "20%",
+              minWidth: 250,
+              maxWidth: 350,
+              height: "100%",
+              overflow: "hidden",
+              flexShrink: 0,
+              display: { xs: "none", md: "block" },
+            }}
+          >
             <CheckTimeline checkId={checkId} />
-          </Grid>
+          </Box>
         )}
-      </Grid>
+      </Box>
 
       <Box style={{ contain: "strict" }}>
         <Box
