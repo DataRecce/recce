@@ -18,7 +18,6 @@ import { TbCloudUpload } from "react-icons/tb";
 import YAML from "yaml";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { CodeEditor } from "@/components/editor";
-import { useDisclosure } from "@/components/ui/mui-utils";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { createCheckByRun } from "@/lib/api/checks";
 import { trackCopyToClipboard, trackShareState } from "@/lib/api/track";
@@ -77,15 +76,17 @@ const SingleEnvironmentSetupNotification = ({
 }: {
   runType?: string;
 }) => {
-  const { open, onClose } = useDisclosure({ defaultOpen: true });
+  const [open, setOpen] = useState(true);
 
   if (!open) {
     return <></>;
   }
+
+  const handleClose = () => setOpen(false);
   switch (runType) {
     case "row_count":
       return (
-        <RecceNotification onClose={onClose}>
+        <RecceNotification onClose={handleClose}>
           <Typography>
             Enable row count diffing, and other Recce features, by configuring a
             base dbt environment to compare against. <LearnHowLink />
@@ -94,7 +95,7 @@ const SingleEnvironmentSetupNotification = ({
       );
     case "profile":
       return (
-        <RecceNotification onClose={onClose}>
+        <RecceNotification onClose={handleClose}>
           <Typography>
             Enable data-profile diffing, and other Recce features, by
             configuring a base dbt environment to compare against.{" "}

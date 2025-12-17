@@ -9,5 +9,5 @@
  * ```
  */
 
-// Re-export hooks from mui-utils
-export { type UseDisclosureReturn, useDisclosure } from "../mui-utils";
+// Import for side effects - enables custom color type augmentations on MUI components
+import "../mui-utils";

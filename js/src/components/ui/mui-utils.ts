@@ -1,57 +1,3 @@
-"use client";
-
-import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useState } from "react";
-
-/**
- * Migration Utilities for Chakra UI to MUI
- *
- * This file contains utility functions and hooks to assist with
- * the migration from Chakra UI to MUI.
- */
-
-/**
- * useDisclosure - Hook to manage boolean state for disclosure components
- *
- * Replaces Chakra's useDisclosure hook with identical API.
- *
- * @example
- * ```tsx
- * // Chakra
- * const { open, onOpen, onClose, onToggle } = useDisclosure();
- *
- * // MUI (using this hook)
- * const { open, onOpen, onClose, onToggle } = useDisclosure();
- * ```
- */
-export interface UseDisclosureReturn {
-  open: boolean;
-  onOpen: () => void;
-  onClose: () => void;
-  onToggle: () => void;
-  setOpen: Dispatch<SetStateAction<boolean>>;
-}
-
-export function useDisclosure(
-  options: boolean | { defaultOpen?: boolean } = false,
-): UseDisclosureReturn {
-  const defaultOpen =
-    typeof options === "boolean" ? options : (options.defaultOpen ?? false);
-  const [open, setOpen] = useState(defaultOpen);
-
-  const onOpen = useCallback(() => setOpen(true), []);
-  const onClose = useCallback(() => setOpen(false), []);
-  const onToggle = useCallback(() => setOpen((prev) => !prev), []);
-
-  return {
-    open,
-    onOpen,
-    onClose,
-    onToggle,
-    setOpen,
-  };
-}
-
 /**
  * Type augmentations for MUI components to support custom color palettes
  *
@@ -162,3 +108,6 @@ declare module "@mui/material/Fab" {
     xsmall: true;
   }
 }
+
+// Empty export to make this file an ES module (required for module augmentations)
+export {};
