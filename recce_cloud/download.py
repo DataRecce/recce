@@ -193,8 +193,9 @@ def download_with_platform_apis(console, token: str, ci_info, target_path: str, 
         )
 
         session_id = download_response.get("session_id")
-        manifest_download_url = download_response.get("manifest_url")
-        catalog_download_url = download_response.get("catalog_url")
+        presigned_urls = download_response.get("presigned_urls", {})
+        manifest_download_url = presigned_urls.get("manifest_url")
+        catalog_download_url = presigned_urls.get("catalog_url")
 
         if not session_id or not manifest_download_url or not catalog_download_url:
             console.print("[red]Error:[/red] Incomplete response from session-download-url API")
