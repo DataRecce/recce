@@ -491,7 +491,7 @@ export function CheckDetail({
         </Grid>
         {/* Timeline panel - only shown when connected to cloud */}
         {cloudMode && (
-          <Grid size={1} sx={{ overflow: "hidden" }}>
+          <Grid size={1} sx={{ height: "100%", overflow: "hidden" }}>
             <CheckTimeline checkId={checkId} />
           </Grid>
         )}
