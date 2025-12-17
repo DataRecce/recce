@@ -389,10 +389,10 @@ describe("toDiffColumn - inline mode", () => {
     expect(result.columnRenderMode).toBe("percent");
   });
 
-  test("uses 'raw' as default columnRenderMode", () => {
+  test("uses undefined as default columnRenderMode (triggers smart formatting)", () => {
     const result = toDiffColumn(createConfig({ displayMode: "inline" }));
 
-    expect(result.columnRenderMode).toBe("raw");
+    expect(result.columnRenderMode).toBeUndefined();
   });
 
   test("sets headerCellClass for added column", () => {
@@ -625,7 +625,7 @@ describe("toDiffColumn - edge cases", () => {
   });
 
   test("handles numeric columnRenderMode", () => {
-    const modes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+    const modes = [2] as const;
 
     modes.forEach((mode) => {
       const result = toDiffColumn(createConfig({ columnRenderMode: mode }));

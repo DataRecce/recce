@@ -18,21 +18,15 @@ export function columnPrecisionSelectOptions(
       },
     },
     {
-      value: "Show 4 decimal points",
-      onClick: () => {
-        onColumnsRenderModeChanged({ [colName]: 4 });
-      },
-    },
-    {
-      value: "Show 6 decimal points",
-      onClick: () => {
-        onColumnsRenderModeChanged({ [colName]: 6 });
-      },
-    },
-    {
       value: "Show as percentage",
       onClick: () => {
         onColumnsRenderModeChanged({ [colName]: "percent" });
+      },
+    },
+    {
+      value: "Show with net change",
+      onClick: () => {
+        onColumnsRenderModeChanged({ [colName]: "delta" });
       },
     },
   ];

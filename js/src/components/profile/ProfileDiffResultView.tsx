@@ -31,8 +31,13 @@ const PrivateProfileDiffResultView = (
     () => viewOptions?.display_mode ?? "inline",
     [viewOptions],
   );
+  // Default proportion columns to percentage display
   const columnsRenderMode = useMemo(
-    () => viewOptions?.columnsRenderMode ?? {},
+    () => ({
+      distinct_proportion: "percent" as ColumnRenderMode,
+      not_null_proportion: "percent" as ColumnRenderMode,
+      ...viewOptions?.columnsRenderMode,
+    }),
     [viewOptions],
   );
 
@@ -126,8 +131,13 @@ const PrivateProfileResultView = (
     () => viewOptions?.pinned_columns ?? [],
     [viewOptions],
   );
+  // Default proportion columns to percentage display
   const columnsRenderMode = useMemo(
-    () => viewOptions?.columnsRenderMode ?? {},
+    () => ({
+      distinct_proportion: "percent" as ColumnRenderMode,
+      not_null_proportion: "percent" as ColumnRenderMode,
+      ...viewOptions?.columnsRenderMode,
+    }),
     [viewOptions],
   );
 

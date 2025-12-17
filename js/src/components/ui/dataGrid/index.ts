@@ -17,4 +17,4 @@ export {
   type DataFrameColumnHeaderProps,
 } from "./DataFrameColumnHeader";
 export { defaultRenderCell } from "./defaultRenderCell";
-export { inlineRenderCell } from "./inlineRenderCell";
+export { asNumber, inlineRenderCell } from "./inlineRenderCell";

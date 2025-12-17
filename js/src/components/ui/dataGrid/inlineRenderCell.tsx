@@ -12,9 +12,18 @@
 import { Flex, Text } from "@chakra-ui/react";
 import { CalculatedColumn, RenderCellProps } from "react-data-grid";
 import { DiffText } from "@/components/query/DiffText";
-import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
+import { Tooltip } from "@/components/ui/tooltip";
+import {
+  ColumnRenderMode,
+  ColumnType,
+  RowDataTypes,
+  RowObjectType,
+} from "@/lib/api/types";
 // Import directly from gridUtils to avoid circular dependency
-import { toRenderedValue } from "@/lib/dataGrid/shared/gridUtils";
+import {
+  formatSmartDecimal,
+  toRenderedValue,
+} from "@/lib/dataGrid/shared/gridUtils";
 
 /**
  * Extended column type with optional type metadata
@@ -78,6 +87,62 @@ export const inlineRenderCell = ({
     );
   }
 
+  // Check if we're using delta display mode
+  const isDeltaMode = columnRenderMode === "delta";
+
+  // For delta modes, calculate the change for numeric columns
+  if (
+    isDeltaMode &&
+    (columnType === "number" || columnType === "integer") &&
+    hasBase &&
+    hasCurrent
+  ) {
+    // Parse values to numbers (they may be strings from the API)
+    const baseNum = asNumber(row[baseKey]);
+    const currentNum = asNumber(row[currentKey]);
+
+    // Only show delta if both values are valid numbers
+    if (Number.isFinite(baseNum) && Number.isFinite(currentNum)) {
+      const netChange = currentNum - baseNum;
+      const changePercent = baseNum !== 0 ? (netChange / baseNum) * 100 : 0;
+
+      // Format current value and delta with smart decimals (up to 2, no trailing zeros)
+      const formattedCurrent = formatSmartDecimal(currentNum);
+      const formattedDelta = formatSmartDecimal(netChange);
+      const deltaText = `(${netChange >= 0 ? "+" : ""}${formattedDelta})`;
+
+      // Build tooltip text showing full precision
+      const tooltipText = `Base: ${baseNum}\nCurrent: ${currentNum}\nChange: ${
+        netChange >= 0 ? "+" : ""
+      }${netChange} (${changePercent >= 0 ? "+" : ""}${changePercent.toFixed(
+        2,
+      )}%)`;
+
+      return (
+        <Tooltip
+          content={tooltipText}
+          contentProps={{ css: { whiteSpace: "pre-line" } }}
+          openDelay={300}
+          positioning={{ placement: "top" }}
+        >
+          <Flex gap="5px" alignItems="center" lineHeight="normal" height="100%">
+            <DiffText
+              value={formattedCurrent}
+              colorPalette="green"
+              grayOut={currentGrayOut}
+            />
+            <Text
+              fontSize="sm"
+              color={netChange >= 0 ? "green.600" : "red.600"}
+            >
+              {deltaText}
+            </Text>
+          </Flex>
+        </Tooltip>
+      );
+    }
+  }
+
   // Values differ - render inline diff with base (red) and current (green)
   return (
     <Flex gap="5px" alignItems="center" lineHeight="normal" height="100%">
@@ -94,3 +159,18 @@ export const inlineRenderCell = ({
     </Flex>
   );
 };
+
+/*
+ * Converts row data values to a number
+ *
+ * @param data - The row data value (number, string, or other type)
+ * @returns The numeric value, or 0 if conversion fails or value is not numeric
+ */
+export function asNumber(data: RowDataTypes): number {
+  if (typeof data === "number") return data;
+  if (typeof data === "string") {
+    const n = parseFloat(data);
+    return Number.isNaN(n) ? 0 : n;
+  }
+  return 0;
+}
