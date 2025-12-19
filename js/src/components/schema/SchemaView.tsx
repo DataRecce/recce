@@ -93,7 +93,7 @@ function PrivateSingleEnvSchemaView(
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column" }}>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {catalogMissingMessage ? (
         <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
           {catalogMissingMessage}
@@ -233,7 +233,7 @@ export function PrivateSchemaView(
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column" }}>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {catalogMissingMessage ? (
         <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
           {catalogMissingMessage}
