@@ -86,6 +86,9 @@ export default function TopBar() {
             fontSize: "0.875rem",
             color: "rgba(255,255,255,0.8)",
             textTransform: "uppercase",
+            borderWidth: 1,
+            px: 1,
+            borderRadius: 0.75,
             borderColor: "rgba(255,255,255,0.8)",
           }}
         >
@@ -98,6 +101,9 @@ export default function TopBar() {
             fontSize: "0.875rem",
             color: "rgba(255,255,255,0.8)",
             textTransform: "uppercase",
+            borderWidth: 1,
+            px: 1,
+            borderRadius: 0.75,
             borderColor: "rgba(255,255,255,0.8)",
           }}
         >
@@ -139,6 +145,9 @@ export default function TopBar() {
             fontSize: "0.875rem",
             color: "rgba(255,255,255,0.8)",
             textTransform: "uppercase",
+            borderWidth: 1,
+            px: 1,
+            borderRadius: 0.75,
             borderColor: "rgba(255,255,255,0.8)",
           }}
         >

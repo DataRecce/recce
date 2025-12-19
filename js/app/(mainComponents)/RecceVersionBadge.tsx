@@ -76,6 +76,9 @@ export default function RecceVersionBadge() {
           fontSize: "sm",
           color: "rgba(255,255,255,0.8)",
           textTransform: "uppercase",
+          borderWidth: 1,
+          px: 1,
+          borderRadius: 0.75,
         }}
       >
         {version}
@@ -92,6 +95,9 @@ export default function RecceVersionBadge() {
         fontSize: "sm",
         color: "rgba(255,255,255,0.8)",
         textTransform: "uppercase",
+        borderWidth: 1,
+        px: 1,
+        borderRadius: 0.75,
       }}
       target="_blank"
     >
