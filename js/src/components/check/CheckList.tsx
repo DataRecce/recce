@@ -39,7 +39,7 @@ const ChecklistItem = ({
   check: Check;
   selected: boolean;
   onSelect: (checkId: string) => void;
-  onMarkAsApproved: () => void;
+  onMarkAsApproved: (checkId: string) => void;
 }) => {
   const { featureToggles } = useRecceInstanceContext();
   const queryClient = useQueryClient();
@@ -114,7 +114,7 @@ const ChecklistItem = ({
                   mutate({ is_checked: e.target.checked });
                 } else {
                   // Show Mark as Approved warning modal
-                  onMarkAsApproved();
+                  onMarkAsApproved(checkId);
                 }
               }}
               disabled={isMarkAsApprovedDisabled}
@@ -144,6 +144,9 @@ export const CheckList = ({
 }) => {
   const [bypassModal, setBypassModal] = useState(false);
   const [open, setOpen] = useState(false);
+  const [pendingApprovalCheckId, setPendingApprovalCheckId] = useState<
+    string | null
+  >(null);
   const queryClient = useQueryClient();
   const { mutate: markCheckedByID } = useMutation({
     mutationFn: (checkId: string) => updateCheck(checkId, { is_checked: true }),
@@ -164,31 +167,34 @@ export const CheckList = ({
   };
 
   const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  const handleClose = () => {
+    setOpen(false);
+    setPendingApprovalCheckId(null);
+  };
 
   const { markedAsApprovedToast } = useCheckToast();
-  const handleOnMarkAsApproved = () => {
-    if (selectedItem) {
-      const bypassMarkAsApprovedWarning = localStorage.getItem(
-        "bypassMarkAsApprovedWarning",
-      );
-      if (bypassMarkAsApprovedWarning === "true") {
-        markCheckedByID(selectedItem);
-        markedAsApprovedToast();
-      } else {
-        handleOpen();
-      }
+  const handleOnMarkAsApproved = (checkId: string) => {
+    const bypassMarkAsApprovedWarning = localStorage.getItem(
+      "bypassMarkAsApprovedWarning",
+    );
+    if (bypassMarkAsApprovedWarning === "true") {
+      markCheckedByID(checkId);
+      markedAsApprovedToast();
+    } else {
+      setPendingApprovalCheckId(checkId);
+      handleOpen();
     }
   };
 
   const handleMarkAsApprovedConfirmed = () => {
-    if (selectedItem) {
-      markCheckedByID(selectedItem);
+    if (pendingApprovalCheckId) {
+      markCheckedByID(pendingApprovalCheckId);
       if (bypassModal) {
         localStorage.setItem("bypassMarkAsApprovedWarning", "true");
       }
       markedAsApprovedToast();
       handleClose();
+      setPendingApprovalCheckId(null);
     }
   };
 
