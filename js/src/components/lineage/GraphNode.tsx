@@ -17,6 +17,7 @@ import { COLUMN_HEIGHT, LineageGraphNode } from "./lineage";
 import { getIconForChangeStatus, getIconForResourceType } from "./styles";
 
 import "./styles.css";
+import { token } from "@/components/ui/mui-theme";
 
 export type GraphNodeProps = NodeProps<LineageGraphNode>;
 
@@ -230,8 +231,8 @@ export function GraphNode(nodeProps: GraphNodeProps) {
     ? getIconForChangeStatus(changeStatus)
     : {
         icon: undefined,
-        color: "gray.400",
-        backgroundColor: "gray.100",
+        color: String(token("colors.gray.400")),
+        backgroundColor: String(token("colors.gray.100")),
       };
 
   // border width and color
