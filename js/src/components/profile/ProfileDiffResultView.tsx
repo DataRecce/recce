@@ -1,6 +1,5 @@
 import Box from "@mui/material/Box";
 import { forwardRef, Ref, useMemo } from "react";
-import { DataGridHandle } from "react-data-grid";
 import { ProfileDiffViewOptions } from "@/lib/api/profile";
 import {
   ColumnRenderMode,
@@ -8,7 +7,10 @@ import {
   isProfileRun,
 } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
-import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
+import {
+  type DataGridHandle,
+  ScreenshotDataGrid,
+} from "../data-grid/ScreenshotDataGrid";
 import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
 import { RunToolbar } from "../run/RunToolbar";
 import { RunResultViewProps } from "../run/types";

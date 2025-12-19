@@ -1,58 +1,6 @@
-.index-column {
-  color: rgb(128, 128, 128);
-  text-align: right;
-}
+/* AG Grid custom styles for query views */
 
-.rdg-cell {
-  border-width: 0 1px 1px 0;
-  border-style: solid;
-  border-color: var(--rdg-border-color);
-  background-color: var(--rdg-background-color);
-}
-
-.rdg-cell[role="columnheader"] {
-  /* neutral-100 themes.ts */
-  background-color: #f5f5f5;
-}
-
-.rdg-cell.rdg-cell-frozen[role="gridcell"] {
-  /* neutral-100 themes.ts */
-  background-color: #f5f5f5;
-}
-
-.diff-header-added,
-.diff-header-added.rdg-cell.rdg-cell-frozen[role="gridcell"] {
-  /* green-700 theme.ts */
-  background-color: #15803d;
-  color: white;
-}
-
-.diff-header-removed,
-.diff-header-removed.rdg-cell.rdg-cell-frozen[role="gridcell"] {
-  /* rose-500 theme.ts */
-  background-color: #f43f5e;
-  color: white;
-}
-
-.diff-cell-added.rdg-cell {
-  background-color: #cefece;
-  color: black;
-}
-
-.diff-cell-removed.rdg-cell {
-  background-color: #ffc5c5;
-  color: black;
-}
-
-.diff-cell-modified.rdg-cell {
-  background-color: #ffc5c5;
-  color: black;
-}
-
-.cell-show-context-menu {
-  overflow: visible;
-}
-
+/* Header hover behavior for pin/key icons */
 .grid-header:hover .pin-icon {
   display: block;
 }
@@ -61,7 +9,13 @@
   display: block;
 }
 
-.rdg-row:hover .row-context-menu {
+/* Context menu visibility on row hover */
+.ag-row:hover .row-context-menu {
   visibility: visible;
   width: auto;
+}
+
+/* Cell overflow for context menu */
+.cell-show-context-menu {
+  overflow: visible;
 }

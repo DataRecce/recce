@@ -18,16 +18,18 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { DataGridHandle } from "react-data-grid";
 import { IoClose } from "react-icons/io5";
 import { PiCopy, PiInfo } from "react-icons/pi";
+import { type DataGridHandle } from "@/components/data-grid/ScreenshotDataGrid";
 import { useClipBoardToast } from "./useClipBoardToast";
 
 // Type to represent DataGridHandle which may have an element property
 type DataGridRefType = DataGridHandle & { element?: HTMLElement };
 
 // Helper function to safely extract HTMLElement from DataGridHandle
-const getHTMLElementFromRef = (refCurrent: DataGridRefType): HTMLElement => {
+const getHTMLElementFromRef = (
+  refCurrent: DataGridRefType,
+): HTMLElement | undefined => {
   // DataGridHandle might have an 'element' property containing the actual HTMLElement
   if ("element" in refCurrent) {
     return refCurrent.element;
@@ -91,6 +93,10 @@ export function useCopyToClipboard({
     }
 
     const nodeToUse = getHTMLElementFromRef(ref.current);
+    if (!nodeToUse) {
+      console.error("Could not get HTMLElement from ref");
+      throw new Error("Could not get HTMLElement from ref");
+    }
     const overflow = nodeToUse.style.overflow;
     const border = nodeToUse.style.border;
     const radius = nodeToUse.style.borderRadius;
@@ -98,11 +104,16 @@ export function useCopyToClipboard({
     const heigh = nodeToUse.style.height;
 
     function resetStyles() {
-      nodeToUse.style.overflow = overflow;
-      nodeToUse.style.border = border;
-      nodeToUse.style.borderRadius = radius;
-      nodeToUse.style.backgroundColor = background;
-      nodeToUse.style.height = heigh;
+      // nodeToUse is verified non-null before resetStyles is defined
+      // Capture in local const to satisfy linter
+      const node = nodeToUse;
+      if (node) {
+        node.style.overflow = overflow;
+        node.style.border = border;
+        node.style.borderRadius = radius;
+        node.style.backgroundColor = background;
+        node.style.height = heigh;
+      }
     }
 
     try {
@@ -224,15 +235,19 @@ export function useCopyToClipboardButton(options?: HookOptions) {
   const onMouseEnter = useCallback(() => {
     if (ref.current) {
       const nodeToUse = getHTMLElementFromRef(ref.current);
-      nodeToUse.style.boxShadow = highlightBoxShadow;
-      nodeToUse.style.transition = "box-shadow 0.5s ease-in-out";
+      if (nodeToUse) {
+        nodeToUse.style.boxShadow = highlightBoxShadow;
+        nodeToUse.style.transition = "box-shadow 0.5s ease-in-out";
+      }
     }
   }, [ref]);
 
   const onMouseLeave = useCallback(() => {
     if (ref.current) {
       const nodeToUse = getHTMLElementFromRef(ref.current);
-      nodeToUse.style.boxShadow = "";
+      if (nodeToUse) {
+        nodeToUse.style.boxShadow = "";
+      }
     }
   }, [ref]);
 
@@ -240,7 +255,9 @@ export function useCopyToClipboardButton(options?: HookOptions) {
     if (ref.current) {
       await copyToClipboard();
       const nodeToUse = getHTMLElementFromRef(ref.current);
-      nodeToUse.style.boxShadow = "";
+      if (nodeToUse) {
+        nodeToUse.style.boxShadow = "";
+      }
     } else {
       failToast("Failed to copy image to clipboard", "No content to copy");
     }

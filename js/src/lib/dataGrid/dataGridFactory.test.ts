@@ -18,9 +18,11 @@
 // Mocks
 // ============================================================================
 
-// Mock react-data-grid to avoid ES module parsing issues
-jest.mock("react-data-grid", () => ({
-  textEditor: jest.fn(),
+// Mock ag-grid-community to avoid ES module parsing issues
+jest.mock("ag-grid-community", () => ({
+  ModuleRegistry: {
+    registerModules: jest.fn(),
+  },
 }));
 
 // Mock MUI wrapper components
@@ -126,9 +128,9 @@ import { createDataGrid, createDataGridFromData } from "./dataGridFactory";
 // ============================================================================
 
 interface TestColumn {
-  key: string;
-  name?: React.ReactNode;
-  frozen?: boolean;
+  field: string;
+  headerName?: React.ReactNode;
+  pinned?: "left" | "right";
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
 }
@@ -138,11 +140,11 @@ interface TestColumn {
 // ============================================================================
 
 function isColumn(col: unknown): col is TestColumn {
-  return typeof col === "object" && col !== null && "key" in col;
+  return typeof col === "object" && col !== null && "field" in col;
 }
 
 function getColumnKey(col: unknown): string | undefined {
-  if (isColumn(col)) return col.key;
+  if (isColumn(col)) return col.field;
   return undefined;
 }
 

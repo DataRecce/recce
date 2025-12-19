@@ -12,7 +12,7 @@
 import Box from "@mui/material/Box";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { CalculatedColumn, RenderCellProps } from "react-data-grid";
+import type { ColDef, ICellRendererParams } from "ag-grid-community";
 import { DiffText } from "@/components/query/DiffText";
 import {
   ColumnRenderMode,
@@ -27,9 +27,9 @@ import {
 } from "@/lib/dataGrid/shared/gridUtils";
 
 /**
- * Extended column type with optional type metadata
+ * Extended column definition with optional type metadata
  */
-type ColumnWithMetadata = CalculatedColumn<RowObjectType> & {
+type ColDefWithMetadata = ColDef<RowObjectType> & {
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
 };
@@ -44,18 +44,24 @@ type ColumnWithMetadata = CalculatedColumn<RowObjectType> & {
  *
  * The component uses DiffText for styled diff display with copy functionality.
  *
- * @param props - React Data Grid render cell props containing row and column data
+ * @param params - AG Grid cell renderer params containing row data and column definition
  * @returns Rendered cell content showing diff or single value
  */
-export const inlineRenderCell = ({
-  row,
-  column,
-}: RenderCellProps<RowObjectType>) => {
-  const { columnType, columnRenderMode } =
-    column as unknown as ColumnWithMetadata;
+export const inlineRenderCell = (
+  params: ICellRendererParams<RowObjectType>,
+) => {
+  const colDef = params.colDef as ColDefWithMetadata;
+  const columnType = colDef?.columnType;
+  const columnRenderMode = colDef?.columnRenderMode;
+  const columnKey = colDef?.field ?? "";
 
-  const baseKey = `base__${column.key}`.toLowerCase();
-  const currentKey = `current__${column.key}`.toLowerCase();
+  if (!params.data) {
+    return null;
+  }
+
+  const row = params.data;
+  const baseKey = `base__${columnKey}`.toLowerCase();
+  const currentKey = `current__${columnKey}`.toLowerCase();
 
   // Handle case where neither base nor current values exist
   if (!Object.hasOwn(row, baseKey) && !Object.hasOwn(row, currentKey)) {
@@ -67,14 +73,14 @@ export const inlineRenderCell = ({
 
   const [baseValue, baseGrayOut] = toRenderedValue(
     row,
-    `base__${column.key}`.toLowerCase(),
+    `base__${columnKey}`.toLowerCase(),
     columnType,
     columnRenderMode,
   );
 
   const [currentValue, currentGrayOut] = toRenderedValue(
     row,
-    `current__${column.key}`.toLowerCase(),
+    `current__${columnKey}`.toLowerCase(),
     columnType,
     columnRenderMode,
   );
@@ -183,7 +189,7 @@ export const inlineRenderCell = ({
 export function asNumber(data: RowDataTypes): number {
   if (typeof data === "number") return data;
   if (typeof data === "string") {
-    const n = parseFloat(data);
+    const n = Number.parseFloat(data);
     return Number.isNaN(n) ? 0 : n;
   }
   return 0;

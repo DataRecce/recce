@@ -6,12 +6,11 @@
  * supporting both inline and side-by-side display modes.
  */
 
+import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import _ from "lodash";
-import React from "react";
-import { ColumnOrColumnGroup, textEditor } from "react-data-grid";
 import {
   DataFrameColumnGroupHeader,
-  DataFrameColumnGroupHeaderProps,
+  type DataFrameColumnGroupHeaderProps,
   defaultRenderCell,
   inlineRenderCell,
 } from "@/components/ui/dataGrid";
@@ -47,7 +46,10 @@ export interface DiffColumnConfig {
 /**
  * Extended column type with metadata
  */
-export type DiffColumnResult = ColumnOrColumnGroup<RowObjectType> & {
+export type DiffColumnResult = (
+  | ColDef<RowObjectType>
+  | ColGroupDef<RowObjectType>
+) & {
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
 };
@@ -66,8 +68,11 @@ export type DiffColumnResult = ColumnOrColumnGroup<RowObjectType> & {
 export function createCellClassBase(
   columnName: string,
   columnStatus: string,
-): (row: RowObjectType) => string | undefined {
-  return (row: RowObjectType) => {
+): (params: CellClassParams<RowObjectType>) => string | undefined {
+  return (params: CellClassParams<RowObjectType>) => {
+    const row = params.data;
+    if (!row) return undefined;
+
     const rowStatus = row.__status;
 
     if (rowStatus === "removed") return "diff-cell-removed";
@@ -96,8 +101,11 @@ export function createCellClassBase(
 export function createCellClassCurrent(
   columnName: string,
   columnStatus: string,
-): (row: RowObjectType) => string | undefined {
-  return (row: RowObjectType) => {
+): (params: CellClassParams<RowObjectType>) => string | undefined {
+  return (params: CellClassParams<RowObjectType>) => {
+    const row = params.data;
+    if (!row) return undefined;
+
     const rowStatus = row.__status;
 
     if (rowStatus === "removed") return "diff-cell-removed";
@@ -129,7 +137,7 @@ export function createCellClassCurrent(
  * appear in separate child columns.
  *
  * @param config - Column configuration options
- * @returns Column definition compatible with react-data-grid
+ * @returns Column definition compatible with AG Grid
  *
  * @example
  * // Inline mode for querydiff
@@ -173,7 +181,7 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
   const headerCellClass = getHeaderCellClass(columnStatus);
 
   // Build the header component
-  const headerElement = (
+  const headerComponent = () => (
     <DataFrameColumnGroupHeader
       name={name}
       columnStatus={columnStatus}
@@ -184,10 +192,11 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
 
   if (displayMode === "inline") {
     return {
-      headerCellClass,
-      name: headerElement,
-      key: name,
-      renderCell: inlineRenderCell,
+      field: name,
+      headerName: name,
+      headerClass: headerCellClass,
+      headerComponent,
+      cellRenderer: inlineRenderCell,
       columnType,
       columnRenderMode,
     };
@@ -198,31 +207,30 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
   const cellClassCurrent = createCellClassCurrent(name, columnStatus);
 
   return {
-    headerCellClass,
-    name: headerElement,
+    headerName: name,
+    headerClass: headerCellClass,
+    headerGroupComponent: headerComponent,
+    columnType,
+    columnRenderMode,
     children: [
       {
-        key: `base__${name}`,
-        name: baseTitle,
-        renderEditCell: textEditor,
-        headerCellClass,
+        field: `base__${name}`,
+        headerName: baseTitle,
+        headerClass: headerCellClass,
         cellClass: cellClassBase,
-        renderCell: defaultRenderCell,
-        // @ts-expect-error Unable to patch children type in react-data-grid
+        cellRenderer: defaultRenderCell,
         columnType,
         columnRenderMode,
-      },
+      } as ColDef<RowObjectType>,
       {
-        key: `current__${name}`,
-        name: currentTitle,
-        renderEditCell: textEditor,
-        headerCellClass,
+        field: `current__${name}`,
+        headerName: currentTitle,
+        headerClass: headerCellClass,
         cellClass: cellClassCurrent,
-        renderCell: defaultRenderCell,
-        // @ts-expect-error Unable to patch children type in react-data-grid
+        cellRenderer: defaultRenderCell,
         columnType,
         columnRenderMode,
-      },
+      } as ColDef<RowObjectType>,
     ],
   };
 }

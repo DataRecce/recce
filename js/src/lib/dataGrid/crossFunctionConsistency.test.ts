@@ -14,15 +14,16 @@
  * - Value preservation consistency
  */
 
-import { ColumnOrColumnGroup } from "react-data-grid";
+import type { ColDef, ColGroupDef } from "ag-grid-community";
 import { ColumnType, DataFrame, RowObjectType } from "@/lib/api/types";
 import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
 import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
 import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 
-// Mock react-data-grid
-jest.mock("react-data-grid", () => ({
-  textEditor: jest.fn(),
+// Mock AG Grid modules
+jest.mock("ag-grid-community", () => ({
+  ModuleRegistry: { registerModules: jest.fn() },
+  AllCommunityModule: {},
 }));
 
 // Mock MUI wrapper components
@@ -75,21 +76,26 @@ const createJoinedDataFrame = (
 });
 
 /**
- * Extracts column key from a column or column group
+ * Column type for grid functions (AG Grid ColDef or ColGroupDef with metadata)
  */
-const getColumnKey = (
-  col: ColumnOrColumnGroup<RowObjectType>,
-): string | undefined => {
-  if ("key" in col) return col.key;
+type GridColumn = (ColDef<RowObjectType> | ColGroupDef<RowObjectType>) & {
+  columnType?: ColumnType;
+};
+
+/**
+ * Extracts column field from a column or column group
+ */
+const getColumnKey = (col: GridColumn): string | undefined => {
+  if ("field" in col && col.field) return col.field;
   if ("children" in col && Array.isArray(col.children) && col.children[0]) {
-    const firstChild = col.children[0];
-    if ("key" in firstChild) {
+    const firstChild = col.children[0] as ColDef<RowObjectType>;
+    if ("field" in firstChild && firstChild.field) {
       // Extract base column name from "base__colname"
-      const key = firstChild.key;
-      if (key.startsWith("base__")) {
-        return key.replace("base__", "");
+      const field = firstChild.field;
+      if (field.startsWith("base__")) {
+        return field.replace("base__", "");
       }
-      return key;
+      return field;
     }
   }
   return undefined;
@@ -98,9 +104,7 @@ const getColumnKey = (
 /**
  * Gets all non-internal column keys from a result
  */
-const getNonInternalColumnKeys = (
-  columns: ColumnOrColumnGroup<RowObjectType>[],
-): string[] => {
+const getNonInternalColumnKeys = (columns: GridColumn[]): string[] => {
   return columns
     .map(getColumnKey)
     .filter((k): k is string => k !== undefined)
@@ -375,7 +379,7 @@ describe("Pinned column handling consistency", () => {
       pinnedColumns: ["id"],
     });
 
-    const countId = (cols: ColumnOrColumnGroup<RowObjectType>[]) =>
+    const countId = (cols: GridColumn[]) =>
       cols.filter((c) => getColumnKey(c) === "id").length;
 
     // toDataDiffGrid and toValueDiffGrid correctly prevent duplication
@@ -388,7 +392,7 @@ describe("Pinned column handling consistency", () => {
     const options = { primaryKeys: ["id"], pinnedColumns: ["id"] };
     const singleResult = toDataGrid(df, options);
 
-    const countId = (cols: ColumnOrColumnGroup<RowObjectType>[]) =>
+    const countId = (cols: GridColumn[]) =>
       cols.filter((c) => getColumnKey(c) === "id").length;
 
     expect(countId(singleResult.columns)).toBe(1);
@@ -424,19 +428,19 @@ describe("Column type preservation consistency", () => {
 
     // Helper to find column type
     const findColumnType = (
-      columns: ColumnOrColumnGroup<RowObjectType>[],
+      columns: GridColumn[],
       key: string,
     ): ColumnType | undefined => {
       for (const col of columns) {
-        if ("key" in col && col.key === key && "columnType" in col) {
+        if ("field" in col && col.field === key && "columnType" in col) {
           return col.columnType as ColumnType;
         }
         if ("children" in col && Array.isArray(col.children)) {
           const child = col.children.find(
-            (c) => "key" in c && c.key === `base__${key}`,
+            (c) => "field" in c && c.field === `base__${key}`,
           );
           if (child && "columnType" in child) {
-            return child.columnType as ColumnType;
+            return (child as GridColumn).columnType as ColumnType;
           }
         }
       }

@@ -16,5 +16,8 @@ export {
   DataFrameColumnHeader,
   type DataFrameColumnHeaderProps,
 } from "./DataFrameColumnHeader";
-export { defaultRenderCell } from "./defaultRenderCell";
+export {
+  type ColDefWithMetadata,
+  defaultRenderCell,
+} from "./defaultRenderCell";
 export { asNumber, inlineRenderCell } from "./inlineRenderCell";

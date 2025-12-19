@@ -1,6 +1,6 @@
 /**
  * @file simpleColumnBuilder.tsx
- * @description Builds react-data-grid column definitions for simple (non-diff) grids
+ * @description Builds AG Grid column definitions for simple (non-diff) grids
  *
  * This module transforms the pure data structures from columnBuilders.ts
  * into actual column definitions with React components for headers.
@@ -11,8 +11,7 @@
  * - Column status (added/removed/modified)
  */
 
-import React from "react";
-import { ColumnOrColumnGroup } from "react-data-grid";
+import type { ColDef, ColGroupDef } from "ag-grid-community";
 import {
   DataFrameColumnGroupHeader,
   DataFrameColumnHeader,
@@ -28,7 +27,10 @@ import { ColumnConfig } from "./columnBuilders";
 /**
  * Extended column type with metadata (matches existing pattern)
  */
-export type SimpleColumnDefinition = ColumnOrColumnGroup<RowObjectType> & {
+export type SimpleColumnDefinition = (
+  | ColDef<RowObjectType>
+  | ColGroupDef<RowObjectType>
+) & {
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
 };
@@ -66,7 +68,7 @@ export interface BuildSimpleColumnDefinitionsConfig {
  */
 export interface BuildSimpleColumnDefinitionsResult {
   /**
-   * The generated column definitions ready for react-data-grid
+   * The generated column definitions ready for AG Grid
    */
   columns: SimpleColumnDefinition[];
 
@@ -85,10 +87,12 @@ export interface BuildSimpleColumnDefinitionsResult {
  */
 function createIndexColumn(): SimpleColumnDefinition {
   return {
-    key: "_index",
-    name: "",
+    field: "_index",
+    headerName: "",
     width: 50,
     cellClass: "index-column",
+    resizable: false,
+    pinned: "left",
   };
 }
 
@@ -96,7 +100,7 @@ function createIndexColumn(): SimpleColumnDefinition {
  * Creates a primary key column definition
  *
  * Primary key columns are:
- * - Frozen (sticky left)
+ * - Pinned left (sticky left)
  * - Use DataFrameColumnGroupHeader (with columnStatus="")
  * - Use defaultRenderCell
  */
@@ -107,8 +111,9 @@ function createPrimaryKeyColumn(
   const { key, name, columnType, columnRenderMode } = config;
 
   return {
-    key,
-    name: (
+    field: key,
+    headerName: name,
+    headerComponent: () => (
       <DataFrameColumnGroupHeader
         name={name}
         columnStatus=""
@@ -118,9 +123,8 @@ function createPrimaryKeyColumn(
         onColumnsRenderModeChanged={headerProps.onColumnsRenderModeChanged}
       />
     ),
-    width: "auto",
-    frozen: true,
-    renderCell: defaultRenderCell,
+    pinned: "left",
+    cellRenderer: defaultRenderCell,
     columnType,
     columnRenderMode,
   };
@@ -138,8 +142,9 @@ function createRegularColumn(
   const { key, name, columnType, columnRenderMode } = config;
 
   return {
-    key,
-    name: (
+    field: key,
+    headerName: name,
+    headerComponent: () => (
       <DataFrameColumnHeader
         name={name}
         columnType={columnType}
@@ -148,8 +153,7 @@ function createRegularColumn(
         onColumnsRenderModeChanged={headerProps.onColumnsRenderModeChanged}
       />
     ),
-    width: "auto",
-    renderCell: defaultRenderCell,
+    cellRenderer: defaultRenderCell,
     columnType,
     columnRenderMode,
   };
@@ -160,12 +164,12 @@ function createRegularColumn(
 // ============================================================================
 
 /**
- * Builds react-data-grid column definitions from ColumnConfig array
+ * Builds AG Grid column definitions from ColumnConfig array
  *
  * @description Transforms pure column configuration objects into actual
  * column definitions with React JSX headers. Handles:
  *
- * - Primary key columns (frozen, use DataFrameColumnGroupHeader)
+ * - Primary key columns (pinned, use DataFrameColumnGroupHeader)
  * - Regular columns (use DataFrameColumnHeader)
  * - Index fallback (when no PKs and allowIndexFallback is true)
  *
@@ -212,13 +216,20 @@ export function buildSimpleColumnDefinitions(
   }
 
   // Build column definitions
-  columnConfigs.forEach((colConfig) => {
+  for (const colConfig of columnConfigs) {
     if (colConfig.isPrimaryKey) {
       columns.push(createPrimaryKeyColumn(colConfig, headerProps));
     } else {
-      columns.push(createRegularColumn(colConfig, headerProps));
+      const regularColumn = createRegularColumn(colConfig, headerProps);
+
+      // Set pinned property - "left" for frozen columns, undefined to explicitly unpin
+      // Setting undefined is important to override AG Grid's internal pinned state
+      columns.push({
+        ...regularColumn,
+        pinned: colConfig.frozen ? "left" : undefined,
+      });
     }
-  });
+  }
 
   return { columns, usedIndexFallback };
 }

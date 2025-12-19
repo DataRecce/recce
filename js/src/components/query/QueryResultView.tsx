@@ -1,9 +1,7 @@
-import "react-data-grid/lib/styles.css";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import React, { forwardRef, Ref, useMemo } from "react";
-import { DataGridHandle } from "react-data-grid";
 import { PiWarning } from "react-icons/pi";
 import { QueryViewOptions } from "@/lib/api/adhocQuery";
 import {
@@ -14,6 +12,7 @@ import {
 } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
 import {
+  type DataGridHandle,
   EmptyRowsRenderer,
   ScreenshotDataGrid,
 } from "../data-grid/ScreenshotDataGrid";

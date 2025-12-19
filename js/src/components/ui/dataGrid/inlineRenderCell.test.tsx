@@ -12,14 +12,15 @@
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";
+import type { ICellRendererParams } from "ag-grid-community";
 import type { ReactNode } from "react";
-import type { CalculatedColumn } from "react-data-grid";
 import { lightTheme as theme } from "@/components/ui/mui-theme";
 import type {
   ColumnRenderMode,
   ColumnType,
   RowObjectType,
 } from "@/lib/api/types";
+import type { ColDefWithMetadata } from "./defaultRenderCell";
 import { asNumber, inlineRenderCell } from "./inlineRenderCell";
 
 // ============================================================================
@@ -60,36 +61,21 @@ function createRow(data: Record<string, unknown>): RowObjectType {
 }
 
 /**
- * Creates a mock column object for testing
- * Using partial mock since we only need key and metadata for inlineRenderCell
+ * Creates a mock column definition for testing
+ * Using ColDefWithMetadata which includes columnType and columnRenderMode
  */
-function createMockColumn(
-  key: string,
+function createMockColDef(
+  field: string,
   options: {
     columnType?: ColumnType;
     columnRenderMode?: ColumnRenderMode;
   } = {},
-) {
+): ColDefWithMetadata {
   return {
-    key,
-    name: key,
-    idx: 0,
-    width: 100,
-    minWidth: 50,
-    maxWidth: 200,
-    resizable: true,
-    sortable: false,
-    frozen: false,
-    draggable: false,
-    renderCell: () => null,
-    renderHeaderCell: () => null,
-    parent: undefined,
-    level: 0,
+    field,
+    headerName: field,
     columnType: options.columnType,
     columnRenderMode: options.columnRenderMode,
-  } as unknown as CalculatedColumn<RowObjectType> & {
-    columnType?: ColumnType;
-    columnRenderMode?: ColumnRenderMode;
   };
 }
 
@@ -98,24 +84,23 @@ function createMockColumn(
  */
 function renderInlineCell(
   rowData: Record<string, unknown>,
-  columnKey: string,
+  columnField: string,
   options: {
     columnType?: ColumnType;
     columnRenderMode?: ColumnRenderMode;
   } = {},
 ) {
   const row = createRow(rowData);
-  const column = createMockColumn(columnKey, options);
-  const element = inlineRenderCell({
-    row,
-    column,
-    rowIdx: 0,
-    isCellEditable: false,
-    tabIndex: 0,
-    onRowChange: () => {
-      // no-op for testing
-    },
-  });
+  const colDef = createMockColDef(columnField, options);
+
+  // Create mock ICellRendererParams
+  const params = {
+    data: row,
+    colDef,
+    value: row[columnField],
+  } as ICellRendererParams<RowObjectType>;
+
+  const element = inlineRenderCell(params);
 
   return renderWithProviders(<>{element}</>);
 }

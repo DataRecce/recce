@@ -1,4 +1,3 @@
-import "react-data-grid/lib/styles.css";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";

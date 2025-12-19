@@ -1,8 +1,7 @@
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import type { CellClickedEvent, RowClassParams } from "ag-grid-community";
 import { forwardRef, Key, Ref, useMemo, useState } from "react";
-import "react-data-grid/lib/styles.css";
-import { CellMouseArgs, DataGridHandle } from "react-data-grid";
 import { NodeData } from "@/lib/api/info";
 import { trackColumnLevelLineage } from "@/lib/api/track";
 import {
@@ -12,6 +11,7 @@ import {
 } from "@/lib/dataGrid";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import {
+  type DataGridHandle,
   EmptyRowsRenderer,
   ScreenshotDataGrid,
 } from "../data-grid/ScreenshotDataGrid";
@@ -67,14 +67,30 @@ function PrivateSingleEnvSchemaView(
     setCllRunningMap((prev) => new Map(prev).set(columnName, false));
   };
 
-  const rowKeyGetter = (row: SchemaDiffRow) => {
+  const getRowId = (params: { data: SchemaRow }) => {
     const modelId = current?.id;
-    return `${modelId}-${row.name}`;
+    return `${modelId}-${params.data.name}`;
   };
+
   const cll = lineageViewContext?.viewOptions.column_level_lineage;
-  const selectedRows: Set<Key> = cll
+  // TODO: Use selectedRows for row highlighting in AG Grid
+  const _selectedRows: Set<Key> = cll
     ? new Set([`${cll.node_id}-${cll.column}`])
     : new Set();
+
+  const getRowClass = (params: RowClassParams<SchemaRow>) => {
+    if (lineageViewContext !== undefined) {
+      return "row-normal row-selectable";
+    }
+    return "row-normal";
+  };
+
+  const handleCellClicked = async (event: CellClickedEvent<SchemaRow>) => {
+    const row = event.data;
+    if (row) {
+      await handleViewCll(row.name);
+    }
+  };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
@@ -104,20 +120,9 @@ function PrivateSingleEnvSchemaView(
           renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
           className="rdg-light"
           ref={ref}
-          rowKeyGetter={rowKeyGetter}
-          selectedRows={selectedRows}
-          onSelectedRowsChange={() => {
-            return void 0;
-          }}
-          onCellClick={async (args: CellMouseArgs<SchemaRow>) => {
-            await handleViewCll(args.row.name);
-          }}
-          rowClass={() => {
-            if (lineageViewContext !== undefined) {
-              return "row-normal row-selectable";
-            }
-            return "row-normal";
-          }}
+          getRowId={getRowId}
+          getRowClass={getRowClass}
+          onCellClicked={handleCellClicked}
         />
       )}
     </Box>
@@ -188,14 +193,44 @@ export function PrivateSchemaView(
     setCllRunningMap((prev) => new Map(prev).set(columnName, false));
   };
 
-  const rowKeyGetter = (row: SchemaDiffRow) => {
+  const getRowId = (params: { data: SchemaDiffRow }) => {
     const modelId = current?.id ?? base?.id;
-    return `${modelId}-${row.name}`;
+    return `${modelId}-${params.data.name}`;
   };
+
   const cll = lineageViewContext?.viewOptions.column_level_lineage;
-  const selectedRows: Set<Key> = cll
+  // TODO: Use selectedRows for row highlighting in AG Grid
+  const _selectedRows: Set<Key> = cll
     ? new Set([`${cll.node_id}-${cll.column}`])
     : new Set();
+
+  const getRowClass = (params: RowClassParams<SchemaDiffRow>) => {
+    const row = params.data;
+    if (!row) return "row-normal";
+
+    let className;
+    if (row.baseIndex === undefined) {
+      className = "row-added";
+    } else if (row.currentIndex === undefined) {
+      return "row-removed"; // removed column isn't selectable
+    } else {
+      className = "row-normal";
+    }
+    if (lineageViewContext !== undefined) {
+      className += " row-selectable";
+    }
+    return className;
+  };
+
+  const handleCellClicked = async (event: CellClickedEvent<SchemaDiffRow>) => {
+    const row = event.data;
+    if (!row) return;
+    // Removed columns aren't clickable
+    if (row.baseIndex !== undefined && row.currentIndex === undefined) {
+      return;
+    }
+    await handleViewCll(row.name);
+  };
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
@@ -226,34 +261,9 @@ export function PrivateSchemaView(
           renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
           className="rdg-light no-track-pii-safe"
           ref={ref}
-          rowKeyGetter={rowKeyGetter}
-          selectedRows={selectedRows}
-          onSelectedRowsChange={() => {
-            return void 0;
-          }}
-          onCellClick={async (args: CellMouseArgs<SchemaDiffRow>) => {
-            if (
-              args.row.baseIndex !== undefined &&
-              args.row.currentIndex === undefined
-            ) {
-              return;
-            }
-            await handleViewCll(args.row.name);
-          }}
-          rowClass={(row: SchemaDiffRow) => {
-            let className;
-            if (row.baseIndex === undefined) {
-              className = "row-added";
-            } else if (row.currentIndex === undefined) {
-              return "row-removed"; // removed column isn't selectable
-            } else {
-              className = "row-normal";
-            }
-            if (lineageViewContext !== undefined) {
-              className += " row-selectable";
-            }
-            return className;
-          }}
+          getRowId={getRowId}
+          getRowClass={getRowClass}
+          onCellClicked={handleCellClicked}
         />
       )}
     </Box>

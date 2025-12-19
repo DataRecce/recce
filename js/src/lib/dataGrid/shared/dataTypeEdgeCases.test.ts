@@ -26,9 +26,11 @@ import {
   toRenderedValue,
 } from "@/lib/dataGrid/shared/gridUtils";
 
-// Mock react-data-grid
-jest.mock("react-data-grid", () => ({
-  textEditor: jest.fn(),
+// Mock ag-grid-community
+jest.mock("ag-grid-community", () => ({
+  ModuleRegistry: {
+    registerModules: jest.fn(),
+  },
 }));
 
 // Mock MUI wrapper components
