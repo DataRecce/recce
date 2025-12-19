@@ -139,7 +139,7 @@ function SqlEditor({
           <Box sx={{ flexGrow: 1 }} />
           {(onRun ?? onRunBase) && (
             <Button
-              size="small"
+              size="xsmall"
               variant="outlined"
               onClick={onRun ?? onRunBase}
               sx={{ bgcolor: "white", p: "6px 12px" }}
