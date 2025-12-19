@@ -12,7 +12,7 @@
  * - toValueDataGrid for value_diff summary (column match statistics)
  */
 
-import { ColumnOrColumnGroup } from "react-data-grid";
+import type { ColDef, ColGroupDef } from "ag-grid-community";
 import { QueryDiffResult } from "@/lib/api/adhocQuery";
 import { NodeData } from "@/lib/api/info";
 import { ProfileDiffResult } from "@/lib/api/profile";
@@ -80,7 +80,7 @@ export interface DiffGridOptions extends BaseGridOptions {
  * Standard output structure for all grid generation functions
  */
 export interface DataGridResult {
-  columns: (ColumnOrColumnGroup<RowObjectType> & {
+  columns: ((ColDef<RowObjectType> | ColGroupDef<RowObjectType>) & {
     columnType?: ColumnType;
     columnRenderMode?: ColumnRenderMode;
   })[];

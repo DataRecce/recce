@@ -1,9 +1,9 @@
 import Box from "@mui/material/Box";
 import { forwardRef, Ref, useMemo } from "react";
-import { DataGridHandle } from "react-data-grid";
 import { isRowCountDiffRun, isRowCountRun, Run } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
 import {
+  type DataGridHandle,
   EmptyRowsRenderer,
   ScreenshotDataGrid,
 } from "../data-grid/ScreenshotDataGrid";

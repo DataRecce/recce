@@ -31,8 +31,10 @@ import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 // Mocks
 // ============================================================================
 
-jest.mock("react-data-grid", () => ({
-  textEditor: jest.fn(),
+jest.mock("ag-grid-community", () => ({
+  ModuleRegistry: {
+    registerModules: jest.fn(),
+  },
 }));
 
 jest.mock("@/components/ui/mui", () => ({

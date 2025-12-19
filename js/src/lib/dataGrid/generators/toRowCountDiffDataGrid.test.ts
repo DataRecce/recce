@@ -3,6 +3,7 @@
  * @description Tests for toRowCountDiffDataGrid generator
  */
 
+import type { CellClassParams } from "ag-grid-community";
 import { RowCountDiffResult } from "@/lib/api/rowcount";
 import { RowObjectType } from "@/lib/api/types";
 import { toRowCountDiffDataGrid } from "./toRowCountDiffDataGrid";
@@ -11,23 +12,48 @@ import { toRowCountDiffDataGrid } from "./toRowCountDiffDataGrid";
 // Mocks
 // ============================================================================
 
-// Mock react-data-grid to avoid ES module parsing issues
-jest.mock("react-data-grid", () => ({
-  textEditor: jest.fn(),
+// Mock ag-grid-community to avoid ES module parsing issues
+jest.mock("ag-grid-community", () => ({
+  ModuleRegistry: {
+    registerModules: jest.fn(),
+  },
 }));
 
 // ============================================================================
-// Types for testing (avoids ESM import issues with react-data-grid)
+// Helper to create mock CellClassParams
 // ============================================================================
 
 /**
- * Test-friendly Column type (mirrors react-data-grid Column)
+ * Helper to create mock CellClassParams from a row
+ * This is needed because AG Grid cellClass functions expect CellClassParams
+ */
+const createCellClassParams = (
+  row: RowObjectType,
+): CellClassParams<RowObjectType> =>
+  ({
+    data: row,
+    value: undefined,
+    node: undefined,
+    colDef: {},
+    column: {},
+    api: {},
+    rowIndex: 0,
+  }) as unknown as CellClassParams<RowObjectType>;
+
+// ============================================================================
+// Types for testing (avoids ESM import issues with ag-grid-community)
+// ============================================================================
+
+/**
+ * Test-friendly Column type (mirrors AG Grid ColDef)
  */
 interface TestColumn {
-  key: string;
-  name?: string;
+  field: string;
+  headerName?: string;
   resizable?: boolean;
-  cellClass?: string | ((row: RowObjectType) => string | undefined);
+  cellClass?:
+    | string
+    | ((params: CellClassParams<RowObjectType>) => string | undefined);
 }
 
 // ============================================================================
@@ -61,14 +87,14 @@ describe("toRowCountDiffDataGrid - Column Structure", () => {
     expect(columns).toHaveLength(4);
   });
 
-  test("columns have correct keys", () => {
+  test("columns have correct fields", () => {
     const result = createResult({ orders: { base: 100, curr: 100 } });
     const { columns } = toRowCountDiffDataGrid(result);
 
-    expect(getColumn(columns, 0).key).toBe("name");
-    expect(getColumn(columns, 1).key).toBe("base");
-    expect(getColumn(columns, 2).key).toBe("current");
-    expect(getColumn(columns, 3).key).toBe("delta");
+    expect(getColumn(columns, 0).field).toBe("name");
+    expect(getColumn(columns, 1).field).toBe("base");
+    expect(getColumn(columns, 2).field).toBe("current");
+    expect(getColumn(columns, 3).field).toBe("delta");
   });
 
   test("columns are resizable", () => {
@@ -168,9 +194,9 @@ describe("toRowCountDiffDataGrid - Cell Classes", () => {
     const { columns, rows } = toRowCountDiffDataGrid(result);
 
     const cellClassFn = getColumn(columns, 0).cellClass as (
-      row: unknown,
+      params: CellClassParams<RowObjectType>,
     ) => string | undefined;
-    expect(cellClassFn(rows[0])).toBeUndefined();
+    expect(cellClassFn(createCellClassParams(rows[0]))).toBeUndefined();
   });
 
   test("increased counts return 'diff-cell-added'", () => {
@@ -178,9 +204,9 @@ describe("toRowCountDiffDataGrid - Cell Classes", () => {
     const { columns, rows } = toRowCountDiffDataGrid(result);
 
     const cellClassFn = getColumn(columns, 0).cellClass as (
-      row: unknown,
+      params: CellClassParams<RowObjectType>,
     ) => string | undefined;
-    expect(cellClassFn(rows[0])).toBe("diff-cell-added");
+    expect(cellClassFn(createCellClassParams(rows[0]))).toBe("diff-cell-added");
   });
 
   test("decreased counts return 'diff-cell-removed'", () => {
@@ -188,9 +214,11 @@ describe("toRowCountDiffDataGrid - Cell Classes", () => {
     const { columns, rows } = toRowCountDiffDataGrid(result);
 
     const cellClassFn = getColumn(columns, 0).cellClass as (
-      row: unknown,
+      params: CellClassParams<RowObjectType>,
     ) => string | undefined;
-    expect(cellClassFn(rows[0])).toBe("diff-cell-removed");
+    expect(cellClassFn(createCellClassParams(rows[0]))).toBe(
+      "diff-cell-removed",
+    );
   });
 
   test("added models (null base) return 'diff-cell-added'", () => {
@@ -198,9 +226,9 @@ describe("toRowCountDiffDataGrid - Cell Classes", () => {
     const { columns, rows } = toRowCountDiffDataGrid(result);
 
     const cellClassFn = getColumn(columns, 0).cellClass as (
-      row: unknown,
+      params: CellClassParams<RowObjectType>,
     ) => string | undefined;
-    expect(cellClassFn(rows[0])).toBe("diff-cell-added");
+    expect(cellClassFn(createCellClassParams(rows[0]))).toBe("diff-cell-added");
   });
 
   test("removed models (null current) return 'diff-cell-removed'", () => {
@@ -208,9 +236,11 @@ describe("toRowCountDiffDataGrid - Cell Classes", () => {
     const { columns, rows } = toRowCountDiffDataGrid(result);
 
     const cellClassFn = getColumn(columns, 0).cellClass as (
-      row: unknown,
+      params: CellClassParams<RowObjectType>,
     ) => string | undefined;
-    expect(cellClassFn(rows[0])).toBe("diff-cell-removed");
+    expect(cellClassFn(createCellClassParams(rows[0]))).toBe(
+      "diff-cell-removed",
+    );
   });
 });
 

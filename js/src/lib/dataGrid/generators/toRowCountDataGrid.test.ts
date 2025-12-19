@@ -11,21 +11,23 @@ import { toRowCountDataGrid } from "./toRowCountDataGrid";
 // Mocks
 // ============================================================================
 
-// Mock react-data-grid to avoid ES module parsing issues
-jest.mock("react-data-grid", () => ({
-  textEditor: jest.fn(),
+// Mock ag-grid-community to avoid ES module parsing issues
+jest.mock("ag-grid-community", () => ({
+  ModuleRegistry: {
+    registerModules: jest.fn(),
+  },
 }));
 
 // ============================================================================
-// Types for testing (avoids ESM import issues with react-data-grid)
+// Types for testing (avoids ESM import issues with ag-grid-community)
 // ============================================================================
 
 /**
- * Test-friendly Column type (mirrors react-data-grid Column)
+ * Test-friendly Column type (mirrors AG Grid ColDef)
  */
 interface TestColumn {
-  key: string;
-  name?: string;
+  field: string;
+  headerName?: string;
   resizable?: boolean;
   cellClass?: string | ((row: RowObjectType) => string | undefined);
 }
@@ -61,12 +63,12 @@ describe("toRowCountDataGrid - Column Structure", () => {
     expect(columns).toHaveLength(2);
   });
 
-  test("columns have correct keys", () => {
+  test("columns have correct fields", () => {
     const result = createResult({ orders: { curr: 100 } });
     const { columns } = toRowCountDataGrid(result);
 
-    expect(getColumn(columns, 0).key).toBe("name");
-    expect(getColumn(columns, 1).key).toBe("current");
+    expect(getColumn(columns, 0).field).toBe("name");
+    expect(getColumn(columns, 1).field).toBe("current");
   });
 
   test("columns are resizable", () => {

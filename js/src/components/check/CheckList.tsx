@@ -1,4 +1,3 @@
-import "react-data-grid/lib/styles.css";
 import {
   DragDropContext,
   Draggable,

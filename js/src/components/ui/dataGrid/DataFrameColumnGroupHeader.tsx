@@ -153,7 +153,7 @@ export function DataFrameColumnGroupHeader({
 
   return (
     <Box
-      sx={{ display: "flex", alignItems: "center", gap: "10px" }}
+      sx={{ display: "flex", alignItems: "center", gap: "10px", width: "100%" }}
       className="grid-header"
     >
       {/* Primary key icon */}

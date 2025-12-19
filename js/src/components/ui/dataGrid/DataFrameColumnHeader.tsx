@@ -65,7 +65,10 @@ export function DataFrameColumnHeader({
   };
 
   return (
-    <Box sx={{ display: "flex", alignItems: "center" }} className="grid-header">
+    <Box
+      sx={{ display: "flex", alignItems: "center", width: "100%" }}
+      className="grid-header"
+    >
       <Box sx={{ flex: 1 }}>{name}</Box>
 
       <Box
@@ -82,7 +85,10 @@ export function DataFrameColumnHeader({
           <IconButton
             aria-label="Options"
             size="small"
-            className="!size-4 !min-w-4"
+            className="size-6!"
+            sx={{
+              p: 0,
+            }}
             onClick={handleMenuClick}
           >
             <PiDotsThreeVertical />

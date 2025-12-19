@@ -13,7 +13,7 @@
  * to valueDiffCells.tsx via render functions.
  */
 
-import { ColumnOrColumnGroup } from "react-data-grid";
+import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import {
   createColumnNameRenderer,
   createPrimaryKeyIndicatorRenderer,
@@ -39,7 +39,7 @@ export interface ValueDataGridOptions {
  * Result structure for the value data grid
  */
 export interface ValueDataGridResult {
-  columns: ColumnOrColumnGroup<RowObjectType>[];
+  columns: (ColDef<RowObjectType> | ColGroupDef<RowObjectType>)[];
   rows: RowObjectType[];
 }
 
@@ -67,7 +67,11 @@ const VALUE_DIFF_SUMMARY_SCHEMA: DataFrame["columns"] = [
  * Cell class function for matched columns
  * Applies "diff-cell-modified" class when match percentage is less than 100%
  */
-function getMatchedCellClass(row: RowObjectType): string | undefined {
+function getMatchedCellClass(
+  params: CellClassParams<RowObjectType>,
+): string | undefined {
+  const row = params.data;
+  if (!row) return undefined;
   const value = row["2"] as unknown as number | undefined;
   return value != null && value < 1 ? "diff-cell-modified" : undefined;
 }
@@ -96,37 +100,37 @@ const COLUMN_KEYS = {
 function createColumnDefinitions(
   primaryKeys: string[],
   params: ValueDiffParams,
-): ColumnOrColumnGroup<RowObjectType>[] {
+): ColDef<RowObjectType>[] {
   return [
     // Primary key indicator column
     {
-      key: COLUMN_KEYS.PRIMARY_KEY_INDICATOR,
-      name: "",
+      field: COLUMN_KEYS.PRIMARY_KEY_INDICATOR,
+      headerName: "",
       width: 30,
       maxWidth: 30,
-      renderCell: createPrimaryKeyIndicatorRenderer(primaryKeys),
+      cellRenderer: createPrimaryKeyIndicatorRenderer(primaryKeys),
     },
     // Column name column with context menu
     {
-      key: COLUMN_KEYS.COLUMN_NAME,
-      name: "Column",
+      field: COLUMN_KEYS.COLUMN_NAME,
+      headerName: "Column",
       resizable: true,
-      renderCell: createColumnNameRenderer(params),
+      cellRenderer: createColumnNameRenderer(params),
       cellClass: "cell-show-context-menu",
     },
     // Matched count column
     {
-      key: COLUMN_KEYS.MATCHED_COUNT,
-      name: "Matched",
+      field: COLUMN_KEYS.MATCHED_COUNT,
+      headerName: "Matched",
       resizable: true,
       cellClass: getMatchedCellClass,
     },
     // Matched percentage column
     {
-      key: COLUMN_KEYS.MATCHED_PERCENT,
-      name: "Matched %",
+      field: COLUMN_KEYS.MATCHED_PERCENT,
+      headerName: "Matched %",
       resizable: true,
-      renderCell: renderMatchedPercentCell,
+      cellRenderer: renderMatchedPercentCell,
       cellClass: getMatchedCellClass,
     },
   ];

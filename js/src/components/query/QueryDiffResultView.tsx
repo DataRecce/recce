@@ -1,5 +1,3 @@
-import "react-data-grid/lib/styles.css";
-
 import Box from "@mui/material/Box";
 import { ForwardedRef, forwardRef, Ref, useMemo } from "react";
 import {
@@ -8,13 +6,13 @@ import {
 } from "@/lib/api/adhocQuery";
 
 import "./styles.css";
-import { DataGridHandle } from "react-data-grid";
 import { ColumnRenderMode, Run } from "@/lib/api/types";
 import {
   createDataGrid,
   DiffGridOptions,
 } from "@/lib/dataGrid/dataGridFactory";
 import {
+  type DataGridHandle,
   EmptyRowsRenderer,
   ScreenshotDataGrid,
 } from "../data-grid/ScreenshotDataGrid";

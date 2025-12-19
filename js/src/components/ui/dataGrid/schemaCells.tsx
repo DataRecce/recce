@@ -3,8 +3,8 @@
  * @description Cell components and render functions for Schema grid views
  */
 
+import type { ICellRendererParams } from "ag-grid-community";
 import React from "react";
-import { RenderCellProps } from "react-data-grid";
 import { ColumnNameCell } from "@/components/schema/ColumnNameCell";
 import { NodeData } from "@/lib/api/info";
 import type {
@@ -17,38 +17,46 @@ import type {
 // ============================================================================
 
 /**
- * Creates a renderCell function for schema diff column names
+ * Creates a cellRenderer function for schema diff column names
  */
 export function createColumnNameRenderer(
   node: NodeData,
   cllRunningMap?: Map<string, boolean>,
   showMenu?: boolean,
-): (props: RenderCellProps<SchemaDiffRow>) => React.ReactNode {
-  return ({ row }) => (
-    <ColumnNameCell
-      model={node}
-      row={row}
-      cllRunning={cllRunningMap?.get(row.name) ?? false}
-      showMenu={showMenu}
-    />
-  );
+): (params: ICellRendererParams<SchemaDiffRow>) => React.ReactNode {
+  return (params) => {
+    const row = params.data;
+    if (!row) return null;
+    return (
+      <ColumnNameCell
+        model={node}
+        row={row}
+        cllRunning={cllRunningMap?.get(row.name) ?? false}
+        showMenu={showMenu}
+      />
+    );
+  };
 }
 
 /**
- * Creates a renderCell function for single-env schema column names
+ * Creates a cellRenderer function for single-env schema column names
  */
 export function createSingleEnvColumnNameRenderer(
   node: NodeData,
   cllRunningMap?: Map<string, boolean>,
   showMenu?: boolean,
-): (props: RenderCellProps<SchemaRow>) => React.ReactNode {
-  return ({ row }) => (
-    <ColumnNameCell
-      model={node}
-      row={row}
-      cllRunning={cllRunningMap?.get(row.name) ?? false}
-      singleEnv
-      showMenu={showMenu}
-    />
-  );
+): (params: ICellRendererParams<SchemaRow>) => React.ReactNode {
+  return (params) => {
+    const row = params.data;
+    if (!row) return null;
+    return (
+      <ColumnNameCell
+        model={node}
+        row={row}
+        cllRunning={cllRunningMap?.get(row.name) ?? false}
+        singleEnv
+        showMenu={showMenu}
+      />
+    );
+  };
 }

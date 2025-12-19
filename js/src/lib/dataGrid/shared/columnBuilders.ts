@@ -240,6 +240,7 @@ export function getDisplayColumns(config: GridColumnsConfig): ColumnConfig[] {
       columnType: col.colType,
       columnStatus: col.status,
       columnRenderMode: columnsRenderMode[name],
+      frozen: true,
     });
   });
 
@@ -322,6 +323,7 @@ export function getSimpleDisplayColumns(
       name,
       columnType: col.colType,
       columnRenderMode: columnsRenderMode[name],
+      frozen: true,
     });
   });
 

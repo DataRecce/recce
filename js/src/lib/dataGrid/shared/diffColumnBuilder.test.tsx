@@ -10,9 +10,10 @@
  * - Header props propagation
  */
 
-// Mock react-data-grid
-jest.mock("react-data-grid", () => ({
-  textEditor: jest.fn(),
+// Mock AG Grid modules
+jest.mock("ag-grid-community", () => ({
+  ModuleRegistry: { registerModules: jest.fn() },
+  AllCommunityModule: {},
 }));
 
 // Mock MUI wrapper components
@@ -33,8 +34,8 @@ jest.mock("@/components/ui/mui", () => ({
   Text: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import React from "react";
-import { Column, ColumnGroup } from "react-data-grid";
 import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
 import { ColumnConfig } from "./columnBuilders";
 import {
@@ -44,25 +45,46 @@ import {
 } from "./diffColumnBuilder";
 
 // ============================================================================
+// Helper to create mock CellClassParams
+// ============================================================================
+
+/**
+ * Helper to create mock CellClassParams from a row
+ * This is needed because AG Grid cellClass functions expect CellClassParams
+ */
+const createCellClassParams = (
+  row: RowObjectType,
+): CellClassParams<RowObjectType> =>
+  ({
+    data: row,
+    value: undefined,
+    node: undefined,
+    colDef: {},
+    column: {},
+    api: {},
+    rowIndex: 0,
+  }) as unknown as CellClassParams<RowObjectType>;
+
+// ============================================================================
 // Type Guards
 // ============================================================================
 
 /**
- * Type guard to check if a column definition is a Column (has key)
+ * Type guard to check if a column definition is a ColDef (has field)
  */
-function isColumn(col: DiffColumnDefinition): col is Column<RowObjectType> & {
+function isColumn(col: DiffColumnDefinition): col is ColDef<RowObjectType> & {
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
 } {
-  return "key" in col;
+  return "field" in col && !("children" in col);
 }
 
 /**
- * Type guard to check if a column definition is a ColumnGroup (has children)
+ * Type guard to check if a column definition is a ColGroupDef (has children)
  */
 function isColumnGroup(
   col: DiffColumnDefinition,
-): col is ColumnGroup<RowObjectType> & {
+): col is ColGroupDef<RowObjectType> & {
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
 } {
@@ -70,17 +92,17 @@ function isColumnGroup(
 }
 
 /**
- * Helper to extract key from a column (works for both Column and ColumnGroup)
+ * Helper to extract field from a column (works for both ColDef and ColGroupDef)
  */
 function getColumnKey(col: DiffColumnDefinition): string | undefined {
-  if (isColumn(col)) {
-    return col.key;
+  if (isColumn(col) && col.field) {
+    return col.field;
   }
   return undefined;
 }
 
 /**
- * Helper to find a column by key
+ * Helper to find a column by field
  */
 function findColumnByKey(
   columns: DiffColumnDefinition[],
@@ -88,12 +110,12 @@ function findColumnByKey(
 ): DiffColumnDefinition | undefined {
   return columns.find((col) => {
     if (isColumn(col)) {
-      return col.key === key;
+      return col.field === key;
     }
-    // For ColumnGroups in side_by_side mode, check children
+    // For ColGroupDefs in side_by_side mode, check children
     if (isColumnGroup(col) && col.children) {
       return col.children.some(
-        (child) => "key" in child && child.key === `base__${key}`,
+        (child) => "field" in child && child.field === `base__${key}`,
       );
     }
     return false;
@@ -216,7 +238,7 @@ describe("buildDiffColumnDefinitions - Primary Key Columns", () => {
     const pkColumn = findColumnByKey(result.columns, "id");
     expect(pkColumn).toBeDefined();
     if (pkColumn && isColumn(pkColumn)) {
-      expect(pkColumn.frozen).toBe(true);
+      expect(pkColumn.pinned).toBe("left");
     }
   });
 
@@ -240,36 +262,43 @@ describe("buildDiffColumnDefinitions - Primary Key Columns", () => {
       isColumn(pkColumn) &&
       typeof pkColumn.cellClass === "function"
     ) {
-      const cellClassFn = pkColumn.cellClass as (row: {
-        __status?: string;
-      }) => string | undefined;
+      const cellClassFn = pkColumn.cellClass as (
+        params: CellClassParams<RowObjectType>,
+      ) => string | undefined;
 
-      expect(cellClassFn({ __status: "added" })).toBe("diff-header-added");
-      expect(cellClassFn({ __status: "removed" })).toBe("diff-header-removed");
-      expect(cellClassFn({ __status: "modified" })).toBe(
+      expect(cellClassFn(createCellClassParams({ __status: "added" }))).toBe(
+        "diff-header-added",
+      );
+      expect(cellClassFn(createCellClassParams({ __status: "removed" }))).toBe(
+        "diff-header-removed",
+      );
+      expect(cellClassFn(createCellClassParams({ __status: "modified" }))).toBe(
         "diff-header-modified",
       );
-      expect(cellClassFn({})).toBeUndefined();
+      expect(
+        cellClassFn(createCellClassParams({ __status: undefined })),
+      ).toBeUndefined();
     }
   });
 
-  test("primary key columns have React element as name", () => {
-    const result = buildDiffColumnDefinitions(createConfig());
-
-    const pkColumn = findColumnByKey(result.columns, "id");
-    expect(pkColumn).toBeDefined();
-    if (pkColumn) {
-      expect(React.isValidElement(pkColumn.name)).toBe(true);
-    }
-  });
-
-  test("primary key columns have renderCell function", () => {
+  test("primary key columns have headerComponent", () => {
     const result = buildDiffColumnDefinitions(createConfig());
 
     const pkColumn = findColumnByKey(result.columns, "id");
     expect(pkColumn).toBeDefined();
     if (pkColumn && isColumn(pkColumn)) {
-      expect(pkColumn.renderCell).toBeDefined();
+      // biome-ignore lint/suspicious/noExplicitAny: Accessing AG Grid internal property for testing
+      expect((pkColumn as any).headerComponent).toBeDefined();
+    }
+  });
+
+  test("primary key columns have cellRenderer function", () => {
+    const result = buildDiffColumnDefinitions(createConfig());
+
+    const pkColumn = findColumnByKey(result.columns, "id");
+    expect(pkColumn).toBeDefined();
+    if (pkColumn && isColumn(pkColumn)) {
+      expect(pkColumn.cellRenderer).toBeDefined();
     }
   });
 
@@ -297,12 +326,14 @@ describe("buildDiffColumnDefinitions - Primary Key Columns", () => {
       }),
     );
 
-    const frozenColumns = result.columns.filter((c) => isColumn(c) && c.frozen);
-    expect(frozenColumns).toHaveLength(2);
+    const pinnedColumns = result.columns.filter(
+      (c) => isColumn(c) && c.pinned === "left",
+    );
+    expect(pinnedColumns).toHaveLength(2);
 
-    const frozenKeys = frozenColumns.map(getColumnKey);
-    expect(frozenKeys[0]).toBe("region");
-    expect(frozenKeys[1]).toBe("product");
+    const pinnedKeys = pinnedColumns.map(getColumnKey);
+    expect(pinnedKeys[0]).toBe("region");
+    expect(pinnedKeys[1]).toBe("product");
   });
 });
 
@@ -341,8 +372,8 @@ describe("buildDiffColumnDefinitions - Index Fallback", () => {
     const indexColumn = result.columns[0];
     expect(isColumn(indexColumn)).toBe(true);
     if (isColumn(indexColumn)) {
-      expect(indexColumn.key).toBe("_index");
-      expect(indexColumn.name).toBe("");
+      expect(indexColumn.field).toBe("_index");
+      expect(indexColumn.headerName).toBe("");
       expect(indexColumn.width).toBe(50);
       expect(indexColumn.maxWidth).toBe(100);
       expect(indexColumn.cellClass).toBe("index-column");
@@ -373,7 +404,7 @@ describe("buildDiffColumnDefinitions - Index Fallback", () => {
 
     expect(result.usedIndexFallback).toBe(false);
     const indexColumn = result.columns.find(
-      (c) => isColumn(c) && c.key === "_index",
+      (c) => isColumn(c) && c.field === "_index",
     );
     expect(indexColumn).toBeUndefined();
   });
@@ -412,7 +443,7 @@ describe("buildDiffColumnDefinitions - Display Modes", () => {
     );
 
     const nonPkColumns = result.columns.filter(
-      (c) => isColumn(c) && c.key !== "id",
+      (c) => isColumn(c) && c.field !== "id",
     );
     nonPkColumns.forEach((col) => {
       expect(isColumnGroup(col)).toBe(false);
@@ -430,7 +461,7 @@ describe("buildDiffColumnDefinitions - Display Modes", () => {
     const pkColumn = result.columns[0];
     expect(isColumn(pkColumn)).toBe(true);
     if (isColumn(pkColumn)) {
-      expect(pkColumn.key).toBe("id");
+      expect(pkColumn.field).toBe("id");
     }
 
     // Non-PK columns should be column groups with children
@@ -461,7 +492,7 @@ describe("buildDiffColumnDefinitions - Display Modes", () => {
     expect(isColumnGroup(valueColumn)).toBe(true);
     if (isColumnGroup(valueColumn) && valueColumn.children) {
       const childKeys = valueColumn.children.map((child) =>
-        "key" in child ? child.key : undefined,
+        "field" in child ? child.field : undefined,
       );
       expect(childKeys[0]).toBe("base__value");
       expect(childKeys[1]).toBe("current__value");
@@ -484,7 +515,9 @@ describe("buildDiffColumnDefinitions - Display Modes", () => {
     const valueColumn = result.columns[0];
     expect(isColumnGroup(valueColumn)).toBe(true);
     if (isColumnGroup(valueColumn) && valueColumn.children) {
-      const childNames = valueColumn.children.map((child) => child.name);
+      const childNames = valueColumn.children.map(
+        (child) => (child as ColDef<RowObjectType>).headerName,
+      );
       expect(childNames[0]).toBe("Before");
       expect(childNames[1]).toBe("After");
     }
@@ -504,7 +537,9 @@ describe("buildDiffColumnDefinitions - Display Modes", () => {
     const valueColumn = result.columns[0];
     expect(isColumnGroup(valueColumn)).toBe(true);
     if (isColumnGroup(valueColumn) && valueColumn.children) {
-      const childNames = valueColumn.children.map((child) => child.name);
+      const childNames = valueColumn.children.map(
+        (child) => (child as ColDef<RowObjectType>).headerName,
+      );
       expect(childNames[0]).toBe("Base");
       expect(childNames[1]).toBe("Current");
     }
@@ -654,11 +689,15 @@ describe("buildDiffColumnDefinitions - Header Props", () => {
       }),
     );
 
-    // Headers are React elements, we verify they were created
+    // Headers use headerComponent in AG Grid (for ColDef) or headerGroupComponent (for ColGroupDef)
     result.columns.forEach((col) => {
       const key = getColumnKey(col);
       if (key !== "_index") {
-        expect(React.isValidElement(col.name)).toBe(true);
+        // biome-ignore lint/suspicious/noExplicitAny: Accessing AG Grid internal property for testing
+        const hasHeader =
+          // biome-ignore lint/suspicious/noExplicitAny: Accessing AG Grid internal property for testing
+          (col as any).headerComponent || (col as any).headerGroupComponent;
+        expect(hasHeader).toBeDefined();
       }
     });
   });
@@ -721,10 +760,10 @@ describe("buildDiffColumnDefinitions - Edge Cases", () => {
       }),
     );
 
-    const allFrozen = result.columns.every(
-      (c) => isColumn(c) && c.frozen === true,
+    const allPinned = result.columns.every(
+      (c) => isColumn(c) && c.pinned === "left",
     );
-    expect(allFrozen).toBe(true);
+    expect(allPinned).toBe(true);
     expect(result.usedIndexFallback).toBe(false);
   });
 
@@ -745,10 +784,10 @@ describe("buildDiffColumnDefinitions - Edge Cases", () => {
     expect(result.columns).toHaveLength(2);
     expect(result.usedIndexFallback).toBe(false);
 
-    const anyFrozen = result.columns.some(
-      (c) => isColumn(c) && c.frozen === true,
+    const anyPinned = result.columns.some(
+      (c) => isColumn(c) && c.pinned === "left",
     );
-    expect(anyFrozen).toBe(false);
+    expect(anyPinned).toBe(false);
   });
 
   test("handles special characters in column names", () => {

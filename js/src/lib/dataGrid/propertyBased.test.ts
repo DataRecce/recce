@@ -13,8 +13,8 @@
  * - Column alignment: output columns match input schema
  */
 
+import type { ColDef, ColGroupDef } from "ag-grid-community";
 import fc from "fast-check";
-import { ColumnOrColumnGroup } from "react-data-grid";
 import {
   ColumnRenderMode,
   ColumnType,
@@ -30,19 +30,20 @@ import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 // ============================================================================
 
 /**
- * Extended column type returned by grid functions
+ * Extended column type returned by grid functions (AG Grid)
  */
-type ExtendedColumn = ColumnOrColumnGroup<RowObjectType> & {
+type ExtendedColumn = (ColDef<RowObjectType> | ColGroupDef<RowObjectType>) & {
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
 };
 
 // ============================================================================
-// Mocks (same pattern as dataTypeEdgeCases.test.ts)
+// Mocks
 // ============================================================================
 
-jest.mock("react-data-grid", () => ({
-  textEditor: jest.fn(),
+jest.mock("ag-grid-community", () => ({
+  ModuleRegistry: { registerModules: jest.fn() },
+  AllCommunityModule: {},
 }));
 
 jest.mock("@/components/ui/mui", () => ({
@@ -357,22 +358,22 @@ function joinedDataFrameArb(config: DataFrameConfig = {}): fc.Arbitrary<{
 // ============================================================================
 
 /**
- * Extract column key from a column or column group
- * Keys are lowercased for consistent comparison
+ * Extract column field from a column or column group
+ * Fields are lowercased for consistent comparison
  */
 function getColumnKey(col: ExtendedColumn): string | undefined {
-  if ("key" in col) {
-    return col.key.toLowerCase();
+  if ("field" in col && col.field) {
+    return col.field.toLowerCase();
   }
   if ("children" in col && Array.isArray(col.children) && col.children[0]) {
-    const firstChild = col.children[0];
-    if ("key" in firstChild) {
+    const firstChild = col.children[0] as ColDef<RowObjectType>;
+    if ("field" in firstChild && firstChild.field) {
       // Extract base column name from "base__colname"
-      const key = firstChild.key;
-      if (key.startsWith("base__")) {
-        return key.replace("base__", "").toLowerCase();
+      const field = firstChild.field;
+      if (field.startsWith("base__")) {
+        return field.replace("base__", "").toLowerCase();
       }
-      return key.toLowerCase();
+      return field.toLowerCase();
     }
   }
   return undefined;

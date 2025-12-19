@@ -3,12 +3,12 @@ import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import { useQuery } from "@tanstack/react-query";
 import React, { forwardRef, useMemo, useState } from "react";
-import { DataGridHandle } from "react-data-grid";
 import { IconType } from "react-icons";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check } from "@/lib/api/checks";
 import { select } from "@/lib/api/select";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { type DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 import { LineageGraphNode } from "../lineage/lineage";
 import {
   getIconForChangeStatus,

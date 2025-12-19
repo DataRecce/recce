@@ -1,14 +1,12 @@
-import "react-data-grid/lib/styles.css";
-
 import Box from "@mui/material/Box";
 import { forwardRef, Ref, useMemo } from "react";
 
 import "../query/styles.css";
-import { DataGridHandle } from "react-data-grid";
 import { ColumnRenderMode, isValueDiffDetailRun, Run } from "@/lib/api/types";
 import { ValueDiffDetailViewOptions } from "@/lib/api/valuediff";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
 import {
+  type DataGridHandle,
   EmptyRowsRenderer,
   ScreenshotDataGrid,
 } from "../data-grid/ScreenshotDataGrid";

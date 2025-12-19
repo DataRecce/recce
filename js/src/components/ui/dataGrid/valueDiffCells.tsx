@@ -15,8 +15,8 @@ import IconButton from "@mui/material/IconButton";
 import ListSubheader from "@mui/material/ListSubheader";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
+import type { ICellRendererParams } from "ag-grid-community";
 import React, { MouseEvent, useState } from "react";
-import { RenderCellProps } from "react-data-grid";
 import { PiDotsThreeVertical } from "react-icons/pi";
 import { VscKey } from "react-icons/vsc";
 import { RowObjectType } from "@/lib/api/types";
@@ -220,45 +220,56 @@ export function MatchedPercentCell({ value }: MatchedPercentCellProps) {
 // ============================================================================
 
 /**
- * Creates a renderCell function for the primary key indicator column
+ * Creates a cellRenderer function for the primary key indicator column
  *
  * @param primaryKeys - List of primary key column names
- * @returns A renderCell function compatible with react-data-grid
+ * @returns A cellRenderer function compatible with AG Grid
  */
 export function createPrimaryKeyIndicatorRenderer(
   primaryKeys: string[],
-): (props: RenderCellProps<RowObjectType>) => React.ReactNode {
-  return ({ row }) => (
-    <PrimaryKeyIndicatorCell
-      columnName={String(row["0"])}
-      primaryKeys={primaryKeys}
-    />
-  );
+): (params: ICellRendererParams<RowObjectType>) => React.ReactNode {
+  return (params) => {
+    const row = params.data;
+    if (!row) return null;
+    return (
+      <PrimaryKeyIndicatorCell
+        columnName={String(row["0"])}
+        primaryKeys={primaryKeys}
+      />
+    );
+  };
 }
 
 /**
- * Creates a renderCell function for the column name column
+ * Creates a cellRenderer function for the column name column
  *
  * @param params - ValueDiffParams from the run
- * @returns A renderCell function compatible with react-data-grid
+ * @returns A cellRenderer function compatible with AG Grid
  */
 export function createColumnNameRenderer(
   params: ValueDiffParams,
-): (props: RenderCellProps<RowObjectType>) => React.ReactNode {
-  return ({ row, column }) => (
-    <ValueDiffColumnNameCell column={String(row[column.key])} params={params} />
-  );
+): (cellParams: ICellRendererParams<RowObjectType>) => React.ReactNode {
+  return (cellParams) => {
+    const row = cellParams.data;
+    const field = cellParams.colDef?.field ?? "";
+    if (!row) return null;
+    return (
+      <ValueDiffColumnNameCell column={String(row[field])} params={params} />
+    );
+  };
 }
 
 /**
- * renderCell function for the matched percentage column
+ * cellRenderer function for the matched percentage column
  *
- * @param props - RenderCellProps from react-data-grid
+ * @param params - ICellRendererParams from AG Grid
  * @returns React node displaying formatted percentage
  */
-export function renderMatchedPercentCell({
-  row,
-  column,
-}: RenderCellProps<RowObjectType>): React.ReactNode {
-  return <MatchedPercentCell value={row[column.key] as number} />;
+export function renderMatchedPercentCell(
+  params: ICellRendererParams<RowObjectType>,
+): React.ReactNode {
+  const row = params.data;
+  const field = params.colDef?.field ?? "";
+  if (!row) return null;
+  return <MatchedPercentCell value={row[field] as number} />;
 }

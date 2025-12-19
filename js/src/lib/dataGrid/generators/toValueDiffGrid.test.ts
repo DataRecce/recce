@@ -17,12 +17,11 @@
  * - displayMode: "side_by_side" | "inline" (default is "inline" for valuediff)
  */
 
-// Mock react-data-grid since tests don't need actual rendering
-jest.mock("react-data-grid", () => ({
-  textEditor: jest.fn(),
-  CalculatedColumn: {},
-  ColumnOrColumnGroup: {},
-  RenderCellProps: {},
+// Mock ag-grid-community since tests don't need actual rendering
+jest.mock("ag-grid-community", () => ({
+  ModuleRegistry: {
+    registerModules: jest.fn(),
+  },
 }));
 
 // Mock MUI wrapper components
@@ -261,7 +260,7 @@ describe("toValueDiffGrid - in_a/in_b Column Handling", () => {
     expect(result.rows).toHaveLength(2);
     // in_a/in_b columns should be excluded from output columns
     const columnKeys = result.columns
-      .map((c) => ("key" in c ? c.key : undefined))
+      .map((c) => ("field" in c ? c.field : undefined))
       .filter(Boolean);
     expect(columnKeys).not.toContain("in_a");
     expect(columnKeys).not.toContain("in_b");
@@ -273,13 +272,13 @@ describe("toValueDiffGrid - in_a/in_b Column Handling", () => {
     // Check that neither in_a nor in_b appear in any column configuration
     const allColumnKeys: string[] = [];
     result.columns.forEach((col) => {
-      if ("key" in col && typeof col.key === "string") {
-        allColumnKeys.push(col.key);
+      if ("field" in col && typeof col.field === "string") {
+        allColumnKeys.push(col.field);
       }
       if ("children" in col && Array.isArray(col.children)) {
         col.children.forEach((child) => {
-          if ("key" in child && typeof child.key === "string") {
-            allColumnKeys.push(child.key);
+          if ("field" in child && typeof child.field === "string") {
+            allColumnKeys.push(child.field);
           }
         });
       }
@@ -372,7 +371,7 @@ describe("toValueDiffGrid - Display Modes", () => {
 
     // In inline mode, non-PK columns have key directly (no children)
     const valueColumn = result.columns.find((col) => {
-      if ("key" in col && col.key === "value") return true;
+      if ("field" in col && col.field === "value") return true;
       return false;
     });
 
@@ -405,12 +404,12 @@ describe("toValueDiffGrid - Display Modes", () => {
       expect(columnWithChildren.children).toHaveLength(2);
       const baseChild = columnWithChildren.children?.[0];
       const currentChild = columnWithChildren.children?.[1];
-      // Children of a column group are Column types which have 'key'
-      if (baseChild && "key" in baseChild) {
-        expect(baseChild.key).toContain("base__");
+      // Children of a column group are Column types which have 'field'
+      if (baseChild && "field" in baseChild) {
+        expect(baseChild.field).toContain("base__");
       }
-      if (currentChild && "key" in currentChild) {
-        expect(currentChild.key).toContain("current__");
+      if (currentChild && "field" in currentChild) {
+        expect(currentChild.field).toContain("current__");
       }
     }
   });
@@ -430,7 +429,7 @@ describe("toValueDiffGrid - Display Modes", () => {
 
     // Non-PK columns should be flat (no children) in inline mode
     const nonPKColumns = result.columns.filter((col) => {
-      if ("key" in col && col.key === "id") return false;
+      if ("field" in col && col.field === "id") return false;
       return true;
     });
 
@@ -452,8 +451,8 @@ describe("toValueDiffGrid - Pinned Columns", () => {
   const extractColumnKey = (
     col: ReturnType<typeof toValueDiffGrid>["columns"][number],
   ): string | undefined => {
-    if ("key" in col && typeof col.key === "string") {
-      return col.key;
+    if ("field" in col && typeof col.field === "string") {
+      return col.field;
     }
     if (
       "children" in col &&
@@ -461,13 +460,13 @@ describe("toValueDiffGrid - Pinned Columns", () => {
       col.children.length > 0
     ) {
       const firstChild = col.children[0];
-      // Type guard: children of ColumnGroup are Column types which have 'key'
+      // Type guard: children of ColumnGroup are Column types which have 'field'
       if (
         firstChild &&
-        "key" in firstChild &&
-        typeof firstChild.key === "string"
+        "field" in firstChild &&
+        typeof firstChild.field === "string"
       ) {
-        const childKey = firstChild.key;
+        const childKey = firstChild.field;
         if (childKey.startsWith("base__")) {
           return childKey.slice(6);
         }
@@ -548,10 +547,10 @@ describe("toValueDiffGrid - Column Render Modes", () => {
 
     // Find the percentage column
     const percentageColumn = result.columns.find((col) => {
-      if ("key" in col && col.key === "percentage") return true;
+      if ("field" in col && col.field === "percentage") return true;
       if ("children" in col && Array.isArray(col.children)) {
         return col.children.some(
-          (child) => "key" in child && child.key === "base__percentage",
+          (child) => "field" in child && child.field === "base__percentage",
         );
       }
       return false;
@@ -579,10 +578,10 @@ describe("toValueDiffGrid - Column Render Modes", () => {
     });
 
     const priceColumn = result.columns.find((col) => {
-      if ("key" in col && col.key === "price") return true;
+      if ("field" in col && col.field === "price") return true;
       if ("children" in col && Array.isArray(col.children)) {
         return col.children.some(
-          (child) => "key" in child && child.key === "base__price",
+          (child) => "field" in child && child.field === "base__price",
         );
       }
       return false;
@@ -841,12 +840,12 @@ describe("toValueDiffGrid - Primary Key Column Output", () => {
 
     // Find the id column and check if it's frozen
     const idColumn = result.columns.find(
-      (col) => "key" in col && col.key === "id",
+      (col) => "field" in col && col.field === "id",
     );
 
     expect(idColumn).toBeDefined();
-    if (idColumn && "frozen" in idColumn) {
-      expect(idColumn.frozen).toBe(true);
+    if (idColumn && "pinned" in idColumn) {
+      expect(idColumn.pinned).toBe("left");
     }
   });
 });

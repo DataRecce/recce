@@ -8,11 +8,11 @@
 
 import Box from "@mui/material/Box";
 import React, { forwardRef, Ref } from "react";
-import { DataGridHandle } from "react-data-grid";
 import { isValueDiffRun } from "@/lib/api/types";
 import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
 import { createDataGrid } from "@/lib/dataGrid";
 import {
+  type DataGridHandle,
   EmptyRowsRenderer,
   ScreenshotDataGrid,
 } from "../data-grid/ScreenshotDataGrid";
