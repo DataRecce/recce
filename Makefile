@@ -124,15 +124,3 @@ build-all: clean-build build-frontend
 	@echo "Build complete!"
 	@echo "Packages in dist/:"
 	@ls -lh dist/
-
-mcp:
-	@dotenv -f $(JAFFLE_SHOP_DIR)/.env run python -m recce.cli mcp-server --sse \
-	--project-dir $(JAFFLE_SHOP_DIR) \
-	--profiles-dir $(JAFFLE_SHOP_DIR) \
-	--target-path $(JAFFLE_SHOP_DIR)/target \
-	--target-base-path $(JAFFLE_SHOP_DIR)/target-base \
-	--config $(JAFFLE_SHOP_DIR)/recce.yml \
-	--port 8000
-
-
-JAFFLE_SHOP_DIR := /Users/kent/Project/recce/jaffle_shop_golden

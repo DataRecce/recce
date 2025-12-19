@@ -327,6 +327,13 @@ describe("renderTypeCell", () => {
       // Empty string vs non-empty should show type change with badges
       expect(screen.getByText("VARCHAR")).toBeInTheDocument();
       expect(container.querySelector(".type-badge")).toBeInTheDocument();
+
+      // Verify both badge types are present when baseType differs from currentType
+      const removedBadge = container.querySelector(".type-badge-removed");
+      const addedBadge = container.querySelector(".type-badge-added");
+      expect(removedBadge).toBeInTheDocument();
+      expect(addedBadge).toBeInTheDocument();
+      expect(addedBadge).toHaveTextContent("VARCHAR");
     });
   });
 
