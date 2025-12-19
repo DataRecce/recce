@@ -250,15 +250,15 @@ function DateDividedRunHistoryItem({
     showRunId(runId, false);
   };
 
-  const handleAddToChecklist = useCallback(async () => {
-    if (!runId) {
-      return;
-    }
-    const check = await createCheckByRun(runId);
+  const handleAddToChecklist = useCallback(
+    async (clickedRunId: string) => {
+      const check = await createCheckByRun(clickedRunId);
 
-    await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    setLocation(`/checks/?id=${check.check_id}`);
-  }, [runId, setLocation, queryClient]);
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+      setLocation(`/checks/?id=${check.check_id}`);
+    },
+    [setLocation, queryClient],
+  );
 
   const handleGoToCheck = useCallback(
     (checkId: string) => {
