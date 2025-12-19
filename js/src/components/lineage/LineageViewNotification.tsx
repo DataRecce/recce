@@ -26,7 +26,7 @@ export function LineageViewNotification({
   }
 
   const bgColor = {
-    info: "iochmara.50",
+    info: "iochmara.light",
     success: "success.light",
     warning: "warning.light",
     error: "error.light",
@@ -42,9 +42,9 @@ export function LineageViewNotification({
         gap: "5px",
         alignItems: "flex-start",
         borderRadius: 1,
-        boxShadow: 2,
+        boxShadow: 4,
         border: "1px solid",
-        borderColor: "neutral.200",
+        borderColor: "neutral.light",
         bgcolor: bgColor,
       }}
     >

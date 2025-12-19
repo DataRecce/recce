@@ -679,7 +679,7 @@ const baseThemeOptions: ThemeOptions = {
   palette: {
     primary: {
       main: colors.iochmara[500],
-      light: colors.iochmara[400],
+      light: colors.iochmara[300],
       dark: colors.iochmara[600],
       contrastText: "#FFFFFF",
     },
@@ -858,7 +858,7 @@ declare module "@mui/material/styles" {
 function createPaletteColor(colorScale: (typeof colors)[keyof typeof colors]) {
   return {
     main: colorScale[500],
-    light: colorScale[400],
+    light: colorScale[300],
     dark: colorScale[600],
     contrastText: "#FFFFFF",
   };
@@ -867,7 +867,12 @@ function createPaletteColor(colorScale: (typeof colors)[keyof typeof colors]) {
 // Add custom colors to the theme palettes
 const customPaletteAdditions = {
   brand: createPaletteColor(colors.brand),
-  iochmara: createPaletteColor(colors.iochmara),
+  iochmara: {
+    main: colors.iochmara[500],
+    light: colors.iochmara[50],
+    dark: colors.iochmara[700],
+    contrastText: "#FFFFFF",
+  },
   cyan: createPaletteColor(colors.cyan),
   amber: createPaletteColor(colors.amber),
   green: createPaletteColor(colors.green),

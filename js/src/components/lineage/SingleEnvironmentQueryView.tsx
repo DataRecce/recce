@@ -104,11 +104,17 @@ export function BaseEnvironmentSetupGuide() {
 export function BaseEnvironmentSetupNotification() {
   return (
     <Stack direction="row" spacing="10px" alignItems="flex-start">
-      <Box component={RiMindMap} sx={{ color: "iochmara.500", fontSize: 20 }} />
+      <Box
+        component={RiMindMap}
+        sx={{ color: "iochmara.main", fontSize: 20 }}
+      />
       <Stack spacing="5px">
-        <Typography sx={{ fontWeight: "bold" }}>
+        <Typography sx={{ fontWeight: 700 }}>
           Single Environment Mode{" "}
-          <Typography component="span" sx={{ color: "error.main" }}>
+          <Typography
+            component="span"
+            sx={{ color: "error.main", fontWeight: 600 }}
+          >
             Limited Functionality
           </Typography>
         </Typography>
