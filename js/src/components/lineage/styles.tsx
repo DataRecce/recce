@@ -90,8 +90,8 @@ export function getIconForChangeStatus(
       icon: IconRemoved,
     };
   } else if (changeStatus === "modified") {
-    const color = String(token("colors.orange.emphasized"));
-    const backgroundColor = String(token("colors.orange.subtle"));
+    const color = String(token("colors.amber.emphasized"));
+    const backgroundColor = String(token("colors.amber.subtle"));
     return {
       color,
       hexColor: color,
