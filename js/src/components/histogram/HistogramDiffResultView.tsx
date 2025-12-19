@@ -1,6 +1,6 @@
-import { Box, Flex, HStack, Spacer } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
 import { forwardRef, Ref } from "react";
-import { HistogramDiffParams, HistogramDiffResult } from "@/lib/api/profile";
+import { HistogramDiffParams } from "@/lib/api/profile";
 import { isHistogramDiffRun } from "@/lib/api/types";
 import { HistogramChart } from "../charts/HistogramChart";
 import { RunResultViewProps } from "../run/types";
@@ -28,11 +28,11 @@ function _HistogramDiffResultView(
   }
 
   return (
-    <Flex direction="column" height="100%">
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <ScreenshotBox ref={ref} height="100%">
-        <HStack>
-          <Spacer />
-          <Box w="80%" h="35vh" m="4">
+        <Box sx={{ display: "flex", flexDirection: "row" }}>
+          <Box sx={{ flex: 1 }} />
+          <Box sx={{ width: "80%", height: "35vh", m: 4 }}>
             <HistogramChart
               data={{
                 title: `Model ${params.model}.${params.column_name}`,
@@ -45,10 +45,10 @@ function _HistogramDiffResultView(
               }}
             />
           </Box>
-          <Spacer />
-        </HStack>
+          <Box sx={{ flex: 1 }} />
+        </Box>
       </ScreenshotBox>
-    </Flex>
+    </Box>
   );
 }
 

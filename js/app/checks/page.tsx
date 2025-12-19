@@ -1,13 +1,9 @@
 "use client";
 
-import {
-  Box,
-  Center,
-  Flex,
-  Separator,
-  Spinner,
-  VStack,
-} from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
+import Divider from "@mui/material/Divider";
+import Stack from "@mui/material/Stack";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import React, {
@@ -46,18 +42,31 @@ function CheckPageLoading(): ReactNode {
   return (
     <HSplit style={{ height: "100%" }} minSize={50} sizes={[20, 80]}>
       <Box
-        borderRight="lightgray solid 1px"
-        height="100%"
+        sx={{ borderRight: "lightgray solid 1px", height: "100%" }}
         style={{ contain: "size" }}
       >
-        <Center h="100%">
-          <Spinner size="sm" />
-        </Center>
+        <Box
+          sx={{
+            height: "100%",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <CircularProgress size={20} />
+        </Box>
       </Box>
       <Box>
-        <Center h="100%">
-          <Spinner size="sm" />
-        </Center>
+        <Box
+          sx={{
+            height: "100%",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <CircularProgress size={20} />
+        </Box>
       </Box>
     </HSplit>
   );
@@ -177,31 +186,49 @@ function CheckPageContent(): ReactNode {
     return (
       <HSplit style={{ height: "100%" }} minSize={50} sizes={[20, 80]}>
         <Box
-          borderRight="lightgray solid 1px"
-          height="100%"
+          sx={{ borderRight: "lightgray solid 1px", height: "100%" }}
           style={{ contain: "size" }}
         >
-          <VStack
-            gap={0}
-            h="100%"
+          <Stack
+            sx={{ height: "100%", alignItems: "stretch" }}
             style={{ contain: "strict" }}
-            alignItems="stretch"
+            spacing={0}
           >
-            <Flex justifyContent="flex-end" padding="0px 10px">
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "flex-end",
+                p: "0px 10px",
+              }}
+            >
               <StateImporter checksOnly />
-            </Flex>
-            <Separator />
-            <Center h="100%">
-              <Box textAlign="center" color="gray.500">
+            </Box>
+            <Divider />
+            <Box
+              sx={{
+                height: "100%",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Box sx={{ textAlign: "center", color: "grey.500" }}>
                 No checks
               </Box>
-            </Center>
-          </VStack>
+            </Box>
+          </Stack>
         </Box>
         <Box>
-          <Center h="100%">
+          <Box
+            sx={{
+              height: "100%",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
             <CheckEmptyState />
-          </Center>
+          </Box>
         </Box>
       </HSplit>
     );
@@ -210,29 +237,29 @@ function CheckPageContent(): ReactNode {
   return (
     <HSplit style={{ height: "100%" }} minSize={50} sizes={[20, 80]}>
       <Box
-        borderRight="lightgray solid 1px"
-        height="100%"
+        sx={{ borderRight: "lightgray solid 1px", height: "100%" }}
         style={{ contain: "size" }}
       >
-        <VStack
-          gap={0}
-          h="100%"
+        <Stack
+          sx={{ height: "100%", alignItems: "stretch" }}
           style={{ contain: "strict" }}
-          alignItems="stretch"
+          spacing={0}
         >
-          <Flex justifyContent="right" padding="0px 10px">
+          <Box
+            sx={{ display: "flex", justifyContent: "flex-end", p: "0px 10px" }}
+          >
             <StateImporter checksOnly />
-          </Flex>
-          <Separator />
+          </Box>
+          <Divider />
           <CheckList
             checks={orderedChecks}
             selectedItem={selectedItem}
             onCheckSelected={handleSelectItem}
             onChecksReordered={handleDragEnd}
           />
-        </VStack>
+        </Stack>
       </Box>
-      <Box height="100%">
+      <Box sx={{ height: "100%" }}>
         {/* isValidSelection already checks selectedItem, but TS needs explicit check for type narrowing */}
         {isValidSelection && selectedItem && (
           <CheckDetail

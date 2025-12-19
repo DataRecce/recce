@@ -1,4 +1,4 @@
-import { Center, Flex } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
 import { forwardRef, Ref, useMemo } from "react";
 import { DataGridHandle } from "react-data-grid";
 import { isRowCountDiffRun, isRowCountRun, Run } from "@/lib/api/types";
@@ -33,14 +33,22 @@ function _RowCountGridView(
 
   if (gridData.rows.length === 0) {
     return (
-      <Center bg="rgb(249,249,249)" height="100%">
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: "rgb(249,249,249)",
+          height: "100%",
+        }}
+      >
         No nodes matched
-      </Center>
+      </Box>
     );
   }
 
   return (
-    <Flex direction="column">
+    <Box sx={{ display: "flex", flexDirection: "column" }}>
       <ScreenshotDataGrid
         ref={ref}
         style={{
@@ -55,7 +63,7 @@ function _RowCountGridView(
         renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
         className="rdg-light"
       />
-    </Flex>
+    </Box>
   );
 }
 

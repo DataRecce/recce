@@ -1,12 +1,7 @@
-import {
-  Button,
-  Center,
-  Heading,
-  HStack,
-  Icon,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React from "react";
 import { TbChecklist, TbPlus } from "react-icons/tb";
@@ -32,43 +27,55 @@ export const CheckEmptyState = () => {
   };
 
   return (
-    <Center h="100%" w="100%">
-      <VStack gap={6} textAlign="center" maxW="400px">
-        <Icon as={TbChecklist} boxSize={16} color="gray.400" />
+    <Box
+      sx={{
+        height: "100%",
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Stack
+        spacing={3}
+        sx={{ textAlign: "center", maxWidth: "400px", alignItems: "center" }}
+      >
+        <Box component={TbChecklist} sx={{ fontSize: 64, color: "grey.400" }} />
 
-        <VStack gap={2}>
-          <Heading size="lg" color="gray.600">
+        <Stack spacing={1}>
+          <Typography variant="h5" sx={{ color: "grey.600" }}>
             No checks yet
-          </Heading>
-          <Text color="gray.500" fontSize="md">
+          </Typography>
+          <Typography sx={{ color: "grey.500" }}>
             Checks help you validate data quality and catch issues.
-          </Text>
-        </VStack>
+          </Typography>
+        </Stack>
 
-        <VStack gap={3} w="100%">
-          <Text fontSize="sm" color="gray.600" fontWeight="medium">
+        <Stack spacing={1.5} sx={{ width: "100%" }}>
+          <Typography
+            sx={{ fontSize: "0.875rem", color: "grey.600", fontWeight: 500 }}
+          >
             Get started with your first check:
-          </Text>
+          </Typography>
 
           <Button
-            colorPalette="blue"
+            color="iochmara"
+            variant="contained"
             onClick={handleCreateSchemaCheck}
-            loading={isPending}
-            size="lg"
-            w="100%"
+            disabled={isPending}
+            size="large"
+            fullWidth
+            startIcon={<TbPlus />}
           >
-            <HStack>
-              <Icon as={TbPlus} />
-              <Text>Create Schema Diff Check</Text>
-            </HStack>
+            Create Schema Diff Check
           </Button>
 
-          <Text fontSize="xs" color="gray.400" mt={2}>
+          <Typography sx={{ fontSize: "0.75rem", color: "grey.400", mt: 0.5 }}>
             The schema checks compare modified models between environments to
             detect changes, additions, or removals.
-          </Text>
-        </VStack>
-      </VStack>
-    </Center>
+          </Typography>
+        </Stack>
+      </Stack>
+    </Box>
   );
 };

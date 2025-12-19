@@ -1,14 +1,14 @@
-import {
-  Avatar,
-  Box,
-  Icon,
-  Menu,
-  Portal,
-  Spinner,
-  Text,
-} from "@chakra-ui/react";
+import MuiAvatar from "@mui/material/Avatar";
+import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
+import Divider from "@mui/material/Divider";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
-import { useRef } from "react";
+import { type MouseEvent, useState } from "react";
 import { FaCloud, FaUser } from "react-icons/fa";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -33,96 +33,125 @@ export default function AvatarDropdown() {
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
-  const ref = useRef<HTMLDivElement | null>(null);
-  const getAnchorRect = () => ref.current?.getBoundingClientRect() ?? null;
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const open = Boolean(anchorEl);
+
+  const handleClick = (event: MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
   const showUserInfo = !isLoading && !error && user;
 
+  // Get initials for avatar fallback
+  const getInitials = (name?: string) => {
+    if (!name) return "U";
+    return name.charAt(0).toUpperCase();
+  };
+
   return (
-    <Menu.Root positioning={{ getAnchorRect }}>
-      <Menu.Trigger asChild>
-        {isLoading ? (
-          <Box
-            width="32px"
-            height="32px"
-            borderRadius="full"
-            bg="white"
-            color="brand.500"
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            cursor="pointer"
-          >
-            <Spinner size="sm" />
-          </Box>
-        ) : (
-          <Avatar.Root
-            outlineStyle="solid"
-            outlineWidth="1px"
-            outlineColor="white"
-            ref={ref}
-            size="xs"
-            cursor="pointer"
-          >
-            <Avatar.Fallback name={user?.login ?? "U"} />
-            {avatarUrl && <Avatar.Image src={avatarUrl} />}
-          </Avatar.Root>
-        )}
-      </Menu.Trigger>
-      <Portal>
-        <Menu.Positioner>
-          <Menu.Content
-            bg="white"
-            borderColor="gray.200"
-            boxShadow="lg"
-            minW="180px"
-          >
-            <Box px={3} py={2}>
-              {isLoading && (
-                <Box display="flex" alignItems="center" gap={2}>
-                  <Text fontSize="sm" color="gray.800">
-                    Loading...
-                  </Text>
-                  <Spinner size="sm" />
-                </Box>
-              )}
-              {error && (
-                <Text fontSize="xs" color="red.500">
-                  Failed to load user information
-                </Text>
-              )}
-              {showUserInfo && (
-                <>
-                  <Text fontWeight="semibold" fontSize="sm" color="gray.800">
-                    {user.login}
-                  </Text>
-                  {user.email && (
-                    <Text fontSize="xs" color="gray.400">
-                      {user.email}
-                    </Text>
-                  )}
-                </>
-              )}
+    <>
+      {isLoading ? (
+        <Box
+          onClick={handleClick}
+          sx={{
+            width: 32,
+            height: 32,
+            borderRadius: "50%",
+            bgcolor: "white",
+            color: "primary.main",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+          }}
+        >
+          <CircularProgress size={16} />
+        </Box>
+      ) : (
+        <MuiAvatar
+          onClick={handleClick}
+          src={avatarUrl || undefined}
+          sx={{
+            width: 28,
+            height: 28,
+            cursor: "pointer",
+            outline: "1px solid white",
+            fontSize: "0.875rem",
+          }}
+        >
+          {getInitials(user?.login)}
+        </MuiAvatar>
+      )}
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        slotProps={{
+          paper: {
+            sx: {
+              bgcolor: "white",
+              borderColor: "grey.200",
+              boxShadow: 3,
+              minWidth: 180,
+            },
+          },
+        }}
+      >
+        <Box sx={{ px: 2, py: 1.5 }}>
+          {isLoading && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="body2" color="text.primary">
+                Loading...
+              </Typography>
+              <CircularProgress size={16} />
             </Box>
-            <Menu.Separator />
-            <Menu.Item
-              value="recce cloud"
-              onClick={() =>
-                window.open("https://cloud.datarecce.io/", "_blank")
-              }
-            >
-              <Icon as={FaCloud} mr={2} />
-              Recce Cloud
-            </Menu.Item>
-            <Menu.Item
-              value="get live support"
-              onClick={() => window.open(RECCE_SUPPORT_CALENDAR_URL, "_blank")}
-            >
-              <Icon as={FaUser} mr={2} />
-              Get live support
-            </Menu.Item>
-          </Menu.Content>
-        </Menu.Positioner>
-      </Portal>
-    </Menu.Root>
+          )}
+          {error && (
+            <Typography variant="caption" color="error">
+              Failed to load user information
+            </Typography>
+          )}
+          {showUserInfo && (
+            <>
+              <Typography variant="body2" fontWeight="600" color="text.primary">
+                {user.login}
+              </Typography>
+              {user.email && (
+                <Typography variant="caption" color="text.secondary">
+                  {user.email}
+                </Typography>
+              )}
+            </>
+          )}
+        </Box>
+        <Divider />
+        <MenuItem
+          onClick={() => {
+            window.open("https://cloud.datarecce.io/", "_blank");
+            handleClose();
+          }}
+        >
+          <ListItemIcon>
+            <FaCloud />
+          </ListItemIcon>
+          <ListItemText>Recce Cloud</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            window.open(RECCE_SUPPORT_CALENDAR_URL, "_blank");
+            handleClose();
+          }}
+        >
+          <ListItemIcon>
+            <FaUser />
+          </ListItemIcon>
+          <ListItemText>Get live support</ListItemText>
+        </MenuItem>
+      </Menu>
+    </>
   );
 }

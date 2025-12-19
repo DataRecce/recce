@@ -1,5 +1,7 @@
-import { CloseButton, Flex, Spacer } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
 import React, { useState } from "react";
+import { IoClose } from "react-icons/io5";
 import { sessionStorageKeys } from "@/lib/api/sessionStorageKeys";
 
 interface NotificationProps {
@@ -24,33 +26,39 @@ export function LineageViewNotification({
   }
 
   const bgColor = {
-    info: "blue.50",
-    success: "green.50",
-    warning: "yellow.50",
-    error: "red.50",
+    info: "iochmara.light",
+    success: "success.light",
+    warning: "warning.light",
+    error: "error.light",
   }[type];
 
   return (
-    <Flex
-      w="100%"
-      direction="row"
-      p="5px 10px"
-      gap="5px"
-      alignItems="flex-start"
-      borderRadius="md"
-      boxShadow="md"
-      border="1px solid"
-      borderColor="gray.200"
-      bg={bgColor}
+    <Box
+      sx={{
+        width: "100%",
+        display: "flex",
+        flexDirection: "row",
+        p: "5px 10px",
+        gap: "5px",
+        alignItems: "flex-start",
+        borderRadius: 1,
+        boxShadow: 4,
+        border: "1px solid",
+        borderColor: "neutral.light",
+        bgcolor: bgColor,
+      }}
     >
       {notification}
-      <Spacer />
-      <CloseButton
+      <Box sx={{ flex: 1 }} />
+      <IconButton
+        size="small"
         onClick={() => {
           sessionStorage.setItem(notificationKey, "true");
           setVisible(false);
         }}
-      />
-    </Flex>
+      >
+        <IoClose />
+      </IconButton>
+    </Box>
   );
 }

@@ -1,11 +1,7 @@
-import { Box, Breadcrumb, Input } from "@chakra-ui/react";
-import React, {
-  ChangeEvent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import Box from "@mui/material/Box";
+import Breadcrumbs from "@mui/material/Breadcrumbs";
+import TextField from "@mui/material/TextField";
+import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
 interface CheckBreadcrumbProps {
   name: string;
@@ -63,35 +59,40 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
   }, [isEditing, handleCommit]);
 
   return (
-    <Breadcrumb.Root
-      flex="0 1 auto"
-      fontSize="12pt"
-      fontWeight="500"
+    <Breadcrumbs
+      sx={{
+        flex: "0 1 auto",
+        fontSize: "12pt",
+        fontWeight: 500,
+        overflow: "hidden",
+      }}
       className="no-track-pii-safe"
-      overflow={"hidden"}
     >
-      <Breadcrumb.Item cursor="pointer" flex="0 1 auto" overflow="hidden">
+      <Box sx={{ cursor: "pointer", flex: "0 1 auto", overflow: "hidden" }}>
         {isEditing ? (
-          <Input
-            ref={editInputRef}
+          <TextField
+            inputRef={editInputRef}
             value={editValue}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            size="sm"
-            w="100%"
+            size="small"
+            sx={{ width: "100%" }}
+            variant="outlined"
           />
         ) : (
           <Box
-            flex="0 1 auto"
+            sx={{
+              flex: "0 1 auto",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+            }}
             onClick={handleClick}
-            textOverflow="ellipsis"
-            whiteSpace="nowrap"
-            overflow="hidden"
           >
             {name}
           </Box>
         )}
-      </Breadcrumb.Item>
-    </Breadcrumb.Root>
+      </Box>
+    </Breadcrumbs>
   );
 }

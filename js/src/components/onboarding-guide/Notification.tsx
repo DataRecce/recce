@@ -1,47 +1,62 @@
-import { CloseButton, Flex, Icon, Link, Spacer } from "@chakra-ui/react";
-import { SystemProps } from "@chakra-ui/styled-system";
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
+import MuiLink from "@mui/material/Link";
 import { PropsWithChildren } from "react";
 import { FiInfo } from "react-icons/fi";
+import { IoClose } from "react-icons/io5";
 import { LuExternalLink } from "react-icons/lu";
 
 export const RecceNotification = (
   props: PropsWithChildren<{
     onClose: () => void;
-    align?: SystemProps["alignItems"];
+    align?: string;
   }>,
 ) => {
   return (
-    <Flex
-      flex="1"
-      minH={"48px"}
-      m="4px"
-      px="16px"
-      py="12px"
-      bg="blue.50"
-      border="1px"
-      borderRadius="4px"
-      borderColor="blue.400"
-      align={props.align ?? "center"}
-      gap="12px"
+    <Box
+      sx={{
+        display: "flex",
+        flex: 1,
+        minHeight: "48px",
+        m: "4px",
+        px: "16px",
+        py: "12px",
+        bgcolor: "primary.50",
+        border: "1px solid",
+        borderRadius: "4px",
+        borderColor: "primary.400",
+        alignItems: props.align ?? "center",
+        gap: "12px",
+      }}
     >
-      <Icon as={FiInfo} width={"20px"} height={"20px"} color={"blue.900"} />
+      <Box
+        component={FiInfo}
+        sx={{ width: "20px", height: "20px", color: "primary.900" }}
+      />
       {props.children}
-      <Spacer />
-      <CloseButton onClick={props.onClose} />
-    </Flex>
+      <Box sx={{ flexGrow: 1 }} />
+      <IconButton size="small" onClick={props.onClose}>
+        <IoClose />
+      </IconButton>
+    </Box>
   );
 };
 
 export const LearnHowLink = () => {
   return (
-    <Link
+    <MuiLink
       href="https://docs.datarecce.io/get-started/#prepare-dbt-artifacts"
       target="_blank"
-      color="rgba(49, 130, 206, 1)"
-      fontWeight={"bold"}
-      textDecoration={"underline"}
+      sx={{
+        color: "rgba(49, 130, 206, 1)",
+        fontWeight: "bold",
+        textDecoration: "underline",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 0.5,
+      }}
     >
       Learn how <LuExternalLink />
-    </Link>
+    </MuiLink>
   );
 };

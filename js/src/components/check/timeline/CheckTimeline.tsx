@@ -7,15 +7,11 @@
  * This component is only rendered when connected to Recce Cloud.
  */
 
-import {
-  Box,
-  Center,
-  Heading,
-  Separator,
-  Spinner,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
+import Divider from "@mui/material/Divider";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { fetchUser } from "@/lib/api/user";
@@ -59,45 +55,70 @@ export function CheckTimeline({ checkId }: CheckTimelineProps) {
 
   if (isLoading) {
     return (
-      <Center h="100%" p={4}>
-        <Spinner size="sm" />
-      </Center>
+      <Box
+        sx={{
+          height: "100%",
+          p: 4,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <CircularProgress size={20} />
+      </Box>
     );
   }
 
   if (error) {
     return (
-      <Center h="100%" p={4}>
-        <Text fontSize="sm" color="red.500">
+      <Box
+        sx={{
+          height: "100%",
+          p: 4,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Typography sx={{ fontSize: "0.875rem", color: "error.main" }}>
           Failed to load timeline
-        </Text>
-      </Center>
+        </Typography>
+      </Box>
     );
   }
 
   return (
-    <VStack
-      h="100%"
-      align="stretch"
-      gap={0}
-      borderLeft="1px solid"
-      borderColor="gray.200"
+    <Stack
+      sx={{
+        height: "100%",
+        alignItems: "stretch",
+        borderLeft: "1px solid",
+        borderColor: "grey.200",
+      }}
+      spacing={0}
     >
       {/* Header */}
-      <Box px={3} py={2} borderBottom="1px solid" borderColor="gray.200">
-        <Heading size="sm" fontWeight="medium">
+      <Box
+        sx={{
+          px: 3,
+          py: 2,
+          borderBottom: "1px solid",
+          borderColor: "grey.200",
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
           Activity
-        </Heading>
+        </Typography>
       </Box>
 
       {/* Events List - Scrollable */}
-      <Box flex={1} overflowY="auto" px={3} py={2}>
+      <Box sx={{ flex: 1, overflowY: "auto", px: 3, py: 2 }}>
         {events.length === 0 ? (
-          <Text fontSize="sm" color="gray.500">
+          <Typography sx={{ fontSize: "0.875rem", color: "grey.500" }}>
             No activity yet
-          </Text>
+          </Typography>
         ) : (
-          <VStack align="stretch" gap={0}>
+          <Stack sx={{ alignItems: "stretch" }} spacing={0}>
             {events.map((event, index) => (
               <Box key={event.id}>
                 <TimelineEvent
@@ -107,27 +128,29 @@ export function CheckTimeline({ checkId }: CheckTimelineProps) {
                   onDelete={handleDeleteComment}
                 />
                 {index < events.length - 1 && (
-                  <Separator borderColor="gray.100" />
+                  <Divider sx={{ borderColor: "grey.100" }} />
                 )}
               </Box>
             ))}
-          </VStack>
+          </Stack>
         )}
       </Box>
 
       {/* Comment Input - Fixed at bottom */}
       <Box
-        px={3}
-        py={3}
-        borderTop="1px solid"
-        borderColor="gray.200"
-        bg="gray.50"
+        sx={{
+          px: 3,
+          py: 3,
+          borderTop: "1px solid",
+          borderColor: "grey.200",
+          bgcolor: "grey.50",
+        }}
       >
         <CommentInput
           onSubmit={handleCreateComment}
           isSubmitting={isCreatingComment}
         />
       </Box>
-    </VStack>
+    </Stack>
   );
 }

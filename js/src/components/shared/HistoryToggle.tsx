@@ -1,6 +1,7 @@
 "use client";
 
-import { Box, Button } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import React, { ReactNode } from "react";
 import { VscHistory } from "react-icons/vsc";
 import { trackHistoryAction } from "@/lib/api/track";
@@ -15,17 +16,18 @@ export default function HistoryToggle(): ReactNode {
 
   return (
     <Box>
-      <Box fontSize="8pt">History</Box>
+      <Box sx={{ fontSize: "8pt" }}>History</Box>
 
       <Button
-        size="2xs"
-        variant="outline"
+        size="xsmall"
+        variant="outlined"
+        startIcon={<VscHistory />}
         onClick={() => {
           trackHistoryAction({ name: isHistoryOpen ? "hide" : "show" });
           showHistory();
         }}
       >
-        <VscHistory /> Show
+        Show
       </Button>
     </Box>
   );

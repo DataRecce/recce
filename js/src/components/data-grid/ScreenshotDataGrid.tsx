@@ -1,5 +1,6 @@
 import "react-data-grid/lib/styles.css";
-import { Flex, Text } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 import React, { forwardRef } from "react";
 import { DataGrid, DataGridHandle, DataGridProps } from "react-data-grid";
 import { RowObjectType } from "@/lib/api/types";
@@ -32,14 +33,20 @@ interface EmptyRowsRendererProps {
 
 export function EmptyRowsRenderer({ emptyMessage }: EmptyRowsRendererProps) {
   return (
-    <Flex
-      h="35px"
-      alignItems="center"
-      justifyContent="center"
-      bg="gray.100"
-      style={{ textAlign: "center", gridColumn: "1/-1" }}
+    <Box
+      sx={{
+        display: "flex",
+        height: "35px",
+        alignItems: "center",
+        justifyContent: "center",
+        bgcolor: "grey.100",
+        textAlign: "center",
+        gridColumn: "1/-1",
+      }}
     >
-      <Text fontWeight="600"> {emptyMessage ?? "No rows"}</Text>
-    </Flex>
+      <Typography sx={{ fontWeight: 600 }}>
+        {emptyMessage ?? "No rows"}
+      </Typography>
+    </Box>
   );
 }

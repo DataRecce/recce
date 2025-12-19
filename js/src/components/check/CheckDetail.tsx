@@ -1,42 +1,44 @@
 "use client";
 
-import {
-  Box,
-  Button,
-  Center,
-  CloseButton,
-  Dialog,
-  Flex,
-  Grid,
-  GridItem,
-  Heading,
-  Highlight,
-  HStack,
-  Icon,
-  IconButton,
-  Menu,
-  MenuSeparator,
-  Portal,
-  Spacer,
-  Tabs,
-  Tag,
-  Text,
-  useDisclosure,
-  VStack,
-} from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import MuiDialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import Divider from "@mui/material/Divider";
+import Grid from "@mui/material/Grid";
+import IconButton from "@mui/material/IconButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import Stack from "@mui/material/Stack";
+import Tab from "@mui/material/Tab";
+import Tabs from "@mui/material/Tabs";
+import MuiTooltip from "@mui/material/Tooltip";
+import Typography from "@mui/material/Typography";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { stripIndents } from "common-tags";
 import { formatDistanceToNow } from "date-fns";
-import React, { ReactNode, Ref, useCallback, useRef, useState } from "react";
-import { CiBookmark } from "react-icons/ci";
+import React, {
+  type MouseEvent,
+  ReactNode,
+  Ref,
+  useCallback,
+  useRef,
+  useState,
+} from "react";
+import { IconType } from "react-icons";
+import { FaBookmark } from "react-icons/fa6";
 import { IoMdCodeWorking } from "react-icons/io";
-import { IoBookmarksOutline } from "react-icons/io5";
+import { IoBookmarksOutline, IoClose } from "react-icons/io5";
 import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
 import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { CheckTimeline } from "@/components/check/timeline";
 import { isDisabledByNoResult } from "@/components/check/utils";
-import { Tooltip } from "@/components/ui/tooltip";
+import { lightTheme } from "@/components/ui/mui-theme";
 import {
   QueryDiffParams,
   QueryParams,
@@ -102,12 +104,10 @@ export function CheckDetail({
   const [submittedRunId, setSubmittedRunId] = useState<string>();
   const [progress] = useState<Run["progress"]>();
   const [isAborting, setAborting] = useState(false);
-  const {
-    open: isPresetCheckTemplateOpen,
-    onOpen: onPresetCheckTemplateOpen,
-    onClose: onPresetCheckTemplateClose,
-  } = useDisclosure();
-  const [overlay, setOverlay] = useState(<Overlay />);
+  const [isPresetCheckTemplateOpen, setIsPresetCheckTemplateOpen] =
+    useState(false);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
+  const menuOpen = Boolean(menuAnchorEl);
 
   const {
     isLoading,
@@ -239,6 +239,14 @@ export function CheckDetail({
     mutate({ description });
   };
 
+  const handleMenuClick = (event: MouseEvent<HTMLButtonElement>) => {
+    setMenuAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
+  };
+
   const [tabValue, setTabValue] = useState<TabValueList>("result");
   const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } =
     useCopyToClipboardButton();
@@ -253,14 +261,32 @@ export function CheckDetail({
   });
 
   if (isLoading) {
-    return <Center h="100%">Loading</Center>;
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+        }}
+      >
+        Loading
+      </Box>
+    );
   }
 
   if (error) {
     return (
-      <Center h="100%">
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+        }}
+      >
         Error: <span className="no-track-pii-safe">{error.message}</span>
-      </Center>
+      </Box>
     );
   }
 
@@ -273,17 +299,23 @@ export function CheckDetail({
       >
         <Box
           style={{ contain: "strict" }}
-          display="flex"
-          flexDirection="column"
+          sx={{ display: "flex", flexDirection: "column" }}
         >
-          <Flex p="0px 16px" alignItems="center" h="40px">
+          <Box
+            sx={{
+              display: "flex",
+              p: "0px 16px",
+              alignItems: "center",
+              height: 40,
+            }}
+          >
             <CheckBreadcrumb
               name="Check not found"
               setName={() => {
                 // do nothing
               }}
             />
-          </Flex>
+          </Box>
         </Box>
       </VSplit>
     );
@@ -293,341 +325,443 @@ export function CheckDetail({
     ? formatDistanceToNow(new Date(run.run_at), { addSuffix: true })
     : null;
 
+  // Get the icon for the check type
+  const checkTypeIcon: IconType | undefined = runTypeEntry?.icon;
+
   return (
-    <VSplit
-      minSize={100}
-      sizes={[30, 70]}
-      style={{ height: "100%", width: "100%", maxHeight: "100%" }}
+    <Grid
+      spacing={0}
+      container
+      sx={{
+        height: "100%",
+        width: "100%",
+      }}
     >
-      <Grid
-        templateColumns={cloudMode ? "2fr 1fr" : "1fr"}
-        h="100%"
-        style={{ contain: "strict" }}
-      >
-        <GridItem display="flex" flexDirection="column" overflow="hidden">
-          <Flex p="0px 16px" alignItems="center" h="40px">
-            <CheckBreadcrumb
-              name={check.name}
-              setName={(name) => {
-                mutate({ name });
-              }}
-            />
-            {isPresetCheck && (
-              <Tooltip content="Preset Check defined in recce config">
-                <Tag.Root size="sm" flex="0 0 auto" ml="2">
-                  <Tag.StartElement>
-                    <CiBookmark size="14px" />
-                  </Tag.StartElement>
-                  <Tag.Label>Preset</Tag.Label>
-                </Tag.Root>
-              </Tooltip>
-            )}
-            <Spacer />
-            <HStack mr="10px">
-              {relativeTime && (
-                <Box
-                  textOverflow="ellipsis"
-                  whiteSpace="nowrap"
-                  overflow="hidden"
-                  fontSize="10pt"
-                >
-                  {relativeTime}
-                </Box>
-              )}
-
-              <Menu.Root>
-                <Menu.Trigger asChild>
-                  <IconButton rounded="full" variant="ghost" size="sm">
-                    <Icon as={VscKebabVertical} />
-                  </IconButton>
-                </Menu.Trigger>
-                <Portal>
-                  <Menu.Positioner>
-                    <Menu.Content>
-                      {sessionId && (
-                        <Menu.Item
-                          value="mark-as-preset-check"
-                          onClick={() => handleMarkAsPresetCheck()}
-                          disabled={isMarkingAsPreset || isPresetCheck}
-                        >
-                          <Flex alignItems="center" gap={1} textStyle="sm">
-                            <IoBookmarksOutline /> Mark as Preset Check
-                          </Flex>
-                        </Menu.Item>
-                      )}
-                      <Menu.Item
-                        value="preset-check-template"
-                        onClick={() => {
-                          setOverlay(<Overlay />);
-                          onPresetCheckTemplateOpen();
-                        }}
-                      >
-                        <Flex alignItems="center" gap={1} textStyle="sm">
-                          <IoMdCodeWorking /> Get Preset Check Template
-                        </Flex>
-                      </Menu.Item>
-                      <Menu.Item
-                        value="copy-markdown"
-                        onClick={() => handleCopy()}
-                      >
-                        <Flex alignItems="center" gap={1} textStyle="sm">
-                          <PiCopy /> Copy Markdown
-                        </Flex>
-                      </Menu.Item>
-                      <MenuSeparator />
-                      <Menu.Item
-                        value="delete"
-                        color="red.solid"
-                        onClick={() => {
-                          handleDelete();
-                        }}
-                        disabled={featureToggles.disableUpdateChecklist}
-                      >
-                        <Flex alignItems="center" gap={1} textStyle="sm">
-                          <PiTrashFill /> Delete
-                        </Flex>
-                      </Menu.Item>
-                    </Menu.Content>
-                  </Menu.Positioner>
-                </Portal>
-              </Menu.Root>
-
-              <Tooltip
-                content={
-                  isDisabledByNoResult(check.type, run)
-                    ? "Run the check first"
-                    : check.is_checked
-                      ? "Mark as Pending"
-                      : "Mark as Approved"
-                }
-                positioning={{ placement: "bottom-end" }}
-              >
-                <Button
-                  flex="0 0 auto"
-                  size="sm"
-                  colorPalette={check.is_checked ? "green" : "gray"}
-                  variant={check.is_checked ? "solid" : "outline"}
-                  onClick={() => {
-                    handleApproveCheck();
-                  }}
-                  disabled={
-                    isDisabledByNoResult(check.type, run) ||
-                    featureToggles.disableUpdateChecklist
-                  }
-                >
-                  {check.is_checked ? (
-                    <PiCheckCircle />
-                  ) : (
-                    <Icon as={VscCircleLarge} color="lightgray" />
-                  )}{" "}
-                  {check.is_checked ? "Approved" : "Mark as Approved"}
-                </Button>
-              </Tooltip>
-            </HStack>
-          </Flex>
-
-          <Box flex="1" p="8px 16px" minHeight="100px">
-            <CheckDescription
-              key={check.check_id}
-              value={check.description}
-              onChange={handleUpdateDescription}
-            />
-          </Box>
-        </GridItem>
-        {/* Timeline panel - only shown when connected to cloud */}
-        {cloudMode && (
-          <GridItem overflow="hidden">
-            <CheckTimeline checkId={checkId} />
-          </GridItem>
-        )}
-      </Grid>
-
-      <Box style={{ contain: "strict" }}>
-        <Tabs.Root
-          height="100%"
-          display="flex"
-          flexDirection="column"
-          value={tabValue}
-          onValueChange={(e) => {
-            setTabValue(e.value as TabValueList);
-          }}
+      <Grid size={{ xs: 12, md: cloudMode ? 9 : 12 }} sx={{ height: "100%" }}>
+        <VSplit
+          minSize={100}
+          sizes={[40, 60]}
+          style={{ height: "100%", width: "100%", maxHeight: "100%" }}
         >
-          <Tabs.List height="50px">
-            <Tabs.Trigger value="result" fontSize="0.75rem">
-              Result
-            </Tabs.Trigger>
-            {(check.type === "query" || check.type === "query_diff") && (
-              <Tabs.Trigger value="query" fontSize="0.75rem">
-                Query
-              </Tabs.Trigger>
-            )}
-            <Spacer />
-            <HStack mr="10px">
-              {RunResultView && (
-                <Tooltip content="Rerun">
-                  <Button
-                    variant="outline"
-                    loading={isRunning}
-                    size="sm"
-                    onClick={() => handleRerun()}
-                    disabled={featureToggles.disableDatabaseQuery}
-                  >
-                    <PiRepeat /> Rerun
-                  </Button>
-                </Tooltip>
-              )}
-              <Button
-                variant="outline"
-                disabled={
-                  isDisabledByNoResult(check.type, run) || tabValue !== "result"
-                }
-                onMouseEnter={onMouseEnter}
-                onMouseLeave={onMouseLeave}
-                size="sm"
-                onClick={async () => {
-                  if (check.type === "lineage_diff") {
-                    lineageViewRef.current?.copyToClipboard();
-                  } else {
-                    await onCopyToClipboard();
-                  }
-                  trackCopyToClipboard({ type: check.type, from: "check" });
+          <Box
+            sx={{
+              height: "100%",
+              contain: "strict",
+              display: "flex",
+              flexDirection: "row",
+            }}
+          >
+            {/* Main content area - takes remaining space */}
+            <Box
+              sx={{
+                flex: 1,
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+                minWidth: 0,
+              }}
+            >
+              {/* Title bar with icon, name, and actions */}
+              <Box
+                sx={{
+                  display: "flex",
+                  p: "0px 16px",
+                  alignItems: "center",
+                  height: 40,
+                  borderBottom: "2px solid",
+                  borderColor: "grey.300",
                 }}
               >
-                <PiCopy /> Copy to Clipboard
-              </Button>
-            </HStack>
-          </Tabs.List>
-          <Tabs.ContentGroup
-            height="100%"
-            flex="1"
-            style={{ contain: "strict" }}
-          >
-            <Tabs.Content value="result" p={0} width="100%" height="100%">
-              {RunResultView &&
-                (check.last_run || trackedRunId ? (
-                  <RunView
-                    ref={ref as unknown as Ref<RefTypes>}
-                    isRunning={isRunning}
-                    isAborting={isAborting}
-                    run={trackedRunId ? run : check.last_run}
-                    error={rerunError}
-                    progress={progress}
-                    RunResultView={RunResultView}
-                    viewOptions={check.view_options as ViewOptionTypes}
-                    onViewOptionsChanged={handelUpdateViewOptions}
-                    onCancel={handleCancel}
-                    onExecuteRun={handleRerun}
-                  />
-                ) : (
-                  <Center bg="rgb(249,249,249)" height="100%">
-                    <VStack gap={4}>
-                      <Box>
-                        This action is part of the initial preset and has not
-                        been performed yet. Once performed, the result will be
-                        shown here.
-                      </Box>
-                      <SetupConnectionPopover
-                        display={featureToggles.mode === "metadata only"}
-                      >
-                        <Button
-                          onClick={handleRerun}
-                          colorPalette="blue"
-                          size="sm"
-                          disabled={featureToggles.disableDatabaseQuery}
-                        >
-                          Run Query
-                        </Button>
-                      </SetupConnectionPopover>
-                    </VStack>
-                  </Center>
-                ))}
-              {check.type === "schema_diff" && (
-                <SchemaDiffView key={check.check_id} check={check} ref={ref} />
-              )}
-              {check.type === "lineage_diff" && (
-                <LineageDiffView
-                  key={check.check_id}
-                  check={check}
-                  ref={lineageViewRef}
-                />
-              )}
-            </Tabs.Content>
-            {(check.type === "query" ||
-              check.type === "query_diff" ||
-              check.type === "query_base") && (
-              <Tabs.Content value="query" p={0} height="100%" width="100%">
-                {(check.params as QueryParams).base_sql_template ? (
-                  <DualSqlEditor
-                    value={(check.params as QueryDiffParams).sql_template || ""}
-                    baseValue={
-                      (check.params as QueryDiffParams).base_sql_template ?? ""
-                    }
-                    options={{ readOnly: true }}
-                  />
-                ) : (
-                  <SqlEditor
-                    value={(check.params as QueryRunParams).sql_template || ""}
-                    options={{ readOnly: true }}
+                {/* Check type icon */}
+                {checkTypeIcon && (
+                  <Box
+                    component={checkTypeIcon}
+                    sx={{ fontSize: 20, mr: 1, flexShrink: 0 }}
                   />
                 )}
-              </Tabs.Content>
-            )}
-          </Tabs.ContentGroup>
-        </Tabs.Root>
-      </Box>
-      <Dialog.Root
-        open={isPresetCheckTemplateOpen}
-        onOpenChange={onPresetCheckTemplateClose}
-        placement="center"
-        size="xl"
-      >
-        <Portal>
-          {overlay}
-          <Dialog.Positioner>
-            <Dialog.Content overflowY="auto" height="40%" width="60%">
-              <Dialog.Header>
-                <Dialog.Title>Preset Check Template</Dialog.Title>
-              </Dialog.Header>
-              <Dialog.Body>
-                <Heading size="sm" fontWeight="bold">
-                  Please{" "}
-                  <Text
-                    as="span"
-                    cursor="pointer"
-                    _hover={{ textDecoration: "underline" }}
-                    color={"blue.500"}
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(presetCheckTemplate);
-                      successToast("Copied the template to the clipboard");
-                    }}
-                  >
-                    copy
-                  </Text>{" "}
-                  the following template and paste it into the{" "}
-                  <Highlight
-                    query="recce.yml"
-                    styles={{ px: "1", py: "0", bg: "red.100" }}
-                  >
-                    recce.yml
-                  </Highlight>{" "}
-                  file.
-                </Heading>
-                <br />
-                <PresetCheckTemplateView yamlTemplate={presetCheckTemplate} />
-              </Dialog.Body>
-              <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
-              </Dialog.CloseTrigger>
-            </Dialog.Content>
-          </Dialog.Positioner>
-        </Portal>
-      </Dialog.Root>
-    </VSplit>
-  );
-}
+                <CheckBreadcrumb
+                  name={check.name}
+                  setName={(name) => {
+                    mutate({ name });
+                  }}
+                />
+                <Box sx={{ flexGrow: 1 }} />
+                <Stack direction="row" spacing={2} sx={{ mr: "10px" }}>
+                  {relativeTime && (
+                    <Box
+                      sx={{
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        fontSize: "0.75rem",
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      {relativeTime}
+                    </Box>
+                  )}
 
-function Overlay(): ReactNode {
-  return <Dialog.Backdrop bg="blackAlpha.300" backdropFilter="blur(10px) " />;
+                  {/* Preset label moved to the right */}
+                  {isPresetCheck && (
+                    <MuiTooltip title="This is a preset check">
+                      <Box
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                      >
+                        <FaBookmark
+                          size="1rem"
+                          color={lightTheme.palette.iochmara.dark}
+                        />
+                      </Box>
+                    </MuiTooltip>
+                  )}
+
+                  <IconButton size="small" onClick={handleMenuClick}>
+                    <VscKebabVertical />
+                  </IconButton>
+                  <Menu
+                    anchorEl={menuAnchorEl}
+                    open={menuOpen}
+                    onClose={handleMenuClose}
+                  >
+                    {sessionId && (
+                      <MenuItem
+                        onClick={() => {
+                          handleMarkAsPresetCheck();
+                          handleMenuClose();
+                        }}
+                        disabled={isMarkingAsPreset || isPresetCheck}
+                      >
+                        <ListItemIcon>
+                          <IoBookmarksOutline />
+                        </ListItemIcon>
+                        <ListItemText>Mark as Preset Check</ListItemText>
+                      </MenuItem>
+                    )}
+                    <MenuItem
+                      onClick={() => {
+                        setIsPresetCheckTemplateOpen(true);
+                        handleMenuClose();
+                      }}
+                    >
+                      <ListItemIcon>
+                        <IoMdCodeWorking />
+                      </ListItemIcon>
+                      <ListItemText>Get Preset Check Template</ListItemText>
+                    </MenuItem>
+                    <MenuItem
+                      onClick={() => {
+                        handleCopy();
+                        handleMenuClose();
+                      }}
+                    >
+                      <ListItemIcon>
+                        <PiCopy />
+                      </ListItemIcon>
+                      <ListItemText>Copy Markdown</ListItemText>
+                    </MenuItem>
+                    <Divider />
+                    <MenuItem
+                      onClick={() => {
+                        handleDelete();
+                        handleMenuClose();
+                      }}
+                      disabled={featureToggles.disableUpdateChecklist}
+                      sx={{ color: "error.main" }}
+                    >
+                      <ListItemIcon sx={{ color: "error.main" }}>
+                        <PiTrashFill />
+                      </ListItemIcon>
+                      <ListItemText>Delete</ListItemText>
+                    </MenuItem>
+                  </Menu>
+
+                  <MuiTooltip
+                    title={
+                      isDisabledByNoResult(check.type, run)
+                        ? "Run the check first"
+                        : check.is_checked
+                          ? "Remove approval"
+                          : "Mark as approved"
+                    }
+                    placement="bottom-end"
+                  >
+                    <Button
+                      size="small"
+                      color={check.is_checked ? "success" : "neutral"}
+                      variant={check.is_checked ? "contained" : "outlined"}
+                      onClick={() => {
+                        handleApproveCheck();
+                      }}
+                      disabled={
+                        isDisabledByNoResult(check.type, run) ||
+                        featureToggles.disableUpdateChecklist
+                      }
+                      startIcon={
+                        check.is_checked ? (
+                          <PiCheckCircle />
+                        ) : (
+                          <VscCircleLarge style={{ color: "lightgray" }} />
+                        )
+                      }
+                      sx={{ flex: "0 0 auto", textTransform: "none" }}
+                    >
+                      {check.is_checked ? "Approved" : "Pending"}
+                    </Button>
+                  </MuiTooltip>
+                </Stack>
+              </Box>
+
+              {/* Description area */}
+              <Box sx={{ flex: 1, p: "8px 16px", minHeight: 100 }}>
+                <CheckDescription
+                  key={check.check_id}
+                  value={check.description}
+                  onChange={handleUpdateDescription}
+                />
+              </Box>
+            </Box>
+          </Box>
+          <Box style={{ contain: "strict" }}>
+            <Box
+              sx={{
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  borderBottom: 1,
+                  borderColor: "divider",
+                  height: 50,
+                }}
+              >
+                <Tabs
+                  value={tabValue}
+                  onChange={(_, newValue) =>
+                    setTabValue(newValue as TabValueList)
+                  }
+                >
+                  <Tab
+                    label="Result"
+                    value="result"
+                    sx={{ fontSize: "0.75rem", textTransform: "none" }}
+                  />
+                  {(check.type === "query" || check.type === "query_diff") && (
+                    <Tab
+                      label="Query"
+                      value="query"
+                      sx={{ fontSize: "0.75rem", textTransform: "none" }}
+                    />
+                  )}
+                </Tabs>
+                <Box sx={{ flexGrow: 1 }} />
+                <Stack direction="row" spacing={1} sx={{ mr: "10px" }}>
+                  {RunResultView && (
+                    <MuiTooltip title="Rerun">
+                      <Button
+                        variant="outlined"
+                        color="neutral"
+                        size="small"
+                        onClick={() => handleRerun()}
+                        disabled={
+                          featureToggles.disableDatabaseQuery || isRunning
+                        }
+                        startIcon={<PiRepeat />}
+                        sx={{ textTransform: "none" }}
+                      >
+                        {isRunning ? "Running..." : "Rerun"}
+                      </Button>
+                    </MuiTooltip>
+                  )}
+                  <Button
+                    variant="outlined"
+                    color="neutral"
+                    disabled={
+                      isDisabledByNoResult(check.type, run) ||
+                      tabValue !== "result"
+                    }
+                    onMouseEnter={onMouseEnter}
+                    onMouseLeave={onMouseLeave}
+                    size="small"
+                    onClick={async () => {
+                      if (check.type === "lineage_diff") {
+                        lineageViewRef.current?.copyToClipboard();
+                      } else {
+                        await onCopyToClipboard();
+                      }
+                      trackCopyToClipboard({ type: check.type, from: "check" });
+                    }}
+                    startIcon={<PiCopy />}
+                    sx={{ textTransform: "none" }}
+                  >
+                    Copy to Clipboard
+                  </Button>
+                </Stack>
+              </Box>
+              <Box sx={{ flex: 1, contain: "strict" }}>
+                {tabValue === "result" && (
+                  <Box sx={{ width: "100%", height: "100%" }}>
+                    {RunResultView &&
+                      (check.last_run || trackedRunId ? (
+                        <RunView
+                          ref={ref as unknown as Ref<RefTypes>}
+                          isRunning={isRunning}
+                          isAborting={isAborting}
+                          run={trackedRunId ? run : check.last_run}
+                          error={rerunError}
+                          progress={progress}
+                          RunResultView={RunResultView}
+                          viewOptions={check.view_options as ViewOptionTypes}
+                          onViewOptionsChanged={handelUpdateViewOptions}
+                          onCancel={handleCancel}
+                          onExecuteRun={handleRerun}
+                        />
+                      ) : (
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            bgcolor: "rgb(249,249,249)",
+                            height: "100%",
+                          }}
+                        >
+                          <Stack spacing={2} alignItems="center">
+                            <Box>
+                              This action is part of the initial preset and has
+                              not been performed yet. Once performed, the result
+                              will be shown here.
+                            </Box>
+                            <SetupConnectionPopover
+                              display={featureToggles.mode === "metadata only"}
+                            >
+                              <Button
+                                onClick={handleRerun}
+                                variant="contained"
+                                size="small"
+                                disabled={featureToggles.disableDatabaseQuery}
+                              >
+                                Run Query
+                              </Button>
+                            </SetupConnectionPopover>
+                          </Stack>
+                        </Box>
+                      ))}
+                    {check.type === "schema_diff" && (
+                      <SchemaDiffView
+                        key={check.check_id}
+                        check={check}
+                        ref={ref}
+                      />
+                    )}
+                    {check.type === "lineage_diff" && (
+                      <LineageDiffView
+                        key={check.check_id}
+                        check={check}
+                        ref={lineageViewRef}
+                      />
+                    )}
+                  </Box>
+                )}
+                {tabValue === "query" &&
+                  (check.type === "query" ||
+                    check.type === "query_diff" ||
+                    check.type === "query_base") && (
+                    <Box sx={{ height: "100%", width: "100%" }}>
+                      {(check.params as QueryParams).base_sql_template ? (
+                        <DualSqlEditor
+                          value={
+                            (check.params as QueryDiffParams).sql_template || ""
+                          }
+                          baseValue={
+                            (check.params as QueryDiffParams)
+                              .base_sql_template ?? ""
+                          }
+                          options={{ readOnly: true }}
+                        />
+                      ) : (
+                        <SqlEditor
+                          value={
+                            (check.params as QueryRunParams).sql_template || ""
+                          }
+                          options={{ readOnly: true }}
+                        />
+                      )}
+                    </Box>
+                  )}
+              </Box>
+            </Box>
+          </Box>
+          <MuiDialog
+            open={isPresetCheckTemplateOpen}
+            onClose={() => setIsPresetCheckTemplateOpen(false)}
+            maxWidth="md"
+            fullWidth
+          >
+            <DialogTitle>Preset Check Template</DialogTitle>
+            <DialogContent>
+              <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2 }}>
+                Please{" "}
+                <Typography
+                  component="span"
+                  sx={{
+                    cursor: "pointer",
+                    "&:hover": { textDecoration: "underline" },
+                    color: "primary.main",
+                  }}
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(presetCheckTemplate);
+                    successToast("Copied the template to the clipboard");
+                  }}
+                >
+                  copy
+                </Typography>{" "}
+                the following template and paste it into the{" "}
+                <Box
+                  component="span"
+                  sx={{ px: 0.5, bgcolor: "error.light", borderRadius: 0.5 }}
+                >
+                  recce.yml
+                </Box>{" "}
+                file.
+              </Typography>
+              <PresetCheckTemplateView yamlTemplate={presetCheckTemplate} />
+            </DialogContent>
+            <DialogActions>
+              <IconButton
+                size="small"
+                onClick={() => setIsPresetCheckTemplateOpen(false)}
+                sx={{ position: "absolute", top: 8, right: 8 }}
+              >
+                <IoClose />
+              </IconButton>
+            </DialogActions>
+          </MuiDialog>
+        </VSplit>
+      </Grid>
+      {/* Timeline/Activity panel - fixed 20% width, hidden on mobile */}
+      {cloudMode && (
+        <Grid
+          size={3}
+          sx={{
+            height: "100%",
+            overflow: "hidden",
+            flexShrink: 0,
+            display: { xs: "none", md: "block" },
+          }}
+        >
+          <CheckTimeline checkId={checkId} />
+        </Grid>
+      )}
+    </Grid>
+  );
 }
 
 function buildMarkdown(check: Check<RunParamTypes>) {

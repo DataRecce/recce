@@ -1,10 +1,12 @@
 "use client";
 
-import { Box, Flex, Link, Tabs } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import Tab from "@mui/material/Tab";
+import MuiTabs from "@mui/material/Tabs";
 import { useQuery } from "@tanstack/react-query";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
-import React, { Activity, ReactNode, useEffect, useMemo, useRef } from "react";
+import React, { type ReactNode, useEffect, useMemo, useRef } from "react";
 import { EnvInfo } from "@/components/app/EnvInfo";
 import { Filename } from "@/components/app/Filename";
 import { StateExporter } from "@/components/app/StateExporter";
@@ -53,18 +55,30 @@ function TabBadge<T>({
 
   return (
     <Box
-      ml="2px"
-      maxH={"20px"}
-      height="80%"
-      aspectRatio={1}
-      borderRadius="full"
-      bg="tomato"
-      alignContent={"center"}
+      bgcolor="brand.main"
+      display="flex"
+      justifyContent="center"
+      alignItems="center"
+      p={1}
+      borderRadius="100%"
       color="white"
-      fontSize="xs"
+      fontWeight={700}
+      fontSize="0.75rem"
     >
-      {count}
+      <span>{count}</span>
     </Box>
+  );
+}
+
+function ChecklistBadge(): ReactNode {
+  return (
+    <TabBadge<Check[]>
+      queryKey={cacheKeys.checks()}
+      fetchCallback={listChecks}
+      selectCallback={(checks: Check[]) => {
+        return checks.filter((check) => !check.is_checked).length;
+      }}
+    />
   );
 }
 
@@ -74,15 +88,6 @@ export default function NavBar() {
   const { isDemoSite, isLoading, cloudMode } = useLineageGraphContext();
   const { featureToggles } = useRecceInstanceContext();
   const { data: flag, isLoading: isFlagLoading } = useRecceServerFlag();
-  const ChecklistBadge = (
-    <TabBadge<Check[]>
-      queryKey={cacheKeys.checks()}
-      fetchCallback={listChecks}
-      selectCallback={(checks: Check[]) => {
-        return checks.filter((check) => !check.is_checked).length;
-      }}
-    />
-  );
 
   // Track navigation changes with previous pathname
   const prevPathnameRef = useRef<string | null>(null);
@@ -102,61 +107,122 @@ export default function NavBar() {
   }, [pathname]);
 
   return (
-    <Tabs.Root
-      colorPalette="iochmara"
-      value={currentTab}
-      size="sm"
-      variant="line"
-      borderBottom="1px solid lightgray"
-      px="12px"
-    >
-      <Tabs.List
-        display="grid"
-        gridTemplateColumns="1fr auto 1fr"
-        width="100%"
-        borderBottom="none"
+    <Box sx={{ borderBottom: "1px solid lightgray", px: "12px" }}>
+      {/* Grid layout outside Tabs so MUI Tabs can find tab children */}
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: "1fr auto 1fr",
+          width: "100%",
+          alignItems: "center",
+        }}
       >
         {/* Left section: Tabs */}
-        <Box display="flex" alignItems="center" gap="4px">
+        <MuiTabs
+          value={currentTab}
+          sx={{ borderBottom: "none", minHeight: "auto" }}
+        >
           {ROUTE_CONFIG.map(({ path, name }) => {
             const disable = name === "Query" && flag?.single_env_onboarding;
 
+            // Don't render hidden tabs
+            if (disable) {
+              return null;
+            }
+
+            if (name === "Checklist" && ChecklistBadge) {
+              return (
+                <Tab
+                  key={path}
+                  value={path}
+                  disabled={isLoading || isFlagLoading}
+                  sx={{
+                    p: 0,
+                  }}
+                  label={
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: "4px" }}
+                    >
+                      <NextLink
+                        href={path}
+                        style={{
+                          textDecoration: "none",
+                          color: "inherit",
+                          padding: "0.875rem 1.1875rem",
+                          display: "flex",
+                          gap: 3,
+                          alignItems: "center",
+                        }}
+                      >
+                        {name} <ChecklistBadge />
+                      </NextLink>
+                    </Box>
+                  }
+                />
+              );
+            }
+
             return (
-              <Tabs.Trigger
+              <Tab
                 key={path}
                 value={path}
-                disabled={isLoading || isFlagLoading || disable}
-                hidden={disable}
-              >
-                <Link asChild>
-                  <NextLink href={path}>{name}</NextLink>
-                </Link>
-                <Activity mode={name === "Checklist" ? "visible" : "hidden"}>
-                  {ChecklistBadge}
-                </Activity>
-              </Tabs.Trigger>
+                disabled={isLoading || isFlagLoading}
+                sx={{
+                  p: 0,
+                }}
+                label={
+                  <Box
+                    sx={{ display: "flex", alignItems: "center", gap: "4px" }}
+                  >
+                    <NextLink
+                      href={path}
+                      style={{
+                        textDecoration: "none",
+                        color: "inherit",
+                        padding: "0.875rem 1.1875rem",
+                      }}
+                    >
+                      {name}
+                    </NextLink>
+                  </Box>
+                }
+              />
             );
           })}
-        </Box>
+        </MuiTabs>
 
         {/* Center section: Filename and TopLevelShare */}
-        <Flex alignItems="center" gap="12px" justifyContent="center">
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            justifyContent: "center",
+          }}
+        >
           {!isLoading && !isDemoSite && <Filename />}
           {!isLoading &&
             !isDemoSite &&
             !flag?.single_env_onboarding &&
             !featureToggles.disableShare && <TopLevelShare />}
-        </Flex>
+        </Box>
 
         {/* Right section: EnvInfo, StateSynchronizer, StateExporter */}
         {!isLoading && (
-          <Flex justifyContent="right" alignItems="center" mr="8px">
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "right",
+              alignItems: "center",
+              mr: "8px",
+            }}
+          >
             <EnvInfo />
             {cloudMode && <StateSynchronizer />}
             <StateExporter />
-          </Flex>
+          </Box>
         )}
-      </Tabs.List>
-    </Tabs.Root>
+      </Box>
+    </Box>
   );
 }

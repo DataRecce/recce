@@ -1,12 +1,14 @@
-import { Field, Flex, FlexProps } from "@chakra-ui/react";
+import Box, { type BoxProps } from "@mui/material/Box";
+import Stack from "@mui/material/Stack";
+import MuiTooltip from "@mui/material/Tooltip";
+import Typography from "@mui/material/Typography";
 import { useMemo } from "react";
 import { PiInfo } from "react-icons/pi";
-import { Tooltip } from "@/components/ui/tooltip";
 import { NodeColumnData } from "@/lib/api/info";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { DropdownValuesInput } from "@/utils/DropdownValuesInput";
 
-interface QueryFormProps extends FlexProps {
+interface QueryFormProps extends BoxProps {
   defaultPrimaryKeys: string[] | undefined;
   onPrimaryKeysChange: (primaryKeys: string[]) => void;
 }
@@ -14,7 +16,7 @@ interface QueryFormProps extends FlexProps {
 export const QueryForm = ({
   defaultPrimaryKeys,
   onPrimaryKeysChange,
-  ...prob
+  ...props
 }: QueryFormProps) => {
   const { lineageGraph, isActionAvailable } = useLineageGraphContext();
 
@@ -43,17 +45,24 @@ export const QueryForm = ({
   }, [lineageGraph]);
 
   return (
-    <Flex {...prob}>
-      <Field.Root m="0 0.5rem" gap={0}>
-        <Field.Label fontSize="0.625rem" margin={0}>
-          Diff with Primary Key(s) (suggested){" "}
-          <Tooltip
-            content={labelInfo}
-            positioning={{ placement: "bottom-end" }}
+    <Box sx={{ display: "flex" }} {...props}>
+      <Stack spacing={0} sx={{ m: "0 0.5rem" }}>
+        <Stack direction="row" alignItems="center" spacing={0.5}>
+          <Typography
+            component="label"
+            sx={{ fontSize: "0.625rem", color: "text.secondary" }}
           >
-            <PiInfo color="gray.600" />
-          </Tooltip>
-        </Field.Label>
+            Diff with Primary Key(s) (suggested)
+          </Typography>
+          <MuiTooltip title={labelInfo} placement="bottom-end">
+            <Box
+              component="span"
+              sx={{ display: "flex", color: "grey.600", cursor: "help" }}
+            >
+              <PiInfo fontSize="0.75rem" />
+            </Box>
+          </MuiTooltip>
+        </Stack>
         <DropdownValuesInput
           className="no-track-pii-safe"
           unitName="key"
@@ -65,7 +74,7 @@ export const QueryForm = ({
           placeholder="Select or type to add keys"
           disabled={!isActionAvailable("query_diff_with_primary_key")}
         />
-      </Field.Root>
-    </Flex>
+      </Stack>
+    </Box>
   );
 };

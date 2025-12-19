@@ -1,4 +1,5 @@
-import { Button, ButtonGroup } from "@chakra-ui/react";
+import Button from "@mui/material/Button";
+import ButtonGroup from "@mui/material/ButtonGroup";
 import { DiffText } from "./DiffText";
 
 interface ToggleSwitchProps {
@@ -14,13 +15,15 @@ export const ToggleSwitch = ({
   textOff,
 }: ToggleSwitchProps) => {
   return (
-    <ButtonGroup attached variant="outline" borderRadius="full" size="xs">
+    <ButtonGroup variant="outlined" size="xsmall" sx={{ borderRadius: 1 }}>
       <Button
         onClick={() => {
           onChange(false);
         }}
-        color={!value ? "black" : "gray.400"}
-        bg={!value ? "white" : "gray.50"}
+        sx={{
+          color: !value ? "black" : "grey.400",
+          bgcolor: !value ? "white" : "grey.50",
+        }}
       >
         {textOff ?? "Off"}
       </Button>
@@ -28,8 +31,10 @@ export const ToggleSwitch = ({
         onClick={() => {
           onChange(true);
         }}
-        color={value ? "black" : "gray.400"}
-        bg={value ? "white" : "gray.50"}
+        sx={{
+          color: value ? "black" : "grey.400",
+          bgcolor: value ? "white" : "grey.50",
+        }}
       >
         {textOn ?? "On"}
       </Button>

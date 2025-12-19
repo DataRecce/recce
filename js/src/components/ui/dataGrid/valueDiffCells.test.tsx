@@ -8,9 +8,11 @@
  * - ValueDiffColumnNameCell rendering and context menu
  */
 
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import CssBaseline from "@mui/material/CssBaseline";
+import { ThemeProvider } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";
 import React, { ReactNode } from "react";
+import { lightTheme as theme } from "@/components/ui/mui-theme";
 import {
   MatchedPercentCell,
   PrimaryKeyIndicatorCell,
@@ -40,10 +42,15 @@ jest.mock("@/lib/hooks/RecceInstanceContext", () => ({
 // ============================================================================
 
 /**
- * Test wrapper that provides ChakraProvider context
+ * Test wrapper that provides MUI ThemeProvider context
  */
 function TestWrapper({ children }: { children: ReactNode }) {
-  return <ChakraProvider value={defaultSystem}>{children}</ChakraProvider>;
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      {children}
+    </ThemeProvider>
+  );
 }
 
 /**

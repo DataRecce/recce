@@ -39,7 +39,7 @@ export function useGuideToast(options: {
   return {
     guideToast: guideToast,
     closeGuideToast: () => {
-      toaster.dismiss(toastId);
+      if (toastId) toaster.dismiss(toastId);
     },
   };
 }
