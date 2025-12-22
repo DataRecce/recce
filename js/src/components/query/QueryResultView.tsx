@@ -107,12 +107,13 @@ const PrivateQueryResultView = (
   const showTopBar = onAddToChecklist ?? warning;
 
   return (
-    <Stack sx={{ bgcolor: "rgb(249, 249, 249)", height: "100%" }}>
+    <Stack sx={{ bgcolor: "grey.50", height: "100%" }}>
       {showTopBar && (
         <Stack
           direction="row"
           sx={{
-            borderBottom: "1px solid lightgray",
+            borderBottom: "1px solid",
+            borderBottomColor: "divider",
             alignItems: "center",
             gap: "5px",
             px: "10px",

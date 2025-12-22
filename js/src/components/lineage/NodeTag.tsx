@@ -16,16 +16,17 @@ import { findByRunType } from "../run/registry";
 import { LineageGraphNode } from "./lineage";
 import { getIconForResourceType } from "./styles";
 
-// Reusable tag styles
-const tagRootSx = {
+// Reusable tag styles - theme-aware function
+const tagRootSx = (theme: { palette: { mode: string } }) => ({
   display: "inline-flex",
   alignItems: "center",
   borderRadius: 16,
   px: 1,
   py: 0.25,
   fontSize: "0.75rem",
-  bgcolor: "grey.100",
-};
+  bgcolor: theme.palette.mode === "dark" ? "grey.700" : "grey.100",
+  color: theme.palette.mode === "dark" ? "grey.100" : "inherit",
+});
 
 const tagStartElementSx = {
   mr: 0.5,
@@ -186,10 +187,10 @@ export function RowCountDiffTag({
       <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
         <Box
           component="span"
-          sx={{
-            ...tagRootSx,
+          sx={(theme) => ({
+            ...tagRootSx(theme),
             gap: 0.5,
-          }}
+          })}
         >
           <RunTypeIcon />
           {rowsToShow != null || isFetching ? (

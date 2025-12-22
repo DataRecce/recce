@@ -21,7 +21,8 @@ export const RunToolbar = ({
     <Box
       sx={{
         display: "flex",
-        borderBottom: "1px solid lightgray",
+        borderBottom: "1px solid",
+        borderColor: "divider",
         justifyContent: "flex-end",
         gap: "5px",
         alignItems: "center",

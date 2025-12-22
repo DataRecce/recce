@@ -1,11 +1,39 @@
-/* Schema diff color palette */
-:root {
+/**
+ * Schema diff color palette
+ * Uses CSS custom properties for theme-aware colors
+ */
+
+/* Light mode (default) */
+:root,
+.light {
   --schema-color-added: rgb(204 255 216);
   --schema-color-added-hover: rgb(193 246 205);
   --schema-color-added-active: rgb(166 242 184);
   --schema-color-removed: rgb(255 215 213);
   --schema-color-removed-hover: rgb(246 195 193);
   --schema-color-removed-active: rgb(242 170 166);
+  --schema-color-normal: #ffffff;
+  --schema-color-normal-hover: rgb(241 241 241);
+  --schema-color-normal-active: rgb(230 230 230);
+  --schema-color-reordered: rgb(255 173 21);
+  --schema-color-reordered-hover: rgb(249 164 6);
+  --schema-color-reordered-active: rgb(224 147 6);
+}
+
+/* Dark mode */
+.dark {
+  --schema-color-added: rgb(26 77 26);
+  --schema-color-added-hover: rgb(34 97 34);
+  --schema-color-added-active: rgb(42 117 42);
+  --schema-color-removed: rgb(92 31 31);
+  --schema-color-removed-hover: rgb(112 41 41);
+  --schema-color-removed-active: rgb(132 51 51);
+  --schema-color-normal: #262626;
+  --schema-color-normal-hover: rgb(64 64 64);
+  --schema-color-normal-active: rgb(82 82 82);
+  --schema-color-reordered: rgb(180 83 9);
+  --schema-color-reordered-hover: rgb(146 64 14);
+  --schema-color-reordered-active: rgb(120 53 15);
 }
 
 /* Row backgrounds must be applied to cells because rows use display:contents */
@@ -40,18 +68,18 @@
 }
 
 .row-normal {
-  background-color: white;
+  background-color: var(--schema-color-normal);
 }
 
 .row-normal:hover,
 .row-normal[aria-selected="true"],
 .row-normal.ag-row-selected {
-  background-color: rgb(241 241 241);
+  background-color: var(--schema-color-normal-hover);
 }
 
 .row-normal[aria-selected="true"]:hover,
 .row-normal.ag-row-selected:hover {
-  background-color: rgb(230 230 230);
+  background-color: var(--schema-color-normal-active);
 }
 
 .row-selectable {
@@ -91,16 +119,16 @@
 }
 
 .column-index-reordered {
-  background-color: rgb(255 173 21);
+  background-color: var(--schema-color-reordered);
 }
 
 .row-normal:hover .column-index-reordered,
 .row-normal[aria-selected="true"] .column-index-reordered,
 .row-normal.ag-row-selected .column-index-reordered {
-  background-color: rgb(249 164 6);
+  background-color: var(--schema-color-reordered-hover);
 }
 
 .row-normal[aria-selected="true"]:hover .column-index-reordered,
 .row-normal.ag-row-selected:hover .column-index-reordered {
-  background-color: rgb(224 147 6);
+  background-color: var(--schema-color-reordered-active);
 }

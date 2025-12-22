@@ -33,6 +33,13 @@ import { findByRunType } from "../run/registry";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 import { getIconForResourceType } from "./styles";
 
+const codeBlockSx = (theme: { palette: { mode: string } }) => ({
+  fontSize: "8pt",
+  bgcolor: theme.palette.mode === "dark" ? "grey.700" : "grey.100",
+  px: 0.5,
+  borderRadius: 1,
+});
+
 const SelectFilterTooltip = () => {
   return (
     <Stack alignItems="flex-start" spacing={0}>
@@ -40,57 +47,25 @@ const SelectFilterTooltip = () => {
         Select nodes by dbt node selector syntax
       </Typography>
       <Typography fontSize="8pt">
-        <Box
-          component="code"
-          sx={{
-            fontSize: "8pt",
-            bgcolor: "grey.100",
-            px: 0.5,
-            borderRadius: 1,
-          }}
-        >
+        <Box component="code" sx={codeBlockSx}>
           model_name
         </Box>{" "}
         Select a node
       </Typography>
       <Typography fontSize="8pt">
-        <Box
-          component="code"
-          sx={{
-            fontSize: "8pt",
-            bgcolor: "grey.100",
-            px: 0.5,
-            borderRadius: 1,
-          }}
-        >
+        <Box component="code" sx={codeBlockSx}>
           model_name+
         </Box>{" "}
         Select downstream nodes
       </Typography>
       <Typography fontSize="8pt">
-        <Box
-          component="code"
-          sx={{
-            fontSize: "8pt",
-            bgcolor: "grey.100",
-            px: 0.5,
-            borderRadius: 1,
-          }}
-        >
+        <Box component="code" sx={codeBlockSx}>
           +model_name
         </Box>{" "}
         Select upstream nodes
       </Typography>
       <Typography fontSize="8pt">
-        <Box
-          component="code"
-          sx={{
-            fontSize: "8pt",
-            bgcolor: "grey.100",
-            px: 0.5,
-            borderRadius: 1,
-          }}
-        >
+        <Box component="code" sx={codeBlockSx}>
           model*
         </Box>{" "}
         Select by wildcard
@@ -304,8 +279,8 @@ const NodeSelectionInput = (props: {
             boxShadow: 3,
             border: 1,
             borderRadius: 1,
-            color: "black",
-            bgcolor: "white",
+            color: "text.primary",
+            bgcolor: "background.paper",
           },
         },
       }}

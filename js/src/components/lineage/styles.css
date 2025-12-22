@@ -7,3 +7,23 @@
   border-color: "orange";
   box-shadow: "0px 5px 15px #00000040";
 }
+
+/* React Flow Controls - Dark Mode Support */
+.dark .react-flow__controls {
+  background-color: #374151;
+  border-color: #4b5563;
+}
+
+.dark .react-flow__controls-button {
+  background-color: #374151;
+  color: #e5e7eb;
+  border-bottom-color: #4b5563;
+}
+
+.dark .react-flow__controls-button:hover {
+  background-color: #4b5563;
+}
+
+.dark .react-flow__controls-button svg {
+  fill: #e5e7eb;
+}

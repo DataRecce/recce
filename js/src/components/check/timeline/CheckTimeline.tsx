@@ -11,6 +11,7 @@ import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
+import { useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -24,6 +25,8 @@ interface CheckTimelineProps {
 }
 
 export function CheckTimeline({ checkId }: CheckTimelineProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const {
     events,
     isLoading,
@@ -93,7 +96,7 @@ export function CheckTimeline({ checkId }: CheckTimelineProps) {
         height: "100%",
         alignItems: "stretch",
         borderLeft: "1px solid",
-        borderColor: "grey.200",
+        borderColor: isDark ? "grey.700" : "grey.200",
       }}
       spacing={0}
     >
@@ -103,7 +106,7 @@ export function CheckTimeline({ checkId }: CheckTimelineProps) {
           px: 3,
           py: 2,
           borderBottom: "1px solid",
-          borderColor: "grey.200",
+          borderColor: isDark ? "grey.700" : "grey.200",
         }}
       >
         <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
@@ -128,7 +131,9 @@ export function CheckTimeline({ checkId }: CheckTimelineProps) {
                   onDelete={handleDeleteComment}
                 />
                 {index < events.length - 1 && (
-                  <Divider sx={{ borderColor: "grey.100" }} />
+                  <Divider
+                    sx={{ borderColor: isDark ? "grey.700" : "grey.100" }}
+                  />
                 )}
               </Box>
             ))}
@@ -142,8 +147,8 @@ export function CheckTimeline({ checkId }: CheckTimelineProps) {
           px: 3,
           py: 3,
           borderTop: "1px solid",
-          borderColor: "grey.200",
-          bgcolor: "grey.50",
+          borderColor: isDark ? "grey.700" : "grey.200",
+          bgcolor: isDark ? "grey.900" : "grey.50",
         }}
       >
         <CommentInput

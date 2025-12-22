@@ -5,6 +5,7 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
+import { useTheme } from "@mui/material/styles";
 import TextField from "@mui/material/TextField";
 import { useState } from "react";
 
@@ -19,6 +20,8 @@ export function CommentInput({
   isSubmitting = false,
   placeholder = "Add a comment...",
 }: CommentInputProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const [content, setContent] = useState("");
 
   const handleSubmit = () => {
@@ -51,14 +54,17 @@ export function CommentInput({
         disabled={isSubmitting}
         sx={{
           "& .MuiOutlinedInput-root": {
-            bgcolor: "white",
+            bgcolor: "background.paper",
             "&:hover .MuiOutlinedInput-notchedOutline": {
-              borderColor: "grey.400",
+              borderColor: isDark ? "grey.500" : "grey.400",
             },
             "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
               borderColor: "iochmara.400",
               boxShadow: "0 0 0 1px #4299E1",
             },
+          },
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: isDark ? "grey.600" : undefined,
           },
         }}
       />

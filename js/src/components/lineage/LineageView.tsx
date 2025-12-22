@@ -43,6 +43,7 @@ import {
   toReactFlow,
 } from "./lineage";
 import "@xyflow/react/dist/style.css";
+import "./styles.css";
 import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { FiCopy } from "react-icons/fi";
@@ -78,6 +79,7 @@ import {
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { useRun } from "@/lib/hooks/useRun";
+import { useThemeColors } from "@/lib/hooks/useThemeColors";
 import { HSplit } from "../split/Split";
 import { ActionControl } from "./ActionControl";
 import { ChangeStatusLegend } from "./ChangeStatusLegend";
@@ -199,6 +201,7 @@ export function PrivateLineageView(
   { interactive = false, ...props }: LineageViewProps,
   ref: Ref<LineageViewRef>,
 ) {
+  const { isDark } = useThemeColors();
   const reactFlow = useReactFlow();
   const refResize = useRef<HTMLDivElement>(null);
   const { successToast, failToast } = useClipBoardToast();
@@ -1255,6 +1258,10 @@ export function PrivateLineageView(
               showInteractive={false}
               position="top-right"
               className={IGNORE_SCREENSHOT_CLASS}
+              style={{
+                backgroundColor: isDark ? "#374151" : undefined,
+                borderColor: isDark ? "#4B5563" : undefined,
+              }}
             >
               <ControlButton
                 title="copy image"
@@ -1264,6 +1271,10 @@ export function PrivateLineageView(
                     type: viewMode,
                     from: "lineage_view",
                   });
+                }}
+                style={{
+                  backgroundColor: isDark ? "#374151" : undefined,
+                  color: isDark ? "#E5E7EB" : undefined,
                 }}
               >
                 <Box component={FiCopy} />
@@ -1303,6 +1314,10 @@ export function PrivateLineageView(
               nodeStrokeWidth={3}
               zoomable
               pannable
+              bgColor={isDark ? "#262626" : undefined}
+              maskColor={
+                isDark ? "rgba(30, 30, 30, 0.6)" : "rgba(240, 240, 240, 0.6)"
+              }
             />
             {selectMode === "action_result" && (
               <Panel
@@ -1320,7 +1335,13 @@ export function PrivateLineageView(
           <LineageViewContextMenu {...lineageViewContextMenu.props} />
         </Stack>
         {focusedNode ? (
-          <Box sx={{ borderLeft: "solid 1px lightgray", height: "100%" }}>
+          <Box
+            sx={{
+              borderLeft: "solid 1px",
+              borderColor: "divider",
+              height: "100%",
+            }}
+          >
             <NodeView node={focusedNode} onCloseNode={onNodeViewClosed} />
           </Box>
         ) : (

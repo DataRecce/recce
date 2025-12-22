@@ -65,7 +65,8 @@ function SandboxTopBar({
         p: "4pt 8pt",
         gap: "5px",
         height: "54px",
-        borderBottom: "1px solid lightgray",
+        borderBottom: "1px solid",
+        borderBottomColor: "divider",
         flex: "0 0 54px",
       }}
     >

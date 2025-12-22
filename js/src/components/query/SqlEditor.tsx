@@ -1,6 +1,7 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
+import { useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import React, { useMemo } from "react";
 import { FaPlay } from "react-icons/fa6";
@@ -51,6 +52,8 @@ function SqlEditor({
   ...props
 }: SqlEditorProps) {
   const { featureToggles } = useRecceInstanceContext();
+  const muiTheme = useTheme();
+  const isDark = muiTheme.palette.mode === "dark";
 
   const handleEditorChange = (value: string) => {
     if (onChange) {
@@ -109,7 +112,9 @@ function SqlEditor({
         <Stack
           direction="row"
           sx={{
-            bgcolor: "#EDF2F880",
+            bgcolor: isDark
+              ? "rgba(55, 65, 81, 0.5)"
+              : "rgba(237, 242, 248, 0.5)",
             height: "40px",
             minHeight: "40px",
             fontSize: "14px",
@@ -142,7 +147,7 @@ function SqlEditor({
               size="xsmall"
               variant="outlined"
               onClick={onRun ?? onRunBase}
-              sx={{ bgcolor: "white", p: "6px 12px" }}
+              sx={{ bgcolor: "background.paper", p: "6px 12px" }}
               disabled={featureToggles.disableDatabaseQuery}
               startIcon={<FaPlay />}
             >
@@ -161,6 +166,7 @@ function SqlEditor({
           wordWrap={options.wordWrap !== "off"}
           fontSize={options.fontSize ?? 16}
           keyBindings={keyBindings}
+          theme={isDark ? "dark" : "light"}
           className="no-track-pii-safe max-h-dvh h-full"
         />
       )}

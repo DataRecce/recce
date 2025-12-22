@@ -1,6 +1,7 @@
 import Box from "@mui/material/Box";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
+import { useTheme } from "@mui/material/styles";
 import { useQuery } from "@tanstack/react-query";
 import React, { forwardRef, useMemo, useState } from "react";
 import { IconType } from "react-icons";
@@ -36,11 +37,13 @@ const NodelistItem = ({
   selected,
   onSelect,
   schemaChanged,
+  isDark,
 }: {
   node: LineageGraphNode;
   selected: boolean;
   onSelect: (nodeId: string) => void;
   schemaChanged: boolean;
+  isDark: boolean;
 }) => {
   const { icon } = getIconForResourceType(node.data.resourceType);
   const { base, current } = node.data.data;
@@ -68,8 +71,8 @@ const NodelistItem = ({
           fontSize: "10pt",
           p: "5px 8px",
           cursor: "pointer",
-          "&:hover": { bgcolor: "grey.200" },
-          bgcolor: selected ? "grey.100" : "inherit",
+          "&:hover": { bgcolor: isDark ? "grey.700" : "grey.200" },
+          bgcolor: selected ? (isDark ? "grey.800" : "grey.100") : "inherit",
           alignItems: "center",
           gap: "5px",
         }}
@@ -101,6 +104,8 @@ export function PrivateSchemaDiffView(
   { check }: SchemaDiffViewProps,
   ref: React.Ref<DataGridHandle>,
 ) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const { lineageGraph } = useLineageGraphContext();
   const params = check.params as SchemaDiffParams;
 
@@ -202,7 +207,7 @@ export function PrivateSchemaDiffView(
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          bgcolor: "rgb(249,249,249)",
+          bgcolor: isDark ? "grey.900" : "grey.50",
           height: "100%",
         }}
       >
@@ -216,7 +221,7 @@ export function PrivateSchemaDiffView(
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          bgcolor: "rgb(249,249,249)",
+          bgcolor: isDark ? "grey.900" : "grey.50",
           height: "100%",
         }}
         className="no-track-pii-safe"
@@ -231,7 +236,7 @@ export function PrivateSchemaDiffView(
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          bgcolor: "rgb(249,249,249)",
+          bgcolor: isDark ? "grey.900" : "grey.50",
           height: "100%",
         }}
       >
@@ -252,7 +257,7 @@ export function PrivateSchemaDiffView(
         <List
           sx={{
             overflow: "auto",
-            bgcolor: "white",
+            bgcolor: "background.paper",
             listStyle: "none",
           }}
         >
@@ -262,6 +267,7 @@ export function PrivateSchemaDiffView(
               node={node}
               schemaChanged={changedNodes.includes(node.id)}
               selected={i === selected}
+              isDark={isDark}
               onSelect={() => {
                 setSelected(i);
               }}

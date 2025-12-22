@@ -95,6 +95,7 @@ export function CheckDetail({
   refreshCheckList,
 }: CheckDetailProps): ReactNode {
   const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const { featureToggles, sessionId } = useRecceInstanceContext();
   const { setLatestSelectedCheckId } = useRecceCheckContext();
   const { cloudMode } = useLineageGraphContext();
@@ -371,7 +372,7 @@ export function CheckDetail({
                   alignItems: "center",
                   height: 40,
                   borderBottom: "2px solid",
-                  borderColor: "grey.300",
+                  borderColor: isDark ? "grey.700" : "grey.300",
                 }}
               >
                 {/* Check type icon */}

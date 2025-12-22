@@ -195,11 +195,12 @@ export function ChangeSummary({ lineageGraph }: Props) {
       container
       sx={{
         mb: "10px",
-        borderTop: "1px solid lightgray",
+        borderTop: "1px solid",
+        borderColor: "divider",
         p: "2.5vw",
       }}
     >
-      <Grid size={6} sx={{ borderColor: "lightgray" }}>
+      <Grid size={6} sx={{ borderColor: "divider" }}>
         <SummaryText
           name="Code Changes"
           value={
@@ -223,7 +224,10 @@ export function ChangeSummary({ lineageGraph }: Props) {
           }
         />
       </Grid>
-      <Grid size={6} sx={{ borderLeft: "1px solid lightgray", pl: "12px" }}>
+      <Grid
+        size={6}
+        sx={{ borderLeft: "1px solid", borderLeftColor: "divider", pl: "12px" }}
+      >
         <SummaryText
           name="Column Changes"
           value={

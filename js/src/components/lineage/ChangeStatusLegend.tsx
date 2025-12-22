@@ -14,10 +14,10 @@ export function ChangeStatusLegend() {
   return (
     <Box
       sx={{
-        bgcolor: "white",
+        bgcolor: "background.paper",
         padding: "12px",
         border: "1px solid",
-        borderColor: "grey.200",
+        borderColor: "divider",
         fontSize: "0.875rem",
       }}
     >
