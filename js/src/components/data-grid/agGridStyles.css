@@ -9,6 +9,12 @@
  * - Sticky headers when scrolling vertically
  */
 
+/* AG Grid Viewport */
+.ag-center-cols-viewport {
+  /* Slate 100 */
+  background-color: #f1f5f9;
+}
+
 /* Sticky header - stays visible when scrolling vertically */
 .ag-header {
   position: sticky;
