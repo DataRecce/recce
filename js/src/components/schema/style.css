@@ -1,31 +1,42 @@
+/* Schema diff color palette */
+:root {
+  --schema-color-added: rgb(204 255 216);
+  --schema-color-added-hover: rgb(193 246 205);
+  --schema-color-added-active: rgb(166 242 184);
+  --schema-color-removed: rgb(255 215 213);
+  --schema-color-removed-hover: rgb(246 195 193);
+  --schema-color-removed-active: rgb(242 170 166);
+}
+
+/* Row backgrounds must be applied to cells because rows use display:contents */
 .row-added {
-  background-color: rgb(204, 255, 216);
+  background-color: var(--schema-color-added);
 }
 
 .row-added:hover,
 .row-added[aria-selected="true"],
 .row-added.ag-row-selected {
-  background-color: rgb(193 246 205);
+  background-color: var(--schema-color-added-hover);
 }
 
 .row-added[aria-selected="true"]:hover,
 .row-added.ag-row-selected:hover {
-  background-color: rgb(166 242 184);
+  background-color: var(--schema-color-added-active);
 }
 
 .row-removed {
-  background-color: rgb(255, 215, 213);
+  background-color: var(--schema-color-removed);
 }
 
 .row-removed:hover,
 .row-removed[aria-selected="true"],
 .row-removed.ag-row-selected {
-  background-color: rgb(246 195 193);
+  background-color: var(--schema-color-removed-hover);
 }
 
 .row-removed[aria-selected="true"]:hover,
 .row-removed.ag-row-selected:hover {
-  background-color: rgb(242 170 166);
+  background-color: var(--schema-color-removed-active);
 }
 
 .row-normal {
@@ -35,7 +46,7 @@
 .row-normal:hover,
 .row-normal[aria-selected="true"],
 .row-normal.ag-row-selected {
-  background-color: rgb(241, 241, 241);
+  background-color: rgb(241 241 241);
 }
 
 .row-normal[aria-selected="true"]:hover,
@@ -61,23 +72,26 @@
 
 /* for reorder-index and type-change column */
 
-.column-body-type-changed {
-  background-color: rgb(255, 215, 213);
+/* Type change badges for merged type column */
+.type-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  line-height: 1.2;
 }
 
-.row-normal:hover .column-body-type-changed,
-.row-normal[aria-selected="true"] .column-body-type-changed,
-.row-normal.ag-row-selected .column-body-type-changed {
-  background-color: rgb(246 195 193);
+.type-badge-removed {
+  background-color: var(--schema-color-removed);
+  margin-right: 4px;
 }
 
-.row-normal[aria-selected="true"]:hover .column-body-type-changed,
-.row-normal.ag-row-selected:hover .column-body-type-changed {
-  background-color: rgb(242 170 166);
+.type-badge-added {
+  background-color: var(--schema-color-added);
 }
 
 .column-index-reordered {
-  background-color: rgb(255, 173, 21);
+  background-color: rgb(255 173 21);
 }
 
 .row-normal:hover .column-index-reordered,

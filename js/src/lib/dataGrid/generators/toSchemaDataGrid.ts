@@ -6,10 +6,13 @@
  * to schemaCells.tsx via render functions.
  */
 
+import "@/components/schema/style.css";
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import {
   createColumnNameRenderer,
   createSingleEnvColumnNameRenderer,
+  renderIndexCell,
+  renderTypeCell,
 } from "@/components/ui/dataGrid/schemaCells";
 import { NodeColumnData, NodeData } from "@/lib/api/info";
 import { RowObjectType } from "@/lib/api/types";
@@ -121,26 +124,13 @@ function getColumnNameCellClass(): string {
   return "schema-column";
 }
 
-function getColumnTypeCellClass(
-  params: CellClassParams<SchemaDiffRow>,
-): string {
-  const row = params.data;
-  if (
-    row?.baseIndex !== undefined &&
-    row?.currentIndex !== undefined &&
-    row?.baseType !== row?.currentType
-  ) {
-    return "column-body-type-changed schema-column";
-  }
-  return "schema-column";
-}
-
 // ============================================================================
 // Main Generator Functions
 // ============================================================================
 
 /**
  * Generates grid configuration for schema diff view
+ * Uses merged columns: Index (merged base/current), Name, Type (merged with badges)
  */
 export function toSchemaDataGrid(
   schemaDiff: SchemaDiff,
@@ -150,19 +140,12 @@ export function toSchemaDataGrid(
 
   const columns: ColDef<SchemaDiffRow>[] = [
     {
-      field: "baseIndex",
+      field: "index",
       headerName: "",
       resizable: true,
       minWidth: 35,
       width: 35,
-      cellClass: getColumnIndexCellClass,
-    },
-    {
-      field: "currentIndex",
-      headerName: "",
-      resizable: true,
-      minWidth: 35,
-      width: 35,
+      cellRenderer: renderIndexCell,
       cellClass: getColumnIndexCellClass,
     },
     {
@@ -175,16 +158,11 @@ export function toSchemaDataGrid(
       cellClass: getColumnNameCellClass,
     },
     {
-      field: "baseType",
-      headerName: "Base Type",
+      field: "type",
+      headerName: "Type",
       resizable: true,
-      cellClass: getColumnTypeCellClass,
-    },
-    {
-      field: "currentType",
-      headerName: "Current Type",
-      resizable: true,
-      cellClass: getColumnTypeCellClass,
+      cellRenderer: renderTypeCell,
+      cellClass: getColumnNameCellClass,
     },
   ];
 
