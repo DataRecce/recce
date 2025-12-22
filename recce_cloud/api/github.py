@@ -27,6 +27,7 @@ class GitHubRecceCloudClient(BaseRecceCloudClient):
         branch: str,
         adapter_type: str,
         cr_number: Optional[int] = None,
+        commit_sha: Optional[str] = None,
         session_type: Optional[str] = None,
     ) -> Dict:
         """
@@ -74,3 +75,32 @@ class GitHubRecceCloudClient(BaseRecceCloudClient):
         }
 
         return self._make_request("POST", url, json=payload)
+
+    def get_session_download_urls(
+        self,
+        cr_number: Optional[int] = None,
+        session_type: Optional[str] = None,
+    ) -> Dict:
+        """
+        Get download URLs for artifacts from a GitHub session.
+
+        Args:
+            cr_number: PR number for pull request sessions
+            session_type: Session type ("cr", "prod", "dev")
+
+        Returns:
+            Dictionary containing session_id, manifest_url, catalog_url
+        """
+        url = f"{self.api_host}/api/v2/github/{self.repository}/session-download-url"
+
+        # Build query parameters
+        params = {}
+
+        # For prod session, set base=true
+        if session_type == "prod":
+            params["base"] = "true"
+        # For CR session, include pr_number
+        elif session_type == "cr" and cr_number is not None:
+            params["pr_number"] = cr_number
+
+        return self._make_request("GET", url, params=params)

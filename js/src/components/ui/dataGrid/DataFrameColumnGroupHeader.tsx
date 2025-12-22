@@ -8,8 +8,11 @@
  * - Number column precision options menu
  */
 
-import { Box, Flex, Icon, IconButton, Menu, Portal } from "@chakra-ui/react";
-import React from "react";
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import { MouseEvent, useState } from "react";
 import {
   VscClose,
   VscKebabVertical,
@@ -87,6 +90,17 @@ export function DataFrameColumnGroupHeader({
   onPinnedColumnsChange,
   onColumnsRenderModeChanged,
 }: DataFrameColumnGroupHeaderProps) {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const menuOpen = Boolean(anchorEl);
+
+  const handleMenuClick = (event: MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
   // Skip rendering for index column
   if (name === "index") {
     return <></>;
@@ -138,67 +152,77 @@ export function DataFrameColumnGroupHeader({
   };
 
   return (
-    <Flex alignItems="center" gap="10px" className="grid-header">
+    <Box
+      sx={{ display: "flex", alignItems: "center", gap: "10px", width: "100%" }}
+      className="grid-header"
+    >
       {/* Primary key icon */}
-      {isPK && <Icon as={VscKey} />}
+      {isPK && <VscKey />}
 
       {/* Column name */}
       <Box
-        flex={1}
-        overflow="hidden"
-        textOverflow="ellipsis"
-        whiteSpace="nowrap"
+        sx={{
+          flex: 1,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
       >
         {name}
       </Box>
 
       {/* Primary key toggle (only when onPrimaryKeyChange is provided) */}
       {canBePk && onPrimaryKeyChange && (
-        <Icon
+        <Box
+          component={isPK ? VscClose : VscKey}
           className={isPK ? "close-icon" : "key-icon"}
-          display={isPK ? "block" : "none"}
-          cursor="pointer"
-          as={isPK ? VscClose : VscKey}
+          sx={{
+            display: isPK ? "block" : "none",
+            cursor: "pointer",
+          }}
           onClick={isPK ? handleRemovePk : handleAddPk}
         />
       )}
 
       {/* Pin/unpin toggle (only for non-PK columns when callback is provided) */}
       {!isPK && onPinnedColumnsChange && (
-        <Icon
+        <Box
+          component={isPinned ? VscPinned : VscPin}
           className={isPinned ? "unpin-icon" : "pin-icon"}
-          display={isPinned ? "block" : "none"}
-          cursor="pointer"
-          as={isPinned ? VscPinned : VscPin}
+          sx={{
+            display: isPinned ? "block" : "none",
+            cursor: "pointer",
+          }}
           onClick={isPinned ? handleUnpin : handlePin}
         />
       )}
 
       {/* Precision menu for number columns (only for non-PK columns) */}
       {!isPK && columnType === "number" && selectOptions.length > 0 && (
-        <Menu.Root>
-          <Menu.Trigger asChild>
-            <IconButton
-              aria-label="Options"
-              variant="plain"
-              className="!size-4 !min-w-4"
-            >
-              <VscKebabVertical />
-            </IconButton>
-          </Menu.Trigger>
-          <Portal>
-            <Menu.Positioner>
-              <Menu.Content>
-                {selectOptions.map((o) => (
-                  <Menu.Item key={o.value} value={o.value} onClick={o.onClick}>
-                    {o.value}
-                  </Menu.Item>
-                ))}
-              </Menu.Content>
-            </Menu.Positioner>
-          </Portal>
-        </Menu.Root>
+        <>
+          <IconButton
+            aria-label="Options"
+            size="small"
+            className="!size-4 !min-w-4"
+            onClick={handleMenuClick}
+          >
+            <VscKebabVertical />
+          </IconButton>
+          <Menu anchorEl={anchorEl} open={menuOpen} onClose={handleMenuClose}>
+            {selectOptions.map((o) => (
+              <MenuItem
+                key={o.value}
+                onClick={() => {
+                  o.onClick();
+                  handleMenuClose();
+                }}
+              >
+                {o.value}
+              </MenuItem>
+            ))}
+          </Menu>
+        </>
       )}
-    </Flex>
+    </Box>
   );
 }

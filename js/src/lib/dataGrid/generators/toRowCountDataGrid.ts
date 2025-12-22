@@ -6,7 +6,7 @@
  * in a single environment context.
  */
 
-import { ColumnOrColumnGroup } from "react-data-grid";
+import type { ColDef, ColGroupDef } from "ag-grid-community";
 import { RowCountResult } from "@/lib/api/rowcount";
 import { RowObjectType } from "@/lib/api/types";
 import { dataFrameToRowObjects } from "@/utils/transforms";
@@ -17,7 +17,7 @@ import { rowCountResultToDataFrame } from "./rowCountUtils";
 // ============================================================================
 
 export interface RowCountDataGridResult {
-  columns: ColumnOrColumnGroup<RowObjectType>[];
+  columns: (ColDef<RowObjectType> | ColGroupDef<RowObjectType>)[];
   rows: RowObjectType[];
 }
 
@@ -29,12 +29,12 @@ export interface RowCountDataGridResult {
  * Generates grid data for Row Count view (single environment)
  *
  * @param result - The RowCountResult from the backend
- * @returns Grid columns and rows ready for ScreenshotDataGrid
+ * @returns Grid columns and rows ready for RecceDataGrid
  *
  * @example
  * ```tsx
  * const { columns, rows } = toRowCountDataGrid(run.result);
- * return <ScreenshotDataGrid columns={columns} rows={rows} />;
+ * return <RecceDataGrid columnDefs={columns} rowData={rows} />;
  * ```
  */
 export function toRowCountDataGrid(
@@ -54,15 +54,15 @@ export function toRowCountDataGrid(
   }));
 
   // Build columns (simple, no diff styling)
-  const columns: ColumnOrColumnGroup<RowObjectType>[] = [
+  const columns: ColDef<RowObjectType>[] = [
     {
-      key: "name",
-      name: "Name",
+      field: "name",
+      headerName: "Name",
       resizable: true,
     },
     {
-      key: "current",
-      name: "Row Count",
+      field: "current",
+      headerName: "Row Count",
       resizable: true,
     },
   ];

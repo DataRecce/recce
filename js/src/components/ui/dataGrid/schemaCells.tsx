@@ -3,10 +3,11 @@
  * @description Cell components and render functions for Schema grid views
  */
 
+import type { ICellRendererParams } from "ag-grid-community";
 import React from "react";
-import { RenderCellProps } from "react-data-grid";
 import { ColumnNameCell } from "@/components/schema/ColumnNameCell";
 import { NodeData } from "@/lib/api/info";
+import { RowObjectType } from "@/lib/api/types";
 import type {
   SchemaDiffRow,
   SchemaRow,
@@ -17,40 +18,48 @@ import type {
 // ============================================================================
 
 /**
- * Creates a renderCell function for schema diff column names
+ * Creates a cellRenderer function for schema diff column names
  */
 export function createColumnNameRenderer(
   node: NodeData,
   cllRunningMap?: Map<string, boolean>,
   showMenu?: boolean,
-): (props: RenderCellProps<SchemaDiffRow>) => React.ReactNode {
-  return ({ row }) => (
-    <ColumnNameCell
-      model={node}
-      row={row}
-      cllRunning={cllRunningMap?.get(row.name) ?? false}
-      showMenu={showMenu}
-    />
-  );
+): (params: ICellRendererParams<SchemaDiffRow>) => React.ReactNode {
+  return (params) => {
+    const row = params.data;
+    if (!row) return null;
+    return (
+      <ColumnNameCell
+        model={node}
+        row={row}
+        cllRunning={cllRunningMap?.get(row.name) ?? false}
+        showMenu={showMenu}
+      />
+    );
+  };
 }
 
 /**
- * Creates a renderCell function for single-env schema column names
+ * Creates a cellRenderer function for single-env schema column names
  */
 export function createSingleEnvColumnNameRenderer(
   node: NodeData,
   cllRunningMap?: Map<string, boolean>,
   showMenu?: boolean,
-): (props: RenderCellProps<SchemaRow>) => React.ReactNode {
-  return ({ row }) => (
-    <ColumnNameCell
-      model={node}
-      row={row}
-      cllRunning={cllRunningMap?.get(row.name) ?? false}
-      singleEnv
-      showMenu={showMenu}
-    />
-  );
+): (params: ICellRendererParams<SchemaRow>) => React.ReactNode {
+  return (params) => {
+    const row = params.data;
+    if (!row) return null;
+    return (
+      <ColumnNameCell
+        model={node}
+        row={row}
+        cllRunning={cllRunningMap?.get(row.name) ?? false}
+        singleEnv
+        showMenu={showMenu}
+      />
+    );
+  };
 }
 
 // ============================================================================
@@ -61,9 +70,14 @@ export function createSingleEnvColumnNameRenderer(
  * Renders the merged index column.
  * Shows currentIndex for normal/added rows, baseIndex for removed rows.
  */
-export function renderIndexCell({
-  row,
-}: RenderCellProps<SchemaDiffRow>): React.ReactNode {
+export function renderIndexCell(
+  params: ICellRendererParams<RowObjectType>,
+): React.ReactNode {
+  if (!params.data) {
+    return null;
+  }
+  const row = params.data;
+
   const { baseIndex, currentIndex } = row;
   const isRemoved = currentIndex === undefined;
   const value = isRemoved
@@ -87,9 +101,14 @@ MemoizedRenderIndexCell.displayName = "MemoizedRenderIndexCell";
  * - Removed row: shows baseType
  * - No change: shows currentType (same as baseType)
  */
-export function renderTypeCell({
-  row,
-}: RenderCellProps<SchemaDiffRow>): React.ReactNode {
+export function renderTypeCell(
+  params: ICellRendererParams<RowObjectType>,
+): React.ReactNode {
+  if (!params.data) {
+    return null;
+  }
+  const row = params.data;
+
   const { baseType, currentType, baseIndex, currentIndex } = row;
   const isAdded = baseIndex === undefined;
   const isRemoved = currentIndex === undefined;

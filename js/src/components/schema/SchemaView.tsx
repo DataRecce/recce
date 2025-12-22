@@ -1,8 +1,19 @@
-import { forwardRef, Key, Ref, useMemo, useState } from "react";
-import "react-data-grid/lib/styles.css";
-import "./style.css";
-import { Alert, Flex } from "@chakra-ui/react";
-import { CellMouseArgs, DataGridHandle } from "react-data-grid";
+import MuiAlert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import type {
+  CellClickedEvent,
+  GridApi,
+  GridReadyEvent,
+  RowClassParams,
+} from "ag-grid-community";
+import {
+  forwardRef,
+  Ref,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { NodeData } from "@/lib/api/info";
 import { trackColumnLevelLineage } from "@/lib/api/track";
 import {
@@ -12,6 +23,7 @@ import {
 } from "@/lib/dataGrid";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import {
+  type DataGridHandle,
   EmptyRowsRenderer,
   ScreenshotDataGrid,
 } from "../data-grid/ScreenshotDataGrid";
@@ -29,6 +41,7 @@ function PrivateSingleEnvSchemaView(
   ref: Ref<DataGridHandle>,
 ) {
   const lineageViewContext = useLineageViewContext();
+  const [gridApi, setGridApi] = useState<GridApi<SchemaRow> | null>(null);
   const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(
     new Map(),
   );
@@ -67,27 +80,62 @@ function PrivateSingleEnvSchemaView(
     setCllRunningMap((prev) => new Map(prev).set(columnName, false));
   };
 
-  const rowKeyGetter = (row: SchemaDiffRow) => {
-    const modelId = current?.id;
-    return `${modelId}-${row.name}`;
-  };
+  const getRowId = useCallback(
+    (params: { data: SchemaRow }) => {
+      const modelId = current?.id;
+      return `${modelId}-${params.data.name}`;
+    },
+    [current?.id],
+  );
+
   const cll = lineageViewContext?.viewOptions.column_level_lineage;
-  const selectedRows: Set<Key> = cll
-    ? new Set([`${cll.node_id}-${cll.column}`])
-    : new Set();
+  const selectedRowId = cll ? `${cll.node_id}-${cll.column}` : null;
+
+  // Update row selection when cll changes
+  useEffect(() => {
+    if (!gridApi) return;
+    gridApi.deselectAll();
+    if (selectedRowId) {
+      const rowNode = gridApi.getRowNode(selectedRowId);
+      if (rowNode) {
+        rowNode.setSelected(true);
+      }
+    }
+  }, [gridApi, selectedRowId]);
+
+  const handleGridReady = useCallback((event: GridReadyEvent<SchemaRow>) => {
+    setGridApi(event.api);
+  }, []);
+
+  const getRowClass = (_params: RowClassParams<SchemaRow>) => {
+    if (lineageViewContext !== undefined) {
+      return "row-normal row-selectable";
+    }
+    return "row-normal";
+  };
+
+  const handleCellClicked = async (event: CellClickedEvent<SchemaRow>) => {
+    // Skip if clicking on the menu button
+    const target = event.event?.target as HTMLElement | undefined;
+    if (target?.closest(".row-context-menu")) {
+      return;
+    }
+    const row = event.data;
+    if (row) {
+      await handleViewCll(row.name);
+    }
+  };
 
   return (
-    <Flex direction="column">
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {catalogMissingMessage ? (
-        <Alert.Root status="warning" fontSize="12px" p="8px">
-          <Alert.Indicator />
-          <Alert.Description>{catalogMissingMessage}</Alert.Description>
-        </Alert.Root>
+        <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
+          {catalogMissingMessage}
+        </MuiAlert>
       ) : schemaMissingMessage ? (
-        <Alert.Root status="warning" fontSize="12px" p="8px">
-          <Alert.Indicator />
-          <Alert.Description>{schemaMissingMessage}</Alert.Description>
-        </Alert.Root>
+        <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
+          {schemaMissingMessage}
+        </MuiAlert>
       ) : (
         <></>
       )}
@@ -106,31 +154,23 @@ function PrivateSingleEnvSchemaView(
           renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
           className="rdg-light"
           ref={ref}
-          rowKeyGetter={rowKeyGetter}
-          selectedRows={selectedRows}
-          onSelectedRowsChange={() => {
-            return void 0;
-          }}
-          onCellClick={async (args: CellMouseArgs<SchemaRow>) => {
-            await handleViewCll(args.row.name);
-          }}
-          rowClass={() => {
-            if (lineageViewContext !== undefined) {
-              return "row-normal row-selectable";
-            }
-            return "row-normal";
-          }}
+          getRowId={getRowId}
+          getRowClass={getRowClass}
+          onCellClicked={handleCellClicked}
+          onGridReady={handleGridReady}
+          rowSelection="single"
         />
       )}
-    </Flex>
+    </Box>
   );
 }
 
 export function PrivateSchemaView(
-  { base, current, enableScreenshot = false, showMenu = true }: SchemaViewProps,
+  { base, current, showMenu = true }: SchemaViewProps,
   ref: Ref<DataGridHandle>,
 ) {
   const lineageViewContext = useLineageViewContext();
+  const [gridApi, setGridApi] = useState<GridApi<SchemaDiffRow> | null>(null);
   const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(
     new Map(),
   );
@@ -169,12 +209,12 @@ export function PrivateSchemaView(
   if (noSchemaBase && noSchemaCurrent) {
     schemaMissingMessage =
       "catalog.json is outdated on both environments. Update catalog.json to get schema information.";
-  } else if (noSchemaBase) {
-    schemaMissingMessage =
-      "catalog.json is outdated on base environment. Update catalog.json to get schema information.";
   } else if (noSchemaCurrent) {
     schemaMissingMessage =
       "catalog.json is outdated on current environment. Update catalog.json to get schema information.";
+  } else if (noSchemaBase) {
+    schemaMissingMessage =
+      "catalog.json is outdated on base environment. Update catalog.json to get schema information.";
   }
 
   const handleViewCll = async (columnName: string) => {
@@ -190,27 +230,79 @@ export function PrivateSchemaView(
     setCllRunningMap((prev) => new Map(prev).set(columnName, false));
   };
 
-  const rowKeyGetter = (row: SchemaDiffRow) => {
-    const modelId = current?.id ?? base?.id;
-    return `${modelId}-${row.name}`;
-  };
+  const getRowId = useCallback(
+    (params: { data: SchemaDiffRow }) => {
+      const modelId = current?.id ?? base?.id;
+      return `${modelId}-${params.data.name}`;
+    },
+    [current?.id, base?.id],
+  );
+
   const cll = lineageViewContext?.viewOptions.column_level_lineage;
-  const selectedRows: Set<Key> = cll
-    ? new Set([`${cll.node_id}-${cll.column}`])
-    : new Set();
+  const selectedRowId = cll ? `${cll.node_id}-${cll.column}` : null;
+
+  // Update row selection when cll changes
+  useEffect(() => {
+    if (!gridApi) return;
+    gridApi.deselectAll();
+    if (selectedRowId) {
+      const rowNode = gridApi.getRowNode(selectedRowId);
+      if (rowNode) {
+        rowNode.setSelected(true);
+      }
+    }
+  }, [gridApi, selectedRowId]);
+
+  const handleGridReady = useCallback(
+    (event: GridReadyEvent<SchemaDiffRow>) => {
+      setGridApi(event.api);
+    },
+    [],
+  );
+
+  const getRowClass = (params: RowClassParams<SchemaDiffRow>) => {
+    const row = params.data;
+    if (!row) return "row-normal";
+
+    let className;
+    if (row.baseIndex === undefined) {
+      className = "row-added";
+    } else if (row.currentIndex === undefined) {
+      return "row-removed"; // removed column isn't selectable
+    } else {
+      className = "row-normal";
+    }
+    if (lineageViewContext !== undefined) {
+      className += " row-selectable";
+    }
+    return className;
+  };
+
+  const handleCellClicked = async (event: CellClickedEvent<SchemaDiffRow>) => {
+    // Skip if clicking on the menu button
+    const target = event.event?.target as HTMLElement | undefined;
+    if (target?.closest(".row-context-menu")) {
+      return;
+    }
+    const row = event.data;
+    if (!row) return;
+    // Removed columns aren't clickable
+    if (row.baseIndex !== undefined && row.currentIndex === undefined) {
+      return;
+    }
+    await handleViewCll(row.name);
+  };
 
   return (
-    <Flex direction="column">
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {catalogMissingMessage ? (
-        <Alert.Root status="warning" fontSize="12px" p="8px">
-          <Alert.Indicator />
-          <Alert.Description>{catalogMissingMessage}</Alert.Description>
-        </Alert.Root>
+        <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
+          {catalogMissingMessage}
+        </MuiAlert>
       ) : schemaMissingMessage ? (
-        <Alert.Root status="warning" fontSize="12px" p="8px">
-          <Alert.Indicator />
-          <Alert.Description>{schemaMissingMessage}</Alert.Description>
-        </Alert.Root>
+        <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
+          {schemaMissingMessage}
+        </MuiAlert>
       ) : (
         <></>
       )}
@@ -230,37 +322,14 @@ export function PrivateSchemaView(
           renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
           className="rdg-light no-track-pii-safe"
           ref={ref}
-          rowKeyGetter={rowKeyGetter}
-          selectedRows={selectedRows}
-          onSelectedRowsChange={() => {
-            return void 0;
-          }}
-          onCellClick={async (args: CellMouseArgs<SchemaDiffRow>) => {
-            if (
-              args.row.baseIndex !== undefined &&
-              args.row.currentIndex === undefined
-            ) {
-              return;
-            }
-            await handleViewCll(args.row.name);
-          }}
-          rowClass={(row: SchemaDiffRow) => {
-            let className;
-            if (row.baseIndex === undefined) {
-              className = "row-added";
-            } else if (row.currentIndex === undefined) {
-              return "row-removed"; // removed column isn't selectable
-            } else {
-              className = "row-normal";
-            }
-            if (lineageViewContext !== undefined) {
-              className += " row-selectable";
-            }
-            return className;
-          }}
+          getRowId={getRowId}
+          getRowClass={getRowClass}
+          onCellClicked={handleCellClicked}
+          onGridReady={handleGridReady}
+          rowSelection="single"
         />
       )}
-    </Flex>
+    </Box>
   );
 }
 

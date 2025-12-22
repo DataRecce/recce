@@ -1,11 +1,13 @@
-import { Box, Flex, IconButton } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
 import { ReactNode, useState } from "react";
 import { PiCopy } from "react-icons/pi";
 import { useCopyToClipboard } from "usehooks-ts";
+import { colors } from "@/components/ui/mui-theme";
 
 interface DiffTextProps {
   value: string;
-  colorPalette: string;
+  colorPalette: "red" | "green";
   grayOut?: boolean;
   noCopy?: boolean;
   fontSize?: string;
@@ -20,20 +22,27 @@ export const DiffText = ({
 }: DiffTextProps) => {
   const [isHovered, setIsHovered] = useState(false);
 
+  // Get the color values from the theme colors
+  const textColor = colors[colorPalette][800];
+  const bgColor = colors[colorPalette][100];
+
   return (
-    <Flex
-      p="2px 5px"
-      minWidth="30px"
-      maxWidth="200px"
-      overflow="hidden"
-      textOverflow="ellipsis"
-      color={`${colorPalette}.800`}
-      backgroundColor={`${colorPalette}.100`}
-      alignItems="center"
-      gap="2px"
-      rounded="md"
-      fontSize={fontSize}
-      flexShrink={noCopy ? "0" : "inherit"}
+    <Box
+      sx={{
+        display: "flex",
+        p: "2px 5px",
+        minWidth: "30px",
+        maxWidth: "200px",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        color: textColor,
+        bgcolor: bgColor,
+        alignItems: "center",
+        gap: "2px",
+        borderRadius: "8px",
+        fontSize,
+        flexShrink: noCopy ? 0 : "inherit",
+      }}
       onMouseEnter={() => {
         setIsHovered(true);
       }}
@@ -42,9 +51,11 @@ export const DiffText = ({
       }}
     >
       <Box
-        overflow="hidden"
-        textOverflow="ellipsis"
-        color={grayOut ? "gray" : "inherit"}
+        sx={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          color: grayOut ? "gray" : "inherit",
+        }}
       >
         {value}
       </Box>
@@ -55,7 +66,7 @@ export const DiffText = ({
         grayOut={grayOut}
         isHovered={isHovered}
       />
-    </Flex>
+    </Box>
   );
 };
 
@@ -90,14 +101,16 @@ function CopyControl({
   return (
     <IconButton
       aria-label="Copy"
-      size="xs"
-      minW="10px"
-      h="10px"
-      variant="plain"
+      size="small"
       onClick={() => copyToClipboard(value)}
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
+      sx={{
+        minWidth: "10px",
+        height: "10px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        p: 0,
+      }}
     >
       <PiCopy size="10px" />
     </IconButton>

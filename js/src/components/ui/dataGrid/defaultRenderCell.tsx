@@ -9,16 +9,16 @@
  * with toDiffColumn.tsx which imports this component.
  */
 
-import { Text } from "@chakra-ui/react";
-import { CalculatedColumn, RenderCellProps } from "react-data-grid";
+import Typography from "@mui/material/Typography";
+import type { ColDef, ICellRendererParams } from "ag-grid-community";
 import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
 // Import directly from gridUtils to avoid circular dependency
 import { toRenderedValue } from "@/lib/dataGrid/shared/gridUtils";
 
 /**
- * Extended column type with optional type metadata
+ * Extended column definition with optional type metadata
  */
-type ColumnWithMetadata = CalculatedColumn<RowObjectType> & {
+export type ColDefWithMetadata<TData = RowObjectType> = ColDef<TData> & {
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
 };
@@ -30,24 +30,34 @@ type ColumnWithMetadata = CalculatedColumn<RowObjectType> & {
  * formatting based on the column type and render mode. Supports numeric
  * formatting (raw, integer, percent) and handles null/empty values with gray styling.
  *
- * @param props - React Data Grid render cell props containing row and column data
+ * @param params - AG Grid cell renderer params containing row data and column definition
  * @returns Rendered cell content as a Text component
  */
-export const defaultRenderCell = ({
-  row,
-  column,
-}: RenderCellProps<RowObjectType>) => {
-  const { columnType, columnRenderMode } =
-    column as unknown as ColumnWithMetadata;
+export const defaultRenderCell = (
+  params: ICellRendererParams<RowObjectType>,
+) => {
+  const colDef = params.colDef as ColDefWithMetadata;
+  const columnType = colDef?.columnType;
+  const columnRenderMode = colDef?.columnRenderMode;
+  const fieldName = colDef?.field ?? "";
+
+  if (!params.data) {
+    return null;
+  }
 
   const [renderedValue, grayOut] = toRenderedValue(
-    row,
-    column.key,
+    params.data,
+    fieldName,
     columnType,
     columnRenderMode,
   );
 
   return (
-    <Text style={{ color: grayOut ? "gray" : "inherit" }}>{renderedValue}</Text>
+    <Typography
+      component="span"
+      style={{ color: grayOut ? "gray" : "inherit" }}
+    >
+      {renderedValue}
+    </Typography>
   );
 };

@@ -1,4 +1,6 @@
-import { Box, Button, Center, Flex, Heading } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
 import {
   FallbackRender,
   ErrorBoundary as SentryErrorBoundary,
@@ -8,37 +10,49 @@ import { ReactNode, useState } from "react";
 
 const Fallback: FallbackRender = (errorData) => {
   return (
-    <Center height="100%" backgroundColor="gray.50">
-      <Flex
-        p={4}
-        direction="column"
-        justifyContent="flex-start"
-        backgroundColor="white"
-        border="solid lightgray 1px"
-        minHeight="200px"
+    <Box
+      sx={{
+        height: "100%",
+        bgcolor: "grey.50",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Box
+        sx={{
+          p: 4,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "flex-start",
+          bgcolor: "white",
+          border: "solid lightgray 1px",
+          minHeight: "200px",
+        }}
       >
-        <Heading width="800px" size="md">
+        <Typography variant="h6" sx={{ width: "800px" }}>
           You have encountered an error
-        </Heading>
+        </Typography>
 
-        <Box flex="1" fontSize="10pt">
-          {String(errorData.error)}
-        </Box>
+        <Box sx={{ flex: 1, fontSize: "10pt" }}>{String(errorData.error)}</Box>
 
         <Button
-          justifySelf="center"
-          alignSelf={"center"}
-          mt="20px"
-          colorPalette="blue"
-          size="sm"
+          sx={{
+            justifySelf: "center",
+            alignSelf: "center",
+            mt: "20px",
+          }}
+          color="iochmara"
+          variant="contained"
+          size="small"
           onClick={() => {
             errorData.resetError();
           }}
         >
           Reset
         </Button>
-      </Flex>
-    </Center>
+      </Box>
+    </Box>
   );
 };
 
@@ -49,11 +63,10 @@ export const ErrorButton = () => {
 
   return (
     <Button
-      pos="absolute"
+      sx={{ position: "absolute", zIndex: 1 }}
       onClick={() => {
         setA(undefined);
       }}
-      zIndex={1}
     >
       {a?.foo}
     </Button>

@@ -10,18 +10,13 @@
  * Also exports render functions for use in toValueDataGrid.ts generator.
  */
 
-import {
-  Box,
-  Center,
-  Flex,
-  Icon,
-  IconButton,
-  Menu,
-  Portal,
-  Spacer,
-} from "@chakra-ui/react";
-import React from "react";
-import { RenderCellProps } from "react-data-grid";
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
+import ListSubheader from "@mui/material/ListSubheader";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import type { ICellRendererParams } from "ag-grid-community";
+import React, { MouseEvent, useState } from "react";
 import { PiDotsThreeVertical } from "react-icons/pi";
 import { VscKey } from "react-icons/vsc";
 import { RowObjectType } from "@/lib/api/types";
@@ -58,7 +53,18 @@ export function PrimaryKeyIndicatorCell({
 }: PrimaryKeyIndicatorCellProps) {
   const isPrimaryKey = primaryKeys.includes(columnName);
 
-  return <Center height="100%">{isPrimaryKey && <Icon as={VscKey} />}</Center>;
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100%",
+      }}
+    >
+      {isPrimaryKey && <VscKey />}
+    </Box>
+  );
 }
 
 // ============================================================================
@@ -91,6 +97,16 @@ export function ValueDiffColumnNameCell({
 }: ValueDiffColumnNameCellProps) {
   const { runAction } = useRecceActionContext();
   const { featureToggles } = useRecceInstanceContext();
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const menuOpen = Boolean(anchorEl);
+
+  const handleMenuClick = (event: MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
 
   const handleValueDiffDetail = (
     paramsOverride?: Partial<ValueDiffParams>,
@@ -105,55 +121,58 @@ export function ValueDiffColumnNameCell({
   };
 
   return (
-    <Flex>
-      <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+    <Box sx={{ display: "flex" }}>
+      <Box
+        sx={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
         {column}
       </Box>
-      <Spacer />
+      <Box sx={{ flex: 1 }} />
 
-      <Menu.Root lazyMount>
-        <Menu.Trigger asChild>
-          <IconButton
-            className="row-context-menu"
-            variant="plain"
-            size="sm"
-            disabled={featureToggles.disableDatabaseQuery}
-          >
-            <PiDotsThreeVertical />
-          </IconButton>
-        </Menu.Trigger>
-
-        <Portal>
-          <Menu.Positioner>
-            <Menu.Content lineHeight="20px">
-              <Menu.ItemGroup title="Action" as={Box} fontSize="8pt">
-                <Menu.Item
-                  value="show-mismatched-values"
-                  fontSize="10pt"
-                  onClick={() => {
-                    handleValueDiffDetail({}, { showForm: true });
-                  }}
-                >
-                  Show mismatched values...
-                </Menu.Item>
-                <Menu.Item
-                  value="show-mismatched-columns"
-                  fontSize="10pt"
-                  onClick={() => {
-                    handleValueDiffDetail(
-                      { columns: [column] },
-                      { showForm: false },
-                    );
-                  }}
-                >
-                  Show mismatched values for &apos;{column}&apos;
-                </Menu.Item>
-              </Menu.ItemGroup>
-            </Menu.Content>
-          </Menu.Positioner>
-        </Portal>
-      </Menu.Root>
-    </Flex>
+      <IconButton
+        aria-label="Column options"
+        className="row-context-menu"
+        size="small"
+        disabled={featureToggles.disableDatabaseQuery}
+        onClick={handleMenuClick}
+      >
+        <PiDotsThreeVertical />
+      </IconButton>
+      <Menu
+        anchorEl={anchorEl}
+        open={menuOpen}
+        onClose={handleMenuClose}
+        slotProps={{
+          list: { sx: { lineHeight: "20px" } },
+        }}
+      >
+        <ListSubheader sx={{ fontSize: "8pt", lineHeight: "20px" }}>
+          Action
+        </ListSubheader>
+        <MenuItem
+          onClick={() => {
+            handleValueDiffDetail({}, { showForm: true });
+            handleMenuClose();
+          }}
+          sx={{ fontSize: "10pt" }}
+        >
+          Show mismatched values...
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            handleValueDiffDetail({ columns: [column] }, { showForm: false });
+            handleMenuClose();
+          }}
+          sx={{ fontSize: "10pt" }}
+        >
+          Show mismatched values for &apos;{column}&apos;
+        </MenuItem>
+      </Menu>
+    </Box>
   );
 }
 
@@ -193,7 +212,7 @@ export function MatchedPercentCell({ value }: MatchedPercentCellProps) {
     }
   }
 
-  return <Box textAlign="end">{displayValue}</Box>;
+  return <Box sx={{ textAlign: "right" }}>{displayValue}</Box>;
 }
 
 // ============================================================================
@@ -201,45 +220,56 @@ export function MatchedPercentCell({ value }: MatchedPercentCellProps) {
 // ============================================================================
 
 /**
- * Creates a renderCell function for the primary key indicator column
+ * Creates a cellRenderer function for the primary key indicator column
  *
  * @param primaryKeys - List of primary key column names
- * @returns A renderCell function compatible with react-data-grid
+ * @returns A cellRenderer function compatible with AG Grid
  */
 export function createPrimaryKeyIndicatorRenderer(
   primaryKeys: string[],
-): (props: RenderCellProps<RowObjectType>) => React.ReactNode {
-  return ({ row }) => (
-    <PrimaryKeyIndicatorCell
-      columnName={String(row["0"])}
-      primaryKeys={primaryKeys}
-    />
-  );
+): (params: ICellRendererParams<RowObjectType>) => React.ReactNode {
+  return (params) => {
+    const row = params.data;
+    if (!row) return null;
+    return (
+      <PrimaryKeyIndicatorCell
+        columnName={String(row["0"])}
+        primaryKeys={primaryKeys}
+      />
+    );
+  };
 }
 
 /**
- * Creates a renderCell function for the column name column
+ * Creates a cellRenderer function for the column name column
  *
  * @param params - ValueDiffParams from the run
- * @returns A renderCell function compatible with react-data-grid
+ * @returns A cellRenderer function compatible with AG Grid
  */
 export function createColumnNameRenderer(
   params: ValueDiffParams,
-): (props: RenderCellProps<RowObjectType>) => React.ReactNode {
-  return ({ row, column }) => (
-    <ValueDiffColumnNameCell column={String(row[column.key])} params={params} />
-  );
+): (cellParams: ICellRendererParams<RowObjectType>) => React.ReactNode {
+  return (cellParams) => {
+    const row = cellParams.data;
+    const field = cellParams.colDef?.field ?? "";
+    if (!row) return null;
+    return (
+      <ValueDiffColumnNameCell column={String(row[field])} params={params} />
+    );
+  };
 }
 
 /**
- * renderCell function for the matched percentage column
+ * cellRenderer function for the matched percentage column
  *
- * @param props - RenderCellProps from react-data-grid
+ * @param params - ICellRendererParams from AG Grid
  * @returns React node displaying formatted percentage
  */
-export function renderMatchedPercentCell({
-  row,
-  column,
-}: RenderCellProps<RowObjectType>): React.ReactNode {
-  return <MatchedPercentCell value={row[column.key] as number} />;
+export function renderMatchedPercentCell(
+  params: ICellRendererParams<RowObjectType>,
+): React.ReactNode {
+  const row = params.data;
+  const field = params.colDef?.field ?? "";
+  if (!row) return null;
+  return <MatchedPercentCell value={row[field] as number} />;
 }

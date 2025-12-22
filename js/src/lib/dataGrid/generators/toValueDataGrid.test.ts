@@ -9,6 +9,7 @@
  * - Column structure
  */
 
+import type { CellClassParams } from "ag-grid-community";
 import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
 import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
 import { toValueDataGrid } from "./toValueDataGrid";
@@ -17,11 +18,34 @@ import { toValueDataGrid } from "./toValueDataGrid";
 // Mocks
 // ============================================================================
 
-jest.mock("react-data-grid", () => ({
-  textEditor: jest.fn(),
+jest.mock("ag-grid-community", () => ({
+  ModuleRegistry: {
+    registerModules: jest.fn(),
+  },
 }));
 
-jest.mock("@chakra-ui/react", () => ({
+// ============================================================================
+// Helper to create mock CellClassParams
+// ============================================================================
+
+/**
+ * Helper to create mock CellClassParams from a row
+ * This is needed because AG Grid cellClass functions expect CellClassParams
+ */
+const createCellClassParams = (
+  row: RowObjectType,
+): CellClassParams<RowObjectType> =>
+  ({
+    data: row,
+    value: undefined,
+    node: undefined,
+    colDef: {},
+    column: {},
+    api: {},
+    rowIndex: 0,
+  }) as unknown as CellClassParams<RowObjectType>;
+
+jest.mock("@/components/ui/mui", () => ({
   Box: ({ children }: { children: React.ReactNode }) => children,
   Center: ({ children }: { children: React.ReactNode }) => children,
   Flex: ({ children }: { children: React.ReactNode }) => children,
@@ -54,21 +78,23 @@ jest.mock("@/lib/hooks/RecceInstanceContext", () => ({
 }));
 
 // ============================================================================
-// Types for testing (avoids ESM import issues with react-data-grid)
+// Types for testing (avoids ESM import issues with ag-grid-community)
 // ============================================================================
 
 /**
- * Test-friendly Column type (mirrors react-data-grid Column)
+ * Test-friendly Column type (mirrors AG Grid ColDef)
  */
 interface TestColumn {
-  key: string;
-  name?: React.ReactNode;
+  field: string;
+  headerName?: React.ReactNode;
   width?: number;
   maxWidth?: number;
   resizable?: boolean;
-  cellClass?: string | ((row: RowObjectType) => string | undefined);
-  headerCellClass?: string;
-  renderCell?: unknown;
+  cellClass?:
+    | string
+    | ((params: CellClassParams<RowObjectType>) => string | undefined);
+  headerClass?: string;
+  cellRenderer?: unknown;
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
 }
@@ -177,11 +203,11 @@ describe("toValueDataGrid - Column Structure", () => {
     const { columns } = toValueDataGrid(result, { params });
     const pkColumn = getColumn(columns, 0);
 
-    expect(pkColumn.key).toBe("__is_pk__");
-    expect(pkColumn.name).toBe("");
+    expect(pkColumn.field).toBe("__is_pk__");
+    expect(pkColumn.headerName).toBe("");
     expect(pkColumn.width).toBe(30);
     expect(pkColumn.maxWidth).toBe(30);
-    expect(pkColumn.renderCell).toBeDefined();
+    expect(pkColumn.cellRenderer).toBeDefined();
   });
 
   test("creates column name column", () => {
@@ -191,10 +217,10 @@ describe("toValueDataGrid - Column Structure", () => {
     const { columns } = toValueDataGrid(result, { params });
     const nameColumn = getColumn(columns, 1);
 
-    expect(nameColumn.key).toBe("0");
-    expect(nameColumn.name).toBe("Column");
+    expect(nameColumn.field).toBe("0");
+    expect(nameColumn.headerName).toBe("Column");
     expect(nameColumn.resizable).toBe(true);
-    expect(nameColumn.renderCell).toBeDefined();
+    expect(nameColumn.cellRenderer).toBeDefined();
     expect(nameColumn.cellClass).toBe("cell-show-context-menu");
   });
 
@@ -205,8 +231,8 @@ describe("toValueDataGrid - Column Structure", () => {
     const { columns } = toValueDataGrid(result, { params });
     const matchedColumn = getColumn(columns, 2);
 
-    expect(matchedColumn.key).toBe("1");
-    expect(matchedColumn.name).toBe("Matched");
+    expect(matchedColumn.field).toBe("1");
+    expect(matchedColumn.headerName).toBe("Matched");
     expect(matchedColumn.resizable).toBe(true);
   });
 
@@ -217,10 +243,10 @@ describe("toValueDataGrid - Column Structure", () => {
     const { columns } = toValueDataGrid(result, { params });
     const percentColumn = getColumn(columns, 3);
 
-    expect(percentColumn.key).toBe("2");
-    expect(percentColumn.name).toBe("Matched %");
+    expect(percentColumn.field).toBe("2");
+    expect(percentColumn.headerName).toBe("Matched %");
     expect(percentColumn.resizable).toBe(true);
-    expect(percentColumn.renderCell).toBeDefined();
+    expect(percentColumn.cellRenderer).toBeDefined();
   });
 });
 
@@ -236,8 +262,8 @@ describe("toValueDataGrid - Primary Key Handling", () => {
     const { columns } = toValueDataGrid(result, { params });
     const pkColumn = getColumn(columns, 0);
 
-    expect(pkColumn.key).toBe("__is_pk__");
-    expect(pkColumn.renderCell).toBeDefined();
+    expect(pkColumn.field).toBe("__is_pk__");
+    expect(pkColumn.cellRenderer).toBeDefined();
   });
 
   test("handles array of primary keys", () => {
@@ -253,8 +279,8 @@ describe("toValueDataGrid - Primary Key Handling", () => {
     const { columns } = toValueDataGrid(result, { params });
     const pkColumn = getColumn(columns, 0);
 
-    expect(pkColumn.key).toBe("__is_pk__");
-    expect(pkColumn.renderCell).toBeDefined();
+    expect(pkColumn.field).toBe("__is_pk__");
+    expect(pkColumn.cellRenderer).toBeDefined();
   });
 });
 
@@ -291,9 +317,11 @@ describe("toValueDataGrid - Cell Classes", () => {
     const matchedColumn = getColumn(columns, 2);
 
     const cellClass = matchedColumn.cellClass as (
-      row: RowObjectType,
+      params: CellClassParams<RowObjectType>,
     ) => string | undefined;
-    expect(cellClass(rows[0])).toBe("diff-cell-modified");
+    expect(cellClass(createCellClassParams(rows[0]))).toBe(
+      "diff-cell-modified",
+    );
   });
 
   test("cellClass returns undefined when value is 1 (100%)", () => {
@@ -304,9 +332,9 @@ describe("toValueDataGrid - Cell Classes", () => {
     const matchedColumn = getColumn(columns, 2);
 
     const cellClass = matchedColumn.cellClass as (
-      row: RowObjectType,
+      params: CellClassParams<RowObjectType>,
     ) => string | undefined;
-    expect(cellClass(rows[0])).toBeUndefined();
+    expect(cellClass(createCellClassParams(rows[0]))).toBeUndefined();
   });
 });
 

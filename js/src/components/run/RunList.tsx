@@ -1,15 +1,7 @@
-import "react-data-grid/lib/styles.css";
-import {
-  Box,
-  Center,
-  Flex,
-  Heading,
-  HStack,
-  Icon,
-  IconButton,
-  Spacer,
-  Text,
-} from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { ReactNode, useCallback } from "react";
 import { IconType } from "react-icons";
@@ -22,8 +14,8 @@ import { Run } from "@/lib/api/types";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { findByRunType } from "../run/registry";
 import "simplebar/dist/simplebar.min.css";
+import MuiTooltip from "@mui/material/Tooltip";
 import { PiX } from "react-icons/pi";
-import { Tooltip } from "@/components/ui/tooltip";
 import { trackHistoryAction } from "@/lib/api/track";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
@@ -52,61 +44,69 @@ const RunListItem = ({
     retry: false,
   });
 
-  const icon: IconType = findByRunType(run.type).icon;
+  const IconComponent: IconType = findByRunType(run.type).icon;
   const checkId = run.check_id;
   const hideAddToChecklist = featureToggles.disableUpdateChecklist;
 
   return (
-    <Flex
-      minWidth="200px"
-      direction="column"
-      width="100%"
-      p="5px 20px"
-      cursor="pointer"
-      borderBottom={"solid 1px lightgray"}
-      borderLeft={"4px"}
-      borderLeftColor={isSelected ? "orange.400" : "transparent"}
-      backgroundColor={isSelected ? "orange.50" : "transparent"}
+    <Box
+      sx={{
+        minWidth: "200px",
+        display: "flex",
+        flexDirection: "column",
+        width: "100%",
+        p: "5px 20px",
+        cursor: "pointer",
+        borderBottom: "solid 1px lightgray",
+        borderLeft: "4px solid",
+        borderLeftColor: isSelected ? "amber.400" : "transparent",
+        backgroundColor: isSelected ? "amber.50" : "transparent",
+        "&:hover": { bgcolor: isSelected ? "orange.50" : "grey.200" },
+      }}
       onClick={() => {
         onSelectRun(run.run_id);
       }}
-      _hover={{ bg: isSelected ? "orange.50" : "gray.200" }}
     >
-      <Flex
+      <Box
+        sx={{ display: "flex", alignItems: "center", gap: "12px" }}
         onClick={() => {
           return void 0;
         }}
-        alignItems="center"
-        gap="12px"
       >
-        <Icon as={icon} />
+        <IconComponent />
         <Box
           className="no-track-pii-safe"
-          flex="1"
-          textOverflow="ellipsis"
-          whiteSpace="nowrap"
-          overflow="hidden"
-          color={run.name ? "inherit" : "gray.500"}
-          fontSize="11pt"
-          fontWeight="500"
+          sx={{
+            flex: 1,
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            color: run.name ? "inherit" : "grey.500",
+            fontSize: "11pt",
+            fontWeight: 500,
+          }}
         >
           {(run.name ?? "").trim() || "<no name>"}
         </Box>
         {checkId ? (
-          <Tooltip content="Go to Check" aria-label="Go to Check">
-            <Text
+          <MuiTooltip title="Go to Check">
+            <Typography
+              component="span"
+              aria-label="Go to Check"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 onGoToCheck(checkId);
               }}
             >
-              <Icon color="green" as={FaCheckCircle} />
-            </Text>
-          </Tooltip>
+              <FaCheckCircle color="green" />
+            </Typography>
+          </MuiTooltip>
         ) : !hideAddToChecklist ? (
-          <Tooltip content="Add to Checklist" aria-label="Add to Checklist">
-            <Text
+          <MuiTooltip title="Add to Checklist">
+            <Typography
+              component="span"
+              aria-label="Add to Checklist"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -114,21 +114,24 @@ const RunListItem = ({
                 onAddToChecklist(run.run_id);
               }}
             >
-              <Icon as={FaRegCheckCircle} />
-            </Text>
-          </Tooltip>
+              <FaRegCheckCircle />
+            </Typography>
+          </MuiTooltip>
         ) : null}
-      </Flex>
-      <Flex
-        justifyContent="start"
-        fontSize="11pt"
-        color="gray.500"
-        gap="3px"
-        alignItems={"center"}
+      </Box>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "start",
+          fontSize: "11pt",
+          color: "grey.500",
+          gap: "3px",
+          alignItems: "center",
+        }}
       >
         <RunStatusAndDate run={fetchedRun ?? run} />
-      </Flex>
-    </Flex>
+      </Box>
+    </Box>
   );
 };
 
@@ -136,16 +139,18 @@ const DateSegmentItem = ({ runAt }: { runAt?: string }) => {
   const dateTime = runAt ? formatRunDate(new Date(runAt)) : null;
 
   return (
-    <Flex
-      minWidth="200px"
-      width="100%"
-      p="5px 20px"
-      borderBottom={"solid 1px lightgray"}
-      color="gray.500"
-      fontSize={"11pt"}
+    <Box
+      sx={{
+        minWidth: "200px",
+        width: "100%",
+        p: "5px 20px",
+        borderBottom: "solid 1px lightgray",
+        color: "grey.500",
+        fontSize: "11pt",
+      }}
     >
       {dateTime}
-    </Flex>
+    </Box>
   );
 };
 
@@ -160,17 +165,20 @@ export const RunList = () => {
   });
 
   return (
-    <Flex direction="column" height="100%">
-      <HStack
-        width="100%"
-        flex="0 0 54px"
-        paddingInline="24px 8px"
-        borderBottom="solid 1px lightgray"
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <Stack
+        direction="row"
+        alignItems="center"
+        sx={{
+          width: "100%",
+          flex: "0 0 54px",
+          px: "24px 8px",
+          borderBottom: "solid 1px lightgray",
+        }}
       >
-        <Heading size="md">History</Heading>
-        <Spacer />
+        <Typography variant="h6">History</Typography>
+        <Box sx={{ flex: 1 }} />
         <IconButton
-          variant="ghost"
           aria-label="Close History"
           onClick={() => {
             trackHistoryAction({ name: "hide" });
@@ -179,14 +187,22 @@ export const RunList = () => {
         >
           <PiX />
         </IconButton>
-      </HStack>
-      <Box flex="1 1 auto">
+      </Stack>
+      <Box sx={{ flex: "1 1 auto" }}>
         {isLoading ? (
           "Loading..."
         ) : runs?.length === 0 ? (
-          <Center height="100%" color="gray.400">
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "100%",
+              color: "grey.400",
+            }}
+          >
             No runs
-          </Center>
+          </Box>
         ) : (
           <SimpleBar style={{ minHeight: "100%", height: 0 }}>
             {(runs ?? []).map((run, idx) => {
@@ -207,7 +223,7 @@ export const RunList = () => {
           </SimpleBar>
         )}
       </Box>
-    </Flex>
+    </Box>
   );
 };
 
@@ -233,15 +249,15 @@ function DateDividedRunHistoryItem({
     showRunId(runId, false);
   };
 
-  const handleAddToChecklist = useCallback(async () => {
-    if (!runId) {
-      return;
-    }
-    const check = await createCheckByRun(runId);
+  const handleAddToChecklist = useCallback(
+    async (clickedRunId: string) => {
+      const check = await createCheckByRun(clickedRunId);
 
-    await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    setLocation(`/checks/?id=${check.check_id}`);
-  }, [runId, setLocation, queryClient]);
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+      setLocation(`/checks/?id=${check.check_id}`);
+    },
+    [setLocation, queryClient],
+  );
 
   const handleGoToCheck = useCallback(
     (checkId: string) => {

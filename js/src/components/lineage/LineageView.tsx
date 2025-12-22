@@ -1,14 +1,9 @@
-import {
-  Box,
-  Button,
-  Center,
-  Flex,
-  Icon,
-  Spinner,
-  StackSeparator,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import Divider from "@mui/material/Divider";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import {
   Background,
   ControlButton,
@@ -1123,28 +1118,39 @@ export function PrivateLineageView(
 
   if (isLoading) {
     return (
-      <Flex
-        width="100%"
-        height="100%"
-        alignItems="center"
-        justifyContent="center"
+      <Box
+        sx={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
-        <Spinner size="xl" />
-      </Flex>
+        <CircularProgress size={48} />
+      </Box>
     );
   }
 
   if (error) {
     return (
-      <Center h="100%">
-        <VStack>
+      <Box
+        sx={{
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Stack alignItems="center" spacing={1}>
           <Box>
             Failed to load lineage data. This could be because the server has
             been terminated or there is a network error.
           </Box>
           <Box>[Reason: {error}]</Box>
           <Button
-            colorPalette="blue"
+            color="iochmara"
+            variant="contained"
             onClick={() => {
               if (retchLineageGraph) {
                 retchLineageGraph();
@@ -1153,8 +1159,8 @@ export function PrivateLineageView(
           >
             Retry
           </Button>
-        </VStack>
-      </Center>
+        </Stack>
+      </Box>
     );
   }
 
@@ -1164,11 +1170,19 @@ export function PrivateLineageView(
 
   if (viewMode === "changed_models" && !lineageGraph.modifiedSet.length) {
     return (
-      <Center h="100%">
-        <VStack>
+      <Box
+        sx={{
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Stack alignItems="center" spacing={1}>
           <>No change detected</>
           <Button
-            colorPalette="blue"
+            color="iochmara"
+            variant="contained"
             onClick={async () => {
               await handleViewOptionsChanged({
                 ...viewOptions,
@@ -1178,8 +1192,8 @@ export function PrivateLineageView(
           >
             Show all nodes
           </Button>
-        </VStack>
-      </Center>
+        </Stack>
+      </Box>
     );
   }
   return (
@@ -1190,12 +1204,11 @@ export function PrivateLineageView(
         gutterSize={focusedNode ? 5 : 0}
         style={{ height: "100%", width: "100%" }}
       >
-        <VStack
+        <Stack
           ref={refResize}
-          separator={<StackSeparator borderColor="gray.200" />}
-          gap={0}
-          style={{ contain: "strict" }}
-          position="relative"
+          divider={<Divider sx={{ borderColor: "grey.200" }} />}
+          spacing={0}
+          sx={{ contain: "strict", position: "relative" }}
         >
           {interactive && (
             <>
@@ -1253,17 +1266,17 @@ export function PrivateLineageView(
                   });
                 }}
               >
-                <Icon as={FiCopy} />
+                <Box component={FiCopy} />
               </ControlButton>
             </Controls>
             <ImageDownloadModal />
             <Panel position="bottom-left">
-              <Flex direction="column" gap="5px">
+              <Stack spacing="5px">
                 {isModelsChanged && <ChangeStatusLegend />}
                 {viewOptions.column_level_lineage && (
                   <ColumnLevelLineageLegend />
                 )}
-              </Flex>
+              </Stack>
             </Panel>
             <Panel position="top-center">
               <LineageViewNotification
@@ -1274,14 +1287,16 @@ export function PrivateLineageView(
               />
             </Panel>
             <Panel position="top-left">
-              <Flex direction="column" gap="5px">
+              <Stack spacing="5px">
                 <ColumnLevelLineageControl action={actionGetCll} />
                 {nodes.length == 0 && (
-                  <Text fontSize="xl" color="grey" opacity={0.5}>
+                  <Typography
+                    sx={{ fontSize: "1.25rem", color: "grey", opacity: 0.5 }}
+                  >
                     No nodes
-                  </Text>
+                  </Typography>
                 )}
-              </Flex>
+              </Stack>
             </Panel>
             <MiniMap
               nodeColor={nodeColor}
@@ -1303,9 +1318,9 @@ export function PrivateLineageView(
             )}
           </ReactFlow>
           <LineageViewContextMenu {...lineageViewContextMenu.props} />
-        </VStack>
+        </Stack>
         {focusedNode ? (
-          <Box borderLeft="solid 1px lightgray" height="100%">
+          <Box sx={{ borderLeft: "solid 1px lightgray", height: "100%" }}>
             <NodeView node={focusedNode} onCloseNode={onNodeViewClosed} />
           </Box>
         ) : (

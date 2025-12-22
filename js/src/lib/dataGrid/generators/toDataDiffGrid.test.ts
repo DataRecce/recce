@@ -11,16 +11,14 @@
  * - Invalid primary key detection
  */
 
-// Mock react-data-grid since tests don't need actual rendering
-jest.mock("react-data-grid", () => ({
-  textEditor: jest.fn(),
-  CalculatedColumn: {},
-  ColumnOrColumnGroup: {},
-  RenderCellProps: {},
+// Mock AG Grid modules
+jest.mock("ag-grid-community", () => ({
+  ModuleRegistry: { registerModules: jest.fn() },
+  AllCommunityModule: {},
 }));
 
-// Mock Chakra UI components
-jest.mock("@chakra-ui/react", () => ({
+// Mock MUI wrapper components
+jest.mock("@/components/ui/mui", () => ({
   Box: ({ children }: { children: React.ReactNode }) => children,
   Flex: ({ children }: { children: React.ReactNode }) => children,
   Icon: () => null,
@@ -36,9 +34,9 @@ jest.mock("@chakra-ui/react", () => ({
   Text: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+import type { ColDef } from "ag-grid-community";
 import React from "react";
-import { Column } from "react-data-grid";
-import { DataFrame } from "@/lib/api/types";
+import { DataFrame, RowObjectType } from "@/lib/api/types";
 import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
 
 // ============================================================================
@@ -770,7 +768,7 @@ describe("toDataDiffGrid - Schema Evolution", () => {
 
       // Find the value column and check its type metadata
       const valueColumn = result.columns.find((col) => {
-        if ("key" in col) return col.key === "value";
+        if ("field" in col) return col.field === "value";
         if ("children" in col) return true; // column group for value
         return false;
       });
@@ -1075,7 +1073,7 @@ describe("toDataDiffGrid - Display Modes", () => {
       // In side_by_side, non-PK columns are groups with children
       if ("children" in col && Array.isArray(col.children)) {
         return col.children.some(
-          (child) => "key" in child && child.key === "base__value",
+          (child) => "field" in child && child.field === "base__value",
         );
       }
       return false;
@@ -1084,12 +1082,12 @@ describe("toDataDiffGrid - Display Modes", () => {
     expect(valueColumnGroup).toBeDefined();
     if (valueColumnGroup && "children" in valueColumnGroup) {
       expect(valueColumnGroup.children).toHaveLength(2);
-      expect((valueColumnGroup.children?.[0] as Column<unknown>).key).toBe(
-        "base__value",
-      );
-      expect((valueColumnGroup.children?.[1] as Column<unknown>).key).toBe(
-        "current__value",
-      );
+      expect(
+        (valueColumnGroup.children?.[0] as ColDef<RowObjectType>).field,
+      ).toBe("base__value");
+      expect(
+        (valueColumnGroup.children?.[1] as ColDef<RowObjectType>).field,
+      ).toBe("current__value");
     }
   });
 
@@ -1099,18 +1097,18 @@ describe("toDataDiffGrid - Display Modes", () => {
       displayMode: "inline",
     });
 
-    // In inline mode, non-PK columns should have key directly, not children
+    // In inline mode, non-PK columns should have field directly, not children
     const nonPKColumns = result.columns.filter((col) => {
       // Skip PK column (id)
-      if ("key" in col && col.key === "id") return false;
+      if ("field" in col && col.field === "id") return false;
       // Skip index column
-      return !("key" in col && col.key === "_index");
+      return !("field" in col && col.field === "_index");
     });
 
     // Verify none of the non-PK columns have children (they're flat columns)
     nonPKColumns.forEach((col) => {
-      // In inline mode, columns have key directly
-      expect("key" in col).toBe(true);
+      // In inline mode, columns have field directly
+      expect("field" in col).toBe(true);
       // And should not have children array
       expect("children" in col && Array.isArray(col.children)).toBe(false);
     });
@@ -1143,9 +1141,9 @@ describe("toDataDiffGrid - Display Modes", () => {
 const extractColumnKey = (
   col: ReturnType<typeof toDataDiffGrid>["columns"][number],
 ): string | undefined => {
-  // Direct column with key property
-  if ("key" in col && typeof col.key === "string") {
-    return col.key;
+  // Direct column with field property
+  if ("field" in col && typeof col.field === "string") {
+    return col.field;
   }
   // Column group - derive key from first child
   if (
@@ -1156,11 +1154,11 @@ const extractColumnKey = (
     const firstChild = col.children[0];
     if (
       firstChild &&
-      "key" in firstChild &&
-      typeof firstChild.key === "string"
+      "field" in firstChild &&
+      typeof firstChild.field === "string"
     ) {
       // Extract base name from "base__columnName" format
-      const childKey = firstChild.key;
+      const childKey = firstChild.field;
       if (childKey.startsWith("base__")) {
         return childKey.slice(6); // Remove "base__" prefix
       }
@@ -1337,14 +1335,14 @@ describe("toDataDiffGrid - Column Render Modes", () => {
     // Find the value column - could be a column group in side_by_side mode
     // or a direct column in inline mode
     const valueColumn = result.columns.find((col) => {
-      // Check if it's a direct column with key
-      if ("key" in col && col.key === "value") {
+      // Check if it's a direct column with field
+      if ("field" in col && col.field === "value") {
         return true;
       }
       // Check if it's a column group with children containing base__value
       if ("children" in col && Array.isArray(col.children)) {
         return col.children.some(
-          (child) => "key" in child && child.key === "base__value",
+          (child) => "field" in child && child.field === "base__value",
         );
       }
       return false;
@@ -1367,10 +1365,10 @@ describe("toDataDiffGrid - Column Render Modes", () => {
     });
 
     const valueColumn = result.columns.find((col) => {
-      if ("key" in col && col.key === "value") return true;
+      if ("field" in col && col.field === "value") return true;
       if ("children" in col && Array.isArray(col.children)) {
         return col.children.some(
-          (child) => "key" in child && child.key === "base__value",
+          (child) => "field" in child && child.field === "base__value",
         );
       }
       return false;
@@ -1411,12 +1409,13 @@ describe("toDataDiffGrid - Custom Titles", () => {
       "children" in columnWithChildren &&
       columnWithChildren.children
     ) {
-      const baseChild = columnWithChildren.children[0];
-      const currentChild = columnWithChildren.children[1];
+      const baseChild = columnWithChildren.children[0] as ColDef<RowObjectType>;
+      const currentChild = columnWithChildren
+        .children[1] as ColDef<RowObjectType>;
 
-      // Check that children have custom names
-      expect(baseChild?.name).toBe("Production");
-      expect(currentChild?.name).toBe("Development");
+      // Check that children have custom names (headerName in AG Grid)
+      expect(baseChild?.headerName).toBe("Production");
+      expect(currentChild?.headerName).toBe("Development");
     }
   });
 
@@ -1440,11 +1439,12 @@ describe("toDataDiffGrid - Custom Titles", () => {
       "children" in columnWithChildren &&
       columnWithChildren.children
     ) {
-      const baseChild = columnWithChildren.children[0];
-      const currentChild = columnWithChildren.children[1];
+      const baseChild = columnWithChildren.children[0] as ColDef<RowObjectType>;
+      const currentChild = columnWithChildren
+        .children[1] as ColDef<RowObjectType>;
 
-      expect(baseChild?.name).toBe("Base");
-      expect(currentChild?.name).toBe("Current");
+      expect(baseChild?.headerName).toBe("Base");
+      expect(currentChild?.headerName).toBe("Current");
     }
   });
 });

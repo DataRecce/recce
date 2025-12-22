@@ -1,4 +1,4 @@
-import { Flex } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
 import { ReactFlowProvider } from "@xyflow/react";
 import { forwardRef, Ref } from "react";
 import { Check } from "@/lib/api/checks";
@@ -19,11 +19,11 @@ function _LineageDiffView(
   };
 
   return (
-    <Flex direction="column" height="100%">
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <ReactFlowProvider>
         <LineageView viewOptions={viewOptions} interactive={false} ref={ref} />
       </ReactFlowProvider>
-    </Flex>
+    </Box>
   );
 }
 

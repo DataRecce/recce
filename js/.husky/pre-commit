@@ -5,11 +5,7 @@ staged_js_files=$(git diff --cached --name-only | grep "^js/" | grep -E '\.(ts|t
 
 if [ -n "$staged_js_files" ]; then
 	echo "TypeScript/JavaScript files changed, running lint and type check..."
-	pushd js
-	pnpm lint:staged
-	pnpm type:check
-	pnpm test
-	popd
+	(cd js && pnpm lint:staged && pnpm type:check && pnpm test)
 else
 	echo "No TypeScript/JavaScript files changed, skipping lint and type check."
 fi
@@ -23,7 +19,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 STRIP_JS_HUSKY=$(echo "$HERE" | sed 's|/js/\.husky$||')
 ARGS="$ARGS --hook-dir $STRIP_JS_HUSKY -- $*"
 
-if [ -x "$INSTALL_PYTHON" ]; then
+if [ -x "$INSTALL_PYTHON" ] && "$INSTALL_PYTHON" -c "import pre_commit" 2>/dev/null; then
 	exec "$INSTALL_PYTHON" -mpre_commit $ARGS
 elif command -v pre-commit >/dev/null; then
 	exec pre-commit $ARGS

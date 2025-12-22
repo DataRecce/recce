@@ -231,9 +231,32 @@ export function determineRowStatus(
  * - NaN: Returns "NaN" (no formatting applied)
  * - Infinity: Returns "∞" or "-∞" (no formatting applied)
  */
+/**
+ * Formats a number with up to maxDecimals decimal places, without trailing zeros
+ * Uses banker's rounding (round half to even) for unbiased rounding.
+ *
+ * e.g., formatSmartDecimal(123, 2) => "123"
+ *       formatSmartDecimal(123.4, 2) => "123.4"
+ *       formatSmartDecimal(123.456, 2) => "123.46"
+ *       formatSmartDecimal(123.445, 2) => "123.44" (banker's rounding)
+ */
+export function formatSmartDecimal(value: number, maxDecimals = 2): string {
+  // Normalize -0 to 0 (Intl.NumberFormat renders -0 as "-0" per ECMA-402)
+  const normalizedValue = Object.is(value, -0) ? 0 : value;
+
+  const result =
+    formatNumber(normalizedValue, "en-US", {
+      maximumFractionDigits: maxDecimals,
+      roundingMode: "halfEven",
+    } as Intl.NumberFormatOptions) ?? String(value);
+
+  // Normalize "-0" to "0" (can happen when small negative numbers round to zero)
+  return result === "-0" ? "0" : result;
+}
+
 export function columnRenderedValue(
   value: number,
-  renderMode: ColumnRenderMode,
+  renderMode?: ColumnRenderMode,
 ): string {
   // Handle special numeric values first
   if (Number.isNaN(value)) {
@@ -246,13 +269,13 @@ export function columnRenderedValue(
 
   const locale = "en-US";
 
+  if (renderMode === "raw") {
+    return String(value);
+  }
+
   if (typeof renderMode === "number") {
-    return (
-      formatNumber(value, locale, {
-        maximumFractionDigits: renderMode,
-        minimumFractionDigits: renderMode,
-      }) ?? String(value)
-    );
+    // Smart formatting: up to N decimals, no trailing zeros
+    return formatSmartDecimal(value, renderMode);
   }
 
   if (renderMode === "percent") {
@@ -264,7 +287,8 @@ export function columnRenderedValue(
     );
   }
 
-  return String(value);
+  // Default: smart 2-decimal formatting
+  return formatSmartDecimal(value, 2);
 }
 
 /**
@@ -274,7 +298,7 @@ export function toRenderedValue(
   row: RowObjectType,
   key: string,
   columnType?: ColumnType,
-  columnRenderMode: ColumnRenderMode = "raw",
+  columnRenderMode?: ColumnRenderMode,
 ): [string, boolean] {
   const value = getCaseInsensitive(row, key);
 

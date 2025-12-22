@@ -9,29 +9,33 @@
 }
 
 /* Row backgrounds must be applied to cells because rows use display:contents */
-.row-added .rdg-cell {
+.row-added {
   background-color: var(--schema-color-added);
 }
 
-.row-added:hover .rdg-cell,
-.row-added[aria-selected="true"] .rdg-cell {
+.row-added:hover,
+.row-added[aria-selected="true"],
+.row-added.ag-row-selected {
   background-color: var(--schema-color-added-hover);
 }
 
-.row-added[aria-selected="true"]:hover .rdg-cell {
+.row-added[aria-selected="true"]:hover,
+.row-added.ag-row-selected:hover {
   background-color: var(--schema-color-added-active);
 }
 
-.row-removed .rdg-cell {
+.row-removed {
   background-color: var(--schema-color-removed);
 }
 
-.row-removed:hover .rdg-cell,
-.row-removed[aria-selected="true"] .rdg-cell {
+.row-removed:hover,
+.row-removed[aria-selected="true"],
+.row-removed.ag-row-selected {
   background-color: var(--schema-color-removed-hover);
 }
 
-.row-removed[aria-selected="true"]:hover .rdg-cell {
+.row-removed[aria-selected="true"]:hover,
+.row-removed.ag-row-selected:hover {
   background-color: var(--schema-color-removed-active);
 }
 
@@ -40,11 +44,13 @@
 }
 
 .row-normal:hover,
-.row-normal[aria-selected="true"] {
+.row-normal[aria-selected="true"],
+.row-normal.ag-row-selected {
   background-color: rgb(241 241 241);
 }
 
-.row-normal[aria-selected="true"]:hover {
+.row-normal[aria-selected="true"]:hover,
+.row-normal.ag-row-selected:hover {
   background-color: rgb(230 230 230);
 }
 
@@ -89,10 +95,12 @@
 }
 
 .row-normal:hover .column-index-reordered,
-.row-normal[aria-selected="true"] .column-index-reordered {
+.row-normal[aria-selected="true"] .column-index-reordered,
+.row-normal.ag-row-selected .column-index-reordered {
   background-color: rgb(249 164 6);
 }
 
-.row-normal[aria-selected="true"]:hover .column-index-reordered {
+.row-normal[aria-selected="true"]:hover .column-index-reordered,
+.row-normal.ag-row-selected:hover .column-index-reordered {
   background-color: rgb(224 147 6);
 }

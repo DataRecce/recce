@@ -37,6 +37,7 @@ export {
   columnRenderedValue,
   // Row status
   determineRowStatus,
+  formatSmartDecimal,
   // Cell class utilities
   getCellClass,
   getHeaderCellClass,

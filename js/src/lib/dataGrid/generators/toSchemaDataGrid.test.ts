@@ -8,6 +8,7 @@
  * - toSingleEnvDataGrid: Single environment grid generation
  */
 
+import type { CellClassParams } from "ag-grid-community";
 import React from "react";
 import { NodeData } from "@/lib/api/info";
 import { RowObjectType } from "@/lib/api/types";
@@ -21,10 +22,33 @@ import {
 // Mocks
 // ============================================================================
 
-// Mock react-data-grid to avoid ES module parsing issues
-jest.mock("react-data-grid", () => ({
-  textEditor: jest.fn(),
+// Mock ag-grid-community to avoid ES module parsing issues
+jest.mock("ag-grid-community", () => ({
+  ModuleRegistry: {
+    registerModules: jest.fn(),
+  },
 }));
+
+// ============================================================================
+// Helper to create mock CellClassParams
+// ============================================================================
+
+/**
+ * Helper to create mock CellClassParams from a row
+ * This is needed because AG Grid cellClass functions expect CellClassParams
+ */
+const createCellClassParams = (
+  row: RowObjectType,
+): CellClassParams<RowObjectType> =>
+  ({
+    data: row,
+    value: undefined,
+    node: undefined,
+    colDef: {},
+    column: {},
+    api: {},
+    rowIndex: 0,
+  }) as unknown as CellClassParams<RowObjectType>;
 
 // Mock the schemaCells module
 jest.mock("@/components/ui/dataGrid/schemaCells", () => ({
@@ -35,21 +59,23 @@ jest.mock("@/components/ui/dataGrid/schemaCells", () => ({
 }));
 
 // ============================================================================
-// Types for testing (avoids ESM import issues with react-data-grid)
+// Types for testing (avoids ESM import issues with ag-grid-community)
 // ============================================================================
 
 /**
- * Test-friendly Column type (mirrors react-data-grid Column)
+ * Test-friendly Column type (mirrors AG Grid ColDef)
  */
 interface TestColumn {
-  key: string;
-  name?: React.ReactNode;
+  field: string;
+  headerName?: React.ReactNode;
   width?: number;
   minWidth?: number;
   resizable?: boolean;
-  cellClass?: string | ((row: RowObjectType) => string | undefined);
-  headerCellClass?: string;
-  renderCell?: unknown;
+  cellClass?:
+    | string
+    | ((params: CellClassParams<RowObjectType>) => string | undefined);
+  headerClass?: string;
+  cellRenderer?: unknown;
 }
 
 // ============================================================================
@@ -240,9 +266,9 @@ describe("toSchemaDataGrid - Column Structure", () => {
     const { columns } = toSchemaDataGrid(schemaDiff);
 
     expect(columns).toHaveLength(3);
-    expect(getColumn(columns, 0).key).toBe("index");
-    expect(getColumn(columns, 1).key).toBe("name");
-    expect(getColumn(columns, 2).key).toBe("type");
+    expect(getColumn(columns, 0).field).toBe("index");
+    expect(getColumn(columns, 1).field).toBe("name");
+    expect(getColumn(columns, 2).field).toBe("type");
   });
 
   test("index column has correct sizing", () => {
@@ -270,22 +296,6 @@ describe("toSchemaDataGrid - Column Structure", () => {
     columns.forEach((col) => {
       expect(asColumn(col).resizable).toBe(true);
     });
-  });
-
-  test("index and type columns have renderCell functions", () => {
-    const schemaDiff = mergeColumns(
-      createColumns({ id: "INT" }),
-      createColumns({ id: "INT" }),
-    );
-
-    const { columns } = toSchemaDataGrid(schemaDiff);
-
-    const indexCol = getColumn(columns, 0);
-    const typeCol = getColumn(columns, 2);
-
-    // These should be the mocked MemoizedRenderIndexCell and MemoizedRenderTypeCell
-    expect(indexCol.renderCell).toBeDefined();
-    expect(typeCol.renderCell).toBeDefined();
   });
 });
 
@@ -343,7 +353,7 @@ describe("toSchemaDataGrid - Options", () => {
     const { columns } = toSchemaDataGrid(schemaDiff, { node });
 
     const nameColumn = getColumn(columns, 1);
-    expect(nameColumn.renderCell).toBeDefined();
+    expect(nameColumn.cellRenderer).toBeDefined();
   });
 
   test("omits renderCell for name column when node not provided", () => {
@@ -355,7 +365,7 @@ describe("toSchemaDataGrid - Options", () => {
     const { columns } = toSchemaDataGrid(schemaDiff);
 
     const nameColumn = getColumn(columns, 1);
-    expect(nameColumn.renderCell).toBeUndefined();
+    expect(nameColumn.cellRenderer).toBeUndefined();
   });
 
   test("accepts cllRunningMap option", () => {
@@ -400,12 +410,14 @@ describe("toSchemaDataGrid - Cell Classes", () => {
     const { columns, rows } = toSchemaDataGrid(schemaDiff);
 
     const indexCol = getColumn(columns, 0);
-    const cellClassFn = indexCol.cellClass as (row: RowObjectType) => string;
+    const cellClassFn = indexCol.cellClass as (
+      params: CellClassParams<RowObjectType>,
+    ) => string;
 
     const reorderedRow = rows.find((r) => r.reordered === true);
     expect(reorderedRow).toBeDefined();
     if (reorderedRow) {
-      const result = cellClassFn(reorderedRow);
+      const result = cellClassFn(createCellClassParams(reorderedRow));
       expect(result).toContain("column-index-reordered");
     }
   });
@@ -419,9 +431,11 @@ describe("toSchemaDataGrid - Cell Classes", () => {
     const { columns, rows } = toSchemaDataGrid(schemaDiff);
 
     const indexCol = getColumn(columns, 0);
-    const cellClassFn = indexCol.cellClass as (row: RowObjectType) => string;
+    const cellClassFn = indexCol.cellClass as (
+      params: CellClassParams<RowObjectType>,
+    ) => string;
 
-    const result = cellClassFn(rows[0]);
+    const result = cellClassFn(createCellClassParams(rows[0]));
     expect(result).toBe("schema-column schema-column-index");
     expect(result).not.toContain("reordered");
   });
@@ -432,12 +446,16 @@ describe("toSchemaDataGrid - Cell Classes", () => {
       createColumns({ id: "INT" }),
     );
 
-    const { columns } = toSchemaDataGrid(schemaDiff);
+    const { columns, rows } = toSchemaDataGrid(schemaDiff);
 
     const nameCol = getColumn(columns, 1);
-    const cellClassFn = nameCol.cellClass as () => string;
+    const cellClassFn = nameCol.cellClass as (
+      params: CellClassParams<RowObjectType>,
+    ) => string;
 
-    expect(cellClassFn()).toBe("schema-column");
+    const result = cellClassFn(createCellClassParams(rows[0]));
+    expect(result).toBe("schema-column");
+    expect(result).not.toContain("type-changed");
   });
 
   test("type column has schema-column cellClass", () => {
@@ -446,12 +464,14 @@ describe("toSchemaDataGrid - Cell Classes", () => {
       createColumns({ id: "INT" }),
     );
 
-    const { columns } = toSchemaDataGrid(schemaDiff);
+    const { columns, rows } = toSchemaDataGrid(schemaDiff);
 
     const typeCol = getColumn(columns, 2);
-    const cellClassFn = typeCol.cellClass as () => string;
+    const cellClassFn = typeCol.cellClass as (
+      params: CellClassParams<RowObjectType>,
+    ) => string;
 
-    expect(cellClassFn()).toBe("schema-column");
+    expect(cellClassFn(createCellClassParams(rows[0]))).toBe("schema-column");
   });
 });
 
@@ -466,9 +486,9 @@ describe("toSingleEnvDataGrid - Column Structure", () => {
     const { columns: gridColumns } = toSingleEnvDataGrid(columns);
 
     expect(gridColumns).toHaveLength(3);
-    expect(getColumn(gridColumns, 0).key).toBe("index");
-    expect(getColumn(gridColumns, 1).key).toBe("name");
-    expect(getColumn(gridColumns, 2).key).toBe("type");
+    expect(getColumn(gridColumns, 0).field).toBe("index");
+    expect(getColumn(gridColumns, 1).field).toBe("name");
+    expect(getColumn(gridColumns, 2).field).toBe("type");
   });
 
   test("index column has correct sizing", () => {
@@ -572,7 +592,7 @@ describe("toSingleEnvDataGrid - Options", () => {
     const { columns: gridColumns } = toSingleEnvDataGrid(columns, { node });
 
     const nameColumn = getColumn(gridColumns, 1);
-    expect(nameColumn.renderCell).toBeDefined();
+    expect(nameColumn.cellRenderer).toBeDefined();
   });
 
   test("omits renderCell when node not provided", () => {
@@ -581,7 +601,7 @@ describe("toSingleEnvDataGrid - Options", () => {
     const { columns: gridColumns } = toSingleEnvDataGrid(columns);
 
     const nameColumn = getColumn(gridColumns, 1);
-    expect(nameColumn.renderCell).toBeUndefined();
+    expect(nameColumn.cellRenderer).toBeUndefined();
   });
 
   test("accepts cllRunningMap option", () => {
@@ -825,10 +845,12 @@ describe("toSingleEnvDataGrid - Cell Classes", () => {
 
       const { columns, rows } = toSchemaDataGrid(schemaDiff);
       const indexCol = getColumn(columns, 0);
-      const cellClassFn = indexCol.cellClass as (row: RowObjectType) => string;
+      const cellClassFn = indexCol.cellClass as (
+        params: CellClassParams<RowObjectType>,
+      ) => string;
 
       // Row has baseIndex but no currentIndex
-      const result = cellClassFn(rows[0]);
+      const result = cellClassFn(createCellClassParams(rows[0]));
       expect(result).toBe("schema-column schema-column-index");
     });
 
@@ -837,10 +859,12 @@ describe("toSingleEnvDataGrid - Cell Classes", () => {
 
       const { columns, rows } = toSchemaDataGrid(schemaDiff);
       const indexCol = getColumn(columns, 0);
-      const cellClassFn = indexCol.cellClass as (row: RowObjectType) => string;
+      const cellClassFn = indexCol.cellClass as (
+        params: CellClassParams<RowObjectType>,
+      ) => string;
 
       // Row has currentIndex but no baseIndex
-      const result = cellClassFn(rows[0]);
+      const result = cellClassFn(createCellClassParams(rows[0]));
       expect(result).toBe("schema-column schema-column-index");
     });
 

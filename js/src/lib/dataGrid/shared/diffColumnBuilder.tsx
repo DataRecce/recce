@@ -1,16 +1,15 @@
 /**
  * @file diffColumnBuilder.tsx
- * @description Builds react-data-grid column definitions from ColumnConfig[]
+ * @description Builds AG Grid column definitions from ColumnConfig[]
  *
  * This module transforms the pure data structures from columnBuilders.ts
  * into actual column definitions with React components for headers.
  */
 
-import React from "react";
-import { ColumnOrColumnGroup } from "react-data-grid";
+import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import {
   DataFrameColumnGroupHeader,
-  DataFrameColumnGroupHeaderProps,
+  type DataFrameColumnGroupHeaderProps,
   defaultRenderCell,
 } from "@/components/ui/dataGrid";
 import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
@@ -24,7 +23,10 @@ import { toDiffColumn } from "./toDiffColumn";
 /**
  * Extended column type with metadata (matches existing pattern)
  */
-export type DiffColumnDefinition = ColumnOrColumnGroup<RowObjectType> & {
+export type DiffColumnDefinition = (
+  | ColDef<RowObjectType>
+  | ColGroupDef<RowObjectType>
+) & {
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
 };
@@ -73,7 +75,7 @@ export interface BuildDiffColumnDefinitionsConfig {
  */
 export interface BuildDiffColumnDefinitionsResult {
   /**
-   * The generated column definitions ready for react-data-grid
+   * The generated column definitions ready for AG Grid
    */
   columns: DiffColumnDefinition[];
 
@@ -92,11 +94,13 @@ export interface BuildDiffColumnDefinitionsResult {
  */
 function createIndexColumn(): DiffColumnDefinition {
   return {
-    key: "_index",
-    name: "",
+    field: "_index",
+    headerName: "",
     width: 50,
     maxWidth: 100,
     cellClass: "index-column",
+    resizable: false,
+    pinned: "left",
   };
 }
 
@@ -104,7 +108,7 @@ function createIndexColumn(): DiffColumnDefinition {
  * Creates a primary key column definition
  *
  * Primary key columns are:
- * - Frozen (sticky left)
+ * - Pinned left (sticky left)
  * - Have a special cellClass based on row status
  * - Use defaultRenderCell (no base__/current__ prefixing)
  */
@@ -115,8 +119,9 @@ function createPrimaryKeyColumn(
   const { key, name, columnType, columnStatus, columnRenderMode } = config;
 
   return {
-    key,
-    name: (
+    field: key,
+    headerName: name,
+    headerComponent: () => (
       <DataFrameColumnGroupHeader
         name={name}
         columnStatus={columnStatus ?? ""}
@@ -124,14 +129,14 @@ function createPrimaryKeyColumn(
         {...headerProps}
       />
     ),
-    frozen: true,
-    cellClass: (row: RowObjectType) => {
-      if (row.__status) {
-        return `diff-header-${row.__status}`;
+    pinned: "left",
+    cellClass: (params: CellClassParams<RowObjectType>) => {
+      if (params.data?.__status) {
+        return `diff-header-${params.data.__status}`;
       }
       return undefined;
     },
-    renderCell: defaultRenderCell,
+    cellRenderer: defaultRenderCell,
     columnType,
     columnRenderMode,
   };
@@ -168,12 +173,12 @@ function createDiffColumn(
 // ============================================================================
 
 /**
- * Builds react-data-grid column definitions from ColumnConfig array
+ * Builds AG Grid column definitions from ColumnConfig array
  *
  * @description Transforms pure column configuration objects into actual
  * column definitions with React JSX headers. Handles:
  *
- * - Primary key columns (frozen, special cellClass)
+ * - Primary key columns (pinned, special cellClass)
  * - Diff columns (via toDiffColumn for inline/side_by_side modes)
  * - Index fallback (when no PKs and allowIndexFallback is true)
  *
@@ -247,23 +252,28 @@ export function buildDiffColumnDefinitions(
   }
 
   // Build column definitions
-  columnConfigs.forEach((colConfig) => {
+  for (const colConfig of columnConfigs) {
     if (colConfig.isPrimaryKey) {
-      // Primary key column - frozen with special cellClass
+      // Primary key column - pinned with special cellClass
       columns.push(createPrimaryKeyColumn(colConfig, headerProps));
     } else {
       // Regular diff column - uses toDiffColumn for inline/side_by_side
-      columns.push(
-        createDiffColumn(
-          colConfig,
-          displayMode,
-          headerProps,
-          baseTitle,
-          currentTitle,
-        ),
+      const diffColumn = createDiffColumn(
+        colConfig,
+        displayMode,
+        headerProps,
+        baseTitle,
+        currentTitle,
       );
+
+      // Set pinned property - "left" for frozen columns, undefined to explicitly unpin
+      // Setting undefined is important to override AG Grid's internal pinned state
+      columns.push({
+        ...diffColumn,
+        pinned: colConfig.frozen ? "left" : undefined,
+      });
     }
-  });
+  }
 
   return { columns, usedIndexFallback };
 }

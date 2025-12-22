@@ -1,4 +1,7 @@
-import { Icon, Menu, Portal, useDisclosure } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
 import { ReactNode, useState } from "react";
 import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
 import { FaRegDotCircle } from "react-icons/fa";
@@ -58,65 +61,60 @@ const ContextMenu = ({ menuItems, open, onClose, x, y }: ContextMenuProps) => {
   const { featureToggles } = useRecceInstanceContext();
 
   return (
-    <Menu.Root open={open} onOpenChange={onClose}>
-      <Portal>
-        <Menu.Positioner>
-          <Menu.Content
-            fontSize="0.85rem"
-            position="absolute"
-            width="250px"
-            style={{
-              left: `${x}px`,
-              top: `${y}px`,
-            }}
-          >
-            {menuItems.length === 0 ? (
-              <Menu.Item value="no-action" disabled key="no action">
-                No action available
-              </Menu.Item>
-            ) : (
-              menuItems.map(
-                ({ isSeparator, label, isDisabled, action, itemIcon }) => {
-                  if (isSeparator) {
-                    return <Menu.Separator key={label} />;
-                  } else {
-                    const menuItem = (
-                      <Menu.Item
-                        value={String(label)}
-                        key={label}
-                        disabled={isDisabled}
-                        onClick={() => {
-                          if (action) {
-                            action();
-                          }
-                          onClose();
-                        }}
-                      >
-                        {itemIcon} {label}
-                      </Menu.Item>
-                    );
-
-                    // Wrap disabled items with SetupConnectionPopover
-                    if (isDisabled) {
-                      return (
-                        <SetupConnectionPopover
-                          display={featureToggles.mode === "metadata only"}
-                          key={label}
-                        >
-                          {menuItem}
-                        </SetupConnectionPopover>
-                      );
+    <Menu
+      open={open}
+      onClose={onClose}
+      anchorReference="anchorPosition"
+      anchorPosition={{ top: y, left: x }}
+      slotProps={{
+        paper: {
+          sx: { fontSize: "0.85rem", width: "250px" },
+        },
+      }}
+    >
+      {menuItems.length === 0 ? (
+        <MenuItem disabled key="no action">
+          No action available
+        </MenuItem>
+      ) : (
+        menuItems.map(
+          ({ isSeparator, label, isDisabled, action, itemIcon }) => {
+            if (isSeparator) {
+              return <Divider key={label} />;
+            } else {
+              const menuItem = (
+                <MenuItem
+                  key={label}
+                  disabled={isDisabled}
+                  onClick={() => {
+                    if (action) {
+                      action();
                     }
+                    onClose();
+                  }}
+                >
+                  {itemIcon} {label}
+                </MenuItem>
+              );
 
-                    return menuItem;
-                  }
-                },
-              )
-            )}
-          </Menu.Content>
-        </Menu.Positioner>
-      </Portal>
-    </Menu.Root>
+              // Wrap disabled items with SetupConnectionPopover
+              if (isDisabled) {
+                return (
+                  <SetupConnectionPopover
+                    display={featureToggles.mode === "metadata only"}
+                    key={label}
+                  >
+                    {menuItem}
+                  </SetupConnectionPopover>
+                );
+              }
+
+              return menuItem;
+            }
+          },
+        )
+      )}
+    </Menu>
   );
 };
 
@@ -204,7 +202,7 @@ export const ModelNodeContextMenu = ({
 
     menuItems.push({
       label: "Query",
-      itemIcon: <Icon as={run.icon} />,
+      itemIcon: <Box component={run.icon} sx={{ display: "inline-flex" }} />,
       isDisabled: isQueryDisabled,
       action: () => {
         setSqlQuery(query);
@@ -228,7 +226,9 @@ export const ModelNodeContextMenu = ({
 
         menuItems.push({
           label: "Query Related Columns",
-          itemIcon: <Icon as={run.icon} />,
+          itemIcon: (
+            <Box component={run.icon} sx={{ display: "inline-flex" }} />
+          ),
           isDisabled: isQueryDisabled,
           action: () => {
             const query = `select \n  ${Array.from(allColumns).join(",\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
@@ -258,7 +258,9 @@ export const ModelNodeContextMenu = ({
 
           menuItems.push({
             label: "Query Modified Columns",
-            itemIcon: <Icon as={run.icon} />,
+            itemIcon: (
+              <Box component={run.icon} sx={{ display: "inline-flex" }} />
+            ),
             isDisabled: isQueryDisabled,
             action: () => {
               const query = `select \n  ${Array.from(allColumns).join(",\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
@@ -282,7 +284,12 @@ export const ModelNodeContextMenu = ({
     );
     menuItems.push({
       label: rowCountAndRowCountRun.title,
-      itemIcon: <Icon as={rowCountAndRowCountRun.icon} />,
+      itemIcon: (
+        <Box
+          component={rowCountAndRowCountRun.icon}
+          sx={{ display: "inline-flex" }}
+        />
+      ),
       isDisabled: isQueryDisabled,
       action: () => {
         trackExploreAction({
@@ -306,7 +313,12 @@ export const ModelNodeContextMenu = ({
     );
     menuItems.push({
       label: profileAndProfileDiffRun.title,
-      itemIcon: <Icon as={profileAndProfileDiffRun.icon} />,
+      itemIcon: (
+        <Box
+          component={profileAndProfileDiffRun.icon}
+          sx={{ display: "inline-flex" }}
+        />
+      ),
       isDisabled: isQueryDisabled,
       action: () => {
         const columns = Array.from(getNodeColumnSet(node.id));
@@ -330,7 +342,9 @@ export const ModelNodeContextMenu = ({
       const valueDiffRun = findByRunType("value_diff");
       menuItems.push({
         label: valueDiffRun.title,
-        itemIcon: <Icon as={valueDiffRun.icon} />,
+        itemIcon: (
+          <Box component={valueDiffRun.icon} sx={{ display: "inline-flex" }} />
+        ),
         isDisabled: isQueryDisabled,
         action: () => {
           const columns = Array.from(getNodeColumnSet(node.id));
@@ -496,7 +510,7 @@ export const ColumnNodeContextMenu = ({
   const run = findByRunType(singleEnv ? "profile" : "profile_diff");
   menuItems.push({
     label: run.title,
-    itemIcon: <Icon as={run.icon} />,
+    itemIcon: <Box component={run.icon} sx={{ display: "inline-flex" }} />,
     action: handleProfileDiff,
     isDisabled:
       addedOrRemoved || !isActionAvailable("profile_diff") || isQueryDisabled,
@@ -506,7 +520,12 @@ export const ColumnNodeContextMenu = ({
     const isHistogramDiffRun = findByRunType("histogram_diff");
     menuItems.push({
       label: isHistogramDiffRun.title,
-      itemIcon: <Icon as={isHistogramDiffRun.icon} />,
+      itemIcon: (
+        <Box
+          component={isHistogramDiffRun.icon}
+          sx={{ display: "inline-flex" }}
+        />
+      ),
       action: handleHistogramDiff,
       isDisabled:
         addedOrRemoved ||
@@ -516,7 +535,9 @@ export const ColumnNodeContextMenu = ({
     const isTopKDiffRun = findByRunType("top_k_diff");
     menuItems.push({
       label: isTopKDiffRun.title,
-      itemIcon: <Icon as={isTopKDiffRun.icon} />,
+      itemIcon: (
+        <Box component={isTopKDiffRun.icon} sx={{ display: "inline-flex" }} />
+      ),
       action: handleTopkDiff,
       isDisabled: addedOrRemoved || isQueryDisabled,
     });
@@ -524,7 +545,9 @@ export const ColumnNodeContextMenu = ({
     const isValueDiffRun = findByRunType("value_diff");
     menuItems.push({
       label: isValueDiffRun.title,
-      itemIcon: <Icon as={isValueDiffRun.icon} />,
+      itemIcon: (
+        <Box component={isValueDiffRun.icon} sx={{ display: "inline-flex" }} />
+      ),
       action: handleValueDiff,
       isDisabled: addedOrRemoved || isQueryDisabled,
     });
@@ -577,7 +600,9 @@ export const LineageViewContextMenu = ({
 };
 
 export const useLineageViewContextMenu = () => {
-  const { open, onClose, onOpen } = useDisclosure();
+  const [open, setOpen] = useState(false);
+  const onOpen = () => setOpen(true);
+  const onClose = () => setOpen(false);
   const [position, setPosition] = useState<{ x: number; y: number }>({
     x: 0,
     y: 0,

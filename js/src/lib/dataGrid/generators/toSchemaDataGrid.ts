@@ -6,7 +6,7 @@
  * to schemaCells.tsx via render functions.
  */
 
-import { ColumnOrColumnGroup } from "react-data-grid";
+import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import {
   createColumnNameRenderer,
   createSingleEnvColumnNameRenderer,
@@ -48,12 +48,12 @@ export interface SchemaDataGridOptions {
 }
 
 export interface SchemaDataGridResult {
-  columns: ColumnOrColumnGroup<SchemaDiffRow>[];
+  columns: (ColDef<SchemaDiffRow> | ColGroupDef<SchemaDiffRow>)[];
   rows: SchemaDiffRow[];
 }
 
 export interface SingleEnvSchemaDataGridResult {
-  columns: ColumnOrColumnGroup<SchemaRow>[];
+  columns: (ColDef<SchemaRow> | ColGroupDef<SchemaRow>)[];
   rows: SchemaRow[];
 }
 
@@ -105,11 +105,14 @@ export function mergeColumns(
 // Cell Class Functions
 // ============================================================================
 
-function getColumnIndexCellClass(row: SchemaDiffRow): string {
+function getColumnIndexCellClass(
+  params: CellClassParams<SchemaDiffRow>,
+): string {
+  const row = params.data;
   if (
-    row.baseIndex !== undefined &&
-    row.currentIndex !== undefined &&
-    row.reordered === true
+    row?.baseIndex !== undefined &&
+    row?.currentIndex !== undefined &&
+    row?.reordered === true
   ) {
     return "column-index-reordered schema-column schema-column-index";
   }
@@ -134,30 +137,30 @@ export function toSchemaDataGrid(
 ): SchemaDataGridResult {
   const { node, cllRunningMap, showMenu } = options;
 
-  const columns: ColumnOrColumnGroup<SchemaDiffRow>[] = [
+  const columns: ColDef<SchemaDiffRow>[] = [
     {
-      key: "index",
-      name: "",
+      field: "index",
+      headerName: "",
       resizable: true,
       minWidth: 35,
       width: 35,
-      renderCell: renderIndexCell,
+      cellRenderer: renderIndexCell,
       cellClass: getColumnIndexCellClass,
     },
     {
-      key: "name",
-      name: "Name",
+      field: "name",
+      headerName: "Name",
       resizable: true,
-      renderCell: node
+      cellRenderer: node
         ? createColumnNameRenderer(node, cllRunningMap, showMenu)
         : undefined,
       cellClass: getColumnNameCellClass,
     },
     {
-      key: "type",
-      name: "Type",
+      field: "type",
+      headerName: "Type",
       resizable: true,
-      renderCell: renderTypeCell,
+      cellRenderer: renderTypeCell,
       cellClass: getColumnNameCellClass,
     },
   ];
@@ -187,27 +190,27 @@ export function toSingleEnvDataGrid(
     __status: undefined,
   }));
 
-  const columns: ColumnOrColumnGroup<SchemaRow>[] = [
+  const columns: ColDef<SchemaRow>[] = [
     {
-      key: "index",
-      name: "",
+      field: "index",
+      headerName: "",
       resizable: true,
       minWidth: 35,
       width: 35,
       cellClass: "schema-column schema-column-index",
     },
     {
-      key: "name",
-      name: "Name",
+      field: "name",
+      headerName: "Name",
       resizable: true,
-      renderCell: node
+      cellRenderer: node
         ? createSingleEnvColumnNameRenderer(node, cllRunningMap, showMenu)
         : undefined,
       cellClass: "schema-column",
     },
     {
-      key: "type",
-      name: "Type",
+      field: "type",
+      headerName: "Type",
       resizable: true,
       cellClass: "schema-column",
     },

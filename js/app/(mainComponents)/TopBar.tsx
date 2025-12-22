@@ -1,16 +1,8 @@
-import {
-  Badge,
-  Box,
-  Flex,
-  Heading,
-  HStack,
-  Icon,
-  Image,
-  Link,
-  LinkProps,
-  Spacer,
-  Text,
-} from "@chakra-ui/react";
+import Badge from "@mui/material/Badge";
+import Box from "@mui/material/Box";
+import Link from "@mui/material/Link";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import RecceVersionBadge from "app/(mainComponents)/RecceVersionBadge";
 import React, { useState } from "react";
 import { IconType } from "react-icons";
@@ -22,15 +14,21 @@ import { IdleTimeoutBadge } from "@/components/timeout/IdleTimeoutBadge";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
-interface LinkIconProps extends LinkProps {
+interface LinkIconProps {
   icon: IconType;
   href: string;
+  sx?: object;
 }
 
-function LinkIcon({ icon, href, ...prob }: LinkIconProps) {
+function LinkIcon({ icon: IconComponent, href, sx, ...props }: LinkIconProps) {
   return (
-    <Link height="20px" color="white" href={href} target="_blank" {...prob}>
-      <Icon color="white" boxSize="20px" as={icon} />
+    <Link
+      sx={{ height: "20px", color: "white", ...sx }}
+      href={href}
+      target="_blank"
+      {...props}
+    >
+      <IconComponent style={{ color: "white", width: 20, height: 20 }} />
     </Link>
   );
 }
@@ -48,112 +46,144 @@ export default function TopBar() {
   const [showModal, setShowModal] = useState(false);
 
   return (
-    <Flex
-      gap="10px"
-      minHeight="40px"
-      alignItems="center"
-      bg="rgb(255, 110, 66)"
+    <Box
+      sx={{
+        display: "flex",
+        gap: "10px",
+        minHeight: "40px",
+        alignItems: "center",
+        bgcolor: "rgb(255, 110, 66)",
+      }}
     >
       <Link
         href={brandLink}
         target="_blank"
-        _hover={{ textDecoration: "none" }}
+        sx={{ "&:hover": { textDecoration: "none" } }}
       >
-        <Flex gap="10px" alignItems="center">
-          <Image
-            boxSize="20px"
-            ml="18px"
+        <Box sx={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <Box
+            component="img"
+            sx={{ width: 20, height: 20, ml: "18px" }}
             src="/logo/recce-logo-white.png"
             alt="recce-logo-white"
-          ></Image>
-          <Heading
-            as="h1"
-            fontFamily={`"Montserrat", sans-serif`}
-            fontSize="lg"
-            color="white"
+          />
+          <Typography
+            variant="h4"
+            sx={{
+              fontFamily: '"Montserrat", sans-serif',
+              color: "white",
+              fontSize: "1.25rem",
+            }}
           >
             RECCE
-          </Heading>
-        </Flex>
+          </Typography>
+        </Box>
       </Link>
       <RecceVersionBadge />
       {(featureToggles.mode ?? reviewMode) && (
         <Badge
-          fontSize="sm"
-          color="white/80"
-          variant="outline"
-          textTransform="uppercase"
+          sx={{
+            fontSize: "0.875rem",
+            color: "rgba(255,255,255,0.8)",
+            textTransform: "uppercase",
+            borderWidth: 1,
+            px: 1,
+            borderRadius: 0.75,
+            borderColor: "rgba(255,255,255,0.8)",
+          }}
         >
           {featureToggles.mode ?? "review mode"}
         </Badge>
       )}
       {cloudMode && prID && (
         <Badge
-          fontSize="sm"
-          color="white/80"
-          variant="outline"
-          textTransform="uppercase"
+          sx={{
+            fontSize: "0.875rem",
+            color: "rgba(255,255,255,0.8)",
+            textTransform: "uppercase",
+            borderWidth: 1,
+            px: 1,
+            borderRadius: 0.75,
+            borderColor: "rgba(255,255,255,0.8)",
+          }}
         >
-          <HStack>
+          <Stack direction="row" spacing={1} alignItems="center">
             <Box>cloud mode</Box>
             <Box
-              borderLeftWidth="1px"
-              borderLeftColor="white/80"
-              paddingLeft="8px"
+              sx={{
+                borderLeft: "1px solid rgba(255,255,255,0.8)",
+                pl: "8px",
+              }}
             >
               <Link
                 href={prURL}
-                _hover={{ textDecoration: "none" }}
+                sx={{ "&:hover": { textDecoration: "none" } }}
                 target="_blank"
               >
-                <Icon
-                  color="white/80"
-                  as={VscGitPullRequest}
-                  boxSize="3"
-                  marginRight={0.5}
-                  fontWeight="extrabold"
-                  strokeWidth="1"
+                <VscGitPullRequest
+                  style={{
+                    color: "rgba(255,255,255,0.8)",
+                    width: 12,
+                    height: 12,
+                    marginRight: 2,
+                    display: "inline",
+                    verticalAlign: "middle",
+                  }}
                 />
-                <Text color="white/80">{`#${String(prID)}`}</Text>
+                <Typography
+                  component="span"
+                  sx={{ color: "rgba(255,255,255,0.8)", display: "inline" }}
+                >{`#${String(prID)}`}</Typography>
               </Link>
             </Box>
-          </HStack>
+          </Stack>
         </Badge>
       )}
       {isDemoSite && prURL && demoPrId && (
         <Badge
-          fontSize="sm"
-          color="white/80"
-          variant="outline"
-          textTransform="uppercase"
+          sx={{
+            fontSize: "0.875rem",
+            color: "rgba(255,255,255,0.8)",
+            textTransform: "uppercase",
+            borderWidth: 1,
+            px: 1,
+            borderRadius: 0.75,
+            borderColor: "rgba(255,255,255,0.8)",
+          }}
         >
-          <HStack>
+          <Stack direction="row" spacing={1} alignItems="center">
             <Box>demo mode</Box>
             <Box
-              borderLeftWidth="1px"
-              borderLeftColor="white/80"
-              paddingLeft="8px"
+              sx={{
+                borderLeft: "1px solid rgba(255,255,255,0.8)",
+                pl: "8px",
+              }}
             >
               <Link
                 href={prURL}
-                _hover={{ textDecoration: "none" }}
+                sx={{ "&:hover": { textDecoration: "none" } }}
                 target="_blank"
               >
-                <Icon
-                  color="white/80"
-                  as={VscGitPullRequest}
-                  boxSize="3"
-                  marginRight={0.5}
-                  fontWeight="extrabold"
-                  strokeWidth="1"
+                <VscGitPullRequest
+                  style={{
+                    color: "rgba(255,255,255,0.8)",
+                    width: 12,
+                    height: 12,
+                    marginRight: 2,
+                    display: "inline",
+                    verticalAlign: "middle",
+                  }}
                 />
-                <Text color="white/80">{`#${demoPrId}`}</Text>
+                <Typography
+                  component="span"
+                  sx={{ color: "rgba(255,255,255,0.8)", display: "inline" }}
+                >{`#${demoPrId}`}</Typography>
               </Link>
             </Box>
-          </HStack>
+          </Stack>
         </Badge>
       )}
-      <Spacer />
+      <Box sx={{ flex: 1 }} />
 
       {(isDemoSite || featureToggles.mode === "read only") && (
         <>
@@ -163,7 +193,7 @@ export default function TopBar() {
             href="https://getdbt.slack.com/archives/C05C28V7CPP"
           />
           <LinkIcon
-            mr={2}
+            sx={{ mr: 2 }}
             icon={FaQuestionCircle}
             href="https://docs.datarecce.io"
           />
@@ -173,22 +203,25 @@ export default function TopBar() {
         <>
           <IdleTimeoutBadge />
           {authed || cloudMode ? (
-            <Box mr={2}>
+            <Box sx={{ mr: 2 }}>
               <AvatarDropdown />
             </Box>
           ) : (
             <>
               <Box
-                as="button"
-                color="white"
-                fontSize="sm"
-                fontWeight="semibold"
-                bg="brand.700"
-                borderRadius="md"
-                px={3}
-                py={1}
-                mr={2}
-                cursor="pointer"
+                component="button"
+                sx={{
+                  color: "white",
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  bgcolor: "brand.700",
+                  borderRadius: 1,
+                  px: 3,
+                  py: 1,
+                  mr: 2,
+                  cursor: "pointer",
+                  border: "none",
+                }}
                 onClick={() => {
                   setShowModal(true);
                 }}
@@ -207,6 +240,6 @@ export default function TopBar() {
           )}
         </>
       )}
-    </Flex>
+    </Box>
   );
 }

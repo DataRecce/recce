@@ -1,6 +1,7 @@
 "use client";
 
-import { Badge, Icon } from "@chakra-ui/react";
+import Badge from "@mui/material/Badge";
+import Box from "@mui/material/Box";
 import { IoWarning } from "react-icons/io5";
 import { useIdleTimeout } from "@/lib/hooks/IdleTimeoutContext";
 import { formatDuration } from "@/lib/utils/formatTime";
@@ -30,15 +31,17 @@ export function IdleTimeoutBadge() {
 
   return (
     <Badge
-      display="flex"
-      alignItems="center"
-      gap={1}
-      fontSize="sm"
-      colorPalette="orange"
-      variant="solid"
-      mr={2}
+      color="warning"
+      variant="standard"
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 1,
+        fontSize: "0.75rem",
+        mr: 2,
+      }}
     >
-      <Icon as={IoWarning} />
+      <Box component={IoWarning} sx={{ display: "inline-flex" }} />
       Idle timeout: {formatDuration(remainingSeconds, "compact")}
     </Badge>
   );

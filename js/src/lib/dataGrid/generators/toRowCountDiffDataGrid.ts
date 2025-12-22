@@ -6,7 +6,7 @@
  * between base and current environments across multiple models.
  */
 
-import { ColumnOrColumnGroup } from "react-data-grid";
+import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import { RowCountDiffResult } from "@/lib/api/rowcount";
 import { RowObjectType } from "@/lib/api/types";
 import { dataFrameToRowObjects } from "@/utils/transforms";
@@ -20,7 +20,7 @@ import {
 // ============================================================================
 
 export interface RowCountDiffDataGridResult {
-  columns: ColumnOrColumnGroup<RowObjectType>[];
+  columns: (ColDef<RowObjectType> | ColGroupDef<RowObjectType>)[];
   rows: RowObjectType[];
 }
 
@@ -34,9 +34,12 @@ export interface RowCountDiffDataGridResult {
  * Returns appropriate diff-cell-* class based on row status
  */
 function createRowCountDiffCellClass(): (
-  row: RowObjectType,
+  params: CellClassParams<RowObjectType>,
 ) => string | undefined {
-  return (row: RowObjectType) => {
+  return (params: CellClassParams<RowObjectType>) => {
+    const row = params.data;
+    if (!row) return undefined;
+
     const base = row.base as number | string | null;
     const current = row.current as number | string | null;
 
@@ -81,12 +84,12 @@ function createRowCountDiffCellClass(): (
  * Generates grid data for Row Count Diff view
  *
  * @param result - The RowCountDiffResult from the backend
- * @returns Grid columns and rows ready for ScreenshotDataGrid
+ * @returns Grid columns and rows ready for RecceDataGrid
  *
  * @example
  * ```tsx
  * const { columns, rows } = toRowCountDiffDataGrid(run.result);
- * return <ScreenshotDataGrid columns={columns} rows={rows} />;
+ * return <RecceDataGrid columnDefs={columns} rowData={rows} />;
  * ```
  */
 export function toRowCountDiffDataGrid(
@@ -119,28 +122,28 @@ export function toRowCountDiffDataGrid(
   const cellClass = createRowCountDiffCellClass();
 
   // Build columns
-  const columns: ColumnOrColumnGroup<RowObjectType>[] = [
+  const columns: ColDef<RowObjectType>[] = [
     {
-      key: "name",
-      name: "Name",
+      field: "name",
+      headerName: "Name",
       resizable: true,
       cellClass,
     },
     {
-      key: "base",
-      name: "Base Rows",
+      field: "base",
+      headerName: "Base Rows",
       resizable: true,
       cellClass,
     },
     {
-      key: "current",
-      name: "Current Rows",
+      field: "current",
+      headerName: "Current Rows",
       resizable: true,
       cellClass,
     },
     {
-      key: "delta",
-      name: "Delta",
+      field: "delta",
+      headerName: "Delta",
       resizable: true,
       cellClass,
     },

@@ -26,7 +26,7 @@ const customJestConfig = {
   ],
   // Transform ignore patterns for ES modules
   transformIgnorePatterns: [
-    "/node_modules/(?!(react-data-grid|@chakra-ui|@emotion)/)",
+    "/node_modules/(?!(react-data-grid|@emotion|@mui)/)",
   ],
 };
 

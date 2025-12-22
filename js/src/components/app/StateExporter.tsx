@@ -1,8 +1,9 @@
-import { Icon, IconButton } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import IconButton from "@mui/material/IconButton";
+import MuiTooltip from "@mui/material/Tooltip";
 import { format } from "date-fns";
 import saveAs from "file-saver";
 import { toaster } from "@/components/ui/toaster";
-import { Tooltip } from "@/components/ui/tooltip";
 import { exportState } from "@/lib/api/state";
 import { trackStateAction } from "@/lib/api/track";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
@@ -34,10 +35,9 @@ export function StateExporter() {
   };
 
   return (
-    <Tooltip content="Export">
+    <MuiTooltip title="Export">
       <IconButton
-        size="sm"
-        variant="plain"
+        size="small"
         aria-label="Export state"
         onClick={async () => {
           await handleExport();
@@ -45,8 +45,11 @@ export function StateExporter() {
         }}
         disabled={featureToggles.disableExportStateFile}
       >
-        <Icon as={IconExport} verticalAlign="middle" boxSize={"16px"} />
+        <Box
+          component={IconExport}
+          sx={{ verticalAlign: "middle", width: "16px", height: "16px" }}
+        />
       </IconButton>
-    </Tooltip>
+    </MuiTooltip>
   );
 }

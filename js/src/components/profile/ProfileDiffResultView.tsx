@@ -1,6 +1,5 @@
-import { Center, Flex } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
 import { forwardRef, Ref, useMemo } from "react";
-import { DataGridHandle } from "react-data-grid";
 import { ProfileDiffViewOptions } from "@/lib/api/profile";
 import {
   ColumnRenderMode,
@@ -8,7 +7,10 @@ import {
   isProfileRun,
 } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
-import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
+import {
+  type DataGridHandle,
+  ScreenshotDataGrid,
+} from "../data-grid/ScreenshotDataGrid";
 import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
 import { RunToolbar } from "../run/RunToolbar";
 import { RunResultViewProps } from "../run/types";
@@ -31,8 +33,13 @@ const PrivateProfileDiffResultView = (
     () => viewOptions?.display_mode ?? "inline",
     [viewOptions],
   );
+  // Default proportion columns to percentage display
   const columnsRenderMode = useMemo(
-    () => viewOptions?.columnsRenderMode ?? {},
+    () => ({
+      distinct_proportion: "percent" as ColumnRenderMode,
+      not_null_proportion: "percent" as ColumnRenderMode,
+      ...viewOptions?.columnsRenderMode,
+    }),
     [viewOptions],
   );
 
@@ -80,14 +87,28 @@ const PrivateProfileDiffResultView = (
   ]);
 
   if (gridData.columns.length === 0) {
-    return <Center height="100%">No data</Center>;
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+        }}
+      >
+        No data
+      </Box>
+    );
   }
 
   return (
-    <Flex
-      direction="column"
-      backgroundColor="rgb(249, 249, 249)"
-      height={"100%"}
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        bgcolor: "rgb(249, 249, 249)",
+        height: "100%",
+      }}
     >
       <RunToolbar run={run}>
         <DiffDisplayModeSwitch
@@ -110,7 +131,7 @@ const PrivateProfileDiffResultView = (
         defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
         className="rdg-light"
       />
-    </Flex>
+    </Box>
   );
 };
 
@@ -126,8 +147,13 @@ const PrivateProfileResultView = (
     () => viewOptions?.pinned_columns ?? [],
     [viewOptions],
   );
+  // Default proportion columns to percentage display
   const columnsRenderMode = useMemo(
-    () => viewOptions?.columnsRenderMode ?? {},
+    () => ({
+      distinct_proportion: "percent" as ColumnRenderMode,
+      not_null_proportion: "percent" as ColumnRenderMode,
+      ...viewOptions?.columnsRenderMode,
+    }),
     [viewOptions],
   );
 
@@ -173,14 +199,28 @@ const PrivateProfileResultView = (
   ]);
 
   if (gridData.columns.length === 0) {
-    return <Center height="100%">No data</Center>;
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+        }}
+      >
+        No data
+      </Box>
+    );
   }
 
   return (
-    <Flex
-      direction="column"
-      backgroundColor="rgb(249, 249, 249)"
-      height={"100%"}
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        bgcolor: "rgb(249, 249, 249)",
+        height: "100%",
+      }}
     >
       <ScreenshotDataGrid
         ref={ref}
@@ -190,7 +230,7 @@ const PrivateProfileResultView = (
         defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
         className="rdg-light"
       />
-    </Flex>
+    </Box>
   );
 };
 

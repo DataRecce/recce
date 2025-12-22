@@ -1,12 +1,9 @@
-import {
-  Alert,
-  Box,
-  Button,
-  Center,
-  Flex,
-  ProgressCircle,
-  VStack,
-} from "@chakra-ui/react";
+import MuiAlert from "@mui/material/Alert";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import React, { forwardRef } from "react";
 import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
 import {
@@ -64,12 +61,9 @@ export const RunView = forwardRef(
 
     if (errorMessage) {
       return (
-        <Alert.Root status="error" title={`Error: ${errorMessage}`}>
-          <Alert.Indicator />
-          <Alert.Title>
-            Error: <span className="no-track-pii-safe">{errorMessage}</span>
-          </Alert.Title>
-        </Alert.Root>
+        <MuiAlert severity="error">
+          Error: <span className="no-track-pii-safe">{errorMessage}</span>
+        </MuiAlert>
       );
     }
 
@@ -81,45 +75,85 @@ export const RunView = forwardRef(
         loadingMessage = run.progress.message;
       }
 
+      const progressValue =
+        progress?.percentage != null ? progress.percentage * 100 : undefined;
+
       return (
-        <Center p="1rem" height="100%" bg="rgb(249,249,249)">
-          <VStack>
-            <Flex alignItems="center">
-              {progress?.percentage == null ? (
-                <ProgressCircle.Root value={null} size="md" mr="0.5rem">
-                  <ProgressCircle.Circle />
-                </ProgressCircle.Root>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            p: "1rem",
+            height: "100%",
+            bgcolor: "rgb(249,249,249)",
+          }}
+        >
+          <Stack spacing={2} alignItems="center">
+            <Stack direction="row" alignItems="center" spacing={1}>
+              {progressValue == null ? (
+                <CircularProgress size={32} />
               ) : (
-                <ProgressCircle.Root
-                  value={progress.percentage * 100}
-                  size="md"
-                  mr="0.5rem"
-                >
-                  <ProgressCircle.Circle />
-                </ProgressCircle.Root>
+                <Box sx={{ position: "relative", display: "inline-flex" }}>
+                  <CircularProgress
+                    variant="determinate"
+                    value={progressValue}
+                    size={32}
+                  />
+                  <Box
+                    sx={{
+                      top: 0,
+                      left: 0,
+                      bottom: 0,
+                      right: 0,
+                      position: "absolute",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      component="div"
+                      sx={{ fontSize: "0.6rem" }}
+                    >
+                      {`${Math.round(progressValue)}%`}
+                    </Typography>
+                  </Box>
+                </Box>
               )}
 
               {isAborting ? (
-                <span>Aborting...</span>
+                <Typography>Aborting...</Typography>
               ) : (
-                <span className="no-track-pii-safe">{loadingMessage}</span>
+                <Typography className="no-track-pii-safe">
+                  {loadingMessage}
+                </Typography>
               )}
-            </Flex>
+            </Stack>
             {!isAborting && (
-              <Button onClick={onCancel} colorPalette="blue" size="sm">
+              <Button variant="contained" onClick={onCancel} size="small">
                 Cancel
               </Button>
             )}
-          </VStack>
-        </Center>
+          </Stack>
+        </Box>
       );
     }
 
     if (!run) {
       return (
-        <Center bg="rgb(249,249,249)" height="100%">
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            bgcolor: "rgb(249,249,249)",
+            height: "100%",
+          }}
+        >
           Loading...
-        </Center>
+        </Box>
       );
     }
 
@@ -136,9 +170,11 @@ export const RunView = forwardRef(
 
     return (
       <Box
-        h="100%"
-        style={{ contain: "layout" }}
-        overflow="auto"
+        sx={{
+          height: "100%",
+          contain: "layout",
+          overflow: "auto",
+        }}
         className="no-track-pii-safe"
       >
         {RunResultView && (run.error ?? run.result) && (

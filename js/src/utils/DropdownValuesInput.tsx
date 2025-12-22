@@ -1,24 +1,25 @@
-import {
-  Box,
-  Button,
-  Input,
-  InputGroup,
-  InputProps,
-  Menu,
-  Portal,
-  Tag,
-  Wrap,
-  WrapItem,
-} from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
+import Divider from "@mui/material/Divider";
+import InputBase from "@mui/material/InputBase";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import MuiTooltip from "@mui/material/Tooltip";
+import Typography from "@mui/material/Typography";
 import _ from "lodash";
-import React, { useRef, useState } from "react";
-import { Tooltip } from "@/components/ui/tooltip";
+import React, { type MouseEvent, useRef, useState } from "react";
 
-export interface DropdownValuesInputProps extends InputProps {
+export interface DropdownValuesInputProps {
   unitName: string;
   suggestionList?: string[];
   defaultValues?: string[];
   onValuesChange: (values: string[]) => void;
+  className?: string;
+  size?: "2xs" | "xs" | "sm" | "md" | "lg";
+  width?: string | number;
+  placeholder?: string;
+  disabled?: boolean;
 }
 
 export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
@@ -26,7 +27,9 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
   const [values, setValues] = useState<string[]>(defaultValues ?? []);
   const [filter, setFilter] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const open = Boolean(anchorEl);
 
   const showNumberOfValuesSelected = (tags: string[]) => {
     if (tags.length > 1) {
@@ -35,6 +38,17 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
       return tags[0];
     }
     return "";
+  };
+
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+    // Focus input after menu opens
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+    setIsTyping(false);
   };
 
   const handleSelect = (value: string) => {
@@ -51,6 +65,11 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
     onValuesChange([]);
   };
 
+  const handleRemoveValue = (value: string) => {
+    setValues(values.filter((v) => v !== value));
+    onValuesChange(values.filter((v) => v !== value));
+  };
+
   // Filter the suggestion list without case sensitivity based on the current input
   const lowerCaseFilter = filter.toLowerCase();
   const filteredList =
@@ -63,173 +82,216 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
       .filter((value) => !values.includes(value)) ?? [];
   const limit = 10;
 
-  const endElement =
-    values.length > 0 ? (
-      <Button
-        size="2xs"
-        variant="ghost"
-        color={"#3182CE"}
-        fontSize={props.size}
-        paddingTop="0"
-        me={-2}
-        onClick={handleClear}
-      >
-        Clear
-      </Button>
-    ) : undefined;
+  // Size mapping for font sizes
+  const getFontSize = () => {
+    switch (props.size) {
+      case "2xs":
+        return "0.625rem";
+      case "xs":
+        return "0.75rem";
+      case "sm":
+        return "0.875rem";
+      default:
+        return "0.875rem";
+    }
+  };
+
+  const getHeight = () => {
+    switch (props.size) {
+      case "2xs":
+        return 24;
+      case "xs":
+        return 28;
+      case "sm":
+        return 32;
+      default:
+        return 36;
+    }
+  };
 
   return (
-    <InputGroup
-      width={props.width}
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        width: props.width,
+      }}
       className={className}
-      endElement={endElement}
     >
-      <Menu.Root
-        size="sm"
-        lazyMount
-        closeOnSelect={false}
-        onOpenChange={() => inputRef.current?.focus()}
+      <Button
+        variant="outlined"
+        color="neutral"
+        size="small"
+        onClick={handleClick}
+        disabled={props.disabled}
+        sx={{
+          width: "100%",
+          height: getHeight(),
+          justifyContent: "space-between",
+          textTransform: "none",
+          fontSize: getFontSize(),
+          fontWeight: "normal",
+          px: 1,
+        }}
       >
-        <Menu.Trigger asChild>
-          <Button
-            width={"100%"}
-            size="2xs"
-            colorPalette="gray"
-            variant="outline"
-            justifyContent="flex-start"
+        <Typography
+          component="span"
+          sx={{
+            fontSize: getFontSize(),
+            color: values.length > 0 ? "text.primary" : "text.secondary",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {showNumberOfValuesSelected(values) || props.placeholder || ""}
+        </Typography>
+        {values.length > 0 && (
+          <Typography
+            component="span"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClear();
+            }}
+            sx={{
+              fontSize: getFontSize(),
+              color: "primary.main",
+              cursor: "pointer",
+              ml: 1,
+              "&:hover": { textDecoration: "underline" },
+            }}
           >
-            {showNumberOfValuesSelected(values)}
-          </Button>
-        </Menu.Trigger>
-        <Portal>
-          <Menu.Positioner>
-            <Menu.Content
-              zIndex={"popover"}
-              fontSize={props.size}
-              width={props.width}
-              className="no-track-pii-safe"
-            >
-              {/* Input Filter & Show Tags */}
-              <Menu.ItemGroup>
-                <Wrap
-                  border={"1px solid #e2e8f0"}
-                  borderRadius={"4px"}
-                  width={"calc(100% - 8px)"}
-                  marginX={"4px"}
-                  padding={"4px"}
-                >
-                  {values.map((value) => (
-                    <WrapItem key={value}>
-                      <Tag.Root
-                        key={value}
-                        paddingX={"0.5rem"}
-                        size={
-                          props.size === "sm"
-                            ? props.size
-                            : props.size === "md"
-                              ? props.size
-                              : props.size === "lg"
-                                ? props.size
-                                : "md"
-                        }
-                      >
-                        <Tag.Label>{value}</Tag.Label>
-                        <Tag.EndElement>
-                          <Tag.CloseTrigger
-                            onClick={() => {
-                              setValues(values.filter((v) => v !== value));
-                              onValuesChange(values.filter((v) => v !== value));
-                            }}
-                          />
-                        </Tag.EndElement>
-                      </Tag.Root>
-                    </WrapItem>
-                  ))}
-                  <WrapItem width={"100%"}>
-                    <Input
-                      ref={inputRef}
-                      placeholder="Filter or add custom keys"
-                      variant="subtle"
-                      size={props.size}
-                      value={filter}
-                      onChange={(e) => {
-                        setFilter(e.target.value);
-                        setIsTyping(true);
-                      }}
-                      onKeyDown={(e) => {
-                        const newText = e.currentTarget.value
-                          .trim()
-                          .replace(",", "");
-                        switch (e.key) {
-                          case ",":
-                          case "Enter":
-                            handleSelect(newText);
-                            setFilter("");
-                            break;
-                          case "Backspace":
-                            if (
-                              e.currentTarget.value === "" &&
-                              values.length > 0
-                            ) {
-                              setValues(values.slice(0, -1));
-                              onValuesChange(values.slice(0, -1));
-                            }
-                            break;
-                          default:
-                            break;
-                        }
-                      }}
-                      onBlur={() => {
-                        if (inputRef.current && isTyping)
-                          inputRef.current.focus();
-                      }}
-                    />
-                  </WrapItem>
-                </Wrap>
-              </Menu.ItemGroup>
-              <Menu.Separator />
-              {/* Suggestion List */}
-              <Menu.ItemGroup>
-                {filter !== "" && !suggestionList?.includes(filter) && (
-                  <Menu.Item
-                    key={"custom-value-by-filter"}
-                    value="custom-value-by-filter"
-                    onClick={() => {
-                      handleSelect(filter);
-                      setIsTyping(false);
-                    }}
-                  >
-                    Add &apos;{filter}&apos; to the list
-                  </Menu.Item>
-                )}
-                {filteredList
-                  .map((value, cid) => (
-                    <Menu.Item
-                      key={_.uniqueId(`option-${cid}`)}
-                      value={`option-${cid}`}
-                      onClick={() => {
-                        handleSelect(value);
-                      }}
-                    >
-                      {value}
-                    </Menu.Item>
-                  ))
-                  .slice(0, limit)}
-                {filteredList.length > limit && (
-                  <Tooltip
-                    content="Please use filter to find more items"
-                    positioning={{ placement: "top" }}
-                  >
-                    <Box px="12px" color="gray" fontSize="8pt">
-                      and {filteredList.length - limit} more items...
-                    </Box>
-                  </Tooltip>
-                )}
-              </Menu.ItemGroup>
-            </Menu.Content>
-          </Menu.Positioner>
-        </Portal>
-      </Menu.Root>
-    </InputGroup>
+            Clear
+          </Typography>
+        )}
+      </Button>
+
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        slotProps={{
+          paper: {
+            sx: {
+              width: props.width,
+              fontSize: getFontSize(),
+            },
+          },
+        }}
+      >
+        {/* Input Filter & Show Tags */}
+        <Box sx={{ px: 0.5, py: 0.5 }}>
+          <Box
+            sx={{
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 1,
+              p: 0.5,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 0.5,
+              alignItems: "center",
+            }}
+            className="no-track-pii-safe"
+          >
+            {values.map((value) => (
+              <Chip
+                key={value}
+                label={value}
+                size="small"
+                onDelete={() => handleRemoveValue(value)}
+                sx={{ height: 22, fontSize: getFontSize() }}
+              />
+            ))}
+            <InputBase
+              inputRef={inputRef}
+              placeholder="Filter or add custom keys"
+              value={filter}
+              onChange={(e) => {
+                setFilter(e.target.value);
+                setIsTyping(true);
+              }}
+              onKeyDown={(e) => {
+                // Stop propagation to prevent MUI Menu's typeahead navigation
+                // from intercepting key presses (except Escape to close menu)
+                if (e.key !== "Escape") {
+                  e.stopPropagation();
+                }
+
+                const target = e.target as HTMLInputElement;
+                const newText = target.value.trim().replace(",", "");
+                switch (e.key) {
+                  case ",":
+                  case "Enter":
+                    e.preventDefault();
+                    if (newText) {
+                      handleSelect(newText);
+                      setFilter("");
+                    }
+                    break;
+                  case "Backspace":
+                    if (target.value === "" && values.length > 0) {
+                      setValues(values.slice(0, -1));
+                      onValuesChange(values.slice(0, -1));
+                    }
+                    break;
+                  default:
+                    break;
+                }
+              }}
+              onBlur={() => {
+                if (inputRef.current && isTyping) {
+                  inputRef.current.focus();
+                }
+              }}
+              sx={{
+                flex: 1,
+                minWidth: 120,
+                fontSize: getFontSize(),
+                "& input": {
+                  p: 0.5,
+                },
+              }}
+            />
+          </Box>
+        </Box>
+
+        <Divider />
+
+        {/* Suggestion List */}
+        {filter !== "" && !suggestionList?.includes(filter) && (
+          <MenuItem
+            onClick={() => {
+              handleSelect(filter);
+              setIsTyping(false);
+            }}
+            sx={{ fontSize: getFontSize() }}
+          >
+            Add &apos;{filter}&apos; to the list
+          </MenuItem>
+        )}
+        {filteredList.slice(0, limit).map((value, cid) => (
+          <MenuItem
+            key={_.uniqueId(`option-${cid}`)}
+            onClick={() => {
+              handleSelect(value);
+            }}
+            sx={{ fontSize: getFontSize() }}
+          >
+            {value}
+          </MenuItem>
+        ))}
+        {filteredList.length > limit && (
+          <MuiTooltip
+            title="Please use filter to find more items"
+            placement="top"
+          >
+            <Box px={1.5} py={0.5} color="text.secondary" fontSize="8pt">
+              and {filteredList.length - limit} more items...
+            </Box>
+          </MuiTooltip>
+        )}
+      </Menu>
+    </Box>
   );
 };

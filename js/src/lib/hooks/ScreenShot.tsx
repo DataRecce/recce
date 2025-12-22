@@ -1,13 +1,12 @@
-import {
-  Button,
-  CloseButton,
-  Dialog,
-  Flex,
-  Image,
-  Portal,
-  Text,
-  useDisclosure,
-} from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import MuiDialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import IconButton from "@mui/material/IconButton";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { format } from "date-fns";
 import saveAs from "file-saver";
 import { toCanvas } from "html-to-image";
@@ -19,15 +18,18 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { DataGridHandle } from "react-data-grid";
+import { IoClose } from "react-icons/io5";
 import { PiCopy, PiInfo } from "react-icons/pi";
+import { type DataGridHandle } from "@/components/data-grid/ScreenshotDataGrid";
 import { useClipBoardToast } from "./useClipBoardToast";
 
 // Type to represent DataGridHandle which may have an element property
 type DataGridRefType = DataGridHandle & { element?: HTMLElement };
 
 // Helper function to safely extract HTMLElement from DataGridHandle
-const getHTMLElementFromRef = (refCurrent: DataGridRefType): HTMLElement => {
+const getHTMLElementFromRef = (
+  refCurrent: DataGridRefType,
+): HTMLElement | undefined => {
   // DataGridHandle might have an 'element' property containing the actual HTMLElement
   if ("element" in refCurrent) {
     return refCurrent.element;
@@ -91,6 +93,10 @@ export function useCopyToClipboard({
     }
 
     const nodeToUse = getHTMLElementFromRef(ref.current);
+    if (!nodeToUse) {
+      console.error("Could not get HTMLElement from ref");
+      throw new Error("Could not get HTMLElement from ref");
+    }
     const overflow = nodeToUse.style.overflow;
     const border = nodeToUse.style.border;
     const radius = nodeToUse.style.borderRadius;
@@ -98,11 +104,16 @@ export function useCopyToClipboard({
     const heigh = nodeToUse.style.height;
 
     function resetStyles() {
-      nodeToUse.style.overflow = overflow;
-      nodeToUse.style.border = border;
-      nodeToUse.style.borderRadius = radius;
-      nodeToUse.style.backgroundColor = background;
-      nodeToUse.style.height = heigh;
+      // nodeToUse is verified non-null before resetStyles is defined
+      // Capture in local const to satisfy linter
+      const node = nodeToUse;
+      if (node) {
+        node.style.overflow = overflow;
+        node.style.border = border;
+        node.style.borderRadius = radius;
+        node.style.backgroundColor = background;
+        node.style.height = heigh;
+      }
     }
 
     try {
@@ -224,15 +235,19 @@ export function useCopyToClipboardButton(options?: HookOptions) {
   const onMouseEnter = useCallback(() => {
     if (ref.current) {
       const nodeToUse = getHTMLElementFromRef(ref.current);
-      nodeToUse.style.boxShadow = highlightBoxShadow;
-      nodeToUse.style.transition = "box-shadow 0.5s ease-in-out";
+      if (nodeToUse) {
+        nodeToUse.style.boxShadow = highlightBoxShadow;
+        nodeToUse.style.transition = "box-shadow 0.5s ease-in-out";
+      }
     }
   }, [ref]);
 
   const onMouseLeave = useCallback(() => {
     if (ref.current) {
       const nodeToUse = getHTMLElementFromRef(ref.current);
-      nodeToUse.style.boxShadow = "";
+      if (nodeToUse) {
+        nodeToUse.style.boxShadow = "";
+      }
     }
   }, [ref]);
 
@@ -240,7 +255,9 @@ export function useCopyToClipboardButton(options?: HookOptions) {
     if (ref.current) {
       await copyToClipboard();
       const nodeToUse = getHTMLElementFromRef(ref.current);
-      nodeToUse.style.boxShadow = "";
+      if (nodeToUse) {
+        nodeToUse.style.boxShadow = "";
+      }
     } else {
       failToast("Failed to copy image to clipboard", "No content to copy");
     }
@@ -255,14 +272,15 @@ export function useCopyToClipboardButton(options?: HookOptions) {
     return (
       <>
         <Button
-          size="sm"
-          style={{ position: "absolute", bottom: "16px", right: "16px" }}
-          loading={isLoading}
+          size="small"
+          sx={{ position: "absolute", bottom: 16, right: 16 }}
+          disabled={isLoading}
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
           onClick={onCopyToClipboard}
+          startIcon={<PiCopy />}
         >
-          <PiCopy /> Copy to Clipboard
+          Copy to Clipboard
         </Button>
         <ImageDownloadModal />
       </>
@@ -279,8 +297,11 @@ export function useCopyToClipboardButton(options?: HookOptions) {
 }
 
 export function useImageDownloadModal() {
-  const { open, onOpen, onClose } = useDisclosure();
+  const [open, setOpen] = useState(false);
   const [imgBlob, setImgBlob] = useState<Blob>();
+
+  const onOpen = () => setOpen(true);
+  const onClose = () => setOpen(false);
 
   function ImageDownloadModal() {
     const [base64Img, setBase64Img] = useState<string>();
@@ -309,43 +330,48 @@ export function useImageDownloadModal() {
     };
 
     return (
-      <Dialog.Root size="xl" open={open} onOpenChange={onClose}>
-        <Portal>
-          <Dialog.Backdrop />
-          <Dialog.Positioner>
-            <Dialog.Content>
-              <Dialog.Header>
-                <Dialog.Title>Screenshot Preview</Dialog.Title>
-              </Dialog.Header>
-              <Dialog.Body>
-                <Flex px="10px" gap="10px" direction="column">
-                  <Flex alignItems="center" gap="5px">
-                    <PiInfo color="red.600" />
-                    <Text fontWeight="500" display="inline">
-                      Copy to the Clipboard
-                    </Text>{" "}
-                    is not supported in the current browser
-                  </Flex>
-                  <Text>Please download it directly</Text>
-                </Flex>
-                <Image src={base64Img} alt="screenshot" />
-              </Dialog.Body>
+      <MuiDialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogTitle>Screenshot Preview</DialogTitle>
+        <IconButton
+          aria-label="close"
+          onClick={onClose}
+          sx={{
+            position: "absolute",
+            right: 8,
+            top: 8,
+            color: "grey.500",
+          }}
+        >
+          <IoClose />
+        </IconButton>
+        <DialogContent>
+          <Stack sx={{ px: "10px", gap: "10px" }}>
+            <Stack direction="row" alignItems="center" spacing="5px">
+              <Box component={PiInfo} sx={{ color: "error.main" }} />
+              <Typography sx={{ fontWeight: 500, display: "inline" }}>
+                Copy to the Clipboard
+              </Typography>{" "}
+              is not supported in the current browser
+            </Stack>
+            <Typography>Please download it directly</Typography>
+          </Stack>
+          <Box
+            component="img"
+            src={base64Img}
+            alt="screenshot"
+            sx={{ maxWidth: "100%" }}
+          />
+        </DialogContent>
 
-              <Dialog.Footer>
-                <Button mr={3} onClick={onClose}>
-                  Close
-                </Button>
-                <Button colorPalette="blue" onClick={onDownload}>
-                  Download
-                </Button>
-              </Dialog.Footer>
-              <Dialog.CloseTrigger asChild>
-                <CloseButton size="sm" />
-              </Dialog.CloseTrigger>
-            </Dialog.Content>
-          </Dialog.Positioner>
-        </Portal>
-      </Dialog.Root>
+        <DialogActions>
+          <Button sx={{ mr: 1.5 }} onClick={onClose}>
+            Close
+          </Button>
+          <Button color="iochmara" variant="contained" onClick={onDownload}>
+            Download
+          </Button>
+        </DialogActions>
+      </MuiDialog>
     );
   }
 

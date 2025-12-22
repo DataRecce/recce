@@ -18,13 +18,15 @@
 // Mocks
 // ============================================================================
 
-// Mock react-data-grid to avoid ES module parsing issues
-jest.mock("react-data-grid", () => ({
-  textEditor: jest.fn(),
+// Mock ag-grid-community to avoid ES module parsing issues
+jest.mock("ag-grid-community", () => ({
+  ModuleRegistry: {
+    registerModules: jest.fn(),
+  },
 }));
 
-// Mock Chakra UI components
-jest.mock("@chakra-ui/react", () => ({
+// Mock MUI wrapper components
+jest.mock("@/components/ui/mui", () => ({
   Box: ({ children }: { children: React.ReactNode }) => children,
   Flex: ({ children }: { children: React.ReactNode }) => children,
   Icon: () => null,
@@ -126,9 +128,9 @@ import { createDataGrid, createDataGridFromData } from "./dataGridFactory";
 // ============================================================================
 
 interface TestColumn {
-  key: string;
-  name?: React.ReactNode;
-  frozen?: boolean;
+  field: string;
+  headerName?: React.ReactNode;
+  pinned?: "left" | "right";
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
 }
@@ -138,11 +140,11 @@ interface TestColumn {
 // ============================================================================
 
 function isColumn(col: unknown): col is TestColumn {
-  return typeof col === "object" && col !== null && "key" in col;
+  return typeof col === "object" && col !== null && "field" in col;
 }
 
 function getColumnKey(col: unknown): string | undefined {
-  if (isColumn(col)) return col.key;
+  if (isColumn(col)) return col.field;
   return undefined;
 }
 
@@ -1231,7 +1233,7 @@ describe("createDataGrid - callback invocation", () => {
     const onColumnsRenderModeChanged = jest.fn();
 
     const result = createDataGrid(run, {
-      columnsRenderMode: { count: 0 },
+      columnsRenderMode: { count: 2 },
       onColumnsRenderModeChanged,
     });
 
@@ -1419,7 +1421,7 @@ describe("createDataGrid - columnRenderMode handling", () => {
     const df = createNumericDataFrame();
     const run = createQueryRun(df);
     const columnsRenderMode: Record<string, ColumnRenderMode> = {
-      value: 3, // 3 decimal places
+      value: 2, // 3 decimal places
     };
 
     const result = createDataGrid(run, { columnsRenderMode });
@@ -1474,7 +1476,6 @@ describe("createDataGrid - columnRenderMode handling", () => {
     const columnsRenderMode: Record<string, ColumnRenderMode> = {
       price: 2,
       rate: "percent",
-      score: 1,
     };
 
     const result = createDataGrid(run, { columnsRenderMode });

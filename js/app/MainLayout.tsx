@@ -7,7 +7,8 @@
 
 "use client";
 
-import { Box, Center, Flex, Spinner } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
 import { usePathname } from "next/navigation";
 import React, { ReactNode, Suspense, useEffect } from "react";
 import AuthModal from "@/components/AuthModal/AuthModal";
@@ -31,16 +32,26 @@ interface MainLayoutProps {
 
 function MainContentLoading(): ReactNode {
   return (
-    <Flex
-      height="100%"
-      align="center"
-      justify="center"
-      style={{ contain: "size" }}
+    <Box
+      sx={{
+        display: "flex",
+        height: "100%",
+        alignItems: "center",
+        justifyContent: "center",
+        contain: "size",
+      }}
     >
-      <Center h="100%">
-        <Spinner size="xl" />
-      </Center>
-    </Flex>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+        }}
+      >
+        <CircularProgress size={48} />
+      </Box>
+    </Box>
   );
 }
 
@@ -57,7 +68,14 @@ export function MainLayout({ children, lineage }: MainLayoutProps) {
   }, []);
 
   return (
-    <Flex direction="column" height="100vh" overflow="hidden">
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        overflow: "hidden",
+      }}
+    >
       <TopBar />
       <NavBar />
       <Main isLineageRoute={isLineageRoute} lineage={lineage}>
@@ -67,7 +85,7 @@ export function MainLayout({ children, lineage }: MainLayoutProps) {
         !isDemoSite &&
         !isCodespace &&
         featureToggles.mode === null && <AuthModal />}
-    </Flex>
+    </Box>
   );
 }
 
@@ -107,16 +125,18 @@ function Main({ children, lineage, isLineageRoute }: MainProps) {
         <Suspense fallback={<MainContentLoading />}>
           {/* suppressHydrationWarning: react-split adds inline styles (height, width)
               to children after mount, causing expected server/client mismatches */}
-          <Box p={0} style={{ contain: "content" }} suppressHydrationWarning>
+          <Box sx={{ p: 0, contain: "content" }} suppressHydrationWarning>
             {/*
              * Lineage parallel route - always mounted but visibility controlled
              * This replaces the old RouteAlwaysMount pattern
              */}
             <Box
-              display={isLineageRoute ? "block" : "none"}
-              height="100%"
-              position={isLineageRoute ? "relative" : "absolute"}
-              inset={0}
+              sx={{
+                display: isLineageRoute ? "block" : "none",
+                height: "100%",
+                position: isLineageRoute ? "relative" : "absolute",
+                inset: 0,
+              }}
             >
               {lineage}
             </Box>
@@ -126,7 +146,7 @@ function Main({ children, lineage, isLineageRoute }: MainProps) {
           </Box>
         </Suspense>
         {/* suppressHydrationWarning: react-split adds inline styles after mount */}
-        <Box height="100%" suppressHydrationWarning>
+        <Box sx={{ height: "100%" }} suppressHydrationWarning>
           {_isRunResultOpen ? (
             <RunResultPane
               onClose={closeRunResult}

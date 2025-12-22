@@ -3,7 +3,6 @@ import React, {
   ForwardRefExoticComponent,
   RefAttributes,
 } from "react";
-import { DataGridHandle } from "react-data-grid";
 import { IconType } from "react-icons";
 import { LuChartBarBig } from "react-icons/lu";
 import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
@@ -25,6 +24,7 @@ import {
 } from "@/lib/api/profile";
 import { AxiosQueryParams } from "@/lib/api/types";
 import { ValueDiffDetailViewOptions } from "@/lib/api/valuediff";
+import { type DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 import { HistogramDiffForm } from "../histogram/HistogramDiffForm";
 import { HistogramDiffResultView } from "../histogram/HistogramDiffResultView";
 import {

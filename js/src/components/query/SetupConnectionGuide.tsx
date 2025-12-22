@@ -1,4 +1,7 @@
-import { Button, Heading, Icon, Text } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
 import { RiTerminalBoxLine } from "react-icons/ri";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -14,31 +17,45 @@ export default function SetupConnectionGuide() {
   return (
     <div className="flex flex-1 h-full min-h-0 m-2 p-4 bg-blue-50 rounded-lg shadow-md justify-center">
       <div className="w-4/5 flex flex-col overflow-y-auto gap-6 px-8 pb-8">
-        <div className="flex flex-col items-center gap-4">
-          <div className="p-2 bg-white rounded-full flex items-center justify-center shadow-md">
-            <Icon as={RiTerminalBoxLine} boxSize={7} color="blue.500" />
-          </div>
-          <Heading mt="4" size="lg">
+        <Stack alignItems="center" spacing={2}>
+          <Box
+            sx={{
+              p: 1,
+              bgcolor: "white",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: 2,
+            }}
+          >
+            <Box
+              component={RiTerminalBoxLine}
+              sx={{ fontSize: 28, color: "iochmara.500" }}
+            />
+          </Box>
+          <Typography variant="h5" sx={{ mt: 2 }}>
             Wait, there's more!
-          </Heading>
-          <Text fontSize="md" textAlign="center">
+          </Typography>
+          <Typography sx={{ fontSize: "1rem", textAlign: "center" }}>
             Query functions disabled without a{" "}
-            <Text fontWeight="bold" as="span">
+            <Typography component="span" sx={{ fontWeight: "bold" }}>
               data warehouse connection
-            </Text>
-          </Text>
-        </div>
-        <div className="w-1/2 flex flex-col mt-6 mx-auto">
+            </Typography>
+          </Typography>
+        </Stack>
+        <Stack sx={{ width: "50%", mt: 3, mx: "auto" }}>
           <Button
-            colorPalette="blue"
-            size="lg"
+            color="iochmara"
+            variant="contained"
+            size="large"
             onClick={() => {
               window.open(getSettingsUrl(instanceInfo), "_blank");
             }}
           >
             Connect to Data Warehouse
           </Button>
-        </div>
+        </Stack>
       </div>
     </div>
   );

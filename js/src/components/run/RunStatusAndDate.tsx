@@ -1,5 +1,8 @@
-import { Flex, Spinner, Text } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import CircularProgress from "@mui/material/CircularProgress";
+import Typography from "@mui/material/Typography";
 import { format } from "date-fns";
+import { token } from "@/components/ui/mui-theme";
 import { Run } from "@/lib/api/types";
 
 export function formatRunDate(date: Date | null) {
@@ -69,22 +72,35 @@ export const RunStatusAndDate = ({ run }: { run: Run }) => {
   const dateTime = run.run_at ? formatRunDateTime(new Date(run.run_at)) : null;
 
   return (
-    <Flex
-      justifyContent="start"
-      fontSize="11pt"
-      color="gray.500"
-      gap="3px"
-      alignItems={"center"}
-      overflow={"hidden"}
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "start",
+        fontSize: "11pt",
+        color: "grey.500",
+        gap: "3px",
+        alignItems: "center",
+        overflow: "hidden",
+      }}
     >
-      {isRunning && <Spinner size="xs" color={`${color}.400`} />}
-      <Text fontWeight={500} color={`${color}.400`}>
+      {isRunning && <CircularProgress size={12} color="primary" />}
+      <Typography
+        component="span"
+        sx={{ fontWeight: 500, color: token(`colors.${color}.400`) }}
+      >
         {message}
-      </Text>
-      <Text>•</Text>
-      <Text textOverflow={"ellipsis"} overflow={"hidden"} whiteSpace="nowrap">
+      </Typography>
+      <Typography component="span">•</Typography>
+      <Typography
+        component="span"
+        sx={{
+          textOverflow: "ellipsis",
+          overflow: "hidden",
+          whiteSpace: "nowrap",
+        }}
+      >
         {dateTime}
-      </Text>
-    </Flex>
+      </Typography>
+    </Box>
   );
 };

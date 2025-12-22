@@ -1,4 +1,7 @@
-import { Button, Flex, Spacer, Stack, Text } from "@chakra-ui/react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import React, { useMemo } from "react";
 import { FaPlay } from "react-icons/fa6";
 import { extractSchemas, formatTimeToNow } from "@/components/app/EnvInfo";
@@ -103,19 +106,26 @@ function SqlEditor({
   return (
     <>
       {(label ?? onRun ?? onRunBase) && (
-        <Flex
-          backgroundColor="#EDF2F880"
-          height="40px"
-          minH="40px"
-          fontSize={"14px"}
-          align="center"
-          margin={"0"}
-          padding={"0px 16px"}
-          flex="0 0 40px"
+        <Stack
+          direction="row"
+          sx={{
+            bgcolor: "#EDF2F880",
+            height: "40px",
+            minHeight: "40px",
+            fontSize: "14px",
+            alignItems: "center",
+            m: 0,
+            p: "0px 16px",
+            flex: "0 0 40px",
+          }}
         >
-          <Text as="strong" className="no-track-pii-safe">
+          <Typography
+            component="strong"
+            sx={{ fontWeight: "bold" }}
+            className="no-track-pii-safe"
+          >
             {label ? label.toUpperCase() : ""}
-          </Text>
+          </Typography>
           {manifestData && (
             <span className="ml-1">
               (
@@ -126,20 +136,20 @@ function SqlEditor({
             </span>
           )}
 
-          <Spacer />
+          <Box sx={{ flexGrow: 1 }} />
           {(onRun ?? onRunBase) && (
             <Button
-              size="xs"
-              variant="outline"
+              size="xsmall"
+              variant="outlined"
               onClick={onRun ?? onRunBase}
-              backgroundColor={"white"}
-              padding={"6px 12px"}
+              sx={{ bgcolor: "white", p: "6px 12px" }}
               disabled={featureToggles.disableDatabaseQuery}
+              startIcon={<FaPlay />}
             >
-              <FaPlay /> Run Query
+              Run Query
             </Button>
           )}
-        </Flex>
+        </Stack>
       )}
       {CustomEditor ?? (
         <CodeEditor
@@ -186,13 +196,14 @@ export function DualSqlEditor({
 
   return (
     <>
-      <Flex height={"100%"} gap={0}>
+      <Stack direction="row" sx={{ height: "100%", gap: 0 }}>
         <Stack
-          height={"100%"}
-          width={"50%"}
-          gap={0}
-          borderRight={"1px"}
-          borderColor={"#D4DBE4"}
+          sx={{
+            height: "100%",
+            width: "50%",
+            gap: 0,
+            borderRight: "1px solid #D4DBE4",
+          }}
         >
           <SqlEditor
             label={baseLabel}
@@ -206,7 +217,7 @@ export function DualSqlEditor({
             {...props}
           />
         </Stack>
-        <Stack height={"100%"} width={"50%"} gap={0}>
+        <Stack sx={{ height: "100%", width: "50%", gap: 0 }}>
           <SqlEditor
             label={currentLabel}
             value={value}
@@ -218,7 +229,7 @@ export function DualSqlEditor({
             {...props}
           />
         </Stack>
-      </Flex>
+      </Stack>
     </>
   );
 }
