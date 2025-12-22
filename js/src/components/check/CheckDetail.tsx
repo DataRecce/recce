@@ -14,6 +14,7 @@ import ListItemText from "@mui/material/ListItemText";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
+import { useTheme } from "@mui/material/styles";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import MuiTooltip from "@mui/material/Tooltip";
@@ -38,7 +39,6 @@ import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { CheckTimeline } from "@/components/check/timeline";
 import { isDisabledByNoResult } from "@/components/check/utils";
-import { lightTheme } from "@/components/ui/mui-theme";
 import {
   QueryDiffParams,
   QueryParams,
@@ -94,6 +94,7 @@ export function CheckDetail({
   checkId,
   refreshCheckList,
 }: CheckDetailProps): ReactNode {
+  const theme = useTheme();
   const { featureToggles, sessionId } = useRecceInstanceContext();
   const { setLatestSelectedCheckId } = useRecceCheckContext();
   const { cloudMode } = useLineageGraphContext();
@@ -413,7 +414,7 @@ export function CheckDetail({
                       >
                         <FaBookmark
                           size="1rem"
-                          color={lightTheme.palette.iochmara.dark}
+                          color={theme.palette.iochmara.dark}
                         />
                       </Box>
                     </MuiTooltip>

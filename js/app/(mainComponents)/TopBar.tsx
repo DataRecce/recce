@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import DisplayModeToggle from "app/(mainComponents)/DisplayModeToggle";
 import RecceVersionBadge from "app/(mainComponents)/RecceVersionBadge";
 import React, { useState } from "react";
 import { IconType } from "react-icons";
@@ -79,6 +80,7 @@ export default function TopBar() {
           </Typography>
         </Box>
       </Link>
+      <DisplayModeToggle />
       <RecceVersionBadge />
       {(featureToggles.mode ?? reviewMode) && (
         <Badge
