@@ -27,7 +27,9 @@ import React, {
   type CSSProperties,
   forwardRef,
   type Ref,
+  useImperativeHandle,
   useMemo,
+  useRef,
 } from "react";
 import { RowObjectType } from "@/lib/api/types";
 import { recceGridThemeLight } from "./agGridTheme";
@@ -36,10 +38,12 @@ import { recceGridThemeLight } from "./agGridTheme";
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 /**
- * Handle type for accessing AG Grid API (backward compatible)
+ * Handle type for accessing AG Grid API and DOM element (for screenshots)
  */
 export interface DataGridHandle {
   api: GridReadyEvent["api"] | null;
+  /** DOM element for screenshot functionality */
+  element: HTMLElement | null;
 }
 
 /**
@@ -143,6 +147,21 @@ function _ScreenshotDataGrid<TData = RowObjectType>(
   }: ScreenshotDataGridProps<TData>,
   ref: Ref<DataGridHandle>,
 ) {
+  // Container ref for screenshot functionality
+  const containerRef = useRef<HTMLDivElement>(null);
+  // AG Grid API ref
+  const gridApiRef = useRef<GridReadyEvent["api"] | null>(null);
+
+  // Expose both API and DOM element through ref
+  useImperativeHandle(
+    ref,
+    () => ({
+      api: gridApiRef.current,
+      element: containerRef.current,
+    }),
+    [],
+  );
+
   // Use light theme (dark mode can be added later with useColorScheme)
   const theme = useMemo(() => recceGridThemeLight, []);
 
@@ -198,6 +217,7 @@ function _ScreenshotDataGrid<TData = RowObjectType>(
 
   return (
     <Box
+      ref={containerRef}
       className={
         className ? `${className} no-track-pii-safe` : "no-track-pii-safe"
       }
@@ -271,6 +291,9 @@ function _ScreenshotDataGrid<TData = RowObjectType>(
         animateRows={false}
         rowClass="no-track-pii-safe"
         noRowsOverlayComponent={noRowsOverlayComponent}
+        onGridReady={(event) => {
+          gridApiRef.current = event.api;
+        }}
         {...props}
       />
     </Box>
