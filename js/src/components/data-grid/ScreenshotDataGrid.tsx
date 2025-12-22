@@ -218,6 +218,12 @@ function _ScreenshotDataGrid<TData = RowObjectType>(
         "& .ag-row": {
           borderBottom: "1px solid var(--ag-border-color)",
         },
+        "& .ag-cell": {
+          borderRight: "1px solid var(--ag-border-color)",
+        },
+        "& .ag-header-cell": {
+          borderRight: "1px solid var(--ag-border-color)",
+        },
         // Diff cell styling
         "& .diff-cell-added": {
           backgroundColor: "#cefece !important",

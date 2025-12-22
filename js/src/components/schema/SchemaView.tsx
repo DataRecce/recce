@@ -1,7 +1,19 @@
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import type { CellClickedEvent, RowClassParams } from "ag-grid-community";
-import { forwardRef, Key, Ref, useMemo, useState } from "react";
+import type {
+  CellClickedEvent,
+  GridApi,
+  GridReadyEvent,
+  RowClassParams,
+} from "ag-grid-community";
+import {
+  forwardRef,
+  Ref,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { NodeData } from "@/lib/api/info";
 import { trackColumnLevelLineage } from "@/lib/api/track";
 import {
@@ -29,6 +41,7 @@ function PrivateSingleEnvSchemaView(
   ref: Ref<DataGridHandle>,
 ) {
   const lineageViewContext = useLineageViewContext();
+  const [gridApi, setGridApi] = useState<GridApi<SchemaRow> | null>(null);
   const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(
     new Map(),
   );
@@ -67,18 +80,34 @@ function PrivateSingleEnvSchemaView(
     setCllRunningMap((prev) => new Map(prev).set(columnName, false));
   };
 
-  const getRowId = (params: { data: SchemaRow }) => {
-    const modelId = current?.id;
-    return `${modelId}-${params.data.name}`;
-  };
+  const getRowId = useCallback(
+    (params: { data: SchemaRow }) => {
+      const modelId = current?.id;
+      return `${modelId}-${params.data.name}`;
+    },
+    [current?.id],
+  );
 
   const cll = lineageViewContext?.viewOptions.column_level_lineage;
-  // TODO: Use selectedRows for row highlighting in AG Grid
-  const _selectedRows: Set<Key> = cll
-    ? new Set([`${cll.node_id}-${cll.column}`])
-    : new Set();
+  const selectedRowId = cll ? `${cll.node_id}-${cll.column}` : null;
 
-  const getRowClass = (params: RowClassParams<SchemaRow>) => {
+  // Update row selection when cll changes
+  useEffect(() => {
+    if (!gridApi) return;
+    gridApi.deselectAll();
+    if (selectedRowId) {
+      const rowNode = gridApi.getRowNode(selectedRowId);
+      if (rowNode) {
+        rowNode.setSelected(true);
+      }
+    }
+  }, [gridApi, selectedRowId]);
+
+  const handleGridReady = useCallback((event: GridReadyEvent<SchemaRow>) => {
+    setGridApi(event.api);
+  }, []);
+
+  const getRowClass = (_params: RowClassParams<SchemaRow>) => {
     if (lineageViewContext !== undefined) {
       return "row-normal row-selectable";
     }
@@ -86,6 +115,11 @@ function PrivateSingleEnvSchemaView(
   };
 
   const handleCellClicked = async (event: CellClickedEvent<SchemaRow>) => {
+    // Skip if clicking on the menu button
+    const target = event.event?.target as HTMLElement | undefined;
+    if (target?.closest(".row-context-menu")) {
+      return;
+    }
     const row = event.data;
     if (row) {
       await handleViewCll(row.name);
@@ -123,6 +157,8 @@ function PrivateSingleEnvSchemaView(
           getRowId={getRowId}
           getRowClass={getRowClass}
           onCellClicked={handleCellClicked}
+          onGridReady={handleGridReady}
+          rowSelection="single"
         />
       )}
     </Box>
@@ -130,10 +166,11 @@ function PrivateSingleEnvSchemaView(
 }
 
 export function PrivateSchemaView(
-  { base, current, enableScreenshot = false, showMenu = true }: SchemaViewProps,
+  { base, current, showMenu = true }: SchemaViewProps,
   ref: Ref<DataGridHandle>,
 ) {
   const lineageViewContext = useLineageViewContext();
+  const [gridApi, setGridApi] = useState<GridApi<SchemaDiffRow> | null>(null);
   const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(
     new Map(),
   );
@@ -172,12 +209,12 @@ export function PrivateSchemaView(
   if (noSchemaBase && noSchemaCurrent) {
     schemaMissingMessage =
       "catalog.json is outdated on both environments. Update catalog.json to get schema information.";
-  } else if (noSchemaBase) {
-    schemaMissingMessage =
-      "catalog.json is outdated on base environment. Update catalog.json to get schema information.";
   } else if (noSchemaCurrent) {
     schemaMissingMessage =
       "catalog.json is outdated on current environment. Update catalog.json to get schema information.";
+  } else if (noSchemaBase) {
+    schemaMissingMessage =
+      "catalog.json is outdated on base environment. Update catalog.json to get schema information.";
   }
 
   const handleViewCll = async (columnName: string) => {
@@ -193,16 +230,35 @@ export function PrivateSchemaView(
     setCllRunningMap((prev) => new Map(prev).set(columnName, false));
   };
 
-  const getRowId = (params: { data: SchemaDiffRow }) => {
-    const modelId = current?.id ?? base?.id;
-    return `${modelId}-${params.data.name}`;
-  };
+  const getRowId = useCallback(
+    (params: { data: SchemaDiffRow }) => {
+      const modelId = current?.id ?? base?.id;
+      return `${modelId}-${params.data.name}`;
+    },
+    [current?.id, base?.id],
+  );
 
   const cll = lineageViewContext?.viewOptions.column_level_lineage;
-  // TODO: Use selectedRows for row highlighting in AG Grid
-  const _selectedRows: Set<Key> = cll
-    ? new Set([`${cll.node_id}-${cll.column}`])
-    : new Set();
+  const selectedRowId = cll ? `${cll.node_id}-${cll.column}` : null;
+
+  // Update row selection when cll changes
+  useEffect(() => {
+    if (!gridApi) return;
+    gridApi.deselectAll();
+    if (selectedRowId) {
+      const rowNode = gridApi.getRowNode(selectedRowId);
+      if (rowNode) {
+        rowNode.setSelected(true);
+      }
+    }
+  }, [gridApi, selectedRowId]);
+
+  const handleGridReady = useCallback(
+    (event: GridReadyEvent<SchemaDiffRow>) => {
+      setGridApi(event.api);
+    },
+    [],
+  );
 
   const getRowClass = (params: RowClassParams<SchemaDiffRow>) => {
     const row = params.data;
@@ -223,6 +279,11 @@ export function PrivateSchemaView(
   };
 
   const handleCellClicked = async (event: CellClickedEvent<SchemaDiffRow>) => {
+    // Skip if clicking on the menu button
+    const target = event.event?.target as HTMLElement | undefined;
+    if (target?.closest(".row-context-menu")) {
+      return;
+    }
     const row = event.data;
     if (!row) return;
     // Removed columns aren't clickable
@@ -264,6 +325,8 @@ export function PrivateSchemaView(
           getRowId={getRowId}
           getRowClass={getRowClass}
           onCellClicked={handleCellClicked}
+          onGridReady={handleGridReady}
+          rowSelection="single"
         />
       )}
     </Box>

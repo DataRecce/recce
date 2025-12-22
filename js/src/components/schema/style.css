@@ -3,11 +3,13 @@
 }
 
 .row-added:hover,
-.row-added[aria-selected="true"] {
+.row-added[aria-selected="true"],
+.row-added.ag-row-selected {
   background-color: rgb(193 246 205);
 }
 
-.row-added[aria-selected="true"]:hover {
+.row-added[aria-selected="true"]:hover,
+.row-added.ag-row-selected:hover {
   background-color: rgb(166 242 184);
 }
 
@@ -16,11 +18,13 @@
 }
 
 .row-removed:hover,
-.row-removed[aria-selected="true"] {
+.row-removed[aria-selected="true"],
+.row-removed.ag-row-selected {
   background-color: rgb(246 195 193);
 }
 
-.row-removed[aria-selected="true"]:hover {
+.row-removed[aria-selected="true"]:hover,
+.row-removed.ag-row-selected:hover {
   background-color: rgb(242 170 166);
 }
 
@@ -29,11 +33,13 @@
 }
 
 .row-normal:hover,
-.row-normal[aria-selected="true"] {
+.row-normal[aria-selected="true"],
+.row-normal.ag-row-selected {
   background-color: rgb(241, 241, 241);
 }
 
-.row-normal[aria-selected="true"]:hover {
+.row-normal[aria-selected="true"]:hover,
+.row-normal.ag-row-selected:hover {
   background-color: rgb(230 230 230);
 }
 
@@ -60,11 +66,13 @@
 }
 
 .row-normal:hover .column-body-type-changed,
-.row-normal[aria-selected="true"] .column-body-type-changed {
+.row-normal[aria-selected="true"] .column-body-type-changed,
+.row-normal.ag-row-selected .column-body-type-changed {
   background-color: rgb(246 195 193);
 }
 
-.row-normal[aria-selected="true"]:hover .column-body-type-changed {
+.row-normal[aria-selected="true"]:hover .column-body-type-changed,
+.row-normal.ag-row-selected:hover .column-body-type-changed {
   background-color: rgb(242 170 166);
 }
 
@@ -73,10 +81,12 @@
 }
 
 .row-normal:hover .column-index-reordered,
-.row-normal[aria-selected="true"] .column-index-reordered {
+.row-normal[aria-selected="true"] .column-index-reordered,
+.row-normal.ag-row-selected .column-index-reordered {
   background-color: rgb(249 164 6);
 }
 
-.row-normal[aria-selected="true"]:hover .column-index-reordered {
+.row-normal[aria-selected="true"]:hover .column-index-reordered,
+.row-normal.ag-row-selected:hover .column-index-reordered {
   background-color: rgb(224 147 6);
 }
