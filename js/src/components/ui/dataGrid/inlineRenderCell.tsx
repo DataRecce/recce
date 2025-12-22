@@ -137,7 +137,13 @@ export const inlineRenderCell = (
           enterDelay={300}
           placement="top"
         >
-          <Box gap="5px" alignItems="center" lineHeight="normal" height="100%">
+          <Box
+            gap="5px"
+            display="flex"
+            alignItems="center"
+            lineHeight="normal"
+            height="100%"
+          >
             <DiffText
               value={formattedCurrent}
               colorPalette="green"
