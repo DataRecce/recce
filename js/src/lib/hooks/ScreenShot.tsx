@@ -10,7 +10,6 @@ import Typography from "@mui/material/Typography";
 import { format } from "date-fns";
 import saveAs from "file-saver";
 import { toCanvas } from "html-to-image";
-import html2canvas from "html2canvas-pro";
 import React, {
   RefObject,
   useCallback,
@@ -22,6 +21,19 @@ import { IoClose } from "react-icons/io5";
 import { PiCopy, PiInfo } from "react-icons/pi";
 import { type DataGridHandle } from "@/components/data-grid/ScreenshotDataGrid";
 import { useClipBoardToast } from "./useClipBoardToast";
+
+// Dynamic import directly from ESM distribution file to work around Turbopack issues
+// Turbopack doesn't properly resolve the package's main entry point, so we import the ESM file directly
+type Html2CanvasFn = (
+  element: HTMLElement,
+  options?: Record<string, unknown>,
+) => Promise<HTMLCanvasElement>;
+
+const loadHtml2Canvas = async (): Promise<Html2CanvasFn> => {
+  // @ts-expect-error - Direct path import for Turbopack compatibility
+  const module = await import("html2canvas-pro/dist/html2canvas-pro.esm.js");
+  return module.default as Html2CanvasFn;
+};
 
 // Type to represent DataGridHandle which may have an element property
 type DataGridRefType = DataGridHandle & { element?: HTMLElement };
@@ -136,16 +148,19 @@ export function useCopyToClipboard({
         : undefined;
 
       setStatus("loading");
-      const canvas =
-        renderLibrary === "html2canvas"
-          ? await html2canvas(nodeToUse, {
-              logging: false,
-              backgroundColor: "#f5f5f5",
-              ignoreElements: ignoreElements,
-            })
-          : await toCanvas(nodeToUse, {
-              filter: filter,
-            }); // Use html-to-image for copy reactflow graph
+      let canvas: HTMLCanvasElement;
+      if (renderLibrary === "html2canvas") {
+        const html2canvas = await loadHtml2Canvas();
+        canvas = await html2canvas(nodeToUse, {
+          logging: false,
+          backgroundColor: "#f5f5f5",
+          ignoreElements: ignoreElements,
+        });
+      } else {
+        canvas = await toCanvas(nodeToUse, {
+          filter: filter,
+        }); // Use html-to-image for copy reactflow graph
+      }
 
       style.remove();
       const outputCanvas = shadowEffect
