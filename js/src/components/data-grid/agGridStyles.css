@@ -10,6 +10,7 @@
  */
 
 /* AG Grid Viewport */
+.ag-body-viewport,
 .ag-center-cols-viewport {
   /* Slate 100 */
   background-color: #f1f5f9;
