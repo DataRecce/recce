@@ -48,7 +48,7 @@ function _RowCountGridView(
   }
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column" }}>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <ScreenshotDataGrid
         ref={ref}
         style={{
