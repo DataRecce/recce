@@ -6,6 +6,7 @@
  * to schemaCells.tsx via render functions.
  */
 
+import "@/components/schema/style.css";
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import {
   createColumnNameRenderer,
