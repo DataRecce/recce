@@ -52,6 +52,14 @@ jest.mock("./gridUtils", () => ({
 // ============================================================================
 
 /**
+ * Context for custom column metadata
+ */
+interface TestColumnContext {
+  columnType?: ColumnType;
+  columnRenderMode?: ColumnRenderMode;
+}
+
+/**
  * Test-friendly Column type (based on AG Grid ColDef)
  */
 interface TestColumn {
@@ -63,8 +71,7 @@ interface TestColumn {
     | string
     | ((params: CellClassParams<RowObjectType>) => string | undefined);
   cellRenderer?: unknown;
-  columnType?: ColumnType;
-  columnRenderMode?: ColumnRenderMode;
+  context?: TestColumnContext;
 }
 
 /**
@@ -74,8 +81,7 @@ interface TestColumnGroup {
   headerName?: string;
   headerClass?: string;
   children: readonly TestColumn[];
-  columnType?: ColumnType;
-  columnRenderMode?: ColumnRenderMode;
+  context?: TestColumnContext;
 }
 
 // ============================================================================
@@ -403,7 +409,7 @@ describe("toDiffColumn - inline mode", () => {
       createConfig({ columnType: "number", displayMode: "inline" }),
     );
 
-    expect(result.columnType).toBe("number");
+    expect(result.context?.columnType).toBe("number");
   });
 
   test("preserves columnRenderMode", () => {
@@ -411,13 +417,13 @@ describe("toDiffColumn - inline mode", () => {
       createConfig({ columnRenderMode: "percent", displayMode: "inline" }),
     );
 
-    expect(result.columnRenderMode).toBe("percent");
+    expect(result.context?.columnRenderMode).toBe("percent");
   });
 
   test("uses undefined as default columnRenderMode (triggers smart formatting)", () => {
     const result = toDiffColumn(createConfig({ displayMode: "inline" }));
 
-    expect(result.columnRenderMode).toBeUndefined();
+    expect(result.context?.columnRenderMode).toBeUndefined();
   });
 
   test("sets headerClass for added column", () => {
@@ -545,8 +551,8 @@ describe("toDiffColumn - side_by_side mode", () => {
 
     const children = getChildren(result);
     children.forEach((child) => {
-      expect(child.columnType).toBe("number");
-      expect(child.columnRenderMode).toBe(2);
+      expect(child.context?.columnType).toBe("number");
+      expect(child.context?.columnRenderMode).toBe(2);
     });
   });
 
@@ -640,7 +646,7 @@ describe("toDiffColumn - edge cases", () => {
 
     types.forEach((type) => {
       const result = toDiffColumn(createConfig({ columnType: type }));
-      expect(result.columnType).toBe(type);
+      expect(result.context?.columnType).toBe(type);
     });
   });
 
@@ -649,7 +655,7 @@ describe("toDiffColumn - edge cases", () => {
 
     modes.forEach((mode) => {
       const result = toDiffColumn(createConfig({ columnRenderMode: mode }));
-      expect(result.columnRenderMode).toBe(mode);
+      expect(result.context?.columnRenderMode).toBe(mode);
     });
   });
 
