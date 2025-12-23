@@ -3,6 +3,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
+import { useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import React, { forwardRef } from "react";
 import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
@@ -56,6 +57,7 @@ export const RunView = forwardRef(
     }: RunViewProps,
     ref: React.Ref<RefTypes>,
   ) => {
+    const theme = useTheme();
     const errorMessage =
       (error as ApiError | undefined)?.response?.data?.detail ?? run?.error;
 
@@ -86,7 +88,7 @@ export const RunView = forwardRef(
             justifyContent: "center",
             p: "1rem",
             height: "100%",
-            bgcolor: "rgb(249,249,249)",
+            bgcolor: theme.palette.mode === "dark" ? "grey.900" : "grey.50",
           }}
         >
           <Stack spacing={2} alignItems="center">
@@ -148,11 +150,11 @@ export const RunView = forwardRef(
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            bgcolor: "rgb(249,249,249)",
+            bgcolor: theme.palette.mode === "dark" ? "grey.900" : "grey.50",
             height: "100%",
           }}
         >
-          Loading...
+          <CircularProgress size={32} />
         </Box>
       );
     }
