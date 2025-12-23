@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -140,7 +140,7 @@ from {{ relation }}
 
 class ProfileParams(BaseModel):
     model: str
-    columns: List[str] = None
+    columns: Optional[List[str]] = None
 
 
 class ProfileDiffResult(BaseModel):
