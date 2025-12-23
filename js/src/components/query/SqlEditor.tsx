@@ -1,12 +1,13 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import React, { useMemo } from "react";
 import { FaPlay } from "react-icons/fa6";
 import { extractSchemas, formatTimeToNow } from "@/components/app/EnvInfo";
 import { CodeEditor } from "@/components/editor";
+import { colors } from "@/components/ui/mui-theme";
 import { ManifestMetadata } from "@/lib/api/info";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
@@ -113,8 +114,8 @@ function SqlEditor({
           direction="row"
           sx={{
             bgcolor: isDark
-              ? "rgba(55, 65, 81, 0.5)"
-              : "rgba(237, 242, 248, 0.5)",
+              ? alpha(colors.neutral[700], 0.5)
+              : alpha(colors.neutral[100], 0.5),
             height: "40px",
             minHeight: "40px",
             fontSize: "14px",
@@ -208,7 +209,8 @@ export function DualSqlEditor({
             height: "100%",
             width: "50%",
             gap: 0,
-            borderRight: "1px solid #D4DBE4",
+            borderRight: "1px solid",
+            borderRightColor: "divider",
           }}
         >
           <SqlEditor

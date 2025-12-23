@@ -20,6 +20,7 @@ import React, {
 import { IoClose } from "react-icons/io5";
 import { PiCopy, PiInfo } from "react-icons/pi";
 import { type DataGridHandle } from "@/components/data-grid/ScreenshotDataGrid";
+import { colors } from "@/components/ui/mui-theme";
 import { useClipBoardToast } from "./useClipBoardToast";
 
 // Dynamic import directly from ESM distribution file to work around Turbopack issues
@@ -84,7 +85,7 @@ export function useCopyToClipboard({
   backgroundColor = null,
   boardEffect = true,
   shadowEffect = false,
-  borderStyle = "solid 1px #ccc",
+  borderStyle = `solid 1px ${colors.neutral[300]}`,
   borderRadius = "10px",
   onSuccess,
   onError,
@@ -132,7 +133,7 @@ export function useCopyToClipboard({
       nodeToUse.style.overflow = "hidden";
       nodeToUse.style.border = boardEffect ? borderStyle : "";
       nodeToUse.style.borderRadius = boardEffect ? borderRadius : "";
-      nodeToUse.style.backgroundColor = backgroundColor ?? "#f5f5f5";
+      nodeToUse.style.backgroundColor = backgroundColor ?? colors.neutral[100];
       // after firefox v125, html2canvas can't get the correct style height of the element to clone
       nodeToUse.style.height = `${String(nodeToUse.offsetHeight)}px`;
 
@@ -153,7 +154,7 @@ export function useCopyToClipboard({
         const html2canvas = await loadHtml2Canvas();
         canvas = await html2canvas(nodeToUse, {
           logging: false,
-          backgroundColor: "#f5f5f5",
+          backgroundColor: backgroundColor ?? colors.neutral[100],
           ignoreElements: ignoreElements,
         });
       } else {
@@ -237,7 +238,7 @@ export function useCopyToClipboardButton(options?: HookOptions) {
     useCopyToClipboard({
       imageType: "png",
       shadowEffect: true,
-      backgroundColor: options?.backgroundColor ?? "#f5f5f5",
+      backgroundColor: options?.backgroundColor ?? colors.neutral[100],
       onSuccess: () => {
         successToast("Copied the query result as an image to clipboard");
       },

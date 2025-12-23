@@ -1,19 +1,42 @@
-/* React Flow Controls - Dark Mode Support */
-.dark .react-flow__controls {
-  background-color: #374151;
-  border-color: #4b5563;
+/**
+ * React Flow Controls - Theme-aware colors
+ * Uses CSS custom properties for theme-aware colors
+ * Maps to colors from mui-theme.ts neutral palette
+ */
+
+/* Light mode (default) */
+:root,
+.light {
+  --rf-controls-bg: #fafafa; /* neutral[50] */
+  --rf-controls-border: #e5e5e5; /* neutral[200] */
+  --rf-controls-text: #404040; /* neutral[700] */
+  --rf-controls-hover-bg: #e5e5e5; /* neutral[200] */
 }
 
-.dark .react-flow__controls-button {
-  background-color: #374151;
-  color: #e5e7eb;
-  border-bottom-color: #4b5563;
+/* Dark mode */
+.dark {
+  --rf-controls-bg: #404040; /* neutral[700] */
+  --rf-controls-border: #525252; /* neutral[600] */
+  --rf-controls-text: #e5e5e5; /* neutral[200] */
+  --rf-controls-hover-bg: #525252; /* neutral[600] */
 }
 
-.dark .react-flow__controls-button:hover {
-  background-color: #4b5563;
+/* React Flow Controls */
+.react-flow__controls {
+  background-color: var(--rf-controls-bg);
+  border-color: var(--rf-controls-border);
 }
 
-.dark .react-flow__controls-button svg {
-  fill: #e5e7eb;
+.react-flow__controls-button {
+  background-color: var(--rf-controls-bg);
+  color: var(--rf-controls-text);
+  border-bottom-color: var(--rf-controls-border);
+}
+
+.react-flow__controls-button:hover {
+  background-color: var(--rf-controls-hover-bg);
+}
+
+.react-flow__controls-button svg {
+  fill: var(--rf-controls-text);
 }

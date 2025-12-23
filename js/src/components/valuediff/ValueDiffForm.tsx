@@ -10,6 +10,7 @@ import ReactSelect, {
   type CSSObjectWithLabel,
   type MultiValue,
 } from "react-select";
+import { colors } from "@/components/ui/mui-theme";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { RunFormProps } from "../run/types";
 
@@ -49,12 +50,12 @@ export function ValueDiffForm({
       control: (base: CSSObjectWithLabel) => ({
         ...base,
         minHeight: "40px",
-        backgroundColor: isDark ? "#374151" : base.backgroundColor,
-        borderColor: isDark ? "#4b5563" : base.borderColor,
+        backgroundColor: isDark ? colors.neutral[700] : base.backgroundColor,
+        borderColor: isDark ? colors.neutral[600] : base.borderColor,
       }),
       menu: (base: CSSObjectWithLabel) => ({
         ...base,
-        backgroundColor: isDark ? "#374151" : base.backgroundColor,
+        backgroundColor: isDark ? colors.neutral[700] : base.backgroundColor,
       }),
       option: (
         base: CSSObjectWithLabel,
@@ -63,44 +64,44 @@ export function ValueDiffForm({
         ...base,
         backgroundColor: state.isSelected
           ? isDark
-            ? "#4b5563"
-            : "#2684ff"
+            ? colors.neutral[600]
+            : colors.iochmara[500]
           : state.isFocused
             ? isDark
-              ? "#4b5563"
-              : "#deebff"
+              ? colors.neutral[600]
+              : colors.iochmara[50]
             : isDark
-              ? "#374151"
+              ? colors.neutral[700]
               : base.backgroundColor,
-        color: isDark ? "#e5e7eb" : base.color,
+        color: isDark ? colors.neutral[200] : base.color,
       }),
       multiValue: (base: CSSObjectWithLabel) => ({
         ...base,
-        backgroundColor: isDark ? "#4b5563" : base.backgroundColor,
+        backgroundColor: isDark ? colors.neutral[600] : base.backgroundColor,
       }),
       multiValueLabel: (base: CSSObjectWithLabel) => ({
         ...base,
-        color: isDark ? "#e5e7eb" : base.color,
+        color: isDark ? colors.neutral[200] : base.color,
       }),
       multiValueRemove: (base: CSSObjectWithLabel) => ({
         ...base,
-        color: isDark ? "#9ca3af" : base.color,
+        color: isDark ? colors.neutral[400] : base.color,
         "&:hover": {
-          backgroundColor: isDark ? "#6b7280" : "#ffbdad",
-          color: isDark ? "#e5e7eb" : "#de350b",
+          backgroundColor: isDark ? colors.neutral[500] : colors.red[200],
+          color: isDark ? colors.neutral[200] : colors.red[600],
         },
       }),
       input: (base: CSSObjectWithLabel) => ({
         ...base,
-        color: isDark ? "#e5e7eb" : base.color,
+        color: isDark ? colors.neutral[200] : base.color,
       }),
       singleValue: (base: CSSObjectWithLabel) => ({
         ...base,
-        color: isDark ? "#e5e7eb" : base.color,
+        color: isDark ? colors.neutral[200] : base.color,
       }),
       placeholder: (base: CSSObjectWithLabel) => ({
         ...base,
-        color: isDark ? "#9ca3af" : base.color,
+        color: isDark ? colors.neutral[400] : base.color,
       }),
     }),
     [isDark],
