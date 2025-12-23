@@ -19,6 +19,7 @@ from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 from recce.core import RecceContext, load_context
+from recce.exceptions import RecceException
 from recce.server import RecceServerMode
 from recce.tasks.dataframe import DataFrame
 from recce.tasks.profile import ProfileDiffTask
@@ -698,75 +699,25 @@ class RecceMCPServer:
         try:
             from recce.apis.run_func import submit_run
             from recce.models import CheckDAO
-            from recce.run import run_should_be_approved, schema_diff_should_be_approved
 
             check_id = arguments.get("check_id")
             if not check_id:
                 raise ValueError("check_id is required")
 
             # Get the check from database
-            checks_dao = CheckDAO()
-            checks = checks_dao.list()
-            check = None
-            for c in checks:
-                if str(c.check_id) == check_id:
-                    check = c
-                    break
-
+            check = CheckDAO().find_check_by_id(check_id)
             if not check:
                 raise ValueError(f"Check with ID {check_id} not found")
 
-            start_time = time.time()
-            result = {
-                "check_id": check_id,
-                "check_name": check.name,
-                "check_type": check.type.value,
-                "status": "success",
-                "execution_time": 0.0,
-                "is_approved": False,
-                "error": None,
-                "result": None,
-            }
-
             try:
-                # For schema_diff and lineage_diff, don't execute query
-                if check.type.value in ["schema_diff", "lineage_diff"]:
-                    # Auto-approve schema_diff if no changes
-                    if check.type.value == "schema_diff":
-                        result["is_approved"] = schema_diff_should_be_approved(check.params or {})
-                else:
-                    # Submit and execute the run
-                    run, future = submit_run(check.type.value, params=check.params or {}, check_id=check_id)
-                    await future
+                # Submit and execute the run
+                run, future = submit_run(check.type, params=check.params or {}, check_id=check_id)
+                run.result = await future
 
-                    # Auto-approve based on results
-                    result["is_approved"] = run_should_be_approved(run)
-
-                    # Serialize result to dict if it's a Pydantic model
-                    if hasattr(run, "result") and run.result:
-                        if hasattr(run.result, "model_dump"):
-                            result["result"] = run.result.model_dump(mode="json")
-                        else:
-                            result["result"] = run.result
-                    else:
-                        result["result"] = None
-
-                    # Capture error if any
-                    if run.error:
-                        result["error"] = str(run.error)
-                        result["status"] = "failed"
-
-                # Update check's is_checked status if approved
-                if result["is_approved"]:
-                    check.is_checked = True
-                    check.updated_at = datetime.now(tz=timezone.utc).replace(microsecond=0)
-
-            except Exception as e:
-                result["status"] = "error"
-                result["error"] = str(e)
-
-            result["execution_time"] = round(time.time() - start_time, 2)
-            return result
+                # Return run object in JSON format (same as run_check_handler in check_api.py)
+                return run.model_dump(mode="json")
+            except RecceException as e:
+                raise ValueError(str(e))
 
         except Exception:
             logger.exception("Error running check")

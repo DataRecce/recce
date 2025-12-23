@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -296,6 +297,56 @@ class TestRecceMCPServer:
         assert result["checks"][0]["type"] == "schema_diff"
         assert result["total"] == 1
         assert result["approved"] == 1
+
+    @pytest.mark.asyncio
+    async def test_tool_run_check_row_count_diff(self, mcp_server):
+        """Test running a row_count_diff check"""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import RunType
+
+        check_id = uuid4()
+        run_id = uuid4()
+
+        # Create mock check with row_count_diff type
+        mock_check = MagicMock()
+        mock_check.check_id = check_id
+        mock_check.name = "Row Count Check"
+        mock_check.type = RunType.ROW_COUNT_DIFF
+        mock_check.params = {"node_names": ["model_a"]}
+
+        # Create mock run
+        mock_run = MagicMock()
+        mock_run.run_id = run_id
+        mock_run.type = RunType.ROW_COUNT_DIFF
+        mock_run.result = {"results": [{"node_id": "model.project.model_a", "base": 100, "current": 105, "diff": 5}]}
+        mock_run.error = None
+        mock_run.check_id = check_id
+        mock_run.model_dump.return_value = {
+            "run_id": str(run_id),
+            "check_id": str(check_id),
+            "type": "row_count_diff",
+            "result": mock_run.result,
+            "error": None,
+        }
+
+        # Mock CheckDAO and submit_run
+        mock_check_dao = MagicMock()
+        mock_check_dao.find_check_by_id.return_value = mock_check
+
+        with patch("recce.models.CheckDAO", return_value=mock_check_dao):
+            with patch("recce.apis.run_func.submit_run") as mock_submit_run:
+                mock_submit_run.return_value = (mock_run, asyncio.sleep(0))
+                result = await server._tool_run_check({"check_id": str(check_id)})
+
+        # Verify the result
+        assert "run_id" in result
+        assert result["run_id"] == str(run_id)
+        assert "type" in result
+        assert result["type"] == "row_count_diff"
+        assert "check_id" in result
+        assert result["check_id"] == str(check_id)
 
     @pytest.mark.asyncio
     async def test_error_handling(self, mcp_server):
