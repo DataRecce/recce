@@ -262,6 +262,42 @@ class TestRecceMCPServer:
         mock_result.model_dump.assert_called_once_with(mode="json")
 
     @pytest.mark.asyncio
+    async def test_tool_list_checks(self, mcp_server):
+        """Test the list_checks tool"""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import RunType
+
+        check_id = uuid4()
+        mock_check = MagicMock()
+        mock_check.check_id = check_id
+        mock_check.name = "Test Check"
+        mock_check.type = RunType.SCHEMA_DIFF
+        mock_check.description = "Test description"
+        mock_check.params = {"select": "model_a"}
+        mock_check.is_checked = True
+        mock_check.is_preset = False
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.list.return_value = [mock_check]
+        mock_check_dao.status.return_value = {"total": 1, "approved": 1}
+
+        with patch("recce.models.CheckDAO", return_value=mock_check_dao):
+            result = await server._tool_list_checks({})
+
+        # Verify the result structure
+        assert "checks" in result
+        assert "total" in result
+        assert "approved" in result
+        assert len(result["checks"]) == 1
+        assert result["checks"][0]["check_id"] == str(check_id)
+        assert result["checks"][0]["name"] == "Test Check"
+        assert result["checks"][0]["type"] == "schema_diff"
+        assert result["total"] == 1
+        assert result["approved"] == 1
+
+    @pytest.mark.asyncio
     async def test_error_handling(self, mcp_server):
         """Test error handling in tool execution"""
         server, mock_context = mcp_server
