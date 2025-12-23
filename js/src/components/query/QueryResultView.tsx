@@ -1,8 +1,10 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
+import { useTheme } from "@mui/material/styles";
 import React, { forwardRef, Ref, useMemo } from "react";
 import { PiWarning } from "react-icons/pi";
+import { colors } from "@/components/ui/mui-theme";
 import { QueryViewOptions } from "@/lib/api/adhocQuery";
 import {
   ColumnRenderMode,
@@ -31,6 +33,9 @@ const PrivateQueryResultView = (
   }: QueryResultViewProp,
   ref: Ref<DataGridHandle>,
 ) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
   if (!(isQueryRun(run) || isQueryBaseRun(run))) {
     throw new Error("run type must be query");
   }
@@ -107,7 +112,7 @@ const PrivateQueryResultView = (
   const showTopBar = onAddToChecklist ?? warning;
 
   return (
-    <Stack sx={{ bgcolor: "grey.50", height: "100%" }}>
+    <Stack sx={{ bgcolor: isDark ? "grey.900" : "grey.50", height: "100%" }}>
       {showTopBar && (
         <Stack
           direction="row"
@@ -117,14 +122,23 @@ const PrivateQueryResultView = (
             alignItems: "center",
             gap: "5px",
             px: "10px",
-            bgcolor: warning ? "amber.100" : "inherit",
+            bgcolor: warning
+              ? isDark
+                ? colors.amber[900]
+                : colors.amber[100]
+              : "inherit",
+            color: warning
+              ? isDark
+                ? colors.amber[200]
+                : colors.amber[800]
+              : "inherit",
           }}
         >
           {warning && (
             <>
-              <Box
-                component={PiWarning}
-                sx={{ color: "amber.600", alignSelf: "center" }}
+              <PiWarning
+                color={isDark ? colors.amber[400] : colors.amber[600]}
+                style={{ alignSelf: "center" }}
               />{" "}
               <Box>{warning}</Box>
             </>
@@ -157,7 +171,7 @@ const PrivateQueryResultView = (
           maxWidth: 800,
           minWidth: 35,
         }}
-        className="rdg-light"
+        className={isDark ? "rdg-dark" : "rdg-light"}
       />
     </Stack>
   );
