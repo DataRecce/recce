@@ -25,15 +25,22 @@ import { ColumnConfig } from "./columnBuilders";
 // ============================================================================
 
 /**
- * Extended column type with metadata (matches existing pattern)
+ * Custom context data for Recce columns
+ * Stored in colDef.context to avoid AG Grid validation warnings
  */
-export type SimpleColumnDefinition = (
-  | ColDef<RowObjectType>
-  | ColGroupDef<RowObjectType>
-) & {
+export interface RecceColumnContext {
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
-};
+}
+
+/**
+ * Extended column type with context metadata
+ * Uses context property for custom data per AG Grid best practices
+ * Note: Distributed form allows TypeScript to narrow types correctly
+ */
+export type SimpleColumnDefinition =
+  | (ColDef<RowObjectType> & { context?: RecceColumnContext })
+  | (ColGroupDef<RowObjectType> & { context?: RecceColumnContext });
 
 /**
  * Configuration for building simple column definitions
@@ -125,8 +132,7 @@ function createPrimaryKeyColumn(
     ),
     pinned: "left",
     cellRenderer: defaultRenderCell,
-    columnType,
-    columnRenderMode,
+    context: { columnType, columnRenderMode },
   };
 }
 
@@ -154,8 +160,7 @@ function createRegularColumn(
       />
     ),
     cellRenderer: defaultRenderCell,
-    columnType,
-    columnRenderMode,
+    context: { columnType, columnRenderMode },
   };
 }
 

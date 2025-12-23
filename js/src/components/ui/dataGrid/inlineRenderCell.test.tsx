@@ -74,8 +74,10 @@ function createMockColDef(
   return {
     field,
     headerName: field,
-    columnType: options.columnType,
-    columnRenderMode: options.columnRenderMode,
+    context: {
+      columnType: options.columnType,
+      columnRenderMode: options.columnRenderMode,
+    },
   };
 }
 

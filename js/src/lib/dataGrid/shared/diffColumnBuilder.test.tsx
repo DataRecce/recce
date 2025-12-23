@@ -43,6 +43,7 @@ import {
   buildDiffColumnDefinitions,
   DiffColumnDefinition,
 } from "./diffColumnBuilder";
+import { RecceColumnContext } from "./simpleColumnBuilder";
 
 // ============================================================================
 // Helper to create mock CellClassParams
@@ -70,24 +71,28 @@ const createCellClassParams = (
 // ============================================================================
 
 /**
+ * Type alias for single column (ColDef branch of DiffColumnDefinition)
+ */
+type SingleColumn = ColDef<RowObjectType> & { context?: RecceColumnContext };
+
+/**
+ * Type alias for column group (ColGroupDef branch of DiffColumnDefinition)
+ */
+type ColumnGroup = ColGroupDef<RowObjectType> & {
+  context?: RecceColumnContext;
+};
+
+/**
  * Type guard to check if a column definition is a ColDef (has field)
  */
-function isColumn(col: DiffColumnDefinition): col is ColDef<RowObjectType> & {
-  columnType?: ColumnType;
-  columnRenderMode?: ColumnRenderMode;
-} {
+function isColumn(col: DiffColumnDefinition): col is SingleColumn {
   return "field" in col && !("children" in col);
 }
 
 /**
  * Type guard to check if a column definition is a ColGroupDef (has children)
  */
-function isColumnGroup(
-  col: DiffColumnDefinition,
-): col is ColGroupDef<RowObjectType> & {
-  columnType?: ColumnType;
-  columnRenderMode?: ColumnRenderMode;
-} {
+function isColumnGroup(col: DiffColumnDefinition): col is ColumnGroup {
   return "children" in col && Array.isArray(col.children);
 }
 
@@ -95,8 +100,9 @@ function isColumnGroup(
  * Helper to extract field from a column (works for both ColDef and ColGroupDef)
  */
 function getColumnKey(col: DiffColumnDefinition): string | undefined {
-  if (isColumn(col) && col.field) {
-    return col.field;
+  if (isColumn(col)) {
+    const singleCol = col as SingleColumn;
+    return singleCol.field;
   }
   return undefined;
 }
@@ -110,12 +116,14 @@ function findColumnByKey(
 ): DiffColumnDefinition | undefined {
   return columns.find((col) => {
     if (isColumn(col)) {
-      return col.field === key;
+      const singleCol = col as SingleColumn;
+      return singleCol.field === key;
     }
-    // For ColGroupDefs in side_by_side mode, check children
-    if (isColumnGroup(col) && col.children) {
-      return col.children.some(
-        (child) => "field" in child && child.field === `base__${key}`,
+    if (isColumnGroup(col)) {
+      const groupCol = col as ColumnGroup;
+      return groupCol.children?.some(
+        (child: ColDef<RowObjectType>) =>
+          "field" in child && child.field === `base__${key}`,
       );
     }
     return false;
@@ -238,7 +246,7 @@ describe("buildDiffColumnDefinitions - Primary Key Columns", () => {
     const pkColumn = findColumnByKey(result.columns, "id");
     expect(pkColumn).toBeDefined();
     if (pkColumn && isColumn(pkColumn)) {
-      expect(pkColumn.pinned).toBe("left");
+      expect((pkColumn as SingleColumn).pinned).toBe("left");
     }
   });
 
@@ -248,7 +256,7 @@ describe("buildDiffColumnDefinitions - Primary Key Columns", () => {
     const pkColumn = findColumnByKey(result.columns, "id");
     expect(pkColumn).toBeDefined();
     if (pkColumn && isColumn(pkColumn)) {
-      expect(typeof pkColumn.cellClass).toBe("function");
+      expect(typeof (pkColumn as SingleColumn).cellClass).toBe("function");
     }
   });
 
@@ -257,27 +265,26 @@ describe("buildDiffColumnDefinitions - Primary Key Columns", () => {
 
     const pkColumn = findColumnByKey(result.columns, "id");
     expect(pkColumn).toBeDefined();
-    if (
-      pkColumn &&
-      isColumn(pkColumn) &&
-      typeof pkColumn.cellClass === "function"
-    ) {
-      const cellClassFn = pkColumn.cellClass as (
-        params: CellClassParams<RowObjectType>,
-      ) => string | undefined;
+    if (pkColumn && isColumn(pkColumn)) {
+      const col = pkColumn as SingleColumn;
+      if (typeof col.cellClass === "function") {
+        const cellClassFn = col.cellClass as (
+          params: CellClassParams<RowObjectType>,
+        ) => string | undefined;
 
-      expect(cellClassFn(createCellClassParams({ __status: "added" }))).toBe(
-        "diff-header-added",
-      );
-      expect(cellClassFn(createCellClassParams({ __status: "removed" }))).toBe(
-        "diff-header-removed",
-      );
-      expect(cellClassFn(createCellClassParams({ __status: "modified" }))).toBe(
-        "diff-header-modified",
-      );
-      expect(
-        cellClassFn(createCellClassParams({ __status: undefined })),
-      ).toBeUndefined();
+        expect(cellClassFn(createCellClassParams({ __status: "added" }))).toBe(
+          "diff-header-added",
+        );
+        expect(
+          cellClassFn(createCellClassParams({ __status: "removed" })),
+        ).toBe("diff-header-removed");
+        expect(
+          cellClassFn(createCellClassParams({ __status: "modified" })),
+        ).toBe("diff-header-modified");
+        expect(
+          cellClassFn(createCellClassParams({ __status: undefined })),
+        ).toBeUndefined();
+      }
     }
   });
 
@@ -298,7 +305,7 @@ describe("buildDiffColumnDefinitions - Primary Key Columns", () => {
     const pkColumn = findColumnByKey(result.columns, "id");
     expect(pkColumn).toBeDefined();
     if (pkColumn && isColumn(pkColumn)) {
-      expect(pkColumn.cellRenderer).toBeDefined();
+      expect((pkColumn as SingleColumn).cellRenderer).toBeDefined();
     }
   });
 
@@ -327,7 +334,7 @@ describe("buildDiffColumnDefinitions - Primary Key Columns", () => {
     );
 
     const pinnedColumns = result.columns.filter(
-      (c) => isColumn(c) && c.pinned === "left",
+      (c) => isColumn(c) && (c as SingleColumn).pinned === "left",
     );
     expect(pinnedColumns).toHaveLength(2);
 
@@ -372,11 +379,12 @@ describe("buildDiffColumnDefinitions - Index Fallback", () => {
     const indexColumn = result.columns[0];
     expect(isColumn(indexColumn)).toBe(true);
     if (isColumn(indexColumn)) {
-      expect(indexColumn.field).toBe("_index");
-      expect(indexColumn.headerName).toBe("");
-      expect(indexColumn.width).toBe(50);
-      expect(indexColumn.maxWidth).toBe(100);
-      expect(indexColumn.cellClass).toBe("index-column");
+      const col = indexColumn as SingleColumn;
+      expect(col.field).toBe("_index");
+      expect(col.headerName).toBe("");
+      expect(col.width).toBe(50);
+      expect(col.maxWidth).toBe(100);
+      expect(col.cellClass).toBe("index-column");
     }
   });
 
@@ -404,7 +412,7 @@ describe("buildDiffColumnDefinitions - Index Fallback", () => {
 
     expect(result.usedIndexFallback).toBe(false);
     const indexColumn = result.columns.find(
-      (c) => isColumn(c) && c.field === "_index",
+      (c) => isColumn(c) && (c as SingleColumn).field === "_index",
     );
     expect(indexColumn).toBeUndefined();
   });
@@ -443,7 +451,7 @@ describe("buildDiffColumnDefinitions - Display Modes", () => {
     );
 
     const nonPkColumns = result.columns.filter(
-      (c) => isColumn(c) && c.field !== "id",
+      (c) => isColumn(c) && (c as SingleColumn).field !== "id",
     );
     nonPkColumns.forEach((col) => {
       expect(isColumnGroup(col)).toBe(false);
@@ -461,7 +469,7 @@ describe("buildDiffColumnDefinitions - Display Modes", () => {
     const pkColumn = result.columns[0];
     expect(isColumn(pkColumn)).toBe(true);
     if (isColumn(pkColumn)) {
-      expect(pkColumn.field).toBe("id");
+      expect((pkColumn as SingleColumn).field).toBe("id");
     }
 
     // Non-PK columns should be column groups with children
@@ -583,9 +591,9 @@ describe("buildDiffColumnDefinitions - Column Metadata", () => {
     const priceCol = findColumnByKey(result.columns, "price");
     const nameCol = findColumnByKey(result.columns, "name");
 
-    expect(idCol?.columnType).toBe("integer");
-    expect(priceCol?.columnType).toBe("number");
-    expect(nameCol?.columnType).toBe("text");
+    expect(idCol?.context?.columnType).toBe("integer");
+    expect(priceCol?.context?.columnType).toBe("number");
+    expect(nameCol?.context?.columnType).toBe("text");
   });
 
   test("preserves columnRenderMode from config", () => {
@@ -615,8 +623,8 @@ describe("buildDiffColumnDefinitions - Column Metadata", () => {
     const percentageCol = findColumnByKey(result.columns, "percentage");
     const decimalCol = findColumnByKey(result.columns, "decimal");
 
-    expect(percentageCol?.columnRenderMode).toBe("percent");
-    expect(decimalCol?.columnRenderMode).toBe(2);
+    expect(percentageCol?.context?.columnRenderMode).toBe("percent");
+    expect(decimalCol?.context?.columnRenderMode).toBe(2);
   });
 
   test("handles undefined columnStatus", () => {
@@ -761,7 +769,7 @@ describe("buildDiffColumnDefinitions - Edge Cases", () => {
     );
 
     const allPinned = result.columns.every(
-      (c) => isColumn(c) && c.pinned === "left",
+      (c) => isColumn(c) && (c as SingleColumn).pinned === "left",
     );
     expect(allPinned).toBe(true);
     expect(result.usedIndexFallback).toBe(false);
@@ -785,7 +793,7 @@ describe("buildDiffColumnDefinitions - Edge Cases", () => {
     expect(result.usedIndexFallback).toBe(false);
 
     const anyPinned = result.columns.some(
-      (c) => isColumn(c) && c.pinned === "left",
+      (c) => isColumn(c) && (c as SingleColumn).pinned === "left",
     );
     expect(anyPinned).toBe(false);
   });

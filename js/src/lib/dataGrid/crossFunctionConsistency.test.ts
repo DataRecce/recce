@@ -426,21 +426,27 @@ describe("Column type preservation consistency", () => {
     const diffResult = toDataDiffGrid(df, df, { primaryKeys: ["id"] });
     const joinedResult = toValueDiffGrid(joinedDf, ["id"]);
 
-    // Helper to find column type
+    // Helper to find column type (now stored in context property)
     const findColumnType = (
       columns: GridColumn[],
       key: string,
     ): ColumnType | undefined => {
       for (const col of columns) {
-        if ("field" in col && col.field === key && "columnType" in col) {
-          return col.columnType as ColumnType;
+        if ("field" in col && col.field === key && "context" in col) {
+          const context = col.context as
+            | { columnType?: ColumnType }
+            | undefined;
+          return context?.columnType;
         }
         if ("children" in col && Array.isArray(col.children)) {
           const child = col.children.find(
             (c) => "field" in c && c.field === `base__${key}`,
           );
-          if (child && "columnType" in child) {
-            return (child as GridColumn).columnType as ColumnType;
+          if (child && "context" in child) {
+            const context = (child as GridColumn).context as
+              | { columnType?: ColumnType }
+              | undefined;
+            return context?.columnType;
           }
         }
       }

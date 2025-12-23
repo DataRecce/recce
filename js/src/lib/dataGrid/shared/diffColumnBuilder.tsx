@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dataGrid";
 import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
 import { ColumnConfig } from "./columnBuilders";
+import { type RecceColumnContext } from "./simpleColumnBuilder";
 import { toDiffColumn } from "./toDiffColumn";
 
 // ============================================================================
@@ -21,15 +22,13 @@ import { toDiffColumn } from "./toDiffColumn";
 // ============================================================================
 
 /**
- * Extended column type with metadata (matches existing pattern)
+ * Extended column type with context metadata
+ * Uses context property for custom data per AG Grid best practices
+ * Note: Distributed form allows TypeScript to narrow types correctly
  */
-export type DiffColumnDefinition = (
-  | ColDef<RowObjectType>
-  | ColGroupDef<RowObjectType>
-) & {
-  columnType?: ColumnType;
-  columnRenderMode?: ColumnRenderMode;
-};
+export type DiffColumnDefinition =
+  | (ColDef<RowObjectType> & { context?: RecceColumnContext })
+  | (ColGroupDef<RowObjectType> & { context?: RecceColumnContext });
 
 /**
  * Configuration for building diff column definitions
@@ -137,8 +136,7 @@ function createPrimaryKeyColumn(
       return undefined;
     },
     cellRenderer: defaultRenderCell,
-    columnType,
-    columnRenderMode,
+    context: { columnType, columnRenderMode },
   };
 }
 

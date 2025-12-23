@@ -27,11 +27,20 @@ import {
 } from "@/lib/dataGrid/shared/gridUtils";
 
 /**
- * Extended column definition with optional type metadata
+ * Custom context data for Recce columns
+ * Stored in colDef.context to avoid AG Grid validation warnings
  */
-type ColDefWithMetadata = ColDef<RowObjectType> & {
+interface RecceColumnContext {
   columnType?: ColumnType;
   columnRenderMode?: ColumnRenderMode;
+}
+
+/**
+ * Extended column definition with context metadata
+ * Uses context property for custom data per AG Grid best practices
+ */
+type ColDefWithMetadata = ColDef<RowObjectType> & {
+  context?: RecceColumnContext;
 };
 
 /**
@@ -51,8 +60,8 @@ export const inlineRenderCell = (
   params: ICellRendererParams<RowObjectType>,
 ) => {
   const colDef = params.colDef as ColDefWithMetadata;
-  const columnType = colDef?.columnType;
-  const columnRenderMode = colDef?.columnRenderMode;
+  const columnType = colDef?.context?.columnType;
+  const columnRenderMode = colDef?.context?.columnRenderMode;
   const columnKey = colDef?.field ?? "";
 
   if (!params.data) {

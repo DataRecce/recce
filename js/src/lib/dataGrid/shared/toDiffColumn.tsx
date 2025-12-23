@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dataGrid";
 import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
 import { getHeaderCellClass } from "./gridUtils";
+import { type RecceColumnContext } from "./simpleColumnBuilder";
 
 // ============================================================================
 // Types
@@ -44,15 +45,13 @@ export interface DiffColumnConfig {
 }
 
 /**
- * Extended column type with metadata
+ * Extended column type with context metadata
+ * Uses context property for custom data per AG Grid best practices
+ * Note: Distributed form allows TypeScript to narrow types correctly
  */
-export type DiffColumnResult = (
-  | ColDef<RowObjectType>
-  | ColGroupDef<RowObjectType>
-) & {
-  columnType?: ColumnType;
-  columnRenderMode?: ColumnRenderMode;
-};
+export type DiffColumnResult =
+  | (ColDef<RowObjectType> & { context?: RecceColumnContext })
+  | (ColGroupDef<RowObjectType> & { context?: RecceColumnContext });
 
 // ============================================================================
 // Cell Class Factories
@@ -197,8 +196,7 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
       headerClass: headerCellClass,
       headerComponent,
       cellRenderer: inlineRenderCell,
-      columnType,
-      columnRenderMode,
+      context: { columnType, columnRenderMode },
     };
   }
 
@@ -210,8 +208,7 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
     headerName: name,
     headerClass: headerCellClass,
     headerGroupComponent: headerComponent,
-    columnType,
-    columnRenderMode,
+    context: { columnType, columnRenderMode },
     children: [
       {
         field: `base__${name}`,
@@ -219,8 +216,7 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
         headerClass: headerCellClass,
         cellClass: cellClassBase,
         cellRenderer: defaultRenderCell,
-        columnType,
-        columnRenderMode,
+        context: { columnType, columnRenderMode },
       } as ColDef<RowObjectType>,
       {
         field: `current__${name}`,
@@ -228,8 +224,7 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
         headerClass: headerCellClass,
         cellClass: cellClassCurrent,
         cellRenderer: defaultRenderCell,
-        columnType,
-        columnRenderMode,
+        context: { columnType, columnRenderMode },
       } as ColDef<RowObjectType>,
     ],
   };
