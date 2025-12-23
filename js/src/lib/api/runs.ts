@@ -1,4 +1,4 @@
-import { AxiosResponse } from "axios";
+import { AxiosInstance, AxiosResponse } from "axios";
 import { RunType } from "@/components/run/registry";
 import { axiosClient } from "./axiosClient";
 import { getExperimentTrackingBreakingChangeEnabled } from "./track";
@@ -148,12 +148,14 @@ export type RunsAggregated = Record<
     }
   >
 >;
-export async function aggregateRuns(): Promise<RunsAggregated> {
+export async function aggregateRuns(
+  client: AxiosInstance = axiosClient,
+): Promise<RunsAggregated> {
   // input should be AggregateRunsIn
-  const response = await axiosClient.post<
-    unknown,
-    AxiosResponse<RunsAggregated>
-  >(`/api/runs/aggregate`, {});
+  const response = await client.post<unknown, AxiosResponse<RunsAggregated>>(
+    `/api/runs/aggregate`,
+    {},
+  );
 
   return response.data;
 }
