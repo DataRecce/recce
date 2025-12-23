@@ -24,6 +24,7 @@ import {
   ServerDisconnectedModalContent,
 } from "@/components/lineage/ServerDisconnectedModalContent";
 import { toaster } from "@/components/ui/toaster";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { cacheKeys } from "../api/cacheKeys";
 import { markRelaunchHintCompleted } from "../api/flag";
@@ -115,7 +116,15 @@ type WebSocketPayload =
       event: WebSocketBroadcastEvent;
     };
 
-function useLineageWatcher() {
+interface UseLineageWatcherOptions {
+  /**
+   * Whether to enable WebSocket connection.
+   * Set to false for cloud mode where WebSocket is not used.
+   */
+  enabled?: boolean;
+}
+
+function useLineageWatcher({ enabled = true }: UseLineageWatcherOptions = {}) {
   const [artifactsUpdatedToastId, setArtifactsUpdatedToastId] = useState<
     string | undefined
   >(undefined);
@@ -131,7 +140,10 @@ function useLineageWatcher() {
     artifactsUpdatedToastId: undefined,
   });
 
-  const [status, setStatus] = useState<LineageWatcherStatus>("pending");
+  // If disabled, always return "connected" status to avoid showing disconnect modal
+  const [status, setStatus] = useState<LineageWatcherStatus>(
+    enabled ? "pending" : "connected",
+  );
   const [envStatus, setEnvStatus] = useState<EnvWatcherStatus>(undefined);
 
   // Update ref in useEffect to avoid updating during render
@@ -228,6 +240,11 @@ function useLineageWatcher() {
   }, [invalidateCaches]);
 
   useEffect(() => {
+    // Skip WebSocket connection if disabled (e.g., cloud mode)
+    if (!enabled) {
+      return;
+    }
+
     const refObj = ref.current;
     connect();
     return () => {
@@ -235,7 +252,7 @@ function useLineageWatcher() {
         refObj.ws.close();
       }
     };
-  }, [connect]);
+  }, [connect, enabled]);
 
   return {
     connectionStatus: status,
@@ -257,14 +274,17 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     resetConnection,
   } = useIdleTimeout();
 
+  // Get configured API client from context
+  const { apiClient, apiPrefix } = useApiConfig();
+
   const queryServerInfo = useQuery({
     queryKey: cacheKeys.lineage(),
-    queryFn: getServerInfo,
+    queryFn: () => getServerInfo(apiClient),
   });
 
   const queryRunAggregated = useQuery({
     queryKey: cacheKeys.runsAggregated(),
-    queryFn: aggregateRuns,
+    queryFn: () => aggregateRuns(apiClient),
   });
 
   const lineageGraph = useMemo(() => {
@@ -310,7 +330,11 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     sqlmesh,
   };
 
-  const { connectionStatus, connect, envStatus } = useLineageWatcher();
+  // Disable WebSocket in cloud mode (when apiPrefix is configured)
+  const isCloudMode = Boolean(apiPrefix);
+  const { connectionStatus, connect, envStatus } = useLineageWatcher({
+    enabled: !isCloudMode,
+  });
 
   // Handle connection status changes for idle timeout
   useEffect(() => {
