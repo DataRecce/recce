@@ -7,6 +7,7 @@ import ListItemText from "@mui/material/ListItemText";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
+import { useTheme } from "@mui/material/styles";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
@@ -56,6 +57,8 @@ interface RunPageProps {
 }
 
 const _ParamView = (data: { type: string; params: RunParamTypes }) => {
+  const muiTheme = useTheme();
+  const isDark = muiTheme.palette.mode === "dark";
   const yaml = YAML.stringify(data, null, 2);
   return (
     <CodeEditor
@@ -66,6 +69,7 @@ const _ParamView = (data: { type: string; params: RunParamTypes }) => {
       wordWrap={true}
       fontSize={14}
       height="100%"
+      theme={isDark ? "dark" : "light"}
       className="no-track-pii-safe"
     />
   );
