@@ -1,13 +1,3 @@
-/* React Flow Background - ensure dots are visible */
-.react-flow__background-pattern.dots {
-  fill: var(--xy-background-pattern-color-props, #91919a) !important;
-}
-
-/* Debug: force dots to be red to verify rendering */
-/* .react-flow__background-pattern.dots {
-  fill: red !important;
-} */
-
 /* React Flow Controls - Dark Mode Support */
 .dark .react-flow__controls {
   background-color: #374151;
