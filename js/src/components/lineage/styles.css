@@ -1,12 +1,12 @@
-.node-unhighlight {
-  filter: opacity(0.2) grayscale(50%);
+/* React Flow Background - ensure dots are visible */
+.react-flow__background-pattern.dots {
+  fill: var(--xy-background-pattern-color-props, #91919a) !important;
 }
 
-.node-highlight {
-  border-width: 1;
-  border-color: "orange";
-  box-shadow: "0px 5px 15px #00000040";
-}
+/* Debug: force dots to be red to verify rendering */
+/* .react-flow__background-pattern.dots {
+  fill: red !important;
+} */
 
 /* React Flow Controls - Dark Mode Support */
 .dark .react-flow__controls {

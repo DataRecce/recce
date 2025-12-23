@@ -60,8 +60,10 @@ export function MainLayout({ children, lineage }: MainLayoutProps) {
   const { isDemoSite, isLoading, isCodespace } = useLineageGraphContext();
   const { featureToggles } = useRecceInstanceContext();
 
-  // Determine if lineage route is active
-  const isLineageRoute = pathname === "/lineage" || pathname === "/";
+  // Determine if lineage route is active (handle trailing slashes)
+  const normalizedPath = pathname.replace(/\/$/, "") || "/";
+  const isLineageRoute =
+    normalizedPath === "/lineage" || normalizedPath === "/";
 
   useEffect(() => {
     trackInit();
@@ -125,7 +127,15 @@ function Main({ children, lineage, isLineageRoute }: MainProps) {
         <Suspense fallback={<MainContentLoading />}>
           {/* suppressHydrationWarning: react-split adds inline styles (height, width)
               to children after mount, causing expected server/client mismatches */}
-          <Box sx={{ p: 0, contain: "content" }} suppressHydrationWarning>
+          <Box
+            sx={{
+              p: 0,
+              contain: "content",
+              height: "100%",
+              position: "relative",
+            }}
+            suppressHydrationWarning
+          >
             {/*
              * Lineage parallel route - always mounted but visibility controlled
              * This replaces the old RouteAlwaysMount pattern
