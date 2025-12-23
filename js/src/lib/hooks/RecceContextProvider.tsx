@@ -1,5 +1,4 @@
 import React from "react";
-import { type ApiConfig, ApiConfigProvider } from "./ApiConfigContext";
 import { LineageGraphContextProvider } from "./LineageGraphContext";
 import { RecceActionContextProvider } from "./RecceActionContext";
 import { RecceCheckContextProvider } from "./RecceCheckContext";
@@ -10,47 +9,46 @@ import {
 } from "./RecceQueryContext";
 import { RecceShareStateContextProvider } from "./RecceShareStateContext";
 
-interface RecceContextProps extends Partial<ApiConfig> {
+interface RecceContextProps {
   children: React.ReactNode;
 }
 
 /**
  * Main context provider for Recce application.
  *
- * @param apiPrefix - API endpoint prefix to replace `/api` in all requests.
- *                    For OSS: "" (empty, uses default /api/* paths)
- *                    For Cloud: "/api/v2/sessions/<session_id>"
- * @param authToken - Optional auth token for API requests (adds Bearer header)
- * @param baseUrl - Optional base URL override for API requests
- * @param children - Child components
+ * For custom API configuration (e.g., recce-cloud), wrap this provider
+ * with ApiConfigProvider:
+ *
+ * ```tsx
+ * <ApiConfigProvider
+ *   apiPrefix="/api/v2/sessions/abc123"
+ *   authToken="eyJ..."
+ * >
+ *   <RecceContextProvider>
+ *     {children}
+ *   </RecceContextProvider>
+ * </ApiConfigProvider>
+ * ```
+ *
+ * When used without ApiConfigProvider (OSS mode), hooks will use
+ * the default axios client with standard /api/* endpoints.
  */
-export default function RecceContextProvider({
-  children,
-  apiPrefix,
-  authToken,
-  baseUrl,
-}: RecceContextProps) {
+export default function RecceContextProvider({ children }: RecceContextProps) {
   return (
-    <ApiConfigProvider
-      apiPrefix={apiPrefix}
-      authToken={authToken}
-      baseUrl={baseUrl}
-    >
-      <RecceInstanceInfoProvider>
-        <RecceShareStateContextProvider>
-          <RecceQueryContextProvider>
-            <LineageGraphContextProvider>
-              <RowCountStateContextProvider>
-                <RecceActionContextProvider>
-                  <RecceCheckContextProvider>
-                    {children}
-                  </RecceCheckContextProvider>
-                </RecceActionContextProvider>
-              </RowCountStateContextProvider>
-            </LineageGraphContextProvider>
-          </RecceQueryContextProvider>
-        </RecceShareStateContextProvider>
-      </RecceInstanceInfoProvider>
-    </ApiConfigProvider>
+    <RecceInstanceInfoProvider>
+      <RecceShareStateContextProvider>
+        <RecceQueryContextProvider>
+          <LineageGraphContextProvider>
+            <RowCountStateContextProvider>
+              <RecceActionContextProvider>
+                <RecceCheckContextProvider>
+                  {children}
+                </RecceCheckContextProvider>
+              </RecceActionContextProvider>
+            </RowCountStateContextProvider>
+          </LineageGraphContextProvider>
+        </RecceQueryContextProvider>
+      </RecceShareStateContextProvider>
+    </RecceInstanceInfoProvider>
   );
 }

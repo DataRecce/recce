@@ -123,18 +123,26 @@ export function ApiConfigProvider({
   );
 }
 
+// Default config used when ApiConfigProvider is not present (OSS mode)
+const defaultApiConfigContext: ApiConfigContextType = {
+  apiPrefix: "",
+  authToken: undefined,
+  baseUrl: undefined,
+  apiClient: axios.create({ baseURL: PUBLIC_API_URL }),
+};
+
 /**
  * Hook to access the API configuration and configured axios client.
  *
+ * When used outside ApiConfigProvider, returns default config with
+ * standard axiosClient (for OSS backward compatibility).
+ *
  * @returns ApiConfigContextType with apiPrefix, authToken, and apiClient
- * @throws Error if used outside of ApiConfigProvider
  */
 export function useApiConfig(): ApiConfigContextType {
   const context = useContext(ApiConfigContext);
-  if (!context) {
-    throw new Error("useApiConfig must be used within an ApiConfigProvider");
-  }
-  return context;
+  // Return default config if outside provider (OSS mode)
+  return context ?? defaultApiConfigContext;
 }
 
 /**
@@ -149,7 +157,7 @@ export function useApiClient(): AxiosInstance {
 
 /**
  * Safe version of useApiConfig that returns null if outside provider.
- * Useful for components that may be used both inside and outside the provider.
+ * Useful for components that need to detect if ApiConfigProvider is present.
  */
 export function useApiConfigSafe(): ApiConfigContextType | null {
   return useContext(ApiConfigContext);
