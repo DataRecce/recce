@@ -1,11 +1,16 @@
+/**
+ * Split pane gutter styles
+ * Uses CSS custom properties from global.css for theme-aware colors.
+ */
+
 .gutter {
-  background-color: #eee;
+  background-color: var(--recce-gutter-bg);
   background-repeat: no-repeat;
   background-position: 50%;
 }
 
 .gutter:hover {
-  background-color: orange;
+  background-color: var(--recce-gutter-hover);
 }
 
 .gutter.gutter-vertical {

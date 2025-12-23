@@ -3,6 +3,7 @@ import MuiDialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
+import { useTheme } from "@mui/material/styles";
 import React, { useState } from "react";
 import { FaExpandArrowsAlt } from "react-icons/fa";
 import { IoClose } from "react-icons/io5";
@@ -18,6 +19,8 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const { data: flags, isLoading } = useRecceServerFlag();
+  const muiTheme = useTheme();
+  const isDark = muiTheme.palette.mode === "dark";
   const isSingleEnvOnboarding = flags?.single_env_onboarding;
 
   if (isLoading) {
@@ -54,6 +57,7 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
           readOnly={true}
           lineNumbers={true}
           wordWrap={false}
+          theme={isDark ? "dark" : "light"}
         />
       ) : (
         <DiffEditor
@@ -63,6 +67,7 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
           readOnly={true}
           lineNumbers={true}
           sideBySide={false} // Inline diff mode
+          theme={isDark ? "dark" : "light"}
           height="100%"
         />
       )}
@@ -113,12 +118,14 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
               readOnly={true}
               lineNumbers={true}
               wordWrap={false}
+              theme={isDark ? "dark" : "light"}
             />
           ) : (
             <DiffEditor
               original={original ?? ""}
               modified={modified ?? ""}
               language="sql"
+              theme={isDark ? "dark" : "light"}
               className="text-base"
             />
           )}

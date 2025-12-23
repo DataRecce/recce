@@ -1,9 +1,11 @@
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
 import { ReactNode, useState } from "react";
 import { PiCopy } from "react-icons/pi";
 import { useCopyToClipboard } from "usehooks-ts";
 import { colors } from "@/components/ui/mui-theme";
+import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 
 interface DiffTextProps {
   value: string;
@@ -83,36 +85,36 @@ function CopyControl({
   grayOut,
   isHovered,
 }: CopyControlProps): ReactNode {
-  const [copiedText, copyToClipboard] = useCopyToClipboard();
-  const hasCopiedText = Boolean(copiedText);
+  const [, copyToClipboard] = useCopyToClipboard();
+  const { successToast } = useClipBoardToast();
 
-  if (noCopy || grayOut) {
+  if (noCopy || grayOut || !isHovered) {
     return <></>;
   }
 
-  if (hasCopiedText) {
-    return <>Copied</>;
-  }
-
-  if (!isHovered) {
-    return <></>;
-  }
+  const handleCopy = () => {
+    copyToClipboard(value);
+    successToast(`${value} copied`);
+  };
 
   return (
-    <IconButton
-      aria-label="Copy"
-      size="small"
-      onClick={() => copyToClipboard(value)}
-      sx={{
-        minWidth: "10px",
-        height: "10px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        p: 0,
-      }}
-    >
-      <PiCopy size="10px" />
-    </IconButton>
+    <Tooltip title="Copy Value">
+      <IconButton
+        aria-label="Copy"
+        size="small"
+        onClick={handleCopy}
+        sx={{
+          minWidth: "0.625rem",
+          height: "0.625rem",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 0,
+          color: "inherit",
+        }}
+      >
+        <PiCopy size="0.625rem" />
+      </IconButton>
+    </Tooltip>
   );
 }

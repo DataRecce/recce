@@ -10,6 +10,7 @@
 
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
+import { useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import React, { useState } from "react";
 import Markdown, { Components } from "react-markdown";
@@ -125,10 +126,12 @@ function MarkdownLink({
 function CodeBlock({
   className,
   children,
+  isDark = false,
 }: {
   className?: string;
   children?: React.ReactNode;
   node?: unknown;
+  isDark?: boolean;
 }) {
   const match = /language-(\w+)/.exec(className || "");
   const language = match ? match[1] : undefined;
@@ -142,7 +145,8 @@ function CodeBlock({
       <Box
         component="code"
         sx={{
-          bgcolor: "grey.100",
+          bgcolor: isDark ? "grey.800" : "grey.100",
+          color: isDark ? "grey.200" : "inherit",
           px: 1,
           py: 0.5,
           borderRadius: 0.5,
@@ -180,6 +184,9 @@ export function MarkdownContent({
   fontSize = "0.875rem",
   internalDomains = [],
 }: MarkdownContentProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
   // Build the list of internal domains
   const allInternalDomains = [
     window.location.hostname,
@@ -199,7 +206,7 @@ export function MarkdownContent({
     ),
 
     // Code blocks with syntax highlighting
-    code: CodeBlock,
+    code: (props) => <CodeBlock {...props} isDark={isDark} />,
 
     // Paragraphs
     p: ({ children }) => (
@@ -254,11 +261,11 @@ export function MarkdownContent({
       <Box
         sx={{
           borderLeft: "3px solid",
-          borderLeftColor: "grey.300",
+          borderLeftColor: isDark ? "grey.600" : "grey.300",
           pl: 3,
           py: 1,
           my: 2,
-          color: "grey.600",
+          color: isDark ? "grey.400" : "grey.600",
           fontStyle: "italic",
         }}
       >
@@ -275,7 +282,7 @@ export function MarkdownContent({
             width: "100%",
             fontSize,
             border: "1px solid",
-            borderColor: "grey.200",
+            borderColor: isDark ? "grey.700" : "grey.200",
             borderRadius: 1,
           }}
         >
@@ -284,7 +291,7 @@ export function MarkdownContent({
       </Box>
     ),
     thead: ({ children }) => (
-      <Box component="thead" sx={{ bgcolor: "grey.50" }}>
+      <Box component="thead" sx={{ bgcolor: isDark ? "grey.800" : "grey.50" }}>
         {children}
       </Box>
     ),
@@ -292,7 +299,10 @@ export function MarkdownContent({
     tr: ({ children }) => (
       <Box
         component="tr"
-        sx={{ borderBottom: "1px solid", borderColor: "grey.200" }}
+        sx={{
+          borderBottom: "1px solid",
+          borderColor: isDark ? "grey.700" : "grey.200",
+        }}
       >
         {children}
       </Box>
@@ -312,7 +322,12 @@ export function MarkdownContent({
     ),
 
     // Horizontal rule
-    hr: () => <Box component="hr" sx={{ my: 3, borderColor: "grey.200" }} />,
+    hr: () => (
+      <Box
+        component="hr"
+        sx={{ my: 3, borderColor: isDark ? "grey.700" : "grey.200" }}
+      />
+    ),
 
     // Strong/Bold
     strong: ({ children }) => (

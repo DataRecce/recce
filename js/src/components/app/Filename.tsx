@@ -323,8 +323,9 @@ export const Filename = () => {
         </DialogTitle>
         <DialogContent
           sx={{
-            borderTop: "solid 1px lightgray",
-            borderBottom: "solid 1px lightgray",
+            borderTop: "solid 1px",
+            borderBottom: "solid 1px",
+            borderColor: "divider",
           }}
           onKeyDown={(e) => {
             e.stopPropagation();

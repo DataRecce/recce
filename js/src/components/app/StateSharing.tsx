@@ -3,7 +3,7 @@ import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PiCheckCircle, PiCopy } from "react-icons/pi";
 import { TbCloudUpload } from "react-icons/tb";
 import { useCopyToClipboard, useInterval } from "usehooks-ts";
@@ -47,6 +47,13 @@ export function TopLevelShare() {
     },
     isLoading ? 30000 : null,
   );
+
+  // Show error toast when sharing fails
+  useEffect(() => {
+    if (error) {
+      failToast("Failed to share state", error);
+    }
+  }, [error, failToast]);
 
   const handleCopy = async () => {
     try {
@@ -131,11 +138,6 @@ export function TopLevelShare() {
               <PiCopy />
             </IconButton>
           </>
-        )}
-        {error && (
-          <Typography sx={{ fontSize: 14, color: "error.main" }}>
-            {error}
-          </Typography>
         )}
       </Stack>
     </Stack>

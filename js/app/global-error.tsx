@@ -12,6 +12,7 @@
 
 import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
+import { colors } from "@/components/ui/mui-theme";
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };
@@ -45,15 +46,15 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             alignItems: "center",
             justifyContent: "center",
             height: "100vh",
-            backgroundColor: "#f7fafc",
+            backgroundColor: colors.neutral[50],
             fontFamily: "system-ui, sans-serif",
           }}
         >
           <div
             style={{
               padding: "2rem",
-              backgroundColor: "white",
-              border: "1px solid #e2e8f0",
+              backgroundColor: "#FFFFFF",
+              border: `1px solid ${colors.neutral[200]}`,
               borderRadius: "8px",
               maxWidth: "600px",
               boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
@@ -64,7 +65,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                 fontSize: "1.5rem",
                 fontWeight: 600,
                 marginBottom: "1rem",
-                color: "#1a202c",
+                color: colors.neutral[900],
               }}
             >
               Something went wrong
@@ -73,7 +74,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             <p
               style={{
                 fontSize: "0.875rem",
-                color: "#4a5568",
+                color: colors.neutral[600],
                 marginBottom: "1rem",
               }}
             >
@@ -84,7 +85,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               <p
                 style={{
                   fontSize: "0.75rem",
-                  color: "#a0aec0",
+                  color: colors.neutral[400],
                   marginBottom: "1.5rem",
                 }}
               >
@@ -96,8 +97,8 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               onClick={() => reset()}
               style={{
                 padding: "0.5rem 1rem",
-                backgroundColor: "#3182ce",
-                color: "white",
+                backgroundColor: colors.iochmara[500],
+                color: "#FFFFFF",
                 border: "none",
                 borderRadius: "4px",
                 fontSize: "0.875rem",

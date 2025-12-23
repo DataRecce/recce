@@ -62,6 +62,7 @@ export const IconModifiedDownstream = (
 
 export function getIconForChangeStatus(
   changeStatus?: "added" | "removed" | "modified",
+  isDark?: boolean,
 ): {
   color: string;
   hexColor: string;
@@ -71,7 +72,9 @@ export function getIconForChangeStatus(
 } {
   if (changeStatus === "added") {
     const color = String(token("colors.green.solid"));
-    const backgroundColor = String(token("colors.green.subtle"));
+    const backgroundColor = isDark
+      ? String(token("colors.green.muted"))
+      : String(token("colors.green.subtle"));
     return {
       color,
       hexColor: color,
@@ -81,7 +84,9 @@ export function getIconForChangeStatus(
     };
   } else if (changeStatus === "removed") {
     const color = String(token("colors.red.solid"));
-    const backgroundColor = String(token("colors.red.subtle"));
+    const backgroundColor = isDark
+      ? String(token("colors.red.muted"))
+      : String(token("colors.red.subtle"));
     return {
       color,
       hexColor: color,
@@ -91,7 +96,9 @@ export function getIconForChangeStatus(
     };
   } else if (changeStatus === "modified") {
     const color = String(token("colors.amber.emphasized"));
-    const backgroundColor = String(token("colors.amber.subtle"));
+    const backgroundColor = isDark
+      ? String(token("colors.amber.emphasized"))
+      : String(token("colors.amber.subtle"));
     return {
       color,
       hexColor: color,
@@ -102,7 +109,8 @@ export function getIconForChangeStatus(
   }
 
   const color = String(token("colors.gray.focusRing"));
-  const backgroundColor = "#ffffff";
+  // Use theme-aware background for default state
+  const backgroundColor = isDark ? "#404040" : "#ffffff";
   return {
     color,
     hexColor: color,

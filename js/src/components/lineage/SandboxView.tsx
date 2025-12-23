@@ -5,6 +5,7 @@ import MuiDialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
+import { alpha, useTheme } from "@mui/material/styles";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMutation } from "@tanstack/react-query";
@@ -14,6 +15,7 @@ import { AiOutlineExperiment } from "react-icons/ai";
 import { IoClose } from "react-icons/io5";
 import { VscFeedback } from "react-icons/vsc";
 import { DiffEditor } from "@/components/editor";
+import { colors } from "@/components/ui/mui-theme";
 import { QueryParams, submitQueryDiff } from "@/lib/api/adhocQuery";
 import { NodeData } from "@/lib/api/info";
 import { localStorageKeys } from "@/lib/api/localStorageKeys";
@@ -65,7 +67,8 @@ function SandboxTopBar({
         p: "4pt 8pt",
         gap: "5px",
         height: "54px",
-        borderBottom: "1px solid lightgray",
+        borderBottom: "1px solid",
+        borderBottomColor: "divider",
         flex: "0 0 54px",
       }}
     >
@@ -115,6 +118,8 @@ function SandboxEditorLabels({
   height?: string;
   flex?: string;
 }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const { lineageGraph, envInfo } = useLineageGraphContext();
   const widthOfBar = "50%";
   const margin = "0 16px";
@@ -143,7 +148,9 @@ function SandboxEditorLabels({
         fontSize: "14px",
         alignItems: "center",
         m: 0,
-        bgcolor: "#EDF2F880",
+        bgcolor: isDark
+          ? alpha(colors.neutral[700], 0.5)
+          : alpha(colors.neutral[100], 0.5),
       }}
     >
       <Stack sx={{ width: widthOfBar }}>
@@ -166,6 +173,8 @@ interface SqlPreviewProps {
 }
 
 function SqlPreview({ current, onChange }: SqlPreviewProps) {
+  const muiTheme = useTheme();
+  const isDark = muiTheme.palette.mode === "dark";
   return (
     <DiffEditor
       original={current?.raw_code ?? ""}
@@ -174,6 +183,7 @@ function SqlPreview({ current, onChange }: SqlPreviewProps) {
       readOnly={false}
       lineNumbers={true}
       sideBySide={true}
+      theme={isDark ? "dark" : "light"}
       height="100%"
       onModifiedChange={onChange}
     />
@@ -315,7 +325,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
       <Box
         sx={{
           height: "40px",
-          bgcolor: "rgb(77, 209, 176)",
+          bgcolor: "cyan.600",
           px: 0,
           py: 2,
           display: "flex",
@@ -339,7 +349,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
             sx={{
               fontFamily: '"Montserrat", sans-serif',
               fontSize: "1.125rem",
-              color: "white",
+              color: "common.white",
             }}
           >
             RECCE
@@ -350,7 +360,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
             variant="outlined"
             sx={{
               fontSize: "0.875rem",
-              color: "white",
+              color: "common.white",
               borderColor: "rgba(255,255,255,0.5)",
             }}
           />
@@ -362,7 +372,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
             position: "absolute",
             right: 8,
             top: 4,
-            color: "white",
+            color: "common.white",
           }}
         >
           <IoClose />

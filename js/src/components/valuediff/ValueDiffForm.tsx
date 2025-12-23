@@ -2,13 +2,15 @@ import Box from "@mui/material/Box";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Stack from "@mui/material/Stack";
+import { useTheme } from "@mui/material/styles";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ReactSelect, {
   type CSSObjectWithLabel,
   type MultiValue,
 } from "react-select";
+import { colors } from "@/components/ui/mui-theme";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { RunFormProps } from "../run/types";
 
@@ -30,12 +32,80 @@ export function ValueDiffForm({
   onParamsChanged,
   setIsReadyToExecute,
 }: ValueDiffFormProp) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const [allColumns, setAllColumns] = useState<boolean>(
     !params.columns || params.columns.length === 0,
   );
 
   const model = params.model;
   const primaryKey = params.primary_key;
+
+  const selectStyles = useMemo(
+    () => ({
+      container: (base: CSSObjectWithLabel) => ({
+        ...base,
+        width: "100%",
+      }),
+      control: (base: CSSObjectWithLabel) => ({
+        ...base,
+        minHeight: "40px",
+        backgroundColor: isDark ? colors.neutral[700] : base.backgroundColor,
+        borderColor: isDark ? colors.neutral[600] : base.borderColor,
+      }),
+      menu: (base: CSSObjectWithLabel) => ({
+        ...base,
+        backgroundColor: isDark ? colors.neutral[700] : base.backgroundColor,
+      }),
+      option: (
+        base: CSSObjectWithLabel,
+        state: { isFocused: boolean; isSelected: boolean },
+      ) => ({
+        ...base,
+        backgroundColor: state.isSelected
+          ? isDark
+            ? colors.neutral[600]
+            : colors.iochmara[500]
+          : state.isFocused
+            ? isDark
+              ? colors.neutral[600]
+              : colors.iochmara[50]
+            : isDark
+              ? colors.neutral[700]
+              : base.backgroundColor,
+        color: isDark ? colors.neutral[200] : base.color,
+      }),
+      multiValue: (base: CSSObjectWithLabel) => ({
+        ...base,
+        backgroundColor: isDark ? colors.neutral[600] : base.backgroundColor,
+      }),
+      multiValueLabel: (base: CSSObjectWithLabel) => ({
+        ...base,
+        color: isDark ? colors.neutral[200] : base.color,
+      }),
+      multiValueRemove: (base: CSSObjectWithLabel) => ({
+        ...base,
+        color: isDark ? colors.neutral[400] : base.color,
+        "&:hover": {
+          backgroundColor: isDark ? colors.neutral[500] : colors.red[200],
+          color: isDark ? colors.neutral[200] : colors.red[600],
+        },
+      }),
+      input: (base: CSSObjectWithLabel) => ({
+        ...base,
+        color: isDark ? colors.neutral[200] : base.color,
+      }),
+      singleValue: (base: CSSObjectWithLabel) => ({
+        ...base,
+        color: isDark ? colors.neutral[200] : base.color,
+      }),
+      placeholder: (base: CSSObjectWithLabel) => ({
+        ...base,
+        color: isDark ? colors.neutral[400] : base.color,
+      }),
+    }),
+    [isDark],
+  );
 
   const {
     columns,
@@ -118,16 +188,7 @@ export function ValueDiffForm({
                   : optionsArray.map((v) => v.value),
             });
           }}
-          styles={{
-            container: (base: CSSObjectWithLabel) => ({
-              ...base,
-              width: "100%",
-            }),
-            control: (base: CSSObjectWithLabel) => ({
-              ...base,
-              minHeight: "40px",
-            }),
-          }}
+          styles={selectStyles}
         />
       </Box>
       <Box>
@@ -176,16 +237,7 @@ export function ValueDiffForm({
                 columns: cols,
               });
             }}
-            styles={{
-              container: (base: CSSObjectWithLabel) => ({
-                ...base,
-                width: "100%",
-              }),
-              control: (base: CSSObjectWithLabel) => ({
-                ...base,
-                minHeight: "40px",
-              }),
-            }}
+            styles={selectStyles}
           />
         )}
       </Box>

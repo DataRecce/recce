@@ -28,7 +28,7 @@ export function ActionControl({ onClose }: ActionControlProps) {
   };
 
   return (
-    <Box sx={{ bgcolor: "white", borderRadius: 1, boxShadow: 6 }}>
+    <Box sx={{ bgcolor: "background.paper", borderRadius: 1, boxShadow: 6 }}>
       <Stack
         direction="row"
         divider={<Divider orientation="vertical" flexItem />}

@@ -55,20 +55,26 @@ function _ValueDiffResultView(
         common, {result.summary.added} added, {result.summary.removed} removed)
       </Box>
 
-      <ScreenshotDataGrid
-        ref={ref}
-        style={{
-          blockSize: "auto",
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
           maxHeight: "100%",
           overflow: "auto",
-          borderBlock: "1px solid lightgray",
+          borderTop: "1px solid",
+          borderBottom: "1px solid",
+          borderColor: "divider",
         }}
-        columns={columns}
-        rows={rows}
-        renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
-        defaultColumnOptions={{ resizable: true }}
-        className="rdg-light"
-      />
+      >
+        <ScreenshotDataGrid
+          ref={ref}
+          columns={columns}
+          rows={rows}
+          renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
+          defaultColumnOptions={{ resizable: true }}
+          className="rdg-light"
+        />
+      </Box>
     </Box>
   );
 }

@@ -275,33 +275,7 @@ const buttonColorVariants = [
   ...createButtonColorVariants("rose", colors.rose),
   ...createButtonColorVariants("fuchsia", colors.fuchsia),
   ...createButtonColorVariants("brand", colors.brand),
-  // Neutral uses darker shades for better visibility
-  {
-    props: { color: "neutral" as const, variant: "contained" as const },
-    style: {
-      backgroundColor: colors.neutral[700],
-      color: "#FFFFFF",
-      "&:hover": { backgroundColor: colors.neutral[800] },
-    },
-  },
-  {
-    props: { color: "neutral" as const, variant: "outlined" as const },
-    style: {
-      borderColor: colors.neutral[300], // Lighter border (neutral.light)
-      color: colors.neutral[900],
-      "&:hover": {
-        borderColor: colors.neutral[400],
-        backgroundColor: colors.neutral[100],
-      },
-    },
-  },
-  {
-    props: { color: "neutral" as const, variant: "text" as const },
-    style: {
-      color: colors.neutral[700],
-      "&:hover": { backgroundColor: colors.neutral[100] },
-    },
-  },
+  // Neutral variants are handled via styleOverrides for theme-awareness
 ];
 
 // Generate all CircularProgress color variants
@@ -368,11 +342,52 @@ const componentOverrides: ThemeOptions["components"] = {
       ...buttonColorVariants,
     ],
     styleOverrides: {
-      root: {
+      root: ({ theme, ownerState }) => ({
         textTransform: "none",
         fontWeight: 500,
         borderRadius: 6,
-      },
+        // Theme-aware neutral button colors
+        ...(ownerState.color === "neutral" &&
+          ownerState.variant === "contained" && {
+            backgroundColor: colors.neutral[700],
+            color: "#FFFFFF",
+            "&:hover": { backgroundColor: colors.neutral[800] },
+          }),
+        ...(ownerState.color === "neutral" &&
+          ownerState.variant === "outlined" && {
+            borderColor:
+              theme.palette.mode === "dark"
+                ? colors.neutral[500]
+                : colors.neutral[300],
+            color:
+              theme.palette.mode === "dark"
+                ? colors.neutral[100]
+                : colors.neutral[900],
+            "&:hover": {
+              borderColor:
+                theme.palette.mode === "dark"
+                  ? colors.neutral[400]
+                  : colors.neutral[400],
+              backgroundColor:
+                theme.palette.mode === "dark"
+                  ? colors.neutral[700]
+                  : colors.neutral[100],
+            },
+          }),
+        ...(ownerState.color === "neutral" &&
+          ownerState.variant === "text" && {
+            color:
+              theme.palette.mode === "dark"
+                ? colors.neutral[200]
+                : colors.neutral[700],
+            "&:hover": {
+              backgroundColor:
+                theme.palette.mode === "dark"
+                  ? colors.neutral[700]
+                  : colors.neutral[100],
+            },
+          }),
+      }),
       sizeSmall: {
         padding: "0.25rem 0.75rem",
         fontSize: "0.875rem",
@@ -399,11 +414,14 @@ const componentOverrides: ThemeOptions["components"] = {
         },
       },
       // Text variant (ghost in Chakra)
-      text: {
+      text: ({ theme }) => ({
         "&:hover": {
-          backgroundColor: "rgba(0, 0, 0, 0.04)",
+          backgroundColor:
+            theme.palette.mode === "dark"
+              ? "rgba(255, 255, 255, 0.08)"
+              : "rgba(0, 0, 0, 0.04)",
         },
-      },
+      }),
     },
   },
   // IconButton overrides
@@ -450,9 +468,12 @@ const componentOverrides: ThemeOptions["components"] = {
           borderWidth: 2,
         },
       },
-      notchedOutline: {
-        borderColor: colors.neutral[300],
-      },
+      notchedOutline: ({ theme }) => ({
+        borderColor:
+          theme.palette.mode === "dark"
+            ? colors.neutral[600]
+            : colors.neutral[300],
+      }),
     },
   },
   // Checkbox overrides
@@ -499,19 +520,28 @@ const componentOverrides: ThemeOptions["components"] = {
   },
   MuiMenuItem: {
     styleOverrides: {
-      root: {
+      root: ({ theme }) => ({
         fontSize: "0.875rem",
         padding: "0.5rem 0.75rem",
         "&:hover": {
-          backgroundColor: colors.neutral[100],
+          backgroundColor:
+            theme.palette.mode === "dark"
+              ? colors.neutral[600]
+              : colors.neutral[100],
         },
         "&.Mui-selected": {
-          backgroundColor: colors.iochmara[50],
+          backgroundColor:
+            theme.palette.mode === "dark"
+              ? colors.iochmara[900]
+              : colors.iochmara[50],
           "&:hover": {
-            backgroundColor: colors.iochmara[100],
+            backgroundColor:
+              theme.palette.mode === "dark"
+                ? colors.iochmara[800]
+                : colors.iochmara[100],
           },
         },
-      },
+      }),
     },
   },
   // Chip overrides (Tag in Chakra)
@@ -546,15 +576,21 @@ const componentOverrides: ThemeOptions["components"] = {
   // Tooltip overrides
   MuiTooltip: {
     styleOverrides: {
-      tooltip: {
-        backgroundColor: colors.neutral[800],
+      tooltip: ({ theme }) => ({
+        backgroundColor:
+          theme.palette.mode === "dark"
+            ? colors.neutral[700]
+            : colors.neutral[800],
         fontSize: "0.75rem",
         padding: "0.25rem 0.5rem",
         borderRadius: 4,
-      },
-      arrow: {
-        color: colors.neutral[800],
-      },
+      }),
+      arrow: ({ theme }) => ({
+        color:
+          theme.palette.mode === "dark"
+            ? colors.neutral[700]
+            : colors.neutral[800],
+      }),
     },
   },
   // Alert overrides
@@ -563,22 +599,34 @@ const componentOverrides: ThemeOptions["components"] = {
       root: {
         borderRadius: 6,
       },
-      standardSuccess: {
-        backgroundColor: colors.green[50],
-        color: colors.green[800],
-      },
-      standardWarning: {
-        backgroundColor: colors.amber[50],
-        color: colors.amber[800],
-      },
-      standardError: {
-        backgroundColor: colors.red[50],
-        color: colors.red[800],
-      },
-      standardInfo: {
-        backgroundColor: colors.iochmara[50],
-        color: colors.iochmara[800],
-      },
+      standardSuccess: ({ theme }) => ({
+        backgroundColor:
+          theme.palette.mode === "dark" ? colors.green[900] : colors.green[50],
+        color:
+          theme.palette.mode === "dark" ? colors.green[200] : colors.green[800],
+      }),
+      standardWarning: ({ theme }) => ({
+        backgroundColor:
+          theme.palette.mode === "dark" ? colors.amber[900] : colors.amber[50],
+        color:
+          theme.palette.mode === "dark" ? colors.amber[200] : colors.amber[800],
+      }),
+      standardError: ({ theme }) => ({
+        backgroundColor:
+          theme.palette.mode === "dark" ? colors.red[900] : colors.red[50],
+        color:
+          theme.palette.mode === "dark" ? colors.red[200] : colors.red[800],
+      }),
+      standardInfo: ({ theme }) => ({
+        backgroundColor:
+          theme.palette.mode === "dark"
+            ? colors.iochmara[900]
+            : colors.iochmara[50],
+        color:
+          theme.palette.mode === "dark"
+            ? colors.iochmara[200]
+            : colors.iochmara[800],
+      }),
     },
   },
   // Tabs overrides
@@ -659,17 +707,23 @@ const componentOverrides: ThemeOptions["components"] = {
   // Divider overrides
   MuiDivider: {
     styleOverrides: {
-      root: {
-        borderColor: colors.neutral[200],
-      },
+      root: ({ theme }) => ({
+        borderColor:
+          theme.palette.mode === "dark"
+            ? colors.neutral[700]
+            : colors.neutral[200],
+      }),
     },
   },
   // Breadcrumbs overrides
   MuiBreadcrumbs: {
     styleOverrides: {
-      separator: {
-        color: colors.neutral[400],
-      },
+      separator: ({ theme }) => ({
+        color:
+          theme.palette.mode === "dark"
+            ? colors.neutral[500]
+            : colors.neutral[400],
+      }),
     },
   },
 };

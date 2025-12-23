@@ -1,6 +1,7 @@
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
+import { useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import { forwardRef, Ref, useState } from "react";
 import { TopKDiffParams, TopKDiffResult } from "@/lib/api/profile";
@@ -14,6 +15,8 @@ const PrivateTopKDiffResultView = (
   { run }: TopKDiffResultViewProp,
   ref: Ref<HTMLDivElement>,
 ) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const [isDisplayTopTen, setIsDisplayTopTen] = useState<boolean>(true);
   // TODO: Implement TopKDiffResultView
   const result = run.result as TopKDiffResult;
@@ -24,10 +27,18 @@ const PrivateTopKDiffResultView = (
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <ScreenshotBox ref={ref} blockSize={"auto"}>
+      <ScreenshotBox
+        ref={ref}
+        blockSize={"auto"}
+        backgroundColor={isDark ? "#1f2937" : "white"}
+      >
         <Typography
           variant="h5"
-          sx={{ pt: 4, textAlign: "center", color: "grey.600" }}
+          sx={{
+            pt: 4,
+            textAlign: "center",
+            color: isDark ? "grey.200" : "grey.600",
+          }}
         >
           Model {params.model}.{params.column_name}
         </Typography>

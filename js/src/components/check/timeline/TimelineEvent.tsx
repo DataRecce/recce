@@ -16,6 +16,7 @@ import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import Popover from "@mui/material/Popover";
 import Stack from "@mui/material/Stack";
+import { useTheme } from "@mui/material/styles";
 import TextField from "@mui/material/TextField";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
@@ -165,6 +166,8 @@ function CommentEvent({
   onEdit?: (eventId: string, content: string) => Promise<void>;
   onDelete?: (eventId: string) => Promise<void>;
 }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(event.content || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -306,7 +309,7 @@ function CommentEvent({
               autoFocus
               sx={{
                 "& .MuiOutlinedInput-root": {
-                  bgcolor: "white",
+                  bgcolor: "background.paper",
                   "&:focus-within": {
                     borderColor: "primary.main",
                   },
@@ -341,11 +344,11 @@ function CommentEvent({
           // View mode
           <Box
             sx={{
-              bgcolor: "grey.50",
+              bgcolor: isDark ? "grey.800" : "grey.50",
               borderRadius: 1,
               p: 1,
               border: "1px solid",
-              borderColor: "grey.200",
+              borderColor: isDark ? "grey.700" : "grey.200",
               position: "relative",
               "&:hover .comment-actions": {
                 opacity: 1,

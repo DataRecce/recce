@@ -6,6 +6,7 @@ import Typography from "@mui/material/Typography";
 import { ReactNode } from "react";
 import { IconType } from "react-icons";
 import { FiInfo } from "react-icons/fi";
+import { token } from "@/components/ui/mui-theme";
 import { NodeData } from "@/lib/api/info";
 import { LineageGraph } from "../lineage/lineage";
 import {
@@ -43,22 +44,26 @@ export const NODE_CHANGE_STATUS_MSGS = {
 
 export function getIconForChangeStatus(changeStatus?: ChangeStatus): {
   color: string;
-  icon: IconType | undefined; //IconType not provided
+  icon: IconType | undefined;
 } {
+  const greenColor = String(token("colors.green.solid"));
+  const redColor = String(token("colors.red.solid"));
+  const amberColor = String(token("colors.amber.emphasized"));
+
   if (changeStatus === "added") {
-    return { color: "#1dce00", icon: IconAdded };
+    return { color: greenColor, icon: IconAdded };
   } else if (changeStatus === "removed") {
-    return { color: "#ff067e", icon: IconRemoved };
+    return { color: redColor, icon: IconRemoved };
   } else if (changeStatus === "modified") {
-    return { color: "#ffa502", icon: IconModified };
+    return { color: amberColor, icon: IconModified };
   } else if (changeStatus === "col_added") {
-    return { color: "#1dce00", icon: IconAdded };
+    return { color: greenColor, icon: IconAdded };
   } else if (changeStatus === "col_removed") {
-    return { color: "#ff067e", icon: IconRemoved };
+    return { color: redColor, icon: IconRemoved };
   } else if (changeStatus === "col_changed") {
-    return { color: "#ffa502", icon: IconModified };
+    return { color: amberColor, icon: IconModified };
   } else if (changeStatus === "folder_changed") {
-    return { color: "#ffa502", icon: IconChanged };
+    return { color: amberColor, icon: IconChanged };
   }
 
   return { color: "inherit", icon: undefined };
@@ -195,11 +200,12 @@ export function ChangeSummary({ lineageGraph }: Props) {
       container
       sx={{
         mb: "10px",
-        borderTop: "1px solid lightgray",
+        borderTop: "1px solid",
+        borderColor: "divider",
         p: "2.5vw",
       }}
     >
-      <Grid size={6} sx={{ borderColor: "lightgray" }}>
+      <Grid size={6} sx={{ borderColor: "divider" }}>
         <SummaryText
           name="Code Changes"
           value={
@@ -223,7 +229,10 @@ export function ChangeSummary({ lineageGraph }: Props) {
           }
         />
       </Grid>
-      <Grid size={6} sx={{ borderLeft: "1px solid lightgray", pl: "12px" }}>
+      <Grid
+        size={6}
+        sx={{ borderLeft: "1px solid", borderLeftColor: "divider", pl: "12px" }}
+      >
         <SummaryText
           name="Column Changes"
           value={

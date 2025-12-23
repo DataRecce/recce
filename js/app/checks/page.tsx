@@ -4,6 +4,7 @@ import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
+import { useTheme } from "@mui/material/styles";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import React, {
@@ -39,10 +40,18 @@ export default function CheckPageWrapper(): ReactNode {
  * Loading fallback - shows minimal UI while search params are being read
  */
 function CheckPageLoading(): ReactNode {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const borderColor = isDark ? "grey.700" : "grey.300";
+
   return (
     <HSplit style={{ height: "100%" }} minSize={50} sizes={[20, 80]}>
       <Box
-        sx={{ borderRight: "lightgray solid 1px", height: "100%" }}
+        sx={{
+          borderRight: "1px solid",
+          borderRightColor: borderColor,
+          height: "100%",
+        }}
         style={{ contain: "size" }}
       >
         <Box
@@ -73,6 +82,9 @@ function CheckPageLoading(): ReactNode {
 }
 
 function CheckPageContent(): ReactNode {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const borderColor = isDark ? "grey.700" : "grey.300";
   const [, setLocation] = useAppLocation();
   const searchParams = useSearchParams();
   const checkId = searchParams.get("id");
@@ -186,7 +198,11 @@ function CheckPageContent(): ReactNode {
     return (
       <HSplit style={{ height: "100%" }} minSize={50} sizes={[20, 80]}>
         <Box
-          sx={{ borderRight: "lightgray solid 1px", height: "100%" }}
+          sx={{
+            borderRight: "1px solid",
+            borderRightColor: borderColor,
+            height: "100%",
+          }}
           style={{ contain: "size" }}
         >
           <Stack
@@ -237,7 +253,11 @@ function CheckPageContent(): ReactNode {
   return (
     <HSplit style={{ height: "100%" }} minSize={50} sizes={[20, 80]}>
       <Box
-        sx={{ borderRight: "lightgray solid 1px", height: "100%" }}
+        sx={{
+          borderRight: "1px solid",
+          borderRightColor: borderColor,
+          height: "100%",
+        }}
         style={{ contain: "size" }}
       >
         <Stack

@@ -1,5 +1,6 @@
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
+import { useTheme } from "@mui/material/styles";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import {
@@ -18,7 +19,8 @@ import {
   formatAsAbbreviatedNumber,
   formatIntervalMinMax,
 } from "@/utils/formatters";
-import { BASE_BAR_COLOR, CURRENT_BAR_COLOR, SquareIcon } from "./SquareIcon";
+import { getChartThemeColors } from "./chartTheme";
+import { getBarColors, SquareIcon } from "./SquareIcon";
 
 export const INFO_VAL_COLOR = "#63B3ED";
 
@@ -81,10 +83,12 @@ function prepareSummaryList(
 function TopKChartTooltip({
   base,
   current,
+  barColors,
   children,
 }: {
   base: Summary;
   current: Summary;
+  barColors: ReturnType<typeof getBarColors>;
   children?: React.ReactNode;
 }) {
   return (
@@ -92,11 +96,11 @@ function TopKChartTooltip({
       title={
         <Box>
           <Typography>
-            <SquareIcon color={CURRENT_BAR_COLOR} />
+            <SquareIcon color={barColors.current} />
             Current: {current.count} ({current.displayRatio})
           </Typography>
           <Typography>
-            <SquareIcon color={BASE_BAR_COLOR} />
+            <SquareIcon color={barColors.base} />
             Base: {base.count} ({base.displayRatio})
           </Typography>
         </Box>
@@ -112,6 +116,9 @@ export function TopKSummaryBarChart({
   topKDiff,
   isDisplayTopTen,
 }: BarChartProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const barColors = getBarColors(isDark);
   // const [isDisplayTopTen, setIsDisplayTopTen] = useState<boolean>(true);
   const currents = prepareSummaryList(topKDiff.current, isDisplayTopTen);
   const bases = prepareSummaryList(topKDiff.base, isDisplayTopTen);
@@ -122,15 +129,15 @@ export function TopKSummaryBarChart({
         <Box sx={{ flex: 1 }} />
         <Typography
           component="h3"
-          sx={{ fontSize: "0.875rem", p: 1, color: "gray" }}
+          sx={{ fontSize: "0.875rem", p: 1, color: "text.secondary" }}
         >
-          <SquareIcon color={BASE_BAR_COLOR} /> Base
+          <SquareIcon color={barColors.base} /> Base
         </Typography>
         <Typography
           component="h3"
-          sx={{ fontSize: "0.875rem", p: 1, color: "gray" }}
+          sx={{ fontSize: "0.875rem", p: 1, color: "text.secondary" }}
         >
-          <SquareIcon color={CURRENT_BAR_COLOR} /> Current
+          <SquareIcon color={barColors.current} /> Current
         </Typography>
         <Box sx={{ flex: 1 }} />
       </Box>
@@ -146,7 +153,11 @@ export function TopKSummaryBarChart({
         }
         return (
           <Fragment key={current.label}>
-            <TopKChartTooltip base={base} current={current}>
+            <TopKChartTooltip
+              base={base}
+              current={current}
+              barColors={barColors}
+            >
               <Box
                 sx={{
                   display: "flex",
@@ -181,7 +192,8 @@ export function TopKSummaryBarChart({
                       topkCount={current.count}
                       topkLabel={current.label}
                       valids={topKDiff.current.valids}
-                      color={CURRENT_BAR_COLOR}
+                      color={barColors.current}
+                      isDark={isDark}
                     />
                     <Typography
                       sx={{
@@ -209,7 +221,8 @@ export function TopKSummaryBarChart({
                       topkCount={base.count}
                       topkLabel={base.label}
                       valids={topKDiff.base.valids}
-                      color={BASE_BAR_COLOR}
+                      color={barColors.base}
+                      isDark={isDark}
                     />
                     <Typography
                       sx={{
@@ -253,6 +266,9 @@ interface Props {
  * Last list item will show 'others' when there are leftover values, which is the count difference of valids and displayed topk items
  */
 export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+  const barColors = getBarColors(isDark);
   const endAtIndex = isDisplayTopTen ? 10 : topk.counts.length;
   const displayList = topk.counts.slice(0, endAtIndex);
   const remainingSumCount =
@@ -302,6 +318,8 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
                       topkCount={topkCount}
                       topkLabel={topkLabel}
                       valids={valids}
+                      color={barColors.info}
+                      isDark={isDark}
                     />
                   </Box>
                   <MuiTooltip title={displayTopkCount} placement="top-start">
@@ -352,6 +370,7 @@ export interface CategoricalBarChartProps {
   valids: number;
   animation?: AnimationOptions<"bar">["animation"];
   color?: string;
+  isDark?: boolean;
 }
 /**
  * A Singular horizontal progress bar chart that visualizes categorical dataset, plotted 1:1 category group
@@ -362,9 +381,12 @@ export function CategoricalBarChart({
   valids,
   animation = false,
   color = INFO_VAL_COLOR,
+  isDark = false,
 }: CategoricalBarChartProps) {
   ChartJS.register(CategoryScale, BarElement, LinearScale);
-  const chartOptions = getCatBarChartOptions(topkCount, valids, { animation });
+  const chartOptions = getCatBarChartOptions(topkCount, valids, isDark, {
+    animation,
+  });
   const chartData = getCatBarChartData({
     topkCount,
     topkLabel,
@@ -378,10 +400,13 @@ export function CategoricalBarChart({
  * @returns merged Chart.js option object for categorical 'bar'
  */
 export function getCatBarChartOptions(
-  count: CategoricalBarChartProps["topkCount"],
+  _count: CategoricalBarChartProps["topkCount"],
   valids: number,
+  isDark = false,
   { ...configOverrides }: ChartOptions<"bar"> = {},
 ): ChartOptions<"bar"> {
+  const themeColors = getChartThemeColors(isDark);
+
   return {
     responsive: true,
     maintainAspectRatio: false,
@@ -391,9 +416,11 @@ export function getCatBarChartOptions(
         display: false,
         max: valids,
         grid: { display: false },
+        ticks: { color: themeColors.textColor },
       },
       y: {
         display: false,
+        ticks: { color: themeColors.textColor },
       },
     },
     plugins: {

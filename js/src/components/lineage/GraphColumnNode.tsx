@@ -3,6 +3,7 @@ import Chip from "@mui/material/Chip";
 import { Handle, NodeProps, Position, useStore } from "@xyflow/react";
 import React from "react";
 import { VscKebabVertical } from "react-icons/vsc";
+import { useThemeColors } from "@/lib/hooks/useThemeColors";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 import { COLUMN_HEIGHT, LineageGraphColumnNode } from "./lineage";
 import { getIconForChangeStatus } from "./styles";
@@ -92,6 +93,7 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
   const { id: nodeId } = data.node;
   const { column, type, transformationType, changeStatus } = data;
   const showContent = useStore((s) => s.transform[2] > 0.3);
+  const { background, text, border } = useThemeColors();
 
   const {
     viewOptions,
@@ -117,10 +119,11 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
         display: "flex",
         width: 280,
         padding: "0px 10px",
-        border: "1px solid gray",
-        backgroundColor: isFocus ? "#f0f0f0" : "inherit",
+        border: "1px solid",
+        borderColor: border.default,
+        backgroundColor: isFocus ? background.subtle : "inherit",
         "&:hover": {
-          backgroundColor: "#f0f0f0",
+          backgroundColor: background.subtle,
         },
         filter: isHighlighted ? "none" : "opacity(0.2) grayscale(50%)",
         cursor: "pointer",
@@ -136,7 +139,7 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
         sx={{
           display: "flex",
           fontSize: "11px",
-          color: "black",
+          color: text.primary,
           width: "100%",
           gap: "3px",
           alignItems: "center",
@@ -158,7 +161,7 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
               fontSize: 14,
               display: "inline-flex",
               cursor: "pointer",
-              "&:hover": { color: "black" },
+              "&:hover": { color: text.primary },
             }}
             onClick={(e: React.MouseEvent) => {
               e.preventDefault();

@@ -150,8 +150,9 @@ export const RunModal = ({
         sx={{
           p: 0,
           overflow: "auto",
-          borderTop: "1px solid lightgray",
-          borderBottom: "1px solid lightgray",
+          borderTop: "1px solid",
+          borderBottom: "1px solid",
+          borderColor: "divider",
         }}
       >
         <Box sx={{ contain: "layout" }}>
