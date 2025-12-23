@@ -48,7 +48,7 @@ export const LearnHowLink = () => {
       href="https://docs.datarecce.io/get-started/#prepare-dbt-artifacts"
       target="_blank"
       sx={{
-        color: "rgba(49, 130, 206, 1)",
+        color: "primary.main",
         fontWeight: "bold",
         textDecoration: "underline",
         display: "inline-flex",

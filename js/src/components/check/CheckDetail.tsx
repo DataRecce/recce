@@ -506,7 +506,13 @@ export function CheckDetail({
                         check.is_checked ? (
                           <PiCheckCircle />
                         ) : (
-                          <VscCircleLarge style={{ color: "lightgray" }} />
+                          <VscCircleLarge
+                            style={{
+                              color: isDark
+                                ? theme.palette.grey[600]
+                                : theme.palette.grey[400],
+                            }}
+                          />
                         )
                       }
                       sx={{ flex: "0 0 auto", textTransform: "none" }}
@@ -631,7 +637,7 @@ export function CheckDetail({
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            bgcolor: "rgb(249,249,249)",
+                            bgcolor: isDark ? "grey.900" : "grey.50",
                             height: "100%",
                           }}
                         >

@@ -1,4 +1,5 @@
 import Box from "@mui/material/Box";
+import { useTheme } from "@mui/material/styles";
 import { ForwardedRef, forwardRef, Ref, useMemo } from "react";
 import {
   QueryDiffViewOptions,
@@ -40,6 +41,8 @@ const PrivateQueryDiffResultView = (
 
   ref: Ref<DataGridHandle>,
 ) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const primaryKeys = useMemo(
     () => viewOptions?.primary_keys ?? [],
     [viewOptions],
@@ -168,7 +171,7 @@ const PrivateQueryDiffResultView = (
       sx={{
         display: "flex",
         flexDirection: "column",
-        bgcolor: "rgb(249, 249, 249)",
+        bgcolor: isDark ? "grey.900" : "grey.50",
         height: "100%",
       }}
     >
@@ -234,6 +237,8 @@ const PrivateQueryDiffJoinResultView = (
   }: QueryDiffResultViewProps,
   ref: Ref<DataGridHandle>,
 ) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   if (run.type !== "query_diff") {
     throw new Error("QueryDiffResult view should be rendered as query_diff");
   }
@@ -335,7 +340,7 @@ const PrivateQueryDiffJoinResultView = (
         sx={{
           display: "flex",
           flexDirection: "column",
-          bgcolor: "rgb(249, 249, 249)",
+          bgcolor: isDark ? "grey.900" : "grey.50",
           height: "100%",
         }}
       >
@@ -364,7 +369,7 @@ const PrivateQueryDiffJoinResultView = (
       sx={{
         display: "flex",
         flexDirection: "column",
-        bgcolor: "rgb(249, 249, 249)",
+        bgcolor: isDark ? "grey.900" : "grey.50",
         height: "100%",
       }}
     >

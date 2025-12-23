@@ -134,7 +134,7 @@ const edgeTypes = {
 const nodeColor = (node: LineageGraphNode) => {
   return node.data.changeStatus
     ? getIconForChangeStatus(node.data.changeStatus).hexColor
-    : ("lightgray" as string);
+    : colors.neutral[400];
 };
 
 const useResizeObserver = (
@@ -215,7 +215,7 @@ export function PrivateLineageView(
     renderLibrary: "html-to-image",
     imageType: "png",
     shadowEffect: true,
-    backgroundColor: "white",
+    backgroundColor: isDark ? colors.neutral[900] : colors.neutral[50],
     ignoreElements: (element: Element) => {
       try {
         return element.classList.contains(IGNORE_SCREENSHOT_CLASS);
@@ -1268,8 +1268,8 @@ export function PrivateLineageView(
               position="top-right"
               className={IGNORE_SCREENSHOT_CLASS}
               style={{
-                backgroundColor: isDark ? "#374151" : undefined,
-                borderColor: isDark ? "#4B5563" : undefined,
+                backgroundColor: isDark ? colors.neutral[700] : undefined,
+                borderColor: isDark ? colors.neutral[600] : undefined,
               }}
             >
               <ControlButton
@@ -1282,8 +1282,8 @@ export function PrivateLineageView(
                   });
                 }}
                 style={{
-                  backgroundColor: isDark ? "#374151" : undefined,
-                  color: isDark ? "#E5E7EB" : undefined,
+                  backgroundColor: isDark ? colors.neutral[700] : undefined,
+                  color: isDark ? colors.neutral[200] : undefined,
                 }}
               >
                 <Box component={FiCopy} />
@@ -1323,9 +1323,9 @@ export function PrivateLineageView(
               nodeStrokeWidth={3}
               zoomable
               pannable
-              bgColor={isDark ? "#262626" : undefined}
+              bgColor={isDark ? colors.neutral[800] : undefined}
               maskColor={
-                isDark ? "rgba(30, 30, 30, 0.6)" : "rgba(240, 240, 240, 0.6)"
+                isDark ? `${colors.neutral[900]}99` : `${colors.neutral[100]}99`
               }
             />
             {selectMode === "action_result" && (

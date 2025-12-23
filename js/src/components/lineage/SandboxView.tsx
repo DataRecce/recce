@@ -117,6 +117,8 @@ function SandboxEditorLabels({
   height?: string;
   flex?: string;
 }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const { lineageGraph, envInfo } = useLineageGraphContext();
   const widthOfBar = "50%";
   const margin = "0 16px";
@@ -145,7 +147,7 @@ function SandboxEditorLabels({
         fontSize: "14px",
         alignItems: "center",
         m: 0,
-        bgcolor: "#EDF2F880",
+        bgcolor: isDark ? "rgba(64, 64, 64, 0.5)" : "rgba(237, 242, 248, 0.5)",
       }}
     >
       <Stack sx={{ width: widthOfBar }}>
@@ -320,7 +322,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
       <Box
         sx={{
           height: "40px",
-          bgcolor: "rgb(77, 209, 176)",
+          bgcolor: "cyan.600",
           px: 0,
           py: 2,
           display: "flex",
@@ -344,7 +346,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
             sx={{
               fontFamily: '"Montserrat", sans-serif',
               fontSize: "1.125rem",
-              color: "white",
+              color: "common.white",
             }}
           >
             RECCE
@@ -355,7 +357,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
             variant="outlined"
             sx={{
               fontSize: "0.875rem",
-              color: "white",
+              color: "common.white",
               borderColor: "rgba(255,255,255,0.5)",
             }}
           />
@@ -367,7 +369,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
             position: "absolute",
             right: 8,
             top: 4,
-            color: "white",
+            color: "common.white",
           }}
         >
           <IoClose />

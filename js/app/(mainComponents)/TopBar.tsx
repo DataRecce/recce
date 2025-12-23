@@ -2,6 +2,7 @@ import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
+import { useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import DisplayModeToggle from "app/(mainComponents)/DisplayModeToggle";
 import RecceVersionBadge from "app/(mainComponents)/RecceVersionBadge";
@@ -12,6 +13,7 @@ import { VscGitPullRequest } from "react-icons/vsc";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import AvatarDropdown from "@/components/app/AvatarDropdown";
 import { IdleTimeoutBadge } from "@/components/timeout/IdleTimeoutBadge";
+import { colors } from "@/components/ui/mui-theme";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
@@ -22,14 +24,17 @@ interface LinkIconProps {
 }
 
 function LinkIcon({ icon: IconComponent, href, sx, ...props }: LinkIconProps) {
+  const theme = useTheme();
   return (
     <Link
-      sx={{ height: "20px", color: "white", ...sx }}
+      sx={{ height: "20px", color: "common.white", ...sx }}
       href={href}
       target="_blank"
       {...props}
     >
-      <IconComponent style={{ color: "white", width: 20, height: 20 }} />
+      <IconComponent
+        style={{ color: theme.palette.common.white, width: 20, height: 20 }}
+      />
     </Link>
   );
 }
@@ -53,7 +58,7 @@ export default function TopBar() {
         gap: "10px",
         minHeight: "40px",
         alignItems: "center",
-        bgcolor: "rgb(255, 110, 66)",
+        bgcolor: colors.brand[400],
       }}
     >
       <Link
@@ -72,7 +77,7 @@ export default function TopBar() {
             variant="h4"
             sx={{
               fontFamily: '"Montserrat", sans-serif',
-              color: "white",
+              color: "common.white",
               fontSize: "1.25rem",
             }}
           >
@@ -213,7 +218,7 @@ export default function TopBar() {
               <Box
                 component="button"
                 sx={{
-                  color: "white",
+                  color: "common.white",
                   fontSize: "0.875rem",
                   fontWeight: 600,
                   bgcolor: "brand.700",
