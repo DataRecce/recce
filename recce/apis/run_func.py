@@ -74,7 +74,8 @@ def generate_run_name(run):
 
 
 def create_task(run_type: RunType, params: dict):
-    if default_context().adapter_type == "sqlmesh":
+    context = default_context()
+    if context is not None and context.adapter_type == "sqlmesh":
         from recce.adapter.sqlmesh_adapter import (
             sqlmesh_supported_registry as sqlmesh_registry,
         )

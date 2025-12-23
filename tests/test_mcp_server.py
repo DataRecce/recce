@@ -349,6 +349,32 @@ class TestRecceMCPServer:
         assert result["check_id"] == str(check_id)
 
     @pytest.mark.asyncio
+    async def test_tool_run_check_return_error_for_not_supported_types(self, mcp_server):
+        """Test that run_check fails for unsupported check types (lineage_diff, schema_diff)"""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import RunType
+
+        check_id = uuid4()
+
+        # Create mock check with lineage_diff type (unsupported for run_check)
+        mock_check = MagicMock()
+        mock_check.check_id = check_id
+        mock_check.name = "Lineage Check"
+        mock_check.type = RunType.LINEAGE_DIFF
+        mock_check.params = {"select": "model_a"}
+
+        # Mock CheckDAO
+        mock_check_dao = MagicMock()
+        mock_check_dao.find_check_by_id.return_value = mock_check
+
+        with patch("recce.models.CheckDAO", return_value=mock_check_dao):
+            # Verify that the call raises an exception for unsupported types
+            with pytest.raises(ValueError, match="Run type 'lineage_diff' not supported"):
+                await server._tool_run_check({"check_id": str(check_id)})
+
+    @pytest.mark.asyncio
     async def test_error_handling(self, mcp_server):
         """Test error handling in tool execution"""
         server, mock_context = mcp_server
