@@ -5,6 +5,7 @@ Recce Cloud CLI - Lightweight command for managing Recce Cloud operations.
 
 import logging
 import os
+import subprocess
 import sys
 
 import click
@@ -507,13 +508,12 @@ def report(repo, since, until, base_branch, merged_only, output):
     # Auto-detect repo from git remote if not provided
     if not repo:
         try:
-            import subprocess
-
             result = subprocess.run(
                 ["git", "remote", "get-url", "origin"],
                 capture_output=True,
                 text=True,
                 check=True,
+                timeout=5,
             )
             remote_url = result.stdout.strip()
 
@@ -530,8 +530,12 @@ def report(repo, since, until, base_branch, merged_only, output):
 
             if repo:
                 console.print(f"[cyan]Auto-detected repository:[/cyan] {repo}")
-        except Exception:
-            pass
+        except FileNotFoundError:
+            # git executable not found
+            logger.debug("git not found while auto-detecting repository")
+        except Exception as e:
+            # Unexpected failure during git remote parsing
+            logger.debug("Failed to auto-detect repository from git remote: %s", e)
 
     if not repo:
         console.print("[red]Error:[/red] Could not detect repository. Please provide --repo option.")
