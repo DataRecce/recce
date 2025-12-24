@@ -64,6 +64,16 @@ jobs:
       - name: Install dependencies
         run: pip install -e .[dev,mcp]
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
       - name: Build frontend assets
         run: make build-frontend
 
@@ -88,6 +98,16 @@ jobs:
         uses: astral-sh/setup-uv@v4
         with:
           version: "latest"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
 
       - name: Build frontend assets
         run: make build-frontend
