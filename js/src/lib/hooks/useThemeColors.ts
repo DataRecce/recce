@@ -1,14 +1,15 @@
 "use client";
 
-import { useTheme } from "@mui/material/styles";
+import { useTheme as useMuiTheme } from "@mui/material/styles";
+import { useTheme as useNextTheme } from "next-themes";
+import { useEffect, useState } from "react";
 import { colors } from "@/components/ui/mui-theme";
 
 /**
  * Theme-aware color utility hook
  *
- * Provides convenient access to theme-aware colors for components that
- * need to handle both light and dark modes. This centralizes theme-aware
- * color logic to avoid repetitive ternary expressions throughout components.
+ * Uses next-themes to determine dark/light mode, which is more reliable
+ * when the host app uses MUI CSS variables mode with nested ThemeProviders.
  *
  * @example
  * ```tsx
@@ -28,22 +29,30 @@ import { colors } from "@/components/ui/mui-theme";
  * ```
  */
 export function useThemeColors() {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const muiTheme = useMuiTheme();
+  const { resolvedTheme } = useNextTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Use next-themes to determine dark mode (more reliable with CSS variables mode)
+  const isDark = mounted ? resolvedTheme === "dark" : false;
 
   return {
     /** Whether the current theme is dark mode */
     isDark,
 
     /** MUI theme object for direct access when needed */
-    theme,
+    theme: muiTheme,
 
     /** Background colors */
     background: {
       /** Default page background */
-      default: theme.palette.background.default,
+      default: isDark ? colors.neutral[900] : "#FFFFFF",
       /** Paper/card background */
-      paper: theme.palette.background.paper,
+      paper: isDark ? colors.neutral[800] : "#FFFFFF",
       /** Subtle background for slight elevation (e.g., hover states, inputs) */
       subtle: isDark ? colors.neutral[800] : colors.neutral[50],
       /** Emphasized background for higher contrast areas */
@@ -53,9 +62,9 @@ export function useThemeColors() {
     /** Text colors */
     text: {
       /** Primary text color */
-      primary: theme.palette.text.primary,
+      primary: isDark ? colors.neutral[50] : colors.neutral[900],
       /** Secondary/muted text color */
-      secondary: theme.palette.text.secondary,
+      secondary: isDark ? colors.neutral[400] : colors.neutral[600],
       /** Disabled text color */
       disabled: isDark ? colors.neutral[500] : colors.neutral[400],
       /** Inverted text (for use on dark backgrounds in light mode, etc.) */
@@ -77,17 +86,17 @@ export function useThemeColors() {
       /** Added/success backgrounds */
       added: {
         bg: isDark ? "#1a4d1a" : "#cefece",
-        text: theme.palette.text.primary,
+        text: isDark ? colors.neutral[50] : colors.neutral[900],
       },
       /** Removed/error backgrounds */
       removed: {
         bg: isDark ? "#5c1f1f" : "#ffc5c5",
-        text: theme.palette.text.primary,
+        text: isDark ? colors.neutral[50] : colors.neutral[900],
       },
       /** Modified/warning backgrounds */
       modified: {
         bg: isDark ? "#5c4a1a" : "#fff3cd",
-        text: theme.palette.text.primary,
+        text: isDark ? colors.neutral[50] : colors.neutral[900],
       },
     },
 
