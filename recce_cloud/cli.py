@@ -18,6 +18,7 @@ from recce_cloud.download import (
     download_from_existing_session,
     download_with_platform_apis,
 )
+from recce_cloud.report import fetch_and_generate_report
 from recce_cloud.upload import upload_to_existing_session, upload_with_platform_apis
 
 # Configure logging
@@ -428,6 +429,127 @@ def download(target_path, session_id, prod, dry_run, force):
             console.print("[cyan]Info:[/cyan] Using CI_JOB_TOKEN for platform-specific authentication")
 
         download_with_platform_apis(console, token, ci_info, target_path, force)
+
+
+@cloud_cli.command()
+@click.option(
+    "--repo",
+    type=str,
+    help="Repository full name (owner/repo). Auto-detected from git remote if not provided.",
+)
+@click.option(
+    "--since",
+    type=str,
+    default="30d",
+    help="Start date (ISO format 2024-11-01 or relative like 30d). Default: 30d",
+)
+@click.option(
+    "--until",
+    type=str,
+    default=None,
+    help="End date (ISO format or relative). Default: today",
+)
+@click.option(
+    "--base-branch",
+    type=str,
+    default="main",
+    help="Target branch filter. Default: main",
+)
+@click.option(
+    "--merged-only/--include-open",
+    default=True,
+    help="Only include merged CRs (default) or include open CRs too",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(),
+    default=None,
+    help="Output file path. Default: print to stdout",
+)
+def report(repo, since, until, base_branch, merged_only, output):
+    """
+    Generate CR (Change Request) metrics report as CSV.
+
+    Tracks commit counts before/after CR open and Recce session data.
+    Useful for measuring Recce's effectiveness in catching issues before merge.
+
+    \b
+    Authentication:
+    - Requires RECCE_API_TOKEN environment variable
+
+    \b
+    Examples:
+      # Last 30 days for current repo (auto-detected)
+      recce-cloud report
+
+      # Last 60 days, save to file
+      recce-cloud report --since 60d -o report.csv
+
+      # Specific date range
+      recce-cloud report --since 2024-11-01 --until 2024-12-15
+
+      # Different repo and branch
+      recce-cloud report --repo super/analytics --base-branch develop
+
+      # Include open CRs (not just merged)
+      recce-cloud report --include-open
+    """
+    console = Console()
+
+    # Check for API token
+    token = os.getenv("RECCE_API_TOKEN")
+    if not token:
+        console.print("[red]Error:[/red] RECCE_API_TOKEN environment variable is required")
+        console.print("Set RECCE_API_TOKEN to your Recce Cloud API token")
+        sys.exit(2)
+
+    # Auto-detect repo from git remote if not provided
+    if not repo:
+        try:
+            import subprocess
+
+            result = subprocess.run(
+                ["git", "remote", "get-url", "origin"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            remote_url = result.stdout.strip()
+
+            # Parse repo from various URL formats
+            # SSH: git@gitlab.com:owner/repo.git
+            # HTTPS: https://gitlab.com/owner/repo.git
+            if remote_url.startswith("git@"):
+                # git@gitlab.com:owner/repo.git -> owner/repo
+                repo = remote_url.split(":")[-1].replace(".git", "")
+            elif "://" in remote_url:
+                # https://gitlab.com/owner/repo.git -> owner/repo
+                path = remote_url.split("://")[-1].split("/", 1)[-1]
+                repo = path.replace(".git", "")
+
+            if repo:
+                console.print(f"[cyan]Auto-detected repository:[/cyan] {repo}")
+        except Exception:
+            pass
+
+    if not repo:
+        console.print("[red]Error:[/red] Could not detect repository. Please provide --repo option.")
+        sys.exit(1)
+
+    # Generate report
+    exit_code = fetch_and_generate_report(
+        console=console,
+        token=token,
+        repo=repo,
+        since=since,
+        until=until,
+        base_branch=base_branch,
+        merged_only=merged_only,
+        output_path=output,
+    )
+
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":
