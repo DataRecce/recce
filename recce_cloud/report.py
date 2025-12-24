@@ -6,6 +6,8 @@ Handles fetching CR metrics reports from Recce Cloud API and formatting as CSV.
 
 import csv
 import io
+import json
+import logging
 import os
 import sys
 from dataclasses import dataclass
@@ -15,6 +17,8 @@ import requests
 from rich.console import Console
 
 from recce_cloud.api.exceptions import RecceCloudException
+
+logger = logging.getLogger("recce")
 
 RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
 
@@ -82,12 +86,36 @@ class ReportClient:
         self.base_url_v2 = f"{RECCE_CLOUD_API_HOST}/api/v2"
 
     def _request(self, method: str, url: str, headers: dict = None, **kwargs):
-        """Make authenticated HTTP request to Recce Cloud API."""
+        """
+        Make authenticated HTTP request to Recce Cloud API.
+
+        Raises:
+            RecceCloudException: If network error occurs
+        """
         headers = {
             **(headers or {}),
             "Authorization": f"Bearer {self.token}",
         }
-        return requests.request(method, url, headers=headers, **kwargs)
+        try:
+            return requests.request(method, url, headers=headers, timeout=60, **kwargs)
+        except requests.exceptions.Timeout as e:
+            logger.error(f"Request timeout: {e}")
+            raise RecceCloudException(
+                reason="Request timed out. Please try again.",
+                status_code=0,
+            )
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Connection error: {e}")
+            raise RecceCloudException(
+                reason="Failed to connect to Recce Cloud API. Please check your network connection.",
+                status_code=0,
+            )
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request failed: {e}")
+            raise RecceCloudException(
+                reason=f"Network error: {str(e)}",
+                status_code=0,
+            )
 
     def get_cr_metrics(
         self,
@@ -137,13 +165,19 @@ class ReportClient:
                 status_code=404,
             )
         if response.status_code == 400:
-            error_detail = response.json().get("detail", "Bad request")
+            try:
+                error_detail = response.json().get("detail", "Bad request")
+            except json.JSONDecodeError:
+                error_detail = "Bad request"
             raise RecceCloudException(
                 reason=error_detail,
                 status_code=400,
             )
         if response.status_code == 502:
-            error_detail = response.json().get("detail", "GitLab API error")
+            try:
+                error_detail = response.json().get("detail", "GitLab API error")
+            except json.JSONDecodeError:
+                error_detail = "GitLab API error"
             raise RecceCloudException(
                 reason=error_detail,
                 status_code=502,
@@ -154,7 +188,14 @@ class ReportClient:
                 status_code=response.status_code,
             )
 
-        data = response.json()
+        try:
+            data = response.json()
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse API response: {e}")
+            raise RecceCloudException(
+                reason="Invalid response from API",
+                status_code=response.status_code,
+            )
 
         # Parse change requests
         change_requests = []
@@ -379,6 +420,14 @@ def display_report_summary(console: Console, report: CRMetricsReport):
             console.print(f"      Recce: session {session_icon}  summary {summary_icon}{after_sum_display}")
             if cr.recce_session_url:
                 console.print(f"      [dim]{cr.recce_session_url}[/dim]")
+            console.print()
+
+        # Indicate truncation if more CRs exist
+        if len(report.change_requests) > 10:
+            console.print(
+                f"[dim]... and {len(report.change_requests) - 10} more "
+                f"(showing 10 of {len(report.change_requests)} total)[/dim]"
+            )
             console.print()
 
 
