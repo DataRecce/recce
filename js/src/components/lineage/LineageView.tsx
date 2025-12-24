@@ -71,6 +71,7 @@ import {
   isValueDiffDetailRun,
   isValueDiffRun,
 } from "@/lib/api/types";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
@@ -204,6 +205,7 @@ export function PrivateLineageView(
   ref: Ref<LineageViewRef>,
 ) {
   const { isDark } = useThemeColors();
+  const { apiClient } = useApiConfig();
   const reactFlow = useReactFlow();
   const refResize = useRef<HTMLDivElement>(null);
   const { successToast, failToast } = useClipBoardToast();
@@ -467,22 +469,28 @@ export function PrivateLineageView(
         };
 
         try {
-          const result = await select({
-            select: newViewOptions.select,
-            exclude: newViewOptions.exclude,
-            packages: newViewOptions.packages,
-            view_mode: newViewOptions.view_mode,
-          });
+          const result = await select(
+            {
+              select: newViewOptions.select,
+              exclude: newViewOptions.exclude,
+              packages: newViewOptions.packages,
+              view_mode: newViewOptions.view_mode,
+            },
+            apiClient,
+          );
           filteredNodeIds = result.nodes;
         } catch (_) {
           // fallback behavior
           newViewOptions.view_mode = "all";
-          const result = await select({
-            select: newViewOptions.select,
-            exclude: newViewOptions.exclude,
-            packages: newViewOptions.packages,
-            view_mode: newViewOptions.view_mode,
-          });
+          const result = await select(
+            {
+              select: newViewOptions.select,
+              exclude: newViewOptions.exclude,
+              packages: newViewOptions.packages,
+              view_mode: newViewOptions.view_mode,
+            },
+            apiClient,
+          );
           filteredNodeIds = result.nodes;
         }
 
@@ -686,12 +694,15 @@ export function PrivateLineageView(
 
     if (reselect) {
       try {
-        const result = await select({
-          select: newViewOptions.select,
-          exclude: newViewOptions.exclude,
-          packages: newViewOptions.packages,
-          view_mode: newViewOptions.view_mode,
-        });
+        const result = await select(
+          {
+            select: newViewOptions.select,
+            exclude: newViewOptions.exclude,
+            packages: newViewOptions.packages,
+            view_mode: newViewOptions.view_mode,
+          },
+          apiClient,
+        );
         // focus to unfocus the model or column node
         newViewOptions = { ...newViewOptions, column_level_lineage: undefined };
         selectedNodes = result.nodes;

@@ -55,6 +55,7 @@ import {
 import { cancelRun, submitRunFromCheck } from "@/lib/api/runs";
 import { trackCopyToClipboard } from "@/lib/api/track";
 import { Run, RunParamTypes } from "@/lib/api/types";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
@@ -96,6 +97,7 @@ export function CheckDetail({
 }: CheckDetailProps): ReactNode {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
+  const { apiClient } = useApiConfig();
   const { featureToggles, sessionId } = useRecceInstanceContext();
   const { setLatestSelectedCheckId } = useRecceCheckContext();
   const { cloudMode } = useLineageGraphContext();
@@ -185,11 +187,15 @@ export function CheckDetail({
       return;
     }
 
-    const submittedRun = await submitRunFromCheck(checkId, { nowait: true });
+    const submittedRun = await submitRunFromCheck(
+      checkId,
+      { nowait: true },
+      apiClient,
+    );
     setSubmittedRunId(submittedRun.run_id);
     await queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
     if (refreshCheckList) refreshCheckList(); // refresh the checklist to fetch correct last run status
-  }, [check, checkId, queryClient, refreshCheckList]);
+  }, [check, checkId, queryClient, refreshCheckList, apiClient]);
 
   const handleCancel = useCallback(async () => {
     setAborting(true);
@@ -197,8 +203,8 @@ export function CheckDetail({
       return;
     }
 
-    return await cancelRun(trackedRunId);
-  }, [trackedRunId]);
+    return await cancelRun(trackedRunId, apiClient);
+  }, [trackedRunId, apiClient]);
 
   const handleCopy = async () => {
     if (!check) {

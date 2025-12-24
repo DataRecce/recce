@@ -19,6 +19,7 @@ import {
 } from "@/components/run/registry";
 import { RunFormProps } from "@/components/run/types";
 import { toaster } from "@/components/ui/toaster";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { cacheKeys } from "../api/cacheKeys";
 import { SubmitRunTrackProps, searchRuns, submitRun } from "../api/runs";
@@ -99,6 +100,7 @@ interface RunActionInternal {
 export function RecceActionContextProvider({
   children,
 }: RecceActionContextProviderProps) {
+  const { apiClient } = useApiConfig();
   const [action, setAction] = useState<RunActionInternal>();
 
   // Modal state
@@ -147,7 +149,7 @@ export function RecceActionContextProvider({
         const session = new Date().getTime().toString();
         let lastRun = undefined;
         if (options?.showLast) {
-          const runs = await searchRuns(type, params, 1);
+          const runs = await searchRuns(type, params, 1, apiClient);
           if (runs.length === 1) {
             lastRun = runs[0];
           }
@@ -163,10 +165,15 @@ export function RecceActionContextProvider({
         }
 
         if (RunForm == undefined || !options?.showForm) {
-          const { run_id } = await submitRun(type, params, {
-            nowait: true,
-            trackProps: options?.trackProps,
-          });
+          const { run_id } = await submitRun(
+            type,
+            params,
+            {
+              nowait: true,
+              trackProps: options?.trackProps,
+            },
+            apiClient,
+          );
           await showRunId(run_id);
           await queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
           if (location.startsWith("/lineage")) {
@@ -194,17 +201,22 @@ export function RecceActionContextProvider({
         });
       }
     },
-    [onModalOpen, showRunId, location, setLocation, queryClient],
+    [onModalOpen, showRunId, location, setLocation, queryClient, apiClient],
   );
   useCloseModalEffect(onModalClose);
 
   const handleExecute = async (type: RunType, params: RunParamTypes) => {
     try {
       onModalClose();
-      const { run_id } = await submitRun(type, params, {
-        nowait: true,
-        trackProps: action?.options?.trackProps,
-      });
+      const { run_id } = await submitRun(
+        type,
+        params,
+        {
+          nowait: true,
+          trackProps: action?.options?.trackProps,
+        },
+        apiClient,
+      );
       await showRunId(run_id);
     } catch (e: unknown) {
       toaster.create({
