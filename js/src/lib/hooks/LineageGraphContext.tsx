@@ -122,9 +122,25 @@ interface UseLineageWatcherOptions {
    * Set to false for cloud mode where WebSocket is not used.
    */
   enabled?: boolean;
+
+  /**
+   * Base URL for WebSocket connection.
+   * If not provided, uses PUBLIC_API_URL.
+   */
+  baseUrl?: string;
+
+  /**
+   * API prefix to replace /api in WebSocket URL.
+   * If not provided, uses default /api/ws path.
+   */
+  apiPrefix?: string;
 }
 
-function useLineageWatcher({ enabled = true }: UseLineageWatcherOptions = {}) {
+function useLineageWatcher({
+  enabled = true,
+  baseUrl,
+  apiPrefix,
+}: UseLineageWatcherOptions = {}) {
   const [artifactsUpdatedToastId, setArtifactsUpdatedToastId] = useState<
     string | undefined
   >(undefined);
@@ -169,7 +185,13 @@ function useLineageWatcher({ enabled = true }: UseLineageWatcherOptions = {}) {
       return url.replace(/(http)(s)?:\/\//, "ws$2://");
     }
 
-    const ws = new WebSocket(`${httpUrlToWebSocketUrl(PUBLIC_API_URL)}/api/ws`);
+    // Use baseUrl if provided, otherwise fall back to PUBLIC_API_URL
+    const effectiveBaseUrl = baseUrl ?? PUBLIC_API_URL;
+    // Construct WebSocket path with apiPrefix if provided
+    const wsPath = apiPrefix ? `${apiPrefix}/ws` : "/api/ws";
+    const ws = new WebSocket(
+      `${httpUrlToWebSocketUrl(effectiveBaseUrl)}${wsPath}`,
+    );
     ref.current.ws = ws;
 
     ws.onopen = () => {
@@ -237,7 +259,7 @@ function useLineageWatcher({ enabled = true }: UseLineageWatcherOptions = {}) {
 
       ref.current.ws = undefined;
     };
-  }, [invalidateCaches]);
+  }, [invalidateCaches, baseUrl, apiPrefix]);
 
   useEffect(() => {
     // Skip WebSocket connection if disabled (e.g., cloud mode)
@@ -275,7 +297,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   } = useIdleTimeout();
 
   // Get configured API client from context
-  const { apiClient, apiPrefix } = useApiConfig();
+  const { apiClient, apiPrefix, baseUrl } = useApiConfig();
 
   const queryServerInfo = useQuery({
     queryKey: cacheKeys.lineage(),
@@ -330,10 +352,11 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     sqlmesh,
   };
 
-  // Disable WebSocket in cloud mode (when apiPrefix is configured)
-  const isCloudMode = Boolean(apiPrefix);
+  // Pass apiPrefix and baseUrl to useLineageWatcher for WebSocket connection
   const { connectionStatus, connect, envStatus } = useLineageWatcher({
-    enabled: !isCloudMode,
+    enabled: true,
+    baseUrl,
+    apiPrefix,
   });
 
   // Handle connection status changes for idle timeout
