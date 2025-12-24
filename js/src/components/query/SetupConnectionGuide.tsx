@@ -16,7 +16,7 @@ export default function SetupConnectionGuide() {
           <Box
             sx={{
               p: 1,
-              bgcolor: "white",
+              bgcolor: "background.paper",
               borderRadius: "50%",
               display: "flex",
               alignItems: "center",

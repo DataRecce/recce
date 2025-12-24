@@ -15,6 +15,7 @@ import Divider from "@mui/material/Divider";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
+import { useTheme } from "@mui/material/styles";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -40,6 +41,8 @@ const ChecklistItem = ({
   onSelect: (checkId: string) => void;
   onMarkAsApproved: (checkId: string) => void;
 }) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const { featureToggles } = useRecceInstanceContext();
   const queryClient = useQueryClient();
   const checkId = check.check_id;
@@ -68,10 +71,10 @@ const ChecklistItem = ({
           width: "100%",
           p: "0.25rem 1.25rem",
           cursor: "pointer",
-          "&:hover": { bgcolor: "Cornsilk" },
-          bgcolor: selected ? "Floralwhite" : "inherit",
+          "&:hover": { bgcolor: isDark ? "grey.800" : "Cornsilk" },
+          bgcolor: selected ? (isDark ? "grey.900" : "Floralwhite") : "inherit",
           borderBottom: "1px solid",
-          borderBottomColor: "divider",
+          borderBottomColor: isDark ? "grey.700" : "divider",
           borderLeft: "3px solid",
           borderLeftColor: selected ? "orange" : "transparent",
           display: "flex",
@@ -120,7 +123,11 @@ const ChecklistItem = ({
               onClick={(e) => e.stopPropagation()}
               sx={{
                 borderColor: "border.inverted",
-                bgcolor: isMarkAsApprovedDisabled ? "grey.200" : undefined,
+                bgcolor: isMarkAsApprovedDisabled
+                  ? isDark
+                    ? "grey.700"
+                    : "grey.200"
+                  : undefined,
               }}
             />
           </Box>

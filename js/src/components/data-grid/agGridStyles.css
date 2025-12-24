@@ -7,13 +7,14 @@
  * - Labels aligned to the left
  * - Actions (menu, sort icons) aligned to the right
  * - Sticky headers when scrolling vertically
+ *
+ * Uses CSS custom properties from global.css for theme-aware colors.
  */
 
-/* AG Grid Viewport */
+/* AG Grid Viewport - uses theme-aware background */
 .ag-body-viewport,
 .ag-center-cols-viewport {
-  /* Slate 100 */
-  background-color: #f1f5f9;
+  background-color: var(--recce-bg-muted);
 }
 
 /* Sticky header - stays visible when scrolling vertically */

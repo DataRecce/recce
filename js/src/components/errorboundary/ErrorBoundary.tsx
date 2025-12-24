@@ -25,8 +25,9 @@ const Fallback: FallbackRender = (errorData) => {
           display: "flex",
           flexDirection: "column",
           justifyContent: "flex-start",
-          bgcolor: "white",
-          border: "solid lightgray 1px",
+          bgcolor: "background.paper",
+          border: "solid 1px",
+          borderColor: "divider",
           minHeight: "200px",
         }}
       >

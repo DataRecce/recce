@@ -13,6 +13,8 @@
 "use client";
 
 import Box from "@mui/material/Box";
+import { useTheme } from "@mui/material/styles";
+import Typography from "@mui/material/Typography";
 import type {
   ColDef,
   ColGroupDef,
@@ -22,7 +24,6 @@ import type {
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import { AgGridReact, type AgGridReactProps } from "ag-grid-react";
 import "./agGridStyles.css";
-import Typography from "@mui/material/Typography";
 import React, {
   type CSSProperties,
   forwardRef,
@@ -32,7 +33,7 @@ import React, {
   useRef,
 } from "react";
 import { RowObjectType } from "@/lib/api/types";
-import { recceGridThemeLight } from "./agGridTheme";
+import { recceGridThemeDark, recceGridThemeLight } from "./agGridTheme";
 
 // Register AG Grid modules once
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -162,8 +163,17 @@ function _ScreenshotDataGrid<TData = RowObjectType>(
     [],
   );
 
-  // Use light theme (dark mode can be added later with useColorScheme)
-  const theme = useMemo(() => recceGridThemeLight, []);
+  // Get MUI theme to determine dark/light mode
+  const muiTheme = useTheme();
+
+  // Select AG Grid theme based on MUI theme mode
+  const gridTheme = useMemo(
+    () =>
+      muiTheme.palette.mode === "dark"
+        ? recceGridThemeDark
+        : recceGridThemeLight,
+    [muiTheme.palette.mode],
+  );
 
   // Support both new and legacy props
   const resolvedColumnDefs = columnDefs ?? columns;
@@ -244,18 +254,27 @@ function _ScreenshotDataGrid<TData = RowObjectType>(
         "& .ag-header-cell": {
           borderRight: "1px solid var(--ag-border-color)",
         },
-        // Diff cell styling
+        // Diff cell styling - theme-aware colors
         "& .diff-cell-added": {
-          backgroundColor: "#cefece !important",
-          color: "black",
+          backgroundColor:
+            muiTheme.palette.mode === "dark"
+              ? "#1a4d1a !important"
+              : "#cefece !important",
+          color: muiTheme.palette.text.primary,
         },
         "& .diff-cell-removed": {
-          backgroundColor: "#ffc5c5 !important",
-          color: "black",
+          backgroundColor:
+            muiTheme.palette.mode === "dark"
+              ? "#5c1f1f !important"
+              : "#ffc5c5 !important",
+          color: muiTheme.palette.text.primary,
         },
         "& .diff-cell-modified": {
-          backgroundColor: "#ffc5c5 !important",
-          color: "black",
+          backgroundColor:
+            muiTheme.palette.mode === "dark"
+              ? "#5c1f1f !important"
+              : "#ffc5c5 !important",
+          color: muiTheme.palette.text.primary,
         },
         // Diff header styling
         "& .diff-header-added": {
@@ -268,18 +287,19 @@ function _ScreenshotDataGrid<TData = RowObjectType>(
         },
         // Index column styling
         "& .index-column": {
-          color: "rgb(128, 128, 128)",
+          color: muiTheme.palette.text.secondary,
           textAlign: "right",
         },
         // Frozen/pinned column styling
         "& .ag-pinned-left-cols-container .ag-cell": {
-          backgroundColor: "#f5f5f5",
+          backgroundColor:
+            muiTheme.palette.mode === "dark" ? "#2d2d2d" : "#f5f5f5",
         },
       }}
     >
       <AgGridReact<TData>
         key={gridKey}
-        theme={theme}
+        theme={gridTheme}
         columnDefs={resolvedColumnDefs}
         rowData={resolvedRowData}
         getRowId={resolvedGetRowId}

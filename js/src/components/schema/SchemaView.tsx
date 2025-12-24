@@ -158,7 +158,7 @@ function PrivateSingleEnvSchemaView(
           getRowClass={getRowClass}
           onCellClicked={handleCellClicked}
           onGridReady={handleGridReady}
-          rowSelection="single"
+          rowSelection={{ mode: "singleRow" }}
         />
       )}
     </Box>
@@ -326,7 +326,7 @@ export function PrivateSchemaView(
           getRowClass={getRowClass}
           onCellClicked={handleCellClicked}
           onGridReady={handleGridReady}
-          rowSelection="single"
+          rowSelection={{ mode: "singleRow" }}
         />
       )}
     </Box>

@@ -1,4 +1,5 @@
 import Box from "@mui/material/Box";
+import { useTheme } from "@mui/material/styles";
 import { forwardRef, Ref, useMemo } from "react";
 import { isRowCountDiffRun, isRowCountRun, Run } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
@@ -23,6 +24,9 @@ function _RowCountGridView(
   { run, typeGuard, expectedType }: RowCountGridViewProps,
   ref: Ref<DataGridHandle>,
 ) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
   if (!typeGuard(run)) {
     throw new Error(`Run type must be ${expectedType}`);
   }
@@ -38,7 +42,7 @@ function _RowCountGridView(
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          bgcolor: "rgb(249,249,249)",
+          bgcolor: isDark ? "grey.900" : "grey.50",
           height: "100%",
         }}
       >

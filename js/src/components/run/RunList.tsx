@@ -50,19 +50,32 @@ const RunListItem = ({
 
   return (
     <Box
-      sx={{
+      sx={(theme) => ({
         minWidth: "200px",
         display: "flex",
         flexDirection: "column",
         width: "100%",
         p: "5px 20px",
         cursor: "pointer",
-        borderBottom: "solid 1px lightgray",
+        borderBottom: "solid 1px",
+        borderBottomColor: "divider",
         borderLeft: "4px solid",
         borderLeftColor: isSelected ? "amber.400" : "transparent",
-        backgroundColor: isSelected ? "amber.50" : "transparent",
-        "&:hover": { bgcolor: isSelected ? "orange.50" : "grey.200" },
-      }}
+        backgroundColor: isSelected
+          ? theme.palette.mode === "dark"
+            ? "amber.900"
+            : "amber.50"
+          : "transparent",
+        "&:hover": {
+          bgcolor: isSelected
+            ? theme.palette.mode === "dark"
+              ? "amber.800"
+              : "orange.50"
+            : theme.palette.mode === "dark"
+              ? "grey.800"
+              : "grey.200",
+        },
+      })}
       onClick={() => {
         onSelectRun(run.run_id);
       }}
@@ -144,7 +157,8 @@ const DateSegmentItem = ({ runAt }: { runAt?: string }) => {
         minWidth: "200px",
         width: "100%",
         p: "5px 20px",
-        borderBottom: "solid 1px lightgray",
+        borderBottom: "solid 1px",
+        borderBottomColor: "divider",
         color: "grey.500",
         fontSize: "11pt",
       }}
@@ -173,7 +187,8 @@ export const RunList = () => {
           width: "100%",
           flex: "0 0 54px",
           px: "24px 8px",
-          borderBottom: "solid 1px lightgray",
+          borderBottom: "solid 1px",
+          borderBottomColor: "divider",
         }}
       >
         <Typography variant="h6">History</Typography>

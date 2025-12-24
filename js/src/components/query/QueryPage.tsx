@@ -155,7 +155,8 @@ export const QueryPage = () => {
             padding: "4pt 8pt",
             gap: "5px",
             height: "54px",
-            borderBottom: "1px solid lightgray",
+            borderBottom: "1px solid",
+            borderColor: "divider",
           }}
         >
           <HistoryToggle />
@@ -220,7 +221,8 @@ export const QueryPage = () => {
           padding: "4pt 8pt",
           gap: "5px",
           height: "54px",
-          borderBottom: "1px solid lightgray",
+          borderBottom: "1px solid",
+          borderColor: "divider",
           flex: "0 0 54px",
         }}
       >

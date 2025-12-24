@@ -176,13 +176,13 @@ const ModeMessage = () => {
           onClick={() => {
             centerNode(nodeId);
           }}
-          sx={{
+          sx={(theme) => ({
             cursor: "pointer",
             fontFamily: "monospace",
-            bgcolor: "grey.100",
+            bgcolor: theme.palette.mode === "dark" ? "grey.700" : "grey.100",
             px: 0.5,
             borderRadius: 0.5,
-          }}
+          })}
         >
           {nodeName}
         </Box>
@@ -200,13 +200,13 @@ const ModeMessage = () => {
           onClick={() => {
             centerNode(nodeId);
           }}
-          sx={{
+          sx={(theme) => ({
             cursor: "pointer",
             fontFamily: "monospace",
-            bgcolor: "grey.100",
+            bgcolor: theme.palette.mode === "dark" ? "grey.700" : "grey.100",
             px: 0.5,
             borderRadius: 0.5,
-          }}
+          })}
         >
           {nodeName}.{cllInput.column}
         </Box>
@@ -248,10 +248,11 @@ export const ColumnLevelLineageControl = ({
               <Button
                 size="small"
                 variant="outlined"
+                color="neutral"
                 sx={{
-                  borderColor: "neutral.light",
                   whiteSpace: "nowrap",
                   display: "inline-flex",
+                  bgcolor: "background.paper",
                 }}
                 disabled={!interactive || noCatalogCurrent}
                 startIcon={<FaRegDotCircle />}
@@ -276,8 +277,8 @@ export const ColumnLevelLineageControl = ({
             borderRadius: 1,
             boxShadow: 3,
             border: "1px solid",
-            borderColor: "neutral.light",
-            bgcolor: "white",
+            borderColor: "divider",
+            bgcolor: "background.paper",
             fontSize: "0.8rem",
             p: "0 0.625rem",
           }}

@@ -8,6 +8,7 @@ import { FaCheckSquare, FaRegDotCircle, FaRegSquare } from "react-icons/fa";
 import { VscKebabVertical } from "react-icons/vsc";
 import { RowCountDiff } from "@/lib/api/models";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useThemeColors } from "@/lib/hooks/useThemeColors";
 import { deltaPercentageString } from "../rowcount/delta";
 import { findByRunType } from "../run/registry";
 import { isSchemaChanged } from "../schema/schemaDiff";
@@ -71,6 +72,7 @@ const NodeRunsAggregated = ({
   inverted: boolean;
 }) => {
   const { lineageGraph, runsAggregated } = useLineageGraphContext();
+  const { text, isDark } = useThemeColors();
   const runs = runsAggregated?.[id];
   const node = lineageGraph?.nodes[id];
   if (!runs && !node) {
@@ -92,9 +94,13 @@ const NodeRunsAggregated = ({
   }
 
   const colorChanged = inverted
-    ? "white"
+    ? text.inverted
     : getIconForChangeStatus("modified").color;
-  const colorUnchanged = inverted ? "gray" : "gray.100";
+  const colorUnchanged = inverted
+    ? text.secondary
+    : isDark
+      ? "grey.700"
+      : "grey.100";
 
   const SchemaDiffIcon = findByRunType("schema_diff").icon;
 
@@ -192,6 +198,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
   const { id, resourceType, changeStatus } = data;
 
   const showContent = useStore((s) => s.transform[2] > 0.3);
+  const { background, text, isDark } = useThemeColors();
 
   const { icon: ResourceIcon } = getIconForResourceType(resourceType);
   const [isHovered, setIsHovered] = useState(false);
@@ -228,11 +235,13 @@ export function GraphNode(nodeProps: GraphNodeProps) {
     color: colorChangeStatus,
     backgroundColor: backgroundColorChangeStatus,
   } = changeStatus
-    ? getIconForChangeStatus(changeStatus)
+    ? getIconForChangeStatus(changeStatus, isDark)
     : {
         icon: undefined,
         color: String(token("colors.gray.400")),
-        backgroundColor: String(token("colors.gray.100")),
+        backgroundColor: isDark
+          ? String(token("colors.gray.700"))
+          : String(token("colors.gray.100")),
       };
 
   // border width and color
@@ -248,10 +257,10 @@ export function GraphNode(nodeProps: GraphNodeProps) {
   const nodeBackgroundColor = (function () {
     if (showContent) {
       if (selectMode === "selecting") {
-        return isSelected ? colorChangeStatus : "white";
+        return isSelected ? colorChangeStatus : background.paper;
       } else if (selectMode === "action_result") {
         if (!action) {
-          return "white";
+          return background.paper;
         } else {
           return isFocused || isSelected || isHovered
             ? backgroundColorChangeStatus
@@ -260,7 +269,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
       } else {
         return isFocused || isSelected || isHovered
           ? backgroundColorChangeStatus
-          : "white";
+          : background.paper;
       }
     } else {
       return isFocused || isSelected || isHovered
@@ -270,27 +279,27 @@ export function GraphNode(nodeProps: GraphNodeProps) {
   })();
   const titleColor = (function () {
     if (selectMode === "selecting") {
-      return isSelected ? "white" : "inherit";
+      return isSelected ? text.inverted : text.primary;
     } else if (selectMode === "action_result") {
-      return !!action && !isSelected ? "white" : "inherit";
+      return !!action && !isSelected ? text.inverted : text.primary;
     } else {
-      return "inherit";
+      return text.primary;
     }
   })();
   const iconResourceColor = (function () {
     if (selectMode === "selecting") {
-      return isSelected ? "white" : "inherit";
+      return isSelected ? text.inverted : text.primary;
     } else if (selectMode === "action_result") {
-      return !!action && !isSelected ? "white" : "inherit";
+      return !!action && !isSelected ? text.inverted : text.primary;
     } else {
-      return "inherit";
+      return text.primary;
     }
   })();
   const iconChangeStatusColor = (function () {
     if (selectMode === "selecting") {
-      return isSelected ? "white" : colorChangeStatus;
+      return isSelected ? text.inverted : colorChangeStatus;
     } else if (selectMode === "action_result") {
-      return !!action && !isSelected ? "white" : "inherit";
+      return !!action && !isSelected ? text.inverted : text.primary;
     } else {
       return colorChangeStatus;
     }
@@ -412,9 +421,9 @@ export function GraphNode(nodeProps: GraphNodeProps) {
                         component={FaRegDotCircle}
                         sx={{
                           fontSize: 14,
-                          color: "gray",
+                          color: text.secondary,
                           cursor: "pointer",
-                          "&:hover": { color: "black" },
+                          "&:hover": { color: text.primary },
                         }}
                         onClick={(e: React.MouseEvent) => {
                           e.preventDefault();
@@ -433,9 +442,9 @@ export function GraphNode(nodeProps: GraphNodeProps) {
                 <Box
                   component={VscKebabVertical}
                   sx={{
-                    color: "gray",
+                    color: text.secondary,
                     cursor: "pointer",
-                    "&:hover": { color: "black" },
+                    "&:hover": { color: text.primary },
                   }}
                   onClick={(e: React.MouseEvent) => {
                     e.preventDefault();
@@ -488,7 +497,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
                 <Box
                   sx={{
                     height: 20,
-                    color: "gray",
+                    color: text.secondary,
                     fontSize: "9pt",
                     margin: 0,
                     fontWeight: 600,

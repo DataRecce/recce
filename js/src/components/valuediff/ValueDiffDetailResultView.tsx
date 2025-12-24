@@ -1,4 +1,5 @@
 import Box from "@mui/material/Box";
+import { useTheme } from "@mui/material/styles";
 import { forwardRef, Ref, useMemo } from "react";
 
 import "../query/styles.css";
@@ -30,6 +31,9 @@ const PrivateValueDiffDetailResultView = (
 
   ref: Ref<DataGridHandle>,
 ) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
   if (!isValueDiffDetailRun(run)) {
     throw new Error("run type must be value_diff_detail");
   }
@@ -127,7 +131,7 @@ const PrivateValueDiffDetailResultView = (
         sx={{
           display: "flex",
           flexDirection: "column",
-          bgcolor: "rgb(249, 249, 249)",
+          bgcolor: isDark ? "grey.900" : "grey.50",
           height: "100%",
         }}
       >
@@ -156,7 +160,7 @@ const PrivateValueDiffDetailResultView = (
       sx={{
         display: "flex",
         flexDirection: "column",
-        bgcolor: "rgb(249, 249, 249)",
+        bgcolor: isDark ? "grey.900" : "grey.50",
         height: "100%",
       }}
     >

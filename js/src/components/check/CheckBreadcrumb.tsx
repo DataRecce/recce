@@ -1,5 +1,4 @@
 import Box from "@mui/material/Box";
-import Breadcrumbs from "@mui/material/Breadcrumbs";
 import TextField from "@mui/material/TextField";
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
@@ -59,40 +58,40 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
   }, [isEditing, handleCommit]);
 
   return (
-    <Breadcrumbs
+    <Box
       sx={{
-        flex: "0 1 auto",
-        fontSize: "12pt",
+        flex: "2",
+        fontSize: "1rem",
         fontWeight: 500,
         overflow: "hidden",
+        color: "text.primary",
+        cursor: "pointer",
       }}
       className="no-track-pii-safe"
     >
-      <Box sx={{ cursor: "pointer", flex: "0 1 auto", overflow: "hidden" }}>
-        {isEditing ? (
-          <TextField
-            inputRef={editInputRef}
-            value={editValue}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            size="small"
-            sx={{ width: "100%" }}
-            variant="outlined"
-          />
-        ) : (
-          <Box
-            sx={{
-              flex: "0 1 auto",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-            }}
-            onClick={handleClick}
-          >
-            {name}
-          </Box>
-        )}
-      </Box>
-    </Breadcrumbs>
+      {isEditing ? (
+        <TextField
+          inputRef={editInputRef}
+          value={editValue}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          size="small"
+          sx={{ width: "100%" }}
+          variant="outlined"
+        />
+      ) : (
+        <Box
+          sx={{
+            flex: "0 1 auto",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+          }}
+          onClick={handleClick}
+        >
+          {name}
+        </Box>
+      )}
+    </Box>
   );
 }

@@ -21,6 +21,7 @@ export default function HistoryToggle(): ReactNode {
       <Button
         size="xsmall"
         variant="outlined"
+        color="neutral"
         startIcon={<VscHistory />}
         onClick={() => {
           trackHistoryAction({ name: isHistoryOpen ? "hide" : "show" });

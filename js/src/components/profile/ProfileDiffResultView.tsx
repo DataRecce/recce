@@ -1,4 +1,5 @@
 import Box from "@mui/material/Box";
+import { useTheme } from "@mui/material/styles";
 import { forwardRef, Ref, useMemo } from "react";
 import { ProfileDiffViewOptions } from "@/lib/api/profile";
 import {
@@ -22,6 +23,9 @@ const PrivateProfileDiffResultView = (
 
   ref: Ref<DataGridHandle>,
 ) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
   if (!isProfileDiffRun(run)) {
     throw new Error("Only run type profile_diff is supported");
   }
@@ -106,7 +110,7 @@ const PrivateProfileDiffResultView = (
       sx={{
         display: "flex",
         flexDirection: "column",
-        bgcolor: "rgb(249, 249, 249)",
+        bgcolor: isDark ? "grey.900" : "grey.50",
         height: "100%",
       }}
     >
@@ -140,6 +144,9 @@ const PrivateProfileResultView = (
 
   ref: Ref<DataGridHandle>,
 ) => {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
   if (!isProfileRun(run)) {
     throw new Error("Only run type profile_diff is supported");
   }
@@ -218,7 +225,7 @@ const PrivateProfileResultView = (
       sx={{
         display: "flex",
         flexDirection: "column",
-        bgcolor: "rgb(249, 249, 249)",
+        bgcolor: isDark ? "grey.900" : "grey.50",
         height: "100%",
       }}
     >

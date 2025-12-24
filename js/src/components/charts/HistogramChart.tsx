@@ -1,3 +1,4 @@
+import { useTheme } from "@mui/material/styles";
 import {
   AnimationOptions,
   BarElement,
@@ -18,10 +19,8 @@ import {
   formatAsAbbreviatedNumber,
   formatIntervalMinMax,
 } from "@/utils/formatters";
-import {
-  BASE_BAR_COLOR_WITH_ALPHA,
-  CURRENT_BAR_COLOR_WITH_ALPHA,
-} from "./SquareIcon";
+import { getChartThemeColors, getThemedPluginOptions } from "./chartTheme";
+import { getBarColors } from "./SquareIcon";
 
 export const INFO_VAL_COLOR = "#63B3ED";
 export const DATE_RANGE = "Date Range";
@@ -54,6 +53,9 @@ export function HistogramChart({
   hideAxis = false,
   animation = false,
 }: HistogramChartProps) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
   ChartJS.register(
     BarElement,
     TimeSeriesScale,
@@ -64,11 +66,13 @@ export function HistogramChart({
     Tooltip,
   );
 
-  const chartOptions = getHistogramChartOptions(data, hideAxis, { animation });
+  const chartOptions = getHistogramChartOptions(data, hideAxis, isDark, {
+    animation,
+  });
 
   // Histograms are a mix between bar and scatter options (union)
   // uses cartesian x,y coordinates to plot and infer labels
-  const chartData = getHistogramChartData(data);
+  const chartData = getHistogramChartData(data, isDark);
 
   //infer `any` to allow for union data configurations & options
   return (
@@ -103,26 +107,28 @@ function getHistogramChartDataset(
 
 export function getHistogramChartData(
   data: HistogramChartProps["data"],
+  isDark = false,
 ): ChartData<"bar"> {
   const { datasets, type, binEdges } = data;
   const [base, current] = datasets;
+  const barColors = getBarColors(isDark);
   const currentDataset = getHistogramChartDataset(
     type,
     binEdges,
     "Current",
-    CURRENT_BAR_COLOR_WITH_ALPHA,
+    barColors.currentWithAlpha,
     current,
   );
   const baseDataset = getHistogramChartDataset(
     type,
     binEdges,
     "Base",
-    BASE_BAR_COLOR_WITH_ALPHA,
+    barColors.baseWithAlpha,
     base,
   );
 
   const newLabels = binEdges
-    .map((v, i) => formatDisplayedBinItem(binEdges, i))
+    .map((_v, i) => formatDisplayedBinItem(binEdges, i))
     .slice(0, -1); // exclude last
 
   return {
@@ -134,17 +140,24 @@ export function getHistogramChartData(
 export function getHistogramChartOptions(
   data: HistogramChartProps["data"],
   hideAxis = false,
+  isDark = false,
   { ...configOverrides }: ChartOptions<"bar"> = {},
 ): ChartOptions<"bar"> {
   const { title, datasets, type, samples = 0, binEdges } = data;
   const [base, current] = datasets;
   const isDatetime = type === "datetime";
+  const themeColors = getChartThemeColors(isDark);
+  const themedPlugins = getThemedPluginOptions(isDark);
+
   return {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
         reverse: true,
+        labels: {
+          color: themeColors.textColor,
+        },
       },
       title: {
         display: true,
@@ -152,13 +165,19 @@ export function getHistogramChartOptions(
         font: {
           size: 20,
         },
+        color: themeColors.textColor,
       },
       tooltip: {
         mode: "index",
         // position: 'nearest',
         intersect: false,
+        backgroundColor: themedPlugins.tooltip.backgroundColor,
+        titleColor: themedPlugins.tooltip.titleColor,
+        bodyColor: themedPlugins.tooltip.bodyColor,
+        borderColor: themedPlugins.tooltip.borderColor,
+        borderWidth: themedPlugins.tooltip.borderWidth,
         callbacks: {
-          title([{ dataIndex, datasetIndex }]) {
+          title([{ dataIndex }]) {
             const result = formatDisplayedBinItem(binEdges, dataIndex);
 
             const prefix = isDatetime
@@ -180,7 +199,7 @@ export function getHistogramChartOptions(
         },
       },
     },
-    scales: getScales(data, hideAxis),
+    scales: getScales(data, hideAxis, isDark),
     ...configOverrides,
   };
 }
@@ -190,13 +209,15 @@ export function getHistogramChartOptions(
 function getScales(
   { datasets, min = 0, max = 0, type, binEdges }: HistogramChartProps["data"],
   hideAxis = false,
+  isDark = false,
 ) {
   const isDatetime = type === "datetime";
   const [base, current] = datasets;
   const maxCount = Math.max(...current.counts, ...base.counts);
+  const themeColors = getChartThemeColors(isDark);
 
   const newLabels = binEdges
-    .map((v, i) => formatDisplayedBinItem(binEdges, i))
+    .map((_v, i) => formatDisplayedBinItem(binEdges, i))
     .slice(0, -1); // exclude last
 
   //swap x-scale when histogram is datetime
@@ -216,6 +237,7 @@ function getScales(
       minRotation: 30,
       maxRotation: 30,
       maxTicksLimit: 8,
+      color: themeColors.textColor,
     },
   };
   /**
@@ -226,9 +248,10 @@ function getScales(
     type: "category", //Linear doesn't understand bins!
     grid: { display: false },
     ticks: {
-      callback(val, index) {
+      callback(_val, index) {
         return newLabels[index];
       },
+      color: themeColors.textColor,
     },
     stacked: true,
   };
@@ -238,12 +261,13 @@ function getScales(
     display: !hideAxis,
     type: "linear",
     max: maxCount, //NOTE: do not add `min` since if they are equal nothing gets displayed sometimes
-    border: { dash: [2, 2] },
+    border: { dash: [2, 2], color: themeColors.borderColor },
     grid: {
-      color: "lightgray",
+      color: themeColors.gridColor,
     },
     ticks: {
       maxTicksLimit: 8,
+      color: themeColors.textColor,
       callback: function (val) {
         //slow, but necessary since chart-data is a number and can be hard to display
         return formatAsAbbreviatedNumber(val);

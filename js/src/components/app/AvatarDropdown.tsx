@@ -61,7 +61,7 @@ export default function AvatarDropdown() {
             width: 32,
             height: 32,
             borderRadius: "50%",
-            bgcolor: "white",
+            bgcolor: "background.paper",
             color: "primary.main",
             display: "flex",
             alignItems: "center",
@@ -93,8 +93,8 @@ export default function AvatarDropdown() {
         slotProps={{
           paper: {
             sx: {
-              bgcolor: "white",
-              borderColor: "grey.200",
+              bgcolor: "background.paper",
+              borderColor: "divider",
               boxShadow: 3,
               minWidth: 180,
             },

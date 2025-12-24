@@ -1,4 +1,5 @@
 import Box from "@mui/material/Box";
+import { useTheme } from "@mui/material/styles";
 import { forwardRef, Ref } from "react";
 import { HistogramDiffParams } from "@/lib/api/profile";
 import { isHistogramDiffRun } from "@/lib/api/types";
@@ -12,6 +13,9 @@ function _HistogramDiffResultView(
   { run }: HistogramDiffResultViewProp,
   ref: Ref<HTMLDivElement>,
 ) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
   if (!isHistogramDiffRun(run)) {
     throw new Error("Run type must be histogram_diff");
   }
@@ -29,7 +33,11 @@ function _HistogramDiffResultView(
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <ScreenshotBox ref={ref} height="100%">
+      <ScreenshotBox
+        ref={ref}
+        height="100%"
+        backgroundColor={isDark ? "#1f2937" : "white"}
+      >
         <Box sx={{ display: "flex", flexDirection: "row" }}>
           <Box sx={{ flex: 1 }} />
           <Box sx={{ width: "80%", height: "35vh", m: 4 }}>

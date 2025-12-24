@@ -10,6 +10,59 @@
     "Courier New", monospace;
 }
 
+/**
+ * Theme-aware CSS custom properties
+ * These variables change based on the theme class set by next-themes
+ */
+:root,
+.light {
+  /* Neutral colors - light mode */
+  --recce-neutral-50: #fafafa;
+  --recce-neutral-100: #f5f5f5;
+  --recce-neutral-200: #e5e5e5;
+  --recce-neutral-300: #d4d4d4;
+  --recce-neutral-700: #404040;
+  --recce-neutral-800: #262626;
+
+  /* Semantic colors - light mode */
+  --recce-bg-default: #ffffff;
+  --recce-bg-paper: #ffffff;
+  --recce-bg-subtle: #fafafa;
+  --recce-bg-muted: #f1f5f9;
+  --recce-border-default: #d4d4d4;
+  --recce-border-light: #e5e5e5;
+  --recce-text-primary: #171717;
+  --recce-text-secondary: #525252;
+
+  /* Gutter/split pane colors */
+  --recce-gutter-bg: #eeeeee;
+  --recce-gutter-hover: #ff6e42;
+}
+
+.dark {
+  /* Neutral colors - dark mode */
+  --recce-neutral-50: #fafafa;
+  --recce-neutral-100: #f5f5f5;
+  --recce-neutral-200: #e5e5e5;
+  --recce-neutral-300: #d4d4d4;
+  --recce-neutral-700: #404040;
+  --recce-neutral-800: #262626;
+
+  /* Semantic colors - dark mode */
+  --recce-bg-default: #171717;
+  --recce-bg-paper: #262626;
+  --recce-bg-subtle: #262626;
+  --recce-bg-muted: #1e293b;
+  --recce-border-default: #525252;
+  --recce-border-light: #404040;
+  --recce-text-primary: #fafafa;
+  --recce-text-secondary: #a3a3a3;
+
+  /* Gutter/split pane colors */
+  --recce-gutter-bg: #404040;
+  --recce-gutter-hover: #ff6e42;
+}
+
 /*
   The default border color has changed to `currentcolor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still

@@ -6,6 +6,7 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
+import { useTheme } from "@mui/material/styles";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
@@ -25,6 +26,8 @@ import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { IconImport } from "../icons";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const { featureToggles } = useRecceInstanceContext();
   const queryClient = useQueryClient();
   const hiddenFileInput = useRef<HTMLInputElement>(null);
@@ -107,7 +110,11 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
         }
       >
         <IconButton
-          sx={{ pt: "6px" }}
+          sx={{
+            pt: "6px",
+            color: isDark ? "grey.300" : "grey.600",
+            "&:hover": { color: isDark ? "grey.100" : "grey.800" },
+          }}
           aria-label="Import state"
           onClick={() => {
             handleClick();

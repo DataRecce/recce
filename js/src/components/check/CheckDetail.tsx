@@ -14,6 +14,7 @@ import ListItemText from "@mui/material/ListItemText";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
+import { useTheme } from "@mui/material/styles";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import MuiTooltip from "@mui/material/Tooltip";
@@ -38,7 +39,6 @@ import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { CheckTimeline } from "@/components/check/timeline";
 import { isDisabledByNoResult } from "@/components/check/utils";
-import { lightTheme } from "@/components/ui/mui-theme";
 import {
   QueryDiffParams,
   QueryParams,
@@ -94,6 +94,8 @@ export function CheckDetail({
   checkId,
   refreshCheckList,
 }: CheckDetailProps): ReactNode {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const { featureToggles, sessionId } = useRecceInstanceContext();
   const { setLatestSelectedCheckId } = useRecceCheckContext();
   const { cloudMode } = useLineageGraphContext();
@@ -370,7 +372,7 @@ export function CheckDetail({
                   alignItems: "center",
                   height: 40,
                   borderBottom: "2px solid",
-                  borderColor: "grey.300",
+                  borderColor: isDark ? "grey.700" : "grey.300",
                 }}
               >
                 {/* Check type icon */}
@@ -413,7 +415,7 @@ export function CheckDetail({
                       >
                         <FaBookmark
                           size="1rem"
-                          color={lightTheme.palette.iochmara.dark}
+                          color={theme.palette.iochmara.dark}
                         />
                       </Box>
                     </MuiTooltip>
@@ -504,7 +506,13 @@ export function CheckDetail({
                         check.is_checked ? (
                           <PiCheckCircle />
                         ) : (
-                          <VscCircleLarge style={{ color: "lightgray" }} />
+                          <VscCircleLarge
+                            style={{
+                              color: isDark
+                                ? theme.palette.grey[600]
+                                : theme.palette.grey[400],
+                            }}
+                          />
                         )
                       }
                       sx={{ flex: "0 0 auto", textTransform: "none" }}
@@ -629,7 +637,7 @@ export function CheckDetail({
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            bgcolor: "rgb(249,249,249)",
+                            bgcolor: isDark ? "grey.900" : "grey.50",
                             height: "100%",
                           }}
                         >

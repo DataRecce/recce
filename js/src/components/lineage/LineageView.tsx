@@ -6,6 +6,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import {
   Background,
+  BackgroundVariant,
   ControlButton,
   Controls,
   getNodesBounds,
@@ -43,9 +44,11 @@ import {
   toReactFlow,
 } from "./lineage";
 import "@xyflow/react/dist/style.css";
+import "./styles.css";
 import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { FiCopy } from "react-icons/fi";
+import { colors } from "@/components/ui/mui-theme";
 import { toaster } from "@/components/ui/toaster";
 import { Check } from "@/lib/api/checks";
 import { CllInput, ColumnLineageData, getCll } from "@/lib/api/cll";
@@ -78,6 +81,7 @@ import {
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { useRun } from "@/lib/hooks/useRun";
+import { useThemeColors } from "@/lib/hooks/useThemeColors";
 import { HSplit } from "../split/Split";
 import { ActionControl } from "./ActionControl";
 import { ChangeStatusLegend } from "./ChangeStatusLegend";
@@ -130,7 +134,7 @@ const edgeTypes = {
 const nodeColor = (node: LineageGraphNode) => {
   return node.data.changeStatus
     ? getIconForChangeStatus(node.data.changeStatus).hexColor
-    : ("lightgray" as string);
+    : colors.neutral[400];
 };
 
 const useResizeObserver = (
@@ -199,6 +203,7 @@ export function PrivateLineageView(
   { interactive = false, ...props }: LineageViewProps,
   ref: Ref<LineageViewRef>,
 ) {
+  const { isDark } = useThemeColors();
   const reactFlow = useReactFlow();
   const refResize = useRef<HTMLDivElement>(null);
   const { successToast, failToast } = useClipBoardToast();
@@ -210,7 +215,7 @@ export function PrivateLineageView(
     renderLibrary: "html-to-image",
     imageType: "png",
     shadowEffect: true,
-    backgroundColor: "white",
+    backgroundColor: isDark ? colors.neutral[900] : colors.neutral[50],
     ignoreElements: (element: Element) => {
       try {
         return element.classList.contains(IGNORE_SCREENSHOT_CLASS);
@@ -1249,12 +1254,23 @@ export function PrivateLineageView(
             minZoom={0.1}
             nodesDraggable={interactive}
             ref={refReactFlow as unknown as Ref<HTMLDivElement>}
+            colorMode={isDark ? "dark" : "light"}
           >
-            <Background color="#ccc" />
+            <Background
+              id="lineage-bg"
+              variant={BackgroundVariant.Dots}
+              color={isDark ? colors.neutral[700] : colors.neutral[300]}
+              gap={20}
+              size={2}
+            />
             <Controls
               showInteractive={false}
               position="top-right"
               className={IGNORE_SCREENSHOT_CLASS}
+              style={{
+                backgroundColor: isDark ? colors.neutral[700] : undefined,
+                borderColor: isDark ? colors.neutral[600] : undefined,
+              }}
             >
               <ControlButton
                 title="copy image"
@@ -1264,6 +1280,10 @@ export function PrivateLineageView(
                     type: viewMode,
                     from: "lineage_view",
                   });
+                }}
+                style={{
+                  backgroundColor: isDark ? colors.neutral[700] : undefined,
+                  color: isDark ? colors.neutral[200] : undefined,
                 }}
               >
                 <Box component={FiCopy} />
@@ -1303,6 +1323,10 @@ export function PrivateLineageView(
               nodeStrokeWidth={3}
               zoomable
               pannable
+              bgColor={isDark ? colors.neutral[800] : undefined}
+              maskColor={
+                isDark ? `${colors.neutral[900]}99` : `${colors.neutral[100]}99`
+              }
             />
             {selectMode === "action_result" && (
               <Panel
@@ -1320,7 +1344,13 @@ export function PrivateLineageView(
           <LineageViewContextMenu {...lineageViewContextMenu.props} />
         </Stack>
         {focusedNode ? (
-          <Box sx={{ borderLeft: "solid 1px lightgray", height: "100%" }}>
+          <Box
+            sx={{
+              borderLeft: "solid 1px",
+              borderColor: "divider",
+              height: "100%",
+            }}
+          >
             <NodeView node={focusedNode} onCloseNode={onNodeViewClosed} />
           </Box>
         ) : (
