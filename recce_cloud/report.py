@@ -440,6 +440,7 @@ def fetch_and_generate_report(
     base_branch: str,
     merged_only: bool,
     output_path: Optional[str],
+    show_csv: bool = False,
 ) -> int:
     """
     Fetch CR metrics and generate CSV report.
@@ -452,7 +453,8 @@ def fetch_and_generate_report(
         until: End date
         base_branch: Target branch filter
         merged_only: Only merged CRs
-        output_path: Output file path (None for stdout)
+        output_path: Output file path for CSV (None for no file output)
+        show_csv: If True, output CSV to stdout instead of summary
 
     Returns:
         Exit code (0 for success, non-zero for failure)
@@ -475,14 +477,18 @@ def fetch_and_generate_report(
         console.print(f"[red]Error:[/red] Failed to fetch report: {e}")
         return 1
 
-    # Display summary
-    display_report_summary(console, report)
-
-    # Generate CSV
+    # Generate CSV content (always needed for file output or --csv flag)
     csv_content = format_report_as_csv(report)
 
+    if show_csv:
+        # Output CSV to stdout only (no summary)
+        sys.stdout.write(csv_content)
+    else:
+        # Display summary (default behavior)
+        display_report_summary(console, report)
+
+    # Write to file if output path is provided
     if output_path:
-        # Write to file
         try:
             with open(output_path, "w") as f:
                 f.write(csv_content)
@@ -491,10 +497,5 @@ def fetch_and_generate_report(
         except Exception as e:
             console.print(f"[red]Error:[/red] Failed to write file: {e}")
             return 1
-    else:
-        # Write to stdout
-        console.print()
-        console.rule("CSV Output", style="green")
-        sys.stdout.write(csv_content)
 
     return 0

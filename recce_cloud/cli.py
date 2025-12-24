@@ -466,9 +466,16 @@ def download(target_path, session_id, prod, dry_run, force):
     "--output",
     type=click.Path(),
     default=None,
-    help="Output file path. Default: print to stdout",
+    help="Output file path for CSV. Default: no file output",
 )
-def report(repo, since, until, base_branch, merged_only, output):
+@click.option(
+    "--csv",
+    "show_csv",
+    is_flag=True,
+    default=False,
+    help="Output CSV to stdout instead of summary",
+)
+def report(repo, since, until, base_branch, merged_only, output, show_csv):
     """
     Generate CR (Change Request) metrics report as CSV.
 
@@ -551,6 +558,7 @@ def report(repo, since, until, base_branch, merged_only, output):
         base_branch=base_branch,
         merged_only=merged_only,
         output_path=output,
+        show_csv=show_csv,
     )
 
     sys.exit(exit_code)
