@@ -64,6 +64,9 @@ jobs:
       - name: Install dependencies
         run: pip install -e .[dev,mcp]
 
+      - name: Build frontend assets
+        run: make build-frontend
+
       - name: Run tests
         run: make test-tox
 
@@ -85,6 +88,9 @@ jobs:
         uses: astral-sh/setup-uv@v4
         with:
           version: "latest"
+
+      - name: Build frontend assets
+        run: make build-frontend
 
       - name: Cache tox environments
         uses: actions/cache@v4
