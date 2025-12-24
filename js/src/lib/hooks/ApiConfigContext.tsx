@@ -73,24 +73,41 @@ function createApiClient(config: ApiConfig): AxiosInstance {
   });
 
   // Request interceptor to modify URL and add auth header
-  client.interceptors.request.use((requestConfig) => {
-    // Replace /api prefix with configured apiPrefix
-    if (apiPrefix && requestConfig.url) {
-      // Replace /api/ or /api at the start of the URL
-      if (requestConfig.url.startsWith("/api/")) {
-        requestConfig.url = requestConfig.url.replace("/api/", `${apiPrefix}/`);
-      } else if (requestConfig.url.startsWith("/api")) {
-        requestConfig.url = requestConfig.url.replace("/api", apiPrefix);
+  client.interceptors.request.use(
+    (requestConfig) => {
+      try {
+        // Replace /api prefix with configured apiPrefix (only if apiPrefix is non-empty)
+        if (apiPrefix && requestConfig.url) {
+          // Handle exact "/api" and "/api/*" URLs explicitly
+          if (requestConfig.url === "/api") {
+            requestConfig.url = apiPrefix;
+          } else if (requestConfig.url.startsWith("/api/")) {
+            // "/api".length === 4; keep everything after that
+            requestConfig.url = apiPrefix + requestConfig.url.slice(4);
+          }
+        }
+
+        // Add auth header if token is provided
+        if (authToken) {
+          requestConfig.headers.Authorization = `Bearer ${authToken}`;
+        }
+
+        return requestConfig;
+      } catch (error) {
+        // If anything goes wrong in the interceptor, fall back to the original config
+        // to avoid breaking all API requests.
+        console.warn(
+          "API request interceptor error, proceeding with unmodified request:",
+          error,
+        );
+        return requestConfig;
       }
-    }
-
-    // Add auth header if token is provided
-    if (authToken) {
-      requestConfig.headers.Authorization = `Bearer ${authToken}`;
-    }
-
-    return requestConfig;
-  });
+    },
+    (error) => {
+      // Preserve default axios behavior for request errors
+      return Promise.reject(error);
+    },
+  );
 
   return client;
 }
