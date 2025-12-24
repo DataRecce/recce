@@ -17,3 +17,6 @@ build
 .DS_Store
 
 recce.yml
+
+# Ignore build artifacts from frontend
+recce/data

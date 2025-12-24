@@ -5,7 +5,7 @@ default: help
 
 install-dev:
 	pip install -e .[dev,mcp]
-	pre-commit install
+	git config --unset-all core.hooksPath && pre-commit install
 
 install:
 	pip install .
