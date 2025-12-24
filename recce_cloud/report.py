@@ -175,9 +175,9 @@ class ReportClient:
             )
         if response.status_code == 502:
             try:
-                error_detail = response.json().get("detail", "GitLab API error")
+                error_detail = response.json().get("detail", "Upstream API error")
             except json.JSONDecodeError:
-                error_detail = "GitLab API error"
+                error_detail = "Upstream API error"
             raise RecceCloudException(
                 reason=error_detail,
                 status_code=502,
@@ -202,7 +202,7 @@ class ReportClient:
         for cr in data.get("change_requests", []):
             change_requests.append(
                 CRMetrics(
-                    cr_number=cr["cr_number"],
+                    cr_number=cr.get("cr_number", 0),
                     cr_title=cr.get("cr_title", ""),
                     cr_state=cr.get("cr_state", "unknown"),
                     cr_url=cr.get("cr_url", ""),
