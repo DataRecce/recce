@@ -111,6 +111,54 @@ Ready to collaborate and move faster as a team? Recce Cloud adds real-time colla
 Recce Cloud is a hosted version of Recce that standardizes your workflow, keeps teams aligned, and reduces errors—so you can ship data changes with confidence.
 👉 [View Pricing and Plans](https://reccehq.com/pricing)
 
+## Developer Documentation
+
+If you want to contribute to Recce or test local changes in your dbt project, follow these steps to install the development version.
+
+### Installing the Local Dev Version
+
+1. **Clone the repository** (if you haven't already):
+
+   ```bash
+   git clone https://github.com/DataRecce/recce.git
+   cd recce
+   ```
+
+2. **Build the project** from the repository root:
+
+   ```bash
+   make build
+   ```
+
+   This builds the frontend assets and prepares the package for installation.
+
+3. **Install the local dev version** in your dbt project:
+
+   ```bash
+   # Navigate to your dbt project
+   cd /path/to/your/dbt-project
+
+   # Install recce in editable mode (replace with your actual path to the recce repo)
+   pip install -e /path/to/recce
+   ```
+
+   Using `-e` (editable mode) means any changes you make to the Recce source code will be immediately available without reinstalling.
+
+4. **Start the Recce server** to verify the installation:
+
+   ```bash
+   recce server
+   ```
+
+### Development Tips
+
+- After making frontend changes in `js/`, run `make build` again to rebuild the static assets
+- Run `make install-dev` in the recce repository to install development dependencies
+- Use `make test` to run the Python test suite
+- Use `cd js && pnpm test` to run the frontend test suite
+
+For more detailed development guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Community & Support
 
 Here's where you can get in touch with the Recce team and find support, add a subscribe to our newsletter option as well:

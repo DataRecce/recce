@@ -1,4 +1,4 @@
-import { AxiosError, AxiosResponse } from "axios";
+import { AxiosError, AxiosInstance, AxiosResponse } from "axios";
 import { axiosClient } from "./axiosClient";
 
 /**
@@ -169,10 +169,11 @@ export interface ServerInfoResult {
   support_tasks: Record<string, boolean>;
 }
 
-export async function getServerInfo(): Promise<ServerInfoResult> {
-  return (
-    await axiosClient.get<never, AxiosResponse<ServerInfoResult>>(`/api/info`)
-  ).data;
+export async function getServerInfo(
+  client: AxiosInstance = axiosClient,
+): Promise<ServerInfoResult> {
+  return (await client.get<never, AxiosResponse<ServerInfoResult>>(`/api/info`))
+    .data;
 }
 
 export interface ModelInfoResult {

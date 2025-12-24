@@ -2,19 +2,14 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { useQuery } from "@tanstack/react-query";
 import { PiInfo } from "react-icons/pi";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { getRecceInstanceInfo } from "@/lib/api/instanceInfo";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { useRecceInstanceInfo } from "@/lib/hooks/useRecceInstanceInfo";
 import { getSettingsUrl } from "@/lib/utils/urls";
 
 export default function SetupConnectionBanner() {
   const { featureToggles } = useRecceInstanceContext();
-  const { data: instanceInfo } = useQuery({
-    queryKey: cacheKeys.instanceInfo(),
-    queryFn: getRecceInstanceInfo,
-  });
+  const { data: instanceInfo } = useRecceInstanceInfo();
 
   if (featureToggles.mode !== "metadata only") {
     return null;

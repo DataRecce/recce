@@ -1,4 +1,4 @@
-import { AxiosResponse } from "axios";
+import { AxiosInstance, AxiosResponse } from "axios";
 import { axiosClient } from "./axiosClient";
 
 export interface RecceInstanceInfo {
@@ -14,9 +14,11 @@ export interface RecceInstanceInfo {
   web_url?: string;
 }
 
-export async function getRecceInstanceInfo(): Promise<RecceInstanceInfo> {
+export async function getRecceInstanceInfo(
+  client: AxiosInstance = axiosClient,
+): Promise<RecceInstanceInfo> {
   return (
-    await axiosClient.get<never, AxiosResponse<RecceInstanceInfo>>(
+    await client.get<never, AxiosResponse<RecceInstanceInfo>>(
       "/api/instance-info",
     )
   ).data;

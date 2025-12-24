@@ -2,17 +2,12 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { useQuery } from "@tanstack/react-query";
 import { RiTerminalBoxLine } from "react-icons/ri";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { getRecceInstanceInfo } from "@/lib/api/instanceInfo";
+import { useRecceInstanceInfo } from "@/lib/hooks/useRecceInstanceInfo";
 import { getSettingsUrl } from "@/lib/utils/urls";
 
 export default function SetupConnectionGuide() {
-  const { data: instanceInfo } = useQuery({
-    queryKey: cacheKeys.instanceInfo(),
-    queryFn: getRecceInstanceInfo,
-  });
+  const { data: instanceInfo } = useRecceInstanceInfo();
 
   return (
     <div className="flex flex-1 h-full min-h-0 m-2 p-4 bg-blue-50 rounded-lg shadow-md justify-center">

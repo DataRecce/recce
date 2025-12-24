@@ -24,6 +24,7 @@ import {
   ServerDisconnectedModalContent,
 } from "@/components/lineage/ServerDisconnectedModalContent";
 import { toaster } from "@/components/ui/toaster";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { cacheKeys } from "../api/cacheKeys";
 import { markRelaunchHintCompleted } from "../api/flag";
@@ -115,7 +116,31 @@ type WebSocketPayload =
       event: WebSocketBroadcastEvent;
     };
 
-function useLineageWatcher() {
+interface UseLineageWatcherOptions {
+  /**
+   * Whether to enable WebSocket connection.
+   * Set to false for cloud mode where WebSocket is not used.
+   */
+  enabled?: boolean;
+
+  /**
+   * Base URL for WebSocket connection.
+   * If not provided, uses PUBLIC_API_URL.
+   */
+  baseUrl?: string;
+
+  /**
+   * API prefix to replace /api in WebSocket URL.
+   * If not provided, uses default /api/ws path.
+   */
+  apiPrefix?: string;
+}
+
+function useLineageWatcher({
+  enabled = true,
+  baseUrl,
+  apiPrefix,
+}: UseLineageWatcherOptions = {}) {
   const [artifactsUpdatedToastId, setArtifactsUpdatedToastId] = useState<
     string | undefined
   >(undefined);
@@ -131,7 +156,10 @@ function useLineageWatcher() {
     artifactsUpdatedToastId: undefined,
   });
 
-  const [status, setStatus] = useState<LineageWatcherStatus>("pending");
+  // If disabled, always return "connected" status to avoid showing disconnect modal
+  const [status, setStatus] = useState<LineageWatcherStatus>(
+    enabled ? "pending" : "connected",
+  );
   const [envStatus, setEnvStatus] = useState<EnvWatcherStatus>(undefined);
 
   // Update ref in useEffect to avoid updating during render
@@ -157,7 +185,13 @@ function useLineageWatcher() {
       return url.replace(/(http)(s)?:\/\//, "ws$2://");
     }
 
-    const ws = new WebSocket(`${httpUrlToWebSocketUrl(PUBLIC_API_URL)}/api/ws`);
+    // Use baseUrl if provided, otherwise fall back to PUBLIC_API_URL
+    const effectiveBaseUrl = baseUrl ?? PUBLIC_API_URL;
+    // Construct WebSocket path with apiPrefix if provided
+    const wsPath = apiPrefix ? `${apiPrefix}/ws` : "/api/ws";
+    const ws = new WebSocket(
+      `${httpUrlToWebSocketUrl(effectiveBaseUrl)}${wsPath}`,
+    );
     ref.current.ws = ws;
 
     ws.onopen = () => {
@@ -225,9 +259,14 @@ function useLineageWatcher() {
 
       ref.current.ws = undefined;
     };
-  }, [invalidateCaches]);
+  }, [invalidateCaches, baseUrl, apiPrefix]);
 
   useEffect(() => {
+    // Skip WebSocket connection if disabled (e.g., cloud mode)
+    if (!enabled) {
+      return;
+    }
+
     const refObj = ref.current;
     connect();
     return () => {
@@ -235,7 +274,7 @@ function useLineageWatcher() {
         refObj.ws.close();
       }
     };
-  }, [connect]);
+  }, [connect, enabled]);
 
   return {
     connectionStatus: status,
@@ -257,14 +296,17 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     resetConnection,
   } = useIdleTimeout();
 
+  // Get configured API client from context
+  const { apiClient, apiPrefix, baseUrl } = useApiConfig();
+
   const queryServerInfo = useQuery({
     queryKey: cacheKeys.lineage(),
-    queryFn: getServerInfo,
+    queryFn: () => getServerInfo(apiClient),
   });
 
   const queryRunAggregated = useQuery({
     queryKey: cacheKeys.runsAggregated(),
-    queryFn: aggregateRuns,
+    queryFn: () => aggregateRuns(apiClient),
   });
 
   const lineageGraph = useMemo(() => {
@@ -310,7 +352,12 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     sqlmesh,
   };
 
-  const { connectionStatus, connect, envStatus } = useLineageWatcher();
+  // Pass apiPrefix and baseUrl to useLineageWatcher for WebSocket connection
+  const { connectionStatus, connect, envStatus } = useLineageWatcher({
+    enabled: true,
+    baseUrl,
+    apiPrefix,
+  });
 
   // Handle connection status changes for idle timeout
   useEffect(() => {
