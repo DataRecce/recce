@@ -1,3 +1,4 @@
+import { AxiosInstance } from "axios";
 import { axiosClient } from "./axiosClient";
 import { RowCountDiffResult, submitRowCountDiff } from "./rowcount";
 import { waitRun } from "./runs";
@@ -20,8 +21,9 @@ export interface QueryRowCountResult {
 
 export async function fetchModelRowCount(
   modelName: string,
+  client: AxiosInstance = axiosClient,
 ): Promise<RowCountDiff> {
-  const response = await axiosClient.get<RowCountDiff>(
+  const response = await client.get<RowCountDiff>(
     `/api/models/${modelName}/row_count`,
   );
   return response.data;
@@ -29,13 +31,15 @@ export async function fetchModelRowCount(
 
 export async function queryModelRowCount(
   modelName: string,
+  client: AxiosInstance = axiosClient,
 ): Promise<RowCountDiff> {
-  const { result } = await queryRowCount([modelName]);
+  const { result } = await queryRowCount([modelName], client);
   return result[modelName];
 }
 
 export async function queryRowCount(
   modelNames: string[],
+  client: AxiosInstance = axiosClient,
 ): Promise<QueryRowCountResult> {
   if (modelNames.length === 0) {
     throw new Error("No model names provided");
@@ -44,8 +48,9 @@ export async function queryRowCount(
   const { run_id } = await submitRowCountDiff(
     { node_names: modelNames },
     { nowait: true },
+    client,
   );
-  const run = await waitRun(run_id);
+  const run = await waitRun(run_id, undefined, client);
 
   return {
     runId: run_id,

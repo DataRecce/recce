@@ -36,10 +36,11 @@ const RunListItem = ({
   onGoToCheck: (checkId: string) => void;
 }) => {
   const { featureToggles } = useRecceInstanceContext();
+  const { apiClient } = useApiConfig();
   const { data: fetchedRun } = useQuery({
     queryKey: cacheKeys.run(run.run_id),
     queryFn: async () => {
-      return await waitRun(run.run_id);
+      return await waitRun(run.run_id, undefined, apiClient);
     },
     enabled: run.status === "running",
     retry: false,
