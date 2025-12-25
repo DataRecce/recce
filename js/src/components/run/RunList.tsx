@@ -11,6 +11,7 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { createCheckByRun } from "@/lib/api/checks";
 import { listRuns, waitRun } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { findByRunType } from "../run/registry";
 import "simplebar/dist/simplebar.min.css";
@@ -170,10 +171,11 @@ const DateSegmentItem = ({ runAt }: { runAt?: string }) => {
 
 export const RunList = () => {
   const { closeHistory } = useRecceActionContext();
+  const { apiClient } = useApiConfig();
   const { data: runs, isLoading } = useQuery({
     queryKey: cacheKeys.runs(),
     queryFn: async () => {
-      return await listRuns();
+      return await listRuns(apiClient);
     },
     retry: false,
   });
@@ -253,6 +255,7 @@ function DateDividedRunHistoryItem({
 }: DateDividedRunHistoryItemProps): ReactNode {
   const [, setLocation] = useAppLocation();
   const queryClient = useQueryClient();
+  const { apiClient } = useApiConfig();
   const { showRunId, runId } = useRecceActionContext();
 
   const currentDate = new Date(run.run_at).toDateString();
@@ -266,12 +269,12 @@ function DateDividedRunHistoryItem({
 
   const handleAddToChecklist = useCallback(
     async (clickedRunId: string) => {
-      const check = await createCheckByRun(clickedRunId);
+      const check = await createCheckByRun(clickedRunId, undefined, apiClient);
 
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       setLocation(`/checks/?id=${check.check_id}`);
     },
-    [setLocation, queryClient],
+    [setLocation, queryClient, apiClient],
   );
 
   const handleGoToCheck = useCallback(

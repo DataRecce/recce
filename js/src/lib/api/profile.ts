@@ -1,3 +1,5 @@
+import { AxiosInstance } from "axios";
+import { axiosClient } from "./axiosClient";
 import { SubmitOptions, submitRun } from "./runs";
 import { ColumnRenderMode, DataFrame } from "./types";
 
@@ -20,8 +22,9 @@ export interface ProfileDiffViewOptions {
 export async function submitProfileDiff(
   params: ProfileDiffParams,
   options?: SubmitOptions,
+  client: AxiosInstance = axiosClient,
 ) {
-  return await submitRun("profile_diff", params, options);
+  return await submitRun("profile_diff", params, options, client);
 }
 
 export interface TopKDiffParams {

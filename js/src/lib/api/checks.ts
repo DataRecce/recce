@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { AxiosResponse } from "axios";
+import { AxiosInstance, AxiosResponse } from "axios";
 import { RunType } from "@/components/run/registry";
+import { useApiConfig } from "../hooks/ApiConfigContext";
 import { axiosClient } from "./axiosClient";
 import { cacheKeys } from "./cacheKeys";
 import { getExperimentTrackingBreakingChangeEnabled } from "./track";
@@ -28,84 +29,101 @@ export interface CreateCheckBody {
   track_props?: Record<string, string | boolean>;
 }
 
-export async function createSimpleCheck(): Promise<Check> {
-  const response = await axiosClient.post<
-    CreateCheckBody,
-    AxiosResponse<Check>
-  >("/api/checks", {
-    type: "simple",
-  });
+export async function createSimpleCheck(
+  client: AxiosInstance = axiosClient,
+): Promise<Check> {
+  const response = await client.post<CreateCheckBody, AxiosResponse<Check>>(
+    "/api/checks",
+    {
+      type: "simple",
+    },
+  );
   return response.data;
 }
 
 export async function createCheckByRun(
   runId: string,
   viewOptions?: Record<string, unknown>,
+  client: AxiosInstance = axiosClient,
 ): Promise<Check> {
   const track_props = getExperimentTrackingBreakingChangeEnabled()
     ? { breaking_change_analysis: true }
     : {};
-  const response = await axiosClient.post<
-    CreateCheckBody,
-    AxiosResponse<Check>
-  >("/api/checks", {
-    run_id: runId,
-    view_options: viewOptions,
-    track_props,
-  });
+  const response = await client.post<CreateCheckBody, AxiosResponse<Check>>(
+    "/api/checks",
+    {
+      run_id: runId,
+      view_options: viewOptions,
+      track_props,
+    },
+  );
   return response.data;
 }
 
-export async function listChecks(): Promise<Check[]> {
-  return (await axiosClient.get<never, AxiosResponse<Check[]>>("/api/checks"))
-    .data;
+export async function listChecks(
+  client: AxiosInstance = axiosClient,
+): Promise<Check[]> {
+  return (await client.get<never, AxiosResponse<Check[]>>("/api/checks")).data;
 }
 
 export function useChecks(enabled: boolean) {
+  const { apiClient } = useApiConfig();
   return useQuery({
     queryKey: cacheKeys.checks(),
-    queryFn: listChecks,
+    queryFn: () => listChecks(apiClient),
     enabled,
   });
 }
 
-export async function getCheck(checkId: string): Promise<Check<RunParamTypes>> {
-  const response = await axiosClient.get<
-    never,
-    AxiosResponse<Check<RunParamTypes>>
-  >(`/api/checks/${checkId}`);
+export async function getCheck(
+  checkId: string,
+  client: AxiosInstance = axiosClient,
+): Promise<Check<RunParamTypes>> {
+  const response = await client.get<never, AxiosResponse<Check<RunParamTypes>>>(
+    `/api/checks/${checkId}`,
+  );
   return response.data;
 }
 
 export async function updateCheck(
   checkId: string,
   payload: Partial<Check>,
+  client: AxiosInstance = axiosClient,
 ): Promise<Check> {
-  const response = await axiosClient.patch<
-    Partial<Check>,
-    AxiosResponse<Check>
-  >(`/api/checks/${checkId}`, payload);
+  const response = await client.patch<Partial<Check>, AxiosResponse<Check>>(
+    `/api/checks/${checkId}`,
+    payload,
+  );
   return response.data;
 }
 
-export async function deleteCheck(checkId: string) {
-  const response = await axiosClient.delete<
+export async function deleteCheck(
+  checkId: string,
+  client: AxiosInstance = axiosClient,
+) {
+  const response = await client.delete<
     never,
     AxiosResponse<Pick<Check, "check_id">>
   >(`/api/checks/${checkId}`);
   return response.data;
 }
 
-export async function reorderChecks(order: {
-  source: number;
-  destination: number;
-}) {
-  return await axiosClient.post<
+export async function reorderChecks(
+  order: {
+    source: number;
+    destination: number;
+  },
+  client: AxiosInstance = axiosClient,
+) {
+  return await client.post<
     { source: number; destination: number },
     AxiosResponse<unknown>
   >("/api/checks/reorder", order);
 }
 
-export async function markAsPresetCheck(checkId: string): Promise<void> {
-  await axiosClient.post(`/api/checks/${checkId}/mark-as-preset`);
+export async function markAsPresetCheck(
+  checkId: string,
+  client: AxiosInstance = axiosClient,
+): Promise<void> {
+  await client.post(`/api/checks/${checkId}/mark-as-preset`);
 }

@@ -13,15 +13,17 @@ import { FaCloud, FaUser } from "react-icons/fa";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { fetchGitHubAvatar, fetchUser } from "@/lib/api/user";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 
 export default function AvatarDropdown() {
+  const { apiClient } = useApiConfig();
   const {
     data: user,
     isLoading,
     error,
   } = useQuery({
     queryKey: cacheKeys.user(),
-    queryFn: fetchUser,
+    queryFn: () => fetchUser(apiClient),
     retry: false,
   });
 

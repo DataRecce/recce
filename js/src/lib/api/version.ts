@@ -1,5 +1,6 @@
-import { AxiosResponse } from "axios";
+import { AxiosInstance, AxiosResponse } from "axios";
 import { useEffect, useState } from "react";
+import { useApiConfig } from "../hooks/ApiConfigContext";
 import { axiosClient } from "./axiosClient";
 
 interface VersionResponse {
@@ -7,18 +8,24 @@ interface VersionResponse {
   latestVersion: string;
 }
 
+export async function getVersion(
+  client: AxiosInstance = axiosClient,
+): Promise<VersionResponse> {
+  const response = await client.get<never, AxiosResponse<VersionResponse>>(
+    "/api/version",
+  );
+  return response.data;
+}
+
 export function useVersionNumber() {
   const [version, setVersion] = useState("");
   const [latestVersion, setLatestVersion] = useState("");
+  const { apiClient } = useApiConfig();
 
   useEffect(() => {
     async function fetchVersion() {
       try {
-        const { version, latestVersion } = (
-          await axiosClient.get<never, AxiosResponse<VersionResponse>>(
-            "/api/version",
-          )
-        ).data;
+        const { version, latestVersion } = await getVersion(apiClient);
 
         setVersion(version);
         setLatestVersion(latestVersion);
@@ -27,7 +34,7 @@ export function useVersionNumber() {
       }
     }
     void fetchVersion();
-  }, []);
+  }, [apiClient]);
 
   return { version, latestVersion };
 }

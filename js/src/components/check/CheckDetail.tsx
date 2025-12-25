@@ -119,7 +119,7 @@ export function CheckDetail({
     data: check,
   } = useQuery({
     queryKey: cacheKeys.check(checkId),
-    queryFn: async () => getCheck(checkId),
+    queryFn: async () => getCheck(checkId, apiClient),
     refetchOnMount: true,
   });
 
@@ -142,7 +142,8 @@ export function CheckDetail({
   const lineageViewRef = useRef<LineageViewRef>(null);
 
   const { mutate } = useMutation({
-    mutationFn: (check: Partial<Check>) => updateCheck(checkId, check),
+    mutationFn: (check: Partial<Check>) =>
+      updateCheck(checkId, check, apiClient),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: cacheKeys.check(checkId),
@@ -152,7 +153,7 @@ export function CheckDetail({
   });
 
   const { mutate: handleDelete } = useMutation({
-    mutationFn: () => deleteCheck(checkId),
+    mutationFn: () => deleteCheck(checkId, apiClient),
     onSuccess: async () => {
       setLatestSelectedCheckId("");
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
@@ -167,7 +168,7 @@ export function CheckDetail({
           throw new Error("Check not found");
         }
 
-        return await markAsPresetCheck(checkId);
+        return await markAsPresetCheck(checkId, apiClient);
       },
       onSuccess: async () => {
         successToast("Check marked as preset successfully");
