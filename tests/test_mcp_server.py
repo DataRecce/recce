@@ -349,30 +349,82 @@ class TestRecceMCPServer:
         assert result["check_id"] == str(check_id)
 
     @pytest.mark.asyncio
-    async def test_tool_run_check_return_error_for_not_supported_types(self, mcp_server):
-        """Test that run_check fails for unsupported check types (lineage_diff, schema_diff)"""
-        server, _ = mcp_server
+    async def test_tool_run_check_with_lineage_diff(self, mcp_server):
+        """Test running a lineage_diff check delegates to _tool_lineage_diff"""
+        server, mock_context = mcp_server
         from uuid import uuid4
 
-        from recce.models.types import RunType
+        from recce.models.types import LineageDiff, RunType
 
         check_id = uuid4()
 
-        # Create mock check with lineage_diff type (unsupported for run_check)
+        # Create mock check with lineage_diff type
         mock_check = MagicMock()
         mock_check.check_id = check_id
         mock_check.name = "Lineage Check"
         mock_check.type = RunType.LINEAGE_DIFF
         mock_check.params = {"select": "model_a"}
 
+        # Mock lineage diff response
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": {}, "parent_map": {}},
+            "current": {"nodes": {}, "parent_map": {}},
+            "diff": {},
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+        mock_context.adapter.select_nodes.return_value = set()
+
         # Mock CheckDAO
         mock_check_dao = MagicMock()
         mock_check_dao.find_check_by_id.return_value = mock_check
 
         with patch("recce.models.CheckDAO", return_value=mock_check_dao):
-            # Verify that the call raises an exception for unsupported types
-            with pytest.raises(ValueError, match="Run type 'lineage_diff' not supported"):
-                await server._tool_run_check({"check_id": str(check_id)})
+            result = await server._tool_run_check({"check_id": str(check_id)})
+
+        # Verify the result is from lineage_diff tool (has nodes and edges)
+        assert "nodes" in result
+        assert "edges" in result
+
+    @pytest.mark.asyncio
+    async def test_tool_run_check_with_schema_diff(self, mcp_server):
+        """Test running a schema_diff check delegates to _tool_schema_diff"""
+        server, mock_context = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import LineageDiff, RunType
+
+        check_id = uuid4()
+
+        # Create mock check with schema_diff type
+        mock_check = MagicMock()
+        mock_check.check_id = check_id
+        mock_check.name = "Schema Check"
+        mock_check.type = RunType.SCHEMA_DIFF
+        mock_check.params = {"select": "model_a"}
+
+        # Mock lineage diff response
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": {}, "parent_map": {}},
+            "current": {"nodes": {}, "parent_map": {}},
+            "diff": {},
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+        mock_context.adapter.select_nodes.return_value = set()
+
+        # Mock CheckDAO
+        mock_check_dao = MagicMock()
+        mock_check_dao.find_check_by_id.return_value = mock_check
+
+        with patch("recce.models.CheckDAO", return_value=mock_check_dao):
+            result = await server._tool_run_check({"check_id": str(check_id)})
+
+        # Verify the result is from schema_diff tool (has columns, data, limit, more)
+        assert "columns" in result
+        assert "data" in result
+        assert "limit" in result
+        assert "more" in result
 
     @pytest.mark.asyncio
     async def test_error_handling(self, mcp_server):

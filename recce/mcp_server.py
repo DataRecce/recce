@@ -699,6 +699,7 @@ class RecceMCPServer:
         try:
             from recce.apis.run_func import submit_run
             from recce.models import CheckDAO
+            from recce.models.types import RunType
 
             check_id = arguments.get("check_id")
             if not check_id:
@@ -709,8 +710,15 @@ class RecceMCPServer:
             if not check:
                 raise ValueError(f"Check with ID {check_id} not found")
 
+            # For lineage_diff and schema_diff, call the corresponding diff tools
+            if check.type == RunType.LINEAGE_DIFF:
+                return await self._tool_lineage_diff(check.params or {})
+
+            if check.type == RunType.SCHEMA_DIFF:
+                return await self._tool_schema_diff(check.params or {})
+
             try:
-                # Submit and execute the run
+                # Submit and execute the run for other check types
                 run, future = submit_run(check.type, params=check.params or {}, check_id=check_id)
                 run.result = await future
 
