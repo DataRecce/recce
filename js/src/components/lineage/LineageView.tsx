@@ -71,6 +71,7 @@ import {
   isValueDiffDetailRun,
   isValueDiffRun,
 } from "@/lib/api/types";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
@@ -204,6 +205,7 @@ export function PrivateLineageView(
   ref: Ref<LineageViewRef>,
 ) {
   const { isDark } = useThemeColors();
+  const { apiClient } = useApiConfig();
   const reactFlow = useReactFlow();
   const refResize = useRef<HTMLDivElement>(null);
   const { successToast, failToast } = useClipBoardToast();
@@ -296,7 +298,7 @@ export function PrivateLineageView(
 
   const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
   const actionGetCll = useMutation({
-    mutationFn: getCll,
+    mutationFn: (input: CllInput) => getCll(input, apiClient),
   });
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
 
@@ -467,22 +469,28 @@ export function PrivateLineageView(
         };
 
         try {
-          const result = await select({
-            select: newViewOptions.select,
-            exclude: newViewOptions.exclude,
-            packages: newViewOptions.packages,
-            view_mode: newViewOptions.view_mode,
-          });
+          const result = await select(
+            {
+              select: newViewOptions.select,
+              exclude: newViewOptions.exclude,
+              packages: newViewOptions.packages,
+              view_mode: newViewOptions.view_mode,
+            },
+            apiClient,
+          );
           filteredNodeIds = result.nodes;
         } catch (_) {
           // fallback behavior
           newViewOptions.view_mode = "all";
-          const result = await select({
-            select: newViewOptions.select,
-            exclude: newViewOptions.exclude,
-            packages: newViewOptions.packages,
-            view_mode: newViewOptions.view_mode,
-          });
+          const result = await select(
+            {
+              select: newViewOptions.select,
+              exclude: newViewOptions.exclude,
+              packages: newViewOptions.packages,
+              view_mode: newViewOptions.view_mode,
+            },
+            apiClient,
+          );
           filteredNodeIds = result.nodes;
         }
 
@@ -686,12 +694,15 @@ export function PrivateLineageView(
 
     if (reselect) {
       try {
-        const result = await select({
-          select: newViewOptions.select,
-          exclude: newViewOptions.exclude,
-          packages: newViewOptions.packages,
-          view_mode: newViewOptions.view_mode,
-        });
+        const result = await select(
+          {
+            select: newViewOptions.select,
+            exclude: newViewOptions.exclude,
+            packages: newViewOptions.packages,
+            view_mode: newViewOptions.view_mode,
+          },
+          apiClient,
+        );
         // focus to unfocus the model or column node
         newViewOptions = { ...newViewOptions, column_level_lineage: undefined };
         selectedNodes = result.nodes;
@@ -1075,7 +1086,7 @@ export function PrivateLineageView(
         deselect();
         trackMultiNodesAction({ type: "lineage_diff", selected: "multi" });
       } else if (!focusedNode) {
-        check = await createLineageDiffCheck(viewOptions);
+        check = await createLineageDiffCheck(viewOptions, apiClient);
         trackMultiNodesAction({ type: "lineage_diff", selected: "none" });
       }
 
@@ -1093,17 +1104,23 @@ export function PrivateLineageView(
           trackMultiNodesAction({ type: "schema_diff", selected: "multi" });
         }
       } else if (focusedNode) {
-        check = await createSchemaDiffCheck({
-          node_id: focusedNode.id,
-        });
+        check = await createSchemaDiffCheck(
+          {
+            node_id: focusedNode.id,
+          },
+          apiClient,
+        );
         trackMultiNodesAction({ type: "schema_diff", selected: "single" });
       } else {
-        check = await createSchemaDiffCheck({
-          select: viewOptions.select,
-          exclude: viewOptions.exclude,
-          packages: viewOptions.packages,
-          view_mode: viewOptions.view_mode,
-        });
+        check = await createSchemaDiffCheck(
+          {
+            select: viewOptions.select,
+            exclude: viewOptions.exclude,
+            packages: viewOptions.packages,
+            view_mode: viewOptions.view_mode,
+          },
+          apiClient,
+        );
         trackMultiNodesAction({ type: "schema_diff", selected: "none" });
       }
 

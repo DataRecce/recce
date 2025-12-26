@@ -8,6 +8,7 @@ import { IconType } from "react-icons";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check } from "@/lib/api/checks";
 import { select } from "@/lib/api/select";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { type DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 import { LineageGraphNode } from "../lineage/lineage";
@@ -106,6 +107,7 @@ export function PrivateSchemaDiffView(
 ) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
+  const { apiClient } = useApiConfig();
   const { lineageGraph } = useLineageGraphContext();
   const params = check.params as SchemaDiffParams;
 
@@ -114,12 +116,15 @@ export function PrivateSchemaDiffView(
   const { isLoading, error, data } = useQuery({
     queryKey,
     queryFn: async () =>
-      select({
-        select: params.select,
-        exclude: params.exclude,
-        packages: params.packages,
-        view_mode: params.view_mode,
-      }),
+      select(
+        {
+          select: params.select,
+          exclude: params.exclude,
+          packages: params.packages,
+          view_mode: params.view_mode,
+        },
+        apiClient,
+      ),
     refetchOnMount: true,
     enabled: !params.node_id,
   });

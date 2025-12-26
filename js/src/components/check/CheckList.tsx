@@ -25,6 +25,7 @@ import { IoClose } from "react-icons/io5";
 import { isDisabledByNoResult } from "@/components/check/utils";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, updateCheck } from "@/lib/api/checks";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { useRun } from "@/lib/hooks/useRun";
@@ -45,9 +46,11 @@ const ChecklistItem = ({
   const isDark = theme.palette.mode === "dark";
   const { featureToggles } = useRecceInstanceContext();
   const queryClient = useQueryClient();
+  const { apiClient } = useApiConfig();
   const checkId = check.check_id;
   const { mutate } = useMutation({
-    mutationFn: (check: Partial<Check>) => updateCheck(checkId, check),
+    mutationFn: (check: Partial<Check>) =>
+      updateCheck(checkId, check, apiClient),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: cacheKeys.check(checkId),
@@ -154,8 +157,10 @@ export const CheckList = ({
     string | null
   >(null);
   const queryClient = useQueryClient();
+  const { apiClient } = useApiConfig();
   const { mutate: markCheckedByID } = useMutation({
-    mutationFn: (checkId: string) => updateCheck(checkId, { is_checked: true }),
+    mutationFn: (checkId: string) =>
+      updateCheck(checkId, { is_checked: true }, apiClient),
     onSuccess: async (_, checkId: string) => {
       await queryClient.invalidateQueries({
         queryKey: cacheKeys.check(checkId),

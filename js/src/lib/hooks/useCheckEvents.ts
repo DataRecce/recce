@@ -14,6 +14,7 @@ import {
   listCheckEvents,
   updateComment,
 } from "@/lib/api/checkEvents";
+import { useApiConfig } from "./ApiConfigContext";
 
 const POLLING_INTERVAL = 10000; // 10 seconds
 
@@ -27,6 +28,7 @@ export function useCheckEvents(
 ) {
   const { enabled = true } = options;
   const queryClient = useQueryClient();
+  const { apiClient } = useApiConfig();
 
   // Fetch events with polling
   const {
@@ -36,7 +38,7 @@ export function useCheckEvents(
     refetch,
   } = useQuery({
     queryKey: cacheKeys.checkEvents(checkId),
-    queryFn: () => listCheckEvents(checkId),
+    queryFn: () => listCheckEvents(checkId, apiClient),
     enabled,
     refetchInterval: POLLING_INTERVAL,
     refetchIntervalInBackground: false,
@@ -44,7 +46,7 @@ export function useCheckEvents(
 
   // Create comment mutation
   const createCommentMutation = useMutation({
-    mutationFn: (content: string) => createComment(checkId, content),
+    mutationFn: (content: string) => createComment(checkId, content, apiClient),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: cacheKeys.checkEvents(checkId),
@@ -55,7 +57,7 @@ export function useCheckEvents(
   // Update comment mutation
   const updateCommentMutation = useMutation({
     mutationFn: ({ eventId, content }: { eventId: string; content: string }) =>
-      updateComment(checkId, eventId, content),
+      updateComment(checkId, eventId, content, apiClient),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: cacheKeys.checkEvents(checkId),
@@ -65,7 +67,7 @@ export function useCheckEvents(
 
   // Delete comment mutation
   const deleteCommentMutation = useMutation({
-    mutationFn: (eventId: string) => deleteComment(checkId, eventId),
+    mutationFn: (eventId: string) => deleteComment(checkId, eventId, apiClient),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: cacheKeys.checkEvents(checkId),

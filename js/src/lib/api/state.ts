@@ -1,4 +1,4 @@
-import { AxiosResponse, isAxiosError } from "axios";
+import { AxiosInstance, AxiosResponse, isAxiosError } from "axios";
 import { axiosClient } from "./axiosClient";
 
 export interface SaveAsInput {
@@ -11,27 +11,28 @@ export interface ImportedState {
   checks: number;
 }
 
-export async function saveAs(input: SaveAsInput): Promise<void> {
+export async function saveAs(
+  input: SaveAsInput,
+  client: AxiosInstance = axiosClient,
+): Promise<void> {
   return (
-    await axiosClient.post<SaveAsInput, AxiosResponse<void>>(
-      "/api/save-as",
-      input,
-    )
+    await client.post<SaveAsInput, AxiosResponse<void>>("/api/save-as", input)
   ).data;
 }
 
-export async function rename(input: SaveAsInput): Promise<void> {
+export async function rename(
+  input: SaveAsInput,
+  client: AxiosInstance = axiosClient,
+): Promise<void> {
   return (
-    await axiosClient.post<SaveAsInput, AxiosResponse<void>>(
-      "/api/rename",
-      input,
-    )
+    await client.post<SaveAsInput, AxiosResponse<void>>("/api/rename", input)
   ).data;
 }
 
-export async function exportState(): Promise<string> {
-  return (await axiosClient.post<never, AxiosResponse<string>>("/api/export"))
-    .data;
+export async function exportState(
+  client: AxiosInstance = axiosClient,
+): Promise<string> {
+  return (await client.post<never, AxiosResponse<string>>("/api/export")).data;
 }
 
 interface ImportStateBody {
@@ -42,23 +43,24 @@ interface ImportStateBody {
 export async function importState(
   file: File,
   checksOnly?: boolean,
+  client: AxiosInstance = axiosClient,
 ): Promise<ImportedState> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("checks_only", (!!checksOnly).toString());
 
   return (
-    await axiosClient.post<ImportStateBody, AxiosResponse<ImportedState>>(
+    await client.post<ImportStateBody, AxiosResponse<ImportedState>>(
       "/api/import",
       formData,
     )
   ).data;
 }
 
-export async function isStateSyncing(): Promise<boolean> {
-  const response = await axiosClient.get<never, AxiosResponse<boolean>>(
-    "/api/sync",
-  );
+export async function isStateSyncing(
+  client: AxiosInstance = axiosClient,
+): Promise<boolean> {
+  const response = await client.get<never, AxiosResponse<boolean>>("/api/sync");
   return response.status === 208;
 }
 
@@ -71,9 +73,10 @@ export interface SyncStateResponse {
 
 export async function syncState(
   input: SyncStateInput,
+  client: AxiosInstance = axiosClient,
 ): Promise<SyncStateResponse> {
   try {
-    const response = await axiosClient.post<
+    const response = await client.post<
       SyncStateInput,
       AxiosResponse<SyncStateResponse>
     >("/api/sync", input);
@@ -105,10 +108,10 @@ export interface ShareStateResponse {
   share_url?: string;
 }
 
-export async function shareState(): Promise<ShareStateResponse> {
+export async function shareState(
+  client: AxiosInstance = axiosClient,
+): Promise<ShareStateResponse> {
   return (
-    await axiosClient.post<never, AxiosResponse<ShareStateResponse>>(
-      "/api/share",
-    )
+    await client.post<never, AxiosResponse<ShareStateResponse>>("/api/share")
   ).data;
 }

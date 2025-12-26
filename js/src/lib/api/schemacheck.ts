@@ -1,4 +1,4 @@
-import { AxiosResponse } from "axios";
+import { AxiosInstance, AxiosResponse } from "axios";
 import { axiosClient } from "./axiosClient";
 import { Check } from "./checks";
 
@@ -17,8 +17,9 @@ interface CreateSchemaDiffCheckBody {
 
 export async function createSchemaDiffCheck(
   params: SchemaDiffViewParams,
+  client: AxiosInstance = axiosClient,
 ): Promise<Check> {
-  const response = await axiosClient.post<
+  const response = await client.post<
     CreateSchemaDiffCheckBody,
     AxiosResponse<Check>
   >("/api/checks", {

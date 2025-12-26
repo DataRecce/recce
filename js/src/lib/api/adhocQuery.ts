@@ -1,3 +1,5 @@
+import { AxiosInstance } from "axios";
+import { axiosClient } from "./axiosClient";
 import { SubmitOptions, submitRun } from "./runs";
 import { ColumnRenderMode, DataFrame } from "./types";
 
@@ -46,20 +48,23 @@ export interface QueryDiffViewOptions {
 export async function submitQuery(
   params: QueryRunParams,
   options?: SubmitOptions,
+  client: AxiosInstance = axiosClient,
 ) {
-  return await submitRun("query", params, options);
+  return await submitRun("query", params, options, client);
 }
 
 export async function submitQueryBase(
   params: QueryRunParams,
   options?: SubmitOptions,
+  client: AxiosInstance = axiosClient,
 ) {
-  return await submitRun("query_base", params, options);
+  return await submitRun("query_base", params, options, client);
 }
 
 export async function submitQueryDiff(
   params: QueryDiffParams,
   options?: SubmitOptions,
+  client: AxiosInstance = axiosClient,
 ) {
-  return await submitRun("query_diff", params, options);
+  return await submitRun("query_diff", params, options, client);
 }

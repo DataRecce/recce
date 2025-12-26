@@ -19,6 +19,7 @@ import { PiInfo } from "react-icons/pi";
 import { toaster } from "@/components/ui/toaster";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { isStateSyncing, SyncStateInput, syncState } from "@/lib/api/state";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useRecceInstanceInfo } from "@/lib/hooks/useRecceInstanceInfo";
 import { IconSync } from "../icons";
@@ -42,6 +43,7 @@ export function StateSpinner() {
 export function StateSynchronizer() {
   const [isSyncing, setSyncing] = useState(false);
   const queryClient = useQueryClient();
+  const { apiClient } = useApiConfig();
   const [location, setLocation] = useAppLocation();
   const [open, setOpen] = useState(false);
   const [syncOption, setSyncOption] = useState<
@@ -56,14 +58,14 @@ export function StateSynchronizer() {
       setOpen(false);
       setSyncing(true);
 
-      const response = await syncState(input);
+      const response = await syncState(input, apiClient);
       if (response.status === "conflict") {
         setOpen(true);
         setSyncing(false);
         return;
       }
 
-      while (await isStateSyncing()) {
+      while (await isStateSyncing(apiClient)) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
@@ -85,7 +87,7 @@ export function StateSynchronizer() {
         setLocation("/checks");
       }
     },
-    [queryClient, location, setLocation],
+    [queryClient, location, setLocation, apiClient],
   );
 
   if (isSyncing) return <StateSpinner />;

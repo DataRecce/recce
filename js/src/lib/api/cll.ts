@@ -1,4 +1,4 @@
-import { AxiosResponse } from "axios";
+import { AxiosInstance, AxiosResponse } from "axios";
 import { axiosClient } from "./axiosClient";
 import { NodeColumnData } from "./info";
 
@@ -40,8 +40,11 @@ export interface ColumnLineageData {
   };
 }
 
-export async function getCll(input: CllInput): Promise<ColumnLineageData> {
-  const response = await axiosClient.post<
+export async function getCll(
+  input: CllInput,
+  client: AxiosInstance = axiosClient,
+): Promise<ColumnLineageData> {
+  const response = await client.post<
     CllInput,
     AxiosResponse<ColumnLineageData>
   >("/api/cll", input);

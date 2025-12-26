@@ -8,14 +8,17 @@ import { TbChecklist, TbPlus } from "react-icons/tb";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check } from "@/lib/api/checks";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
 export const CheckEmptyState = () => {
   const queryClient = useQueryClient();
   const [, setLocation] = useAppLocation();
+  const { apiClient } = useApiConfig();
 
   const { mutate: createSchemaCheck, isPending } = useMutation({
-    mutationFn: () => createSchemaDiffCheck({ select: "state:modified" }),
+    mutationFn: () =>
+      createSchemaDiffCheck({ select: "state:modified" }, apiClient),
     onSuccess: async (check: Check) => {
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       setLocation(`/checks/?id=${check.check_id}`);

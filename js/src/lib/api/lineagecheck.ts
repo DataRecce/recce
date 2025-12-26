@@ -1,4 +1,4 @@
-import { AxiosResponse } from "axios";
+import { AxiosInstance, AxiosResponse } from "axios";
 import { axiosClient } from "./axiosClient";
 import { Check } from "./checks";
 import { CllInput } from "./cll";
@@ -20,8 +20,9 @@ interface CreateLineageDiffCheckBody {
 
 export async function createLineageDiffCheck(
   viewOptions: LineageDiffViewOptions,
+  client: AxiosInstance = axiosClient,
 ): Promise<Check> {
-  const response = await axiosClient.post<
+  const response = await client.post<
     CreateLineageDiffCheckBody,
     AxiosResponse<Check>
   >("/api/checks", {

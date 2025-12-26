@@ -29,6 +29,7 @@ import {
   isQueryRun,
   RunParamTypes,
 } from "@/lib/api/types";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
@@ -399,6 +400,7 @@ function AddToCheckButton({
   const { error, run } = useRun(runId);
   const queryClient = useQueryClient();
   const [, setLocation] = useAppLocation();
+  const { apiClient } = useApiConfig();
 
   const checkId = run?.check_id;
 
@@ -414,11 +416,11 @@ function AddToCheckButton({
     if (!runId) {
       return;
     }
-    const check = await createCheckByRun(runId, viewOptions);
+    const check = await createCheckByRun(runId, viewOptions, apiClient);
 
     await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     setLocation(`/checks/?id=${check.check_id}`);
-  }, [runId, setLocation, queryClient, viewOptions]);
+  }, [runId, setLocation, queryClient, viewOptions, apiClient]);
 
   if (featureToggles.disableUpdateChecklist) {
     return <></>;

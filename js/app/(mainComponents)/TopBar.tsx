@@ -4,8 +4,6 @@ import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import { useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
-import DisplayModeToggle from "app/(mainComponents)/DisplayModeToggle";
-import RecceVersionBadge from "app/(mainComponents)/RecceVersionBadge";
 import React, { useState } from "react";
 import { IconType } from "react-icons";
 import { FaGithub, FaQuestionCircle, FaSlack } from "react-icons/fa";
@@ -16,6 +14,8 @@ import { IdleTimeoutBadge } from "@/components/timeout/IdleTimeoutBadge";
 import { colors } from "@/components/ui/mui-theme";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import DisplayModeToggle from "./DisplayModeToggle";
+import RecceVersionBadge from "./RecceVersionBadge";
 
 interface LinkIconProps {
   icon: IconType;

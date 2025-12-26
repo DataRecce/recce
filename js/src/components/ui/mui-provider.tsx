@@ -3,7 +3,7 @@
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import { useTheme } from "next-themes";
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { darkTheme, lightTheme } from "./mui-theme";
 
 interface MuiProviderProps {
@@ -39,12 +39,22 @@ export function MuiProvider({
   enableCssBaseline = false,
 }: MuiProviderProps) {
   const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Avoid hydration mismatch - next-themes resolvedTheme is undefined on server
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Determine which theme to use
+  // Use light theme during SSR/hydration to match server render
   const theme = useMemo(() => {
+    if (!mounted) {
+      return lightTheme;
+    }
     const mode = forcedTheme ?? resolvedTheme;
     return mode === "dark" ? darkTheme : lightTheme;
-  }, [forcedTheme, resolvedTheme]);
+  }, [forcedTheme, resolvedTheme, mounted]);
 
   return (
     <MuiThemeProvider theme={theme}>

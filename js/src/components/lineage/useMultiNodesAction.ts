@@ -10,6 +10,7 @@ import {
   trackExploreAction,
 } from "@/lib/api/track";
 import { ValueDiffParams } from "@/lib/api/valuediff";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { ActionState } from "./LineageViewContext";
 import { LineageGraphNode } from "./lineage";
@@ -34,6 +35,7 @@ export const useMultiNodesAction = (
     onActionCompleted: () => void;
   },
 ) => {
+  const { apiClient } = useApiConfig();
   const actionState = useRef<ActionState>({
     ...initValue,
   }).current;
@@ -76,13 +78,18 @@ export const useMultiNodesAction = (
     const params = getParams(candidates);
 
     try {
-      const { run_id } = await submitRun(type, params, { nowait: true });
+      const { run_id } = await submitRun(
+        type,
+        params,
+        { nowait: true },
+        apiClient,
+      );
       showRunId(run_id);
       actionState.currentRun = { run_id };
       actionState.total = 1;
 
       for (;;) {
-        const run = await waitRun(run_id, 2);
+        const run = await waitRun(run_id, 2, apiClient);
         actionState.currentRun = run;
 
         const status = run.error
@@ -155,7 +162,12 @@ export const useMultiNodesAction = (
         onActionNodeUpdated(node);
       } else {
         try {
-          const { run_id } = await submitRun(type, params, { nowait: true });
+          const { run_id } = await submitRun(
+            type,
+            params,
+            { nowait: true },
+            apiClient,
+          );
           actionState.currentRun = { run_id };
           actions[node.id] = {
             mode,
@@ -164,7 +176,7 @@ export const useMultiNodesAction = (
           onActionNodeUpdated(node);
 
           for (;;) {
-            const run = await waitRun(run_id, 2);
+            const run = await waitRun(run_id, 2, apiClient);
             actionState.currentRun = run;
             const status = run.error
               ? "failure"
@@ -297,18 +309,21 @@ export const useMultiNodesAction = (
 
   const addLineageDiffCheck = async () => {
     const nodeIds = nodes.map((node) => node.id);
-    return await createLineageDiffCheck({
-      node_ids: nodeIds,
-    });
+    return await createLineageDiffCheck(
+      {
+        node_ids: nodeIds,
+      },
+      apiClient,
+    );
   };
 
   const addSchemaDiffCheck = async () => {
     let check;
     if (nodes.length === 1) {
-      check = await createSchemaDiffCheck({ node_id: nodes[0].id });
+      check = await createSchemaDiffCheck({ node_id: nodes[0].id }, apiClient);
     } else {
       const nodeIds = nodes.map((node) => node.id);
-      check = await createSchemaDiffCheck({ node_id: nodeIds });
+      check = await createSchemaDiffCheck({ node_id: nodeIds }, apiClient);
     }
     return check;
   };
@@ -316,7 +331,7 @@ export const useMultiNodesAction = (
   const cancel = async () => {
     actionState.status = "canceling";
     if (actionState.currentRun?.run_id) {
-      await cancelRun(actionState.currentRun.run_id);
+      await cancelRun(actionState.currentRun.run_id, apiClient);
     }
   };
 

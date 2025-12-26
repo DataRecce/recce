@@ -30,6 +30,7 @@ import {
   trackPreviewChange,
 } from "@/lib/api/track";
 import { formatSelectColumns } from "@/lib/formatSelect";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
@@ -381,6 +382,7 @@ function ExploreChangeMenuButton({
   const { envInfo, isActionAvailable } = useLineageGraphContext();
   const { featureToggles } = useRecceInstanceContext();
   const { primaryKey } = useModelColumns(node.data.name);
+  const { apiClient } = useApiConfig();
 
   const metadataOnly = featureToggles.mode === "metadata only";
   const isAddedOrRemoved =
@@ -388,9 +390,9 @@ function ExploreChangeMenuButton({
 
   const addSchemaCheck = useCallback(async () => {
     const nodeId = node.id;
-    const check = await createSchemaDiffCheck({ node_id: nodeId });
+    const check = await createSchemaDiffCheck({ node_id: nodeId }, apiClient);
     setLocation(`/checks/?id=${check.check_id}`);
-  }, [node, setLocation]);
+  }, [node, setLocation, apiClient]);
 
   const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
   let query = `select * from {{ ref("${node.data.name}") }}`;

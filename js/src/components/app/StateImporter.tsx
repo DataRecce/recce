@@ -17,6 +17,7 @@ import { toaster } from "@/components/ui/toaster";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { importState } from "@/lib/api/state";
 import { trackStateAction } from "@/lib/api/track";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import {
   useLineageGraphContext,
   useRunsAggregated,
@@ -30,6 +31,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   const isDark = theme.palette.mode === "dark";
   const { featureToggles } = useRecceInstanceContext();
   const queryClient = useQueryClient();
+  const { apiClient } = useApiConfig();
   const hiddenFileInput = useRef<HTMLInputElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -43,7 +45,11 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
     }
 
     try {
-      const { runs, checks } = await importState(selectedFile, checksOnly);
+      const { runs, checks } = await importState(
+        selectedFile,
+        checksOnly,
+        apiClient,
+      );
       refetchRunsAggregated();
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       await queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
@@ -78,6 +84,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
     setLocation,
     refetchRunsAggregated,
     checksOnly,
+    apiClient,
   ]);
 
   const handleClick = () => {
