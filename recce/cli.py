@@ -1748,6 +1748,7 @@ def read_only(ctx, state_file=None, **kwargs):
 
 
 @cli.command(cls=TrackCommand)
+@click.argument("state_file", required=False)
 @click.option("--sse", is_flag=True, default=False, help="Start in HTTP/SSE mode instead of stdio mode")
 @click.option("--host", default="localhost", help="Host to bind to in SSE mode (default: localhost)")
 @click.option("--port", default=8000, type=int, help="Port to bind to in SSE mode (default: 8000)")
@@ -1758,7 +1759,7 @@ def read_only(ctx, state_file=None, **kwargs):
 @add_options(recce_cloud_options)
 @add_options(recce_cloud_auth_options)
 @add_options(recce_hidden_options)
-def mcp_server(sse, host, port, **kwargs):
+def mcp_server(state_file, sse, host, port, **kwargs):
     """
     Start the Recce MCP (Model Context Protocol) server
 
@@ -1766,11 +1767,17 @@ def mcp_server(sse, host, port, **kwargs):
     with Recce's data validation capabilities. By default, it uses stdio for
     communication. Use --sse to enable HTTP/Server-Sent Events mode instead.
 
+    STATE_FILE is the path to the recce state file (optional).
+
     Examples:\n
 
     \b
     # Start the MCP server in stdio mode (default)
     recce mcp-server
+
+    \b
+    # Start with a state file
+    recce mcp-server recce_state.json
 
     \b
     # Start in HTTP/SSE mode on default port 8000
@@ -1807,10 +1814,10 @@ def mcp_server(sse, host, port, **kwargs):
         show_invalid_api_token_message()
         exit(1)
 
-    # Create state loader using shared function (if cloud mode is enabled)
+    # Create state loader using shared function (for cloud mode or when state_file is provided)
     is_cloud = kwargs.get("cloud", False)
-    if is_cloud:
-        state_loader = create_state_loader_by_args(None, **kwargs)
+    if is_cloud or state_file:
+        state_loader = create_state_loader_by_args(state_file, **kwargs)
         kwargs["state_loader"] = state_loader
 
     try:

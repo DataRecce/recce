@@ -19,6 +19,7 @@ from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 from recce.core import RecceContext, load_context
+from recce.exceptions import RecceException
 from recce.server import RecceServerMode
 from recce.tasks.dataframe import DataFrame
 from recce.tasks.profile import ProfileDiffTask
@@ -298,6 +299,28 @@ class RecceMCPServer:
                                 "required": ["model"],
                             },
                         ),
+                        Tool(
+                            name="list_checks",
+                            description="List all checks in the current session. Returns check metadata including check IDs, names, types, parameters, and approval status.",
+                            inputSchema={
+                                "type": "object",
+                                "properties": {},
+                            },
+                        ),
+                        Tool(
+                            name="run_check",
+                            description="Run a single check by ID and wait for completion. Returns execution status, results, and approval status.",
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "check_id": {
+                                        "type": "string",
+                                        "description": "The ID of the check to run",
+                                    },
+                                },
+                                "required": ["check_id"],
+                            },
+                        ),
                     ]
                 )
 
@@ -320,7 +343,14 @@ class RecceMCPServer:
 
             try:
                 # Check if tool is blocked in non-server mode
-                blocked_tools_in_non_server = {"row_count_diff", "query", "query_diff", "profile_diff"}
+                blocked_tools_in_non_server = {
+                    "row_count_diff",
+                    "query",
+                    "query_diff",
+                    "profile_diff",
+                    "list_checks",
+                    "run_check",
+                }
                 if self.mode != RecceServerMode.server and name in blocked_tools_in_non_server:
                     raise ValueError(
                         f"Tool '{name}' is not available in {self.mode.value} mode. "
@@ -339,6 +369,10 @@ class RecceMCPServer:
                     result = await self._tool_query_diff(arguments)
                 elif name == "profile_diff":
                     result = await self._tool_profile_diff(arguments)
+                elif name == "list_checks":
+                    result = await self._tool_list_checks(arguments)
+                elif name == "run_check":
+                    result = await self._tool_run_check(arguments)
                 else:
                     raise ValueError(f"Unknown tool: {name}")
 
@@ -622,6 +656,81 @@ class RecceMCPServer:
             logger.exception("Error executing profile diff")
             raise
 
+    async def _tool_list_checks(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """List all checks in the current session"""
+        try:
+            from recce.models import CheckDAO
+
+            # Get all checks
+            checks_dao = CheckDAO()
+            checks = checks_dao.list()
+
+            # Build checks list with relevant metadata
+            checks_list = []
+            for check in checks:
+                checks_list.append(
+                    {
+                        "check_id": str(check.check_id),
+                        "name": check.name,
+                        "type": check.type.value,
+                        "description": check.description or "",
+                        "params": check.params or {},
+                        "is_checked": check.is_checked,
+                        "is_preset": check.is_preset,
+                    }
+                )
+
+            # Get statistics
+            stats = checks_dao.status()
+
+            result = {
+                "checks": checks_list,
+                "total": stats["total"],
+                "approved": stats["approved"],
+            }
+
+            return result
+        except Exception:
+            logger.exception("Error listing checks")
+            raise
+
+    async def _tool_run_check(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Run a single check by ID"""
+        try:
+            from recce.apis.run_func import submit_run
+            from recce.models import CheckDAO
+            from recce.models.types import RunType
+
+            check_id = arguments.get("check_id")
+            if not check_id:
+                raise ValueError("check_id is required")
+
+            # Get the check from database
+            check = CheckDAO().find_check_by_id(check_id)
+            if not check:
+                raise ValueError(f"Check with ID {check_id} not found")
+
+            # For lineage_diff and schema_diff, call the corresponding diff tools
+            if check.type == RunType.LINEAGE_DIFF:
+                return await self._tool_lineage_diff(check.params or {})
+
+            if check.type == RunType.SCHEMA_DIFF:
+                return await self._tool_schema_diff(check.params or {})
+
+            try:
+                # Submit and execute the run for other check types
+                run, future = submit_run(check.type, params=check.params or {}, check_id=check_id)
+                run.result = await future
+
+                # Return run object in JSON format (same as run_check_handler in check_api.py)
+                return run.model_dump(mode="json")
+            except RecceException as e:
+                raise ValueError(str(e))
+
+        except Exception:
+            logger.exception("Error running check")
+            raise
+
     async def run(self):
         """Run the MCP server in stdio mode"""
         async with stdio_server() as (read_stream, write_stream):
@@ -684,7 +793,12 @@ class RecceMCPServer:
         await server.serve()
 
 
-async def run_mcp_server(sse: bool = False, host: str = "localhost", port: int = 8000, **kwargs):
+async def run_mcp_server(
+    sse: bool = False,
+    host: str = "localhost",
+    port: int = 8000,
+    **kwargs,
+):
     """
     Entry point for running the MCP server
 
@@ -693,9 +807,11 @@ async def run_mcp_server(sse: bool = False, host: str = "localhost", port: int =
         host: Host to bind to in SSE mode (default: localhost)
         port: Port to bind to in SSE mode (default: 8000)
         **kwargs: Arguments for loading RecceContext (dbt options, etc.)
+               Optionally includes 'state_loader' for persisting state on shutdown
                Optionally includes 'mode' for server mode (server, preview, read-only)
                Optionally includes 'debug' flag for enabling MCP logging
     """
+    state_loader = kwargs.get("state_loader", None)
     # Setup logging
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
@@ -718,8 +834,28 @@ async def run_mcp_server(sse: bool = False, host: str = "localhost", port: int =
     # Create MCP server
     server = RecceMCPServer(context, mode=mode, debug=debug)
 
-    # Run in either stdio or SSE mode
-    if sse:
-        await server.run_sse(host=host, port=port)
-    else:
-        await server.run()
+    try:
+        # Run in either stdio or SSE mode
+        if sse:
+            await server.run_sse(host=host, port=port)
+        else:
+            await server.run()
+    finally:
+        # Export state on shutdown if state_loader is available
+        if state_loader:
+            try:
+                from rich.console import Console
+
+                console = Console()
+
+                # Export the state
+                msg = state_loader.export(context.export_state())
+                if msg is not None:
+                    console.print(f"[yellow]On shutdown:[/yellow] {msg}")
+                else:
+                    if hasattr(state_loader, "state_file") and state_loader.state_file:
+                        console.print(f"[yellow]On shutdown:[/yellow] State exported to '{state_loader.state_file}'")
+                    else:
+                        console.print("[yellow]On shutdown:[/yellow] State exported successfully")
+            except Exception as e:
+                logger.exception(f"Failed to export state on shutdown: {e}")

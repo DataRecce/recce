@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -260,6 +261,170 @@ class TestRecceMCPServer:
         # Verify the result
         assert "columns" in result
         mock_result.model_dump.assert_called_once_with(mode="json")
+
+    @pytest.mark.asyncio
+    async def test_tool_list_checks(self, mcp_server):
+        """Test the list_checks tool"""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import RunType
+
+        check_id = uuid4()
+        mock_check = MagicMock()
+        mock_check.check_id = check_id
+        mock_check.name = "Test Check"
+        mock_check.type = RunType.SCHEMA_DIFF
+        mock_check.description = "Test description"
+        mock_check.params = {"select": "model_a"}
+        mock_check.is_checked = True
+        mock_check.is_preset = False
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.list.return_value = [mock_check]
+        mock_check_dao.status.return_value = {"total": 1, "approved": 1}
+
+        with patch("recce.models.CheckDAO", return_value=mock_check_dao):
+            result = await server._tool_list_checks({})
+
+        # Verify the result structure
+        assert "checks" in result
+        assert "total" in result
+        assert "approved" in result
+        assert len(result["checks"]) == 1
+        assert result["checks"][0]["check_id"] == str(check_id)
+        assert result["checks"][0]["name"] == "Test Check"
+        assert result["checks"][0]["type"] == "schema_diff"
+        assert result["total"] == 1
+        assert result["approved"] == 1
+
+    @pytest.mark.asyncio
+    async def test_tool_run_check_row_count_diff(self, mcp_server):
+        """Test running a row_count_diff check"""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import RunType
+
+        check_id = uuid4()
+        run_id = uuid4()
+
+        # Create mock check with row_count_diff type
+        mock_check = MagicMock()
+        mock_check.check_id = check_id
+        mock_check.name = "Row Count Check"
+        mock_check.type = RunType.ROW_COUNT_DIFF
+        mock_check.params = {"node_names": ["model_a"]}
+
+        # Create mock run
+        mock_run = MagicMock()
+        mock_run.run_id = run_id
+        mock_run.type = RunType.ROW_COUNT_DIFF
+        mock_run.result = {"results": [{"node_id": "model.project.model_a", "base": 100, "current": 105, "diff": 5}]}
+        mock_run.error = None
+        mock_run.check_id = check_id
+        mock_run.model_dump.return_value = {
+            "run_id": str(run_id),
+            "check_id": str(check_id),
+            "type": "row_count_diff",
+            "result": mock_run.result,
+            "error": None,
+        }
+
+        # Mock CheckDAO and submit_run
+        mock_check_dao = MagicMock()
+        mock_check_dao.find_check_by_id.return_value = mock_check
+
+        with patch("recce.models.CheckDAO", return_value=mock_check_dao):
+            with patch("recce.apis.run_func.submit_run") as mock_submit_run:
+                mock_submit_run.return_value = (mock_run, asyncio.sleep(0))
+                result = await server._tool_run_check({"check_id": str(check_id)})
+
+        # Verify the result
+        assert "run_id" in result
+        assert result["run_id"] == str(run_id)
+        assert "type" in result
+        assert result["type"] == "row_count_diff"
+        assert "check_id" in result
+        assert result["check_id"] == str(check_id)
+
+    @pytest.mark.asyncio
+    async def test_tool_run_check_with_lineage_diff(self, mcp_server):
+        """Test running a lineage_diff check delegates to _tool_lineage_diff"""
+        server, mock_context = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import LineageDiff, RunType
+
+        check_id = uuid4()
+
+        # Create mock check with lineage_diff type
+        mock_check = MagicMock()
+        mock_check.check_id = check_id
+        mock_check.name = "Lineage Check"
+        mock_check.type = RunType.LINEAGE_DIFF
+        mock_check.params = {"select": "model_a"}
+
+        # Mock lineage diff response
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": {}, "parent_map": {}},
+            "current": {"nodes": {}, "parent_map": {}},
+            "diff": {},
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+        mock_context.adapter.select_nodes.return_value = set()
+
+        # Mock CheckDAO
+        mock_check_dao = MagicMock()
+        mock_check_dao.find_check_by_id.return_value = mock_check
+
+        with patch("recce.models.CheckDAO", return_value=mock_check_dao):
+            result = await server._tool_run_check({"check_id": str(check_id)})
+
+        # Verify the result is from lineage_diff tool (has nodes and edges)
+        assert "nodes" in result
+        assert "edges" in result
+
+    @pytest.mark.asyncio
+    async def test_tool_run_check_with_schema_diff(self, mcp_server):
+        """Test running a schema_diff check delegates to _tool_schema_diff"""
+        server, mock_context = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import LineageDiff, RunType
+
+        check_id = uuid4()
+
+        # Create mock check with schema_diff type
+        mock_check = MagicMock()
+        mock_check.check_id = check_id
+        mock_check.name = "Schema Check"
+        mock_check.type = RunType.SCHEMA_DIFF
+        mock_check.params = {"select": "model_a"}
+
+        # Mock lineage diff response
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": {}, "parent_map": {}},
+            "current": {"nodes": {}, "parent_map": {}},
+            "diff": {},
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+        mock_context.adapter.select_nodes.return_value = set()
+
+        # Mock CheckDAO
+        mock_check_dao = MagicMock()
+        mock_check_dao.find_check_by_id.return_value = mock_check
+
+        with patch("recce.models.CheckDAO", return_value=mock_check_dao):
+            result = await server._tool_run_check({"check_id": str(check_id)})
+
+        # Verify the result is from schema_diff tool (has columns, data, limit, more)
+        assert "columns" in result
+        assert "data" in result
+        assert "limit" in result
+        assert "more" in result
 
     @pytest.mark.asyncio
     async def test_error_handling(self, mcp_server):
