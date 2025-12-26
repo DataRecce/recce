@@ -18,8 +18,14 @@ import { createTheme, type ThemeOptions } from "@mui/material/styles";
  * - neutral -> grey
  */
 
+// Base colors
+const white = "#FFFFFF";
+const black = "#000000";
+
 // Custom color palettes matching Chakra theme tokens
 const colors = {
+  white,
+  black,
   iochmara: {
     50: "#EAF3FB",
     100: "#C4DDF3",
@@ -71,6 +77,19 @@ const colors = {
     800: "#92400E",
     900: "#78350F",
     950: "#431407",
+  },
+  yellow: {
+    50: "#FEFCE8",
+    100: "#FEF9C3",
+    200: "#FEF08A",
+    300: "#FDE047",
+    400: "#FACC15",
+    500: "#EAB308",
+    600: "#CA8A04",
+    700: "#A16207",
+    800: "#854D0E",
+    900: "#713F12",
+    950: "#422006",
   },
   green: {
     50: "#F0FDF4",
@@ -171,7 +190,7 @@ function createButtonColorVariants<T extends CustomColorName>(
       props: { color: colorName, variant: "contained" as const },
       style: {
         backgroundColor: colorScale[500],
-        color: "#FFFFFF",
+        color: white,
         "&:hover": {
           backgroundColor: colorScale[600],
         },
@@ -229,7 +248,7 @@ function createBadgeColorVariant<T extends CustomColorName>(
     style: {
       "& .MuiBadge-badge": {
         backgroundColor: colorScale[500],
-        color: "#FFFFFF",
+        color: white,
       },
     },
   };
@@ -248,7 +267,7 @@ function createChipColorVariants<T extends CustomColorName>(
       props: { color: colorName, variant: "filled" as const },
       style: {
         backgroundColor: colorScale[500],
-        color: "#FFFFFF",
+        color: white,
         "&:hover": {
           backgroundColor: colorScale[600],
         },
@@ -350,7 +369,7 @@ const componentOverrides: ThemeOptions["components"] = {
         ...(ownerState.color === "neutral" &&
           ownerState.variant === "contained" && {
             backgroundColor: colors.neutral[700],
-            color: "#FFFFFF",
+            color: white,
             "&:hover": { backgroundColor: colors.neutral[800] },
           }),
         ...(ownerState.color === "neutral" &&
@@ -735,31 +754,31 @@ const baseThemeOptions: ThemeOptions = {
       main: colors.iochmara[500],
       light: colors.iochmara[300],
       dark: colors.iochmara[600],
-      contrastText: "#FFFFFF",
+      contrastText: white,
     },
     secondary: {
       main: colors.cyan[500],
       light: colors.cyan[400],
       dark: colors.cyan[600],
-      contrastText: "#FFFFFF",
+      contrastText: white,
     },
     success: {
       main: colors.green[500],
       light: colors.green[400],
       dark: colors.green[600],
-      contrastText: "#FFFFFF",
+      contrastText: white,
     },
     warning: {
       main: colors.amber[500],
       light: colors.amber[400],
       dark: colors.amber[600],
-      contrastText: "#FFFFFF",
+      contrastText: white,
     },
     error: {
       main: colors.red[500],
       light: colors.red[400],
       dark: colors.red[600],
-      contrastText: "#FFFFFF",
+      contrastText: white,
     },
     grey: {
       50: colors.neutral[50],
@@ -840,8 +859,8 @@ const lightThemeOptions: ThemeOptions = {
     ...baseThemeOptions.palette,
     mode: "light",
     background: {
-      default: "#FFFFFF",
-      paper: "#FFFFFF",
+      default: white,
+      paper: white,
     },
     text: {
       primary: colors.neutral[900],
@@ -914,7 +933,7 @@ function createPaletteColor(colorScale: (typeof colors)[keyof typeof colors]) {
     main: colorScale[500],
     light: colorScale[300],
     dark: colorScale[600],
-    contrastText: "#FFFFFF",
+    contrastText: white,
   };
 }
 
@@ -925,7 +944,7 @@ const customPaletteAdditions = {
     main: colors.iochmara[500],
     light: colors.iochmara[50],
     dark: colors.iochmara[700],
-    contrastText: "#FFFFFF",
+    contrastText: white,
   },
   cyan: createPaletteColor(colors.cyan),
   amber: createPaletteColor(colors.amber),
@@ -937,7 +956,7 @@ const customPaletteAdditions = {
     main: colors.neutral[500],
     light: colors.neutral[300], // Lighter shade for borders
     dark: colors.neutral[600],
-    contrastText: "#FFFFFF",
+    contrastText: white,
   },
   envBase: semanticColors.envBase,
   envCurrent: semanticColors.envCurrent,
@@ -986,8 +1005,8 @@ export function token(path: string): string | undefined {
     }
 
     // Handle "colors.white" and other special cases
-    if (colorName === "white") return "#FFFFFF";
-    if (colorName === "black") return "#000000";
+    if (colorName === "white") return white;
+    if (colorName === "black") return black;
 
     // Try semantic colors first
     if (colorName in semanticColors) {
