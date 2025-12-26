@@ -8,6 +8,7 @@ import {
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { cancelRun, waitRun } from "@/lib/api/runs";
 import { Run } from "../api/types";
+import { useApiConfig } from "./ApiConfigContext";
 import { useRunsAggregated } from "./LineageGraphContext";
 
 interface UseRunResult {
@@ -20,6 +21,7 @@ interface UseRunResult {
 }
 
 export const useRun = (runId?: string): UseRunResult => {
+  const { apiClient } = useApiConfig();
   const [isRunning, setIsRunning] = useState(false);
   const [aborting, setAborting] = useState(false);
   const [, refetchRunsAggregated] = useRunsAggregated();
@@ -27,7 +29,7 @@ export const useRun = (runId?: string): UseRunResult => {
   const { error, data: run } = useQuery({
     queryKey: cacheKeys.run(runId ?? ""),
     queryFn: async () => {
-      return await waitRun(runId ?? "", isRunning ? 2 : 0);
+      return await waitRun(runId ?? "", isRunning ? 2 : 0, apiClient);
     },
     enabled: !!runId,
     refetchInterval: isRunning ? 50 : false,
@@ -66,9 +68,9 @@ export const useRun = (runId?: string): UseRunResult => {
       return;
     }
 
-    await cancelRun(runId);
+    await cancelRun(runId, apiClient);
     return;
-  }, [runId]);
+  }, [runId, apiClient]);
 
   let RunResultView: RegistryEntry["RunResultView"] | undefined;
   if (run && runTypeHasRef(run.type)) {

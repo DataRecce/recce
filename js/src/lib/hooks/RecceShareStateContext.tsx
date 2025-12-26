@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from "react";
 import { shareState } from "@/lib/api/state";
+import { useApiConfig } from "./ApiConfigContext";
 
 interface ShareStateProps {
   shareUrl?: string;
@@ -18,13 +19,14 @@ export function RecceShareStateContextProvider({
   const [shareUrl, setShareUrl] = useState<string>();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>();
+  const { apiClient } = useApiConfig();
 
   const handleShareClick = async () => {
     setIsLoading(true);
     setError(undefined);
     setShareUrl(undefined);
     try {
-      const response = await shareState();
+      const response = await shareState(apiClient);
       if (response.status !== "success") {
         setError(response.message);
         return;

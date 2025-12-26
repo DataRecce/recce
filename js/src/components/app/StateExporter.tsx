@@ -6,15 +6,17 @@ import saveAs from "file-saver";
 import { toaster } from "@/components/ui/toaster";
 import { exportState } from "@/lib/api/state";
 import { trackStateAction } from "@/lib/api/track";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { IconExport } from "../icons";
 
 export function StateExporter() {
   const { featureToggles } = useRecceInstanceContext();
+  const { apiClient } = useApiConfig();
 
   const handleExport = async () => {
     try {
-      const jsonData = await exportState();
+      const jsonData = await exportState(apiClient);
       const jsonString = JSON.stringify(jsonData, null, 2);
       const blob = new Blob([jsonString], { type: "application/json" });
 

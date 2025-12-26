@@ -8,7 +8,7 @@
  * NOTE: This feature is only available when connected to Recce Cloud.
  */
 
-import { AxiosResponse } from "axios";
+import { AxiosInstance, AxiosResponse } from "axios";
 import { axiosClient } from "./axiosClient";
 
 // ============================================================================
@@ -78,10 +78,14 @@ export interface CheckEventsListResponse {
  * List all events for a check in chronological order.
  *
  * @param checkId - The check ID
+ * @param client - Optional axios instance for API configuration
  * @returns Promise resolving to array of CheckEvent objects
  */
-export async function listCheckEvents(checkId: string): Promise<CheckEvent[]> {
-  const response = await axiosClient.get<never, AxiosResponse<CheckEvent[]>>(
+export async function listCheckEvents(
+  checkId: string,
+  client: AxiosInstance = axiosClient,
+): Promise<CheckEvent[]> {
+  const response = await client.get<never, AxiosResponse<CheckEvent[]>>(
     `/api/checks/${checkId}/events`,
   );
   return response.data;
@@ -92,13 +96,15 @@ export async function listCheckEvents(checkId: string): Promise<CheckEvent[]> {
  *
  * @param checkId - The check ID
  * @param eventId - The event ID
+ * @param client - Optional axios instance for API configuration
  * @returns Promise resolving to a CheckEvent object
  */
 export async function getCheckEvent(
   checkId: string,
   eventId: string,
+  client: AxiosInstance = axiosClient,
 ): Promise<CheckEvent> {
-  const response = await axiosClient.get<never, AxiosResponse<CheckEvent>>(
+  const response = await client.get<never, AxiosResponse<CheckEvent>>(
     `/api/checks/${checkId}/events/${eventId}`,
   );
   return response.data;
@@ -109,13 +115,15 @@ export async function getCheckEvent(
  *
  * @param checkId - The check ID
  * @param content - The comment content (plain text for now, markdown later)
+ * @param client - Optional axios instance for API configuration
  * @returns Promise resolving to the created CheckEvent
  */
 export async function createComment(
   checkId: string,
   content: string,
+  client: AxiosInstance = axiosClient,
 ): Promise<CheckEvent> {
-  const response = await axiosClient.post<
+  const response = await client.post<
     CreateCommentRequest,
     AxiosResponse<CheckEvent>
   >(`/api/checks/${checkId}/events`, { content });
@@ -129,14 +137,16 @@ export async function createComment(
  * @param checkId - The check ID
  * @param eventId - The event ID of the comment to update
  * @param content - The new comment content
+ * @param client - Optional axios instance for API configuration
  * @returns Promise resolving to the updated CheckEvent
  */
 export async function updateComment(
   checkId: string,
   eventId: string,
   content: string,
+  client: AxiosInstance = axiosClient,
 ): Promise<CheckEvent> {
-  const response = await axiosClient.patch<
+  const response = await client.patch<
     UpdateCommentRequest,
     AxiosResponse<CheckEvent>
   >(`/api/checks/${checkId}/events/${eventId}`, { content });
@@ -149,13 +159,15 @@ export async function updateComment(
  *
  * @param checkId - The check ID
  * @param eventId - The event ID of the comment to delete
+ * @param client - Optional axios instance for API configuration
  * @returns Promise resolving when deletion is complete
  */
 export async function deleteComment(
   checkId: string,
   eventId: string,
+  client: AxiosInstance = axiosClient,
 ): Promise<void> {
-  await axiosClient.delete(`/api/checks/${checkId}/events/${eventId}`);
+  await client.delete(`/api/checks/${checkId}/events/${eventId}`);
 }
 
 // ============================================================================

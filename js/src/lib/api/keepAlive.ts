@@ -1,3 +1,4 @@
+import { AxiosInstance } from "axios";
 import { axiosClient } from "./axiosClient";
 
 /**
@@ -42,9 +43,12 @@ export function setKeepAliveCallback(callback: KeepAliveCallback | null): void {
  * - Minimum 3 seconds between API calls
  * - Prevents concurrent API calls with a lock
  *
+ * @param client - Optional axios instance for API configuration
  * @returns true if keep-alive was sent, false if throttled/skipped
  */
-export async function sendKeepAlive(): Promise<boolean> {
+export async function sendKeepAlive(
+  client: AxiosInstance = axiosClient,
+): Promise<boolean> {
   const now = Date.now();
   const elapsed = now - lastKeepAliveTime;
 
@@ -61,7 +65,7 @@ export async function sendKeepAlive(): Promise<boolean> {
   try {
     // Acquire lock inside try to ensure finally always releases it
     isSending = true;
-    await axiosClient.post("/api/keep-alive");
+    await client.post("/api/keep-alive");
     // Update timestamp only on SUCCESS
     lastKeepAliveTime = Date.now();
     // Notify listeners

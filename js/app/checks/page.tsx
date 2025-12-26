@@ -22,6 +22,7 @@ import { CheckList } from "@/components/check/CheckList";
 import { HSplit } from "@/components/split/Split";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { listChecks, reorderChecks } from "@/lib/api/checks";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
@@ -91,6 +92,7 @@ function CheckPageContent(): ReactNode {
   const { latestSelectedCheckId, setLatestSelectedCheckId } =
     useRecceCheckContext();
   const queryClient = useQueryClient();
+  const { apiClient } = useApiConfig();
   const selectedItem = checkId;
 
   useEffect(() => {
@@ -107,7 +109,7 @@ function CheckPageContent(): ReactNode {
     refetch: refetchCheckList,
   } = useQuery({
     queryKey: cacheKeys.checks(),
-    queryFn: listChecks,
+    queryFn: () => listChecks(apiClient),
     refetchOnMount: true,
   });
 
@@ -129,7 +131,7 @@ function CheckPageContent(): ReactNode {
 
   const { mutate: changeChecksOrder } = useMutation({
     mutationFn: (order: { source: number; destination: number }) =>
-      reorderChecks(order),
+      reorderChecks(order, apiClient),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     },

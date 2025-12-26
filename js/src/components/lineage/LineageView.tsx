@@ -298,7 +298,7 @@ export function PrivateLineageView(
 
   const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
   const actionGetCll = useMutation({
-    mutationFn: getCll,
+    mutationFn: (input: CllInput) => getCll(input, apiClient),
   });
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
 
@@ -1086,7 +1086,7 @@ export function PrivateLineageView(
         deselect();
         trackMultiNodesAction({ type: "lineage_diff", selected: "multi" });
       } else if (!focusedNode) {
-        check = await createLineageDiffCheck(viewOptions);
+        check = await createLineageDiffCheck(viewOptions, apiClient);
         trackMultiNodesAction({ type: "lineage_diff", selected: "none" });
       }
 
@@ -1104,17 +1104,23 @@ export function PrivateLineageView(
           trackMultiNodesAction({ type: "schema_diff", selected: "multi" });
         }
       } else if (focusedNode) {
-        check = await createSchemaDiffCheck({
-          node_id: focusedNode.id,
-        });
+        check = await createSchemaDiffCheck(
+          {
+            node_id: focusedNode.id,
+          },
+          apiClient,
+        );
         trackMultiNodesAction({ type: "schema_diff", selected: "single" });
       } else {
-        check = await createSchemaDiffCheck({
-          select: viewOptions.select,
-          exclude: viewOptions.exclude,
-          packages: viewOptions.packages,
-          view_mode: viewOptions.view_mode,
-        });
+        check = await createSchemaDiffCheck(
+          {
+            select: viewOptions.select,
+            exclude: viewOptions.exclude,
+            packages: viewOptions.packages,
+            view_mode: viewOptions.view_mode,
+          },
+          apiClient,
+        );
         trackMultiNodesAction({ type: "schema_diff", selected: "none" });
       }
 

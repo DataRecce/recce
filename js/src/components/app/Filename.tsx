@@ -20,6 +20,7 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useChecks } from "@/lib/api/checks";
 import { localStorageKeys } from "@/lib/api/localStorageKeys";
 import { rename, saveAs } from "@/lib/api/state";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { IconEdit, IconSave } from "../icons";
@@ -85,6 +86,7 @@ interface FilenameState {
 export const Filename = () => {
   const { featureToggles } = useRecceInstanceContext();
   const { fileName, cloudMode, isDemoSite, envInfo } = useLineageGraphContext();
+  const { apiClient } = useApiConfig();
   const [modalOpen, setModalOpen] = useState(false);
   const [overwriteOpen, setOverwriteOpen] = useState(false);
   const isStateless = !fileName && !cloudMode && !isDemoSite;
@@ -130,15 +132,21 @@ export const Filename = () => {
 
     try {
       if (method === "save") {
-        await saveAs({
-          filename: newFileName,
-          overwrite: overwrite ?? bypassOverwrite,
-        });
+        await saveAs(
+          {
+            filename: newFileName,
+            overwrite: overwrite ?? bypassOverwrite,
+          },
+          apiClient,
+        );
       } else {
-        await rename({
-          filename: newFileName,
-          overwrite: overwrite ?? bypassOverwrite,
-        });
+        await rename(
+          {
+            filename: newFileName,
+            overwrite: overwrite ?? bypassOverwrite,
+          },
+          apiClient,
+        );
       }
       toastSuccess(
         method === "save"

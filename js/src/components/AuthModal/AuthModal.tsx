@@ -13,6 +13,7 @@ import Cookies from "js-cookie";
 import { Dispatch, ReactNode, SetStateAction, useState } from "react";
 import { LuExternalLink } from "react-icons/lu";
 import { connectToCloud } from "@/lib/api/connectToCloud";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 type AuthState = "authenticating" | "pending" | "canceled" | "ignored";
@@ -31,6 +32,7 @@ export default function AuthModal({
   variant = "auth",
 }: AuthModalProps): ReactNode {
   const { authed } = useRecceInstanceContext();
+  const { apiClient } = useApiConfig();
   const [open, setOpen] = useState(parentOpen || !authed);
 
   // Cookie handling only for auth variant
@@ -127,7 +129,7 @@ export default function AuthModal({
               sx={{ borderRadius: 2, fontWeight: 500 }}
               onClick={async () => {
                 setAuthState("authenticating");
-                const { connection_url } = await connectToCloud();
+                const { connection_url } = await connectToCloud(apiClient);
                 // Open the connection URL in a new tab
                 window.open(connection_url, "_blank");
               }}
