@@ -25,6 +25,7 @@ import {
   trackPreviewChangeFeedback,
   trackSingleEnvironment,
 } from "@/lib/api/track";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
@@ -199,6 +200,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
   const { showRunId, clearRunResult } = useRecceActionContext();
   const { primaryKeys, setPrimaryKeys } = useRecceQueryContext();
   const { data: flags, isLoading } = useRecceServerFlag();
+  const { apiClient } = useApiConfig();
 
   const queryFn = async () => {
     const sqlTemplate = modifiedCode;
@@ -210,11 +212,11 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
     };
     const options: SubmitOptions = { nowait: true };
 
-    const { run_id } = await runFn(params, options);
+    const { run_id } = await runFn(params, options, apiClient);
 
     showRunId(run_id);
 
-    return await waitRun(run_id);
+    return await waitRun(run_id, undefined, apiClient);
   };
 
   const { mutate: runQuery, isPending } = useMutation({

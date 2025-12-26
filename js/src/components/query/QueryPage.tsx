@@ -17,6 +17,7 @@ import {
   submitQueryDiff,
 } from "@/lib/api/adhocQuery";
 import { SubmitOptions, waitRun } from "@/lib/api/runs";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
@@ -88,6 +89,7 @@ export const QueryPage = () => {
   }
 
   const { showRunId } = useRecceActionContext();
+  const { apiClient } = useApiConfig();
   const queryFn = async (type: "query" | "query_base" | "query_diff") => {
     function queryFactory(type: string) {
       switch (type) {
@@ -110,11 +112,11 @@ export const QueryPage = () => {
       params.primary_keys = primaryKeys;
       if (isCustomQueries) params.base_sql_template = baseSqlQuery;
     }
-    const { run_id } = await runFn(params, options);
+    const { run_id } = await runFn(params, options, apiClient);
 
     showRunId(run_id);
 
-    return await waitRun(run_id);
+    return await waitRun(run_id, undefined, apiClient);
   };
 
   const { mutate: runQuery, isPending } = useMutation({

@@ -1,6 +1,7 @@
 import throttle from "lodash/throttle";
 import { useCallback, useEffect, useMemo } from "react";
 import { sendKeepAlive } from "@/lib/api/keepAlive";
+import { useApiConfig } from "./ApiConfigContext";
 import { useIdleTimeoutSafe } from "./IdleTimeoutContext";
 import { useRecceInstanceInfo } from "./useRecceInstanceInfo";
 
@@ -59,6 +60,7 @@ export function useIdleDetection() {
   const { data: instanceInfo, isLoading, isError } = useRecceInstanceInfo();
   const idleTimeoutContext = useIdleTimeoutSafe();
   const isDisconnected = idleTimeoutContext?.isDisconnected ?? false;
+  const { apiClient } = useApiConfig();
 
   // Only enable idle detection if idle_timeout is configured and not disconnected
   const idleTimeout = instanceInfo?.idle_timeout;
@@ -84,14 +86,14 @@ export function useIdleDetection() {
   const sendKeepAliveNow = useCallback(async () => {
     if (document.hidden) return;
 
-    const sent = await sendKeepAlive();
+    const sent = await sendKeepAlive(apiClient);
 
     if (sent) {
       debugLog("[Idle Detection] Keep-alive sent successfully", {
         timestamp: new Date().toISOString(),
       });
     }
-  }, []);
+  }, [apiClient]);
 
   /**
    * Handle any user activity event

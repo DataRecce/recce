@@ -309,18 +309,21 @@ export const useMultiNodesAction = (
 
   const addLineageDiffCheck = async () => {
     const nodeIds = nodes.map((node) => node.id);
-    return await createLineageDiffCheck({
-      node_ids: nodeIds,
-    });
+    return await createLineageDiffCheck(
+      {
+        node_ids: nodeIds,
+      },
+      apiClient,
+    );
   };
 
   const addSchemaDiffCheck = async () => {
     let check;
     if (nodes.length === 1) {
-      check = await createSchemaDiffCheck({ node_id: nodes[0].id });
+      check = await createSchemaDiffCheck({ node_id: nodes[0].id }, apiClient);
     } else {
       const nodeIds = nodes.map((node) => node.id);
-      check = await createSchemaDiffCheck({ node_id: nodeIds });
+      check = await createSchemaDiffCheck({ node_id: nodeIds }, apiClient);
     }
     return check;
   };

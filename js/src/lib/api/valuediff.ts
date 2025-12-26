@@ -1,3 +1,5 @@
+import { AxiosInstance } from "axios";
+import { axiosClient } from "./axiosClient";
 import { SubmitOptions, submitRun } from "./runs";
 import { ColumnRenderMode, DataFrame } from "./types";
 
@@ -19,8 +21,9 @@ export interface ValueDiffParams {
 export async function submitValueDiff(
   params: ValueDiffParams,
   options?: SubmitOptions,
+  client: AxiosInstance = axiosClient,
 ) {
-  return await submitRun("value_diff", params, options);
+  return await submitRun("value_diff", params, options, client);
 }
 
 export type ValueDiffDetailResult = DataFrame;
@@ -37,6 +40,7 @@ export interface ValueDiffDetailViewOptions {
 export async function submitValueDiffDetail(
   params: ValueDiffParams,
   options?: SubmitOptions,
+  client: AxiosInstance = axiosClient,
 ) {
-  return await submitRun("value_diff_detail", params, options);
+  return await submitRun("value_diff_detail", params, options, client);
 }

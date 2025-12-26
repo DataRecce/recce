@@ -16,6 +16,7 @@ import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { fetchUser } from "@/lib/api/user";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useCheckEvents } from "@/lib/hooks/useCheckEvents";
 import { CommentInput } from "./CommentInput";
 import { TimelineEvent } from "./TimelineEvent";
@@ -27,6 +28,7 @@ interface CheckTimelineProps {
 export function CheckTimeline({ checkId }: CheckTimelineProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
+  const { apiClient } = useApiConfig();
   const {
     events,
     isLoading,
@@ -40,7 +42,7 @@ export function CheckTimeline({ checkId }: CheckTimelineProps) {
   // Get current user for determining edit/delete permissions
   const { data: currentUser } = useQuery({
     queryKey: cacheKeys.user(),
-    queryFn: fetchUser,
+    queryFn: () => fetchUser(apiClient),
     retry: false,
   });
 
