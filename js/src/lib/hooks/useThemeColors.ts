@@ -50,9 +50,9 @@ export function useThemeColors() {
     /** Background colors */
     background: {
       /** Default page background */
-      default: isDark ? colors.neutral[900] : "#FFFFFF",
+      default: isDark ? colors.neutral[900] : colors.white,
       /** Paper/card background */
-      paper: isDark ? colors.neutral[800] : "#FFFFFF",
+      paper: isDark ? colors.neutral[800] : colors.white,
       /** Subtle background for slight elevation (e.g., hover states, inputs) */
       subtle: isDark ? colors.neutral[800] : colors.neutral[50],
       /** Emphasized background for higher contrast areas */
@@ -85,17 +85,17 @@ export function useThemeColors() {
     status: {
       /** Added/success backgrounds */
       added: {
-        bg: isDark ? "#1a4d1a" : "#cefece",
+        bg: isDark ? colors.green[900] : colors.green[100],
         text: isDark ? colors.neutral[50] : colors.neutral[900],
       },
       /** Removed/error backgrounds */
       removed: {
-        bg: isDark ? "#5c1f1f" : "#ffc5c5",
+        bg: isDark ? colors.red[950] : colors.red[200],
         text: isDark ? colors.neutral[50] : colors.neutral[900],
       },
       /** Modified/warning backgrounds */
       modified: {
-        bg: isDark ? "#5c4a1a" : "#fff3cd",
+        bg: isDark ? colors.yellow[900] : colors.amber[100],
         text: isDark ? colors.neutral[50] : colors.neutral[900],
       },
     },
