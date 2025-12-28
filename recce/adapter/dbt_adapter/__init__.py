@@ -285,7 +285,10 @@ class DbtArgs:
     target_path: Optional[str] = (None,)
     project_only_flags: Optional[Dict[str, Any]] = None
     which: Optional[str] = None
-    state_modified_compare_more_unrendered_values: Optional[bool] = True  # new flag added since dbt v1.9
+    # Behavior flags - need to be present on args object for set_from_args
+    state_modified_compare_more_unrendered_values: Optional[bool] = True  # dbt v1.9
+    require_unique_project_resource_names: Optional[bool] = False  # dbt v1.11
+    require_ref_searches_node_package_before_root: Optional[bool] = False  # dbt v1.11
 
 
 @dataclass
