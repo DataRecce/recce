@@ -329,6 +329,12 @@ class DbtAdapter(BaseAdapter):
         project_dir = kwargs.get("project_dir")
         profiles_dir = kwargs.get("profiles_dir")
 
+        # Warehouse metadata options
+        warehouse_metadata = kwargs.get("warehouse_metadata", False)
+        warehouse_schema = kwargs.get("warehouse_schema", "recce_metadata")
+        curr_invocation_id = kwargs.get("curr_invocation_id")
+        base_invocation_id = kwargs.get("base_invocation_id")
+
         if profiles_dir is None:
             profiles_dir = default_profiles_dir()
 
@@ -383,9 +389,16 @@ class DbtAdapter(BaseAdapter):
         except DbtProjectError as e:
             raise e
 
-        # Load the artifacts from the state file or dbt target and dbt base directory
+        # Load the artifacts from warehouse or file system
         if not no_artifacts and not review:
-            dbt_adapter.load_artifacts()
+            if warehouse_metadata:
+                dbt_adapter.load_artifacts_from_warehouse(
+                    schema_suffix=warehouse_schema,
+                    curr_invocation_id=curr_invocation_id,
+                    base_invocation_id=base_invocation_id,
+                )
+            else:
+                dbt_adapter.load_artifacts()
         return dbt_adapter
 
     def print_lineage_info(self):
@@ -534,6 +547,59 @@ class DbtAdapter(BaseAdapter):
             os.path.join(project_root, target_base_path, "manifest.json"),
             os.path.join(project_root, target_base_path, "catalog.json"),
         ]
+
+    @track_timing("warehouse_artifact_load")
+    def load_artifacts_from_warehouse(
+        self,
+        schema_suffix: str = "recce_metadata",
+        curr_invocation_id: Optional[str] = None,
+        base_invocation_id: Optional[str] = None,
+    ):
+        """
+        Load the artifacts from warehouse tables instead of local files.
+
+        Requires the recce dbt package to be installed and 'dbt run' to have been executed
+        at least twice to have both current and base invocations.
+        """
+        from .warehouse_loader import (
+            WarehouseMetadataConfig,
+            WarehouseMetadataLoader,
+            WarehousePreviousState,
+        )
+
+        if self.runtime_config is None:
+            raise Exception("Cannot find the dbt project configuration")
+
+        # Create the warehouse loader
+        config = WarehouseMetadataConfig(
+            schema_suffix=schema_suffix,
+            curr_invocation_id=curr_invocation_id,
+            base_invocation_id=base_invocation_id,
+        )
+        loader = WarehouseMetadataLoader(
+            adapter=self.adapter,
+            runtime_config=self.runtime_config,
+            config=config,
+        )
+
+        # Load manifests and catalogs from warehouse
+        curr_manifest, base_manifest, curr_catalog, base_catalog = loader.load_manifests_and_catalogs()
+
+        # Set the values
+        self.curr_manifest = curr_manifest
+        self.curr_catalog = curr_catalog
+        self.base_manifest = base_manifest
+        self.base_catalog = base_catalog
+
+        # Set the manifest for dbt operations
+        self.manifest = as_manifest(curr_manifest)
+
+        # Create a WarehousePreviousState that provides the base_manifest
+        # for state:modified selection support
+        self.previous_state = WarehousePreviousState(as_manifest(base_manifest))
+
+        # No file watching when using warehouse metadata
+        self.artifacts_files = []
 
     def is_python_model(self, node_id: str, base: Optional[bool] = False):
         manifest = self.curr_manifest if base is False else self.base_manifest

@@ -232,6 +232,33 @@ recce_cloud_auth_options = [
     )
 ]
 
+recce_warehouse_metadata_options = [
+    click.option(
+        "--warehouse-metadata",
+        is_flag=True,
+        help="Load metadata from warehouse tables instead of local artifact files. "
+        "Requires the recce dbt package to be installed and 'dbt run' to have been executed.",
+        envvar="RECCE_WAREHOUSE_METADATA",
+    ),
+    click.option(
+        "--warehouse-schema",
+        help="Schema suffix for recce metadata tables (default: recce_metadata).",
+        type=click.STRING,
+        default="recce_metadata",
+        show_default=True,
+    ),
+    click.option(
+        "--curr-invocation-id",
+        help="Specific invocation ID to use as current (default: latest).",
+        type=click.STRING,
+    ),
+    click.option(
+        "--base-invocation-id",
+        help="Specific invocation ID to use as base (default: second-latest).",
+        type=click.STRING,
+    ),
+]
+
 recce_dbt_artifact_dir_options = [
     click.option(
         "--target-path",
@@ -493,6 +520,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
 @add_options(recce_dbt_artifact_dir_options)
+@add_options(recce_warehouse_metadata_options)
 @add_options(recce_cloud_options)
 @add_options(recce_cloud_auth_options)
 @add_options(recce_hidden_options)
@@ -564,7 +592,9 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
     }
 
     # Check Single Environment Onboarding Mode if not in cloud mode and not in review mode
-    if not is_cloud and not is_review:
+    # Skip this check when warehouse_metadata is enabled since base env comes from warehouse
+    is_warehouse_metadata = kwargs.get("warehouse_metadata", False)
+    if not is_cloud and not is_review and not is_warehouse_metadata:
         project_dir_path = Path(kwargs.get("project_dir") or "./")
         target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
         if not target_base_path.is_dir():
