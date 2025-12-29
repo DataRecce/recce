@@ -10,8 +10,8 @@ import {
 // ============================================================================
 
 describe("calculateDelta", () => {
-  test("returns '=' when values are equal", () => {
-    expect(calculateDelta(100, 100)).toBe("=");
+  test("returns '0' when values are equal", () => {
+    expect(calculateDelta(100, 100)).toBe("0");
   });
 
   test("returns percentage string when values differ", () => {
@@ -96,7 +96,7 @@ describe("rowCountDiffResultToDataFrame", () => {
       orders: { base: 100, curr: 100 },
     });
 
-    expect(result.data[0][3]).toBe("=");
+    expect(result.data[0][3]).toBe("0");
   });
 });
 
