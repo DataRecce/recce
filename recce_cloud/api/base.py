@@ -130,3 +130,22 @@ class BaseRecceCloudClient(ABC):
                 - catalog_url: Presigned URL for catalog.json download
         """
         pass
+
+    @abstractmethod
+    def delete_session(
+        self,
+        cr_number: Optional[int] = None,
+        session_type: Optional[str] = None,
+    ) -> Dict:
+        """
+        Delete a session.
+
+        Args:
+            cr_number: Change request number (PR/MR number) for CR sessions
+            session_type: Session type ("cr", "prod") - "prod" deletes base session
+
+        Returns:
+            Dictionary containing:
+                - session_id: Session ID of the deleted session
+        """
+        pass
