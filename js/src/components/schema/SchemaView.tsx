@@ -152,7 +152,6 @@ function PrivateSingleEnvSchemaView(
           columns={columns}
           rows={rows}
           renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
-          className="rdg-light"
           ref={ref}
           getRowId={getRowId}
           getRowClass={getRowClass}

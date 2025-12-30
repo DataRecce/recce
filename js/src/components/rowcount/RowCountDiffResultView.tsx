@@ -65,7 +65,6 @@ function _RowCountGridView(
         columns={gridData.columns}
         rows={gridData.rows}
         renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
-        className="rdg-light"
       />
     </Box>
   );

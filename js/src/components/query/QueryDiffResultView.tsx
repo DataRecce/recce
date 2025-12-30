@@ -221,7 +221,6 @@ const PrivateQueryDiffResultView = (
           maxWidth: 800,
           minWidth: 35,
         }}
-        className="rdg-light"
       />
     </Box>
   );
@@ -419,7 +418,6 @@ const PrivateQueryDiffJoinResultView = (
           maxWidth: 800,
           minWidth: 35,
         }}
-        className="rdg-light"
       />
     </Box>
   );

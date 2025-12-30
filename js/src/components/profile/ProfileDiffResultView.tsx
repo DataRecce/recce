@@ -133,7 +133,6 @@ const PrivateProfileDiffResultView = (
         columns={gridData.columns}
         rows={gridData.rows}
         defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
-        className="rdg-light"
       />
     </Box>
   );
@@ -235,7 +234,6 @@ const PrivateProfileResultView = (
         columns={gridData.columns}
         rows={gridData.rows}
         defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
-        className="rdg-light"
       />
     </Box>
   );
