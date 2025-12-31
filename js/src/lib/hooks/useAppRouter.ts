@@ -9,6 +9,11 @@
  * To avoid full-page loading states, useAppLocation() only returns the
  * pathname by default. Use useAppLocationWithSearch() if you need
  * search params included in the location string.
+ *
+ * RouteConfigContext Integration:
+ * When RouteConfigProvider is used (e.g., in recce-cloud), navigation
+ * paths are automatically prefixed with the configured basePath.
+ * For example, setLocation("/query") becomes "/oss/abc123/query".
  */
 
 "use client";
@@ -20,6 +25,7 @@ import {
   useSearchParams,
 } from "next/navigation";
 import { useCallback, useMemo } from "react";
+import { useRouteConfig } from "./RouteConfigContext";
 
 interface NavigateOptions {
   replace?: boolean;
@@ -28,6 +34,7 @@ interface NavigateOptions {
 
 /**
  * Hook that provides Wouter-compatible location API using Next.js App Router
+ * with RouteConfigContext support for path prefixing.
  *
  * NOTE: This returns only the pathname (not search params) to avoid
  * triggering Suspense boundaries on every navigation.
@@ -38,6 +45,9 @@ interface NavigateOptions {
  * const [location, setLocation] = useAppLocation();
  * setLocation("/checks?id=123"); // Navigate to new path with query
  * setLocation("/checks", { replace: true }); // Replace current history entry
+ *
+ * // With RouteConfigProvider basePath="/oss/abc123":
+ * setLocation("/query"); // Navigates to "/oss/abc123/query"
  */
 export function useAppLocation(): [
   string,
@@ -45,17 +55,26 @@ export function useAppLocation(): [
 ] {
   const router = useRouter();
   const pathname = usePathname();
+  const { resolvePath } = useRouteConfig();
 
   // Navigation function compatible with Wouter's setLocation
+  // Automatically applies basePath prefix from RouteConfigContext
   const setLocation = useCallback(
     (to: string, options?: NavigateOptions) => {
+      // Separate path and query string for proper handling
+      const [pathPart, queryPart] = to.split("?");
+      const resolvedPath = resolvePath(pathPart);
+      const fullPath = queryPart
+        ? `${resolvedPath}?${queryPart}`
+        : resolvedPath;
+
       if (options?.replace) {
-        router.replace(to, { scroll: options?.scroll ?? true });
+        router.replace(fullPath, { scroll: options?.scroll ?? true });
       } else {
-        router.push(to, { scroll: options?.scroll ?? true });
+        router.push(fullPath, { scroll: options?.scroll ?? true });
       }
     },
-    [router],
+    [router, resolvePath],
   );
 
   return [pathname, setLocation];
@@ -63,6 +82,7 @@ export function useAppLocation(): [
 
 /**
  * Hook that includes search params in the location string.
+ * Also supports RouteConfigContext path prefixing.
  *
  * WARNING: This hook uses useSearchParams() which triggers Suspense.
  * Only use this in components that are wrapped in a <Suspense> boundary,
@@ -77,6 +97,7 @@ export function useAppLocationWithSearch(): [
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { resolvePath } = useRouteConfig();
 
   // Construct full location string including search params
   const location = useMemo(() => {
@@ -84,16 +105,22 @@ export function useAppLocationWithSearch(): [
     return search ? `${pathname}?${search}` : pathname;
   }, [pathname, searchParams]);
 
-  // Navigation function compatible with Wouter's setLocation
+  // Navigation function with RouteConfigContext support
   const setLocation = useCallback(
     (to: string, options?: NavigateOptions) => {
+      const [pathPart, queryPart] = to.split("?");
+      const resolvedPath = resolvePath(pathPart);
+      const fullPath = queryPart
+        ? `${resolvedPath}?${queryPart}`
+        : resolvedPath;
+
       if (options?.replace) {
-        router.replace(to, { scroll: options?.scroll ?? true });
+        router.replace(fullPath, { scroll: options?.scroll ?? true });
       } else {
-        router.push(to, { scroll: options?.scroll ?? true });
+        router.push(fullPath, { scroll: options?.scroll ?? true });
       }
     },
-    [router],
+    [router, resolvePath],
   );
 
   return [location, setLocation];
@@ -166,7 +193,7 @@ export function navigateTo(path: string, replace = false): void {
 
 /**
  * Hook for programmatic navigation with more options
- * Provides direct access to Next.js router methods
+ * Provides direct access to Next.js router methods with RouteConfigContext support
  *
  * NOTE: Does not include searchParams to avoid Suspense.
  * Use useSearchParams() directly in components that need it.
@@ -175,16 +202,42 @@ export function useAppNavigation() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
+  const { resolvePath } = useRouteConfig();
+
+  // Wrap router.push and router.replace with path resolution
+  const push = useCallback(
+    (href: string, options?: { scroll?: boolean }) => {
+      const [pathPart, queryPart] = href.split("?");
+      const resolvedPath = resolvePath(pathPart);
+      const fullPath = queryPart
+        ? `${resolvedPath}?${queryPart}`
+        : resolvedPath;
+      router.push(fullPath, options);
+    },
+    [router, resolvePath],
+  );
+
+  const replace = useCallback(
+    (href: string, options?: { scroll?: boolean }) => {
+      const [pathPart, queryPart] = href.split("?");
+      const resolvedPath = resolvePath(pathPart);
+      const fullPath = queryPart
+        ? `${resolvedPath}?${queryPart}`
+        : resolvedPath;
+      router.replace(fullPath, options);
+    },
+    [router, resolvePath],
+  );
 
   return {
     /** Current pathname */
     pathname,
     /** Current route params */
     params: params as Record<string, string>,
-    /** Navigate to a new path */
-    push: router.push,
-    /** Replace current history entry */
-    replace: router.replace,
+    /** Navigate to a new path (with RouteConfigContext support) */
+    push,
+    /** Replace current history entry (with RouteConfigContext support) */
+    replace,
     /** Go back in history */
     back: router.back,
     /** Go forward in history */
