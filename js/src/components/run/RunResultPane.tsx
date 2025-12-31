@@ -123,6 +123,87 @@ const SingleEnvironmentSetupNotification = ({
   }
 };
 
+const RunResultExportMenu = ({
+  run,
+  disableExport,
+  onCopyAsImage,
+  onMouseEnter,
+  onMouseLeave,
+}: {
+  run?: Run;
+  disableExport: boolean;
+  onCopyAsImage: () => Promise<void>;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+}) => {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const open = Boolean(anchorEl);
+  const { canExportCSV, copyAsCSV, downloadAsCSV } = useCSVExport({ run });
+
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  return (
+    <>
+      <Button
+        size="small"
+        variant="outlined"
+        color="neutral"
+        onClick={handleClick}
+        endIcon={<PiCaretDown />}
+        sx={{ textTransform: "none" }}
+      >
+        Export
+      </Button>
+      <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
+        <MenuItem
+          onClick={async () => {
+            await onCopyAsImage();
+            handleClose();
+          }}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+          disabled={disableExport}
+        >
+          <ListItemIcon>
+            <PiImage />
+          </ListItemIcon>
+          <ListItemText>Copy as Image</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={async () => {
+            await copyAsCSV();
+            handleClose();
+          }}
+          disabled={disableExport || !canExportCSV}
+        >
+          <ListItemIcon>
+            <PiTable />
+          </ListItemIcon>
+          <ListItemText>Copy as CSV</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            downloadAsCSV();
+            handleClose();
+          }}
+          disabled={disableExport || !canExportCSV}
+        >
+          <ListItemIcon>
+            <PiDownloadSimple />
+          </ListItemIcon>
+          <ListItemText>Download as CSV</ListItemText>
+        </MenuItem>
+      </Menu>
+    </>
+  );
+};
+
 const RunResultShareMenu = ({
   run,
   disableCopyToClipboard,
@@ -326,21 +407,15 @@ export const PrivateLoadableRunView = ({
             Rerun
           </Button>
           {featureToggles.disableShare ? (
-            <Button
-              variant="outlined"
-              color="neutral"
-              disabled={
+            <RunResultExportMenu
+              run={run}
+              disableExport={
                 !runId || !run?.result || !!error || tabValue !== "result"
               }
+              onCopyAsImage={onCopyToClipboard}
               onMouseEnter={onMouseEnter}
               onMouseLeave={onMouseLeave}
-              size="small"
-              onClick={onCopyToClipboard}
-              startIcon={<PiCopy />}
-              sx={{ textTransform: "none" }}
-            >
-              Copy to Clipboard
-            </Button>
+            />
           ) : (
             <RunResultShareMenu
               run={run}
