@@ -27,9 +27,33 @@ interface RecceProviderProps {
   /** Theme mode. Default: "system" */
   theme?: ThemeMode;
 
-  /** Routing configuration for path prefixing */
+  /**
+   * Routing configuration
+   *
+   * @example
+   * ```tsx
+   * // With Next.js App Router
+   * const router = useRouter();
+   * const pathname = usePathname();
+   *
+   * <RecceProvider
+   *   routing={{
+   *     basePath: '/app',
+   *     pathname,
+   *     onNavigate: (path, options) => {
+   *       options?.replace ? router.replace(path) : router.push(path);
+   *     }
+   *   }}
+   * />
+   * ```
+   */
   routing?: {
     basePath?: string;
+    pathname?: string;
+    onNavigate?: (
+      path: string,
+      options?: { replace?: boolean; scroll?: boolean },
+    ) => void;
   };
 
   /** TanStack Query client configuration */

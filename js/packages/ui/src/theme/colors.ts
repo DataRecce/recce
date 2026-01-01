@@ -10,6 +10,11 @@
  */
 
 export const colors = {
+  /** White color */
+  white: "#FFFFFF",
+
+  /** Black color */
+  black: "#000000",
   /**
    * Primary brand color - Orange/Coral
    * Used for primary actions, branding elements, and highlights
@@ -98,6 +103,24 @@ export const colors = {
     800: "#92400E",
     900: "#78350F",
     950: "#431407",
+  },
+
+  /**
+   * Yellow color scale
+   * Used for warnings and highlights
+   */
+  yellow: {
+    50: "#FEFCE8",
+    100: "#FEF9C3",
+    200: "#FEF08A",
+    300: "#FDE047",
+    400: "#FACC15",
+    500: "#EAB308",
+    600: "#CA8A04",
+    700: "#A16207",
+    800: "#854D0E",
+    900: "#713F12",
+    950: "#422006",
   },
 
   /**

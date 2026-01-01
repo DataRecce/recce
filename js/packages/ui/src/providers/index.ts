@@ -12,6 +12,11 @@ export {
   useRecceInstanceInfo,
 } from "../contexts/instance";
 export { useApiClient, useApiConfig } from "./contexts/ApiContext";
-export { useRouting } from "./contexts/RoutingContext";
+export type {
+  NavigateOptions,
+  RoutingConfig,
+  RoutingContextValue,
+} from "./contexts/RoutingContext";
+export { useAppLocation, useRouting } from "./contexts/RoutingContext";
 export { useRecceTheme } from "./contexts/ThemeContext";
 export { RecceProvider, type RecceProviderProps } from "./RecceProvider";
