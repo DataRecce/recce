@@ -11,6 +11,7 @@ export {
   RecceProvider,
   type RecceProviderProps,
   useApiClient,
+  useApiConfig,
   useRecceTheme,
   useRouting,
 } from "./providers";
