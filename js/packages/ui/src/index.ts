@@ -3,5 +3,11 @@
 
 export const VERSION = "0.2.0";
 
-// Placeholder - components will be added in subsequent tasks
-export {};
+// Providers
+export {
+  RecceProvider,
+  type RecceProviderProps,
+  useApiClient,
+  useRecceTheme,
+  useRouting,
+} from "./providers";
