@@ -4,11 +4,110 @@
  * This theme uses MUI 7's CSS Variables mode with `colorSchemeSelector: 'class'`
  * to toggle between light and dark modes using the `.dark` class on the document.
  * This integrates with the ThemeContext which manages the class toggle.
+ *
+ * Color values and component variants are aligned with the main Recce theme at
+ * js/src/components/ui/mui-theme.ts for consistency.
  */
 
 import { createTheme, type ThemeOptions } from "@mui/material/styles";
 
 import { colors } from "./colors";
+
+// Custom color names type for variant generation
+type CustomColorName = "brand" | "iochmara";
+
+/**
+ * Helper to generate button color variants for a given color
+ * Creates contained, outlined, and text variant styles
+ */
+function createButtonColorVariants(
+  colorName: CustomColorName,
+  colorScale: typeof colors.brand | typeof colors.iochmara,
+) {
+  return [
+    // Contained variant (solid)
+    {
+      props: { color: colorName, variant: "contained" as const },
+      style: {
+        backgroundColor: colorScale[500],
+        color: "#ffffff",
+        "&:hover": {
+          backgroundColor: colorScale[600],
+        },
+      },
+    },
+    // Outlined variant
+    {
+      props: { color: colorName, variant: "outlined" as const },
+      style: {
+        borderColor: colorScale[500],
+        color: colorScale[600],
+        "&:hover": {
+          borderColor: colorScale[600],
+          backgroundColor: `${colorScale[50]}80`,
+        },
+      },
+    },
+    // Text variant (ghost)
+    {
+      props: { color: colorName, variant: "text" as const },
+      style: {
+        color: colorScale[600],
+        "&:hover": {
+          backgroundColor: `${colorScale[50]}80`,
+        },
+      },
+    },
+  ];
+}
+
+/**
+ * Helper to generate Chip color variants
+ */
+function createChipColorVariants(
+  colorName: CustomColorName,
+  colorScale: typeof colors.brand | typeof colors.iochmara,
+) {
+  return [
+    // Filled variant
+    {
+      props: { color: colorName, variant: "filled" as const },
+      style: {
+        backgroundColor: colorScale[500],
+        color: "#ffffff",
+        "&:hover": {
+          backgroundColor: colorScale[600],
+        },
+        "&.MuiChip-clickable:hover": {
+          backgroundColor: colorScale[600],
+        },
+      },
+    },
+    // Outlined variant
+    {
+      props: { color: colorName, variant: "outlined" as const },
+      style: {
+        borderColor: colorScale[500],
+        color: colorScale[600],
+        "&:hover": {
+          backgroundColor: `${colorScale[50]}40`,
+        },
+      },
+    },
+  ];
+}
+
+// Generate all button color variants
+const buttonColorVariants = [
+  ...createButtonColorVariants("brand", colors.brand),
+  ...createButtonColorVariants("iochmara", colors.iochmara),
+];
+
+// Generate all chip color variants
+const chipColorVariants = [
+  ...createChipColorVariants("brand", colors.brand),
+  ...createChipColorVariants("iochmara", colors.iochmara),
+];
 
 /**
  * Module augmentation for custom palette colors
@@ -110,10 +209,15 @@ const sharedThemeOptions: ThemeOptions = {
   },
   components: {
     MuiButton: {
+      defaultProps: {
+        disableElevation: true, // Match Chakra's flat button style
+      },
       styleOverrides: {
         root: {
           borderRadius: 6,
           boxShadow: "none",
+          textTransform: "none",
+          fontWeight: 500,
           "&:hover": {
             boxShadow: "none",
           },
@@ -122,8 +226,28 @@ const sharedThemeOptions: ThemeOptions = {
           fontSize: "0.8125rem",
           padding: "4px 10px",
         },
+        sizeMedium: {
+          padding: "0.5rem 1rem",
+          fontSize: "1rem",
+        },
+        sizeLarge: {
+          padding: "0.75rem 1.5rem",
+          fontSize: "1.125rem",
+        },
+        contained: {
+          "&:hover": {
+            boxShadow: "none",
+          },
+        },
+        outlined: {
+          borderWidth: "1px",
+          "&:hover": {
+            borderWidth: "1px",
+          },
+        },
       },
       variants: [
+        // Size variant: xsmall
         {
           props: { size: "xsmall" },
           style: {
@@ -132,19 +256,27 @@ const sharedThemeOptions: ThemeOptions = {
             minHeight: 24,
           },
         },
+        // Color variants for brand and iochmara
+        ...buttonColorVariants,
       ],
     },
     MuiChip: {
       styleOverrides: {
         root: {
           borderRadius: 6,
+          fontWeight: 500,
         },
         sizeSmall: {
           fontSize: "0.75rem",
           height: 24,
         },
+        sizeMedium: {
+          height: 32,
+          fontSize: "0.875rem",
+        },
       },
       variants: [
+        // Size variant: xsmall
         {
           props: { size: "xsmall" },
           style: {
@@ -155,6 +287,8 @@ const sharedThemeOptions: ThemeOptions = {
             },
           },
         },
+        // Color variants for brand and iochmara
+        ...chipColorVariants,
       ],
     },
     MuiCard: {
