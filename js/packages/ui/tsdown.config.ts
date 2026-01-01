@@ -1,4 +1,8 @@
+import path from "path";
 import { defineConfig } from "tsdown";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   entry: {
@@ -10,6 +14,11 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   minify: true,
+
+  // Path aliases for importing from the main js/src directory
+  alias: {
+    "@ui": path.resolve(__dirname, "./src"),
+  },
 
   external: [
     "react",

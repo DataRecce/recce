@@ -15,7 +15,8 @@
     "rootDir": "./src",
     "baseUrl": ".",
     "paths": {
-      "@ui/*": ["./src/*"]
+      "@ui/*": ["./src/*"],
+      "@recce/*": ["../../src/*"]
     }
   },
   "include": ["src/**/*"],
