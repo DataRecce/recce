@@ -2,19 +2,19 @@
   "name": "@datarecce/ui",
   "version": "0.2.0",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "require": "./dist/index.cjs"
     },
     "./advanced": {
-      "types": "./dist/advanced.d.ts",
+      "types": "./dist/advanced.d.mts",
       "import": "./dist/advanced.mjs",
-      "require": "./dist/advanced.js"
+      "require": "./dist/advanced.cjs"
     },
     "./styles": {
       "default": "./dist/styles.css"
