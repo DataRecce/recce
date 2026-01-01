@@ -9,30 +9,72 @@ import {
   useRef,
 } from "react";
 
+/**
+ * API Configuration
+ *
+ * baseUrl: Base URL for all requests
+ * apiPrefix: Replaces /api in URLs (for cloud mode sessions)
+ * authToken: Bearer token for Authorization header
+ * headers: Additional headers
+ * timeout: Request timeout in ms
+ */
 interface ApiConfig {
   baseUrl: string;
+  apiPrefix?: string;
+  authToken?: string;
   headers?: Record<string, string>;
   timeout?: number;
 }
 
 interface ApiContextValue {
   client: AxiosInstance;
+  apiPrefix: string;
+  authToken?: string;
+  baseUrl: string;
 }
 
 const ApiContext = createContext<ApiContextValue | null>(null);
 ApiContext.displayName = "RecceApiContext";
 
-export function useApiClient(): AxiosInstance {
+/**
+ * Hook to access the full API configuration including client, apiPrefix, authToken, and baseUrl.
+ *
+ * @returns ApiContextValue with client, apiPrefix, authToken, and baseUrl
+ * @throws Error if used outside RecceProvider
+ */
+export function useApiConfig(): ApiContextValue {
   const context = useContext(ApiContext);
   if (!context) {
-    throw new Error("useApiClient must be used within RecceProvider");
+    throw new Error("useApiConfig must be used within RecceProvider");
   }
-  return context.client;
+  return context;
+}
+
+/**
+ * Hook to get the configured axios client.
+ * Convenience wrapper around useApiConfig().client
+ *
+ * @returns AxiosInstance configured with API prefix and auth token
+ * @throws Error if used outside RecceProvider
+ */
+export function useApiClient(): AxiosInstance {
+  return useApiConfig().client;
+}
+
+/**
+ * Custom client config that allows passing a pre-configured axios instance
+ * along with the API configuration values for context.
+ */
+interface CustomClientConfig {
+  client: AxiosInstance;
+  apiPrefix?: string;
+  authToken?: string;
+  baseUrl?: string;
 }
 
 interface ApiProviderProps {
   children: ReactNode;
-  config: ApiConfig | { client: AxiosInstance };
+  config: ApiConfig | CustomClientConfig;
 }
 
 // Hook to memoize headers by value (JSON comparison) instead of reference
@@ -51,14 +93,78 @@ function useStableHeaders(
   return headersRef.current;
 }
 
+/**
+ * Creates an axios instance configured with the given API config.
+ *
+ * The instance has interceptors that:
+ * 1. Replace /api prefix with the configured apiPrefix (if provided)
+ * 2. Add Authorization header with Bearer token (if authToken provided)
+ */
+function createApiClient(
+  baseUrl: string,
+  apiPrefix: string,
+  authToken: string | undefined,
+  headers: Record<string, string> | undefined,
+  timeout: number,
+): AxiosInstance {
+  const client = axios.create({
+    baseURL: baseUrl,
+    headers: headers,
+    timeout: timeout,
+  });
+
+  // Only add interceptor if apiPrefix or authToken are provided
+  if (apiPrefix || authToken) {
+    client.interceptors.request.use(
+      (requestConfig) => {
+        try {
+          // Replace /api prefix with configured apiPrefix (only if apiPrefix is non-empty)
+          if (apiPrefix && requestConfig.url) {
+            // Handle exact "/api" and "/api/*" URLs explicitly
+            if (requestConfig.url === "/api") {
+              requestConfig.url = apiPrefix;
+            } else if (requestConfig.url.startsWith("/api/")) {
+              // "/api".length === 4; keep everything after that
+              requestConfig.url = apiPrefix + requestConfig.url.slice(4);
+            }
+          }
+
+          // Add auth header if token is provided
+          if (authToken) {
+            requestConfig.headers.Authorization = `Bearer ${authToken}`;
+          }
+
+          return requestConfig;
+        } catch (error) {
+          // If anything goes wrong in the interceptor, fall back to the original config
+          // to avoid breaking all API requests.
+          console.warn(
+            "API request interceptor error, proceeding with unmodified request:",
+            error,
+          );
+          return requestConfig;
+        }
+      },
+      (error) => {
+        // Preserve default axios behavior for request errors
+        return Promise.reject(error);
+      },
+    );
+  }
+
+  return client;
+}
+
 export function ApiProvider({ children, config }: ApiProviderProps) {
   // Extract primitive values to stabilize dependency - prevents axios instance recreation
   // when parent re-renders with new object reference but same values
   const isCustomClient = "client" in config;
   const customClient = isCustomClient ? config.client : null;
-  const baseUrl = !isCustomClient ? config.baseUrl : "";
+  const baseUrl = isCustomClient ? (config.baseUrl ?? "") : config.baseUrl;
   const timeout = !isCustomClient ? config.timeout : undefined;
   const headersFromConfig = !isCustomClient ? config.headers : undefined;
+  const apiPrefix = config.apiPrefix ?? "";
+  const authToken = config.authToken;
 
   // Use stable headers reference (compared by value, not reference)
   const headers = useStableHeaders(headersFromConfig);
@@ -67,14 +173,26 @@ export function ApiProvider({ children, config }: ApiProviderProps) {
     if (customClient) {
       return customClient;
     }
-    return axios.create({
-      baseURL: baseUrl,
-      headers: headers,
-      timeout: timeout ?? 30000,
-    });
-  }, [customClient, baseUrl, headers, timeout]);
+    return createApiClient(
+      baseUrl,
+      apiPrefix,
+      authToken,
+      headers,
+      timeout ?? 30000,
+    );
+  }, [customClient, baseUrl, apiPrefix, authToken, headers, timeout]);
+
+  const contextValue: ApiContextValue = useMemo(
+    () => ({
+      client,
+      apiPrefix,
+      authToken,
+      baseUrl,
+    }),
+    [client, apiPrefix, authToken, baseUrl],
+  );
 
   return (
-    <ApiContext.Provider value={{ client }}>{children}</ApiContext.Provider>
+    <ApiContext.Provider value={contextValue}>{children}</ApiContext.Provider>
   );
 }
