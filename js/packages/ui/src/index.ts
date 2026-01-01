@@ -41,6 +41,8 @@ export { LineageView } from "./components";
 
 // Contexts - React contexts for state management
 export type {
+  // Action context
+  AxiosQueryParams,
   // Lineage graph
   EnvInfo,
   // Idle timeout
@@ -54,8 +56,12 @@ export type {
   LineageGraphNode,
   LineageGraphNodes,
   LineageGraphProviderProps,
+  RecceActionContextType,
+  RecceActionOptions,
+  RecceActionProviderProps,
   RecceFeatureMode,
   RecceFeatureToggles,
+  SubmitRunTrackProps,
 } from "./contexts";
 export {
   // Instance info
@@ -67,11 +73,14 @@ export {
   isLineageGraphNode,
   // Lineage graph
   LineageGraphProvider,
+  // Action context
+  RecceActionProvider,
   RecceInstanceInfoProvider,
   useIdleDetection,
   useIdleTimeout,
   useIdleTimeoutSafe,
   useLineageGraphContext,
+  useRecceActionContext,
   useRecceInstanceContext,
   useRecceInstanceInfo,
   useRecceServerFlag,

@@ -1,5 +1,15 @@
 "use client";
 
+// Action context - run execution and result management
+export type {
+  AxiosQueryParams,
+  RecceActionContextType,
+  RecceActionOptions,
+  RecceActionProviderProps,
+  SubmitRunTrackProps,
+} from "./action";
+export { RecceActionProvider, useRecceActionContext } from "./action";
+
 // Idle timeout context - session management and keep-alive
 export type { IdleTimeoutContextType } from "./idle";
 export {
