@@ -2,7 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { AxiosInstance } from "axios";
-import { type ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 
 import { ApiProvider } from "./contexts/ApiContext";
 import { RoutingProvider } from "./contexts/RoutingContext";
@@ -76,7 +76,10 @@ export function RecceProvider({
   actions,
   features,
 }: RecceProviderProps) {
-  const queryClient = createDefaultQueryClient(queryClientConfig);
+  const queryClient = useMemo(
+    () => createDefaultQueryClient(queryClientConfig),
+    [queryClientConfig],
+  );
 
   return (
     <QueryClientProvider client={queryClient}>
