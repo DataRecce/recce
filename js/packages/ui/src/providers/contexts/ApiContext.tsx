@@ -27,7 +27,7 @@ interface ApiConfig {
 }
 
 interface ApiContextValue {
-  client: AxiosInstance;
+  apiClient: AxiosInstance;
   apiPrefix: string;
   authToken?: string;
   baseUrl: string;
@@ -37,9 +37,9 @@ const ApiContext = createContext<ApiContextValue | null>(null);
 ApiContext.displayName = "RecceApiContext";
 
 /**
- * Hook to access the full API configuration including client, apiPrefix, authToken, and baseUrl.
+ * Hook to access the full API configuration including apiClient, apiPrefix, authToken, and baseUrl.
  *
- * @returns ApiContextValue with client, apiPrefix, authToken, and baseUrl
+ * @returns ApiContextValue with apiClient, apiPrefix, authToken, and baseUrl
  * @throws Error if used outside RecceProvider
  */
 export function useApiConfig(): ApiContextValue {
@@ -52,13 +52,13 @@ export function useApiConfig(): ApiContextValue {
 
 /**
  * Hook to get the configured axios client.
- * Convenience wrapper around useApiConfig().client
+ * Convenience wrapper around useApiConfig().apiClient
  *
  * @returns AxiosInstance configured with API prefix and auth token
  * @throws Error if used outside RecceProvider
  */
 export function useApiClient(): AxiosInstance {
-  return useApiConfig().client;
+  return useApiConfig().apiClient;
 }
 
 /**
@@ -184,7 +184,7 @@ export function ApiProvider({ children, config }: ApiProviderProps) {
 
   const contextValue: ApiContextValue = useMemo(
     () => ({
-      client,
+      apiClient: client,
       apiPrefix,
       authToken,
       baseUrl,
