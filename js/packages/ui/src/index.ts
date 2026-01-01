@@ -3,6 +3,9 @@
 // Version
 export const VERSION = "0.2.0";
 
+export type { LineageViewProps, LineageViewRef } from "./components";
+// Components - UI components for data validation interfaces
+export { LineageView } from "./components";
 // Provider (main entry point) and Hooks - from providers module
 export {
   RecceProvider,
@@ -11,10 +14,6 @@ export {
   useRecceTheme,
   useRouting,
 } from "./providers";
-
 // Theme - colors palette and MUI theme with CSS Variables
 export type { Theme } from "./theme";
 export { colors, theme } from "./theme";
-
-// Note: Components will be added in subsequent tasks as they are migrated
-// from src/components/ to packages/ui/src/components/
