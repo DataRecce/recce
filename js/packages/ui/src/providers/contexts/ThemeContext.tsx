@@ -17,6 +17,7 @@ interface ThemeContextValue {
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
+ThemeContext.displayName = "RecceThemeContext";
 
 export function useRecceTheme(): ThemeContextValue {
   const context = useContext(ThemeContext);
@@ -36,7 +37,17 @@ export function ThemeProvider({
   defaultMode = "system",
 }: ThemeProviderProps) {
   const [mode, setMode] = useState<ThemeMode>(defaultMode);
-  const [resolvedMode, setResolvedMode] = useState<"light" | "dark">("light");
+
+  // SSR-safe initialization: compute initial resolved mode to prevent hydration mismatch
+  const [resolvedMode, setResolvedMode] = useState<"light" | "dark">(() => {
+    // On server, always return "light" for consistent initial render
+    if (typeof window === "undefined") return "light";
+    // On client, compute actual value during initialization
+    if (defaultMode !== "system") return defaultMode;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  });
 
   useEffect(() => {
     if (mode === "system") {
@@ -54,6 +65,8 @@ export function ThemeProvider({
   }, [mode]);
 
   useEffect(() => {
+    // Skip on server (SSR safety)
+    if (typeof window === "undefined") return;
     // Toggle .dark class on document for CSS variables
     document.documentElement.classList.toggle("dark", resolvedMode === "dark");
   }, [resolvedMode]);

@@ -73,12 +73,24 @@ export function RecceProvider({
   theme = "system",
   routing,
   queryClient: queryClientConfig,
+  // TODO: actions will be used by ActionsContext (future task)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   actions,
+  // TODO: features will be used by FeaturesContext (future task)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   features,
 }: RecceProviderProps) {
+  // Extract primitive values to stabilize dependency and prevent unnecessary QueryClient recreation
+  const staleTime = queryClientConfig?.staleTime;
+  const gcTime = queryClientConfig?.gcTime;
+
   const queryClient = useMemo(
-    () => createDefaultQueryClient(queryClientConfig),
-    [queryClientConfig],
+    () =>
+      createDefaultQueryClient({
+        staleTime,
+        gcTime,
+      }),
+    [staleTime, gcTime],
   );
 
   return (

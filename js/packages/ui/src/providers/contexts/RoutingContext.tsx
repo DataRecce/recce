@@ -12,6 +12,7 @@ interface RoutingContextValue {
 }
 
 const RoutingContext = createContext<RoutingContextValue | null>(null);
+RoutingContext.displayName = "RecceRoutingContext";
 
 export function useRouting(): RoutingContextValue {
   const context = useContext(RoutingContext);
