@@ -11,3 +11,13 @@ export {
   useRecceTheme,
   useRouting,
 } from "./providers";
+
+// Theme
+export {
+  type ColorShade,
+  colors,
+  type RecceTheme,
+  type SemanticColorVariant,
+  type Theme,
+  theme,
+} from "./theme";

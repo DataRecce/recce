@@ -897,6 +897,7 @@ export const muiTheme = lightTheme;
 export { colors, semanticColors };
 
 // Augment MUI theme to include custom palette colors
+// Note: 'neutral' is not added here as MUI's built-in 'grey' serves as the neutral color scale
 declare module "@mui/material/styles" {
   interface Palette {
     brand: Palette["primary"];
@@ -907,7 +908,6 @@ declare module "@mui/material/styles" {
     red: Palette["primary"];
     rose: Palette["primary"];
     fuchsia: Palette["primary"];
-    neutral: Palette["primary"];
     envBase: string;
     envCurrent: string;
   }
@@ -921,7 +921,6 @@ declare module "@mui/material/styles" {
     red?: PaletteOptions["primary"];
     rose?: PaletteOptions["primary"];
     fuchsia?: PaletteOptions["primary"];
-    neutral?: PaletteOptions["primary"];
     envBase?: string;
     envCurrent?: string;
   }
