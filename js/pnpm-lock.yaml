@@ -276,6 +276,9 @@ importers:
       axios:
         specifier: ^1.0.0
         version: 1.13.2
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
       next-themes:
         specifier: ^0.4.0
         version: 0.4.6(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
