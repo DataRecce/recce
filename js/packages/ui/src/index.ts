@@ -86,13 +86,21 @@ export {
   useRecceServerFlag,
   useRunsAggregated,
 } from "./contexts";
-
+// Hooks - utility hooks for theming and data
+export type { ThemeColors } from "./hooks";
+export { useThemeColors } from "./hooks";
 // Provider (main entry point) and Hooks - from providers module
+export type {
+  NavigateOptions,
+  RoutingConfig,
+  RoutingContextValue,
+} from "./providers";
 export {
   RecceProvider,
   type RecceProviderProps,
   useApiClient,
   useApiConfig,
+  useAppLocation,
   useRecceTheme,
   useRouting,
 } from "./providers";
