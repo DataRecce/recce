@@ -7,5 +7,10 @@
 
 // Re-export MUI's Theme type for convenience
 export type { Theme } from "@mui/material/styles";
-export { type ColorShade, colors, type SemanticColorVariant } from "./colors";
+export {
+  type ColorShade,
+  colorAliases,
+  colors,
+  type SemanticColorVariant,
+} from "./colors";
 export { type RecceTheme, theme } from "./theme";
