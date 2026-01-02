@@ -2,6 +2,12 @@
 
 import { forwardRef, type Ref } from "react";
 
+export * from "./edges";
+// Composed component for rendering lineage graphs
+export { LineageCanvas, type LineageCanvasProps } from "./LineageCanvas";
+// Re-export primitives for convenience
+export * from "./nodes";
+
 /**
  * Props for the LineageView component.
  * Defines options for viewing lineage diff data.

@@ -36,8 +36,12 @@ export {
 } from "./api";
 
 // Components - UI components for data validation interfaces
-export type { LineageViewProps, LineageViewRef } from "./components";
-export { LineageView } from "./components";
+export type {
+  LineageCanvasProps,
+  LineageViewProps,
+  LineageViewRef,
+} from "./components";
+export { LineageCanvas, LineageView } from "./components";
 
 // Contexts - React contexts for state management
 export type {
