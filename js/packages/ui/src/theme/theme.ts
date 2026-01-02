@@ -503,10 +503,55 @@ const sharedThemeOptions: ThemeOptions = {
       },
     },
     MuiCircularProgress: {
+      defaultProps: {
+        color: "primary",
+      },
       variants: [
         // Color variants for brand and iochmara
         ...progressColorVariants,
       ],
+    },
+    // Link overrides
+    MuiLink: {
+      defaultProps: {
+        underline: "hover",
+      },
+      styleOverrides: {
+        root: {
+          fontWeight: 500,
+          color: "var(--mui-palette-secondary-main)",
+          textDecorationColor: "var(--mui-palette-secondary-light)",
+          "&:hover": {
+            color: "var(--mui-palette-secondary-dark)",
+          },
+        },
+      },
+    },
+    // Popover overrides
+    MuiPopover: {
+      styleOverrides: {
+        paper: {
+          borderRadius: 8,
+          boxShadow:
+            "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)",
+        },
+      },
+    },
+    // Divider overrides
+    MuiDivider: {
+      styleOverrides: {
+        root: {
+          borderColor: "var(--mui-palette-divider)",
+        },
+      },
+    },
+    // Breadcrumbs overrides
+    MuiBreadcrumbs: {
+      styleOverrides: {
+        separator: {
+          color: "var(--mui-palette-text-secondary)",
+        },
+      },
     },
     MuiCard: {
       styleOverrides: {
