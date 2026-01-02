@@ -103,16 +103,26 @@ export type { ThemeColors } from "./hooks";
 export { useThemeColors } from "./hooks";
 // Provider (main entry point) and Hooks - from providers module
 export type {
+  Check,
+  CheckContextType,
+  CheckProviderProps,
   NavigateOptions,
+  QueryContextType,
+  QueryProviderProps,
+  QueryResult,
   RoutingConfig,
   RoutingContextValue,
 } from "./providers";
 export {
+  CheckProvider,
+  QueryProvider,
   RecceProvider,
   type RecceProviderProps,
   useApiClient,
   useApiConfig,
   useAppLocation,
+  useCheckContext,
+  useQueryContext,
   useRecceTheme,
   useRouting,
 } from "./providers";
