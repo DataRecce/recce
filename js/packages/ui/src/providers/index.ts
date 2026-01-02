@@ -11,7 +11,22 @@ export {
   useRecceInstanceContext,
   useRecceInstanceInfo,
 } from "../contexts/instance";
+
+// Re-export provider-level contexts
 export { useApiClient, useApiConfig } from "./contexts/ApiContext";
+// Export new context hooks and types
+export type {
+  Check,
+  CheckContextType,
+  CheckProviderProps,
+} from "./contexts/CheckContext";
+export { CheckProvider, useCheckContext } from "./contexts/CheckContext";
+export type {
+  QueryContextType,
+  QueryProviderProps,
+  QueryResult,
+} from "./contexts/QueryContext";
+export { QueryProvider, useQueryContext } from "./contexts/QueryContext";
 export type {
   NavigateOptions,
   RoutingConfig,
@@ -19,4 +34,6 @@ export type {
 } from "./contexts/RoutingContext";
 export { useAppLocation, useRouting } from "./contexts/RoutingContext";
 export { useRecceTheme } from "./contexts/ThemeContext";
+
+// Main provider
 export { RecceProvider, type RecceProviderProps } from "./RecceProvider";
