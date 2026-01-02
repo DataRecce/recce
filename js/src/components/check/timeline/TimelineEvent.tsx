@@ -16,7 +16,6 @@ import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import Popover from "@mui/material/Popover";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
 import TextField from "@mui/material/TextField";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
@@ -36,6 +35,7 @@ import {
 import { MarkdownContent } from "@/components/ui/markdown/MarkdownContent";
 import { CheckEvent, getEventIconType } from "@/lib/api/checkEvents";
 import { fetchGitHubAvatar } from "@/lib/api/user";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 
 interface TimelineEventProps {
   event: CheckEvent;
@@ -166,8 +166,7 @@ function CommentEvent({
   onEdit?: (eventId: string, content: string) => Promise<void>;
   onDelete?: (eventId: string) => Promise<void>;
 }) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(event.content || "");
   const [isSubmitting, setIsSubmitting] = useState(false);

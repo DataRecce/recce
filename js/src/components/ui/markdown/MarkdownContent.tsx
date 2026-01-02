@@ -10,13 +10,13 @@
 
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
-import { useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import React, { useState } from "react";
 import Markdown, { Components } from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import remarkGfm from "remark-gfm";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import { ExternalLinkConfirmDialog } from "./ExternalLinkConfirmDialog";
 
 interface MarkdownContentProps {
@@ -184,8 +184,7 @@ export function MarkdownContent({
   fontSize = "0.875rem",
   internalDomains = [],
 }: MarkdownContentProps) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
 
   // Build the list of internal domains
   const allInternalDomains = [

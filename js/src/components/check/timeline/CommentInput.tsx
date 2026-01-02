@@ -5,9 +5,9 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
 import TextField from "@mui/material/TextField";
 import { useState } from "react";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 
 interface CommentInputProps {
   onSubmit: (content: string) => void;
@@ -20,8 +20,7 @@ export function CommentInput({
   isSubmitting = false,
   placeholder = "Add a comment...",
 }: CommentInputProps) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   const [content, setContent] = useState("");
 
   const handleSubmit = () => {

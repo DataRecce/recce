@@ -20,6 +20,7 @@ import { PiX } from "react-icons/pi";
 import { trackHistoryAction } from "@/lib/api/track";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import { formatRunDate, RunStatusAndDate } from "./RunStatusAndDate";
 
 const RunListItem = ({
@@ -35,6 +36,7 @@ const RunListItem = ({
   onAddToChecklist: (runId: string) => void;
   onGoToCheck: (checkId: string) => void;
 }) => {
+  const isDark = useIsDark();
   const { featureToggles } = useRecceInstanceContext();
   const { apiClient } = useApiConfig();
   const { data: fetchedRun } = useQuery({
@@ -52,7 +54,7 @@ const RunListItem = ({
 
   return (
     <Box
-      sx={(theme) => ({
+      sx={{
         minWidth: "200px",
         display: "flex",
         flexDirection: "column",
@@ -64,20 +66,20 @@ const RunListItem = ({
         borderLeft: "4px solid",
         borderLeftColor: isSelected ? "amber.400" : "transparent",
         backgroundColor: isSelected
-          ? theme.palette.mode === "dark"
+          ? isDark
             ? "amber.900"
             : "amber.50"
           : "transparent",
         "&:hover": {
           bgcolor: isSelected
-            ? theme.palette.mode === "dark"
+            ? isDark
               ? "amber.800"
               : "orange.50"
-            : theme.palette.mode === "dark"
+            : isDark
               ? "grey.800"
               : "grey.200",
         },
-      })}
+      }}
       onClick={() => {
         onSelectRun(run.run_id);
       }}

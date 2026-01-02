@@ -2,7 +2,6 @@ import Box from "@mui/material/Box";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useEffect, useMemo, useState } from "react";
@@ -11,6 +10,7 @@ import ReactSelect, {
   type MultiValue,
 } from "react-select";
 import { colors } from "@/components/ui/mui-theme";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { RunFormProps } from "../run/types";
 
@@ -32,8 +32,7 @@ export function ValueDiffForm({
   onParamsChanged,
   setIsReadyToExecute,
 }: ValueDiffFormProp) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   const [allColumns, setAllColumns] = useState<boolean>(
     !params.columns || params.columns.length === 0,
   );

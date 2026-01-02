@@ -1,10 +1,10 @@
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import { forwardRef, Ref, useState } from "react";
 import { TopKDiffParams, TopKDiffResult } from "@/lib/api/profile";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import { TopKSummaryBarChart } from "../charts/TopKSummaryList";
 import { RunResultViewProps } from "../run/types";
 import { ScreenshotBox } from "../screenshot/ScreenshotBox";
@@ -15,8 +15,7 @@ const PrivateTopKDiffResultView = (
   { run }: TopKDiffResultViewProp,
   ref: Ref<HTMLDivElement>,
 ) => {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   const [isDisplayTopTen, setIsDisplayTopTen] = useState<boolean>(true);
   // TODO: Implement TopKDiffResultView
   const result = run.result as TopKDiffResult;

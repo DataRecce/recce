@@ -1,4 +1,3 @@
-import { useTheme } from "@mui/material/styles";
 import {
   AnimationOptions,
   BarElement,
@@ -15,6 +14,7 @@ import {
 } from "chart.js";
 import { Chart } from "react-chartjs-2";
 import { HistogramResult } from "@/lib/api/profile";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import {
   formatAsAbbreviatedNumber,
   formatIntervalMinMax,
@@ -53,8 +53,7 @@ export function HistogramChart({
   hideAxis = false,
   animation = false,
 }: HistogramChartProps) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
 
   ChartJS.register(
     BarElement,

@@ -6,7 +6,6 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
@@ -24,11 +23,11 @@ import {
 } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import { IconImport } from "../icons";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   const { featureToggles } = useRecceInstanceContext();
   const queryClient = useQueryClient();
   const { apiClient } = useApiConfig();

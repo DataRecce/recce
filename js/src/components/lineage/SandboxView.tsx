@@ -5,7 +5,7 @@ import MuiDialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
-import { alpha, useTheme } from "@mui/material/styles";
+import { alpha } from "@mui/material/styles";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMutation } from "@tanstack/react-query";
@@ -31,6 +31,7 @@ import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";
 import { useGuideToast } from "@/lib/hooks/useGuideToast";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { formatTimestamp } from "../app/EnvInfo";
 import { QueryForm } from "../query/QueryForm";
@@ -119,8 +120,7 @@ function SandboxEditorLabels({
   height?: string;
   flex?: string;
 }) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   const { lineageGraph, envInfo } = useLineageGraphContext();
   const widthOfBar = "50%";
   const margin = "0 16px";
@@ -174,8 +174,7 @@ interface SqlPreviewProps {
 }
 
 function SqlPreview({ current, onChange }: SqlPreviewProps) {
-  const muiTheme = useTheme();
-  const isDark = muiTheme.palette.mode === "dark";
+  const isDark = useIsDark();
   return (
     <DiffEditor
       original={current?.raw_code ?? ""}

@@ -11,21 +11,22 @@ import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { RowCount, RowCountDiff } from "@/lib/api/models";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import { deltaPercentageString } from "../rowcount/delta";
 import { findByRunType } from "../run/registry";
 import { LineageGraphNode } from "./lineage";
 import { getIconForResourceType } from "./styles";
 
-// Reusable tag styles - theme-aware function
-const tagRootSx = (theme: { palette: { mode: string } }) => ({
+// Reusable tag styles - accepts isDark parameter
+const getTagRootSx = (isDark: boolean) => ({
   display: "inline-flex",
   alignItems: "center",
   borderRadius: 16,
   px: 1,
   py: 0.25,
   fontSize: "0.75rem",
-  bgcolor: theme.palette.mode === "dark" ? "grey.700" : "grey.100",
-  color: theme.palette.mode === "dark" ? "grey.100" : "inherit",
+  bgcolor: isDark ? "grey.700" : "grey.100",
+  color: isDark ? "grey.100" : "inherit",
 });
 
 const tagStartElementSx = {
@@ -35,12 +36,13 @@ const tagStartElementSx = {
 };
 
 export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
+  const isDark = useIsDark();
   const { icon: ResourceTypeIcon } = getIconForResourceType(
     node.data.resourceType,
   );
   return (
     <MuiTooltip arrow title="Type of resource">
-      <Box component="span" sx={tagRootSx}>
+      <Box component="span" sx={getTagRootSx(isDark)}>
         {ResourceTypeIcon && (
           <Box component="span" sx={tagStartElementSx}>
             <ResourceTypeIcon />
@@ -168,6 +170,7 @@ export function RowCountDiffTag({
   onRefresh,
   isFetching,
 }: RowCountDiffTagProps) {
+  const isDark = useIsDark();
   const { featureToggles } = useRecceInstanceContext();
   const { runsAggregated } = useLineageGraphContext();
   const lastRowCount: RowCountDiff | undefined = runsAggregated?.[node.id]
@@ -187,10 +190,10 @@ export function RowCountDiffTag({
       <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
         <Box
           component="span"
-          sx={(theme) => ({
-            ...tagRootSx(theme),
+          sx={{
+            ...getTagRootSx(isDark),
             gap: 0.5,
-          })}
+          }}
         >
           <RunTypeIcon />
           {rowsToShow != null || isFetching ? (
@@ -235,6 +238,7 @@ export function RowCountTag({
   onRefresh,
   isFetching,
 }: RowCountTagProps) {
+  const isDark = useIsDark();
   const { runsAggregated } = useLineageGraphContext();
   const lastRowCount: RowCountDiff | undefined = runsAggregated?.[node.id]
     ?.row_count.result as RowCountDiff | undefined;
@@ -249,7 +253,7 @@ export function RowCountTag({
   }
 
   return (
-    <Box component="span" sx={tagRootSx}>
+    <Box component="span" sx={getTagRootSx(isDark)}>
       <Box component="span" sx={tagStartElementSx}>
         <RunTypeIcon />
       </Box>

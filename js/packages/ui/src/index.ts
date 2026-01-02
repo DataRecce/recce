@@ -122,7 +122,7 @@ export {
 } from "./contexts";
 // Hooks - utility hooks for theming and data
 export type { ThemeColors } from "./hooks";
-export { useThemeColors } from "./hooks";
+export { useIsDark, useThemeColors } from "./hooks";
 // Provider (main entry point) and Hooks - from providers module
 export type {
   Check,

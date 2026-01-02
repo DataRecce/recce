@@ -7,7 +7,6 @@ import ListItemText from "@mui/material/ListItemText";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
@@ -35,6 +34,7 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import { useRun } from "@/lib/hooks/useRun";
 import {
   LearnHowLink,
@@ -58,8 +58,7 @@ interface RunPageProps {
 }
 
 const _ParamView = (data: { type: string; params: RunParamTypes }) => {
-  const muiTheme = useTheme();
-  const isDark = muiTheme.palette.mode === "dark";
+  const isDark = useIsDark();
   const yaml = YAML.stringify(data, null, 2);
   return (
     <CodeEditor

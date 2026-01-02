@@ -1,7 +1,6 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
 import React, { forwardRef, Ref, useMemo } from "react";
 import { PiWarning } from "react-icons/pi";
 import { colors } from "@/components/ui/mui-theme";
@@ -13,6 +12,7 @@ import {
   Run,
 } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import {
   type DataGridHandle,
   EmptyRowsRenderer,
@@ -33,8 +33,7 @@ const PrivateQueryResultView = (
   }: QueryResultViewProp,
   ref: Ref<DataGridHandle>,
 ) => {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
 
   if (!(isQueryRun(run) || isQueryBaseRun(run))) {
     throw new Error("run type must be query");

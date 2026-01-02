@@ -1,6 +1,5 @@
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
-import { useTheme } from "@mui/material/styles";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import {
@@ -15,6 +14,7 @@ import {
 import { Fragment } from "react";
 import { Bar } from "react-chartjs-2";
 import { TopKDiffResult, TopKResult } from "@/lib/api/profile";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import {
   formatAsAbbreviatedNumber,
   formatIntervalMinMax,
@@ -116,8 +116,7 @@ export function TopKSummaryBarChart({
   topKDiff,
   isDisplayTopTen,
 }: BarChartProps) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   const barColors = getBarColors(isDark);
   // const [isDisplayTopTen, setIsDisplayTopTen] = useState<boolean>(true);
   const currents = prepareSummaryList(topKDiff.current, isDisplayTopTen);
@@ -266,8 +265,7 @@ interface Props {
  * Last list item will show 'others' when there are leftover values, which is the count difference of valids and displayed topk items
  */
 export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   const barColors = getBarColors(isDark);
   const endAtIndex = isDisplayTopTen ? 10 : topk.counts.length;
   const displayList = topk.counts.slice(0, endAtIndex);

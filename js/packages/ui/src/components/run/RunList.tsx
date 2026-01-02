@@ -6,6 +6,7 @@ import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { memo, type ReactNode } from "react";
+import { useIsDark } from "../../hooks/useIsDark";
 import {
   formatRunDate,
   type RunStatus,
@@ -84,6 +85,7 @@ function RunListItemComponent({
   hideAddToChecklist = false,
   className,
 }: RunListItemProps) {
+  const isDark = useIsDark();
   const hasCheckLink = run.checkId != null;
   const showAddToChecklist =
     !hideAddToChecklist && !hasCheckLink && onAddToChecklist;
@@ -103,13 +105,13 @@ function RunListItemComponent({
         borderLeft: "4px solid",
         borderLeftColor: isSelected ? "warning.main" : "transparent",
         bgcolor: isSelected
-          ? theme.palette.mode === "dark"
+          ? isDark
             ? "warning.dark"
             : "warning.light"
           : "transparent",
         "&:hover": {
           bgcolor: isSelected
-            ? theme.palette.mode === "dark"
+            ? isDark
               ? "warning.dark"
               : "warning.light"
             : theme.palette.action.hover,

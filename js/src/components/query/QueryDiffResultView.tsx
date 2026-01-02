@@ -1,10 +1,10 @@
 import Box from "@mui/material/Box";
-import { useTheme } from "@mui/material/styles";
 import { ForwardedRef, forwardRef, Ref, useMemo } from "react";
 import {
   QueryDiffViewOptions,
   QueryPreviewChangeParams,
 } from "@/lib/api/adhocQuery";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 
 import "./styles.css";
 import { ColumnRenderMode, Run } from "@/lib/api/types";
@@ -41,8 +41,7 @@ const PrivateQueryDiffResultView = (
 
   ref: Ref<DataGridHandle>,
 ) => {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   const primaryKeys = useMemo(
     () => viewOptions?.primary_keys ?? [],
     [viewOptions],
@@ -236,8 +235,7 @@ const PrivateQueryDiffJoinResultView = (
   }: QueryDiffResultViewProps,
   ref: Ref<DataGridHandle>,
 ) => {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   if (run.type !== "query_diff") {
     throw new Error("QueryDiffResult view should be rendered as query_diff");
   }

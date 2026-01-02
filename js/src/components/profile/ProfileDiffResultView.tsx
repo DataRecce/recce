@@ -1,5 +1,4 @@
 import Box from "@mui/material/Box";
-import { useTheme } from "@mui/material/styles";
 import { forwardRef, Ref, useMemo } from "react";
 import { ProfileDiffViewOptions } from "@/lib/api/profile";
 import {
@@ -8,6 +7,7 @@ import {
   isProfileRun,
 } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import {
   type DataGridHandle,
   ScreenshotDataGrid,
@@ -23,8 +23,7 @@ const PrivateProfileDiffResultView = (
 
   ref: Ref<DataGridHandle>,
 ) => {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
 
   if (!isProfileDiffRun(run)) {
     throw new Error("Only run type profile_diff is supported");
@@ -143,8 +142,7 @@ const PrivateProfileResultView = (
 
   ref: Ref<DataGridHandle>,
 ) => {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
 
   if (!isProfileRun(run)) {
     throw new Error("Only run type profile_diff is supported");

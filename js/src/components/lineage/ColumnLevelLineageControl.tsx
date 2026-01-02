@@ -13,6 +13,7 @@ import { FaRegDotCircle } from "react-icons/fa";
 import { PiInfo, PiX } from "react-icons/pi";
 import { CllInput, ColumnLineageData } from "@/lib/api/cll";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 
@@ -138,9 +139,18 @@ const _CllHint = () => {
 };
 
 const ModeMessage = () => {
+  const isDark = useIsDark();
   const { lineageGraph } = useLineageGraphContext();
   const { centerNode, viewOptions } = useLineageViewContextSafe();
   const cllInput = viewOptions.column_level_lineage;
+
+  const codeBlockSx = {
+    cursor: "pointer",
+    fontFamily: "monospace",
+    bgcolor: isDark ? "grey.700" : "grey.100",
+    px: 0.5,
+    borderRadius: 0.5,
+  };
 
   if (!lineageGraph) {
     return <></>;
@@ -176,13 +186,7 @@ const ModeMessage = () => {
           onClick={() => {
             centerNode(nodeId);
           }}
-          sx={(theme) => ({
-            cursor: "pointer",
-            fontFamily: "monospace",
-            bgcolor: theme.palette.mode === "dark" ? "grey.700" : "grey.100",
-            px: 0.5,
-            borderRadius: 0.5,
-          })}
+          sx={codeBlockSx}
         >
           {nodeName}
         </Box>
@@ -200,13 +204,7 @@ const ModeMessage = () => {
           onClick={() => {
             centerNode(nodeId);
           }}
-          sx={(theme) => ({
-            cursor: "pointer",
-            fontFamily: "monospace",
-            bgcolor: theme.palette.mode === "dark" ? "grey.700" : "grey.100",
-            px: 0.5,
-            borderRadius: 0.5,
-          })}
+          sx={codeBlockSx}
         >
           {nodeName}.{cllInput.column}
         </Box>

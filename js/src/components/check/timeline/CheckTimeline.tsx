@@ -11,13 +11,13 @@ import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { fetchUser } from "@/lib/api/user";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useCheckEvents } from "@/lib/hooks/useCheckEvents";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import { CommentInput } from "./CommentInput";
 import { TimelineEvent } from "./TimelineEvent";
 
@@ -26,8 +26,7 @@ interface CheckTimelineProps {
 }
 
 export function CheckTimeline({ checkId }: CheckTimelineProps) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   const { apiClient } = useApiConfig();
   const {
     events,
