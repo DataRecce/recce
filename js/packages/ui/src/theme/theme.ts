@@ -163,6 +163,13 @@ function createProgressColorVariant<T extends CustomColorName>(
 const buttonColorVariants = [
   ...createButtonColorVariants("brand", colors.brand),
   ...createButtonColorVariants("iochmara", colors.iochmara),
+  ...createButtonColorVariants("cyan", colors.cyan),
+  ...createButtonColorVariants("amber", colors.amber),
+  ...createButtonColorVariants("green", colors.green),
+  ...createButtonColorVariants("red", colors.red),
+  ...createButtonColorVariants("rose", colors.rose),
+  ...createButtonColorVariants("fuchsia", colors.fuchsia),
+  ...createButtonColorVariants("neutral", colors.neutral),
 ];
 
 // Generate all chip color variants
