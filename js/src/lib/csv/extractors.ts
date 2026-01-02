@@ -43,16 +43,24 @@ function extractQueryBase(result: unknown): CSVData | null {
 
 /**
  * Extract CSV data from query_diff result
- * Combines base and current with a source column
+ * Supports two result shapes:
+ * 1. { diff: DataFrame } - joined diff result (QueryDiffJoinResultView)
+ * 2. { base: DataFrame, current: DataFrame } - separate base/current (QueryDiffResultView)
  */
 function extractQueryDiff(result: unknown): CSVData | null {
   const typed = result as QueryDiffResult;
 
-  // Prefer current, fall back to base
+  // First, check if diff DataFrame exists (joined result)
+  if (typed?.diff) {
+    return extractDataFrame(typed.diff);
+  }
+
+  // Fall back to base/current DataFrames
   const df = typed?.current || typed?.base;
   if (!df) return null;
 
-  // If both exist, combine them
+  // If both exist, combine them with source column
+  // Interleave rows: each base row followed by corresponding current row
   if (typed?.base && typed?.current) {
     const currentColumns = typed.current.columns.map((c) => c.name);
 
@@ -60,15 +68,17 @@ function extractQueryDiff(result: unknown): CSVData | null {
     const columns = ["_source", ...currentColumns];
     const rows: unknown[][] = [];
 
-    // Add base rows
-    typed.base.data.forEach((row) => {
-      rows.push(["base", ...row]);
-    });
-
-    // Add current rows
-    typed.current.data.forEach((row) => {
-      rows.push(["current", ...row]);
-    });
+    const maxRows = Math.max(typed.base.data.length, typed.current.data.length);
+    for (let i = 0; i < maxRows; i++) {
+      // Add base row first
+      if (i < typed.base.data.length) {
+        rows.push(["base", ...typed.base.data[i]]);
+      }
+      // Add corresponding current row right after
+      if (i < typed.current.data.length) {
+        rows.push(["current", ...typed.current.data[i]]);
+      }
+    }
 
     return { columns, rows };
   }
