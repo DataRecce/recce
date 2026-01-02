@@ -122,6 +122,26 @@ function createChipColorVariants<T extends CustomColorName>(
   ];
 }
 
+/**
+ * Helper to generate Badge color variants
+ */
+function createBadgeColorVariant<T extends CustomColorName>(
+  colorName: T,
+  colorScale: ColorScale,
+) {
+  return [
+    {
+      props: { color: colorName },
+      style: {
+        "& .MuiBadge-badge": {
+          backgroundColor: colorScale[500],
+          color: "#ffffff",
+        },
+      },
+    },
+  ];
+}
+
 // Generate all button color variants
 const buttonColorVariants = [
   ...createButtonColorVariants("brand", colors.brand),
@@ -132,6 +152,12 @@ const buttonColorVariants = [
 const chipColorVariants = [
   ...createChipColorVariants("brand", colors.brand),
   ...createChipColorVariants("iochmara", colors.iochmara),
+];
+
+// Generate all badge color variants
+const badgeColorVariants = [
+  ...createBadgeColorVariant("brand", colors.brand),
+  ...createBadgeColorVariant("iochmara", colors.iochmara),
 ];
 
 /**
@@ -376,6 +402,12 @@ const sharedThemeOptions: ThemeOptions = {
         },
         // Color variants for brand and iochmara
         ...chipColorVariants,
+      ],
+    },
+    MuiBadge: {
+      variants: [
+        // Color variants for brand and iochmara
+        ...badgeColorVariants,
       ],
     },
     MuiCard: {
