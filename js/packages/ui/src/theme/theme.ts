@@ -542,6 +542,49 @@ const sharedThemeOptions: ThemeOptions = {
         color: "primary",
       },
     },
+    // Dialog overrides
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          borderRadius: 8,
+        },
+      },
+    },
+    MuiDialogTitle: {
+      styleOverrides: {
+        root: {
+          fontWeight: 600,
+          fontSize: "1.125rem",
+        },
+      },
+    },
+    // Menu overrides
+    MuiMenu: {
+      styleOverrides: {
+        paper: {
+          borderRadius: 8,
+          boxShadow:
+            "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)",
+        },
+      },
+    },
+    MuiMenuItem: {
+      styleOverrides: {
+        root: {
+          fontSize: "0.875rem",
+          padding: "0.5rem 0.75rem",
+          "&:hover": {
+            backgroundColor: "var(--mui-palette-action-hover)",
+          },
+          "&.Mui-selected": {
+            backgroundColor: "var(--mui-palette-action-selected)",
+            "&:hover": {
+              backgroundColor: "var(--mui-palette-action-selected)",
+            },
+          },
+        },
+      },
+    },
   },
 };
 
