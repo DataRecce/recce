@@ -1,7 +1,7 @@
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
-import { alpha, useTheme } from "@mui/material/styles";
+import { alpha } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import React, { useMemo } from "react";
 import { FaPlay } from "react-icons/fa6";
@@ -11,6 +11,7 @@ import { colors } from "@/components/ui/mui-theme";
 import { ManifestMetadata } from "@/lib/api/info";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 
 export interface SqlEditorProps {
   language?: string;
@@ -53,8 +54,7 @@ function SqlEditor({
   ...props
 }: SqlEditorProps) {
   const { featureToggles } = useRecceInstanceContext();
-  const muiTheme = useTheme();
-  const isDark = muiTheme.palette.mode === "dark";
+  const isDark = useIsDark();
 
   const handleEditorChange = (value: string) => {
     if (onChange) {

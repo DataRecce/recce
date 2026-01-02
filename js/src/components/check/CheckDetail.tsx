@@ -63,6 +63,7 @@ import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import { useRun } from "@/lib/hooks/useRun";
 import { LineageViewRef } from "../lineage/LineageView";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
@@ -96,7 +97,7 @@ export function CheckDetail({
   refreshCheckList,
 }: CheckDetailProps): ReactNode {
   const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   const { apiClient } = useApiConfig();
   const { featureToggles, sessionId } = useRecceInstanceContext();
   const { setLatestSelectedCheckId } = useRecceCheckContext();

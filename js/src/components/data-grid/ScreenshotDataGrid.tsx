@@ -23,6 +23,7 @@ import type {
 } from "ag-grid-community";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import { AgGridReact, type AgGridReactProps } from "ag-grid-react";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import "./agGridStyles.css";
 import React, {
   type CSSProperties,
@@ -163,16 +164,15 @@ function _ScreenshotDataGrid<TData = RowObjectType>(
     [],
   );
 
-  // Get MUI theme to determine dark/light mode
+  // Get MUI theme for palette colors
   const muiTheme = useTheme();
+  // Use useIsDark for reliable dark mode detection with CSS Variables
+  const isDark = useIsDark();
 
-  // Select AG Grid theme based on MUI theme mode
+  // Select AG Grid theme based on dark mode
   const gridTheme = useMemo(
-    () =>
-      muiTheme.palette.mode === "dark"
-        ? recceGridThemeDark
-        : recceGridThemeLight,
-    [muiTheme.palette.mode],
+    () => (isDark ? recceGridThemeDark : recceGridThemeLight),
+    [isDark],
   );
 
   // Support both new and legacy props
@@ -256,24 +256,15 @@ function _ScreenshotDataGrid<TData = RowObjectType>(
         },
         // Diff cell styling - theme-aware colors
         "& .diff-cell-added": {
-          backgroundColor:
-            muiTheme.palette.mode === "dark"
-              ? "#1a4d1a !important"
-              : "#cefece !important",
+          backgroundColor: isDark ? "#1a4d1a !important" : "#cefece !important",
           color: muiTheme.palette.text.primary,
         },
         "& .diff-cell-removed": {
-          backgroundColor:
-            muiTheme.palette.mode === "dark"
-              ? "#5c1f1f !important"
-              : "#ffc5c5 !important",
+          backgroundColor: isDark ? "#5c1f1f !important" : "#ffc5c5 !important",
           color: muiTheme.palette.text.primary,
         },
         "& .diff-cell-modified": {
-          backgroundColor:
-            muiTheme.palette.mode === "dark"
-              ? "#5c1f1f !important"
-              : "#ffc5c5 !important",
+          backgroundColor: isDark ? "#5c1f1f !important" : "#ffc5c5 !important",
           color: muiTheme.palette.text.primary,
         },
         // Diff header styling
@@ -292,8 +283,7 @@ function _ScreenshotDataGrid<TData = RowObjectType>(
         },
         // Frozen/pinned column styling
         "& .ag-pinned-left-cols-container .ag-cell": {
-          backgroundColor:
-            muiTheme.palette.mode === "dark" ? "#2d2d2d" : "#f5f5f5",
+          backgroundColor: isDark ? "#2d2d2d" : "#f5f5f5",
         },
       }}
     >

@@ -1,6 +1,6 @@
 import Box from "@mui/material/Box";
-import { useTheme } from "@mui/material/styles";
 import { forwardRef, Ref, useMemo } from "react";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 
 import "../query/styles.css";
 import { ColumnRenderMode, isValueDiffDetailRun, Run } from "@/lib/api/types";
@@ -31,8 +31,7 @@ const PrivateValueDiffDetailResultView = (
 
   ref: Ref<DataGridHandle>,
 ) => {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
 
   if (!isValueDiffDetailRun(run)) {
     throw new Error("run type must be value_diff_detail");

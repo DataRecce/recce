@@ -1,8 +1,8 @@
 import Box from "@mui/material/Box";
-import { useTheme } from "@mui/material/styles";
 import { forwardRef, Ref } from "react";
 import { HistogramDiffParams } from "@/lib/api/profile";
 import { isHistogramDiffRun } from "@/lib/api/types";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import { HistogramChart } from "../charts/HistogramChart";
 import { RunResultViewProps } from "../run/types";
 import { ScreenshotBox } from "../screenshot/ScreenshotBox";
@@ -13,8 +13,7 @@ function _HistogramDiffResultView(
   { run }: HistogramDiffResultViewProp,
   ref: Ref<HTMLDivElement>,
 ) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
 
   if (!isHistogramDiffRun(run)) {
     throw new Error("Run type must be histogram_diff");
