@@ -58,40 +58,50 @@ export interface LineageViewRef {
  * A component for visualizing data lineage graphs using React Flow.
  * Shows relationships between models and their change status.
  *
- * NOTE: This is a placeholder export for @datarecce/ui. The full implementation
- * requires the complete Recce application context including:
- * - LineageGraphContext for lineage data
- * - RecceActionContext for actions
- * - RecceInstanceContext for instance configuration
- * - ApiConfigContext for API access
+ * This is a placeholder component. For custom lineage visualization, use the
+ * lineage utilities exported from @datarecce/ui:
  *
- * For full functionality, use within a RecceProvider that supplies these contexts.
+ * - `buildLineageGraph()` - Build a LineageGraph from server data
+ * - `toReactFlowBasic()` - Convert graph to React Flow nodes/edges
+ * - `layoutWithDagre()` - Apply dagre layout (you provide dagre instance)
+ * - `selectUpstream()/selectDownstream()` - Select related nodes
  *
- * @example
+ * @example Building a custom lineage view
  * ```tsx
- * import { LineageView } from '@datarecce/ui';
+ * import dagre from '@dagrejs/dagre';
+ * import { ReactFlow } from '@xyflow/react';
+ * import {
+ *   buildLineageGraph,
+ *   toReactFlowBasic,
+ *   layoutWithDagre,
+ *   LineageGraphProvider,
+ * } from '@datarecce/ui';
  *
- * function MyComponent() {
+ * function CustomLineageView({ serverInfo }) {
+ *   const lineageGraph = buildLineageGraph(
+ *     serverInfo.lineage.base,
+ *     serverInfo.lineage.current,
+ *     serverInfo.lineage.diff
+ *   );
+ *
+ *   const [nodes, edges] = toReactFlowBasic(lineageGraph);
+ *   layoutWithDagre(dagre, nodes, edges);
+ *
  *   return (
- *     <RecceProvider>
- *       <LineageView
- *         interactive={true}
- *         viewOptions={{ view_mode: 'changed_models' }}
- *       />
- *     </RecceProvider>
+ *     <ReactFlow nodes={nodes} edges={edges} fitView />
  *   );
  * }
  * ```
+ *
+ * For the full-featured LineageView with column-level lineage, interactive
+ * selection, and all OSS features, use the Recce application directly.
  */
 export const LineageView = forwardRef<LineageViewRef, LineageViewProps>(
   function LineageView(_props: LineageViewProps, _ref: Ref<LineageViewRef>) {
-    // This is a type-only export for @datarecce/ui package.
-    // The actual implementation requires the full Recce context.
-    // Consumers should use this within a properly configured RecceProvider.
     throw new Error(
-      "LineageView requires the full Recce application context. " +
-        "Please ensure you are using this component within a RecceProvider " +
-        "that supplies the necessary context (LineageGraphContext, RecceActionContext, etc.).",
+      "LineageView is a placeholder. For custom lineage visualization, use " +
+        "the utilities: buildLineageGraph(), toReactFlowBasic(), layoutWithDagre(). " +
+        "See the JSDoc example above for implementation details.",
     );
   },
 );
