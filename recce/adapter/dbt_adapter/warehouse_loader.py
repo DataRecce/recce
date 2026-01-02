@@ -57,8 +57,11 @@ class WarehouseMetadataLoader:
     """
     Loads Recce metadata from warehouse tables.
 
-    Queries recce_invocations, recce_nodes, and recce_columns tables
+    Queries recce_invocations and recce_nodes_dbt tables
     to reconstruct WritableManifest and CatalogArtifact objects.
+
+    Note: Column metadata (catalog) is not yet stored in warehouse tables.
+    A future recce_columns_dbt table could be added to support this.
     """
 
     def __init__(self, adapter, runtime_config, config: Optional[WarehouseMetadataConfig] = None):
@@ -74,9 +77,9 @@ class WarehouseMetadataLoader:
         self.runtime_config = runtime_config
         self.config = config or WarehouseMetadataConfig()
 
-        # Build the recce schema name
-        target_schema = runtime_config.credentials.schema
-        self.recce_schema = f"{target_schema}_{self.config.schema_suffix}"
+        # Use schema_suffix directly as the schema name
+        # This matches the dbt package behavior when recce_schema var is set
+        self.recce_schema = self.config.schema_suffix
 
     def _execute_query(self, sql: str) -> List[Dict[str, Any]]:
         """Execute a SQL query and return results as list of dicts."""
@@ -101,7 +104,10 @@ class WarehouseMetadataLoader:
                 invocation_id,
                 generated_at,
                 adapter_type,
-                project_name
+                project_name,
+                framework_version,
+                git_sha,
+                git_branch
             FROM {self.recce_schema}.recce_invocations
             ORDER BY generated_at DESC
             LIMIT {limit}
@@ -146,24 +152,15 @@ class WarehouseMetadataLoader:
                 language,
                 source_name,
                 config
-            FROM {self.recce_schema}.recce_nodes
+            FROM {self.recce_schema}.recce_nodes_dbt
             WHERE invocation_id = '{invocation_id}'
         """
         return self._execute_query(sql)
 
-    def get_columns_for_invocation(self, invocation_id: str) -> List[Dict[str, Any]]:
-        """Get all columns for a specific invocation."""
-        sql = f"""
-            SELECT
-                node_unique_id,
-                column_name,
-                data_type,
-                column_index
-            FROM {self.recce_schema}.recce_columns
-            WHERE invocation_id = '{invocation_id}'
-            ORDER BY node_unique_id, column_index
-        """
-        return self._execute_query(sql)
+    # NOTE: get_columns_for_invocation is not available yet.
+    # The recce-dbt-package doesn't have a recce_columns_dbt table.
+    # Column metadata will need to be fetched live from information_schema
+    # or a future recce_columns_dbt table could be added to the package.
 
     def get_invocation_metadata(self, invocation_id: str) -> Dict[str, Any]:
         """Get metadata for a specific invocation."""
@@ -172,7 +169,10 @@ class WarehouseMetadataLoader:
                 invocation_id,
                 generated_at,
                 adapter_type,
-                project_name
+                project_name,
+                framework_version,
+                git_sha,
+                git_branch
             FROM {self.recce_schema}.recce_invocations
             WHERE invocation_id = '{invocation_id}'
         """
@@ -202,10 +202,11 @@ class WarehouseMetadataLoader:
         nodes = self.get_nodes_for_invocation(invocation_id)
 
         # Build the manifest structure
+        dbt_version = metadata.get("framework_version") or "1.8.0"
         manifest = {
             "metadata": {
                 "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v12.json",
-                "dbt_version": "1.8.0",  # Placeholder - could be stored in invocations
+                "dbt_version": dbt_version,
                 "generated_at": (
                     metadata["generated_at"].isoformat()
                     if isinstance(metadata["generated_at"], datetime)
@@ -441,26 +442,94 @@ class WarehouseMetadataLoader:
 
         return manifest
 
+    def _get_columns_from_information_schema(self, relations: List[Dict[str, str]]) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Fetch column metadata from information_schema for given relations.
+
+        Args:
+            relations: List of dicts with 'database', 'schema', 'name', 'unique_id' keys
+
+        Returns:
+            Dict mapping unique_id to list of column dicts
+        """
+        if not relations:
+            return {}
+
+        # Build WHERE clause for batch query
+        conditions = []
+        for rel in relations:
+            schema = rel.get("schema") or ""
+            name = rel.get("name") or ""
+            if schema and name:
+                # Use UPPER for case-insensitive matching (Snowflake returns uppercase)
+                conditions.append(f"(UPPER(table_schema) = UPPER('{schema}') AND UPPER(table_name) = UPPER('{name}'))")
+
+        if not conditions:
+            return {}
+
+        # Query information_schema.columns
+        where_clause = " OR ".join(conditions)
+        sql = f"""
+            SELECT
+                table_schema,
+                table_name,
+                column_name,
+                data_type,
+                ordinal_position
+            FROM information_schema.columns
+            WHERE {where_clause}
+            ORDER BY table_schema, table_name, ordinal_position
+        """
+
+        try:
+            rows = self._execute_query(sql)
+        except Exception as e:
+            logger.warning(f"Failed to fetch columns from information_schema: {e}")
+            return {}
+
+        # Build lookup from (schema, table) -> unique_id
+        schema_table_to_id: Dict[Tuple[str, str], str] = {}
+        for rel in relations:
+            schema = (rel.get("schema") or "").upper()
+            name = (rel.get("name") or "").upper()
+            if schema and name:
+                schema_table_to_id[(schema, name)] = rel["unique_id"]
+
+        # Group columns by unique_id
+        columns_by_node: Dict[str, List[Dict[str, Any]]] = {}
+        for row in rows:
+            schema = (row.get("table_schema") or "").upper()
+            table = (row.get("table_name") or "").upper()
+            unique_id = schema_table_to_id.get((schema, table))
+            if unique_id:
+                if unique_id not in columns_by_node:
+                    columns_by_node[unique_id] = []
+                columns_by_node[unique_id].append(
+                    {
+                        "column_name": row["column_name"],
+                        "data_type": row.get("data_type") or "unknown",
+                        "ordinal_position": row.get("ordinal_position") or 0,
+                    }
+                )
+
+        return columns_by_node
+
     def _build_catalog_dict(self, invocation_id: str) -> Dict[str, Any]:
         """
         Build a catalog.json-compatible dictionary from warehouse data.
+
+        Fetches column metadata directly from information_schema based on
+        node locations stored in recce_nodes_dbt.
         """
         metadata = self.get_invocation_metadata(invocation_id)
-        columns = self.get_columns_for_invocation(invocation_id)
-
-        # Group columns by node
-        columns_by_node: Dict[str, List[Dict]] = {}
-        for col in columns:
-            node_id = col["node_unique_id"]
-            if node_id not in columns_by_node:
-                columns_by_node[node_id] = []
-            columns_by_node[node_id].append(col)
+        nodes = self.get_nodes_for_invocation(invocation_id)
 
         # Build catalog structure
+        dbt_version = metadata.get("framework_version") or "1.8.0"
         catalog = {
             "metadata": {
                 "dbt_schema_version": "https://schemas.getdbt.com/dbt/catalog/v1.json",
-                "dbt_version": "1.8.0",
+                "dbt_version": dbt_version,
                 "generated_at": (
                     metadata["generated_at"].isoformat()
                     if isinstance(metadata["generated_at"], datetime)
@@ -472,25 +541,59 @@ class WarehouseMetadataLoader:
             "sources": {},
         }
 
-        # Build node entries with columns
-        for node_id, node_columns in columns_by_node.items():
+        # Collect relations to query (models, seeds, snapshots - not sources)
+        relations_to_query = []
+        node_info_map: Dict[str, Dict] = {}
+
+        for node in nodes:
+            unique_id = node["unique_id"]
+            resource_type = node.get("resource_type")
+            database = node.get("database_name")
+            schema = node.get("schema_name")
+            name = node.get("name")
+
+            node_info_map[unique_id] = node
+
+            # Only query columns for materialized objects (not sources - they're external)
+            if resource_type in ("model", "seed", "snapshot") and schema and name:
+                relations_to_query.append(
+                    {
+                        "unique_id": unique_id,
+                        "database": database,
+                        "schema": schema,
+                        "name": name,
+                    }
+                )
+
+        # Batch fetch columns from information_schema
+        columns_by_node = self._get_columns_from_information_schema(relations_to_query)
+
+        # Build catalog entries for all nodes
+        for unique_id, node in node_info_map.items():
+            resource_type = node.get("resource_type")
+            database = node.get("database_name") or ""
+            schema = node.get("schema_name") or ""
+            name = node.get("name") or ""
+
+            # Build columns dict
             columns_dict = {}
-            for col in sorted(node_columns, key=lambda x: x.get("column_index") or 0):
+            node_columns = columns_by_node.get(unique_id, [])
+            for col in sorted(node_columns, key=lambda x: x.get("ordinal_position") or 0):
                 col_name = col["column_name"]
                 columns_dict[col_name] = {
                     "name": col_name,
                     "type": col.get("data_type") or "unknown",
-                    "index": col.get("column_index") or 0,
+                    "index": col.get("ordinal_position") or 0,
                     "comment": None,
                 }
 
             node_entry = {
-                "unique_id": node_id,
+                "unique_id": unique_id,
                 "metadata": {
-                    "type": "table",
-                    "schema": "",
-                    "name": node_id.split(".")[-1] if "." in node_id else node_id,
-                    "database": "",
+                    "type": "table" if resource_type != "view" else "view",
+                    "schema": schema,
+                    "name": name,
+                    "database": database,
                     "comment": None,
                     "owner": None,
                 },
@@ -499,11 +602,12 @@ class WarehouseMetadataLoader:
             }
 
             # Route to sources or nodes
-            if node_id.startswith("source."):
-                catalog["sources"][node_id] = node_entry
-            else:
-                catalog["nodes"][node_id] = node_entry
+            if resource_type == "source":
+                catalog["sources"][unique_id] = node_entry
+            elif resource_type in ("model", "seed", "snapshot"):
+                catalog["nodes"][unique_id] = node_entry
 
+        logger.debug(f"Built catalog with {len(catalog['nodes'])} nodes, {len(catalog['sources'])} sources")
         return catalog
 
     def load_manifests_and_catalogs(self) -> Tuple[Any, Any, Any, Any]:
