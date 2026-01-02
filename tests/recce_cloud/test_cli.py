@@ -817,41 +817,6 @@ class TestDeleteDryRun(unittest.TestCase):
         self.assertIn("Auto-detect and delete PR/MR session", result.output)
         self.assertIn("Platform-specific APIs will be used", result.output)
 
-    def test_dry_run_with_prod_flag(self):
-        """Test dry-run with --prod flag for production/base session."""
-        env = {
-            "GITHUB_ACTIONS": "true",
-            "GITHUB_REPOSITORY": "DataRecce/recce",
-            "GITHUB_EVENT_NAME": "pull_request",
-            "GITHUB_SHA": "abc123",
-            "GITHUB_TOKEN": "test_token",
-        }
-
-        # Create mock event file
-        event_file = Path(self.temp_dir) / "github_event.json"
-        import json
-
-        with open(event_file, "w") as f:
-            json.dump({"pull_request": {"number": 42}}, f)
-
-        env["GITHUB_EVENT_PATH"] = str(event_file)
-
-        with patch.dict(os.environ, env, clear=True):
-            result = self.runner.invoke(
-                cloud_cli,
-                ["delete", "--prod", "--dry-run"],
-            )
-
-        # Assertions
-        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
-        self.assertIn("Dry run mode enabled", result.output)
-        self.assertIn("Delete project's production/base session", result.output)
-        self.assertIn("Session Type: prod", result.output)
-
-        # Prod session should NOT show PR/CR number
-        self.assertNotIn("PR Number:", result.output)
-        self.assertNotIn("CR Number:", result.output)
-
     def test_dry_run_with_session_id(self):
         """Test dry-run with existing session ID (generic workflow)."""
         env = {
@@ -878,29 +843,6 @@ class TestDeleteDryRun(unittest.TestCase):
 
         # User interactive mode should NOT show session type
         self.assertNotIn("Session Type:", result.output)
-
-    def test_dry_run_session_id_with_prod_warning(self):
-        """Test dry-run shows warning when both --session-id and --prod are provided."""
-        env = {
-            "RECCE_API_TOKEN": "test_token",
-        }
-
-        with patch.dict(os.environ, env, clear=True):
-            result = self.runner.invoke(
-                cloud_cli,
-                [
-                    "delete",
-                    "--session-id",
-                    "sess_123",
-                    "--prod",
-                    "--dry-run",
-                ],
-            )
-
-        # Assertions
-        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
-        self.assertIn("Warning:", result.output)
-        self.assertIn("--prod is ignored when --session-id is provided", result.output)
 
     def test_dry_run_no_ci_without_session_id(self):
         """Test dry-run without CI environment and no session ID."""

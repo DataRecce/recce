@@ -441,11 +441,6 @@ def download(target_path, session_id, prod, dry_run, force):
     help="Session ID to delete. Required for non-CI workflows.",
 )
 @click.option(
-    "--prod",
-    is_flag=True,
-    help="Delete production/base session instead of PR/MR session",
-)
-@click.option(
     "--dry-run",
     is_flag=True,
     help="Show what would be deleted without actually deleting",
@@ -456,9 +451,13 @@ def download(target_path, session_id, prod, dry_run, force):
     is_flag=True,
     help="Skip confirmation prompt",
 )
-def delete(session_id, prod, dry_run, force):
+def delete(session_id, dry_run, force):
     """
     Delete a Recce Cloud session.
+
+    Note: Deleting production sessions is not supported. To update production,
+    upload a new session to overwrite it. Contact us if you need to delete
+    a production session.
 
     \b
     Authentication (auto-detected):
@@ -471,9 +470,6 @@ def delete(session_id, prod, dry_run, force):
       # Delete current PR/MR session (in CI)
       recce-cloud delete
 
-      # Delete project's production/base session
-      recce-cloud delete --prod
-
       # Delete a specific session by ID
       recce-cloud delete --session-id abc123
 
@@ -482,18 +478,10 @@ def delete(session_id, prod, dry_run, force):
     """
     console = Console()
 
-    # Validate flag combinations
-    if session_id and prod:
-        console.print("[yellow]Warning:[/yellow] --prod is ignored when --session-id is provided")
-
-    # Determine session type from --prod flag
-    session_type = "prod" if prod else None
-
     # 1. Auto-detect CI environment information
     console.rule("CI Environment Detection", style="blue")
     try:
         ci_info = CIDetector.detect()
-        ci_info = CIDetector.apply_overrides(ci_info, session_type=session_type)
 
         # Display detected CI information immediately
         if ci_info:
@@ -560,10 +548,7 @@ def delete(session_id, prod, dry_run, force):
             console.print("  • Delete specific session by ID")
             console.print(f"  • Session ID: {session_id}")
         else:
-            if prod:
-                console.print("  • Delete project's production/base session")
-            else:
-                console.print("  • Auto-detect and delete PR/MR session")
+            console.print("  • Auto-detect and delete PR/MR session")
 
             if ci_info and ci_info.platform in ["github-actions", "gitlab-ci"]:
                 console.print("  • Platform-specific APIs will be used")
@@ -579,8 +564,6 @@ def delete(session_id, prod, dry_run, force):
         console.print()
         if session_id:
             confirm_msg = f'Are you sure you want to delete session "{session_id}"?'
-        elif prod:
-            confirm_msg = "Are you sure you want to delete the production/base session?"
         else:
             confirm_msg = "Are you sure you want to delete the PR/MR session?"
 
@@ -613,7 +596,7 @@ def delete(session_id, prod, dry_run, force):
         elif ci_info.platform == "gitlab-ci":
             console.print("[cyan]Info:[/cyan] Using CI_JOB_TOKEN for platform-specific authentication")
 
-        delete_with_platform_apis(console, token, ci_info, prod)
+        delete_with_platform_apis(console, token, ci_info, prod=False)
 
 
 if __name__ == "__main__":

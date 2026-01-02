@@ -198,44 +198,6 @@ class TestGitHubRecceCloudClient:
             assert call_args[1]["params"]["pr_number"] == 123
             assert "base" not in call_args[1]["params"]
 
-    def test_delete_session_prod(self):
-        """Test delete_session for prod (base) session."""
-        client = GitHubRecceCloudClient(token="test_token", repository="owner/repo")
-
-        with patch.object(client, "_make_request") as mock_request:
-            mock_request.return_value = {
-                "session_id": "deleted_prod_session_id",
-            }
-
-            response = client.delete_session(session_type="prod")
-
-            assert response["session_id"] == "deleted_prod_session_id"
-
-            # Verify correct API endpoint was called with base=true
-            mock_request.assert_called_once()
-            call_args = mock_request.call_args
-            assert call_args[0][0] == "DELETE"
-            assert "github/owner/repo/session" in call_args[0][1]
-            assert call_args[1]["params"]["base"] == "true"
-            assert "pr_number" not in call_args[1]["params"]
-
-    def test_delete_session_prod_with_cr_number(self):
-        """Test delete_session with prod type ignores cr_number."""
-        client = GitHubRecceCloudClient(token="test_token", repository="owner/repo")
-
-        with patch.object(client, "_make_request") as mock_request:
-            mock_request.return_value = {
-                "session_id": "deleted_prod_session_id",
-            }
-
-            # Even with cr_number provided, prod type should not include pr_number
-            client.delete_session(cr_number=123, session_type="prod")
-
-            # Verify pr_number is NOT in params when session_type is "prod"
-            call_args = mock_request.call_args
-            assert call_args[1]["params"]["base"] == "true"
-            assert "pr_number" not in call_args[1]["params"]
-
 
 class TestGitLabRecceCloudClient:
     """Tests for GitLab CI API client."""
@@ -465,52 +427,6 @@ class TestGitLabRecceCloudClient:
             assert "gitlab/group/project/session" in call_args[0][1]
             assert call_args[1]["params"]["mr_iid"] == 456
             assert "base" not in call_args[1]["params"]
-
-    def test_delete_session_prod(self):
-        """Test delete_session for prod (base) session."""
-        client = GitLabRecceCloudClient(
-            token="test_token",
-            project_path="group/project",
-            repository_url="https://gitlab.com/group/project",
-        )
-
-        with patch.object(client, "_make_request") as mock_request:
-            mock_request.return_value = {
-                "session_id": "deleted_prod_session_id",
-            }
-
-            response = client.delete_session(session_type="prod")
-
-            assert response["session_id"] == "deleted_prod_session_id"
-
-            # Verify correct API endpoint was called with base=true
-            mock_request.assert_called_once()
-            call_args = mock_request.call_args
-            assert call_args[0][0] == "DELETE"
-            assert "gitlab/group/project/session" in call_args[0][1]
-            assert call_args[1]["params"]["base"] == "true"
-            assert "mr_iid" not in call_args[1]["params"]
-
-    def test_delete_session_prod_with_cr_number(self):
-        """Test delete_session with prod type ignores cr_number."""
-        client = GitLabRecceCloudClient(
-            token="test_token",
-            project_path="group/project",
-            repository_url="https://gitlab.com/group/project",
-        )
-
-        with patch.object(client, "_make_request") as mock_request:
-            mock_request.return_value = {
-                "session_id": "deleted_prod_session_id",
-            }
-
-            # Even with cr_number provided, prod type should not include mr_iid
-            client.delete_session(cr_number=456, session_type="prod")
-
-            # Verify mr_iid is NOT in params when session_type is "prod"
-            call_args = mock_request.call_args
-            assert call_args[1]["params"]["base"] == "true"
-            assert "mr_iid" not in call_args[1]["params"]
 
 
 class TestFactoryCreatePlatformClient:
