@@ -1,5 +1,8 @@
 "use client";
 
+// Primitives - pure presentation components
+export * from "./columns";
+export * from "./controls";
 export * from "./edges";
 // Composed components for rendering lineage graphs
 export { LineageCanvas, type LineageCanvasProps } from "./LineageCanvas";
@@ -8,5 +11,5 @@ export {
   type LineageViewProps,
   type LineageViewRef,
 } from "./LineageView";
-// Re-export primitives for convenience
+export * from "./legend";
 export * from "./nodes";
