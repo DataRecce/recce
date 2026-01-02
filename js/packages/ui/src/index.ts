@@ -37,11 +37,29 @@ export {
 
 // Components - UI components for data validation interfaces
 export type {
+  // High-level views (Layer 3)
+  ChecksViewProps,
+  // Lineage
   LineageCanvasProps,
   LineageViewProps,
   LineageViewRef,
+  NavItem,
+  QueryViewMode,
+  QueryViewProps,
+  QueryViewRef,
+  RecceLayoutProps,
+  RunsViewProps,
 } from "./components";
-export { LineageCanvas, LineageView } from "./components";
+export {
+  // High-level views (Layer 3)
+  ChecksView,
+  // Lineage
+  LineageCanvas,
+  LineageView,
+  QueryView,
+  RecceLayout,
+  RunsView,
+} from "./components";
 
 // Contexts - React contexts for state management
 export type {

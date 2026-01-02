@@ -1,7 +1,7 @@
 # Library-First Architecture: Follow-Up Implementation Plan
 
 **Date:** 2026-01-02
-**Status:** ✅ Phase 2 Complete, Phase 3-4 Partially Complete
+**Status:** ✅ ALL PHASES COMPLETE
 **Context:** This is a follow-up to `2026-01-02-library-first-component-architecture.md`
 
 > **For Claude:** After context compaction, read this file to restore state.
@@ -75,81 +75,299 @@ All 5 sessions have been completed and merged into `feature/datarecce-redesign`.
 
 ---
 
-### 📋 REMAINING WORK
+### ✅ COMPLETED - Phase 3: High-Level Views (Layer 3)
 
-#### Phase 3: High-Level Views (Layer 3) - NOT STARTED
+**Commit:** Session 6 (2026-01-02)
 
-These are composite views that use context providers and compose primitives:
+| View | File | Status | Purpose |
+|------|------|--------|---------|
+| ChecksView | `components/views/ChecksView.tsx` | ✅ | Composes CheckList + CheckDetail with CheckContext |
+| QueryView | `components/views/QueryView.tsx` | ✅ | Composes QueryEditor + QueryResults with QueryContext |
+| RunsView | `components/views/RunsView.tsx` | ✅ | Composes RunList + RunProgress with custom detail render |
+| RecceLayout | `components/views/RecceLayout.tsx` | ✅ | Shell with AppBar, Drawer navigation, content area |
+| LineageView | `components/lineage/LineageView.tsx` | ✅ | Already existed as high-level component |
 
-| View | Purpose | Priority |
-|------|---------|----------|
-| ChecksView | Composes CheckList + CheckDetail with CheckContext | Medium |
-| QueryView | Composes QueryEditor + QueryResults with QueryContext | Medium |
-| RunsView | Composes RunList + RunResultPane with context | Low |
-| RecceLayout | Shell with NavBar + TopBar + content area | Low |
-
-**Note:** LineageView already exists and is the primary high-level view.
-
-#### Phase 4: Additional Cleanup - PARTIAL
+### ✅ COMPLETED - Phase 4: Additional Cleanup
 
 | Task | Status | Notes |
 |------|--------|-------|
-| Audit primitives.ts | ✅ | All ~40 primitives exported |
-| Populate advanced.ts | ✅ | Utilities and hooks exported |
-| Verify main index.ts | ⚠️ | May need Layer 3 views added |
-| Create types/index.ts | ❌ | Not created |
-| Final verification | ⚠️ | Type check passes, build not tested |
+| Audit primitives.ts | ✅ | ~90 exports (components, types, helpers, constants) |
+| Populate advanced.ts | ✅ | ~35 exports (utilities, hooks, types) |
+| Verify main index.ts | ✅ | Layer 3 views added |
+| Create types/index.ts | ✅ | Type-only barrel export created |
+| Final verification | ✅ | Full build passes |
 
 ---
 
 ## Current Export Structure
 
-### `@datarecce/ui/primitives` (Layer 2)
-```typescript
-// Lineage
-LineageNode, LineageEdge, LineageColumnNode, LineageControls, LineageLegend
+> **Last Updated:** 2026-01-02 (Session 6 - Build Verification Complete)
 
-// Check
+### `@datarecce/ui/primitives` (Layer 2) - ~90 exports
+
+Pure presentation components for custom composition. No data fetching, just props and callbacks.
+
+```typescript
+// =============================================================================
+// LINEAGE PRIMITIVES (18 exports)
+// =============================================================================
+// Components
+LineageNode, LineageEdge, LineageColumnNode, LineageControls, LineageLegend, ControlButton
+
+// Types
+LineageNodeData, LineageNodeProps, NodeChangeStatus,
+LineageEdgeData, LineageEdgeProps, EdgeChangeStatus,
+LineageColumnNodeData, LineageColumnNodeProps, ColumnTransformationType,
+LineageControlsProps, LineageLegendProps, ChangeStatusLegendItem, TransformationLegendItem
+
+// Constants
+COLUMN_NODE_HEIGHT, COLUMN_NODE_WIDTH
+
+// =============================================================================
+// CHECK PRIMITIVES (14 exports)
+// =============================================================================
+// Components
 CheckCard, CheckList, CheckDetail, CheckDescription, CheckActions, CheckEmptyState
 
-// Query
-QueryEditor, QueryResults, QueryDiffView
+// Types
+CheckCardData, CheckCardProps, CheckRunStatus, CheckType,
+CheckListProps, CheckDetailProps, CheckDetailTab,
+CheckDescriptionProps, CheckActionsProps, CheckAction, CheckActionType, CheckEmptyStateProps
 
-// Run
-RunList, RunProgress, RunStatusBadge
+// =============================================================================
+// QUERY PRIMITIVES (18 exports)
+// =============================================================================
+// Components
+QueryEditor, QueryEditorToolbar, QueryEditorWithToolbar, QueryResults, QueryDiffView
 
-// Data
-HistogramChart, ProfileTable, TopKBarChart
+// Types
+QueryEditorProps, QueryEditorToolbarProps, QueryEditorWithToolbarProps,
+QueryEditorLanguage, QueryEditorTheme, QueryEditorKeyBinding,
+QueryResultsProps, QueryResultsHandle, QueryResultsColumn, QueryResultsRow,
+QueryDiffViewProps, QueryDiffViewHandle, DiffColumn, DiffRow, DiffDisplayMode
 
-// Schema
+// =============================================================================
+// RUN PRIMITIVES (16 exports)
+// =============================================================================
+// Components
+RunList, RunListItem, RunProgress, RunProgressOverlay, RunStatusBadge, RunStatusWithDate
+
+// Types
+RunListProps, RunListItemProps, RunListItemData,
+RunProgressProps, RunProgressOverlayProps, RunProgressVariant,
+RunStatusBadgeProps, RunStatusWithDateProps, RunStatus
+
+// Helper functions
+formatRunDate, formatRunDateTime
+
+// =============================================================================
+// DATA PRIMITIVES (18 exports)
+// =============================================================================
+// Components
+HistogramChart, ProfileTable, TopKBarChart, SingleBarChart, TopKSummaryList
+
+// Types
+HistogramChartProps, HistogramDataset, HistogramDataType, ChartBarColors, ChartThemeColors,
+ProfileTableProps, ProfileTableHandle, ProfileColumn, ProfileRow, ProfileDisplayMode, ColumnRenderMode,
+TopKBarChartProps, SingleBarChartProps, TopKSummaryListProps, TopKDataset, TopKItem
+
+// Helper functions
+getChartBarColors, getChartThemeColors
+
+// =============================================================================
+// SCHEMA PRIMITIVES (12 exports)
+// =============================================================================
+// Components
 SchemaDiff, SchemaTable
 
-// Editor
+// Types
+SchemaDiffProps, SchemaDiffHandle, SchemaDiffRow, SchemaDiffStatus,
+SchemaTableProps, SchemaTableHandle, SchemaColumnData, SchemaRow
+
+// Helper functions
+mergeSchemaColumns
+
+// =============================================================================
+// EDITOR PRIMITIVES (4 exports)
+// =============================================================================
+// Components
 DiffEditor
 
-// UI
+// Types
+DiffEditorProps, DiffEditorLanguage, DiffEditorTheme
+
+// =============================================================================
+// UI PRIMITIVES (7 exports)
+// =============================================================================
+// Components
 EmptyState, SplitPane, StatusBadge
+
+// Types
+EmptyStateProps, SplitPaneProps, SplitDirection, StatusBadgeProps, StatusType
+
+// =============================================================================
+// META
+// =============================================================================
+PRIMITIVES_API_VERSION  // "0.1.0"
 ```
 
-### `@datarecce/ui/advanced` (Internal Utilities)
+### `@datarecce/ui/advanced` (Power User Utilities) - ~35 exports
+
+Lower-level components and utilities for advanced customization. May change between minor versions.
+
 ```typescript
-// Graph utilities
-buildLineageGraph, layoutWithDagre, toReactFlowBasic, selectUpstream, selectDownstream
+// =============================================================================
+// LINEAGE UTILITIES (16 exports)
+// =============================================================================
+// Types
+LineageGraph, LineageGraphNode, LineageGraphColumnNode, LineageGraphEdge,
+LineageGraphNodes, EnvInfo, NodeColumnSetMap
+
+// Type guards
+isLineageGraphNode, isLineageGraphColumnNode
+
+// Graph building
+buildLineageGraph, layoutWithDagre, toReactFlowBasic
+
+// Selection utilities
+selectUpstream, selectDownstream
+
+// Set utilities
+getNeighborSet, intersect, union
+
+// Constants
+COLUMN_HEIGHT
+
+// =============================================================================
+// LOW-LEVEL CANVAS (2 exports)
+// =============================================================================
+LineageCanvas, LineageCanvasProps
+
+// =============================================================================
+// CONTEXT HOOKS (10 exports)
+// =============================================================================
+// Lineage context
+useLineageGraphContext, useRunsAggregated
+
+// Action context
+useRecceActionContext, RecceActionContextType
+
+// Instance context
+useRecceInstanceContext, useRecceInstanceInfo, InstanceInfoType
+
+// Idle timeout
+useIdleTimeout, IdleTimeoutContextType
+
+// =============================================================================
+// THEME UTILITIES (4 exports)
+// =============================================================================
+useThemeColors, colors, ColorShade, SemanticColorVariant
+
+// =============================================================================
+// META
+// =============================================================================
+ADVANCED_API_VERSION  // "0.2.0"
+```
+
+### `@datarecce/ui` (Foundation Layer) - ~100+ exports
+
+Main entry point with providers, high-level views, and comprehensive context/hooks.
+
+```typescript
+// =============================================================================
+// VERSION
+// =============================================================================
+VERSION  // "0.2.0"
+
+// =============================================================================
+// HIGH-LEVEL VIEWS (3 exports)
+// =============================================================================
+LineageView, LineageViewProps, LineageViewRef
+LineageCanvas, LineageCanvasProps  // Also available for custom composition
+
+// =============================================================================
+// PROVIDERS (8 exports)
+// =============================================================================
+RecceProvider, RecceProviderProps
+CheckProvider, CheckProviderProps
+QueryProvider, QueryProviderProps
+LineageGraphProvider, LineageGraphProviderProps
+IdleTimeoutProvider
+RecceInstanceInfoProvider
+RecceActionProvider, RecceActionProviderProps
+
+// =============================================================================
+// HOOKS (15 exports)
+// =============================================================================
+// Provider hooks
+useCheckContext, useQueryContext, useRouting, useAppLocation
+useApiClient, useApiConfig, useRecceTheme
 
 // Context hooks
-useLineageGraphContext, useRecceActionContext, useRecceInstanceContext, useIdleTimeout
+useLineageGraphContext, useRunsAggregated
+useRecceActionContext, useRecceInstanceContext, useRecceInstanceInfo
+useIdleTimeout, useIdleDetection, useIdleTimeoutSafe
+useRecceServerFlag
 
-// Theme
-useThemeColors, colors
-```
+// Theme hook
+useThemeColors
 
-### `@datarecce/ui` (Layer 1 + Layer 3)
-```typescript
-// Foundation
-RecceProvider, ApiProvider, CheckProvider, QueryProvider, ThemeProvider
+// =============================================================================
+// API UTILITIES (12 exports)
+// =============================================================================
+// Functions
+aggregateRuns, cacheKeys, getLastKeepAliveTime, getRecceInstanceInfo,
+getServerFlag, getServerInfo, markRelaunchHintCompleted, resetKeepAliveState,
+sendKeepAlive, setKeepAliveCallback
 
-// High-level views
-LineageView
+// Types
+CatalogMetadata, GitInfo, LineageData, LineageDataFromMetadata, LineageDiffData,
+ManifestMetadata, NodeColumnData, NodeData, PullRequestInfo, RecceInstanceInfo,
+RecceServerFlags, RunsAggregated, ServerInfoResult, ServerMode, SQLMeshInfo, StateMetadata
+
+// =============================================================================
+// LINEAGE UTILITIES (re-exported from advanced)
+// =============================================================================
+buildLineageGraph, layoutWithDagre, toReactFlowBasic
+selectUpstream, selectDownstream
+getNeighborSet, intersect, union
+isLineageGraphNode, isLineageGraphColumnNode
+COLUMN_HEIGHT
+
+// =============================================================================
+// CONTEXT TYPES (20+ types)
+// =============================================================================
+// Check context
+Check, CheckContextType
+
+// Query context
+QueryContextType, QueryResult
+
+// Routing
+RoutingConfig, RoutingContextValue, NavigateOptions
+
+// Lineage graph
+LineageGraph, LineageGraphNode, LineageGraphColumnNode, LineageGraphEdge,
+LineageGraphNodes, LineageGraphContextType, EnvInfo, NodeColumnSetMap
+
+// Action context
+RecceActionContextType, RecceActionOptions, AxiosQueryParams, SubmitRunTrackProps
+
+// Feature toggles
+RecceFeatureMode, RecceFeatureToggles
+
+// Instance/Idle
+InstanceInfoType, IdleTimeoutContextType
+
+// =============================================================================
+// DEFAULTS
+// =============================================================================
+defaultFeatureToggles, defaultInstanceInfo
+
+// =============================================================================
+// THEME (3 exports)
+// =============================================================================
+theme, colors, Theme, ThemeColors
 ```
 
 ---
@@ -235,17 +453,19 @@ pnpm build            # Full build
 ## Summary
 
 **Phase 2 (Primitives): ✅ COMPLETE**
-- 30+ pure presentation components created
-- All exported via `@datarecce/ui/primitives`
+- ~35 pure presentation components created
+- ~90 total exports via `@datarecce/ui/primitives` (components + types + helpers)
 
-**Phase 3 (Views): ⚠️ PARTIAL**
-- LineageView exists
-- ChecksView, QueryView, RunsView, RecceLayout not created
+**Phase 3 (Views): ✅ COMPLETE**
+- LineageView (existing)
+- ChecksView, QueryView, RunsView, RecceLayout (all created Session 6)
 
-**Phase 4 (Cleanup): ⚠️ PARTIAL**
-- primitives.ts and advanced.ts complete
-- types/index.ts not created
-- Full build verification not run
+**Phase 4 (Cleanup): ✅ COMPLETE**
+- primitives.ts: ~90 exports
+- advanced.ts: ~35 exports
+- types/index.ts: Type-only barrel export created
+- index.ts: Updated with all Layer 3 views
+- Full build verification passes
 
 ---
 
