@@ -56,6 +56,8 @@ export type {
   LineageGraphNode,
   LineageGraphNodes,
   LineageGraphProviderProps,
+  // Lineage utilities
+  NodeColumnSetMap,
   RecceActionContextType,
   RecceActionOptions,
   RecceActionProviderProps,
@@ -64,18 +66,28 @@ export type {
   SubmitRunTrackProps,
 } from "./contexts";
 export {
+  // Lineage graph utilities
+  buildLineageGraph,
+  COLUMN_HEIGHT,
   // Instance info
   defaultFeatureToggles,
   defaultInstanceInfo,
+  getNeighborSet,
   // Idle timeout
   IdleTimeoutProvider,
+  intersect,
   isLineageGraphColumnNode,
   isLineageGraphNode,
   // Lineage graph
   LineageGraphProvider,
+  layoutWithDagre,
   // Action context
   RecceActionProvider,
   RecceInstanceInfoProvider,
+  selectDownstream,
+  selectUpstream,
+  toReactFlowBasic,
+  union,
   useIdleDetection,
   useIdleTimeout,
   useIdleTimeoutSafe,
