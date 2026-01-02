@@ -9,6 +9,35 @@ export const PRIMITIVES_API_VERSION = "0.1.0";
 // LINEAGE PRIMITIVES
 // =============================================================================
 
+// Lineage column node components (for column-level lineage)
+export {
+  COLUMN_NODE_HEIGHT,
+  COLUMN_NODE_WIDTH,
+  type ColumnTransformationType,
+  LineageColumnNode,
+  type LineageColumnNodeData,
+  type LineageColumnNodeProps,
+} from "./components/lineage/columns";
+// Lineage controls (zoom, pan, fit-view)
+export {
+  ControlButton,
+  LineageControls,
+  type LineageControlsProps,
+} from "./components/lineage/controls";
+// Lineage edge components
+export {
+  type EdgeChangeStatus,
+  LineageEdge,
+  type LineageEdgeData,
+  type LineageEdgeProps,
+} from "./components/lineage/edges";
+// Lineage legends (change status, transformation types)
+export {
+  type ChangeStatusLegendItem,
+  LineageLegend,
+  type LineageLegendProps,
+  type TransformationLegendItem,
+} from "./components/lineage/legend";
 // Lineage node components
 export {
   LineageNode,
@@ -17,43 +46,17 @@ export {
   type NodeChangeStatus,
 } from "./components/lineage/nodes";
 
-// Lineage edge components
-export {
-  LineageEdge,
-  type EdgeChangeStatus,
-  type LineageEdgeData,
-  type LineageEdgeProps,
-} from "./components/lineage/edges";
-
-// Lineage column node components (for column-level lineage)
-export {
-  COLUMN_NODE_HEIGHT,
-  COLUMN_NODE_WIDTH,
-  LineageColumnNode,
-  type ColumnTransformationType,
-  type LineageColumnNodeData,
-  type LineageColumnNodeProps,
-} from "./components/lineage/columns";
-
-// Lineage controls (zoom, pan, fit-view)
-export {
-  ControlButton,
-  LineageControls,
-  type LineageControlsProps,
-} from "./components/lineage/controls";
-
-// Lineage legends (change status, transformation types)
-export {
-  LineageLegend,
-  type ChangeStatusLegendItem,
-  type LineageLegendProps,
-  type TransformationLegendItem,
-} from "./components/lineage/legend";
-
 // =============================================================================
 // CHECK PRIMITIVES
 // =============================================================================
 
+// Check actions (action buttons/menu)
+export {
+  type CheckAction,
+  CheckActions,
+  type CheckActionsProps,
+  type CheckActionType,
+} from "./components/check/CheckActions";
 // Check card (single check display)
 export {
   CheckCard,
@@ -62,10 +65,11 @@ export {
   type CheckRunStatus,
   type CheckType,
 } from "./components/check/CheckCard";
-
-// Check list (list of checks)
-export { CheckList, type CheckListProps } from "./components/check/CheckList";
-
+// Check description (editable description)
+export {
+  CheckDescription,
+  type CheckDescriptionProps,
+} from "./components/check/CheckDescription";
 // Check detail (detailed check view)
 export {
   CheckDetail,
@@ -73,43 +77,39 @@ export {
   type CheckDetailTab,
 } from "./components/check/CheckDetail";
 
-// Check description (editable description)
-export {
-  CheckDescription,
-  type CheckDescriptionProps,
-} from "./components/check/CheckDescription";
-
 // Check empty state
 export {
   CheckEmptyState,
   type CheckEmptyStateProps,
 } from "./components/check/CheckEmptyState";
-
-// Check actions (action buttons/menu)
-export {
-  CheckActions,
-  type CheckAction,
-  type CheckActionsProps,
-  type CheckActionType,
-} from "./components/check/CheckActions";
+// Check list (list of checks)
+export { CheckList, type CheckListProps } from "./components/check/CheckList";
 
 // =============================================================================
 // QUERY PRIMITIVES
 // =============================================================================
 
+// Query diff view (side-by-side or inline diff)
+export {
+  type DiffColumn,
+  type DiffDisplayMode,
+  type DiffRow,
+  QueryDiffView,
+  type QueryDiffViewHandle,
+  type QueryDiffViewProps,
+} from "./components/query/QueryDiffView";
 // Query editor (SQL/YAML editing)
 export {
   QueryEditor,
-  QueryEditorToolbar,
-  QueryEditorWithToolbar,
   type QueryEditorKeyBinding,
   type QueryEditorLanguage,
   type QueryEditorProps,
   type QueryEditorTheme,
+  QueryEditorToolbar,
   type QueryEditorToolbarProps,
+  QueryEditorWithToolbar,
   type QueryEditorWithToolbarProps,
 } from "./components/query/QueryEditor";
-
 // Query results (data grid display)
 export {
   QueryResults,
@@ -118,16 +118,6 @@ export {
   type QueryResultsProps,
   type QueryResultsRow,
 } from "./components/query/QueryResults";
-
-// Query diff view (side-by-side or inline diff)
-export {
-  QueryDiffView,
-  type DiffColumn,
-  type DiffDisplayMode,
-  type DiffRow,
-  type QueryDiffViewHandle,
-  type QueryDiffViewProps,
-} from "./components/query/QueryDiffView";
 
 // =============================================================================
 // RUN PRIMITIVES
@@ -155,20 +145,70 @@ export {
 export {
   formatRunDate,
   formatRunDateTime,
-  RunStatusBadge,
-  RunStatusWithDate,
   type RunStatus,
+  RunStatusBadge,
   type RunStatusBadgeProps,
+  RunStatusWithDate,
   type RunStatusWithDateProps,
 } from "./components/run/RunStatusBadge";
 
 // =============================================================================
-// DATA PRIMITIVES (to be added in Phase 2E)
+// DATA PRIMITIVES
 // =============================================================================
 
-// Data grid primitives (to be added)
-// export { DataGrid } from "./components/data/DataGrid";
-// export { DataGridDiff } from "./components/data/DataGridDiff";
-// export { HistogramChart } from "./components/data/HistogramChart";
-// export { ProfileTable } from "./components/data/ProfileTable";
-// export { TopKTable } from "./components/data/TopKTable";
+// Histogram chart (Chart.js based data distribution)
+export {
+  type ChartBarColors,
+  type ChartThemeColors,
+  getChartBarColors,
+  getChartThemeColors,
+  HistogramChart,
+  type HistogramChartProps,
+  type HistogramDataset,
+  type HistogramDataType,
+} from "./components/data/HistogramChart";
+
+// Profile table (AG Grid based column statistics)
+export {
+  type ColumnRenderMode,
+  type ProfileColumn,
+  type ProfileDisplayMode,
+  type ProfileRow,
+  ProfileTable,
+  type ProfileTableHandle,
+  type ProfileTableProps,
+} from "./components/data/ProfileTable";
+
+// Top-K bar chart (value distribution)
+export {
+  SingleBarChart,
+  type SingleBarChartProps,
+  TopKBarChart,
+  type TopKBarChartProps,
+  type TopKDataset,
+  type TopKItem,
+  TopKSummaryList,
+  type TopKSummaryListProps,
+} from "./components/data/TopKBarChart";
+
+// =============================================================================
+// SCHEMA PRIMITIVES
+// =============================================================================
+
+// Schema diff (base vs current comparison)
+export {
+  mergeSchemaColumns,
+  SchemaDiff,
+  type SchemaDiffHandle,
+  type SchemaDiffProps,
+  type SchemaDiffRow,
+  type SchemaDiffStatus,
+} from "./components/schema/SchemaDiff";
+// Schema table (single environment)
+export {
+  type SchemaColumnData,
+  type SchemaRow,
+  SchemaTable,
+  type SchemaTableHandle,
+  type SchemaTableProps,
+} from "./components/schema/SchemaTable";
