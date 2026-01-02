@@ -9,6 +9,7 @@ export default defineConfig({
     index: "src/index.ts",
     primitives: "src/primitives.ts",
     advanced: "src/advanced.ts",
+    types: "src/types/index.ts",
   },
   format: ["cjs", "esm"],
   dts: true,
