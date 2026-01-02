@@ -368,63 +368,198 @@ Phase 4: Export Structure Cleanup
 
 ## Execution Recommendations
 
-### Best Approach: Subagent-Driven with Phases
+### Best Approach: Session-Scoped Execution (RECOMMENDED)
+
+Pure subagent-driven doesn't work optimally because research context is lost between tasks. Instead, use **5 focused sessions**, each handling 2 related phases:
 
 ```
-For each Phase (2A through 4):
-  1. Dispatch RESEARCH subagent for Task X.1 (analyze existing code)
-  2. Review research findings
-  3. For each extraction task (X.2, X.3, etc.):
-     a. Dispatch IMPLEMENTER subagent with task spec
-     b. Implementer creates component, tests, commits
-     c. Dispatch SPEC REVIEWER - verify matches requirements
-     d. Dispatch CODE REVIEWER - verify quality
-     e. Mark task complete
-  4. Update exports (last task of phase)
-  5. Run full type check + lint
-  6. Commit phase completion
+SESSION 1: Phase 2A (Lineage) + Phase 2B (Check) - 13 tasks
+    Core components, high value
+
+SESSION 2: Phase 2C (Query) + Phase 2D (Run) - 12 tasks
+    Execution-focused components
+
+SESSION 3: Phase 2E (Data) + Phase 2F (Schema) - 14 tasks
+    Data display (most complex: AG Grid)
+
+SESSION 4: Phase 2G (Editor) + Phase 2H (UI) - 14 tasks
+    CodeMirror wrappers + utilities
+
+SESSION 5: Phase 3 (Views) + Phase 4 (Cleanup) - 12 tasks
+    Composition + final verification
 ```
 
-### Parallelization Opportunities
+### Within Each Session, Follow This Pattern:
 
-**CAN run in parallel:**
-- Research tasks (2A.1, 2B.1, 2C.1, etc.) - all read-only
-- Components within same group IF no shared files
+```
+1. Read this plan file (restore context)
+2. Create TodoWrite with tasks for session's phases
+3. For research tasks (X.1):
+   - Use Explore agent for deep codebase analysis
+   - Save findings in TodoWrite or comment
+4. For extraction tasks (X.2, X.3, etc.):
+   - Implement in main context (has research)
+   - After EACH component: pnpm tsc --noEmit && pnpm biome check
+   - Commit after each component (small commits)
+5. Export update (last task of phase):
+   - Update primitives.ts
+   - Verify exports
+6. Phase checkpoint:
+   - Full type check + lint
+   - Commit: "feat(ui): complete Phase 2X - [group] primitives"
+```
 
-**MUST run sequentially:**
-- Components that modify same export file
-- Tasks within a single component extraction
-- Phase completion tasks
+### When to Use Agents
 
-### Session Management
+| Task Type | Tool | Why |
+|-----------|------|-----|
+| Deep research (X.1) | `Task` with `Explore` agent | Fast codebase search |
+| Component extraction | Main context | Needs research context |
+| Code review | `Task` with `code-reviewer` agent | Fresh perspective |
+| Export updates | Main context | Quick, needs awareness |
+| Verification | Main context | Full picture needed |
 
-**Option 1: Single Long Session with Subagents (RECOMMENDED)**
-- Use `superpowers:subagent-driven-development`
-- Orchestrator stays in main session
-- Fresh subagent per task
-- Best for: maintaining continuity, handling issues
+### Quality Gates (MANDATORY)
 
-**Option 2: Multiple Parallel Sessions**
-- Use git worktrees for each phase
-- Risk: merge conflicts on shared files
-- Best for: if you have multiple humans reviewing
+**After EVERY component:**
+```bash
+cd js/packages/ui && pnpm tsc --noEmit   # Type check
+cd js && pnpm biome check packages/ui    # Lint
+```
 
-### Quality Gates
+**After EVERY phase:**
+```bash
+pnpm test                                 # Run tests
+git add . && git commit -s -m "..."      # Checkpoint commit
+```
 
-After each phase:
-1. `pnpm tsc --noEmit` - type check
-2. `pnpm biome check` - lint
-3. `pnpm test` - tests pass
-4. Verify exports work: create test import file
+**Before marking session complete:**
+```bash
+# Verify exports are accessible
+echo "import { ComponentName } from './src/primitives'" > test-import.ts
+pnpm tsc test-import.ts --noEmit
+rm test-import.ts
+```
+
+### Parallelization (If Using Multiple Sessions)
+
+**CAN parallelize (different worktrees):**
+- Session 1 and Session 2 (no shared components)
+- Session 3 and Session 4 (no shared components)
+
+**CANNOT parallelize:**
+- Session 5 depends on ALL previous sessions
+- Any sessions modifying primitives.ts simultaneously
+
+---
+
+## Session Execution Instructions
+
+### SESSION 1: Lineage + Check (Start Here)
+
+**Pre-requisites:** None (first session)
+
+**Tasks:**
+- 2A.1 through 2A.5 (Lineage primitives)
+- 2B.1 through 2B.8 (Check primitives)
+
+**Expected Output:**
+- `components/lineage/controls/LineageControls.tsx`
+- `components/lineage/columns/ColumnLineage.tsx`
+- `components/lineage/selector/NodeSelector.tsx`
+- `components/check/CheckCard.tsx`
+- `components/check/CheckList.tsx`
+- `components/check/CheckDetail.tsx`
+- `components/check/CheckEmptyState.tsx`
+- `components/check/CheckActions.tsx`
+- Updated `primitives.ts`
+
+**Commit message:** `feat(ui): add lineage and check primitives`
+
+---
+
+### SESSION 2: Query + Run
+
+**Pre-requisites:** Session 1 complete
+
+**Tasks:**
+- 2C.1 through 2C.6 (Query primitives)
+- 2D.1 through 2D.6 (Run primitives)
+
+**Expected Output:**
+- `components/query/QueryEditor.tsx`
+- `components/query/QueryResults.tsx`
+- `components/query/QueryDiffView.tsx`
+- `components/run/RunList.tsx`
+- `components/run/RunResultPane.tsx`
+- `components/run/RunProgress.tsx`
+- Updated `primitives.ts`
+
+---
+
+### SESSION 3: Data + Schema
+
+**Pre-requisites:** Sessions 1-2 complete
+
+**Tasks:**
+- 2E.1 through 2E.8 (Data primitives)
+- 2F.1 through 2F.6 (Schema primitives)
+
+**Expected Output:**
+- `components/data/DataGrid.tsx`
+- `components/data/DataGridDiff.tsx`
+- `components/data/HistogramChart.tsx`
+- `components/data/ProfileTable.tsx`
+- `components/data/TopKTable.tsx`
+- `components/schema/SchemaView.tsx`
+- `components/schema/SchemaDiff.tsx`
+- `components/schema/ColumnList.tsx`
+
+---
+
+### SESSION 4: Editor + UI
+
+**Pre-requisites:** Sessions 1-3 complete
+
+**Tasks:**
+- 2G.1 through 2G.6 (Editor primitives)
+- 2H.1 through 2H.8 (UI primitives)
+
+**Expected Output:**
+- `components/editor/SqlEditor.tsx`
+- `components/editor/YamlEditor.tsx`
+- `components/editor/DiffEditor.tsx`
+- `components/ui/SplitPane.tsx`
+- `components/ui/Icons.tsx`
+- `components/ui/ErrorBoundary.tsx`
+- `components/ui/Toaster.tsx`
+- `components/ui/LoadingSpinner.tsx`
+
+---
+
+### SESSION 5: Views + Cleanup
+
+**Pre-requisites:** ALL previous sessions complete
+
+**Tasks:**
+- 3.1 through 3.7 (High-level views)
+- 4.1 through 4.5 (Export cleanup)
+
+**Expected Output:**
+- `components/views/ChecksView.tsx`
+- `components/views/QueryView.tsx`
+- `components/views/RunsView.tsx`
+- `components/views/RecceLayout.tsx`
+- Finalized `primitives.ts`, `advanced.ts`, `index.ts`
 
 ---
 
 ## Next Action After Reading This
 
-1. Read this file to restore context
-2. Invoke `superpowers:subagent-driven-development`
-3. Start with Phase 2A, Task 2A.1 (research lineage components)
-4. Follow the execution pattern above
+1. Start SESSION 1
+2. Create TodoWrite with Phase 2A + 2B tasks
+3. Begin with Task 2A.1: Research lineage components
+4. Follow the session pattern above
 
 ---
 
