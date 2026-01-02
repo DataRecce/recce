@@ -817,6 +817,42 @@ export const theme = createTheme({
           dark: colors.iochmara[600],
           contrastText: "#ffffff",
         },
+        cyan: {
+          main: colors.cyan[400],
+          light: colors.cyan[300],
+          dark: colors.cyan[600],
+          contrastText: "#ffffff",
+        },
+        amber: {
+          main: colors.amber[400],
+          light: colors.amber[300],
+          dark: colors.amber[600],
+          contrastText: "#000000",
+        },
+        green: {
+          main: colors.green[400],
+          light: colors.green[300],
+          dark: colors.green[600],
+          contrastText: "#ffffff",
+        },
+        red: {
+          main: colors.red[400],
+          light: colors.red[300],
+          dark: colors.red[600],
+          contrastText: "#ffffff",
+        },
+        rose: {
+          main: colors.rose[400],
+          light: colors.rose[300],
+          dark: colors.rose[600],
+          contrastText: "#ffffff",
+        },
+        fuchsia: {
+          main: colors.fuchsia[400],
+          light: colors.fuchsia[300],
+          dark: colors.fuchsia[600],
+          contrastText: "#ffffff",
+        },
         neutral: colors.neutral,
         grey: colors.neutral,
         success: {
