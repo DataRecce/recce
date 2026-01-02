@@ -10,8 +10,9 @@
  * is maintained in @datarecce/ui as the single source of truth.
  */
 
-// Import shared theme from @datarecce/ui (single source of truth)
-import { colors, theme } from "@datarecce/ui";
+// Import shared theme from @datarecce/ui/theme (direct import avoids barrel)
+// Using direct path prevents loading AG Grid components during tests
+import { colors, theme } from "@datarecce/ui/theme";
 
 // Re-export colors for backward compatibility
 export { colors };
