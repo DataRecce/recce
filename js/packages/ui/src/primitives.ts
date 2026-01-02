@@ -5,6 +5,13 @@
 
 export const PRIMITIVES_API_VERSION = "0.1.0";
 
+// Lineage edge components
+export {
+  type EdgeChangeStatus,
+  LineageEdge,
+  type LineageEdgeData,
+  type LineageEdgeProps,
+} from "./components/lineage/edges";
 // Lineage node components
 export {
   LineageNode,
@@ -13,8 +20,7 @@ export {
   type NodeChangeStatus,
 } from "./components/lineage/nodes";
 
-// Lineage primitives (to be added in subsequent tasks)
-// export { LineageEdge } from "./components/lineage/LineageEdge";
+// Lineage controls (to be added in subsequent tasks)
 // export { LineageControls } from "./components/lineage/LineageControls";
 
 // Check primitives (to be added)
