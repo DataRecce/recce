@@ -142,6 +142,23 @@ function createBadgeColorVariant<T extends CustomColorName>(
   ];
 }
 
+/**
+ * Helper to generate CircularProgress color variants
+ */
+function createProgressColorVariant<T extends CustomColorName>(
+  colorName: T,
+  colorScale: ColorScale,
+) {
+  return [
+    {
+      props: { color: colorName },
+      style: {
+        color: colorScale[500],
+      },
+    },
+  ];
+}
+
 // Generate all button color variants
 const buttonColorVariants = [
   ...createButtonColorVariants("brand", colors.brand),
@@ -158,6 +175,12 @@ const chipColorVariants = [
 const badgeColorVariants = [
   ...createBadgeColorVariant("brand", colors.brand),
   ...createBadgeColorVariant("iochmara", colors.iochmara),
+];
+
+// Generate all progress color variants
+const progressColorVariants = [
+  ...createProgressColorVariant("brand", colors.brand),
+  ...createProgressColorVariant("iochmara", colors.iochmara),
 ];
 
 /**
@@ -408,6 +431,12 @@ const sharedThemeOptions: ThemeOptions = {
       variants: [
         // Color variants for brand and iochmara
         ...badgeColorVariants,
+      ],
+    },
+    MuiCircularProgress: {
+      variants: [
+        // Color variants for brand and iochmara
+        ...progressColorVariants,
       ],
     },
     MuiCard: {
