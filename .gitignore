@@ -20,3 +20,6 @@ recce.yml
 
 # Ignore build artifacts from frontend
 recce/data
+
+# Git worktrees for isolated development
+.worktrees/
