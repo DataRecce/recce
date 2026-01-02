@@ -94,6 +94,75 @@ export {
 } from "./components/check/CheckActions";
 
 // =============================================================================
+// QUERY PRIMITIVES
+// =============================================================================
+
+// Query editor (SQL/YAML editing)
+export {
+  QueryEditor,
+  QueryEditorToolbar,
+  QueryEditorWithToolbar,
+  type QueryEditorKeyBinding,
+  type QueryEditorLanguage,
+  type QueryEditorProps,
+  type QueryEditorTheme,
+  type QueryEditorToolbarProps,
+  type QueryEditorWithToolbarProps,
+} from "./components/query/QueryEditor";
+
+// Query results (data grid display)
+export {
+  QueryResults,
+  type QueryResultsColumn,
+  type QueryResultsHandle,
+  type QueryResultsProps,
+  type QueryResultsRow,
+} from "./components/query/QueryResults";
+
+// Query diff view (side-by-side or inline diff)
+export {
+  QueryDiffView,
+  type DiffColumn,
+  type DiffDisplayMode,
+  type DiffRow,
+  type QueryDiffViewHandle,
+  type QueryDiffViewProps,
+} from "./components/query/QueryDiffView";
+
+// =============================================================================
+// RUN PRIMITIVES
+// =============================================================================
+
+// Run list (run history display)
+export {
+  RunList,
+  RunListItem,
+  type RunListItemData,
+  type RunListItemProps,
+  type RunListProps,
+} from "./components/run/RunList";
+
+// Run progress (loading/execution indicators)
+export {
+  RunProgress,
+  RunProgressOverlay,
+  type RunProgressOverlayProps,
+  type RunProgressProps,
+  type RunProgressVariant,
+} from "./components/run/RunProgress";
+
+// Run status badge (status display)
+export {
+  formatRunDate,
+  formatRunDateTime,
+  RunStatusBadge,
+  RunStatusWithDate,
+  type RunStatus,
+  type RunStatusBadgeProps,
+  type RunStatusWithDateProps,
+} from "./components/run/RunStatusBadge";
+
+// =============================================================================
 // DATA PRIMITIVES (to be added in Phase 2E)
 // =============================================================================
 
