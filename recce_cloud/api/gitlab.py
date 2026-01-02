@@ -109,3 +109,32 @@ class GitLabRecceCloudClient(BaseRecceCloudClient):
             params["mr_iid"] = cr_number
 
         return self._make_request("GET", url, params=params)
+
+    def delete_session(
+        self,
+        cr_number: Optional[int] = None,
+        session_type: Optional[str] = None,
+    ) -> Dict:
+        """
+        Delete a GitLab MR/base session.
+
+        Args:
+            cr_number: MR IID for merge request sessions
+            session_type: Session type ("cr", "prod") - "prod" deletes base session
+
+        Returns:
+            Dictionary containing session_id of deleted session
+        """
+        url = f"{self.api_host}/api/v2/gitlab/{self.project_path}/session"
+
+        # Build query parameters
+        params = {}
+
+        # For prod session, set base=true
+        if session_type == "prod":
+            params["base"] = "true"
+        # For CR session, include mr_iid
+        elif session_type == "cr" and cr_number is not None:
+            params["mr_iid"] = cr_number
+
+        return self._make_request("DELETE", url, params=params)
