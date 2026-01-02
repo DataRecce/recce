@@ -228,6 +228,15 @@ export const colors = {
 } as const;
 
 /**
+ * Color aliases for backward compatibility
+ * Maps common color names to their Recce palette equivalents
+ */
+export const colorAliases: Record<string, keyof typeof colors> = {
+  orange: "amber",
+  gray: "neutral",
+};
+
+/**
  * Type for accessing color shades
  */
 export type ColorShade =
