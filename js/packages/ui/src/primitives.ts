@@ -212,3 +212,36 @@ export {
   type SchemaTableHandle,
   type SchemaTableProps,
 } from "./components/schema/SchemaTable";
+
+// =============================================================================
+// EDITOR PRIMITIVES
+// =============================================================================
+
+// Diff editor (CodeMirror merge view for text diffs)
+export {
+  DiffEditor,
+  type DiffEditorLanguage,
+  type DiffEditorProps,
+  type DiffEditorTheme,
+} from "./components/editor/DiffEditor";
+
+// =============================================================================
+// UI PRIMITIVES
+// =============================================================================
+
+// Empty state (placeholder for no data)
+export { EmptyState, type EmptyStateProps } from "./components/ui/EmptyState";
+
+// Split pane (resizable split layout)
+export {
+  type SplitDirection,
+  SplitPane,
+  type SplitPaneProps,
+} from "./components/ui/SplitPane";
+
+// Status badge (status indicators)
+export {
+  StatusBadge,
+  type StatusBadgeProps,
+  type StatusType,
+} from "./components/ui/StatusBadge";
