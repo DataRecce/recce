@@ -14,15 +14,40 @@ import { createTheme, type ThemeOptions } from "@mui/material/styles";
 import { colors } from "./colors";
 
 // Custom color names type for variant generation
-type CustomColorName = "brand" | "iochmara";
+type CustomColorName =
+  | "brand"
+  | "iochmara"
+  | "cyan"
+  | "amber"
+  | "green"
+  | "red"
+  | "rose"
+  | "fuchsia"
+  | "neutral";
+
+// Type for color scales with numeric keys (50, 100, 200, etc.)
+interface ColorScale {
+  readonly [key: number]: string;
+  readonly 50: string;
+  readonly 100: string;
+  readonly 200: string;
+  readonly 300: string;
+  readonly 400: string;
+  readonly 500: string;
+  readonly 600: string;
+  readonly 700: string;
+  readonly 800: string;
+  readonly 900: string;
+  readonly 950: string;
+}
 
 /**
  * Helper to generate button color variants for a given color
  * Creates contained, outlined, and text variant styles
  */
-function createButtonColorVariants(
-  colorName: CustomColorName,
-  colorScale: typeof colors.brand | typeof colors.iochmara,
+function createButtonColorVariants<T extends CustomColorName>(
+  colorName: T,
+  colorScale: ColorScale,
 ) {
   return [
     // Contained variant (solid)
@@ -64,9 +89,9 @@ function createButtonColorVariants(
 /**
  * Helper to generate Chip color variants
  */
-function createChipColorVariants(
-  colorName: CustomColorName,
-  colorScale: typeof colors.brand | typeof colors.iochmara,
+function createChipColorVariants<T extends CustomColorName>(
+  colorName: T,
+  colorScale: ColorScale,
 ) {
   return [
     // Filled variant
@@ -111,41 +136,67 @@ const chipColorVariants = [
 
 /**
  * Module augmentation for custom palette colors
- * Extends MUI's palette with brand and iochmara colors
+ * Extends MUI's palette with all 9 custom colors
  */
 declare module "@mui/material/styles" {
   interface Palette {
     brand: Palette["primary"];
     iochmara: Palette["primary"];
+    cyan: Palette["primary"];
+    amber: Palette["primary"];
+    green: Palette["primary"];
+    red: Palette["primary"];
+    rose: Palette["primary"];
+    fuchsia: Palette["primary"];
     neutral: Palette["grey"];
   }
 
   interface PaletteOptions {
     brand?: PaletteOptions["primary"];
     iochmara?: PaletteOptions["primary"];
+    cyan?: PaletteOptions["primary"];
+    amber?: PaletteOptions["primary"];
+    green?: PaletteOptions["primary"];
+    red?: PaletteOptions["primary"];
+    rose?: PaletteOptions["primary"];
+    fuchsia?: PaletteOptions["primary"];
     neutral?: PaletteOptions["grey"];
   }
 }
 
 /**
  * Module augmentation for Button color prop
- * Allows using brand and iochmara as Button colors
+ * Allows using all custom colors as Button colors
  */
 declare module "@mui/material/Button" {
   interface ButtonPropsColorOverrides {
     brand: true;
     iochmara: true;
+    cyan: true;
+    amber: true;
+    green: true;
+    red: true;
+    rose: true;
+    fuchsia: true;
+    neutral: true;
   }
 }
 
 /**
  * Module augmentation for Chip color prop
- * Allows using brand and iochmara as Chip colors
+ * Allows using all custom colors as Chip colors
  */
 declare module "@mui/material/Chip" {
   interface ChipPropsColorOverrides {
     brand: true;
     iochmara: true;
+    cyan: true;
+    amber: true;
+    green: true;
+    red: true;
+    rose: true;
+    fuchsia: true;
+    neutral: true;
   }
 }
 
@@ -166,6 +217,42 @@ declare module "@mui/material/Button" {
 declare module "@mui/material/Chip" {
   interface ChipPropsSizeOverrides {
     xsmall: true;
+  }
+}
+
+/**
+ * Module augmentation for Badge color prop
+ * Allows using all custom colors as Badge colors
+ */
+declare module "@mui/material/Badge" {
+  interface BadgePropsColorOverrides {
+    brand: true;
+    iochmara: true;
+    cyan: true;
+    amber: true;
+    green: true;
+    red: true;
+    rose: true;
+    fuchsia: true;
+    neutral: true;
+  }
+}
+
+/**
+ * Module augmentation for CircularProgress color prop
+ * Allows using all custom colors as CircularProgress colors
+ */
+declare module "@mui/material/CircularProgress" {
+  interface CircularProgressPropsColorOverrides {
+    brand: true;
+    iochmara: true;
+    cyan: true;
+    amber: true;
+    green: true;
+    red: true;
+    rose: true;
+    fuchsia: true;
+    neutral: true;
   }
 }
 
