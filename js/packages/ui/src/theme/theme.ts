@@ -176,6 +176,13 @@ const buttonColorVariants = [
 const chipColorVariants = [
   ...createChipColorVariants("brand", colors.brand),
   ...createChipColorVariants("iochmara", colors.iochmara),
+  ...createChipColorVariants("cyan", colors.cyan),
+  ...createChipColorVariants("amber", colors.amber),
+  ...createChipColorVariants("green", colors.green),
+  ...createChipColorVariants("red", colors.red),
+  ...createChipColorVariants("rose", colors.rose),
+  ...createChipColorVariants("fuchsia", colors.fuchsia),
+  ...createChipColorVariants("neutral", colors.neutral),
 ];
 
 // Generate all badge color variants
