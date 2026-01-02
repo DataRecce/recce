@@ -446,6 +446,61 @@ const sharedThemeOptions: ThemeOptions = {
         // Color variants for brand and iochmara
         ...badgeColorVariants,
       ],
+      styleOverrides: {
+        badge: {
+          fontWeight: 500,
+          fontSize: "0.75rem",
+        },
+      },
+    },
+    // Alert overrides
+    MuiAlert: {
+      styleOverrides: {
+        root: {
+          borderRadius: 6,
+        },
+        standardSuccess: {
+          backgroundColor: "var(--mui-palette-success-light)",
+          color: "var(--mui-palette-success-dark)",
+        },
+        standardWarning: {
+          backgroundColor: "var(--mui-palette-warning-light)",
+          color: "var(--mui-palette-warning-dark)",
+        },
+        standardError: {
+          backgroundColor: "var(--mui-palette-error-light)",
+          color: "var(--mui-palette-error-dark)",
+        },
+        standardInfo: {
+          backgroundColor: "var(--mui-palette-info-light)",
+          color: "var(--mui-palette-info-dark)",
+        },
+      },
+    },
+    // Tabs overrides
+    MuiTabs: {
+      styleOverrides: {
+        indicator: {
+          height: 2,
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          textTransform: "none",
+          fontWeight: 500,
+          minHeight: 48,
+        },
+      },
+    },
+    // Avatar overrides
+    MuiAvatar: {
+      styleOverrides: {
+        root: {
+          fontWeight: 500,
+        },
+      },
     },
     MuiCircularProgress: {
       variants: [
