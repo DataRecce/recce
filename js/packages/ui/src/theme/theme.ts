@@ -476,6 +476,72 @@ const sharedThemeOptions: ThemeOptions = {
         },
       },
     },
+    // IconButton overrides
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 6,
+        },
+        sizeSmall: {
+          padding: 4,
+        },
+        sizeMedium: {
+          padding: 8,
+        },
+        sizeLarge: {
+          padding: 12,
+        },
+      },
+    },
+    // TextField overrides
+    MuiTextField: {
+      defaultProps: {
+        variant: "outlined",
+        size: "small",
+      },
+      styleOverrides: {
+        root: {
+          "& .MuiOutlinedInput-root": {
+            borderRadius: 6,
+          },
+        },
+      },
+    },
+    // OutlinedInput overrides
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          borderRadius: 6,
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "var(--mui-palette-secondary-light)",
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "var(--mui-palette-secondary-main)",
+            borderWidth: 2,
+          },
+        },
+        notchedOutline: {
+          borderColor: "var(--mui-palette-divider)",
+        },
+      },
+    },
+    // Checkbox overrides
+    MuiCheckbox: {
+      defaultProps: {
+        color: "primary",
+      },
+      styleOverrides: {
+        root: {
+          borderRadius: 4,
+        },
+      },
+    },
+    // Switch overrides
+    MuiSwitch: {
+      defaultProps: {
+        color: "primary",
+      },
+    },
   },
 };
 
