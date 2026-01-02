@@ -14,7 +14,15 @@ import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
 import { type MouseEvent, ReactNode, Ref, useCallback, useState } from "react";
 import { IoClose } from "react-icons/io5";
-import { PiCaretDown, PiCheck, PiCopy, PiRepeat } from "react-icons/pi";
+import {
+  PiCaretDown,
+  PiCheck,
+  PiCopy,
+  PiDownloadSimple,
+  PiImage,
+  PiRepeat,
+  PiTable,
+} from "react-icons/pi";
 import { TbCloudUpload } from "react-icons/tb";
 import YAML from "yaml";
 import AuthModal from "@/components/AuthModal/AuthModal";
@@ -27,6 +35,7 @@ import {
   isQueryBaseRun,
   isQueryDiffRun,
   isQueryRun,
+  type Run,
   RunParamTypes,
 } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
@@ -35,6 +44,7 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
+import { useCSVExport } from "@/lib/hooks/useCSVExport";
 import { useRun } from "@/lib/hooks/useRun";
 import {
   LearnHowLink,
@@ -113,12 +123,95 @@ const SingleEnvironmentSetupNotification = ({
   }
 };
 
+const RunResultExportMenu = ({
+  run,
+  disableExport,
+  onCopyAsImage,
+  onMouseEnter,
+  onMouseLeave,
+}: {
+  run?: Run;
+  disableExport: boolean;
+  onCopyAsImage: () => Promise<void>;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+}) => {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const open = Boolean(anchorEl);
+  const { canExportCSV, copyAsCSV, downloadAsCSV } = useCSVExport({ run });
+
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  return (
+    <>
+      <Button
+        size="small"
+        variant="outlined"
+        color="neutral"
+        onClick={handleClick}
+        endIcon={<PiCaretDown />}
+        sx={{ textTransform: "none" }}
+      >
+        Export
+      </Button>
+      <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
+        <MenuItem
+          onClick={async () => {
+            await onCopyAsImage();
+            handleClose();
+          }}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+          disabled={disableExport}
+        >
+          <ListItemIcon>
+            <PiImage />
+          </ListItemIcon>
+          <ListItemText>Copy as Image</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={async () => {
+            await copyAsCSV();
+            handleClose();
+          }}
+          disabled={disableExport || !canExportCSV}
+        >
+          <ListItemIcon>
+            <PiTable />
+          </ListItemIcon>
+          <ListItemText>Copy as CSV</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            downloadAsCSV();
+            handleClose();
+          }}
+          disabled={disableExport || !canExportCSV}
+        >
+          <ListItemIcon>
+            <PiDownloadSimple />
+          </ListItemIcon>
+          <ListItemText>Download as CSV</ListItemText>
+        </MenuItem>
+      </Menu>
+    </>
+  );
+};
+
 const RunResultShareMenu = ({
+  run,
   disableCopyToClipboard,
   onCopyToClipboard,
   onMouseEnter,
   onMouseLeave,
 }: {
+  run?: Run;
   disableCopyToClipboard: boolean;
   onCopyToClipboard: () => Promise<void>;
   onMouseEnter: () => void;
@@ -129,6 +222,7 @@ const RunResultShareMenu = ({
   const [showModal, setShowModal] = useState(false);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const open = Boolean(anchorEl);
+  const { canExportCSV, copyAsCSV, downloadAsCSV } = useCSVExport({ run });
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -161,9 +255,33 @@ const RunResultShareMenu = ({
           disabled={disableCopyToClipboard}
         >
           <ListItemIcon>
-            <PiCopy />
+            <PiImage />
           </ListItemIcon>
-          <ListItemText>Copy to Clipboard</ListItemText>
+          <ListItemText>Copy as Image</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={async () => {
+            await copyAsCSV();
+            handleClose();
+          }}
+          disabled={disableCopyToClipboard || !canExportCSV}
+        >
+          <ListItemIcon>
+            <PiTable />
+          </ListItemIcon>
+          <ListItemText>Copy as CSV</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            downloadAsCSV();
+            handleClose();
+          }}
+          disabled={disableCopyToClipboard || !canExportCSV}
+        >
+          <ListItemIcon>
+            <PiDownloadSimple />
+          </ListItemIcon>
+          <ListItemText>Download as CSV</ListItemText>
         </MenuItem>
         <Divider />
         {authed ? (
@@ -289,23 +407,18 @@ export const PrivateLoadableRunView = ({
             Rerun
           </Button>
           {featureToggles.disableShare ? (
-            <Button
-              variant="outlined"
-              color="neutral"
-              disabled={
+            <RunResultExportMenu
+              run={run}
+              disableExport={
                 !runId || !run?.result || !!error || tabValue !== "result"
               }
+              onCopyAsImage={onCopyToClipboard}
               onMouseEnter={onMouseEnter}
               onMouseLeave={onMouseLeave}
-              size="small"
-              onClick={onCopyToClipboard}
-              startIcon={<PiCopy />}
-              sx={{ textTransform: "none" }}
-            >
-              Copy to Clipboard
-            </Button>
+            />
           ) : (
             <RunResultShareMenu
+              run={run}
               disableCopyToClipboard={disableCopyToClipboard}
               onCopyToClipboard={async () => {
                 await onCopyToClipboard();
