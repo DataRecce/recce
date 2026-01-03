@@ -1,42 +1,62 @@
-import { ScreenshotBox } from "@datarecce/ui/primitives";
+import { createResultView } from "@datarecce/ui/components/result/createResultView";
+import type { ResultViewData } from "@datarecce/ui/components/result/types";
 import Box from "@mui/material/Box";
-import { forwardRef, Ref } from "react";
-import { HistogramDiffParams } from "@/lib/api/profile";
-import { isHistogramDiffRun } from "@/lib/api/types";
-import { useIsDark } from "@/lib/hooks/useIsDark";
+import type { ForwardRefExoticComponent, RefAttributes } from "react";
+import { type HistogramDiffParams } from "@/lib/api/profile";
+import { isHistogramDiffRun, type Run } from "@/lib/api/types";
 import { HistogramChart } from "../charts/HistogramChart";
-import { RunResultViewProps } from "../run/types";
+import type { RunResultViewProps } from "../run/types";
 
-type HistogramDiffResultViewProp = RunResultViewProps;
+// ============================================================================
+// Type Definitions
+// ============================================================================
 
-function _HistogramDiffResultView(
-  { run }: HistogramDiffResultViewProp,
-  ref: Ref<HTMLDivElement>,
-) {
-  const isDark = useIsDark();
+type HistogramDiffRun = Extract<Run, { type: "histogram_diff" }>;
 
-  if (!isHistogramDiffRun(run)) {
-    throw new Error("Run type must be histogram_diff");
-  }
+// ============================================================================
+// Type Guard (wrapper to accept unknown)
+// ============================================================================
 
-  const params = run.params as HistogramDiffParams;
-  const base = run.result?.base;
-  const current = run.result?.current;
-  const min = run.result?.min;
-  const max = run.result?.max;
-  const binEdges = run.result?.bin_edges ?? [];
+function isHistogramDiffRunGuard(run: unknown): run is HistogramDiffRun {
+  return isHistogramDiffRun(run as Run);
+}
 
-  if (!base || !current) {
-    return <div>Loading...</div>;
-  }
+// ============================================================================
+// Factory-Created Component
+// ============================================================================
 
-  return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <ScreenshotBox
-        ref={ref}
-        height="100%"
-        backgroundColor={isDark ? "#1f2937" : "white"}
-      >
+export const HistogramDiffResultView = createResultView<
+  HistogramDiffRun,
+  unknown,
+  HTMLDivElement
+>({
+  displayName: "HistogramDiffResultView",
+  typeGuard: isHistogramDiffRunGuard,
+  expectedRunType: "histogram_diff",
+  screenshotWrapper: "box",
+  conditionalEmptyState: (run) => {
+    const base = run.result?.base;
+    const current = run.result?.current;
+    if (!base || !current) {
+      return <div>Loading...</div>;
+    }
+    return null;
+  },
+  transformData: (run): ResultViewData | null => {
+    const params = run.params as HistogramDiffParams;
+    const base = run.result?.base;
+    const current = run.result?.current;
+    const min = run.result?.min;
+    const max = run.result?.max;
+    const binEdges = run.result?.bin_edges ?? [];
+
+    // This shouldn't happen due to conditionalEmptyState, but type safety
+    if (!base || !current) {
+      return { isEmpty: true };
+    }
+
+    return {
+      content: (
         <Box sx={{ display: "flex", flexDirection: "row" }}>
           <Box sx={{ flex: 1 }} />
           <Box sx={{ width: "80%", height: "35vh", m: 4 }}>
@@ -54,9 +74,9 @@ function _HistogramDiffResultView(
           </Box>
           <Box sx={{ flex: 1 }} />
         </Box>
-      </ScreenshotBox>
-    </Box>
-  );
-}
-
-export const HistogramDiffResultView = forwardRef(_HistogramDiffResultView);
+      ),
+    };
+  },
+}) as ForwardRefExoticComponent<
+  RunResultViewProps & RefAttributes<HTMLDivElement>
+>;
