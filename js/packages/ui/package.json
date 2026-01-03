@@ -21,6 +21,11 @@
       "import": "./dist/advanced.mjs",
       "require": "./dist/advanced.cjs"
     },
+    "./result": {
+      "types": "./dist/result.d.mts",
+      "import": "./dist/result.mjs",
+      "require": "./dist/result.cjs"
+    },
     "./types": {
       "types": "./dist/types.d.mts",
       "import": "./dist/types.mjs",
