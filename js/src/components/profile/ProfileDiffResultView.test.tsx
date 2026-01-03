@@ -252,9 +252,10 @@ describe("ProfileDiffResultView", () => {
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});
 
+      // Factory pattern uses standard error message format
       expect(() => {
         renderWithProviders(<ProfileDiffResultView run={wrongRun} />);
-      }).toThrow("Only run type profile_diff is supported");
+      }).toThrow("Run type must be profile_diff");
 
       consoleSpy.mockRestore();
     });
@@ -277,9 +278,10 @@ describe("ProfileDiffResultView", () => {
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});
 
+      // Factory pattern uses standard error message format
       expect(() => {
         renderWithProviders(<ProfileDiffResultView run={wrongRun} />);
-      }).toThrow("Only run type profile_diff is supported");
+      }).toThrow("Run type must be profile_diff");
 
       consoleSpy.mockRestore();
     });
