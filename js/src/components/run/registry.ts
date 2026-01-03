@@ -21,6 +21,7 @@ import {
   HistogramDiffParams,
   ProfileDiffViewOptions,
   TopKDiffParams,
+  TopKViewOptions,
 } from "@/lib/api/profile";
 import { AxiosQueryParams } from "@/lib/api/types";
 import { ValueDiffDetailViewOptions } from "@/lib/api/valuediff";
@@ -54,7 +55,8 @@ export type ViewOptionTypes =
   | QueryViewOptions
   | QueryDiffViewOptions
   | ProfileDiffViewOptions
-  | ValueDiffDetailViewOptions;
+  | ValueDiffDetailViewOptions
+  | TopKViewOptions;
 
 export type RunType =
   | "simple"
@@ -100,7 +102,7 @@ interface RunRegistry {
   profile_diff: RegistryEntry<DataGridHandle, ProfileDiffViewOptions>;
   value_diff: RegistryEntry<DataGridHandle>;
   value_diff_detail: RegistryEntry<DataGridHandle, ValueDiffDetailViewOptions>;
-  top_k_diff: RegistryEntry<HTMLDivElement>;
+  top_k_diff: RegistryEntry<HTMLDivElement, TopKViewOptions>;
   histogram_diff: RegistryEntry<HTMLDivElement>;
   lineage_diff: RegistryEntry<never>; // No RunResultView
   schema_diff: RegistryEntry<never>; // No RunResultView

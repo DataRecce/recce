@@ -1,72 +1,169 @@
-import { ScreenshotBox } from "@datarecce/ui/primitives";
+import { createResultView, type ResultViewData } from "@datarecce/ui/result";
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { forwardRef, Ref, useState } from "react";
-import { TopKDiffParams, TopKDiffResult } from "@/lib/api/profile";
+import type { ForwardRefExoticComponent, RefAttributes } from "react";
+import type { TopKDiffParams, TopKViewOptions } from "@/lib/api/profile";
+import { isTopKDiffRun, type Run } from "@/lib/api/types";
 import { useIsDark } from "@/lib/hooks/useIsDark";
 import { TopKSummaryBarChart } from "../charts/TopKSummaryList";
-import { RunResultViewProps } from "../run/types";
+import type { RunResultViewProps } from "../run/types";
 
-type TopKDiffResultViewProp = RunResultViewProps;
+// ============================================================================
+// Type Definitions
+// ============================================================================
 
-const PrivateTopKDiffResultView = (
-  { run }: TopKDiffResultViewProp,
-  ref: Ref<HTMLDivElement>,
-) => {
+type TopKDiffRun = Extract<Run, { type: "top_k_diff" }>;
+
+/**
+ * Type guard wrapper that accepts unknown and delegates to typed guard.
+ */
+function isTopKDiffRunGuard(run: unknown): run is TopKDiffRun {
+  return isTopKDiffRun(run as Run);
+}
+
+// ============================================================================
+// Helper Components
+// ============================================================================
+
+/**
+ * Title component for the top-K chart.
+ * Uses useIsDark hook for theme-aware styling.
+ */
+function TopKTitle({
+  model,
+  columnName,
+}: {
+  model: string;
+  columnName: string;
+}) {
   const isDark = useIsDark();
-  const [isDisplayTopTen, setIsDisplayTopTen] = useState<boolean>(true);
-  // TODO: Implement TopKDiffResultView
-  const result = run.result as TopKDiffResult;
-  const params = run.params as TopKDiffParams;
-
-  const baseTopK = result.base;
-  const currentTopK = result.current;
-
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <ScreenshotBox
-        ref={ref}
-        blockSize={"auto"}
-        backgroundColor={isDark ? "#1f2937" : "white"}
+    <Typography
+      variant="h5"
+      sx={{
+        pt: 4,
+        textAlign: "center",
+        color: isDark ? "grey.200" : "grey.600",
+      }}
+    >
+      Model {model}.{columnName}
+    </Typography>
+  );
+}
+
+/**
+ * View toggle link for switching between top-10 and all items.
+ */
+function ViewToggleLink({
+  showAll,
+  onToggle,
+}: {
+  showAll: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Box sx={{ display: "flex", p: 5, justifyContent: "start" }}>
+      <Link
+        component="button"
+        onClick={onToggle}
+        sx={{ color: "iochmara.main", cursor: "pointer" }}
       >
-        <Typography
-          variant="h5"
-          sx={{
-            pt: 4,
-            textAlign: "center",
-            color: isDark ? "grey.200" : "grey.600",
-          }}
-        >
-          Model {params.model}.{params.column_name}
-        </Typography>
-        <Stack direction="row" alignItems="center">
-          <Box sx={{ flex: 1 }} />
-          <TopKSummaryBarChart
-            topKDiff={result}
-            valids={currentTopK.valids || 0}
-            isDisplayTopTen={isDisplayTopTen}
-          />
-          <Box sx={{ flex: 1 }} />
-        </Stack>
-      </ScreenshotBox>
-      <Box sx={{ flex: 1 }} />
-      {(baseTopK.values.length > 10 || currentTopK.values.length > 10) && (
-        <Box sx={{ display: "flex", p: 5, justifyContent: "start" }}>
-          <Link
-            component="button"
-            onClick={() => {
-              setIsDisplayTopTen((prevState) => !prevState);
-            }}
-            sx={{ color: "iochmara.main", cursor: "pointer" }}
-          >
-            {isDisplayTopTen ? "View More Items" : "View Only Top-10"}
-          </Link>
-        </Box>
-      )}
+        {showAll ? "View Only Top-10" : "View More Items"}
+      </Link>
     </Box>
   );
-};
+}
 
-export const TopKDiffResultView = forwardRef(PrivateTopKDiffResultView);
+// ============================================================================
+// Factory-Created Component
+// ============================================================================
+
+/**
+ * TopKDiffResultView component - displays top-K value distribution comparison.
+ *
+ * Features:
+ * - Displays horizontal bar chart comparing base vs current top-K values
+ * - "View More Items" / "View Only Top-10" toggle when >10 items exist
+ * - Title shows model name and column name
+ * - Dark/light theme support
+ *
+ * @example
+ * ```tsx
+ * <TopKDiffResultView
+ *   run={topKDiffRun}
+ *   viewOptions={{ show_all: false }}
+ *   onViewOptionsChanged={setViewOptions}
+ * />
+ * ```
+ */
+export const TopKDiffResultView = createResultView<
+  TopKDiffRun,
+  TopKViewOptions,
+  HTMLDivElement
+>({
+  displayName: "TopKDiffResultView",
+  typeGuard: isTopKDiffRunGuard,
+  expectedRunType: "top_k_diff",
+  screenshotWrapper: "box",
+  emptyState: "No data",
+  transformData: (
+    run,
+    { viewOptions, onViewOptionsChanged },
+  ): ResultViewData | null => {
+    const result = run.result;
+    const params = run.params as TopKDiffParams;
+
+    // Empty state when no result
+    if (!result) {
+      return { isEmpty: true };
+    }
+
+    const baseTopK = result.base;
+    const currentTopK = result.current;
+
+    // Derive isDisplayTopTen from viewOptions (inverted: show_all=false means top10=true)
+    const showAll = viewOptions?.show_all ?? false;
+    const isDisplayTopTen = !showAll;
+
+    // Check if toggle should be visible (>10 items in either base or current)
+    const shouldShowToggle =
+      baseTopK.values.length > 10 || currentTopK.values.length > 10;
+
+    // Build footer with toggle link (if needed)
+    const footer = shouldShowToggle ? (
+      <ViewToggleLink
+        showAll={showAll}
+        onToggle={() => {
+          if (onViewOptionsChanged) {
+            onViewOptionsChanged({
+              ...viewOptions,
+              show_all: !showAll,
+            });
+          }
+        }}
+      />
+    ) : undefined;
+
+    return {
+      content: (
+        <>
+          <TopKTitle model={params.model} columnName={params.column_name} />
+          <Stack direction="row" alignItems="center">
+            <Box sx={{ flex: 1 }} />
+            <TopKSummaryBarChart
+              topKDiff={result}
+              valids={currentTopK.valids || 0}
+              isDisplayTopTen={isDisplayTopTen}
+            />
+            <Box sx={{ flex: 1 }} />
+          </Stack>
+        </>
+      ),
+      footer,
+    };
+  },
+}) as ForwardRefExoticComponent<
+  RunResultViewProps<TopKViewOptions> & RefAttributes<HTMLDivElement>
+>;
