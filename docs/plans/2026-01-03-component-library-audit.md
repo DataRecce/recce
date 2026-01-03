@@ -169,12 +169,20 @@ Identify components in Recce OSS that:
 
 ### Key Finding: ResultView Pattern
 
-Five components follow an **identical structural pattern**:
-- `HistogramDiffResultView.tsx` (chart-based)
-- `ProfileDiffResultView.tsx` (grid-based with options)
-- `RowCountDiffResultView.tsx` (grid-based)
-- `ValueDiffResultView.tsx` (grid-based)
-- `TopKDiffResultView.tsx` (chart-based)
+Ten components follow an **identical structural pattern**:
+
+| Component | Type | Tests | Factory Status | Notes |
+|-----------|------|-------|----------------|-------|
+| `RowCountDiffResultView` | Grid | ✅ | ✅ Migrated | Simplest |
+| `RowCountResultView` | Grid | ✅ | ✅ Migrated | Shares with above |
+| `ValueDiffResultView` | Grid | ✅ | ✅ Migrated | Grid + header |
+| `HistogramDiffResultView` | Chart | ✅ | ✅ Migrated | Chart-based |
+| `ProfileDiffResultView` | Grid | ✅ | ✅ Migrated | Grid + toolbar |
+| `ProfileResultView` | Grid | ✅ | ✅ Migrated | Shares with above |
+| `TopKDiffResultView` | Chart | ✅ | ❌ Deferred | Has local useState |
+| `ValueDiffDetailResultView` | Grid | ✅ | 🔄 In Progress | Complex toolbar |
+| `QueryResultView` | Grid | ✅ | 🔄 In Progress | Toolbar + callback |
+| `QueryDiffResultView` | Grid | ✅ | ❌ Deferred | Bifurcation logic |
 
 **Common Pattern:**
 ```typescript
@@ -185,7 +193,19 @@ Five components follow an **identical structural pattern**:
 5. Implement RunResultViewProps<T> generic interface
 ```
 
-**Recommendation:** Extract a generic `ResultView` abstraction in packages/ui.
+**Implemented:** `createResultView` factory in `packages/ui/src/components/result/`
+
+**Current Factory Capabilities:**
+- ✅ Type guard validation
+- ✅ Grid and box screenshot wrappers
+- ✅ Header/footer slots
+- ✅ Empty state + conditional empty state
+- ✅ View options (generic)
+- 🔄 Toolbar slot (in progress)
+- 🔄 Warnings array (in progress)
+- 🔄 onAddToChecklist callback (in progress)
+
+**See:** [Factory Toolbar Extension Plan](./2026-01-03-factory-toolbar-extension.md)
 
 ### Pure Utilities (Easy Wins)
 | File | Purpose | Action |
@@ -264,3 +284,10 @@ Five components follow an **identical structural pattern**:
 |------|----------|-----------|
 | 2026-01-03 | Start with packages/ui audit | Need to understand current state before identifying gaps |
 | 2026-01-03 | Document in markdown file | Preserve context across auto-compaction events |
+| 2026-01-03 | Implement createResultView factory | Reduce boilerplate, ensure consistency across ResultView components |
+| 2026-01-03 | Add toolbar slot to factory | Support complex components with DiffDisplayModeSwitch, ChangedOnlyCheckbox |
+| 2026-01-03 | Add warnings array to factory | Consistent warning display, consumer provides messages |
+| 2026-01-03 | Add onAddToChecklist callback | Support QueryResultView "Add to Checklist" button |
+| 2026-01-03 | Defer QueryDiffResultView | Bifurcation logic (two internal components) too complex for factory |
+| 2026-01-03 | Defer TopKDiffResultView | Local useState pattern needs factory extension |
+| 2026-01-03 | Tests required before migration | All ResultView components now have baseline tests |
