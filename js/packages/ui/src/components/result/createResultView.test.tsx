@@ -579,6 +579,233 @@ describe("createResultView", () => {
   });
 
   // ==========================================================================
+  // Header/Footer Tests
+  // ==========================================================================
+
+  describe("header and footer", () => {
+    describe("grid wrapper", () => {
+      it("renders header above grid", () => {
+        const HeaderGridView = createResultView<
+          TestGridRun,
+          never,
+          DataGridHandle
+        >({
+          displayName: "HeaderGridView",
+          typeGuard: isTestGridRun,
+          expectedRunType: "test_grid",
+          screenshotWrapper: "grid",
+          transformData: (run): ResultViewData => ({
+            columns: [{ field: "value", headerName: "Value" }],
+            rows: run.data.map((value, index) => ({ value, _index: index })),
+            header: <div data-testid="grid-header">Grid Header Content</div>,
+          }),
+        });
+
+        const run = createTestGridRun();
+
+        renderWithProviders(<HeaderGridView run={run} />);
+
+        // Header should be rendered
+        const header = screen.getByTestId("grid-header");
+        expect(header).toBeInTheDocument();
+        expect(header).toHaveTextContent("Grid Header Content");
+
+        // Grid should also be rendered
+        expect(
+          screen.getByTestId("screenshot-data-grid-mock"),
+        ).toBeInTheDocument();
+      });
+
+      it("renders footer below grid", () => {
+        const FooterGridView = createResultView<
+          TestGridRun,
+          never,
+          DataGridHandle
+        >({
+          displayName: "FooterGridView",
+          typeGuard: isTestGridRun,
+          expectedRunType: "test_grid",
+          screenshotWrapper: "grid",
+          transformData: (run): ResultViewData => ({
+            columns: [{ field: "value", headerName: "Value" }],
+            rows: run.data.map((value, index) => ({ value, _index: index })),
+            footer: <div data-testid="grid-footer">Grid Footer Content</div>,
+          }),
+        });
+
+        const run = createTestGridRun();
+
+        renderWithProviders(<FooterGridView run={run} />);
+
+        // Footer should be rendered
+        const footer = screen.getByTestId("grid-footer");
+        expect(footer).toBeInTheDocument();
+        expect(footer).toHaveTextContent("Grid Footer Content");
+
+        // Grid should also be rendered
+        expect(
+          screen.getByTestId("screenshot-data-grid-mock"),
+        ).toBeInTheDocument();
+      });
+
+      it("renders both header and footer with grid", () => {
+        const HeaderFooterGridView = createResultView<
+          TestGridRun,
+          never,
+          DataGridHandle
+        >({
+          displayName: "HeaderFooterGridView",
+          typeGuard: isTestGridRun,
+          expectedRunType: "test_grid",
+          screenshotWrapper: "grid",
+          transformData: (run): ResultViewData => ({
+            columns: [{ field: "value", headerName: "Value" }],
+            rows: run.data.map((value, index) => ({ value, _index: index })),
+            header: <div data-testid="grid-header">Header for Grid</div>,
+            footer: <div data-testid="grid-footer">Footer for Grid</div>,
+          }),
+        });
+
+        const run = createTestGridRun();
+
+        renderWithProviders(<HeaderFooterGridView run={run} />);
+
+        // Both header and footer should be rendered
+        expect(screen.getByTestId("grid-header")).toBeInTheDocument();
+        expect(screen.getByTestId("grid-footer")).toBeInTheDocument();
+
+        // Grid should also be rendered
+        expect(
+          screen.getByTestId("screenshot-data-grid-mock"),
+        ).toBeInTheDocument();
+      });
+
+      it("does not render header/footer when not provided (grid)", () => {
+        // This uses the existing TestGridView which doesn't have header/footer
+        const run = createTestGridRun();
+
+        renderWithProviders(<TestGridView run={run} />);
+
+        // Grid should be rendered
+        expect(
+          screen.getByTestId("screenshot-data-grid-mock"),
+        ).toBeInTheDocument();
+
+        // Header and footer should NOT be in the document
+        expect(screen.queryByTestId("grid-header")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("grid-footer")).not.toBeInTheDocument();
+      });
+    });
+
+    describe("box wrapper", () => {
+      it("renders header above ScreenshotBox", () => {
+        const HeaderBoxView = createResultView<
+          TestBoxRun,
+          never,
+          HTMLDivElement
+        >({
+          displayName: "HeaderBoxView",
+          typeGuard: isTestBoxRun,
+          expectedRunType: "test_box",
+          screenshotWrapper: "box",
+          transformData: (run): ResultViewData => ({
+            content: <div data-testid="box-content">{run.content}</div>,
+            header: <div data-testid="box-header">Box Header Content</div>,
+          }),
+        });
+
+        const run = createTestBoxRun();
+
+        renderWithProviders(<HeaderBoxView run={run} />);
+
+        // Header should be rendered
+        const header = screen.getByTestId("box-header");
+        expect(header).toBeInTheDocument();
+        expect(header).toHaveTextContent("Box Header Content");
+
+        // Box and content should also be rendered
+        expect(screen.getByTestId("screenshot-box-mock")).toBeInTheDocument();
+        expect(screen.getByTestId("box-content")).toBeInTheDocument();
+      });
+
+      it("renders footer below ScreenshotBox", () => {
+        const FooterBoxView = createResultView<
+          TestBoxRun,
+          never,
+          HTMLDivElement
+        >({
+          displayName: "FooterBoxView",
+          typeGuard: isTestBoxRun,
+          expectedRunType: "test_box",
+          screenshotWrapper: "box",
+          transformData: (run): ResultViewData => ({
+            content: <div data-testid="box-content">{run.content}</div>,
+            footer: <div data-testid="box-footer">Box Footer Content</div>,
+          }),
+        });
+
+        const run = createTestBoxRun();
+
+        renderWithProviders(<FooterBoxView run={run} />);
+
+        // Footer should be rendered
+        const footer = screen.getByTestId("box-footer");
+        expect(footer).toBeInTheDocument();
+        expect(footer).toHaveTextContent("Box Footer Content");
+
+        // Box and content should also be rendered
+        expect(screen.getByTestId("screenshot-box-mock")).toBeInTheDocument();
+        expect(screen.getByTestId("box-content")).toBeInTheDocument();
+      });
+
+      it("renders both header and footer with box", () => {
+        const HeaderFooterBoxView = createResultView<
+          TestBoxRun,
+          never,
+          HTMLDivElement
+        >({
+          displayName: "HeaderFooterBoxView",
+          typeGuard: isTestBoxRun,
+          expectedRunType: "test_box",
+          screenshotWrapper: "box",
+          transformData: (run): ResultViewData => ({
+            content: <div data-testid="box-content">{run.content}</div>,
+            header: <div data-testid="box-header">Header for Box</div>,
+            footer: <div data-testid="box-footer">Footer for Box</div>,
+          }),
+        });
+
+        const run = createTestBoxRun();
+
+        renderWithProviders(<HeaderFooterBoxView run={run} />);
+
+        // Both header and footer should be rendered
+        expect(screen.getByTestId("box-header")).toBeInTheDocument();
+        expect(screen.getByTestId("box-footer")).toBeInTheDocument();
+
+        // Box and content should also be rendered
+        expect(screen.getByTestId("screenshot-box-mock")).toBeInTheDocument();
+        expect(screen.getByTestId("box-content")).toBeInTheDocument();
+      });
+
+      it("does not render header/footer when not provided (box)", () => {
+        // This uses the existing TestBoxView which doesn't have header/footer
+        const run = createTestBoxRun();
+
+        renderWithProviders(<TestBoxView run={run} />);
+
+        // Box and content should be rendered
+        expect(screen.getByTestId("screenshot-box-mock")).toBeInTheDocument();
+        expect(screen.getByTestId("box-content")).toBeInTheDocument();
+
+        // Header and footer should NOT be in the document
+        expect(screen.queryByTestId("box-header")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("box-footer")).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  // ==========================================================================
   // Custom Empty State Tests
   // ==========================================================================
 

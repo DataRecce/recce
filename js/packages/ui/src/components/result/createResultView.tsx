@@ -112,6 +112,7 @@ export function createResultView<
     if (screenshotWrapper === "grid") {
       return (
         <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+          {data.header}
           <ScreenshotDataGrid
             ref={ref as Ref<DataGridHandle>}
             style={{
@@ -125,6 +126,7 @@ export function createResultView<
             rows={(data.rows ?? []) as never}
             renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
           />
+          {data.footer}
         </Box>
       );
     }
@@ -132,6 +134,7 @@ export function createResultView<
     // Box wrapper for charts
     return (
       <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        {data.header}
         <ScreenshotBox
           ref={ref as Ref<HTMLDivElement>}
           height="100%"
@@ -139,6 +142,7 @@ export function createResultView<
         >
           {data.content}
         </ScreenshotBox>
+        {data.footer}
       </Box>
     );
   }

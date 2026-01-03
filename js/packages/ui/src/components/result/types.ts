@@ -61,6 +61,10 @@ export interface ResultViewData {
   rows?: unknown[];
   content?: ReactNode;
   isEmpty?: boolean;
+
+  // Header/Footer support for additional content above/below main content
+  header?: ReactNode; // Rendered ABOVE grid/content, inside outer Box
+  footer?: ReactNode; // Rendered BELOW grid/content, outside ScreenshotBox
 }
 
 /**
