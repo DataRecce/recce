@@ -61,6 +61,18 @@ export {
   RunsView,
 } from "./components";
 
+// Result view factory and types
+export type {
+  CreatedResultViewProps,
+  ResultViewConfig,
+  ResultViewData,
+  ResultViewProps,
+  ResultViewRef,
+  ResultViewTransformOptions,
+  ScreenshotWrapperType,
+} from "./components/result";
+export { createResultView } from "./components/result";
+
 // Contexts - React contexts for state management
 export type {
   // Action context

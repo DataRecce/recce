@@ -1,3 +1,4 @@
+import { createResultView } from "@datarecce/ui/result";
 import Box from "@mui/material/Box";
 import { forwardRef, Ref, useMemo } from "react";
 import { ProfileDiffViewOptions } from "@/lib/api/profile";
@@ -137,31 +138,37 @@ const PrivateProfileDiffResultView = (
   );
 };
 
-const PrivateProfileResultView = (
-  { run, viewOptions, onViewOptionsChanged }: ProfileDiffResultViewProp,
+export const ProfileDiffResultView = forwardRef(PrivateProfileDiffResultView);
 
-  ref: Ref<DataGridHandle>,
-) => {
-  const isDark = useIsDark();
+// Type guard wrapper for factory compatibility (accepts unknown instead of Run)
+type ProfileRun = Extract<
+  Parameters<typeof isProfileRun>[0],
+  { type: "profile" }
+>;
+const isProfileRunGuard = (run: unknown): run is ProfileRun =>
+  typeof run === "object" &&
+  run !== null &&
+  "type" in run &&
+  isProfileRun(run as Parameters<typeof isProfileRun>[0]);
 
-  if (!isProfileRun(run)) {
-    throw new Error("Only run type profile_diff is supported");
-  }
-  const pinnedColumns = useMemo(
-    () => viewOptions?.pinned_columns ?? [],
-    [viewOptions],
-  );
-  // Default proportion columns to percentage display
-  const columnsRenderMode = useMemo(
-    () => ({
+export const ProfileResultView = createResultView<
+  ProfileRun,
+  ProfileDiffViewOptions
+>({
+  displayName: "ProfileResultView",
+  typeGuard: isProfileRunGuard,
+  expectedRunType: "profile",
+  screenshotWrapper: "grid",
+  transformData: (run, { viewOptions, onViewOptionsChanged }) => {
+    const pinnedColumns = viewOptions?.pinned_columns ?? [];
+
+    // Default proportion columns to percentage display
+    const columnsRenderMode = {
       distinct_proportion: "percent" as ColumnRenderMode,
       not_null_proportion: "percent" as ColumnRenderMode,
       ...viewOptions?.columnsRenderMode,
-    }),
-    [viewOptions],
-  );
+    };
 
-  const gridData = useMemo(() => {
     const onColumnsRenderModeChanged = (
       cols: Record<string, ColumnRenderMode>,
     ) => {
@@ -186,56 +193,17 @@ const PrivateProfileResultView = (
       }
     };
 
-    return (
-      createDataGrid(run, {
-        pinnedColumns,
-        onPinnedColumnsChange: handlePinnedColumnsChanged,
-        columnsRenderMode,
-        onColumnsRenderModeChanged,
-      }) ?? { columns: [], rows: [] }
-    );
-  }, [
-    run,
-    pinnedColumns,
-    viewOptions,
-    onViewOptionsChanged,
-    columnsRenderMode,
-  ]);
+    const gridData = createDataGrid(run, {
+      pinnedColumns,
+      onPinnedColumnsChange: handlePinnedColumnsChanged,
+      columnsRenderMode,
+      onColumnsRenderModeChanged,
+    }) ?? { columns: [], rows: [] };
 
-  if (gridData.columns.length === 0) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-        }}
-      >
-        No data
-      </Box>
-    );
-  }
-
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        bgcolor: isDark ? "grey.900" : "grey.50",
-        height: "100%",
-      }}
-    >
-      <ScreenshotDataGrid
-        ref={ref}
-        style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
-        columns={gridData.columns}
-        rows={gridData.rows}
-        defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
-      />
-    </Box>
-  );
-};
-
-export const ProfileDiffResultView = forwardRef(PrivateProfileDiffResultView);
-export const ProfileResultView = forwardRef(PrivateProfileResultView);
+    return {
+      columns: gridData.columns,
+      rows: gridData.rows,
+      isEmpty: gridData.columns.length === 0,
+    };
+  },
+});

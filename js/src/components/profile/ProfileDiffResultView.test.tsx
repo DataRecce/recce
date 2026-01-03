@@ -26,6 +26,11 @@ jest.mock("ag-grid-community", () => ({
   themeQuartz: {},
 }));
 
+// Mock ag-grid-react to avoid class extension error
+jest.mock("ag-grid-react", () => ({
+  AgGridReact: jest.fn(() => null),
+}));
+
 // Mock dataGridFactory - use factory pattern that returns mock from closure
 const mockCreateDataGrid = jest.fn();
 jest.mock("@/lib/dataGrid/dataGridFactory", () => ({
@@ -36,6 +41,15 @@ jest.mock("@/lib/dataGrid/dataGridFactory", () => ({
 jest.mock("@/components/data-grid/ScreenshotDataGrid", () => ({
   ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
     .screenshotDataGridMock,
+  DataGridHandle: {},
+}));
+
+// Mock ScreenshotDataGrid from @datarecce/ui package (used by factory)
+// This path is resolved by Jest's moduleNameMapper to packages/ui/src
+jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
+  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
+    .screenshotDataGridMock,
+  EmptyRowsRenderer: () => null,
   DataGridHandle: {},
 }));
 
@@ -67,9 +81,14 @@ jest.mock("../query/ToggleSwitch", () => ({
   )),
 }));
 
-// Mock useIsDark hook
+// Mock useIsDark hook - both local and package versions
 const mockUseIsDark = jest.fn(() => false);
 jest.mock("@/lib/hooks/useIsDark", () => ({
+  useIsDark: () => mockUseIsDark(),
+}));
+
+// Mock useIsDark from @datarecce/ui package (used by factory)
+jest.mock("@datarecce/ui/hooks/useIsDark", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 
@@ -597,10 +616,10 @@ describe("ProfileResultView", () => {
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});
 
-      // Note: The component has a bug - error message says "profile_diff" for ProfileResultView
+      // Factory pattern uses standard error message format
       expect(() => {
         renderWithProviders(<ProfileResultView run={wrongRun} />);
-      }).toThrow("Only run type profile_diff is supported");
+      }).toThrow("Run type must be profile");
 
       consoleSpy.mockRestore();
     });
@@ -614,10 +633,10 @@ describe("ProfileResultView", () => {
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});
 
-      // Note: The component has a bug - error message says "profile_diff" for ProfileResultView
+      // Factory pattern uses standard error message format
       expect(() => {
         renderWithProviders(<ProfileResultView run={wrongRun} />);
-      }).toThrow("Only run type profile_diff is supported");
+      }).toThrow("Run type must be profile");
 
       consoleSpy.mockRestore();
     });
