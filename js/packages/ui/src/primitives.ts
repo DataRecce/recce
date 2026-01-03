@@ -269,3 +269,19 @@ export {
   type StatusBadgeProps,
   type StatusType,
 } from "./components/ui/StatusBadge";
+
+// =============================================================================
+// RESULT VIEW PRIMITIVES
+// =============================================================================
+
+// Result view factory
+export {
+  type CreatedResultViewProps,
+  createResultView,
+  type ResultViewConfig,
+  type ResultViewData,
+  type ResultViewProps,
+  type ResultViewRef,
+  type ResultViewTransformOptions,
+  type ScreenshotWrapperType,
+} from "./components/result";
