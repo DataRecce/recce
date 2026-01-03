@@ -38,6 +38,7 @@ export function getBarColors(isDark: boolean) {
 export function SquareIcon({ color }: { color: string }) {
   return (
     <Box
+      component="span"
       sx={{
         display: "inline-block",
         width: "10px",
