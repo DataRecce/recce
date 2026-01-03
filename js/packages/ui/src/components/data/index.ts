@@ -2,6 +2,8 @@
 
 // Data primitives - pure presentation components for data visualization
 
+// AG Grid theme
+export { dataGridThemeDark, dataGridThemeLight } from "./agGridTheme";
 export {
   type ChartBarColors,
   type ChartThemeColors,
@@ -12,7 +14,6 @@ export {
   type HistogramDataset,
   type HistogramDataType,
 } from "./HistogramChart";
-
 export {
   type ColumnRenderMode,
   type ProfileColumn,
@@ -22,6 +23,20 @@ export {
   type ProfileTableHandle,
   type ProfileTableProps,
 } from "./ProfileTable";
+// AG Grid wrapper with screenshot support
+export {
+  type ColDef,
+  type ColGroupDef,
+  type DataGridHandle,
+  type DataGridRow,
+  EmptyRowsRenderer,
+  type EmptyRowsRendererProps,
+  type GetRowIdParams,
+  type GridReadyEvent,
+  type RecceDataGridHandle,
+  ScreenshotDataGrid,
+  type ScreenshotDataGridProps,
+} from "./ScreenshotDataGrid";
 
 export {
   SingleBarChart,

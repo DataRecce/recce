@@ -28,6 +28,11 @@
     },
     "./styles": {
       "default": "./dist/styles.css"
+    },
+    "./utils": {
+      "types": "./dist/utils.d.mts",
+      "import": "./dist/utils.mjs",
+      "require": "./dist/utils.cjs"
     }
   },
   "files": [

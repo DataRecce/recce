@@ -1,3 +1,4 @@
+import { ScreenshotBox } from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import { forwardRef, Ref } from "react";
 import { HistogramDiffParams } from "@/lib/api/profile";
@@ -5,7 +6,6 @@ import { isHistogramDiffRun } from "@/lib/api/types";
 import { useIsDark } from "@/lib/hooks/useIsDark";
 import { HistogramChart } from "../charts/HistogramChart";
 import { RunResultViewProps } from "../run/types";
-import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 
 type HistogramDiffResultViewProp = RunResultViewProps;
 

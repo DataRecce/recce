@@ -1,3 +1,4 @@
+import { ScreenshotBox } from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
@@ -7,7 +8,6 @@ import { TopKDiffParams, TopKDiffResult } from "@/lib/api/profile";
 import { useIsDark } from "@/lib/hooks/useIsDark";
 import { TopKSummaryBarChart } from "../charts/TopKSummaryList";
 import { RunResultViewProps } from "../run/types";
-import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 
 type TopKDiffResultViewProp = RunResultViewProps;
 

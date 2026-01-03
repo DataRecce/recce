@@ -1,3 +1,4 @@
+import { deltaPercentageString } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Skeleton from "@mui/material/Skeleton";
@@ -12,7 +13,6 @@ import { RowCount, RowCountDiff } from "@/lib/api/models";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useIsDark } from "@/lib/hooks/useIsDark";
-import { deltaPercentageString } from "../rowcount/delta";
 import { findByRunType } from "../run/registry";
 import { LineageGraphNode } from "./lineage";
 import { getIconForResourceType } from "./styles";

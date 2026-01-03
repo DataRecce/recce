@@ -1,3 +1,4 @@
+import { deltaPercentageString } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Stack from "@mui/material/Stack";
@@ -9,7 +10,6 @@ import { VscKebabVertical } from "react-icons/vsc";
 import { RowCountDiff } from "@/lib/api/models";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useThemeColors } from "@/lib/hooks/useThemeColors";
-import { deltaPercentageString } from "../rowcount/delta";
 import { findByRunType } from "../run/registry";
 import { isSchemaChanged } from "../schema/schemaDiff";
 import { ActionTag } from "./ActionTag";
