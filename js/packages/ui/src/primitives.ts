@@ -156,6 +156,11 @@ export {
 // DATA PRIMITIVES
 // =============================================================================
 
+// AG Grid theme
+export {
+  dataGridThemeDark,
+  dataGridThemeLight,
+} from "./components/data/agGridTheme";
 // Histogram chart (Chart.js based data distribution)
 export {
   type ChartBarColors,
@@ -167,7 +172,6 @@ export {
   type HistogramDataset,
   type HistogramDataType,
 } from "./components/data/HistogramChart";
-
 // Profile table (AG Grid based column statistics)
 export {
   type ColumnRenderMode,
@@ -178,6 +182,20 @@ export {
   type ProfileTableHandle,
   type ProfileTableProps,
 } from "./components/data/ProfileTable";
+// AG Grid wrapper with screenshot support
+export {
+  type ColDef,
+  type ColGroupDef,
+  type DataGridHandle,
+  type DataGridRow,
+  EmptyRowsRenderer,
+  type EmptyRowsRendererProps,
+  type GetRowIdParams,
+  type GridReadyEvent,
+  type RecceDataGridHandle,
+  ScreenshotDataGrid,
+  type ScreenshotDataGridProps,
+} from "./components/data/ScreenshotDataGrid";
 
 // Top-K bar chart (value distribution)
 export {
@@ -231,6 +249,12 @@ export {
 
 // Empty state (placeholder for no data)
 export { EmptyState, type EmptyStateProps } from "./components/ui/EmptyState";
+
+// Screenshot box (container for screenshot capture)
+export {
+  ScreenshotBox,
+  type ScreenshotBoxProps,
+} from "./components/ui/ScreenshotBox";
 
 // Split pane (resizable split layout)
 export {
