@@ -51,6 +51,12 @@ export interface ResultViewConfig<
 export interface ResultViewTransformOptions<TViewOptions> {
   viewOptions?: TViewOptions;
   onViewOptionsChanged?: (options: TViewOptions) => void;
+
+  /**
+   * Callback when user wants to add run to checklist.
+   * Passed through from component props.
+   */
+  onAddToChecklist?: (run: unknown) => void;
 }
 
 /**
@@ -66,6 +72,18 @@ export interface ResultViewData {
   header?: ReactNode; // Rendered ABOVE grid/content, inside outer Box
   footer?: ReactNode; // Rendered BELOW grid/content, outside ScreenshotBox
 
+  /**
+   * Toolbar controls to render above the content.
+   * Renders on the right side of the toolbar area.
+   */
+  toolbar?: ReactNode;
+
+  /**
+   * Warning messages to display in the toolbar area.
+   * Renders as alert chips on the left side.
+   */
+  warnings?: string[];
+
   // When true, component returns null (renders nothing)
   // Use for cases where original component returned null instead of empty state
   renderNull?: boolean;
@@ -77,4 +95,10 @@ export interface ResultViewData {
 export interface CreatedResultViewProps<TViewOptions = unknown>
   extends ResultViewProps<TViewOptions> {
   ref?: Ref<ResultViewRef>;
+
+  /**
+   * Callback when user wants to add run to checklist.
+   * Used by QueryResultView.
+   */
+  onAddToChecklist?: (run: unknown) => void;
 }
