@@ -43,15 +43,26 @@ jest.mock("../charts/HistogramChart", () => ({
   HistogramChart: (props: { data: unknown }) => mockHistogramChart(props),
 }));
 
-// Mock ScreenshotBox with our test utility mock
-jest.mock("@datarecce/ui/primitives", () => ({
+// Mock ScreenshotBox component (both local and packages/ui versions)
+jest.mock("@datarecce/ui/components/ui/ScreenshotBox", () => ({
   ScreenshotBox: jest.requireActual("@/testing-utils/resultViewTestUtils")
     .screenshotBoxMock,
 }));
 
-// Mock useIsDark hook
+// Mock ScreenshotDataGrid to avoid ag-grid-react ES module issues
+jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
+  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
+    .screenshotDataGridMock,
+  EmptyRowsRenderer: () => <div data-testid="empty-rows-renderer">No data</div>,
+}));
+
+// Mock useIsDark hook (both local and packages/ui versions)
 const mockUseIsDark = jest.fn(() => false);
 jest.mock("@/lib/hooks/useIsDark", () => ({
+  useIsDark: () => mockUseIsDark(),
+}));
+
+jest.mock("@datarecce/ui/hooks", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 
