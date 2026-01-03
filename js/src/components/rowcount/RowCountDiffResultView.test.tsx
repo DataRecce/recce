@@ -68,16 +68,26 @@ jest.mock("@/lib/dataGrid/dataGridFactory", () => ({
   }),
 }));
 
-// Mock ScreenshotDataGrid with our test utility mock
+// Mock ScreenshotDataGrid with our test utility mock (both local and packages/ui versions)
 jest.mock("@/components/data-grid/ScreenshotDataGrid", () => ({
   ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
     .screenshotDataGridMock,
   EmptyRowsRenderer: () => <div data-testid="empty-rows-renderer">No data</div>,
 }));
 
-// Mock useIsDark hook
+jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
+  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
+    .screenshotDataGridMock,
+  EmptyRowsRenderer: () => <div data-testid="empty-rows-renderer">No data</div>,
+}));
+
+// Mock useIsDark hook (both local and packages/ui versions)
 const mockUseIsDark = jest.fn(() => false);
 jest.mock("@/lib/hooks/useIsDark", () => ({
+  useIsDark: () => mockUseIsDark(),
+}));
+
+jest.mock("@datarecce/ui/hooks/useIsDark", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 
