@@ -37,6 +37,17 @@ jest.mock("@/components/data-grid/ScreenshotDataGrid", () => ({
   EmptyRowsRenderer: () => <div data-testid="empty-rows-renderer">No data</div>,
 }));
 
+// Mock @datarecce/ui components used by factory pattern
+jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
+  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
+    .screenshotDataGridMock,
+  EmptyRowsRenderer: () => <div data-testid="empty-rows-renderer">No data</div>,
+}));
+
+jest.mock("@datarecce/ui/hooks", () => ({
+  useIsDark: () => false,
+}));
+
 // ============================================================================
 // Imports
 // ============================================================================

@@ -65,6 +65,10 @@ export interface ResultViewData {
   // Header/Footer support for additional content above/below main content
   header?: ReactNode; // Rendered ABOVE grid/content, inside outer Box
   footer?: ReactNode; // Rendered BELOW grid/content, outside ScreenshotBox
+
+  // When true, component returns null (renders nothing)
+  // Use for cases where original component returned null instead of empty state
+  renderNull?: boolean;
 }
 
 /**

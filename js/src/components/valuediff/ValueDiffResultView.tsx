@@ -6,76 +6,90 @@
  * Each row represents a column with its match count and percentage.
  */
 
+import { type DataGridHandle } from "@datarecce/ui/components/data/ScreenshotDataGrid";
+import { createResultView } from "@datarecce/ui/components/result/createResultView";
+import { type ResultViewData } from "@datarecce/ui/components/result/types";
 import Box from "@mui/material/Box";
-import React, { forwardRef, Ref } from "react";
-import { isValueDiffRun } from "@/lib/api/types";
-import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
-import { createDataGrid } from "@/lib/dataGrid";
+import type { ForwardRefExoticComponent, RefAttributes } from "react";
+import { isValueDiffRun, type Run } from "@/lib/api/types";
 import {
-  type DataGridHandle,
-  EmptyRowsRenderer,
-  ScreenshotDataGrid,
-} from "../data-grid/ScreenshotDataGrid";
-import { RunResultViewProps } from "../run/types";
+  type ValueDiffParams,
+  type ValueDiffResult,
+} from "@/lib/api/valuediff";
+import { createDataGrid } from "@/lib/dataGrid";
+import type { RunResultViewProps } from "../run/types";
 
-type ValueDiffResultViewProp = RunResultViewProps;
+// ============================================================================
+// Type Definitions
+// ============================================================================
 
-function _ValueDiffResultView(
-  { run }: ValueDiffResultViewProp,
-  ref: Ref<DataGridHandle>,
-) {
-  if (!isValueDiffRun(run)) {
-    throw new Error("Run type must be value_diff");
+type ValueDiffRun = Extract<Run, { type: "value_diff" }>;
+
+// ============================================================================
+// Type Guard (wrapper to accept unknown)
+// ============================================================================
+
+function isValueDiffRunGuard(run: unknown): run is ValueDiffRun {
+  return isValueDiffRun(run as Run);
+}
+
+// ============================================================================
+// Header Component
+// ============================================================================
+
+interface SummaryHeaderProps {
+  params: ValueDiffParams;
+  summary: ValueDiffResult["summary"];
+}
+
+function SummaryHeader({ params, summary }: SummaryHeaderProps) {
+  const common = summary.total - summary.added - summary.removed;
+
+  return (
+    <Box sx={{ px: "16px", pt: "5px", pb: "5px" }}>
+      Model: {params.model}, {summary.total} total ({common} common,{" "}
+      {summary.added} added, {summary.removed} removed)
+    </Box>
+  );
+}
+
+// ============================================================================
+// Transform Function
+// ============================================================================
+
+function transformValueDiffData(run: ValueDiffRun): ResultViewData | null {
+  const gridData = createDataGrid(run);
+
+  if (!gridData) {
+    // Return renderNull: true to make factory return null (matches original behavior)
+    return { renderNull: true };
   }
 
   const result = run.result as ValueDiffResult;
   const params = run.params as ValueDiffParams;
 
-  const gridData = createDataGrid(run);
-
-  if (!gridData) {
-    return null;
-  }
-
-  const { columns, rows } = gridData;
-
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "5px",
-        pt: "5px",
-        height: "100%",
-      }}
-    >
-      <Box sx={{ px: "16px" }}>
-        Model: {params.model}, {result.summary.total} total (
-        {result.summary.total - result.summary.added - result.summary.removed}{" "}
-        common, {result.summary.added} added, {result.summary.removed} removed)
-      </Box>
-
-      <Box
-        sx={{
-          flex: 1,
-          minHeight: 0,
-          maxHeight: "100%",
-          overflow: "auto",
-          borderTop: "1px solid",
-          borderBottom: "1px solid",
-          borderColor: "divider",
-        }}
-      >
-        <ScreenshotDataGrid
-          ref={ref}
-          columns={columns}
-          rows={rows}
-          renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
-          defaultColumnOptions={{ resizable: true }}
-        />
-      </Box>
-    </Box>
-  );
+  return {
+    columns: gridData.columns,
+    rows: gridData.rows,
+    isEmpty: false,
+    header: <SummaryHeader params={params} summary={result.summary} />,
+  };
 }
 
-export const ValueDiffResultView = forwardRef(_ValueDiffResultView);
+// ============================================================================
+// Factory-Created Component
+// ============================================================================
+
+export const ValueDiffResultView = createResultView<
+  ValueDiffRun,
+  unknown,
+  DataGridHandle
+>({
+  displayName: "ValueDiffResultView",
+  typeGuard: isValueDiffRunGuard,
+  expectedRunType: "value_diff",
+  screenshotWrapper: "grid",
+  transformData: transformValueDiffData,
+}) as ForwardRefExoticComponent<
+  RunResultViewProps & RefAttributes<DataGridHandle>
+>;

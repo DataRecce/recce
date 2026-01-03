@@ -91,6 +91,11 @@ export function createResultView<
       );
     }
 
+    // Return null case (component renders nothing)
+    if (data?.renderNull) {
+      return null;
+    }
+
     // Empty state
     if (!data || data.isEmpty) {
       return (
