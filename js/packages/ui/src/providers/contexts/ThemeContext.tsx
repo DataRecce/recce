@@ -27,6 +27,14 @@ export function useRecceTheme(): ThemeContextValue {
   return context;
 }
 
+/**
+ * Non-throwing version of useRecceTheme
+ * Returns null if not within RecceProvider, allowing for graceful fallbacks
+ */
+export function useRecceThemeOptional(): ThemeContextValue | null {
+  return useContext(ThemeContext);
+}
+
 interface ThemeProviderProps {
   children: ReactNode;
   defaultMode?: ThemeMode;
