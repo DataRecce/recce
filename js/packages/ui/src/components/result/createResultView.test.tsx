@@ -1566,4 +1566,68 @@ describe("createResultView", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  // ==========================================================================
+  // Grid Options Tests
+  // ==========================================================================
+
+  describe("grid options", () => {
+    it("renders grid with defaultColumnOptions specified", () => {
+      const GridOptionsView = createResultView<
+        TestGridRun,
+        never,
+        DataGridHandle
+      >({
+        displayName: "GridOptionsView",
+        typeGuard: isTestGridRun,
+        expectedRunType: "test_grid",
+        screenshotWrapper: "grid",
+        transformData: (run): ResultViewData => ({
+          columns: [{ field: "value", headerName: "Value" }],
+          rows: run.data.map((value, index) => ({ value, _index: index })),
+          defaultColumnOptions: {
+            resizable: true,
+            maxWidth: 800,
+            minWidth: 35,
+          },
+        }),
+      });
+
+      const run = createTestGridRun();
+
+      renderWithProviders(<GridOptionsView run={run} />);
+
+      // ScreenshotDataGrid should be rendered with data
+      expect(
+        screen.getByTestId("screenshot-data-grid-mock"),
+      ).toBeInTheDocument();
+    });
+
+    it("renders grid with noRowsMessage specified", () => {
+      const NoRowsMessageView = createResultView<
+        TestGridRun,
+        never,
+        DataGridHandle
+      >({
+        displayName: "NoRowsMessageView",
+        typeGuard: isTestGridRun,
+        expectedRunType: "test_grid",
+        screenshotWrapper: "grid",
+        transformData: (run): ResultViewData => ({
+          columns: [{ field: "value", headerName: "Value" }],
+          rows: run.data.map((value, index) => ({ value, _index: index })),
+          noRowsMessage: "No mismatched rows",
+        }),
+      });
+
+      const run = createTestGridRun();
+
+      renderWithProviders(<NoRowsMessageView run={run} />);
+
+      // ScreenshotDataGrid should be rendered
+      expect(
+        screen.getByTestId("screenshot-data-grid-mock"),
+      ).toBeInTheDocument();
+    });
+  });
 });

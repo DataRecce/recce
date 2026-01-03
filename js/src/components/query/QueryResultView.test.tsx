@@ -33,16 +33,31 @@ jest.mock("@/lib/dataGrid/dataGridFactory", () => ({
   createDataGrid: (...args: unknown[]) => mockCreateDataGrid(...args),
 }));
 
-// Mock ScreenshotDataGrid with our test utility mock
+// Mock ScreenshotDataGrid in BOTH locations (OSS and packages/ui)
+// This is needed because the factory imports from packages/ui
 jest.mock("@/components/data-grid/ScreenshotDataGrid", () => ({
   ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
     .screenshotDataGridMock,
   EmptyRowsRenderer: () => <div data-testid="empty-rows-renderer">No data</div>,
 }));
 
-// Mock useIsDark hook
+// Mock packages/ui ScreenshotDataGrid (used by createResultView factory)
+jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
+  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
+    .screenshotDataGridMock,
+  EmptyRowsRenderer: ({ emptyMessage }: { emptyMessage?: string }) => (
+    <div data-testid="empty-rows-renderer">{emptyMessage ?? "No rows"}</div>
+  ),
+}));
+
+// Mock useIsDark hook - declare first since it's used by multiple mocks
 const mockUseIsDark = jest.fn(() => false);
 jest.mock("@/lib/hooks/useIsDark", () => ({
+  useIsDark: () => mockUseIsDark(),
+}));
+
+// Mock packages/ui hooks
+jest.mock("@datarecce/ui/hooks", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 
@@ -276,7 +291,7 @@ describe("QueryResultView", () => {
 
       expect(() => {
         renderWithProviders(<QueryResultView run={wrongRun} />);
-      }).toThrow("run type must be query");
+      }).toThrow("Run type must be query");
 
       consoleSpy.mockRestore();
     });

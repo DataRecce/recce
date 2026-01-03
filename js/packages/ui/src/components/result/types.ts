@@ -109,6 +109,22 @@ export interface ResultViewData {
   // When true, component returns null (renders nothing)
   // Use for cases where original component returned null instead of empty state
   renderNull?: boolean;
+
+  /**
+   * Default column options for grid wrapper.
+   * Passed to ScreenshotDataGrid's defaultColumnOptions prop.
+   */
+  defaultColumnOptions?: {
+    resizable?: boolean;
+    maxWidth?: number;
+    minWidth?: number;
+  };
+
+  /**
+   * Custom message for grid's empty rows state (when rows array exists but is empty).
+   * Passed to EmptyRowsRenderer in ScreenshotDataGrid.
+   */
+  noRowsMessage?: string;
 }
 
 /**

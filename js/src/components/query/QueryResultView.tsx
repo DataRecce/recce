@@ -1,54 +1,68 @@
-import Box from "@mui/material/Box";
+import { createResultView, type ResultViewData } from "@datarecce/ui/result";
 import Button from "@mui/material/Button";
-import Stack from "@mui/material/Stack";
-import React, { forwardRef, Ref, useMemo } from "react";
-import { PiWarning } from "react-icons/pi";
-import { colors } from "@/components/ui/mui-theme";
-import { QueryViewOptions } from "@/lib/api/adhocQuery";
+import type { QueryViewOptions } from "@/lib/api/adhocQuery";
 import {
-  ColumnRenderMode,
+  type ColumnRenderMode,
   isQueryBaseRun,
   isQueryRun,
-  Run,
+  type Run,
 } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
-import { useIsDark } from "@/lib/hooks/useIsDark";
-import {
-  type DataGridHandle,
-  EmptyRowsRenderer,
-  ScreenshotDataGrid,
-} from "../data-grid/ScreenshotDataGrid";
-import { RunResultViewProps } from "../run/types";
+import type { DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 
-interface QueryResultViewProp extends RunResultViewProps<QueryViewOptions> {
-  onAddToChecklist?: (run: Run) => void;
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
+type QueryRun = Extract<Run, { type: "query" }>;
+type QueryBaseRun = Extract<Run, { type: "query_base" }>;
+
+/**
+ * Type guard for query or query_base runs.
+ * QueryResultView accepts both run types.
+ * Wrapper accepts unknown and delegates to typed guards.
+ */
+function isQueryOrQueryBaseRun(run: unknown): run is QueryRun | QueryBaseRun {
+  return isQueryRun(run as Run) || isQueryBaseRun(run as Run);
 }
 
-const PrivateQueryResultView = (
-  {
+/**
+ * QueryResultView component - displays query results in a data grid.
+ *
+ * Features:
+ * - Displays query results with column pinning support
+ * - Shows amber warning when results are truncated (limit exceeded)
+ * - Optional "Add to Checklist" button in toolbar
+ * - Supports both "query" and "query_base" run types
+ *
+ * @example
+ * ```tsx
+ * <QueryResultView
+ *   run={queryRun}
+ *   viewOptions={{ pinned_columns: ['id'] }}
+ *   onViewOptionsChanged={setViewOptions}
+ *   onAddToChecklist={(run) => addToChecklist(run)}
+ * />
+ * ```
+ */
+export const QueryResultView = createResultView<
+  QueryRun | QueryBaseRun,
+  QueryViewOptions,
+  DataGridHandle
+>({
+  displayName: "QueryResultView",
+  typeGuard: isQueryOrQueryBaseRun,
+  expectedRunType: "query",
+  screenshotWrapper: "grid",
+  emptyState: "No data",
+  transformData: (
     run,
-    viewOptions,
-    onViewOptionsChanged,
-    onAddToChecklist,
-  }: QueryResultViewProp,
-  ref: Ref<DataGridHandle>,
-) => {
-  const isDark = useIsDark();
+    { viewOptions, onViewOptionsChanged, onAddToChecklist },
+  ): ResultViewData | null => {
+    const pinnedColumns = viewOptions?.pinned_columns ?? [];
+    const columnsRenderMode = viewOptions?.columnsRenderMode ?? {};
 
-  if (!(isQueryRun(run) || isQueryBaseRun(run))) {
-    throw new Error("run type must be query");
-  }
-  const pinnedColumns = useMemo(
-    () => viewOptions?.pinned_columns ?? [],
-    [viewOptions],
-  );
-  const columnsRenderMode = useMemo(
-    () => viewOptions?.columnsRenderMode ?? {},
-    [viewOptions],
-  );
-
-  const dataframe = run.result;
-  const gridData = useMemo(() => {
+    // Create callbacks for view option changes
     const onColumnsRenderModeChanged = (
       cols: Record<string, ColumnRenderMode>,
     ) => {
@@ -72,108 +86,56 @@ const PrivateQueryResultView = (
         });
       }
     };
-    return (
-      createDataGrid(run, {
-        pinnedColumns,
-        onPinnedColumnsChange: handlePinnedColumnsChanged,
-        columnsRenderMode,
-        onColumnsRenderModeChanged,
-      }) ?? { columns: [], rows: [] }
-    );
-  }, [
-    run,
-    pinnedColumns,
-    viewOptions,
-    onViewOptionsChanged,
-    columnsRenderMode,
-  ]);
 
-  if (gridData.columns.length === 0) {
-    return (
-      <Box
-        sx={{
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+    // Build grid data using createDataGrid factory
+    const gridData = createDataGrid(run as Run, {
+      pinnedColumns,
+      onPinnedColumnsChange: handlePinnedColumnsChanged,
+      columnsRenderMode,
+      onColumnsRenderModeChanged,
+    }) ?? { columns: [], rows: [] };
+
+    // Empty state when no columns
+    if (gridData.columns.length === 0) {
+      return { isEmpty: true };
+    }
+
+    // Build warnings array
+    const dataframe = run.result;
+    const limit = dataframe ? (dataframe.limit ?? 0) : 0;
+    const warnings: string[] = [];
+    if (limit > 0 && dataframe?.more) {
+      warnings.push(
+        `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`,
+      );
+    }
+
+    // Build toolbar with "Add to Checklist" button
+    const toolbar = onAddToChecklist ? (
+      <Button
+        sx={{ my: "5px" }}
+        size="small"
+        color="iochmara"
+        variant="contained"
+        onClick={() => {
+          onAddToChecklist(run);
         }}
       >
-        No data
-      </Box>
-    );
-  }
+        Add to Checklist
+      </Button>
+    ) : undefined;
 
-  const limit = dataframe ? (dataframe.limit ?? 0) : 0;
-  const warning =
-    limit > 0 && dataframe?.more
-      ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
-      : null;
-  const showTopBar = onAddToChecklist ?? warning;
-
-  return (
-    <Stack sx={{ bgcolor: isDark ? "grey.900" : "grey.50", height: "100%" }}>
-      {showTopBar && (
-        <Stack
-          direction="row"
-          sx={{
-            borderBottom: "1px solid",
-            borderBottomColor: "divider",
-            alignItems: "center",
-            gap: "5px",
-            px: "10px",
-            bgcolor: warning
-              ? isDark
-                ? colors.amber[900]
-                : colors.amber[100]
-              : "inherit",
-            color: warning
-              ? isDark
-                ? colors.amber[200]
-                : colors.amber[800]
-              : "inherit",
-          }}
-        >
-          {warning && (
-            <>
-              <PiWarning
-                color={isDark ? colors.amber[400] : colors.amber[600]}
-                style={{ alignSelf: "center" }}
-              />{" "}
-              <Box>{warning}</Box>
-            </>
-          )}
-
-          <Box sx={{ flexGrow: 1, minHeight: "32px" }} />
-          {onAddToChecklist && (
-            <Button
-              sx={{ my: "5px" }}
-              size="small"
-              color="iochmara"
-              variant="contained"
-              onClick={() => {
-                onAddToChecklist(run);
-              }}
-            >
-              Add to Checklist
-            </Button>
-          )}
-        </Stack>
-      )}
-      <ScreenshotDataGrid
-        ref={ref}
-        style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
-        columns={gridData.columns}
-        rows={gridData.rows}
-        renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
-        defaultColumnOptions={{
-          resizable: true,
-          maxWidth: 800,
-          minWidth: 35,
-        }}
-        className={isDark ? "rdg-dark" : "rdg-light"}
-      />
-    </Stack>
-  );
-};
-
-export const QueryResultView = forwardRef(PrivateQueryResultView);
+    return {
+      columns: gridData.columns,
+      rows: gridData.rows,
+      warnings: warnings.length > 0 ? warnings : undefined,
+      warningStyle: "amber",
+      toolbar,
+      defaultColumnOptions: {
+        resizable: true,
+        maxWidth: 800,
+        minWidth: 35,
+      },
+    };
+  },
+});

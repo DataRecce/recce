@@ -275,7 +275,12 @@ export function createResultView<
             }}
             columns={(data.columns ?? []) as never}
             rows={(data.rows ?? []) as never}
-            renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
+            renderers={{
+              noRowsFallback: (
+                <EmptyRowsRenderer emptyMessage={data.noRowsMessage} />
+              ),
+            }}
+            defaultColumnOptions={data.defaultColumnOptions}
           />
           {data.footer}
         </Box>
