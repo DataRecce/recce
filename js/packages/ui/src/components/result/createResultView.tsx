@@ -1,7 +1,8 @@
 "use client";
 
+import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
-import { forwardRef, type Ref, useMemo } from "react";
+import { forwardRef, type ReactNode, type Ref, useMemo } from "react";
 
 import { useIsDark } from "../../hooks";
 import {
@@ -15,6 +16,51 @@ import type {
   ResultViewConfig,
   ResultViewRef,
 } from "./types";
+
+/**
+ * Toolbar area component for ResultView.
+ * Renders warnings on the left, spacer, and toolbar controls on the right.
+ */
+function ToolbarArea({
+  toolbar,
+  warnings,
+  isDark,
+}: {
+  toolbar?: ReactNode;
+  warnings?: string[];
+  isDark: boolean;
+}) {
+  if (!toolbar && (!warnings || warnings.length === 0)) {
+    return null;
+  }
+
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 1,
+        px: 1,
+        py: 0.5,
+        borderBottom: 1,
+        borderColor: "divider",
+        bgcolor: isDark ? "grey.900" : "grey.50",
+      }}
+    >
+      {warnings?.map((warning) => (
+        <Alert
+          key={warning}
+          severity="warning"
+          sx={{ py: 0, fontSize: "0.75rem" }}
+        >
+          {warning}
+        </Alert>
+      ))}
+      <Box sx={{ flex: 1 }} />
+      {toolbar}
+    </Box>
+  );
+}
 
 /**
  * Factory function to create type-safe ResultView components
@@ -57,6 +103,7 @@ export function createResultView<
       run,
       viewOptions,
       onViewOptionsChanged,
+      onAddToChecklist,
     }: CreatedResultViewProps<TViewOptions>,
     ref: Ref<TRef>,
   ) {
@@ -69,8 +116,13 @@ export function createResultView<
 
     // Transform data - memoized for performance (must be called before conditional returns)
     const data = useMemo(
-      () => transformData(run, { viewOptions, onViewOptionsChanged }),
-      [run, viewOptions, onViewOptionsChanged],
+      () =>
+        transformData(run, {
+          viewOptions,
+          onViewOptionsChanged,
+          onAddToChecklist,
+        }),
+      [run, viewOptions, onViewOptionsChanged, onAddToChecklist],
     );
 
     // Check conditional empty state
@@ -118,6 +170,11 @@ export function createResultView<
       return (
         <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
           {data.header}
+          <ToolbarArea
+            toolbar={data.toolbar}
+            warnings={data.warnings}
+            isDark={isDark}
+          />
           <ScreenshotDataGrid
             ref={ref as Ref<DataGridHandle>}
             style={{
@@ -140,6 +197,11 @@ export function createResultView<
     return (
       <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
         {data.header}
+        <ToolbarArea
+          toolbar={data.toolbar}
+          warnings={data.warnings}
+          isDark={isDark}
+        />
         <ScreenshotBox
           ref={ref as Ref<HTMLDivElement>}
           height="100%"
