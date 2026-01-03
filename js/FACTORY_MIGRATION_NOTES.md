@@ -1,105 +1,43 @@
 # ResultView Factory Migration Notes
 
-## Migration Status
+## Migration Status Summary
 
-### Phase 2 - Component Migrations
+| Component | Status | Reason |
+|-----------|--------|--------|
+| RowCountDiffResultView | COMPLETE | Simple grid |
+| HistogramDiffResultView | COMPLETE | Simple chart |
+| ValueDiffResultView | COMPLETE | Uses header support |
+| TopKDiffResultView | KEEP MANUAL | Local state toggle |
+| QueryResultView | KEEP MANUAL | Extra props (`onAddToChecklist`) |
+| QueryDiffResultView | KEEP MANUAL | Extra props + complex branching logic |
+| ProfileDiffResultView | Not assessed | TBD |
+| SchemaDiffResultView | Not assessed | TBD |
 
-#### Task 2.1: RowCountDiffResultView - ✅ COMPLETE
+---
+
+## Phase 2 - Component Migrations
+
+### Task 2.1: RowCountDiffResultView - COMPLETE
 - Migrated successfully using `screenshotWrapper: "grid"`
 - Simple grid rendering with no additional UI
 - All 13 tests passing
 
-#### Task 2.3: HistogramDiffResultView - ✅ COMPLETE
+### Task 2.3: HistogramDiffResultView - COMPLETE
 - Migrated successfully using `screenshotWrapper: "box"`
 - Simple chart rendering with no additional UI outside ScreenshotBox
 - Loading state handled via `conditionalEmptyState`
 - All 21 tests passing
 
-#### Task 2.4: TopKDiffResultView - ⏸️ BLOCKED
-
-**Status:** Cannot migrate with current factory API
-
-**Reason:** Component has local state AND content OUTSIDE the ScreenshotBox.
-
-**Current Implementation:**
-```tsx
-<Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-  <ScreenshotBox ref={ref}>
-    <Typography>Model {params.model}.{params.column_name}</Typography>
-    <TopKSummaryBarChart isDisplayTopTen={isDisplayTopTen} />
-  </ScreenshotBox>
-  <Box sx={{ flex: 1 }} />
-  {/* Toggle link OUTSIDE ScreenshotBox */}
-  {showToggle && (
-    <Link onClick={() => setIsDisplayTopTen(!isDisplayTopTen)}>
-      {isDisplayTopTen ? "View More Items" : "View Only Top-10"}
-    </Link>
-  )}
-</Box>
-```
-
-**Factory Limitations:**
-1. **Local State:** The factory's `transformData` is called once per render cycle. The `isDisplayTopTen` toggle requires `useState` inside the component, which the factory pattern doesn't support.
-2. **Footer Content:** The toggle link is rendered OUTSIDE the ScreenshotBox, after a spacer. The factory wraps all content inside ScreenshotBox for "box" wrappers.
-3. **No Type Guard:** Component lacks explicit type guard (crashes on wrong type instead of throwing validation error).
-
-**What's Needed for Migration:**
-
-1. **Footer support in ResultViewData** (same as ValueDiffResultView):
-```typescript
-export interface ResultViewData {
-  // ... existing fields
-  footer?: ReactNode;  // Rendered OUTSIDE ScreenshotBox
-}
-```
-
-2. **State callback or render prop pattern** for local component state:
-```typescript
-export interface ResultViewConfig {
-  // ... existing fields
-  renderContent?: (props: {
-    run: TRun;
-    viewOptions?: TViewOptions;
-    localState: any;
-    setLocalState: (state: any) => void;
-  }) => ResultViewData;
-}
-```
-
-**Alternative:** Keep TopKDiffResultView as manual implementation due to the state complexity. The local toggle state pattern is unique to this component.
+### Task 2.2: ValueDiffResultView - COMPLETE
+- Migrated successfully after Phase 3 header/footer support was added
+- Uses `header` field in `ResultViewData` for summary display
+- Factory renders header above the grid automatically
 
 ---
 
-#### Task 2.2: ValueDiffResultView - ⏸️ BLOCKED
+## Phase 3 - Factory Enhancement: Header/Footer Support - COMPLETE
 
-**Status:** Cannot migrate with current factory API
-
-**Reason:** Component requires a summary header BEFORE the grid that the factory doesn't support.
-
-**Current Implementation:**
-```tsx
-<Box>
-  <Box sx={{ px: "16px" }}>
-    Model: {params.model}, {result.summary.total} total (
-    {common} common, {added} added, {removed} removed)
-  </Box>
-
-  <Box sx={{ borderTop, borderBottom }}>
-    <ScreenshotDataGrid ... />
-  </Box>
-</Box>
-```
-
-**Factory Limitation:**
-The factory's `screenshotWrapper: "grid"` option (lines 112-129 in createResultView.tsx) renders the grid directly without any provision for:
-- Header content above the grid
-- Footer content below the grid
-- Custom container styling around the grid
-
-**What's Needed for Migration:**
-
-### Option A: Extend ResultViewData (Recommended)
-Add optional header/footer fields to `ResultViewData`:
+Header and footer support was added to the factory's `ResultViewData` interface:
 
 ```typescript
 export interface ResultViewData {
@@ -107,86 +45,158 @@ export interface ResultViewData {
   rows?: unknown[];
   content?: ReactNode;
   isEmpty?: boolean;
+  renderNull?: boolean;
 
-  // NEW: Support for headers/footers
-  header?: ReactNode;      // Rendered above grid/content
-  footer?: ReactNode;      // Rendered below grid/content
-  containerSx?: SxProps;   // Custom styling for wrapper
+  // Phase 3 additions
+  header?: ReactNode;   // Rendered above grid/content
+  footer?: ReactNode;   // Rendered below grid/content
 }
 ```
 
-Then in createResultView.tsx:
+The factory's grid wrapper now handles these fields automatically when `screenshotWrapper: "grid"` is used.
+
+---
+
+## Components Kept Manual
+
+### Task 2.4: TopKDiffResultView - KEEP MANUAL
+
+**Status:** Will not migrate - local state pattern incompatible with factory
+
+**Reason:** Component uses `useState` for toggle, which is fundamentally different from the factory's stateless `transformData` pattern.
+
+**Assessment (2026-01-03):**
+- Footer support was added to the factory
+- However, the `isDisplayTopTen` toggle requires local component state
+- The factory's `transformData` is a pure function called on each render
+- Adding state callbacks/render props would over-complicate the factory for one component
+
+**Decision:** Keep TopKDiffResultView as manual implementation. The cost of adding local state support to the factory outweighs the benefit for a single component.
+
+**Could migrate if:**
+- Toggle was moved to `viewOptions` prop (externalized state)
+- But this would require parent component changes
+
+---
+
+### Task 2.5: QueryResultView - KEEP MANUAL
+
+**Status:** Will not migrate - extra props incompatible with factory pattern
+
+**Assessment (2026-01-03):**
+
+**Reason:** Component requires an `onAddToChecklist` callback prop that is not part of the standard `RunResultViewProps`. The factory's `transformData` function only receives the run object and cannot access additional component props.
+
+**Current Implementation Details:**
+- Type guard accepts BOTH `query` AND `query_base` run types
+- Extra prop: `onAddToChecklist?: (run: Run) => void`
+- Header bar with conditional warning (when `limit > 0 && dataframe?.more`)
+- Header bar with "Add to Checklist" button (when `onAddToChecklist` provided)
+- Uses `createDataGrid` for column/row generation
+- ViewOptions: `pinned_columns`, `columnsRenderMode`
+
+**Why Factory Cannot Support This:**
 ```tsx
-if (screenshotWrapper === "grid") {
-  return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%", ...data.containerSx }}>
-      {data.header}
-      <Box sx={{ flex: 1, minHeight: 0, overflow: "auto" }}>
-        <ScreenshotDataGrid ... />
-      </Box>
-      {data.footer}
-    </Box>
-  );
+// QueryResultView extends RunResultViewProps with extra prop
+interface QueryResultViewProp extends RunResultViewProps<QueryViewOptions> {
+  onAddToChecklist?: (run: Run) => void;  // <-- Not available in factory
 }
 ```
 
-### Option B: New Wrapper Type
-Add a new `screenshotWrapper: "grid-with-header"` option:
-
+The factory's `transformData` signature is:
 ```typescript
-export type ScreenshotWrapperType = "grid" | "box" | "grid-with-header";
+transformData(run: R, viewOptions?: V): ResultViewData | null
 ```
 
-Then handle this case separately in createResultView.tsx.
+The `onAddToChecklist` callback cannot be passed through this interface because:
+1. `transformData` is a pure data transformation function
+2. Callbacks in headers need access to the full component props
+3. The factory would need significant restructuring to support arbitrary extra props
 
-**Cons:** Less flexible, would need more variants for other layouts.
+**Decision:** Keep QueryResultView as manual implementation. The header requires the `onAddToChecklist` callback which isn't accessible from `transformData`.
 
-### Option C: Keep Manual (Current Approach)
-Don't migrate ValueDiffResultView yet. Document it as requiring Phase 3 enhancement.
+---
 
-**Pros:**
-- No factory changes needed now
-- Component continues working as-is
-- Clear signal of what features are missing
+### Task 2.6: QueryDiffResultView - KEEP MANUAL
 
-**Cons:**
-- Less code reuse
-- Component doesn't benefit from factory patterns
+**Status:** Will not migrate - extra props + complex branching logic
 
-## Recommendation
+**Assessment (2026-01-03):**
 
-Implement **Option A** in Phase 3. This provides maximum flexibility for:
-- ValueDiffResultView (summary header)
-- Future components that need toolbars
-- Components with pagination controls
-- Components with action buttons above/below content
+**Reason:** Multiple factors make this component unsuitable for factory migration:
 
-Until then, ValueDiffResultView should remain manually implemented.
+1. **Extra Props:** Same issue as QueryResultView
+   ```tsx
+   export interface QueryDiffResultViewProps extends RunResultViewProps<QueryDiffViewOptions> {
+     onAddToChecklist?: (run: Run) => void;  // Extra callback
+     baseTitle?: string;                      // Extra display prop
+     currentTitle?: string;                   // Extra display prop
+   }
+   ```
 
-## Other Components to Assess
+2. **Complex Branching:** Component renders different sub-views based on result structure
+   - `QueryDiffResultViewWithRef` - for base/current comparison
+   - `QueryDiffJoinResultViewWithRef` - for joined diff results
+   - Branch decision: `"diff" in props.run.result && props.run.result.diff != null`
 
-The following components may have similar requirements:
-- [ ] ProfileDiffResultView - May have filters/controls
-- [ ] QueryResultView - May have SQL display
-- [ ] TopKDiffResultView - May have sorting controls
-- [ ] SchemaDiffResultView - May have filters
+3. **Dynamic Title Logic:** Titles are computed based on run params
+   ```tsx
+   if (props.run.params?.current_model) {
+     baseTitle = "Original";
+     currentTitle = "Editor";
+   }
+   ```
 
-Each should be assessed for header/footer needs before migration attempts.
+4. **Complex Toolbar:** Uses `RunToolbar` with:
+   - `DiffDisplayModeSwitch` component
+   - `ChangedOnlyCheckbox` component
+   - Dynamic warning messages (primary key validity, limit warnings)
 
-## Testing Requirements for Phase 3
+**Decision:** Keep QueryDiffResultView as manual implementation. The complexity of branching logic and extra props would require extensive factory modifications.
 
-When implementing header/footer support:
-1. Verify header renders above grid
-2. Verify footer renders below grid
-3. Verify grid sizing with fixed headers (flex: 1, minHeight: 0)
-4. Verify screenshot capture includes header+grid
-5. Verify empty state behavior with headers
-6. Verify ref forwarding still works with grid
-7. Test with various header content types (text, buttons, filters)
+---
+
+## Components Not Yet Assessed
+
+The following components have not been evaluated for factory migration:
+
+- [ ] **ProfileDiffResultView** - May have filters/controls
+- [ ] **SchemaDiffResultView** - May have filters
+
+Each should be assessed for:
+1. Extra props beyond standard `RunResultViewProps`
+2. Local state requirements
+3. Complex conditional rendering
+4. Custom header/footer with callbacks
+
+---
+
+## Testing Requirements
+
+When migrating components to the factory:
+1. Verify type guard correctly identifies run type
+2. Verify header renders above grid (if applicable)
+3. Verify footer renders below grid (if applicable)
+4. Verify grid sizing with fixed headers (flex: 1, minHeight: 0)
+5. Verify screenshot capture includes header+grid
+6. Verify empty state behavior
+7. Verify ref forwarding still works with grid
+8. Test with various content types
+
+---
 
 ## Related Files
 
-- Factory: `/js/packages/ui/src/components/result/createResultView.tsx`
-- Types: `/js/packages/ui/src/components/result/types.ts`
-- ValueDiff: `/js/src/components/valuediff/ValueDiffResultView.tsx`
-- RowCount: `/js/src/components/rowcount/RowCountDiffResultView.tsx` (example of successful migration)
+**Factory:**
+- `/js/packages/ui/src/components/result/createResultView.tsx`
+- `/js/packages/ui/src/components/result/types.ts`
+
+**Migrated Components:**
+- `/js/src/components/rowcount/RowCountDiffResultView.tsx`
+- `/js/src/components/histogram/HistogramDiffResultView.tsx`
+- `/js/src/components/valuediff/ValueDiffResultView.tsx`
+
+**Manual Components (kept):**
+- `/js/src/components/topkdiff/TopKDiffResultView.tsx`
+- `/js/src/components/query/QueryResultView.tsx`
+- `/js/src/components/query/QueryDiffResultView.tsx`
