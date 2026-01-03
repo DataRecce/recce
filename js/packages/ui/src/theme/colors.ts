@@ -199,29 +199,29 @@ export const colors = {
    * Semantic colors for status indicators
    */
   success: {
-    light: "#86EFAC",
-    main: "#22C55E",
-    dark: "#15803D",
+    main: "#22C55E", // green[500]
+    light: "#4ADE80", // green[400],
+    dark: "#16A34A", // green[600],
     contrastText: "#ffffff",
   },
 
   warning: {
-    light: "#FCD34D",
-    main: "#F59E0B",
-    dark: "#B45309",
+    main: "#EAB308", // amber[500],
+    light: "#FACC15", // amber[400],
+    dark: "#CA8A04", // amber[600],
     contrastText: "#000000",
   },
 
   error: {
-    light: "#FCA5A5",
-    main: "#EF4444",
-    dark: "#B91C1C",
+    main: "#EF4444", // red[500],
+    light: "#F87171", // red[400],
+    dark: "#DC2626", // red[600],
     contrastText: "#ffffff",
   },
 
   info: {
-    light: "#79B0E2",
     main: "#3182CE",
+    light: "#79B0E2",
     dark: "#225581",
     contrastText: "#ffffff",
   },
