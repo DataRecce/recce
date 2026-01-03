@@ -14,6 +14,14 @@ export type ResultViewRef = DataGridHandle | HTMLDivElement;
 export type ScreenshotWrapperType = "grid" | "box";
 
 /**
+ * Warning display styles for the toolbar area.
+ *
+ * - 'alert': MUI Alert with severity="warning" (default)
+ * - 'amber': Amber-colored inline warning with icon (matches QueryResultView pattern)
+ */
+export type WarningStyle = "alert" | "amber";
+
+/**
  * Base props for all ResultView components
  */
 export interface ResultViewProps<TViewOptions = unknown> {
@@ -68,6 +76,13 @@ export interface ResultViewData {
   content?: ReactNode;
   isEmpty?: boolean;
 
+  /**
+   * Custom empty message to show when isEmpty is true.
+   * When provided along with toolbar/warnings, shows toolbar above this message.
+   * Enables "toolbar-in-empty-state" pattern for components like ValueDiffDetailResultView.
+   */
+  emptyMessage?: ReactNode;
+
   // Header/Footer support for additional content above/below main content
   header?: ReactNode; // Rendered ABOVE grid/content, inside outer Box
   footer?: ReactNode; // Rendered BELOW grid/content, outside ScreenshotBox
@@ -83,6 +98,13 @@ export interface ResultViewData {
    * Renders as alert chips on the left side.
    */
   warnings?: string[];
+
+  /**
+   * Style for rendering warnings.
+   * - 'alert' (default): MUI Alert with severity="warning"
+   * - 'amber': Amber-colored inline warning with icon (like QueryResultView)
+   */
+  warningStyle?: WarningStyle;
 
   // When true, component returns null (renders nothing)
   // Use for cases where original component returned null instead of empty state

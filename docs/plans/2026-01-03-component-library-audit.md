@@ -204,10 +204,10 @@ Ten components follow an **identical structural pattern**:
 - ✅ Toolbar slot (ReactNode)
 - ✅ Warnings array (string[])
 - ✅ onAddToChecklist callback
+- ✅ Toolbar-in-empty-state (emptyMessage + toolbar renders together)
+- ✅ Custom warning styling (warningStyle: 'alert' | 'amber')
 
 **Remaining Gaps:**
-- ❌ Toolbar-in-empty-state (ValueDiffDetailResultView needs this)
-- ❌ Custom warning styling (QueryResultView uses amber background)
 - ❌ Local useState support (TopKDiffResultView needs this)
 
 **See:** [Factory Toolbar Extension Plan](./2026-01-03-factory-toolbar-extension.md)
@@ -299,3 +299,5 @@ Ten components follow an **identical structural pattern**:
 | 2026-01-03 | Factory toolbar extension complete | Added toolbar slot, warnings array, onAddToChecklist callback with 10 new tests |
 | 2026-01-03 | Defer ValueDiffDetailResultView | Shows toolbar in "No change" empty state - factory doesn't support toolbar-in-empty-state |
 | 2026-01-03 | Defer QueryResultView | Uses custom amber background for warnings - different from factory's MUI Alert |
+| 2026-01-03 | Add toolbar-in-empty-state to factory | Added emptyMessage to ResultViewData, factory renders toolbar above emptyMessage when isEmpty + toolbar/warnings present. 6 new tests added. |
+| 2026-01-03 | Add custom warning styling to factory | Added warningStyle: 'alert' \| 'amber' to ResultViewData, amber style uses PiWarning icon with amber colors. 6 new tests added. |
