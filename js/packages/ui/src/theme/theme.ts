@@ -74,7 +74,7 @@ function createButtonColorVariants<T extends CustomColorName>(
         // && increases specificity to override MUI's default outlined styles
         "&&": {
           borderColor: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
-          color: `var(--mui-palette-${colorName}-light, ${colorScale[500]})`,
+          color: `var(--mui-palette-${colorName}-dark, ${colorScale[600]})`,
         },
         "&:hover": {
           borderColor: `var(--mui-palette-${colorName}-dark, ${colorScale[600]})`,
@@ -88,7 +88,7 @@ function createButtonColorVariants<T extends CustomColorName>(
       style: {
         // && increases specificity to override MUI's default text styles
         "&&": {
-          color: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+          color: `var(--mui-palette-${colorName}-dark, ${colorScale[600]})`,
         },
         "&:hover": {
           backgroundColor: `color-mix(in srgb, var(--mui-palette-${colorName}-light, ${colorScale[50]}) 30%, transparent)`,
@@ -131,7 +131,7 @@ function createChipColorVariants<T extends CustomColorName>(
         // && increases specificity to override MUI's default outlined styles
         "&&": {
           borderColor: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
-          color: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+          color: `var(--mui-palette-${colorName}-dark, ${colorScale[600]})`,
         },
         "&:hover": {
           backgroundColor: `color-mix(in srgb, var(--mui-palette-${colorName}-light, ${colorScale[50]}) 25%, transparent)`,
@@ -752,55 +752,55 @@ export const theme = createTheme({
         brand: {
           light: colors.brand[400],
           main: colors.brand[500],
-          dark: colors.brand[700],
+          dark: colors.brand[600],
           contrastText: "#ffffff",
         },
         iochmara: {
           light: colors.iochmara[400],
           main: colors.iochmara[500],
-          dark: colors.iochmara[700],
+          dark: colors.iochmara[600],
           contrastText: "#ffffff",
         },
         cyan: {
           main: colors.cyan[500],
           light: colors.cyan[300],
-          dark: colors.cyan[700],
+          dark: colors.cyan[600],
           contrastText: "#ffffff",
         },
         amber: {
           main: colors.amber[500],
           light: colors.amber[300],
-          dark: colors.amber[700],
+          dark: colors.amber[600],
           contrastText: "#ffffff",
         },
         green: {
           main: colors.green[500],
           light: colors.green[300],
-          dark: colors.green[700],
+          dark: colors.green[600],
           contrastText: "#ffffff",
         },
         red: {
           main: colors.red[500],
           light: colors.red[300],
-          dark: colors.red[700],
+          dark: colors.red[600],
           contrastText: "#ffffff",
         },
         rose: {
           main: colors.rose[500],
           light: colors.rose[300],
-          dark: colors.rose[700],
+          dark: colors.rose[600],
           contrastText: "#ffffff",
         },
         fuchsia: {
           main: colors.fuchsia[500],
           light: colors.fuchsia[300],
-          dark: colors.fuchsia[700],
+          dark: colors.fuchsia[600],
           contrastText: "#ffffff",
         },
         neutral: {
-          main: colors.neutral[300],
-          light: colors.neutral[900],
-          dark: colors.neutral[100],
+          main: colors.neutral[500],
+          light: colors.neutral[300],
+          dark: colors.neutral[600],
           contrastText: "#ffffff",
         },
         grey: colors.neutral, // Color scale (50, 100, etc.) - MUI's built-in grey
@@ -885,9 +885,9 @@ export const theme = createTheme({
         },
         neutral: {
           main: colors.neutral[500],
-          light: colors.neutral[100],
-          dark: colors.neutral[700],
-          contrastText: "#FFFFFF",
+          light: colors.neutral[400],
+          dark: colors.neutral[100],
+          contrastText: "#ffffff",
         },
         grey: colors.neutral, // Color scale (50, 100, etc.) - MUI's built-in grey
         success: {
@@ -915,15 +915,15 @@ export const theme = createTheme({
           contrastText: "#ffffff",
         },
         background: {
-          default: colors.neutral[950],
-          paper: colors.neutral[900],
+          default: colors.neutral[900],
+          paper: colors.neutral[800],
         },
         text: {
           primary: colors.neutral[50],
           secondary: colors.neutral[400],
           disabled: colors.neutral[600],
         },
-        divider: colors.neutral[800],
+        divider: colors.neutral[700],
       },
     },
   },
