@@ -90,10 +90,14 @@ export const screenshotBoxMock = React.forwardRef<
 
 /**
  * Mock DataGridHandle for ref testing
+ * Matches the real DataGridHandle interface from @datarecce/ui
  */
 export interface MockDataGridHandle {
-  getScreenshotElement: jest.Mock<HTMLDivElement | null>;
-  exportToClipboard: jest.Mock<Promise<void>>;
+  api: unknown | null;
+  element: HTMLElement | null;
+  // Legacy methods (kept for backward compatibility with existing tests)
+  getScreenshotElement?: jest.Mock<HTMLDivElement | null>;
+  exportToClipboard?: jest.Mock<Promise<void>>;
 }
 
 /**
@@ -109,8 +113,11 @@ export const screenshotDataGridMock = React.forwardRef<
     [key: string]: unknown;
   }
 >(function MockScreenshotDataGrid({ columns, rows, ...props }, ref) {
-  // Expose mock methods via ref
+  // Expose mock methods via ref (matching DataGridHandle interface)
   React.useImperativeHandle(ref, () => ({
+    api: null,
+    element: null,
+    // Legacy methods for backward compatibility
     getScreenshotElement: jest.fn(() => null),
     exportToClipboard: jest.fn(() => Promise.resolve()),
   }));
