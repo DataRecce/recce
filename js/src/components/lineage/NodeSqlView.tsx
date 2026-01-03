@@ -3,11 +3,11 @@ import MuiDialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
-import { useTheme } from "@mui/material/styles";
-import React, { useState } from "react";
+import { useState } from "react";
 import { FaExpandArrowsAlt } from "react-icons/fa";
 import { IoClose } from "react-icons/io5";
 import { CodeEditor, DiffEditor } from "@/components/editor";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { LineageGraphNode } from "./lineage";
 
@@ -19,8 +19,7 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const { data: flags, isLoading } = useRecceServerFlag();
-  const muiTheme = useTheme();
-  const isDark = muiTheme.palette.mode === "dark";
+  const isDark = useIsDark();
   const isSingleEnvOnboarding = flags?.single_env_onboarding;
 
   if (isLoading) {

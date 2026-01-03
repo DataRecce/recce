@@ -14,6 +14,10 @@ const customJestConfig = {
     "^@/(.*)$": "<rootDir>/src/$1",
     "^@theme/(.*)$": "<rootDir>/theme/$1",
     "^app/(.*)$": "<rootDir>/app/$1",
+    // Workspace packages - specific subpaths first, then catch-all
+    "^@datarecce/ui/result$": "<rootDir>/packages/ui/src/result.ts",
+    "^@datarecce/ui$": "<rootDir>/packages/ui/src/index.ts",
+    "^@datarecce/ui/(.*)$": "<rootDir>/packages/ui/src/$1",
   },
   // Test file patterns
   testMatch: ["**/__tests__/**/*.[jt]s?(x)", "**/?(*.)+(spec|test).[jt]s?(x)"],

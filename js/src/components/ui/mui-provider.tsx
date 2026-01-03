@@ -3,8 +3,8 @@
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import { useTheme } from "next-themes";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
-import { darkTheme, lightTheme } from "./mui-theme";
+import { type ReactNode, useEffect } from "react";
+import { lightTheme } from "./mui-theme";
 
 interface MuiProviderProps {
   children: ReactNode;
@@ -23,8 +23,8 @@ interface MuiProviderProps {
  * MUI Theme Provider for Recce
  *
  * This provider integrates MUI theming with the existing next-themes
- * color mode system used by Chakra UI. During the migration period,
- * both Chakra and MUI components will share the same theme mode.
+ * color mode system used by Chakra UI. MUI 7 CSS Variables mode is used,
+ * which responds to the `.dark` class on document.documentElement.
  *
  * Usage:
  * ```tsx
@@ -39,25 +39,20 @@ export function MuiProvider({
   enableCssBaseline = false,
 }: MuiProviderProps) {
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
 
-  // Avoid hydration mismatch - next-themes resolvedTheme is undefined on server
+  // Toggle .dark class on document.documentElement for CSS Variables mode
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Determine which theme to use
-  // Use light theme during SSR/hydration to match server render
-  const theme = useMemo(() => {
-    if (!mounted) {
-      return lightTheme;
-    }
     const mode = forcedTheme ?? resolvedTheme;
-    return mode === "dark" ? darkTheme : lightTheme;
-  }, [forcedTheme, resolvedTheme, mounted]);
+    if (mode === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [forcedTheme, resolvedTheme]);
 
+  // Use single theme - CSS Variables mode handles light/dark via .dark class
   return (
-    <MuiThemeProvider theme={theme}>
+    <MuiThemeProvider theme={lightTheme}>
       {enableCssBaseline && <CssBaseline />}
       {children}
     </MuiThemeProvider>

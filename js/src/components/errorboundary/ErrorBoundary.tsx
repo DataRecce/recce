@@ -7,13 +7,26 @@ import {
 } from "@sentry/react";
 import * as React from "react";
 import { ReactNode, useState } from "react";
+import { useThemeColors } from "@/lib/hooks/useThemeColors";
 
-const Fallback: FallbackRender = (errorData) => {
+/**
+ * Fallback component that renders when an error is caught.
+ * Uses useThemeColors for theme-aware styling.
+ */
+function FallbackComponent({
+  error,
+  resetError,
+}: {
+  error: Error;
+  resetError: () => void;
+}) {
+  const { background, text } = useThemeColors();
+
   return (
     <Box
       sx={{
         height: "100%",
-        bgcolor: "grey.50",
+        bgcolor: background.subtle,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -35,7 +48,9 @@ const Fallback: FallbackRender = (errorData) => {
           You have encountered an error
         </Typography>
 
-        <Box sx={{ flex: 1, fontSize: "10pt" }}>{String(errorData.error)}</Box>
+        <Box sx={{ flex: 1, fontSize: "10pt", color: text.secondary }}>
+          {String(error)}
+        </Box>
 
         <Button
           sx={{
@@ -46,14 +61,24 @@ const Fallback: FallbackRender = (errorData) => {
           color="iochmara"
           variant="contained"
           size="small"
-          onClick={() => {
-            errorData.resetError();
-          }}
+          onClick={resetError}
         >
           Reset
         </Button>
       </Box>
     </Box>
+  );
+}
+
+/**
+ * Wrapper function that converts the component to Sentry's FallbackRender format.
+ */
+const Fallback: FallbackRender = (errorData) => {
+  return (
+    <FallbackComponent
+      error={errorData.error as Error}
+      resetError={errorData.resetError}
+    />
   );
 };
 

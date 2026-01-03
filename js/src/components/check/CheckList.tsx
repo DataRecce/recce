@@ -15,7 +15,6 @@ import Divider from "@mui/material/Divider";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -28,6 +27,7 @@ import { Check, updateCheck } from "@/lib/api/checks";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
+import { useIsDark } from "@/lib/hooks/useIsDark";
 import { useRun } from "@/lib/hooks/useRun";
 import { findByRunType } from "../run/registry";
 
@@ -42,8 +42,7 @@ const ChecklistItem = ({
   onSelect: (checkId: string) => void;
   onMarkAsApproved: (checkId: string) => void;
 }) => {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   const { featureToggles } = useRecceInstanceContext();
   const queryClient = useQueryClient();
   const { apiClient } = useApiConfig();
