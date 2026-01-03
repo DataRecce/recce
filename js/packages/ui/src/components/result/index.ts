@@ -9,4 +9,5 @@ export type {
   ResultViewRef,
   ResultViewTransformOptions,
   ScreenshotWrapperType,
+  WarningStyle,
 } from "./types";

@@ -1071,6 +1071,389 @@ describe("createResultView", () => {
   });
 
   // ==========================================================================
+  // Warning Style Tests
+  // ==========================================================================
+
+  describe("warning style", () => {
+    describe("amber style", () => {
+      it("renders amber-styled warning instead of MUI Alert", () => {
+        const AmberWarningGridView = createResultView<
+          TestGridRun,
+          never,
+          DataGridHandle
+        >({
+          displayName: "AmberWarningGridView",
+          typeGuard: isTestGridRun,
+          expectedRunType: "test_grid",
+          screenshotWrapper: "grid",
+          transformData: (run): ResultViewData => ({
+            columns: [{ field: "value", headerName: "Value" }],
+            rows: run.data.map((value, index) => ({ value, _index: index })),
+            warnings: ["Amber warning message"],
+            warningStyle: "amber",
+          }),
+        });
+
+        const run = createTestGridRun();
+
+        renderWithProviders(<AmberWarningGridView run={run} />);
+
+        // Warning text should be rendered
+        expect(screen.getByText("Amber warning message")).toBeInTheDocument();
+
+        // Should NOT render MUI Alert (no role="alert")
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+        // Grid should be rendered
+        expect(
+          screen.getByTestId("screenshot-data-grid-mock"),
+        ).toBeInTheDocument();
+      });
+
+      it("renders multiple amber warnings", () => {
+        const MultiAmberWarningView = createResultView<
+          TestGridRun,
+          never,
+          DataGridHandle
+        >({
+          displayName: "MultiAmberWarningView",
+          typeGuard: isTestGridRun,
+          expectedRunType: "test_grid",
+          screenshotWrapper: "grid",
+          transformData: (run): ResultViewData => ({
+            columns: [{ field: "value", headerName: "Value" }],
+            rows: run.data.map((value, index) => ({ value, _index: index })),
+            warnings: ["First amber warning", "Second amber warning"],
+            warningStyle: "amber",
+          }),
+        });
+
+        const run = createTestGridRun();
+
+        renderWithProviders(<MultiAmberWarningView run={run} />);
+
+        // Both warnings should be rendered
+        expect(screen.getByText("First amber warning")).toBeInTheDocument();
+        expect(screen.getByText("Second amber warning")).toBeInTheDocument();
+
+        // Should NOT render MUI Alerts
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      });
+
+      it("renders amber warnings with toolbar", () => {
+        const AmberWithToolbarView = createResultView<
+          TestGridRun,
+          never,
+          DataGridHandle
+        >({
+          displayName: "AmberWithToolbarView",
+          typeGuard: isTestGridRun,
+          expectedRunType: "test_grid",
+          screenshotWrapper: "grid",
+          transformData: (run): ResultViewData => ({
+            columns: [{ field: "value", headerName: "Value" }],
+            rows: run.data.map((value, index) => ({ value, _index: index })),
+            warnings: ["Amber warning"],
+            warningStyle: "amber",
+            toolbar: <button data-testid="amber-toolbar-btn">Toolbar</button>,
+          }),
+        });
+
+        const run = createTestGridRun();
+
+        renderWithProviders(<AmberWithToolbarView run={run} />);
+
+        // Warning and toolbar should both be rendered
+        expect(screen.getByText("Amber warning")).toBeInTheDocument();
+        expect(screen.getByTestId("amber-toolbar-btn")).toBeInTheDocument();
+      });
+
+      it("renders amber warnings in box wrapper", () => {
+        const AmberBoxView = createResultView<
+          TestBoxRun,
+          never,
+          HTMLDivElement
+        >({
+          displayName: "AmberBoxView",
+          typeGuard: isTestBoxRun,
+          expectedRunType: "test_box",
+          screenshotWrapper: "box",
+          transformData: (run): ResultViewData => ({
+            content: <div data-testid="box-content">{run.content}</div>,
+            warnings: ["Box amber warning"],
+            warningStyle: "amber",
+          }),
+        });
+
+        const run = createTestBoxRun();
+
+        renderWithProviders(<AmberBoxView run={run} />);
+
+        // Warning should be rendered with amber style
+        expect(screen.getByText("Box amber warning")).toBeInTheDocument();
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+        // Box should be rendered
+        expect(screen.getByTestId("screenshot-box-mock")).toBeInTheDocument();
+      });
+    });
+
+    describe("default (alert) style", () => {
+      it("renders MUI Alert when warningStyle is not specified", () => {
+        const DefaultWarningView = createResultView<
+          TestGridRun,
+          never,
+          DataGridHandle
+        >({
+          displayName: "DefaultWarningView",
+          typeGuard: isTestGridRun,
+          expectedRunType: "test_grid",
+          screenshotWrapper: "grid",
+          transformData: (run): ResultViewData => ({
+            columns: [{ field: "value", headerName: "Value" }],
+            rows: run.data.map((value, index) => ({ value, _index: index })),
+            warnings: ["Default warning"],
+            // warningStyle not specified - should default to 'alert'
+          }),
+        });
+
+        const run = createTestGridRun();
+
+        renderWithProviders(<DefaultWarningView run={run} />);
+
+        // Should render MUI Alert
+        expect(screen.getByText("Default warning")).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toBeInTheDocument();
+      });
+
+      it("renders MUI Alert when warningStyle is explicitly 'alert'", () => {
+        const AlertStyleView = createResultView<
+          TestGridRun,
+          never,
+          DataGridHandle
+        >({
+          displayName: "AlertStyleView",
+          typeGuard: isTestGridRun,
+          expectedRunType: "test_grid",
+          screenshotWrapper: "grid",
+          transformData: (run): ResultViewData => ({
+            columns: [{ field: "value", headerName: "Value" }],
+            rows: run.data.map((value, index) => ({ value, _index: index })),
+            warnings: ["Alert style warning"],
+            warningStyle: "alert",
+          }),
+        });
+
+        const run = createTestGridRun();
+
+        renderWithProviders(<AlertStyleView run={run} />);
+
+        // Should render MUI Alert
+        expect(screen.getByText("Alert style warning")).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toBeInTheDocument();
+      });
+    });
+  });
+
+  // ==========================================================================
+  // Toolbar in Empty State Tests
+  // ==========================================================================
+
+  describe("toolbar in empty state", () => {
+    it("renders toolbar above empty message when isEmpty but toolbar provided", () => {
+      const ToolbarEmptyGridView = createResultView<
+        TestGridRun,
+        never,
+        DataGridHandle
+      >({
+        displayName: "ToolbarEmptyGridView",
+        typeGuard: isTestGridRun,
+        expectedRunType: "test_grid",
+        screenshotWrapper: "grid",
+        transformData: (): ResultViewData => ({
+          columns: [],
+          rows: [],
+          isEmpty: true,
+          toolbar: (
+            <button data-testid="empty-state-toolbar-btn">
+              Toolbar Button
+            </button>
+          ),
+        }),
+        emptyState: "No data available",
+      });
+
+      const run = createTestGridRun();
+
+      renderWithProviders(<ToolbarEmptyGridView run={run} />);
+
+      // Toolbar should be rendered in empty state
+      const toolbarButton = screen.getByTestId("empty-state-toolbar-btn");
+      expect(toolbarButton).toBeInTheDocument();
+      expect(toolbarButton).toHaveTextContent("Toolbar Button");
+
+      // Empty message should also be rendered
+      expect(screen.getByText("No data available")).toBeInTheDocument();
+
+      // Grid should NOT be rendered (we're in empty state)
+      expect(
+        screen.queryByTestId("screenshot-data-grid-mock"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("renders warnings above empty message when isEmpty but warnings provided", () => {
+      const WarningEmptyGridView = createResultView<
+        TestGridRun,
+        never,
+        DataGridHandle
+      >({
+        displayName: "WarningEmptyGridView",
+        typeGuard: isTestGridRun,
+        expectedRunType: "test_grid",
+        screenshotWrapper: "grid",
+        transformData: (): ResultViewData => ({
+          columns: [],
+          rows: [],
+          isEmpty: true,
+          warnings: ["Warning in empty state"],
+        }),
+        emptyState: "No rows to display",
+      });
+
+      const run = createTestGridRun();
+
+      renderWithProviders(<WarningEmptyGridView run={run} />);
+
+      // Warning should be rendered in empty state
+      expect(screen.getByText("Warning in empty state")).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+
+      // Empty message should also be rendered
+      expect(screen.getByText("No rows to display")).toBeInTheDocument();
+
+      // Grid should NOT be rendered
+      expect(
+        screen.queryByTestId("screenshot-data-grid-mock"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("uses custom emptyMessage instead of default when provided", () => {
+      const CustomEmptyMessageView = createResultView<
+        TestGridRun,
+        never,
+        DataGridHandle
+      >({
+        displayName: "CustomEmptyMessageView",
+        typeGuard: isTestGridRun,
+        expectedRunType: "test_grid",
+        screenshotWrapper: "grid",
+        transformData: (): ResultViewData => ({
+          columns: [],
+          rows: [],
+          isEmpty: true,
+          toolbar: <button data-testid="toolbar-btn">Toggle</button>,
+          emptyMessage: (
+            <span data-testid="custom-empty-msg">
+              Custom: No changes detected
+            </span>
+          ),
+        }),
+        emptyState: "Default empty state",
+      });
+
+      const run = createTestGridRun();
+
+      renderWithProviders(<CustomEmptyMessageView run={run} />);
+
+      // Custom emptyMessage should be used instead of default
+      const customMsg = screen.getByTestId("custom-empty-msg");
+      expect(customMsg).toBeInTheDocument();
+      expect(customMsg).toHaveTextContent("Custom: No changes detected");
+
+      // Default emptyState should NOT be rendered
+      expect(screen.queryByText("Default empty state")).not.toBeInTheDocument();
+
+      // Toolbar should still be rendered
+      expect(screen.getByTestId("toolbar-btn")).toBeInTheDocument();
+    });
+
+    it("renders both toolbar and warnings in empty state", () => {
+      const FullToolbarEmptyView = createResultView<
+        TestGridRun,
+        never,
+        DataGridHandle
+      >({
+        displayName: "FullToolbarEmptyView",
+        typeGuard: isTestGridRun,
+        expectedRunType: "test_grid",
+        screenshotWrapper: "grid",
+        transformData: (): ResultViewData => ({
+          columns: [],
+          rows: [],
+          isEmpty: true,
+          toolbar: <button data-testid="toolbar-control">Control</button>,
+          warnings: ["Data truncated"],
+          emptyMessage: "No change",
+        }),
+      });
+
+      const run = createTestGridRun();
+
+      renderWithProviders(<FullToolbarEmptyView run={run} />);
+
+      // All elements should be rendered in empty state
+      expect(screen.getByTestId("toolbar-control")).toBeInTheDocument();
+      expect(screen.getByText("Data truncated")).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(screen.getByText("No change")).toBeInTheDocument();
+    });
+
+    it("does not render toolbar area when empty state without toolbar or warnings", () => {
+      // This verifies existing behavior still works - no toolbar area when
+      // isEmpty is true but no toolbar/warnings provided
+      const run = createTestGridRun();
+
+      renderWithProviders(<TestEmptyGridView run={run} />);
+
+      // Empty state message should be rendered
+      expect(screen.getByText("No data available")).toBeInTheDocument();
+
+      // No alerts should be present (no toolbar area)
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    it("ref is null when empty state with toolbar is displayed", () => {
+      const ToolbarEmptyRefView = createResultView<
+        TestGridRun,
+        never,
+        DataGridHandle
+      >({
+        displayName: "ToolbarEmptyRefView",
+        typeGuard: isTestGridRun,
+        expectedRunType: "test_grid",
+        screenshotWrapper: "grid",
+        transformData: (): ResultViewData => ({
+          columns: [],
+          rows: [],
+          isEmpty: true,
+          toolbar: <button>Toolbar</button>,
+        }),
+      });
+
+      const run = createTestGridRun();
+      const ref = createRef<DataGridHandle>();
+
+      renderWithProviders(
+        // biome-ignore lint/suspicious/noExplicitAny: test requires flexible ref typing
+        <ToolbarEmptyRefView run={run} ref={ref as any} />,
+      );
+
+      // When empty state (even with toolbar) is shown, ref is not assigned
+      expect(ref.current).toBeNull();
+    });
+  });
+
+  // ==========================================================================
   // onAddToChecklist Callback Tests
   // ==========================================================================
 

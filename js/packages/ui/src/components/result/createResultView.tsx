@@ -2,7 +2,9 @@
 
 import Alert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import { amber } from "@mui/material/colors";
 import { forwardRef, type ReactNode, type Ref, useMemo } from "react";
+import { PiWarning } from "react-icons/pi";
 
 import { useIsDark } from "../../hooks";
 import {
@@ -15,7 +17,33 @@ import type {
   CreatedResultViewProps,
   ResultViewConfig,
   ResultViewRef,
+  WarningStyle,
 } from "./types";
+
+/**
+ * Renders a single warning with amber styling (icon + text).
+ */
+function AmberWarning({
+  warning,
+  isDark,
+}: {
+  warning: string;
+  isDark: boolean;
+}) {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 0.5,
+        fontSize: "0.75rem",
+      }}
+    >
+      <PiWarning color={isDark ? amber[400] : amber[600]} />
+      <Box>{warning}</Box>
+    </Box>
+  );
+}
 
 /**
  * Toolbar area component for ResultView.
@@ -24,15 +52,35 @@ import type {
 function ToolbarArea({
   toolbar,
   warnings,
+  warningStyle = "alert",
   isDark,
 }: {
   toolbar?: ReactNode;
   warnings?: string[];
+  warningStyle?: WarningStyle;
   isDark: boolean;
 }) {
   if (!toolbar && (!warnings || warnings.length === 0)) {
     return null;
   }
+
+  // Determine background color based on warning style
+  const bgColor =
+    warningStyle === "amber" && warnings && warnings.length > 0
+      ? isDark
+        ? amber[900]
+        : amber[100]
+      : isDark
+        ? "grey.900"
+        : "grey.50";
+
+  // Determine text color for amber style
+  const textColor =
+    warningStyle === "amber" && warnings && warnings.length > 0
+      ? isDark
+        ? amber[200]
+        : amber[800]
+      : undefined;
 
   return (
     <Box
@@ -44,18 +92,23 @@ function ToolbarArea({
         py: 0.5,
         borderBottom: 1,
         borderColor: "divider",
-        bgcolor: isDark ? "grey.900" : "grey.50",
+        bgcolor: bgColor,
+        color: textColor,
       }}
     >
-      {warnings?.map((warning) => (
-        <Alert
-          key={warning}
-          severity="warning"
-          sx={{ py: 0, fontSize: "0.75rem" }}
-        >
-          {warning}
-        </Alert>
-      ))}
+      {warningStyle === "amber"
+        ? warnings?.map((warning) => (
+            <AmberWarning key={warning} warning={warning} isDark={isDark} />
+          ))
+        : warnings?.map((warning) => (
+            <Alert
+              key={warning}
+              severity="warning"
+              sx={{ py: 0, fontSize: "0.75rem" }}
+            >
+              {warning}
+            </Alert>
+          ))}
       <Box sx={{ flex: 1 }} />
       {toolbar}
     </Box>
@@ -150,6 +203,41 @@ export function createResultView<
 
     // Empty state
     if (!data || data.isEmpty) {
+      const hasToolbar =
+        data?.toolbar || (data?.warnings && data.warnings.length > 0);
+
+      // Empty state WITH toolbar (for patterns like ValueDiffDetailResultView "No change")
+      if (hasToolbar) {
+        return (
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              bgcolor: isDark ? "grey.900" : "grey.50",
+              height: "100%",
+            }}
+          >
+            <ToolbarArea
+              toolbar={data?.toolbar}
+              warnings={data?.warnings}
+              warningStyle={data?.warningStyle}
+              isDark={isDark}
+            />
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flex: 1,
+              }}
+            >
+              {data?.emptyMessage ?? emptyState}
+            </Box>
+          </Box>
+        );
+      }
+
+      // Empty state WITHOUT toolbar (default)
       return (
         <Box
           sx={{
@@ -173,6 +261,7 @@ export function createResultView<
           <ToolbarArea
             toolbar={data.toolbar}
             warnings={data.warnings}
+            warningStyle={data.warningStyle}
             isDark={isDark}
           />
           <ScreenshotDataGrid
@@ -200,6 +289,7 @@ export function createResultView<
         <ToolbarArea
           toolbar={data.toolbar}
           warnings={data.warnings}
+          warningStyle={data.warningStyle}
           isDark={isDark}
         />
         <ScreenshotBox
