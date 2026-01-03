@@ -1,107 +1,76 @@
-import Box from "@mui/material/Box";
-import { forwardRef, Ref, useMemo } from "react";
-import { isRowCountDiffRun, isRowCountRun, Run } from "@/lib/api/types";
+import { type DataGridHandle } from "@datarecce/ui/components/data/ScreenshotDataGrid";
+import { createResultView } from "@datarecce/ui/components/result/createResultView";
+import { type ResultViewData } from "@datarecce/ui/components/result/types";
+import type { ForwardRefExoticComponent, RefAttributes } from "react";
+import { isRowCountDiffRun, isRowCountRun, type Run } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
-import { useIsDark } from "@/lib/hooks/useIsDark";
-import {
-  type DataGridHandle,
-  EmptyRowsRenderer,
-  ScreenshotDataGrid,
-} from "../data-grid/ScreenshotDataGrid";
-import { RunResultViewProps } from "../run/types";
+import type { RunResultViewProps } from "../run/types";
 
 // ============================================================================
-// Shared Component
+// Type Definitions
 // ============================================================================
 
-interface RowCountGridViewProps {
-  run: Run;
-  typeGuard: (run: Run) => boolean;
-  expectedType: string;
+type RowCountDiffRun = Extract<Run, { type: "row_count_diff" }>;
+type RowCountRun = Extract<Run, { type: "row_count" }>;
+
+// ============================================================================
+// Type Guards (wrapper to accept unknown)
+// ============================================================================
+
+function isRowCountDiffRunGuard(run: unknown): run is RowCountDiffRun {
+  return isRowCountDiffRun(run as Run);
 }
 
-function _RowCountGridView(
-  { run, typeGuard, expectedType }: RowCountGridViewProps,
-  ref: Ref<DataGridHandle>,
-) {
-  const isDark = useIsDark();
+function isRowCountRunGuard(run: unknown): run is RowCountRun {
+  return isRowCountRun(run as Run);
+}
 
-  if (!typeGuard(run)) {
-    throw new Error(`Run type must be ${expectedType}`);
+// ============================================================================
+// Transform Function (shared logic)
+// ============================================================================
+
+function transformRowCountData(run: Run): ResultViewData | null {
+  const gridData = createDataGrid(run);
+  if (!gridData) {
+    return null;
   }
-
-  const gridData = useMemo(() => {
-    return createDataGrid(run) ?? { columns: [], rows: [] };
-  }, [run]);
-
-  if (gridData.rows.length === 0) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          bgcolor: isDark ? "grey.900" : "grey.50",
-          height: "100%",
-        }}
-      >
-        No nodes matched
-      </Box>
-    );
-  }
-
-  return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <ScreenshotDataGrid
-        ref={ref}
-        style={{
-          blockSize: "auto",
-          maxHeight: "100%",
-          overflow: "auto",
-          fontSize: "0.875rem",
-          borderWidth: 1,
-        }}
-        columns={gridData.columns}
-        rows={gridData.rows}
-        renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
-      />
-    </Box>
-  );
+  return {
+    columns: gridData.columns,
+    rows: gridData.rows,
+    isEmpty: gridData.rows.length === 0,
+  };
 }
-
-const RowCountGridView = forwardRef(_RowCountGridView);
 
 // ============================================================================
-// Exported Components
+// Factory-Created Components
 // ============================================================================
 
-function _RowCountDiffResultView(
-  { run }: RunResultViewProps,
-  ref: Ref<DataGridHandle>,
-) {
-  return (
-    <RowCountGridView
-      ref={ref}
-      run={run}
-      typeGuard={isRowCountDiffRun}
-      expectedType="row_count_diff"
-    />
-  );
-}
+export const RowCountDiffResultView = createResultView<
+  RowCountDiffRun,
+  unknown,
+  DataGridHandle
+>({
+  displayName: "RowCountDiffResultView",
+  typeGuard: isRowCountDiffRunGuard,
+  expectedRunType: "row_count_diff",
+  screenshotWrapper: "grid",
+  transformData: transformRowCountData,
+  emptyState: "No nodes matched",
+}) as ForwardRefExoticComponent<
+  RunResultViewProps & RefAttributes<DataGridHandle>
+>;
 
-function _RowCountResultView(
-  { run }: RunResultViewProps,
-  ref: Ref<DataGridHandle>,
-) {
-  return (
-    <RowCountGridView
-      ref={ref}
-      run={run}
-      typeGuard={isRowCountRun}
-      expectedType="row_count"
-    />
-  );
-}
-
-export const RowCountDiffResultView = forwardRef(_RowCountDiffResultView);
-export const RowCountResultView = forwardRef(_RowCountResultView);
+export const RowCountResultView = createResultView<
+  RowCountRun,
+  unknown,
+  DataGridHandle
+>({
+  displayName: "RowCountResultView",
+  typeGuard: isRowCountRunGuard,
+  expectedRunType: "row_count",
+  screenshotWrapper: "grid",
+  transformData: transformRowCountData,
+  emptyState: "No nodes matched",
+}) as ForwardRefExoticComponent<
+  RunResultViewProps & RefAttributes<DataGridHandle>
+>;
