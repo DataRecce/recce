@@ -180,8 +180,8 @@ Ten components follow an **identical structural pattern**:
 | `ProfileDiffResultView` | Grid | ✅ | ✅ Migrated | Grid + toolbar |
 | `ProfileResultView` | Grid | ✅ | ✅ Migrated | Shares with above |
 | `TopKDiffResultView` | Chart | ✅ | ❌ Deferred | Has local useState |
-| `ValueDiffDetailResultView` | Grid | ✅ | ❌ Deferred | Needs toolbar-in-empty-state support |
-| `QueryResultView` | Grid | ✅ | ❌ Deferred | Custom amber warning styling |
+| `ValueDiffDetailResultView` | Grid | ✅ | ✅ Migrated | Uses toolbar-in-empty-state pattern |
+| `QueryResultView` | Grid | ✅ | ✅ Migrated | Uses amber warning styling |
 | `QueryDiffResultView` | Grid | ✅ | ❌ Deferred | Bifurcation logic |
 
 **Common Pattern:**
@@ -301,3 +301,6 @@ Ten components follow an **identical structural pattern**:
 | 2026-01-03 | Defer QueryResultView | Uses custom amber background for warnings - different from factory's MUI Alert |
 | 2026-01-03 | Add toolbar-in-empty-state to factory | Added emptyMessage to ResultViewData, factory renders toolbar above emptyMessage when isEmpty + toolbar/warnings present. 6 new tests added. |
 | 2026-01-03 | Add custom warning styling to factory | Added warningStyle: 'alert' \| 'amber' to ResultViewData, amber style uses PiWarning icon with amber colors. 6 new tests added. |
+| 2026-01-03 | Add defaultColumnOptions to factory | Added defaultColumnOptions (resizable, maxWidth, minWidth) and noRowsMessage to ResultViewData. 2 new tests added (54 total). |
+| 2026-01-03 | Migrate QueryResultView | Successfully migrated to createResultView factory. Uses combined type guard (isQueryRun \|\| isQueryBaseRun), amber warnings, onAddToChecklist button. 21/21 tests pass. |
+| 2026-01-03 | Migrate ValueDiffDetailResultView | Successfully migrated to createResultView factory. Uses toolbar-in-empty-state pattern for "No change" state, amber warnings, noRowsMessage. 28/28 tests pass. |

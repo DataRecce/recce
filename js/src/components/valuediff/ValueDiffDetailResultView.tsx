@@ -1,59 +1,70 @@
-import Box from "@mui/material/Box";
-import { forwardRef, Ref, useMemo } from "react";
-import { useIsDark } from "@/lib/hooks/useIsDark";
-
-import "../query/styles.css";
-import { ColumnRenderMode, isValueDiffDetailRun, Run } from "@/lib/api/types";
-import { ValueDiffDetailViewOptions } from "@/lib/api/valuediff";
-import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
+import { createResultView, type ResultViewData } from "@datarecce/ui/result";
 import {
-  type DataGridHandle,
-  EmptyRowsRenderer,
-  ScreenshotDataGrid,
-} from "../data-grid/ScreenshotDataGrid";
+  type ColumnRenderMode,
+  isValueDiffDetailRun,
+  type Run,
+} from "@/lib/api/types";
+import type { ValueDiffDetailViewOptions } from "@/lib/api/valuediff";
+import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
+import type { DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 import { ChangedOnlyCheckbox } from "../query/ChangedOnlyCheckbox";
 import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
-import { RunToolbar } from "../run/RunToolbar";
-import { RunResultViewProps } from "../run/types";
 
-export interface ValueDiffDetailResultViewProps
-  extends RunResultViewProps<ValueDiffDetailViewOptions> {
-  onAddToChecklist?: (run: Run) => void;
+import "../query/styles.css";
+
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
+type ValueDiffDetailRun = Extract<Run, { type: "value_diff_detail" }>;
+
+/**
+ * Type guard wrapper that accepts unknown and delegates to typed guard.
+ */
+function isValueDiffDetailRunGuard(run: unknown): run is ValueDiffDetailRun {
+  return isValueDiffDetailRun(run as Run);
 }
 
-const PrivateValueDiffDetailResultView = (
-  {
+/**
+ * ValueDiffDetailResultView component - displays value diff details in a data grid.
+ *
+ * Features:
+ * - Displays row-level diff data with changed highlighting
+ * - "Changed only" filter to show only differing rows
+ * - Side-by-side vs inline display mode toggle
+ * - Column pinning support
+ * - Shows amber warning when results are truncated
+ * - Toolbar-in-empty-state pattern: shows "No change" when changed_only=true but no changes
+ *
+ * @example
+ * ```tsx
+ * <ValueDiffDetailResultView
+ *   run={valueDiffDetailRun}
+ *   viewOptions={{ changed_only: true, display_mode: 'inline' }}
+ *   onViewOptionsChanged={setViewOptions}
+ * />
+ * ```
+ */
+export const ValueDiffDetailResultView = createResultView<
+  ValueDiffDetailRun,
+  ValueDiffDetailViewOptions,
+  DataGridHandle
+>({
+  displayName: "ValueDiffDetailResultView",
+  typeGuard: isValueDiffDetailRunGuard,
+  expectedRunType: "value_diff_detail",
+  screenshotWrapper: "grid",
+  emptyState: "No data",
+  transformData: (
     run,
-    onAddToChecklist,
-    viewOptions,
-    onViewOptionsChanged,
-  }: ValueDiffDetailResultViewProps,
+    { viewOptions, onViewOptionsChanged },
+  ): ResultViewData | null => {
+    const changedOnly = viewOptions?.changed_only ?? false;
+    const pinnedColumns = viewOptions?.pinned_columns ?? [];
+    const displayMode = viewOptions?.display_mode ?? "inline";
+    const columnsRenderMode = viewOptions?.columnsRenderMode ?? {};
 
-  ref: Ref<DataGridHandle>,
-) => {
-  const isDark = useIsDark();
-
-  if (!isValueDiffDetailRun(run)) {
-    throw new Error("run type must be value_diff_detail");
-  }
-  const changedOnly = useMemo(
-    () => viewOptions?.changed_only ?? false,
-    [viewOptions],
-  );
-  const pinnedColumns = useMemo(
-    () => viewOptions?.pinned_columns ?? [],
-    [viewOptions],
-  );
-  const displayMode = useMemo(
-    () => viewOptions?.display_mode ?? "inline",
-    [viewOptions],
-  );
-  const columnsRenderMode = useMemo(
-    () => viewOptions?.columnsRenderMode ?? {},
-    [viewOptions],
-  );
-
-  const gridData = useMemo(() => {
+    // Create callbacks for view option changes
     const onColumnsRenderModeChanged = (
       cols: Record<string, ColumnRenderMode>,
     ) => {
@@ -78,109 +89,44 @@ const PrivateValueDiffDetailResultView = (
       }
     };
 
-    return (
-      createDataGrid(run, {
-        changedOnly,
-        pinnedColumns,
-        onPinnedColumnsChange: handlePinnedColumnsChanged,
-        columnsRenderMode,
-        onColumnsRenderModeChanged,
-        displayMode,
-      }) ?? { columns: [], rows: [] }
-    );
-  }, [
-    run,
-    viewOptions,
-    changedOnly,
-    pinnedColumns,
-    displayMode,
-    onViewOptionsChanged,
-    columnsRenderMode,
-  ]);
+    // Build grid data using createDataGrid factory
+    const gridData = createDataGrid(run as Run, {
+      changedOnly,
+      pinnedColumns,
+      onPinnedColumnsChange: handlePinnedColumnsChanged,
+      columnsRenderMode,
+      onColumnsRenderModeChanged,
+      displayMode,
+    }) ?? { columns: [], rows: [] };
 
-  const limit = run.result?.limit ?? 0;
-  const warning =
-    limit > 0 && run.result?.more
-      ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
-      : null;
+    // Empty state when no columns (no data at all)
+    if (gridData.columns.length === 0) {
+      return { isEmpty: true };
+    }
 
-  const warnings: string[] = [];
-  if (warning) {
-    warnings.push(warning);
-  }
+    // Build warnings array
+    const limit = run.result?.limit ?? 0;
+    const warnings: string[] = [];
+    if (limit > 0 && run.result?.more) {
+      warnings.push(
+        `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`,
+      );
+    }
 
-  if (gridData.columns.length === 0) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-        }}
-      >
-        No data
-      </Box>
-    );
-  }
-
-  if (changedOnly && gridData.rows.length === 0) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          bgcolor: isDark ? "grey.900" : "grey.50",
-          height: "100%",
-        }}
-      >
-        <RunToolbar
-          run={run}
-          viewOptions={viewOptions}
-          onViewOptionsChanged={onViewOptionsChanged}
-          warnings={warnings}
-        />
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "100%",
-          }}
-        >
-          No change
-        </Box>
-      </Box>
-    );
-  }
-
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        bgcolor: isDark ? "grey.900" : "grey.50",
-        height: "100%",
-      }}
-    >
-      <RunToolbar
-        run={run}
-        viewOptions={viewOptions}
-        onViewOptionsChanged={onViewOptionsChanged}
-        warnings={warnings}
-      >
+    // Build toolbar with display mode switch and changed only checkbox
+    const toolbar = (
+      <>
         <DiffDisplayModeSwitch
           displayMode={displayMode}
-          onDisplayModeChanged={(displayMode) => {
+          onDisplayModeChanged={(newDisplayMode) => {
             if (onViewOptionsChanged) {
               onViewOptionsChanged({
                 ...viewOptions,
-                display_mode: displayMode,
+                display_mode: newDisplayMode,
               });
             }
           }}
         />
-
         <ChangedOnlyCheckbox
           changedOnly={viewOptions?.changed_only}
           onChange={() => {
@@ -193,23 +139,35 @@ const PrivateValueDiffDetailResultView = (
             }
           }}
         />
-      </RunToolbar>
-      <ScreenshotDataGrid
-        ref={ref}
-        style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
-        columns={gridData.columns}
-        rows={gridData.rows}
-        renderers={{
-          noRowsFallback: (
-            <EmptyRowsRenderer emptyMessage="No mismatched rows" />
-          ),
-        }}
-        defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
-      />
-    </Box>
-  );
-};
+      </>
+    );
 
-export const ValueDiffDetailResultView = forwardRef(
-  PrivateValueDiffDetailResultView,
-);
+    // Toolbar-in-empty-state pattern: when changed_only is true but no changed rows
+    if (changedOnly && gridData.rows.length === 0) {
+      return {
+        isEmpty: true,
+        emptyMessage: "No change",
+        toolbar,
+        warnings: warnings.length > 0 ? warnings : undefined,
+        warningStyle: "amber",
+      };
+    }
+
+    return {
+      columns: gridData.columns,
+      rows: gridData.rows,
+      warnings: warnings.length > 0 ? warnings : undefined,
+      warningStyle: "amber",
+      toolbar,
+      defaultColumnOptions: {
+        resizable: true,
+        maxWidth: 800,
+        minWidth: 35,
+      },
+      noRowsMessage: "No mismatched rows",
+    };
+  },
+});
+
+// Re-export the props interface for backward compatibility
+export type { ValueDiffDetailViewOptions as ValueDiffDetailResultViewProps };

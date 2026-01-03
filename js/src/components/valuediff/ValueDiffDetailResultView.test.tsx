@@ -106,6 +106,26 @@ jest.mock("../query/ChangedOnlyCheckbox", () => ({
   ),
 }));
 
+// Mock packages/ui ScreenshotDataGrid (used by createResultView factory)
+jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
+  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
+    .screenshotDataGridMock,
+  EmptyRowsRenderer: ({ emptyMessage }: { emptyMessage?: string }) => (
+    <div data-testid="empty-rows-renderer">{emptyMessage ?? "No rows"}</div>
+  ),
+}));
+
+// Mock useIsDark hook - declare first since it's used by multiple mocks
+const mockUseIsDark = jest.fn(() => false);
+jest.mock("@/lib/hooks/useIsDark", () => ({
+  useIsDark: () => mockUseIsDark(),
+}));
+
+// Mock packages/ui hooks
+jest.mock("@datarecce/ui/hooks", () => ({
+  useIsDark: () => mockUseIsDark(),
+}));
+
 // ============================================================================
 // Imports
 // ============================================================================
@@ -285,8 +305,13 @@ describe("ValueDiffDetailResultView", () => {
       // Should show "No data" message
       expect(screen.getByText("No data")).toBeInTheDocument();
 
-      // Should NOT render toolbar
-      expect(screen.queryByTestId("run-toolbar")).not.toBeInTheDocument();
+      // Should NOT render toolbar controls
+      expect(
+        screen.queryByTestId("display-mode-switch"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("changed-only-checkbox"),
+      ).not.toBeInTheDocument();
 
       // Should NOT render grid
       expect(
@@ -314,8 +339,9 @@ describe("ValueDiffDetailResultView", () => {
       // Should show "No change" message
       expect(screen.getByText("No change")).toBeInTheDocument();
 
-      // Should STILL render toolbar
-      expect(screen.getByTestId("run-toolbar")).toBeInTheDocument();
+      // Should STILL render toolbar controls
+      expect(screen.getByTestId("display-mode-switch")).toBeInTheDocument();
+      expect(screen.getByTestId("changed-only-checkbox")).toBeInTheDocument();
 
       // Should NOT render grid
       expect(
@@ -340,7 +366,7 @@ describe("ValueDiffDetailResultView", () => {
 
       expect(() => {
         renderWithProviders(<ValueDiffDetailResultView run={wrongRun} />);
-      }).toThrow("run type must be value_diff_detail");
+      }).toThrow("Run type must be value_diff_detail");
 
       consoleSpy.mockRestore();
     });
@@ -381,12 +407,14 @@ describe("ValueDiffDetailResultView", () => {
   // ==========================================================================
 
   describe("toolbar", () => {
-    it("renders RunToolbar with children", () => {
+    it("renders toolbar controls", () => {
       const run = createValueDiffDetailRun();
 
       renderWithProviders(<ValueDiffDetailResultView run={run} />);
 
-      expect(screen.getByTestId("run-toolbar")).toBeInTheDocument();
+      // Factory renders toolbar controls directly (not via RunToolbar)
+      expect(screen.getByTestId("display-mode-switch")).toBeInTheDocument();
+      expect(screen.getByTestId("changed-only-checkbox")).toBeInTheDocument();
     });
 
     it("renders DiffDisplayModeSwitch in toolbar", () => {
@@ -595,10 +623,9 @@ describe("ValueDiffDetailResultView", () => {
 
       renderWithProviders(<ValueDiffDetailResultView run={run} />);
 
-      const warning = screen.getByTestId("warning");
-      expect(warning).toBeInTheDocument();
-      expect(warning.textContent).toContain("Warning");
-      expect(warning.textContent).toContain("1,000");
+      // Factory renders warning text directly in the toolbar area
+      expect(screen.getByText(/Warning:/)).toBeInTheDocument();
+      expect(screen.getByText(/1,000/)).toBeInTheDocument();
     });
 
     it("does not show warning when limit is 0", () => {
@@ -607,7 +634,7 @@ describe("ValueDiffDetailResultView", () => {
 
       renderWithProviders(<ValueDiffDetailResultView run={run} />);
 
-      expect(screen.queryByTestId("warning")).not.toBeInTheDocument();
+      expect(screen.queryByText(/Warning:/)).not.toBeInTheDocument();
     });
 
     it("does not show warning when result.more is false", () => {
@@ -620,7 +647,7 @@ describe("ValueDiffDetailResultView", () => {
 
       renderWithProviders(<ValueDiffDetailResultView run={run} />);
 
-      expect(screen.queryByTestId("warning")).not.toBeInTheDocument();
+      expect(screen.queryByText(/Warning:/)).not.toBeInTheDocument();
     });
 
     it("warning message contains correct limit value", () => {
@@ -628,9 +655,8 @@ describe("ValueDiffDetailResultView", () => {
 
       renderWithProviders(<ValueDiffDetailResultView run={run} />);
 
-      const warning = screen.getByTestId("warning");
       // Limit is 1000, should be formatted with locale (1,000)
-      expect(warning.textContent).toContain("1,000 records");
+      expect(screen.getByText(/1,000 records/)).toBeInTheDocument();
     });
   });
 
