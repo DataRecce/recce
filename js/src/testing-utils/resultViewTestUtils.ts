@@ -62,6 +62,35 @@ export const agGridReactMock = {
 // ============================================================================
 
 /**
+ * Props that ScreenshotBox accepts but should NOT be passed to DOM elements.
+ * These are filtered out to avoid React warnings about invalid DOM attributes.
+ *
+ * Keep this list updated as ScreenshotBox props change.
+ */
+const SCREENSHOT_BOX_NON_DOM_PROPS = [
+  // ScreenshotBox-specific props
+  "backgroundColor",
+  "blockSize",
+  // MUI Box props that don't map to DOM attributes
+  "sx",
+  "component",
+  // Common props that might be passed but aren't valid DOM attrs
+  "height",
+  "width",
+  "minHeight",
+  "maxHeight",
+  "minWidth",
+  "maxWidth",
+  "padding",
+  "margin",
+  "overflow",
+  "display",
+  "flexDirection",
+  "alignItems",
+  "justifyContent",
+] as const;
+
+/**
  * Mock for ScreenshotBox component
  * Renders as a simple div with forwarded ref
  *
@@ -76,17 +105,90 @@ export const agGridReactMock = {
 export const screenshotBoxMock = React.forwardRef<
   HTMLDivElement,
   { children?: ReactNode; [key: string]: unknown }
->(function MockScreenshotBox({ children, ...props }, ref) {
-  return React.createElement(
-    "div",
-    { ref, "data-testid": "screenshot-box-mock", ...props },
-    children as ReactNode,
-  );
+>(function MockScreenshotBox({ children, ...allProps }, ref) {
+  // Filter out non-DOM props to avoid React warnings
+  const domProps: Record<string, unknown> = {};
+  const filteredProps: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(allProps)) {
+    if (
+      SCREENSHOT_BOX_NON_DOM_PROPS.includes(
+        key as (typeof SCREENSHOT_BOX_NON_DOM_PROPS)[number],
+      )
+    ) {
+      filteredProps[key] = value;
+    } else {
+      domProps[key] = value;
+    }
+  }
+
+  // Store filtered props as data attributes for test assertions
+  // Build props object to avoid TypeScript spread issues with conditional objects
+  const elementProps: Record<string, unknown> = {
+    ref,
+    "data-testid": "screenshot-box-mock",
+    ...domProps,
+  };
+
+  // Add data attributes for testing (use data-* for React compatibility)
+  if (filteredProps.backgroundColor) {
+    elementProps["data-background-color"] = filteredProps.backgroundColor;
+  }
+  if (filteredProps.height) {
+    elementProps["data-height"] = filteredProps.height;
+  }
+
+  return React.createElement("div", elementProps, children as ReactNode);
 });
 
 // ============================================================================
 // ScreenshotDataGrid Mock
 // ============================================================================
+
+/**
+ * Props that ScreenshotDataGrid accepts but should NOT be passed to DOM elements.
+ * These are filtered out to avoid React warnings about invalid DOM attributes.
+ *
+ * Keep this list updated as ScreenshotDataGrid/AG Grid props change.
+ */
+const SCREENSHOT_DATA_GRID_NON_DOM_PROPS = [
+  // ScreenshotDataGrid-specific props
+  "columns",
+  "rows",
+  "renderers",
+  // AG Grid props
+  "defaultColumnOptions",
+  "columnDefs",
+  "rowData",
+  "getRowId",
+  "rowHeight",
+  "headerHeight",
+  "defaultColDef",
+  "domLayout",
+  "suppressHorizontalScroll",
+  "suppressVerticalScroll",
+  "animateRows",
+  "pagination",
+  "paginationPageSize",
+  "rowSelection",
+  "suppressRowClickSelection",
+  "suppressCellSelection",
+  "enableCellTextSelection",
+  "ensureDomOrder",
+  "getRowClass",
+  "getRowStyle",
+  "rowBuffer",
+  "suppressMovableColumns",
+  "suppressColumnVirtualisation",
+  "suppressRowVirtualisation",
+  "theme",
+  // Style props that aren't valid DOM attrs
+  "rowClassName",
+  "containerClassName",
+  // Common style props (same as ScreenshotBox)
+  "sx",
+  "component",
+] as const;
 
 /**
  * Mock DataGridHandle for ref testing
@@ -112,7 +214,10 @@ export const screenshotDataGridMock = React.forwardRef<
     children?: ReactNode;
     [key: string]: unknown;
   }
->(function MockScreenshotDataGrid({ columns, rows, ...props }, ref) {
+>(function MockScreenshotDataGrid(
+  { columns, rows, children, ...allProps },
+  ref,
+) {
   // Expose mock methods via ref (matching DataGridHandle interface)
   React.useImperativeHandle(ref, () => ({
     api: null,
@@ -122,19 +227,36 @@ export const screenshotDataGridMock = React.forwardRef<
     exportToClipboard: jest.fn(() => Promise.resolve()),
   }));
 
+  // Filter out non-DOM props to avoid React warnings
+  const domProps: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(allProps)) {
+    // Filter out known non-DOM props and any AG Grid event handlers (on*)
+    const isNonDomProp = SCREENSHOT_DATA_GRID_NON_DOM_PROPS.includes(
+      key as (typeof SCREENSHOT_DATA_GRID_NON_DOM_PROPS)[number],
+    );
+    const isEventHandler = key.startsWith("on") && typeof value === "function";
+
+    if (!isNonDomProp && !isEventHandler) {
+      domProps[key] = value;
+    }
+  }
+
   const columnCount = Array.isArray(columns) ? columns.length : 0;
   const rowCount = Array.isArray(rows) ? rows.length : 0;
 
-  return React.createElement(
-    "div",
-    {
-      "data-testid": "screenshot-data-grid-mock",
-      "data-columns": JSON.stringify(columnCount),
-      "data-rows": JSON.stringify(rowCount),
-      ...props,
-    },
-    `Mock Grid: ${rowCount} rows, ${columnCount} columns`,
-  );
+  // Build props object to avoid TypeScript spread issues
+  const elementProps: Record<string, unknown> = {
+    "data-testid": "screenshot-data-grid-mock",
+    "data-columns": JSON.stringify(columnCount),
+    "data-rows": JSON.stringify(rowCount),
+    ...domProps,
+  };
+
+  const content: ReactNode =
+    (children as ReactNode) ??
+    `Mock Grid: ${rowCount} rows, ${columnCount} columns`;
+  return React.createElement("div", elementProps, content);
 });
 
 // ============================================================================
