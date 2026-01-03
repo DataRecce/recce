@@ -1,6 +1,4 @@
 import { createResultView } from "@datarecce/ui/result";
-import Box from "@mui/material/Box";
-import { forwardRef, Ref, useMemo } from "react";
 import { ProfileDiffViewOptions } from "@/lib/api/profile";
 import {
   ColumnRenderMode,
@@ -8,46 +6,39 @@ import {
   isProfileRun,
 } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
-import { useIsDark } from "@/lib/hooks/useIsDark";
-import {
-  type DataGridHandle,
-  ScreenshotDataGrid,
-} from "../data-grid/ScreenshotDataGrid";
 import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
 import { RunToolbar } from "../run/RunToolbar";
-import { RunResultViewProps } from "../run/types";
 
-type ProfileDiffResultViewProp = RunResultViewProps<ProfileDiffViewOptions>;
+// Type guard wrapper for factory compatibility (accepts unknown instead of Run)
+type ProfileDiffRun = Extract<
+  Parameters<typeof isProfileDiffRun>[0],
+  { type: "profile_diff" }
+>;
+const isProfileDiffRunGuard = (run: unknown): run is ProfileDiffRun =>
+  typeof run === "object" &&
+  run !== null &&
+  "type" in run &&
+  isProfileDiffRun(run as Parameters<typeof isProfileDiffRun>[0]);
 
-const PrivateProfileDiffResultView = (
-  { run, viewOptions, onViewOptionsChanged }: ProfileDiffResultViewProp,
+export const ProfileDiffResultView = createResultView<
+  ProfileDiffRun,
+  ProfileDiffViewOptions
+>({
+  displayName: "ProfileDiffResultView",
+  typeGuard: isProfileDiffRunGuard,
+  expectedRunType: "profile_diff",
+  screenshotWrapper: "grid",
+  transformData: (run, { viewOptions, onViewOptionsChanged }) => {
+    const pinnedColumns = viewOptions?.pinned_columns ?? [];
+    const displayMode = viewOptions?.display_mode ?? "inline";
 
-  ref: Ref<DataGridHandle>,
-) => {
-  const isDark = useIsDark();
-
-  if (!isProfileDiffRun(run)) {
-    throw new Error("Only run type profile_diff is supported");
-  }
-  const pinnedColumns = useMemo(
-    () => viewOptions?.pinned_columns ?? [],
-    [viewOptions],
-  );
-  const displayMode = useMemo(
-    () => viewOptions?.display_mode ?? "inline",
-    [viewOptions],
-  );
-  // Default proportion columns to percentage display
-  const columnsRenderMode = useMemo(
-    () => ({
+    // Default proportion columns to percentage display
+    const columnsRenderMode = {
       distinct_proportion: "percent" as ColumnRenderMode,
       not_null_proportion: "percent" as ColumnRenderMode,
       ...viewOptions?.columnsRenderMode,
-    }),
-    [viewOptions],
-  );
+    };
 
-  const gridData = useMemo(() => {
     const onColumnsRenderModeChanged = (
       cols: Record<string, ColumnRenderMode>,
     ) => {
@@ -72,73 +63,38 @@ const PrivateProfileDiffResultView = (
       }
     };
 
-    return (
-      createDataGrid(run, {
-        pinnedColumns,
-        onPinnedColumnsChange: handlePinnedColumnsChanged,
-        displayMode,
-        columnsRenderMode,
-        onColumnsRenderModeChanged,
-      }) ?? { columns: [], rows: [] }
-    );
-  }, [
-    run,
-    pinnedColumns,
-    displayMode,
-    viewOptions,
-    onViewOptionsChanged,
-    columnsRenderMode,
-  ]);
+    const gridData = createDataGrid(run, {
+      pinnedColumns,
+      onPinnedColumnsChange: handlePinnedColumnsChanged,
+      displayMode,
+      columnsRenderMode,
+      onColumnsRenderModeChanged,
+    }) ?? { columns: [], rows: [] };
 
-  if (gridData.columns.length === 0) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-        }}
-      >
-        No data
-      </Box>
-    );
-  }
-
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        bgcolor: isDark ? "grey.900" : "grey.50",
-        height: "100%",
-      }}
-    >
+    const header = (
       <RunToolbar run={run}>
         <DiffDisplayModeSwitch
           displayMode={displayMode}
-          onDisplayModeChanged={(displayMode) => {
+          onDisplayModeChanged={(mode) => {
             if (onViewOptionsChanged) {
               onViewOptionsChanged({
                 ...viewOptions,
-                display_mode: displayMode,
+                display_mode: mode,
               });
             }
           }}
         />
       </RunToolbar>
-      <ScreenshotDataGrid
-        ref={ref}
-        style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
-        columns={gridData.columns}
-        rows={gridData.rows}
-        defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
-      />
-    </Box>
-  );
-};
+    );
 
-export const ProfileDiffResultView = forwardRef(PrivateProfileDiffResultView);
+    return {
+      columns: gridData.columns,
+      rows: gridData.rows,
+      header,
+      isEmpty: gridData.columns.length === 0,
+    };
+  },
+});
 
 // Type guard wrapper for factory compatibility (accepts unknown instead of Run)
 type ProfileRun = Extract<
