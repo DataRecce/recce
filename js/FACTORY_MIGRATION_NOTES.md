@@ -9,6 +9,67 @@
 - Simple grid rendering with no additional UI
 - All 13 tests passing
 
+#### Task 2.3: HistogramDiffResultView - ✅ COMPLETE
+- Migrated successfully using `screenshotWrapper: "box"`
+- Simple chart rendering with no additional UI outside ScreenshotBox
+- Loading state handled via `conditionalEmptyState`
+- All 21 tests passing
+
+#### Task 2.4: TopKDiffResultView - ⏸️ BLOCKED
+
+**Status:** Cannot migrate with current factory API
+
+**Reason:** Component has local state AND content OUTSIDE the ScreenshotBox.
+
+**Current Implementation:**
+```tsx
+<Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+  <ScreenshotBox ref={ref}>
+    <Typography>Model {params.model}.{params.column_name}</Typography>
+    <TopKSummaryBarChart isDisplayTopTen={isDisplayTopTen} />
+  </ScreenshotBox>
+  <Box sx={{ flex: 1 }} />
+  {/* Toggle link OUTSIDE ScreenshotBox */}
+  {showToggle && (
+    <Link onClick={() => setIsDisplayTopTen(!isDisplayTopTen)}>
+      {isDisplayTopTen ? "View More Items" : "View Only Top-10"}
+    </Link>
+  )}
+</Box>
+```
+
+**Factory Limitations:**
+1. **Local State:** The factory's `transformData` is called once per render cycle. The `isDisplayTopTen` toggle requires `useState` inside the component, which the factory pattern doesn't support.
+2. **Footer Content:** The toggle link is rendered OUTSIDE the ScreenshotBox, after a spacer. The factory wraps all content inside ScreenshotBox for "box" wrappers.
+3. **No Type Guard:** Component lacks explicit type guard (crashes on wrong type instead of throwing validation error).
+
+**What's Needed for Migration:**
+
+1. **Footer support in ResultViewData** (same as ValueDiffResultView):
+```typescript
+export interface ResultViewData {
+  // ... existing fields
+  footer?: ReactNode;  // Rendered OUTSIDE ScreenshotBox
+}
+```
+
+2. **State callback or render prop pattern** for local component state:
+```typescript
+export interface ResultViewConfig {
+  // ... existing fields
+  renderContent?: (props: {
+    run: TRun;
+    viewOptions?: TViewOptions;
+    localState: any;
+    setLocalState: (state: any) => void;
+  }) => ResultViewData;
+}
+```
+
+**Alternative:** Keep TopKDiffResultView as manual implementation due to the state complexity. The local toggle state pattern is unique to this component.
+
+---
+
 #### Task 2.2: ValueDiffResultView - ⏸️ BLOCKED
 
 **Status:** Cannot migrate with current factory API
