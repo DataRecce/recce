@@ -44,6 +44,10 @@ interface ColorScale {
 /**
  * Helper to generate button color variants for a given color
  * Creates contained, outlined, and text variant styles
+ *
+ * Uses CSS variables for colors to support automatic light/dark mode switching.
+ * The palette defines different values for light/dark, and CSS variables
+ * automatically resolve to the correct value based on the color scheme.
  */
 function createButtonColorVariants<T extends CustomColorName>(
   colorName: T,
@@ -54,10 +58,10 @@ function createButtonColorVariants<T extends CustomColorName>(
     {
       props: { color: colorName, variant: "contained" as const },
       style: {
-        backgroundColor: colorScale[500],
-        color: "#ffffff",
+        backgroundColor: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+        color: `var(--mui-palette-${colorName}-contrastText, #ffffff)`,
         "&:hover": {
-          backgroundColor: colorScale[600],
+          backgroundColor: `var(--mui-palette-${colorName}-dark, ${colorScale[600]})`,
         },
       },
     },
@@ -65,11 +69,11 @@ function createButtonColorVariants<T extends CustomColorName>(
     {
       props: { color: colorName, variant: "outlined" as const },
       style: {
-        borderColor: colorScale[500],
-        color: colorScale[600],
+        borderColor: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+        color: `var(--mui-palette-${colorName}-main, ${colorScale[600]})`,
         "&:hover": {
-          borderColor: colorScale[600],
-          backgroundColor: `${colorScale[50]}80`,
+          borderColor: `var(--mui-palette-${colorName}-dark, ${colorScale[600]})`,
+          backgroundColor: `color-mix(in srgb, var(--mui-palette-${colorName}-light, ${colorScale[50]}) 30%, transparent)`,
         },
       },
     },
@@ -77,9 +81,9 @@ function createButtonColorVariants<T extends CustomColorName>(
     {
       props: { color: colorName, variant: "text" as const },
       style: {
-        color: colorScale[600],
+        color: `var(--mui-palette-${colorName}-main, ${colorScale[600]})`,
         "&:hover": {
-          backgroundColor: `${colorScale[50]}80`,
+          backgroundColor: `color-mix(in srgb, var(--mui-palette-${colorName}-light, ${colorScale[50]}) 30%, transparent)`,
         },
       },
     },
@@ -88,6 +92,7 @@ function createButtonColorVariants<T extends CustomColorName>(
 
 /**
  * Helper to generate Chip color variants
+ * Uses CSS variables for automatic light/dark mode support
  */
 function createChipColorVariants<T extends CustomColorName>(
   colorName: T,
@@ -98,13 +103,13 @@ function createChipColorVariants<T extends CustomColorName>(
     {
       props: { color: colorName, variant: "filled" as const },
       style: {
-        backgroundColor: colorScale[500],
-        color: "#ffffff",
+        backgroundColor: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+        color: `var(--mui-palette-${colorName}-contrastText, #ffffff)`,
         "&:hover": {
-          backgroundColor: colorScale[600],
+          backgroundColor: `var(--mui-palette-${colorName}-dark, ${colorScale[600]})`,
         },
         "&.MuiChip-clickable:hover": {
-          backgroundColor: colorScale[600],
+          backgroundColor: `var(--mui-palette-${colorName}-dark, ${colorScale[600]})`,
         },
       },
     },
@@ -112,10 +117,10 @@ function createChipColorVariants<T extends CustomColorName>(
     {
       props: { color: colorName, variant: "outlined" as const },
       style: {
-        borderColor: colorScale[500],
-        color: colorScale[600],
+        borderColor: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+        color: `var(--mui-palette-${colorName}-main, ${colorScale[600]})`,
         "&:hover": {
-          backgroundColor: `${colorScale[50]}40`,
+          backgroundColor: `color-mix(in srgb, var(--mui-palette-${colorName}-light, ${colorScale[50]}) 25%, transparent)`,
         },
       },
     },
@@ -124,6 +129,7 @@ function createChipColorVariants<T extends CustomColorName>(
 
 /**
  * Helper to generate Badge color variants
+ * Uses CSS variables for automatic light/dark mode support
  */
 function createBadgeColorVariant<T extends CustomColorName>(
   colorName: T,
@@ -134,8 +140,8 @@ function createBadgeColorVariant<T extends CustomColorName>(
       props: { color: colorName },
       style: {
         "& .MuiBadge-badge": {
-          backgroundColor: colorScale[500],
-          color: "#ffffff",
+          backgroundColor: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+          color: `var(--mui-palette-${colorName}-contrastText, #ffffff)`,
         },
       },
     },
@@ -144,6 +150,7 @@ function createBadgeColorVariant<T extends CustomColorName>(
 
 /**
  * Helper to generate CircularProgress color variants
+ * Uses CSS variables for automatic light/dark mode support
  */
 function createProgressColorVariant<T extends CustomColorName>(
   colorName: T,
@@ -153,7 +160,7 @@ function createProgressColorVariant<T extends CustomColorName>(
     {
       props: { color: colorName },
       style: {
-        color: colorScale[500],
+        color: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
       },
     },
   ];
@@ -200,6 +207,10 @@ const progressColorVariants = [
 /**
  * Module augmentation for custom palette colors
  * Extends MUI's palette with all 9 custom colors
+ *
+ * Note: `neutral` is typed as a palette color (main, light, dark, contrastText)
+ * to support proper button/chip color variants with light/dark mode support.
+ * MUI's built-in `grey` remains as a color scale (50, 100, etc.).
  */
 declare module "@mui/material/styles" {
   interface Palette {
@@ -211,7 +222,7 @@ declare module "@mui/material/styles" {
     red: Palette["primary"];
     rose: Palette["primary"];
     fuchsia: Palette["primary"];
-    neutral: Palette["grey"];
+    neutral: Palette["primary"]; // Palette color for button/chip variants
   }
 
   interface PaletteOptions {
@@ -223,7 +234,7 @@ declare module "@mui/material/styles" {
     red?: PaletteOptions["primary"];
     rose?: PaletteOptions["primary"];
     fuchsia?: PaletteOptions["primary"];
-    neutral?: PaletteOptions["grey"];
+    neutral?: PaletteOptions["primary"]; // Palette color for button/chip variants
   }
 }
 
@@ -772,8 +783,13 @@ export const theme = createTheme({
           dark: colors.fuchsia[700],
           contrastText: "#ffffff",
         },
-        neutral: colors.neutral,
-        grey: colors.neutral,
+        neutral: {
+          main: colors.neutral[500],
+          light: colors.neutral[300],
+          dark: colors.neutral[700],
+          contrastText: "#ffffff",
+        },
+        grey: colors.neutral, // Color scale (50, 100, etc.) - MUI's built-in grey
         success: colors.success,
         warning: colors.warning,
         error: colors.error,
@@ -853,8 +869,13 @@ export const theme = createTheme({
           dark: colors.fuchsia[600],
           contrastText: "#ffffff",
         },
-        neutral: colors.neutral,
-        grey: colors.neutral,
+        neutral: {
+          main: colors.neutral[200],
+          light: colors.neutral[100],
+          dark: colors.neutral[400],
+          contrastText: "#000000",
+        },
+        grey: colors.neutral, // Color scale (50, 100, etc.) - MUI's built-in grey
         success: {
           light: colors.success.light,
           main: colors.success.main,
