@@ -868,4 +868,319 @@ describe("createResultView", () => {
       expect(customEmpty).toHaveTextContent("Custom Empty State");
     });
   });
+
+  // ==========================================================================
+  // Toolbar and Warnings Tests
+  // ==========================================================================
+
+  describe("toolbar and warnings", () => {
+    describe("grid wrapper", () => {
+      it("renders toolbar controls in toolbar area", () => {
+        const ToolbarGridView = createResultView<
+          TestGridRun,
+          never,
+          DataGridHandle
+        >({
+          displayName: "ToolbarGridView",
+          typeGuard: isTestGridRun,
+          expectedRunType: "test_grid",
+          screenshotWrapper: "grid",
+          transformData: (run): ResultViewData => ({
+            columns: [{ field: "value", headerName: "Value" }],
+            rows: run.data.map((value, index) => ({ value, _index: index })),
+            toolbar: <button data-testid="toolbar-button">Click me</button>,
+          }),
+        });
+
+        const run = createTestGridRun();
+
+        renderWithProviders(<ToolbarGridView run={run} />);
+
+        // Toolbar button should be rendered
+        const toolbarButton = screen.getByTestId("toolbar-button");
+        expect(toolbarButton).toBeInTheDocument();
+        expect(toolbarButton).toHaveTextContent("Click me");
+
+        // Grid should also be rendered
+        expect(
+          screen.getByTestId("screenshot-data-grid-mock"),
+        ).toBeInTheDocument();
+      });
+
+      it("renders warning alerts", () => {
+        const WarningGridView = createResultView<
+          TestGridRun,
+          never,
+          DataGridHandle
+        >({
+          displayName: "WarningGridView",
+          typeGuard: isTestGridRun,
+          expectedRunType: "test_grid",
+          screenshotWrapper: "grid",
+          transformData: (run): ResultViewData => ({
+            columns: [{ field: "value", headerName: "Value" }],
+            rows: run.data.map((value, index) => ({ value, _index: index })),
+            warnings: ["Test warning message"],
+          }),
+        });
+
+        const run = createTestGridRun();
+
+        renderWithProviders(<WarningGridView run={run} />);
+
+        // Warning alert should be rendered
+        expect(screen.getByText("Test warning message")).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toBeInTheDocument();
+
+        // Grid should also be rendered
+        expect(
+          screen.getByTestId("screenshot-data-grid-mock"),
+        ).toBeInTheDocument();
+      });
+
+      it("renders multiple warnings", () => {
+        const MultiWarningGridView = createResultView<
+          TestGridRun,
+          never,
+          DataGridHandle
+        >({
+          displayName: "MultiWarningGridView",
+          typeGuard: isTestGridRun,
+          expectedRunType: "test_grid",
+          screenshotWrapper: "grid",
+          transformData: (run): ResultViewData => ({
+            columns: [{ field: "value", headerName: "Value" }],
+            rows: run.data.map((value, index) => ({ value, _index: index })),
+            warnings: ["First warning", "Second warning", "Third warning"],
+          }),
+        });
+
+        const run = createTestGridRun();
+
+        renderWithProviders(<MultiWarningGridView run={run} />);
+
+        // All warnings should be rendered
+        expect(screen.getByText("First warning")).toBeInTheDocument();
+        expect(screen.getByText("Second warning")).toBeInTheDocument();
+        expect(screen.getByText("Third warning")).toBeInTheDocument();
+        expect(screen.getAllByRole("alert")).toHaveLength(3);
+      });
+
+      it("renders both toolbar and warnings together", () => {
+        const ToolbarWarningGridView = createResultView<
+          TestGridRun,
+          never,
+          DataGridHandle
+        >({
+          displayName: "ToolbarWarningGridView",
+          typeGuard: isTestGridRun,
+          expectedRunType: "test_grid",
+          screenshotWrapper: "grid",
+          transformData: (run): ResultViewData => ({
+            columns: [{ field: "value", headerName: "Value" }],
+            rows: run.data.map((value, index) => ({ value, _index: index })),
+            toolbar: <button data-testid="toolbar-control">Control</button>,
+            warnings: ["Warning message"],
+          }),
+        });
+
+        const run = createTestGridRun();
+
+        renderWithProviders(<ToolbarWarningGridView run={run} />);
+
+        // Both toolbar and warnings should be rendered
+        expect(screen.getByTestId("toolbar-control")).toBeInTheDocument();
+        expect(screen.getByText("Warning message")).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toBeInTheDocument();
+      });
+
+      it("does not render toolbar area when neither toolbar nor warnings provided", () => {
+        // This uses the existing TestGridView which doesn't have toolbar or warnings
+        const run = createTestGridRun();
+
+        renderWithProviders(<TestGridView run={run} />);
+
+        // Grid should be rendered
+        expect(
+          screen.getByTestId("screenshot-data-grid-mock"),
+        ).toBeInTheDocument();
+
+        // No alerts should be present
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      });
+    });
+
+    describe("box wrapper", () => {
+      it("renders toolbar controls in toolbar area", () => {
+        const ToolbarBoxView = createResultView<
+          TestBoxRun,
+          never,
+          HTMLDivElement
+        >({
+          displayName: "ToolbarBoxView",
+          typeGuard: isTestBoxRun,
+          expectedRunType: "test_box",
+          screenshotWrapper: "box",
+          transformData: (run): ResultViewData => ({
+            content: <div data-testid="box-content">{run.content}</div>,
+            toolbar: <button data-testid="box-toolbar-button">Box Tool</button>,
+          }),
+        });
+
+        const run = createTestBoxRun();
+
+        renderWithProviders(<ToolbarBoxView run={run} />);
+
+        // Toolbar button should be rendered
+        const toolbarButton = screen.getByTestId("box-toolbar-button");
+        expect(toolbarButton).toBeInTheDocument();
+        expect(toolbarButton).toHaveTextContent("Box Tool");
+
+        // Box should also be rendered
+        expect(screen.getByTestId("screenshot-box-mock")).toBeInTheDocument();
+      });
+
+      it("renders warning alerts", () => {
+        const WarningBoxView = createResultView<
+          TestBoxRun,
+          never,
+          HTMLDivElement
+        >({
+          displayName: "WarningBoxView",
+          typeGuard: isTestBoxRun,
+          expectedRunType: "test_box",
+          screenshotWrapper: "box",
+          transformData: (run): ResultViewData => ({
+            content: <div data-testid="box-content">{run.content}</div>,
+            warnings: ["Box warning message"],
+          }),
+        });
+
+        const run = createTestBoxRun();
+
+        renderWithProviders(<WarningBoxView run={run} />);
+
+        // Warning alert should be rendered
+        expect(screen.getByText("Box warning message")).toBeInTheDocument();
+        expect(screen.getByRole("alert")).toBeInTheDocument();
+
+        // Box should also be rendered
+        expect(screen.getByTestId("screenshot-box-mock")).toBeInTheDocument();
+      });
+    });
+  });
+
+  // ==========================================================================
+  // onAddToChecklist Callback Tests
+  // ==========================================================================
+
+  describe("onAddToChecklist callback", () => {
+    it("passes onAddToChecklist to transformData", () => {
+      const transformSpy = jest.fn(
+        (run: TestGridRun): ResultViewData => ({
+          columns: [{ field: "value", headerName: "Value" }],
+          rows: run.data.map((value, index) => ({ value, _index: index })),
+        }),
+      );
+
+      const ChecklistGridView = createResultView<
+        TestGridRun,
+        never,
+        DataGridHandle
+      >({
+        displayName: "ChecklistGridView",
+        typeGuard: isTestGridRun,
+        expectedRunType: "test_grid",
+        screenshotWrapper: "grid",
+        transformData: transformSpy,
+      });
+
+      const run = createTestGridRun();
+      const mockOnAddToChecklist = jest.fn();
+
+      renderWithProviders(
+        <ChecklistGridView run={run} onAddToChecklist={mockOnAddToChecklist} />,
+      );
+
+      // Verify transformData received onAddToChecklist
+      expect(transformSpy).toHaveBeenCalledWith(run, {
+        viewOptions: undefined,
+        onViewOptionsChanged: undefined,
+        onAddToChecklist: mockOnAddToChecklist,
+      });
+    });
+
+    it("allows transformData to use onAddToChecklist for toolbar button", () => {
+      const AddToChecklistView = createResultView<
+        TestGridRun,
+        never,
+        DataGridHandle
+      >({
+        displayName: "AddToChecklistView",
+        typeGuard: isTestGridRun,
+        expectedRunType: "test_grid",
+        screenshotWrapper: "grid",
+        transformData: (run, options): ResultViewData => ({
+          columns: [{ field: "value", headerName: "Value" }],
+          rows: run.data.map((value, index) => ({ value, _index: index })),
+          toolbar: options.onAddToChecklist ? (
+            <button
+              data-testid="add-to-checklist-btn"
+              onClick={() => options.onAddToChecklist?.(run)}
+            >
+              Add to Checklist
+            </button>
+          ) : null,
+        }),
+      });
+
+      const run = createTestGridRun();
+      const mockOnAddToChecklist = jest.fn();
+
+      renderWithProviders(
+        <AddToChecklistView
+          run={run}
+          onAddToChecklist={mockOnAddToChecklist}
+        />,
+      );
+
+      // Button should be rendered when callback is provided
+      const button = screen.getByTestId("add-to-checklist-btn");
+      expect(button).toBeInTheDocument();
+
+      // Clicking button should call the callback with run
+      button.click();
+      expect(mockOnAddToChecklist).toHaveBeenCalledWith(run);
+    });
+
+    it("does not render add-to-checklist button when callback not provided", () => {
+      const AddToChecklistView = createResultView<
+        TestGridRun,
+        never,
+        DataGridHandle
+      >({
+        displayName: "AddToChecklistView",
+        typeGuard: isTestGridRun,
+        expectedRunType: "test_grid",
+        screenshotWrapper: "grid",
+        transformData: (run, options): ResultViewData => ({
+          columns: [{ field: "value", headerName: "Value" }],
+          rows: run.data.map((value, index) => ({ value, _index: index })),
+          toolbar: options.onAddToChecklist ? (
+            <button data-testid="add-to-checklist-btn">Add to Checklist</button>
+          ) : null,
+        }),
+      });
+
+      const run = createTestGridRun();
+
+      // No onAddToChecklist prop provided
+      renderWithProviders(<AddToChecklistView run={run} />);
+
+      // Button should NOT be rendered when callback is not provided
+      expect(
+        screen.queryByTestId("add-to-checklist-btn"),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
