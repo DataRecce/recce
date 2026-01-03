@@ -180,8 +180,8 @@ Ten components follow an **identical structural pattern**:
 | `ProfileDiffResultView` | Grid | ✅ | ✅ Migrated | Grid + toolbar |
 | `ProfileResultView` | Grid | ✅ | ✅ Migrated | Shares with above |
 | `TopKDiffResultView` | Chart | ✅ | ❌ Deferred | Has local useState |
-| `ValueDiffDetailResultView` | Grid | ✅ | 🔄 In Progress | Complex toolbar |
-| `QueryResultView` | Grid | ✅ | 🔄 In Progress | Toolbar + callback |
+| `ValueDiffDetailResultView` | Grid | ✅ | ❌ Deferred | Needs toolbar-in-empty-state support |
+| `QueryResultView` | Grid | ✅ | ❌ Deferred | Custom amber warning styling |
 | `QueryDiffResultView` | Grid | ✅ | ❌ Deferred | Bifurcation logic |
 
 **Common Pattern:**
@@ -201,9 +201,14 @@ Ten components follow an **identical structural pattern**:
 - ✅ Header/footer slots
 - ✅ Empty state + conditional empty state
 - ✅ View options (generic)
-- 🔄 Toolbar slot (in progress)
-- 🔄 Warnings array (in progress)
-- 🔄 onAddToChecklist callback (in progress)
+- ✅ Toolbar slot (ReactNode)
+- ✅ Warnings array (string[])
+- ✅ onAddToChecklist callback
+
+**Remaining Gaps:**
+- ❌ Toolbar-in-empty-state (ValueDiffDetailResultView needs this)
+- ❌ Custom warning styling (QueryResultView uses amber background)
+- ❌ Local useState support (TopKDiffResultView needs this)
 
 **See:** [Factory Toolbar Extension Plan](./2026-01-03-factory-toolbar-extension.md)
 
@@ -291,3 +296,6 @@ Ten components follow an **identical structural pattern**:
 | 2026-01-03 | Defer QueryDiffResultView | Bifurcation logic (two internal components) too complex for factory |
 | 2026-01-03 | Defer TopKDiffResultView | Local useState pattern needs factory extension |
 | 2026-01-03 | Tests required before migration | All ResultView components now have baseline tests |
+| 2026-01-03 | Factory toolbar extension complete | Added toolbar slot, warnings array, onAddToChecklist callback with 10 new tests |
+| 2026-01-03 | Defer ValueDiffDetailResultView | Shows toolbar in "No change" empty state - factory doesn't support toolbar-in-empty-state |
+| 2026-01-03 | Defer QueryResultView | Uses custom amber background for warnings - different from factory's MUI Alert |
