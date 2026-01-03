@@ -48,6 +48,9 @@ interface ColorScale {
  * Uses CSS variables for colors to support automatic light/dark mode switching.
  * The palette defines different values for light/dark, and CSS variables
  * automatically resolve to the correct value based on the color scheme.
+ *
+ * Note: We set MUI's internal `--variant-*` CSS variables to ensure custom
+ * colors work properly with MUI's outlined/text button base styles.
  */
 function createButtonColorVariants<T extends CustomColorName>(
   colorName: T,
@@ -66,11 +69,18 @@ function createButtonColorVariants<T extends CustomColorName>(
       },
     },
     // Outlined variant
+    // Sets MUI's internal CSS variables for proper outline styling
     {
       props: { color: colorName, variant: "outlined" as const },
       style: {
+        // Set MUI's internal CSS variables used by outlined button base styles
+        "--variant-outlinedBorder": `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+        "--variant-outlinedColor": `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+        "--variant-outlinedHoverBorder": `var(--mui-palette-${colorName}-dark, ${colorScale[600]})`,
+        "--variant-outlinedHoverBg": `color-mix(in srgb, var(--mui-palette-${colorName}-light, ${colorScale[50]}) 30%, transparent)`,
+        // Direct properties as additional enforcement
         borderColor: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
-        color: `var(--mui-palette-${colorName}-main, ${colorScale[600]})`,
+        color: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
         "&:hover": {
           borderColor: `var(--mui-palette-${colorName}-dark, ${colorScale[600]})`,
           backgroundColor: `color-mix(in srgb, var(--mui-palette-${colorName}-light, ${colorScale[50]}) 30%, transparent)`,
@@ -78,10 +88,15 @@ function createButtonColorVariants<T extends CustomColorName>(
       },
     },
     // Text variant (ghost)
+    // Sets MUI's internal CSS variables for proper text styling
     {
       props: { color: colorName, variant: "text" as const },
       style: {
-        color: `var(--mui-palette-${colorName}-main, ${colorScale[600]})`,
+        // Set MUI's internal CSS variables used by text button base styles
+        "--variant-textColor": `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+        "--variant-textHoverBg": `color-mix(in srgb, var(--mui-palette-${colorName}-light, ${colorScale[50]}) 30%, transparent)`,
+        // Direct properties as additional enforcement
+        color: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
         "&:hover": {
           backgroundColor: `color-mix(in srgb, var(--mui-palette-${colorName}-light, ${colorScale[50]}) 30%, transparent)`,
         },
@@ -117,8 +132,11 @@ function createChipColorVariants<T extends CustomColorName>(
     {
       props: { color: colorName, variant: "outlined" as const },
       style: {
+        // Set MUI's internal CSS variables for proper outline styling
+        "--variant-outlinedBorder": `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+        // Direct properties as additional enforcement
         borderColor: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
-        color: `var(--mui-palette-${colorName}-main, ${colorScale[600]})`,
+        color: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
         "&:hover": {
           backgroundColor: `color-mix(in srgb, var(--mui-palette-${colorName}-light, ${colorScale[50]}) 25%, transparent)`,
         },
