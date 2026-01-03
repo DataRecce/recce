@@ -172,7 +172,7 @@ describe("TopKDiffResultView", () => {
 
       // The ScreenshotBox should receive white background
       const screenshotBox = screen.getByTestId("screenshot-box-mock");
-      expect(screenshotBox).toHaveAttribute("backgroundColor", "white");
+      expect(screenshotBox).toHaveAttribute("data-background-color", "white");
     });
 
     it("applies dark mode background styling when useIsDark returns true", () => {
@@ -183,7 +183,7 @@ describe("TopKDiffResultView", () => {
 
       // The ScreenshotBox should receive dark background
       const screenshotBox = screen.getByTestId("screenshot-box-mock");
-      expect(screenshotBox).toHaveAttribute("backgroundColor", "#1f2937");
+      expect(screenshotBox).toHaveAttribute("data-background-color", "#1f2937");
     });
   });
 
