@@ -45,19 +45,18 @@ interface ColorScale {
  * Helper to generate button color variants for a given color
  * Creates contained, outlined, and text variant styles
  *
- * Uses CSS variables for colors to support automatic light/dark mode switching.
- * The palette defines different values for light/dark, and CSS variables
- * automatically resolve to the correct value based on the color scheme.
+ * Uses the `&&` selector pattern to increase CSS specificity, ensuring our
+ * custom color variant styles override MUI's default outlined/text button styles.
+ * MUI's default styles have high specificity that would otherwise win the cascade.
  *
- * Note: We set MUI's internal `--variant-*` CSS variables to ensure custom
- * colors work properly with MUI's outlined/text button base styles.
+ * @see https://mui.com/material-ui/customization/theme-components/#specificity
  */
 function createButtonColorVariants<T extends CustomColorName>(
   colorName: T,
   colorScale: ColorScale,
 ) {
   return [
-    // Contained variant (solid)
+    // Contained variant (solid) - uses CSS variables for light/dark mode
     {
       props: { color: colorName, variant: "contained" as const },
       style: {
@@ -68,35 +67,29 @@ function createButtonColorVariants<T extends CustomColorName>(
         },
       },
     },
-    // Outlined variant
-    // Sets MUI's internal CSS variables for proper outline styling
+    // Outlined variant - uses && for higher specificity over MUI defaults
     {
       props: { color: colorName, variant: "outlined" as const },
       style: {
-        // Set MUI's internal CSS variables used by outlined button base styles
-        "--variant-outlinedBorder": `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
-        "--variant-outlinedColor": `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
-        "--variant-outlinedHoverBorder": `var(--mui-palette-${colorName}-dark, ${colorScale[600]})`,
-        "--variant-outlinedHoverBg": `color-mix(in srgb, var(--mui-palette-${colorName}-light, ${colorScale[50]}) 30%, transparent)`,
-        // Direct properties as additional enforcement
-        borderColor: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
-        color: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+        // && increases specificity to override MUI's default outlined styles
+        "&&": {
+          borderColor: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+          color: `var(--mui-palette-${colorName}-light, ${colorScale[500]})`,
+        },
         "&:hover": {
           borderColor: `var(--mui-palette-${colorName}-dark, ${colorScale[600]})`,
           backgroundColor: `color-mix(in srgb, var(--mui-palette-${colorName}-light, ${colorScale[50]}) 30%, transparent)`,
         },
       },
     },
-    // Text variant (ghost)
-    // Sets MUI's internal CSS variables for proper text styling
+    // Text variant (ghost) - uses && for higher specificity over MUI defaults
     {
       props: { color: colorName, variant: "text" as const },
       style: {
-        // Set MUI's internal CSS variables used by text button base styles
-        "--variant-textColor": `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
-        "--variant-textHoverBg": `color-mix(in srgb, var(--mui-palette-${colorName}-light, ${colorScale[50]}) 30%, transparent)`,
-        // Direct properties as additional enforcement
-        color: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+        // && increases specificity to override MUI's default text styles
+        "&&": {
+          color: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+        },
         "&:hover": {
           backgroundColor: `color-mix(in srgb, var(--mui-palette-${colorName}-light, ${colorScale[50]}) 30%, transparent)`,
         },
@@ -108,13 +101,16 @@ function createButtonColorVariants<T extends CustomColorName>(
 /**
  * Helper to generate Chip color variants
  * Uses CSS variables for automatic light/dark mode support
+ *
+ * Uses the `&&` selector pattern for outlined variant to ensure our custom
+ * color styles override MUI's default chip outlined styles.
  */
 function createChipColorVariants<T extends CustomColorName>(
   colorName: T,
   colorScale: ColorScale,
 ) {
   return [
-    // Filled variant
+    // Filled variant - uses CSS variables for light/dark mode
     {
       props: { color: colorName, variant: "filled" as const },
       style: {
@@ -128,15 +124,15 @@ function createChipColorVariants<T extends CustomColorName>(
         },
       },
     },
-    // Outlined variant
+    // Outlined variant - uses && for higher specificity over MUI defaults
     {
       props: { color: colorName, variant: "outlined" as const },
       style: {
-        // Set MUI's internal CSS variables for proper outline styling
-        "--variant-outlinedBorder": `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
-        // Direct properties as additional enforcement
-        borderColor: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
-        color: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+        // && increases specificity to override MUI's default outlined styles
+        "&&": {
+          borderColor: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+          color: `var(--mui-palette-${colorName}-main, ${colorScale[500]})`,
+        },
         "&:hover": {
           backgroundColor: `color-mix(in srgb, var(--mui-palette-${colorName}-light, ${colorScale[50]}) 25%, transparent)`,
         },
@@ -742,15 +738,15 @@ export const theme = createTheme({
       palette: {
         mode: "light",
         primary: {
-          light: colors.brand[400],
-          main: colors.brand[500],
-          dark: colors.brand[700],
+          main: colors.iochmara[500],
+          light: colors.iochmara[300],
+          dark: colors.iochmara[600],
           contrastText: "#ffffff",
         },
         secondary: {
-          light: colors.iochmara[400],
-          main: colors.iochmara[500],
-          dark: colors.iochmara[700],
+          main: colors.cyan[500],
+          light: colors.cyan[400],
+          dark: colors.cyan[600],
           contrastText: "#ffffff",
         },
         brand: {
@@ -802,9 +798,9 @@ export const theme = createTheme({
           contrastText: "#ffffff",
         },
         neutral: {
-          main: colors.neutral[500],
-          light: colors.neutral[300],
-          dark: colors.neutral[700],
+          main: colors.neutral[300],
+          light: colors.neutral[900],
+          dark: colors.neutral[100],
           contrastText: "#ffffff",
         },
         grey: colors.neutral, // Color scale (50, 100, etc.) - MUI's built-in grey
@@ -828,15 +824,15 @@ export const theme = createTheme({
       palette: {
         mode: "dark",
         primary: {
-          light: colors.brand[300],
-          main: colors.brand[400],
-          dark: colors.brand[600],
+          main: colors.iochmara[500],
+          light: colors.iochmara[300],
+          dark: colors.iochmara[600],
           contrastText: "#ffffff",
         },
         secondary: {
-          light: colors.iochmara[300],
-          main: colors.iochmara[400],
-          dark: colors.iochmara[600],
+          main: colors.cyan[500],
+          light: colors.cyan[400],
+          dark: colors.cyan[600],
           contrastText: "#ffffff",
         },
         brand: {
@@ -888,10 +884,10 @@ export const theme = createTheme({
           contrastText: "#ffffff",
         },
         neutral: {
-          main: colors.neutral[200],
+          main: colors.neutral[500],
           light: colors.neutral[100],
-          dark: colors.neutral[400],
-          contrastText: "#000000",
+          dark: colors.neutral[700],
+          contrastText: "#FFFFFF",
         },
         grey: colors.neutral, // Color scale (50, 100, etc.) - MUI's built-in grey
         success: {
