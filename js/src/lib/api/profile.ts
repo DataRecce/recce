@@ -44,6 +44,18 @@ export interface TopKDiffResult {
   current: TopKResult;
 }
 
+/**
+ * View options for TopKDiffResultView.
+ * Controls display preferences for top-K diff visualization.
+ */
+export interface TopKViewOptions {
+  /**
+   * When true, show all items instead of just top 10.
+   * Default is false (show top 10 only).
+   */
+  show_all?: boolean;
+}
+
 export interface HistogramDiffParams {
   model: string;
   column_name: string;

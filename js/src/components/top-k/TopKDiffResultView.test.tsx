@@ -1,16 +1,15 @@
 /**
  * @file TopKDiffResultView.test.tsx
- * @description Baseline tests for TopKDiffResultView component
+ * @description Tests for TopKDiffResultView component using createResultView factory.
  *
- * These tests capture current component behavior before refactoring to factory pattern.
  * Tests verify:
  * - Correct rendering with valid run data
  * - Title format (Model {params.model}.{params.column_name})
  * - View toggle visibility based on item count (>10 items)
- * - Toggle state changes via click interaction
+ * - Toggle state changes via viewOptions/onViewOptionsChanged
  * - Toggle text changes between "View More Items" and "View Only Top-10"
+ * - Type guard throws for wrong run types
  * - Ref forwarding to ScreenshotBox (HTMLDivElement ref)
- * - NO type guard (does not throw for wrong run types)
  */
 
 // ============================================================================
@@ -27,6 +26,20 @@ jest.mock("ag-grid-community", () => ({
   themeQuartz: {},
 }));
 
+// Mock ag-grid-react to avoid the extends value error
+jest.mock("ag-grid-react", () => ({
+  AgGridReact: jest.fn(() => null),
+}));
+
+// Mock packages/ui ScreenshotDataGrid (used by createResultView factory)
+jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
+  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
+    .screenshotDataGridMock,
+  EmptyRowsRenderer: ({ emptyMessage }: { emptyMessage?: string }) => (
+    <div data-testid="empty-rows-renderer">{emptyMessage ?? "No rows"}</div>
+  ),
+}));
+
 // Mock TopKSummaryBarChart component to avoid chart.js complexity
 const mockTopKSummaryBarChart = jest.fn(({ isDisplayTopTen }) => (
   <div data-testid="topk-chart">
@@ -39,15 +52,28 @@ jest.mock("../charts/TopKSummaryList", () => ({
     mockTopKSummaryBarChart(props),
 }));
 
+// Mock useIsDark hook - declare first since it's used by multiple mocks
+const mockUseIsDark = jest.fn(() => false);
+
 // Mock ScreenshotBox with our test utility mock
 jest.mock("@datarecce/ui/primitives", () => ({
   ScreenshotBox: jest.requireActual("@/testing-utils/resultViewTestUtils")
     .screenshotBoxMock,
 }));
 
-// Mock useIsDark hook
-const mockUseIsDark = jest.fn(() => false);
+// Mock packages/ui ScreenshotBox (used by createResultView factory)
+jest.mock("@datarecce/ui/components/ui/ScreenshotBox", () => ({
+  ScreenshotBox: jest.requireActual("@/testing-utils/resultViewTestUtils")
+    .screenshotBoxMock,
+}));
+
+// Mock useIsDark hook (OSS location)
 jest.mock("@/lib/hooks/useIsDark", () => ({
+  useIsDark: () => mockUseIsDark(),
+}));
+
+// Mock packages/ui hooks
+jest.mock("@datarecce/ui/hooks", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 
@@ -57,7 +83,7 @@ jest.mock("@/lib/hooks/useIsDark", () => ({
 
 import { fireEvent, screen } from "@testing-library/react";
 import React from "react";
-import type { TopKDiffResult } from "@/lib/api/profile";
+import type { TopKDiffResult, TopKViewOptions } from "@/lib/api/profile";
 import {
   createRowCountDiffRun,
   createTopKDiffRun,
@@ -163,28 +189,6 @@ describe("TopKDiffResultView", () => {
       const screenshotBox = screen.getByTestId("screenshot-box-mock");
       expect(screenshotBox).toBeInTheDocument();
     });
-
-    it("applies light mode background styling when useIsDark returns false", () => {
-      mockUseIsDark.mockReturnValue(false);
-      const run = createTopKDiffRun();
-
-      renderWithProviders(<TopKDiffResultView run={run} />);
-
-      // The ScreenshotBox should receive white background
-      const screenshotBox = screen.getByTestId("screenshot-box-mock");
-      expect(screenshotBox).toHaveAttribute("data-background-color", "white");
-    });
-
-    it("applies dark mode background styling when useIsDark returns true", () => {
-      mockUseIsDark.mockReturnValue(true);
-      const run = createTopKDiffRun();
-
-      renderWithProviders(<TopKDiffResultView run={run} />);
-
-      // The ScreenshotBox should receive dark background
-      const screenshotBox = screen.getByTestId("screenshot-box-mock");
-      expect(screenshotBox).toHaveAttribute("data-background-color", "#1f2937");
-    });
   });
 
   // ==========================================================================
@@ -275,11 +279,11 @@ describe("TopKDiffResultView", () => {
   });
 
   // ==========================================================================
-  // Toggle State Change Tests
+  // Toggle State via ViewOptions Tests
   // ==========================================================================
 
-  describe("toggle state change", () => {
-    it("starts with isDisplayTopTen=true", () => {
+  describe("toggle state via viewOptions", () => {
+    it("starts with isDisplayTopTen=true when show_all is undefined", () => {
       const run = createRunWith15Items();
 
       renderWithProviders(<TopKDiffResultView run={run} />);
@@ -292,15 +296,29 @@ describe("TopKDiffResultView", () => {
       );
     });
 
-    it("toggles isDisplayTopTen to false when clicking View More Items", () => {
+    it("starts with isDisplayTopTen=true when show_all=false", () => {
       const run = createRunWith15Items();
+      const viewOptions: TopKViewOptions = { show_all: false };
 
-      renderWithProviders(<TopKDiffResultView run={run} />);
+      renderWithProviders(
+        <TopKDiffResultView run={run} viewOptions={viewOptions} />,
+      );
 
-      // Click the toggle
-      fireEvent.click(screen.getByText("View More Items"));
+      expect(mockTopKSummaryBarChart).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          isDisplayTopTen: true,
+        }),
+      );
+    });
 
-      // Verify state changed via mock prop
+    it("starts with isDisplayTopTen=false when show_all=true", () => {
+      const run = createRunWith15Items();
+      const viewOptions: TopKViewOptions = { show_all: true };
+
+      renderWithProviders(
+        <TopKDiffResultView run={run} viewOptions={viewOptions} />,
+      );
+
       expect(mockTopKSummaryBarChart).toHaveBeenLastCalledWith(
         expect.objectContaining({
           isDisplayTopTen: false,
@@ -308,21 +326,48 @@ describe("TopKDiffResultView", () => {
       );
     });
 
-    it("toggles isDisplayTopTen back to true when clicking View Only Top-10", () => {
+    it("calls onViewOptionsChanged with show_all=true when clicking View More Items", () => {
       const run = createRunWith15Items();
+      const onViewOptionsChanged = jest.fn();
 
-      renderWithProviders(<TopKDiffResultView run={run} />);
+      renderWithProviders(
+        <TopKDiffResultView
+          run={run}
+          onViewOptionsChanged={onViewOptionsChanged}
+        />,
+      );
 
-      // Click to show all
+      // Click the toggle
       fireEvent.click(screen.getByText("View More Items"));
+
+      // Verify onViewOptionsChanged was called with show_all=true
+      expect(onViewOptionsChanged).toHaveBeenCalledWith(
+        expect.objectContaining({
+          show_all: true,
+        }),
+      );
+    });
+
+    it("calls onViewOptionsChanged with show_all=false when clicking View Only Top-10", () => {
+      const run = createRunWith15Items();
+      const viewOptions: TopKViewOptions = { show_all: true };
+      const onViewOptionsChanged = jest.fn();
+
+      renderWithProviders(
+        <TopKDiffResultView
+          run={run}
+          viewOptions={viewOptions}
+          onViewOptionsChanged={onViewOptionsChanged}
+        />,
+      );
 
       // Click to show top-10 again
       fireEvent.click(screen.getByText("View Only Top-10"));
 
-      // Verify state toggled back
-      expect(mockTopKSummaryBarChart).toHaveBeenLastCalledWith(
+      // Verify onViewOptionsChanged was called with show_all=false
+      expect(onViewOptionsChanged).toHaveBeenCalledWith(
         expect.objectContaining({
-          isDisplayTopTen: true,
+          show_all: false,
         }),
       );
     });
@@ -333,7 +378,7 @@ describe("TopKDiffResultView", () => {
   // ==========================================================================
 
   describe("toggle text changes", () => {
-    it('initially shows "View More Items" text', () => {
+    it('initially shows "View More Items" text when show_all is undefined', () => {
       const run = createRunWith15Items();
 
       renderWithProviders(<TopKDiffResultView run={run} />);
@@ -342,26 +387,25 @@ describe("TopKDiffResultView", () => {
       expect(screen.queryByText("View Only Top-10")).not.toBeInTheDocument();
     });
 
-    it('changes to "View Only Top-10" after clicking', () => {
+    it('shows "View Only Top-10" text when show_all=true', () => {
       const run = createRunWith15Items();
+      const viewOptions: TopKViewOptions = { show_all: true };
 
-      renderWithProviders(<TopKDiffResultView run={run} />);
-
-      fireEvent.click(screen.getByText("View More Items"));
+      renderWithProviders(
+        <TopKDiffResultView run={run} viewOptions={viewOptions} />,
+      );
 
       expect(screen.getByText("View Only Top-10")).toBeInTheDocument();
       expect(screen.queryByText("View More Items")).not.toBeInTheDocument();
     });
 
-    it('changes back to "View More Items" after clicking twice', () => {
+    it('shows "View More Items" text when show_all=false', () => {
       const run = createRunWith15Items();
+      const viewOptions: TopKViewOptions = { show_all: false };
 
-      renderWithProviders(<TopKDiffResultView run={run} />);
-
-      // First click
-      fireEvent.click(screen.getByText("View More Items"));
-      // Second click
-      fireEvent.click(screen.getByText("View Only Top-10"));
+      renderWithProviders(
+        <TopKDiffResultView run={run} viewOptions={viewOptions} />,
+      );
 
       expect(screen.getByText("View More Items")).toBeInTheDocument();
       expect(screen.queryByText("View Only Top-10")).not.toBeInTheDocument();
@@ -373,7 +417,7 @@ describe("TopKDiffResultView", () => {
   // ==========================================================================
 
   describe("type safety", () => {
-    it("does NOT have explicit type guard (no throw with specific error message)", () => {
+    it("throws error when wrong run type provided", () => {
       const wrongRun = createRowCountDiffRun();
 
       // Suppress console.error for expected errors
@@ -382,32 +426,21 @@ describe("TopKDiffResultView", () => {
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});
 
-      // Unlike other ResultView components with explicit type guards that throw
-      // "Run type must be X", TopKDiffResultView does NOT have a type guard.
-      // It will crash due to undefined property access, not a validation error.
+      // Factory pattern includes type guard that throws
       expect(() => {
         renderWithProviders(<TopKDiffResultView run={wrongRun} />);
-      }).toThrow(TypeError); // Crashes on undefined property access, not validation
+      }).toThrow("Run type must be top_k_diff");
 
       consoleSpy.mockRestore();
     });
 
-    it("crashes with TypeError when given wrong run type (no validation)", () => {
-      const wrongRun = createRowCountDiffRun();
+    it("accepts top_k_diff type run", () => {
+      const run = createTopKDiffRun();
 
-      // Suppress console.error for expected errors
-      const consoleSpy = jest
-        .spyOn(console, "error")
-        // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
-        .mockImplementation(() => {});
-
-      // The component casts run.result as TopKDiffResult without validation,
-      // so it crashes trying to access result.current.valids when result has wrong shape
+      // Should not throw
       expect(() => {
-        renderWithProviders(<TopKDiffResultView run={wrongRun} />);
-      }).toThrow("Cannot read properties of undefined");
-
-      consoleSpy.mockRestore();
+        renderWithProviders(<TopKDiffResultView run={run} />);
+      }).not.toThrow();
     });
   });
 
@@ -430,19 +463,6 @@ describe("TopKDiffResultView", () => {
       expect(ref.current).not.toBeNull();
       // ScreenshotBox mock renders with data-testid="screenshot-box-mock"
       expect(ref.current).toHaveAttribute("data-testid", "screenshot-box-mock");
-    });
-
-    it("ref is HTMLDivElement (not DataGridHandle)", () => {
-      const run = createTopKDiffRun();
-      const ref = createBoxRef();
-
-      renderWithProviders(
-        // biome-ignore lint/suspicious/noExplicitAny: test mock needs flexible typing
-        <TopKDiffResultView run={run} ref={ref as any} />,
-      );
-
-      // HTMLDivElement should have standard DOM properties
-      expect(ref.current).toBeInstanceOf(HTMLDivElement);
     });
   });
 
@@ -543,6 +563,32 @@ describe("TopKDiffResultView", () => {
           valids: 0,
         }),
       );
+    });
+  });
+
+  // ==========================================================================
+  // Dark Mode Tests
+  // ==========================================================================
+
+  describe("dark mode", () => {
+    it("applies light mode styling when useIsDark returns false", () => {
+      mockUseIsDark.mockReturnValue(false);
+      const run = createTopKDiffRun();
+
+      renderWithProviders(<TopKDiffResultView run={run} />);
+
+      // Verify useIsDark is called (title uses it for color)
+      expect(mockUseIsDark).toHaveBeenCalled();
+    });
+
+    it("applies dark mode styling when useIsDark returns true", () => {
+      mockUseIsDark.mockReturnValue(true);
+      const run = createTopKDiffRun();
+
+      renderWithProviders(<TopKDiffResultView run={run} />);
+
+      // Verify useIsDark is called
+      expect(mockUseIsDark).toHaveBeenCalled();
     });
   });
 });

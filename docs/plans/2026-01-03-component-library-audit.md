@@ -179,7 +179,7 @@ Ten components follow an **identical structural pattern**:
 | `HistogramDiffResultView` | Chart | ✅ | ✅ Migrated | Chart-based |
 | `ProfileDiffResultView` | Grid | ✅ | ✅ Migrated | Grid + toolbar |
 | `ProfileResultView` | Grid | ✅ | ✅ Migrated | Shares with above |
-| `TopKDiffResultView` | Chart | ✅ | ❌ Deferred | Has local useState |
+| `TopKDiffResultView` | Chart | ✅ | ✅ Migrated | Uses viewOptions + footer slot |
 | `ValueDiffDetailResultView` | Grid | ✅ | ✅ Migrated | Uses toolbar-in-empty-state pattern |
 | `QueryResultView` | Grid | ✅ | ✅ Migrated | Uses amber warning styling |
 | `QueryDiffResultView` | Grid | ✅ | ❌ Deferred | Bifurcation logic |
@@ -208,7 +208,7 @@ Ten components follow an **identical structural pattern**:
 - ✅ Custom warning styling (warningStyle: 'alert' | 'amber')
 
 **Remaining Gaps:**
-- ❌ Local useState support (TopKDiffResultView needs this)
+- None - all factory features implemented
 
 **See:** [Factory Toolbar Extension Plan](./2026-01-03-factory-toolbar-extension.md)
 
@@ -304,3 +304,4 @@ Ten components follow an **identical structural pattern**:
 | 2026-01-03 | Add defaultColumnOptions to factory | Added defaultColumnOptions (resizable, maxWidth, minWidth) and noRowsMessage to ResultViewData. 2 new tests added (54 total). |
 | 2026-01-03 | Migrate QueryResultView | Successfully migrated to createResultView factory. Uses combined type guard (isQueryRun \|\| isQueryBaseRun), amber warnings, onAddToChecklist button. 21/21 tests pass. |
 | 2026-01-03 | Migrate ValueDiffDetailResultView | Successfully migrated to createResultView factory. Uses toolbar-in-empty-state pattern for "No change" state, amber warnings, noRowsMessage. 28/28 tests pass. |
+| 2026-01-03 | Migrate TopKDiffResultView | Converted local useState to viewOptions (TopKViewOptions.show_all). Uses footer slot for toggle link outside ScreenshotBox. No factory changes needed - existing footer slot + viewOptions pattern sufficient. 26/26 tests pass. |
