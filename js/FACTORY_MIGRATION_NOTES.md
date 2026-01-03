@@ -7,11 +7,14 @@
 | RowCountDiffResultView | COMPLETE | Simple grid |
 | HistogramDiffResultView | COMPLETE | Simple chart |
 | ValueDiffResultView | COMPLETE | Uses header support |
+| ProfileResultView | COMPLETE | Simple grid with column render modes |
+| ProfileDiffResultView | COMPLETE | Grid with toolbar header |
 | TopKDiffResultView | KEEP MANUAL | Local state toggle |
 | QueryResultView | KEEP MANUAL | Extra props (`onAddToChecklist`) |
 | QueryDiffResultView | KEEP MANUAL | Extra props + complex branching logic |
-| ProfileDiffResultView | Not assessed | TBD |
-| SchemaDiffResultView | Not assessed | TBD |
+| ValueDiffDetailResultView | KEEP MANUAL | Custom "No change" empty state with toolbar |
+
+**Final Count: 5 migrated, 4 kept manual (9 total components)**
 
 ---
 
@@ -156,18 +159,76 @@ The `onAddToChecklist` callback cannot be passed through this interface because:
 
 ---
 
-## Components Not Yet Assessed
+### Task 2.7: ProfileResultView - COMPLETE
 
-The following components have not been evaluated for factory migration:
+**Status:** Migrated successfully
 
-- [ ] **ProfileDiffResultView** - May have filters/controls
-- [ ] **SchemaDiffResultView** - May have filters
+**Assessment (2026-01-03):**
 
-Each should be assessed for:
-1. Extra props beyond standard `RunResultViewProps`
-2. Local state requirements
-3. Complex conditional rendering
-4. Custom header/footer with callbacks
+ProfileResultView is a simple grid component that uses `createResultView` with:
+- `screenshotWrapper: "grid"`
+- Column render mode support for proportion columns
+- No header (just the grid)
+- No complex state or extra props
+
+**Implementation:** Uses factory's standard grid wrapper pattern.
+
+---
+
+### Task 2.8: ProfileDiffResultView - COMPLETE
+
+**Status:** Migrated successfully
+
+**Assessment (2026-01-03):**
+
+ProfileDiffResultView uses `createResultView` with:
+- `screenshotWrapper: "grid"`
+- Header with `RunToolbar` containing `DiffDisplayModeSwitch`
+- Column render mode support for proportion columns
+- View options for display mode and pinned columns
+
+**Implementation:** Uses factory's header support to render the toolbar above the grid.
+
+---
+
+### Task 2.9: ValueDiffDetailResultView - KEEP MANUAL
+
+**Status:** Will not migrate - custom conditional empty state + extra props
+
+**Assessment (2026-01-03):**
+
+**Reasons for keeping manual:**
+
+1. **Extra Props:** Same issue as QueryResultView
+   ```tsx
+   export interface ValueDiffDetailResultViewProps
+     extends RunResultViewProps<ValueDiffDetailViewOptions> {
+     onAddToChecklist?: (run: Run) => void;  // Extra callback
+   }
+   ```
+
+2. **Custom "No change" Empty State:** When `changedOnly` is true and there are no rows, the component renders a special empty state that PRESERVES the toolbar (lines 127-155):
+   ```tsx
+   if (changedOnly && gridData.rows.length === 0) {
+     return (
+       <Box sx={{ display: "flex", flexDirection: "column", ... }}>
+         <RunToolbar run={run} viewOptions={viewOptions} ... />
+         <Box sx={{ ... }}>
+           No change
+         </Box>
+       </Box>
+     );
+   }
+   ```
+
+   The factory's `isEmpty` handling would hide the entire component including the header. This component requires the toolbar to remain visible so users can toggle off "Changed Only" to see all rows.
+
+3. **Complex Toolbar:** Uses `RunToolbar` with:
+   - `DiffDisplayModeSwitch` component
+   - `ChangedOnlyCheckbox` component
+   - Dynamic warning messages (limit warnings)
+
+**Decision:** Keep ValueDiffDetailResultView as manual implementation. The conditional empty state that preserves the toolbar cannot be expressed through the factory's `isEmpty` pattern.
 
 ---
 
@@ -191,12 +252,14 @@ When migrating components to the factory:
 - `/js/packages/ui/src/components/result/createResultView.tsx`
 - `/js/packages/ui/src/components/result/types.ts`
 
-**Migrated Components:**
+**Migrated Components (5):**
 - `/js/src/components/rowcount/RowCountDiffResultView.tsx`
 - `/js/src/components/histogram/HistogramDiffResultView.tsx`
 - `/js/src/components/valuediff/ValueDiffResultView.tsx`
+- `/js/src/components/profile/ProfileDiffResultView.tsx` (contains both ProfileResultView and ProfileDiffResultView)
 
-**Manual Components (kept):**
+**Manual Components (4):**
 - `/js/src/components/topkdiff/TopKDiffResultView.tsx`
 - `/js/src/components/query/QueryResultView.tsx`
 - `/js/src/components/query/QueryDiffResultView.tsx`
+- `/js/src/components/valuediff/ValueDiffDetailResultView.tsx`
