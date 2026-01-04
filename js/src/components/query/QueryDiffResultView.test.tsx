@@ -49,11 +49,8 @@ jest.mock("@/components/data-grid/ScreenshotDataGrid", () => ({
   ),
 }));
 
-// Mock useIsDark hook - declare first since it's used by multiple mocks
+// Mock useIsDark hook from @datarecce/ui
 const mockUseIsDark = jest.fn(() => false);
-jest.mock("@/lib/hooks/useIsDark", () => ({
-  useIsDark: () => mockUseIsDark(),
-}));
 
 // Mock packages/ui ScreenshotDataGrid (used by createResultView factory)
 jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({

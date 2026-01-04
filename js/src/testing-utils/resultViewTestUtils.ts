@@ -459,7 +459,7 @@ export function setupResultViewMocks() {
  * // At the top of your test file, before imports
  * const mocks = getResultViewMockConfig();
  * jest.mock("ag-grid-community", () => mocks.agGrid);
- * jest.mock("@/lib/hooks/useIsDark", () => ({ useIsDark: mocks.useIsDark }));
+ * jest.mock("@datarecce/ui/hooks", () => ({ useIsDark: mocks.useIsDark }));
  * ```
  */
 export function getResultViewMockConfig() {

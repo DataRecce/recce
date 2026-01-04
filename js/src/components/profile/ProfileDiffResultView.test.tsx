@@ -81,14 +81,9 @@ jest.mock("../query/ToggleSwitch", () => ({
   )),
 }));
 
-// Mock useIsDark hook - both local and package versions
+// Mock useIsDark hook from @datarecce/ui
 const mockUseIsDark = jest.fn(() => false);
-jest.mock("@/lib/hooks/useIsDark", () => ({
-  useIsDark: () => mockUseIsDark(),
-}));
-
-// Mock useIsDark from @datarecce/ui package (used by factory)
-jest.mock("@datarecce/ui/hooks/useIsDark", () => ({
+jest.mock("@datarecce/ui/hooks", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 

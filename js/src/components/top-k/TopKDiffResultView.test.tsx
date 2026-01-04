@@ -67,12 +67,7 @@ jest.mock("@datarecce/ui/components/ui/ScreenshotBox", () => ({
     .screenshotBoxMock,
 }));
 
-// Mock useIsDark hook (OSS location)
-jest.mock("@/lib/hooks/useIsDark", () => ({
-  useIsDark: () => mockUseIsDark(),
-}));
-
-// Mock packages/ui hooks
+// Mock useIsDark hook from @datarecce/ui
 jest.mock("@datarecce/ui/hooks", () => ({
   useIsDark: () => mockUseIsDark(),
 }));

@@ -81,13 +81,9 @@ jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
   EmptyRowsRenderer: () => <div data-testid="empty-rows-renderer">No data</div>,
 }));
 
-// Mock useIsDark hook (both local and packages/ui versions)
+// Mock useIsDark hook from @datarecce/ui
 const mockUseIsDark = jest.fn(() => false);
-jest.mock("@/lib/hooks/useIsDark", () => ({
-  useIsDark: () => mockUseIsDark(),
-}));
-
-jest.mock("@datarecce/ui/hooks/useIsDark", () => ({
+jest.mock("@datarecce/ui/hooks", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 
