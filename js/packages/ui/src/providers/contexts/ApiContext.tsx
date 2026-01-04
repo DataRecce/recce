@@ -51,6 +51,16 @@ export function useApiConfig(): ApiContextValue {
 }
 
 /**
+ * Non-throwing version of useApiConfig.
+ * Returns null if not within RecceProvider, allowing for graceful fallbacks.
+ *
+ * @returns ApiContextValue or null if outside provider
+ */
+export function useApiConfigOptional(): ApiContextValue | null {
+  return useContext(ApiContext);
+}
+
+/**
  * Hook to get the configured axios client.
  * Convenience wrapper around useApiConfig().apiClient
  *

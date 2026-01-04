@@ -13,7 +13,11 @@ export {
 } from "../contexts/instance";
 
 // Re-export provider-level contexts
-export { useApiClient, useApiConfig } from "./contexts/ApiContext";
+export {
+  useApiClient,
+  useApiConfig,
+  useApiConfigOptional,
+} from "./contexts/ApiContext";
 // Export new context hooks and types
 export type {
   Check,

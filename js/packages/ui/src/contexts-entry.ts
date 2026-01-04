@@ -4,12 +4,16 @@
  * Contexts barrel export for @datarecce/ui
  *
  * This module exports all React contexts for OSS consumption:
+ * - ApiContext: API client configuration and hooks
  * - RecceInstanceContext: Feature toggles and session information
  * - IdleTimeoutContext: Session management and keep-alive
  *
  * @example
  * ```tsx
  * import {
+ *   ApiProvider,
+ *   useApiConfig,
+ *   useApiConfigOptional,
  *   RecceInstanceInfoProvider,
  *   useRecceInstanceContext,
  *   IdleTimeoutProvider,
@@ -39,3 +43,10 @@ export {
   useRecceInstanceContext,
   useRecceInstanceInfo,
 } from "./contexts/instance";
+// ApiContext exports - API client configuration
+export {
+  ApiProvider,
+  useApiClient,
+  useApiConfig,
+  useApiConfigOptional,
+} from "./providers/contexts/ApiContext";

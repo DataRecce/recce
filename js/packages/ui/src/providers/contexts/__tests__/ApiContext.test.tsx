@@ -1,6 +1,11 @@
 import { render, renderHook, screen } from "@testing-library/react";
 import axios from "axios";
-import { ApiProvider, useApiClient, useApiConfig } from "../ApiContext";
+import {
+  ApiProvider,
+  useApiClient,
+  useApiConfig,
+  useApiConfigOptional,
+} from "../ApiContext";
 
 // Mock axios.create to track interceptor registration
 jest.mock("axios", () => {
@@ -231,6 +236,61 @@ describe("ApiContext (@datarecce/ui)", () => {
       expect(result.current).toBeDefined();
       expect(typeof result.current.get).toBe("function");
       expect(typeof result.current.post).toBe("function");
+    });
+  });
+
+  describe("useApiConfigOptional (non-throwing)", () => {
+    it("returns null when called outside provider", () => {
+      const { result } = renderHook(() => useApiConfigOptional());
+
+      expect(result.current).toBeNull();
+    });
+
+    it("returns context value when called inside provider", () => {
+      const { result } = renderHook(() => useApiConfigOptional(), {
+        wrapper: ({ children }) => (
+          <ApiProvider
+            config={{
+              baseUrl: "https://api.example.com",
+              apiPrefix: "/optional-test",
+              authToken: "optional-token",
+            }}
+          >
+            {children}
+          </ApiProvider>
+        ),
+      });
+
+      expect(result.current).not.toBeNull();
+      expect(result.current?.apiPrefix).toBe("/optional-test");
+      expect(result.current?.authToken).toBe("optional-token");
+      expect(result.current?.baseUrl).toBe("https://api.example.com");
+      expect(result.current?.apiClient).toBeDefined();
+    });
+
+    it("allows graceful fallback pattern", () => {
+      // This demonstrates the intended use case:
+      // OSS can use useApiConfigOptional and fall back to default config
+      const TestComponent = () => {
+        const config = useApiConfigOptional();
+        const apiPrefix = config?.apiPrefix ?? "/api";
+        return <div data-testid="prefix">{apiPrefix}</div>;
+      };
+
+      // Without provider - should use fallback
+      const { unmount } = render(<TestComponent />);
+      expect(screen.getByTestId("prefix")).toHaveTextContent("/api");
+      unmount();
+
+      // With provider - should use provider value
+      render(
+        <ApiProvider
+          config={{ baseUrl: "https://example.com", apiPrefix: "/custom" }}
+        >
+          <TestComponent />
+        </ApiProvider>,
+      );
+      expect(screen.getByTestId("prefix")).toHaveTextContent("/custom");
     });
   });
 
