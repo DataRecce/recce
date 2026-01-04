@@ -8,6 +8,7 @@
  * - XSS-safe rendering (no dangerouslySetInnerHTML)
  */
 
+import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
@@ -16,7 +17,6 @@ import Markdown, { Components } from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import remarkGfm from "remark-gfm";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 import { ExternalLinkConfirmDialog } from "./ExternalLinkConfirmDialog";
 
 interface MarkdownContentProps {

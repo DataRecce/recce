@@ -2,12 +2,12 @@
  * CommentInput - Text area for adding new comments to a check timeline.
  */
 
+import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import { useState } from "react";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 
 interface CommentInputProps {
   onSubmit: (content: string) => void;

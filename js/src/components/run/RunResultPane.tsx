@@ -1,3 +1,4 @@
+import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
@@ -34,7 +35,6 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 import { useRun } from "@/lib/hooks/useRun";
 import {
   LearnHowLink,

@@ -1,3 +1,4 @@
+import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -23,7 +24,6 @@ import {
 } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 import { IconImport } from "../icons";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {

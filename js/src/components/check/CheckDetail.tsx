@@ -1,5 +1,6 @@
 "use client";
 
+import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -63,7 +64,6 @@ import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 import { useRun } from "@/lib/hooks/useRun";
 import { LineageViewRef } from "../lineage/LineageView";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";

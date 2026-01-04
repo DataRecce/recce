@@ -1,3 +1,4 @@
+import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -13,7 +14,6 @@ import { FaRegDotCircle } from "react-icons/fa";
 import { PiInfo, PiX } from "react-icons/pi";
 import { CllInput, ColumnLineageData } from "@/lib/api/cll";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 

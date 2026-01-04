@@ -1,3 +1,4 @@
+import { useIsDark } from "@datarecce/ui/hooks";
 import { createResultView, type ResultViewData } from "@datarecce/ui/result";
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
@@ -6,7 +7,6 @@ import Typography from "@mui/material/Typography";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
 import type { TopKDiffParams, TopKViewOptions } from "@/lib/api/profile";
 import { isTopKDiffRun, type Run } from "@/lib/api/types";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 import { TopKSummaryBarChart } from "../charts/TopKSummaryList";
 import type { RunResultViewProps } from "../run/types";
 

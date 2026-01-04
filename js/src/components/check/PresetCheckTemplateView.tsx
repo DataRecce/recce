@@ -1,6 +1,6 @@
+import { useIsDark } from "@datarecce/ui/hooks";
 import YAML from "yaml";
 import { CodeEditor } from "@/components/editor";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 
 export function generateCheckTemplate({
   name,

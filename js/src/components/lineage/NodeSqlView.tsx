@@ -1,3 +1,4 @@
+import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import MuiDialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
@@ -7,7 +8,6 @@ import { useState } from "react";
 import { FaExpandArrowsAlt } from "react-icons/fa";
 import { IoClose } from "react-icons/io5";
 import { CodeEditor, DiffEditor } from "@/components/editor";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { LineageGraphNode } from "./lineage";
 

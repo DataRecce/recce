@@ -1,9 +1,9 @@
+import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import _ from "lodash";
 import { ReactNode } from "react";
 import { PiWarning } from "react-icons/pi";
 import { colors } from "@/components/ui/mui-theme";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 import { RunResultViewProps } from "./types";
 
 export interface DiffViewOptions {

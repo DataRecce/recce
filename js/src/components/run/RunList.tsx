@@ -15,12 +15,12 @@ import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { findByRunType } from "../run/registry";
 import "simplebar/dist/simplebar.min.css";
+import { useIsDark } from "@datarecce/ui/hooks";
 import MuiTooltip from "@mui/material/Tooltip";
 import { PiX } from "react-icons/pi";
 import { trackHistoryAction } from "@/lib/api/track";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 import { formatRunDate, RunStatusAndDate } from "./RunStatusAndDate";
 
 const RunListItem = ({

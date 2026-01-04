@@ -1,3 +1,4 @@
+import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
@@ -28,7 +29,6 @@ import HistoryToggle from "@/components/shared/HistoryToggle";
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { findByRunType } from "../run/registry";
 import { useLineageViewContextSafe } from "./LineageViewContext";

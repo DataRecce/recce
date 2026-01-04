@@ -7,6 +7,7 @@
  * This component is only rendered when connected to Recce Cloud.
  */
 
+import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
@@ -17,7 +18,6 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { fetchUser } from "@/lib/api/user";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useCheckEvents } from "@/lib/hooks/useCheckEvents";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 import { CommentInput } from "./CommentInput";
 import { TimelineEvent } from "./TimelineEvent";
 

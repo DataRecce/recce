@@ -10,6 +10,7 @@
  * - preset_applied: Shows preset application
  */
 
+import { useIsDark } from "@datarecce/ui/hooks";
 import MuiAvatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -35,7 +36,6 @@ import {
 import { MarkdownContent } from "@/components/ui/markdown/MarkdownContent";
 import { CheckEvent, getEventIconType } from "@/lib/api/checkEvents";
 import { fetchGitHubAvatar } from "@/lib/api/user";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 
 interface TimelineEventProps {
   event: CheckEvent;

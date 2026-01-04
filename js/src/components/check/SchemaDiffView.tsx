@@ -1,3 +1,4 @@
+import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
@@ -9,7 +10,6 @@ import { Check } from "@/lib/api/checks";
 import { select } from "@/lib/api/select";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 import { type DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 import { LineageGraphNode } from "../lineage/lineage";
 import {

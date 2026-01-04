@@ -1,3 +1,4 @@
+import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
@@ -11,7 +12,6 @@ import { colors } from "@/components/ui/mui-theme";
 import { ManifestMetadata } from "@/lib/api/info";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 
 export interface SqlEditorProps {
   language?: string;

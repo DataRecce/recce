@@ -1,3 +1,4 @@
+import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
@@ -31,7 +32,6 @@ import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";
 import { useGuideToast } from "@/lib/hooks/useGuideToast";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { formatTimestamp } from "../app/EnvInfo";
 import { QueryForm } from "../query/QueryForm";

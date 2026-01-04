@@ -1,3 +1,4 @@
+import { useIsDark } from "@datarecce/ui/hooks";
 import {
   DragDropContext,
   Draggable,
@@ -27,7 +28,6 @@ import { Check, updateCheck } from "@/lib/api/checks";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 import { useRun } from "@/lib/hooks/useRun";
 import { findByRunType } from "../run/registry";
 

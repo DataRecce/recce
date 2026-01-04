@@ -1,3 +1,4 @@
+import { useIsDark } from "@datarecce/ui/hooks";
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -12,7 +13,6 @@ import {
   ViewOptionTypes,
 } from "@/components/run/registry";
 import { Run } from "@/lib/api/types";
-import { useIsDark } from "@/lib/hooks/useIsDark";
 import ResultErrorFallback from "@/lib/result/ResultErrorFallback";
 import { RunResultViewProps } from "./types";
 
