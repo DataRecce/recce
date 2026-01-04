@@ -1,7 +1,7 @@
 import { RecceInstanceInfoProvider } from "@datarecce/ui/contexts";
 import React from "react";
-import { LineageGraphContextProvider } from "./LineageGraphContext";
-import { RecceActionContextProvider } from "./RecceActionContext";
+import { LineageGraphAdapter } from "./LineageGraphAdapter";
+import { RecceActionAdapter } from "./RecceActionAdapter";
 import { RecceCheckContextProvider } from "./RecceCheckContext";
 import {
   RecceQueryContextProvider,
@@ -38,15 +38,15 @@ export default function RecceContextProvider({ children }: RecceContextProps) {
     <RecceInstanceInfoProvider>
       <RecceShareStateContextProvider>
         <RecceQueryContextProvider>
-          <LineageGraphContextProvider>
+          <LineageGraphAdapter>
             <RowCountStateContextProvider>
-              <RecceActionContextProvider>
+              <RecceActionAdapter>
                 <RecceCheckContextProvider>
                   {children}
                 </RecceCheckContextProvider>
-              </RecceActionContextProvider>
+              </RecceActionAdapter>
             </RowCountStateContextProvider>
-          </LineageGraphContextProvider>
+          </LineageGraphAdapter>
         </RecceQueryContextProvider>
       </RecceShareStateContextProvider>
     </RecceInstanceInfoProvider>
