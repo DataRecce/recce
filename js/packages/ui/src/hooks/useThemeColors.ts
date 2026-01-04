@@ -2,14 +2,23 @@
 
 import { useTheme as useMuiTheme } from "@mui/material/styles";
 import { useEffect, useState } from "react";
-import { useRecceTheme } from "../providers/contexts/ThemeContext";
+import { useRecceThemeOptional } from "../providers/contexts/ThemeContext";
 import { colors } from "../theme/colors";
+import { useIsDark } from "./useIsDark";
 
 /**
  * Theme-aware color utility hook
  *
  * Returns a consistent set of colors based on the current theme mode.
- * Uses RecceTheme context to determine dark/light mode.
+ *
+ * **Dual-Context Support:**
+ * This hook works in two contexts:
+ * 1. **With RecceProvider** (recce-cloud-infra): Uses ThemeContext for theme detection
+ * 2. **Without RecceProvider** (Recce OSS with next-themes): Falls back to useIsDark
+ *    which uses DOM class detection (.dark on <html>)
+ *
+ * This allows @datarecce/ui components to work in both environments without
+ * requiring the host application to wrap everything in RecceProvider.
  *
  * @example
  * ```tsx
@@ -30,15 +39,22 @@ import { colors } from "../theme/colors";
  */
 export function useThemeColors() {
   const muiTheme = useMuiTheme();
-  const { resolvedMode } = useRecceTheme();
+  // Try context first (returns null if not in RecceProvider)
+  const themeContext = useRecceThemeOptional();
+  // Fallback to useIsDark which has DOM class detection
+  const isDarkFallback = useIsDark();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Determine dark mode from RecceTheme context
-  const isDark = mounted ? resolvedMode === "dark" : false;
+  // Determine dark mode: prefer context if available, otherwise use fallback
+  const isDark = mounted
+    ? themeContext
+      ? themeContext.resolvedMode === "dark"
+      : isDarkFallback
+    : false;
 
   return {
     /** Whether the current theme is dark mode */

@@ -5,7 +5,7 @@
  * Tests verify:
  * - Returns correct colors for light mode
  * - Returns correct colors for dark mode
- * - Works without RecceProvider (fallback path) - AFTER we add fallback
+ * - Works without RecceProvider (fallback path using useIsDark)
  * - Works with RecceProvider (context path)
  */
 
@@ -73,12 +73,7 @@ describe("useThemeColors", () => {
     });
   });
 
-  // SKIP: These tests are intentionally skipped until Task 3 adds fallback behavior.
-  // The useThemeColors hook currently requires RecceProvider (throws error without it).
-  // Task 3 will add fallback behavior so these tests can pass.
-  // To verify this, remove .skip and run the tests - they will fail with:
-  //   "useRecceTheme must be used within RecceProvider"
-  describe.skip("without RecceProvider (fallback mode)", () => {
+  describe("without RecceProvider (fallback mode)", () => {
     it("returns light mode colors when .dark class is absent", async () => {
       setDarkClass(false);
       const { result } = renderHook(() => useThemeColors());
@@ -140,12 +135,29 @@ describe("useThemeColors", () => {
     });
   });
 
-  describe("error handling", () => {
-    it("throws error when used without RecceProvider", () => {
-      // This test documents the current behavior before Task 3 adds fallback
-      expect(() => renderHook(() => useThemeColors())).toThrow(
-        "useRecceTheme must be used within RecceProvider",
-      );
+  describe("fallback behavior", () => {
+    it("does not throw when used without RecceProvider", () => {
+      // Hook should work without throwing thanks to fallback pattern
+      expect(() => renderHook(() => useThemeColors())).not.toThrow();
+    });
+
+    it("returns all color categories even without RecceProvider", async () => {
+      setDarkClass(false);
+      const { result } = renderHook(() => useThemeColors());
+
+      // Wait for mounted state
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 0));
+      });
+
+      // Verify structure is complete
+      expect(result.current).toHaveProperty("isDark");
+      expect(result.current).toHaveProperty("theme");
+      expect(result.current).toHaveProperty("background");
+      expect(result.current).toHaveProperty("text");
+      expect(result.current).toHaveProperty("border");
+      expect(result.current).toHaveProperty("status");
+      expect(result.current).toHaveProperty("interactive");
     });
   });
 });
