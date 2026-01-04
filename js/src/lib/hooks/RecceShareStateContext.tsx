@@ -1,3 +1,17 @@
+/**
+ * @recce-migration NOT_APPLICABLE
+ *
+ * This context is specific to Recce OSS and should not be migrated to @datarecce/ui.
+ *
+ * Reason: Share state functionality is tied to OSS-specific local state management
+ * and export features. It manages the share URL generation and state serialization
+ * that is unique to the OSS deployment model.
+ *
+ * If this changes in the future, consider:
+ * - Moving to @datarecce/ui if share functionality becomes cross-platform
+ * - Creating an abstract interface for different share backends
+ */
+
 import React, { createContext, useContext, useState } from "react";
 import { shareState } from "@/lib/api/state";
 import { useApiConfig } from "./ApiConfigContext";
