@@ -1,3 +1,4 @@
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -21,7 +22,6 @@ import { formatSelectColumns } from "@/lib/formatSelect";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import useModelColumns from "@/lib/hooks/useModelColumns";

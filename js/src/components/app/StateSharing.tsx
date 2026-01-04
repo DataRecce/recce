@@ -1,3 +1,4 @@
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -9,7 +10,6 @@ import { TbCloudUpload } from "react-icons/tb";
 import { useCopyToClipboard, useInterval } from "usehooks-ts";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { trackShareState } from "@/lib/api/track";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 

@@ -1,3 +1,4 @@
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Link from "@mui/material/Link";
@@ -12,7 +13,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 interface CheckDescriptionProps {
   value?: string;

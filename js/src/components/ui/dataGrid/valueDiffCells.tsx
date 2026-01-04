@@ -10,6 +10,7 @@
  * Also exports render functions for use in toValueDataGrid.ts generator.
  */
 
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import ListSubheader from "@mui/material/ListSubheader";
@@ -25,7 +26,6 @@ import {
   RecceActionOptions,
   useRecceActionContext,
 } from "@/lib/hooks/RecceActionContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 // ============================================================================
 // PrimaryKeyIndicatorCell

@@ -1,3 +1,4 @@
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import {
   DragDropContext,
@@ -26,7 +27,6 @@ import { isDisabledByNoResult } from "@/components/check/utils";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, updateCheck } from "@/lib/api/checks";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { useRun } from "@/lib/hooks/useRun";
 import { findByRunType } from "../run/registry";

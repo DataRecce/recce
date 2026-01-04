@@ -1,3 +1,4 @@
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
@@ -20,7 +21,6 @@ import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import {
   defaultSqlQuery,
   useRecceQueryContext,

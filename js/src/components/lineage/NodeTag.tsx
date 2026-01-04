@@ -1,3 +1,4 @@
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import { deltaPercentageString } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
@@ -12,7 +13,6 @@ import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { RowCount, RowCountDiff } from "@/lib/api/models";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { findByRunType } from "../run/registry";
 import { LineageGraphNode } from "./lineage";
 import { getIconForResourceType } from "./styles";

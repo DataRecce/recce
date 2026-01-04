@@ -1,5 +1,6 @@
 "use client";
 
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -59,7 +60,6 @@ import { Run, RunParamTypes } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";

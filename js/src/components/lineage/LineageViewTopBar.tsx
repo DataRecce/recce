@@ -1,3 +1,4 @@
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -28,7 +29,6 @@ import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { findByRunType } from "../run/registry";
 import { useLineageViewContextSafe } from "./LineageViewContext";

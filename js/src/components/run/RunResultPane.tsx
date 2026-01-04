@@ -1,3 +1,4 @@
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -31,7 +32,6 @@ import {
 } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";

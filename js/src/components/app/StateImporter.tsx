@@ -1,3 +1,4 @@
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -22,7 +23,6 @@ import {
   useLineageGraphContext,
   useRunsAggregated,
 } from "@/lib/hooks/LineageGraphContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { IconImport } from "../icons";
 

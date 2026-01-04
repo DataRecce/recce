@@ -1,9 +1,9 @@
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { PiInfo } from "react-icons/pi";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceInstanceInfo } from "@/lib/hooks/useRecceInstanceInfo";
 import { getSettingsUrl } from "@/lib/utils/urls";
 

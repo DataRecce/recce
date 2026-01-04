@@ -45,6 +45,7 @@ import {
 } from "./lineage";
 import "@xyflow/react/dist/style.css";
 import "./styles.css";
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useThemeColors } from "@datarecce/ui/hooks";
 import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
@@ -75,7 +76,6 @@ import {
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import {
   IGNORE_SCREENSHOT_CLASS,
   useCopyToClipboard,

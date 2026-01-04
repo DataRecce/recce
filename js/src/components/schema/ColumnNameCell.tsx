@@ -1,3 +1,4 @@
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import IconButton from "@mui/material/IconButton";
@@ -15,7 +16,6 @@ import {
 } from "@/lib/api/track";
 import { SchemaDiffRow } from "@/lib/dataGrid/generators/toSchemaDataGrid";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { useLineageViewContext } from "../lineage/LineageViewContext";
 

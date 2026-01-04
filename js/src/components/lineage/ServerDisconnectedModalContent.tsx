@@ -1,3 +1,4 @@
+import type { RecceFeatureMode } from "@datarecce/ui/contexts";
 import Button from "@mui/material/Button";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
@@ -6,7 +7,6 @@ import Typography from "@mui/material/Typography";
 import NextLink from "next/link";
 import React from "react";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
-import { RecceFeatureMode } from "@/lib/hooks/RecceInstanceContext";
 import { formatDuration } from "@/lib/utils/formatTime";
 
 interface ServerDisconnectedModalContentProps {

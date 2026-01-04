@@ -1,3 +1,4 @@
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -25,7 +26,6 @@ import {
 } from "@/components/lineage/ServerDisconnectedModalContent";
 import { toaster } from "@/components/ui/toaster";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { cacheKeys } from "../api/cacheKeys";
 import { markRelaunchHintCompleted } from "../api/flag";
 import {
