@@ -59,7 +59,7 @@ jest.mock("@/lib/hooks/LineageGraphContext", () => ({
   useLineageGraphContext: () => mockLineageGraphContext,
 }));
 
-jest.mock("@/lib/hooks/RecceInstanceContext", () => ({
+jest.mock("@datarecce/ui/contexts", () => ({
   useRecceInstanceContext: () => mockRecceInstanceContext,
 }));
 

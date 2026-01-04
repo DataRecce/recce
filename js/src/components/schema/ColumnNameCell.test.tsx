@@ -14,7 +14,7 @@ jest.mock("@/lib/hooks/RecceActionContext", () => ({
   useRecceActionContext: () => ({ runAction: jest.fn() }),
 }));
 
-jest.mock("@/lib/hooks/RecceInstanceContext", () => ({
+jest.mock("@datarecce/ui/contexts", () => ({
   useRecceInstanceContext: () => ({
     featureToggles: { disableDatabaseQuery: false },
   }),

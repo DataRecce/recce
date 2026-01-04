@@ -1,5 +1,6 @@
 "use client";
 
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Tab from "@mui/material/Tab";
 import MuiTabs from "@mui/material/Tabs";
@@ -16,7 +17,6 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, listChecks } from "@/lib/api/checks";
 import { trackNavigation } from "@/lib/api/track";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
 /**

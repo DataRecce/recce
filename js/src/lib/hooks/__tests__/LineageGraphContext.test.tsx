@@ -76,14 +76,6 @@ jest.mock("@datarecce/ui/contexts", () => ({
   })),
 }));
 
-// Mock the RecceInstanceContext
-jest.mock("../RecceInstanceContext", () => ({
-  useRecceInstanceContext: jest.fn(() => ({
-    featureToggles: { mode: null },
-    shareUrl: undefined,
-  })),
-}));
-
 // Mock the useRecceServerFlag hook
 jest.mock("../useRecceServerFlag", () => ({
   useRecceServerFlag: jest.fn(() => ({

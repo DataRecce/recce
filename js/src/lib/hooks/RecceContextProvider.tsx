@@ -1,8 +1,8 @@
+import { RecceInstanceInfoProvider } from "@datarecce/ui/contexts";
 import React from "react";
 import { LineageGraphContextProvider } from "./LineageGraphContext";
 import { RecceActionContextProvider } from "./RecceActionContext";
 import { RecceCheckContextProvider } from "./RecceCheckContext";
-import { RecceInstanceInfoProvider } from "./RecceInstanceContext";
 import {
   RecceQueryContextProvider,
   RowCountStateContextProvider,
