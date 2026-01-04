@@ -182,7 +182,7 @@ Ten components follow an **identical structural pattern**:
 | `TopKDiffResultView` | Chart | ✅ | ✅ Migrated | Uses viewOptions + footer slot |
 | `ValueDiffDetailResultView` | Grid | ✅ | ✅ Migrated | Uses toolbar-in-empty-state pattern |
 | `QueryResultView` | Grid | ✅ | ✅ Migrated | Uses amber warning styling |
-| `QueryDiffResultView` | Grid | ✅ | ❌ Deferred | Bifurcation logic |
+| `QueryDiffResultView` | Grid | ✅ | 🔄 Ready | Bifurcation consolidated, ready for factory migration |
 
 **Common Pattern:**
 ```typescript
@@ -305,3 +305,5 @@ Ten components follow an **identical structural pattern**:
 | 2026-01-03 | Migrate QueryResultView | Successfully migrated to createResultView factory. Uses combined type guard (isQueryRun \|\| isQueryBaseRun), amber warnings, onAddToChecklist button. 21/21 tests pass. |
 | 2026-01-03 | Migrate ValueDiffDetailResultView | Successfully migrated to createResultView factory. Uses toolbar-in-empty-state pattern for "No change" state, amber warnings, noRowsMessage. 28/28 tests pass. |
 | 2026-01-03 | Migrate TopKDiffResultView | Converted local useState to viewOptions (TopKViewOptions.show_all). Uses footer slot for toggle link outside ScreenshotBox. No factory changes needed - existing footer slot + viewOptions pattern sufficient. 26/26 tests pass. |
+| 2026-01-04 | QueryDiffResultView deep dive complete | Analyzed bifurcation between QueryDiffJoinResultViewWithRef and QueryDiffResultViewWithRef. Found ~95% duplicate code. Recommendation: Consolidate using `isJoinMode` flag. See [2026-01-04-querydiff-bifurcation-analysis.md](./2026-01-04-querydiff-bifurcation-analysis.md). |
+| 2026-01-04 | QueryDiffResultView consolidation complete | Consolidated bifurcation into single component using `isJoinMode` flag. Reduced from 467 to 327 lines (~140 lines removed). All 39 tests pass. Ready for factory migration. |

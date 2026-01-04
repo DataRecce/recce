@@ -29,42 +29,63 @@ export interface QueryDiffResultViewProps
   currentTitle?: string;
 }
 
+/**
+ * Unified QueryDiffResultView component that handles both JOIN and non-JOIN modes.
+ *
+ * JOIN mode: Server computes the diff, result has `run.result.diff`
+ * Non-JOIN mode: Client-side diff, result has `run.result.base` and `run.result.current`
+ *
+ * Key differences handled:
+ * - Primary key handling: only in non-JOIN mode (server handles it in JOIN mode)
+ * - Warning sources: `diff.limit/more` vs `current.limit/more || base.more`
+ * - "No change" empty state: only in JOIN mode with changedOnly=true
+ */
 const PrivateQueryDiffResultView = (
   {
     run,
-    onAddToChecklist,
+    // Note: onAddToChecklist is in props interface for API compatibility but unused
     viewOptions,
     onViewOptionsChanged,
     baseTitle,
     currentTitle,
   }: QueryDiffResultViewProps,
-
   ref: Ref<DataGridHandle>,
 ) => {
   const isDark = useIsDark();
+
+  if (run.type !== "query_diff") {
+    throw new Error("QueryDiffResult view should be rendered as query_diff");
+  }
+
+  // Determine mode based on result structure
+  const isJoinMode =
+    run.result && "diff" in run.result && run.result.diff != null;
+
+  // Primary keys only used in non-JOIN mode
   const primaryKeys = useMemo(
-    () => viewOptions?.primary_keys ?? [],
-    [viewOptions],
+    () => (!isJoinMode ? (viewOptions?.primary_keys ?? []) : []),
+    [viewOptions, isJoinMode],
   );
+
   const changedOnly = useMemo(
     () => viewOptions?.changed_only ?? false,
     [viewOptions],
   );
+
   const pinnedColumns = useMemo(
     () => viewOptions?.pinned_columns ?? [],
     [viewOptions],
   );
+
   const displayMode = useMemo(
     () => viewOptions?.display_mode ?? "inline",
     [viewOptions],
   );
+
   const columnsRenderMode = useMemo(
     () => viewOptions?.columnsRenderMode ?? {},
     [viewOptions],
   );
-  if (run.type !== "query_diff") {
-    throw new Error("QueryDiffResult view should be rendered as query_diff");
-  }
 
   const gridData = useMemo(() => {
     const onColumnsRenderModeChanged = (
@@ -82,26 +103,29 @@ const PrivateQueryDiffResultView = (
       }
     };
 
-    const handlePrimaryKeyChanged = (primaryKeys: string[]) => {
+    // Primary key handler only for non-JOIN mode
+    const handlePrimaryKeyChanged = !isJoinMode
+      ? (pks: string[]) => {
+          if (onViewOptionsChanged) {
+            onViewOptionsChanged({
+              ...viewOptions,
+              primary_keys: pks,
+            });
+          }
+        }
+      : undefined;
+
+    const handlePinnedColumnsChanged = (pinnedCols: string[]) => {
       if (onViewOptionsChanged) {
         onViewOptionsChanged({
           ...viewOptions,
-          primary_keys: primaryKeys,
+          pinned_columns: pinnedCols,
         });
       }
     };
 
-    const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
-      if (onViewOptionsChanged) {
-        onViewOptionsChanged({
-          ...viewOptions,
-          pinned_columns: pinnedColumns,
-        });
-      }
-    };
     const options: DiffGridOptions = {
       changedOnly,
-      onPrimaryKeyChange: handlePrimaryKeyChanged,
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
       columnsRenderMode,
@@ -109,6 +133,10 @@ const PrivateQueryDiffResultView = (
       baseTitle,
       currentTitle,
       displayMode,
+      // Only pass onPrimaryKeyChange for non-JOIN mode
+      ...(handlePrimaryKeyChanged && {
+        onPrimaryKeyChange: handlePrimaryKeyChanged,
+      }),
     };
 
     return createDataGrid(run, options) ?? { columns: [], rows: [] };
@@ -122,34 +150,47 @@ const PrivateQueryDiffResultView = (
     baseTitle,
     currentTitle,
     columnsRenderMode,
+    isJoinMode,
   ]);
 
-  const warningPKey = useMemo(() => {
+  // Build warnings array
+  const warnings: string[] = [];
+
+  // Primary key uniqueness warning - only for non-JOIN mode
+  if (!isJoinMode && primaryKeys.length > 0) {
     const pkName = primaryKeys.join(", ");
 
     if (gridData.invalidPKeyBase && gridData.invalidPKeyCurrent) {
-      return `Warning: The primary key '${pkName}' is not unique in the base and current environments`;
+      warnings.push(
+        `Warning: The primary key '${pkName}' is not unique in the base and current environments`,
+      );
     } else if (gridData.invalidPKeyBase) {
-      return `Warning: The primary key '${pkName}' is not unique in the base environment`;
+      warnings.push(
+        `Warning: The primary key '${pkName}' is not unique in the base environment`,
+      );
     } else if (gridData.invalidPKeyCurrent) {
-      return `Warning: The primary key '${pkName}' is not unique in the current environment`;
+      warnings.push(
+        `Warning: The primary key '${pkName}' is not unique in the current environment`,
+      );
     }
-  }, [gridData.invalidPKeyBase, gridData.invalidPKeyCurrent, primaryKeys]);
-
-  const limit = run.result?.current?.limit ?? 0;
-  const warningLimit =
-    limit > 0 && (run.result?.current?.more || run.result?.base?.more)
-      ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
-      : null;
-
-  const warnings: string[] = [];
-  if (warningPKey) {
-    warnings.push(warningPKey);
-  }
-  if (warningLimit) {
-    warnings.push(warningLimit);
   }
 
+  // Limit warning - different sources for JOIN vs non-JOIN
+  const limit = isJoinMode
+    ? (run.result?.diff?.limit ?? 0)
+    : (run.result?.current?.limit ?? 0);
+
+  const hasMore = isJoinMode
+    ? run.result?.diff?.more
+    : run.result?.current?.more || run.result?.base?.more;
+
+  if (limit > 0 && hasMore) {
+    warnings.push(
+      `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`,
+    );
+  }
+
+  // Empty state: No data
   if (gridData.columns.length === 0) {
     return (
       <Box
@@ -165,173 +206,8 @@ const PrivateQueryDiffResultView = (
     );
   }
 
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        bgcolor: isDark ? "grey.900" : "grey.50",
-        height: "100%",
-      }}
-    >
-      <RunToolbar
-        run={run}
-        viewOptions={viewOptions}
-        onViewOptionsChanged={onViewOptionsChanged}
-        warnings={warnings}
-      >
-        <DiffDisplayModeSwitch
-          displayMode={displayMode}
-          onDisplayModeChanged={(displayMode) => {
-            if (onViewOptionsChanged) {
-              onViewOptionsChanged({
-                ...viewOptions,
-                display_mode: displayMode,
-              });
-            }
-          }}
-        />
-
-        <ChangedOnlyCheckbox
-          changedOnly={viewOptions?.changed_only}
-          onChange={() => {
-            const changedOnly = !viewOptions?.changed_only;
-            if (onViewOptionsChanged) {
-              onViewOptionsChanged({
-                ...viewOptions,
-                changed_only: changedOnly,
-              });
-            }
-          }}
-        />
-      </RunToolbar>
-      <ScreenshotDataGrid
-        ref={ref}
-        style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
-        columns={gridData.columns}
-        rows={gridData.rows}
-        renderers={{
-          noRowsFallback: (
-            <EmptyRowsRenderer emptyMessage="No mismatched rows" />
-          ),
-        }}
-        defaultColumnOptions={{
-          resizable: true,
-          maxWidth: 800,
-          minWidth: 35,
-        }}
-      />
-    </Box>
-  );
-};
-
-const PrivateQueryDiffJoinResultView = (
-  {
-    run,
-    viewOptions,
-    onViewOptionsChanged,
-    baseTitle,
-    currentTitle,
-  }: QueryDiffResultViewProps,
-  ref: Ref<DataGridHandle>,
-) => {
-  const isDark = useIsDark();
-  if (run.type !== "query_diff") {
-    throw new Error("QueryDiffResult view should be rendered as query_diff");
-  }
-  const changedOnly = useMemo(
-    () => viewOptions?.changed_only ?? false,
-    [viewOptions],
-  );
-  const pinnedColumns = useMemo(
-    () => viewOptions?.pinned_columns ?? [],
-    [viewOptions],
-  );
-  const displayMode = useMemo(
-    () => viewOptions?.display_mode ?? "inline",
-    [viewOptions],
-  );
-  const columnsRenderMode = useMemo(
-    () => viewOptions?.columnsRenderMode ?? {},
-    [viewOptions],
-  );
-
-  const gridData = useMemo(() => {
-    const onColumnsRenderModeChanged = (
-      cols: Record<string, ColumnRenderMode>,
-    ) => {
-      const newRenderModes = {
-        ...(viewOptions?.columnsRenderMode ?? {}),
-        ...cols,
-      };
-      if (onViewOptionsChanged) {
-        onViewOptionsChanged({
-          ...viewOptions,
-          columnsRenderMode: newRenderModes,
-        });
-      }
-    };
-
-    const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
-      if (onViewOptionsChanged) {
-        onViewOptionsChanged({
-          ...viewOptions,
-          pinned_columns: pinnedColumns,
-        });
-      }
-    };
-
-    return (
-      createDataGrid(run, {
-        changedOnly,
-        pinnedColumns,
-        onPinnedColumnsChange: handlePinnedColumnsChanged,
-        baseTitle,
-        currentTitle,
-        displayMode,
-        columnsRenderMode,
-        onColumnsRenderModeChanged,
-      }) ?? { columns: [], rows: [] }
-    );
-  }, [
-    run,
-    viewOptions,
-    changedOnly,
-    pinnedColumns,
-    displayMode,
-    onViewOptionsChanged,
-    baseTitle,
-    currentTitle,
-    columnsRenderMode,
-  ]);
-
-  const limit = run.result?.diff?.limit ?? 0;
-  const warningLimit =
-    limit > 0 && run.result?.diff?.more
-      ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
-      : null;
-
-  const warnings: string[] = [];
-  if (warningLimit) {
-    warnings.push(warningLimit);
-  }
-
-  if (gridData.columns.length === 0) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100%",
-        }}
-      >
-        No data
-      </Box>
-    );
-  }
-
-  if (changedOnly && gridData.rows.length === 0) {
+  // Empty state: No change (JOIN mode only, when changedOnly is true)
+  if (isJoinMode && changedOnly && gridData.rows.length === 0) {
     return (
       <Box
         sx={{
@@ -361,6 +237,7 @@ const PrivateQueryDiffJoinResultView = (
     );
   }
 
+  // Main render
   return (
     <Box
       sx={{
@@ -378,11 +255,11 @@ const PrivateQueryDiffJoinResultView = (
       >
         <DiffDisplayModeSwitch
           displayMode={displayMode}
-          onDisplayModeChanged={(displayMode) => {
+          onDisplayModeChanged={(newDisplayMode) => {
             if (onViewOptionsChanged) {
               onViewOptionsChanged({
                 ...viewOptions,
-                display_mode: displayMode,
+                display_mode: newDisplayMode,
               });
             }
           }}
@@ -391,11 +268,11 @@ const PrivateQueryDiffJoinResultView = (
         <ChangedOnlyCheckbox
           changedOnly={viewOptions?.changed_only}
           onChange={() => {
-            const changedOnly = !viewOptions?.changed_only;
+            const newChangedOnly = !viewOptions?.changed_only;
             if (onViewOptionsChanged) {
               onViewOptionsChanged({
                 ...viewOptions,
-                changed_only: changedOnly,
+                changed_only: newChangedOnly,
               });
             }
           }}
@@ -421,11 +298,8 @@ const PrivateQueryDiffJoinResultView = (
   );
 };
 
-// Create the forwardRef components here, at module level
+// Create the forwardRef component
 const QueryDiffResultViewWithRef = forwardRef(PrivateQueryDiffResultView);
-const QueryDiffJoinResultViewWithRef = forwardRef(
-  PrivateQueryDiffJoinResultView,
-);
 
 export const QueryDiffResultView = forwardRef(
   (props: QueryDiffResultViewProps, ref: ForwardedRef<DataGridHandle>) => {
@@ -439,28 +313,14 @@ export const QueryDiffResultView = forwardRef(
       baseTitle = "Original";
       currentTitle = "Editor";
     }
-    if (
-      props.run.result &&
-      "diff" in props.run.result &&
-      props.run.result.diff != null
-    ) {
-      return (
-        <QueryDiffJoinResultViewWithRef
-          {...props}
-          ref={ref}
-          baseTitle={baseTitle}
-          currentTitle={currentTitle}
-        />
-      );
-    } else {
-      return (
-        <QueryDiffResultViewWithRef
-          {...props}
-          ref={ref}
-          baseTitle={baseTitle}
-          currentTitle={currentTitle}
-        />
-      );
-    }
+
+    return (
+      <QueryDiffResultViewWithRef
+        {...props}
+        ref={ref}
+        baseTitle={baseTitle}
+        currentTitle={currentTitle}
+      />
+    );
   },
 );
