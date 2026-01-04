@@ -1,9 +1,9 @@
+import { useThemeColors } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import { Handle, NodeProps, Position, useStore } from "@xyflow/react";
 import React from "react";
 import { VscKebabVertical } from "react-icons/vsc";
-import { useThemeColors } from "@/lib/hooks/useThemeColors";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 import { COLUMN_HEIGHT, LineageGraphColumnNode } from "./lineage";
 import { getIconForChangeStatus } from "./styles";

@@ -9,12 +9,12 @@
 
 "use client";
 
+import { useThemeColors } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
-import { useThemeColors } from "@/lib/hooks/useThemeColors";
 
 interface ErrorProps {
   error: Error & { digest?: string };

@@ -45,6 +45,7 @@ import {
 } from "./lineage";
 import "@xyflow/react/dist/style.css";
 import "./styles.css";
+import { useThemeColors } from "@datarecce/ui/hooks";
 import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { FiCopy } from "react-icons/fi";
@@ -82,7 +83,6 @@ import {
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { useRun } from "@/lib/hooks/useRun";
-import { useThemeColors } from "@/lib/hooks/useThemeColors";
 import { HSplit } from "../split/Split";
 import { ActionControl } from "./ActionControl";
 import { ChangeStatusLegend } from "./ChangeStatusLegend";
