@@ -1,4 +1,7 @@
-import { useRecceInstanceContext } from "@datarecce/ui/contexts";
+import {
+  useIdleTimeout,
+  useRecceInstanceContext,
+} from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -39,7 +42,6 @@ import {
 import { aggregateRuns, RunsAggregated } from "../api/runs";
 import { trackSingleEnvironment } from "../api/track";
 import { PUBLIC_API_URL } from "../const";
-import { useIdleTimeout } from "./IdleTimeoutContext";
 import { useRecceServerFlag } from "./useRecceServerFlag";
 
 export interface EnvInfo {

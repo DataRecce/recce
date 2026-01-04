@@ -1,9 +1,9 @@
 "use client";
 
+import { useIdleTimeout } from "@datarecce/ui/contexts";
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import { IoWarning } from "react-icons/io5";
-import { useIdleTimeout } from "@/lib/hooks/IdleTimeoutContext";
 import { formatDuration } from "@/lib/utils/formatTime";
 
 /**

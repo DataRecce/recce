@@ -60,8 +60,8 @@ jest.mock("@/components/lineage/lineage", () => ({
   })),
 }));
 
-// Mock the IdleTimeoutContext
-jest.mock("../IdleTimeoutContext", () => ({
+// Mock the IdleTimeoutContext from @datarecce/ui/contexts
+jest.mock("@datarecce/ui/contexts", () => ({
   useIdleTimeout: jest.fn(() => ({
     idleTimeout: null,
     remainingSeconds: null,
@@ -69,6 +69,10 @@ jest.mock("../IdleTimeoutContext", () => ({
     setDisconnected: jest.fn(),
     resetConnection: jest.fn(),
     isDisconnected: false,
+  })),
+  useRecceInstanceContext: jest.fn(() => ({
+    featureToggles: { mode: null },
+    shareUrl: undefined,
   })),
 }));
 
@@ -150,10 +154,10 @@ afterAll(() => {
   global.WebSocket = originalWebSocket;
 });
 
+import { useIdleTimeout } from "@datarecce/ui/contexts";
 import { buildLineageGraph } from "@/components/lineage/lineage";
 import { getServerInfo } from "@/lib/api/info";
 import { aggregateRuns } from "@/lib/api/runs";
-import { useIdleTimeout } from "../IdleTimeoutContext";
 import {
   LineageGraphContextProvider,
   useLineageGraphContext,
