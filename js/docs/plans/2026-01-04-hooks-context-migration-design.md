@@ -22,7 +22,7 @@ Migrate theme-related hooks that have no external dependencies to `@datarecce/ui
 All criteria met:
 
 - [x] Tests exist for `useIsDark` and `useThemeColors` in `packages/ui/src/hooks/`
-- [x] `useThemeColors` works without `RecceProvider` (uses Chakra's `useColorModeValue` directly)
+- [x] `useThemeColors` works without `RecceProvider` (falls back to `useIsDark` with DOM class detection)
 - [x] OSS imports hooks from `@datarecce/ui/hooks`
 - [x] Local OSS hook files (`src/lib/hooks/useIsDark.ts`, `src/lib/hooks/useThemeColors.ts`) deleted
 - [x] NOT_APPLICABLE files documented with `@recce-migration NOT_APPLICABLE` marker
