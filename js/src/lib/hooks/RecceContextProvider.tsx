@@ -1,12 +1,10 @@
 import { RecceInstanceInfoProvider } from "@datarecce/ui/contexts";
 import React from "react";
+import { CheckContextAdapter } from "./CheckContextAdapter";
 import { LineageGraphAdapter } from "./LineageGraphAdapter";
+import { QueryContextAdapter } from "./QueryContextAdapter";
 import { RecceActionAdapter } from "./RecceActionAdapter";
-import { RecceCheckContextProvider } from "./RecceCheckContext";
-import {
-  RecceQueryContextProvider,
-  RowCountStateContextProvider,
-} from "./RecceQueryContext";
+import { RowCountStateContextProvider } from "./RecceQueryContext";
 import { RecceShareStateContextProvider } from "./RecceShareStateContext";
 
 interface RecceContextProps {
@@ -37,17 +35,15 @@ export default function RecceContextProvider({ children }: RecceContextProps) {
   return (
     <RecceInstanceInfoProvider>
       <RecceShareStateContextProvider>
-        <RecceQueryContextProvider>
+        <QueryContextAdapter>
           <LineageGraphAdapter>
             <RowCountStateContextProvider>
               <RecceActionAdapter>
-                <RecceCheckContextProvider>
-                  {children}
-                </RecceCheckContextProvider>
+                <CheckContextAdapter>{children}</CheckContextAdapter>
               </RecceActionAdapter>
             </RowCountStateContextProvider>
           </LineageGraphAdapter>
-        </RecceQueryContextProvider>
+        </QueryContextAdapter>
       </RecceShareStateContextProvider>
     </RecceInstanceInfoProvider>
   );
