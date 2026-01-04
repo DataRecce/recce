@@ -21,6 +21,11 @@
       "import": "./dist/advanced.mjs",
       "require": "./dist/advanced.cjs"
     },
+    "./contexts": {
+      "types": "./dist/contexts.d.mts",
+      "import": "./dist/contexts.mjs",
+      "require": "./dist/contexts.cjs"
+    },
     "./result": {
       "types": "./dist/result.d.mts",
       "import": "./dist/result.mjs",
