@@ -1,11 +1,16 @@
 "use client";
 
+import axios from "axios";
 import throttle from "lodash/throttle";
 import { useCallback, useEffect, useMemo } from "react";
 import { sendKeepAlive } from "../../api/keepAlive";
-import { useApiConfig } from "../../providers/contexts/ApiContext";
+import { useApiConfigOptional } from "../../providers/contexts/ApiContext";
+
 import { useRecceInstanceInfo } from "../instance";
 import { useIdleTimeoutSafe } from "./IdleTimeoutContext";
+
+// Default axios client for use outside RecceProvider (OSS mode)
+const defaultApiClient = axios.create();
 
 /**
  * Check if debug logging is enabled via window.RECCE_DEBUG_IDLE
@@ -62,7 +67,8 @@ export function useIdleDetection() {
   const { data: instanceInfo, isLoading, isError } = useRecceInstanceInfo();
   const idleTimeoutContext = useIdleTimeoutSafe();
   const isDisconnected = idleTimeoutContext?.isDisconnected ?? false;
-  const { apiClient } = useApiConfig();
+  const apiConfig = useApiConfigOptional();
+  const apiClient = apiConfig?.apiClient ?? defaultApiClient;
 
   // Only enable idle detection if idle_timeout is configured and not disconnected
   const idleTimeout = instanceInfo?.idle_timeout;
