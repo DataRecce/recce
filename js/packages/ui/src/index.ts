@@ -154,6 +154,7 @@ export {
   type RecceProviderProps,
   useApiClient,
   useApiConfig,
+  useApiConfigOptional,
   useAppLocation,
   useCheckContext,
   useQueryContext,
