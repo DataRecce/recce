@@ -182,7 +182,7 @@ Ten components follow an **identical structural pattern**:
 | `TopKDiffResultView` | Chart | ✅ | ✅ Migrated | Uses viewOptions + footer slot |
 | `ValueDiffDetailResultView` | Grid | ✅ | ✅ Migrated | Uses toolbar-in-empty-state pattern |
 | `QueryResultView` | Grid | ✅ | ✅ Migrated | Uses amber warning styling |
-| `QueryDiffResultView` | Grid | ✅ | 🔄 Ready | Bifurcation consolidated, ready for factory migration |
+| `QueryDiffResultView` | Grid | ✅ | ✅ Migrated | Consolidated + migrated to factory, handles JOIN/non-JOIN via `isJoinMode` |
 
 **Common Pattern:**
 ```typescript
@@ -307,3 +307,4 @@ Ten components follow an **identical structural pattern**:
 | 2026-01-03 | Migrate TopKDiffResultView | Converted local useState to viewOptions (TopKViewOptions.show_all). Uses footer slot for toggle link outside ScreenshotBox. No factory changes needed - existing footer slot + viewOptions pattern sufficient. 26/26 tests pass. |
 | 2026-01-04 | QueryDiffResultView deep dive complete | Analyzed bifurcation between QueryDiffJoinResultViewWithRef and QueryDiffResultViewWithRef. Found ~95% duplicate code. Recommendation: Consolidate using `isJoinMode` flag. See [2026-01-04-querydiff-bifurcation-analysis.md](./2026-01-04-querydiff-bifurcation-analysis.md). |
 | 2026-01-04 | QueryDiffResultView consolidation complete | Consolidated bifurcation into single component using `isJoinMode` flag. Reduced from 467 to 327 lines (~140 lines removed). All 39 tests pass. Ready for factory migration. |
+| 2026-01-04 | Migrate QueryDiffResultView to factory | Successfully migrated to createResultView factory. Reduced from 327 to 257 lines (~70 more lines removed, total ~210 lines from original). Uses `isJoinMode` flag inside `transformData`. All 39 tests pass. |

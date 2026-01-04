@@ -1,12 +1,10 @@
 /**
  * @file QueryDiffResultView.test.tsx
- * @description Baseline tests for QueryDiffResultView component
+ * @description Tests for QueryDiffResultView component (using createResultView factory)
  *
- * These tests capture current component behavior before refactoring to factory pattern.
- *
- * CRITICAL: QueryDiffResultView has BIFURCATION behavior:
- * - Uses `QueryDiffResultViewWithRef` when `run.result` does NOT have `diff` property
- * - Uses `QueryDiffJoinResultViewWithRef` when `run.result.diff != null`
+ * The component handles both JOIN and non-JOIN modes internally via `isJoinMode` flag:
+ * - JOIN mode: Server computes the diff, result has `run.result.diff`
+ * - Non-JOIN mode: Client-side diff, result has `run.result.base` and `run.result.current`
  *
  * Tests verify:
  * - Correct bifurcation based on result.diff presence
@@ -51,9 +49,23 @@ jest.mock("@/components/data-grid/ScreenshotDataGrid", () => ({
   ),
 }));
 
-// Mock useIsDark hook
+// Mock useIsDark hook - declare first since it's used by multiple mocks
 const mockUseIsDark = jest.fn(() => false);
 jest.mock("@/lib/hooks/useIsDark", () => ({
+  useIsDark: () => mockUseIsDark(),
+}));
+
+// Mock packages/ui ScreenshotDataGrid (used by createResultView factory)
+jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
+  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
+    .screenshotDataGridMock,
+  EmptyRowsRenderer: ({ emptyMessage }: { emptyMessage?: string }) => (
+    <div data-testid="empty-rows-renderer">{emptyMessage ?? "No rows"}</div>
+  ),
+}));
+
+// Mock packages/ui hooks
+jest.mock("@datarecce/ui/hooks", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 
@@ -511,7 +523,7 @@ describe("QueryDiffResultView", () => {
 
       expect(() => {
         renderWithProviders(<QueryDiffResultView run={wrongRun} />);
-      }).toThrow("QueryDiffResult view should be rendered as query_diff");
+      }).toThrow("Run type must be query_diff");
 
       consoleSpy.mockRestore();
     });
