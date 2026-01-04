@@ -30,13 +30,14 @@ function createWrapper() {
 
 /**
  * Test consumer component that displays context values using canonical names
+ * (via the raw useCheckContext hook which returns the full CheckContextType)
  */
 function TestConsumer() {
   const context = useCheckContext();
   return (
     <div>
       <span data-testid="selected-check-id">
-        {context.selectedCheckId ?? "none"}
+        {context.selectedCheckId || "none"}
       </span>
       <span data-testid="is-loading">{String(context.isLoading)}</span>
       <span data-testid="checks-count">{context.checks.length}</span>
@@ -53,17 +54,18 @@ function TestConsumer() {
 
 /**
  * Test consumer component that uses OSS aliases
+ * (via useRecceCheckContext which returns the simplified OSSCheckContext)
  */
 function TestConsumerOssAliases() {
   const context = useRecceCheckContext();
   return (
     <div>
       <span data-testid="latest-selected-check-id">
-        {context.latestSelectedCheckId ?? "none"}
+        {context.latestSelectedCheckId || "none"}
       </span>
       <button
         type="button"
-        onClick={() => context.setLatestSelectedCheckId?.("check-456")}
+        onClick={() => context.setLatestSelectedCheckId("check-456")}
         data-testid="set-latest-selected-btn"
       >
         Set Latest Selected
@@ -149,60 +151,67 @@ describe("CheckContextAdapter", () => {
         wrapper: createWrapper(),
       });
 
-      // Canonical properties
+      // Canonical properties from @datarecce/ui CheckContextType
       expect(result.current.checks).toBeDefined();
       expect(Array.isArray(result.current.checks)).toBe(true);
       expect(result.current.isLoading).toBeDefined();
       expect(typeof result.current.isLoading).toBe("boolean");
 
-      // Selection functions may be undefined (optional in the context)
-      expect(result.current.selectedCheckId).toBeUndefined();
-      expect(typeof result.current.onSelectCheck).toBe("undefined");
+      // OSS aliases are available via the raw context
+      expect("latestSelectedCheckId" in result.current).toBe(true);
+      expect("setLatestSelectedCheckId" in result.current).toBe(true);
     });
 
-    it("useRecceCheckContext is an alias for useCheckContext", () => {
-      const { result: checkResult } = renderHook(() => useCheckContext(), {
+    it("useRecceCheckContext returns OSS-compatible interface", () => {
+      const { result } = renderHook(() => useRecceCheckContext(), {
         wrapper: createWrapper(),
       });
 
-      const { result: recceCheckResult } = renderHook(
-        () => useRecceCheckContext(),
-        {
-          wrapper: createWrapper(),
-        },
-      );
+      // useRecceCheckContext returns the simplified OSSCheckContext
+      expect(result.current.latestSelectedCheckId).toBeDefined();
+      expect(typeof result.current.latestSelectedCheckId).toBe("string");
+      expect(result.current.setLatestSelectedCheckId).toBeDefined();
+      expect(typeof result.current.setLatestSelectedCheckId).toBe("function");
 
-      // Both hooks should return the same structure
-      expect(checkResult.current.checks).toEqual(
-        recceCheckResult.current.checks,
-      );
-      expect(checkResult.current.isLoading).toEqual(
-        recceCheckResult.current.isLoading,
-      );
+      // OSSCheckContext only has these two properties
+      expect(Object.keys(result.current).length).toBe(2);
     });
   });
 
   describe("OSS aliases", () => {
-    it("latestSelectedCheckId is an alias for selectedCheckId", () => {
+    it("latestSelectedCheckId provides selection state", () => {
       const { result } = renderHook(() => useRecceCheckContext(), {
         wrapper: createWrapper(),
       });
 
-      // Both should be undefined/same value initially
-      expect(result.current.selectedCheckId).toEqual(
-        result.current.latestSelectedCheckId,
-      );
+      // Should be empty string initially
+      expect(result.current.latestSelectedCheckId).toBe("");
     });
 
-    it("setLatestSelectedCheckId is an alias for onSelectCheck", () => {
+    it("setLatestSelectedCheckId updates the selection", () => {
       const { result } = renderHook(() => useRecceCheckContext(), {
         wrapper: createWrapper(),
       });
 
-      // Both should be the same function reference (or both undefined)
-      expect(result.current.onSelectCheck).toEqual(
-        result.current.setLatestSelectedCheckId,
-      );
+      act(() => {
+        result.current.setLatestSelectedCheckId("check-789");
+      });
+
+      expect(result.current.latestSelectedCheckId).toBe("check-789");
+    });
+
+    it("selection state persists across re-renders", () => {
+      const { result, rerender } = renderHook(() => useRecceCheckContext(), {
+        wrapper: createWrapper(),
+      });
+
+      act(() => {
+        result.current.setLatestSelectedCheckId("persistent-check");
+      });
+
+      rerender();
+
+      expect(result.current.latestSelectedCheckId).toBe("persistent-check");
     });
   });
 
@@ -215,9 +224,80 @@ describe("CheckContextAdapter", () => {
         wrapper: createWrapper(),
       });
 
-      // These should be accessible (though may be undefined in the adapter)
+      // These should be accessible and have correct types
       expect("latestSelectedCheckId" in result.current).toBe(true);
+      expect(typeof result.current.latestSelectedCheckId).toBe("string");
       expect("setLatestSelectedCheckId" in result.current).toBe(true);
+      expect(typeof result.current.setLatestSelectedCheckId).toBe("function");
+    });
+
+    it("setLatestSelectedCheckId is callable without optional chaining", () => {
+      const { result } = renderHook(() => useRecceCheckContext(), {
+        wrapper: createWrapper(),
+      });
+
+      // In the old OSS code, setLatestSelectedCheckId was called directly
+      // (not with optional chaining) - this should still work
+      expect(() => {
+        act(() => {
+          result.current.setLatestSelectedCheckId("test-check");
+        });
+      }).not.toThrow();
+    });
+  });
+
+  describe("state sharing between hooks", () => {
+    it("useCheckContext and useRecceCheckContext share state", () => {
+      function Consumer1() {
+        const context = useCheckContext();
+        return (
+          <span data-testid="consumer-1">
+            {context.selectedCheckId || "none"}
+          </span>
+        );
+      }
+
+      function Consumer2() {
+        const context = useRecceCheckContext();
+        return (
+          <div>
+            <span data-testid="consumer-2">
+              {context.latestSelectedCheckId || "none"}
+            </span>
+            <button
+              type="button"
+              onClick={() => context.setLatestSelectedCheckId("shared-check")}
+              data-testid="set-shared"
+            >
+              Set Shared
+            </button>
+          </div>
+        );
+      }
+
+      render(
+        <CheckContextAdapter>
+          <Consumer1 />
+          <Consumer2 />
+        </CheckContextAdapter>,
+      );
+
+      // Both start with initial value (empty string displays as "none")
+      expect(screen.getByTestId("consumer-1")).toHaveTextContent("none");
+      expect(screen.getByTestId("consumer-2")).toHaveTextContent("none");
+
+      // Update from Consumer2
+      act(() => {
+        screen.getByTestId("set-shared").click();
+      });
+
+      // Both should see the update
+      expect(screen.getByTestId("consumer-1")).toHaveTextContent(
+        "shared-check",
+      );
+      expect(screen.getByTestId("consumer-2")).toHaveTextContent(
+        "shared-check",
+      );
     });
   });
 

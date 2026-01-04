@@ -32,7 +32,7 @@
 
 **Step 1: Create test file with imports**
 
-```typescript
+```typescript jsx
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -73,7 +73,7 @@ function TestConsumer() {
 
 **Step 2: Write test for loading state**
 
-```typescript
+```typescript jsx
 describe("RecceInstanceContext", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -98,7 +98,7 @@ describe("RecceInstanceContext", () => {
 
 **Step 3: Write test for successful data fetch**
 
-```typescript
+```typescript jsx
 it("provides instance info after successful fetch", async () => {
   mockGetRecceInstanceInfo.mockResolvedValue({
     recce_version: "1.0.0",
@@ -125,7 +125,7 @@ it("provides instance info after successful fetch", async () => {
 
 **Step 4: Write test for feature toggles computation**
 
-```typescript
+```typescript jsx
 it("computes enableCloudFeatures correctly for cloud mode", async () => {
   mockGetRecceInstanceInfo.mockResolvedValue({
     recce_version: "1.0.0",
@@ -195,7 +195,7 @@ git commit -s -m "test(hooks): add RecceInstanceContext tests for Phase 2A"
 
 **Step 1: Create test file with same structure as OSS**
 
-```typescript
+```typescript jsx
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -236,7 +236,7 @@ function TestConsumer() {
 
 **Step 2: Write identical tests to OSS**
 
-```typescript
+```typescript jsx
 describe("RecceInstanceContext (@datarecce/ui)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -350,7 +350,7 @@ git commit -s -m "test(ui): add RecceInstanceContext tests for Phase 2A"
 
 **Step 1: Create test file**
 
-```typescript
+```typescript jsx
 import { render, screen, act } from "@testing-library/react";
 import {
   IdleTimeoutProvider,
@@ -382,7 +382,7 @@ function SafeTestConsumer() {
 
 **Step 2: Write test for disabled state (no timeout)**
 
-```typescript
+```typescript jsx
 describe("IdleTimeoutContext", () => {
   it("reports disabled when timeout is null", () => {
     render(
@@ -399,7 +399,7 @@ describe("IdleTimeoutContext", () => {
 
 **Step 3: Write test for enabled state**
 
-```typescript
+```typescript jsx
 it("reports enabled when timeout is set", () => {
   render(
     <IdleTimeoutProvider timeout={300} onTimeout={() => {}}>
@@ -414,7 +414,7 @@ it("reports enabled when timeout is set", () => {
 
 **Step 4: Write test for useIdleTimeoutSafe fallback**
 
-```typescript
+```typescript jsx
 it("useIdleTimeoutSafe returns null without provider", () => {
   render(<SafeTestConsumer />);
   expect(screen.getByTestId("safe-enabled")).toHaveTextContent("no-provider");
@@ -432,7 +432,7 @@ it("useIdleTimeoutSafe returns context with provider", () => {
 
 **Step 5: Write test for keep-alive callback**
 
-```typescript
+```typescript jsx
 it("registerKeepAlive adds callback that can be called", () => {
   const keepAliveFn = jest.fn();
 
@@ -502,7 +502,7 @@ git commit -s -m "test(ui): add IdleTimeoutContext tests for Phase 2A"
 
 **Step 1: Create test file**
 
-```typescript
+```typescript jsx
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -547,7 +547,7 @@ function TestConsumer() {
 
 **Step 2: Write test for loading state**
 
-```typescript
+```typescript jsx
 describe("LineageGraphContext (OSS)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -572,7 +572,7 @@ describe("LineageGraphContext (OSS)", () => {
 
 **Step 3: Write test for successful data fetch**
 
-```typescript
+```typescript jsx
 it("provides lineage graph after fetch", async () => {
   mockGetServerInfo.mockResolvedValue({
     lineage: {
@@ -599,7 +599,7 @@ it("provides lineage graph after fetch", async () => {
 
 **Step 4: Write test for connection status**
 
-```typescript
+```typescript jsx
 it("exposes connection status from WebSocket watcher", async () => {
   mockGetServerInfo.mockResolvedValue({
     lineage: { nodes: [], edges: [] },
@@ -643,7 +643,7 @@ git commit -s -m "test(hooks): add LineageGraphContext tests for Phase 2A"
 
 **Step 1: Create test file for props-driven provider**
 
-```typescript
+```typescript jsx
 import { render, screen } from "@testing-library/react";
 import {
   LineageGraphProvider,
@@ -664,7 +664,7 @@ function TestConsumer() {
 
 **Step 2: Write test for props-driven loading state**
 
-```typescript
+```typescript jsx
 describe("LineageGraphContext (@datarecce/ui - props-driven)", () => {
   it("reflects isLoading prop", () => {
     render(
@@ -693,7 +693,7 @@ describe("LineageGraphContext (@datarecce/ui - props-driven)", () => {
 
 **Step 3: Write test for lineage graph data**
 
-```typescript
+```typescript jsx
 it("provides lineage graph from props", () => {
   render(
     <LineageGraphProvider
@@ -709,7 +709,7 @@ it("provides lineage graph from props", () => {
 
 **Step 4: Write test for error prop**
 
-```typescript
+```typescript jsx
 it("provides error from props", () => {
   render(
     <LineageGraphProvider error="Failed to load lineage">
@@ -743,7 +743,7 @@ git commit -s -m "test(ui): add LineageGraphContext tests for Phase 2A"
 
 **Step 1: Create test file**
 
-```typescript
+```typescript jsx
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -782,7 +782,7 @@ function TestConsumer() {
 
 **Step 2: Write test for initial state**
 
-```typescript
+```typescript jsx
 describe("RecceActionContext (OSS)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -806,7 +806,7 @@ describe("RecceActionContext (OSS)", () => {
 
 **Step 3: Write test for runAction**
 
-```typescript
+```typescript jsx
 it("calls submitRun when runAction is invoked", async () => {
   mockSubmitRun.mockResolvedValue({ run_id: "run-123" });
 
@@ -853,7 +853,7 @@ git commit -s -m "test(hooks): add RecceActionContext tests for Phase 2A"
 
 **Step 1: Create test file for props-driven provider**
 
-```typescript
+```typescript jsx
 import { render, screen, fireEvent } from "@testing-library/react";
 import {
   RecceActionProvider,
@@ -876,7 +876,7 @@ function TestConsumer() {
 
 **Step 2: Write test for props-driven callbacks**
 
-```typescript
+```typescript jsx
 describe("RecceActionContext (@datarecce/ui - props-driven)", () => {
   it("reflects isRunning prop", () => {
     render(
@@ -927,7 +927,7 @@ git commit -s -m "test(ui): add RecceActionContext tests for Phase 2A"
 
 **Step 1: Create test file**
 
-```typescript
+```typescript jsx
 import { render, screen, fireEvent } from "@testing-library/react";
 import {
   RecceCheckContextProvider,
@@ -949,7 +949,7 @@ function TestConsumer() {
 
 **Step 2: Write test for initial state**
 
-```typescript
+```typescript jsx
 describe("RecceCheckContext (OSS)", () => {
   it("starts with empty selection", () => {
     render(
@@ -965,7 +965,7 @@ describe("RecceCheckContext (OSS)", () => {
 
 **Step 3: Write test for selection update**
 
-```typescript
+```typescript jsx
 it("updates selection when setLatestSelectedCheckId called", () => {
   render(
     <RecceCheckContextProvider>
@@ -1001,7 +1001,7 @@ git commit -s -m "test(hooks): add RecceCheckContext tests for Phase 2A"
 
 **Step 1: Create test file**
 
-```typescript
+```typescript jsx
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { CheckProvider, useCheckContext } from "../CheckContext";
 
@@ -1022,7 +1022,7 @@ function TestConsumer() {
 
 **Step 2: Write test for props-driven data**
 
-```typescript
+```typescript jsx
 describe("CheckContext (@datarecce/ui)", () => {
   it("provides checks from props", () => {
     render(
@@ -1048,7 +1048,7 @@ describe("CheckContext (@datarecce/ui)", () => {
 
 **Step 3: Write test for selection callback**
 
-```typescript
+```typescript jsx
 it("calls onSelectCheck callback", () => {
   const onSelectCheck = jest.fn();
 
@@ -1090,7 +1090,7 @@ git commit -s -m "test(ui): add CheckContext tests for Phase 2A"
 
 **Step 1: Create test file**
 
-```typescript
+```typescript jsx
 import { render, screen, fireEvent } from "@testing-library/react";
 import {
   RecceQueryContextProvider,
@@ -1112,7 +1112,7 @@ function TestConsumer() {
 
 **Step 2: Write tests**
 
-```typescript
+```typescript jsx
 describe("RecceQueryContext (OSS)", () => {
   it("starts with empty query", () => {
     render(
@@ -1172,7 +1172,7 @@ git commit -s -m "test(hooks): add RecceQueryContext tests for Phase 2A"
 
 **Step 1: Create test file**
 
-```typescript
+```typescript jsx
 import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryProvider, useQueryContext } from "../QueryContext";
 
@@ -1191,7 +1191,7 @@ function TestConsumer() {
 
 **Step 2: Write tests**
 
-```typescript
+```typescript jsx
 describe("QueryContext (@datarecce/ui)", () => {
   it("provides sql from props", () => {
     render(
@@ -1265,7 +1265,7 @@ git commit -s -m "test(ui): add QueryContext tests for Phase 2A"
 
 **Step 1: Create OSS test file**
 
-```typescript
+```typescript jsx
 import { render, screen } from "@testing-library/react";
 import { ApiConfigProvider, useApiConfig } from "../ApiConfigContext";
 
@@ -1297,7 +1297,7 @@ describe("ApiConfigContext (OSS)", () => {
 
 **Step 2: Create @datarecce/ui test file**
 
-```typescript
+```typescript jsx
 import { render, screen } from "@testing-library/react";
 import { ApiProvider, useApiConfig } from "../ApiContext";
 
@@ -1358,7 +1358,7 @@ git commit -s -m "test(hooks,ui): add ApiConfigContext and ApiContext tests for 
 
 **Step 1: Update exports**
 
-```typescript
+```typescript jsx
 // js/packages/ui/src/contexts/index.ts
 export {
   RecceInstanceInfoProvider,
@@ -1404,7 +1404,7 @@ grep -r "from.*RecceInstanceContext" js/src --include="*.tsx" --include="*.ts"
 
 **Step 2: Update imports**
 
-```typescript
+```typescript jsx
 // Before
 import { useRecceInstanceInfo } from "@/lib/hooks/RecceInstanceContext";
 
@@ -1483,7 +1483,7 @@ git commit -s -m "refactor: remove duplicate RecceInstanceContext and IdleTimeou
 
 **Step 1: Add optional hook**
 
-```typescript
+```typescript jsx
 // Add to ApiContext.tsx
 export function useApiConfigOptional(): ApiContextValue | null {
   return useContext(ApiContext);
@@ -1492,14 +1492,14 @@ export function useApiConfigOptional(): ApiContextValue | null {
 
 **Step 2: Update exports**
 
-```typescript
+```typescript jsx
 // packages/ui/src/providers/contexts/index.ts
 export { ApiProvider, useApiConfig, useApiConfigOptional } from "./ApiContext";
 ```
 
 **Step 3: Add test**
 
-```typescript
+```typescript jsx
 it("useApiConfigOptional returns null without provider", () => {
   function OptionalConsumer() {
     const config = useApiConfigOptional();
@@ -1532,7 +1532,7 @@ git commit -s -m "feat(ui): add useApiConfigOptional hook for fallback support"
 
 **Step 1: Wrap @datarecce/ui with fallback**
 
-```typescript
+```typescript jsx
 import { useApiConfigOptional, ApiProvider } from "@datarecce/ui/contexts";
 
 const defaultApiConfig: ApiConfigContextType = {
@@ -1573,7 +1573,7 @@ git commit -s -m "refactor: switch ApiConfigContext to use @datarecce/ui with fa
 
 **Step 1: Create adapter file**
 
-```typescript
+```typescript jsx
 // js/src/lib/hooks/adapters/LineageGraphAdapter.tsx
 import { LineageGraphProvider } from "@datarecce/ui/contexts";
 import { useQuery } from "@tanstack/react-query";
@@ -1627,7 +1627,7 @@ export function LineageGraphAdapter({ children }: LineageGraphAdapterProps) {
 
 **Step 2: Add adapter tests**
 
-```typescript
+```typescript jsx
 // js/src/lib/hooks/adapters/__tests__/LineageGraphAdapter.test.tsx
 import { render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -1684,7 +1684,7 @@ git commit -s -m "feat(hooks): add LineageGraphAdapter for @datarecce/ui integra
 
 **Step 1: Create adapter file**
 
-```typescript
+```typescript jsx
 // js/src/lib/hooks/adapters/RecceActionAdapter.tsx
 import { RecceActionProvider } from "@datarecce/ui/contexts";
 import { useState } from "react";
@@ -1767,7 +1767,7 @@ git commit -s -m "feat(hooks): add RecceActionAdapter for @datarecce/ui integrat
 
 **Step 1: Replace context providers with adapters**
 
-```typescript
+```typescript jsx
 // Before
 <LineageGraphContextProvider>
   <RecceActionContextProvider>
@@ -1836,7 +1836,7 @@ git commit -s -m "refactor: remove old LineageGraphContext and RecceActionContex
 
 **Step 1: Add backward compatibility aliases**
 
-```typescript
+```typescript jsx
 export interface CheckContextType {
   // Existing @datarecce/ui interface
   checks: Check[];
@@ -1860,7 +1860,7 @@ export interface CheckContextType {
 
 **Step 2: Update provider to pass aliases**
 
-```typescript
+```typescript jsx
 const contextValue: CheckContextType = {
   // ... existing values ...
 
@@ -1872,7 +1872,7 @@ const contextValue: CheckContextType = {
 
 **Step 3: Add tests for aliases**
 
-```typescript
+```typescript jsx
 it("provides backward-compatible latestSelectedCheckId alias", () => {
   function AliasConsumer() {
     const { latestSelectedCheckId, setLatestSelectedCheckId } = useCheckContext();
@@ -1926,7 +1926,7 @@ git commit -s -m "feat(ui): add OSS backward-compatible aliases to CheckContext"
 
 **Step 1: Create adapter file**
 
-```typescript
+```typescript jsx
 // js/src/lib/hooks/adapters/CheckContextAdapter.tsx
 import { CheckProvider } from "@datarecce/ui/contexts";
 import { useState } from "react";
@@ -2006,7 +2006,7 @@ git commit -s -m "feat(hooks): add CheckContextAdapter for @datarecce/ui integra
 
 **Step 1: Merge interfaces**
 
-```typescript
+```typescript jsx
 export interface QueryContextType {
   // @datarecce/ui execution state
   sql: string;
@@ -2064,7 +2064,7 @@ git commit -s -m "feat(ui): merge OSS input state into QueryContext"
 
 **Step 1: Use all adapters**
 
-```typescript
+```typescript jsx
 import { LineageGraphAdapter } from "./adapters/LineageGraphAdapter";
 import { RecceActionAdapter } from "./adapters/RecceActionAdapter";
 import { CheckContextAdapter } from "./adapters/CheckContextAdapter";

@@ -9,6 +9,7 @@ export interface QueryResult {
 }
 
 export interface QueryContextType {
+  // --- @datarecce/ui execution state ---
   sql: string;
   isExecuting: boolean;
   error?: string;
@@ -17,6 +18,24 @@ export interface QueryContextType {
   onSqlChange?: (sql: string) => void;
   onExecute?: (sql: string) => Promise<void>;
   onCancel?: () => void;
+
+  // --- OSS input state (merged for backward compatibility) ---
+  /** @alias sql - OSS backward compatibility */
+  sqlQuery?: string;
+  /** @alias onSqlChange - OSS backward compatibility */
+  setSqlQuery?: (sql: string) => void;
+  /** Primary key columns for diff matching */
+  primaryKeys?: string[];
+  /** Setter for primary keys */
+  setPrimaryKeys?: (pks: string[] | undefined) => void;
+  /** Whether using custom SQL queries vs model-generated */
+  isCustomQueries?: boolean;
+  /** Setter for isCustomQueries */
+  setCustomQueries?: (isCustom: boolean) => void;
+  /** Base SQL query for diff comparison */
+  baseSqlQuery?: string;
+  /** Setter for base SQL query */
+  setBaseSqlQuery?: (sql: string) => void;
 }
 
 const defaultContext: QueryContextType = {
@@ -29,6 +48,7 @@ QueryContext.displayName = "RecceQueryContext";
 
 export interface QueryProviderProps {
   children: ReactNode;
+  // --- @datarecce/ui execution state ---
   sql?: string;
   isExecuting?: boolean;
   error?: string;
@@ -37,6 +57,16 @@ export interface QueryProviderProps {
   onSqlChange?: (sql: string) => void;
   onExecute?: (sql: string) => Promise<void>;
   onCancel?: () => void;
+
+  // --- OSS input state ---
+  sqlQuery?: string;
+  setSqlQuery?: (sql: string) => void;
+  primaryKeys?: string[];
+  setPrimaryKeys?: (pks: string[] | undefined) => void;
+  isCustomQueries?: boolean;
+  setCustomQueries?: (isCustom: boolean) => void;
+  baseSqlQuery?: string;
+  setBaseSqlQuery?: (sql: string) => void;
 }
 
 export function QueryProvider({
@@ -49,6 +79,15 @@ export function QueryProvider({
   onSqlChange,
   onExecute,
   onCancel,
+  // OSS fields
+  sqlQuery,
+  setSqlQuery,
+  primaryKeys,
+  setPrimaryKeys,
+  isCustomQueries,
+  setCustomQueries,
+  baseSqlQuery,
+  setBaseSqlQuery,
 }: QueryProviderProps) {
   const contextValue = useMemo<QueryContextType>(
     () => ({
@@ -60,6 +99,15 @@ export function QueryProvider({
       onSqlChange,
       onExecute,
       onCancel,
+      // OSS fields
+      sqlQuery,
+      setSqlQuery,
+      primaryKeys,
+      setPrimaryKeys,
+      isCustomQueries,
+      setCustomQueries,
+      baseSqlQuery,
+      setBaseSqlQuery,
     }),
     [
       sql,
@@ -70,6 +118,14 @@ export function QueryProvider({
       onSqlChange,
       onExecute,
       onCancel,
+      sqlQuery,
+      setSqlQuery,
+      primaryKeys,
+      setPrimaryKeys,
+      isCustomQueries,
+      setCustomQueries,
+      baseSqlQuery,
+      setBaseSqlQuery,
     ],
   );
 

@@ -17,8 +17,8 @@ import {
 } from "@/lib/api/track";
 import { formatSelectColumns } from "@/lib/formatSelect";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
+import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
-import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";

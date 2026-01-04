@@ -16,6 +16,22 @@ interface QueryContextAdapterProps {
 export const defaultSqlQuery = 'select * from {{ ref("mymodel") }}';
 
 /**
+ * OSS-compatible QueryContext type with required fields.
+ * The @datarecce/ui QueryContextType has optional OSS fields,
+ * but OSS components expect them to be defined.
+ */
+export interface OSSQueryContext {
+  sqlQuery: string;
+  setSqlQuery: (sql: string) => void;
+  primaryKeys: string[] | undefined;
+  setPrimaryKeys: (pks: string[] | undefined) => void;
+  isCustomQueries: boolean;
+  setCustomQueries: (isCustom: boolean) => void;
+  baseSqlQuery: string;
+  setBaseSqlQuery: (sql: string) => void;
+}
+
+/**
  * QueryContextAdapter bridges OSS with @datarecce/ui's QueryProvider.
  *
  * Unlike CheckContextAdapter, this adapter manages internal state because
@@ -59,5 +75,40 @@ export type {
   QueryResult,
 } from "@datarecce/ui/providers";
 
-// Re-export hook with OSS alias for backward compatibility
-export { useQueryContext, useQueryContext as useRecceQueryContext };
+// No-op fallbacks for when hook is used outside provider
+const noopSetSqlQuery = (_sql: string) => {
+  // Intentionally empty - fallback when used outside QueryContextAdapter
+};
+const noopSetPrimaryKeys = (_pks: string[] | undefined) => {
+  // Intentionally empty - fallback when used outside QueryContextAdapter
+};
+const noopSetCustomQueries = (_isCustom: boolean) => {
+  // Intentionally empty - fallback when used outside QueryContextAdapter
+};
+const noopSetBaseSqlQuery = (_sql: string) => {
+  // Intentionally empty - fallback when used outside QueryContextAdapter
+};
+
+/**
+ * OSS-compatible hook that returns the query context with guaranteed non-optional fields.
+ * This wraps @datarecce/ui's useQueryContext and provides type safety for OSS components.
+ */
+export function useRecceQueryContext(): OSSQueryContext {
+  const ctx = useQueryContext();
+
+  // Return OSS-compatible interface with guaranteed values
+  // The QueryContextAdapter ensures these are always set
+  return {
+    sqlQuery: ctx.sqlQuery ?? defaultSqlQuery,
+    setSqlQuery: ctx.setSqlQuery ?? noopSetSqlQuery,
+    primaryKeys: ctx.primaryKeys,
+    setPrimaryKeys: ctx.setPrimaryKeys ?? noopSetPrimaryKeys,
+    isCustomQueries: ctx.isCustomQueries ?? false,
+    setCustomQueries: ctx.setCustomQueries ?? noopSetCustomQueries,
+    baseSqlQuery: ctx.baseSqlQuery ?? defaultSqlQuery,
+    setBaseSqlQuery: ctx.setBaseSqlQuery ?? noopSetBaseSqlQuery,
+  };
+}
+
+// Also export the raw hook for cases where the full type is needed
+export { useQueryContext };

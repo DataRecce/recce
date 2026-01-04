@@ -1110,6 +1110,282 @@ describe("QueryContext (@datarecce/ui)", () => {
     });
   });
 
+  /**
+   * OSS input state fields tests
+   *
+   * Phase 2A: Context Unification - These tests verify backward compatibility
+   * with OSS's RecceQueryContext interface. The following fields are merged
+   * from OSS for seamless migration:
+   * - sqlQuery (alias for sql)
+   * - setSqlQuery (alias for onSqlChange)
+   * - primaryKeys / setPrimaryKeys
+   * - isCustomQueries / setCustomQueries
+   * - baseSqlQuery / setBaseSqlQuery
+   */
+  describe("OSS input state fields", () => {
+    it("provides sqlQuery alias", () => {
+      function SqlQueryConsumer() {
+        const { sqlQuery } = useQueryContext();
+        return <span data-testid="sql-query">{sqlQuery ?? "empty"}</span>;
+      }
+
+      render(
+        <QueryProvider sqlQuery="SELECT * FROM users">
+          <SqlQueryConsumer />
+        </QueryProvider>,
+      );
+
+      expect(screen.getByTestId("sql-query")).toHaveTextContent(
+        "SELECT * FROM users",
+      );
+    });
+
+    it("provides setSqlQuery callback", () => {
+      const mockSetSql = jest.fn();
+      function SetSqlQueryConsumer() {
+        const { setSqlQuery } = useQueryContext();
+        return (
+          <button
+            type="button"
+            onClick={() => setSqlQuery?.("new query")}
+            data-testid="set-sql-btn"
+          >
+            Set SQL
+          </button>
+        );
+      }
+
+      render(
+        <QueryProvider setSqlQuery={mockSetSql}>
+          <SetSqlQueryConsumer />
+        </QueryProvider>,
+      );
+
+      act(() => {
+        screen.getByTestId("set-sql-btn").click();
+      });
+
+      expect(mockSetSql).toHaveBeenCalledWith("new query");
+    });
+
+    it("provides primaryKeys and setPrimaryKeys", () => {
+      const mockSetPKs = jest.fn();
+      function PrimaryKeysConsumer() {
+        const { primaryKeys, setPrimaryKeys } = useQueryContext();
+        return (
+          <>
+            <span data-testid="pks">{primaryKeys?.join(",") ?? "none"}</span>
+            <button
+              type="button"
+              onClick={() => setPrimaryKeys?.(["id", "name"])}
+              data-testid="set-pks-btn"
+            >
+              Set PKs
+            </button>
+          </>
+        );
+      }
+
+      render(
+        <QueryProvider primaryKeys={["id"]} setPrimaryKeys={mockSetPKs}>
+          <PrimaryKeysConsumer />
+        </QueryProvider>,
+      );
+
+      expect(screen.getByTestId("pks")).toHaveTextContent("id");
+
+      act(() => {
+        screen.getByTestId("set-pks-btn").click();
+      });
+
+      expect(mockSetPKs).toHaveBeenCalledWith(["id", "name"]);
+    });
+
+    it("provides isCustomQueries and setCustomQueries", () => {
+      const mockSetCustom = jest.fn();
+      function CustomQueriesConsumer() {
+        const { isCustomQueries, setCustomQueries } = useQueryContext();
+        return (
+          <>
+            <span data-testid="custom">{String(isCustomQueries ?? false)}</span>
+            <button
+              type="button"
+              onClick={() => setCustomQueries?.(true)}
+              data-testid="set-custom-btn"
+            >
+              Set Custom
+            </button>
+          </>
+        );
+      }
+
+      render(
+        <QueryProvider isCustomQueries={true} setCustomQueries={mockSetCustom}>
+          <CustomQueriesConsumer />
+        </QueryProvider>,
+      );
+
+      expect(screen.getByTestId("custom")).toHaveTextContent("true");
+
+      act(() => {
+        screen.getByTestId("set-custom-btn").click();
+      });
+
+      expect(mockSetCustom).toHaveBeenCalledWith(true);
+    });
+
+    it("provides baseSqlQuery and setBaseSqlQuery", () => {
+      const mockSetBase = jest.fn();
+      function BaseSqlConsumer() {
+        const { baseSqlQuery, setBaseSqlQuery } = useQueryContext();
+        return (
+          <>
+            <span data-testid="base">{baseSqlQuery ?? "none"}</span>
+            <button
+              type="button"
+              onClick={() => setBaseSqlQuery?.("base query")}
+              data-testid="set-base-btn"
+            >
+              Set Base
+            </button>
+          </>
+        );
+      }
+
+      render(
+        <QueryProvider baseSqlQuery="SELECT 1" setBaseSqlQuery={mockSetBase}>
+          <BaseSqlConsumer />
+        </QueryProvider>,
+      );
+
+      expect(screen.getByTestId("base")).toHaveTextContent("SELECT 1");
+
+      act(() => {
+        screen.getByTestId("set-base-btn").click();
+      });
+
+      expect(mockSetBase).toHaveBeenCalledWith("base query");
+    });
+
+    it("OSS fields are undefined by default", () => {
+      const { result } = renderHook(() => useQueryContext(), {
+        wrapper: createWrapper({}),
+      });
+
+      expect(result.current.sqlQuery).toBeUndefined();
+      expect(result.current.setSqlQuery).toBeUndefined();
+      expect(result.current.primaryKeys).toBeUndefined();
+      expect(result.current.setPrimaryKeys).toBeUndefined();
+      expect(result.current.isCustomQueries).toBeUndefined();
+      expect(result.current.setCustomQueries).toBeUndefined();
+      expect(result.current.baseSqlQuery).toBeUndefined();
+      expect(result.current.setBaseSqlQuery).toBeUndefined();
+    });
+
+    it("handles setPrimaryKeys with undefined to clear", () => {
+      const mockSetPKs = jest.fn();
+      function ClearPrimaryKeysConsumer() {
+        const { setPrimaryKeys } = useQueryContext();
+        return (
+          <button
+            type="button"
+            onClick={() => setPrimaryKeys?.(undefined)}
+            data-testid="clear-pks-btn"
+          >
+            Clear PKs
+          </button>
+        );
+      }
+
+      render(
+        <QueryProvider setPrimaryKeys={mockSetPKs}>
+          <ClearPrimaryKeysConsumer />
+        </QueryProvider>,
+      );
+
+      act(() => {
+        screen.getByTestId("clear-pks-btn").click();
+      });
+
+      expect(mockSetPKs).toHaveBeenCalledWith(undefined);
+    });
+
+    it("handles empty primaryKeys array", () => {
+      const { result } = renderHook(() => useQueryContext(), {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <QueryProvider primaryKeys={[]}>{children}</QueryProvider>
+        ),
+      });
+
+      expect(result.current.primaryKeys).toEqual([]);
+    });
+
+    it("handles isCustomQueries false value", () => {
+      const { result } = renderHook(() => useQueryContext(), {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <QueryProvider isCustomQueries={false}>{children}</QueryProvider>
+        ),
+      });
+
+      expect(result.current.isCustomQueries).toBe(false);
+    });
+
+    it("can use both @datarecce/ui and OSS fields together", () => {
+      const mockOnSqlChange = jest.fn();
+      const mockSetSqlQuery = jest.fn();
+
+      function CombinedConsumer() {
+        const { sql, sqlQuery, onSqlChange, setSqlQuery } = useQueryContext();
+        return (
+          <>
+            <span data-testid="sql">{sql}</span>
+            <span data-testid="sqlQuery">{sqlQuery ?? "empty"}</span>
+            <button
+              type="button"
+              onClick={() => onSqlChange?.("from onSqlChange")}
+              data-testid="change-btn"
+            >
+              Change
+            </button>
+            <button
+              type="button"
+              onClick={() => setSqlQuery?.("from setSqlQuery")}
+              data-testid="set-btn"
+            >
+              Set
+            </button>
+          </>
+        );
+      }
+
+      render(
+        <QueryProvider
+          sql="current sql"
+          sqlQuery="oss sql query"
+          onSqlChange={mockOnSqlChange}
+          setSqlQuery={mockSetSqlQuery}
+        >
+          <CombinedConsumer />
+        </QueryProvider>,
+      );
+
+      // Both fields should be accessible
+      expect(screen.getByTestId("sql")).toHaveTextContent("current sql");
+      expect(screen.getByTestId("sqlQuery")).toHaveTextContent("oss sql query");
+
+      // Both callbacks should work
+      act(() => {
+        screen.getByTestId("change-btn").click();
+      });
+      expect(mockOnSqlChange).toHaveBeenCalledWith("from onSqlChange");
+
+      act(() => {
+        screen.getByTestId("set-btn").click();
+      });
+      expect(mockSetSqlQuery).toHaveBeenCalledWith("from setSqlQuery");
+    });
+  });
+
   describe("query execution workflow", () => {
     it("simulates typical query execution flow", async () => {
       const executionSteps: string[] = [];

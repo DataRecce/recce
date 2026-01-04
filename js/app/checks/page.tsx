@@ -23,7 +23,7 @@ import { HSplit } from "@/components/split/Split";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { listChecks, reorderChecks } from "@/lib/api/checks";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
+import { useRecceCheckContext } from "@/lib/hooks/CheckContextAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
 /**

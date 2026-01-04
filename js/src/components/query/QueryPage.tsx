@@ -20,11 +20,11 @@ import {
 import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import {
   defaultSqlQuery,
   useRecceQueryContext,
-} from "@/lib/hooks/RecceQueryContext";
+} from "@/lib/hooks/QueryContextAdapter";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { BaseEnvironmentSetupGuide } from "../lineage/SingleEnvironmentQueryView";
 import { QueryForm } from "./QueryForm";
 import SetupConnectionGuide from "./SetupConnectionGuide";
