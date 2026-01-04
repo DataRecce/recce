@@ -715,7 +715,6 @@ describe("ValueDiffDetailResultView", () => {
     it("handles result with undefined limit", () => {
       const run = createValueDiffDetailRun();
       if (run.result) {
-        // biome-ignore lint/performance/noDelete: testing undefined case
         delete (run.result as unknown as Record<string, unknown>).limit;
       }
 

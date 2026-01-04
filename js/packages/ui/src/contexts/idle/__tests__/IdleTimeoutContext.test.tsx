@@ -148,7 +148,6 @@ function SafeConsumer() {
  * Note: biome-ignore used because we intentionally test error throwing behavior
  */
 function ThrowingConsumer() {
-  // biome-ignore lint/correctness/useHookAtTopLevel: Testing error handling
   const context = useIdleTimeout();
   return <span data-testid="result">{String(context.isEnabled)}</span>;
 }

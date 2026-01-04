@@ -701,10 +701,13 @@ describe("buildDiffColumnDefinitions - Header Props", () => {
     result.columns.forEach((col) => {
       const key = getColumnKey(col);
       if (key !== "_index") {
-        // biome-ignore lint/suspicious/noExplicitAny: Accessing AG Grid internal property for testing
+        // AG Grid ColDef types don't expose headerComponent/headerGroupComponent directly
+        const colWithHeader = col as {
+          headerComponent?: unknown;
+          headerGroupComponent?: unknown;
+        };
         const hasHeader =
-          // biome-ignore lint/suspicious/noExplicitAny: Accessing AG Grid internal property for testing
-          (col as any).headerComponent || (col as any).headerGroupComponent;
+          colWithHeader.headerComponent || colWithHeader.headerGroupComponent;
         expect(hasHeader).toBeDefined();
       }
     });
