@@ -21,6 +21,12 @@ export interface CheckContextType {
   onDeleteCheck?: (checkId: string) => Promise<void>;
   onReorderChecks?: (sourceIndex: number, destIndex: number) => Promise<void>;
   refetchChecks?: () => void;
+
+  // OSS aliases for backward compatibility
+  /** @alias selectedCheckId - OSS backward compatibility */
+  latestSelectedCheckId?: string;
+  /** @alias onSelectCheck - OSS backward compatibility */
+  setLatestSelectedCheckId?: (checkId: string) => void;
 }
 
 const defaultContext: CheckContextType = {
@@ -43,6 +49,12 @@ export interface CheckProviderProps {
   onDeleteCheck?: (checkId: string) => Promise<void>;
   onReorderChecks?: (sourceIndex: number, destIndex: number) => Promise<void>;
   refetchChecks?: () => void;
+
+  // OSS aliases for backward compatibility (prefer canonical names above)
+  /** @alias selectedCheckId - OSS backward compatibility */
+  latestSelectedCheckId?: string;
+  /** @alias onSelectCheck - OSS backward compatibility */
+  setLatestSelectedCheckId?: (checkId: string) => void;
 }
 
 export function CheckProvider({
@@ -57,26 +69,37 @@ export function CheckProvider({
   onDeleteCheck,
   onReorderChecks,
   refetchChecks,
+  // OSS aliases (canonical props take precedence)
+  latestSelectedCheckId,
+  setLatestSelectedCheckId,
 }: CheckProviderProps) {
+  // Resolve values: canonical props take precedence over OSS aliases
+  const resolvedSelectedCheckId = selectedCheckId ?? latestSelectedCheckId;
+  const resolvedOnSelectCheck = onSelectCheck ?? setLatestSelectedCheckId;
+
   const contextValue = useMemo<CheckContextType>(
     () => ({
       checks,
       isLoading,
       error,
-      selectedCheckId,
-      onSelectCheck,
+      // Canonical properties
+      selectedCheckId: resolvedSelectedCheckId,
+      onSelectCheck: resolvedOnSelectCheck,
       onCreateCheck,
       onUpdateCheck,
       onDeleteCheck,
       onReorderChecks,
       refetchChecks,
+      // OSS aliases (point to same resolved values)
+      latestSelectedCheckId: resolvedSelectedCheckId,
+      setLatestSelectedCheckId: resolvedOnSelectCheck,
     }),
     [
       checks,
       isLoading,
       error,
-      selectedCheckId,
-      onSelectCheck,
+      resolvedSelectedCheckId,
+      resolvedOnSelectCheck,
       onCreateCheck,
       onUpdateCheck,
       onDeleteCheck,

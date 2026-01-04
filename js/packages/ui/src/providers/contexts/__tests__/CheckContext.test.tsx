@@ -1236,4 +1236,352 @@ describe("CheckContext (@datarecce/ui)", () => {
       expect(screen.getByTestId("context-test")).toBeInTheDocument();
     });
   });
+
+  describe("OSS backward compatibility aliases", () => {
+    /**
+     * These tests verify that the OSS aliases (latestSelectedCheckId, setLatestSelectedCheckId)
+     * work correctly for backward compatibility with OSS RecceCheckContext consumers.
+     */
+
+    describe("latestSelectedCheckId alias", () => {
+      it("exposes latestSelectedCheckId as alias for selectedCheckId", () => {
+        const { result } = renderHook(() => useCheckContext(), {
+          wrapper: createWrapper({ selectedCheckId: "check-1" }),
+        });
+
+        // Both canonical and alias should have the same value
+        expect(result.current.selectedCheckId).toBe("check-1");
+        expect(result.current.latestSelectedCheckId).toBe("check-1");
+      });
+
+      it("accepts latestSelectedCheckId prop and maps to selectedCheckId", () => {
+        function WrapperWithOSSAlias({ children }: { children: ReactNode }) {
+          return (
+            <CheckProvider
+              checks={mockChecks}
+              isLoading={false}
+              latestSelectedCheckId="oss-check-id"
+            >
+              {children}
+            </CheckProvider>
+          );
+        }
+
+        const { result } = renderHook(() => useCheckContext(), {
+          wrapper: WrapperWithOSSAlias,
+        });
+
+        // Both should expose the value from latestSelectedCheckId
+        expect(result.current.selectedCheckId).toBe("oss-check-id");
+        expect(result.current.latestSelectedCheckId).toBe("oss-check-id");
+      });
+
+      it("canonical selectedCheckId takes precedence over latestSelectedCheckId", () => {
+        function WrapperWithBothProps({ children }: { children: ReactNode }) {
+          return (
+            <CheckProvider
+              checks={mockChecks}
+              isLoading={false}
+              selectedCheckId="canonical-id"
+              latestSelectedCheckId="oss-id"
+            >
+              {children}
+            </CheckProvider>
+          );
+        }
+
+        const { result } = renderHook(() => useCheckContext(), {
+          wrapper: WrapperWithBothProps,
+        });
+
+        // Canonical prop takes precedence
+        expect(result.current.selectedCheckId).toBe("canonical-id");
+        expect(result.current.latestSelectedCheckId).toBe("canonical-id");
+      });
+
+      it("renders latestSelectedCheckId in OSS consumer component", () => {
+        function OSSConsumer() {
+          const context = useCheckContext();
+          return (
+            <span data-testid="oss-selected-id">
+              {context.latestSelectedCheckId ?? "none"}
+            </span>
+          );
+        }
+
+        render(
+          <CheckProvider
+            checks={mockChecks}
+            isLoading={false}
+            selectedCheckId="check-2"
+          >
+            <OSSConsumer />
+          </CheckProvider>,
+        );
+
+        expect(screen.getByTestId("oss-selected-id")).toHaveTextContent(
+          "check-2",
+        );
+      });
+    });
+
+    describe("setLatestSelectedCheckId alias", () => {
+      it("exposes setLatestSelectedCheckId as alias for onSelectCheck", () => {
+        const mockOnSelectCheck = jest.fn();
+
+        const { result } = renderHook(() => useCheckContext(), {
+          wrapper: createWrapper({ onSelectCheck: mockOnSelectCheck }),
+        });
+
+        // Both should be defined and point to the same function
+        expect(result.current.onSelectCheck).toBeDefined();
+        expect(result.current.setLatestSelectedCheckId).toBeDefined();
+
+        // Calling the alias should invoke the same callback
+        act(() => {
+          result.current.setLatestSelectedCheckId?.("test-id");
+        });
+
+        expect(mockOnSelectCheck).toHaveBeenCalledWith("test-id");
+      });
+
+      it("accepts setLatestSelectedCheckId prop and maps to onSelectCheck", () => {
+        const mockSetLatestSelectedCheckId = jest.fn();
+
+        function WrapperWithOSSAlias({ children }: { children: ReactNode }) {
+          return (
+            <CheckProvider
+              checks={mockChecks}
+              isLoading={false}
+              setLatestSelectedCheckId={mockSetLatestSelectedCheckId}
+            >
+              {children}
+            </CheckProvider>
+          );
+        }
+
+        const { result } = renderHook(() => useCheckContext(), {
+          wrapper: WrapperWithOSSAlias,
+        });
+
+        // Both canonical and alias should work
+        act(() => {
+          result.current.onSelectCheck?.("via-canonical");
+        });
+        expect(mockSetLatestSelectedCheckId).toHaveBeenCalledWith(
+          "via-canonical",
+        );
+
+        act(() => {
+          result.current.setLatestSelectedCheckId?.("via-alias");
+        });
+        expect(mockSetLatestSelectedCheckId).toHaveBeenCalledWith("via-alias");
+      });
+
+      it("canonical onSelectCheck takes precedence over setLatestSelectedCheckId", () => {
+        const mockOnSelectCheck = jest.fn();
+        const mockSetLatestSelectedCheckId = jest.fn();
+
+        function WrapperWithBothProps({ children }: { children: ReactNode }) {
+          return (
+            <CheckProvider
+              checks={mockChecks}
+              isLoading={false}
+              onSelectCheck={mockOnSelectCheck}
+              setLatestSelectedCheckId={mockSetLatestSelectedCheckId}
+            >
+              {children}
+            </CheckProvider>
+          );
+        }
+
+        const { result } = renderHook(() => useCheckContext(), {
+          wrapper: WrapperWithBothProps,
+        });
+
+        act(() => {
+          result.current.onSelectCheck?.("test");
+        });
+
+        // Canonical callback should be used
+        expect(mockOnSelectCheck).toHaveBeenCalledWith("test");
+        expect(mockSetLatestSelectedCheckId).not.toHaveBeenCalled();
+      });
+
+      it("OSS consumer can use setLatestSelectedCheckId to select checks", () => {
+        const mockOnSelectCheck = jest.fn();
+
+        function OSSConsumer() {
+          const context = useCheckContext();
+          return (
+            <button
+              type="button"
+              onClick={() => context.setLatestSelectedCheckId?.("oss-selected")}
+              data-testid="oss-select-btn"
+            >
+              OSS Select
+            </button>
+          );
+        }
+
+        render(
+          <CheckProvider
+            checks={mockChecks}
+            isLoading={false}
+            onSelectCheck={mockOnSelectCheck}
+          >
+            <OSSConsumer />
+          </CheckProvider>,
+        );
+
+        act(() => {
+          screen.getByTestId("oss-select-btn").click();
+        });
+
+        expect(mockOnSelectCheck).toHaveBeenCalledWith("oss-selected");
+      });
+    });
+
+    describe("OSS-style provider usage", () => {
+      it("works with OSS-style props only", () => {
+        const mockSetLatestSelectedCheckId = jest.fn();
+
+        function OSSStyleConsumer() {
+          const context = useCheckContext();
+          return (
+            <div>
+              <span data-testid="oss-check-id">
+                {context.latestSelectedCheckId ?? "none"}
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  context.setLatestSelectedCheckId?.("new-selection")
+                }
+                data-testid="oss-action-btn"
+              >
+                Select
+              </button>
+            </div>
+          );
+        }
+
+        render(
+          <CheckProvider
+            checks={mockChecks}
+            isLoading={false}
+            latestSelectedCheckId="initial-selection"
+            setLatestSelectedCheckId={mockSetLatestSelectedCheckId}
+          >
+            <OSSStyleConsumer />
+          </CheckProvider>,
+        );
+
+        // Verify OSS-style reading works
+        expect(screen.getByTestId("oss-check-id")).toHaveTextContent(
+          "initial-selection",
+        );
+
+        // Verify OSS-style action works
+        act(() => {
+          screen.getByTestId("oss-action-btn").click();
+        });
+        expect(mockSetLatestSelectedCheckId).toHaveBeenCalledWith(
+          "new-selection",
+        );
+      });
+
+      it("mixed consumer can use both canonical and OSS properties", () => {
+        const mockOnSelectCheck = jest.fn();
+
+        function MixedConsumer() {
+          const context = useCheckContext();
+          return (
+            <div>
+              {/* Reading via both methods */}
+              <span data-testid="canonical-id">
+                {context.selectedCheckId ?? "none"}
+              </span>
+              <span data-testid="oss-id">
+                {context.latestSelectedCheckId ?? "none"}
+              </span>
+              {/* Actions via both methods */}
+              <button
+                type="button"
+                onClick={() => context.onSelectCheck?.("via-canonical")}
+                data-testid="canonical-btn"
+              >
+                Canonical
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  context.setLatestSelectedCheckId?.("via-oss-alias")
+                }
+                data-testid="oss-btn"
+              >
+                OSS
+              </button>
+            </div>
+          );
+        }
+
+        render(
+          <CheckProvider
+            checks={mockChecks}
+            isLoading={false}
+            selectedCheckId="shared-id"
+            onSelectCheck={mockOnSelectCheck}
+          >
+            <MixedConsumer />
+          </CheckProvider>,
+        );
+
+        // Both read methods return the same value
+        expect(screen.getByTestId("canonical-id")).toHaveTextContent(
+          "shared-id",
+        );
+        expect(screen.getByTestId("oss-id")).toHaveTextContent("shared-id");
+
+        // Both action methods invoke the same callback
+        act(() => {
+          screen.getByTestId("canonical-btn").click();
+        });
+        expect(mockOnSelectCheck).toHaveBeenCalledWith("via-canonical");
+
+        act(() => {
+          screen.getByTestId("oss-btn").click();
+        });
+        expect(mockOnSelectCheck).toHaveBeenCalledWith("via-oss-alias");
+      });
+    });
+
+    describe("alias default values", () => {
+      it("latestSelectedCheckId is undefined by default", () => {
+        const { result } = renderHook(() => useCheckContext(), {
+          wrapper: createWrapper({}),
+        });
+
+        expect(result.current.latestSelectedCheckId).toBeUndefined();
+      });
+
+      it("setLatestSelectedCheckId is undefined by default", () => {
+        const { result } = renderHook(() => useCheckContext(), {
+          wrapper: createWrapper({}),
+        });
+
+        expect(result.current.setLatestSelectedCheckId).toBeUndefined();
+      });
+
+      it("calling undefined setLatestSelectedCheckId does not throw", () => {
+        const { result } = renderHook(() => useCheckContext(), {
+          wrapper: createWrapper({}),
+        });
+
+        expect(() => {
+          result.current.setLatestSelectedCheckId?.("test");
+        }).not.toThrow();
+      });
+    });
+  });
 });
