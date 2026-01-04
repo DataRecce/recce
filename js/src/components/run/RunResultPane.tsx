@@ -31,7 +31,7 @@ import {
   RunParamTypes,
 } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";

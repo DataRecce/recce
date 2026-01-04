@@ -15,7 +15,7 @@ import {
   trackExploreAction,
 } from "@/lib/api/track";
 import { SchemaDiffRow } from "@/lib/dataGrid/generators/toSchemaDataGrid";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { useLineageViewContext } from "../lineage/LineageViewContext";
 

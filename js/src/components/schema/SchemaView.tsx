@@ -21,7 +21,7 @@ import {
   SchemaDiffRow,
   SchemaRow,
 } from "@/lib/dataGrid";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import {
   type DataGridHandle,
   EmptyRowsRenderer,

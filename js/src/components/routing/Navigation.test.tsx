@@ -55,7 +55,7 @@ let mockRecceServerFlagData = {
 };
 
 // Mock the hooks used by NavBar
-jest.mock("@/lib/hooks/LineageGraphContext", () => ({
+jest.mock("@/lib/hooks/LineageGraphAdapter", () => ({
   useLineageGraphContext: () => mockLineageGraphContext,
 }));
 

@@ -16,7 +16,7 @@ import { StateSynchronizer } from "@/components/app/StateSynchronizer";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, listChecks } from "@/lib/api/checks";
 import { trackNavigation } from "@/lib/api/track";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
 /**

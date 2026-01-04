@@ -74,8 +74,8 @@ import {
   isValueDiffRun,
 } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import {
   IGNORE_SCREENSHOT_CLASS,
   useCopyToClipboard,

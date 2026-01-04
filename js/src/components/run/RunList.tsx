@@ -12,7 +12,7 @@ import { createCheckByRun } from "@/lib/api/checks";
 import { listRuns, waitRun } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { findByRunType } from "../run/registry";
 import "simplebar/dist/simplebar.min.css";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";

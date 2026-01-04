@@ -19,8 +19,8 @@ import {
 } from "@/lib/api/adhocQuery";
 import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import {
   defaultSqlQuery,
   useRecceQueryContext,

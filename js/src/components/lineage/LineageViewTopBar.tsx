@@ -28,7 +28,7 @@ import { PiCaretDown } from "react-icons/pi";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { findByRunType } from "../run/registry";
 import { useLineageViewContextSafe } from "./LineageViewContext";

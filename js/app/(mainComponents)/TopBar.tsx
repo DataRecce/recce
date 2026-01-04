@@ -13,7 +13,7 @@ import AuthModal from "@/components/AuthModal/AuthModal";
 import AvatarDropdown from "@/components/app/AvatarDropdown";
 import { IdleTimeoutBadge } from "@/components/timeout/IdleTimeoutBadge";
 import { colors } from "@/components/ui/mui-theme";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import DisplayModeToggle from "./DisplayModeToggle";
 import RecceVersionBadge from "./RecceVersionBadge";
 

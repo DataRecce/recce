@@ -23,9 +23,9 @@ import { VscKey } from "react-icons/vsc";
 import { RowObjectType } from "@/lib/api/types";
 import { ValueDiffParams } from "@/lib/api/valuediff";
 import {
-  RecceActionOptions,
+  type RecceActionOptions,
   useRecceActionContext,
-} from "@/lib/hooks/RecceActionContext";
+} from "@/lib/hooks/RecceActionAdapter";
 
 // ============================================================================
 // PrimaryKeyIndicatorCell

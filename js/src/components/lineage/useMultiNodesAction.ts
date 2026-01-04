@@ -11,7 +11,7 @@ import {
 } from "@/lib/api/track";
 import { ValueDiffParams } from "@/lib/api/valuediff";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { ActionState } from "./LineageViewContext";
 import { LineageGraphNode } from "./lineage";
 

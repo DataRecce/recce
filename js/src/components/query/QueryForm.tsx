@@ -5,7 +5,7 @@ import Typography from "@mui/material/Typography";
 import { useMemo } from "react";
 import { PiInfo } from "react-icons/pi";
 import { NodeColumnData } from "@/lib/api/info";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { DropdownValuesInput } from "@/utils/DropdownValuesInput";
 
 interface QueryFormProps extends BoxProps {

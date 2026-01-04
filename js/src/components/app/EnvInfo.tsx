@@ -26,8 +26,8 @@ import {
   type EnvironmentConfigProps,
   trackEnvironmentConfig,
 } from "@/lib/api/track";
-import type { EnvInfo as EnvInfoType } from "@/lib/hooks/LineageGraphContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import type { EnvInfo as EnvInfoType } from "@/lib/hooks/LineageGraphAdapter";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { IconInfo } from "../icons";
 
 export function formatTimestamp(timestamp: string): string {

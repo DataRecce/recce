@@ -9,7 +9,7 @@ import React, { useState } from "react";
 import { FaCheckSquare, FaRegDotCircle, FaRegSquare } from "react-icons/fa";
 import { VscKebabVertical } from "react-icons/vsc";
 import { RowCountDiff } from "@/lib/api/models";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { findByRunType } from "../run/registry";
 import { isSchemaChanged } from "../schema/schemaDiff";
 import { ActionTag } from "./ActionTag";

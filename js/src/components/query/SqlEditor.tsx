@@ -11,7 +11,7 @@ import { extractSchemas, formatTimeToNow } from "@/components/app/EnvInfo";
 import { CodeEditor } from "@/components/editor";
 import { colors } from "@/components/ui/mui-theme";
 import { ManifestMetadata } from "@/lib/api/info";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 
 export interface SqlEditorProps {
   language?: string;

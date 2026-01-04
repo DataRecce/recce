@@ -63,7 +63,7 @@ jest.mock("@/components/ui/mui", () => ({
   Spacer: () => null,
 }));
 
-jest.mock("@/lib/hooks/RecceActionContext", () => ({
+jest.mock("@/lib/hooks/RecceActionAdapter", () => ({
   useRecceActionContext: () => ({
     runAction: jest.fn(),
   }),

@@ -58,7 +58,7 @@ import { cancelRun, submitRunFromCheck } from "@/lib/api/runs";
 import { trackCopyToClipboard } from "@/lib/api/track";
 import { Run, RunParamTypes } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";

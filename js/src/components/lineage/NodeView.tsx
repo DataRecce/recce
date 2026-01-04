@@ -20,8 +20,8 @@ import {
 } from "@/lib/api/track";
 import { formatSelectColumns } from "@/lib/formatSelect";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import useModelColumns from "@/lib/hooks/useModelColumns";

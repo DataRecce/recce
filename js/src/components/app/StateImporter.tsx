@@ -22,7 +22,7 @@ import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import {
   useLineageGraphContext,
   useRunsAggregated,
-} from "@/lib/hooks/LineageGraphContext";
+} from "@/lib/hooks/LineageGraphAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { IconImport } from "../icons";
 
@@ -49,7 +49,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
         checksOnly,
         apiClient,
       );
-      refetchRunsAggregated();
+      refetchRunsAggregated?.();
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       await queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
       if (location.includes("/checks")) {

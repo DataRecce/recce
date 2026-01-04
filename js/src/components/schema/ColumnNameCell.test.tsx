@@ -10,7 +10,7 @@ import { SchemaDiffRow } from "@/lib/dataGrid/generators/toSchemaDataGrid";
 import { ColumnNameCell } from "./ColumnNameCell";
 
 // Mock dependencies
-jest.mock("@/lib/hooks/RecceActionContext", () => ({
+jest.mock("@/lib/hooks/RecceActionAdapter", () => ({
   useRecceActionContext: () => ({ runAction: jest.fn() }),
 }));
 

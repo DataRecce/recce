@@ -9,7 +9,7 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { cancelRun, waitRun } from "@/lib/api/runs";
 import { Run } from "../api/types";
 import { useApiConfig } from "./ApiConfigContext";
-import { useRunsAggregated } from "./LineageGraphContext";
+import { useRunsAggregated } from "./LineageGraphAdapter";
 
 interface UseRunResult {
   run?: Run;
@@ -58,7 +58,7 @@ export const useRun = (runId?: string): UseRunResult => {
       (error || run?.result || run?.error) &&
       (run?.type === "row_count_diff" || run?.type === "row_count")
     ) {
-      refetchRunsAggregated();
+      refetchRunsAggregated?.();
     }
   }, [run, error, refetchRunsAggregated]);
 

@@ -13,7 +13,7 @@ import { useState } from "react";
 import { FaRegDotCircle } from "react-icons/fa";
 import { PiInfo, PiX } from "react-icons/pi";
 import { CllInput, ColumnLineageData } from "@/lib/api/cll";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 

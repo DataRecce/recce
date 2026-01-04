@@ -22,7 +22,7 @@ import { useChecks } from "@/lib/api/checks";
 import { localStorageKeys } from "@/lib/api/localStorageKeys";
 import { rename, saveAs } from "@/lib/api/state";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { IconEdit, IconSave } from "../icons";
 import { formatRunDateTime } from "../run/RunStatusAndDate";
 

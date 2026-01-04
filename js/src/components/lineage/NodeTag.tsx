@@ -12,7 +12,7 @@ import { PiRepeat } from "react-icons/pi";
 import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { RowCount, RowCountDiff } from "@/lib/api/models";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { findByRunType } from "../run/registry";
 import { LineageGraphNode } from "./lineage";
 import { getIconForResourceType } from "./styles";

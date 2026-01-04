@@ -27,8 +27,8 @@ import {
   trackSingleEnvironment,
 } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";
 import { useGuideToast } from "@/lib/hooks/useGuideToast";
