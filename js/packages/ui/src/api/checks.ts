@@ -35,9 +35,9 @@ export interface CreateCheckBody {
   description?: string;
   run_id?: string;
   type?: RunType;
-  params?: Record<string, string | boolean>;
-  view_options?: Record<string, string | boolean>;
-  track_props?: Record<string, string | boolean>;
+  params?: Record<string, unknown>;
+  view_options?: Record<string, unknown>;
+  track_props?: Record<string, unknown>;
 }
 
 // ============================================================================
@@ -164,11 +164,8 @@ export async function reorderChecks(
     destination: number;
   },
   client: AxiosInstance,
-): Promise<AxiosResponse<unknown>> {
-  return await client.post<
-    { source: number; destination: number },
-    AxiosResponse<unknown>
-  >("/api/checks/reorder", order);
+): Promise<void> {
+  await client.post("/api/checks/reorder", order);
 }
 
 /**
