@@ -2,6 +2,8 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
+**Status:** ✅ Complete (2026-01-04)
+
 **Goal:** Migrate Recce OSS to consume useIsDark and useThemeColors from @datarecce/ui, with proper tests and documentation.
 
 **Architecture:** Update @datarecce/ui hooks to use optional fallback pattern (works with or without RecceProvider), then switch all OSS imports to @datarecce/ui/hooks, delete local copies, and document NOT_APPLICABLE files.

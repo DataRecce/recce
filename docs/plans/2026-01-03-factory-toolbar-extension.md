@@ -2,6 +2,8 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
+**Status:** ✅ Complete (2026-01-04)
+
 **Goal:** Extend `createResultView` factory to support toolbar controls and warnings, then migrate `ValueDiffDetailResultView` and `QueryResultView` to use the factory.
 
 **Architecture:** Add `toolbar`, `warnings`, and `onAddToChecklist` to factory types. Factory renders toolbar area with warnings (as alert chips) and controls. Consumers provide toolbar controls as ReactNode, factory handles consistent layout.
@@ -10,7 +12,19 @@
 
 ---
 
-## Current State
+## Implementation Summary
+
+All planned features were implemented and all components migrated:
+
+### Factory Enhancements (packages/ui/src/components/result/)
+- ✅ `toolbar?: ReactNode` - Toolbar controls slot
+- ✅ `warnings?: string[]` - Warning messages array
+- ✅ `warningStyle?: "alert" | "amber"` - Warning display styles
+- ✅ `onAddToChecklist?: (run: unknown) => void` - Checklist callback
+- ✅ `emptyMessage?: ReactNode` - Custom empty state with toolbar support
+- ✅ `ToolbarArea` component with warnings left, controls right layout
+
+### Component Migration Status
 
 | Component | Status | Tests | Notes |
 |-----------|--------|-------|-------|
@@ -20,10 +34,12 @@
 | HistogramDiffResultView | ✅ Factory | ✅ | Chart-based |
 | ProfileDiffResultView | ✅ Factory | ✅ | Grid + toolbar via header |
 | ProfileResultView | ✅ Factory | ✅ | Shares with above |
-| TopKDiffResultView | ❌ Custom | ✅ | Local useState - deferred |
-| ValueDiffDetailResultView | ❌ Custom | ✅ | **Target for migration** |
-| QueryResultView | ❌ Custom | ✅ | **Target for migration** |
-| QueryDiffResultView | ❌ Custom | ✅ | Bifurcation - deferred |
+| TopKDiffResultView | ✅ Factory | ✅ | Migrated (was deferred) |
+| ValueDiffDetailResultView | ✅ Factory | ✅ | Migrated with toolbar/warnings |
+| QueryResultView | ✅ Factory | ✅ | Migrated with onAddToChecklist |
+| QueryDiffResultView | ✅ Factory | ✅ | Migrated (was deferred) |
+
+**All 10 ResultView components now use the factory pattern.**
 
 ---
 
@@ -832,12 +848,12 @@ git commit -s -m "docs: update component audit with factory toolbar extension"
 
 ---
 
-## Deferred Items
+## Previously Deferred Items (Now Complete)
 
-| Component | Reason | Future Work |
-|-----------|--------|-------------|
-| QueryDiffResultView | Bifurcation logic (two internal components based on `run.result.diff`) | Needs separate design session |
-| TopKDiffResultView | Local `useState` for display toggle | Needs state callback pattern in factory |
+| Component | Original Concern | Resolution |
+|-----------|------------------|------------|
+| QueryDiffResultView | Bifurcation logic | ✅ Successfully migrated to factory |
+| TopKDiffResultView | Local `useState` | ✅ Successfully migrated using viewOptions pattern |
 
 ---
 

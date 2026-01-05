@@ -2,6 +2,8 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
+**Status:** ✅ Complete (2026-01-03) - Theme migrated to packages/ui/src/theme/
+
 **Goal:** Make packages/ui the single source of truth for theming, eliminating duplication with Recce OSS.
 
 **Architecture:** Migrate complete MUI theme from Recce OSS (`src/components/ui/mui-theme.ts`) to packages/ui (`src/theme/`), converting to MUI 7 CSS Variables mode. Recce OSS becomes a consumer.
