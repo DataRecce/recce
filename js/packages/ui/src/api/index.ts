@@ -1,5 +1,17 @@
 "use client";
 
+// Ad-hoc Query API
+export type {
+  QueryDiffParams,
+  QueryDiffResult,
+  QueryDiffViewOptions,
+  QueryParams,
+  QueryPreviewChangeParams,
+  QueryResult,
+  QueryRunParams,
+  QueryViewOptions,
+} from "./adhocQuery";
+export { submitQuery, submitQueryBase, submitQueryDiff } from "./adhocQuery";
 // Cache keys for TanStack Query
 export { cacheKeys } from "./cacheKeys";
 // Server flags API
@@ -31,6 +43,30 @@ export {
   sendKeepAlive,
   setKeepAliveCallback,
 } from "./keepAlive";
+// Profile Diff API
+export type {
+  HistogramDiffParams,
+  HistogramDiffResult,
+  HistogramResult,
+  ProfileDiffParams,
+  ProfileDiffResult,
+  ProfileDiffViewOptions,
+  TopKDiffParams,
+  TopKDiffResult,
+  TopKResult,
+  TopKViewOptions,
+} from "./profile";
+export { submitProfileDiff } from "./profile";
+// Row Count API
+export type {
+  RowCount,
+  RowCountDiff,
+  RowCountDiffParams,
+  RowCountDiffResult,
+  RowCountParams,
+  RowCountResult,
+} from "./rowcount";
+export { submitRowCountDiff } from "./rowcount";
 // Runs API (core run operations and aggregation)
 export type {
   RunsAggregated,
@@ -48,7 +84,21 @@ export {
   waitRun,
 } from "./runs";
 // Run types (from types/run.ts)
-export type { BaseRun, Run, RunProgress, RunStatus, RunType } from "./types";
+// Base types (from types/base.ts)
+export type {
+  AxiosQueryParams,
+  BaseRun,
+  ColumnRenderMode,
+  ColumnType,
+  DataFrame,
+  RowData,
+  RowDataTypes,
+  RowObjectType,
+  Run,
+  RunProgress,
+  RunStatus,
+  RunType,
+} from "./types";
 export {
   isHistogramDiffRun,
   isLineageDiffRun,
@@ -68,3 +118,12 @@ export {
   isValueDiffRun,
   RUN_TYPES,
 } from "./types";
+// Value Diff API
+export type {
+  ValueDiffDetailParams,
+  ValueDiffDetailResult,
+  ValueDiffDetailViewOptions,
+  ValueDiffParams,
+  ValueDiffResult,
+} from "./valuediff";
+export { submitValueDiff, submitValueDiffDetail } from "./valuediff";
