@@ -1,3 +1,4 @@
+import type { RunType } from "@datarecce/ui/api";
 import React, {
   ComponentType,
   ForwardRefExoticComponent,
@@ -58,22 +59,8 @@ export type ViewOptionTypes =
   | ValueDiffDetailViewOptions
   | TopKViewOptions;
 
-export type RunType =
-  | "simple"
-  | "query"
-  | "query_base"
-  | "query_diff"
-  | "value_diff"
-  | "value_diff_detail"
-  | "schema_diff"
-  | "profile"
-  | "profile_diff"
-  | "row_count"
-  | "row_count_diff"
-  | "lineage_diff"
-  | "top_k_diff"
-  | "histogram_diff"
-  | "sandbox";
+// Re-export RunType from library for backward compatibility
+export type { RunType };
 
 export type RefTypes = React.Ref<DataGridHandle> | React.Ref<HTMLDivElement>;
 export type RunFormParamTypes =

@@ -1,44 +1,37 @@
+import {
+  createSimpleCheck as _createSimpleCheck,
+  deleteCheck as _deleteCheck,
+  getCheck as _getCheck,
+  listChecks as _listChecks,
+  markAsPresetCheck as _markAsPresetCheck,
+  reorderChecks as _reorderChecks,
+  updateCheck as _updateCheck,
+} from "@datarecce/ui/api";
 import { useQuery } from "@tanstack/react-query";
 import { AxiosInstance, AxiosResponse } from "axios";
-import { RunType } from "@/components/run/registry";
 import { useApiConfig } from "../hooks/ApiConfigContext";
 import { axiosClient } from "./axiosClient";
 import { cacheKeys } from "./cacheKeys";
 import { getExperimentTrackingBreakingChangeEnabled } from "./track";
-import { Run, RunParamTypes } from "./types";
+import { RunParamTypes } from "./types";
 
-export interface Check<PT = unknown, VO = unknown> {
-  check_id: string;
-  name: string;
-  description?: string;
-  type: RunType;
-  params?: PT;
-  view_options?: VO;
-  is_checked?: boolean;
-  is_preset?: boolean;
-  last_run?: Run;
-}
+// ============================================================================
+// Re-export types from @datarecce/ui/api library
+// ============================================================================
 
-export interface CreateCheckBody {
-  name?: string;
-  description?: string;
-  run_id?: string;
-  type?: RunType;
-  params?: Record<string, string | boolean>;
-  view_options?: Record<string, string | boolean>;
-  track_props?: Record<string, string | boolean>;
-}
+export type { Check, CreateCheckBody } from "@datarecce/ui/api";
+
+// Import types for wrapper function signatures
+import type { Check, CreateCheckBody, RunType } from "@datarecce/ui/api";
+
+// ============================================================================
+// Wrapper functions with default axiosClient and OSS-specific behavior
+// ============================================================================
 
 export async function createSimpleCheck(
   client: AxiosInstance = axiosClient,
 ): Promise<Check> {
-  const response = await client.post<CreateCheckBody, AxiosResponse<Check>>(
-    "/api/checks",
-    {
-      type: "simple",
-    },
-  );
-  return response.data;
+  return await _createSimpleCheck(client);
 }
 
 export async function createCheckByRun(
@@ -46,9 +39,12 @@ export async function createCheckByRun(
   viewOptions?: Record<string, unknown>,
   client: AxiosInstance = axiosClient,
 ): Promise<Check> {
+  // OSS-specific: Include experiment tracking if enabled
   const track_props = getExperimentTrackingBreakingChangeEnabled()
     ? { breaking_change_analysis: true }
     : {};
+
+  // Call the API directly with track_props (library version doesn't include this)
   const response = await client.post<CreateCheckBody, AxiosResponse<Check>>(
     "/api/checks",
     {
@@ -63,7 +59,7 @@ export async function createCheckByRun(
 export async function listChecks(
   client: AxiosInstance = axiosClient,
 ): Promise<Check[]> {
-  return (await client.get<never, AxiosResponse<Check[]>>("/api/checks")).data;
+  return await _listChecks(client);
 }
 
 export function useChecks(enabled: boolean) {
@@ -79,10 +75,7 @@ export async function getCheck(
   checkId: string,
   client: AxiosInstance = axiosClient,
 ): Promise<Check<RunParamTypes>> {
-  const response = await client.get<never, AxiosResponse<Check<RunParamTypes>>>(
-    `/api/checks/${checkId}`,
-  );
-  return response.data;
+  return (await _getCheck(checkId, client)) as Check<RunParamTypes>;
 }
 
 export async function updateCheck(
@@ -90,22 +83,14 @@ export async function updateCheck(
   payload: Partial<Check>,
   client: AxiosInstance = axiosClient,
 ): Promise<Check> {
-  const response = await client.patch<Partial<Check>, AxiosResponse<Check>>(
-    `/api/checks/${checkId}`,
-    payload,
-  );
-  return response.data;
+  return await _updateCheck(checkId, payload, client);
 }
 
 export async function deleteCheck(
   checkId: string,
   client: AxiosInstance = axiosClient,
 ) {
-  const response = await client.delete<
-    never,
-    AxiosResponse<Pick<Check, "check_id">>
-  >(`/api/checks/${checkId}`);
-  return response.data;
+  return await _deleteCheck(checkId, client);
 }
 
 export async function reorderChecks(
@@ -115,15 +100,12 @@ export async function reorderChecks(
   },
   client: AxiosInstance = axiosClient,
 ) {
-  return await client.post<
-    { source: number; destination: number },
-    AxiosResponse<unknown>
-  >("/api/checks/reorder", order);
+  return await _reorderChecks(order, client);
 }
 
 export async function markAsPresetCheck(
   checkId: string,
   client: AxiosInstance = axiosClient,
 ): Promise<void> {
-  await client.post(`/api/checks/${checkId}/mark-as-preset`);
+  return await _markAsPresetCheck(checkId, client);
 }

@@ -1,77 +1,36 @@
+import { submitProfileDiff as _submitProfileDiff } from "@datarecce/ui/api";
 import { AxiosInstance } from "axios";
 import { axiosClient } from "./axiosClient";
-import { SubmitOptions, submitRun } from "./runs";
-import { ColumnRenderMode, DataFrame } from "./types";
+import { SubmitOptions } from "./runs";
 
-export interface ProfileDiffParams {
-  model: string;
-  columns?: string[];
-}
+// ============================================================================
+// Re-export types from @datarecce/ui/api library
+// ============================================================================
 
-export interface ProfileDiffResult {
-  base?: DataFrame;
-  current?: DataFrame;
-}
+export type {
+  HistogramDiffParams,
+  HistogramDiffResult,
+  HistogramResult,
+  ProfileDiffParams,
+  ProfileDiffResult,
+  ProfileDiffViewOptions,
+  TopKDiffParams,
+  TopKDiffResult,
+  TopKResult,
+  TopKViewOptions,
+} from "@datarecce/ui/api";
 
-export interface ProfileDiffViewOptions {
-  pinned_columns?: string[];
-  display_mode?: "side_by_side" | "inline";
-  columnsRenderMode?: Record<string, ColumnRenderMode>;
-}
+// Import types for wrapper function signatures
+import type { ProfileDiffParams } from "@datarecce/ui/api";
+
+// ============================================================================
+// Wrapper functions with default axiosClient
+// ============================================================================
 
 export async function submitProfileDiff(
   params: ProfileDiffParams,
   options?: SubmitOptions,
   client: AxiosInstance = axiosClient,
 ) {
-  return await submitRun("profile_diff", params, options, client);
-}
-
-export interface TopKDiffParams {
-  model: string;
-  column_name: string;
-  k: number;
-}
-
-export interface TopKResult {
-  values: (string | number | undefined)[];
-  counts: number[];
-  valids: number;
-}
-
-export interface TopKDiffResult {
-  base: TopKResult;
-  current: TopKResult;
-}
-
-/**
- * View options for TopKDiffResultView.
- * Controls display preferences for top-K diff visualization.
- */
-export interface TopKViewOptions {
-  /**
-   * When true, show all items instead of just top 10.
-   * Default is false (show top 10 only).
-   */
-  show_all?: boolean;
-}
-
-export interface HistogramDiffParams {
-  model: string;
-  column_name: string;
-  column_type: string;
-}
-
-export interface HistogramResult {
-  counts: number[];
-  total: number;
-}
-
-export interface HistogramDiffResult {
-  base: HistogramResult;
-  current: HistogramResult;
-  min: number;
-  max: number;
-  bin_edges: number[];
-  labels?: string[];
+  return await _submitProfileDiff(params, options, client);
 }

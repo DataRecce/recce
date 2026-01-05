@@ -1,26 +1,33 @@
+import {
+  aggregateRuns as _aggregateRuns,
+  cancelRun as _cancelRun,
+  getRun as _getRun,
+  listRuns as _listRuns,
+  searchRuns as _searchRuns,
+  submitRunFromCheck as _submitRunFromCheck,
+  waitRun as _waitRun,
+} from "@datarecce/ui/api";
 import { AxiosInstance, AxiosResponse } from "axios";
-import { RunType } from "@/components/run/registry";
 import { axiosClient } from "./axiosClient";
 import { getExperimentTrackingBreakingChangeEnabled } from "./track";
 import { AxiosQueryParams, isQueryRun, Run, RunParamTypes } from "./types";
 
-export interface SubmitRunTrackProps {
-  breaking_change_analysis?: boolean;
-  source?: "lineage_model_node" | "lineage_column_node";
-  [key: string]: unknown;
-}
+// ============================================================================
+// Re-export types from @datarecce/ui/api library
+// ============================================================================
 
-export interface SubmitOptions {
-  nowait?: boolean;
-  trackProps?: SubmitRunTrackProps;
-}
+export type { SubmitOptions, SubmitRunTrackProps } from "@datarecce/ui/api";
 
-interface SubmitRunBody {
-  type: RunType;
-  params?: Record<string, unknown>;
-  nowait?: boolean;
-  track_props: SubmitRunTrackProps;
-}
+// Import types for wrapper function signatures
+import type {
+  RunType,
+  SubmitOptions,
+  SubmitRunTrackProps,
+} from "@datarecce/ui/api";
+
+// ============================================================================
+// Internal helper for OSS-specific key mutation
+// ============================================================================
 
 function mutateAddKey(run: Run): Run {
   if (run.result == null) {
@@ -39,19 +46,24 @@ function mutateAddKey(run: Run): Run {
   return run;
 }
 
+// ============================================================================
+// Wrapper functions with default axiosClient and OSS-specific behavior
+// ============================================================================
+
 export async function submitRun(
   type: RunType,
   params?: RunParamTypes,
   options?: SubmitOptions,
   client: AxiosInstance = axiosClient,
 ) {
+  // OSS-specific: Include experiment tracking if enabled
   const track_props = options?.trackProps ? { ...options.trackProps } : {};
   if (getExperimentTrackingBreakingChangeEnabled()) {
     track_props.breaking_change_analysis = true;
   }
 
   const response = await client.post<
-    SubmitRunBody,
+    unknown,
     AxiosResponse<Run | Pick<Run, "run_id">>
   >("/api/runs", {
     type,
@@ -67,16 +79,8 @@ export async function getRun(
   runId: string,
   client: AxiosInstance = axiosClient,
 ) {
-  const response = await client.get<never, AxiosResponse<Run>>(
-    `/api/runs/${runId}`,
-  );
-  return response.data;
-}
-
-interface WaitRunBody {
-  params: {
-    timeout?: number;
-  };
+  const run = (await _getRun(runId, client)) as Run;
+  return run;
 }
 
 export async function waitRun(
@@ -84,25 +88,15 @@ export async function waitRun(
   timeout?: number,
   client: AxiosInstance = axiosClient,
 ) {
-  const response = await client.get<WaitRunBody, AxiosResponse<Run>>(
-    `/api/runs/${runId}/wait`,
-    {
-      params: {
-        timeout,
-      },
-    },
-  );
-
-  return mutateAddKey(response.data);
+  const run = (await _waitRun(runId, timeout, client)) as Run;
+  return mutateAddKey(run);
 }
 
 export async function cancelRun(
   runId: string,
   client: AxiosInstance = axiosClient,
 ) {
-  return await client.post<never, AxiosResponse<never>>(
-    `/api/runs/${runId}/cancel`,
-  );
+  return await _cancelRun(runId, client);
 }
 
 export async function submitRunFromCheck(
@@ -110,20 +104,9 @@ export async function submitRunFromCheck(
   options?: SubmitOptions,
   client: AxiosInstance = axiosClient,
 ) {
-  const response = await client.post<
-    { nowait?: boolean },
-    AxiosResponse<Run | Pick<Run, "run_id">>
-  >(`/api/checks/${checkId}/run`, {
-    nowait: options?.nowait,
-  });
-
-  return response.data;
-}
-
-interface SearchRunsBody {
-  type: string;
-  params: Record<string, unknown>;
-  limit?: number;
+  return (await _submitRunFromCheck(checkId, options, client)) as
+    | Run
+    | Pick<Run, "run_id">;
 }
 
 export async function searchRuns(
@@ -132,23 +115,13 @@ export async function searchRuns(
   limit?: number,
   client: AxiosInstance = axiosClient,
 ) {
-  const response = await client.post<SearchRunsBody, AxiosResponse<Run[]>>(
-    `/api/runs/search`,
-    {
-      type,
-      params,
-      limit,
-    },
-  );
-
-  return response.data;
+  return (await _searchRuns(type, params, limit, client)) as Run[];
 }
 
 export async function listRuns(
   client: AxiosInstance = axiosClient,
 ): Promise<Run[]> {
-  const response = await client.get<never, AxiosResponse<Run[]>>("/api/runs");
-  return response.data;
+  return (await _listRuns(client)) as Run[];
 }
 
 export type RunsAggregated = Record<
@@ -161,14 +134,9 @@ export type RunsAggregated = Record<
     }
   >
 >;
+
 export async function aggregateRuns(
   client: AxiosInstance = axiosClient,
 ): Promise<RunsAggregated> {
-  // input should be AggregateRunsIn
-  const response = await client.post<unknown, AxiosResponse<RunsAggregated>>(
-    `/api/runs/aggregate`,
-    {},
-  );
-
-  return response.data;
+  return await _aggregateRuns(client);
 }

@@ -1,40 +1,36 @@
+import {
+  submitValueDiff as _submitValueDiff,
+  submitValueDiffDetail as _submitValueDiffDetail,
+} from "@datarecce/ui/api";
 import { AxiosInstance } from "axios";
 import { axiosClient } from "./axiosClient";
-import { SubmitOptions, submitRun } from "./runs";
-import { ColumnRenderMode, DataFrame } from "./types";
+import { SubmitOptions } from "./runs";
 
-export interface ValueDiffResult {
-  summary: {
-    total: number;
-    added: number;
-    removed: number;
-  };
-  data: DataFrame;
-}
+// ============================================================================
+// Re-export types from @datarecce/ui/api library
+// ============================================================================
 
-export interface ValueDiffParams {
-  model: string;
-  primary_key: string | string[];
-  columns?: string[];
-}
+export type {
+  ValueDiffDetailParams,
+  ValueDiffDetailResult,
+  ValueDiffDetailViewOptions,
+  ValueDiffParams,
+  ValueDiffResult,
+} from "@datarecce/ui/api";
+
+// Import types for wrapper function signatures
+import type { ValueDiffParams } from "@datarecce/ui/api";
+
+// ============================================================================
+// Wrapper functions with default axiosClient
+// ============================================================================
 
 export async function submitValueDiff(
   params: ValueDiffParams,
   options?: SubmitOptions,
   client: AxiosInstance = axiosClient,
 ) {
-  return await submitRun("value_diff", params, options, client);
-}
-
-export type ValueDiffDetailResult = DataFrame;
-
-export type ValueDiffDetailParams = ValueDiffParams;
-
-export interface ValueDiffDetailViewOptions {
-  changed_only?: boolean;
-  pinned_columns?: string[];
-  display_mode?: "inline" | "side_by_side";
-  columnsRenderMode?: Record<string, ColumnRenderMode>;
+  return await _submitValueDiff(params, options, client);
 }
 
 export async function submitValueDiffDetail(
@@ -42,5 +38,5 @@ export async function submitValueDiffDetail(
   options?: SubmitOptions,
   client: AxiosInstance = axiosClient,
 ) {
-  return await submitRun("value_diff_detail", params, options, client);
+  return await _submitValueDiffDetail(params, options, client);
 }

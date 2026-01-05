@@ -630,7 +630,11 @@ export function CheckDetail({
                           ref={ref as unknown as Ref<RefTypes>}
                           isRunning={isRunning}
                           isAborting={isAborting}
-                          run={trackedRunId ? run : check.last_run}
+                          run={
+                            trackedRunId
+                              ? run
+                              : (check.last_run as Run | undefined)
+                          }
                           error={rerunError}
                           progress={progress}
                           RunResultView={RunResultView}

@@ -1,23 +1,28 @@
 import { AxiosInstance } from "axios";
 import { axiosClient } from "./axiosClient";
-import { RowCountDiffResult, submitRowCountDiff } from "./rowcount";
+import {
+  RowCountDiff,
+  RowCountDiffResult,
+  submitRowCountDiff,
+} from "./rowcount";
 import { waitRun } from "./runs";
 
-export interface RowCount {
-  name?: string;
-  curr: number | null;
-}
+// ============================================================================
+// Re-export types from @datarecce/ui/api library
+// ============================================================================
 
-export interface RowCountDiff {
-  name?: string;
-  base: number | null;
-  curr: number | null;
-}
+export type {
+  QueryRowCountResult,
+  RowCount,
+  RowCountDiff,
+} from "@datarecce/ui/api";
 
-export interface QueryRowCountResult {
-  runId: string;
-  result: RowCountDiffResult;
-}
+// Import types for local use
+import type { QueryRowCountResult } from "@datarecce/ui/api";
+
+// ============================================================================
+// API Functions
+// ============================================================================
 
 export async function fetchModelRowCount(
   modelName: string,

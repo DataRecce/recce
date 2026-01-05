@@ -169,6 +169,7 @@ export type {
   ColumnRenderMode,
   ColumnType,
   DataFrame,
+  LineageDiffParams,
   RowData,
   RowDataTypes,
   RowObjectType,
@@ -176,6 +177,7 @@ export type {
   RunProgress,
   RunStatus,
   RunType,
+  SchemaDiffParams,
 } from "./types";
 export {
   isHistogramDiffRun,

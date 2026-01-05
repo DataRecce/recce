@@ -1,56 +1,40 @@
+import {
+  submitQuery as _submitQuery,
+  submitQueryBase as _submitQueryBase,
+  submitQueryDiff as _submitQueryDiff,
+} from "@datarecce/ui/api";
 import { AxiosInstance } from "axios";
 import { axiosClient } from "./axiosClient";
-import { SubmitOptions, submitRun } from "./runs";
-import { ColumnRenderMode, DataFrame } from "./types";
+import { SubmitOptions } from "./runs";
 
-export interface QueryParams
-  extends QueryRunParams,
-    QueryDiffParams,
-    QueryPreviewChangeParams {}
+// ============================================================================
+// Re-export types from @datarecce/ui/api library
+// ============================================================================
 
-export interface QueryPreviewChangeParams {
-  current_model?: string;
-  sql_template: string;
-  primary_keys?: string[];
-}
+export type {
+  QueryDiffParams,
+  QueryDiffResult,
+  QueryDiffViewOptions,
+  QueryParams,
+  QueryPreviewChangeParams,
+  QueryResult,
+  QueryRunParams,
+  QueryViewOptions,
+} from "@datarecce/ui/api";
 
-export interface QueryRunParams {
-  sql_template: string;
-}
+// Import types for wrapper function signatures
+import type { QueryDiffParams, QueryRunParams } from "@datarecce/ui/api";
 
-export interface QueryViewOptions {
-  pinned_columns?: string[];
-  columnsRenderMode?: Record<string, ColumnRenderMode>;
-}
-
-export type QueryResult = DataFrame;
-
-export interface QueryDiffParams {
-  sql_template: string;
-  base_sql_template?: string;
-  primary_keys?: string[];
-}
-
-export interface QueryDiffResult {
-  base?: DataFrame;
-  current?: DataFrame;
-  diff?: DataFrame;
-}
-
-export interface QueryDiffViewOptions {
-  changed_only?: boolean;
-  primary_keys?: string[];
-  pinned_columns?: string[];
-  display_mode?: "inline" | "side_by_side";
-  columnsRenderMode?: Record<string, ColumnRenderMode>;
-}
+// ============================================================================
+// Wrapper functions with default axiosClient
+// ============================================================================
 
 export async function submitQuery(
   params: QueryRunParams,
   options?: SubmitOptions,
   client: AxiosInstance = axiosClient,
 ) {
-  return await submitRun("query", params, options, client);
+  return await _submitQuery(params, options, client);
 }
 
 export async function submitQueryBase(
@@ -58,7 +42,7 @@ export async function submitQueryBase(
   options?: SubmitOptions,
   client: AxiosInstance = axiosClient,
 ) {
-  return await submitRun("query_base", params, options, client);
+  return await _submitQueryBase(params, options, client);
 }
 
 export async function submitQueryDiff(
@@ -66,5 +50,5 @@ export async function submitQueryDiff(
   options?: SubmitOptions,
   client: AxiosInstance = axiosClient,
 ) {
-  return await submitRun("query_diff", params, options, client);
+  return await _submitQueryDiff(params, options, client);
 }

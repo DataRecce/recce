@@ -11,6 +11,11 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
+    "./api": {
+      "types": "./dist/api.d.mts",
+      "import": "./dist/api.mjs",
+      "require": "./dist/api.cjs"
+    },
     "./primitives": {
       "types": "./dist/primitives.d.mts",
       "import": "./dist/primitives.mjs",

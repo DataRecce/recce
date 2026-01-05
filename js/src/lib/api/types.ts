@@ -1,52 +1,64 @@
 // ============================================================================
-// Base Types
+// Re-export base types from @datarecce/ui/api library
 // ============================================================================
 
-export type AxiosQueryParams = Record<
-  string,
-  string | string[] | number | number[] | undefined
->;
-
-export type RowDataTypes = number | string | boolean | null | undefined;
-export type RowData = RowDataTypes[];
-
-export type RowObjectType = Record<string, RowDataTypes> & {
-  __status: "added" | "removed" | "modified" | undefined;
-  _index?: number;
-};
-
-export type ColumnType =
-  | "number"
-  | "integer"
-  | "text"
-  | "boolean"
-  | "date"
-  | "datetime"
-  | "timedelta"
-  | "unknown";
-
-export type ColumnRenderMode = "raw" | "percent" | "delta" | 2;
-export interface DataFrame {
-  columns: {
-    key: string;
-    name: string;
-    type: ColumnType;
-  }[];
-  data: RowData[];
-  limit?: number;
-  more?: boolean;
-}
+export type {
+  AxiosQueryParams,
+  ColumnRenderMode,
+  ColumnType,
+  DataFrame,
+  RowData,
+  RowDataTypes,
+  RowObjectType,
+} from "@datarecce/ui/api";
 
 // ============================================================================
-// Run Types - Strict enum without string union
+// Re-export run types from @datarecce/ui/api library
 // ============================================================================
 
+export type {
+  BaseRun,
+  LineageDiffParams,
+  RunProgress,
+  RunStatus,
+  RunType,
+  SchemaDiffParams,
+} from "@datarecce/ui/api";
+
+// Re-export type guards and utilities
+export {
+  isHistogramDiffRun,
+  isLineageDiffRun,
+  isProfileDiffRun,
+  isProfileRun,
+  isQueryBaseRun,
+  isQueryDiffRun,
+  isQueryRun,
+  isRowCountDiffRun,
+  isRowCountRun,
+  isSandboxRun,
+  isSchemaDiffRun,
+  isSimpleRun,
+  isTopKDiffRun,
+  isValidRunType,
+  isValueDiffDetailRun,
+  isValueDiffRun,
+  RUN_TYPES,
+} from "@datarecce/ui/api";
+
 // ============================================================================
-// Inline Param Definitions (defined here to avoid circular dependencies)
+// Re-export param types from API files
 // ============================================================================
 
-// Import types that are defined in other files
-import { RunType } from "@/components/run/registry";
+// Import RunType and BaseRun for local Run union
+import type {
+  BaseRun,
+  LineageDiffParams,
+  RunType,
+  SchemaDiffParams,
+} from "@datarecce/ui/api";
+// These are imported from local files because they're used in the OSS-specific
+// Run discriminated union below, which includes OSS-specific tracking behavior
 import type {
   QueryDiffParams,
   QueryDiffResult,
@@ -75,24 +87,8 @@ import type {
   ValueDiffResult,
 } from "./valuediff";
 
-// Define params that don't have their own files yet
-export interface SchemaDiffParams {
-  node_id?: string | string[];
-  select?: string;
-  exclude?: string;
-  packages?: string[];
-  view_mode?: "all" | "changed_models";
-}
-
-export interface LineageDiffParams {
-  select?: string;
-  exclude?: string;
-  packages?: string[];
-  view_mode?: "all" | "changed_models";
-}
-
 // ============================================================================
-// Run - Discriminated Union Type
+// Run Param Types - Union of all possible run parameters
 // ============================================================================
 
 export type RunParamTypes =
@@ -108,20 +104,14 @@ export type RunParamTypes =
   | HistogramDiffParams
   | undefined;
 
-interface BaseRun {
-  type: RunType;
-  run_id: string;
-  run_at: string;
-  name?: string;
-  check_id?: string;
-  progress?: {
-    message?: string;
-    percentage?: number;
-  };
-  error?: string;
-  status?: "finished" | "failed" | "cancelled" | "running";
-}
+// ============================================================================
+// Run - Discriminated Union Type (OSS-specific with full type narrowing)
+// ============================================================================
 
+/**
+ * OSS-specific Run type with full discriminated union for type narrowing.
+ * This extends the library's BaseRun with specific params/result types.
+ */
 export type Run =
   | (BaseRun & {
       type: "simple";
@@ -198,87 +188,3 @@ export type Run =
       params?: HistogramDiffParams;
       result?: HistogramDiffResult;
     });
-
-// ============================================================================
-// Type Guards
-// ============================================================================
-
-export function isSimpleRun(run: Run): run is Extract<Run, { type: "simple" }> {
-  return run.type === "simple";
-}
-
-export function isQueryRun(run: Run): run is Extract<Run, { type: "query" }> {
-  return run.type === "query";
-}
-
-export function isQueryBaseRun(
-  run: Run,
-): run is Extract<Run, { type: "query_base" }> {
-  return run.type === "query_base";
-}
-
-export function isQueryDiffRun(
-  run: Run,
-): run is Extract<Run, { type: "query_diff" }> {
-  return run.type === "query_diff";
-}
-
-export function isValueDiffRun(
-  run: Run,
-): run is Extract<Run, { type: "value_diff" }> {
-  return run.type === "value_diff";
-}
-
-export function isValueDiffDetailRun(
-  run: Run,
-): run is Extract<Run, { type: "value_diff_detail" }> {
-  return run.type === "value_diff_detail";
-}
-
-export function isSchemaDiffRun(
-  run: Run,
-): run is Extract<Run, { type: "schema_diff" }> {
-  return run.type === "schema_diff";
-}
-
-export function isProfileRun(
-  run: Run,
-): run is Extract<Run, { type: "profile" }> {
-  return run.type === "profile";
-}
-
-export function isProfileDiffRun(
-  run: Run,
-): run is Extract<Run, { type: "profile_diff" }> {
-  return run.type === "profile_diff";
-}
-
-export function isRowCountRun(
-  run: Run,
-): run is Extract<Run, { type: "row_count" }> {
-  return run.type === "row_count";
-}
-
-export function isRowCountDiffRun(
-  run: Run,
-): run is Extract<Run, { type: "row_count_diff" }> {
-  return run.type === "row_count_diff";
-}
-
-export function isLineageDiffRun(
-  run: Run,
-): run is Extract<Run, { type: "lineage_diff" }> {
-  return run.type === "lineage_diff";
-}
-
-export function isTopKDiffRun(
-  run: Run,
-): run is Extract<Run, { type: "top_k_diff" }> {
-  return run.type === "top_k_diff";
-}
-
-export function isHistogramDiffRun(
-  run: Run,
-): run is Extract<Run, { type: "histogram_diff" }> {
-  return run.type === "histogram_diff";
-}
