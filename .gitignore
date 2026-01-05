@@ -20,3 +20,7 @@ recce.yml
 
 # Ignore build artifacts from frontend
 recce/data
+.worktrees
+
+# ignore Claude logs and plans
+docs/plans
