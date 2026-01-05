@@ -58,9 +58,9 @@ export function generateCSVFilename(
     nodeName = params.model;
   }
 
-  // Sanitize node name for filesystem
+  // Sanitize node name for filesystem (preserve dots for schema.table patterns)
   if (nodeName) {
-    nodeName = nodeName.replace(/[^a-zA-Z0-9_-]/g, "-").toLowerCase();
+    nodeName = nodeName.replace(/[^a-zA-Z0-9_.-]/g, "-").toLowerCase();
     return `${type}-${nodeName}-${timestamp}.csv`;
   }
 

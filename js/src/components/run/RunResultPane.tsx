@@ -17,7 +17,6 @@ import { IoClose } from "react-icons/io5";
 import {
   PiCaretDown,
   PiCheck,
-  PiCopy,
   PiDownloadSimple,
   PiImage,
   PiRepeat,
