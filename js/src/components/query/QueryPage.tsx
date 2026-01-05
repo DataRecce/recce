@@ -1,3 +1,11 @@
+import {
+  type QueryParams,
+  type SubmitOptions,
+  submitQuery,
+  submitQueryBase,
+  submitQueryDiff,
+  waitRun,
+} from "@datarecce/ui/api";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -11,13 +19,6 @@ import { PiInfoFill } from "react-icons/pi";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
-import {
-  QueryParams,
-  submitQuery,
-  submitQueryBase,
-  submitQueryDiff,
-} from "@/lib/api/adhocQuery";
-import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import {

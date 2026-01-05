@@ -14,8 +14,12 @@
  * - Value preservation consistency
  */
 
+import {
+  type ColumnType,
+  type DataFrame,
+  type RowObjectType,
+} from "@datarecce/ui/api";
 import type { ColDef, ColGroupDef } from "ag-grid-community";
-import { ColumnType, DataFrame, RowObjectType } from "@/lib/api/types";
 import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
 import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
 import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";

@@ -1,10 +1,11 @@
-import { createResultView, type ResultViewData } from "@datarecce/ui/result";
 import {
   type ColumnRenderMode,
   isValueDiffDetailRun,
-  type Run,
-} from "@/lib/api/types";
-import type { ValueDiffDetailViewOptions } from "@/lib/api/valuediff";
+  type ValueDiffDetailViewOptions,
+} from "@datarecce/ui/api";
+import { createResultView, type ResultViewData } from "@datarecce/ui/result";
+// Import Run from OSS types for proper discriminated union support with Extract<>
+import type { Run } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
 import type { DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 import { ChangedOnlyCheckbox } from "../query/ChangedOnlyCheckbox";

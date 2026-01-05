@@ -1,9 +1,13 @@
+import {
+  type HistogramDiffParams,
+  isHistogramDiffRun,
+} from "@datarecce/ui/api";
 import { createResultView } from "@datarecce/ui/components/result/createResultView";
 import type { ResultViewData } from "@datarecce/ui/components/result/types";
 import Box from "@mui/material/Box";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
-import { type HistogramDiffParams } from "@/lib/api/profile";
-import { isHistogramDiffRun, type Run } from "@/lib/api/types";
+// Import Run from OSS types for proper discriminated union support with Extract<>
+import type { Run } from "@/lib/api/types";
 import { HistogramChart } from "../charts/HistogramChart";
 import type { RunResultViewProps } from "../run/types";
 

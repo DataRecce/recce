@@ -1,8 +1,10 @@
+import { isRowCountDiffRun, isRowCountRun } from "@datarecce/ui/api";
 import { type DataGridHandle } from "@datarecce/ui/components/data/ScreenshotDataGrid";
 import { createResultView } from "@datarecce/ui/components/result/createResultView";
 import { type ResultViewData } from "@datarecce/ui/components/result/types";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
-import { isRowCountDiffRun, isRowCountRun, type Run } from "@/lib/api/types";
+// Import Run from OSS types for proper discriminated union support with Extract<>
+import type { Run } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
 import type { RunResultViewProps } from "../run/types";
 

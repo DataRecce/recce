@@ -7,7 +7,7 @@
  * to maintain separation between pure logic and React components.
  */
 
-import { ColumnRenderMode, ColumnType } from "@/lib/api/types";
+import { type ColumnRenderMode, type ColumnType } from "@datarecce/ui/api";
 
 // ============================================================================
 // Types

@@ -5,13 +5,13 @@
  * This module contains common functions used across all grid generation methods.
  */
 
-import _ from "lodash";
 import {
-  ColumnRenderMode,
-  ColumnType,
-  DataFrame,
-  RowObjectType,
-} from "@/lib/api/types";
+  type ColumnRenderMode,
+  type ColumnType,
+  type DataFrame,
+  type RowObjectType,
+} from "@datarecce/ui/api";
+import _ from "lodash";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { formatNumber } from "@/utils/formatters";
 import { getCaseInsensitive } from "@/utils/transforms";

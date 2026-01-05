@@ -1,8 +1,8 @@
+import { SESSION_STORAGE_KEYS } from "@datarecce/ui/api";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import React, { useState } from "react";
 import { IoClose } from "react-icons/io5";
-import { sessionStorageKeys } from "@/lib/api/sessionStorageKeys";
 
 interface NotificationProps {
   notification?: React.ReactNode;
@@ -13,7 +13,7 @@ export function LineageViewNotification({
   notification,
   type,
 }: NotificationProps) {
-  const notificationKey = sessionStorageKeys.lineageNotificationDismissed;
+  const notificationKey = SESSION_STORAGE_KEYS.lineageNotificationDismissed;
 
   // Initialize state from sessionStorage (lazy initialization)
   const [visible, setVisible] = useState(() => {

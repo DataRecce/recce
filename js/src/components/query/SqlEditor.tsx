@@ -1,3 +1,4 @@
+import type { ManifestMetadata } from "@datarecce/ui/api";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
@@ -10,7 +11,6 @@ import { FaPlay } from "react-icons/fa6";
 import { extractSchemas, formatTimeToNow } from "@/components/app/EnvInfo";
 import { CodeEditor } from "@/components/editor";
 import { colors } from "@/components/ui/mui-theme";
-import { ManifestMetadata } from "@/lib/api/info";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 
 export interface SqlEditorProps {

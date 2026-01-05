@@ -1,3 +1,4 @@
+import { type SubmitRunTrackProps } from "@datarecce/ui/api";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
@@ -7,7 +8,6 @@ import { ReactNode, useState } from "react";
 import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
 import { FaRegDotCircle } from "react-icons/fa";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
-import { SubmitRunTrackProps } from "@/lib/api/runs";
 import {
   EXPLORE_ACTION,
   EXPLORE_SOURCE,

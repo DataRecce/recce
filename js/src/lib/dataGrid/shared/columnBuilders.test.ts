@@ -10,7 +10,7 @@
  * - getSimpleDisplayColumns: Column configuration for simple grids
  */
 
-import { ColumnType } from "@/lib/api/types";
+import type { ColumnType } from "@datarecce/ui/api";
 import {
   buildColumnOrder,
   GridColumnsConfig,

@@ -14,7 +14,11 @@
  * anomalies gracefully without crashing or producing misleading output.
  */
 
-import { ColumnType, DataFrame, RowObjectType } from "@/lib/api/types";
+import {
+  type ColumnType,
+  type DataFrame,
+  type RowObjectType,
+} from "@datarecce/ui/api";
 import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
 import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
 import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";

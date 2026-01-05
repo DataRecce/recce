@@ -1,14 +1,14 @@
 import dagre from "@dagrejs/dagre";
-import { Edge, Node, Position } from "@xyflow/react";
-import { ColumnLineageData } from "@/lib/api/cll";
 import {
-  CatalogMetadata,
-  LineageData,
-  LineageDataFromMetadata,
-  LineageDiffData,
-  ManifestMetadata,
-  NodeData,
-} from "@/lib/api/info";
+  type CatalogMetadata,
+  type ColumnLineageData,
+  type LineageData,
+  type LineageDataFromMetadata,
+  type LineageDiffData,
+  type ManifestMetadata,
+  type NodeData,
+} from "@datarecce/ui/api";
+import { Edge, Node, Position } from "@xyflow/react";
 import { getNeighborSet } from "./graph";
 
 export const COLUMN_HEIGHT = 20;

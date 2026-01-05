@@ -1,3 +1,4 @@
+import type { RunType } from "@datarecce/ui/api";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -12,13 +13,14 @@ import Typography from "@mui/material/Typography";
 import { ComponentType, useRef, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { IconInfo } from "@/components/icons";
-import { RunFormParamTypes, RunType } from "@/components/run/registry";
+import { RunFormParamTypes } from "@/components/run/registry";
 import {
   EXPLORE_FORM_EVENT,
   isExploreAction,
   trackExploreActionForm,
 } from "@/lib/api/track";
-import { Run } from "@/lib/api/types";
+// Import Run from OSS types for proper discriminated union support
+import type { Run } from "@/lib/api/types";
 import { RunFormProps } from "./types";
 
 interface RunModalProps {

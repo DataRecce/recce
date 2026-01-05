@@ -1,3 +1,9 @@
+import {
+  cacheKeys,
+  createCheckByRun,
+  listRuns,
+  waitRun,
+} from "@datarecce/ui/api";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
@@ -7,10 +13,8 @@ import React, { ReactNode, useCallback } from "react";
 import { IconType } from "react-icons";
 import { FaCheckCircle, FaRegCheckCircle } from "react-icons/fa";
 import SimpleBar from "simplebar-react";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { createCheckByRun } from "@/lib/api/checks";
-import { listRuns, waitRun } from "@/lib/api/runs";
-import { Run } from "@/lib/api/types";
+// Import Run from OSS types for proper discriminated union support
+import type { Run } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { findByRunType } from "../run/registry";
@@ -42,7 +46,8 @@ const RunListItem = ({
   const { data: fetchedRun } = useQuery({
     queryKey: cacheKeys.run(run.run_id),
     queryFn: async () => {
-      return await waitRun(run.run_id, undefined, apiClient);
+      // Cast from library Run to OSS Run for discriminated union support
+      return (await waitRun(run.run_id, undefined, apiClient)) as Run;
     },
     enabled: run.status === "running",
     retry: false,
@@ -178,7 +183,8 @@ export const RunList = () => {
   const { data: runs, isLoading } = useQuery({
     queryKey: cacheKeys.runs(),
     queryFn: async () => {
-      return await listRuns(apiClient);
+      // Cast from library Run[] to OSS Run[] for discriminated union support
+      return (await listRuns(apiClient)) as Run[];
     },
     retry: false,
   });

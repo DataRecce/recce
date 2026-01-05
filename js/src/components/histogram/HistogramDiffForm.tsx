@@ -1,8 +1,8 @@
+import { type HistogramDiffParams } from "@datarecce/ui/api";
 import Box from "@mui/material/Box";
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
 import NativeSelect from "@mui/material/NativeSelect";
-import { HistogramDiffParams } from "@/lib/api/profile";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { RunFormProps } from "../run/types";
 

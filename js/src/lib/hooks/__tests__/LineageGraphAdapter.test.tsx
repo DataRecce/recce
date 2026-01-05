@@ -9,26 +9,24 @@
  * - Wraps @datarecce/ui's LineageGraphProvider with fetched data
  */
 
+import type { RunsAggregated, ServerInfoResult } from "@datarecce/ui/api";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 
-import type { ServerInfoResult } from "@/lib/api/info";
-import type { RunsAggregated } from "@/lib/api/runs";
-
 // Mock dependencies BEFORE importing the component
-jest.mock("@/lib/api/info", () => ({
-  getServerInfo: jest.fn(),
-}));
-
-jest.mock("@/lib/api/runs", () => ({
-  aggregateRuns: jest.fn(),
-}));
-
-jest.mock("@/lib/api/flag", () => ({
-  getServerFlag: jest.fn().mockResolvedValue({}),
-  markRelaunchHintCompleted: jest.fn().mockResolvedValue(undefined),
-}));
+// Mock @datarecce/ui/api for functions that the component imports directly
+jest.mock("@datarecce/ui/api", () => {
+  const actual = jest.requireActual("@datarecce/ui/api");
+  return {
+    ...actual,
+    getServerInfo: jest.fn(),
+    aggregateRuns: jest.fn(),
+    getServerFlag: jest.fn().mockResolvedValue({}),
+    markRelaunchHintCompleted: jest.fn().mockResolvedValue(undefined),
+    cacheKeys: actual.cacheKeys,
+  };
+});
 
 jest.mock("@/lib/api/track", () => ({
   trackSingleEnvironment: jest.fn(),
@@ -150,10 +148,9 @@ afterAll(() => {
   global.WebSocket = originalWebSocket;
 });
 
+import { aggregateRuns, getServerInfo } from "@datarecce/ui/api";
 import { useLineageGraphContext } from "@datarecce/ui/contexts";
 import { buildLineageGraph } from "@/components/lineage/lineage";
-import { getServerInfo } from "@/lib/api/info";
-import { aggregateRuns } from "@/lib/api/runs";
 import { LineageGraphAdapter, useRunsAggregated } from "../LineageGraphAdapter";
 
 const mockGetServerInfo = getServerInfo as jest.MockedFunction<

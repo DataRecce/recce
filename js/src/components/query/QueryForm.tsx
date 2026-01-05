@@ -1,10 +1,10 @@
+import type { NodeColumnData } from "@datarecce/ui/api";
 import Box, { type BoxProps } from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMemo } from "react";
 import { PiInfo } from "react-icons/pi";
-import { NodeColumnData } from "@/lib/api/info";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { DropdownValuesInput } from "@/utils/DropdownValuesInput";
 

@@ -1,4 +1,4 @@
-import { NodeData } from "@/lib/api/info";
+import type { NodeData } from "@datarecce/ui/api";
 
 export function isSchemaChanged(
   baseSchema: NodeData["columns"],

@@ -11,13 +11,17 @@
  * - Column status (added/removed/modified)
  */
 
+import {
+  type ColumnRenderMode,
+  type ColumnType,
+  type RowObjectType,
+} from "@datarecce/ui/api";
 import type { ColDef, ColGroupDef } from "ag-grid-community";
 import {
   DataFrameColumnGroupHeader,
   DataFrameColumnHeader,
   defaultRenderCell,
 } from "@/components/ui/dataGrid";
-import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
 import { ColumnConfig } from "./columnBuilders";
 
 // ============================================================================

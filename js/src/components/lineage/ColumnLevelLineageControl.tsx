@@ -1,3 +1,4 @@
+import { type CllInput, type ColumnLineageData } from "@datarecce/ui/api";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -12,7 +13,6 @@ import { UseMutationResult } from "@tanstack/react-query";
 import { useState } from "react";
 import { FaRegDotCircle } from "react-icons/fa";
 import { PiInfo, PiX } from "react-icons/pi";
-import { CllInput, ColumnLineageData } from "@/lib/api/cll";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useLineageViewContextSafe } from "./LineageViewContext";

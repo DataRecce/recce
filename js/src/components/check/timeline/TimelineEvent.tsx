@@ -10,6 +10,7 @@
  * - preset_applied: Shows preset application
  */
 
+import { type CheckEvent, getEventIconType } from "@datarecce/ui/api";
 import { useIsDark } from "@datarecce/ui/hooks";
 import MuiAvatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
@@ -34,7 +35,6 @@ import {
   PiTrashSimple,
 } from "react-icons/pi";
 import { MarkdownContent } from "@/components/ui/markdown/MarkdownContent";
-import { CheckEvent, getEventIconType } from "@/lib/api/checkEvents";
 import { fetchGitHubAvatar } from "@/lib/api/user";
 
 interface TimelineEventProps {

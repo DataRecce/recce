@@ -9,9 +9,13 @@
  * with toDiffColumn.tsx which imports this component.
  */
 
+import {
+  type ColumnRenderMode,
+  type ColumnType,
+  type RowObjectType,
+} from "@datarecce/ui/api";
 import Typography from "@mui/material/Typography";
 import type { ColDef, ICellRendererParams } from "ag-grid-community";
-import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
 // Import directly from gridUtils to avoid circular dependency
 import { toRenderedValue } from "@/lib/dataGrid/shared/gridUtils";
 

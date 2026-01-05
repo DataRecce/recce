@@ -1,5 +1,6 @@
-import { RunType } from "@/components/run/registry";
-import { Run } from "@/lib/api/types";
+import { type RunType } from "@datarecce/ui/api";
+// Import Run from OSS types for proper discriminated union support
+import type { Run } from "@/lib/api/types";
 
 export const isDisabledByNoResult = (
   type: RunType,

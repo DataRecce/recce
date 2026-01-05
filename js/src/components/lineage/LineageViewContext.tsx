@@ -1,7 +1,11 @@
+import {
+  type CllInput,
+  type ColumnLineageData,
+  type LineageDiffViewOptions,
+} from "@datarecce/ui/api";
 import React, { createContext, useContext } from "react";
-import { CllInput, ColumnLineageData } from "@/lib/api/cll";
-import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
-import { Run } from "@/lib/api/types";
+// Import Run from OSS types for proper discriminated union support with type guards
+import type { Run } from "@/lib/api/types";
 import { LineageGraphNode, LineageGraphNodes } from "./lineage";
 
 type NewType = LineageDiffViewOptions;

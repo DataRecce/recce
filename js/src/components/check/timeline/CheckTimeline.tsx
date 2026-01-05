@@ -7,6 +7,7 @@
  * This component is only rendered when connected to Recce Cloud.
  */
 
+import { cacheKeys } from "@datarecce/ui/api";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -14,7 +15,6 @@ import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
-import { cacheKeys } from "@/lib/api/cacheKeys";
 import { fetchUser } from "@/lib/api/user";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useCheckEvents } from "@/lib/hooks/useCheckEvents";

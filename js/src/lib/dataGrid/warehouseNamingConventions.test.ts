@@ -21,8 +21,8 @@
  * 7. Reserved words as column names
  */
 
+import { type DataFrame, type RowDataTypes } from "@datarecce/ui/api";
 import fc from "fast-check";
-import { DataFrame, RowDataTypes } from "@/lib/api/types";
 import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
 import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
 import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";

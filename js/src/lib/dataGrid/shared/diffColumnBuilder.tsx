@@ -6,13 +6,17 @@
  * into actual column definitions with React components for headers.
  */
 
+import {
+  type ColumnRenderMode,
+  type ColumnType,
+  type RowObjectType,
+} from "@datarecce/ui/api";
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import {
   DataFrameColumnGroupHeader,
   type DataFrameColumnGroupHeaderProps,
   defaultRenderCell,
 } from "@/components/ui/dataGrid";
-import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
 import { ColumnConfig } from "./columnBuilders";
 import { type RecceColumnContext } from "./simpleColumnBuilder";
 import { toDiffColumn } from "./toDiffColumn";

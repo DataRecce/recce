@@ -1,3 +1,4 @@
+import { cacheKeys } from "@datarecce/ui/api";
 import MuiAvatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -11,7 +12,6 @@ import { useQuery } from "@tanstack/react-query";
 import { type MouseEvent, useState } from "react";
 import { FaCloud, FaUser } from "react-icons/fa";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
-import { cacheKeys } from "@/lib/api/cacheKeys";
 import { fetchGitHubAvatar, fetchUser } from "@/lib/api/user";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 

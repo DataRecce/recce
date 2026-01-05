@@ -11,7 +11,7 @@
  * to fail fast with helpful messages rather than cryptic runtime errors.
  */
 
-import { DataFrame } from "@/lib/api/types";
+import type { DataFrame } from "@datarecce/ui/api";
 
 // ============================================================================
 // Custom Error Class

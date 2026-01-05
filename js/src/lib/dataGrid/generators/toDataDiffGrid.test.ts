@@ -34,9 +34,9 @@ jest.mock("@/components/ui/mui", () => ({
   Text: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+import { type DataFrame, type RowObjectType } from "@datarecce/ui/api";
 import type { ColDef } from "ag-grid-community";
 import React from "react";
-import { DataFrame, RowObjectType } from "@/lib/api/types";
 import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
 
 // ============================================================================

@@ -1,3 +1,4 @@
+import type { NodeData } from "@datarecce/ui/api";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import Stack from "@mui/material/Stack";
@@ -7,7 +8,6 @@ import { ReactNode } from "react";
 import { IconType } from "react-icons";
 import { FiInfo } from "react-icons/fi";
 import { token } from "@/components/ui/mui-theme";
-import { NodeData } from "@/lib/api/info";
 import { LineageGraph } from "../lineage/lineage";
 import {
   IconAdded,

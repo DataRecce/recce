@@ -9,17 +9,17 @@
  * - Diff display (base vs current)
  */
 
+import type {
+  ColumnRenderMode,
+  ColumnType,
+  RowObjectType,
+} from "@datarecce/ui/api";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";
 import type { ICellRendererParams } from "ag-grid-community";
 import type { ReactNode } from "react";
 import { lightTheme as theme } from "@/components/ui/mui-theme";
-import type {
-  ColumnRenderMode,
-  ColumnType,
-  RowObjectType,
-} from "@/lib/api/types";
 import type { ColDefWithMetadata } from "./defaultRenderCell";
 import { asNumber, inlineRenderCell } from "./inlineRenderCell";
 

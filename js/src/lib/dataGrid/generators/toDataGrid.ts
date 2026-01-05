@@ -8,7 +8,7 @@
  * REFACTORED: Now uses shared utilities from @/lib/dataGrid/shared
  */
 
-import { ColumnRenderMode, DataFrame } from "@/lib/api/types";
+import { type ColumnRenderMode, type DataFrame } from "@datarecce/ui/api";
 import {
   buildColumnMap,
   buildSimpleColumnDefinitions,

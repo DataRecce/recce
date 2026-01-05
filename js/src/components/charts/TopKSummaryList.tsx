@@ -1,3 +1,4 @@
+import { type TopKDiffResult, type TopKResult } from "@datarecce/ui/api";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
@@ -14,7 +15,6 @@ import {
 } from "chart.js";
 import { Fragment } from "react";
 import { Bar } from "react-chartjs-2";
-import { TopKDiffResult, TopKResult } from "@/lib/api/profile";
 import {
   formatAsAbbreviatedNumber,
   formatIntervalMinMax,

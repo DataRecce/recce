@@ -10,7 +10,12 @@
  * - Value rendering (toRenderedValue, columnRenderedValue)
  */
 
-import { ColumnType, DataFrame, RowData, RowObjectType } from "@/lib/api/types";
+import {
+  type ColumnType,
+  type DataFrame,
+  type RowData,
+  type RowObjectType,
+} from "@datarecce/ui/api";
 import {
   buildColumnMap,
   buildJoinedColumnMap,

@@ -1,3 +1,4 @@
+import { type ColumnRenderMode, type ColumnType } from "@datarecce/ui/api";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
@@ -6,7 +7,6 @@ import { MouseEvent, useState } from "react";
 import { PiDotsThreeVertical } from "react-icons/pi";
 import { VscPin, VscPinned } from "react-icons/vsc";
 import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
-import { ColumnRenderMode, ColumnType } from "@/lib/api/types";
 
 /**
  * Props for the DataFrameColumnHeader component

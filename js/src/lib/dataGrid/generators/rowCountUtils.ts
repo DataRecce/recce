@@ -3,9 +3,12 @@
  * @description Utilities for converting row count results to DataFrame format
  */
 
+import {
+  type DataFrame,
+  type RowCountDiffResult,
+  type RowCountResult,
+} from "@datarecce/ui/api";
 import { deltaPercentageString } from "@datarecce/ui/utils";
-import { RowCountDiffResult, RowCountResult } from "@/lib/api/rowcount";
-import { DataFrame } from "@/lib/api/types";
 
 // ============================================================================
 // Types

@@ -11,7 +11,7 @@
  */
 
 import "src/components/query/styles.css";
-import { DataFrame, RowObjectType } from "@/lib/api/types";
+import { type DataFrame, type RowObjectType } from "@datarecce/ui/api";
 import { QueryDataDiffGridOptions } from "@/lib/dataGrid/generators/toDataDiffGrid";
 import {
   buildDiffColumnDefinitions,

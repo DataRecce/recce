@@ -6,8 +6,8 @@
  * and valuediff (joined DataFrame with in_a/in_b) scenarios.
  */
 
+import { type DataFrame, type RowObjectType } from "@datarecce/ui/api";
 import _ from "lodash";
-import { DataFrame, RowObjectType } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { keyToNumber } from "@/utils/transforms";
 import { ColumnMapEntry, MergeColumnMapEntry, RowStats } from "./gridUtils";

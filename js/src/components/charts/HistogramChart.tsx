@@ -1,3 +1,4 @@
+import { type HistogramResult } from "@datarecce/ui/api";
 import { useIsDark } from "@datarecce/ui/hooks";
 import {
   AnimationOptions,
@@ -14,7 +15,6 @@ import {
   Tooltip,
 } from "chart.js";
 import { Chart } from "react-chartjs-2";
-import { HistogramResult } from "@/lib/api/profile";
 import {
   formatAsAbbreviatedNumber,
   formatIntervalMinMax,

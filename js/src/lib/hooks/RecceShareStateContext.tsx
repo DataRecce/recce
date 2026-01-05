@@ -12,8 +12,8 @@
  * - Creating an abstract interface for different share backends
  */
 
+import { shareState } from "@datarecce/ui/api";
 import React, { createContext, useContext, useState } from "react";
-import { shareState } from "@/lib/api/state";
 import { useApiConfig } from "./ApiConfigContext";
 
 interface ShareStateProps {

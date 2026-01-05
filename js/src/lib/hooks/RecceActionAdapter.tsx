@@ -1,6 +1,12 @@
 "use client";
 
 import {
+  cacheKeys,
+  type SubmitRunTrackProps,
+  searchRuns,
+  submitRun,
+} from "@datarecce/ui/api";
+import {
   type AxiosQueryParams,
   RecceActionProvider,
   type RecceActionOptions as UIRecceActionOptions,
@@ -26,8 +32,6 @@ import type { RunFormProps } from "@/components/run/types";
 import { toaster } from "@/components/ui/toaster";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
-import { cacheKeys } from "../api/cacheKeys";
-import { type SubmitRunTrackProps, searchRuns, submitRun } from "../api/runs";
 import type { Run, RunParamTypes } from "../api/types";
 
 // Re-export types for backward compatibility
@@ -144,7 +148,7 @@ export function RecceActionAdapter({ children }: RecceActionAdapterProps) {
         if (ossOptions?.showLast) {
           const runs = await searchRuns(type, params, 1, apiClient);
           if (runs.length === 1) {
-            lastRun = runs[0];
+            lastRun = runs[0] as Run;
           }
         }
 

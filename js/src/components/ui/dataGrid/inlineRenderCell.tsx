@@ -9,17 +9,17 @@
  * with toDiffColumn.tsx which imports this component.
  */
 
+import {
+  type ColumnRenderMode,
+  type ColumnType,
+  type RowDataTypes,
+  type RowObjectType,
+} from "@datarecce/ui/api";
 import Box from "@mui/material/Box";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import type { ColDef, ICellRendererParams } from "ag-grid-community";
 import { DiffText } from "@/components/query/DiffText";
-import {
-  ColumnRenderMode,
-  ColumnType,
-  RowDataTypes,
-  RowObjectType,
-} from "@/lib/api/types";
 // Import directly from gridUtils to avoid circular dependency
 import {
   formatSmartDecimal,

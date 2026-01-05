@@ -18,15 +18,14 @@
  * and mutation functions for CRUD operations.
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { cacheKeys } from "@/lib/api/cacheKeys";
 import {
-  CheckEvent,
+  cacheKeys,
   createComment,
   deleteComment,
   listCheckEvents,
   updateComment,
-} from "@/lib/api/checkEvents";
+} from "@datarecce/ui/api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiConfig } from "./ApiConfigContext";
 
 const POLLING_INTERVAL = 10000; // 10 seconds

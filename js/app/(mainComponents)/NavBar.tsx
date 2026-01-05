@@ -1,5 +1,6 @@
 "use client";
 
+import { type Check, cacheKeys, listChecks } from "@datarecce/ui/api";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Tab from "@mui/material/Tab";
@@ -13,9 +14,8 @@ import { Filename } from "@/components/app/Filename";
 import { StateExporter } from "@/components/app/StateExporter";
 import { TopLevelShare } from "@/components/app/StateSharing";
 import { StateSynchronizer } from "@/components/app/StateSynchronizer";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { Check, listChecks } from "@/lib/api/checks";
 import { trackNavigation } from "@/lib/api/track";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
@@ -71,10 +71,11 @@ function TabBadge<T>({
 }
 
 function ChecklistBadge(): ReactNode {
+  const { apiClient } = useApiConfig();
   return (
     <TabBadge<Check[]>
       queryKey={cacheKeys.checks()}
-      fetchCallback={listChecks}
+      fetchCallback={() => listChecks(apiClient)}
       selectCallback={(checks: Check[]) => {
         return checks.filter((check) => !check.is_checked).length;
       }}

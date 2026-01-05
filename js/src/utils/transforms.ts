@@ -1,4 +1,8 @@
-import { DataFrame, RowDataTypes, RowObjectType } from "@/lib/api/types";
+import {
+  type DataFrame,
+  type RowDataTypes,
+  type RowObjectType,
+} from "@datarecce/ui/api";
 
 export function dataFrameToRowObjects(dataFrame: DataFrame): RowObjectType[] {
   return dataFrame.data.map((row, index) => ({

@@ -34,9 +34,13 @@ jest.mock("@/components/ui/mui", () => ({
   Text: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+import {
+  type ColumnRenderMode,
+  type ColumnType,
+  type RowObjectType,
+} from "@datarecce/ui/api";
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import React from "react";
-import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
 import { ColumnConfig } from "./columnBuilders";
 import {
   BuildDiffColumnDefinitionsConfig,

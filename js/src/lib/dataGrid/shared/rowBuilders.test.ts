@@ -13,7 +13,11 @@
  * - ColumnMapEntry vs MergeColumnMapEntry handling
  */
 
-import { ColumnType, DataFrame, RowObjectType } from "@/lib/api/types";
+import {
+  type ColumnType,
+  type DataFrame,
+  type RowObjectType,
+} from "@datarecce/ui/api";
 import { ColumnMapEntry, MergeColumnMapEntry } from "./gridUtils";
 import { buildDiffRows, DiffColumnMapEntry } from "./rowBuilders";
 

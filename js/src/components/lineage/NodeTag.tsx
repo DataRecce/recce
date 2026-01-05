@@ -1,3 +1,4 @@
+import { type RowCount, type RowCountDiff } from "@datarecce/ui/api";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import { deltaPercentageString } from "@datarecce/ui/utils";
@@ -11,7 +12,6 @@ import { FiArrowRight, FiFrown } from "react-icons/fi";
 import { PiRepeat } from "react-icons/pi";
 import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
-import { RowCount, RowCountDiff } from "@/lib/api/models";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { findByRunType } from "../run/registry";
 import { LineageGraphNode } from "./lineage";

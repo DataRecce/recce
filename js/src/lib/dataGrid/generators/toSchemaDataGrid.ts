@@ -7,6 +7,11 @@
  */
 
 import "@/components/schema/style.css";
+import {
+  type NodeColumnData,
+  type NodeData,
+  type RowObjectType,
+} from "@datarecce/ui/api";
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import {
   createColumnNameRenderer,
@@ -14,8 +19,6 @@ import {
   renderIndexCell,
   renderTypeCell,
 } from "@/components/ui/dataGrid/schemaCells";
-import { NodeColumnData, NodeData } from "@/lib/api/info";
-import { RowObjectType } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 
 // ============================================================================

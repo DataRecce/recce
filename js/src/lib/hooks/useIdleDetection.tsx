@@ -1,7 +1,7 @@
+import { sendKeepAlive } from "@datarecce/ui/api";
 import { useIdleTimeoutSafe } from "@datarecce/ui/contexts";
 import throttle from "lodash/throttle";
 import { useCallback, useEffect, useMemo } from "react";
-import { sendKeepAlive } from "@/lib/api/keepAlive";
 import { useApiConfig } from "./ApiConfigContext";
 import { useRecceInstanceInfo } from "./useRecceInstanceInfo";
 

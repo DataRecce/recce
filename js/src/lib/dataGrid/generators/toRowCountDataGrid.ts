@@ -6,9 +6,8 @@
  * in a single environment context.
  */
 
+import { type RowCountResult, type RowObjectType } from "@datarecce/ui/api";
 import type { ColDef, ColGroupDef } from "ag-grid-community";
-import { RowCountResult } from "@/lib/api/rowcount";
-import { RowObjectType } from "@/lib/api/types";
 import { dataFrameToRowObjects } from "@/utils/transforms";
 import { rowCountResultToDataFrame } from "./rowCountUtils";
 

@@ -1,5 +1,5 @@
+import { type Check } from "@datarecce/ui/api";
 import { stripIndent } from "common-tags";
-import { Check } from "@/lib/api/checks";
 import { RunParamTypes } from "@/lib/api/types";
 
 export function buildTitle(check: Check) {

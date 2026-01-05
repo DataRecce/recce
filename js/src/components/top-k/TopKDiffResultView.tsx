@@ -1,3 +1,8 @@
+import {
+  isTopKDiffRun,
+  type TopKDiffParams,
+  type TopKViewOptions,
+} from "@datarecce/ui/api";
 import { useIsDark } from "@datarecce/ui/hooks";
 import { createResultView, type ResultViewData } from "@datarecce/ui/result";
 import Box from "@mui/material/Box";
@@ -5,8 +10,8 @@ import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
-import type { TopKDiffParams, TopKViewOptions } from "@/lib/api/profile";
-import { isTopKDiffRun, type Run } from "@/lib/api/types";
+// Import Run from OSS types for proper discriminated union support with Extract<>
+import type { Run } from "@/lib/api/types";
 import { TopKSummaryBarChart } from "../charts/TopKSummaryList";
 import type { RunResultViewProps } from "../run/types";
 

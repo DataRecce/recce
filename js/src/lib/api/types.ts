@@ -50,42 +50,32 @@ export {
 // Re-export param types from API files
 // ============================================================================
 
-// Import RunType and BaseRun for local Run union
+// Import types for local Run union from @datarecce/ui/api
 import type {
   BaseRun,
+  HistogramDiffParams,
+  HistogramDiffResult,
   LineageDiffParams,
-  RunType,
-  SchemaDiffParams,
-} from "@datarecce/ui/api";
-// These are imported from local files because they're used in the OSS-specific
-// Run discriminated union below, which includes OSS-specific tracking behavior
-import type {
+  ProfileDiffParams,
+  ProfileDiffResult,
   QueryDiffParams,
   QueryDiffResult,
   QueryResult,
   QueryRunParams,
-} from "./adhocQuery";
-import type { LineageDiffResult } from "./info";
-import type {
-  HistogramDiffParams,
-  HistogramDiffResult,
-  ProfileDiffParams,
-  ProfileDiffResult,
-  TopKDiffParams,
-  TopKDiffResult,
-} from "./profile";
-import type {
   RowCountDiffParams,
   RowCountDiffResult,
   RowCountParams,
   RowCountResult,
-} from "./rowcount";
-import type {
+  RunType,
+  SchemaDiffParams,
+  TopKDiffParams,
+  TopKDiffResult,
   ValueDiffDetailParams,
   ValueDiffDetailResult,
   ValueDiffParams,
   ValueDiffResult,
-} from "./valuediff";
+} from "@datarecce/ui/api";
+import type { LineageDiffResult } from "./info";
 
 // ============================================================================
 // Run Param Types - Union of all possible run parameters

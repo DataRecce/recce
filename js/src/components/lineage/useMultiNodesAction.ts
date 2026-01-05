@@ -1,15 +1,22 @@
+import {
+  cancelRun,
+  createLineageDiffCheck,
+  createSchemaDiffCheck,
+  type RowCountDiffParams,
+  type RowCountParams,
+  type RunType,
+  submitRun,
+  type ValueDiffParams,
+  waitRun,
+} from "@datarecce/ui/api";
 import { useRef } from "react";
-import { RunType } from "@/components/run/registry";
-import { createLineageDiffCheck } from "@/lib/api/lineagecheck";
-import { RowCountDiffParams, RowCountParams } from "@/lib/api/rowcount";
-import { cancelRun, submitRun, waitRun } from "@/lib/api/runs";
-import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import {
   EXPLORE_ACTION,
   EXPLORE_SOURCE,
   trackExploreAction,
 } from "@/lib/api/track";
-import { ValueDiffParams } from "@/lib/api/valuediff";
+// Import Run from OSS types for proper discriminated union support
+import type { Run } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { ActionState } from "./LineageViewContext";
@@ -89,7 +96,8 @@ export const useMultiNodesAction = (
       actionState.total = 1;
 
       for (;;) {
-        const run = await waitRun(run_id, 2, apiClient);
+        // Cast from library Run to OSS Run for discriminated union support
+        const run = (await waitRun(run_id, 2, apiClient)) as Run;
         actionState.currentRun = run;
 
         const status = run.error
@@ -176,7 +184,8 @@ export const useMultiNodesAction = (
           onActionNodeUpdated(node);
 
           for (;;) {
-            const run = await waitRun(run_id, 2, apiClient);
+            // Cast from library Run to OSS Run for discriminated union support
+            const run = (await waitRun(run_id, 2, apiClient)) as Run;
             actionState.currentRun = run;
             const status = run.error
               ? "failure"

@@ -1,5 +1,5 @@
+import type { TopKResult } from "@datarecce/ui/api";
 import { formatInTimeZone } from "@jeromefitz/date-fns-tz";
-import { TopKResult } from "@/lib/api/profile";
 
 const NO_VALUE = "-";
 

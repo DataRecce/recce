@@ -8,6 +8,7 @@
  * - Number column precision options menu
  */
 
+import { type ColumnRenderMode, type ColumnType } from "@datarecce/ui/api";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Menu from "@mui/material/Menu";
@@ -21,7 +22,6 @@ import {
   VscPinned,
 } from "react-icons/vsc";
 import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
-import { ColumnRenderMode, ColumnType } from "@/lib/api/types";
 
 /**
  * Props for the DataFrameColumnGroupHeader component

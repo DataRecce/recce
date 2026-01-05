@@ -6,14 +6,14 @@ import {
   markAsPresetCheck as _markAsPresetCheck,
   reorderChecks as _reorderChecks,
   updateCheck as _updateCheck,
+  cacheKeys,
 } from "@datarecce/ui/api";
 import { useQuery } from "@tanstack/react-query";
-import { AxiosInstance, AxiosResponse } from "axios";
+import type { AxiosInstance, AxiosResponse } from "axios";
 import { useApiConfig } from "../hooks/ApiConfigContext";
 import { axiosClient } from "./axiosClient";
-import { cacheKeys } from "./cacheKeys";
 import { getExperimentTrackingBreakingChangeEnabled } from "./track";
-import { RunParamTypes } from "./types";
+import type { RunParamTypes } from "./types";
 
 // ============================================================================
 // Re-export types from @datarecce/ui/api library

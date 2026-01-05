@@ -12,15 +12,10 @@
  * - toValueDataGrid for value_diff summary (column match statistics)
  */
 
-import type { ColDef, ColGroupDef } from "ag-grid-community";
-import { QueryDiffResult } from "@/lib/api/adhocQuery";
-import { NodeData } from "@/lib/api/info";
-import { ProfileDiffResult } from "@/lib/api/profile";
-import { RowCountDiffResult, RowCountResult } from "@/lib/api/rowcount";
 import {
-  ColumnRenderMode,
-  ColumnType,
-  DataFrame,
+  type ColumnRenderMode,
+  type ColumnType,
+  type DataFrame,
   isProfileDiffRun,
   isProfileRun,
   isQueryBaseRun,
@@ -30,10 +25,18 @@ import {
   isRowCountRun,
   isValueDiffDetailRun,
   isValueDiffRun,
-  RowObjectType,
-  Run,
-} from "@/lib/api/types";
-import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
+  type NodeData,
+  type ProfileDiffResult,
+  type QueryDiffResult,
+  type RowCountDiffResult,
+  type RowCountResult,
+  type RowObjectType,
+  type ValueDiffParams,
+  type ValueDiffResult,
+} from "@datarecce/ui/api";
+import type { ColDef, ColGroupDef } from "ag-grid-community";
+// Import Run from OSS types for proper discriminated union support with type guards
+import type { Run } from "@/lib/api/types";
 // Import existing implementations
 import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
 import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";

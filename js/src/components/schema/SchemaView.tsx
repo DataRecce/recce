@@ -1,3 +1,4 @@
+import type { NodeData } from "@datarecce/ui/api";
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import type {
@@ -14,7 +15,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import { NodeData } from "@/lib/api/info";
 import { trackColumnLevelLineage } from "@/lib/api/track";
 import {
   createDataGridFromData,

@@ -1,3 +1,4 @@
+import { createSchemaDiffCheck } from "@datarecce/ui/api";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -11,7 +12,6 @@ import { type ReactElement, useCallback, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
-import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import {
   EXPLORE_ACTION,
   EXPLORE_SOURCE,

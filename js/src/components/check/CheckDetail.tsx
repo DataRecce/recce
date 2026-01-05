@@ -1,5 +1,18 @@
 "use client";
 
+import {
+  type Check,
+  cacheKeys,
+  cancelRun,
+  deleteCheck,
+  getCheck,
+  markAsPresetCheck,
+  type QueryDiffParams,
+  type QueryParams,
+  type QueryRunParams,
+  submitRunFromCheck,
+  updateCheck,
+} from "@datarecce/ui/api";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
@@ -41,22 +54,9 @@ import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { CheckTimeline } from "@/components/check/timeline";
 import { isDisabledByNoResult } from "@/components/check/utils";
-import {
-  QueryDiffParams,
-  QueryParams,
-  QueryRunParams,
-} from "@/lib/api/adhocQuery";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import {
-  Check,
-  deleteCheck,
-  getCheck,
-  markAsPresetCheck,
-  updateCheck,
-} from "@/lib/api/checks";
-import { cancelRun, submitRunFromCheck } from "@/lib/api/runs";
 import { trackCopyToClipboard } from "@/lib/api/track";
-import { Run, RunParamTypes } from "@/lib/api/types";
+// Import Run from OSS types for proper discriminated union support
+import { type Run, type RunParamTypes } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceCheckContext } from "@/lib/hooks/CheckContextAdapter";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
@@ -213,7 +213,8 @@ export function CheckDetail({
       return;
     }
 
-    const markdown = buildMarkdown(check);
+    // Cast to Check<RunParamTypes> since we know the check params are valid
+    const markdown = buildMarkdown(check as Check<RunParamTypes>);
     // @see https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts
     if (!window.isSecureContext) {
       failToast(
@@ -633,7 +634,8 @@ export function CheckDetail({
                           run={
                             trackedRunId
                               ? run
-                              : (check.last_run as Run | undefined)
+                              : // Cast from library Run to OSS Run
+                                (check.last_run as Run | undefined)
                           }
                           error={rerunError}
                           progress={progress}

@@ -127,6 +127,7 @@ jest.mock("@datarecce/ui/hooks", () => ({
 
 import { fireEvent, screen } from "@testing-library/react";
 import React from "react";
+// Import Run from OSS types for proper discriminated union support with Extract<>
 import type { Run } from "@/lib/api/types";
 import { createRowCountDiffRun } from "@/testing-utils/fixtures/runFixtures";
 import {

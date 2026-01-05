@@ -9,9 +9,14 @@
  * - Column structure
  */
 
+import {
+  type ColumnRenderMode,
+  type ColumnType,
+  type RowObjectType,
+  type ValueDiffParams,
+  type ValueDiffResult,
+} from "@datarecce/ui/api";
 import type { CellClassParams } from "ag-grid-community";
-import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
-import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
 import { toValueDataGrid } from "./toValueDataGrid";
 
 // ============================================================================

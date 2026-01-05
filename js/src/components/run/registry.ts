@@ -1,4 +1,15 @@
 import type { RunType } from "@datarecce/ui/api";
+import {
+  type AxiosQueryParams,
+  type HistogramDiffParams,
+  type LineageDiffViewOptions,
+  type ProfileDiffViewOptions,
+  type QueryDiffViewOptions,
+  type QueryViewOptions,
+  type TopKDiffParams,
+  type TopKViewOptions,
+  type ValueDiffDetailViewOptions,
+} from "@datarecce/ui/api";
 import React, {
   ComponentType,
   ForwardRefExoticComponent,
@@ -16,16 +27,6 @@ import {
   TbSql,
 } from "react-icons/tb";
 import { DiffViewOptions } from "@/components/run/RunToolbar";
-import { QueryDiffViewOptions, QueryViewOptions } from "@/lib/api/adhocQuery";
-import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
-import {
-  HistogramDiffParams,
-  ProfileDiffViewOptions,
-  TopKDiffParams,
-  TopKViewOptions,
-} from "@/lib/api/profile";
-import { AxiosQueryParams } from "@/lib/api/types";
-import { ValueDiffDetailViewOptions } from "@/lib/api/valuediff";
 import { type DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 import { HistogramDiffForm } from "../histogram/HistogramDiffForm";
 import { HistogramDiffResultView } from "../histogram/HistogramDiffResultView";

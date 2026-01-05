@@ -13,14 +13,18 @@
  * to valueDiffCells.tsx via render functions.
  */
 
+import {
+  type DataFrame,
+  type RowObjectType,
+  type ValueDiffParams,
+  type ValueDiffResult,
+} from "@datarecce/ui/api";
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import {
   createColumnNameRenderer,
   createPrimaryKeyIndicatorRenderer,
   renderMatchedPercentCell,
 } from "@/components/ui/dataGrid/valueDiffCells";
-import { DataFrame, RowObjectType } from "@/lib/api/types";
-import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
 import { dataFrameToRowObjects } from "@/utils/transforms";
 
 // ============================================================================

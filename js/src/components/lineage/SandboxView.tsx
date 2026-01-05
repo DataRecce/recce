@@ -1,3 +1,11 @@
+import {
+  LOCAL_STORAGE_KEYS,
+  type NodeData,
+  type QueryParams,
+  type SubmitOptions,
+  submitQueryDiff,
+  waitRun,
+} from "@datarecce/ui/api";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -17,10 +25,6 @@ import { IoClose } from "react-icons/io5";
 import { VscFeedback } from "react-icons/vsc";
 import { DiffEditor } from "@/components/editor";
 import { colors } from "@/components/ui/mui-theme";
-import { QueryParams, submitQueryDiff } from "@/lib/api/adhocQuery";
-import { NodeData } from "@/lib/api/info";
-import { localStorageKeys } from "@/lib/api/localStorageKeys";
-import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import {
   trackPreviewChange,
   trackPreviewChangeFeedback,
@@ -246,7 +250,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
   });
 
   const { feedbackToast, closeToast } = useFeedbackCollectionToast({
-    feedbackId: localStorageKeys.previewChangeFeedbackID,
+    feedbackId: LOCAL_STORAGE_KEYS.previewChangeFeedbackID,
     description: "Enjoy preview change?",
 
     onFeedbackSubmit: (feedback: string) => {
@@ -273,7 +277,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
   });
 
   const { guideToast: prepareEnvToast, closeGuideToast } = useGuideToast({
-    guideId: localStorageKeys.prepareEnvGuideID,
+    guideId: LOCAL_STORAGE_KEYS.prepareEnvGuideID,
     description: "Want to compare data changes with production data?",
     externalLink:
       "https://docs.datarecce.io/get-started/#prepare-dbt-artifacts",

@@ -76,9 +76,9 @@ jest.mock("@datarecce/ui/hooks", () => ({
 // Imports
 // ============================================================================
 
+import type { TopKDiffResult, TopKViewOptions } from "@datarecce/ui/api";
 import { fireEvent, screen } from "@testing-library/react";
 import React from "react";
-import type { TopKDiffResult, TopKViewOptions } from "@/lib/api/profile";
 import {
   createRowCountDiffRun,
   createTopKDiffRun,

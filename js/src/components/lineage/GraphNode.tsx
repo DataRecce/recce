@@ -1,3 +1,4 @@
+import { type RowCountDiff } from "@datarecce/ui/api";
 import { useThemeColors } from "@datarecce/ui/hooks";
 import { deltaPercentageString } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
@@ -8,7 +9,6 @@ import { Handle, NodeProps, Position, useStore } from "@xyflow/react";
 import React, { useState } from "react";
 import { FaCheckSquare, FaRegDotCircle, FaRegSquare } from "react-icons/fa";
 import { VscKebabVertical } from "react-icons/vsc";
-import { RowCountDiff } from "@/lib/api/models";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { findByRunType } from "../run/registry";
 import { isSchemaChanged } from "../schema/schemaDiff";

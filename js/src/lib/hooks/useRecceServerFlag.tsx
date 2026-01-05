@@ -1,6 +1,9 @@
+import {
+  cacheKeys,
+  getServerFlag,
+  type RecceServerFlags,
+} from "@datarecce/ui/api";
 import { useQuery } from "@tanstack/react-query";
-import { cacheKeys } from "../api/cacheKeys";
-import { getServerFlag, RecceServerFlags } from "../api/flag";
 import { useApiConfig } from "./ApiConfigContext";
 
 export const useRecceServerFlag = () => {

@@ -1,9 +1,9 @@
+import { useVersionNumber } from "@datarecce/ui/api";
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
 import React, { useEffect, useMemo } from "react";
 import { toaster } from "@/components/ui/toaster";
-import { useVersionNumber } from "@/lib/api/version";
 
 export default function RecceVersionBadge() {
   const { version, latestVersion } = useVersionNumber();

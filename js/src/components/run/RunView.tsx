@@ -12,7 +12,8 @@ import {
   RegistryEntry,
   ViewOptionTypes,
 } from "@/components/run/registry";
-import { Run } from "@/lib/api/types";
+// Import Run from OSS types for proper discriminated union support
+import type { Run } from "@/lib/api/types";
 import ResultErrorFallback from "@/lib/result/ResultErrorFallback";
 import { RunResultViewProps } from "./types";
 

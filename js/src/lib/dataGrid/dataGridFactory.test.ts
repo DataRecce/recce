@@ -117,10 +117,16 @@ jest.mock("@/lib/dataGrid/generators/toSchemaDataGrid", () => ({
   })),
 }));
 
+import {
+  type ColumnRenderMode,
+  type ColumnType,
+  type DataFrame,
+  type ProfileDiffResult,
+  type QueryDiffResult,
+} from "@datarecce/ui/api";
 import React from "react";
-import { QueryDiffResult } from "@/lib/api/adhocQuery";
-import { ProfileDiffResult } from "@/lib/api/profile";
-import { ColumnRenderMode, ColumnType, DataFrame, Run } from "@/lib/api/types";
+// Import Run from OSS types for proper discriminated union support with type guards
+import type { Run } from "@/lib/api/types";
 import { createDataGrid, createDataGridFromData } from "./dataGridFactory";
 
 // ============================================================================

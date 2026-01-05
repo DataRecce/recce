@@ -6,9 +6,8 @@
  * between base and current environments across multiple models.
  */
 
+import { type RowCountDiffResult, type RowObjectType } from "@datarecce/ui/api";
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
-import { RowCountDiffResult } from "@/lib/api/rowcount";
-import { RowObjectType } from "@/lib/api/types";
 import { dataFrameToRowObjects } from "@/utils/transforms";
 import {
   getRowCountDiffStatus,

@@ -45,6 +45,21 @@ import {
 } from "./lineage";
 import "@xyflow/react/dist/style.css";
 import "./styles.css";
+import type { Check } from "@datarecce/ui/api";
+import {
+  type CllInput,
+  type ColumnLineageData,
+  createLineageDiffCheck,
+  createSchemaDiffCheck,
+  getCll,
+  isHistogramDiffRun,
+  isProfileDiffRun,
+  isTopKDiffRun,
+  isValueDiffDetailRun,
+  isValueDiffRun,
+  type LineageDiffViewOptions,
+  select,
+} from "@datarecce/ui/api";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useThemeColors } from "@datarecce/ui/hooks";
 import { useMutation } from "@tanstack/react-query";
@@ -52,27 +67,12 @@ import { AxiosError } from "axios";
 import { FiCopy } from "react-icons/fi";
 import { colors } from "@/components/ui/mui-theme";
 import { toaster } from "@/components/ui/toaster";
-import { Check } from "@/lib/api/checks";
-import { CllInput, ColumnLineageData, getCll } from "@/lib/api/cll";
-import {
-  createLineageDiffCheck,
-  LineageDiffViewOptions,
-} from "@/lib/api/lineagecheck";
-import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
-import { select } from "@/lib/api/select";
 import {
   type LineageViewRenderProps,
   trackCopyToClipboard,
   trackLineageViewRender,
   trackMultiNodesAction,
 } from "@/lib/api/track";
-import {
-  isHistogramDiffRun,
-  isProfileDiffRun,
-  isTopKDiffRun,
-  isValueDiffDetailRun,
-  isValueDiffRun,
-} from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";

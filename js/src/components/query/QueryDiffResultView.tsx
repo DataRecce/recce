@@ -1,13 +1,12 @@
-import { createResultView, type ResultViewData } from "@datarecce/ui/result";
-import {
-  QueryDiffViewOptions,
-  QueryPreviewChangeParams,
-} from "@/lib/api/adhocQuery";
 import {
   type ColumnRenderMode,
   isQueryDiffRun,
-  type Run,
-} from "@/lib/api/types";
+  type QueryDiffViewOptions,
+  type QueryPreviewChangeParams,
+} from "@datarecce/ui/api";
+import { createResultView, type ResultViewData } from "@datarecce/ui/result";
+// Import Run from OSS types for proper discriminated union support with Extract<>
+import type { Run } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
 
 import "./styles.css";

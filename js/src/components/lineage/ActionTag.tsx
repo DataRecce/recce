@@ -1,3 +1,8 @@
+import {
+  isRowCountDiffRun,
+  isRowCountRun,
+  isValueDiffRun,
+} from "@datarecce/ui/api";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -5,11 +10,6 @@ import Stack from "@mui/material/Stack";
 import MuiTooltip from "@mui/material/Tooltip";
 import { PiInfo, PiWarning } from "react-icons/pi";
 import { LineageGraphNode } from "@/components/lineage/lineage";
-import {
-  isRowCountDiffRun,
-  isRowCountRun,
-  isValueDiffRun,
-} from "@/lib/api/types";
 import { ActionState } from "./LineageViewContext";
 import { RowCountDiffTag, RowCountTag } from "./NodeTag";
 

@@ -1,3 +1,4 @@
+import { cacheKeys, cancelRun, waitRun } from "@datarecce/ui/api";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -5,9 +6,8 @@ import {
   RegistryEntry,
   runTypeHasRef,
 } from "@/components/run/registry";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { cancelRun, waitRun } from "@/lib/api/runs";
-import { Run } from "../api/types";
+// Import Run from OSS types for proper discriminated union support with type guards
+import type { Run } from "@/lib/api/types";
 import { useApiConfig } from "./ApiConfigContext";
 import { useRunsAggregated } from "./LineageGraphAdapter";
 
@@ -29,7 +29,8 @@ export const useRun = (runId?: string): UseRunResult => {
   const { error, data: run } = useQuery({
     queryKey: cacheKeys.run(runId ?? ""),
     queryFn: async () => {
-      return await waitRun(runId ?? "", isRunning ? 2 : 0, apiClient);
+      // Cast from library Run to OSS Run for discriminated union support
+      return (await waitRun(runId ?? "", isRunning ? 2 : 0, apiClient)) as Run;
     },
     enabled: !!runId,
     refetchInterval: isRunning ? 50 : false,

@@ -1,3 +1,4 @@
+import type { NodeData } from "@datarecce/ui/api";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -8,7 +9,6 @@ import MenuItem from "@mui/material/MenuItem";
 import Tooltip from "@mui/material/Tooltip";
 import { MouseEvent, useState } from "react";
 import { VscKebabVertical } from "react-icons/vsc";
-import { NodeData } from "@/lib/api/info";
 import {
   EXPLORE_ACTION,
   EXPLORE_SOURCE,

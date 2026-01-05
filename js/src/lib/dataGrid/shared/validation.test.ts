@@ -11,7 +11,11 @@
  * - Entry point validators: toDataGrid, toDataDiffGrid, toValueDiffGrid
  */
 
-import { ColumnType, DataFrame, RowData } from "@/lib/api/types";
+import {
+  type ColumnType,
+  type DataFrame,
+  type RowData,
+} from "@datarecce/ui/api";
 import {
   DataGridValidationError,
   validateColumnDataAlignment,

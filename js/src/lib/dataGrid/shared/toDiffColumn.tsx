@@ -6,6 +6,11 @@
  * supporting both inline and side-by-side display modes.
  */
 
+import {
+  type ColumnRenderMode,
+  type ColumnType,
+  type RowObjectType,
+} from "@datarecce/ui/api";
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import _ from "lodash";
 import {
@@ -14,7 +19,6 @@ import {
   defaultRenderCell,
   inlineRenderCell,
 } from "@/components/ui/dataGrid";
-import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
 import { getHeaderCellClass } from "./gridUtils";
 import { type RecceColumnContext } from "./simpleColumnBuilder";
 

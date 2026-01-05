@@ -6,15 +6,18 @@
  * Uses realistic but minimal test data.
  */
 
-import type { QueryDiffResult, QueryResult } from "@/lib/api/adhocQuery";
 import type {
   HistogramDiffResult,
   ProfileDiffResult,
+  QueryDiffResult,
+  QueryResult,
+  RowCountDiffResult,
+  RowCountResult,
   TopKDiffResult,
-} from "@/lib/api/profile";
-import type { RowCountDiffResult, RowCountResult } from "@/lib/api/rowcount";
+  ValueDiffResult,
+} from "@datarecce/ui/api";
+// Import Run from OSS types for proper discriminated union support with Extract<>
 import type { Run } from "@/lib/api/types";
-import type { ValueDiffResult } from "@/lib/api/valuediff";
 
 // ============================================================================
 // Helper Functions

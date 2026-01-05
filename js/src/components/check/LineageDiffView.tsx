@@ -1,8 +1,7 @@
+import { type Check, type LineageDiffViewOptions } from "@datarecce/ui/api";
 import Box from "@mui/material/Box";
 import { ReactFlowProvider } from "@xyflow/react";
 import { forwardRef, Ref } from "react";
-import { Check } from "@/lib/api/checks";
-import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { LineageView, LineageViewRef } from "../lineage/LineageView";
 
 export interface LineageDiffViewProps {

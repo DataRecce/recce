@@ -6,7 +6,11 @@
  */
 
 import "src/components/query/styles.css";
-import { ColumnRenderMode, DataFrame, RowObjectType } from "@/lib/api/types";
+import {
+  type ColumnRenderMode,
+  type DataFrame,
+  type RowObjectType,
+} from "@datarecce/ui/api";
 import {
   buildDiffColumnDefinitions,
   buildDiffRows,

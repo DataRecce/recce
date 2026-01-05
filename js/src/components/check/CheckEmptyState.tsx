@@ -1,3 +1,8 @@
+import {
+  type Check,
+  cacheKeys,
+  createSchemaDiffCheck,
+} from "@datarecce/ui/api";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
@@ -5,9 +10,6 @@ import Typography from "@mui/material/Typography";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React from "react";
 import { TbChecklist, TbPlus } from "react-icons/tb";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { Check } from "@/lib/api/checks";
-import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 

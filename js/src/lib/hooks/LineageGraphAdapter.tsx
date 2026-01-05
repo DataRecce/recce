@@ -1,6 +1,12 @@
 "use client";
 
 import {
+  aggregateRuns,
+  cacheKeys,
+  getServerInfo,
+  markRelaunchHintCompleted,
+} from "@datarecce/ui/api";
+import {
   type EnvInfo,
   LineageGraphProvider,
   useIdleTimeout,
@@ -30,10 +36,6 @@ import {
 } from "@/components/lineage/ServerDisconnectedModalContent";
 import { toaster } from "@/components/ui/toaster";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { cacheKeys } from "../api/cacheKeys";
-import { markRelaunchHintCompleted } from "../api/flag";
-import { getServerInfo } from "../api/info";
-import { aggregateRuns } from "../api/runs";
 import { trackSingleEnvironment } from "../api/track";
 import { PUBLIC_API_URL } from "../const";
 import { useRecceServerFlag } from "./useRecceServerFlag";
@@ -372,7 +374,7 @@ export function LineageGraphAdapter({ children }: LineageGraphAdapterProps) {
 
   const handleRelaunchClose = () => {
     setRelaunchHintOpen(false);
-    void markRelaunchHintCompleted();
+    void markRelaunchHintCompleted(apiClient);
     void queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
   };
 

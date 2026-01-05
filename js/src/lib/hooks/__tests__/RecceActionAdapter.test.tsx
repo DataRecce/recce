@@ -22,11 +22,16 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 
-// Mock the API functions
-jest.mock("../../api/runs", () => ({
-  submitRun: jest.fn(),
-  searchRuns: jest.fn(),
-}));
+// Mock the API functions from @datarecce/ui/api
+jest.mock("@datarecce/ui/api", () => {
+  const actual = jest.requireActual("@datarecce/ui/api");
+  return {
+    ...actual,
+    submitRun: jest.fn(),
+    searchRuns: jest.fn(),
+    cacheKeys: actual.cacheKeys,
+  };
+});
 
 // Mock the toaster
 jest.mock("@/components/ui/toaster", () => ({
@@ -76,10 +81,10 @@ jest.mock("@/components/run/RunModal", () => ({
   ),
 }));
 
+import { searchRuns, submitRun } from "@datarecce/ui/api";
 import { useRecceActionContext } from "@datarecce/ui/contexts";
 import { findByRunType } from "@/components/run/registry";
 import { toaster } from "@/components/ui/toaster";
-import { searchRuns, submitRun } from "../../api/runs";
 import { RecceActionAdapter } from "../RecceActionAdapter";
 import { useAppLocation } from "../useAppRouter";
 

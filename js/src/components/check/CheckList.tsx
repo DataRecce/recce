@@ -1,3 +1,4 @@
+import { type Check, cacheKeys, updateCheck } from "@datarecce/ui/api";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import {
@@ -24,8 +25,6 @@ import React, { useState } from "react";
 import { IconType } from "react-icons";
 import { IoClose } from "react-icons/io5";
 import { isDisabledByNoResult } from "@/components/check/utils";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { Check, updateCheck } from "@/lib/api/checks";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { useRun } from "@/lib/hooks/useRun";

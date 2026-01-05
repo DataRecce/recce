@@ -42,7 +42,11 @@ jest.mock("@/components/ui/mui", () => ({
   Text: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-import { ColumnType, DataFrame, RowData } from "@/lib/api/types";
+import {
+  type ColumnType,
+  type DataFrame,
+  type RowData,
+} from "@datarecce/ui/api";
 import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 
 // ============================================================================

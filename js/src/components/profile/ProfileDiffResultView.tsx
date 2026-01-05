@@ -1,10 +1,10 @@
-import { createResultView } from "@datarecce/ui/result";
-import { ProfileDiffViewOptions } from "@/lib/api/profile";
 import {
-  ColumnRenderMode,
+  type ColumnRenderMode,
   isProfileDiffRun,
   isProfileRun,
-} from "@/lib/api/types";
+  type ProfileDiffViewOptions,
+} from "@datarecce/ui/api";
+import { createResultView } from "@datarecce/ui/result";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
 import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
 import { RunToolbar } from "../run/RunToolbar";

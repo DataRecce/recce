@@ -60,9 +60,10 @@ jest.mock("@datarecce/ui/hooks", () => ({
 // Imports
 // ============================================================================
 
+import type { QueryViewOptions } from "@datarecce/ui/api";
 import { fireEvent, screen } from "@testing-library/react";
 import React from "react";
-import type { QueryViewOptions } from "@/lib/api/adhocQuery";
+// Import Run from OSS types for proper discriminated union support with Extract<>
 import type { Run } from "@/lib/api/types";
 import {
   createGridRef,

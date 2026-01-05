@@ -11,9 +11,13 @@
  * - Header cell class assignment
  */
 
+import {
+  type ColumnRenderMode,
+  type ColumnType,
+  type RowObjectType,
+} from "@datarecce/ui/api";
 import type { CellClassParams } from "ag-grid-community";
 import React from "react";
-import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
 import {
   createCellClassBase,
   createCellClassCurrent,
