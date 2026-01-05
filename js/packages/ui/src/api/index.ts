@@ -139,6 +139,28 @@ export {
 // Schema Check API
 export type { SchemaDiffViewParams } from "./schemacheck";
 export { createSchemaDiffCheck } from "./schemacheck";
+// Node Selection API
+export type { SelectInput, SelectOutput } from "./select";
+export { select } from "./select";
+// State Management API
+export type {
+  ImportedState,
+  SaveAsInput,
+  ShareStateResponse,
+  SyncStateInput,
+  SyncStateResponse,
+} from "./state";
+export {
+  exportState,
+  importState,
+  isStateSyncing,
+  rename,
+  saveAs,
+  shareState,
+  syncState,
+} from "./state";
+// Storage Keys
+export { LOCAL_STORAGE_KEYS, SESSION_STORAGE_KEYS } from "./storageKeys";
 // Run types (from types/run.ts)
 // Base types (from types/base.ts)
 export type {
@@ -183,3 +205,6 @@ export type {
   ValueDiffResult,
 } from "./valuediff";
 export { submitValueDiff, submitValueDiffDetail } from "./valuediff";
+// Version API
+export type { VersionResponse } from "./version";
+export { getVersion, useVersionNumber } from "./version";
