@@ -330,6 +330,7 @@ class ReportClient:
                     commits_before_pr_open=pr.get("commits_before_pr_open", 0),
                     commits_after_pr_open=pr.get("commits_after_pr_open", 0),
                     commits_after_summary=pr.get("commits_after_summary"),
+                    commits_fetch_failed=pr.get("commits_fetch_failed", False),
                     has_recce_session=pr.get("has_recce_session", False),
                     recce_session_url=pr.get("recce_session_url"),
                     recce_checks_count=pr.get("recce_checks_count"),

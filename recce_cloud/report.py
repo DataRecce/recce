@@ -30,6 +30,7 @@ class PRMetrics:
     commits_before_pr_open: int
     commits_after_pr_open: int
     commits_after_summary: Optional[int]
+    commits_fetch_failed: bool
     has_recce_session: bool
     recce_session_url: Optional[str]
     recce_checks_count: Optional[int]
@@ -97,6 +98,7 @@ def format_report_as_csv(report: PRMetricsReport) -> str:
             "commits_before_pr_open",
             "commits_after_pr_open",
             "commits_after_summary",
+            "commits_fetch_failed",
             "has_recce_session",
             "recce_session_url",
             "recce_checks_count",
@@ -122,6 +124,7 @@ def format_report_as_csv(report: PRMetricsReport) -> str:
                 pr.commits_before_pr_open,
                 pr.commits_after_pr_open,
                 pr.commits_after_summary if pr.commits_after_summary is not None else "",
+                pr.commits_fetch_failed,
                 pr.has_recce_session,
                 pr.recce_session_url or "",
                 pr.recce_checks_count if pr.recce_checks_count is not None else "",
