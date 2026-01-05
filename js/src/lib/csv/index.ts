@@ -67,4 +67,9 @@ export function generateCSVFilename(
   return `${type}-result-${timestamp}.csv`;
 }
 
-export { type CSVData, extractCSVData, supportsCSVExport } from "./extractors";
+export {
+  type CSVData,
+  type CSVExportOptions,
+  extractCSVData,
+  supportsCSVExport,
+} from "./extractors";
