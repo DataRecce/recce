@@ -1,21 +1,3 @@
-// Re-export from @datarecce/ui library
-
-export type {
-  CatalogMetadata,
-  GitInfo,
-  LineageData,
-  LineageDataFromMetadata,
-  LineageDiffData,
-  ManifestMetadata,
-  NodeColumnData,
-  NodeData,
-  PullRequestInfo,
-  ServerInfoResult,
-  SQLMeshInfo,
-  StateMetadata,
-} from "@datarecce/ui/api";
-export { getServerInfo } from "@datarecce/ui/api";
-
 // ============================================================================
 // OSS-specific functions (not in library)
 // ============================================================================

@@ -1,55 +1,3 @@
-// ============================================================================
-// Re-export base types from @datarecce/ui/api library
-// ============================================================================
-
-export type {
-  AxiosQueryParams,
-  ColumnRenderMode,
-  ColumnType,
-  DataFrame,
-  RowData,
-  RowDataTypes,
-  RowObjectType,
-} from "@datarecce/ui/api";
-
-// ============================================================================
-// Re-export run types from @datarecce/ui/api library
-// ============================================================================
-
-export type {
-  BaseRun,
-  LineageDiffParams,
-  RunProgress,
-  RunStatus,
-  RunType,
-  SchemaDiffParams,
-} from "@datarecce/ui/api";
-
-// Re-export type guards and utilities
-export {
-  isHistogramDiffRun,
-  isLineageDiffRun,
-  isProfileDiffRun,
-  isProfileRun,
-  isQueryBaseRun,
-  isQueryDiffRun,
-  isQueryRun,
-  isRowCountDiffRun,
-  isRowCountRun,
-  isSandboxRun,
-  isSchemaDiffRun,
-  isSimpleRun,
-  isTopKDiffRun,
-  isValidRunType,
-  isValueDiffDetailRun,
-  isValueDiffRun,
-  RUN_TYPES,
-} from "@datarecce/ui/api";
-
-// ============================================================================
-// Re-export param types from API files
-// ============================================================================
-
 // Import types for local Run union from @datarecce/ui/api
 import type {
   BaseRun,
@@ -66,7 +14,6 @@ import type {
   RowCountDiffResult,
   RowCountParams,
   RowCountResult,
-  RunType,
   SchemaDiffParams,
   TopKDiffParams,
   TopKDiffResult,

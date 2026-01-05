@@ -74,8 +74,21 @@ jest.mock("@/lib/api/track", () => ({
   trackNavigation: jest.fn(),
 }));
 
-jest.mock("@/lib/api/checks", () => ({
+jest.mock("@datarecce/ui/api", () => ({
   listChecks: jest.fn(() => Promise.resolve([])),
+  cacheKeys: {
+    rowCount: (model: string) => ["row_count", model],
+    lineage: () => ["lineage"],
+    checks: () => ["checks", "list"],
+    check: (checkId: string) => ["checks", checkId],
+    checkEvents: (checkId: string) => ["checks", checkId, "events"],
+    runs: () => ["runs"],
+    run: (runId: string) => ["runs", runId],
+    runsAggregated: () => ["runs_aggregated"],
+    flag: () => ["flag"],
+    instanceInfo: () => ["instance_info"],
+    user: () => ["user"],
+  },
 }));
 
 // Mock components that might cause issues in tests

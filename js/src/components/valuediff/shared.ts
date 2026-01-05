@@ -1,4 +1,4 @@
-import { ColumnRenderMode } from "../../lib/api/types";
+import { ColumnRenderMode } from "@datarecce/ui/api";
 
 export function columnPrecisionSelectOptions(
   colName: string,

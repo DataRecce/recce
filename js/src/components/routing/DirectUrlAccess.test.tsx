@@ -9,7 +9,7 @@ import { render, renderHook, screen, waitFor } from "@testing-library/react";
 import React from "react";
 
 // Mock the API and context hooks
-jest.mock("@/lib/api/checks", () => ({
+jest.mock("@datarecce/ui/api", () => ({
   listChecks: jest.fn(() =>
     Promise.resolve([
       { check_id: "check-1", name: "Check 1", type: "schema_diff" },
