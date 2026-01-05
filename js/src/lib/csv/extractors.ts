@@ -19,6 +19,29 @@ export interface CSVExportOptions {
 }
 
 /**
+ * Format a cell value for inline diff mode
+ * If base and current are the same, return the value
+ * If different, return "(base_value) (current_value)"
+ */
+function formatInlineDiffCell(
+  baseValue: unknown,
+  currentValue: unknown,
+): unknown {
+  // Convert to string for comparison
+  const baseStr = baseValue == null ? "" : String(baseValue);
+  const currentStr = currentValue == null ? "" : String(currentValue);
+
+  if (baseStr === currentStr) {
+    return baseValue;
+  }
+
+  // Format as "(base) (current)" when different
+  const baseDisplay = baseValue == null ? "" : `(${baseValue})`;
+  const currentDisplay = currentValue == null ? "" : `(${currentValue})`;
+  return `${baseDisplay} ${currentDisplay}`.trim();
+}
+
+/**
  * Extract columns and rows from a DataFrame
  */
 function extractDataFrame(df: DataFrame | undefined): CSVData | null {
@@ -190,23 +213,27 @@ function extractQueryDiffJoined(
     return { columns, rows };
   }
 
-  // Inline mode: interleaved rows with _source column
-  const columns = ["_source", ...dataColumnNames];
+  // Inline mode: merged rows with diff shown in parentheses
+  // Format: value if same, "(base_value) (current_value)" if different
+  const columns = [...dataColumnNames];
   const rows: unknown[][] = [];
 
   for (const pkValue of rowOrder) {
     const group = groupedRows.get(pkValue);
     if (!group) continue;
 
-    // Add base row if exists
-    if (group.base) {
-      rows.push(["base", ...group.base]);
-    }
+    const baseValues = group.base;
+    const currentValues = group.current;
 
-    // Add current row if exists
-    if (group.current) {
-      rows.push(["current", ...group.current]);
-    }
+    // Merge base and current into single row
+    const row: unknown[] = [];
+    dataColumnNames.forEach((_, colIndex) => {
+      const baseVal = baseValues ? baseValues[colIndex] : null;
+      const currentVal = currentValues ? currentValues[colIndex] : null;
+      row.push(formatInlineDiffCell(baseVal, currentVal));
+    });
+
+    rows.push(row);
   }
 
   return { columns, rows };
@@ -256,20 +283,26 @@ function extractQueryDiffSeparate(
     return { columns, rows };
   }
 
-  // Inline mode: interleaved rows with _source column
-  const columns = ["_source", ...columnNames];
+  // Inline mode: merged rows with diff shown in parentheses
+  // Format: value if same, "(base_value) (current_value)" if different
+  const columns = [...columnNames];
   const rows: unknown[][] = [];
 
   const maxRows = Math.max(typed.base.data.length, typed.current.data.length);
   for (let i = 0; i < maxRows; i++) {
-    // Add base row first
-    if (i < typed.base.data.length) {
-      rows.push(["base", ...typed.base.data[i]]);
-    }
-    // Add corresponding current row right after
-    if (i < typed.current.data.length) {
-      rows.push(["current", ...typed.current.data[i]]);
-    }
+    const baseRow = i < typed.base.data.length ? typed.base.data[i] : null;
+    const currentRow =
+      i < typed.current.data.length ? typed.current.data[i] : null;
+
+    // Merge base and current into single row
+    const row: unknown[] = [];
+    columnNames.forEach((_, colIndex) => {
+      const baseVal = baseRow ? baseRow[colIndex] : null;
+      const currentVal = currentRow ? currentRow[colIndex] : null;
+      row.push(formatInlineDiffCell(baseVal, currentVal));
+    });
+
+    rows.push(row);
   }
 
   return { columns, rows };
