@@ -125,12 +125,14 @@ const SingleEnvironmentSetupNotification = ({
 
 const RunResultExportMenu = ({
   run,
+  viewOptions,
   disableExport,
   onCopyAsImage,
   onMouseEnter,
   onMouseLeave,
 }: {
   run?: Run;
+  viewOptions?: ViewOptionTypes;
   disableExport: boolean;
   onCopyAsImage: () => Promise<void>;
   onMouseEnter: () => void;
@@ -138,7 +140,10 @@ const RunResultExportMenu = ({
 }) => {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const open = Boolean(anchorEl);
-  const { canExportCSV, copyAsCSV, downloadAsCSV } = useCSVExport({ run });
+  const { canExportCSV, copyAsCSV, downloadAsCSV } = useCSVExport({
+    run,
+    viewOptions: viewOptions as Record<string, unknown>,
+  });
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -206,12 +211,14 @@ const RunResultExportMenu = ({
 
 const RunResultShareMenu = ({
   run,
+  viewOptions,
   disableCopyToClipboard,
   onCopyToClipboard,
   onMouseEnter,
   onMouseLeave,
 }: {
   run?: Run;
+  viewOptions?: ViewOptionTypes;
   disableCopyToClipboard: boolean;
   onCopyToClipboard: () => Promise<void>;
   onMouseEnter: () => void;
@@ -222,7 +229,10 @@ const RunResultShareMenu = ({
   const [showModal, setShowModal] = useState(false);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const open = Boolean(anchorEl);
-  const { canExportCSV, copyAsCSV, downloadAsCSV } = useCSVExport({ run });
+  const { canExportCSV, copyAsCSV, downloadAsCSV } = useCSVExport({
+    run,
+    viewOptions: viewOptions as Record<string, unknown>,
+  });
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -409,6 +419,7 @@ export const PrivateLoadableRunView = ({
           {featureToggles.disableShare ? (
             <RunResultExportMenu
               run={run}
+              viewOptions={viewOptions}
               disableExport={
                 !runId || !run?.result || !!error || tabValue !== "result"
               }
@@ -419,6 +430,7 @@ export const PrivateLoadableRunView = ({
           ) : (
             <RunResultShareMenu
               run={run}
+              viewOptions={viewOptions}
               disableCopyToClipboard={disableCopyToClipboard}
               onCopyToClipboard={async () => {
                 await onCopyToClipboard();

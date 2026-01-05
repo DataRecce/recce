@@ -5,6 +5,7 @@ import { useCallback, useMemo } from "react";
 import { toaster } from "@/components/ui/toaster";
 import type { Run } from "@/lib/api/types";
 import {
+  type CSVExportOptions,
   copyCSVToClipboard,
   downloadCSV,
   extractCSVData,
@@ -15,6 +16,8 @@ import {
 
 interface UseCSVExportOptions {
   run?: Run;
+  /** View options - displayMode is extracted if present (for query_diff views) */
+  viewOptions?: Record<string, unknown>;
 }
 
 interface UseCSVExportResult {
@@ -26,7 +29,10 @@ interface UseCSVExportResult {
   downloadAsCSV: () => void;
 }
 
-export function useCSVExport({ run }: UseCSVExportOptions): UseCSVExportResult {
+export function useCSVExport({
+  run,
+  viewOptions,
+}: UseCSVExportOptions): UseCSVExportResult {
   const canExportCSV = useMemo(() => {
     if (!run?.type || !run?.result) return false;
     return supportsCSVExport(run.type);
@@ -35,11 +41,26 @@ export function useCSVExport({ run }: UseCSVExportOptions): UseCSVExportResult {
   const getCSVContent = useCallback((): string | null => {
     if (!run?.type || !run?.result) return null;
 
-    const csvData = extractCSVData(run.type, run.result);
+    // Extract display_mode from viewOptions if it exists (for query_diff)
+    const displayMode = viewOptions?.display_mode as
+      | "inline"
+      | "side_by_side"
+      | undefined;
+
+    // Extract primary_keys from run params (for query_diff with primary keys)
+    const primaryKeys = (run?.params as { primary_keys?: string[] })
+      ?.primary_keys;
+
+    const exportOptions: CSVExportOptions = {
+      displayMode,
+      primaryKeys,
+    };
+
+    const csvData = extractCSVData(run.type, run.result, exportOptions);
     if (!csvData) return null;
 
     return toCSV(csvData.columns, csvData.rows);
-  }, [run?.type, run?.result]);
+  }, [run?.type, run?.result, run?.params, viewOptions]);
 
   const copyAsCSV = useCallback(async () => {
     const content = getCSVContent();
