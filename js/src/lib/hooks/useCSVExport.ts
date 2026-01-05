@@ -82,7 +82,8 @@ export function useCSVExport({
         type: "success",
         duration: 2000,
       });
-    } catch {
+    } catch (error) {
+      console.error("Failed to copy CSV to clipboard:", error);
       toaster.create({
         title: "Copy failed",
         description: "Failed to copy to clipboard",
@@ -116,7 +117,8 @@ export function useCSVExport({
         type: "success",
         duration: 3000,
       });
-    } catch {
+    } catch (error) {
+      console.error("Failed to download CSV file:", error);
       toaster.create({
         title: "Download failed",
         description: "Failed to download CSV file",

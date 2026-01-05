@@ -76,8 +76,11 @@ function extractQueryBase(result: unknown): CSVData | null {
  * 2. { base: DataFrame, current: DataFrame } - separate base/current (QueryDiffResultView)
  *
  * Display modes:
- * - "inline": Interleaved rows with _source column (base row, current row, base row, ...)
+ * - "inline": Merged rows where same values shown as-is, differing values shown as "(base) (current)"
  * - "side_by_side": Single row per record with base__col, current__col columns
+ *
+ * Note: When base and current have different row counts (e.g., added/removed rows),
+ * the merge is done positionally. Extra rows will show null for the missing environment.
  */
 function extractQueryDiff(
   result: unknown,
@@ -388,9 +391,10 @@ function extractValueDiffDetail(result: unknown): CSVData | null {
 function extractTopKDiff(result: unknown): CSVData | null {
   const typed = result as TopKDiffResult;
 
-  // Prefer current, fall back to base
-  const topK = typed?.current || typed?.base;
-  if (!topK?.values) return null;
+  // Check if either base or current has values
+  const hasBaseValues = !!typed?.base?.values;
+  const hasCurrentValues = !!typed?.current?.values;
+  if (!hasBaseValues && !hasCurrentValues) return null;
 
   // TopK has { values: [...], counts: [...], valids: number }
   const columns = ["_source", "value", "count"];
@@ -447,7 +451,11 @@ export function extractCSVData(
 
   try {
     return extractor(result, options);
-  } catch {
+  } catch (error) {
+    console.error(
+      `Failed to extract CSV data for run type "${runType}":`,
+      error,
+    );
     return null;
   }
 }
