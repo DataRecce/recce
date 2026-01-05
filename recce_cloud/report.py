@@ -171,10 +171,6 @@ def display_report_summary(console: Console, report: PRMetricsReport):
     # Recce Adoption section
     console.print("[bold white]Recce Adoption[/bold white]")
     console.print(
-        f"  PRs with Recce sessions:    {summary.prs_with_recce_session}/{summary.total_prs} "
-        f"([green]{summary.recce_adoption_rate}%[/green])"
-    )
-    console.print(
         f"  PRs with Recce summary:     {summary.prs_with_recce_summary}/{summary.total_prs} "
         f"([green]{summary.summary_generation_rate}%[/green])"
     )
@@ -190,13 +186,6 @@ def display_report_summary(console: Console, report: PRMetricsReport):
         f"  Commits after PR open:      {summary.total_commits_after_pr_open} total, "
         f"{summary.avg_commits_after_pr_open:.1f} avg/PR"
     )
-    if summary.avg_commits_after_summary is not None:
-        console.print(
-            f"  Commits after summary:      {summary.total_commits_after_summary} total, "
-            f"{summary.avg_commits_after_summary:.1f} avg/PR"
-        )
-    else:
-        console.print("  Commits after summary:      N/A (no summaries generated)")
 
     console.print()
     console.print("[bold cyan]═══════════════════════════════════════════════════════════[/bold cyan]")
@@ -227,14 +216,6 @@ def display_report_summary(console: Console, report: PRMetricsReport):
                 else ("[dim]✗[/dim]" if pr.recce_summary_generated is False else "[dim]-[/dim]")
             )
 
-            # Commits after summary (key metric)
-            after_sum_display = ""
-            if pr.commits_after_summary is not None:
-                if pr.commits_after_summary > 0:
-                    after_sum_display = f" [yellow]({pr.commits_after_summary} commits after summary)[/yellow]"
-                else:
-                    after_sum_display = " [green](0 commits after summary)[/green]"
-
             # Time to merge display
             time_display = ""
             if pr.time_to_merge is not None:
@@ -246,7 +227,7 @@ def display_report_summary(console: Console, report: PRMetricsReport):
                 f"      {state_display} by {pr.pr_author or 'unknown'}{time_display} | "
                 f"Commits: {pr.commits_before_pr_open} before, {pr.commits_after_pr_open} after PR open"
             )
-            console.print(f"      Recce: session {session_icon}  summary {summary_icon}{after_sum_display}")
+            console.print(f"      Recce: session {session_icon}  summary {summary_icon}")
             if pr.pr_url:
                 console.print(f"      [dim]{pr.pr_url}[/dim]")
             console.print()

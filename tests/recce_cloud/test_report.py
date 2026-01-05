@@ -806,7 +806,7 @@ class TestDisplayReportSummary(unittest.TestCase):
         self.assertIn("Total PRs", output_text)
         self.assertIn("Merged", output_text)
         self.assertIn("Recce Adoption", output_text)
-        self.assertIn("50.0%", output_text)  # adoption rate
+        self.assertIn("33.3%", output_text)  # summary generation rate
 
     def test_display_summary_empty_report(self):
         """Test display with no pull requests shows appropriate message."""
