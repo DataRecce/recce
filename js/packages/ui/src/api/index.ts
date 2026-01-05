@@ -14,6 +14,28 @@ export type {
 export { submitQuery, submitQueryBase, submitQueryDiff } from "./adhocQuery";
 // Cache keys for TanStack Query
 export { cacheKeys } from "./cacheKeys";
+// Check Events API (cloud-only timeline/discussion)
+export type {
+  ActorType,
+  CheckEvent,
+  CheckEventActor,
+  CheckEventsListResponse,
+  CheckEventType,
+  CreateCommentRequest,
+  UpdateCommentRequest,
+} from "./checkEvents";
+export {
+  createComment,
+  deleteComment,
+  getCheckEvent,
+  getEventDescription,
+  getEventIconType,
+  isCommentEvent,
+  isStateChangeEvent,
+  isSystemEvent,
+  listCheckEvents,
+  updateComment,
+} from "./checkEvents";
 // Checks API (saved validation checks)
 export type { Check, CreateCheckBody } from "./checks";
 export {
@@ -27,6 +49,14 @@ export {
   updateCheck,
   useChecks,
 } from "./checks";
+// Column-Level Lineage (CLL) API
+export type {
+  CllInput,
+  CllNodeData,
+  ColumnLineageData,
+  ImpactRadiusParams,
+} from "./cll";
+export { getCll } from "./cll";
 // Server flags API
 export type { RecceServerFlags } from "./flag";
 export { getServerFlag, markRelaunchHintCompleted } from "./flag";
@@ -56,6 +86,9 @@ export {
   sendKeepAlive,
   setKeepAliveCallback,
 } from "./keepAlive";
+// Lineage Check API
+export type { LineageDiffViewOptions } from "./lineagecheck";
+export { createLineageDiffCheck } from "./lineagecheck";
 // Models API (model row count operations)
 export type { QueryRowCountResult } from "./models";
 export {
@@ -103,6 +136,9 @@ export {
   submitRunFromCheck,
   waitRun,
 } from "./runs";
+// Schema Check API
+export type { SchemaDiffViewParams } from "./schemacheck";
+export { createSchemaDiffCheck } from "./schemacheck";
 // Run types (from types/run.ts)
 // Base types (from types/base.ts)
 export type {
