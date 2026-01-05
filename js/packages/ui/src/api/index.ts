@@ -31,6 +31,40 @@ export {
   sendKeepAlive,
   setKeepAliveCallback,
 } from "./keepAlive";
-// Runs API (aggregated run results)
-export type { RunsAggregated } from "./runs";
-export { aggregateRuns } from "./runs";
+// Runs API (core run operations and aggregation)
+export type {
+  RunsAggregated,
+  SubmitOptions,
+  SubmitRunTrackProps,
+} from "./runs";
+export {
+  aggregateRuns,
+  cancelRun,
+  getRun,
+  listRuns,
+  searchRuns,
+  submitRun,
+  submitRunFromCheck,
+  waitRun,
+} from "./runs";
+// Run types (from types/run.ts)
+export type { BaseRun, Run, RunProgress, RunStatus, RunType } from "./types";
+export {
+  isHistogramDiffRun,
+  isLineageDiffRun,
+  isProfileDiffRun,
+  isProfileRun,
+  isQueryBaseRun,
+  isQueryDiffRun,
+  isQueryRun,
+  isRowCountDiffRun,
+  isRowCountRun,
+  isSandboxRun,
+  isSchemaDiffRun,
+  isSimpleRun,
+  isTopKDiffRun,
+  isValidRunType,
+  isValueDiffDetailRun,
+  isValueDiffRun,
+  RUN_TYPES,
+} from "./types";
