@@ -15,9 +15,43 @@ export function downloadCSV(content: string, filename: string): void {
 
 /**
  * Copy CSV content to clipboard
+ * Uses modern Clipboard API with fallback for older browsers
  */
 export async function copyCSVToClipboard(content: string): Promise<void> {
-  await navigator.clipboard.writeText(content);
+  // Prefer modern async Clipboard API when available in a browser context
+  if (
+    typeof navigator !== "undefined" &&
+    navigator.clipboard &&
+    typeof navigator.clipboard.writeText === "function"
+  ) {
+    await navigator.clipboard.writeText(content);
+    return;
+  }
+
+  // Fallback for older browsers or non-secure contexts using execCommand
+  if (typeof document === "undefined") {
+    // In non-DOM environments (e.g., SSR), throw error
+    throw new Error("Clipboard API not available in this environment");
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = content;
+  textarea.style.position = "fixed"; // avoid scrolling to bottom
+  textarea.style.opacity = "0";
+  textarea.setAttribute("readonly", "");
+  document.body.appendChild(textarea);
+
+  textarea.focus();
+  textarea.select();
+
+  try {
+    const success = document.execCommand("copy");
+    if (!success) {
+      throw new Error("execCommand('copy') failed");
+    }
+  } finally {
+    document.body.removeChild(textarea);
+  }
 }
 
 /**
