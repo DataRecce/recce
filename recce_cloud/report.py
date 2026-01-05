@@ -1,7 +1,7 @@
 """
 Report generation module for Recce Cloud CLI.
 
-Handles fetching CR metrics reports from Recce Cloud API and formatting as CSV.
+Handles fetching PR metrics reports from Recce Cloud API and formatting as CSV.
 """
 
 import csv
@@ -24,18 +24,19 @@ RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.dat
 
 
 @dataclass
-class CRMetrics:
-    """Metrics for a single change request."""
+class PRMetrics:
+    """Metrics for a single pull request."""
 
-    cr_number: int
-    cr_title: str
-    cr_state: str
-    cr_url: str
-    cr_author: Optional[str]
-    cr_created_at: Optional[str]
-    cr_merged_at: Optional[str]
-    commits_before_cr_open: int
-    commits_after_cr_open: int
+    pr_number: int
+    pr_title: str
+    pr_state: str
+    pr_url: str
+    pr_author: Optional[str]
+    pr_created_at: Optional[str]
+    pr_merged_at: Optional[str]
+    time_to_merge: Optional[float]
+    commits_before_pr_open: int
+    commits_after_pr_open: int
     commits_after_summary: Optional[int]
     has_recce_session: bool
     recce_session_url: Optional[str]
@@ -49,31 +50,32 @@ class CRMetrics:
 class SummaryStatistics:
     """Aggregated statistics for the report."""
 
-    total_crs: int
-    crs_merged: int
-    crs_open: int
-    crs_with_recce_session: int
-    crs_with_recce_summary: int
+    total_prs: int
+    prs_merged: int
+    prs_open: int
+    prs_with_recce_session: int
+    prs_with_recce_summary: int
     recce_adoption_rate: float
     summary_generation_rate: float
-    total_commits_before_cr_open: int
-    total_commits_after_cr_open: int
+    total_commits_before_pr_open: int
+    total_commits_after_pr_open: int
     total_commits_after_summary: int
-    avg_commits_before_cr_open: float
-    avg_commits_after_cr_open: float
+    avg_commits_before_pr_open: float
+    avg_commits_after_pr_open: float
     avg_commits_after_summary: Optional[float]
+    avg_time_to_merge: Optional[float]
 
 
 @dataclass
-class CRMetricsReport:
-    """Full CR metrics report."""
+class PRMetricsReport:
+    """Full PR metrics report."""
 
     success: bool
     repo: str
     date_range_since: str
     date_range_until: str
     summary: SummaryStatistics
-    change_requests: List[CRMetrics]
+    pull_requests: List[PRMetrics]
 
 
 class ReportClient:
@@ -117,31 +119,31 @@ class ReportClient:
                 status_code=0,
             )
 
-    def get_cr_metrics(
+    def get_pr_metrics(
         self,
         repo: str,
         since: str = "30d",
         until: Optional[str] = None,
         base_branch: str = "main",
         merged_only: bool = True,
-    ) -> CRMetricsReport:
+    ) -> PRMetricsReport:
         """
-        Fetch CR metrics report from Recce Cloud API.
+        Fetch PR metrics report from Recce Cloud API.
 
         Args:
             repo: Repository full name (owner/repo)
             since: Start date (ISO format or relative like 30d)
             until: End date (ISO format or relative). Defaults to today.
             base_branch: Target branch filter
-            merged_only: Only include merged CRs
+            merged_only: Only include merged PRs
 
         Returns:
-            CRMetricsReport containing all metrics
+            PRMetricsReport containing all metrics
 
         Raises:
             RecceCloudException: If the request fails
         """
-        api_url = f"{self.base_url_v2}/reports/cr-metrics"
+        api_url = f"{self.base_url_v2}/reports/pr-metrics"
 
         params = {
             "repo": repo,
@@ -197,65 +199,67 @@ class ReportClient:
                 status_code=response.status_code,
             )
 
-        # Parse change requests
-        change_requests = []
-        for cr in data.get("change_requests", []):
-            change_requests.append(
-                CRMetrics(
-                    cr_number=cr.get("cr_number", 0),
-                    cr_title=cr.get("cr_title", ""),
-                    cr_state=cr.get("cr_state", "unknown"),
-                    cr_url=cr.get("cr_url", ""),
-                    cr_author=cr.get("cr_author"),
-                    cr_created_at=cr.get("cr_created_at"),
-                    cr_merged_at=cr.get("cr_merged_at"),
-                    commits_before_cr_open=cr.get("commits_before_cr_open", 0),
-                    commits_after_cr_open=cr.get("commits_after_cr_open", 0),
-                    commits_after_summary=cr.get("commits_after_summary"),
-                    has_recce_session=cr.get("has_recce_session", False),
-                    recce_session_url=cr.get("recce_session_url"),
-                    recce_checks_count=cr.get("recce_checks_count"),
-                    recce_check_types=cr.get("recce_check_types"),
-                    recce_summary_generated=cr.get("recce_summary_generated"),
-                    recce_summary_at=cr.get("recce_summary_at"),
+        # Parse pull requests
+        pull_requests = []
+        for pr in data.get("pull_requests", []):
+            pull_requests.append(
+                PRMetrics(
+                    pr_number=pr.get("pr_number", 0),
+                    pr_title=pr.get("pr_title", ""),
+                    pr_state=pr.get("pr_state", "unknown"),
+                    pr_url=pr.get("pr_url", ""),
+                    pr_author=pr.get("pr_author"),
+                    pr_created_at=pr.get("pr_created_at"),
+                    pr_merged_at=pr.get("pr_merged_at"),
+                    time_to_merge=pr.get("time_to_merge"),
+                    commits_before_pr_open=pr.get("commits_before_pr_open", 0),
+                    commits_after_pr_open=pr.get("commits_after_pr_open", 0),
+                    commits_after_summary=pr.get("commits_after_summary"),
+                    has_recce_session=pr.get("has_recce_session", False),
+                    recce_session_url=pr.get("recce_session_url"),
+                    recce_checks_count=pr.get("recce_checks_count"),
+                    recce_check_types=pr.get("recce_check_types"),
+                    recce_summary_generated=pr.get("recce_summary_generated"),
+                    recce_summary_at=pr.get("recce_summary_at"),
                 )
             )
 
         # Parse summary statistics
         summary_data = data.get("summary", {})
         summary = SummaryStatistics(
-            total_crs=summary_data.get("total_crs", len(change_requests)),
-            crs_merged=summary_data.get("crs_merged", 0),
-            crs_open=summary_data.get("crs_open", 0),
-            crs_with_recce_session=summary_data.get("crs_with_recce_session", 0),
-            crs_with_recce_summary=summary_data.get("crs_with_recce_summary", 0),
+            total_prs=summary_data.get("total_prs", len(pull_requests)),
+            prs_merged=summary_data.get("prs_merged", 0),
+            prs_open=summary_data.get("prs_open", 0),
+            prs_with_recce_session=summary_data.get("prs_with_recce_session", 0),
+            prs_with_recce_summary=summary_data.get("prs_with_recce_summary", 0),
             recce_adoption_rate=summary_data.get("recce_adoption_rate", 0.0),
             summary_generation_rate=summary_data.get("summary_generation_rate", 0.0),
-            total_commits_before_cr_open=summary_data.get("total_commits_before_cr_open", 0),
-            total_commits_after_cr_open=summary_data.get("total_commits_after_cr_open", 0),
+            total_commits_before_pr_open=summary_data.get("total_commits_before_pr_open", 0),
+            total_commits_after_pr_open=summary_data.get("total_commits_after_pr_open", 0),
             total_commits_after_summary=summary_data.get("total_commits_after_summary", 0),
-            avg_commits_before_cr_open=summary_data.get("avg_commits_before_cr_open", 0.0),
-            avg_commits_after_cr_open=summary_data.get("avg_commits_after_cr_open", 0.0),
+            avg_commits_before_pr_open=summary_data.get("avg_commits_before_pr_open", 0.0),
+            avg_commits_after_pr_open=summary_data.get("avg_commits_after_pr_open", 0.0),
             avg_commits_after_summary=summary_data.get("avg_commits_after_summary"),
+            avg_time_to_merge=summary_data.get("avg_time_to_merge"),
         )
 
         date_range = data.get("date_range", {})
-        return CRMetricsReport(
+        return PRMetricsReport(
             success=data.get("success", True),
             repo=data.get("repo", repo),
             date_range_since=date_range.get("since", ""),
             date_range_until=date_range.get("until", ""),
             summary=summary,
-            change_requests=change_requests,
+            pull_requests=pull_requests,
         )
 
 
-def format_report_as_csv(report: CRMetricsReport) -> str:
+def format_report_as_csv(report: PRMetricsReport) -> str:
     """
-    Convert CR metrics report to CSV format.
+    Convert PR metrics report to CSV format.
 
     Args:
-        report: CRMetricsReport to convert
+        report: PRMetricsReport to convert
 
     Returns:
         CSV formatted string
@@ -266,15 +270,16 @@ def format_report_as_csv(report: CRMetricsReport) -> str:
     # Header row - enhanced with new fields
     writer.writerow(
         [
-            "cr_number",
-            "cr_title",
-            "cr_state",
-            "cr_url",
-            "cr_author",
-            "cr_created_at",
-            "cr_merged_at",
-            "commits_before_cr_open",
-            "commits_after_cr_open",
+            "pr_number",
+            "pr_title",
+            "pr_state",
+            "pr_url",
+            "pr_author",
+            "pr_created_at",
+            "pr_merged_at",
+            "time_to_merge",
+            "commits_before_pr_open",
+            "commits_after_pr_open",
             "commits_after_summary",
             "has_recce_session",
             "recce_session_url",
@@ -286,46 +291,47 @@ def format_report_as_csv(report: CRMetricsReport) -> str:
     )
 
     # Data rows
-    for cr in report.change_requests:
-        check_types = ";".join(cr.recce_check_types) if cr.recce_check_types else ""
+    for pr in report.pull_requests:
+        check_types = ";".join(pr.recce_check_types) if pr.recce_check_types else ""
         writer.writerow(
             [
-                cr.cr_number,
-                cr.cr_title,
-                cr.cr_state,
-                cr.cr_url,
-                cr.cr_author or "",
-                cr.cr_created_at or "",
-                cr.cr_merged_at or "",
-                cr.commits_before_cr_open,
-                cr.commits_after_cr_open,
-                cr.commits_after_summary if cr.commits_after_summary is not None else "",
-                cr.has_recce_session,
-                cr.recce_session_url or "",
-                cr.recce_checks_count if cr.recce_checks_count is not None else "",
+                pr.pr_number,
+                pr.pr_title,
+                pr.pr_state,
+                pr.pr_url,
+                pr.pr_author or "",
+                pr.pr_created_at or "",
+                pr.pr_merged_at or "",
+                pr.time_to_merge if pr.time_to_merge is not None else "",
+                pr.commits_before_pr_open,
+                pr.commits_after_pr_open,
+                pr.commits_after_summary if pr.commits_after_summary is not None else "",
+                pr.has_recce_session,
+                pr.recce_session_url or "",
+                pr.recce_checks_count if pr.recce_checks_count is not None else "",
                 check_types,
-                cr.recce_summary_generated if cr.recce_summary_generated is not None else "",
-                cr.recce_summary_at or "",
+                pr.recce_summary_generated if pr.recce_summary_generated is not None else "",
+                pr.recce_summary_at or "",
             ]
         )
 
     return output.getvalue()
 
 
-def display_report_summary(console: Console, report: CRMetricsReport):
+def display_report_summary(console: Console, report: PRMetricsReport):
     """
     Display a summary of the report to console.
 
     Args:
         console: Rich console for output
-        report: CRMetricsReport to summarize
+        report: PRMetricsReport to summarize
     """
     console.print()
     console.print(f"[bold]Repository:[/bold] {report.repo}")
     console.print(f"[bold]Date Range:[/bold] {report.date_range_since} to {report.date_range_until}")
 
-    if not report.change_requests:
-        console.print("[yellow]No change requests found in the specified date range.[/yellow]")
+    if not report.pull_requests:
+        console.print("[yellow]No pull requests found in the specified date range.[/yellow]")
         return
 
     # Use API-provided summary statistics
@@ -339,19 +345,21 @@ def display_report_summary(console: Console, report: CRMetricsReport):
 
     # Overview section
     console.print("[bold white]Overview[/bold white]")
-    console.print(f"  Total CRs:     {summary.total_crs}")
-    console.print(f"  Merged:        {summary.crs_merged}")
-    console.print(f"  Open:          {summary.crs_open}")
+    console.print(f"  Total PRs:     {summary.total_prs}")
+    console.print(f"  Merged:        {summary.prs_merged}")
+    console.print(f"  Open:          {summary.prs_open}")
+    if summary.avg_time_to_merge is not None:
+        console.print(f"  Avg Time to Merge: {summary.avg_time_to_merge:.1f} hours")
     console.print()
 
     # Recce Adoption section
     console.print("[bold white]Recce Adoption[/bold white]")
     console.print(
-        f"  CRs with Recce sessions:    {summary.crs_with_recce_session}/{summary.total_crs} "
+        f"  PRs with Recce sessions:    {summary.prs_with_recce_session}/{summary.total_prs} "
         f"([green]{summary.recce_adoption_rate}%[/green])"
     )
     console.print(
-        f"  CRs with Recce summary:     {summary.crs_with_recce_summary}/{summary.total_crs} "
+        f"  PRs with Recce summary:     {summary.prs_with_recce_summary}/{summary.total_prs} "
         f"([green]{summary.summary_generation_rate}%[/green])"
     )
     console.print()
@@ -359,17 +367,17 @@ def display_report_summary(console: Console, report: CRMetricsReport):
     # Commit Analysis section
     console.print("[bold white]Commit Analysis[/bold white]")
     console.print(
-        f"  Commits before CR open:     {summary.total_commits_before_cr_open} total, "
-        f"{summary.avg_commits_before_cr_open:.1f} avg/CR"
+        f"  Commits before PR open:     {summary.total_commits_before_pr_open} total, "
+        f"{summary.avg_commits_before_pr_open:.1f} avg/PR"
     )
     console.print(
-        f"  Commits after CR open:      {summary.total_commits_after_cr_open} total, "
-        f"{summary.avg_commits_after_cr_open:.1f} avg/CR"
+        f"  Commits after PR open:      {summary.total_commits_after_pr_open} total, "
+        f"{summary.avg_commits_after_pr_open:.1f} avg/PR"
     )
     if summary.avg_commits_after_summary is not None:
         console.print(
             f"  Commits after summary:      {summary.total_commits_after_summary} total, "
-            f"{summary.avg_commits_after_summary:.1f} avg/CR"
+            f"{summary.avg_commits_after_summary:.1f} avg/PR"
         )
     else:
         console.print("  Commits after summary:      N/A (no summaries generated)")
@@ -378,14 +386,14 @@ def display_report_summary(console: Console, report: CRMetricsReport):
     console.print("[bold cyan]═══════════════════════════════════════════════════════════[/bold cyan]")
     console.print()
 
-    # Display CRs in a readable list format
-    if len(report.change_requests) > 0:
-        console.print(f"[bold white]Change Requests ({len(report.change_requests)} total)[/bold white]")
+    # Display PRs in a readable list format
+    if len(report.pull_requests) > 0:
+        console.print(f"[bold white]Pull Requests ({len(report.pull_requests)} total)[/bold white]")
         console.print()
 
-        for cr in report.change_requests[:10]:
+        for pr in report.pull_requests[:10]:
             # State with color
-            state = cr.cr_state
+            state = pr.pr_state
             if state == "merged":
                 state_display = "[green]merged[/green]"
             elif state == "opened":
@@ -396,37 +404,42 @@ def display_report_summary(console: Console, report: CRMetricsReport):
                 state_display = f"[dim]{state}[/dim]"
 
             # Session and summary indicators
-            session_icon = "[green]✓[/green]" if cr.has_recce_session else "[dim]✗[/dim]"
+            session_icon = "[green]✓[/green]" if pr.has_recce_session else "[dim]✗[/dim]"
             summary_icon = (
                 "[green]✓[/green]"
-                if cr.recce_summary_generated
-                else ("[dim]✗[/dim]" if cr.recce_summary_generated is False else "[dim]-[/dim]")
+                if pr.recce_summary_generated
+                else ("[dim]✗[/dim]" if pr.recce_summary_generated is False else "[dim]-[/dim]")
             )
 
             # Commits after summary (key metric)
             after_sum_display = ""
-            if cr.commits_after_summary is not None:
-                if cr.commits_after_summary > 0:
-                    after_sum_display = f" [yellow]({cr.commits_after_summary} commits after summary)[/yellow]"
+            if pr.commits_after_summary is not None:
+                if pr.commits_after_summary > 0:
+                    after_sum_display = f" [yellow]({pr.commits_after_summary} commits after summary)[/yellow]"
                 else:
                     after_sum_display = " [green](0 commits after summary)[/green]"
 
-            # Print CR info
-            console.print(f"  [cyan]!{cr.cr_number}[/cyan] {cr.cr_title}")
+            # Time to merge display
+            time_display = ""
+            if pr.time_to_merge is not None:
+                time_display = f" | Merged in {pr.time_to_merge:.1f}h"
+
+            # Print PR info
+            console.print(f"  [cyan]!{pr.pr_number}[/cyan] {pr.pr_title}")
             console.print(
-                f"      {state_display} by {cr.cr_author or 'unknown'} | "
-                f"Commits: {cr.commits_before_cr_open} before, {cr.commits_after_cr_open} after CR open"
+                f"      {state_display} by {pr.pr_author or 'unknown'}{time_display} | "
+                f"Commits: {pr.commits_before_pr_open} before, {pr.commits_after_pr_open} after PR open"
             )
             console.print(f"      Recce: session {session_icon}  summary {summary_icon}{after_sum_display}")
-            if cr.recce_session_url:
-                console.print(f"      [dim]{cr.recce_session_url}[/dim]")
+            if pr.recce_session_url:
+                console.print(f"      [dim]{pr.recce_session_url}[/dim]")
             console.print()
 
-        # Indicate truncation if more CRs exist
-        if len(report.change_requests) > 10:
+        # Indicate truncation if more PRs exist
+        if len(report.pull_requests) > 10:
             console.print(
-                f"[dim]... and {len(report.change_requests) - 10} more "
-                f"(showing 10 of {len(report.change_requests)} total)[/dim]"
+                f"[dim]... and {len(report.pull_requests) - 10} more "
+                f"(showing 10 of {len(report.pull_requests)} total)[/dim]"
             )
             console.print()
 
@@ -443,7 +456,7 @@ def fetch_and_generate_report(
     show_csv: bool = False,
 ) -> int:
     """
-    Fetch CR metrics and generate CSV report.
+    Fetch PR metrics and generate CSV report.
 
     Args:
         console: Rich console for output
@@ -452,18 +465,18 @@ def fetch_and_generate_report(
         since: Start date
         until: End date
         base_branch: Target branch filter
-        merged_only: Only merged CRs
+        merged_only: Only merged PRs
         output_path: Output file path for CSV (None for no file output)
         show_csv: If True, output CSV to stdout instead of summary
 
     Returns:
         Exit code (0 for success, non-zero for failure)
     """
-    console.rule("Fetching CR Metrics Report", style="blue")
+    console.rule("Fetching PR Metrics Report", style="blue")
 
     try:
         client = ReportClient(token)
-        report = client.get_cr_metrics(
+        report = client.get_pr_metrics(
             repo=repo,
             since=since,
             until=until,

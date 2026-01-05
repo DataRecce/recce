@@ -477,9 +477,9 @@ def download(target_path, session_id, prod, dry_run, force):
 )
 def report(repo, since, until, base_branch, merged_only, output, show_csv):
     """
-    Generate CR (Change Request) metrics report as CSV.
+    Generate PR (Pull Request) metrics report as CSV.
 
-    Tracks commit counts before/after CR open and Recce session data.
+    Tracks commit counts before/after PR open and Recce session data.
     Useful for measuring Recce's effectiveness in catching issues before merge.
 
     \b
@@ -500,7 +500,7 @@ def report(repo, since, until, base_branch, merged_only, output, show_csv):
       # Different repo and branch
       recce-cloud report --repo super/analytics --base-branch develop
 
-      # Include open CRs (not just merged)
+      # Include open PRs (not just merged)
       recce-cloud report --include-open
     """
     console = Console()

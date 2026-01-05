@@ -21,8 +21,8 @@ from rich.console import Console
 from recce_cloud.api.exceptions import RecceCloudException
 from recce_cloud.cli import cloud_cli
 from recce_cloud.report import (
-    CRMetrics,
-    CRMetricsReport,
+    PRMetrics,
+    PRMetricsReport,
     ReportClient,
     SummaryStatistics,
     display_report_summary,
@@ -31,21 +31,22 @@ from recce_cloud.report import (
 )
 
 
-class TestCRMetricsDataclasses(unittest.TestCase):
+class TestPRMetricsDataclasses(unittest.TestCase):
     """Test dataclass definitions and instantiation."""
 
-    def test_cr_metrics_creation(self):
-        """Test CRMetrics dataclass creation with all fields."""
-        cr = CRMetrics(
-            cr_number=42,
-            cr_title="Test PR",
-            cr_state="merged",
-            cr_url="https://github.com/owner/repo/pull/42",
-            cr_author="testuser",
-            cr_created_at="2024-01-01T00:00:00Z",
-            cr_merged_at="2024-01-02T00:00:00Z",
-            commits_before_cr_open=3,
-            commits_after_cr_open=2,
+    def test_pr_metrics_creation(self):
+        """Test PRMetrics dataclass creation with all fields."""
+        pr = PRMetrics(
+            pr_number=42,
+            pr_title="Test PR",
+            pr_state="merged",
+            pr_url="https://github.com/owner/repo/pull/42",
+            pr_author="testuser",
+            pr_created_at="2024-01-01T00:00:00Z",
+            pr_merged_at="2024-01-02T00:00:00Z",
+            time_to_merge=24.0,
+            commits_before_pr_open=3,
+            commits_after_pr_open=2,
             commits_after_summary=1,
             has_recce_session=True,
             recce_session_url="https://cloud.datarecce.io/session/abc123",
@@ -54,24 +55,26 @@ class TestCRMetricsDataclasses(unittest.TestCase):
             recce_summary_generated=True,
             recce_summary_at="2024-01-01T12:00:00Z",
         )
-        self.assertEqual(cr.cr_number, 42)
-        self.assertEqual(cr.cr_title, "Test PR")
-        self.assertEqual(cr.cr_state, "merged")
-        self.assertTrue(cr.has_recce_session)
-        self.assertEqual(cr.recce_checks_count, 5)
+        self.assertEqual(pr.pr_number, 42)
+        self.assertEqual(pr.pr_title, "Test PR")
+        self.assertEqual(pr.pr_state, "merged")
+        self.assertEqual(pr.time_to_merge, 24.0)
+        self.assertTrue(pr.has_recce_session)
+        self.assertEqual(pr.recce_checks_count, 5)
 
-    def test_cr_metrics_with_none_values(self):
-        """Test CRMetrics with optional None values."""
-        cr = CRMetrics(
-            cr_number=1,
-            cr_title="Open PR",
-            cr_state="opened",
-            cr_url="https://github.com/owner/repo/pull/1",
-            cr_author=None,
-            cr_created_at=None,
-            cr_merged_at=None,
-            commits_before_cr_open=0,
-            commits_after_cr_open=0,
+    def test_pr_metrics_with_none_values(self):
+        """Test PRMetrics with optional None values."""
+        pr = PRMetrics(
+            pr_number=1,
+            pr_title="Open PR",
+            pr_state="opened",
+            pr_url="https://github.com/owner/repo/pull/1",
+            pr_author=None,
+            pr_created_at=None,
+            pr_merged_at=None,
+            time_to_merge=None,
+            commits_before_pr_open=0,
+            commits_after_pr_open=0,
             commits_after_summary=None,
             has_recce_session=False,
             recce_session_url=None,
@@ -80,58 +83,63 @@ class TestCRMetricsDataclasses(unittest.TestCase):
             recce_summary_generated=None,
             recce_summary_at=None,
         )
-        self.assertIsNone(cr.cr_author)
-        self.assertIsNone(cr.commits_after_summary)
-        self.assertFalse(cr.has_recce_session)
+        self.assertIsNone(pr.pr_author)
+        self.assertIsNone(pr.time_to_merge)
+        self.assertIsNone(pr.commits_after_summary)
+        self.assertFalse(pr.has_recce_session)
 
     def test_summary_statistics_creation(self):
         """Test SummaryStatistics dataclass creation."""
         summary = SummaryStatistics(
-            total_crs=10,
-            crs_merged=8,
-            crs_open=2,
-            crs_with_recce_session=6,
-            crs_with_recce_summary=4,
+            total_prs=10,
+            prs_merged=8,
+            prs_open=2,
+            prs_with_recce_session=6,
+            prs_with_recce_summary=4,
             recce_adoption_rate=60.0,
             summary_generation_rate=40.0,
-            total_commits_before_cr_open=20,
-            total_commits_after_cr_open=15,
+            total_commits_before_pr_open=20,
+            total_commits_after_pr_open=15,
             total_commits_after_summary=5,
-            avg_commits_before_cr_open=2.0,
-            avg_commits_after_cr_open=1.5,
+            avg_commits_before_pr_open=2.0,
+            avg_commits_after_pr_open=1.5,
             avg_commits_after_summary=1.25,
+            avg_time_to_merge=12.5,
         )
-        self.assertEqual(summary.total_crs, 10)
+        self.assertEqual(summary.total_prs, 10)
         self.assertEqual(summary.recce_adoption_rate, 60.0)
         self.assertEqual(summary.avg_commits_after_summary, 1.25)
+        self.assertEqual(summary.avg_time_to_merge, 12.5)
 
-    def test_cr_metrics_report_creation(self):
-        """Test CRMetricsReport dataclass creation."""
+    def test_pr_metrics_report_creation(self):
+        """Test PRMetricsReport dataclass creation."""
         summary = SummaryStatistics(
-            total_crs=1,
-            crs_merged=1,
-            crs_open=0,
-            crs_with_recce_session=1,
-            crs_with_recce_summary=1,
+            total_prs=1,
+            prs_merged=1,
+            prs_open=0,
+            prs_with_recce_session=1,
+            prs_with_recce_summary=1,
             recce_adoption_rate=100.0,
             summary_generation_rate=100.0,
-            total_commits_before_cr_open=2,
-            total_commits_after_cr_open=1,
+            total_commits_before_pr_open=2,
+            total_commits_after_pr_open=1,
             total_commits_after_summary=0,
-            avg_commits_before_cr_open=2.0,
-            avg_commits_after_cr_open=1.0,
+            avg_commits_before_pr_open=2.0,
+            avg_commits_after_pr_open=1.0,
             avg_commits_after_summary=0.0,
+            avg_time_to_merge=24.0,
         )
-        cr = CRMetrics(
-            cr_number=1,
-            cr_title="Test",
-            cr_state="merged",
-            cr_url="https://github.com/owner/repo/pull/1",
-            cr_author="user",
-            cr_created_at="2024-01-01T00:00:00Z",
-            cr_merged_at="2024-01-02T00:00:00Z",
-            commits_before_cr_open=2,
-            commits_after_cr_open=1,
+        pr = PRMetrics(
+            pr_number=1,
+            pr_title="Test",
+            pr_state="merged",
+            pr_url="https://github.com/owner/repo/pull/1",
+            pr_author="user",
+            pr_created_at="2024-01-01T00:00:00Z",
+            pr_merged_at="2024-01-02T00:00:00Z",
+            time_to_merge=24.0,
+            commits_before_pr_open=2,
+            commits_after_pr_open=1,
             commits_after_summary=0,
             has_recce_session=True,
             recce_session_url="https://cloud.datarecce.io/session/test",
@@ -140,17 +148,17 @@ class TestCRMetricsDataclasses(unittest.TestCase):
             recce_summary_generated=True,
             recce_summary_at="2024-01-01T12:00:00Z",
         )
-        report = CRMetricsReport(
+        report = PRMetricsReport(
             success=True,
             repo="owner/repo",
             date_range_since="2024-01-01",
             date_range_until="2024-01-31",
             summary=summary,
-            change_requests=[cr],
+            pull_requests=[pr],
         )
         self.assertTrue(report.success)
         self.assertEqual(report.repo, "owner/repo")
-        self.assertEqual(len(report.change_requests), 1)
+        self.assertEqual(len(report.pull_requests), 1)
 
 
 class TestReportClient(unittest.TestCase):
@@ -246,8 +254,8 @@ class TestReportClient(unittest.TestCase):
         self.assertEqual(context.exception.status_code, 0)
 
 
-class TestReportClientGetCRMetrics(unittest.TestCase):
-    """Test cases for ReportClient.get_cr_metrics() with mocked API responses."""
+class TestReportClientGetPRMetrics(unittest.TestCase):
+    """Test cases for ReportClient.get_pr_metrics() with mocked API responses."""
 
     def _create_mock_api_response(self, status_code=200, json_data=None, text=""):
         """Helper to create a mock response object."""
@@ -267,31 +275,33 @@ class TestReportClientGetCRMetrics(unittest.TestCase):
             "repo": "owner/repo",
             "date_range": {"since": "2024-01-01", "until": "2024-01-31"},
             "summary": {
-                "total_crs": 5,
-                "crs_merged": 4,
-                "crs_open": 1,
-                "crs_with_recce_session": 3,
-                "crs_with_recce_summary": 2,
+                "total_prs": 5,
+                "prs_merged": 4,
+                "prs_open": 1,
+                "prs_with_recce_session": 3,
+                "prs_with_recce_summary": 2,
                 "recce_adoption_rate": 60.0,
                 "summary_generation_rate": 40.0,
-                "total_commits_before_cr_open": 10,
-                "total_commits_after_cr_open": 8,
+                "total_commits_before_pr_open": 10,
+                "total_commits_after_pr_open": 8,
                 "total_commits_after_summary": 3,
-                "avg_commits_before_cr_open": 2.0,
-                "avg_commits_after_cr_open": 1.6,
+                "avg_commits_before_pr_open": 2.0,
+                "avg_commits_after_pr_open": 1.6,
                 "avg_commits_after_summary": 1.5,
+                "avg_time_to_merge": 29.0,
             },
-            "change_requests": [
+            "pull_requests": [
                 {
-                    "cr_number": 42,
-                    "cr_title": "Add new feature",
-                    "cr_state": "merged",
-                    "cr_url": "https://github.com/owner/repo/pull/42",
-                    "cr_author": "developer1",
-                    "cr_created_at": "2024-01-05T10:00:00Z",
-                    "cr_merged_at": "2024-01-06T15:00:00Z",
-                    "commits_before_cr_open": 3,
-                    "commits_after_cr_open": 2,
+                    "pr_number": 42,
+                    "pr_title": "Add new feature",
+                    "pr_state": "merged",
+                    "pr_url": "https://github.com/owner/repo/pull/42",
+                    "pr_author": "developer1",
+                    "pr_created_at": "2024-01-05T10:00:00Z",
+                    "pr_merged_at": "2024-01-06T15:00:00Z",
+                    "time_to_merge": 29.0,
+                    "commits_before_pr_open": 3,
+                    "commits_after_pr_open": 2,
                     "commits_after_summary": 1,
                     "has_recce_session": True,
                     "recce_session_url": "https://cloud.datarecce.io/session/abc",
@@ -301,15 +311,16 @@ class TestReportClientGetCRMetrics(unittest.TestCase):
                     "recce_summary_at": "2024-01-05T14:00:00Z",
                 },
                 {
-                    "cr_number": 43,
-                    "cr_title": "Fix bug",
-                    "cr_state": "opened",
-                    "cr_url": "https://github.com/owner/repo/pull/43",
-                    "cr_author": "developer2",
-                    "cr_created_at": "2024-01-10T09:00:00Z",
-                    "cr_merged_at": None,
-                    "commits_before_cr_open": 1,
-                    "commits_after_cr_open": 0,
+                    "pr_number": 43,
+                    "pr_title": "Fix bug",
+                    "pr_state": "opened",
+                    "pr_url": "https://github.com/owner/repo/pull/43",
+                    "pr_author": "developer2",
+                    "pr_created_at": "2024-01-10T09:00:00Z",
+                    "pr_merged_at": None,
+                    "time_to_merge": None,
+                    "commits_before_pr_open": 1,
+                    "commits_after_pr_open": 0,
                     "commits_after_summary": None,
                     "has_recce_session": False,
                     "recce_session_url": None,
@@ -322,38 +333,38 @@ class TestReportClientGetCRMetrics(unittest.TestCase):
         }
 
     @patch("recce_cloud.report.requests.request")
-    def test_get_cr_metrics_success(self, mock_request):
-        """Test successful get_cr_metrics call."""
+    def test_get_pr_metrics_success(self, mock_request):
+        """Test successful get_pr_metrics call."""
         mock_request.return_value = self._create_mock_api_response(
             status_code=200, json_data=self._create_sample_api_response()
         )
 
         client = ReportClient(token="test_token")
-        report = client.get_cr_metrics(repo="owner/repo")
+        report = client.get_pr_metrics(repo="owner/repo")
 
         self.assertTrue(report.success)
         self.assertEqual(report.repo, "owner/repo")
         self.assertEqual(report.date_range_since, "2024-01-01")
         self.assertEqual(report.date_range_until, "2024-01-31")
-        self.assertEqual(report.summary.total_crs, 5)
-        self.assertEqual(len(report.change_requests), 2)
+        self.assertEqual(report.summary.total_prs, 5)
+        self.assertEqual(len(report.pull_requests), 2)
 
-        # Verify first CR
-        cr1 = report.change_requests[0]
-        self.assertEqual(cr1.cr_number, 42)
-        self.assertEqual(cr1.cr_title, "Add new feature")
-        self.assertTrue(cr1.has_recce_session)
-        self.assertEqual(cr1.recce_check_types, ["row_count_diff", "value_diff"])
+        # Verify first PR
+        pr1 = report.pull_requests[0]
+        self.assertEqual(pr1.pr_number, 42)
+        self.assertEqual(pr1.pr_title, "Add new feature")
+        self.assertTrue(pr1.has_recce_session)
+        self.assertEqual(pr1.recce_check_types, ["row_count_diff", "value_diff"])
 
     @patch("recce_cloud.report.requests.request")
-    def test_get_cr_metrics_with_all_parameters(self, mock_request):
-        """Test get_cr_metrics with all optional parameters."""
+    def test_get_pr_metrics_with_all_parameters(self, mock_request):
+        """Test get_pr_metrics with all optional parameters."""
         mock_request.return_value = self._create_mock_api_response(
             status_code=200, json_data=self._create_sample_api_response()
         )
 
         client = ReportClient(token="test_token")
-        client.get_cr_metrics(
+        client.get_pr_metrics(
             repo="owner/repo",
             since="2024-01-01",
             until="2024-01-31",
@@ -371,32 +382,32 @@ class TestReportClientGetCRMetrics(unittest.TestCase):
         self.assertEqual(params["merged_only"], "false")
 
     @patch("recce_cloud.report.requests.request")
-    def test_get_cr_metrics_401_unauthorized(self, mock_request):
-        """Test get_cr_metrics handles 401 unauthorized error."""
+    def test_get_pr_metrics_401_unauthorized(self, mock_request):
+        """Test get_pr_metrics handles 401 unauthorized error."""
         mock_request.return_value = self._create_mock_api_response(status_code=401, text="Unauthorized")
 
         client = ReportClient(token="invalid_token")
         with self.assertRaises(RecceCloudException) as context:
-            client.get_cr_metrics(repo="owner/repo")
+            client.get_pr_metrics(repo="owner/repo")
 
         self.assertEqual(context.exception.status_code, 401)
         self.assertIn("Invalid or missing API token", context.exception.reason)
 
     @patch("recce_cloud.report.requests.request")
-    def test_get_cr_metrics_404_not_found(self, mock_request):
-        """Test get_cr_metrics handles 404 repository not found."""
+    def test_get_pr_metrics_404_not_found(self, mock_request):
+        """Test get_pr_metrics handles 404 repository not found."""
         mock_request.return_value = self._create_mock_api_response(status_code=404, text="Not found")
 
         client = ReportClient(token="test_token")
         with self.assertRaises(RecceCloudException) as context:
-            client.get_cr_metrics(repo="unknown/repo")
+            client.get_pr_metrics(repo="unknown/repo")
 
         self.assertEqual(context.exception.status_code, 404)
         self.assertIn("Repository not found", context.exception.reason)
 
     @patch("recce_cloud.report.requests.request")
-    def test_get_cr_metrics_400_bad_request(self, mock_request):
-        """Test get_cr_metrics handles 400 bad request with detail."""
+    def test_get_pr_metrics_400_bad_request(self, mock_request):
+        """Test get_pr_metrics handles 400 bad request with detail."""
         mock_request.return_value = self._create_mock_api_response(
             status_code=400,
             json_data={"detail": "Invalid date format for 'since' parameter"},
@@ -404,28 +415,28 @@ class TestReportClientGetCRMetrics(unittest.TestCase):
 
         client = ReportClient(token="test_token")
         with self.assertRaises(RecceCloudException) as context:
-            client.get_cr_metrics(repo="owner/repo", since="invalid")
+            client.get_pr_metrics(repo="owner/repo", since="invalid")
 
         self.assertEqual(context.exception.status_code, 400)
         self.assertIn("Invalid date format", context.exception.reason)
 
     @patch("recce_cloud.report.requests.request")
-    def test_get_cr_metrics_400_bad_request_no_json(self, mock_request):
-        """Test get_cr_metrics handles 400 bad request without JSON body."""
+    def test_get_pr_metrics_400_bad_request_no_json(self, mock_request):
+        """Test get_pr_metrics handles 400 bad request without JSON body."""
         mock_response = self._create_mock_api_response(status_code=400, text="Bad request")
         mock_response.json.side_effect = json.JSONDecodeError("", "", 0)
         mock_request.return_value = mock_response
 
         client = ReportClient(token="test_token")
         with self.assertRaises(RecceCloudException) as context:
-            client.get_cr_metrics(repo="owner/repo")
+            client.get_pr_metrics(repo="owner/repo")
 
         self.assertEqual(context.exception.status_code, 400)
         self.assertIn("Bad request", context.exception.reason)
 
     @patch("recce_cloud.report.requests.request")
-    def test_get_cr_metrics_502_upstream_error(self, mock_request):
-        """Test get_cr_metrics handles 502 upstream API error."""
+    def test_get_pr_metrics_502_upstream_error(self, mock_request):
+        """Test get_pr_metrics handles 502 upstream API error."""
         mock_request.return_value = self._create_mock_api_response(
             status_code=502,
             json_data={"detail": "GitHub API rate limit exceeded"},
@@ -433,25 +444,25 @@ class TestReportClientGetCRMetrics(unittest.TestCase):
 
         client = ReportClient(token="test_token")
         with self.assertRaises(RecceCloudException) as context:
-            client.get_cr_metrics(repo="owner/repo")
+            client.get_pr_metrics(repo="owner/repo")
 
         self.assertEqual(context.exception.status_code, 502)
         self.assertIn("rate limit", context.exception.reason)
 
     @patch("recce_cloud.report.requests.request")
-    def test_get_cr_metrics_500_server_error(self, mock_request):
-        """Test get_cr_metrics handles 500 internal server error."""
+    def test_get_pr_metrics_500_server_error(self, mock_request):
+        """Test get_pr_metrics handles 500 internal server error."""
         mock_request.return_value = self._create_mock_api_response(status_code=500, text="Internal Server Error")
 
         client = ReportClient(token="test_token")
         with self.assertRaises(RecceCloudException) as context:
-            client.get_cr_metrics(repo="owner/repo")
+            client.get_pr_metrics(repo="owner/repo")
 
         self.assertEqual(context.exception.status_code, 500)
 
     @patch("recce_cloud.report.requests.request")
-    def test_get_cr_metrics_invalid_json_response(self, mock_request):
-        """Test get_cr_metrics handles invalid JSON response."""
+    def test_get_pr_metrics_invalid_json_response(self, mock_request):
+        """Test get_pr_metrics handles invalid JSON response."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
@@ -459,54 +470,55 @@ class TestReportClientGetCRMetrics(unittest.TestCase):
 
         client = ReportClient(token="test_token")
         with self.assertRaises(RecceCloudException) as context:
-            client.get_cr_metrics(repo="owner/repo")
+            client.get_pr_metrics(repo="owner/repo")
 
         self.assertIn("Invalid response from API", context.exception.reason)
 
     @patch("recce_cloud.report.requests.request")
-    def test_get_cr_metrics_empty_change_requests(self, mock_request):
-        """Test get_cr_metrics handles response with no change requests."""
+    def test_get_pr_metrics_empty_pull_requests(self, mock_request):
+        """Test get_pr_metrics handles response with no pull requests."""
         response_data = {
             "success": True,
             "repo": "owner/repo",
             "date_range": {"since": "2024-01-01", "until": "2024-01-31"},
             "summary": {
-                "total_crs": 0,
-                "crs_merged": 0,
-                "crs_open": 0,
-                "crs_with_recce_session": 0,
-                "crs_with_recce_summary": 0,
+                "total_prs": 0,
+                "prs_merged": 0,
+                "prs_open": 0,
+                "prs_with_recce_session": 0,
+                "prs_with_recce_summary": 0,
                 "recce_adoption_rate": 0.0,
                 "summary_generation_rate": 0.0,
-                "total_commits_before_cr_open": 0,
-                "total_commits_after_cr_open": 0,
+                "total_commits_before_pr_open": 0,
+                "total_commits_after_pr_open": 0,
                 "total_commits_after_summary": 0,
-                "avg_commits_before_cr_open": 0.0,
-                "avg_commits_after_cr_open": 0.0,
+                "avg_commits_before_pr_open": 0.0,
+                "avg_commits_after_pr_open": 0.0,
                 "avg_commits_after_summary": None,
+                "avg_time_to_merge": None,
             },
-            "change_requests": [],
+            "pull_requests": [],
         }
         mock_request.return_value = self._create_mock_api_response(status_code=200, json_data=response_data)
 
         client = ReportClient(token="test_token")
-        report = client.get_cr_metrics(repo="owner/repo")
+        report = client.get_pr_metrics(repo="owner/repo")
 
         self.assertTrue(report.success)
-        self.assertEqual(len(report.change_requests), 0)
-        self.assertEqual(report.summary.total_crs, 0)
+        self.assertEqual(len(report.pull_requests), 0)
+        self.assertEqual(report.summary.total_prs, 0)
 
     @patch("recce_cloud.report.requests.request")
-    def test_get_cr_metrics_missing_optional_fields(self, mock_request):
-        """Test get_cr_metrics handles response with missing optional fields."""
+    def test_get_pr_metrics_missing_optional_fields(self, mock_request):
+        """Test get_pr_metrics handles response with missing optional fields."""
         response_data = {
             "success": True,
             "repo": "owner/repo",
             "date_range": {"since": "2024-01-01", "until": "2024-01-31"},
             "summary": {},
-            "change_requests": [
+            "pull_requests": [
                 {
-                    "cr_number": 1,
+                    "pr_number": 1,
                     # Missing most optional fields
                 }
             ],
@@ -514,51 +526,53 @@ class TestReportClientGetCRMetrics(unittest.TestCase):
         mock_request.return_value = self._create_mock_api_response(status_code=200, json_data=response_data)
 
         client = ReportClient(token="test_token")
-        report = client.get_cr_metrics(repo="owner/repo")
+        report = client.get_pr_metrics(repo="owner/repo")
 
         # Should use defaults for missing fields
-        self.assertEqual(len(report.change_requests), 1)
-        cr = report.change_requests[0]
-        self.assertEqual(cr.cr_number, 1)
-        self.assertEqual(cr.cr_title, "")
-        self.assertEqual(cr.cr_state, "unknown")
-        self.assertEqual(cr.commits_before_cr_open, 0)
-        self.assertFalse(cr.has_recce_session)
+        self.assertEqual(len(report.pull_requests), 1)
+        pr = report.pull_requests[0]
+        self.assertEqual(pr.pr_number, 1)
+        self.assertEqual(pr.pr_title, "")
+        self.assertEqual(pr.pr_state, "unknown")
+        self.assertEqual(pr.commits_before_pr_open, 0)
+        self.assertFalse(pr.has_recce_session)
 
 
 class TestFormatReportAsCsv(unittest.TestCase):
     """Test cases for format_report_as_csv() function."""
 
-    def _create_sample_report(self, num_crs=2):
-        """Create a sample CRMetricsReport for testing."""
+    def _create_sample_report(self, num_prs=2):
+        """Create a sample PRMetricsReport for testing."""
         summary = SummaryStatistics(
-            total_crs=num_crs,
-            crs_merged=num_crs - 1 if num_crs > 0 else 0,
-            crs_open=1 if num_crs > 0 else 0,
-            crs_with_recce_session=num_crs // 2,
-            crs_with_recce_summary=num_crs // 2,
+            total_prs=num_prs,
+            prs_merged=num_prs - 1 if num_prs > 0 else 0,
+            prs_open=1 if num_prs > 0 else 0,
+            prs_with_recce_session=num_prs // 2,
+            prs_with_recce_summary=num_prs // 2,
             recce_adoption_rate=50.0,
             summary_generation_rate=50.0,
-            total_commits_before_cr_open=num_crs * 2,
-            total_commits_after_cr_open=num_crs,
-            total_commits_after_summary=num_crs // 2,
-            avg_commits_before_cr_open=2.0,
-            avg_commits_after_cr_open=1.0,
-            avg_commits_after_summary=0.5 if num_crs > 0 else None,
+            total_commits_before_pr_open=num_prs * 2,
+            total_commits_after_pr_open=num_prs,
+            total_commits_after_summary=num_prs // 2,
+            avg_commits_before_pr_open=2.0,
+            avg_commits_after_pr_open=1.0,
+            avg_commits_after_summary=0.5 if num_prs > 0 else None,
+            avg_time_to_merge=29.0 if num_prs > 0 else None,
         )
 
-        change_requests = []
-        for i in range(num_crs):
-            cr = CRMetrics(
-                cr_number=i + 1,
-                cr_title=f"PR {i + 1}: Test feature",
-                cr_state="merged" if i % 2 == 0 else "opened",
-                cr_url=f"https://github.com/owner/repo/pull/{i + 1}",
-                cr_author=f"developer{i + 1}",
-                cr_created_at=f"2024-01-{i + 1:02d}T10:00:00Z",
-                cr_merged_at=f"2024-01-{i + 2:02d}T15:00:00Z" if i % 2 == 0 else None,
-                commits_before_cr_open=2,
-                commits_after_cr_open=1,
+        pull_requests = []
+        for i in range(num_prs):
+            pr = PRMetrics(
+                pr_number=i + 1,
+                pr_title=f"PR {i + 1}: Test feature",
+                pr_state="merged" if i % 2 == 0 else "opened",
+                pr_url=f"https://github.com/owner/repo/pull/{i + 1}",
+                pr_author=f"developer{i + 1}",
+                pr_created_at=f"2024-01-{i + 1:02d}T10:00:00Z",
+                pr_merged_at=f"2024-01-{i + 2:02d}T15:00:00Z" if i % 2 == 0 else None,
+                time_to_merge=29.0 if i % 2 == 0 else None,
+                commits_before_pr_open=2,
+                commits_after_pr_open=1,
                 commits_after_summary=0 if i % 2 == 0 else None,
                 has_recce_session=i % 2 == 0,
                 recce_session_url=f"https://cloud.datarecce.io/session/{i}" if i % 2 == 0 else None,
@@ -567,35 +581,36 @@ class TestFormatReportAsCsv(unittest.TestCase):
                 recce_summary_generated=True if i % 2 == 0 else None,
                 recce_summary_at=f"2024-01-{i + 1:02d}T12:00:00Z" if i % 2 == 0 else None,
             )
-            change_requests.append(cr)
+            pull_requests.append(pr)
 
-        return CRMetricsReport(
+        return PRMetricsReport(
             success=True,
             repo="owner/repo",
             date_range_since="2024-01-01",
             date_range_until="2024-01-31",
             summary=summary,
-            change_requests=change_requests,
+            pull_requests=pull_requests,
         )
 
     def test_format_csv_header(self):
         """Test CSV output contains correct header row."""
-        report = self._create_sample_report(num_crs=1)
+        report = self._create_sample_report(num_prs=1)
         csv_output = format_report_as_csv(report)
 
         lines = csv_output.strip().split("\n")
         header = lines[0]
 
         expected_columns = [
-            "cr_number",
-            "cr_title",
-            "cr_state",
-            "cr_url",
-            "cr_author",
-            "cr_created_at",
-            "cr_merged_at",
-            "commits_before_cr_open",
-            "commits_after_cr_open",
+            "pr_number",
+            "pr_title",
+            "pr_state",
+            "pr_url",
+            "pr_author",
+            "pr_created_at",
+            "pr_merged_at",
+            "time_to_merge",
+            "commits_before_pr_open",
+            "commits_after_pr_open",
             "commits_after_summary",
             "has_recce_session",
             "recce_session_url",
@@ -610,7 +625,7 @@ class TestFormatReportAsCsv(unittest.TestCase):
 
     def test_format_csv_data_rows(self):
         """Test CSV output contains correct data rows."""
-        report = self._create_sample_report(num_crs=2)
+        report = self._create_sample_report(num_prs=2)
         csv_output = format_report_as_csv(report)
 
         lines = csv_output.strip().split("\n")
@@ -618,13 +633,13 @@ class TestFormatReportAsCsv(unittest.TestCase):
 
         # Parse first data row
         data_row = lines[1]
-        self.assertIn("1", data_row)  # cr_number
-        self.assertIn("PR 1: Test feature", data_row)  # cr_title
-        self.assertIn("merged", data_row)  # cr_state
+        self.assertIn("1", data_row)  # pr_number
+        self.assertIn("PR 1: Test feature", data_row)  # pr_title
+        self.assertIn("merged", data_row)  # pr_state
 
     def test_format_csv_empty_report(self):
-        """Test CSV output for report with no change requests."""
-        report = self._create_sample_report(num_crs=0)
+        """Test CSV output for report with no pull requests."""
+        report = self._create_sample_report(num_prs=0)
         csv_output = format_report_as_csv(report)
 
         lines = csv_output.strip().split("\n")
@@ -632,14 +647,14 @@ class TestFormatReportAsCsv(unittest.TestCase):
 
     def test_format_csv_check_types_joined(self):
         """Test that check_types list is joined with semicolons."""
-        report = self._create_sample_report(num_crs=1)
+        report = self._create_sample_report(num_prs=1)
         csv_output = format_report_as_csv(report)
 
         self.assertIn("row_count_diff;value_diff", csv_output)
 
     def test_format_csv_none_values_as_empty_string(self):
         """Test that None values are output as empty strings."""
-        report = self._create_sample_report(num_crs=2)
+        report = self._create_sample_report(num_prs=2)
         csv_output = format_report_as_csv(report)
 
         # The second row should have empty strings for None values
@@ -650,30 +665,32 @@ class TestFormatReportAsCsv(unittest.TestCase):
     def test_format_csv_special_characters_escaped(self):
         """Test that special characters in titles are properly escaped."""
         summary = SummaryStatistics(
-            total_crs=1,
-            crs_merged=1,
-            crs_open=0,
-            crs_with_recce_session=0,
-            crs_with_recce_summary=0,
+            total_prs=1,
+            prs_merged=1,
+            prs_open=0,
+            prs_with_recce_session=0,
+            prs_with_recce_summary=0,
             recce_adoption_rate=0.0,
             summary_generation_rate=0.0,
-            total_commits_before_cr_open=0,
-            total_commits_after_cr_open=0,
+            total_commits_before_pr_open=0,
+            total_commits_after_pr_open=0,
             total_commits_after_summary=0,
-            avg_commits_before_cr_open=0.0,
-            avg_commits_after_cr_open=0.0,
+            avg_commits_before_pr_open=0.0,
+            avg_commits_after_pr_open=0.0,
             avg_commits_after_summary=None,
+            avg_time_to_merge=None,
         )
-        cr = CRMetrics(
-            cr_number=1,
-            cr_title='Test with "quotes" and, commas',
-            cr_state="merged",
-            cr_url="https://github.com/owner/repo/pull/1",
-            cr_author="user",
-            cr_created_at="2024-01-01T00:00:00Z",
-            cr_merged_at="2024-01-02T00:00:00Z",
-            commits_before_cr_open=0,
-            commits_after_cr_open=0,
+        pr = PRMetrics(
+            pr_number=1,
+            pr_title='Test with "quotes" and, commas',
+            pr_state="merged",
+            pr_url="https://github.com/owner/repo/pull/1",
+            pr_author="user",
+            pr_created_at="2024-01-01T00:00:00Z",
+            pr_merged_at="2024-01-02T00:00:00Z",
+            time_to_merge=24.0,
+            commits_before_pr_open=0,
+            commits_after_pr_open=0,
             commits_after_summary=None,
             has_recce_session=False,
             recce_session_url=None,
@@ -682,13 +699,13 @@ class TestFormatReportAsCsv(unittest.TestCase):
             recce_summary_generated=None,
             recce_summary_at=None,
         )
-        report = CRMetricsReport(
+        report = PRMetricsReport(
             success=True,
             repo="owner/repo",
             date_range_since="2024-01-01",
             date_range_until="2024-01-31",
             summary=summary,
-            change_requests=[cr],
+            pull_requests=[pr],
         )
 
         csv_output = format_report_as_csv(report)
@@ -706,36 +723,38 @@ class TestDisplayReportSummary(unittest.TestCase):
         console = Console(file=output, force_terminal=False, no_color=True, width=80)
         return console, output
 
-    def _create_sample_report(self, num_crs=5):
-        """Create a sample CRMetricsReport for testing."""
+    def _create_sample_report(self, num_prs=5):
+        """Create a sample PRMetricsReport for testing."""
         summary = SummaryStatistics(
-            total_crs=num_crs,
-            crs_merged=num_crs - 1 if num_crs > 0 else 0,
-            crs_open=1 if num_crs > 0 else 0,
-            crs_with_recce_session=num_crs // 2,
-            crs_with_recce_summary=num_crs // 3,
+            total_prs=num_prs,
+            prs_merged=num_prs - 1 if num_prs > 0 else 0,
+            prs_open=1 if num_prs > 0 else 0,
+            prs_with_recce_session=num_prs // 2,
+            prs_with_recce_summary=num_prs // 3,
             recce_adoption_rate=50.0,
             summary_generation_rate=33.3,
-            total_commits_before_cr_open=num_crs * 2,
-            total_commits_after_cr_open=num_crs,
-            total_commits_after_summary=num_crs // 2,
-            avg_commits_before_cr_open=2.0,
-            avg_commits_after_cr_open=1.0,
-            avg_commits_after_summary=0.5 if num_crs > 0 else None,
+            total_commits_before_pr_open=num_prs * 2,
+            total_commits_after_pr_open=num_prs,
+            total_commits_after_summary=num_prs // 2,
+            avg_commits_before_pr_open=2.0,
+            avg_commits_after_pr_open=1.0,
+            avg_commits_after_summary=0.5 if num_prs > 0 else None,
+            avg_time_to_merge=29.0 if num_prs > 0 else None,
         )
 
-        change_requests = []
-        for i in range(num_crs):
-            cr = CRMetrics(
-                cr_number=i + 1,
-                cr_title=f"PR {i + 1}: Feature update",
-                cr_state=["merged", "opened", "closed"][i % 3],
-                cr_url=f"https://github.com/owner/repo/pull/{i + 1}",
-                cr_author=f"developer{i + 1}",
-                cr_created_at=f"2024-01-{i + 1:02d}T10:00:00Z",
-                cr_merged_at=f"2024-01-{i + 2:02d}T15:00:00Z" if i % 3 == 0 else None,
-                commits_before_cr_open=2,
-                commits_after_cr_open=1,
+        pull_requests = []
+        for i in range(num_prs):
+            pr = PRMetrics(
+                pr_number=i + 1,
+                pr_title=f"PR {i + 1}: Feature update",
+                pr_state=["merged", "opened", "closed"][i % 3],
+                pr_url=f"https://github.com/owner/repo/pull/{i + 1}",
+                pr_author=f"developer{i + 1}",
+                pr_created_at=f"2024-01-{i + 1:02d}T10:00:00Z",
+                pr_merged_at=f"2024-01-{i + 2:02d}T15:00:00Z" if i % 3 == 0 else None,
+                time_to_merge=29.0 if i % 3 == 0 else None,
+                commits_before_pr_open=2,
+                commits_after_pr_open=1,
                 commits_after_summary=0 if i % 2 == 0 else None,
                 has_recce_session=i % 2 == 0,
                 recce_session_url=f"https://cloud.datarecce.io/session/{i}" if i % 2 == 0 else None,
@@ -744,21 +763,21 @@ class TestDisplayReportSummary(unittest.TestCase):
                 recce_summary_generated=True if i % 3 == 0 else False,
                 recce_summary_at=f"2024-01-{i + 1:02d}T12:00:00Z" if i % 3 == 0 else None,
             )
-            change_requests.append(cr)
+            pull_requests.append(pr)
 
-        return CRMetricsReport(
+        return PRMetricsReport(
             success=True,
             repo="owner/repo",
             date_range_since="2024-01-01",
             date_range_until="2024-01-31",
             summary=summary,
-            change_requests=change_requests,
+            pull_requests=pull_requests,
         )
 
     def test_display_summary_shows_repository(self):
         """Test that display shows repository name."""
         console, output = self._create_console_capture()
-        report = self._create_sample_report(num_crs=2)
+        report = self._create_sample_report(num_prs=2)
 
         display_report_summary(console, report)
 
@@ -768,7 +787,7 @@ class TestDisplayReportSummary(unittest.TestCase):
     def test_display_summary_shows_date_range(self):
         """Test that display shows date range."""
         console, output = self._create_console_capture()
-        report = self._create_sample_report(num_crs=2)
+        report = self._create_sample_report(num_prs=2)
 
         display_report_summary(console, report)
 
@@ -779,30 +798,30 @@ class TestDisplayReportSummary(unittest.TestCase):
     def test_display_summary_shows_statistics(self):
         """Test that display shows summary statistics."""
         console, output = self._create_console_capture()
-        report = self._create_sample_report(num_crs=5)
+        report = self._create_sample_report(num_prs=5)
 
         display_report_summary(console, report)
 
         output_text = output.getvalue()
-        self.assertIn("Total CRs", output_text)
+        self.assertIn("Total PRs", output_text)
         self.assertIn("Merged", output_text)
         self.assertIn("Recce Adoption", output_text)
         self.assertIn("50.0%", output_text)  # adoption rate
 
     def test_display_summary_empty_report(self):
-        """Test display with no change requests shows appropriate message."""
+        """Test display with no pull requests shows appropriate message."""
         console, output = self._create_console_capture()
-        report = self._create_sample_report(num_crs=0)
+        report = self._create_sample_report(num_prs=0)
 
         display_report_summary(console, report)
 
         output_text = output.getvalue()
-        self.assertIn("No change requests found", output_text)
+        self.assertIn("No pull requests found", output_text)
 
     def test_display_summary_truncates_long_list(self):
-        """Test that more than 10 CRs shows truncation message."""
+        """Test that more than 10 PRs shows truncation message."""
         console, output = self._create_console_capture()
-        report = self._create_sample_report(num_crs=15)
+        report = self._create_sample_report(num_prs=15)
 
         display_report_summary(console, report)
 
@@ -810,16 +829,16 @@ class TestDisplayReportSummary(unittest.TestCase):
         self.assertIn("and 5 more", output_text)
         self.assertIn("showing 10 of 15", output_text)
 
-    def test_display_summary_shows_cr_details(self):
-        """Test that CR details are displayed."""
+    def test_display_summary_shows_pr_details(self):
+        """Test that PR details are displayed."""
         console, output = self._create_console_capture()
-        report = self._create_sample_report(num_crs=2)
+        report = self._create_sample_report(num_prs=2)
 
         display_report_summary(console, report)
 
         output_text = output.getvalue()
-        self.assertIn("!1", output_text)  # CR number
-        self.assertIn("PR 1: Feature update", output_text)  # CR title
+        self.assertIn("!1", output_text)  # PR number
+        self.assertIn("PR 1: Feature update", output_text)  # PR title
         self.assertIn("developer1", output_text)  # author
 
 
@@ -833,32 +852,34 @@ class TestFetchAndGenerateReport(unittest.TestCase):
         return console, output
 
     def _create_mock_report(self):
-        """Create a mock CRMetricsReport."""
+        """Create a mock PRMetricsReport."""
         summary = SummaryStatistics(
-            total_crs=1,
-            crs_merged=1,
-            crs_open=0,
-            crs_with_recce_session=1,
-            crs_with_recce_summary=1,
+            total_prs=1,
+            prs_merged=1,
+            prs_open=0,
+            prs_with_recce_session=1,
+            prs_with_recce_summary=1,
             recce_adoption_rate=100.0,
             summary_generation_rate=100.0,
-            total_commits_before_cr_open=2,
-            total_commits_after_cr_open=1,
+            total_commits_before_pr_open=2,
+            total_commits_after_pr_open=1,
             total_commits_after_summary=0,
-            avg_commits_before_cr_open=2.0,
-            avg_commits_after_cr_open=1.0,
+            avg_commits_before_pr_open=2.0,
+            avg_commits_after_pr_open=1.0,
             avg_commits_after_summary=0.0,
+            avg_time_to_merge=24.0,
         )
-        cr = CRMetrics(
-            cr_number=1,
-            cr_title="Test PR",
-            cr_state="merged",
-            cr_url="https://github.com/owner/repo/pull/1",
-            cr_author="user",
-            cr_created_at="2024-01-01T00:00:00Z",
-            cr_merged_at="2024-01-02T00:00:00Z",
-            commits_before_cr_open=2,
-            commits_after_cr_open=1,
+        pr = PRMetrics(
+            pr_number=1,
+            pr_title="Test PR",
+            pr_state="merged",
+            pr_url="https://github.com/owner/repo/pull/1",
+            pr_author="user",
+            pr_created_at="2024-01-01T00:00:00Z",
+            pr_merged_at="2024-01-02T00:00:00Z",
+            time_to_merge=24.0,
+            commits_before_pr_open=2,
+            commits_after_pr_open=1,
             commits_after_summary=0,
             has_recce_session=True,
             recce_session_url="https://cloud.datarecce.io/session/test",
@@ -867,13 +888,13 @@ class TestFetchAndGenerateReport(unittest.TestCase):
             recce_summary_generated=True,
             recce_summary_at="2024-01-01T12:00:00Z",
         )
-        return CRMetricsReport(
+        return PRMetricsReport(
             success=True,
             repo="owner/repo",
             date_range_since="2024-01-01",
             date_range_until="2024-01-31",
             summary=summary,
-            change_requests=[cr],
+            pull_requests=[pr],
         )
 
     @patch("recce_cloud.report.ReportClient")
@@ -881,7 +902,7 @@ class TestFetchAndGenerateReport(unittest.TestCase):
         """Test successful report generation to stdout."""
         console, output = self._create_console_capture()
         mock_client = MagicMock()
-        mock_client.get_cr_metrics.return_value = self._create_mock_report()
+        mock_client.get_pr_metrics.return_value = self._create_mock_report()
         MockReportClient.return_value = mock_client
 
         exit_code = fetch_and_generate_report(
@@ -896,7 +917,7 @@ class TestFetchAndGenerateReport(unittest.TestCase):
         )
 
         self.assertEqual(exit_code, 0)
-        mock_client.get_cr_metrics.assert_called_once_with(
+        mock_client.get_pr_metrics.assert_called_once_with(
             repo="owner/repo",
             since="30d",
             until=None,
@@ -909,7 +930,7 @@ class TestFetchAndGenerateReport(unittest.TestCase):
         """Test successful report generation to file."""
         console, output = self._create_console_capture()
         mock_client = MagicMock()
-        mock_client.get_cr_metrics.return_value = self._create_mock_report()
+        mock_client.get_pr_metrics.return_value = self._create_mock_report()
         MockReportClient.return_value = mock_client
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
@@ -932,7 +953,7 @@ class TestFetchAndGenerateReport(unittest.TestCase):
             # Verify file was written
             with open(output_path, "r") as f:
                 content = f.read()
-            self.assertIn("cr_number", content)
+            self.assertIn("pr_number", content)
             self.assertIn("Test PR", content)
 
             # Verify success message
@@ -946,7 +967,7 @@ class TestFetchAndGenerateReport(unittest.TestCase):
         """Test report generation handles API errors."""
         console, output = self._create_console_capture()
         mock_client = MagicMock()
-        mock_client.get_cr_metrics.side_effect = RecceCloudException(reason="Repository not found", status_code=404)
+        mock_client.get_pr_metrics.side_effect = RecceCloudException(reason="Repository not found", status_code=404)
         MockReportClient.return_value = mock_client
 
         exit_code = fetch_and_generate_report(
@@ -970,7 +991,7 @@ class TestFetchAndGenerateReport(unittest.TestCase):
         """Test report generation handles unexpected errors."""
         console, output = self._create_console_capture()
         mock_client = MagicMock()
-        mock_client.get_cr_metrics.side_effect = Exception("Unexpected error")
+        mock_client.get_pr_metrics.side_effect = Exception("Unexpected error")
         MockReportClient.return_value = mock_client
 
         exit_code = fetch_and_generate_report(
@@ -994,7 +1015,7 @@ class TestFetchAndGenerateReport(unittest.TestCase):
         """Test report generation handles file write errors."""
         console, output = self._create_console_capture()
         mock_client = MagicMock()
-        mock_client.get_cr_metrics.return_value = self._create_mock_report()
+        mock_client.get_pr_metrics.return_value = self._create_mock_report()
         MockReportClient.return_value = mock_client
 
         # Use a path that doesn't exist
@@ -1039,31 +1060,33 @@ class TestReportCLICommand(unittest.TestCase):
             "repo": "owner/repo",
             "date_range": {"since": "2024-01-01", "until": "2024-01-31"},
             "summary": {
-                "total_crs": 2,
-                "crs_merged": 1,
-                "crs_open": 1,
-                "crs_with_recce_session": 1,
-                "crs_with_recce_summary": 1,
+                "total_prs": 2,
+                "prs_merged": 1,
+                "prs_open": 1,
+                "prs_with_recce_session": 1,
+                "prs_with_recce_summary": 1,
                 "recce_adoption_rate": 50.0,
                 "summary_generation_rate": 50.0,
-                "total_commits_before_cr_open": 4,
-                "total_commits_after_cr_open": 2,
+                "total_commits_before_pr_open": 4,
+                "total_commits_after_pr_open": 2,
                 "total_commits_after_summary": 1,
-                "avg_commits_before_cr_open": 2.0,
-                "avg_commits_after_cr_open": 1.0,
+                "avg_commits_before_pr_open": 2.0,
+                "avg_commits_after_pr_open": 1.0,
                 "avg_commits_after_summary": 1.0,
+                "avg_time_to_merge": 29.0,
             },
-            "change_requests": [
+            "pull_requests": [
                 {
-                    "cr_number": 1,
-                    "cr_title": "Test PR 1",
-                    "cr_state": "merged",
-                    "cr_url": "https://github.com/owner/repo/pull/1",
-                    "cr_author": "user1",
-                    "cr_created_at": "2024-01-01T10:00:00Z",
-                    "cr_merged_at": "2024-01-02T15:00:00Z",
-                    "commits_before_cr_open": 2,
-                    "commits_after_cr_open": 1,
+                    "pr_number": 1,
+                    "pr_title": "Test PR 1",
+                    "pr_state": "merged",
+                    "pr_url": "https://github.com/owner/repo/pull/1",
+                    "pr_author": "user1",
+                    "pr_created_at": "2024-01-01T10:00:00Z",
+                    "pr_merged_at": "2024-01-02T15:00:00Z",
+                    "time_to_merge": 29.0,
+                    "commits_before_pr_open": 2,
+                    "commits_after_pr_open": 1,
                     "commits_after_summary": 0,
                     "has_recce_session": True,
                     "recce_session_url": "https://cloud.datarecce.io/session/abc",
@@ -1073,15 +1096,16 @@ class TestReportCLICommand(unittest.TestCase):
                     "recce_summary_at": "2024-01-01T12:00:00Z",
                 },
                 {
-                    "cr_number": 2,
-                    "cr_title": "Test PR 2",
-                    "cr_state": "opened",
-                    "cr_url": "https://github.com/owner/repo/pull/2",
-                    "cr_author": "user2",
-                    "cr_created_at": "2024-01-05T09:00:00Z",
-                    "cr_merged_at": None,
-                    "commits_before_cr_open": 2,
-                    "commits_after_cr_open": 1,
+                    "pr_number": 2,
+                    "pr_title": "Test PR 2",
+                    "pr_state": "opened",
+                    "pr_url": "https://github.com/owner/repo/pull/2",
+                    "pr_author": "user2",
+                    "pr_created_at": "2024-01-05T09:00:00Z",
+                    "pr_merged_at": None,
+                    "time_to_merge": None,
+                    "commits_before_pr_open": 2,
+                    "commits_after_pr_open": 1,
                     "commits_after_summary": None,
                     "has_recce_session": False,
                     "recce_session_url": None,
@@ -1144,7 +1168,7 @@ class TestReportCLICommand(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
         self.assertIn("owner/repo", result.output)
         self.assertIn("SUMMARY STATISTICS", result.output)
-        self.assertNotIn("cr_number", result.output)  # Should not have CSV header
+        self.assertNotIn("pr_number", result.output)  # Should not have CSV header
 
     @patch("recce_cloud.report.requests.request")
     def test_report_success_with_csv_output(self, mock_request):
@@ -1166,7 +1190,7 @@ class TestReportCLICommand(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
         self.assertNotIn("SUMMARY STATISTICS", result.output)
-        self.assertIn("cr_number", result.output)  # Should have CSV header
+        self.assertIn("pr_number", result.output)  # Should have CSV header
 
     @patch("recce_cloud.report.requests.request")
     def test_report_auto_detect_repo_ssh(self, mock_request):
@@ -1246,7 +1270,7 @@ class TestReportCLICommand(unittest.TestCase):
 
         with open(output_file, "r") as f:
             content = f.read()
-        self.assertIn("cr_number", content)
+        self.assertIn("pr_number", content)
         self.assertIn("Test PR 1", content)
 
     @patch("recce_cloud.report.requests.request")
@@ -1332,7 +1356,7 @@ class TestReportCLICommand(unittest.TestCase):
         self.assertEqual(params["base_branch"], "develop")
 
     @patch("recce_cloud.report.requests.request")
-    def test_report_include_open_crs(self, mock_request):
+    def test_report_include_open_prs(self, mock_request):
         """Test report with --include-open flag."""
         mock_response = Mock()
         mock_response.status_code = 200
@@ -1428,7 +1452,7 @@ class TestReportCLICommand(unittest.TestCase):
         )
 
         self.assertEqual(result.exit_code, 0)
-        self.assertIn("Generate CR (Change Request) metrics report", result.output)
+        self.assertIn("Generate PR (Pull Request) metrics report", result.output)
         self.assertIn("--repo", result.output)
         self.assertIn("--since", result.output)
         self.assertIn("--until", result.output)
