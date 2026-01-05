@@ -266,8 +266,18 @@ make test-tox-python-versions
 ### Frontend (TypeScript/React)
 
 ```bash
-# Install frontend dependencies (pnpm ONLY, NOT npm or yarn)
+# Node.js version management - use nave first, fall back to nvm
+# The required Node.js version is specified in js/.nvmrc
 cd js
+
+# Option 1: nave (preferred)
+nave auto pnpm install
+
+# Option 2: nvm (if nave not available)
+nvm use
+pnpm install
+
+# Install frontend dependencies (pnpm ONLY, NOT npm or yarn)
 pnpm install
 
 # Run Next.js dev server with Turbopack from js/ directory
