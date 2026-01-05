@@ -18,12 +18,12 @@ from unittest.mock import MagicMock, Mock, patch
 from click.testing import CliRunner
 from rich.console import Console
 
+from recce_cloud.api.client import ReportClient
 from recce_cloud.api.exceptions import RecceCloudException
 from recce_cloud.cli import cloud_cli
 from recce_cloud.report import (
     PRMetrics,
     PRMetricsReport,
-    ReportClient,
     SummaryStatistics,
     display_report_summary,
     fetch_and_generate_report,
@@ -169,10 +169,10 @@ class TestReportClient(unittest.TestCase):
         # Ensure we have the default API host by reimporting
         from importlib import reload
 
-        import recce_cloud.report as report_module
+        import recce_cloud.api.client as client_module
 
-        reload(report_module)
-        client = report_module.ReportClient(token="test_token")
+        reload(client_module)
+        client = client_module.ReportClient(token="test_token")
         self.assertEqual(client.token, "test_token")
         self.assertIn("cloud.datarecce.io", client.base_url_v2)
 
@@ -188,15 +188,15 @@ class TestReportClient(unittest.TestCase):
             # Need to reimport to pick up the env var
             from importlib import reload
 
-            import recce_cloud.report as report_module
+            import recce_cloud.api.client as client_module
 
-            reload(report_module)
-            client = report_module.ReportClient(token="test")
+            reload(client_module)
+            client = client_module.ReportClient(token="test")
             self.assertIn("custom.api.com", client.base_url_v2)
             # Reload again to reset
-            reload(report_module)
+            reload(client_module)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_request_adds_authorization_header(self, mock_request):
         """Test _request method adds Authorization header."""
         mock_response = Mock()
@@ -211,7 +211,7 @@ class TestReportClient(unittest.TestCase):
         headers = call_args.kwargs.get("headers") or call_args[1].get("headers")
         self.assertEqual(headers["Authorization"], "Bearer my_secret_token")
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_request_timeout_raises_recce_cloud_exception(self, mock_request):
         """Test _request raises RecceCloudException on timeout."""
         import requests
@@ -225,7 +225,7 @@ class TestReportClient(unittest.TestCase):
         self.assertIn("timed out", context.exception.reason)
         self.assertEqual(context.exception.status_code, 0)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_request_connection_error_raises_recce_cloud_exception(self, mock_request):
         """Test _request raises RecceCloudException on connection error."""
         import requests
@@ -239,7 +239,7 @@ class TestReportClient(unittest.TestCase):
         self.assertIn("Failed to connect", context.exception.reason)
         self.assertEqual(context.exception.status_code, 0)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_request_generic_exception_raises_recce_cloud_exception(self, mock_request):
         """Test _request raises RecceCloudException on generic request error."""
         import requests
@@ -332,7 +332,7 @@ class TestReportClientGetPRMetrics(unittest.TestCase):
             ],
         }
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_get_pr_metrics_success(self, mock_request):
         """Test successful get_pr_metrics call."""
         mock_request.return_value = self._create_mock_api_response(
@@ -356,7 +356,7 @@ class TestReportClientGetPRMetrics(unittest.TestCase):
         self.assertTrue(pr1.has_recce_session)
         self.assertEqual(pr1.recce_check_types, ["row_count_diff", "value_diff"])
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_get_pr_metrics_with_all_parameters(self, mock_request):
         """Test get_pr_metrics with all optional parameters."""
         mock_request.return_value = self._create_mock_api_response(
@@ -381,7 +381,7 @@ class TestReportClientGetPRMetrics(unittest.TestCase):
         self.assertEqual(params["base_branch"], "develop")
         self.assertEqual(params["merged_only"], "false")
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_get_pr_metrics_401_unauthorized(self, mock_request):
         """Test get_pr_metrics handles 401 unauthorized error."""
         mock_request.return_value = self._create_mock_api_response(status_code=401, text="Unauthorized")
@@ -393,7 +393,7 @@ class TestReportClientGetPRMetrics(unittest.TestCase):
         self.assertEqual(context.exception.status_code, 401)
         self.assertIn("Invalid or missing API token", context.exception.reason)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_get_pr_metrics_404_not_found(self, mock_request):
         """Test get_pr_metrics handles 404 repository not found."""
         mock_request.return_value = self._create_mock_api_response(status_code=404, text="Not found")
@@ -405,7 +405,7 @@ class TestReportClientGetPRMetrics(unittest.TestCase):
         self.assertEqual(context.exception.status_code, 404)
         self.assertIn("Repository not found", context.exception.reason)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_get_pr_metrics_400_bad_request(self, mock_request):
         """Test get_pr_metrics handles 400 bad request with detail."""
         mock_request.return_value = self._create_mock_api_response(
@@ -420,7 +420,7 @@ class TestReportClientGetPRMetrics(unittest.TestCase):
         self.assertEqual(context.exception.status_code, 400)
         self.assertIn("Invalid date format", context.exception.reason)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_get_pr_metrics_400_bad_request_no_json(self, mock_request):
         """Test get_pr_metrics handles 400 bad request without JSON body."""
         mock_response = self._create_mock_api_response(status_code=400, text="Bad request")
@@ -434,7 +434,7 @@ class TestReportClientGetPRMetrics(unittest.TestCase):
         self.assertEqual(context.exception.status_code, 400)
         self.assertIn("Bad request", context.exception.reason)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_get_pr_metrics_502_upstream_error(self, mock_request):
         """Test get_pr_metrics handles 502 upstream API error."""
         mock_request.return_value = self._create_mock_api_response(
@@ -449,7 +449,7 @@ class TestReportClientGetPRMetrics(unittest.TestCase):
         self.assertEqual(context.exception.status_code, 502)
         self.assertIn("rate limit", context.exception.reason)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_get_pr_metrics_500_server_error(self, mock_request):
         """Test get_pr_metrics handles 500 internal server error."""
         mock_request.return_value = self._create_mock_api_response(status_code=500, text="Internal Server Error")
@@ -460,7 +460,7 @@ class TestReportClientGetPRMetrics(unittest.TestCase):
 
         self.assertEqual(context.exception.status_code, 500)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_get_pr_metrics_invalid_json_response(self, mock_request):
         """Test get_pr_metrics handles invalid JSON response."""
         mock_response = Mock()
@@ -474,7 +474,7 @@ class TestReportClientGetPRMetrics(unittest.TestCase):
 
         self.assertIn("Invalid response from API", context.exception.reason)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_get_pr_metrics_empty_pull_requests(self, mock_request):
         """Test get_pr_metrics handles response with no pull requests."""
         response_data = {
@@ -508,7 +508,7 @@ class TestReportClientGetPRMetrics(unittest.TestCase):
         self.assertEqual(len(report.pull_requests), 0)
         self.assertEqual(report.summary.total_prs, 0)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_get_pr_metrics_missing_optional_fields(self, mock_request):
         """Test get_pr_metrics handles response with missing optional fields."""
         response_data = {
@@ -1147,7 +1147,7 @@ class TestReportCLICommand(unittest.TestCase):
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("Could not detect repository", result.output)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_report_success_default_shows_summary(self, mock_request):
         """Test successful report shows summary by default, not CSV."""
         mock_response = Mock()
@@ -1170,29 +1170,7 @@ class TestReportCLICommand(unittest.TestCase):
         self.assertIn("SUMMARY STATISTICS", result.output)
         self.assertNotIn("pr_number", result.output)  # Should not have CSV header
 
-    @patch("recce_cloud.report.requests.request")
-    def test_report_success_with_csv_output(self, mock_request):
-        """Test report with --csv flag outputs only CSV."""
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = self._create_mock_api_response()
-        mock_request.return_value = mock_response
-
-        env = {
-            "RECCE_API_TOKEN": "test_token",
-        }
-
-        with patch.dict(os.environ, env, clear=True):
-            result = self.runner.invoke(
-                cloud_cli,
-                ["report", "--repo", "owner/repo", "--csv"],
-            )
-
-        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
-        self.assertNotIn("SUMMARY STATISTICS", result.output)
-        self.assertIn("pr_number", result.output)  # Should have CSV header
-
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_report_auto_detect_repo_ssh(self, mock_request):
         """Test report auto-detects repo from SSH git remote."""
         mock_response = Mock()
@@ -1219,7 +1197,7 @@ class TestReportCLICommand(unittest.TestCase):
         self.assertIn("Auto-detected repository", result.output)
         self.assertIn("owner/repo", result.output)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_report_auto_detect_repo_https(self, mock_request):
         """Test report auto-detects repo from HTTPS git remote."""
         mock_response = Mock()
@@ -1245,7 +1223,7 @@ class TestReportCLICommand(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
         self.assertIn("Auto-detected repository", result.output)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_report_with_output_file(self, mock_request):
         """Test report saves to output file."""
         mock_response = Mock()
@@ -1273,7 +1251,7 @@ class TestReportCLICommand(unittest.TestCase):
         self.assertIn("pr_number", content)
         self.assertIn("Test PR 1", content)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_report_with_custom_date_range(self, mock_request):
         """Test report with custom since/until options."""
         mock_response = Mock()
@@ -1307,7 +1285,7 @@ class TestReportCLICommand(unittest.TestCase):
         self.assertEqual(params["since"], "2024-01-01")
         self.assertEqual(params["until"], "2024-01-31")
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_report_with_relative_date(self, mock_request):
         """Test report with relative date (e.g., 60d)."""
         mock_response = Mock()
@@ -1331,7 +1309,7 @@ class TestReportCLICommand(unittest.TestCase):
         params = call_args.kwargs.get("params") or call_args[1].get("params")
         self.assertEqual(params["since"], "60d")
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_report_with_base_branch(self, mock_request):
         """Test report with custom base branch."""
         mock_response = Mock()
@@ -1355,7 +1333,7 @@ class TestReportCLICommand(unittest.TestCase):
         params = call_args.kwargs.get("params") or call_args[1].get("params")
         self.assertEqual(params["base_branch"], "develop")
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_report_include_open_prs(self, mock_request):
         """Test report with --include-open flag."""
         mock_response = Mock()
@@ -1379,7 +1357,7 @@ class TestReportCLICommand(unittest.TestCase):
         params = call_args.kwargs.get("params") or call_args[1].get("params")
         self.assertEqual(params["merged_only"], "false")
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_report_api_401_error(self, mock_request):
         """Test report handles 401 unauthorized error."""
         mock_response = Mock()
@@ -1401,7 +1379,7 @@ class TestReportCLICommand(unittest.TestCase):
         self.assertIn("Error", result.output)
         self.assertIn("Invalid or missing API token", result.output)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_report_api_404_error(self, mock_request):
         """Test report handles 404 repository not found error."""
         mock_response = Mock()
@@ -1423,7 +1401,7 @@ class TestReportCLICommand(unittest.TestCase):
         self.assertIn("Error", result.output)
         self.assertIn("Repository not found", result.output)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_report_api_network_error(self, mock_request):
         """Test report handles network connection error."""
         import requests
@@ -1443,7 +1421,7 @@ class TestReportCLICommand(unittest.TestCase):
         self.assertNotEqual(result.exit_code, 0)
         self.assertIn("Error", result.output)
 
-    @patch("recce_cloud.report.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_report_help(self, mock_request):
         """Test report command help output."""
         result = self.runner.invoke(

@@ -466,21 +466,16 @@ def download(target_path, session_id, prod, dry_run, force):
     "--output",
     type=click.Path(),
     default=None,
-    help="Output file path for CSV. Default: no file output",
+    help="Output file path for CSV report",
 )
-@click.option(
-    "--csv",
-    "show_csv",
-    is_flag=True,
-    default=False,
-    help="Output CSV to stdout instead of summary",
-)
-def report(repo, since, until, base_branch, merged_only, output, show_csv):
+def report(repo, since, until, base_branch, merged_only, output):
     """
-    Generate PR (Pull Request) metrics report as CSV.
+    Generate PR (Pull Request) metrics report.
 
-    Tracks commit counts before/after PR open and Recce session data.
+    Tracks commit counts before/after PR open, time to merge, and Recce session data.
     Useful for measuring Recce's effectiveness in catching issues before merge.
+
+    By default, displays a summary to the console. Use -o to save as CSV file.
 
     \b
     Authentication:
@@ -491,7 +486,7 @@ def report(repo, since, until, base_branch, merged_only, output, show_csv):
       # Last 30 days for current repo (auto-detected)
       recce-cloud report
 
-      # Last 60 days, save to file
+      # Last 60 days, save to CSV file
       recce-cloud report --since 60d -o report.csv
 
       # Specific date range
@@ -558,7 +553,6 @@ def report(repo, since, until, base_branch, merged_only, output, show_csv):
         base_branch=base_branch,
         merged_only=merged_only,
         output_path=output,
-        show_csv=show_csv,
     )
 
     sys.exit(exit_code)
