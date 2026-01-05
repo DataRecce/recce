@@ -7,6 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   entry: {
     index: "src/index.ts",
+    api: "src/api.ts",
     primitives: "src/primitives.ts",
     advanced: "src/advanced.ts",
     contexts: "src/contexts-entry.ts",
