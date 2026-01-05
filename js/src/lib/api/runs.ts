@@ -20,6 +20,7 @@ export type { SubmitOptions, SubmitRunTrackProps } from "@datarecce/ui/api";
 
 // Import types for wrapper function signatures
 import type {
+  RunsAggregated,
   RunType,
   SubmitOptions,
   SubmitRunTrackProps,
@@ -124,16 +125,8 @@ export async function listRuns(
   return (await _listRuns(client)) as Run[];
 }
 
-export type RunsAggregated = Record<
-  string,
-  Record<
-    "row_count_diff" | "value_diff" | "row_count",
-    {
-      run_id: string;
-      result: unknown;
-    }
-  >
->;
+// Re-export from library (avoid duplicate type definition)
+export type { RunsAggregated } from "@datarecce/ui/api";
 
 export async function aggregateRuns(
   client: AxiosInstance = axiosClient,
