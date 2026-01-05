@@ -1,5 +1,8 @@
 "use client";
 
+// API context - axios client and configuration
+export { ApiProvider } from "../providers/contexts/ApiContext";
+
 // Action context - run execution and result management
 export type {
   AxiosQueryParams,

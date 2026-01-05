@@ -14,6 +14,7 @@ export {
 
 // Re-export provider-level contexts
 export {
+  ApiProvider,
   useApiClient,
   useApiConfig,
   useApiConfigOptional,

@@ -11,13 +11,14 @@
 
 "use client";
 
-import { IdleTimeoutProvider } from "@datarecce/ui/contexts";
+import { ApiProvider, IdleTimeoutProvider } from "@datarecce/ui/contexts";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { ReactNode } from "react";
 import { MuiProvider } from "@/components/ui/mui-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { reactQueryClient } from "@/lib/api/axiosClient";
+import { PUBLIC_API_URL } from "@/lib/const";
 import RecceContextProvider from "@/lib/hooks/RecceContextProvider";
 import { MainLayout } from "./MainLayout";
 
@@ -36,12 +37,14 @@ export default function Providers({ children, lineage }: ProvidersProps) {
     >
       <MuiProvider enableCssBaseline>
         <QueryClientProvider client={reactQueryClient}>
-          <IdleTimeoutProvider>
-            <RecceContextProvider>
-              <MainLayout lineage={lineage}>{children}</MainLayout>
-              <Toaster />
-            </RecceContextProvider>
-          </IdleTimeoutProvider>
+          <ApiProvider config={{ baseUrl: PUBLIC_API_URL }}>
+            <IdleTimeoutProvider>
+              <RecceContextProvider>
+                <MainLayout lineage={lineage}>{children}</MainLayout>
+                <Toaster />
+              </RecceContextProvider>
+            </IdleTimeoutProvider>
+          </ApiProvider>
         </QueryClientProvider>
       </MuiProvider>
     </NextThemesProvider>
