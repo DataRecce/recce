@@ -48,8 +48,10 @@ export interface ColumnLineageData {
   current: {
     nodes: Record<string, CllNodeData>;
     columns: Record<string, NodeColumnData>;
-    parent_map: Record<string, Set<string>>;
-    child_map: Record<string, Set<string>>;
+    /** JSON arrays from API - iterable like Set but properly typed */
+    parent_map: Record<string, string[]>;
+    /** JSON arrays from API - iterable like Set but properly typed */
+    child_map: Record<string, string[]>;
   };
 }
 
