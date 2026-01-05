@@ -115,8 +115,10 @@ class RecceMCPServer:
         mode: Optional[RecceServerMode] = None,
         debug: bool = False,
         log_file: str = "logs/recce-mcp.json",
+        state_loader=None,
     ):
         self.context = context
+        self.state_loader = state_loader
         self.mode = mode or RecceServerMode.server
         self.server = Server("recce")
         self.mcp_logger = MCPLogger(debug=debug, log_file=log_file)
@@ -733,8 +735,30 @@ class RecceMCPServer:
 
     async def run(self):
         """Run the MCP server in stdio mode"""
-        async with stdio_server() as (read_stream, write_stream):
-            await self.server.run(read_stream, write_stream, self.server.create_initialization_options())
+        try:
+            async with stdio_server() as (read_stream, write_stream):
+                await self.server.run(read_stream, write_stream, self.server.create_initialization_options())
+        finally:
+            # Export state on shutdown if state_loader is available
+            if self.state_loader and self.context:
+                try:
+                    from rich.console import Console
+
+                    console = Console()
+
+                    # Export the state
+                    msg = self.state_loader.export(self.context.export_state())
+                    if msg is not None:
+                        console.print(f"[yellow]On shutdown:[/yellow] {msg}")
+                    else:
+                        if hasattr(self.state_loader, "state_file") and self.state_loader.state_file:
+                            console.print(
+                                f"[yellow]On shutdown:[/yellow] State exported to '{self.state_loader.state_file}'"
+                            )
+                        else:
+                            console.print("[yellow]On shutdown:[/yellow] State exported successfully")
+                except Exception as e:
+                    logger.exception(f"Failed to export state on shutdown: {e}")
 
     async def run_sse(self, host: str = "localhost", port: int = 8000):
         """Run the MCP server in HTTP mode using Server-Sent Events (SSE)
@@ -743,6 +767,8 @@ class RecceMCPServer:
             host: Host to bind to (default: localhost)
             port: Port to bind to (default: 8000)
         """
+        from contextlib import asynccontextmanager
+
         import uvicorn
         from mcp.server.sse import SseServerTransport
         from starlette.applications import Starlette
@@ -775,7 +801,22 @@ class RecceMCPServer:
             """Handle health check endpoint (GET /health)"""
             return Response(content='{"status":"ok"}', media_type="application/json")
 
-        # Create Starlette app
+        @asynccontextmanager
+        async def lifespan(app):
+            """Handle startup and shutdown events"""
+            # Startup
+            yield
+            # Shutdown - this runs when server exits (SIGINT, SIGTERM, etc.)
+            if self.state_loader and self.context:
+                try:
+                    logger.info("Exporting state on shutdown...")
+                    msg = self.state_loader.export(self.context.export_state())
+                    if msg:
+                        logger.info(f"State export: {msg}")
+                except Exception as e:
+                    logger.exception(f"Failed to export state on shutdown: {e}")
+
+        # Create Starlette app with lifespan
         app = Starlette(
             debug=self.mcp_logger.debug,
             routes=[
@@ -783,6 +824,7 @@ class RecceMCPServer:
                 Route("/sse", endpoint=handle_sse_request, methods=["GET"]),
                 Mount("/", app=handle_post_message),
             ],
+            lifespan=lifespan,
         )
 
         # Run with uvicorn
@@ -831,31 +873,13 @@ async def run_mcp_server(
     # Extract debug flag from kwargs
     debug = kwargs.get("debug", False)
 
-    # Create MCP server
-    server = RecceMCPServer(context, mode=mode, debug=debug)
+    # Create MCP server with state_loader for graceful shutdown
+    server = RecceMCPServer(context, mode=mode, debug=debug, state_loader=state_loader)
 
-    try:
-        # Run in either stdio or SSE mode
-        if sse:
-            await server.run_sse(host=host, port=port)
-        else:
-            await server.run()
-    finally:
-        # Export state on shutdown if state_loader is available
-        if state_loader:
-            try:
-                from rich.console import Console
-
-                console = Console()
-
-                # Export the state
-                msg = state_loader.export(context.export_state())
-                if msg is not None:
-                    console.print(f"[yellow]On shutdown:[/yellow] {msg}")
-                else:
-                    if hasattr(state_loader, "state_file") and state_loader.state_file:
-                        console.print(f"[yellow]On shutdown:[/yellow] State exported to '{state_loader.state_file}'")
-                    else:
-                        console.print("[yellow]On shutdown:[/yellow] State exported successfully")
-            except Exception as e:
-                logger.exception(f"Failed to export state on shutdown: {e}")
+    # Run in either stdio or SSE mode
+    if sse:
+        # SSE mode: lifespan handler in Starlette manages shutdown and state export
+        await server.run_sse(host=host, port=port)
+    else:
+        # Stdio mode: run() method handles shutdown and state export via try-finally
+        await server.run()

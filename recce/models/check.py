@@ -183,6 +183,14 @@ class CheckDAO:
         # Parse the type
         check_type = RunType(cloud_data.get("type"))
 
+        def parse_iso_datetime(iso_string: str):
+            """Parse ISO format datetime string, handling 'Z' suffix for UTC"""
+            if not iso_string:
+                return None
+            # Replace 'Z' with '+00:00' for Python's fromisoformat compatibility
+            iso_string = iso_string.replace("Z", "+00:00")
+            return datetime.fromisoformat(iso_string)
+
         return Check(
             check_id=UUID(cloud_data.get("id")),
             session_id=UUID(cloud_data.get("session_id")),
@@ -195,8 +203,8 @@ class CheckDAO:
             is_preset=cloud_data.get("is_preset", False),
             created_by=(cloud_data.get("created_by") or {}).get("email", ""),
             updated_by=(cloud_data.get("updated_by") or {}).get("email", ""),
-            created_at=datetime.fromisoformat(cloud_data["created_at"]) if cloud_data.get("created_at") else None,
-            updated_at=datetime.fromisoformat(cloud_data["updated_at"]) if cloud_data.get("updated_at") else None,
+            created_at=parse_iso_datetime(cloud_data.get("created_at")),
+            updated_at=parse_iso_datetime(cloud_data.get("updated_at")),
         )
 
     def create(self, check: Check) -> Check:
