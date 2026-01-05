@@ -14,6 +14,19 @@ export type {
 export { submitQuery, submitQueryBase, submitQueryDiff } from "./adhocQuery";
 // Cache keys for TanStack Query
 export { cacheKeys } from "./cacheKeys";
+// Checks API (saved validation checks)
+export type { Check, CreateCheckBody } from "./checks";
+export {
+  createCheckByRun,
+  createSimpleCheck,
+  deleteCheck,
+  getCheck,
+  listChecks,
+  markAsPresetCheck,
+  reorderChecks,
+  updateCheck,
+  useChecks,
+} from "./checks";
 // Server flags API
 export type { RecceServerFlags } from "./flag";
 export { getServerFlag, markRelaunchHintCompleted } from "./flag";
@@ -43,6 +56,13 @@ export {
   sendKeepAlive,
   setKeepAliveCallback,
 } from "./keepAlive";
+// Models API (model row count operations)
+export type { QueryRowCountResult } from "./models";
+export {
+  fetchModelRowCount,
+  queryModelRowCount,
+  queryRowCount,
+} from "./models";
 // Profile Diff API
 export type {
   HistogramDiffParams,
