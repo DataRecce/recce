@@ -21,5 +21,8 @@ recce.yml
 # Ignore build artifacts from frontend
 recce/data
 
+# ignore Claude logs and plans
+docs/plans
+
 # Git worktrees for isolated development
 .worktrees/
