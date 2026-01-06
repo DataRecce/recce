@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 import uuid
 from contextlib import contextmanager
 from copy import deepcopy
@@ -815,10 +816,15 @@ class DbtAdapter(BaseAdapter):
 
     @lru_cache(maxsize=1)
     def _get_lineage_diff_cached(self, cache_key) -> LineageDiff:
+        start_time = time.perf_counter_ns()
+
         base = self.get_lineage(base=True)
         current = self.get_lineage(base=False)
 
+        select_start = time.perf_counter_ns()
         modified_nodes = self.select_nodes(select="state:modified")
+        select_elapsed_ms = (time.perf_counter_ns() - select_start) / 1_000_000
+
         diff = {}
         for node_id in modified_nodes:
             base_node = base.get("nodes", {}).get(node_id)
@@ -829,6 +835,16 @@ class DbtAdapter(BaseAdapter):
                 diff[node_id] = NodeDiff(change_status="removed")
             elif curr_node:
                 diff[node_id] = NodeDiff(change_status="added")
+
+        total_elapsed_ms = (time.perf_counter_ns() - start_time) / 1_000_000
+        log_performance(
+            "lineage diff",
+            {
+                "total_elapsed_ms": total_elapsed_ms,
+                "select_modified_elapsed_ms": select_elapsed_ms,
+                "modified_nodes": len(modified_nodes),
+            },
+        )
 
         return LineageDiff(
             base=base,
