@@ -22,7 +22,7 @@ recce.yml
 recce/data
 
 # ignore Claude logs and plans
-docs/plans
+docs/plans/*.md
 
 # Git worktrees for isolated development
 .worktrees/
