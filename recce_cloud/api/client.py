@@ -1,5 +1,5 @@
 """
-Recce Cloud API client for lightweight operations.
+Recce Cloud API clients for lightweight operations.
 
 Provides clients for session management and report generation.
 """
@@ -223,6 +223,7 @@ class RecceCloudClient:
             reason=response.text,
             status_code=response.status_code,
         )
+
 
 class ReportClient:
     """Client for fetching reports from Recce Cloud API."""
