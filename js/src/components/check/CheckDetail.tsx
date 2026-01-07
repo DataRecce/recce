@@ -15,6 +15,14 @@ import {
 } from "@datarecce/ui/api";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
+import {
+  buildCheckDescription,
+  buildCheckTitle,
+  CheckBreadcrumb,
+  CheckDescription,
+  formatSqlAsMarkdown,
+  isDisabledByNoResult,
+} from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -53,7 +61,6 @@ import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
 import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { CheckTimeline } from "@/components/check/timeline";
-import { isDisabledByNoResult } from "@/components/check/utils";
 import { trackCopyToClipboard } from "@/lib/api/track";
 // Import Run from OSS types for proper discriminated union support
 import { type Run, type RunParamTypes } from "@/lib/api/types";
@@ -75,9 +82,6 @@ import {
   ViewOptionTypes,
 } from "../run/registry";
 import { VSplit } from "../split/Split";
-import { CheckBreadcrumb } from "./CheckBreadcrumb";
-import { CheckDescription } from "./CheckDescription";
-import { buildDescription, buildQuery, buildTitle } from "./check";
 import { LineageDiffView } from "./LineageDiffView";
 import {
   generateCheckTemplate,
@@ -320,12 +324,7 @@ export function CheckDetail({
               height: 40,
             }}
           >
-            <CheckBreadcrumb
-              name="Check not found"
-              setName={() => {
-                // do nothing
-              }}
-            />
+            <CheckBreadcrumb name="Check not found" disabled />
           </Box>
         </Box>
       </VSplit>
@@ -393,7 +392,7 @@ export function CheckDetail({
                 )}
                 <CheckBreadcrumb
                   name={check.name}
-                  setName={(name) => {
+                  onNameChange={(name) => {
                     mutate({ name });
                   }}
                 />
@@ -492,7 +491,11 @@ export function CheckDetail({
 
                   <MuiTooltip
                     title={
-                      isDisabledByNoResult(check.type, run)
+                      isDisabledByNoResult({
+                        type: check.type,
+                        hasResult: !!run?.result,
+                        hasError: !!run?.error,
+                      })
                         ? "Run the check first"
                         : check.is_checked
                           ? "Remove approval"
@@ -508,8 +511,11 @@ export function CheckDetail({
                         handleApproveCheck();
                       }}
                       disabled={
-                        isDisabledByNoResult(check.type, run) ||
-                        featureToggles.disableUpdateChecklist
+                        isDisabledByNoResult({
+                          type: check.type,
+                          hasResult: !!run?.result,
+                          hasError: !!run?.error,
+                        }) || featureToggles.disableUpdateChecklist
                       }
                       startIcon={
                         check.is_checked ? (
@@ -538,6 +544,7 @@ export function CheckDetail({
                   key={check.check_id}
                   value={check.description}
                   onChange={handleUpdateDescription}
+                  disabled={featureToggles.disableUpdateChecklist}
                 />
               </Box>
             </Box>
@@ -601,8 +608,11 @@ export function CheckDetail({
                     variant="outlined"
                     color="neutral"
                     disabled={
-                      isDisabledByNoResult(check.type, run) ||
-                      tabValue !== "result"
+                      isDisabledByNoResult({
+                        type: check.type,
+                        hasResult: !!run?.result,
+                        hasError: !!run?.error,
+                      }) || tabValue !== "result"
                     }
                     onMouseEnter={onMouseEnter}
                     onMouseLeave={onMouseLeave}
@@ -787,8 +797,12 @@ export function CheckDetail({
 }
 
 function buildMarkdown(check: Check<RunParamTypes>) {
+  const title = buildCheckTitle({
+    name: check.name,
+    isChecked: check.is_checked,
+  });
   return stripIndents`
-  <details><summary>${buildTitle(check)}</summary>
+  <details><summary>${title}</summary>
 
   ${buildBody(check)}
 
@@ -796,9 +810,13 @@ function buildMarkdown(check: Check<RunParamTypes>) {
 }
 
 function buildBody(check: Check<RunParamTypes>) {
+  const description = buildCheckDescription({ description: check.description });
   if (check.type === "query" || check.type === "query_diff") {
-    return `${buildDescription(check)}\n\n${buildQuery(check)}`;
+    const params = check.params;
+    const sqlTemplate =
+      params && "sql_template" in params ? params.sql_template : "";
+    return `${description}\n\n${formatSqlAsMarkdown({ sql: sqlTemplate })}`;
   }
 
-  return buildDescription(check);
+  return description;
 }

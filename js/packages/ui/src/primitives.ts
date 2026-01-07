@@ -57,6 +57,11 @@ export {
   type CheckActionsProps,
   type CheckActionType,
 } from "./components/check/CheckActions";
+// Check breadcrumb (inline editable name)
+export {
+  CheckBreadcrumb,
+  type CheckBreadcrumbProps,
+} from "./components/check/CheckBreadcrumb";
 // Check card (single check display)
 export {
   CheckCard,
@@ -76,7 +81,6 @@ export {
   type CheckDetailProps,
   type CheckDetailTab,
 } from "./components/check/CheckDetail";
-
 // Check empty state
 export {
   CheckEmptyState,
@@ -84,6 +88,25 @@ export {
 } from "./components/check/CheckEmptyState";
 // Check list (list of checks)
 export { CheckList, type CheckListProps } from "./components/check/CheckList";
+
+// Check timeline components
+export {
+  CommentInput,
+  type CommentInputProps,
+  type TimelineActor,
+  TimelineEvent,
+  type TimelineEventData,
+  type TimelineEventProps,
+  type TimelineEventType,
+} from "./components/check/timeline";
+
+// Check utility functions
+export {
+  buildCheckDescription,
+  buildCheckTitle,
+  formatSqlAsMarkdown,
+  isDisabledByNoResult,
+} from "./components/check/utils";
 
 // =============================================================================
 // QUERY PRIMITIVES

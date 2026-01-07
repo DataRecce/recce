@@ -1,15 +1,20 @@
+/**
+ * CheckEmptyState - OSS wrapper around @datarecce/ui primitive
+ *
+ * Adds OSS-specific business logic:
+ * - API calls to create schema diff check
+ * - Navigation after check creation
+ * - Query cache invalidation
+ */
+
 import {
   type Check,
   cacheKeys,
   createSchemaDiffCheck,
 } from "@datarecce/ui/api";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
+import { CheckEmptyState as CheckEmptyStateUI } from "@datarecce/ui/primitives";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import React from "react";
-import { TbChecklist, TbPlus } from "react-icons/tb";
+import { TbChecklist } from "react-icons/tb";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
@@ -32,55 +37,14 @@ export const CheckEmptyState = () => {
   };
 
   return (
-    <Box
-      sx={{
-        height: "100%",
-        width: "100%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <Stack
-        spacing={3}
-        sx={{ textAlign: "center", maxWidth: "400px", alignItems: "center" }}
-      >
-        <Box component={TbChecklist} sx={{ fontSize: 64, color: "grey.400" }} />
-
-        <Stack spacing={1}>
-          <Typography variant="h5" sx={{ color: "grey.600" }}>
-            No checks yet
-          </Typography>
-          <Typography sx={{ color: "grey.500" }}>
-            Checks help you validate data quality and catch issues.
-          </Typography>
-        </Stack>
-
-        <Stack spacing={1.5} sx={{ width: "100%" }}>
-          <Typography
-            sx={{ fontSize: "0.875rem", color: "grey.600", fontWeight: 500 }}
-          >
-            Get started with your first check:
-          </Typography>
-
-          <Button
-            color="iochmara"
-            variant="contained"
-            onClick={handleCreateSchemaCheck}
-            disabled={isPending}
-            size="large"
-            fullWidth
-            startIcon={<TbPlus />}
-          >
-            Create Schema Diff Check
-          </Button>
-
-          <Typography sx={{ fontSize: "0.75rem", color: "grey.400", mt: 0.5 }}>
-            The schema checks compare modified models between environments to
-            detect changes, additions, or removals.
-          </Typography>
-        </Stack>
-      </Stack>
-    </Box>
+    <CheckEmptyStateUI
+      title="No checks yet"
+      description="Checks help you validate data quality and catch issues."
+      icon={<TbChecklist size={48} />}
+      actionText="Create Schema Diff Check"
+      onAction={handleCreateSchemaCheck}
+      isLoading={isPending}
+      helperText="The schema checks compare modified models between environments to detect changes, additions, or removals."
+    />
   );
 };

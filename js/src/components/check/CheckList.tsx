@@ -1,6 +1,12 @@
 import { type Check, cacheKeys, updateCheck } from "@datarecce/ui/api";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
-import { useIsDark } from "@datarecce/ui/hooks";
+import {
+  CheckCard,
+  type CheckCardData,
+  type CheckRunStatus,
+  type CheckType,
+  isDisabledByNoResult,
+} from "@datarecce/ui/primitives";
 import {
   DragDropContext,
   Draggable,
@@ -18,123 +24,69 @@ import Divider from "@mui/material/Divider";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
-import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import React, { useState } from "react";
-import { IconType } from "react-icons";
+import { useState } from "react";
 import { IoClose } from "react-icons/io5";
-import { isDisabledByNoResult } from "@/components/check/utils";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { useRun } from "@/lib/hooks/useRun";
-import { findByRunType } from "../run/registry";
 
+/**
+ * Wrapper component that adapts Check data to CheckCard props.
+ * Handles run data fetching and maps to UI primitive expectations.
+ */
 const ChecklistItem = ({
   check,
   selected,
   onSelect,
-  onMarkAsApproved,
+  onApprovalChange,
 }: {
   check: Check;
   selected: boolean;
   onSelect: (checkId: string) => void;
-  onMarkAsApproved: (checkId: string) => void;
+  onApprovalChange: (checkId: string, isApproved: boolean) => void;
 }) => {
-  const isDark = useIsDark();
   const { featureToggles } = useRecceInstanceContext();
-  const queryClient = useQueryClient();
-  const { apiClient } = useApiConfig();
-  const checkId = check.check_id;
-  const { mutate } = useMutation({
-    mutationFn: (check: Partial<Check>) =>
-      updateCheck(checkId, check, apiClient),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: cacheKeys.check(checkId),
-      });
-      await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    },
-  });
   const trackedRunId = check.last_run?.run_id;
   const { run } = useRun(trackedRunId);
 
-  const icon: IconType = findByRunType(check.type).icon;
-  const isMarkAsApprovedDisabled =
-    isDisabledByNoResult(check.type, run) ||
-    featureToggles.disableUpdateChecklist;
-  const isNoResult = isDisabledByNoResult(check.type, run);
+  const isNoResult = isDisabledByNoResult({
+    type: check.type,
+    hasResult: !!run?.result,
+    hasError: !!run?.error,
+  });
+
+  const isApprovalDisabled =
+    isNoResult || featureToggles.disableUpdateChecklist;
+
+  // Map run status if available
+  const getRunStatus = (): CheckRunStatus | undefined => {
+    if (!run) return undefined;
+    if (run.error) return "error";
+    if (run.result) return "success";
+    return undefined;
+  };
+
+  // Adapt Check to CheckCardData
+  const checkCardData: CheckCardData = {
+    id: check.check_id,
+    name: check.name,
+    type: check.type as CheckType,
+    isApproved: check.is_checked,
+    runStatus: getRunStatus(),
+    isPreset: check.is_preset,
+  };
 
   return (
-    <>
-      <Box
-        sx={{
-          width: "100%",
-          p: "0.25rem 1.25rem",
-          cursor: "pointer",
-          "&:hover": { bgcolor: isDark ? "grey.800" : "Cornsilk" },
-          bgcolor: selected ? (isDark ? "grey.900" : "Floralwhite") : "inherit",
-          borderBottom: "1px solid",
-          borderBottomColor: isDark ? "grey.700" : "divider",
-          borderLeft: "3px solid",
-          borderLeftColor: selected ? "orange" : "transparent",
-          display: "flex",
-          alignItems: "center",
-          gap: "0.5rem",
-        }}
-        onClick={() => {
-          onSelect(check.check_id);
-        }}
-      >
-        <Box component={icon} sx={{ fontSize: 20 }} />
-        <Box
-          sx={{
-            flex: 1,
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-          }}
-          className="no-track-pii-safe"
-        >
-          {check.name}
-        </Box>
-
-        <MuiTooltip
-          title={
-            isNoResult ? "Run the check first" : "Click to mark as approved"
-          }
-          placement="top"
-          arrow
-        >
-          <Box>
-            <Checkbox
-              checked={check.is_checked}
-              color="success"
-              size="small"
-              onChange={(e) => {
-                if (!e.target.checked) {
-                  // If unchecking, just update the check
-                  mutate({ is_checked: e.target.checked });
-                } else {
-                  // Show Mark as Approved warning modal
-                  onMarkAsApproved(checkId);
-                }
-              }}
-              disabled={isMarkAsApprovedDisabled}
-              onClick={(e) => e.stopPropagation()}
-              sx={{
-                borderColor: "border.inverted",
-                bgcolor: isMarkAsApprovedDisabled
-                  ? isDark
-                    ? "grey.700"
-                    : "grey.200"
-                  : undefined,
-              }}
-            />
-          </Box>
-        </MuiTooltip>
-      </Box>
-    </>
+    <CheckCard
+      check={checkCardData}
+      isSelected={selected}
+      onClick={onSelect}
+      onApprovalChange={onApprovalChange}
+      disableApproval={isApprovalDisabled}
+      disabledApprovalTooltip={isNoResult ? "Run the check first" : undefined}
+    />
   );
 };
 
@@ -156,10 +108,17 @@ export const CheckList = ({
   >(null);
   const queryClient = useQueryClient();
   const { apiClient } = useApiConfig();
-  const { mutate: markCheckedByID } = useMutation({
-    mutationFn: (checkId: string) =>
-      updateCheck(checkId, { is_checked: true }, apiClient),
-    onSuccess: async (_, checkId: string) => {
+
+  // Mutation for updating check approval status
+  const { mutate: updateApproval } = useMutation({
+    mutationFn: ({
+      checkId,
+      isChecked,
+    }: {
+      checkId: string;
+      isChecked: boolean;
+    }) => updateCheck(checkId, { is_checked: isChecked }, apiClient),
+    onSuccess: async (_, { checkId }) => {
       await queryClient.invalidateQueries({
         queryKey: cacheKeys.check(checkId),
       });
@@ -182,22 +141,34 @@ export const CheckList = ({
   };
 
   const { markedAsApprovedToast } = useCheckToast();
-  const handleOnMarkAsApproved = (checkId: string) => {
-    const bypassMarkAsApprovedWarning = localStorage.getItem(
-      "bypassMarkAsApprovedWarning",
-    );
-    if (bypassMarkAsApprovedWarning === "true") {
-      markCheckedByID(checkId);
-      markedAsApprovedToast();
+
+  /**
+   * Handle approval change from CheckCard.
+   * If approving (true), show modal or bypass based on localStorage.
+   * If unapproving (false), update directly.
+   */
+  const handleApprovalChange = (checkId: string, isApproved: boolean) => {
+    if (!isApproved) {
+      // Unapproving - update directly
+      updateApproval({ checkId, isChecked: false });
     } else {
-      setPendingApprovalCheckId(checkId);
-      handleOpen();
+      // Approving - check for bypass
+      const bypassMarkAsApprovedWarning = localStorage.getItem(
+        "bypassMarkAsApprovedWarning",
+      );
+      if (bypassMarkAsApprovedWarning === "true") {
+        updateApproval({ checkId, isChecked: true });
+        markedAsApprovedToast();
+      } else {
+        setPendingApprovalCheckId(checkId);
+        handleOpen();
+      }
     }
   };
 
   const handleMarkAsApprovedConfirmed = () => {
     if (pendingApprovalCheckId) {
-      markCheckedByID(pendingApprovalCheckId);
+      updateApproval({ checkId: pendingApprovalCheckId, isChecked: true });
       if (bypassModal) {
         localStorage.setItem("bypassMarkAsApprovedWarning", "true");
       }
@@ -255,7 +226,7 @@ export const CheckList = ({
                           check={check}
                           selected={check.check_id === selectedItem}
                           onSelect={onCheckSelected}
-                          onMarkAsApproved={handleOnMarkAsApproved}
+                          onApprovalChange={handleApprovalChange}
                         />
                       </Box>
                     );

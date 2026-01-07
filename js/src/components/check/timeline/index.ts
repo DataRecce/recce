@@ -7,6 +7,9 @@
  * NOTE: This feature is only available when connected to Recce Cloud.
  */
 
+// Re-export CommentInput from UI package
+export { CommentInput, type CommentInputProps } from "@datarecce/ui/primitives";
 export { CheckTimeline } from "./CheckTimeline";
-export { CommentInput } from "./CommentInput";
+
+// TimelineEvent is kept local (has OSS-specific avatar fetching via React Query)
 export { TimelineEvent } from "./TimelineEvent";

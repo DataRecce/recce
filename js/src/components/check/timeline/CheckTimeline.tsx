@@ -18,8 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchUser } from "@/lib/api/user";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useCheckEvents } from "@/lib/hooks/useCheckEvents";
-import { CommentInput } from "./CommentInput";
-import { TimelineEvent } from "./TimelineEvent";
+import { CommentInput, TimelineEvent } from ".";
 
 interface CheckTimelineProps {
   checkId: string;
