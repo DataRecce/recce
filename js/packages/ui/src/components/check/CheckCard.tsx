@@ -12,6 +12,7 @@ import { type MouseEvent, memo } from "react";
  */
 export type CheckType =
   | "query"
+  | "query_base"
   | "query_diff"
   | "schema_diff"
   | "lineage_diff"
@@ -75,14 +76,15 @@ export interface CheckCardProps {
 function getCheckTypeIcon(type: CheckType): string {
   const icons: Record<CheckType, string> = {
     query: "Q",
+    query_base: "Q",
     query_diff: "QD",
-    schema_diff: "S",
-    lineage_diff: "L",
+    schema_diff: "SD",
+    lineage_diff: "LD",
     profile: "P",
     profile_diff: "PD",
     row_count: "R",
     row_count_diff: "RD",
-    value_diff: "V",
+    value_diff: "VD",
     histogram_diff: "H",
     top_k_diff: "TK",
     simple: "•",
@@ -96,6 +98,7 @@ function getCheckTypeIcon(type: CheckType): string {
 function getCheckTypeColor(type: CheckType): string {
   const colors: Record<CheckType, string> = {
     query: "#3b82f6", // blue
+    query_base: "#3b82f6", // blue
     query_diff: "#8b5cf6", // purple
     schema_diff: "#06b6d4", // cyan
     lineage_diff: "#10b981", // emerald
@@ -123,6 +126,20 @@ function getStatusColor(status?: CheckRunStatus): string {
     error: "#ef4444", // red
   };
   return colors[status];
+}
+
+/**
+ * Get status label for tooltip
+ */
+function getStatusLabel(status?: CheckRunStatus): string {
+  if (!status) return "";
+  const labels: Record<CheckRunStatus, string> = {
+    pending: "Pending",
+    running: "Running",
+    success: "Ready",
+    error: "Error",
+  };
+  return labels[status];
 }
 
 /**
@@ -262,17 +279,19 @@ function CheckCardComponent({
       </Typography>
 
       {/* Run status indicator */}
-      {check.runStatus && (
-        <Box
-          sx={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            backgroundColor: getStatusColor(check.runStatus),
-            flexShrink: 0,
-          }}
-        />
-      )}
+      {/*{check.runStatus && (*/}
+      {/*  <Tooltip title={getStatusLabel(check.runStatus)}>*/}
+      {/*    <Box*/}
+      {/*      sx={{*/}
+      {/*        width: 8,*/}
+      {/*        height: 8,*/}
+      {/*        borderRadius: "50%",*/}
+      {/*        backgroundColor: getStatusColor(check.runStatus),*/}
+      {/*        flexShrink: 0,*/}
+      {/*      }}*/}
+      {/*    />*/}
+      {/*  </Tooltip>*/}
+      {/*)}*/}
 
       {/* Preset badge */}
       {check.isPreset && (

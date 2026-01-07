@@ -24,6 +24,7 @@ import {
 } from "@/lib/hooks/LineageGraphAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { IconImport } from "../icons";
+import { FaFileImport } from "react-icons/fa6";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   const isDark = useIsDark();
@@ -119,6 +120,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
             pt: "6px",
             color: isDark ? "grey.300" : "grey.600",
             "&:hover": { color: isDark ? "grey.100" : "grey.800" },
+            fontSize: 20,
           }}
           aria-label="Import state"
           onClick={() => {
@@ -127,7 +129,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
           }}
           disabled={featureToggles.disableImportStateFile || isDemoSite}
         >
-          <Box component={IconImport} sx={{ fontSize: 20 }} />
+          <FaFileImport />
         </IconButton>
       </MuiTooltip>
       <input

@@ -220,6 +220,8 @@ export const CheckList = ({
                         {...provided.dragHandleProps}
                         style={style}
                         sx={{ width: "100%" }}
+                        borderBottom="1px solid"
+                        borderColor="divider"
                       >
                         <ChecklistItem
                           key={check.check_id}
