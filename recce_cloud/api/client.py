@@ -189,6 +189,41 @@ class RecceCloudClient:
             )
         return response.json()
 
+    def delete_session(self, session_id: str) -> bool:
+        """
+        Delete a session by ID.
+
+        This uses the user interactive endpoint DELETE /sessions/{session_id}.
+        If the session is a base session, it will be automatically unbound first.
+
+        Args:
+            session_id: Session ID to delete
+
+        Returns:
+            True if deletion was successful
+
+        Raises:
+            RecceCloudException: If the request fails
+        """
+        api_url = f"{self.base_url_v2}/sessions/{session_id}"
+        response = self._request("DELETE", api_url)
+        if response.status_code == 204:
+            return True
+        if response.status_code == 403:
+            raise RecceCloudException(
+                reason=response.json().get("detail", "Permission denied"),
+                status_code=response.status_code,
+            )
+        if response.status_code == 404:
+            raise RecceCloudException(
+                reason="Session not found",
+                status_code=response.status_code,
+            )
+        raise RecceCloudException(
+            reason=response.text,
+            status_code=response.status_code,
+        )
+
 
 class ReportClient:
     """Client for fetching reports from Recce Cloud API."""
