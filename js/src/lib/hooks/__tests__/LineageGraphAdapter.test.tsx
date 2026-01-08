@@ -75,16 +75,12 @@ jest.mock("@datarecce/ui/contexts", () => {
     ...actual,
     useIdleTimeout: () => mockUseIdleTimeout(),
     useRecceInstanceContext: () => mockUseRecceInstanceContext(),
+    useRecceServerFlag: jest.fn(() => ({
+      data: {},
+      isLoading: false,
+    })),
   };
 });
-
-// Mock the useRecceServerFlag hook
-jest.mock("../useRecceServerFlag", () => ({
-  useRecceServerFlag: jest.fn(() => ({
-    data: {},
-    isLoading: false,
-  })),
-}));
 
 // Mock ApiConfigContext
 jest.mock("../ApiConfigContext", () => ({

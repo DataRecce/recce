@@ -1,4 +1,5 @@
 import dagre from "@dagrejs/dagre";
+import { getNeighborSet } from "@datarecce/ui";
 import {
   type CatalogMetadata,
   type ColumnLineageData,
@@ -9,7 +10,6 @@ import {
   type NodeData,
 } from "@datarecce/ui/api";
 import { Edge, Node, Position } from "@xyflow/react";
-import { getNeighborSet } from "./graph";
 
 export const COLUMN_HEIGHT = 20;
 /**

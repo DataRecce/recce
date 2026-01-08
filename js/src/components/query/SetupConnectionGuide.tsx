@@ -1,9 +1,9 @@
+import { useRecceInstanceInfo } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { RiTerminalBoxLine } from "react-icons/ri";
-import { useRecceInstanceInfo } from "@/lib/hooks/useRecceInstanceInfo";
 import { getSettingsUrl } from "@/lib/utils/urls";
 
 export default function SetupConnectionGuide() {

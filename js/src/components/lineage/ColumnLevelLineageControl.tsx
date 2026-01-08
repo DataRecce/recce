@@ -1,4 +1,5 @@
 import { type CllInput, type ColumnLineageData } from "@datarecce/ui/api";
+import { useRecceServerFlag } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -14,7 +15,6 @@ import { useState } from "react";
 import { FaRegDotCircle } from "react-icons/fa";
 import { PiInfo, PiX } from "react-icons/pi";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
-import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 
 const _AnalyzeChangeHint = ({ ml }: { ml?: number }) => {

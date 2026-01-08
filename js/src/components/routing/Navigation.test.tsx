@@ -61,9 +61,6 @@ jest.mock("@/lib/hooks/LineageGraphAdapter", () => ({
 
 jest.mock("@datarecce/ui/contexts", () => ({
   useRecceInstanceContext: () => mockRecceInstanceContext,
-}));
-
-jest.mock("@/lib/hooks/useRecceServerFlag", () => ({
   useRecceServerFlag: () => ({
     data: mockRecceServerFlagData,
     isLoading: false,

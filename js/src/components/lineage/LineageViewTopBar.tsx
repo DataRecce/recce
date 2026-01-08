@@ -1,6 +1,9 @@
 import { type LineageDiffViewOptions } from "@datarecce/ui/api";
 import { getIconForResourceType } from "@datarecce/ui/components/lineage";
-import { useRecceInstanceContext } from "@datarecce/ui/contexts";
+import {
+  useRecceInstanceContext,
+  useRecceServerFlag,
+} from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -30,7 +33,6 @@ import { PiCaretDown } from "react-icons/pi";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
-import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { findByRunType } from "../run/registry";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 

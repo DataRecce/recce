@@ -1,5 +1,8 @@
 import { type SubmitRunTrackProps } from "@datarecce/ui/api";
-import { useRecceInstanceContext } from "@datarecce/ui/contexts";
+import {
+  useRecceInstanceContext,
+  useRecceServerFlag,
+} from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import Menu from "@mui/material/Menu";
@@ -21,7 +24,6 @@ import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import useModelColumns from "@/lib/hooks/useModelColumns";
-import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { findByRunType } from "../run/registry";
 import { useLineageViewContextSafe } from "./LineageViewContext";

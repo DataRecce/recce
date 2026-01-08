@@ -1,7 +1,10 @@
 "use client";
 
 import { type Check, cacheKeys, listChecks } from "@datarecce/ui/api";
-import { useRecceInstanceContext } from "@datarecce/ui/contexts";
+import {
+  useRecceInstanceContext,
+  useRecceServerFlag,
+} from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Tab from "@mui/material/Tab";
 import MuiTabs from "@mui/material/Tabs";
@@ -17,7 +20,6 @@ import { StateSynchronizer } from "@/components/app/StateSynchronizer";
 import { trackNavigation } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
-import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
 /**
  * Route configuration for tabs

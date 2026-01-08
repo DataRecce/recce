@@ -6,6 +6,7 @@ import {
   submitQueryDiff,
   waitRun,
 } from "@datarecce/ui/api";
+import { useRecceServerFlag } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -36,7 +37,6 @@ import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";
 import { useGuideToast } from "@/lib/hooks/useGuideToast";
-import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { formatTimestamp } from "../app/EnvInfo";
 import { QueryForm } from "../query/QueryForm";
 import { RunResultPane } from "../run/RunResultPane";

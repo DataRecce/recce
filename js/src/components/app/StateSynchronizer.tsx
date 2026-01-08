@@ -4,6 +4,7 @@ import {
   type SyncStateInput,
   syncState,
 } from "@datarecce/ui/api";
+import { useRecceInstanceInfo } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -25,7 +26,6 @@ import { PiInfo } from "react-icons/pi";
 import { toaster } from "@/components/ui/toaster";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
-import { useRecceInstanceInfo } from "@/lib/hooks/useRecceInstanceInfo";
 import { IconSync } from "../icons";
 
 function isCheckDetailPage(href: string): boolean {
