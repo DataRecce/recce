@@ -56,11 +56,36 @@ jest.mock("@/lib/hooks/LineageGraphAdapter", () => ({
   useLineageGraphContext: jest.fn(),
 }));
 
-// Mock styles utilities
-jest.mock("../styles", () => ({
-  getIconForChangeStatus: jest.fn(),
-  getIconForResourceType: jest.fn(),
-}));
+// Mock @datarecce/ui/components/lineage
+jest.mock("@datarecce/ui/components/lineage", () => {
+  const MockLineageNodeInline = jest
+    .fn()
+    .mockImplementation(({ id, data, actionTag, runsAggregatedTag }) => (
+      <div data-testid={`lineage-node-${id}`}>
+        <span>{data.label}</span>
+        {data.changeStatus && (
+          <span data-testid="change-status-icon">Status</span>
+        )}
+        <span data-testid="resource-type-icon">Resource</span>
+        {actionTag && <div data-testid="action-tag-wrapper">{actionTag}</div>}
+        {runsAggregatedTag && (
+          <div data-testid="runs-aggregated-wrapper">{runsAggregatedTag}</div>
+        )}
+      </div>
+    ));
+  return {
+    LineageNode: MockLineageNodeInline,
+    getIconForChangeStatus: jest.fn().mockReturnValue({
+      icon: () => <span data-testid="change-status-icon">Status</span>,
+      color: "#22c55e",
+      backgroundColor: "#dcfce7",
+    }),
+    getIconForResourceType: jest.fn().mockReturnValue({
+      icon: () => <span data-testid="resource-type-icon">Resource</span>,
+      color: "#06b6d4",
+    }),
+  };
+});
 
 // Mock run registry
 jest.mock("../../run/registry", () => ({
@@ -86,23 +111,11 @@ jest.mock("@/components/ui/mui-theme", () => ({
   }),
 }));
 
-// Mock ActionTag component
-jest.mock("../ActionTag", () => ({
-  ActionTag: ({
-    action,
-  }: {
-    action: { status?: string; run?: { run_type?: string } };
-  }) => (
-    <div data-testid="action-tag" data-status={action?.status}>
-      ActionTag
-    </div>
-  ),
-}));
-
 // ============================================================================
 // Imports
 // ============================================================================
 
+import { LineageNode } from "@datarecce/ui/components/lineage";
 import { useThemeColors } from "@datarecce/ui/hooks";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useStore } from "@xyflow/react";
@@ -111,7 +124,9 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { GraphNode, type GraphNodeProps } from "../GraphNode";
 import { useLineageViewContextSafe } from "../LineageViewContext";
 import type { LineageGraphNode } from "../lineage";
-import { getIconForChangeStatus, getIconForResourceType } from "../styles";
+
+// Cast the mocked LineageNode for assertions
+const mockedLineageNode = LineageNode as unknown as jest.Mock;
 
 // ============================================================================
 // Test Fixtures
@@ -221,8 +236,6 @@ describe("GraphNode", () => {
   const mockUseThemeColors = useThemeColors as jest.Mock;
   const mockUseLineageViewContextSafe = useLineageViewContextSafe as jest.Mock;
   const mockUseLineageGraphContext = useLineageGraphContext as jest.Mock;
-  const mockGetIconForChangeStatus = getIconForChangeStatus as jest.Mock;
-  const mockGetIconForResourceType = getIconForResourceType as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -232,15 +245,7 @@ describe("GraphNode", () => {
     mockUseThemeColors.mockReturnValue(mockThemeColors);
     mockUseLineageViewContextSafe.mockReturnValue(createMockContext());
     mockUseLineageGraphContext.mockReturnValue(createMockLineageGraphContext());
-    mockGetIconForChangeStatus.mockReturnValue({
-      icon: () => <span data-testid="change-status-icon">Status</span>,
-      color: "#22c55e",
-      backgroundColor: "#dcfce7",
-    });
-    mockGetIconForResourceType.mockReturnValue({
-      icon: () => <span data-testid="resource-type-icon">Resource</span>,
-      color: "#06b6d4",
-    });
+    mockedLineageNode.mockClear();
   });
 
   // ==========================================================================
@@ -294,7 +299,7 @@ describe("GraphNode", () => {
       expect(nameElement.closest('[style*="visibility"]')).toBeTruthy;
     });
 
-    it("applies different resource type icons based on resourceType", () => {
+    it("passes different resourceType values to LineageNode", () => {
       const resourceTypes = [
         "model",
         "source",
@@ -312,22 +317,12 @@ describe("GraphNode", () => {
         mockUseLineageGraphContext.mockReturnValue(
           createMockLineageGraphContext(),
         );
-        mockGetIconForResourceType.mockReturnValue({
-          icon: () => (
-            <span data-testid={`icon-${resourceType}`}>{resourceType}</span>
-          ),
-          color: "#06b6d4",
-        });
-        mockGetIconForChangeStatus.mockReturnValue({
-          icon: undefined,
-          color: "#9ca3af",
-          backgroundColor: "#f3f4f6",
-        });
 
         const props = createMockNodeProps({ resourceType });
         const { unmount } = render(<GraphNode {...props} />);
 
-        expect(mockGetIconForResourceType).toHaveBeenCalledWith(resourceType);
+        const callProps = mockedLineageNode.mock.calls[0][0];
+        expect(callProps.data.resourceType).toBe(resourceType);
         unmount();
       }
     });
@@ -338,19 +333,16 @@ describe("GraphNode", () => {
   // ==========================================================================
 
   describe("selection states", () => {
-    it("shows checkbox when interactive is true", () => {
+    it("passes interactive=true to LineageNode when interactive is true", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({ interactive: true }),
       );
       const props = createMockNodeProps();
 
-      const { container } = render(<GraphNode {...props} />);
+      render(<GraphNode {...props} />);
 
-      // Checkbox should be present - look for the SVG icon (FaRegSquare)
-      const checkboxIcon = container.querySelector(
-        'svg[viewBox="0 0 448 512"]',
-      );
-      expect(checkboxIcon).toBeInTheDocument();
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.interactive).toBe(true);
     });
 
     it("checkbox toggles selection in selecting mode", () => {
@@ -519,7 +511,7 @@ describe("GraphNode", () => {
   // ==========================================================================
 
   describe("action tags", () => {
-    it("renders ActionTag when action exists in action_result mode", () => {
+    it("renders action tag when action exists in action_result mode", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           selectMode: "action_result",
@@ -533,10 +525,11 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      expect(screen.getByTestId("action-tag")).toBeInTheDocument();
+      // The LineageNode mock receives actionTag prop and renders it in action-tag-wrapper
+      expect(screen.getByTestId("action-tag-wrapper")).toBeInTheDocument();
     });
 
-    it("does not render ActionTag when no action exists", () => {
+    it("does not render action tag when no action exists", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           selectMode: "action_result",
@@ -548,10 +541,12 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      expect(screen.queryByTestId("action-tag")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("action-tag-wrapper"),
+      ).not.toBeInTheDocument();
     });
 
-    it("passes correct action data to ActionTag", () => {
+    it("passes action tag to LineageNode when action exists", () => {
       const mockAction = {
         status: "pending" as const,
         mode: "multi_nodes" as const,
@@ -568,8 +563,9 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      const actionTag = screen.getByTestId("action-tag");
-      expect(actionTag).toHaveAttribute("data-status", "pending");
+      // Verify LineageNode was called with actionTag prop
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.actionTag).toBeDefined();
     });
   });
 
@@ -667,7 +663,7 @@ describe("GraphNode", () => {
       child_map: {},
     });
 
-    it("shows change category text when isNodeShowingChangeAnalysis is true", () => {
+    it("passes showChangeAnalysis=true and changeCategory to LineageNode", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           isNodeShowingChangeAnalysis: jest.fn(() => true),
@@ -680,11 +676,12 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      // "Breaking" text should be displayed
-      expect(screen.getByText("Breaking")).toBeInTheDocument();
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.showChangeAnalysis).toBe(true);
+      expect(callProps.changeCategory).toBe("breaking");
     });
 
-    it("shows Non Breaking text for non_breaking category", () => {
+    it("passes non_breaking changeCategory to LineageNode", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           isNodeShowingChangeAnalysis: jest.fn(() => true),
@@ -697,10 +694,11 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      expect(screen.getByText("Non Breaking")).toBeInTheDocument();
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.changeCategory).toBe("non_breaking");
     });
 
-    it("shows Partial Breaking text for partial_breaking category", () => {
+    it("passes partial_breaking changeCategory to LineageNode", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           isNodeShowingChangeAnalysis: jest.fn(() => true),
@@ -713,10 +711,11 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      expect(screen.getByText("Partial Breaking")).toBeInTheDocument();
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.changeCategory).toBe("partial_breaking");
     });
 
-    it("shows Unknown text for unknown category", () => {
+    it("passes unknown changeCategory to LineageNode", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           isNodeShowingChangeAnalysis: jest.fn(() => true),
@@ -729,7 +728,22 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      expect(screen.getByText("Unknown")).toBeInTheDocument();
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.changeCategory).toBe("unknown");
+    });
+
+    it("passes showChangeAnalysis=false when not showing change analysis", () => {
+      mockUseLineageViewContextSafe.mockReturnValue(
+        createMockContext({
+          isNodeShowingChangeAnalysis: jest.fn(() => false),
+        }),
+      );
+      const props = createMockNodeProps();
+
+      render(<GraphNode {...props} />);
+
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.showChangeAnalysis).toBe(false);
     });
   });
 
@@ -738,7 +752,7 @@ describe("GraphNode", () => {
   // ==========================================================================
 
   describe("handles", () => {
-    it("renders left handle when node has parents", () => {
+    it("passes hasParents=true to LineageNode when node has parents", () => {
       const props = createMockNodeProps({
         parents: {
           "parent-1": {
@@ -753,12 +767,11 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      const targetHandle = screen.getByTestId("handle-target");
-      expect(targetHandle).toBeInTheDocument();
-      expect(targetHandle).toHaveAttribute("data-position", "left");
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.hasParents).toBe(true);
     });
 
-    it("renders right handle when node has children", () => {
+    it("passes hasChildren=true to LineageNode when node has children", () => {
       const props = createMockNodeProps({
         children: {
           "child-1": {
@@ -773,28 +786,29 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      const sourceHandle = screen.getByTestId("handle-source");
-      expect(sourceHandle).toBeInTheDocument();
-      expect(sourceHandle).toHaveAttribute("data-position", "right");
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.hasChildren).toBe(true);
     });
 
-    it("does not render left handle when node has no parents", () => {
+    it("passes hasParents=false when node has no parents", () => {
       const props = createMockNodeProps({ parents: {} });
 
       render(<GraphNode {...props} />);
 
-      expect(screen.queryByTestId("handle-target")).not.toBeInTheDocument();
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.hasParents).toBe(false);
     });
 
-    it("does not render right handle when node has no children", () => {
+    it("passes hasChildren=false when node has no children", () => {
       const props = createMockNodeProps({ children: {} });
 
       render(<GraphNode {...props} />);
 
-      expect(screen.queryByTestId("handle-source")).not.toBeInTheDocument();
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.hasChildren).toBe(false);
     });
 
-    it("renders both handles when node has parents and children", () => {
+    it("passes both hasParents=true and hasChildren=true when node has both", () => {
       const props = createMockNodeProps({
         parents: {
           "parent-1": {
@@ -818,8 +832,9 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      expect(screen.getByTestId("handle-target")).toBeInTheDocument();
-      expect(screen.getByTestId("handle-source")).toBeInTheDocument();
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.hasParents).toBe(true);
+      expect(callProps.hasChildren).toBe(true);
     });
   });
 
@@ -973,40 +988,41 @@ describe("GraphNode", () => {
   // ==========================================================================
 
   describe("change status styling", () => {
-    it("calls getIconForChangeStatus with added status", () => {
+    it("passes added changeStatus to LineageNode", () => {
       const props = createMockNodeProps({ changeStatus: "added" });
 
       render(<GraphNode {...props} />);
 
-      expect(mockGetIconForChangeStatus).toHaveBeenCalledWith("added", false);
+      // Access the first call's first argument
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.data.changeStatus).toBe("added");
     });
 
-    it("calls getIconForChangeStatus with removed status", () => {
+    it("passes removed changeStatus to LineageNode", () => {
       const props = createMockNodeProps({ changeStatus: "removed" });
 
       render(<GraphNode {...props} />);
 
-      expect(mockGetIconForChangeStatus).toHaveBeenCalledWith("removed", false);
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.data.changeStatus).toBe("removed");
     });
 
-    it("calls getIconForChangeStatus with modified status", () => {
+    it("passes modified changeStatus to LineageNode", () => {
       const props = createMockNodeProps({ changeStatus: "modified" });
 
       render(<GraphNode {...props} />);
 
-      expect(mockGetIconForChangeStatus).toHaveBeenCalledWith(
-        "modified",
-        false,
-      );
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.data.changeStatus).toBe("modified");
     });
 
-    it("uses default colors when changeStatus is undefined", () => {
+    it("passes undefined changeStatus when not set", () => {
       const props = createMockNodeProps({ changeStatus: undefined });
 
       render(<GraphNode {...props} />);
 
-      // Should not call getIconForChangeStatus since changeStatus is undefined
-      // The component should use default gray colors
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.data.changeStatus).toBeUndefined();
     });
   });
 
@@ -1015,7 +1031,7 @@ describe("GraphNode", () => {
   // ==========================================================================
 
   describe("dark mode", () => {
-    it("passes isDark to getIconForChangeStatus", () => {
+    it("passes isDark=true to LineageNode", () => {
       mockUseThemeColors.mockReturnValue({
         ...mockThemeColors,
         isDark: true,
@@ -1024,24 +1040,21 @@ describe("GraphNode", () => {
 
       render(<GraphNode {...props} />);
 
-      expect(mockGetIconForChangeStatus).toHaveBeenCalledWith("added", true);
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.isDark).toBe(true);
     });
 
-    it("applies dark mode background colors", () => {
+    it("passes isDark=false to LineageNode in light mode", () => {
       mockUseThemeColors.mockReturnValue({
         ...mockThemeColors,
-        isDark: true,
-        background: {
-          paper: "#1e1e1e",
-          default: "#121212",
-          subtle: "#2d2d2d",
-        },
+        isDark: false,
       });
       const props = createMockNodeProps();
 
       render(<GraphNode {...props} />);
 
-      // Dark mode background should be applied
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.isDark).toBe(false);
     });
   });
 });

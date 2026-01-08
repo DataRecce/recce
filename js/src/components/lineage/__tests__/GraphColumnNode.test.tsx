@@ -43,15 +43,50 @@ jest.mock("../LineageViewContext", () => ({
   useLineageViewContextSafe: jest.fn(),
 }));
 
-// Mock styles utilities
-jest.mock("../styles", () => ({
-  getIconForChangeStatus: jest.fn(),
-}));
+// Mock @datarecce/ui/components/lineage
+jest.mock("@datarecce/ui/components/lineage", () => {
+  const MockLineageColumnNodeInline = jest
+    .fn()
+    .mockImplementation(({ id, data, showContent, showChangeAnalysis }) => {
+      if (!showContent) {
+        return null;
+      }
+      return (
+        <div data-testid={`lineage-column-node-${id}`}>
+          <span>{data.column}</span>
+          {data.type && <span>{data.type}</span>}
+          {showChangeAnalysis && data.changeStatus && (
+            <span data-testid="change-status-indicator">
+              {data.changeStatus}
+            </span>
+          )}
+          {!showChangeAnalysis && data.transformationType && (
+            <span data-testid="transformation-chip">
+              {data.transformationType}
+            </span>
+          )}
+          <div data-testid="handle-target" data-position="left" />
+          <div data-testid="handle-source" data-position="right" />
+        </div>
+      );
+    });
+  return {
+    LineageColumnNode: MockLineageColumnNodeInline,
+    getIconForChangeStatus: jest.fn().mockReturnValue({
+      icon: () => <span data-testid="change-status-icon">Status</span>,
+      color: "#22c55e",
+    }),
+  };
+});
 
 // ============================================================================
 // Imports
 // ============================================================================
 
+import {
+  getIconForChangeStatus,
+  LineageColumnNode,
+} from "@datarecce/ui/components/lineage";
 import { useThemeColors } from "@datarecce/ui/hooks";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useStore } from "@xyflow/react";
@@ -63,7 +98,6 @@ import {
 } from "../GraphColumnNode";
 import { useLineageViewContextSafe } from "../LineageViewContext";
 import type { LineageGraphColumnNode } from "../lineage";
-import { getIconForChangeStatus } from "../styles";
 
 // ============================================================================
 // Test Fixtures
@@ -165,6 +199,7 @@ describe("GraphColumnNode", () => {
   const mockUseThemeColors = useThemeColors as jest.Mock;
   const mockUseLineageViewContextSafe = useLineageViewContextSafe as jest.Mock;
   const mockGetIconForChangeStatus = getIconForChangeStatus as jest.Mock;
+  const mockedLineageColumnNode = LineageColumnNode as unknown as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -206,6 +241,9 @@ describe("GraphColumnNode", () => {
 
       const { container } = render(<GraphColumnNode {...props} />);
 
+      // Verify showContent=false is passed to LineageColumnNode
+      const callProps = mockedLineageColumnNode.mock.calls[0][0];
+      expect(callProps.showContent).toBe(false);
       // Component should render nothing when zoomed out
       expect(container.firstChild).toBeNull();
     });
@@ -357,8 +395,10 @@ describe("GraphColumnNode", () => {
 
       render(<GraphColumnNode {...props} />);
 
-      // Should show TransformationType (D chip) not ChangeStatus
-      expect(screen.getByText("D")).toBeInTheDocument();
+      // Verify showChangeAnalysis=false and transformationType are passed
+      const callProps = mockedLineageColumnNode.mock.calls[0][0];
+      expect(callProps.showChangeAnalysis).toBe(false);
+      expect(callProps.data.transformationType).toBe("derived");
     });
 
     it("shows ChangeStatus when showing change analysis and changeStatus exists", () => {
@@ -367,10 +407,6 @@ describe("GraphColumnNode", () => {
           isNodeShowingChangeAnalysis: jest.fn(() => true),
         }),
       );
-      mockGetIconForChangeStatus.mockReturnValue({
-        icon: () => <span data-testid="change-icon">Change</span>,
-        color: "#f59e0b",
-      });
       const props = createMockColumnNodeProps({
         transformationType: "derived",
         changeStatus: "modified",
@@ -378,8 +414,10 @@ describe("GraphColumnNode", () => {
 
       render(<GraphColumnNode {...props} />);
 
-      // Should call getIconForChangeStatus for ChangeStatus component
-      expect(mockGetIconForChangeStatus).toHaveBeenCalledWith("modified");
+      // Verify showChangeAnalysis=true and changeStatus are passed to LineageColumnNode
+      const callProps = mockedLineageColumnNode.mock.calls[0][0];
+      expect(callProps.showChangeAnalysis).toBe(true);
+      expect(callProps.data.changeStatus).toBe("modified");
     });
 
     it("shows TransformationType when showing change analysis but no changeStatus", () => {
@@ -395,8 +433,11 @@ describe("GraphColumnNode", () => {
 
       render(<GraphColumnNode {...props} />);
 
-      // Should show TransformationType since no changeStatus
-      expect(screen.getByText("P")).toBeInTheDocument();
+      // Verify showChangeAnalysis=true but changeStatus undefined, so transformationType shown
+      const callProps = mockedLineageColumnNode.mock.calls[0][0];
+      expect(callProps.showChangeAnalysis).toBe(true);
+      expect(callProps.data.changeStatus).toBeUndefined();
+      expect(callProps.data.transformationType).toBe("passthrough");
     });
   });
 
@@ -405,58 +446,64 @@ describe("GraphColumnNode", () => {
   // ==========================================================================
 
   describe("hover behavior", () => {
-    it("shows column type when not hovered", () => {
+    it("passes column type to LineageColumnNode", () => {
       const props = createMockColumnNodeProps({ type: "TIMESTAMP" });
 
       render(<GraphColumnNode {...props} />);
 
-      expect(screen.getByText("TIMESTAMP")).toBeInTheDocument();
+      // Verify type is passed to LineageColumnNode
+      const callProps = mockedLineageColumnNode.mock.calls[0][0];
+      expect(callProps.data.type).toBe("TIMESTAMP");
     });
 
-    it("hides column type on hover", () => {
+    it("passes onContextMenu callback to LineageColumnNode", () => {
+      const mockShowContextMenu = jest.fn();
+      mockUseLineageViewContextSafe.mockReturnValue(
+        createMockContext({
+          showContextMenu: mockShowContextMenu,
+        }),
+      );
       const props = createMockColumnNodeProps({ type: "BOOLEAN" });
 
-      const { container } = render(<GraphColumnNode {...props} />);
+      render(<GraphColumnNode {...props} />);
 
-      // Trigger hover
-      fireEvent.mouseEnter(container.firstChild as Element);
-
-      // Column type should be hidden after hover
-      // The kebab menu should replace it
-      expect(screen.queryByText("BOOLEAN")).not.toBeInTheDocument();
+      // Verify onContextMenu callback is passed
+      const callProps = mockedLineageColumnNode.mock.calls[0][0];
+      expect(callProps.onContextMenu).toBeDefined();
+      expect(typeof callProps.onContextMenu).toBe("function");
     });
 
-    it("shows kebab menu on hover", () => {
+    it("onContextMenu callback invokes showContextMenu from context", () => {
+      const mockShowContextMenu = jest.fn();
+      mockUseLineageViewContextSafe.mockReturnValue(
+        createMockContext({
+          showContextMenu: mockShowContextMenu,
+        }),
+      );
       const props = createMockColumnNodeProps();
 
-      const { container } = render(<GraphColumnNode {...props} />);
+      render(<GraphColumnNode {...props} />);
 
-      // Before hover, verify we can find the component
-      expect(container.firstChild).toBeInTheDocument();
+      // Get the onContextMenu callback passed to LineageColumnNode
+      const callProps = mockedLineageColumnNode.mock.calls[0][0];
+      const mockEvent = {
+        preventDefault: jest.fn(),
+      } as unknown as React.MouseEvent;
 
-      // Trigger hover
-      fireEvent.mouseEnter(container.firstChild as Element);
+      // Call the callback
+      callProps.onContextMenu(mockEvent, "test_column");
 
-      // After hover, kebab menu (VscKebabVertical) should be shown
-      // Component swaps column type for kebab icon
+      // Verify showContextMenu was called
+      expect(mockShowContextMenu).toHaveBeenCalled();
     });
 
-    it("restores column type on mouse leave", () => {
+    it("passes different types correctly", () => {
       const props = createMockColumnNodeProps({ type: "DATE" });
 
-      const { container } = render(<GraphColumnNode {...props} />);
+      render(<GraphColumnNode {...props} />);
 
-      // Hover
-      fireEvent.mouseEnter(container.firstChild as Element);
-
-      // Column type should be hidden
-      expect(screen.queryByText("DATE")).not.toBeInTheDocument();
-
-      // Leave hover
-      fireEvent.mouseLeave(container.firstChild as Element);
-
-      // Column type should be restored
-      expect(screen.getByText("DATE")).toBeInTheDocument();
+      const callProps = mockedLineageColumnNode.mock.calls[0][0];
+      expect(callProps.data.type).toBe("DATE");
     });
   });
 
@@ -627,7 +674,9 @@ describe("GraphColumnNode", () => {
 
       expect(screen.getByText("user_id")).toBeInTheDocument();
       expect(screen.getByText("BIGINT")).toBeInTheDocument();
-      expect(screen.getByText("P")).toBeInTheDocument();
+      // Verify transformationType is passed to LineageColumnNode
+      const callProps = mockedLineageColumnNode.mock.calls[0][0];
+      expect(callProps.data.transformationType).toBe("passthrough");
     });
 
     it("renders with change analysis mode enabled", () => {
@@ -636,10 +685,6 @@ describe("GraphColumnNode", () => {
           isNodeShowingChangeAnalysis: jest.fn(() => true),
         }),
       );
-      mockGetIconForChangeStatus.mockReturnValue({
-        icon: () => <span data-testid="added-icon">+</span>,
-        color: "#22c55e",
-      });
       const props = createMockColumnNodeProps({
         column: "new_column",
         type: "STRING",
@@ -651,8 +696,10 @@ describe("GraphColumnNode", () => {
 
       expect(screen.getByText("new_column")).toBeInTheDocument();
       expect(screen.getByText("STRING")).toBeInTheDocument();
-      // Should show change status icon instead of transformation chip
-      expect(mockGetIconForChangeStatus).toHaveBeenCalledWith("added");
+      // Verify showChangeAnalysis and changeStatus are passed to LineageColumnNode
+      const callProps = mockedLineageColumnNode.mock.calls[0][0];
+      expect(callProps.showChangeAnalysis).toBe(true);
+      expect(callProps.data.changeStatus).toBe("added");
     });
   });
 });
