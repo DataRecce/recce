@@ -176,12 +176,19 @@ export function RecceActionAdapter({ children }: RecceActionAdapterProps) {
 
           await queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
 
+          // Call showRunId BEFORE navigation (matching original RecceActionContext behavior)
+          // This ensures state is set before any navigation-triggered re-renders
+          if (showRunIdRef.current) {
+            showRunIdRef.current(run_id);
+          }
+
           // Navigate to lineage base if we're on a lineage subpath
           if (location.startsWith("/lineage")) {
             setLocation("/lineage");
           }
 
-          return run_id;
+          // Return undefined since we already called showRunId via ref
+          return undefined;
         }
         // Show form modal
         setAction({

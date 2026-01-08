@@ -821,6 +821,114 @@ describe("RecceActionAdapter", () => {
     });
   });
 
+  describe("timing regression tests", () => {
+    /**
+     * REGRESSION TEST: Verify state is set correctly with navigation on lineage paths
+     *
+     * This test captures a critical bug where the order of operations changed:
+     * - Original: showRunId(run_id) → setLocation("/lineage")
+     * - Broken: setLocation("/lineage") → return run_id → provider calls showRunId
+     *
+     * The incorrect order caused:
+     * 1. Empty ResultView pane when running diffs
+     * 2. NodeView unable to close after running profile diff
+     * 3. State not being set before navigation-triggered re-renders
+     *
+     * The fix ensures showRunId is called BEFORE setLocation in handleRunAction,
+     * and the handler returns undefined (not the run_id) to prevent double calls.
+     */
+    it("sets run result state and navigates when on lineage subpath", async () => {
+      const mockSetLocation = jest.fn();
+      mockUseAppLocation.mockReturnValue([
+        "/lineage/node/test",
+        mockSetLocation,
+      ]);
+
+      mockFindByRunType.mockReturnValue({
+        title: "Profile Diff",
+        icon: () => null,
+        RunResultView: () => <div>Result</div>,
+        RunForm: undefined, // No form = direct submission
+      });
+      mockSubmitRun.mockResolvedValue({ run_id: "timing-test-run-123" });
+
+      const queryClient = createTestQueryClient();
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <RecceActionAdapter>
+            <TestConsumer />
+          </RecceActionAdapter>
+        </QueryClientProvider>,
+      );
+
+      // Initial state - pane should be closed
+      expect(screen.getByTestId("is-run-result-open")).toHaveTextContent(
+        "false",
+      );
+      expect(screen.getByTestId("run-id")).toHaveTextContent("none");
+
+      // Trigger the run action
+      act(() => {
+        screen.getByTestId("run-action-btn").click();
+      });
+
+      // Wait for the run to complete and state to be set
+      await waitFor(() => {
+        expect(screen.getByTestId("run-id")).toHaveTextContent(
+          "timing-test-run-123",
+        );
+      });
+
+      // CRITICAL: Verify both state IS set AND navigation happened
+      // Before the fix, one or both of these would fail
+      expect(screen.getByTestId("is-run-result-open")).toHaveTextContent(
+        "true",
+      );
+      expect(mockSetLocation).toHaveBeenCalledWith("/lineage");
+    });
+
+    it("does not navigate when not on lineage path", async () => {
+      const mockSetLocation = jest.fn();
+      mockUseAppLocation.mockReturnValue(["/checks", mockSetLocation]);
+
+      mockFindByRunType.mockReturnValue({
+        title: "Query Diff",
+        icon: () => null,
+        RunResultView: () => <div>Result</div>,
+        RunForm: undefined,
+      });
+      mockSubmitRun.mockResolvedValue({ run_id: "no-nav-run-456" });
+
+      const queryClient = createTestQueryClient();
+      render(
+        <QueryClientProvider client={queryClient}>
+          <RecceActionAdapter>
+            <TestConsumer />
+          </RecceActionAdapter>
+        </QueryClientProvider>,
+      );
+
+      act(() => {
+        screen.getByTestId("run-action-btn").click();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("run-id")).toHaveTextContent(
+          "no-nav-run-456",
+        );
+      });
+
+      // State should be set
+      expect(screen.getByTestId("is-run-result-open")).toHaveTextContent(
+        "true",
+      );
+
+      // But setLocation should NOT have been called since we're not on /lineage
+      expect(mockSetLocation).not.toHaveBeenCalled();
+    });
+  });
+
   describe("track props", () => {
     it("passes trackProps to submitRun when provided", async () => {
       mockFindByRunType.mockReturnValue({
