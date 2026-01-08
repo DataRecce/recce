@@ -13,3 +13,5 @@ export {
 } from "./LineageView";
 export * from "./legend";
 export * from "./nodes";
+// Style utilities
+export * from "./styles";

@@ -13,6 +13,7 @@ import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { ChangeEvent, useCallback, useRef, useState } from "react";
+import { FaFileImport } from "react-icons/fa6";
 import { IoClose } from "react-icons/io5";
 import { PiInfo } from "react-icons/pi";
 import { toaster } from "@/components/ui/toaster";
@@ -24,7 +25,6 @@ import {
 } from "@/lib/hooks/LineageGraphAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { IconImport } from "../icons";
-import { FaFileImport } from "react-icons/fa6";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   const isDark = useIsDark();

@@ -6,6 +6,9 @@
  * - Column name and type rendering
  * - Change status indicators (added, removed, modified)
  * - Transformation type chips (P, R, D, S, U)
+ * - showContent prop (zoom-level visibility)
+ * - showChangeAnalysis prop (toggle between change status and transformation)
+ * - Context menu callback (kebab menu on hover)
  * - Highlighting behavior
  * - Focus state
  * - Hover behavior
@@ -42,10 +45,11 @@ jest.mock("@xyflow/react", () => ({
 // ============================================================================
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import React from "react";
+import type { MouseEvent } from "react";
 import {
   COLUMN_NODE_HEIGHT,
   COLUMN_NODE_WIDTH,
+  type ColumnChangeStatus,
   type ColumnTransformationType,
   LineageColumnNode,
   type LineageColumnNodeData,
@@ -136,32 +140,55 @@ describe("LineageColumnNode", () => {
   // ==========================================================================
 
   describe("change status indicator", () => {
-    it("renders + symbol for added status", () => {
-      const props = createMockColumnNodeProps({}, { changeStatus: "added" });
+    it("renders + symbol for added status when showChangeAnalysis is true", () => {
+      const props = createMockColumnNodeProps(
+        { showChangeAnalysis: true },
+        { changeStatus: "added" },
+      );
 
       render(<LineageColumnNode {...props} />);
 
       expect(screen.getByText("+")).toBeInTheDocument();
     });
 
-    it("renders - symbol for removed status", () => {
-      const props = createMockColumnNodeProps({}, { changeStatus: "removed" });
+    it("renders - symbol for removed status when showChangeAnalysis is true", () => {
+      const props = createMockColumnNodeProps(
+        { showChangeAnalysis: true },
+        { changeStatus: "removed" },
+      );
 
       render(<LineageColumnNode {...props} />);
 
       expect(screen.getByText("-")).toBeInTheDocument();
     });
 
-    it("renders ~ symbol for modified status", () => {
-      const props = createMockColumnNodeProps({}, { changeStatus: "modified" });
+    it("renders ~ symbol for modified status when showChangeAnalysis is true", () => {
+      const props = createMockColumnNodeProps(
+        { showChangeAnalysis: true },
+        { changeStatus: "modified" },
+      );
 
       render(<LineageColumnNode {...props} />);
 
       expect(screen.getByText("~")).toBeInTheDocument();
     });
 
+    it("does not render change status indicator when showChangeAnalysis is false", () => {
+      const props = createMockColumnNodeProps(
+        { showChangeAnalysis: false },
+        { changeStatus: "added" },
+      );
+
+      render(<LineageColumnNode {...props} />);
+
+      expect(screen.queryByText("+")).not.toBeInTheDocument();
+    });
+
     it("does not render change status indicator when not provided", () => {
-      const props = createMockColumnNodeProps({}, { changeStatus: undefined });
+      const props = createMockColumnNodeProps(
+        { showChangeAnalysis: true },
+        { changeStatus: undefined },
+      );
 
       render(<LineageColumnNode {...props} />);
 
@@ -200,7 +227,7 @@ describe("LineageColumnNode", () => {
       expect(screen.getByText(letter)).toBeInTheDocument();
     });
 
-    it("shows change status instead of transformation when both present", () => {
+    it("shows transformation type by default even when change status is present", () => {
       const props = createMockColumnNodeProps(
         {},
         {
@@ -211,9 +238,9 @@ describe("LineageColumnNode", () => {
 
       render(<LineageColumnNode {...props} />);
 
-      // Change status takes precedence
-      expect(screen.getByText("+")).toBeInTheDocument();
-      expect(screen.queryByText("P")).not.toBeInTheDocument();
+      // Transformation type shown when showChangeAnalysis is false (default)
+      expect(screen.getByText("P")).toBeInTheDocument();
+      expect(screen.queryByText("+")).not.toBeInTheDocument();
     });
 
     it("does not render transformation indicator when not provided", () => {
@@ -375,6 +402,181 @@ describe("LineageColumnNode", () => {
   });
 
   // ==========================================================================
+  // showContent Prop Tests (Zoom Visibility)
+  // ==========================================================================
+
+  describe("showContent prop", () => {
+    it("renders node when showContent is true (default)", () => {
+      const props = createMockColumnNodeProps();
+
+      const { container } = render(<LineageColumnNode {...props} />);
+
+      expect(container.firstChild).toBeInTheDocument();
+      expect(screen.getByText("id")).toBeInTheDocument();
+    });
+
+    it("returns null when showContent is false (low zoom)", () => {
+      const props = createMockColumnNodeProps({ showContent: false });
+
+      const { container } = render(<LineageColumnNode {...props} />);
+
+      expect(container.firstChild).toBeNull();
+    });
+
+    it("hides node at low zoom level", () => {
+      const props = createMockColumnNodeProps({ showContent: false });
+
+      render(<LineageColumnNode {...props} />);
+
+      expect(screen.queryByText("id")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("handle-target")).not.toBeInTheDocument();
+    });
+  });
+
+  // ==========================================================================
+  // showChangeAnalysis Prop Tests (Mode Toggle)
+  // ==========================================================================
+
+  describe("showChangeAnalysis prop", () => {
+    it("shows transformation type when showChangeAnalysis is false", () => {
+      const props = createMockColumnNodeProps(
+        { showChangeAnalysis: false },
+        {
+          transformationType: "passthrough",
+          changeStatus: "added",
+        },
+      );
+
+      render(<LineageColumnNode {...props} />);
+
+      expect(screen.getByText("P")).toBeInTheDocument();
+      expect(screen.queryByText("+")).not.toBeInTheDocument();
+    });
+
+    it("shows change status when showChangeAnalysis is true", () => {
+      const props = createMockColumnNodeProps(
+        { showChangeAnalysis: true },
+        {
+          transformationType: "passthrough",
+          changeStatus: "added",
+        },
+      );
+
+      render(<LineageColumnNode {...props} />);
+
+      expect(screen.getByText("+")).toBeInTheDocument();
+      expect(screen.queryByText("P")).not.toBeInTheDocument();
+    });
+
+    it("shows transformation type when showChangeAnalysis is true but no change status", () => {
+      const props = createMockColumnNodeProps(
+        { showChangeAnalysis: true },
+        {
+          transformationType: "derived",
+          changeStatus: undefined,
+        },
+      );
+
+      render(<LineageColumnNode {...props} />);
+
+      expect(screen.getByText("D")).toBeInTheDocument();
+    });
+  });
+
+  // ==========================================================================
+  // onContextMenu Callback Tests (Kebab Menu)
+  // ==========================================================================
+
+  describe("onContextMenu callback", () => {
+    it("shows kebab menu on hover when onContextMenu is provided", () => {
+      const onContextMenu = jest.fn();
+      const props = createMockColumnNodeProps({ onContextMenu });
+
+      const { container } = render(<LineageColumnNode {...props} />);
+      const element = container.firstChild as HTMLElement;
+
+      // Initially shows column type
+      expect(screen.getByText("INTEGER")).toBeInTheDocument();
+
+      // Hover to show kebab menu
+      fireEvent.mouseEnter(element);
+
+      // Now shows kebab menu instead of type
+      expect(screen.getByTestId("column-kebab-menu")).toBeInTheDocument();
+      expect(screen.queryByText("INTEGER")).not.toBeInTheDocument();
+    });
+
+    it("calls onContextMenu when kebab menu is clicked", () => {
+      const onContextMenu = jest.fn();
+      const props = createMockColumnNodeProps({ onContextMenu });
+
+      const { container } = render(<LineageColumnNode {...props} />);
+      const element = container.firstChild as HTMLElement;
+
+      // Hover to show kebab menu
+      fireEvent.mouseEnter(element);
+
+      // Click kebab menu
+      const kebabMenu = screen.getByTestId("column-kebab-menu");
+      fireEvent.click(kebabMenu);
+
+      expect(onContextMenu).toHaveBeenCalledWith(
+        expect.any(Object),
+        "users-id",
+      );
+    });
+
+    it("kebab menu click stops event propagation", () => {
+      const onContextMenu = jest.fn();
+      const onColumnClick = jest.fn();
+      const props = createMockColumnNodeProps({ onContextMenu, onColumnClick });
+
+      const { container } = render(<LineageColumnNode {...props} />);
+      const element = container.firstChild as HTMLElement;
+
+      // Hover to show kebab menu
+      fireEvent.mouseEnter(element);
+
+      // Click kebab menu
+      const kebabMenu = screen.getByTestId("column-kebab-menu");
+      fireEvent.click(kebabMenu);
+
+      // onContextMenu should be called, but onColumnClick should NOT be called
+      expect(onContextMenu).toHaveBeenCalled();
+      expect(onColumnClick).not.toHaveBeenCalled();
+    });
+
+    it("shows column type when not hovering even with onContextMenu", () => {
+      const onContextMenu = jest.fn();
+      const props = createMockColumnNodeProps({ onContextMenu });
+
+      const { container } = render(<LineageColumnNode {...props} />);
+      const element = container.firstChild as HTMLElement;
+
+      // Hover then leave
+      fireEvent.mouseEnter(element);
+      fireEvent.mouseLeave(element);
+
+      // Should show type again
+      expect(screen.getByText("INTEGER")).toBeInTheDocument();
+      expect(screen.queryByTestId("column-kebab-menu")).not.toBeInTheDocument();
+    });
+
+    it("does not show kebab menu when onContextMenu is not provided", () => {
+      const props = createMockColumnNodeProps();
+
+      const { container } = render(<LineageColumnNode {...props} />);
+      const element = container.firstChild as HTMLElement;
+
+      fireEvent.mouseEnter(element);
+
+      // Should still show type, no kebab menu
+      expect(screen.getByText("INTEGER")).toBeInTheDocument();
+      expect(screen.queryByTestId("column-kebab-menu")).not.toBeInTheDocument();
+    });
+  });
+
+  // ==========================================================================
   // Memoization Tests
   // ==========================================================================
 
@@ -389,9 +591,9 @@ describe("LineageColumnNode", () => {
   // ==========================================================================
 
   describe("integration", () => {
-    it("renders complete column node with all features", () => {
+    it("renders complete column node with change analysis mode", () => {
       const props = createMockColumnNodeProps(
-        {},
+        { showChangeAnalysis: true },
         {
           column: "created_at",
           type: "TIMESTAMP",
@@ -442,6 +644,44 @@ describe("LineageColumnNode", () => {
       // Component should render with column name visible
       expect(screen.getByText("old_column")).toBeInTheDocument();
       expect(container.firstChild).toBeInTheDocument();
+    });
+
+    it("renders column node with all new props", () => {
+      const onContextMenu = jest.fn();
+      const props = createMockColumnNodeProps(
+        {
+          showContent: true,
+          showChangeAnalysis: true,
+          isDark: true,
+          onContextMenu,
+        },
+        {
+          column: "test_column",
+          type: "VARCHAR",
+          changeStatus: "modified",
+          transformationType: "derived",
+          isHighlighted: true,
+          isFocused: true,
+        },
+      );
+
+      const { container } = render(<LineageColumnNode {...props} />);
+
+      expect(screen.getByText("test_column")).toBeInTheDocument();
+      // Shows change status because showChangeAnalysis is true
+      expect(screen.getByText("~")).toBeInTheDocument();
+      expect(container.firstChild).toBeInTheDocument();
+    });
+  });
+
+  // ==========================================================================
+  // Type Export Tests
+  // ==========================================================================
+
+  describe("type exports", () => {
+    it("ColumnChangeStatus type accepts valid values", () => {
+      const status: ColumnChangeStatus = "added";
+      expect(status).toBe("added");
     });
   });
 });

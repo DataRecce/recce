@@ -116,8 +116,9 @@ function getCheckTypeColor(type: CheckType): string {
 
 /**
  * Get status color for run status
+ * Note: Prefixed with underscore as it's reserved for future use
  */
-function getStatusColor(status?: CheckRunStatus): string {
+function _getStatusColor(status?: CheckRunStatus): string {
   if (!status) return "transparent";
   const colors: Record<CheckRunStatus, string> = {
     pending: "#6b7280", // gray
@@ -130,8 +131,9 @@ function getStatusColor(status?: CheckRunStatus): string {
 
 /**
  * Get status label for tooltip
+ * Note: Prefixed with underscore as it's reserved for future use
  */
-function getStatusLabel(status?: CheckRunStatus): string {
+function _getStatusLabel(status?: CheckRunStatus): string {
   if (!status) return "";
   const labels: Record<CheckRunStatus, string> = {
     pending: "Pending",

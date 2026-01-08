@@ -1,19 +1,21 @@
 import { type Check, cacheKeys, select } from "@datarecce/ui/api";
+import {
+  getIconForChangeStatus,
+  getIconForResourceType,
+  type IconComponent,
+} from "@datarecce/ui/components/lineage";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import { useQuery } from "@tanstack/react-query";
+import type { ComponentType } from "react";
 import React, { forwardRef, useMemo, useState } from "react";
-import { IconType } from "react-icons";
+import type { IconType } from "react-icons";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { type DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 import { LineageGraphNode } from "../lineage/lineage";
-import {
-  getIconForChangeStatus,
-  getIconForResourceType,
-} from "../lineage/styles";
 import { findByRunType } from "../run/registry";
 import { SchemaView } from "../schema/SchemaView";
 import { isSchemaChanged } from "../schema/schemaDiff";
@@ -47,7 +49,7 @@ const NodelistItem = ({
   const { icon } = getIconForResourceType(node.data.resourceType);
   const { base, current } = node.data.data;
 
-  let statusIcon: IconType | undefined;
+  let statusIcon: IconComponent | IconType | undefined;
   let statusColor: string | undefined;
 
   if (schemaChanged) {

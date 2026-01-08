@@ -1,4 +1,5 @@
 import { type LineageDiffViewOptions } from "@datarecce/ui/api";
+import { getIconForResourceType } from "@datarecce/ui/components/lineage";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
@@ -32,7 +33,6 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { findByRunType } from "../run/registry";
 import { useLineageViewContextSafe } from "./LineageViewContext";
-import { getIconForResourceType } from "./styles";
 
 const getCodeBlockSx = (isDark: boolean) => ({
   fontSize: "8pt",

@@ -60,6 +60,7 @@ import {
   type LineageDiffViewOptions,
   select,
 } from "@datarecce/ui/api";
+import { getIconForChangeStatus } from "@datarecce/ui/components/lineage";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useThemeColors } from "@datarecce/ui/hooks";
 import { useMutation } from "@tanstack/react-query";
@@ -105,7 +106,6 @@ import { LineageViewTopBar } from "./LineageViewTopBar";
 import { NodeView } from "./NodeView";
 import SetupConnectionBanner from "./SetupConnectionBanner";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
-import { getIconForChangeStatus } from "./styles";
 import { useMultiNodesAction } from "./useMultiNodesAction";
 import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
 

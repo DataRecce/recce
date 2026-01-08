@@ -1,35 +1,63 @@
-import { type RowCountDiff } from "@datarecce/ui/api";
+"use client";
+
+/**
+ * @file GraphNode.tsx
+ * @description OSS wrapper for UI package LineageNode component
+ *
+ * This component wraps the @datarecce/ui LineageNode with OSS-specific
+ * context integration. It extracts state from LineageViewContext and
+ * LineageGraphContext and passes it as props to the presentation component.
+ *
+ * Migration: Phase 3 of lineage component migration plan
+ */
+
+import { isRowCountDiffRun, type RowCountDiff } from "@datarecce/ui/api";
+import {
+  type ChangeCategory,
+  getIconForChangeStatus,
+  LineageNode,
+  type NodeChangeStatus,
+  type SelectMode,
+} from "@datarecce/ui/components/lineage";
 import { useThemeColors } from "@datarecce/ui/hooks";
 import { deltaPercentageString } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
+import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import MuiTooltip from "@mui/material/Tooltip";
-import { Handle, NodeProps, Position, useStore } from "@xyflow/react";
-import React, { useState } from "react";
-import { FaCheckSquare, FaRegDotCircle, FaRegSquare } from "react-icons/fa";
-import { VscKebabVertical } from "react-icons/vsc";
+import { type NodeProps, useStore } from "@xyflow/react";
+import { memo } from "react";
+import { PiInfo, PiWarning } from "react-icons/pi";
+
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { findByRunType } from "../run/registry";
 import { isSchemaChanged } from "../schema/schemaDiff";
-import { ActionTag } from "./ActionTag";
 import { useLineageViewContextSafe } from "./LineageViewContext";
-import { COLUMN_HEIGHT, LineageGraphNode } from "./lineage";
-import { getIconForChangeStatus, getIconForResourceType } from "./styles";
+import { COLUMN_HEIGHT, type LineageGraphNode } from "./lineage";
 
-import "./styles.css";
-import { token } from "@/components/ui/mui-theme";
+// =============================================================================
+// TYPES
+// =============================================================================
 
 export type GraphNodeProps = NodeProps<LineageGraphNode>;
 
-function _RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
+// =============================================================================
+// HELPER COMPONENTS
+// =============================================================================
+
+/**
+ * Row count diff tag component
+ */
+function RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
   const base = rowCount.base;
   const current = rowCount.curr;
   const baseLabel = rowCount.base === null ? "N/A" : `${rowCount.base} Rows`;
   const currentLabel = rowCount.curr === null ? "N/A" : `${rowCount.curr} Rows`;
 
-  let tagLabel;
+  let tagLabel: string;
   let chipColor: "default" | "success" | "error" = "default";
+
   if (base === null && current === null) {
     tagLabel = "Failed to load";
     chipColor = "default";
@@ -39,7 +67,7 @@ function _RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
   } else if (base === current) {
     tagLabel = "=";
     chipColor = "default";
-  } else if (base !== current) {
+  } else {
     tagLabel = `${deltaPercentageString(base, current)} Rows`;
     chipColor = base < current ? "success" : "error";
   }
@@ -57,36 +85,34 @@ function _RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
   );
 }
 
-const CHANGE_CATEGORY_MSGS = {
-  breaking: "Breaking",
-  non_breaking: "Non Breaking",
-  partial_breaking: "Partial Breaking",
-  unknown: "Unknown",
-};
-
-const NodeRunsAggregated = ({
+/**
+ * Node runs aggregated display component
+ * Shows schema diff indicator and row count diff for models
+ */
+function NodeRunsAggregatedDisplay({
   id,
   inverted,
 }: {
   id: string;
   inverted: boolean;
-}) => {
+}) {
   const { lineageGraph, runsAggregated } = useLineageGraphContext();
   const { text, isDark } = useThemeColors();
   const runs = runsAggregated?.[id];
   const node = lineageGraph?.nodes[id];
+
   if (!runs && !node) {
-    return <></>;
+    return null;
   }
 
-  let schemaChanged;
+  let schemaChanged: boolean | undefined;
   if (node?.data.data.base && node.data.data.current) {
     const baseColumns = node.data.data.base.columns;
     const currColumns = node.data.data.current.columns;
     schemaChanged = isSchemaChanged(baseColumns, currColumns);
   }
 
-  let rowCountChanged;
+  let rowCountChanged: boolean | undefined;
   if (runs?.row_count_diff) {
     const rowCountDiff = runs.row_count_diff;
     const result = rowCountDiff.result as RowCountDiff;
@@ -128,7 +154,7 @@ const NodeRunsAggregated = ({
           enterDelay={500}
         >
           <Box>
-            <_RowCountDiffTag
+            <RowCountDiffTag
               rowCount={runs.row_count_diff.result as RowCountDiff}
             />
           </Box>
@@ -136,72 +162,180 @@ const NodeRunsAggregated = ({
       )}
     </Box>
   );
-};
+}
 
-const GraphNodeCheckbox = ({
-  checked,
-  onClick,
+/**
+ * Action tag display component
+ * Shows action status (pending, running, error, success) and results
+ */
+function ActionTagDisplay({
+  nodeId,
+  nodeName,
 }: {
-  checked: boolean;
-  onClick?: React.MouseEventHandler;
-}) => {
-  return (
-    <Box
-      onClick={onClick}
-      sx={{
-        alignSelf: "center",
-        display: "flex",
-        alignItems: "center",
-        cursor: "pointer",
-      }}
-    >
-      {checked ? (
-        <Box component={FaCheckSquare} sx={{ fontSize: 20 }} />
-      ) : (
-        <Box component={FaRegSquare} sx={{ fontSize: 20 }} />
-      )}
-    </Box>
-  );
-};
+  nodeId: string;
+  nodeName: string;
+}) {
+  const { getNodeAction } = useLineageViewContextSafe();
+  const action = getNodeAction(nodeId);
 
-const GraphNodeTitle = ({
-  name,
-  color,
-  resourceType,
-}: {
-  name: string;
-  color: string;
-  resourceType?: string;
-}) => {
-  return (
-    <Box
-      sx={{
-        flex: 1,
-        color,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-      }}
-    >
-      <MuiTooltip
-        title={resourceType === "model" ? name : `${name} (${resourceType})`}
-        placement="top"
+  if (!action) {
+    return null;
+  }
+
+  const { status, skipReason, run } = action;
+
+  if (status === "pending") {
+    return <CircularProgress size={16} />;
+  }
+
+  if (status === "skipped") {
+    return (
+      <Chip
+        size="small"
+        label={
+          <Stack
+            direction="row"
+            sx={{
+              fontSize: "10pt",
+              color: "grey.500",
+              alignItems: "center",
+              gap: "3px",
+            }}
+          >
+            <Box>Skipped</Box>
+            {skipReason && (
+              <MuiTooltip title={skipReason}>
+                <Box component="span" sx={{ display: "flex" }}>
+                  <PiInfo />
+                </Box>
+              </MuiTooltip>
+            )}
+          </Stack>
+        }
+        sx={{ bgcolor: "grey.100" }}
+      />
+    );
+  }
+
+  if (!run) {
+    return <CircularProgress size={16} />;
+  }
+
+  const { error, run_id, progress } = run;
+
+  if (status === "running") {
+    if (progress?.percentage === undefined) {
+      return <CircularProgress size={16} />;
+    }
+    return (
+      <CircularProgress
+        variant="determinate"
+        value={progress.percentage * 100}
+        size={16}
+      />
+    );
+  }
+
+  if (error) {
+    return (
+      <Stack
+        direction="row"
+        sx={{ fontSize: "10pt", color: "gray", alignItems: "center" }}
       >
-        <span>{name}</span>
-      </MuiTooltip>
-    </Box>
-  );
-};
+        <Box>Error</Box>
+        <MuiTooltip title={error}>
+          <Box component="span" sx={{ display: "flex" }}>
+            <PiWarning />
+          </Box>
+        </MuiTooltip>
+      </Stack>
+    );
+  }
 
-export function GraphNode(nodeProps: GraphNodeProps) {
+  // Value diff result
+  if (run.type === "value_diff" && run.result) {
+    const r = run.result as { data: { data: unknown[][] } };
+    let mismatched = 0;
+
+    for (const c of r.data.data) {
+      if ((c[2] as number) < 1) {
+        mismatched++;
+      }
+    }
+
+    return (
+      <Chip
+        size="small"
+        sx={{
+          bgcolor: mismatched > 0 ? "error.light" : "success.light",
+        }}
+        label={
+          <Stack
+            direction="row"
+            sx={{
+              fontSize: "10pt",
+              color: mismatched > 0 ? "error.main" : "success.main",
+              alignItems: "center",
+              gap: "3px",
+            }}
+          >
+            {mismatched > 0
+              ? `${mismatched} columns mismatched`
+              : "All columns match"}
+          </Stack>
+        }
+      />
+    );
+  }
+
+  // Row count diff result
+  if (isRowCountDiffRun(run) && run.result) {
+    const result = run.result;
+    const nodeResult = result[nodeName];
+    if (nodeResult) {
+      return <RowCountDiffTag rowCount={nodeResult} />;
+    }
+  }
+
+  // Row count result
+  if (run.type === "row_count" && run.result) {
+    const result = run.result as Record<string, { curr: number | null }>;
+    const nodeResult = result[nodeName];
+    if (nodeResult?.curr !== undefined && nodeResult.curr !== null) {
+      return (
+        <Chip
+          size="small"
+          label={`${nodeResult.curr.toLocaleString()} Rows`}
+          sx={{ height: 20, fontSize: "0.7rem" }}
+        />
+      );
+    }
+  }
+
+  return <>{run_id}</>;
+}
+
+// =============================================================================
+// MAIN COMPONENT
+// =============================================================================
+
+/**
+ * GraphNode - OSS wrapper for UI package LineageNode
+ *
+ * This component integrates LineageViewContext and LineageGraphContext
+ * with the pure presentation LineageNode from @datarecce/ui.
+ */
+function GraphNodeComponent(nodeProps: GraphNodeProps) {
   const { data } = nodeProps;
-  const { id, resourceType, changeStatus } = data;
+  const { id, resourceType, changeStatus, name } = data;
 
+  // Get zoom level for content visibility
   const showContent = useStore((s) => s.transform[2] > 0.3);
-  const { background, text, isDark } = useThemeColors();
 
-  const { icon: ResourceIcon } = getIconForResourceType(resourceType);
-  const [isHovered, setIsHovered] = useState(false);
+  // Get theme colors
+  const { isDark } = useThemeColors();
+
+  // Get context values
   const {
     interactive,
     selectNode,
@@ -217,339 +351,95 @@ export function GraphNode(nodeProps: GraphNodeProps) {
     cll,
     showColumnLevelLineage,
   } = useLineageViewContextSafe();
-  const changeCategory = cll?.current.nodes[id]?.change_category;
 
-  const _isNonBreakingChange = changeCategory === "non_breaking";
+  // Computed state
+  const changeCategory = cll?.current.nodes[id]
+    ?.change_category as ChangeCategory;
   const isHighlighted = isNodeHighlighted(id);
   const isSelected = isNodeSelected(id);
   const isFocusedByImpactRadius =
     viewOptions.column_level_lineage?.node_id === id &&
     viewOptions.column_level_lineage.column === undefined;
   const isFocused = focusedNode?.id === id || isFocusedByImpactRadius;
-
   const isShowingChangeAnalysis = isNodeShowingChangeAnalysis(id);
-
-  // text color, icon
-  const {
-    icon: IconChangeStatus,
-    color: colorChangeStatus,
-    backgroundColor: backgroundColorChangeStatus,
-  } = changeStatus
-    ? getIconForChangeStatus(changeStatus, isDark)
-    : {
-        icon: undefined,
-        color: String(token("colors.gray.400")),
-        backgroundColor: isDark
-          ? String(token("colors.gray.700"))
-          : String(token("colors.gray.100")),
-      };
-
-  // border width and color
-  const borderWidth = "2px";
-  const borderColor = colorChangeStatus;
-
-  const name = data.name;
   const columnSet = getNodeColumnSet(data.id);
-  const showColumns = columnSet.size > 0;
   const action =
     selectMode === "action_result" ? getNodeAction(data.id) : undefined;
 
-  const nodeBackgroundColor = (function () {
-    if (showContent) {
-      if (selectMode === "selecting") {
-        return isSelected ? colorChangeStatus : background.paper;
-      } else if (selectMode === "action_result") {
-        if (!action) {
-          return background.paper;
-        } else {
-          return isFocused || isSelected || isHovered
-            ? backgroundColorChangeStatus
-            : colorChangeStatus;
-        }
-      } else {
-        return isFocused || isSelected || isHovered
-          ? backgroundColorChangeStatus
-          : background.paper;
-      }
-    } else {
-      return isFocused || isSelected || isHovered
-        ? colorChangeStatus
-        : backgroundColorChangeStatus;
-    }
-  })();
-  const titleColor = (function () {
-    if (selectMode === "selecting") {
-      return isSelected ? text.inverted : text.primary;
-    } else if (selectMode === "action_result") {
-      return !!action && !isSelected ? text.inverted : text.primary;
-    } else {
-      return text.primary;
-    }
-  })();
-  const iconResourceColor = (function () {
-    if (selectMode === "selecting") {
-      return isSelected ? text.inverted : text.primary;
-    } else if (selectMode === "action_result") {
-      return !!action && !isSelected ? text.inverted : text.primary;
-    } else {
-      return text.primary;
-    }
-  })();
-  const iconChangeStatusColor = (function () {
-    if (selectMode === "selecting") {
-      return isSelected ? text.inverted : colorChangeStatus;
-    } else if (selectMode === "action_result") {
-      return !!action && !isSelected ? text.inverted : text.primary;
-    } else {
-      return colorChangeStatus;
-    }
-  })();
+  // Map to UI package types
+  const nodeChangeStatus: NodeChangeStatus | undefined = changeStatus as
+    | NodeChangeStatus
+    | undefined;
+  const nodeSelectMode: SelectMode = selectMode as SelectMode;
+
+  // Create action tag if in action_result mode
+  const actionTag =
+    selectMode === "action_result" && action ? (
+      <ActionTagDisplay nodeId={id} nodeName={name} />
+    ) : undefined;
+
+  // Create runs aggregated tag if model and not in action_result mode
+  const runsAggregatedTag =
+    selectMode !== "action_result" && data.resourceType === "model" ? (
+      <NodeRunsAggregatedDisplay
+        id={data.id}
+        inverted={selectMode === "selecting" && isSelected}
+      />
+    ) : undefined;
+
+  // Callbacks
+  const handleSelect = (nodeId: string) => {
+    selectNode(nodeId);
+  };
+
+  const handleContextMenu = (event: React.MouseEvent, nodeId: string) => {
+    showContextMenu(event, nodeProps as unknown as LineageGraphNode);
+  };
+
+  const handleShowImpactRadius = (nodeId: string) => {
+    void showColumnLevelLineage({
+      node_id: nodeId,
+      change_analysis: true,
+      no_upstream: true,
+    });
+  };
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        width: 300,
-        cursor: selectMode === "selecting" ? "pointer" : "inherit",
-        transition: "box-shadow 0.2s ease-in-out",
-        padding: 0,
-        filter: (function () {
-          if (selectMode === "action_result") {
-            return action ? "none" : "opacity(0.2) grayscale(50%)";
-          } else {
-            return isHighlighted || isFocused || isSelected || isHovered
-              ? "none"
-              : "opacity(0.2) grayscale(50%)";
-          }
-        })(),
+    <LineageNode
+      id={id}
+      data={{
+        label: name,
+        changeStatus: nodeChangeStatus,
+        resourceType,
       }}
-      onMouseEnter={() => {
-        setIsHovered(true);
-      }}
-      onMouseLeave={() => {
-        setIsHovered(false);
-      }}
-    >
-      <Box
-        sx={{
-          display: "flex",
-          borderColor,
-          borderWidth,
-          borderStyle: "solid",
-          borderTopLeftRadius: 8,
-          borderTopRightRadius: 8,
-          borderBottomLeftRadius: showColumns ? 0 : 8,
-          borderBottomRightRadius: showColumns ? 0 : 8,
-          backgroundColor: nodeBackgroundColor,
-          height: 60,
-        }}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            bgcolor: colorChangeStatus,
-            padding: interactive ? "8px" : "2px",
-            borderRightWidth: borderWidth,
-            borderRightStyle: "solid",
-            borderColor: selectMode === "selecting" ? "#00000020" : borderColor,
-            alignItems: "top",
-            visibility: showContent ? "inherit" : "hidden",
-          }}
-        >
-          {interactive && (
-            <GraphNodeCheckbox
-              checked={
-                (selectMode === "selecting" && isSelected) ||
-                (selectMode === "action_result" && !!action)
-              }
-              onClick={(e) => {
-                if (selectMode === "action_result") {
-                  return;
-                }
-                e.stopPropagation();
-                selectNode(data.id);
-              }}
-            />
-          )}
-        </Box>
-
-        <Box
-          sx={{
-            display: "flex",
-            flex: "1 0 auto",
-            mx: 0.5,
-            width: 100,
-            flexDirection: "column",
-          }}
-        >
-          <Box
-            sx={{
-              display: "flex",
-              width: "100%",
-              textAlign: "left",
-              fontWeight: 600,
-              flex: 1,
-              p: 0.5,
-              gap: "5px",
-              alignItems: "center",
-              visibility: showContent ? "inherit" : "hidden",
-            }}
-          >
-            <GraphNodeTitle
-              name={name}
-              color={titleColor}
-              resourceType={resourceType}
-            />
-
-            {isHovered ? (
-              <>
-                {changeStatus === "modified" && (
-                  <MuiTooltip
-                    title="Show Impact Radius"
-                    placement="top"
-                    enterDelay={500}
-                  >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Box
-                        component={FaRegDotCircle}
-                        sx={{
-                          fontSize: 14,
-                          color: text.secondary,
-                          cursor: "pointer",
-                          "&:hover": { color: text.primary },
-                        }}
-                        onClick={(e: React.MouseEvent) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-
-                          void showColumnLevelLineage({
-                            node_id: id,
-                            change_analysis: true,
-                            no_upstream: true,
-                          });
-                        }}
-                      />
-                    </Box>
-                  </MuiTooltip>
-                )}
-                <Box
-                  component={VscKebabVertical}
-                  sx={{
-                    color: text.secondary,
-                    cursor: "pointer",
-                    "&:hover": { color: text.primary },
-                  }}
-                  onClick={(e: React.MouseEvent) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    showContextMenu(
-                      e,
-                      nodeProps as unknown as LineageGraphNode,
-                    );
-                  }}
-                />
-              </>
-            ) : (
-              <>
-                {ResourceIcon && (
-                  <Box
-                    component={ResourceIcon}
-                    sx={{ fontSize: 16, color: iconResourceColor }}
-                  />
-                )}
-                {changeStatus && IconChangeStatus && (
-                  <Box
-                    component={IconChangeStatus}
-                    sx={{ color: iconChangeStatusColor }}
-                  />
-                )}
-              </>
-            )}
-          </Box>
-
-          <Box
-            sx={{
-              display: "flex",
-              flex: "1 0 auto",
-              mx: 0.5,
-              flexDirection: "column",
-              paddingBottom: 0.5,
-              visibility: showContent ? "inherit" : "hidden",
-            }}
-          >
-            <Stack direction="row" spacing={1}>
-              {action ? (
-                <>
-                  <Box sx={{ flexGrow: 1 }} />
-                  <ActionTag
-                    node={data as unknown as LineageGraphNode}
-                    action={action}
-                  />
-                </>
-              ) : isShowingChangeAnalysis ? (
-                <Box
-                  sx={{
-                    height: 20,
-                    color: text.secondary,
-                    fontSize: "9pt",
-                    margin: 0,
-                    fontWeight: 600,
-                  }}
-                >
-                  {changeCategory ? CHANGE_CATEGORY_MSGS[changeCategory] : ""}
-                </Box>
-              ) : selectMode !== "action_result" &&
-                data.resourceType === "model" ? (
-                <NodeRunsAggregated
-                  id={data.id}
-                  inverted={(function () {
-                    if (selectMode === "selecting") {
-                      return isSelected;
-                    } else {
-                      return false;
-                    }
-                  })()}
-                />
-              ) : (
-                <></>
-              )}
-            </Stack>
-          </Box>
-        </Box>
-      </Box>
-      {showColumns && (
-        <Box
-          sx={{
-            p: "10px 10px",
-            borderColor,
-            borderWidth,
-            borderStyle: "solid",
-            borderTopWidth: 0,
-            borderBottomLeftRadius: 8,
-            borderBottomRightRadius: 8,
-          }}
-        >
-          <Box
-            sx={{
-              height: `${columnSet.size * COLUMN_HEIGHT}px`,
-              overflow: "auto",
-            }}
-          />
-        </Box>
-      )}
-      {Object.keys(data.parents).length > 0 && (
-        <Handle type="target" position={Position.Left} isConnectable={false} />
-      )}
-      {Object.keys(data.children).length > 0 && (
-        <Handle type="source" position={Position.Right} isConnectable={false} />
-      )}
-    </Box>
+      // Interactive props
+      interactive={interactive}
+      selectMode={nodeSelectMode}
+      isNodeSelected={isSelected}
+      isFocused={isFocused}
+      isHighlighted={isHighlighted}
+      showContent={showContent}
+      // Action display props
+      actionTag={actionTag}
+      showChangeAnalysis={isShowingChangeAnalysis}
+      changeCategory={changeCategory}
+      runsAggregatedTag={runsAggregatedTag}
+      // Layout props
+      hasParents={Object.keys(data.parents).length > 0}
+      hasChildren={Object.keys(data.children).length > 0}
+      columnCount={columnSet.size}
+      columnHeight={COLUMN_HEIGHT}
+      // Theme props
+      isDark={isDark}
+      // Callbacks
+      onSelect={handleSelect}
+      onContextMenu={handleContextMenu}
+      onShowImpactRadius={
+        changeStatus === "modified" ? handleShowImpactRadius : undefined
+      }
+    />
   );
 }
+
+export const GraphNode = memo(GraphNodeComponent);
+GraphNode.displayName = "GraphNode";

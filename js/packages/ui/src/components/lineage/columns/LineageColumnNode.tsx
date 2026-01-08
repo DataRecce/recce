@@ -3,6 +3,7 @@
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import { Handle, Position } from "@xyflow/react";
+import type { MouseEvent } from "react";
 import { memo, useState } from "react";
 
 /**
@@ -14,6 +15,11 @@ export type ColumnTransformationType =
   | "derived"
   | "source"
   | "unknown";
+
+/**
+ * Column change status for diff views
+ */
+export type ColumnChangeStatus = "added" | "removed" | "modified";
 
 /**
  * Data structure for a column node
@@ -28,7 +34,7 @@ export interface LineageColumnNodeData extends Record<string, unknown> {
   /** Transformation type for this column */
   transformationType?: ColumnTransformationType;
   /** Change status for diff views */
-  changeStatus?: "added" | "removed" | "modified";
+  changeStatus?: ColumnChangeStatus;
   /** Whether the column is highlighted */
   isHighlighted?: boolean;
   /** Whether the column is selected/focused */
@@ -45,8 +51,40 @@ export interface LineageColumnNodeProps {
   data: LineageColumnNodeData;
   /** Whether the node is selected */
   selected?: boolean;
+
+  // === New props for OSS feature parity ===
+
+  /**
+   * Whether to show content (used for zoom-level visibility)
+   * When false, the node renders nothing (hidden at low zoom levels)
+   * @default true
+   */
+  showContent?: boolean;
+
+  /**
+   * Whether to show change analysis mode
+   * When true and changeStatus exists, shows change status indicator
+   * When false, shows transformation type indicator
+   * @default false
+   */
+  showChangeAnalysis?: boolean;
+
+  /**
+   * Whether to use dark mode styling
+   * @default false
+   */
+  isDark?: boolean;
+
+  // === Callbacks ===
+
   /** Callback when column is clicked */
   onColumnClick?: (columnId: string) => void;
+
+  /**
+   * Callback when context menu is requested (kebab menu click)
+   * When provided, shows kebab menu on hover
+   */
+  onContextMenu?: (event: MouseEvent, columnId: string) => void;
 }
 
 /**
@@ -62,7 +100,7 @@ export const COLUMN_NODE_WIDTH = 280;
 /**
  * Colors for change status indicators
  */
-const changeStatusColors: Record<string, string> = {
+const changeStatusColors: Record<ColumnChangeStatus, string> = {
   added: "#22c55e",
   removed: "#ef4444",
   modified: "#f59e0b",
@@ -83,19 +121,38 @@ const transformationColors: Record<
 };
 
 /**
+ * KebabMenuIcon - Inline SVG to avoid react-icons dependency
+ */
+function KebabMenuIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <circle cx="8" cy="3" r="1.5" />
+      <circle cx="8" cy="8" r="1.5" />
+      <circle cx="8" cy="13" r="1.5" />
+    </svg>
+  );
+}
+
+/**
  * ChangeStatusIndicator - Shows change status icon
  */
 function ChangeStatusIndicator({
   changeStatus,
 }: {
-  changeStatus?: "added" | "removed" | "modified";
+  changeStatus?: ColumnChangeStatus;
 }) {
   if (!changeStatus) {
     return null;
   }
 
   const color = changeStatusColors[changeStatus];
-  const symbols: Record<string, string> = {
+  const symbols: Record<ColumnChangeStatus, string> = {
     added: "+",
     removed: "-",
     modified: "~",
@@ -191,11 +248,25 @@ function TransformationIndicator({
  *   position: { x: 0, y: 0 },
  * };
  * ```
+ *
+ * @example With change analysis mode
+ * ```tsx
+ * // In change analysis mode, shows change status instead of transformation type
+ * <LineageColumnNode
+ *   showChangeAnalysis={true}
+ *   showContent={zoomLevel > 0.3}
+ *   onContextMenu={(e, columnId) => showMenu(e, columnId)}
+ * />
+ * ```
  */
 function LineageColumnNodeComponent({
   id,
   data,
+  showContent = true,
+  showChangeAnalysis = false,
+  isDark = false,
   onColumnClick,
+  onContextMenu,
 }: LineageColumnNodeProps) {
   const {
     column,
@@ -207,6 +278,14 @@ function LineageColumnNodeComponent({
   } = data;
 
   const [isHovered, setIsHovered] = useState(false);
+
+  // Hide node when showContent is false (low zoom level)
+  if (!showContent) {
+    return null;
+  }
+
+  // Determine what indicator to show based on showChangeAnalysis mode
+  const shouldShowChangeStatus = showChangeAnalysis && changeStatus;
 
   return (
     <Box
@@ -240,8 +319,8 @@ function LineageColumnNodeComponent({
           height: `${COLUMN_NODE_HEIGHT - 1}px`,
         }}
       >
-        {/* Status indicator */}
-        {changeStatus ? (
+        {/* Status indicator - based on showChangeAnalysis mode */}
+        {shouldShowChangeStatus ? (
           <ChangeStatusIndicator changeStatus={changeStatus} />
         ) : (
           <TransformationIndicator transformationType={transformationType} />
@@ -254,22 +333,43 @@ function LineageColumnNodeComponent({
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
             flexGrow: 1,
+            height: `${COLUMN_NODE_HEIGHT + 1}px`,
+            lineHeight: `${COLUMN_NODE_HEIGHT + 1}px`,
           }}
         >
           {column}
         </Box>
 
-        {/* Column type */}
-        {type && (
+        {/* Column type or kebab menu */}
+        {isHovered && onContextMenu ? (
           <Box
             sx={{
-              color: "text.secondary",
-              fontSize: "10px",
-              flexShrink: 0,
+              display: "inline-flex",
+              alignItems: "center",
+              cursor: "pointer",
+              "&:hover": { color: "text.primary" },
             }}
+            onClick={(e: MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onContextMenu(e, id);
+            }}
+            data-testid="column-kebab-menu"
           >
-            {type}
+            <KebabMenuIcon size={14} />
           </Box>
+        ) : (
+          type && (
+            <Box
+              sx={{
+                color: "text.secondary",
+                fontSize: "10px",
+                flexShrink: 0,
+              }}
+            >
+              {type}
+            </Box>
+          )
         )}
       </Box>
 

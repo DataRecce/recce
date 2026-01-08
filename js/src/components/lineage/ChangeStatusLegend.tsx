@@ -1,6 +1,6 @@
+import { getIconForChangeStatus } from "@datarecce/ui/components/lineage";
 import Box from "@mui/material/Box";
 import Tooltip from "@mui/material/Tooltip";
-import { getIconForChangeStatus } from "./styles";
 
 type ChangeStatus = "added" | "removed" | "modified";
 

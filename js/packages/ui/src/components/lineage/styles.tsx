@@ -21,7 +21,7 @@ import { colors } from "../../theme/colors";
 /**
  * Change status for diff visualization
  */
-export type ChangeStatus = "added" | "removed" | "modified";
+export type ChangeStatus = "added" | "removed" | "modified" | "unchanged";
 
 /**
  * Resource types supported by dbt/lineage

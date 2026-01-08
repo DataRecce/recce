@@ -1,4 +1,5 @@
 import { type RowCount, type RowCountDiff } from "@datarecce/ui/api";
+import { getIconForResourceType } from "@datarecce/ui/components/lineage";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import { deltaPercentageString } from "@datarecce/ui/utils";
@@ -15,7 +16,6 @@ import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { findByRunType } from "../run/registry";
 import { LineageGraphNode } from "./lineage";
-import { getIconForResourceType } from "./styles";
 
 // Reusable tag styles - accepts isDark parameter
 const getTagRootSx = (isDark: boolean) => ({

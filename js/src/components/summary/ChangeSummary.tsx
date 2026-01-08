@@ -1,20 +1,20 @@
 import type { NodeData } from "@datarecce/ui/api";
+import {
+  IconAdded,
+  IconChanged,
+  type IconComponent,
+  IconModified,
+  IconRemoved,
+} from "@datarecce/ui/components/lineage";
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import Stack from "@mui/material/Stack";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { ReactNode } from "react";
-import { IconType } from "react-icons";
 import { FiInfo } from "react-icons/fi";
 import { token } from "@/components/ui/mui-theme";
 import { LineageGraph } from "../lineage/lineage";
-import {
-  IconAdded,
-  IconChanged,
-  IconModified,
-  IconRemoved,
-} from "../lineage/styles";
 
 export type ChangeStatus =
   // node change
@@ -44,7 +44,7 @@ export const NODE_CHANGE_STATUS_MSGS = {
 
 export function getIconForChangeStatus(changeStatus?: ChangeStatus): {
   color: string;
-  icon: IconType | undefined;
+  icon: IconComponent | undefined;
 } {
   const greenColor = String(token("colors.green.solid"));
   const redColor = String(token("colors.red.solid"));
