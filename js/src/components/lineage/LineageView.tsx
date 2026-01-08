@@ -45,6 +45,7 @@ import {
 } from "./lineage";
 import "@xyflow/react/dist/style.css";
 import "./styles.css";
+import { union } from "@datarecce/ui";
 import type { Check } from "@datarecce/ui/api";
 import {
   type CllInput,
@@ -92,7 +93,6 @@ import { ColumnLevelLineageLegend } from "./ColumnLevelLineageLegend";
 import { GraphColumnNode } from "./GraphColumnNode";
 import GraphEdge from "./GraphEdge";
 import { GraphNode } from "./GraphNode";
-import { union } from "./graph";
 import {
   LineageViewContext,
   LineageViewContextType,

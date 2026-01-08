@@ -1,3 +1,4 @@
+import { useRecceServerFlag } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import MuiDialog from "@mui/material/Dialog";
@@ -8,7 +9,6 @@ import { useState } from "react";
 import { FaExpandArrowsAlt } from "react-icons/fa";
 import { IoClose } from "react-icons/io5";
 import { CodeEditor, DiffEditor } from "@/components/editor";
-import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { LineageGraphNode } from "./lineage";
 
 interface NodeSqlViewProps {

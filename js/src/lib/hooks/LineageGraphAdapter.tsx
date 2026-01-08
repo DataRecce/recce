@@ -11,6 +11,7 @@ import {
   LineageGraphProvider,
   useIdleTimeout,
   useRecceInstanceContext,
+  useRecceServerFlag,
 } from "@datarecce/ui/contexts";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -38,7 +39,6 @@ import { toaster } from "@/components/ui/toaster";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { trackSingleEnvironment } from "../api/track";
 import { PUBLIC_API_URL } from "../const";
-import { useRecceServerFlag } from "./useRecceServerFlag";
 
 // Re-export types for backward compatibility
 export type { EnvInfo } from "@datarecce/ui/contexts";
