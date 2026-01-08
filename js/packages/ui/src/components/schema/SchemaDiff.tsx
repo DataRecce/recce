@@ -1,3 +1,17 @@
+/**
+ * @file SchemaDiff.tsx
+ * @module @datarecce/ui/primitives
+ * @description Pure presentation component for comparing schemas between two environments.
+ *
+ * **Architecture Note:** This component is part of @datarecce/ui's public API intended
+ * for external consumers (e.g., recce-cloud). It is intentionally NOT used in the OSS
+ * Recce application, which uses a context-based architecture in SchemaView.tsx instead.
+ * Schema views get data from `lineageGraph.nodes` context rather than `Run.result`,
+ * making them architecturally different from other result views.
+ *
+ * @see docs/plans/schema-audit-report.md for detailed architecture documentation
+ */
+
 "use client";
 
 import Alert from "@mui/material/Alert";

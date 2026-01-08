@@ -163,4 +163,4 @@ export type { Theme } from "./theme";
 export { colors, theme } from "./theme";
 
 // Utils - utility functions for data manipulation and formatting
-export { deltaPercentageString } from "./utils";
+export { deltaPercentageString, isSchemaChanged } from "./utils";

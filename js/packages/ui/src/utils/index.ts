@@ -4,3 +4,4 @@
  */
 
 export { deltaPercentageString } from "./delta";
+export { isSchemaChanged } from "./schemaDiff";

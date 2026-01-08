@@ -94,8 +94,8 @@ jest.mock("../../run/registry", () => ({
   })),
 }));
 
-// Mock schema diff utility
-jest.mock("../../schema/schemaDiff", () => ({
+// Mock @datarecce/ui - add isSchemaChanged to existing mock
+jest.mock("@datarecce/ui", () => ({
   isSchemaChanged: jest.fn(() => false),
 }));
 

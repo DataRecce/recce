@@ -1,3 +1,4 @@
+import { isSchemaChanged } from "@datarecce/ui";
 import { type Check, cacheKeys, select } from "@datarecce/ui/api";
 import {
   getIconForChangeStatus,
@@ -18,7 +19,6 @@ import { type DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 import { LineageGraphNode } from "../lineage/lineage";
 import { findByRunType } from "../run/registry";
 import { SchemaView } from "../schema/SchemaView";
-import { isSchemaChanged } from "../schema/schemaDiff";
 import { HSplit } from "../split/Split";
 
 interface SchemaDiffViewProps {

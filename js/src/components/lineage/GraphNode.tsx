@@ -11,6 +11,7 @@
  * Migration: Phase 3 of lineage component migration plan
  */
 
+import { isSchemaChanged } from "@datarecce/ui";
 import { isRowCountDiffRun, type RowCountDiff } from "@datarecce/ui/api";
 import {
   type ChangeCategory,
@@ -29,10 +30,8 @@ import MuiTooltip from "@mui/material/Tooltip";
 import { type NodeProps, useStore } from "@xyflow/react";
 import { memo } from "react";
 import { PiInfo, PiWarning } from "react-icons/pi";
-
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { findByRunType } from "../run/registry";
-import { isSchemaChanged } from "../schema/schemaDiff";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 import { COLUMN_HEIGHT, type LineageGraphNode } from "./lineage";
 
