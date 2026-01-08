@@ -15,10 +15,7 @@ export { LineageCanvas, LineageView } from "./lineage";
 export type {
   ChecksViewProps,
   NavItem,
-  QueryViewMode,
-  QueryViewProps,
-  QueryViewRef,
   RecceLayoutProps,
   RunsViewProps,
 } from "./views";
-export { ChecksView, QueryView, RecceLayout, RunsView } from "./views";
+export { ChecksView, RecceLayout, RunsView } from "./views";

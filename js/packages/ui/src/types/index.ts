@@ -66,32 +66,6 @@ export type { CheckEmptyStateProps } from "../components/check/CheckEmptyState";
 export type { CheckListProps } from "../components/check/CheckList";
 
 // =============================================================================
-// QUERY TYPES
-// =============================================================================
-
-export type {
-  DiffColumn,
-  DiffDisplayMode,
-  DiffRow,
-  QueryDiffViewHandle,
-  QueryDiffViewProps,
-} from "../components/query/QueryDiffView";
-export type {
-  QueryEditorKeyBinding,
-  QueryEditorLanguage,
-  QueryEditorProps,
-  QueryEditorTheme,
-  QueryEditorToolbarProps,
-  QueryEditorWithToolbarProps,
-} from "../components/query/QueryEditor";
-export type {
-  QueryResultsColumn,
-  QueryResultsHandle,
-  QueryResultsProps,
-  QueryResultsRow,
-} from "../components/query/QueryResults";
-
-// =============================================================================
 // RUN TYPES
 // =============================================================================
 

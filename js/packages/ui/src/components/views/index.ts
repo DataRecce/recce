@@ -3,12 +3,6 @@
 
 export { ChecksView, type ChecksViewProps } from "./ChecksView";
 export {
-  QueryView,
-  type QueryViewMode,
-  type QueryViewProps,
-  type QueryViewRef,
-} from "./QueryView";
-export {
   type NavItem,
   RecceLayout,
   type RecceLayoutProps,

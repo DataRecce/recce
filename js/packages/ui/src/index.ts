@@ -44,9 +44,6 @@ export type {
   LineageViewProps,
   LineageViewRef,
   NavItem,
-  QueryViewMode,
-  QueryViewProps,
-  QueryViewRef,
   RecceLayoutProps,
   RunsViewProps,
 } from "./components";
@@ -56,7 +53,6 @@ export {
   // Lineage
   LineageCanvas,
   LineageView,
-  QueryView,
   RecceLayout,
   RunsView,
 } from "./components";

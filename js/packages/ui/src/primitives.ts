@@ -109,40 +109,6 @@ export {
 } from "./components/check/utils";
 
 // =============================================================================
-// QUERY PRIMITIVES
-// =============================================================================
-
-// Query diff view (side-by-side or inline diff)
-export {
-  type DiffColumn,
-  type DiffDisplayMode,
-  type DiffRow,
-  QueryDiffView,
-  type QueryDiffViewHandle,
-  type QueryDiffViewProps,
-} from "./components/query/QueryDiffView";
-// Query editor (SQL/YAML editing)
-export {
-  QueryEditor,
-  type QueryEditorKeyBinding,
-  type QueryEditorLanguage,
-  type QueryEditorProps,
-  type QueryEditorTheme,
-  QueryEditorToolbar,
-  type QueryEditorToolbarProps,
-  QueryEditorWithToolbar,
-  type QueryEditorWithToolbarProps,
-} from "./components/query/QueryEditor";
-// Query results (data grid display)
-export {
-  QueryResults,
-  type QueryResultsColumn,
-  type QueryResultsHandle,
-  type QueryResultsProps,
-  type QueryResultsRow,
-} from "./components/query/QueryResults";
-
-// =============================================================================
 // RUN PRIMITIVES
 // =============================================================================
 
