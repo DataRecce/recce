@@ -40,25 +40,31 @@ jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
   ),
 }));
 
-// Mock TopKSummaryBarChart component to avoid chart.js complexity
-const mockTopKSummaryBarChart = jest.fn(({ isDisplayTopTen }) => (
+// Mock TopKBarChart props interface
+interface MockTopKBarChartProps {
+  baseData?: { values: unknown[]; counts: number[]; valids: number };
+  currentData: { values: unknown[]; counts: number[]; valids: number };
+  showComparison?: boolean;
+  maxItems?: number;
+}
+
+// Mock TopKBarChart component to avoid chart.js complexity
+const mockTopKBarChart = jest.fn((props: MockTopKBarChartProps) => (
   <div data-testid="topk-chart">
-    <span data-testid="display-mode">{isDisplayTopTen ? "top10" : "all"}</span>
+    <span data-testid="display-mode">
+      {props.maxItems === 10 ? "top10" : "all"}
+    </span>
   </div>
 ));
-
-jest.mock("../charts/TopKSummaryList", () => ({
-  TopKSummaryBarChart: (props: { isDisplayTopTen: boolean }) =>
-    mockTopKSummaryBarChart(props),
-}));
 
 // Mock useIsDark hook - declare first since it's used by multiple mocks
 const mockUseIsDark = jest.fn(() => false);
 
-// Mock ScreenshotBox with our test utility mock
+// Mock ScreenshotBox and TopKBarChart with our test utility mocks
 jest.mock("@datarecce/ui/primitives", () => ({
   ScreenshotBox: jest.requireActual("@/testing-utils/resultViewTestUtils")
     .screenshotBoxMock,
+  TopKBarChart: (props: MockTopKBarChartProps) => mockTopKBarChart(props),
 }));
 
 // Mock packages/ui ScreenshotBox (used by createResultView factory)
@@ -156,7 +162,7 @@ function createRunWith10Items() {
 describe("TopKDiffResultView", () => {
   beforeEach(() => {
     mockUseIsDark.mockReturnValue(false);
-    mockTopKSummaryBarChart.mockClear();
+    mockTopKBarChart.mockClear();
     jest.clearAllMocks();
   });
 
@@ -278,20 +284,20 @@ describe("TopKDiffResultView", () => {
   // ==========================================================================
 
   describe("toggle state via viewOptions", () => {
-    it("starts with isDisplayTopTen=true when show_all is undefined", () => {
+    it("starts with maxItems=10 when show_all is undefined", () => {
       const run = createRunWith15Items();
 
       renderWithProviders(<TopKDiffResultView run={run} />);
 
       // Verify initial state via mock prop
-      expect(mockTopKSummaryBarChart).toHaveBeenLastCalledWith(
+      expect(mockTopKBarChart).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          isDisplayTopTen: true,
+          maxItems: 10,
         }),
       );
     });
 
-    it("starts with isDisplayTopTen=true when show_all=false", () => {
+    it("starts with maxItems=10 when show_all=false", () => {
       const run = createRunWith15Items();
       const viewOptions: TopKViewOptions = { show_all: false };
 
@@ -299,14 +305,14 @@ describe("TopKDiffResultView", () => {
         <TopKDiffResultView run={run} viewOptions={viewOptions} />,
       );
 
-      expect(mockTopKSummaryBarChart).toHaveBeenLastCalledWith(
+      expect(mockTopKBarChart).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          isDisplayTopTen: true,
+          maxItems: 10,
         }),
       );
     });
 
-    it("starts with isDisplayTopTen=false when show_all=true", () => {
+    it("starts with maxItems=undefined when show_all=true", () => {
       const run = createRunWith15Items();
       const viewOptions: TopKViewOptions = { show_all: true };
 
@@ -314,9 +320,9 @@ describe("TopKDiffResultView", () => {
         <TopKDiffResultView run={run} viewOptions={viewOptions} />,
       );
 
-      expect(mockTopKSummaryBarChart).toHaveBeenLastCalledWith(
+      expect(mockTopKBarChart).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          isDisplayTopTen: false,
+          maxItems: undefined,
         }),
       );
     });
@@ -466,39 +472,39 @@ describe("TopKDiffResultView", () => {
   // ==========================================================================
 
   describe("chart data", () => {
-    it("passes topKDiff result to TopKSummaryBarChart", () => {
+    it("passes baseData and currentData to TopKBarChart", () => {
       const run = createTopKDiffRun();
 
       renderWithProviders(<TopKDiffResultView run={run} />);
 
-      expect(mockTopKSummaryBarChart).toHaveBeenCalledWith(
+      expect(mockTopKBarChart).toHaveBeenCalledWith(
         expect.objectContaining({
-          topKDiff: run.result,
+          baseData: run.result?.base,
+          currentData: run.result?.current,
         }),
       );
     });
 
-    it("passes valids from current to TopKSummaryBarChart", () => {
+    it("passes showComparison=true to TopKBarChart", () => {
       const run = createTopKDiffRun();
 
       renderWithProviders(<TopKDiffResultView run={run} />);
 
-      // The fixture has result.current.valids = 900
-      expect(mockTopKSummaryBarChart).toHaveBeenCalledWith(
+      expect(mockTopKBarChart).toHaveBeenCalledWith(
         expect.objectContaining({
-          valids: 900,
+          showComparison: true,
         }),
       );
     });
 
-    it("passes isDisplayTopTen prop to TopKSummaryBarChart", () => {
+    it("passes maxItems=10 prop to TopKBarChart by default", () => {
       const run = createTopKDiffRun();
 
       renderWithProviders(<TopKDiffResultView run={run} />);
 
-      expect(mockTopKSummaryBarChart).toHaveBeenCalledWith(
+      expect(mockTopKBarChart).toHaveBeenCalledWith(
         expect.objectContaining({
-          isDisplayTopTen: true,
+          maxItems: 10,
         }),
       );
     });
@@ -534,7 +540,7 @@ describe("TopKDiffResultView", () => {
       expect(screen.getByText("View More Items")).toBeInTheDocument();
     });
 
-    it("uses 0 for valids when current.valids is undefined", () => {
+    it("passes currentData directly even when valids is undefined", () => {
       const baseRun = createTopKDiffRun();
       const result: TopKDiffResult = {
         base: {
@@ -552,10 +558,10 @@ describe("TopKDiffResultView", () => {
 
       renderWithProviders(<TopKDiffResultView run={run} />);
 
-      // Should use 0 as fallback for valids
-      expect(mockTopKSummaryBarChart).toHaveBeenCalledWith(
+      // Should pass currentData as-is (TopKBarChart handles undefined valids)
+      expect(mockTopKBarChart).toHaveBeenCalledWith(
         expect.objectContaining({
-          valids: 0,
+          currentData: result.current,
         }),
       );
     });

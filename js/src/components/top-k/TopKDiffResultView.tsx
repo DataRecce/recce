@@ -4,6 +4,7 @@ import {
   type TopKViewOptions,
 } from "@datarecce/ui/api";
 import { useIsDark } from "@datarecce/ui/hooks";
+import { TopKBarChart } from "@datarecce/ui/primitives";
 import { createResultView, type ResultViewData } from "@datarecce/ui/result";
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
@@ -12,7 +13,6 @@ import Typography from "@mui/material/Typography";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
 // Import Run from OSS types for proper discriminated union support with Extract<>
 import type { Run } from "@/lib/api/types";
-import { TopKSummaryBarChart } from "../charts/TopKSummaryList";
 import type { RunResultViewProps } from "../run/types";
 
 // ============================================================================
@@ -157,10 +157,11 @@ export const TopKDiffResultView = createResultView<
           <TopKTitle model={params.model} columnName={params.column_name} />
           <Stack direction="row" alignItems="center">
             <Box sx={{ flex: 1 }} />
-            <TopKSummaryBarChart
-              topKDiff={result}
-              valids={currentTopK.valids || 0}
-              isDisplayTopTen={isDisplayTopTen}
+            <TopKBarChart
+              baseData={baseTopK}
+              currentData={currentTopK}
+              showComparison={true}
+              maxItems={isDisplayTopTen ? 10 : undefined}
             />
             <Box sx={{ flex: 1 }} />
           </Stack>

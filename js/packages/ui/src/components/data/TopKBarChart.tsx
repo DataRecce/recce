@@ -33,10 +33,11 @@ export interface TopKItem {
 
 /**
  * Top-K dataset for a single environment
+ * Compatible with TopKResult from @datarecce/ui/api
  */
 export interface TopKDataset {
-  /** Value labels */
-  values: (string | number | null)[];
+  /** Value labels (null or undefined treated as special) */
+  values: (string | number | null | undefined)[];
   /** Counts per value */
   counts: number[];
   /** Total valid count */
