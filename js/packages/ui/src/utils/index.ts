@@ -61,7 +61,7 @@ export {
   getPrimaryKeyValue,
   toRenderedValue,
   validatePrimaryKeys,
-  // Column builders
+  // Column builders (pure data)
   type ColumnConfig,
   type ColumnOrderConfig,
   type GridColumnsConfig,
@@ -84,4 +84,28 @@ export {
   getRowCountDiffStatus,
   rowCountDiffResultToDataFrame,
   rowCountResultToDataFrame,
+  // Render types (for column builder dependency injection)
+  type CellRendererFunction,
+  type ColumnRenderComponents,
+  type DataFrameColumnGroupHeaderProps,
+  type DataFrameColumnHeaderProps,
+  type DiffColumnRenderComponents,
+  type SimpleColumnRenderComponents,
+  // Diff column builder (React component builder)
+  type BuildDiffColumnDefinitionsConfig,
+  type BuildDiffColumnDefinitionsResult,
+  type DiffColumnDefinition,
+  buildDiffColumnDefinitions,
+  // Simple column builder (React component builder)
+  type BuildSimpleColumnDefinitionsConfig,
+  type BuildSimpleColumnDefinitionsResult,
+  type SimpleColumnDefinition,
+  buildSimpleColumnDefinitions,
+  // toDiffColumn (shared diff column builder)
+  type DiffColumnConfig,
+  type DiffColumnResult,
+  type RecceColumnContext,
+  createCellClassBase,
+  createCellClassCurrent,
+  toDiffColumn,
 } from "./dataGrid";

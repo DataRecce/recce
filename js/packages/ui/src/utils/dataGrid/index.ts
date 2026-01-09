@@ -77,3 +77,41 @@ export {
   rowCountDiffResultToDataFrame,
   rowCountResultToDataFrame,
 } from "./rowCountUtils";
+
+// Render types (for column builder dependency injection)
+export type {
+  CellRendererFunction,
+  ColumnRenderComponents,
+  DataFrameColumnGroupHeaderProps,
+  DataFrameColumnHeaderProps,
+  DiffColumnRenderComponents,
+  SimpleColumnRenderComponents,
+} from "./renderTypes";
+
+// Diff column builder (React component builder)
+export type {
+  BuildDiffColumnDefinitionsConfig,
+  BuildDiffColumnDefinitionsResult,
+  DiffColumnDefinition,
+} from "./diffColumnBuilder";
+export { buildDiffColumnDefinitions } from "./diffColumnBuilder";
+
+// Simple column builder (React component builder)
+export type {
+  BuildSimpleColumnDefinitionsConfig,
+  BuildSimpleColumnDefinitionsResult,
+  SimpleColumnDefinition,
+} from "./simpleColumnBuilder";
+export { buildSimpleColumnDefinitions } from "./simpleColumnBuilder";
+
+// toDiffColumn (shared diff column builder)
+export type {
+  DiffColumnConfig,
+  DiffColumnResult,
+  RecceColumnContext,
+} from "./toDiffColumn";
+export {
+  createCellClassBase,
+  createCellClassCurrent,
+  toDiffColumn,
+} from "./toDiffColumn";

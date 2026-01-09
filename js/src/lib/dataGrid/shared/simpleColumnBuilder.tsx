@@ -1,198 +1,56 @@
 /**
  * @file simpleColumnBuilder.tsx
- * @description Builds AG Grid column definitions for simple (non-diff) grids
+ * @description OSS wrapper for simple column definition builder
  *
- * This module transforms the pure data structures from columnBuilders.ts
- * into actual column definitions with React components for headers.
- *
- * Unlike diffColumnBuilder.tsx, this handles simple grids without:
- * - Base/current value comparison
- * - Inline vs side-by-side display modes
- * - Column status (added/removed/modified)
+ * This file re-exports the column builder from @datarecce/ui
+ * with OSS-specific render components injected.
  */
 
 import {
-  type ColumnRenderMode,
-  type ColumnType,
-  type RowObjectType,
-} from "@datarecce/ui/api";
-import type { ColDef, ColGroupDef } from "ag-grid-community";
+  buildSimpleColumnDefinitions as baseBuildSimpleColumnDefinitions,
+  type BuildSimpleColumnDefinitionsConfig as BaseConfig,
+  type BuildSimpleColumnDefinitionsResult,
+  type RecceColumnContext,
+  type SimpleColumnDefinition,
+  type SimpleColumnRenderComponents,
+} from "@datarecce/ui/utils";
 import {
   DataFrameColumnGroupHeader,
   DataFrameColumnHeader,
   defaultRenderCell,
 } from "@/components/ui/dataGrid";
-import { ColumnConfig } from "./columnBuilders";
 
-// ============================================================================
-// Types
-// ============================================================================
-
-/**
- * Custom context data for Recce columns
- * Stored in colDef.context to avoid AG Grid validation warnings
- */
-export interface RecceColumnContext {
-  columnType?: ColumnType;
-  columnRenderMode?: ColumnRenderMode;
-}
+// Re-export types from @datarecce/ui
+export type {
+  BuildSimpleColumnDefinitionsResult,
+  RecceColumnContext,
+  SimpleColumnDefinition,
+} from "@datarecce/ui/utils";
 
 /**
- * Extended column type with context metadata
- * Uses context property for custom data per AG Grid best practices
- * Note: Distributed form allows TypeScript to narrow types correctly
+ * OSS-specific render components
  */
-export type SimpleColumnDefinition =
-  | (ColDef<RowObjectType> & { context?: RecceColumnContext })
-  | (ColGroupDef<RowObjectType> & { context?: RecceColumnContext });
+const ossRenderComponents: SimpleColumnRenderComponents = {
+  DataFrameColumnGroupHeader,
+  DataFrameColumnHeader,
+  defaultRenderCell,
+};
 
 /**
- * Configuration for building simple column definitions
+ * Configuration for building simple column definitions (OSS version)
+ * Omits renderComponents since OSS provides them automatically
  */
-export interface BuildSimpleColumnDefinitionsConfig {
-  /**
-   * Column configurations from getSimpleDisplayColumns()
-   */
-  columns: ColumnConfig[];
-
-  /**
-   * Props to pass to column headers
-   */
-  headerProps: {
-    pinnedColumns?: string[];
-    onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
-    onColumnsRenderModeChanged?: (
-      cols: Record<string, ColumnRenderMode>,
-    ) => void;
-  };
-
-  /**
-   * Whether to add index column when no primary keys exist
-   * Only applies when columns array has no isPrimaryKey entries
-   * @default true
-   */
-  allowIndexFallback?: boolean;
-}
-
-/**
- * Result from building simple column definitions
- */
-export interface BuildSimpleColumnDefinitionsResult {
-  /**
-   * The generated column definitions ready for AG Grid
-   */
-  columns: SimpleColumnDefinition[];
-
-  /**
-   * Whether an index fallback column was added
-   */
-  usedIndexFallback: boolean;
-}
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Creates the index fallback column used when no primary keys are specified
- */
-function createIndexColumn(): SimpleColumnDefinition {
-  return {
-    field: "_index",
-    headerName: "",
-    width: 50,
-    cellClass: "index-column",
-    resizable: false,
-    pinned: "left",
-  };
-}
-
-/**
- * Creates a primary key column definition
- *
- * Primary key columns are:
- * - Pinned left (sticky left)
- * - Use DataFrameColumnGroupHeader (with columnStatus="")
- * - Use defaultRenderCell
- */
-function createPrimaryKeyColumn(
-  config: ColumnConfig,
-  headerProps: BuildSimpleColumnDefinitionsConfig["headerProps"],
-): SimpleColumnDefinition {
-  const { key, name, columnType, columnRenderMode } = config;
-
-  return {
-    field: key,
-    headerName: name,
-    headerComponent: () => (
-      <DataFrameColumnGroupHeader
-        name={name}
-        columnStatus=""
-        columnType={columnType}
-        pinnedColumns={headerProps.pinnedColumns}
-        onPinnedColumnsChange={headerProps.onPinnedColumnsChange}
-        onColumnsRenderModeChanged={headerProps.onColumnsRenderModeChanged}
-      />
-    ),
-    pinned: "left",
-    cellRenderer: defaultRenderCell,
-    context: { columnType, columnRenderMode },
-  };
-}
-
-/**
- * Creates a regular (non-PK) column definition
- *
- * Regular columns use DataFrameColumnHeader (simpler, no PK toggle)
- */
-function createRegularColumn(
-  config: ColumnConfig,
-  headerProps: BuildSimpleColumnDefinitionsConfig["headerProps"],
-): SimpleColumnDefinition {
-  const { key, name, columnType, columnRenderMode } = config;
-
-  return {
-    field: key,
-    headerName: name,
-    headerComponent: () => (
-      <DataFrameColumnHeader
-        name={name}
-        columnType={columnType}
-        pinnedColumns={headerProps.pinnedColumns}
-        onPinnedColumnsChange={headerProps.onPinnedColumnsChange}
-        onColumnsRenderModeChanged={headerProps.onColumnsRenderModeChanged}
-      />
-    ),
-    cellRenderer: defaultRenderCell,
-    context: { columnType, columnRenderMode },
-  };
-}
-
-// ============================================================================
-// Main Function
-// ============================================================================
+export interface BuildSimpleColumnDefinitionsConfig
+  extends Omit<BaseConfig, "renderComponents"> {}
 
 /**
  * Builds AG Grid column definitions from ColumnConfig array
  *
- * @description Transforms pure column configuration objects into actual
- * column definitions with React JSX headers. Handles:
- *
- * - Primary key columns (pinned, use DataFrameColumnGroupHeader)
- * - Regular columns (use DataFrameColumnHeader)
- * - Index fallback (when no PKs and allowIndexFallback is true)
+ * @description This is the OSS wrapper that automatically injects
+ * the OSS render components. See @datarecce/ui for the core implementation.
  *
  * @example
  * ```tsx
- * // Get column configs from shared utility
- * const columnConfigs = getSimpleDisplayColumns({
- *   columnMap,
- *   primaryKeys,
- *   pinnedColumns,
- *   columnsRenderMode,
- * });
- *
- * // Build actual column definitions
  * const { columns } = buildSimpleColumnDefinitions({
  *   columns: columnConfigs,
  *   headerProps: {
@@ -206,39 +64,8 @@ function createRegularColumn(
 export function buildSimpleColumnDefinitions(
   config: BuildSimpleColumnDefinitionsConfig,
 ): BuildSimpleColumnDefinitionsResult {
-  const {
-    columns: columnConfigs,
-    headerProps,
-    allowIndexFallback = true,
-  } = config;
-
-  const columns: SimpleColumnDefinition[] = [];
-  let usedIndexFallback = false;
-
-  // Check if we have any primary key columns
-  const hasPrimaryKeys = columnConfigs.some((col) => col.isPrimaryKey);
-
-  // Add index fallback if no PKs and allowed
-  if (!hasPrimaryKeys && allowIndexFallback) {
-    columns.push(createIndexColumn());
-    usedIndexFallback = true;
-  }
-
-  // Build column definitions
-  for (const colConfig of columnConfigs) {
-    if (colConfig.isPrimaryKey) {
-      columns.push(createPrimaryKeyColumn(colConfig, headerProps));
-    } else {
-      const regularColumn = createRegularColumn(colConfig, headerProps);
-
-      // Set pinned property - "left" for frozen columns, undefined to explicitly unpin
-      // Setting undefined is important to override AG Grid's internal pinned state
-      columns.push({
-        ...regularColumn,
-        pinned: colConfig.frozen ? "left" : undefined,
-      });
-    }
-  }
-
-  return { columns, usedIndexFallback };
+  return baseBuildSimpleColumnDefinitions({
+    ...config,
+    renderComponents: ossRenderComponents,
+  });
 }
