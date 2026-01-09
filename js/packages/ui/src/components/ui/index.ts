@@ -2,6 +2,11 @@
 
 // UI primitives - common presentation components
 
+export {
+  DropdownValuesInput,
+  type DropdownValuesInputProps,
+  type DropdownValuesInputSize,
+} from "./DropdownValuesInput";
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
 // Markdown
 export {

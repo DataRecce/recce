@@ -1,3 +1,16 @@
+/**
+ * @file DropdownValuesInput.tsx
+ * @description Multi-select dropdown input component with filtering and custom value support
+ *
+ * Features:
+ * - Dropdown menu with suggestion list
+ * - Filter/search functionality (case-insensitive)
+ * - Chip-based value display with removal
+ * - Keyboard navigation (Enter, comma, Backspace)
+ * - Custom value addition
+ * - Configurable size variants
+ */
+
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
@@ -8,20 +21,57 @@ import MenuItem from "@mui/material/MenuItem";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import _ from "lodash";
-import React, { type MouseEvent, useRef, useState } from "react";
+import { type MouseEvent, useRef, useState } from "react";
 
+/**
+ * Size variants for the dropdown input
+ */
+export type DropdownValuesInputSize = "2xs" | "xs" | "sm" | "md" | "lg";
+
+/**
+ * Props for the DropdownValuesInput component
+ */
 export interface DropdownValuesInputProps {
+  /** Unit name for pluralization in "X {unitName}s selected" display */
   unitName: string;
+  /** List of suggested values to show in dropdown */
   suggestionList?: string[];
+  /** Initial selected values */
   defaultValues?: string[];
+  /** Callback when selected values change */
   onValuesChange: (values: string[]) => void;
+  /** Optional CSS class name */
   className?: string;
-  size?: "2xs" | "xs" | "sm" | "md" | "lg";
+  /** Size variant for the input */
+  size?: DropdownValuesInputSize;
+  /** Width of the input (CSS value or number in pixels) */
   width?: string | number;
+  /** Placeholder text when no values are selected */
   placeholder?: string;
+  /** Whether the input is disabled */
   disabled?: boolean;
 }
 
+/**
+ * A multi-select dropdown input component for selecting multiple values.
+ *
+ * Provides a dropdown menu with suggestion list, filtering, and the ability
+ * to add custom values. Selected values are displayed as chips that can be
+ * removed individually.
+ *
+ * @example
+ * ```tsx
+ * <DropdownValuesInput
+ *   unitName="key"
+ *   suggestionList={["id", "name", "email"]}
+ *   defaultValues={["id"]}
+ *   onValuesChange={(values) => console.log(values)}
+ *   placeholder="Select or type to add keys"
+ *   size="sm"
+ *   width={240}
+ * />
+ * ```
+ */
 export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
   const { defaultValues, suggestionList, onValuesChange, className } = props;
   const [values, setValues] = useState<string[]>(defaultValues ?? []);

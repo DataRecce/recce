@@ -236,6 +236,12 @@ export {
 // UI PRIMITIVES
 // =============================================================================
 
+// Dropdown values input (multi-select with filtering)
+export {
+  DropdownValuesInput,
+  type DropdownValuesInputProps,
+  type DropdownValuesInputSize,
+} from "./components/ui/DropdownValuesInput";
 // Empty state (placeholder for no data)
 export { EmptyState, type EmptyStateProps } from "./components/ui/EmptyState";
 // External link confirmation dialog
