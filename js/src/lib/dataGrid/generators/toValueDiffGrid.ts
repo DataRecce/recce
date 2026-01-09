@@ -1,8 +1,9 @@
 /**
  * @file toValueDiffGrid.ts
- * @description Value diff grid generation for joined data (with in_a/in_b columns)
+ * @description OSS wrapper for value diff grid generation
  *
- * REFACTORED: Uses shared utilities from @/lib/dataGrid/shared
+ * This file re-exports the generator from @datarecce/ui
+ * with OSS-specific render components injected.
  *
  * NOTE: Backend guarantees:
  * - in_a/in_b columns are always lowercase
@@ -11,103 +12,57 @@
  */
 
 import "src/components/query/styles.css";
-import { type DataFrame, type RowObjectType } from "@datarecce/ui/api";
-import { dataFrameToRowObjects } from "@datarecce/ui/utils";
-import { QueryDataDiffGridOptions } from "@/lib/dataGrid/generators/toDataDiffGrid";
+import type { DataFrame } from "@datarecce/ui/api";
 import {
-  buildDiffColumnDefinitions,
-  buildDiffRows,
-  buildJoinedColumnMap,
-  getDisplayColumns,
-  getPrimaryKeyValue,
-  validatePrimaryKeys,
-  validateToValueDiffGridInputs,
-} from "@/lib/dataGrid/shared";
+  type DiffColumnRenderComponents,
+  type QueryDataDiffGridOptions,
+  toValueDiffGrid as baseToValueDiffGrid,
+  type ValueDiffGridResult,
+} from "@datarecce/ui/utils";
+import {
+  DataFrameColumnGroupHeader,
+  defaultRenderCell,
+  inlineRenderCell,
+} from "@/components/ui/dataGrid";
 
-// ============================================================================
-// Main Grid Generation Function
-// ============================================================================
+// Re-export types from @datarecce/ui
+export type { QueryDataDiffGridOptions, ValueDiffGridResult } from "@datarecce/ui/utils";
 
+/**
+ * OSS-specific render components
+ */
+const ossRenderComponents: DiffColumnRenderComponents = {
+  DataFrameColumnGroupHeader,
+  defaultRenderCell,
+  inlineRenderCell,
+};
+
+/**
+ * Generates grid configuration for value diff (joined data with in_a/in_b)
+ *
+ * @description This is the OSS wrapper that automatically injects
+ * the OSS render components. See @datarecce/ui for the core implementation.
+ *
+ * @param df - The joined DataFrame with in_a/in_b columns
+ * @param primaryKeys - Array of primary key column names
+ * @param options - Grid options
+ * @returns Grid columns and rows ready for AG Grid
+ *
+ * @example
+ * ```tsx
+ * const { columns, rows } = toValueDiffGrid(
+ *   joinedDataFrame,
+ *   ['id'],
+ *   { displayMode: 'inline' }
+ * );
+ * ```
+ */
 export function toValueDiffGrid(
   df: DataFrame,
   primaryKeys: string[],
   options?: QueryDataDiffGridOptions,
-) {
-  validateToValueDiffGridInputs(df, primaryKeys);
-  const pinnedColumns = options?.pinnedColumns ?? [];
-  const changedOnly = options?.changedOnly ?? false;
-  const displayMode = options?.displayMode ?? "inline";
-  const columnsRenderMode = options?.columnsRenderMode ?? {};
-  const transformedData = dataFrameToRowObjects(df);
-
-  // Build column map (expects lowercase in_a/in_b from backend)
-  const columnMap = buildJoinedColumnMap(df);
-
-  // Build row maps based on in_a/in_b columns
-  const baseMap: Record<string, RowObjectType | undefined> = {};
-  const currentMap: Record<string, RowObjectType | undefined> = {};
-
-  // Validate primary keys exist (exact matching - backend provides correct casing)
-  const primaryKeyKeys = validatePrimaryKeys(df.columns, primaryKeys);
-
-  // in_a/in_b are guaranteed lowercase from backend
-  const inBaseKey = columnMap.in_a.key;
-  const inCurrentKey = columnMap.in_b.key;
-
-  transformedData.forEach((row) => {
-    // Generate primary key value (exact matching)
-    const key = getPrimaryKeyValue(df.columns, primaryKeyKeys, row);
-
-    // Access in_a/in_b directly (guaranteed lowercase from backend)
-    if (row[inBaseKey]) {
-      // Store with lowercase key for internal indexing
-      baseMap[key.toLowerCase()] = row;
-    }
-
-    if (row[inCurrentKey]) {
-      currentMap[key.toLowerCase()] = row;
-    }
+): ValueDiffGridResult {
+  return baseToValueDiffGrid(df, primaryKeys, options, {
+    renderComponents: ossRenderComponents,
   });
-
-  const { rows, rowStats } = buildDiffRows({
-    baseMap,
-    currentMap,
-    baseColumns: df.columns,
-    currentColumns: df.columns,
-    columnMap,
-    primaryKeys,
-    changedOnly,
-  });
-
-  // Get column configurations for display
-  const columnConfigs = getDisplayColumns({
-    columnMap,
-    primaryKeys,
-    pinnedColumns,
-    columnsRenderMode,
-    changedOnly,
-    rowStats,
-    excludeColumns: ["in_a", "in_b"], // Only lowercase needed
-    strictMode: true,
-  });
-
-  // Build column definitions with JSX
-  const { columns } = buildDiffColumnDefinitions({
-    columns: columnConfigs,
-    displayMode,
-    allowIndexFallback: false,
-    baseTitle: options?.baseTitle,
-    currentTitle: options?.currentTitle,
-    headerProps: {
-      primaryKeys,
-      pinnedColumns,
-      onPinnedColumnsChange: options?.onPinnedColumnsChange,
-      onColumnsRenderModeChanged: options?.onColumnsRenderModeChanged,
-    },
-  });
-
-  return {
-    columns,
-    rows,
-  };
 }

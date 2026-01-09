@@ -23,11 +23,16 @@ import {
 // ============================================================================
 
 function createParams(
-  data: RowObjectType | undefined,
+  data: Partial<RowObjectType> | undefined,
   colDef: ColDefWithMetadata,
 ): ICellRendererParams<RowObjectType> {
+  // Ensure __status is present as required by RowObjectType
+  const fullData: RowObjectType | undefined = data
+    ? { __status: undefined, ...data }
+    : undefined;
+
   return {
-    data,
+    data: fullData,
     colDef,
     value: undefined,
     node: undefined,

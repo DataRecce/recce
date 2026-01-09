@@ -90,6 +90,26 @@ export {
   validateToDataGridInputs,
   validateToValueDiffGridInputs,
 } from "./dataGrid";
+// Grid generators
+export type {
+  DataDiffGridResult,
+  DataGridResult,
+  QueryDataDiffGridOptions,
+  QueryDataGridOptions,
+  RowCountDataGridResult,
+  RowCountDiffDataGridResult,
+  ToDataDiffGridConfig,
+  ToDataGridConfig,
+  ToValueDiffGridConfig,
+  ValueDiffGridResult,
+} from "./dataGrid";
+export {
+  toDataDiffGrid,
+  toDataGrid,
+  toRowCountDataGrid,
+  toRowCountDiffDataGrid,
+  toValueDiffGrid,
+} from "./dataGrid";
 export { deltaPercentageString } from "./delta";
 export { formatSelectColumns } from "./formatSelect";
 export {

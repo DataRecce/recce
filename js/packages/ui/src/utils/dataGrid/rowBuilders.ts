@@ -12,6 +12,9 @@ import { mergeKeysWithStatus } from "../mergeKeys";
 import { keyToNumber } from "../transforms";
 import { ColumnMapEntry, MergeColumnMapEntry, RowStats } from "./gridUtils";
 
+// Re-export types from gridUtils for convenience
+export type { RowStats };
+
 // ============================================================================
 // Types
 // ============================================================================

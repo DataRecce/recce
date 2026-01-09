@@ -1,67 +1,60 @@
 /**
- * @file toDataGrid.tsx
- * @description Simple data grid generation for single DataFrame display
+ * @file toDataGrid.ts
+ * @description OSS wrapper for simple data grid generation
  *
- * Unlike toDataDiffGrid and toValueDiffGrid, this handles non-diff scenarios
- * where we just display a single DataFrame without base/current comparison.
- *
- * REFACTORED: Now uses shared utilities from @/lib/dataGrid/shared
+ * This file re-exports the generator from @datarecce/ui
+ * with OSS-specific render components injected.
  */
 
-import { type ColumnRenderMode, type DataFrame } from "@datarecce/ui/api";
-import { dataFrameToRowObjects } from "@datarecce/ui/utils";
+import "src/components/query/styles.css";
+import type { DataFrame } from "@datarecce/ui/api";
 import {
-  buildColumnMap,
-  buildSimpleColumnDefinitions,
-  getSimpleDisplayColumns,
-  validateToDataGridInputs,
-} from "@/lib/dataGrid/shared";
+  type DataGridResult,
+  type QueryDataGridOptions,
+  type SimpleColumnRenderComponents,
+  toDataGrid as baseToDataGrid,
+} from "@datarecce/ui/utils";
+import {
+  DataFrameColumnGroupHeader,
+  DataFrameColumnHeader,
+  defaultRenderCell,
+} from "@/components/ui/dataGrid";
 
-// ============================================================================
-// Types
-// ============================================================================
+// Re-export types from @datarecce/ui
+export type { DataGridResult, QueryDataGridOptions } from "@datarecce/ui/utils";
 
-export interface QueryDataGridOptions {
-  primaryKeys?: string[];
-  onPrimaryKeyChange?: (primaryKeys: string[]) => void;
-  pinnedColumns?: string[];
-  onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
-  columnsRenderMode?: Record<string, ColumnRenderMode>;
-  onColumnsRenderModeChanged?: (col: Record<string, ColumnRenderMode>) => void;
-}
+/**
+ * OSS-specific render components
+ */
+const ossRenderComponents: SimpleColumnRenderComponents = {
+  DataFrameColumnGroupHeader,
+  DataFrameColumnHeader,
+  defaultRenderCell,
+};
 
-// ============================================================================
-// Main Grid Generation Function
-// ============================================================================
-
-export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
-  validateToDataGridInputs(result, options);
-
-  const primaryKeys = options.primaryKeys ?? [];
-  const pinnedColumns = options.pinnedColumns ?? [];
-  const columnsRenderMode = options.columnsRenderMode ?? {};
-
-  // REFACTORED: Use shared utility for column map
-  const columnMap = buildColumnMap(result);
-
-  // REFACTORED: Use shared utility for column configuration
-  const columnConfigs = getSimpleDisplayColumns({
-    columnMap,
-    primaryKeys,
-    pinnedColumns,
-    columnsRenderMode,
+/**
+ * Generates grid configuration for a simple DataFrame display
+ *
+ * @description This is the OSS wrapper that automatically injects
+ * the OSS render components. See @datarecce/ui for the core implementation.
+ *
+ * @param result - The DataFrame to display
+ * @param options - Grid options (primary keys, pinning, etc.)
+ * @returns Grid columns and rows ready for AG Grid
+ *
+ * @example
+ * ```tsx
+ * const { columns, rows } = toDataGrid(dataFrame, {
+ *   primaryKeys: ['id'],
+ *   pinnedColumns: [],
+ * });
+ * ```
+ */
+export function toDataGrid(
+  result: DataFrame,
+  options: QueryDataGridOptions,
+): DataGridResult {
+  return baseToDataGrid(result, options, {
+    renderComponents: ossRenderComponents,
   });
-
-  // REFACTORED: Use shared utility for column definitions with JSX
-  const { columns } = buildSimpleColumnDefinitions({
-    columns: columnConfigs,
-    headerProps: {
-      pinnedColumns,
-      onPinnedColumnsChange: options.onPinnedColumnsChange,
-      onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
-    },
-    allowIndexFallback: true,
-  });
-
-  return { columns, rows: dataFrameToRowObjects(result) };
 }
