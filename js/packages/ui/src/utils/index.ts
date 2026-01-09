@@ -22,3 +22,8 @@ export {
 } from "./formatTime";
 export { type MergeStatus, mergeKeys, mergeKeysWithStatus } from "./mergeKeys";
 export { isSchemaChanged } from "./schemaDiff";
+export {
+  formatAsAbbreviatedNumber,
+  formatIntervalMinMax,
+  formatNumber,
+} from "./formatters";

@@ -11,9 +11,8 @@ import {
   type DataFrame,
   type RowObjectType,
 } from "@datarecce/ui/api";
-import { mergeKeysWithStatus } from "@datarecce/ui/utils";
+import { formatNumber, mergeKeysWithStatus } from "@datarecce/ui/utils";
 import _ from "lodash";
-import { formatNumber } from "@/utils/formatters";
 import { getCaseInsensitive } from "@/utils/transforms";
 
 // ============================================================================

@@ -1,41 +1,6 @@
-import type { TopKResult } from "@datarecce/ui/api";
-import { formatInTimeZone } from "@jeromefitz/date-fns-tz";
-
-const NO_VALUE = "-";
-
 /**
  * "Formatters" -- these are your data formatting that returns a formatted value for UI presentation (e.g. number, string, falsey)
  */
-
-/**
- * Source: https://stackoverflow.com/questions/15900485/correct-way-to-convert-size-in-bytes-to-kb-mb-gb-in-javascript
- * @param bytes
- * @param decimals
- * @returns a string that matches nearest byte unit (e.g. kb, mb, gb, etc)
- */
-export function formatBytes(bytes?: number, decimals = 2) {
-  if (bytes === undefined) return;
-  if (!bytes) return "0 Bytes";
-
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
-}
-/**
- * @param dateStr ISO date string
- * @returns a formatted date string in 'yyyy/MM/dd HH:mm:ss'
- */
-export function formatReportTime(dateStr?: string) {
-  if (!dateStr) return;
-  const date = new Date(dateStr);
-  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-  return formatInTimeZone(date, userTimezone, "yyyy-MM-dd HH:mm:ss zzz");
-}
 
 /**
  *
@@ -79,77 +44,6 @@ export function formatIntervalMinMax(num: number) {
   return formatter();
 }
 
-// SR side: No need for object record handling
-// CR side: needs record handling
-export function formatTestExpectedOrActual(value?: unknown): unknown {
-  if (!value) {
-    return NO_VALUE;
-  }
-
-  // Needed due to comparison's get assertions DS
-  if (typeof value === "object") {
-    return JSON.stringify(value);
-    // return Object.keys(value).map((key) =>
-    //   typeof value[key] === 'string' ? value[key] : JSON.stringify(value[key]),
-    // );
-  }
-
-  return value;
-}
-
-/**
-  show the most common values (aka Mode)
-  * give null if type invalids
-  * skip null value
-  * show top 2 if the values share the same counting, examples:
-     (more than 2) a:100, b:100, c:100 => a, b, ...
-     (2) a:100, b:100 => a
-     (2) null:100, a:100, b:100 => a, b
-     (2) null:101, a:100, b:100 => a, b
-     (2) a:100, b:100 => a, b
-     (1) a:100 => a
-     (1) a:100, b:99, c:99 => a
- */
-export function formatTopKMetrics(topK?: TopKResult): {
-  topValues?: string;
-  topCounts?: string;
-} {
-  if (!topK) return {};
-  const { counts, values } = topK;
-  const topValues = `${values[0]}`;
-  const topCounts = `${counts[0]}`;
-
-  return {
-    topValues,
-    topCounts,
-  };
-}
-
-/**
- * A method to handle falsey non-numbers (relevant for comparison reports with column shifts, where base/target values can be undefined)
- * @param value {string | number} any value that will be checked as number
- * @param fn {function} any function to format the valid number
- * @param emptyLabel {string} the return value if falsey value
- */
-export function formatColumnValueWith(
-  value: string | number,
-  fn: (input: number) => string,
-  emptyLabel: string = NO_VALUE,
-): string {
-  if (typeof value === "string") return value;
-  return isNaN(value) ? emptyLabel : fn(value);
-}
-
-/**
- *
- * @param input string to check for truncation with '...'
- * @param end position at which to truncate
- * @returns original or tooltip-wrapped truncated string
- */
-export function formatTruncateString(input: string, end: number) {
-  const shouldTruncate = input.length >= end;
-  return shouldTruncate ? input.slice(0, end) + "..." : input;
-}
 /**
  * base < -2 => 2dp, scientific (small decimals)
  * base < 0 => 3dp (big decimals)
@@ -224,14 +118,4 @@ export function formatAsAbbreviatedNumber(input: number | string) {
             : "scientific",
       }).format(input);
   }
-}
-
-/**
- * formats as 'Category' instead of 'category' or 'CATEGORY'
- */
-export function formatTitleCase(input?: string) {
-  if (!input) return NO_VALUE;
-  const start = input.slice(0, 1).toUpperCase();
-  const rest = input.slice(1).toLowerCase();
-  return `${start}${rest}`;
 }

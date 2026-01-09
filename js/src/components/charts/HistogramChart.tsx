@@ -18,7 +18,7 @@ import { Chart } from "react-chartjs-2";
 import {
   formatAsAbbreviatedNumber,
   formatIntervalMinMax,
-} from "@/utils/formatters";
+} from "@datarecce/ui/utils";
 import { getChartThemeColors, getThemedPluginOptions } from "./chartTheme";
 import { getBarColors } from "./SquareIcon";
 
