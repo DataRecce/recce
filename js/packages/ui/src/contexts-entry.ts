@@ -50,3 +50,14 @@ export {
   useApiConfig,
   useApiConfigOptional,
 } from "./providers/contexts/ApiContext";
+// RouteConfigContext exports - path prefixing for cloud routing
+export type {
+  RouteConfig,
+  RouteConfigContextType,
+  RouteConfigProviderProps,
+} from "./providers/contexts/RouteConfigContext";
+export {
+  RouteConfigProvider,
+  useRouteConfig,
+  useRouteConfigSafe,
+} from "./providers/contexts/RouteConfigContext";

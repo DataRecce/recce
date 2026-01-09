@@ -3,6 +3,18 @@
 // API context - axios client and configuration
 export { ApiProvider } from "../providers/contexts/ApiContext";
 
+// Route configuration context - path prefixing for cloud routing
+export type {
+  RouteConfig,
+  RouteConfigContextType,
+  RouteConfigProviderProps,
+} from "../providers/contexts/RouteConfigContext";
+export {
+  RouteConfigProvider,
+  useRouteConfig,
+  useRouteConfigSafe,
+} from "../providers/contexts/RouteConfigContext";
+
 // Action context - run execution and result management
 export type {
   AxiosQueryParams,

@@ -32,6 +32,17 @@ export type {
   QueryResult,
 } from "./contexts/QueryContext";
 export { QueryProvider, useQueryContext } from "./contexts/QueryContext";
+// Route configuration (for cloud path prefixing)
+export type {
+  RouteConfig,
+  RouteConfigContextType,
+  RouteConfigProviderProps,
+} from "./contexts/RouteConfigContext";
+export {
+  RouteConfigProvider,
+  useRouteConfig,
+  useRouteConfigSafe,
+} from "./contexts/RouteConfigContext";
 export type {
   NavigateOptions,
   RoutingConfig,
