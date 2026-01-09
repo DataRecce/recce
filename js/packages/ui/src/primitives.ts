@@ -236,6 +236,8 @@ export {
 // UI PRIMITIVES
 // =============================================================================
 
+// Diff text (styled text for diff visualization with copy button)
+export { DiffText, type DiffTextProps } from "./components/ui/DiffText";
 // Dropdown values input (multi-select with filtering)
 export {
   DropdownValuesInput,
@@ -261,6 +263,7 @@ export {
   type ScreenshotBoxProps,
 } from "./components/ui/ScreenshotBox";
 // Split pane (resizable split layout)
+export { HSplit, type SplitProps, VSplit } from "./components/ui/Split";
 export {
   type SplitDirection,
   SplitPane,

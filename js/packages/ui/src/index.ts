@@ -39,6 +39,8 @@ export {
 export type {
   // High-level views (Layer 3)
   ChecksViewProps,
+  // UI primitives
+  DiffTextProps,
   // Lineage
   LineageCanvasProps,
   LineageViewProps,
@@ -46,19 +48,22 @@ export type {
   NavItem,
   RecceLayoutProps,
   RunsViewProps,
-  // UI primitives
+  SplitProps,
   SquareIconProps,
 } from "./components";
 export {
   // High-level views (Layer 3)
   ChecksView,
+  // UI primitives
+  DiffText,
+  HSplit,
   // Lineage
   LineageCanvas,
   LineageView,
   RecceLayout,
   RunsView,
-  // UI primitives
   SquareIcon,
+  VSplit,
 } from "./components";
 
 // Result view factory and types

@@ -152,10 +152,11 @@ jest.mock("@/lib/api/track", () => ({
 }));
 
 // Mock components that would cause issues
-jest.mock("../split/Split", () => ({
+jest.mock("@datarecce/ui", () => ({
   VSplit: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
+  isSchemaChanged: jest.fn(),
 }));
 
 jest.mock("@datarecce/ui/primitives", () => ({

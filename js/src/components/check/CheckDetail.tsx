@@ -1,5 +1,6 @@
 "use client";
 
+import { VSplit } from "@datarecce/ui";
 import {
   type Check,
   cacheKeys,
@@ -81,7 +82,6 @@ import {
   RegistryEntry,
   ViewOptionTypes,
 } from "../run/registry";
-import { VSplit } from "../split/Split";
 import { LineageDiffView } from "./LineageDiffView";
 import {
   generateCheckTemplate,

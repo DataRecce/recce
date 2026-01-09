@@ -1,3 +1,4 @@
+import { VSplit } from "@datarecce/ui";
 import {
   LOCAL_STORAGE_KEYS,
   type NodeData,
@@ -40,7 +41,6 @@ import { useGuideToast } from "@/lib/hooks/useGuideToast";
 import { formatTimestamp } from "../app/EnvInfo";
 import { QueryForm } from "../query/QueryForm";
 import { RunResultPane } from "../run/RunResultPane";
-import { VSplit } from "../split/Split";
 
 interface SandboxViewProps {
   isOpen: boolean;

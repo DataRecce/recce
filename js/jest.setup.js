@@ -118,3 +118,21 @@ jest.mock("react-syntax-highlighter", () => ({
 jest.mock("react-syntax-highlighter/dist/esm/styles/prism", () => ({
   oneDark: {},
 }));
+
+// Mock ag-grid-community for theme configuration
+jest.mock("ag-grid-community", () => ({
+  themeQuartz: {
+    withParams: jest.fn(() => "mocked-theme"),
+  },
+  AllCommunityModule: {},
+  ModuleRegistry: {
+    registerModules: jest.fn(),
+  },
+}));
+
+// Mock ag-grid-react to avoid module resolution issues
+jest.mock("ag-grid-react", () => ({
+  AgGridReact: ({ children }) => (
+    <div data-testid="ag-grid-mock">{children}</div>
+  ),
+}));

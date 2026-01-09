@@ -137,7 +137,10 @@ recce-cloud-infra uses these from `@datarecce/ui/components`:
 ## Prerequisites
 
 - [x] RouteConfigContext added to @datarecce/ui (DRC-2516)
-- [ ] All migration tasks from audit complete
+- [x] isSchemaChanged utility migration complete (DRC-2507)
+- [x] Split.tsx component migrated with HSplit/VSplit (DRC-2508)
+- [x] DiffText.tsx component migrated (DRC-2509)
+- [ ] All remaining migration tasks from audit complete
 - [ ] recce-cloud-infra team ready to update imports
 
 ## Risks
@@ -157,3 +160,29 @@ recce-cloud-infra uses these from `@datarecce/ui/components`:
 - Cons: Larger bundle size for consumers, less clear API
 
 Recommend Option A for better API design and tree-shaking.
+
+---
+
+## Changelog
+
+### 2026-01-09 (Session 2)
+
+**Components Migrated:**
+- [x] `isSchemaChanged()` utility - Added 20 unit tests
+- [x] `HSplit`/`VSplit` components - Created as wrappers around SplitPane with 15 tests
+- [x] `DiffText` component - Migrated with onCopy callback abstraction, 15 tests added
+
+**Export Additions:**
+- `DiffText`, `DiffTextProps` added to main, primitives, and components exports
+- `HSplit`, `VSplit`, `SplitProps` added to main, primitives, and components exports
+- `isSchemaChanged` already exported from utils
+
+**Files Updated:**
+- Updated 5 files to use `HSplit`/`VSplit` from `@datarecce/ui`
+- OSS `DiffText.tsx` now wraps `@datarecce/ui` component with toast callback
+- OSS `Split.tsx` can be deprecated (consumers use @datarecce/ui directly)
+
+**Test Coverage:**
+- `schemaDiff.test.ts` - 20 tests
+- `Split.test.tsx` - 15 tests
+- `DiffText.test.tsx` - 15 tests

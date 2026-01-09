@@ -2,6 +2,7 @@
 
 // UI primitives - common presentation components
 
+export { DiffText, type DiffTextProps } from "./DiffText";
 export {
   DropdownValuesInput,
   type DropdownValuesInputProps,
@@ -19,6 +20,7 @@ export {
   type MarkdownContentProps,
 } from "./MarkdownContent";
 export { ScreenshotBox, type ScreenshotBoxProps } from "./ScreenshotBox";
+export { HSplit, type SplitProps, VSplit } from "./Split";
 export {
   type SplitDirection,
   SplitPane,

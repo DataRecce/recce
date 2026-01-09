@@ -1,120 +1,35 @@
-import Box from "@mui/material/Box";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
-import { ReactNode, useState } from "react";
-import { PiCopy } from "react-icons/pi";
+/**
+ * DiffText - OSS wrapper around @datarecce/ui DiffText with toast notifications
+ *
+ * This file re-exports the DiffText component from @datarecce/ui and adds
+ * the OSS-specific toast notification for copy actions.
+ */
+
+// Import directly from source to avoid pulling in ag-grid through primitives barrel
+import {
+  DiffText as DiffTextBase,
+  type DiffTextProps as DiffTextPropsBase,
+} from "@datarecce/ui/components/ui/DiffText";
 import { useCopyToClipboard } from "usehooks-ts";
-import { colors } from "@/components/ui/mui-theme";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 
-interface DiffTextProps {
-  value: string;
-  colorPalette: "red" | "green";
-  grayOut?: boolean;
-  noCopy?: boolean;
-  fontSize?: string;
-}
+// Re-export the type for consumers
+export type DiffTextProps = Omit<DiffTextPropsBase, "onCopy">;
 
-export const DiffText = ({
-  value,
-  colorPalette,
-  grayOut,
-  noCopy,
-  fontSize,
-}: DiffTextProps) => {
-  const [isHovered, setIsHovered] = useState(false);
-
-  // Get the color values from the theme colors
-  const textColor = colors[colorPalette][800];
-  const bgColor = colors[colorPalette][100];
-
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        p: "2px 5px",
-        minWidth: "30px",
-        maxWidth: "200px",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        color: textColor,
-        bgcolor: bgColor,
-        alignItems: "center",
-        gap: "2px",
-        borderRadius: "8px",
-        fontSize,
-        flexShrink: noCopy ? 0 : "inherit",
-      }}
-      onMouseEnter={() => {
-        setIsHovered(true);
-      }}
-      onMouseLeave={() => {
-        setIsHovered(false);
-      }}
-    >
-      <Box
-        sx={{
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          color: grayOut ? "gray" : "inherit",
-        }}
-      >
-        {value}
-      </Box>
-
-      <CopyControl
-        value={value}
-        noCopy={noCopy}
-        grayOut={grayOut}
-        isHovered={isHovered}
-      />
-    </Box>
-  );
-};
-
-interface CopyControlProps {
-  value: string;
-  grayOut?: boolean;
-  noCopy?: boolean;
-  isHovered: boolean;
-}
-
-function CopyControl({
-  value,
-  noCopy,
-  grayOut,
-  isHovered,
-}: CopyControlProps): ReactNode {
+/**
+ * DiffText component with OSS-specific copy-to-clipboard toast notifications.
+ *
+ * This is a wrapper around the @datarecce/ui DiffText component that adds
+ * the toast notification behavior used throughout the OSS application.
+ */
+export function DiffText(props: DiffTextProps) {
   const [, copyToClipboard] = useCopyToClipboard();
   const { successToast } = useClipBoardToast();
 
-  if (noCopy || grayOut || !isHovered) {
-    return <></>;
-  }
-
-  const handleCopy = () => {
+  const handleCopy = (value: string) => {
     copyToClipboard(value);
     successToast(`${value} copied`);
   };
 
-  return (
-    <Tooltip title="Copy Value">
-      <IconButton
-        aria-label="Copy"
-        size="small"
-        onClick={handleCopy}
-        sx={{
-          minWidth: "0.625rem",
-          height: "0.625rem",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          p: 0,
-          color: "inherit",
-        }}
-      >
-        <PiCopy size="0.625rem" />
-      </IconButton>
-    </Tooltip>
-  );
+  return <DiffTextBase {...props} onCopy={handleCopy} />;
 }

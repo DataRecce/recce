@@ -45,7 +45,7 @@ import {
 } from "./lineage";
 import "@xyflow/react/dist/style.css";
 import "./styles.css";
-import { union } from "@datarecce/ui";
+import { HSplit, union } from "@datarecce/ui";
 import type { Check } from "@datarecce/ui/api";
 import {
   type CllInput,
@@ -85,7 +85,6 @@ import {
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { useRun } from "@/lib/hooks/useRun";
-import { HSplit } from "../split/Split";
 import { ActionControl } from "./ActionControl";
 import { ChangeStatusLegend } from "./ChangeStatusLegend";
 import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";

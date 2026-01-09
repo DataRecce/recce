@@ -11,8 +11,8 @@ export type {
 } from "./lineage";
 export { LineageCanvas, LineageView } from "./lineage";
 // UI primitives
-export type { SquareIconProps } from "./ui";
-export { SquareIcon } from "./ui";
+export type { DiffTextProps, SplitProps, SquareIconProps } from "./ui";
+export { DiffText, HSplit, SquareIcon, VSplit } from "./ui";
 // High-level view components (Layer 3)
 export type {
   ChecksViewProps,
