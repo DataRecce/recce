@@ -1,5 +1,18 @@
-import { mergeKeys } from "@datarecce/ui/utils";
+/**
+ * @file formatSelect.ts
+ * @description Column format selection utilities for SQL SELECT statements
+ */
 
+import { mergeKeys } from "./mergeKeys";
+
+/**
+ * Formats merged columns with (Added)/(Removed) annotations for SQL SELECT.
+ * Adds trailing commas except for the last actual column.
+ *
+ * @param baseColumns - Columns from the base environment
+ * @param currentColumns - Columns from the current environment
+ * @returns Array of formatted column strings with annotations and commas
+ */
 export function formatSelectColumns(
   baseColumns: string[],
   currentColumns: string[],

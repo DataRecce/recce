@@ -1,7 +1,7 @@
 /**
  * Tests for CSV utility functions
  */
-import { generateCSVFilename, generateTimestamp } from "./index";
+import { generateCSVFilename, generateTimestamp } from "../index";
 
 describe("generateTimestamp", () => {
   test("should return timestamp in YYYYMMDD-HHmmss format", () => {

@@ -1,11 +1,8 @@
 /**
  * Tests for CSV data extractors
  */
-import {
-  type CSVExportOptions,
-  extractCSVData,
-  supportsCSVExport,
-} from "./extractors";
+import type { CSVExportOptions } from "../extractors";
+import { extractCSVData, supportsCSVExport } from "../extractors";
 
 describe("supportsCSVExport", () => {
   test("should return true for supported run types", () => {

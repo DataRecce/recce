@@ -3,6 +3,7 @@ import {
   useRecceInstanceContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
+import { formatSelectColumns } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import Menu from "@mui/material/Menu";
@@ -18,7 +19,6 @@ import {
   trackExploreAction,
   trackLineageSelection,
 } from "@/lib/api/track";
-import { formatSelectColumns } from "@/lib/formatSelect";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";

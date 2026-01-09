@@ -1,5 +1,6 @@
 /**
- * CSV formatting utilities with Excel-friendly output
+ * @file csv/format.ts
+ * @description CSV formatting utilities with Excel-friendly output
  */
 
 /**

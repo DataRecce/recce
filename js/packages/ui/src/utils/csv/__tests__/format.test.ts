@@ -1,7 +1,7 @@
 /**
  * Tests for CSV formatting utilities
  */
-import { toCSV } from "./format";
+import { toCSV } from "../format";
 
 describe("toCSV", () => {
   describe("basic formatting", () => {

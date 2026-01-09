@@ -3,7 +3,19 @@
  * @description Utility functions for data manipulation and formatting
  */
 
+// CSV utilities
+export {
+  type CSVData,
+  type CSVExportOptions,
+  extractCSVData,
+  generateCSVFilename,
+  generateTimestamp,
+  supportsCSVExport,
+  toCSV,
+} from "./csv";
+
 export { deltaPercentageString } from "./delta";
+export { formatSelectColumns } from "./formatSelect";
 export {
   formatDuration,
   type TimeFormatStyle,

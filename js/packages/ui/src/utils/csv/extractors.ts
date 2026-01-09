@@ -1,5 +1,6 @@
 /**
- * CSV data extractors for each run type
+ * @file csv/extractors.ts
+ * @description CSV data extractors for each run type
  */
 import type {
   DataFrame,
@@ -8,7 +9,7 @@ import type {
   RowCountDiffResult,
   TopKDiffResult,
   ValueDiffResult,
-} from "@datarecce/ui/api";
+} from "../../api";
 
 export interface CSVData {
   columns: string[];
