@@ -1,4 +1,4 @@
-import { mergeKeys, mergeKeysWithStatus } from "@datarecce/ui/utils";
+import { mergeKeys, mergeKeysWithStatus } from "./mergeKeys";
 
 test("should merge keys from base and target arrays while preserving order", () => {
   const base = ["id", "name", "age", "email"];
