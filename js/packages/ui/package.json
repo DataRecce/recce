@@ -48,6 +48,11 @@
       "types": "./dist/utils.d.mts",
       "import": "./dist/utils.mjs",
       "require": "./dist/utils.cjs"
+    },
+    "./theme": {
+      "types": "./dist/theme.d.mts",
+      "import": "./dist/theme.mjs",
+      "require": "./dist/theme.cjs"
     }
   },
   "files": [

@@ -46,6 +46,8 @@ export type {
   NavItem,
   RecceLayoutProps,
   RunsViewProps,
+  // UI primitives
+  SquareIconProps,
 } from "./components";
 export {
   // High-level views (Layer 3)
@@ -55,6 +57,8 @@ export {
   LineageView,
   RecceLayout,
   RunsView,
+  // UI primitives
+  SquareIcon,
 } from "./components";
 
 // Result view factory and types

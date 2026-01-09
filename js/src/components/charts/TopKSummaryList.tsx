@@ -19,8 +19,11 @@ import {
   formatAsAbbreviatedNumber,
   formatIntervalMinMax,
 } from "@datarecce/ui/utils";
-import { getChartThemeColors } from "./chartTheme";
-import { getBarColors, SquareIcon } from "./SquareIcon";
+import {
+  getBarColors,
+  getChartThemeColors,
+} from "@datarecce/ui/theme";
+import { SquareIcon } from "@datarecce/ui";
 
 export const INFO_VAL_COLOR = "#63B3ED";
 

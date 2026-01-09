@@ -12,6 +12,7 @@ export default defineConfig({
     advanced: "src/advanced.ts",
     contexts: "src/contexts-entry.ts",
     result: "src/result.ts",
+    theme: "src/theme/index.ts",
     types: "src/types/index.ts",
     utils: "src/utils/index.ts",
   },

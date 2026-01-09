@@ -19,3 +19,7 @@ export type {
   RunsViewProps,
 } from "./views";
 export { ChecksView, RecceLayout, RunsView } from "./views";
+
+// UI primitives
+export type { SquareIconProps } from "./ui";
+export { SquareIcon } from "./ui";

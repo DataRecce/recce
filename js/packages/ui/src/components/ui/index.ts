@@ -14,3 +14,4 @@ export {
   type StatusBadgeProps,
   type StatusType,
 } from "./StatusBadge";
+export { SquareIcon, type SquareIconProps } from "./SquareIcon";

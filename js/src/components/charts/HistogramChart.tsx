@@ -19,8 +19,11 @@ import {
   formatAsAbbreviatedNumber,
   formatIntervalMinMax,
 } from "@datarecce/ui/utils";
-import { getChartThemeColors, getThemedPluginOptions } from "./chartTheme";
-import { getBarColors } from "./SquareIcon";
+import {
+  getBarColors,
+  getChartThemeColors,
+  getThemedPluginOptions,
+} from "@datarecce/ui/theme";
 
 export const INFO_VAL_COLOR = "#63B3ED";
 export const DATE_RANGE = "Date Range";
