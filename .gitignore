@@ -21,8 +21,8 @@ recce.yml
 # Ignore build artifacts from frontend
 recce/data
 
-# ignore Claude logs and plans
-docs/plans/*.md
+# ignore Claude logs and plans at any nesting
+**/docs/plans/**/*.md
 
 # Git worktrees for isolated development
 .worktrees/
