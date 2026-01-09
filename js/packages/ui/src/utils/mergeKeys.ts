@@ -1,4 +1,13 @@
-export function mergeKeys(_base: string[], _curr: string[]) {
+/**
+ * @file mergeKeys.ts
+ * @description Utilities for merging column arrays while detecting renames/additions/removals
+ */
+
+/**
+ * Merge keys from base and current tables.
+ * Unlike default union, it preserves the order for column rename, added, removed cases.
+ */
+export function mergeKeys(_base: string[], _curr: string[]): string[] {
   // Merge keys from base, target tables. Unlike default union, it preserves the order for column rename, added, removed.
   const base = [..._base];
   const curr = [..._curr];
@@ -44,8 +53,12 @@ export function mergeKeys(_base: string[], _curr: string[]) {
   return results;
 }
 
-type MergeStatus = "added" | "removed" | "reordered" | undefined;
+export type MergeStatus = "added" | "removed" | "reordered" | undefined;
 
+/**
+ * Merge keys from base and current tables, returning status for each key.
+ * Status indicates whether the key was added, removed, reordered, or unchanged.
+ */
 export function mergeKeysWithStatus(
   _base: string[],
   _curr: string[],

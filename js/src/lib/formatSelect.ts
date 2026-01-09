@@ -1,4 +1,4 @@
-import { mergeKeys } from "./mergeKeys";
+import { mergeKeys } from "@datarecce/ui/utils";
 
 export function formatSelectColumns(
   baseColumns: string[],

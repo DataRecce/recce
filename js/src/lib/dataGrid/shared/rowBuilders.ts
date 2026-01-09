@@ -7,8 +7,8 @@
  */
 
 import { type DataFrame, type RowObjectType } from "@datarecce/ui/api";
+import { mergeKeysWithStatus } from "@datarecce/ui/utils";
 import _ from "lodash";
-import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { keyToNumber } from "@/utils/transforms";
 import { ColumnMapEntry, MergeColumnMapEntry, RowStats } from "./gridUtils";
 

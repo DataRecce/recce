@@ -1,5 +1,6 @@
 /**
- * Time formatting utilities for idle timeout display
+ * @file formatTime.ts
+ * @description Time formatting utilities for duration display
  */
 
 export type TimeFormatStyle = "compact" | "verbose";
