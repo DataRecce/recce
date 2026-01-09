@@ -12,6 +12,7 @@
 
 import "src/components/query/styles.css";
 import { type DataFrame, type RowObjectType } from "@datarecce/ui/api";
+import { dataFrameToRowObjects } from "@datarecce/ui/utils";
 import { QueryDataDiffGridOptions } from "@/lib/dataGrid/generators/toDataDiffGrid";
 import {
   buildDiffColumnDefinitions,
@@ -22,7 +23,6 @@ import {
   validatePrimaryKeys,
   validateToValueDiffGridInputs,
 } from "@/lib/dataGrid/shared";
-import { dataFrameToRowObjects } from "@/utils/transforms";
 
 // ============================================================================
 // Main Grid Generation Function

@@ -27,3 +27,10 @@ export {
 } from "./formatters";
 export { type MergeStatus, mergeKeys, mergeKeysWithStatus } from "./mergeKeys";
 export { isSchemaChanged } from "./schemaDiff";
+export {
+  dataFrameToRowObjects,
+  getCaseInsensitive,
+  getValueAtPath,
+  hashStringToNumber,
+  keyToNumber,
+} from "./transforms";

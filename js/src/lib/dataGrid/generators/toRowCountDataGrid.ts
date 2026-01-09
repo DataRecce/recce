@@ -7,8 +7,8 @@
  */
 
 import { type RowCountResult, type RowObjectType } from "@datarecce/ui/api";
+import { dataFrameToRowObjects } from "@datarecce/ui/utils";
 import type { ColDef, ColGroupDef } from "ag-grid-community";
-import { dataFrameToRowObjects } from "@/utils/transforms";
 import { rowCountResultToDataFrame } from "./rowCountUtils";
 
 // ============================================================================

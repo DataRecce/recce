@@ -7,8 +7,8 @@
  */
 
 import { type RowCountDiffResult, type RowObjectType } from "@datarecce/ui/api";
+import { dataFrameToRowObjects } from "@datarecce/ui/utils";
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
-import { dataFrameToRowObjects } from "@/utils/transforms";
 import {
   getRowCountDiffStatus,
   rowCountDiffResultToDataFrame,

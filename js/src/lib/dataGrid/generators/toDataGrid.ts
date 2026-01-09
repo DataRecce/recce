@@ -9,13 +9,13 @@
  */
 
 import { type ColumnRenderMode, type DataFrame } from "@datarecce/ui/api";
+import { dataFrameToRowObjects } from "@datarecce/ui/utils";
 import {
   buildColumnMap,
   buildSimpleColumnDefinitions,
   getSimpleDisplayColumns,
   validateToDataGridInputs,
 } from "@/lib/dataGrid/shared";
-import { dataFrameToRowObjects } from "@/utils/transforms";
 
 // ============================================================================
 // Types

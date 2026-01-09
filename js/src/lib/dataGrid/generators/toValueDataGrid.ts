@@ -19,13 +19,13 @@ import {
   type ValueDiffParams,
   type ValueDiffResult,
 } from "@datarecce/ui/api";
+import { dataFrameToRowObjects } from "@datarecce/ui/utils";
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import {
   createColumnNameRenderer,
   createPrimaryKeyIndicatorRenderer,
   renderMatchedPercentCell,
 } from "@/components/ui/dataGrid/valueDiffCells";
-import { dataFrameToRowObjects } from "@/utils/transforms";
 
 // ============================================================================
 // Types

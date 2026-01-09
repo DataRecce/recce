@@ -11,6 +11,7 @@ import {
   type DataFrame,
   type RowObjectType,
 } from "@datarecce/ui/api";
+import { dataFrameToRowObjects } from "@datarecce/ui/utils";
 import {
   buildDiffColumnDefinitions,
   buildDiffRows,
@@ -20,7 +21,6 @@ import {
   validatePrimaryKeys,
   validateToDataDiffGridInputs,
 } from "@/lib/dataGrid/shared";
-import { dataFrameToRowObjects } from "@/utils/transforms";
 
 // ============================================================================
 // Types
