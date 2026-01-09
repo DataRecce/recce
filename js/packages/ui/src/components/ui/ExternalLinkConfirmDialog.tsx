@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * ExternalLinkConfirmDialog - Confirmation dialog for external links.
  *
@@ -16,7 +18,10 @@ import { useRef } from "react";
 import { IoClose } from "react-icons/io5";
 import { PiWarning } from "react-icons/pi";
 
-interface ExternalLinkConfirmDialogProps {
+/**
+ * Props for ExternalLinkConfirmDialog
+ */
+export interface ExternalLinkConfirmDialogProps {
   /** Whether the dialog is open */
   isOpen: boolean;
   /** The external URL the user is trying to navigate to */
@@ -30,7 +35,7 @@ interface ExternalLinkConfirmDialogProps {
 /**
  * Truncate a URL for display, keeping the domain visible
  */
-function truncateUrl(url: string, maxLength = 60): string {
+export function truncateUrl(url: string, maxLength = 60): string {
   if (url.length <= maxLength) return url;
 
   try {
@@ -56,6 +61,33 @@ function truncateUrl(url: string, maxLength = 60): string {
   }
 }
 
+/**
+ * ExternalLinkConfirmDialog Component
+ *
+ * A dialog that asks users to confirm before navigating to external URLs.
+ *
+ * @example Basic usage
+ * ```tsx
+ * import { ExternalLinkConfirmDialog } from '@datarecce/ui/primitives';
+ *
+ * function MyComponent() {
+ *   const [isOpen, setIsOpen] = useState(false);
+ *   const [pendingUrl, setPendingUrl] = useState('');
+ *
+ *   return (
+ *     <ExternalLinkConfirmDialog
+ *       isOpen={isOpen}
+ *       url={pendingUrl}
+ *       onConfirm={() => {
+ *         window.open(pendingUrl, '_blank');
+ *         setIsOpen(false);
+ *       }}
+ *       onCancel={() => setIsOpen(false)}
+ *     />
+ *   );
+ * }
+ * ```
+ */
 export function ExternalLinkConfirmDialog({
   isOpen,
   url,

@@ -3,6 +3,16 @@
 // UI primitives - common presentation components
 
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
+// Markdown
+export {
+  ExternalLinkConfirmDialog,
+  type ExternalLinkConfirmDialogProps,
+  truncateUrl,
+} from "./ExternalLinkConfirmDialog";
+export {
+  MarkdownContent,
+  type MarkdownContentProps,
+} from "./MarkdownContent";
 export { ScreenshotBox, type ScreenshotBoxProps } from "./ScreenshotBox";
 export {
   type SplitDirection,

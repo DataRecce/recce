@@ -32,12 +32,16 @@ jest.mock("@/lib/api/user", () => ({
   fetchGitHubAvatar: jest.fn().mockResolvedValue(null),
 }));
 
-// Mock MarkdownContent
-jest.mock("@/components/ui/markdown/MarkdownContent", () => ({
-  MarkdownContent: ({ content }: { content: string }) => (
-    <div data-testid="markdown-content">{content}</div>
-  ),
-}));
+// Mock MarkdownContent from @datarecce/ui/primitives
+jest.mock("@datarecce/ui/primitives", () => {
+  const actual = jest.requireActual("@datarecce/ui/primitives");
+  return {
+    ...actual,
+    MarkdownContent: ({ content }: { content: string }) => (
+      <div data-testid="markdown-content">{content}</div>
+    ),
+  };
+});
 
 const createEvent = (overrides: Partial<CheckEvent> = {}): CheckEvent => ({
   id: "event-1",

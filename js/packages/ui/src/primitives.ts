@@ -238,20 +238,28 @@ export {
 
 // Empty state (placeholder for no data)
 export { EmptyState, type EmptyStateProps } from "./components/ui/EmptyState";
-
+// External link confirmation dialog
+export {
+  ExternalLinkConfirmDialog,
+  type ExternalLinkConfirmDialogProps,
+  truncateUrl,
+} from "./components/ui/ExternalLinkConfirmDialog";
+// Markdown content renderer
+export {
+  MarkdownContent,
+  type MarkdownContentProps,
+} from "./components/ui/MarkdownContent";
 // Screenshot box (container for screenshot capture)
 export {
   ScreenshotBox,
   type ScreenshotBoxProps,
 } from "./components/ui/ScreenshotBox";
-
 // Split pane (resizable split layout)
 export {
   type SplitDirection,
   SplitPane,
   type SplitPaneProps,
 } from "./components/ui/SplitPane";
-
 // Status badge (status indicators)
 export {
   StatusBadge,

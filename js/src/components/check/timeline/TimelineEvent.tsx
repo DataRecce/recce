@@ -12,6 +12,7 @@
 
 import { type CheckEvent, getEventIconType } from "@datarecce/ui/api";
 import { useIsDark } from "@datarecce/ui/hooks";
+import { MarkdownContent } from "@datarecce/ui/primitives";
 import MuiAvatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -34,7 +35,6 @@ import {
   PiPlusCircle,
   PiTrashSimple,
 } from "react-icons/pi";
-import { MarkdownContent } from "@/components/ui/markdown/MarkdownContent";
 import { fetchGitHubAvatar } from "@/lib/api/user";
 
 interface TimelineEventProps {

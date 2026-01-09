@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * MarkdownContent - Renders GitHub-flavored Markdown content.
  *
@@ -8,7 +10,6 @@
  * - XSS-safe rendering (no dangerouslySetInnerHTML)
  */
 
-import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
@@ -17,14 +18,18 @@ import Markdown, { Components } from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import remarkGfm from "remark-gfm";
+import { useIsDark } from "../../hooks";
 import { ExternalLinkConfirmDialog } from "./ExternalLinkConfirmDialog";
 
-interface MarkdownContentProps {
+/**
+ * Props for MarkdownContent component
+ */
+export interface MarkdownContentProps {
   /** The markdown content to render */
   content: string;
   /** Font size for the rendered content */
   fontSize?: string;
-  /** Base URL for determining internal links (defaults to window.location.origin) */
+  /** Additional domains to treat as internal (not showing confirmation) */
   internalDomains?: string[];
 }
 
@@ -179,6 +184,34 @@ function CodeBlock({
   );
 }
 
+/**
+ * MarkdownContent Component
+ *
+ * A component for rendering GitHub-flavored Markdown with syntax highlighting
+ * and external link confirmation.
+ *
+ * @example Basic usage
+ * ```tsx
+ * import { MarkdownContent } from '@datarecce/ui/primitives';
+ *
+ * function Description({ text }) {
+ *   return <MarkdownContent content={text} />;
+ * }
+ * ```
+ *
+ * @example With custom font size
+ * ```tsx
+ * <MarkdownContent content={markdown} fontSize="1rem" />
+ * ```
+ *
+ * @example With additional internal domains
+ * ```tsx
+ * <MarkdownContent
+ *   content={markdown}
+ *   internalDomains={['company.com', 'docs.company.com']}
+ * />
+ * ```
+ */
 export function MarkdownContent({
   content,
   fontSize = "0.875rem",

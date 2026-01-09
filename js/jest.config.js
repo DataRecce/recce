@@ -31,7 +31,7 @@ const customJestConfig = {
   ],
   // Transform ignore patterns for ES modules
   transformIgnorePatterns: [
-    "/node_modules/(?!(react-data-grid|@emotion|@mui)/)",
+    "/node_modules/(?!(react-data-grid|@emotion|@mui|react-markdown|remark-gfm|remark-parse|remark-rehype|unified|unist-util-visit|micromark|mdast-util-from-markdown|mdast-util-to-hast|mdast-util-gfm|hast-util-to-jsx-runtime|micromark-util-.*|vfile|vfile-message|unist-util-.*|devlop|bail|trough|decode-named-character-reference|character-entities|property-information|space-separated-tokens|comma-separated-tokens|hast-util-whitespace|trim-lines|ccount|escape-string-regexp|zwitch|html-url-attributes)/)",
   ],
 };
 
