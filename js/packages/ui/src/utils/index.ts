@@ -34,3 +34,54 @@ export {
   hashStringToNumber,
   keyToNumber,
 } from "./transforms";
+
+// DataGrid utilities
+export {
+  // Validation
+  DataGridValidationError,
+  validateColumnDataAlignment,
+  validateColumns,
+  validateDataFrame,
+  validatePrimaryKeyConfig,
+  validateToDataDiffGridInputs,
+  validateToDataGridInputs,
+  validateToValueDiffGridInputs,
+  // Grid utilities
+  type ColumnMapEntry,
+  type MergeColumnMapEntry,
+  type RowStats,
+  buildColumnMap,
+  buildJoinedColumnMap,
+  buildMergedColumnMap,
+  columnRenderedValue,
+  determineRowStatus,
+  formatSmartDecimal,
+  getCellClass,
+  getHeaderCellClass,
+  getPrimaryKeyValue,
+  toRenderedValue,
+  validatePrimaryKeys,
+  // Column builders
+  type ColumnConfig,
+  type ColumnOrderConfig,
+  type GridColumnsConfig,
+  buildColumnOrder,
+  getDisplayColumns,
+  getSimpleDisplayColumns,
+  isExcludedColumn,
+  isPinnedColumn,
+  isPrimaryKeyColumn,
+  shouldIncludeColumn,
+  // Row builders
+  type BuildDiffRowsConfig,
+  type BuildDiffRowsResult,
+  type DiffColumnMapEntry,
+  buildDiffRows,
+  // Row count utilities
+  type RowCountDiffRowData,
+  type RowCountRowData,
+  calculateDelta,
+  getRowCountDiffStatus,
+  rowCountDiffResultToDataFrame,
+  rowCountResultToDataFrame,
+} from "./dataGrid";
