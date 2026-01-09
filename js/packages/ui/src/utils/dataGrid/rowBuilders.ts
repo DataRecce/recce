@@ -6,11 +6,11 @@
  * and valuediff (joined DataFrame with in_a/in_b) scenarios.
  */
 
+import _ from "lodash";
 import type { DataFrame, RowObjectType } from "../../api";
 import { mergeKeysWithStatus } from "../mergeKeys";
 import { keyToNumber } from "../transforms";
 import { ColumnMapEntry, MergeColumnMapEntry, RowStats } from "./gridUtils";
-import _ from "lodash";
 
 // ============================================================================
 // Types

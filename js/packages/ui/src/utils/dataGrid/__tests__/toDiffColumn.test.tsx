@@ -12,9 +12,10 @@
  * - Render component injection
  */
 
-import type { ColumnRenderMode, ColumnType, RowObjectType } from "../../../api";
 import type { CellClassParams } from "ag-grid-community";
 import React from "react";
+import type { ColumnRenderMode, ColumnType, RowObjectType } from "../../../api";
+import type { DiffColumnRenderComponents } from "../renderTypes";
 import {
   createCellClassBase,
   createCellClassCurrent,
@@ -22,7 +23,6 @@ import {
   DiffColumnResult,
   toDiffColumn,
 } from "../toDiffColumn";
-import type { DiffColumnRenderComponents } from "../renderTypes";
 
 // ============================================================================
 // Mocks
@@ -30,7 +30,9 @@ import type { DiffColumnRenderComponents } from "../renderTypes";
 
 // Mock render components for testing
 const mockRenderComponents: DiffColumnRenderComponents = {
-  DataFrameColumnGroupHeader: ({ name }) => <div data-testid="header">{name}</div>,
+  DataFrameColumnGroupHeader: ({ name }) => (
+    <div data-testid="header">{name}</div>
+  ),
   defaultRenderCell: jest.fn(() => null),
   inlineRenderCell: jest.fn(() => null),
 };

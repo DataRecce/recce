@@ -10,24 +10,26 @@
  * - Render component injection
  */
 
-import type { RowObjectType } from "../../../api";
-import type { ColDef, ColGroupDef } from "ag-grid-community";
+import type { ColDef } from "ag-grid-community";
 import React from "react";
+import type { RowObjectType } from "../../../api";
 import type { ColumnConfig } from "../columnBuilders";
 import type { SimpleColumnRenderComponents } from "../renderTypes";
-import type { RecceColumnContext } from "../toDiffColumn";
 import {
   BuildSimpleColumnDefinitionsConfig,
   buildSimpleColumnDefinitions,
   SimpleColumnDefinition,
 } from "../simpleColumnBuilder";
+import type { RecceColumnContext } from "../toDiffColumn";
 
 // ============================================================================
 // Mock Render Components
 // ============================================================================
 
 const mockRenderComponents: SimpleColumnRenderComponents = {
-  DataFrameColumnGroupHeader: ({ name }) => <div data-testid="group-header">{name}</div>,
+  DataFrameColumnGroupHeader: ({ name }) => (
+    <div data-testid="group-header">{name}</div>
+  ),
   DataFrameColumnHeader: ({ name }) => <div data-testid="header">{name}</div>,
   defaultRenderCell: jest.fn(() => null),
 };
@@ -37,7 +39,6 @@ const mockRenderComponents: SimpleColumnRenderComponents = {
 // ============================================================================
 
 type SingleColumn = ColDef<RowObjectType> & { context?: RecceColumnContext };
-type ColumnGroup = ColGroupDef<RowObjectType> & { context?: RecceColumnContext };
 
 function isColumn(col: SimpleColumnDefinition): col is SingleColumn {
   return "field" in col && !("children" in col);
@@ -133,9 +134,7 @@ describe("buildSimpleColumnDefinitions - Basic Functionality", () => {
   });
 
   test("handles empty columns array with default allowIndexFallback (adds index)", () => {
-    const result = buildSimpleColumnDefinitions(
-      createConfig({ columns: [] }),
-    );
+    const result = buildSimpleColumnDefinitions(createConfig({ columns: [] }));
 
     // With default allowIndexFallback=true and no columns, index fallback is added
     expect(result.columns).toHaveLength(1);
@@ -150,9 +149,7 @@ describe("buildSimpleColumnDefinitions - Basic Functionality", () => {
       createColumnConfig({ key: "third", name: "third" }),
     ];
 
-    const result = buildSimpleColumnDefinitions(
-      createConfig({ columns }),
-    );
+    const result = buildSimpleColumnDefinitions(createConfig({ columns }));
 
     const keys = result.columns.map(getColumnKey);
     expect(keys[0]).toBe("first");
@@ -216,9 +213,7 @@ describe("buildSimpleColumnDefinitions - Primary Key Columns", () => {
       createColumnConfig({ key: "sales", name: "sales", columnType: "number" }),
     ];
 
-    const result = buildSimpleColumnDefinitions(
-      createConfig({ columns }),
-    );
+    const result = buildSimpleColumnDefinitions(createConfig({ columns }));
 
     const pinnedColumns = result.columns.filter(
       (c) => isColumn(c) && (c as SingleColumn).pinned === "left",
@@ -262,9 +257,7 @@ describe("buildSimpleColumnDefinitions - Regular Columns", () => {
       createColumnConfig({ key: "normal", name: "normal" }),
     ];
 
-    const result = buildSimpleColumnDefinitions(
-      createConfig({ columns }),
-    );
+    const result = buildSimpleColumnDefinitions(createConfig({ columns }));
 
     const frozenColumn = findColumnByKey(result.columns, "frozen");
     const normalColumn = findColumnByKey(result.columns, "normal");
@@ -331,9 +324,7 @@ describe("buildSimpleColumnDefinitions - Index Fallback", () => {
   test("adds index column by default when no PKs (allowIndexFallback defaults to true)", () => {
     const columns = [createColumnConfig({ key: "value", name: "value" })];
 
-    const result = buildSimpleColumnDefinitions(
-      createConfig({ columns }),
-    );
+    const result = buildSimpleColumnDefinitions(createConfig({ columns }));
 
     expect(result.usedIndexFallback).toBe(true);
   });
@@ -405,9 +396,7 @@ describe("buildSimpleColumnDefinitions - Column Metadata", () => {
       }),
     ];
 
-    const result = buildSimpleColumnDefinitions(
-      createConfig({ columns }),
-    );
+    const result = buildSimpleColumnDefinitions(createConfig({ columns }));
 
     const idCol = findColumnByKey(result.columns, "id");
     const priceCol = findColumnByKey(result.columns, "price");
@@ -426,9 +415,7 @@ describe("buildSimpleColumnDefinitions - Column Metadata", () => {
       }),
     ];
 
-    const result = buildSimpleColumnDefinitions(
-      createConfig({ columns }),
-    );
+    const result = buildSimpleColumnDefinitions(createConfig({ columns }));
 
     const percentageCol = findColumnByKey(result.columns, "percentage");
     expect(percentageCol?.context?.columnRenderMode).toBe("percent");
@@ -446,9 +433,7 @@ describe("buildSimpleColumnDefinitions - Edge Cases", () => {
       createColumnConfig({ key: "col.with.dots", name: "col.with.dots" }),
     ];
 
-    const result = buildSimpleColumnDefinitions(
-      createConfig({ columns }),
-    );
+    const result = buildSimpleColumnDefinitions(createConfig({ columns }));
 
     expect(result.columns).toHaveLength(3); // 2 columns + index fallback
   });
@@ -459,9 +444,7 @@ describe("buildSimpleColumnDefinitions - Edge Cases", () => {
       createColumnConfig({ key: "pk2", name: "pk2", isPrimaryKey: true }),
     ];
 
-    const result = buildSimpleColumnDefinitions(
-      createConfig({ columns }),
-    );
+    const result = buildSimpleColumnDefinitions(createConfig({ columns }));
 
     const allPinned = result.columns.every(
       (c) => isColumn(c) && (c as SingleColumn).pinned === "left",

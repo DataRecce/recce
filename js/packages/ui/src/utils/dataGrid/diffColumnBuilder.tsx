@@ -6,15 +6,15 @@
  * into actual column definitions with React components for headers.
  */
 
-import type { RowObjectType } from "../../api";
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
+import type { RowObjectType } from "../../api";
 import type { ColumnConfig } from "./columnBuilders";
-import type { RecceColumnContext } from "./toDiffColumn";
-import { toDiffColumn } from "./toDiffColumn";
 import type {
   DataFrameColumnGroupHeaderProps,
   DiffColumnRenderComponents,
 } from "./renderTypes";
+import type { RecceColumnContext } from "./toDiffColumn";
+import { toDiffColumn } from "./toDiffColumn";
 
 // ============================================================================
 // Types

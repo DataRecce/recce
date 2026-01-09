@@ -6,9 +6,9 @@
  * supporting both inline and side-by-side display modes.
  */
 
-import type { ColumnRenderMode, ColumnType, RowObjectType } from "../../api";
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import _ from "lodash";
+import type { ColumnRenderMode, ColumnType, RowObjectType } from "../../api";
 import { getHeaderCellClass } from "./gridUtils";
 import type {
   DataFrameColumnGroupHeaderProps,
@@ -196,11 +196,8 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
     renderComponents,
   } = config;
 
-  const {
-    DataFrameColumnGroupHeader,
-    defaultRenderCell,
-    inlineRenderCell,
-  } = renderComponents;
+  const { DataFrameColumnGroupHeader, defaultRenderCell, inlineRenderCell } =
+    renderComponents;
 
   const headerCellClass = getHeaderCellClass(columnStatus);
 

@@ -7,14 +7,14 @@
  */
 
 import {
+  type DiffColumnConfig as BaseConfig,
+  toDiffColumn as baseToDiffColumn,
   createCellClassBase,
   createCellClassCurrent,
-  toDiffColumn as baseToDiffColumn,
-  type DiffColumnConfig as BaseConfig,
-  type DiffColumnResult,
+  type DataFrameColumnGroupHeaderProps,
   type DiffColumnRenderComponents,
+  type DiffColumnResult,
 } from "@datarecce/ui/utils";
-import { type DataFrameColumnGroupHeaderProps } from "@datarecce/ui/utils";
 import {
   DataFrameColumnGroupHeader,
   defaultRenderCell,
@@ -22,9 +22,14 @@ import {
 } from "@/components/ui/dataGrid";
 
 // Re-export types and functions from @datarecce/ui
-export type { DiffColumnResult } from "@datarecce/ui/utils";
-export type { DataFrameColumnGroupHeaderProps } from "@datarecce/ui/utils";
-export { createCellClassBase, createCellClassCurrent } from "@datarecce/ui/utils";
+export type {
+  DataFrameColumnGroupHeaderProps,
+  DiffColumnResult,
+} from "@datarecce/ui/utils";
+export {
+  createCellClassBase,
+  createCellClassCurrent,
+} from "@datarecce/ui/utils";
 
 /**
  * OSS-specific render components
@@ -39,7 +44,8 @@ const ossRenderComponents: DiffColumnRenderComponents = {
  * Configuration for building a diff column (OSS version)
  * Omits renderComponents since OSS provides them automatically
  */
-export interface DiffColumnConfig extends Omit<BaseConfig, "renderComponents"> {}
+export interface DiffColumnConfig
+  extends Omit<BaseConfig, "renderComponents"> {}
 
 /**
  * Creates a diff column definition for use in data grids

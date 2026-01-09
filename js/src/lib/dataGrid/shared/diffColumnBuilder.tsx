@@ -7,9 +7,9 @@
  */
 
 import {
-  buildDiffColumnDefinitions as baseBuildDiffColumnDefinitions,
   type BuildDiffColumnDefinitionsConfig as BaseConfig,
   type BuildDiffColumnDefinitionsResult,
+  buildDiffColumnDefinitions as baseBuildDiffColumnDefinitions,
   type DiffColumnDefinition,
   type DiffColumnRenderComponents,
 } from "@datarecce/ui/utils";

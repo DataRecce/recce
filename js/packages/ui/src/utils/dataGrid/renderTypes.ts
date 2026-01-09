@@ -7,8 +7,8 @@
  * React component implementations.
  */
 
-import type { ColumnRenderMode, ColumnType } from "../../api";
 import type { ICellRendererParams } from "ag-grid-community";
+import type { ColumnRenderMode, ColumnType } from "../../api";
 
 // ============================================================================
 // Header Component Props

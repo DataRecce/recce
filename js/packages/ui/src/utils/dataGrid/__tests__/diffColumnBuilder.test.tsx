@@ -10,24 +10,26 @@
  * - Render component injection
  */
 
-import type { RowObjectType } from "../../../api";
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import React from "react";
+import type { RowObjectType } from "../../../api";
 import type { ColumnConfig } from "../columnBuilders";
-import type { DiffColumnRenderComponents } from "../renderTypes";
-import type { RecceColumnContext } from "../toDiffColumn";
 import {
   BuildDiffColumnDefinitionsConfig,
   buildDiffColumnDefinitions,
   DiffColumnDefinition,
 } from "../diffColumnBuilder";
+import type { DiffColumnRenderComponents } from "../renderTypes";
+import type { RecceColumnContext } from "../toDiffColumn";
 
 // ============================================================================
 // Mock Render Components
 // ============================================================================
 
 const mockRenderComponents: DiffColumnRenderComponents = {
-  DataFrameColumnGroupHeader: ({ name }) => <div data-testid="header">{name}</div>,
+  DataFrameColumnGroupHeader: ({ name }) => (
+    <div data-testid="header">{name}</div>
+  ),
   defaultRenderCell: jest.fn(() => null),
   inlineRenderCell: jest.fn(() => null),
 };
@@ -50,7 +52,9 @@ const createCellClassParams = (
   }) as unknown as CellClassParams<RowObjectType>;
 
 type SingleColumn = ColDef<RowObjectType> & { context?: RecceColumnContext };
-type ColumnGroup = ColGroupDef<RowObjectType> & { context?: RecceColumnContext };
+type ColumnGroup = ColGroupDef<RowObjectType> & {
+  context?: RecceColumnContext;
+};
 
 function isColumn(col: DiffColumnDefinition): col is SingleColumn {
   return "field" in col && !("children" in col);
@@ -151,9 +155,7 @@ describe("buildDiffColumnDefinitions - Basic Functionality", () => {
   });
 
   test("handles empty columns array", () => {
-    const result = buildDiffColumnDefinitions(
-      createConfig({ columns: [] }),
-    );
+    const result = buildDiffColumnDefinitions(createConfig({ columns: [] }));
 
     expect(result.columns).toHaveLength(0);
     expect(result.usedIndexFallback).toBe(false);
@@ -220,13 +222,15 @@ describe("buildDiffColumnDefinitions - Primary Key Columns", () => {
         expect(cellClassFn(createCellClassParams({ __status: "added" }))).toBe(
           "diff-header-added",
         );
-        expect(cellClassFn(createCellClassParams({ __status: "removed" }))).toBe(
-          "diff-header-removed",
-        );
-        expect(cellClassFn(createCellClassParams({ __status: "modified" }))).toBe(
-          "diff-header-modified",
-        );
-        expect(cellClassFn(createCellClassParams({ __status: undefined }))).toBeUndefined();
+        expect(
+          cellClassFn(createCellClassParams({ __status: "removed" })),
+        ).toBe("diff-header-removed");
+        expect(
+          cellClassFn(createCellClassParams({ __status: "modified" })),
+        ).toBe("diff-header-modified");
+        expect(
+          cellClassFn(createCellClassParams({ __status: undefined })),
+        ).toBeUndefined();
       }
     }
   });
@@ -455,13 +459,17 @@ describe("buildDiffColumnDefinitions - Render Component Injection", () => {
     // PK column uses defaultRenderCell
     const pkColumn = findColumnByKey(result.columns, "id");
     if (pkColumn && isColumn(pkColumn)) {
-      expect((pkColumn as SingleColumn).cellRenderer).toBe(customDefaultRenderer);
+      expect((pkColumn as SingleColumn).cellRenderer).toBe(
+        customDefaultRenderer,
+      );
     }
 
     // Non-PK columns in inline mode use inlineRenderCell
     const nameColumn = findColumnByKey(result.columns, "name");
     if (nameColumn && isColumn(nameColumn)) {
-      expect((nameColumn as SingleColumn).cellRenderer).toBe(customInlineRenderer);
+      expect((nameColumn as SingleColumn).cellRenderer).toBe(
+        customInlineRenderer,
+      );
     }
   });
 
@@ -481,7 +489,9 @@ describe("buildDiffColumnDefinitions - Render Component Injection", () => {
     // Non-PK columns should use the custom inline renderer
     const nameColumn = findColumnByKey(result.columns, "name");
     if (nameColumn && isColumn(nameColumn)) {
-      expect((nameColumn as SingleColumn).cellRenderer).toBe(customInlineRenderer);
+      expect((nameColumn as SingleColumn).cellRenderer).toBe(
+        customInlineRenderer,
+      );
     }
   });
 });

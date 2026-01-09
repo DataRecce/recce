@@ -1,33 +1,12 @@
-import { ColumnRenderMode } from "@datarecce/ui/api";
+/**
+ * @file shared.ts
+ * @description OSS re-export of column precision options from @datarecce/ui
+ *
+ * This file re-exports the columnPrecisionSelectOptions utility from @datarecce/ui.
+ * Maintained for backward compatibility with existing OSS imports.
+ */
 
-export function columnPrecisionSelectOptions(
-  colName: string,
-  onColumnsRenderModeChanged: (col: Record<string, ColumnRenderMode>) => void,
-): { value: string; onClick: () => void }[] {
-  return [
-    {
-      value: "Show raw value",
-      onClick: () => {
-        onColumnsRenderModeChanged({ [colName]: "raw" });
-      },
-    },
-    {
-      value: "Show 2 decimal points",
-      onClick: () => {
-        onColumnsRenderModeChanged({ [colName]: 2 });
-      },
-    },
-    {
-      value: "Show as percentage",
-      onClick: () => {
-        onColumnsRenderModeChanged({ [colName]: "percent" });
-      },
-    },
-    {
-      value: "Show with net change",
-      onClick: () => {
-        onColumnsRenderModeChanged({ [colName]: "delta" });
-      },
-    },
-  ];
-}
+export {
+  type ColumnPrecisionOption,
+  columnPrecisionSelectOptions,
+} from "@datarecce/ui/utils";

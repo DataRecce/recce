@@ -8,6 +8,23 @@ export {
   type DropdownValuesInputProps,
   type DropdownValuesInputSize,
 } from "./DropdownValuesInput";
+// DataGrid components - cell renderers and column headers
+export type {
+  ColDefWithMetadata,
+  DataFrameColumnGroupHeaderProps,
+  DataFrameColumnHeaderProps,
+  InlineDiffTextProps,
+  InlineRenderCellConfig,
+  RecceColumnContext,
+} from "./dataGrid";
+export {
+  asNumber,
+  createInlineRenderCell,
+  DataFrameColumnGroupHeader,
+  DataFrameColumnHeader,
+  defaultRenderCell,
+  inlineRenderCell,
+} from "./dataGrid";
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
 // Markdown
 export {

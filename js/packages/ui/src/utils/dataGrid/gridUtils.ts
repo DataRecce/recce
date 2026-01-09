@@ -5,6 +5,7 @@
  * This module contains common functions used across all grid generation methods.
  */
 
+import _ from "lodash";
 import type {
   ColumnRenderMode,
   ColumnType,
@@ -14,7 +15,6 @@ import type {
 import { formatNumber } from "../formatters";
 import { mergeKeysWithStatus } from "../mergeKeys";
 import { getCaseInsensitive } from "../transforms";
-import _ from "lodash";
 
 // ============================================================================
 // Types

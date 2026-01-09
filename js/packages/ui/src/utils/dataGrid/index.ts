@@ -10,18 +10,31 @@
  * - Row count calculations
  */
 
-// Validation utilities
+// Column builders
+export type {
+  ColumnConfig,
+  ColumnOrderConfig,
+  GridColumnsConfig,
+} from "./columnBuilders";
 export {
-  DataGridValidationError,
-  validateColumnDataAlignment,
-  validateColumns,
-  validateDataFrame,
-  validatePrimaryKeyConfig,
-  validateToDataDiffGridInputs,
-  validateToDataGridInputs,
-  validateToValueDiffGridInputs,
-} from "./validation";
-
+  buildColumnOrder,
+  getDisplayColumns,
+  getSimpleDisplayColumns,
+  isExcludedColumn,
+  isPinnedColumn,
+  isPrimaryKeyColumn,
+  shouldIncludeColumn,
+} from "./columnBuilders";
+// Column precision options for number columns
+export type { ColumnPrecisionOption } from "./columnPrecisionOptions";
+export { columnPrecisionSelectOptions } from "./columnPrecisionOptions";
+// Diff column builder (React component builder)
+export type {
+  BuildDiffColumnDefinitionsConfig,
+  BuildDiffColumnDefinitionsResult,
+  DiffColumnDefinition,
+} from "./diffColumnBuilder";
+export { buildDiffColumnDefinitions } from "./diffColumnBuilder";
 // Grid utilities
 export type {
   ColumnMapEntry,
@@ -41,23 +54,15 @@ export {
   toRenderedValue,
   validatePrimaryKeys,
 } from "./gridUtils";
-
-// Column builders
+// Render types (for column builder dependency injection)
 export type {
-  ColumnConfig,
-  ColumnOrderConfig,
-  GridColumnsConfig,
-} from "./columnBuilders";
-export {
-  buildColumnOrder,
-  getDisplayColumns,
-  getSimpleDisplayColumns,
-  isExcludedColumn,
-  isPinnedColumn,
-  isPrimaryKeyColumn,
-  shouldIncludeColumn,
-} from "./columnBuilders";
-
+  CellRendererFunction,
+  ColumnRenderComponents,
+  DataFrameColumnGroupHeaderProps,
+  DataFrameColumnHeaderProps,
+  DiffColumnRenderComponents,
+  SimpleColumnRenderComponents,
+} from "./renderTypes";
 // Row builders
 export type {
   BuildDiffRowsConfig,
@@ -65,7 +70,6 @@ export type {
   DiffColumnMapEntry,
 } from "./rowBuilders";
 export { buildDiffRows } from "./rowBuilders";
-
 // Row count utilities
 export type {
   RowCountDiffRowData,
@@ -77,25 +81,6 @@ export {
   rowCountDiffResultToDataFrame,
   rowCountResultToDataFrame,
 } from "./rowCountUtils";
-
-// Render types (for column builder dependency injection)
-export type {
-  CellRendererFunction,
-  ColumnRenderComponents,
-  DataFrameColumnGroupHeaderProps,
-  DataFrameColumnHeaderProps,
-  DiffColumnRenderComponents,
-  SimpleColumnRenderComponents,
-} from "./renderTypes";
-
-// Diff column builder (React component builder)
-export type {
-  BuildDiffColumnDefinitionsConfig,
-  BuildDiffColumnDefinitionsResult,
-  DiffColumnDefinition,
-} from "./diffColumnBuilder";
-export { buildDiffColumnDefinitions } from "./diffColumnBuilder";
-
 // Simple column builder (React component builder)
 export type {
   BuildSimpleColumnDefinitionsConfig,
@@ -103,7 +88,6 @@ export type {
   SimpleColumnDefinition,
 } from "./simpleColumnBuilder";
 export { buildSimpleColumnDefinitions } from "./simpleColumnBuilder";
-
 // toDiffColumn (shared diff column builder)
 export type {
   DiffColumnConfig,
@@ -115,3 +99,14 @@ export {
   createCellClassCurrent,
   toDiffColumn,
 } from "./toDiffColumn";
+// Validation utilities
+export {
+  DataGridValidationError,
+  validateColumnDataAlignment,
+  validateColumns,
+  validateDataFrame,
+  validatePrimaryKeyConfig,
+  validateToDataDiffGridInputs,
+  validateToDataGridInputs,
+  validateToValueDiffGridInputs,
+} from "./validation";

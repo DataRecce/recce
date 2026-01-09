@@ -11,11 +11,11 @@
  * - Column status (added/removed/modified)
  */
 
-import type { ColumnRenderMode, RowObjectType } from "../../api";
 import type { ColDef, ColGroupDef } from "ag-grid-community";
+import type { ColumnRenderMode, RowObjectType } from "../../api";
 import type { ColumnConfig } from "./columnBuilders";
-import type { RecceColumnContext } from "./toDiffColumn";
 import type { SimpleColumnRenderComponents } from "./renderTypes";
+import type { RecceColumnContext } from "./toDiffColumn";
 
 // Re-export RecceColumnContext for convenience
 export type { RecceColumnContext };

@@ -7,9 +7,9 @@
  */
 
 import {
-  buildSimpleColumnDefinitions as baseBuildSimpleColumnDefinitions,
   type BuildSimpleColumnDefinitionsConfig as BaseConfig,
   type BuildSimpleColumnDefinitionsResult,
+  buildSimpleColumnDefinitions as baseBuildSimpleColumnDefinitions,
   type RecceColumnContext,
   type SimpleColumnDefinition,
   type SimpleColumnRenderComponents,
