@@ -10,7 +10,9 @@ export type {
   LineageViewRef,
 } from "./lineage";
 export { LineageCanvas, LineageView } from "./lineage";
-
+// UI primitives
+export type { SquareIconProps } from "./ui";
+export { SquareIcon } from "./ui";
 // High-level view components (Layer 3)
 export type {
   ChecksViewProps,
@@ -19,7 +21,3 @@ export type {
   RunsViewProps,
 } from "./views";
 export { ChecksView, RecceLayout, RunsView } from "./views";
-
-// UI primitives
-export type { SquareIconProps } from "./ui";
-export { SquareIcon } from "./ui";

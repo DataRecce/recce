@@ -1,5 +1,11 @@
+import { SquareIcon } from "@datarecce/ui";
 import { type TopKDiffResult, type TopKResult } from "@datarecce/ui/api";
 import { useIsDark } from "@datarecce/ui/hooks";
+import { getBarColors, getChartThemeColors } from "@datarecce/ui/theme";
+import {
+  formatAsAbbreviatedNumber,
+  formatIntervalMinMax,
+} from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import MuiTooltip from "@mui/material/Tooltip";
@@ -15,15 +21,6 @@ import {
 } from "chart.js";
 import { Fragment } from "react";
 import { Bar } from "react-chartjs-2";
-import {
-  formatAsAbbreviatedNumber,
-  formatIntervalMinMax,
-} from "@datarecce/ui/utils";
-import {
-  getBarColors,
-  getChartThemeColors,
-} from "@datarecce/ui/theme";
-import { SquareIcon } from "@datarecce/ui";
 
 export const INFO_VAL_COLOR = "#63B3ED";
 

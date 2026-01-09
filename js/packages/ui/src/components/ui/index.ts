@@ -9,9 +9,9 @@ export {
   SplitPane,
   type SplitPaneProps,
 } from "./SplitPane";
+export { SquareIcon, type SquareIconProps } from "./SquareIcon";
 export {
   StatusBadge,
   type StatusBadgeProps,
   type StatusType,
 } from "./StatusBadge";
-export { SquareIcon, type SquareIconProps } from "./SquareIcon";

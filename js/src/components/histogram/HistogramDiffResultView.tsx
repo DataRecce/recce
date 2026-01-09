@@ -4,11 +4,14 @@ import {
 } from "@datarecce/ui/api";
 import { createResultView } from "@datarecce/ui/components/result/createResultView";
 import type { ResultViewData } from "@datarecce/ui/components/result/types";
+import {
+  HistogramChart,
+  type HistogramDataType,
+} from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
 // Import Run from OSS types for proper discriminated union support with Extract<>
 import type { Run } from "@/lib/api/types";
-import { HistogramChart } from "../charts/HistogramChart";
 import type { RunResultViewProps } from "../run/types";
 
 // ============================================================================
@@ -59,21 +62,29 @@ export const HistogramDiffResultView = createResultView<
       return { isEmpty: true };
     }
 
+    // Map column_type to HistogramDataType
+    const columnType = (run.params?.column_type ?? "numeric") as string;
+    const dataType: HistogramDataType =
+      columnType === "datetime"
+        ? "datetime"
+        : columnType === "string"
+          ? "string"
+          : "numeric";
+
     return {
       content: (
         <Box sx={{ display: "flex", flexDirection: "row" }}>
           <Box sx={{ flex: 1 }} />
           <Box sx={{ width: "80%", height: "35vh", m: 4 }}>
             <HistogramChart
-              data={{
-                title: `Model ${params.model}.${params.column_name}`,
-                type: run.params?.column_type ?? "",
-                datasets: [base, current],
-                min: min,
-                max: max,
-                samples: base.total,
-                binEdges: binEdges,
-              }}
+              title={`Model ${params.model}.${params.column_name}`}
+              dataType={dataType}
+              baseData={{ counts: base.counts }}
+              currentData={{ counts: current.counts }}
+              min={min}
+              max={max}
+              samples={base.total}
+              binEdges={binEdges}
             />
           </Box>
           <Box sx={{ flex: 1 }} />

@@ -92,7 +92,9 @@ describe("formatAsAbbreviatedNumber", () => {
 
     test("formats large trillions without decimals", () => {
       expect(formatAsAbbreviatedNumber(1_000_000_000_000_000)).toBe("1,000T");
-      expect(formatAsAbbreviatedNumber(999_000_000_000_000_000)).toBe("999,000T");
+      expect(formatAsAbbreviatedNumber(999_000_000_000_000_000)).toBe(
+        "999,000T",
+      );
     });
 
     test("formats negative trillions", () => {

@@ -26,21 +26,38 @@ jest.mock("ag-grid-community", () => ({
   themeQuartz: {},
 }));
 
+// Define prop interface for mock
+interface MockHistogramChartProps {
+  title: string;
+  dataType?: string;
+  baseData?: { counts: number[] };
+  currentData?: { counts: number[] };
+  samples?: number;
+  min?: number;
+  max?: number;
+  binEdges?: number[];
+}
+
 // Mock HistogramChart component to avoid chart.js complexity
-const mockHistogramChart = jest.fn(({ data }) => (
-  <div data-testid="histogram-chart" data-title={data.title}>
-    <span data-testid="chart-title">{data.title}</span>
-    <span data-testid="chart-type">{data.type}</span>
-    <span data-testid="chart-samples">{data.samples}</span>
-    <span data-testid="chart-min">{data.min}</span>
-    <span data-testid="chart-max">{data.max}</span>
-    <span data-testid="chart-bin-edges">{JSON.stringify(data.binEdges)}</span>
-    <span data-testid="chart-datasets-count">{data.datasets?.length}</span>
+const mockHistogramChart = jest.fn((props: MockHistogramChartProps) => (
+  <div data-testid="histogram-chart" data-title={props.title}>
+    <span data-testid="chart-title">{props.title}</span>
+    <span data-testid="chart-type">{props.dataType}</span>
+    <span data-testid="chart-samples">{props.samples}</span>
+    <span data-testid="chart-min">{props.min}</span>
+    <span data-testid="chart-max">{props.max}</span>
+    <span data-testid="chart-bin-edges">{JSON.stringify(props.binEdges)}</span>
+    <span data-testid="chart-base-counts">
+      {JSON.stringify(props.baseData?.counts)}
+    </span>
+    <span data-testid="chart-current-counts">
+      {JSON.stringify(props.currentData?.counts)}
+    </span>
   </div>
 ));
 
-jest.mock("../charts/HistogramChart", () => ({
-  HistogramChart: (props: { data: unknown }) => mockHistogramChart(props),
+jest.mock("@datarecce/ui/primitives", () => ({
+  HistogramChart: (props: MockHistogramChartProps) => mockHistogramChart(props),
 }));
 
 // Mock ScreenshotBox component (both local and packages/ui versions)
@@ -153,7 +170,7 @@ describe("HistogramDiffResultView", () => {
       expect(chartTitle).toHaveTextContent("Model orders.amount");
     });
 
-    it("passes title from params to HistogramChart data prop", () => {
+    it("passes title from params to HistogramChart prop", () => {
       const run = createHistogramDiffRun();
 
       renderWithProviders(<HistogramDiffResultView run={run} />);
@@ -161,9 +178,7 @@ describe("HistogramDiffResultView", () => {
       // Verify the mock was called with correct title
       expect(mockHistogramChart).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            title: "Model orders.amount",
-          }),
+          title: "Model orders.amount",
         }),
       );
     });
@@ -303,34 +318,32 @@ describe("HistogramDiffResultView", () => {
   // ==========================================================================
 
   describe("chart data", () => {
-    it("passes correct type to HistogramChart", () => {
+    it("passes correct dataType to HistogramChart", () => {
       const run = createHistogramDiffRun();
 
       renderWithProviders(<HistogramDiffResultView run={run} />);
 
-      // The fixture has params.column_type = "number"
+      // The fixture has params.column_type = "number" which maps to "numeric"
       expect(mockHistogramChart).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            type: "number",
-          }),
+          dataType: "numeric",
         }),
       );
     });
 
-    it("passes datasets array with base and current to HistogramChart", () => {
+    it("passes baseData and currentData to HistogramChart", () => {
       const run = createHistogramDiffRun();
 
       renderWithProviders(<HistogramDiffResultView run={run} />);
 
-      // Should pass array with [base, current]
+      // Should pass separate baseData and currentData props with counts arrays
       expect(mockHistogramChart).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            datasets: expect.arrayContaining([
-              expect.objectContaining({ total: 500 }), // base
-              expect.objectContaining({ total: 500 }), // current
-            ]),
+          baseData: expect.objectContaining({
+            counts: expect.any(Array),
+          }),
+          currentData: expect.objectContaining({
+            counts: expect.any(Array),
           }),
         }),
       );
@@ -344,10 +357,8 @@ describe("HistogramDiffResultView", () => {
       // The fixture has result.min = 0, result.max = 1000
       expect(mockHistogramChart).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            min: 0,
-            max: 1000,
-          }),
+          min: 0,
+          max: 1000,
         }),
       );
     });
@@ -360,9 +371,7 @@ describe("HistogramDiffResultView", () => {
       // The fixture has bin_edges = [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
       expect(mockHistogramChart).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            binEdges: [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
-          }),
+          binEdges: [0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
         }),
       );
     });
@@ -375,9 +384,7 @@ describe("HistogramDiffResultView", () => {
       // The fixture has base.total = 500
       expect(mockHistogramChart).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            samples: 500,
-          }),
+          samples: 500,
         }),
       );
     });
@@ -395,9 +402,7 @@ describe("HistogramDiffResultView", () => {
       // Should use empty array as default
       expect(mockHistogramChart).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            binEdges: [],
-          }),
+          binEdges: [],
         }),
       );
     });
@@ -424,7 +429,7 @@ describe("HistogramDiffResultView", () => {
       expect(chartTitle).toHaveTextContent("Model customers.age");
     });
 
-    it("uses empty string for type when column_type is not provided", () => {
+    it("uses numeric for dataType when column_type is not provided", () => {
       const run = createHistogramDiffRun();
       // Remove column_type from params
       // biome-ignore lint/suspicious/noExplicitAny: testing edge case
@@ -434,9 +439,37 @@ describe("HistogramDiffResultView", () => {
 
       expect(mockHistogramChart).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
-            type: "",
-          }),
+          dataType: "numeric",
+        }),
+      );
+    });
+
+    it("maps datetime column_type to datetime dataType", () => {
+      const run = createHistogramDiffRun();
+      // Preserve required params and override column_type
+      // biome-ignore lint/suspicious/noExplicitAny: testing edge case
+      (run.params as any).column_type = "datetime";
+
+      renderWithProviders(<HistogramDiffResultView run={run} />);
+
+      expect(mockHistogramChart).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dataType: "datetime",
+        }),
+      );
+    });
+
+    it("maps string column_type to string dataType", () => {
+      const run = createHistogramDiffRun();
+      // Preserve required params and override column_type
+      // biome-ignore lint/suspicious/noExplicitAny: testing edge case
+      (run.params as any).column_type = "string";
+
+      renderWithProviders(<HistogramDiffResultView run={run} />);
+
+      expect(mockHistogramChart).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dataType: "string",
         }),
       );
     });
