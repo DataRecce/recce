@@ -8,6 +8,10 @@ export {
 
 // Type exports
 export type {
+  // LineageViewContext types
+  ActionMode,
+  ActionState,
+  // LineageGraph types
   EnvInfo,
   LineageGraph,
   LineageGraphColumnNode,
@@ -15,6 +19,9 @@ export type {
   LineageGraphEdge,
   LineageGraphNode,
   LineageGraphNodes,
+  LineageViewContextType,
+  NodeAction,
+  SelectMode,
 } from "./types";
 
 export { isLineageGraphColumnNode, isLineageGraphNode } from "./types";

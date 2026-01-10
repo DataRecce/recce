@@ -1,298 +1,40 @@
 import dagre from "@dagrejs/dagre";
-import { getNeighborSet } from "@datarecce/ui";
 import {
-  type CatalogMetadata,
-  type ColumnLineageData,
-  type LineageData,
-  type LineageDataFromMetadata,
-  type LineageDiffData,
-  type ManifestMetadata,
-  type NodeData,
-} from "@datarecce/ui/api";
-import { Edge, Node, Position } from "@xyflow/react";
+  buildLineageGraph,
+  COLUMN_HEIGHT,
+  isLineageGraphColumnNode,
+  isLineageGraphNode,
+  type LineageGraph,
+  type LineageGraphColumnNode,
+  type LineageGraphEdge,
+  type LineageGraphNode,
+  type LineageGraphNodes,
+  type NodeColumnSetMap,
+  selectDownstream,
+  selectUpstream,
+} from "@datarecce/ui";
+import type { ColumnLineageData } from "@datarecce/ui/api";
+import { Position } from "@xyflow/react";
 
-export const COLUMN_HEIGHT = 20;
-/**
- * The types for internal data structures.
- */
+// Re-export types from @datarecce/ui
+export type {
+  LineageGraph,
+  LineageGraphColumnNode,
+  LineageGraphEdge,
+  LineageGraphNode,
+  LineageGraphNodes,
+  NodeColumnSetMap,
+};
 
-type LineageFrom = "both" | "base" | "current";
-
-export type LineageGraphNode = Node<
-  {
-    id: string;
-    name: string;
-    from: LineageFrom;
-    data: {
-      base?: NodeData;
-      current?: NodeData;
-    };
-    changeStatus?: "added" | "removed" | "modified";
-    change?: {
-      category: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
-      columns: Record<string, "added" | "removed" | "modified"> | null;
-    };
-    resourceType?: string;
-    packageName?: string;
-    parents: Record<string, LineageGraphEdge>;
-    children: Record<string, LineageGraphEdge>;
-  },
-  "lineageGraphNode"
->;
-
-export type LineageGraphColumnNode = Node<
-  {
-    node: LineageGraphNode["data"];
-    column: string;
-    type: string;
-    transformationType?: string;
-    changeStatus?: "added" | "removed" | "modified";
-  },
-  "lineageGraphColumnNode"
->;
-
-export type LineageGraphEdge = Edge<
-  {
-    from: LineageFrom;
-    changeStatus?: "added" | "removed";
-  },
-  "lineageGraphEdge"
->;
-
-export type LineageGraphNodes = LineageGraphNode | LineageGraphColumnNode;
-
-export interface LineageGraph {
-  nodes: Record<string, LineageGraphNode>;
-
-  edges: Record<string, LineageGraphEdge>;
-  modifiedSet: string[];
-
-  manifestMetadata: {
-    base?: ManifestMetadata;
-    current?: ManifestMetadata;
-  };
-  catalogMetadata: {
-    base?: CatalogMetadata;
-    current?: CatalogMetadata;
-  };
-}
-
-export function isLineageGraphNode(
-  node: LineageGraphNodes,
-): node is LineageGraphNode {
-  return node.type === "lineageGraphNode";
-}
-
-export function isLineageGraphColumnNode(
-  node: LineageGraphNodes,
-): node is LineageGraphColumnNode {
-  return node.type === "lineageGraphColumnNode";
-}
-
-export type NodeColumnSetMap = Record<string, Set<string>>;
-
-export function buildLineageGraph(
-  base: LineageDataFromMetadata,
-  current: LineageDataFromMetadata,
-  diff?: LineageDiffData,
-): LineageGraph {
-  const nodes: Record<string, LineageGraphNode> = {};
-  const edges: Record<string, LineageGraphEdge> = {};
-  const buildNode = (
-    key: string,
-    from: "base" | "current",
-  ): LineageGraphNode => {
-    return {
-      id: key,
-      data: {
-        id: key,
-        name: key,
-        from,
-        data: {
-          base: undefined,
-          current: undefined,
-        },
-        parents: {},
-        children: {},
-      },
-      type: "lineageGraphNode",
-      // Return as LineageGraphNode for now
-    } as LineageGraphNode;
-  };
-
-  for (const [key, nodeData] of Object.entries(base.nodes)) {
-    nodes[key] = buildNode(key, "base");
-    if (nodeData) {
-      nodes[key].data.data.base = nodeData;
-      nodes[key].data.name = nodeData.name;
-      nodes[key].data.resourceType = nodeData.resource_type;
-      nodes[key].data.packageName = nodeData.package_name;
-    }
-  }
-
-  for (const [key, nodeData] of Object.entries(current.nodes)) {
-    if (nodes[key] as LineageGraphNode | undefined) {
-      nodes[key].data.from = "both";
-    } else {
-      nodes[key] = buildNode(key, "current");
-    }
-    if (nodeData) {
-      nodes[key].data.data.current = current.nodes[key];
-      nodes[key].data.name = nodeData.name;
-      nodes[key].data.resourceType = nodeData.resource_type;
-      nodes[key].data.packageName = nodeData.package_name;
-    }
-  }
-
-  for (const [child, parents] of Object.entries(base.parent_map)) {
-    for (const parent of parents) {
-      const childNode = nodes[child] as LineageGraphNode | undefined;
-      const parentNode = nodes[parent] as LineageGraphNode | undefined;
-      const id = `${parent}_${child}`;
-
-      if (!childNode || !parentNode) {
-        // Skip the edge if the node is not found
-        continue;
-      }
-      edges[id] = {
-        id,
-        source: parentNode.id,
-        target: childNode.id,
-        data: {
-          from: "base",
-        },
-      };
-      const edge = edges[id];
-
-      childNode.data.parents[parent] = edge;
-      parentNode.data.children[child] = edge;
-    }
-  }
-
-  for (const [child, parents] of Object.entries(current.parent_map)) {
-    for (const parent of parents) {
-      const childNode = nodes[child] as LineageGraphNode | undefined;
-      const parentNode = nodes[parent] as LineageGraphNode | undefined;
-      const id = `${parent}_${child}`;
-
-      if (!childNode || !parentNode) {
-        // Skip the edge if the node is not found
-        continue;
-      }
-      const existingEdge = edges[id] as LineageGraphEdge | undefined;
-      if (existingEdge?.data && edges[id].data) {
-        edges[id].data.from = "both";
-      } else {
-        edges[id] = {
-          id,
-          source: parentNode.id,
-          target: childNode.id,
-          data: {
-            from: "current",
-          },
-        };
-      }
-      const edge = edges[id];
-
-      childNode.data.parents[parent] = edge;
-      parentNode.data.children[child] = edge;
-    }
-  }
-
-  const modifiedSet: string[] = [];
-
-  for (const [key, node] of Object.entries(nodes)) {
-    const diffNode = diff?.[key];
-    if (diffNode) {
-      node.data.changeStatus = diffNode.change_status;
-      if (diffNode.change) {
-        node.data.change = {
-          category: diffNode.change.category,
-          columns: diffNode.change.columns,
-        };
-      }
-      modifiedSet.push(key);
-    } else if (node.data.from === "base") {
-      node.data.changeStatus = "removed";
-      modifiedSet.push(node.id);
-    } else if (node.data.from === "current") {
-      node.data.changeStatus = "added";
-      modifiedSet.push(node.id);
-    } else {
-      const checksum1 = node.data.data.base?.checksum?.checksum;
-      const checksum2 = node.data.data.current?.checksum?.checksum;
-
-      if (checksum1 && checksum2 && checksum1 !== checksum2) {
-        node.data.changeStatus = "modified";
-        modifiedSet.push(node.id);
-      }
-    }
-  }
-
-  for (const [, edge] of Object.entries(edges)) {
-    if (edge.data) {
-      if (edge.data.from === "base") {
-        edge.data.changeStatus = "removed";
-      } else if (edge.data.from === "current") {
-        edge.data.changeStatus = "added";
-      }
-    }
-  }
-
-  return {
-    nodes,
-    edges,
-    modifiedSet,
-    manifestMetadata: {
-      base: base.manifest_metadata ?? undefined,
-      current: current.manifest_metadata ?? undefined,
-    },
-    catalogMetadata: {
-      base: base.catalog_metadata ?? undefined,
-      current: current.catalog_metadata ?? undefined,
-    },
-  };
-}
-
-export function selectUpstream(
-  lineageGraph: LineageGraph,
-  nodeIds: string[],
-  degree = 1000,
-) {
-  return getNeighborSet(
-    nodeIds,
-    (key) => {
-      const maybeNodes = lineageGraph.nodes as unknown as Record<
-        string,
-        LineageGraphNode | undefined
-      >;
-      if (maybeNodes[key] === undefined) {
-        return [];
-      }
-      return Object.keys(lineageGraph.nodes[key].data.parents);
-    },
-    degree,
-  );
-}
-
-export function selectDownstream(
-  lineageGraph: LineageGraph,
-  nodeIds: string[],
-  degree = 1000,
-) {
-  return getNeighborSet(
-    nodeIds,
-    (key) => {
-      if (
-        (lineageGraph.nodes[key] as LineageGraphNode | undefined) === undefined
-      ) {
-        return [];
-      }
-      return Object.keys(lineageGraph.nodes[key].data.children);
-    },
-    degree,
-  );
-}
+// Re-export functions from @datarecce/ui
+export {
+  buildLineageGraph,
+  COLUMN_HEIGHT,
+  isLineageGraphColumnNode,
+  isLineageGraphNode,
+  selectDownstream,
+  selectUpstream,
+};
 
 export function toReactFlow(
   lineageGraph: LineageGraph,

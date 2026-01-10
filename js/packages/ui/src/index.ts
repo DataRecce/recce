@@ -80,6 +80,9 @@ export { createResultView } from "./components/result";
 
 // Contexts - React contexts for state management
 export type {
+  // LineageViewContext types
+  ActionMode,
+  ActionState,
   // Action context
   AxiosQueryParams,
   // Lineage graph
@@ -95,6 +98,8 @@ export type {
   LineageGraphNode,
   LineageGraphNodes,
   LineageGraphProviderProps,
+  LineageViewContextType,
+  NodeAction,
   // Lineage utilities
   NodeColumnSetMap,
   RecceActionContextType,
@@ -102,6 +107,7 @@ export type {
   RecceActionProviderProps,
   RecceFeatureMode,
   RecceFeatureToggles,
+  SelectMode,
   SubmitRunTrackProps,
 } from "./contexts";
 export {

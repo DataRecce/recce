@@ -50,6 +50,10 @@ export {
 
 // Lineage graph context - lineage data and utilities
 export type {
+  // LineageViewContext types
+  ActionMode,
+  ActionState,
+  // LineageGraph types
   EnvInfo,
   LineageGraph,
   LineageGraphColumnNode,
@@ -58,7 +62,10 @@ export type {
   LineageGraphNode,
   LineageGraphNodes,
   LineageGraphProviderProps,
+  LineageViewContextType,
+  NodeAction,
   NodeColumnSetMap,
+  SelectMode,
 } from "./lineage";
 export {
   buildLineageGraph,
