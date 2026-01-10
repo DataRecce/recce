@@ -57,13 +57,6 @@ jest.mock("@/lib/hooks/ApiConfigContext", () => ({
   useApiConfig: () => ({ apiClient: mockApiClient }),
 }));
 
-// Mock check toast
-jest.mock("@/lib/hooks/useCheckToast", () => ({
-  useCheckToast: () => ({
-    markedAsApprovedToast: jest.fn(),
-  }),
-}));
-
 // Mock drag-drop (simplified)
 jest.mock("@hello-pangea/dnd", () => ({
   DragDropContext: ({ children }: { children: React.ReactNode }) => (

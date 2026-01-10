@@ -14,6 +14,7 @@ import {
   submitRunFromCheck,
   updateCheck,
 } from "@datarecce/ui/api";
+import { toaster } from "@datarecce/ui/components/ui";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useClipBoardToast, useIsDark } from "@datarecce/ui/hooks";
 import {
@@ -70,7 +71,6 @@ import { useRecceCheckContext } from "@/lib/hooks/CheckContextAdapter";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
-import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { useRun } from "@/lib/hooks/useRun";
 import { LineageViewRef } from "../lineage/LineageView";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
@@ -108,7 +108,6 @@ export function CheckDetail({
   const queryClient = useQueryClient();
   const [, setLocation] = useAppLocation();
   const { successToast, failToast } = useClipBoardToast();
-  const { markedAsApprovedToast } = useCheckToast();
   const [submittedRunId, setSubmittedRunId] = useState<string>();
   const [progress] = useState<Run["progress"]>();
   const [isAborting, setAborting] = useState(false);
@@ -241,9 +240,13 @@ export function CheckDetail({
     const isChecked = check?.is_checked;
     mutate({ is_checked: !isChecked });
     if (!isChecked) {
-      markedAsApprovedToast();
+      toaster.create({
+        title: "Marked as approved",
+        type: "success",
+        duration: 2000,
+      });
     }
-  }, [check?.is_checked, mutate, markedAsApprovedToast]);
+  }, [check?.is_checked, mutate]);
 
   const handelUpdateViewOptions = (viewOptions: ViewOptionTypes) => {
     mutate({ view_options: viewOptions });

@@ -114,13 +114,6 @@ jest.mock("@/lib/hooks/useAppRouter", () => ({
   useAppLocation: () => ["/checks", jest.fn()],
 }));
 
-// Mock toasts
-jest.mock("@/lib/hooks/useCheckToast", () => ({
-  useCheckToast: () => ({
-    markedAsApprovedToast: jest.fn(),
-  }),
-}));
-
 jest.mock("@datarecce/ui/hooks", () => ({
   useClipBoardToast: () => ({
     successToast: jest.fn(),

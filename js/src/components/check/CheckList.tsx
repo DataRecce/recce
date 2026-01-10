@@ -1,4 +1,5 @@
 import { type Check, cacheKeys, updateCheck } from "@datarecce/ui/api";
+import { toaster } from "@datarecce/ui/components/ui";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import {
   CheckCard,
@@ -29,7 +30,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { useRun } from "@/lib/hooks/useRun";
 
 /**
@@ -140,7 +140,13 @@ export const CheckList = ({
     setPendingApprovalCheckId(null);
   };
 
-  const { markedAsApprovedToast } = useCheckToast();
+  const showApprovedToast = () => {
+    toaster.create({
+      title: "Marked as approved",
+      type: "success",
+      duration: 2000,
+    });
+  };
 
   /**
    * Handle approval change from CheckCard.
@@ -158,7 +164,7 @@ export const CheckList = ({
       );
       if (bypassMarkAsApprovedWarning === "true") {
         updateApproval({ checkId, isChecked: true });
-        markedAsApprovedToast();
+        showApprovedToast();
       } else {
         setPendingApprovalCheckId(checkId);
         handleOpen();
@@ -172,7 +178,7 @@ export const CheckList = ({
       if (bypassModal) {
         localStorage.setItem("bypassMarkAsApprovedWarning", "true");
       }
-      markedAsApprovedToast();
+      showApprovedToast();
       handleClose();
       setPendingApprovalCheckId(null);
     }
