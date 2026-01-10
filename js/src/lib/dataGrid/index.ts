@@ -23,7 +23,7 @@ export {
   toSingleEnvDataGrid,
   toValueDiffGrid,
 } from "./dataGridFactory";
-// Row count utilities
+// Row count utilities - exported directly from @datarecce/ui
 export {
   calculateDelta,
   getRowCountDiffStatus,
@@ -31,16 +31,11 @@ export {
   type RowCountRowData,
   rowCountDiffResultToDataFrame,
   rowCountResultToDataFrame,
-} from "./generators/rowCountUtils";
-export {
   type RowCountDataGridResult,
   toRowCountDataGrid,
-} from "./generators/toRowCountDataGrid";
-
-export {
   type RowCountDiffDataGridResult,
   toRowCountDiffDataGrid,
-} from "./generators/toRowCountDiffDataGrid";
+} from "@datarecce/ui/utils";
 // Schema grid types
 export type {
   SchemaDataGridOptions,

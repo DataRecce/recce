@@ -4,7 +4,7 @@
  */
 
 import { type RowCountResult, type RowObjectType } from "@datarecce/ui/api";
-import { toRowCountDataGrid } from "./toRowCountDataGrid";
+import { toRowCountDataGrid } from "@datarecce/ui/utils";
 
 // ============================================================================
 // Mocks

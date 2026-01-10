@@ -38,10 +38,9 @@ import type { ColDef, ColGroupDef } from "ag-grid-community";
 // Import Run from OSS types for proper discriminated union support with type guards
 import type { Run } from "@/lib/api/types";
 // Import existing implementations
+import { toRowCountDataGrid, toRowCountDiffDataGrid } from "@datarecce/ui/utils";
 import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
 import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
-import { toRowCountDataGrid } from "@/lib/dataGrid/generators/toRowCountDataGrid";
-import { toRowCountDiffDataGrid } from "@/lib/dataGrid/generators/toRowCountDiffDataGrid";
 import {
   mergeColumns,
   type SchemaDataGridOptions,
