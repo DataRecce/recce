@@ -21,6 +21,9 @@ const customJestConfig = {
   },
   // Test file patterns
   testMatch: ["**/__tests__/**/*.[jt]s?(x)", "**/?(*.)+(spec|test).[jt]s?(x)"],
+  // Ignore worktrees to prevent duplicate module detection
+  testPathIgnorePatterns: ["/node_modules/", "/.worktrees/"],
+  modulePathIgnorePatterns: ["/.worktrees/"],
   // Coverage configuration
   collectCoverageFrom: [
     "src/**/*.{js,jsx,ts,tsx}",
