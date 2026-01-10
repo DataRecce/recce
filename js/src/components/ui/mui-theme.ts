@@ -14,9 +14,6 @@
 // Using direct path prevents loading AG Grid components during tests
 import { colors, theme } from "@datarecce/ui/theme";
 
-// Re-export colors for backward compatibility
-export { colors };
-
 // Export theme aliases for backward compatibility
 // @datarecce/ui uses CSS Variables mode, so light/dark are the same theme instance
 export const lightTheme = theme;
