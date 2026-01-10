@@ -25,7 +25,7 @@ import {
   validateToDataDiffGridInputs,
   validateToDataGridInputs,
   validateToValueDiffGridInputs,
-} from "./validation";
+} from "@datarecce/ui/utils";
 
 // ============================================================================
 // Test Fixtures

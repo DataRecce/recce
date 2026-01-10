@@ -23,12 +23,12 @@ import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
 import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
 import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 import {
-  ColumnMapEntry,
+  type ColumnMapEntry,
   columnRenderedValue,
   determineRowStatus,
   getPrimaryKeyValue,
   toRenderedValue,
-} from "@/lib/dataGrid/shared/gridUtils";
+} from "@datarecce/ui/utils";
 
 // Mock ag-grid-community
 jest.mock("ag-grid-community", () => ({

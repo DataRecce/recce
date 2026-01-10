@@ -7,18 +7,18 @@
  */
 
 import {
+  DataFrameColumnGroupHeader,
+  type DataFrameColumnGroupHeaderProps,
+  defaultRenderCell,
+} from "@datarecce/ui/components/ui";
+import {
   type BuildDiffColumnDefinitionsConfig as BaseConfig,
   type BuildDiffColumnDefinitionsResult,
   buildDiffColumnDefinitions as baseBuildDiffColumnDefinitions,
   type DiffColumnDefinition,
   type DiffColumnRenderComponents,
 } from "@datarecce/ui/utils";
-import {
-  DataFrameColumnGroupHeader,
-  type DataFrameColumnGroupHeaderProps,
-  defaultRenderCell,
-  inlineRenderCell,
-} from "@/components/ui/dataGrid";
+import { inlineRenderCell } from "@/components/ui/dataGrid/inlineRenderCell";
 
 // Re-export types from @datarecce/ui
 export type {

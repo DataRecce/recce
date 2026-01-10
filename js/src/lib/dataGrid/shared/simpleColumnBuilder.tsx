@@ -7,6 +7,11 @@
  */
 
 import {
+  DataFrameColumnGroupHeader,
+  DataFrameColumnHeader,
+  defaultRenderCell,
+} from "@datarecce/ui/components/ui";
+import {
   type BuildSimpleColumnDefinitionsConfig as BaseConfig,
   type BuildSimpleColumnDefinitionsResult,
   buildSimpleColumnDefinitions as baseBuildSimpleColumnDefinitions,
@@ -14,11 +19,6 @@ import {
   type SimpleColumnDefinition,
   type SimpleColumnRenderComponents,
 } from "@datarecce/ui/utils";
-import {
-  DataFrameColumnGroupHeader,
-  DataFrameColumnHeader,
-  defaultRenderCell,
-} from "@/components/ui/dataGrid";
 
 // Re-export types from @datarecce/ui
 export type {

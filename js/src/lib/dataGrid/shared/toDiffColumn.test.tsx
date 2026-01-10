@@ -37,18 +37,13 @@ jest.mock("ag-grid-community", () => ({
 }));
 
 // Mock the UI components to avoid React rendering complexity
-jest.mock("@/components/ui/dataGrid", () => ({
+jest.mock("@datarecce/ui/components/ui", () => ({
   DataFrameColumnGroupHeader: () => null,
   defaultRenderCell: jest.fn(),
-  inlineRenderCell: jest.fn(),
 }));
 
-jest.mock("./gridUtils", () => ({
-  getHeaderCellClass: (status: string | undefined) => {
-    if (status === "added") return "diff-header-added";
-    if (status === "removed") return "diff-header-removed";
-    return undefined;
-  },
+jest.mock("@/components/ui/dataGrid/inlineRenderCell", () => ({
+  inlineRenderCell: jest.fn(),
 }));
 
 // ============================================================================

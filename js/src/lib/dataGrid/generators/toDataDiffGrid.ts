@@ -9,16 +9,16 @@
 import "src/components/query/styles.css";
 import type { DataFrame } from "@datarecce/ui/api";
 import {
+  DataFrameColumnGroupHeader,
+  defaultRenderCell,
+} from "@datarecce/ui/components/ui";
+import {
   type DataDiffGridResult,
   type DiffColumnRenderComponents,
   type QueryDataDiffGridOptions,
   toDataDiffGrid as baseToDataDiffGrid,
 } from "@datarecce/ui/utils";
-import {
-  DataFrameColumnGroupHeader,
-  defaultRenderCell,
-  inlineRenderCell,
-} from "@/components/ui/dataGrid";
+import { inlineRenderCell } from "@/components/ui/dataGrid/inlineRenderCell";
 
 // Re-export types from @datarecce/ui
 export type {

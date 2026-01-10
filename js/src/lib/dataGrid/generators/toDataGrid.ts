@@ -9,16 +9,16 @@
 import "src/components/query/styles.css";
 import type { DataFrame } from "@datarecce/ui/api";
 import {
+  DataFrameColumnGroupHeader,
+  DataFrameColumnHeader,
+  defaultRenderCell,
+} from "@datarecce/ui/components/ui";
+import {
   type DataGridResult,
   type QueryDataGridOptions,
   type SimpleColumnRenderComponents,
   toDataGrid as baseToDataGrid,
 } from "@datarecce/ui/utils";
-import {
-  DataFrameColumnGroupHeader,
-  DataFrameColumnHeader,
-  defaultRenderCell,
-} from "@/components/ui/dataGrid";
 
 // Re-export types from @datarecce/ui
 export type { DataGridResult, QueryDataGridOptions } from "@datarecce/ui/utils";

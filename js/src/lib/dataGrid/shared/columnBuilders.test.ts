@@ -13,14 +13,14 @@
 import type { ColumnType } from "@datarecce/ui/api";
 import {
   buildColumnOrder,
-  GridColumnsConfig,
+  type GridColumnsConfig,
   getDisplayColumns,
   getSimpleDisplayColumns,
   isExcludedColumn,
   isPinnedColumn,
   isPrimaryKeyColumn,
   shouldIncludeColumn,
-} from "./columnBuilders";
+} from "@datarecce/ui/utils";
 
 // ============================================================================
 // Test Fixtures

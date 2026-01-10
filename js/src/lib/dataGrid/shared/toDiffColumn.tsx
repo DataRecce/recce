@@ -7,6 +7,10 @@
  */
 
 import {
+  DataFrameColumnGroupHeader,
+  defaultRenderCell,
+} from "@datarecce/ui/components/ui";
+import {
   type DiffColumnConfig as BaseConfig,
   toDiffColumn as baseToDiffColumn,
   createCellClassBase,
@@ -15,11 +19,7 @@ import {
   type DiffColumnRenderComponents,
   type DiffColumnResult,
 } from "@datarecce/ui/utils";
-import {
-  DataFrameColumnGroupHeader,
-  defaultRenderCell,
-  inlineRenderCell,
-} from "@/components/ui/dataGrid";
+import { inlineRenderCell } from "@/components/ui/dataGrid/inlineRenderCell";
 
 // Re-export types and functions from @datarecce/ui
 export type {

@@ -20,7 +20,7 @@ import {
   buildColumnMap,
   buildJoinedColumnMap,
   buildMergedColumnMap,
-  ColumnMapEntry,
+  type ColumnMapEntry,
   columnRenderedValue,
   determineRowStatus,
   formatSmartDecimal,
@@ -29,7 +29,7 @@ import {
   getPrimaryKeyValue,
   toRenderedValue,
   validatePrimaryKeys,
-} from "./gridUtils";
+} from "@datarecce/ui/utils";
 
 // ============================================================================
 // Test Fixtures

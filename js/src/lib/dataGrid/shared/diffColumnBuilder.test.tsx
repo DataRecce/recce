@@ -39,15 +39,14 @@ import {
   type ColumnType,
   type RowObjectType,
 } from "@datarecce/ui/api";
+import { type ColumnConfig, type RecceColumnContext } from "@datarecce/ui/utils";
 import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import React from "react";
-import { ColumnConfig } from "./columnBuilders";
 import {
-  BuildDiffColumnDefinitionsConfig,
+  type BuildDiffColumnDefinitionsConfig,
   buildDiffColumnDefinitions,
-  DiffColumnDefinition,
+  type DiffColumnDefinition,
 } from "./diffColumnBuilder";
-import { RecceColumnContext } from "./simpleColumnBuilder";
 
 // ============================================================================
 // Helper to create mock CellClassParams

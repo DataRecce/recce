@@ -18,8 +18,12 @@ import {
   type DataFrame,
   type RowObjectType,
 } from "@datarecce/ui/api";
-import { ColumnMapEntry, MergeColumnMapEntry } from "./gridUtils";
-import { buildDiffRows, DiffColumnMapEntry } from "./rowBuilders";
+import {
+  type ColumnMapEntry,
+  type MergeColumnMapEntry,
+  buildDiffRows,
+  type DiffColumnMapEntry,
+} from "@datarecce/ui/utils";
 
 // ============================================================================
 // Test Fixtures
