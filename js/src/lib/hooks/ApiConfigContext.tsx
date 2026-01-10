@@ -4,6 +4,21 @@ import React, { createContext, useContext, useMemo } from "react";
 import { PUBLIC_API_URL } from "@/lib/const";
 
 /**
+ * OSS API Configuration Adapter
+ *
+ * This file provides OSS-specific defaults and a fallback chain for API configuration.
+ * It is NOT a duplicate of @datarecce/ui's ApiContext - it wraps it with OSS defaults.
+ *
+ * Priority chain:
+ * 1. Local OSS ApiConfigProvider (if present)
+ * 2. @datarecce/ui RecceProvider (via useApiConfigOptional)
+ * 3. Default config with PUBLIC_API_URL (for backward compatibility)
+ *
+ * For @datarecce/ui consumers (like recce-cloud-infra), use @datarecce/ui's
+ * ApiProvider directly with your own baseUrl and config.
+ */
+
+/**
  * API Configuration Context
  *
  * Provides configurable API endpoint prefix and authentication token
