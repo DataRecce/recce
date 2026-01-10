@@ -62,13 +62,13 @@ import {
   select,
 } from "@datarecce/ui/api";
 import { getIconForChangeStatus } from "@datarecce/ui/components/lineage";
+import { toaster } from "@datarecce/ui/components/ui";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
-import { useThemeColors } from "@datarecce/ui/hooks";
+import { useClipBoardToast, useThemeColors } from "@datarecce/ui/hooks";
 import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { FiCopy } from "react-icons/fi";
 import { colors } from "@/components/ui/mui-theme";
-import { toaster } from "@/components/ui/toaster";
 import {
   type LineageViewRenderProps,
   trackCopyToClipboard,
@@ -83,7 +83,6 @@ import {
   useCopyToClipboard,
 } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
-import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { useRun } from "@/lib/hooks/useRun";
 import { ActionControl } from "./ActionControl";
 import { ChangeStatusLegend } from "./ChangeStatusLegend";

@@ -1,6 +1,6 @@
+import { DiffText } from "@datarecce/ui/components/ui";
 import Button from "@mui/material/Button";
 import ButtonGroup from "@mui/material/ButtonGroup";
-import { DiffText } from "./DiffText";
 
 interface ToggleSwitchProps {
   value: boolean;

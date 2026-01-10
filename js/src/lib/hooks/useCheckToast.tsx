@@ -1,4 +1,4 @@
-import { toaster } from "@/components/ui/toaster";
+import { toaster } from "@datarecce/ui/components/ui";
 
 export function useCheckToast() {
   function markedAsApprovedToast() {

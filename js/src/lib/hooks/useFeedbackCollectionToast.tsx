@@ -12,13 +12,13 @@
  * - Abstracting the storage and analytics backends
  */
 
+import { toaster } from "@datarecce/ui/components/ui";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import { useState } from "react";
 import { LuExternalLink } from "react-icons/lu";
-import { toaster } from "@/components/ui/toaster";
 
 function ReactionFeedback({
   description,

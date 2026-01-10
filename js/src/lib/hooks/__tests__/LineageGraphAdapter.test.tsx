@@ -32,7 +32,7 @@ jest.mock("@/lib/api/track", () => ({
   trackSingleEnvironment: jest.fn(),
 }));
 
-jest.mock("@/components/ui/toaster", () => ({
+jest.mock("@datarecce/ui/components/ui", () => ({
   toaster: {
     create: jest.fn(() => "toast-id"),
   },

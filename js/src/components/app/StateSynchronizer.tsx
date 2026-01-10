@@ -4,6 +4,7 @@ import {
   type SyncStateInput,
   syncState,
 } from "@datarecce/ui/api";
+import { toaster } from "@datarecce/ui/components/ui";
 import { useRecceInstanceInfo } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -23,7 +24,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { PiInfo } from "react-icons/pi";
-import { toaster } from "@/components/ui/toaster";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { IconSync } from "../icons";

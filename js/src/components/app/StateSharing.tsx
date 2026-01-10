@@ -1,4 +1,5 @@
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
+import { useClipBoardToast } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -11,7 +12,6 @@ import { useCopyToClipboard, useInterval } from "usehooks-ts";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { trackShareState } from "@/lib/api/track";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
-import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 
 const LOADING_MESSAGES = [
   "Processing...", // 0-30s

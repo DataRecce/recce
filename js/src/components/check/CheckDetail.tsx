@@ -15,7 +15,7 @@ import {
   updateCheck,
 } from "@datarecce/ui/api";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
-import { useIsDark } from "@datarecce/ui/hooks";
+import { useClipBoardToast, useIsDark } from "@datarecce/ui/hooks";
 import {
   buildCheckDescription,
   buildCheckTitle,
@@ -71,7 +71,6 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
-import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { useRun } from "@/lib/hooks/useRun";
 import { LineageViewRef } from "../lineage/LineageView";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";

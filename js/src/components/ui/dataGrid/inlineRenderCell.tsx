@@ -10,10 +10,10 @@
 import {
   asNumber as baseAsNumber,
   createInlineRenderCell,
+  DiffTextWithToast as DiffText,
   type InlineDiffTextProps,
   type InlineRenderCellConfig,
 } from "@datarecce/ui/components/ui";
-import { DiffText } from "@/components/query/DiffText";
 
 // Re-export types for backward compatibility
 export type { InlineDiffTextProps, InlineRenderCellConfig };

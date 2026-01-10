@@ -6,6 +6,7 @@ import {
   searchRuns,
   submitRun,
 } from "@datarecce/ui/api";
+import { toaster } from "@datarecce/ui/components/ui";
 import {
   type AxiosQueryParams,
   RecceActionProvider,
@@ -29,7 +30,6 @@ import {
   type RunType,
 } from "@/components/run/registry";
 import type { RunFormProps } from "@/components/run/types";
-import { toaster } from "@/components/ui/toaster";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import type { Run, RunParamTypes } from "../api/types";

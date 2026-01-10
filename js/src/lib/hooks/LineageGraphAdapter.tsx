@@ -6,6 +6,7 @@ import {
   getServerInfo,
   markRelaunchHintCompleted,
 } from "@datarecce/ui/api";
+import { toaster } from "@datarecce/ui/components/ui";
 import {
   type EnvInfo,
   LineageGraphProvider,
@@ -35,7 +36,6 @@ import {
   RecceInstanceDisconnectedModalContent,
   ServerDisconnectedModalContent,
 } from "@/components/lineage/ServerDisconnectedModalContent";
-import { toaster } from "@/components/ui/toaster";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { trackSingleEnvironment } from "../api/track";
 import { PUBLIC_API_URL } from "../const";

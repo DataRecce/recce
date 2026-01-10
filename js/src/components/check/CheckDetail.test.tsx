@@ -121,10 +121,34 @@ jest.mock("@/lib/hooks/useCheckToast", () => ({
   }),
 }));
 
-jest.mock("@/lib/hooks/useClipBoardToast", () => ({
+jest.mock("@datarecce/ui/hooks", () => ({
   useClipBoardToast: () => ({
     successToast: jest.fn(),
     failToast: jest.fn(),
+  }),
+  useIsDark: () => false,
+  useThemeColors: () => ({
+    isDark: false,
+    theme: {},
+    background: {
+      default: "#fff",
+      paper: "#fff",
+      subtle: "#f5f5f5",
+      emphasized: "#e5e5e5",
+    },
+    text: {
+      primary: "#000",
+      secondary: "#666",
+      disabled: "#999",
+      inverted: "#fff",
+    },
+    border: { light: "#eee", default: "#ddd", strong: "#ccc" },
+    status: {
+      added: { bg: "#e6f4ea", text: "#000" },
+      removed: { bg: "#fce8e6", text: "#000" },
+      modified: { bg: "#fef7e0", text: "#000" },
+    },
+    interactive: { hover: "#f5f5f5", active: "#e5e5e5", focus: "#1a73e8" },
   }),
 }));
 

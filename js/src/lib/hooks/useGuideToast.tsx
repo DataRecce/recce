@@ -11,8 +11,8 @@
  * - Keeping onboarding logic in host applications
  */
 
+import { toaster } from "@datarecce/ui/components/ui";
 import { useState } from "react";
-import { toaster } from "@/components/ui/toaster";
 
 export function useGuideToast(options: {
   guideId: string;

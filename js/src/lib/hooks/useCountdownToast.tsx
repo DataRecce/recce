@@ -11,9 +11,9 @@
  * - This is unlikely to be needed in cloud/shared contexts
  */
 
+import { toaster } from "@datarecce/ui/components/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTimeout } from "usehooks-ts";
-import { toaster } from "@/components/ui/toaster";
 
 const COUNTDOWN_CONFIG = {
   TOAST_ID: "lifetime-countdown",

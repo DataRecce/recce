@@ -34,7 +34,7 @@ jest.mock("@datarecce/ui/api", () => {
 });
 
 // Mock the toaster
-jest.mock("@/components/ui/toaster", () => ({
+jest.mock("@datarecce/ui/components/ui", () => ({
   toaster: {
     create: jest.fn(),
   },
@@ -82,9 +82,9 @@ jest.mock("@/components/run/RunModal", () => ({
 }));
 
 import { searchRuns, submitRun } from "@datarecce/ui/api";
+import { toaster } from "@datarecce/ui/components/ui";
 import { useRecceActionContext } from "@datarecce/ui/contexts";
 import { findByRunType } from "@/components/run/registry";
-import { toaster } from "@/components/ui/toaster";
 import { RecceActionAdapter } from "../RecceActionAdapter";
 import { useAppLocation } from "../useAppRouter";
 
