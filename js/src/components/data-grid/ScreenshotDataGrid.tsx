@@ -11,6 +11,9 @@
 
 "use client";
 
+// AG Grid custom styles for data grids (includes query/diff grid styles)
+import "./agGridStyles.css";
+
 import {
   EmptyRowsRenderer as BaseEmptyRowsRenderer,
   ScreenshotDataGrid as BaseScreenshotDataGrid,

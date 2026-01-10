@@ -24,11 +24,11 @@ import {
   columnRenderedValue,
   determineRowStatus,
   getPrimaryKeyValue,
+  toDataDiffGridConfigured as toDataDiffGrid,
+  toDataGridConfigured as toDataGrid,
   toRenderedValue,
+  toValueDiffGridConfigured as toValueDiffGrid,
 } from "@datarecce/ui/utils";
-import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
-import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
-import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 
 // Mock ag-grid-community
 jest.mock("ag-grid-community", () => ({

@@ -34,16 +34,17 @@ import {
   type ValueDiffParams,
   type ValueDiffResult,
 } from "@datarecce/ui/api";
-// Import existing implementations
+// Import existing implementations from @datarecce/ui
 import {
+  toDataDiffGridConfigured as toDataDiffGrid,
+  toDataGridConfigured as toDataGrid,
   toRowCountDataGrid,
   toRowCountDiffDataGrid,
+  toValueDiffGridConfigured as toValueDiffGrid,
 } from "@datarecce/ui/utils";
 import type { ColDef, ColGroupDef } from "ag-grid-community";
 // Import Run from OSS types for proper discriminated union support with type guards
 import type { Run } from "@/lib/api/types";
-import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
-import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
 import {
   mergeColumns,
   type SchemaDataGridOptions,
@@ -53,7 +54,6 @@ import {
   toSingleEnvDataGrid,
 } from "@/lib/dataGrid/generators/toSchemaDataGrid";
 import { toValueDataGrid } from "@/lib/dataGrid/generators/toValueDataGrid";
-import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 
 // ============================================================================
 // Types & Interfaces

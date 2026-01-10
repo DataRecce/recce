@@ -35,9 +35,9 @@ jest.mock("@/components/ui/mui", () => ({
 }));
 
 import { type DataFrame, type RowObjectType } from "@datarecce/ui/api";
+import { toDataDiffGridConfigured as toDataDiffGrid } from "@datarecce/ui/utils";
 import type { ColDef } from "ag-grid-community";
 import React from "react";
-import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
 
 // ============================================================================
 // Test Fixtures

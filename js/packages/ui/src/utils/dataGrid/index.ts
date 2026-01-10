@@ -28,6 +28,22 @@ export {
 // Column precision options for number columns
 export type { ColumnPrecisionOption } from "./columnPrecisionOptions";
 export { columnPrecisionSelectOptions } from "./columnPrecisionOptions";
+// Pre-configured exports (with default render components)
+export type {
+  BuildDiffColumnDefinitionsConfigConfigured,
+  BuildSimpleColumnDefinitionsConfigConfigured,
+  DiffColumnConfigConfigured,
+} from "./configured";
+export {
+  buildDiffColumnDefinitionsConfigured,
+  buildSimpleColumnDefinitionsConfigured,
+  defaultRenderComponents,
+  defaultSimpleRenderComponents,
+  toDataDiffGridConfigured,
+  toDataGridConfigured,
+  toDiffColumnConfigured,
+  toValueDiffGridConfigured,
+} from "./configured";
 // Diff column builder (React component builder)
 export type {
   BuildDiffColumnDefinitionsConfig,

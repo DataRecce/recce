@@ -47,7 +47,7 @@ import {
   type DataFrame,
   type RowData,
 } from "@datarecce/ui/api";
-import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
+import { toValueDiffGridConfigured as toValueDiffGrid } from "@datarecce/ui/utils";
 
 // ============================================================================
 // Test Fixtures

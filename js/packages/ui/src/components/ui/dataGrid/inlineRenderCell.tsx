@@ -22,6 +22,7 @@ import {
   toRenderedValue,
 } from "../../../utils/dataGrid/gridUtils";
 import { DiffText, type DiffTextProps } from "../DiffText";
+import { DiffTextWithToast } from "../DiffTextWithToast";
 
 /**
  * Custom context data for Recce columns
@@ -226,13 +227,15 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
 }
 
 /**
- * Default inline diff cell renderer using built-in DiffText
+ * Default inline diff cell renderer using DiffTextWithToast
  *
- * @description Pre-configured inline cell renderer that uses the default
- * DiffText component from @datarecce/ui. For custom DiffText behavior,
- * use createInlineRenderCell() instead.
+ * @description Pre-configured inline cell renderer that uses DiffTextWithToast
+ * for copy-to-clipboard toast notifications. For custom DiffText behavior,
+ * use createInlineRenderCell() with a custom DiffTextComponent.
  */
-export const inlineRenderCell = createInlineRenderCell();
+export const inlineRenderCell = createInlineRenderCell({
+  DiffTextComponent: DiffTextWithToast,
+});
 
 /**
  * Converts row data values to a number

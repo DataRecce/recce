@@ -58,7 +58,7 @@ jest.mock("@datarecce/ui/contexts", () => ({
 }));
 
 // Mock dataGrid UI components
-jest.mock("@/components/ui/dataGrid", () => ({
+jest.mock("@datarecce/ui/components/ui", () => ({
   DataFrameColumnGroupHeader: () => null,
   defaultRenderCell: jest.fn(),
   inlineRenderCell: jest.fn(),

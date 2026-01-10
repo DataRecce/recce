@@ -30,20 +30,25 @@ export type {
 export {
   // Diff column builder (React component builder)
   type BuildDiffColumnDefinitionsConfig,
+  // Pre-configured exports (with default render components)
+  type BuildDiffColumnDefinitionsConfigConfigured,
   type BuildDiffColumnDefinitionsResult,
   // Row builders
   type BuildDiffRowsConfig,
   type BuildDiffRowsResult,
   // Simple column builder (React component builder)
   type BuildSimpleColumnDefinitionsConfig,
+  type BuildSimpleColumnDefinitionsConfigConfigured,
   type BuildSimpleColumnDefinitionsResult,
   buildColumnMap,
   buildColumnOrder,
   buildDiffColumnDefinitions,
+  buildDiffColumnDefinitionsConfigured,
   buildDiffRows,
   buildJoinedColumnMap,
   buildMergedColumnMap,
   buildSimpleColumnDefinitions,
+  buildSimpleColumnDefinitionsConfigured,
   // Render types (for column builder dependency injection)
   type CellRendererFunction,
   // Column builders (pure data)
@@ -65,10 +70,13 @@ export {
   DataGridValidationError,
   // toDiffColumn (shared diff column builder)
   type DiffColumnConfig,
+  type DiffColumnConfigConfigured,
   type DiffColumnDefinition,
   type DiffColumnMapEntry,
   type DiffColumnRenderComponents,
   type DiffColumnResult,
+  defaultRenderComponents,
+  defaultSimpleRenderComponents,
   determineRowStatus,
   formatSmartDecimal,
   type GridColumnsConfig,
@@ -93,12 +101,16 @@ export {
   type SimpleColumnRenderComponents,
   shouldIncludeColumn,
   toDataDiffGrid,
+  toDataDiffGridConfigured,
   toDataGrid,
+  toDataGridConfigured,
   toDiffColumn,
+  toDiffColumnConfigured,
   toRenderedValue,
   toRowCountDataGrid,
   toRowCountDiffDataGrid,
   toValueDiffGrid,
+  toValueDiffGridConfigured,
   validateColumnDataAlignment,
   validateColumns,
   validateDataFrame,
