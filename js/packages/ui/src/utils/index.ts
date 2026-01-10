@@ -7,6 +7,8 @@
 export {
   type CSVData,
   type CSVExportOptions,
+  copyCSVToClipboard,
+  downloadCSV,
   extractCSVData,
   generateCSVFilename,
   generateTimestamp,
