@@ -140,23 +140,28 @@ Audit and migrate utility code from `js/src` to `js/packages/ui` (@datarecce/ui)
 **Goal:** Address gaps for recce-cloud-infra.
 
 #### 4.1 Export Screenshot Utilities
-- **Action:** Ensure hooks exported from `@datarecce/ui/hooks` with documentation
-- **Benefit:** Cloud can replace `html-to-image` usage with library utilities
+- **Status:** ❌ SKIPPED - OSS-specific dependencies
+- **Reason:** ScreenShot.tsx depends on OSS-specific types (`DataGridHandle`) and theme (`colors`)
+- **Available:** `useClipBoardToast` is already exported from `@datarecce/ui/hooks`
+- **Documentation:** See `packages/ui/docs/adapter-patterns.md` for details
 
 #### 4.2 Document Adapter Pattern
-- **Action:** Create documentation explaining:
+- **Status:** ✅ COMPLETED
+- **Action:** Created documentation explaining:
   - How to wrap/extend library contexts
   - Theme bridging patterns (CSS Variables vs legacy mode)
   - Provider stacking order recommendations
 - **Location:** `packages/ui/docs/adapter-patterns.md`
 
 #### 4.3 Evaluate Run History Gap
+- **Status:** ⏳ DEFERRED - Requires cloud repo access
 - **Action:** Audit `RunHistoryDrawer` in recce-cloud-infra
-- **Decision:** Determine if generic enough for library or cloud-specific
+- **Decision:** Noted in adapter-patterns.md for cloud team evaluation
 
 #### 4.4 Document WebSocket Strategy
-- **Action:** Document that WebSocket handling is left to consumers
-- **Reason:** Both OSS and Cloud have deployment-specific implementations
+- **Status:** ✅ COMPLETED
+- **Action:** Documented in `packages/ui/docs/adapter-patterns.md`
+- **Decision:** WebSocket handling is left to consumers (OSS/Cloud have different implementations)
 
 ---
 
@@ -167,27 +172,34 @@ Audit and migrate utility code from `js/src` to `js/packages/ui` (@datarecce/ui)
 3. **Types are library-owned** - Discriminated unions, interfaces in @datarecce/ui
 4. **Utilities are generic** - No Recce-specific dependencies in migrated code
 
-## Files Changed
+## Files Changed (Actual)
 
 ### Created in @datarecce/ui
-- `packages/ui/src/hooks/useScreenshot.ts`
-- `packages/ui/src/hooks/useRun.ts`
-- `packages/ui/src/api/types/run.ts`
-- `packages/ui/src/api/types/lineage.ts`
-- `packages/ui/src/types/registry.ts`
-- `packages/ui/src/utils/csv/browser.ts`
-- `packages/ui/docs/adapter-patterns.md`
+- `packages/ui/src/api/info.ts` - Added `LineageDiffResult` interface
+- `packages/ui/src/api/types/run.ts` - Added `runTypeHasRef()` utility and `RUN_TYPES_WITH_REF`
+- `packages/ui/src/utils/csv/browser.ts` - CSV browser utilities (`downloadCSV`, `copyCSVToClipboard`)
+- `packages/ui/docs/adapter-patterns.md` - Consumer integration documentation
 
 ### Deleted from OSS
-- `src/lib/hooks/useCheckToast.tsx`
-- `src/lib/hooks/ApiConfigContext.tsx` (replaced with re-export)
+- `src/lib/hooks/useCheckToast.tsx` - Inlined toast calls at usage sites
+- `src/lib/hooks/RecceQueryContext.tsx` - Unused context (never called in app code)
+- `src/lib/hooks/__tests__/RecceQueryContext.test.tsx` - Test for removed context
 
 ### Modified in OSS
-- `src/lib/hooks/useRun.tsx` (thin wrapper)
-- `src/lib/api/types.ts` (re-export from library)
-- `src/lib/api/info.ts` (remove migrated type)
-- `src/components/run/registry.ts` (import types from library)
-- Files using useCheckToast (inline toast calls)
+- `src/lib/api/info.ts` - Re-exports `LineageDiffResult` from @datarecce/ui
+- `src/lib/csv/index.ts` - Re-exports browser utils from @datarecce/ui
+- `src/components/run/registry.ts` - Imports and re-exports `runTypeHasRef` from @datarecce/ui
+- `src/lib/hooks/ApiConfigContext.tsx` - Added documentation (kept as OSS adapter)
+- `src/lib/hooks/RecceContextProvider.tsx` - Removed RowCountStateContextProvider
+- `src/components/check/CheckDetail.tsx` - Inlined toast call
+- `src/components/check/CheckList.tsx` - Inlined toast call
+- `src/components/check/CheckDetail.test.tsx` - Removed mock
+- `src/components/check/CheckList.test.tsx` - Removed mock
+
+### Not Migrated (Intentional)
+- `src/lib/hooks/ScreenShot.tsx` - OSS-specific dependencies (DataGridHandle, colors)
+- `src/lib/hooks/useRun.tsx` - Too OSS-coupled (LineageGraphAdapter, type casting)
+- `src/lib/api/types.ts` - Intentionally OSS-specific (extends library types)
 
 ## Success Criteria
 
