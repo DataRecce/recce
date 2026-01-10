@@ -61,7 +61,10 @@ import {
   type LineageDiffViewOptions,
   select,
 } from "@datarecce/ui/api";
-import { getIconForChangeStatus } from "@datarecce/ui/components/lineage";
+import {
+  getIconForChangeStatus,
+  LineageLegend,
+} from "@datarecce/ui/components/lineage";
 import { toaster } from "@datarecce/ui/components/ui";
 import {
   useLineageGraphContext,
@@ -87,9 +90,7 @@ import {
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useRun } from "@/lib/hooks/useRun";
 import { ActionControl } from "./ActionControl";
-import { ChangeStatusLegend } from "./ChangeStatusLegend";
 import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
-import { ColumnLevelLineageLegend } from "./ColumnLevelLineageLegend";
 import { GraphColumnNode } from "./GraphColumnNode";
 import GraphEdge from "./GraphEdge";
 import { GraphNode } from "./GraphNode";
@@ -1309,9 +1310,9 @@ export function PrivateLineageView(
             <ImageDownloadModal />
             <Panel position="bottom-left">
               <Stack spacing="5px">
-                {isModelsChanged && <ChangeStatusLegend />}
+                {isModelsChanged && <LineageLegend variant="changeStatus" />}
                 {viewOptions.column_level_lineage && (
-                  <ColumnLevelLineageLegend />
+                  <LineageLegend variant="transformation" />
                 )}
               </Stack>
             </Panel>

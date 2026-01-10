@@ -4,8 +4,6 @@
  *
  * Tests verify:
  * - Correct rendering of column name and type
- * - Change status icons (added, removed, modified)
- * - Transformation type chips (P, R, D, S, U)
  * - Toggle between change status and transformation type based on analysis mode
  * - Hover behavior (kebab menu swap)
  * - Context integration (callbacks invoked correctly)
@@ -91,11 +89,7 @@ import { useThemeColors } from "@datarecce/ui/hooks";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useStore } from "@xyflow/react";
 import React from "react";
-import {
-  ChangeStatus,
-  GraphColumnNode,
-  TransformationType,
-} from "../GraphColumnNode";
+import { GraphColumnNode } from "../GraphColumnNode";
 import { useLineageViewContextSafe } from "../LineageViewContext";
 import type { LineageGraphColumnNode } from "../lineage";
 
@@ -267,113 +261,6 @@ describe("GraphColumnNode", () => {
 
       expect(targetHandle).toHaveAttribute("data-position", "left");
       expect(sourceHandle).toHaveAttribute("data-position", "right");
-    });
-  });
-
-  // ==========================================================================
-  // ChangeStatus Sub-Component Tests
-  // ==========================================================================
-
-  describe("ChangeStatus", () => {
-    it("renders nothing when changeStatus is undefined", () => {
-      const { container } = render(<ChangeStatus changeStatus={undefined} />);
-
-      expect(container.firstChild).toBeNull();
-    });
-
-    it("renders icon for added status", () => {
-      mockGetIconForChangeStatus.mockReturnValue({
-        icon: () => <span data-testid="added-icon">Added</span>,
-        color: "#22c55e",
-      });
-
-      render(<ChangeStatus changeStatus="added" />);
-
-      expect(mockGetIconForChangeStatus).toHaveBeenCalledWith("added");
-    });
-
-    it("renders icon for removed status", () => {
-      mockGetIconForChangeStatus.mockReturnValue({
-        icon: () => <span data-testid="removed-icon">Removed</span>,
-        color: "#ef4444",
-      });
-
-      render(<ChangeStatus changeStatus="removed" />);
-
-      expect(mockGetIconForChangeStatus).toHaveBeenCalledWith("removed");
-    });
-
-    it("renders icon for modified status", () => {
-      mockGetIconForChangeStatus.mockReturnValue({
-        icon: () => <span data-testid="modified-icon">Modified</span>,
-        color: "#f59e0b",
-      });
-
-      render(<ChangeStatus changeStatus="modified" />);
-
-      expect(mockGetIconForChangeStatus).toHaveBeenCalledWith("modified");
-    });
-
-    it("renders nothing when icon is undefined", () => {
-      mockGetIconForChangeStatus.mockReturnValue({
-        icon: undefined,
-        color: "#22c55e",
-      });
-
-      const { container } = render(<ChangeStatus changeStatus="added" />);
-
-      // Should render empty fragment when no icon
-      expect(container.firstChild).toBeNull();
-    });
-  });
-
-  // ==========================================================================
-  // TransformationType Sub-Component Tests
-  // ==========================================================================
-
-  describe("TransformationType", () => {
-    it("renders nothing when transformationType is undefined", () => {
-      const { container } = render(
-        <TransformationType transformationType={undefined} />,
-      );
-
-      expect(container.firstChild).toBeNull();
-    });
-
-    it("renders P chip for passthrough type", () => {
-      render(<TransformationType transformationType="passthrough" />);
-
-      expect(screen.getByText("P")).toBeInTheDocument();
-    });
-
-    it("renders R chip for renamed type", () => {
-      render(<TransformationType transformationType="renamed" />);
-
-      expect(screen.getByText("R")).toBeInTheDocument();
-    });
-
-    it("renders D chip for derived type", () => {
-      render(<TransformationType transformationType="derived" />);
-
-      expect(screen.getByText("D")).toBeInTheDocument();
-    });
-
-    it("renders S chip for source type", () => {
-      render(<TransformationType transformationType="source" />);
-
-      expect(screen.getByText("S")).toBeInTheDocument();
-    });
-
-    it("renders U chip for unknown type", () => {
-      render(<TransformationType transformationType="unknown" />);
-
-      expect(screen.getByText("U")).toBeInTheDocument();
-    });
-
-    it("renders U chip for unrecognized type", () => {
-      render(<TransformationType transformationType="something_else" />);
-
-      expect(screen.getByText("U")).toBeInTheDocument();
     });
   });
 

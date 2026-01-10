@@ -12,107 +12,16 @@
  */
 
 import {
-  getIconForChangeStatus,
   LineageColumnNode,
   type LineageColumnNodeData,
 } from "@datarecce/ui/components/lineage";
 import { useThemeColors } from "@datarecce/ui/hooks";
-import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
 import type { NodeProps } from "@xyflow/react";
 import { useStore } from "@xyflow/react";
 import { type MouseEvent, memo } from "react";
 
 import { useLineageViewContextSafe } from "./LineageViewContext";
 import type { LineageGraphColumnNode } from "./lineage";
-
-// =============================================================================
-// LEGACY EXPORTS (for backward compatibility)
-// =============================================================================
-
-/**
- * ChangeStatus - Legacy component for showing change status indicator
- * @deprecated Use LineageColumnNode with showChangeAnalysis prop instead
- */
-export const ChangeStatus = ({
-  changeStatus,
-}: {
-  changeStatus?: "added" | "removed" | "modified";
-}) => {
-  if (!changeStatus) {
-    return null;
-  }
-
-  const { color: colorChangeStatus, icon: IconChangeStatus } =
-    getIconForChangeStatus(changeStatus);
-
-  if (!IconChangeStatus) {
-    return null;
-  }
-
-  return (
-    <Box
-      component={IconChangeStatus}
-      sx={{
-        fontSize: 14,
-        display: "inline-flex",
-        color: colorChangeStatus,
-      }}
-    />
-  );
-};
-
-/**
- * TransformationType - Legacy component for showing transformation type chip
- * @deprecated Use LineageColumnNode component instead
- */
-export const TransformationType = ({
-  transformationType,
-  legend: _legend,
-}: {
-  transformationType?: string;
-  legend?: boolean;
-}) => {
-  let letter = "U";
-  let color: "default" | "error" | "warning" | "info" | "success" = "error";
-
-  if (transformationType === "passthrough") {
-    letter = "P";
-    color = "default";
-  } else if (transformationType === "renamed") {
-    letter = "R";
-    color = "warning";
-  } else if (transformationType === "derived") {
-    letter = "D";
-    color = "warning";
-  } else if (transformationType === "source") {
-    letter = "S";
-    color = "info";
-  } else {
-    letter = "U";
-    color = "error";
-  }
-
-  if (!transformationType) {
-    return null;
-  }
-
-  return (
-    <Chip
-      label={letter}
-      size="small"
-      color={color}
-      sx={{
-        fontSize: "8pt",
-        height: 18,
-        minWidth: 18,
-        "& .MuiChip-label": {
-          px: 0.5,
-        },
-      }}
-    />
-  );
-};
 
 // =============================================================================
 // TYPES
