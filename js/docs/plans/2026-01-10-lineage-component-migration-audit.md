@@ -54,17 +54,17 @@ These OSS files wrap @datarecce/ui components with context integration:
 
 **Rationale:** These adapters are thin and correctly separate presentation (library) from integration (OSS).
 
-### Category 3: Migration Candidates
+### Category 3: Migration Candidates (Completed)
 
-| OSS File | Lines | Action | Priority |
-|----------|-------|--------|----------|
-| `lineage.ts` | 522 | **MIGRATE** - Core graph utilities | P0 |
-| `LineageViewContext.tsx` | 91 | **MIGRATE** - Context definition | P0 |
-| `ChangeStatusLegend.tsx` | 47 | **REMOVE** - Use `LineageLegend` | P1 |
-| `ColumnLevelLineageLegend.tsx` | 58 | **REMOVE** - Use `LineageLegend` | P1 |
-| `ActionControl.tsx` | 64 | **EVALUATE** - Progress UI | P2 |
-| `useMultiNodesAction.ts` | 362 | **MIGRATE** - Multi-node action logic | P1 |
-| `useValueDiffAlertDialog.tsx` | 109 | **KEEP IN OSS** - MUI Dialog | P3 |
+| OSS File | Lines | Action | Status |
+|----------|-------|--------|--------|
+| `lineage.ts` | 522→263 | **MIGRATED** - Re-exports from @datarecce/ui | ✅ DRC-2531 |
+| `LineageViewContext.tsx` | 91→29 | **MIGRATED** - Types exported from @datarecce/ui | ✅ DRC-2532 |
+| `ChangeStatusLegend.tsx` | 47 | **REMOVED** - Use `LineageLegend` | ✅ DRC-2533 |
+| `ColumnLevelLineageLegend.tsx` | 58 | **REMOVED** - Use `LineageLegend` | ✅ DRC-2534 |
+| `ActionControl.tsx` | 64 | **KEEP IN OSS** - Too small, OSS-coupled | ✅ DRC-2537 |
+| `useMultiNodesAction.ts` | 362 | **KEEP IN OSS** - Heavy OSS dependencies | ✅ DRC-2535 |
+| `useValueDiffAlertDialog.tsx` | 109 | **KEEP IN OSS** - MUI Dialog | N/A |
 
 ### Category 4: OSS-Specific (Keep in OSS)
 
@@ -303,13 +303,13 @@ After migration, recce-cloud-infra will get:
    - Remove deprecated exports from GraphColumnNode.tsx
    - Update tests
 
-5. **[P2] Evaluate ActionControl migration**
-   - Assess if progress UI should be in library
-   - Document decision
+5. **[P2] Evaluate ActionControl migration** ✅ EVALUATED
+   - **Decision: KEEP IN OSS**
+   - Rationale: Too small (64 lines), tightly coupled to OSS `LineageViewContext`
 
-6. **[P2] Evaluate useMultiNodesAction migration**
-   - Assess API abstraction requirements
-   - Document decision or create follow-up
+6. **[P2] Evaluate useMultiNodesAction migration** ✅ EVALUATED
+   - **Decision: KEEP IN OSS**
+   - Rationale: Heavy OSS dependencies (tracking, API config, context adapters)
 
 7. **[P1] Documentation: Update adapter-patterns.md**
    - Document lineage adapter pattern
@@ -349,10 +349,99 @@ OSS LineageView.tsx (1385 lines)
 
 ---
 
+## Evaluation Decisions
+
+### DRC-2535: useMultiNodesAction.ts - KEEP IN OSS
+
+**Analysis Date:** 2026-01-10
+
+**OSS-Specific Dependencies:**
+- `useApiConfig` - OSS API configuration pattern
+- `useRecceActionContext` - OSS action context adapter (for `showRunId`)
+- `trackExploreAction` - OSS tracking/analytics
+- `Run` type from OSS (for discriminated union support)
+
+**What it does:**
+- Orchestrates multi-node actions (row count, row count diff, value diff)
+- Manages action state machine (pending → running → completed/canceled)
+- Creates lineage diff and schema diff checks
+- Handles cancellation logic
+
+**Decision: KEEP IN OSS**
+
+**Rationale:**
+1. **Heavy OSS Dependencies** - Uses `useApiConfig`, `useRecceActionContext`, and OSS tracking
+2. **Business Logic** - Implements OSS-specific workflows (which run types, how to create checks)
+3. **State Machine is Simple** - The polling/state logic is straightforward, not worth extracting
+4. **Cloud Has Different Patterns** - Cloud orchestration differs from OSS (session-aware, different auth)
+
+**Alternative Considered:** Extract core state machine to @datarecce/ui
+- Rejected because: The state machine is tightly coupled to the specific actions and would require significant abstraction for minimal benefit
+
+---
+
+### DRC-2537: ActionControl.tsx - KEEP IN OSS
+
+**Analysis Date:** 2026-01-10
+
+**OSS-Specific Dependencies:**
+- `useLineageViewContextSafe` - OSS context for action state
+
+**What it does:**
+- Displays progress (per-node count or percentage)
+- Shows cancel/close buttons based on action status
+- Simple MUI-based UI (Box, Button, Divider, Stack)
+
+**Decision: KEEP IN OSS**
+
+**Rationale:**
+1. **Too Small** - Only 64 lines, migration overhead exceeds benefit
+2. **OSS Context Coupling** - Uses `useLineageViewContextSafe` for state
+3. **Lineage-Specific** - Only used in lineage view, not a generic component
+4. **Low Cloud Value** - Cloud would need different progress UI patterns anyway
+
+**Alternative Considered:** Make it generic by accepting `actionState` as props
+- Rejected because: Component is too small and specialized for the effort
+
+---
+
+## Migration Summary
+
+### Completed Tasks
+
+| Issue | Description | Status |
+|-------|-------------|--------|
+| DRC-2531 | Migrate lineage.ts graph utilities | ✅ Done |
+| DRC-2532 | Export LineageViewContext types | ✅ Done |
+| DRC-2533 | Replace ChangeStatusLegend with LineageLegend | ✅ Done |
+| DRC-2534 | Replace ColumnLevelLineageLegend with LineageLegend | ✅ Done |
+| DRC-2535 | Evaluate useMultiNodesAction migration | ✅ Done (Keep in OSS) |
+| DRC-2536 | Document lineage adapter pattern | ✅ Done |
+| DRC-2537 | Evaluate ActionControl migration | ✅ Done (Keep in OSS) |
+
+### Impact Summary
+
+**Files Removed:** 2
+- `ChangeStatusLegend.tsx` (47 lines)
+- `ColumnLevelLineageLegend.tsx` (58 lines)
+
+**Files Simplified:** 2
+- `lineage.ts` (522 → 263 lines, -259 lines)
+- `LineageViewContext.tsx` (91 → 29 lines, -62 lines)
+
+**Total Lines Removed/Reduced:** 426 lines
+
+**New @datarecce/ui Exports:**
+- Types: `LineageViewContextType`, `ActionState`, `NodeAction`, `ActionMode`, `SelectMode`
+- Functions: `buildLineageGraph`, `selectUpstream`, `selectDownstream`, `isLineageGraphNode`, `isLineageGraphColumnNode`
+- Constants: `COLUMN_HEIGHT`
+
+---
+
 ## Next Steps
 
-1. Create Linear issues for tracking
-2. Execute Phase 1: Core utilities migration
-3. Execute Phase 2: Legend consolidation
-4. Update documentation
-5. Verify cloud integration
+1. ~~Create Linear issues for tracking~~ ✅
+2. ~~Execute Phase 1: Core utilities migration~~ ✅
+3. ~~Execute Phase 2: Legend consolidation~~ ✅
+4. ~~Update documentation~~ ✅
+5. Verify cloud integration (manual testing)
