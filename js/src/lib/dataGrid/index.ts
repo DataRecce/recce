@@ -1,5 +1,18 @@
 // js/src/lib/dataGrid/index.ts
 
+// Row count utilities - exported directly from @datarecce/ui
+export {
+  calculateDelta,
+  getRowCountDiffStatus,
+  type RowCountDataGridResult,
+  type RowCountDiffDataGridResult,
+  type RowCountDiffRowData,
+  type RowCountRowData,
+  rowCountDiffResultToDataFrame,
+  rowCountResultToDataFrame,
+  toRowCountDataGrid,
+  toRowCountDiffDataGrid,
+} from "@datarecce/ui/utils";
 // Value diff summary grid (column-level match statistics)
 export {
   toValueDataGrid,
@@ -23,19 +36,6 @@ export {
   toSingleEnvDataGrid,
   toValueDiffGrid,
 } from "./dataGridFactory";
-// Row count utilities - exported directly from @datarecce/ui
-export {
-  calculateDelta,
-  getRowCountDiffStatus,
-  type RowCountDiffRowData,
-  type RowCountRowData,
-  rowCountDiffResultToDataFrame,
-  rowCountResultToDataFrame,
-  type RowCountDataGridResult,
-  toRowCountDataGrid,
-  type RowCountDiffDataGridResult,
-  toRowCountDiffDataGrid,
-} from "@datarecce/ui/utils";
 // Schema grid types
 export type {
   SchemaDataGridOptions,

@@ -14,13 +14,13 @@ import type {
   ColumnType,
   RowObjectType,
 } from "@datarecce/ui/api";
+import type { ColDefWithMetadata } from "@datarecce/ui/components/ui";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";
 import type { ICellRendererParams } from "ag-grid-community";
 import type { ReactNode } from "react";
 import { lightTheme as theme } from "@/components/ui/mui-theme";
-import type { ColDefWithMetadata } from "./defaultRenderCell";
 import { asNumber, inlineRenderCell } from "./inlineRenderCell";
 
 // ============================================================================

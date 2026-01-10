@@ -13,6 +13,19 @@ export {
   supportsCSVExport,
   toCSV,
 } from "./csv";
+// Grid generators
+export type {
+  DataDiffGridResult,
+  DataGridResult,
+  QueryDataDiffGridOptions,
+  QueryDataGridOptions,
+  RowCountDataGridResult,
+  RowCountDiffDataGridResult,
+  ToDataDiffGridConfig,
+  ToDataGridConfig,
+  ToValueDiffGridConfig,
+  ValueDiffGridResult,
+} from "./dataGrid";
 // DataGrid utilities
 export {
   // Diff column builder (React component builder)
@@ -79,8 +92,13 @@ export {
   type SimpleColumnDefinition,
   type SimpleColumnRenderComponents,
   shouldIncludeColumn,
+  toDataDiffGrid,
+  toDataGrid,
   toDiffColumn,
   toRenderedValue,
+  toRowCountDataGrid,
+  toRowCountDiffDataGrid,
+  toValueDiffGrid,
   validateColumnDataAlignment,
   validateColumns,
   validateDataFrame,
@@ -89,26 +107,6 @@ export {
   validateToDataDiffGridInputs,
   validateToDataGridInputs,
   validateToValueDiffGridInputs,
-} from "./dataGrid";
-// Grid generators
-export type {
-  DataDiffGridResult,
-  DataGridResult,
-  QueryDataDiffGridOptions,
-  QueryDataGridOptions,
-  RowCountDataGridResult,
-  RowCountDiffDataGridResult,
-  ToDataDiffGridConfig,
-  ToDataGridConfig,
-  ToValueDiffGridConfig,
-  ValueDiffGridResult,
-} from "./dataGrid";
-export {
-  toDataDiffGrid,
-  toDataGrid,
-  toRowCountDataGrid,
-  toRowCountDiffDataGrid,
-  toValueDiffGrid,
 } from "./dataGrid";
 export { deltaPercentageString } from "./delta";
 export { formatSelectColumns } from "./formatSelect";

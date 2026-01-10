@@ -291,6 +291,9 @@ importers:
       react-dom:
         specifier: ^18.0.0 || ^19.0.0
         version: 19.2.3(react@19.2.3)
+      usehooks-ts:
+        specifier: ^3.1.1
+        version: 3.1.1(react@19.2.3)
     devDependencies:
       '@tailwindcss/cli':
         specifier: ^4.0.0

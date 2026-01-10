@@ -35,6 +35,26 @@ export type {
   DiffColumnDefinition,
 } from "./diffColumnBuilder";
 export { buildDiffColumnDefinitions } from "./diffColumnBuilder";
+// Grid generators
+export type {
+  DataDiffGridResult,
+  DataGridResult,
+  QueryDataDiffGridOptions,
+  QueryDataGridOptions,
+  RowCountDataGridResult,
+  RowCountDiffDataGridResult,
+  ToDataDiffGridConfig,
+  ToDataGridConfig,
+  ToValueDiffGridConfig,
+  ValueDiffGridResult,
+} from "./generators";
+export {
+  toDataDiffGrid,
+  toDataGrid,
+  toRowCountDataGrid,
+  toRowCountDiffDataGrid,
+  toValueDiffGrid,
+} from "./generators";
 // Grid utilities
 export type {
   ColumnMapEntry,
@@ -110,24 +130,3 @@ export {
   validateToDataGridInputs,
   validateToValueDiffGridInputs,
 } from "./validation";
-
-// Grid generators
-export type {
-  DataDiffGridResult,
-  DataGridResult,
-  QueryDataDiffGridOptions,
-  QueryDataGridOptions,
-  RowCountDataGridResult,
-  RowCountDiffDataGridResult,
-  ToDataDiffGridConfig,
-  ToDataGridConfig,
-  ToValueDiffGridConfig,
-  ValueDiffGridResult,
-} from "./generators";
-export {
-  toDataDiffGrid,
-  toDataGrid,
-  toRowCountDataGrid,
-  toRowCountDiffDataGrid,
-  toValueDiffGrid,
-} from "./generators";

@@ -19,10 +19,10 @@ import {
   type RowObjectType,
 } from "@datarecce/ui/api";
 import {
-  type ColumnMapEntry,
-  type MergeColumnMapEntry,
   buildDiffRows,
+  type ColumnMapEntry,
   type DiffColumnMapEntry,
+  type MergeColumnMapEntry,
 } from "@datarecce/ui/utils";
 
 // ============================================================================

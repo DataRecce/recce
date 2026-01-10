@@ -14,10 +14,10 @@ import {
   defaultRenderCell,
 } from "@datarecce/ui/components/ui";
 import {
+  toDataGrid as baseToDataGrid,
   type DataGridResult,
   type QueryDataGridOptions,
   type SimpleColumnRenderComponents,
-  toDataGrid as baseToDataGrid,
 } from "@datarecce/ui/utils";
 
 // Re-export types from @datarecce/ui

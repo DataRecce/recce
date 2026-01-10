@@ -18,15 +18,18 @@ import {
   defaultRenderCell,
 } from "@datarecce/ui/components/ui";
 import {
+  toValueDiffGrid as baseToValueDiffGrid,
   type DiffColumnRenderComponents,
   type QueryDataDiffGridOptions,
-  toValueDiffGrid as baseToValueDiffGrid,
   type ValueDiffGridResult,
 } from "@datarecce/ui/utils";
 import { inlineRenderCell } from "@/components/ui/dataGrid/inlineRenderCell";
 
 // Re-export types from @datarecce/ui
-export type { QueryDataDiffGridOptions, ValueDiffGridResult } from "@datarecce/ui/utils";
+export type {
+  QueryDataDiffGridOptions,
+  ValueDiffGridResult,
+} from "@datarecce/ui/utils";
 
 /**
  * OSS-specific render components

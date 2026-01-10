@@ -19,9 +19,6 @@ import {
   type DataFrame,
   type RowObjectType,
 } from "@datarecce/ui/api";
-import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
-import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
-import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 import {
   type ColumnMapEntry,
   columnRenderedValue,
@@ -29,6 +26,9 @@ import {
   getPrimaryKeyValue,
   toRenderedValue,
 } from "@datarecce/ui/utils";
+import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
+import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
+import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 
 // Mock ag-grid-community
 jest.mock("ag-grid-community", () => ({

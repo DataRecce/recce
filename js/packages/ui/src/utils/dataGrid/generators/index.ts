@@ -7,14 +7,6 @@
  * allowing OSS to provide its own React components.
  */
 
-// Data grid (single DataFrame)
-export type {
-  DataGridResult,
-  QueryDataGridOptions,
-  ToDataGridConfig,
-} from "./toDataGrid";
-export { toDataGrid } from "./toDataGrid";
-
 // Data diff grid (base vs current DataFrames)
 export type {
   DataDiffGridResult,
@@ -22,15 +14,22 @@ export type {
   ToDataDiffGridConfig,
 } from "./toDataDiffGrid";
 export { toDataDiffGrid } from "./toDataDiffGrid";
-
-// Value diff grid (joined data with in_a/in_b)
-export type { ToValueDiffGridConfig, ValueDiffGridResult } from "./toValueDiffGrid";
-export { toValueDiffGrid } from "./toValueDiffGrid";
-
+// Data grid (single DataFrame)
+export type {
+  DataGridResult,
+  QueryDataGridOptions,
+  ToDataGridConfig,
+} from "./toDataGrid";
+export { toDataGrid } from "./toDataGrid";
 // Row count grid (single environment)
 export type { RowCountDataGridResult } from "./toRowCountDataGrid";
 export { toRowCountDataGrid } from "./toRowCountDataGrid";
-
 // Row count diff grid (base vs current row counts)
 export type { RowCountDiffDataGridResult } from "./toRowCountDiffDataGrid";
 export { toRowCountDiffDataGrid } from "./toRowCountDiffDataGrid";
+// Value diff grid (joined data with in_a/in_b)
+export type {
+  ToValueDiffGridConfig,
+  ValueDiffGridResult,
+} from "./toValueDiffGrid";
+export { toValueDiffGrid } from "./toValueDiffGrid";

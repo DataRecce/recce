@@ -34,11 +34,14 @@ import {
   type ValueDiffParams,
   type ValueDiffResult,
 } from "@datarecce/ui/api";
+// Import existing implementations
+import {
+  toRowCountDataGrid,
+  toRowCountDiffDataGrid,
+} from "@datarecce/ui/utils";
 import type { ColDef, ColGroupDef } from "ag-grid-community";
 // Import Run from OSS types for proper discriminated union support with type guards
 import type { Run } from "@/lib/api/types";
-// Import existing implementations
-import { toRowCountDataGrid, toRowCountDiffDataGrid } from "@datarecce/ui/utils";
 import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
 import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
 import {

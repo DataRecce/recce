@@ -12,8 +12,8 @@
 import type { ColDef, ColGroupDef } from "ag-grid-community";
 import type { ColumnRenderMode, DataFrame, RowObjectType } from "../../../api";
 import { dataFrameToRowObjects } from "../../transforms";
-import { buildColumnMap } from "../gridUtils";
 import { getSimpleDisplayColumns } from "../columnBuilders";
+import { buildColumnMap } from "../gridUtils";
 import type { SimpleColumnRenderComponents } from "../renderTypes";
 import {
   buildSimpleColumnDefinitions,

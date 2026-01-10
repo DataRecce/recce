@@ -13,10 +13,10 @@ import {
   defaultRenderCell,
 } from "@datarecce/ui/components/ui";
 import {
+  toDataDiffGrid as baseToDataDiffGrid,
   type DataDiffGridResult,
   type DiffColumnRenderComponents,
   type QueryDataDiffGridOptions,
-  toDataDiffGrid as baseToDataDiffGrid,
 } from "@datarecce/ui/utils";
 import { inlineRenderCell } from "@/components/ui/dataGrid/inlineRenderCell";
 

@@ -4,6 +4,10 @@
 
 export { DiffText, type DiffTextProps } from "./DiffText";
 export {
+  DiffTextWithToast,
+  type DiffTextWithToastProps,
+} from "./DiffTextWithToast";
+export {
   DropdownValuesInput,
   type DropdownValuesInputProps,
   type DropdownValuesInputSize,
@@ -49,3 +53,11 @@ export {
   type StatusBadgeProps,
   type StatusType,
 } from "./StatusBadge";
+// Toast notification system
+export {
+  Toaster,
+  ToasterProvider,
+  type ToastOptions,
+  toaster,
+  useToaster,
+} from "./Toaster";

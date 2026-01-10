@@ -11,6 +11,7 @@ export default defineConfig({
     primitives: "src/primitives.ts",
     advanced: "src/advanced.ts",
     contexts: "src/contexts-entry.ts",
+    hooks: "src/hooks/index.ts",
     result: "src/result.ts",
     theme: "src/theme/index.ts",
     types: "src/types/index.ts",

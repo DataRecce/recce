@@ -4,8 +4,8 @@
  */
 
 import { type RowCountDiffResult, type RowObjectType } from "@datarecce/ui/api";
-import type { CellClassParams } from "ag-grid-community";
 import { toRowCountDiffDataGrid } from "@datarecce/ui/utils";
+import type { CellClassParams } from "ag-grid-community";
 
 // ============================================================================
 // Mocks
