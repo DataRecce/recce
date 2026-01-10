@@ -1,4 +1,3 @@
-import type { RunType } from "@datarecce/ui/api";
 import {
   type AxiosQueryParams,
   type HistogramDiffParams,
@@ -6,6 +5,8 @@ import {
   type ProfileDiffViewOptions,
   type QueryDiffViewOptions,
   type QueryViewOptions,
+  type RunType,
+  runTypeHasRef,
   type TopKDiffParams,
   type TopKViewOptions,
   type ValueDiffDetailViewOptions,
@@ -98,22 +99,8 @@ interface RunRegistry {
   simple: RegistryEntry<never>; // No RunResultView
 }
 
-export function runTypeHasRef(runType: RunType) {
-  const typeHasRef = [
-    "query",
-    "query_base",
-    "query_diff",
-    "row_count",
-    "row_count_diff",
-    "profile",
-    "profile_diff",
-    "value_diff",
-    "value_diff_detail",
-    "top_k_diff",
-    "histogram_diff",
-  ];
-  return typeHasRef.includes(runType);
-}
+// Re-export runTypeHasRef from library for backward compatibility
+export { runTypeHasRef } from "@datarecce/ui/api";
 
 const registry: RunRegistry = {
   lineage_diff: {

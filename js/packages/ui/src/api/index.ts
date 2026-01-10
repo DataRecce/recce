@@ -198,6 +198,7 @@ export {
   isValueDiffDetailRun,
   isValueDiffRun,
   RUN_TYPES,
+  runTypeHasRef,
 } from "./types";
 // Value Diff API
 export type {
