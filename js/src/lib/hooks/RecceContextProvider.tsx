@@ -4,7 +4,6 @@ import { CheckContextAdapter } from "./CheckContextAdapter";
 import { LineageGraphAdapter } from "./LineageGraphAdapter";
 import { QueryContextAdapter } from "./QueryContextAdapter";
 import { RecceActionAdapter } from "./RecceActionAdapter";
-import { RowCountStateContextProvider } from "./RecceQueryContext";
 import { RecceShareStateContextProvider } from "./RecceShareStateContext";
 
 interface RecceContextProps {
@@ -37,11 +36,9 @@ export default function RecceContextProvider({ children }: RecceContextProps) {
       <RecceShareStateContextProvider>
         <QueryContextAdapter>
           <LineageGraphAdapter>
-            <RowCountStateContextProvider>
-              <RecceActionAdapter>
-                <CheckContextAdapter>{children}</CheckContextAdapter>
-              </RecceActionAdapter>
-            </RowCountStateContextProvider>
+            <RecceActionAdapter>
+              <CheckContextAdapter>{children}</CheckContextAdapter>
+            </RecceActionAdapter>
           </LineageGraphAdapter>
         </QueryContextAdapter>
       </RecceShareStateContextProvider>
