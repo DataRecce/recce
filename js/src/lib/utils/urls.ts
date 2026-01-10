@@ -1,5 +1,5 @@
+import type { RecceInstanceInfo } from "@datarecce/ui/api";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
-import { RecceInstanceInfo } from "@/lib/api/instanceInfo";
 
 /**
  * Generate the settings URL based on instance info

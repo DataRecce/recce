@@ -1,0 +1,372 @@
+/**
+ * @datarecce/ui - Global styles and CSS variables
+ *
+ * This file contains:
+ * - Tailwind CSS v4 theme configuration
+ * - CSS custom properties for light/dark mode
+ * - React Flow dark mode overrides
+ * - Scrollbar styling
+ *
+ * Colors are sourced from src/theme/colors.ts
+ */
+
+@import "tailwindcss";
+@import "@xyflow/react/dist/style.css";
+
+/* Tailwind v4 theme configuration using @theme directive */
+@theme {
+  /* ========================================
+   * Brand colors - Primary orange/coral
+   * Used for primary actions, branding elements, and highlights
+   * ======================================== */
+  --color-brand-50: #ffded5;
+  --color-brand-100: #ffc1b0;
+  --color-brand-200: #ffa58c;
+  --color-brand-300: #ff8967;
+  --color-brand-400: #ff6e42;
+  --color-brand-500: #fd541e; /* Primary brand color */
+  --color-brand-600: #f04104;
+  --color-brand-700: #c93a06;
+  --color-brand-800: #a23206;
+  --color-brand-900: #7c2906;
+  --color-brand-950: #571e05;
+
+  /* ========================================
+   * Iochmara colors - Secondary blue
+   * Used for secondary actions, links, and information elements
+   * ======================================== */
+  --color-iochmara-50: #eaf3fb;
+  --color-iochmara-100: #c4ddf3;
+  --color-iochmara-200: #9ec6eb;
+  --color-iochmara-300: #79b0e2;
+  --color-iochmara-400: #5599d8;
+  --color-iochmara-500: #3182ce; /* Secondary color */
+  --color-iochmara-600: #2a6ca7;
+  --color-iochmara-700: #225581;
+  --color-iochmara-800: #193e5c;
+  --color-iochmara-900: #102638;
+  --color-iochmara-950: #060e14;
+
+  /* ========================================
+   * Neutral colors
+   * Used for backgrounds, borders, and text
+   * ======================================== */
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-200: #e5e5e5;
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-400: #a3a3a3;
+  --color-neutral-500: #737373;
+  --color-neutral-600: #525252;
+  --color-neutral-700: #404040;
+  --color-neutral-800: #262626;
+  --color-neutral-900: #171717;
+  --color-neutral-950: #0a0a0a;
+
+  /* ========================================
+   * Cyan colors
+   * Used for secondary accents
+   * ======================================== */
+  --color-cyan-50: #ecfeff;
+  --color-cyan-100: #cffafe;
+  --color-cyan-200: #a5f3fc;
+  --color-cyan-300: #67e8f9;
+  --color-cyan-400: #22d3ee;
+  --color-cyan-500: #06b6d4;
+  --color-cyan-600: #0891b2;
+  --color-cyan-700: #0e7490;
+  --color-cyan-800: #155e75;
+  --color-cyan-900: #164e63;
+  --color-cyan-950: #083344;
+
+  /* ========================================
+   * Amber colors
+   * Used for warnings
+   * ======================================== */
+  --color-amber-50: #fffbeb;
+  --color-amber-100: #fef3c7;
+  --color-amber-200: #fde68a;
+  --color-amber-300: #fcd34d;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+  --color-amber-700: #b45309;
+  --color-amber-800: #92400e;
+  --color-amber-900: #78350f;
+  --color-amber-950: #431407;
+
+  /* ========================================
+   * Green colors
+   * Used for success states
+   * ======================================== */
+  --color-green-50: #f0fdf4;
+  --color-green-100: #dcfce7;
+  --color-green-200: #bbf7d0;
+  --color-green-300: #86efac;
+  --color-green-400: #4ade80;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+  --color-green-700: #15803d;
+  --color-green-800: #166534;
+  --color-green-900: #14532d;
+  --color-green-950: #052e16;
+
+  /* ========================================
+   * Red colors
+   * Used for errors
+   * ======================================== */
+  --color-red-50: #fef2f2;
+  --color-red-100: #fee2e2;
+  --color-red-200: #fecaca;
+  --color-red-300: #fca5a5;
+  --color-red-400: #f87171;
+  --color-red-500: #ef4444;
+  --color-red-600: #dc2626;
+  --color-red-700: #b91c1c;
+  --color-red-800: #991b1b;
+  --color-red-900: #7f1d1d;
+  --color-red-950: #450a0a;
+
+  /* ========================================
+   * Rose colors
+   * Used for accent colors
+   * ======================================== */
+  --color-rose-50: #fff1f2;
+  --color-rose-100: #ffe4e6;
+  --color-rose-200: #fecdd3;
+  --color-rose-300: #fda4af;
+  --color-rose-400: #fb7185;
+  --color-rose-500: #f43f5e;
+  --color-rose-600: #e11d48;
+  --color-rose-700: #be123c;
+  --color-rose-800: #9f1239;
+  --color-rose-900: #881337;
+  --color-rose-950: #4c0519;
+
+  /* ========================================
+   * Fuchsia colors
+   * Used for accent colors
+   * ======================================== */
+  --color-fuchsia-50: #fdf4ff;
+  --color-fuchsia-100: #fae8ff;
+  --color-fuchsia-200: #f5d0fe;
+  --color-fuchsia-300: #f0abfc;
+  --color-fuchsia-400: #e879f9;
+  --color-fuchsia-500: #d946ef;
+  --color-fuchsia-600: #c026d3;
+  --color-fuchsia-700: #a21caf;
+  --color-fuchsia-800: #86198f;
+  --color-fuchsia-900: #701a75;
+  --color-fuchsia-950: #4a044e;
+}
+
+/* ========================================
+ * Light mode (default)
+ * CSS custom properties for theming
+ * ======================================== */
+:root {
+  /* Background colors */
+  --recce-bg-default: var(--color-neutral-50);
+  --recce-bg-paper: #ffffff;
+  --recce-bg-elevated: #ffffff;
+  --recce-bg-subtle: var(--color-neutral-100);
+
+  /* Text colors */
+  --recce-text-primary: var(--color-neutral-900);
+  --recce-text-secondary: var(--color-neutral-600);
+  --recce-text-muted: var(--color-neutral-400);
+
+  /* Border colors */
+  --recce-border: var(--color-neutral-200);
+  --recce-border-subtle: var(--color-neutral-100);
+
+  /* Brand color reference */
+  --recce-brand: var(--color-brand-500);
+  --recce-brand-hover: var(--color-brand-600);
+  --recce-brand-active: var(--color-brand-700);
+
+  /* Secondary color reference */
+  --recce-secondary: var(--color-iochmara-500);
+  --recce-secondary-hover: var(--color-iochmara-600);
+  --recce-secondary-active: var(--color-iochmara-700);
+
+  /* Status colors */
+  --recce-success: var(--color-green-500);
+  --recce-warning: var(--color-amber-500);
+  --recce-error: var(--color-red-500);
+  --recce-info: var(--color-iochmara-500);
+
+  /* Shadows */
+  --recce-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --recce-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --recce-shadow-md:
+    0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --recce-shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+/* ========================================
+ * Dark mode
+ * Activated via .dark class on document.documentElement
+ * ======================================== */
+.dark {
+  /* Background colors */
+  --recce-bg-default: var(--color-neutral-950);
+  --recce-bg-paper: var(--color-neutral-900);
+  --recce-bg-elevated: var(--color-neutral-800);
+  --recce-bg-subtle: var(--color-neutral-800);
+
+  /* Text colors */
+  --recce-text-primary: var(--color-neutral-50);
+  --recce-text-secondary: var(--color-neutral-400);
+  --recce-text-muted: var(--color-neutral-600);
+
+  /* Border colors */
+  --recce-border: var(--color-neutral-800);
+  --recce-border-subtle: var(--color-neutral-700);
+
+  /* Brand color reference (slightly lighter for dark mode visibility) */
+  --recce-brand: var(--color-brand-400);
+  --recce-brand-hover: var(--color-brand-500);
+  --recce-brand-active: var(--color-brand-600);
+
+  /* Secondary color reference */
+  --recce-secondary: var(--color-iochmara-400);
+  --recce-secondary-hover: var(--color-iochmara-500);
+  --recce-secondary-active: var(--color-iochmara-600);
+
+  /* Status colors (slightly lighter for dark mode visibility) */
+  --recce-success: var(--color-green-400);
+  --recce-warning: var(--color-amber-400);
+  --recce-error: var(--color-red-400);
+  --recce-info: var(--color-iochmara-400);
+
+  /* Shadows (darker for dark mode) */
+  --recce-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --recce-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --recce-shadow-md:
+    0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --recce-shadow-lg:
+    0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+}
+
+/* ========================================
+ * React Flow dark mode overrides
+ * These ensure React Flow components respect the dark theme
+ * ======================================== */
+.dark .react-flow__controls {
+  background-color: var(--recce-bg-paper);
+  border-color: var(--recce-border);
+}
+
+.dark .react-flow__controls button {
+  background-color: var(--recce-bg-paper);
+  border-color: var(--recce-border);
+  color: var(--recce-text-primary);
+  fill: var(--recce-text-primary);
+}
+
+.dark .react-flow__controls button:hover {
+  background-color: var(--recce-bg-elevated);
+}
+
+.dark .react-flow__controls button svg {
+  fill: var(--recce-text-primary);
+}
+
+.dark .react-flow__minimap {
+  background-color: var(--recce-bg-paper);
+}
+
+.dark .react-flow__minimap-mask {
+  fill: var(--recce-bg-default);
+  opacity: 0.6;
+}
+
+.dark .react-flow__minimap-node {
+  fill: var(--recce-text-muted);
+}
+
+.dark .react-flow__background {
+  background-color: var(--recce-bg-default);
+}
+
+.dark .react-flow__background pattern circle,
+.dark .react-flow__background pattern line {
+  stroke: var(--recce-border);
+}
+
+.dark .react-flow__attribution {
+  background-color: var(--recce-bg-paper);
+}
+
+.dark .react-flow__attribution a {
+  color: var(--recce-text-secondary);
+}
+
+/* ========================================
+ * Scrollbar styling
+ * Custom scrollbar for better visual integration
+ * ======================================== */
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--recce-bg-subtle);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--recce-text-muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--recce-text-secondary);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--recce-text-muted) var(--recce-bg-subtle);
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: var(--recce-bg-paper);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--recce-border);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--recce-text-muted);
+}
+
+/* ========================================
+ * Selection styling
+ * Custom text selection colors
+ * ======================================== */
+::selection {
+  background-color: var(--color-brand-200);
+  color: var(--color-brand-950);
+}
+
+.dark ::selection {
+  background-color: var(--color-brand-700);
+  color: var(--color-brand-50);
+}
+
+/* ========================================
+ * Focus styling
+ * Consistent focus ring across components
+ * ======================================== */
+:focus-visible {
+  outline: 2px solid var(--recce-brand);
+  outline-offset: 2px;
+}

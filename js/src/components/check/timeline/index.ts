@@ -8,5 +8,6 @@
  */
 
 export { CheckTimeline } from "./CheckTimeline";
-export { CommentInput } from "./CommentInput";
+
+// TimelineEvent is kept local (has OSS-specific avatar fetching via React Query)
 export { TimelineEvent } from "./TimelineEvent";

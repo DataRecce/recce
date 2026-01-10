@@ -45,53 +45,55 @@ import {
 } from "./lineage";
 import "@xyflow/react/dist/style.css";
 import "./styles.css";
+import { HSplit, union } from "@datarecce/ui";
+import type { Check } from "@datarecce/ui/api";
+import {
+  type CllInput,
+  type ColumnLineageData,
+  createLineageDiffCheck,
+  createSchemaDiffCheck,
+  getCll,
+  isHistogramDiffRun,
+  isProfileDiffRun,
+  isTopKDiffRun,
+  isValueDiffDetailRun,
+  isValueDiffRun,
+  type LineageDiffViewOptions,
+  select,
+} from "@datarecce/ui/api";
+import {
+  getIconForChangeStatus,
+  LineageLegend,
+} from "@datarecce/ui/components/lineage";
+import { toaster } from "@datarecce/ui/components/ui";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+} from "@datarecce/ui/contexts";
+import { useClipBoardToast, useThemeColors } from "@datarecce/ui/hooks";
+import { colors } from "@datarecce/ui/theme";
 import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { FiCopy } from "react-icons/fi";
-import { colors } from "@/components/ui/mui-theme";
-import { toaster } from "@/components/ui/toaster";
-import { Check } from "@/lib/api/checks";
-import { CllInput, ColumnLineageData, getCll } from "@/lib/api/cll";
-import {
-  createLineageDiffCheck,
-  LineageDiffViewOptions,
-} from "@/lib/api/lineagecheck";
-import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
-import { select } from "@/lib/api/select";
 import {
   type LineageViewRenderProps,
   trackCopyToClipboard,
   trackLineageViewRender,
   trackMultiNodesAction,
 } from "@/lib/api/track";
-import {
-  isHistogramDiffRun,
-  isProfileDiffRun,
-  isTopKDiffRun,
-  isValueDiffDetailRun,
-  isValueDiffRun,
-} from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import {
   IGNORE_SCREENSHOT_CLASS,
   useCopyToClipboard,
 } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
-import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { useRun } from "@/lib/hooks/useRun";
-import { useThemeColors } from "@/lib/hooks/useThemeColors";
-import { HSplit } from "../split/Split";
 import { ActionControl } from "./ActionControl";
-import { ChangeStatusLegend } from "./ChangeStatusLegend";
 import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
-import { ColumnLevelLineageLegend } from "./ColumnLevelLineageLegend";
 import { GraphColumnNode } from "./GraphColumnNode";
 import GraphEdge from "./GraphEdge";
 import { GraphNode } from "./GraphNode";
-import { union } from "./graph";
 import {
   LineageViewContext,
   LineageViewContextType,
@@ -105,7 +107,6 @@ import { LineageViewTopBar } from "./LineageViewTopBar";
 import { NodeView } from "./NodeView";
 import SetupConnectionBanner from "./SetupConnectionBanner";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
-import { getIconForChangeStatus } from "./styles";
 import { useMultiNodesAction } from "./useMultiNodesAction";
 import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
 
@@ -1309,9 +1310,9 @@ export function PrivateLineageView(
             <ImageDownloadModal />
             <Panel position="bottom-left">
               <Stack spacing="5px">
-                {isModelsChanged && <ChangeStatusLegend />}
+                {isModelsChanged && <LineageLegend variant="changeStatus" />}
                 {viewOptions.column_level_lineage && (
-                  <ColumnLevelLineageLegend />
+                  <LineageLegend variant="transformation" />
                 )}
               </Stack>
             </Panel>

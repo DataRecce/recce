@@ -10,6 +10,8 @@
  * Also exports render functions for use in toValueDataGrid.ts generator.
  */
 
+import { type RowObjectType, type ValueDiffParams } from "@datarecce/ui/api";
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import ListSubheader from "@mui/material/ListSubheader";
@@ -19,13 +21,10 @@ import type { ICellRendererParams } from "ag-grid-community";
 import React, { MouseEvent, useState } from "react";
 import { PiDotsThreeVertical } from "react-icons/pi";
 import { VscKey } from "react-icons/vsc";
-import { RowObjectType } from "@/lib/api/types";
-import { ValueDiffParams } from "@/lib/api/valuediff";
 import {
-  RecceActionOptions,
+  type RecceActionOptions,
   useRecceActionContext,
-} from "@/lib/hooks/RecceActionContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+} from "@/lib/hooks/RecceActionAdapter";
 
 // ============================================================================
 // PrimaryKeyIndicatorCell

@@ -1,3 +1,18 @@
+import { VSplit } from "@datarecce/ui";
+import {
+  LOCAL_STORAGE_KEYS,
+  type NodeData,
+  type QueryParams,
+  type SubmitOptions,
+  submitQueryDiff,
+  waitRun,
+} from "@datarecce/ui/api";
+import {
+  useLineageGraphContext,
+  useRecceServerFlag,
+} from "@datarecce/ui/contexts";
+import { useIsDark } from "@datarecce/ui/hooks";
+import { colors } from "@datarecce/ui/theme";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
@@ -5,7 +20,7 @@ import MuiDialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
-import { alpha, useTheme } from "@mui/material/styles";
+import { alpha } from "@mui/material/styles";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMutation } from "@tanstack/react-query";
@@ -15,27 +30,19 @@ import { AiOutlineExperiment } from "react-icons/ai";
 import { IoClose } from "react-icons/io5";
 import { VscFeedback } from "react-icons/vsc";
 import { DiffEditor } from "@/components/editor";
-import { colors } from "@/components/ui/mui-theme";
-import { QueryParams, submitQueryDiff } from "@/lib/api/adhocQuery";
-import { NodeData } from "@/lib/api/info";
-import { localStorageKeys } from "@/lib/api/localStorageKeys";
-import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import {
   trackPreviewChange,
   trackPreviewChangeFeedback,
   trackSingleEnvironment,
 } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
+import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";
 import { useGuideToast } from "@/lib/hooks/useGuideToast";
-import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { formatTimestamp } from "../app/EnvInfo";
 import { QueryForm } from "../query/QueryForm";
 import { RunResultPane } from "../run/RunResultPane";
-import { VSplit } from "../split/Split";
 
 interface SandboxViewProps {
   isOpen: boolean;
@@ -119,8 +126,7 @@ function SandboxEditorLabels({
   height?: string;
   flex?: string;
 }) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   const { lineageGraph, envInfo } = useLineageGraphContext();
   const widthOfBar = "50%";
   const margin = "0 16px";
@@ -174,8 +180,7 @@ interface SqlPreviewProps {
 }
 
 function SqlPreview({ current, onChange }: SqlPreviewProps) {
-  const muiTheme = useTheme();
-  const isDark = muiTheme.palette.mode === "dark";
+  const isDark = useIsDark();
   return (
     <DiffEditor
       original={current?.raw_code ?? ""}
@@ -247,7 +252,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
   });
 
   const { feedbackToast, closeToast } = useFeedbackCollectionToast({
-    feedbackId: localStorageKeys.previewChangeFeedbackID,
+    feedbackId: LOCAL_STORAGE_KEYS.previewChangeFeedbackID,
     description: "Enjoy preview change?",
 
     onFeedbackSubmit: (feedback: string) => {
@@ -274,7 +279,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
   });
 
   const { guideToast: prepareEnvToast, closeGuideToast } = useGuideToast({
-    guideId: localStorageKeys.prepareEnvGuideID,
+    guideId: LOCAL_STORAGE_KEYS.prepareEnvGuideID,
     description: "Want to compare data changes with production data?",
     externalLink:
       "https://docs.datarecce.io/get-started/#prepare-dbt-artifacts",

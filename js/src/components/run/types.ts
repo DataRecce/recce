@@ -1,5 +1,6 @@
 import { ViewOptionTypes } from "@/components/run/registry";
-import { Run } from "@/lib/api/types";
+// Import Run from OSS types for proper discriminated union support
+import type { Run } from "@/lib/api/types";
 
 export interface RunFormProps<PT> {
   params: Partial<PT>;

@@ -1,5 +1,18 @@
+/**
+ * @recce-migration NOT_APPLICABLE
+ *
+ * This hook is specific to Recce OSS and should not be migrated to @datarecce/ui.
+ *
+ * Reason: Onboarding guide toasts are tied to OSS-specific feature flags and
+ * user onboarding flows. Cloud has different onboarding patterns.
+ *
+ * If this changes in the future, consider:
+ * - Creating a generic toast system in @datarecce/ui
+ * - Keeping onboarding logic in host applications
+ */
+
+import { toaster } from "@datarecce/ui/components/ui";
 import { useState } from "react";
-import { toaster } from "@/components/ui/toaster";
 
 export function useGuideToast(options: {
   guideId: string;

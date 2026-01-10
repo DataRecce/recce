@@ -1,3 +1,16 @@
+import {
+  type AxiosQueryParams,
+  type HistogramDiffParams,
+  type LineageDiffViewOptions,
+  type ProfileDiffViewOptions,
+  type QueryDiffViewOptions,
+  type QueryViewOptions,
+  type RunType,
+  runTypeHasRef,
+  type TopKDiffParams,
+  type TopKViewOptions,
+  type ValueDiffDetailViewOptions,
+} from "@datarecce/ui/api";
 import React, {
   ComponentType,
   ForwardRefExoticComponent,
@@ -15,15 +28,6 @@ import {
   TbSql,
 } from "react-icons/tb";
 import { DiffViewOptions } from "@/components/run/RunToolbar";
-import { QueryDiffViewOptions, QueryViewOptions } from "@/lib/api/adhocQuery";
-import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
-import {
-  HistogramDiffParams,
-  ProfileDiffViewOptions,
-  TopKDiffParams,
-} from "@/lib/api/profile";
-import { AxiosQueryParams } from "@/lib/api/types";
-import { ValueDiffDetailViewOptions } from "@/lib/api/valuediff";
 import { type DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 import { HistogramDiffForm } from "../histogram/HistogramDiffForm";
 import { HistogramDiffResultView } from "../histogram/HistogramDiffResultView";
@@ -54,24 +58,11 @@ export type ViewOptionTypes =
   | QueryViewOptions
   | QueryDiffViewOptions
   | ProfileDiffViewOptions
-  | ValueDiffDetailViewOptions;
+  | ValueDiffDetailViewOptions
+  | TopKViewOptions;
 
-export type RunType =
-  | "simple"
-  | "query"
-  | "query_base"
-  | "query_diff"
-  | "value_diff"
-  | "value_diff_detail"
-  | "schema_diff"
-  | "profile"
-  | "profile_diff"
-  | "row_count"
-  | "row_count_diff"
-  | "lineage_diff"
-  | "top_k_diff"
-  | "histogram_diff"
-  | "sandbox";
+// Re-export RunType from library for backward compatibility
+export type { RunType };
 
 export type RefTypes = React.Ref<DataGridHandle> | React.Ref<HTMLDivElement>;
 export type RunFormParamTypes =
@@ -100,7 +91,7 @@ interface RunRegistry {
   profile_diff: RegistryEntry<DataGridHandle, ProfileDiffViewOptions>;
   value_diff: RegistryEntry<DataGridHandle>;
   value_diff_detail: RegistryEntry<DataGridHandle, ValueDiffDetailViewOptions>;
-  top_k_diff: RegistryEntry<HTMLDivElement>;
+  top_k_diff: RegistryEntry<HTMLDivElement, TopKViewOptions>;
   histogram_diff: RegistryEntry<HTMLDivElement>;
   lineage_diff: RegistryEntry<never>; // No RunResultView
   schema_diff: RegistryEntry<never>; // No RunResultView
@@ -108,22 +99,8 @@ interface RunRegistry {
   simple: RegistryEntry<never>; // No RunResultView
 }
 
-export function runTypeHasRef(runType: RunType) {
-  const typeHasRef = [
-    "query",
-    "query_base",
-    "query_diff",
-    "row_count",
-    "row_count_diff",
-    "profile",
-    "profile_diff",
-    "value_diff",
-    "value_diff_detail",
-    "top_k_diff",
-    "histogram_diff",
-  ];
-  return typeHasRef.includes(runType);
-}
+// Re-export runTypeHasRef from library for backward compatibility
+export { runTypeHasRef } from "@datarecce/ui/api";
 
 const registry: RunRegistry = {
   lineage_diff: {

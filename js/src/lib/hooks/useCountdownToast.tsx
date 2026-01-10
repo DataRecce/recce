@@ -1,6 +1,19 @@
+/**
+ * @recce-migration NOT_APPLICABLE
+ *
+ * This hook is specific to Recce OSS and should not be migrated to @datarecce/ui.
+ *
+ * Reason: Server lifetime countdown is an OSS-specific feature for local
+ * development servers. It shows remaining time before auto-shutdown.
+ * Cloud deployments do not have this concept.
+ *
+ * If this changes in the future, consider:
+ * - This is unlikely to be needed in cloud/shared contexts
+ */
+
+import { toaster } from "@datarecce/ui/components/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTimeout } from "usehooks-ts";
-import { toaster } from "@/components/ui/toaster";
 
 const COUNTDOWN_CONFIG = {
   TOAST_ID: "lifetime-countdown",

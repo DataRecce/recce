@@ -1,3 +1,11 @@
+import { cacheKeys, importState } from "@datarecce/ui/api";
+import { toaster } from "@datarecce/ui/components/ui";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+  useRunsAggregated,
+} from "@datarecce/ui/contexts";
+import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -6,29 +14,20 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { ChangeEvent, useCallback, useRef, useState } from "react";
+import { FaFileImport } from "react-icons/fa6";
 import { IoClose } from "react-icons/io5";
 import { PiInfo } from "react-icons/pi";
-import { toaster } from "@/components/ui/toaster";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { importState } from "@/lib/api/state";
 import { trackStateAction } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import {
-  useLineageGraphContext,
-  useRunsAggregated,
-} from "@/lib/hooks/LineageGraphContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { IconImport } from "../icons";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   const { featureToggles } = useRecceInstanceContext();
   const queryClient = useQueryClient();
   const { apiClient } = useApiConfig();
@@ -50,7 +49,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
         checksOnly,
         apiClient,
       );
-      refetchRunsAggregated();
+      refetchRunsAggregated?.();
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       await queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
       if (location.includes("/checks")) {
@@ -121,6 +120,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
             pt: "6px",
             color: isDark ? "grey.300" : "grey.600",
             "&:hover": { color: isDark ? "grey.100" : "grey.800" },
+            fontSize: 20,
           }}
           aria-label="Import state"
           onClick={() => {
@@ -129,7 +129,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
           }}
           disabled={featureToggles.disableImportStateFile || isDemoSite}
         >
-          <Box component={IconImport} sx={{ fontSize: 20 }} />
+          <FaFileImport />
         </IconButton>
       </MuiTooltip>
       <input

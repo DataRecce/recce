@@ -8,11 +8,11 @@
  * - ValueDiffColumnNameCell rendering and context menu
  */
 
+import { theme } from "@datarecce/ui/theme";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";
 import React, { ReactNode } from "react";
-import { lightTheme as theme } from "@/components/ui/mui-theme";
 import {
   MatchedPercentCell,
   PrimaryKeyIndicatorCell,
@@ -23,13 +23,13 @@ import {
 // Mocks
 // ============================================================================
 
-jest.mock("@/lib/hooks/RecceActionContext", () => ({
+jest.mock("@/lib/hooks/RecceActionAdapter", () => ({
   useRecceActionContext: () => ({
     runAction: jest.fn(),
   }),
 }));
 
-jest.mock("@/lib/hooks/RecceInstanceContext", () => ({
+jest.mock("@datarecce/ui/contexts", () => ({
   useRecceInstanceContext: () => ({
     featureToggles: {
       disableDatabaseQuery: false,

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -14,7 +15,6 @@ import { Dispatch, ReactNode, SetStateAction, useState } from "react";
 import { LuExternalLink } from "react-icons/lu";
 import { connectToCloud } from "@/lib/api/connectToCloud";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 type AuthState = "authenticating" | "pending" | "canceled" | "ignored";
 

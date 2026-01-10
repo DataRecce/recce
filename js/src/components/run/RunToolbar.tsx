@@ -1,9 +1,9 @@
+import { useIsDark } from "@datarecce/ui/hooks";
+import { colors } from "@datarecce/ui/theme";
 import Box from "@mui/material/Box";
-import { useTheme } from "@mui/material/styles";
 import _ from "lodash";
 import { ReactNode } from "react";
 import { PiWarning } from "react-icons/pi";
-import { colors } from "@/components/ui/mui-theme";
 import { RunResultViewProps } from "./types";
 
 export interface DiffViewOptions {
@@ -19,8 +19,7 @@ export const RunToolbar = ({
   warnings,
   children,
 }: RunToolbarProps<DiffViewOptions>) => {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   const hasWarnings = warnings && warnings.length > 0;
 
   return (

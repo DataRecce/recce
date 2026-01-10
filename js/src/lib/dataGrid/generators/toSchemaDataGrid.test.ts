@@ -8,10 +8,9 @@
  * - toSingleEnvDataGrid: Single environment grid generation
  */
 
+import { type NodeData, type RowObjectType } from "@datarecce/ui/api";
 import type { CellClassParams } from "ag-grid-community";
 import React from "react";
-import { NodeData } from "@/lib/api/info";
-import { RowObjectType } from "@/lib/api/types";
 import {
   mergeColumns,
   toSchemaDataGrid,

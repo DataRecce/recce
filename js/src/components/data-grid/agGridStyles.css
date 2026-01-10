@@ -53,3 +53,27 @@
 .ag-header-icon {
   flex-shrink: 0;
 }
+
+/* ============================================================================
+ * Query/Diff Grid Styles (migrated from components/query/styles.css)
+ * ============================================================================ */
+
+/* Header hover behavior for pin/key icons */
+.grid-header:hover .pin-icon {
+  display: block;
+}
+
+.grid-header:hover .key-icon {
+  display: block;
+}
+
+/* Context menu visibility on row hover */
+.ag-row:hover .row-context-menu {
+  visibility: visible;
+  width: auto;
+}
+
+/* Cell overflow for context menu */
+.cell-show-context-menu {
+  overflow: visible;
+}

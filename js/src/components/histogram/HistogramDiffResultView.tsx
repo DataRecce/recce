@@ -1,63 +1,97 @@
+import {
+  type HistogramDiffParams,
+  isHistogramDiffRun,
+} from "@datarecce/ui/api";
+import { createResultView } from "@datarecce/ui/components/result/createResultView";
+import type { ResultViewData } from "@datarecce/ui/components/result/types";
+import {
+  HistogramChart,
+  type HistogramDataType,
+} from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
-import { useTheme } from "@mui/material/styles";
-import { forwardRef, Ref } from "react";
-import { HistogramDiffParams } from "@/lib/api/profile";
-import { isHistogramDiffRun } from "@/lib/api/types";
-import { HistogramChart } from "../charts/HistogramChart";
-import { RunResultViewProps } from "../run/types";
-import { ScreenshotBox } from "../screenshot/ScreenshotBox";
+import type { ForwardRefExoticComponent, RefAttributes } from "react";
+// Import Run from OSS types for proper discriminated union support with Extract<>
+import type { Run } from "@/lib/api/types";
+import type { RunResultViewProps } from "../run/types";
 
-type HistogramDiffResultViewProp = RunResultViewProps;
+// ============================================================================
+// Type Definitions
+// ============================================================================
 
-function _HistogramDiffResultView(
-  { run }: HistogramDiffResultViewProp,
-  ref: Ref<HTMLDivElement>,
-) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+type HistogramDiffRun = Extract<Run, { type: "histogram_diff" }>;
 
-  if (!isHistogramDiffRun(run)) {
-    throw new Error("Run type must be histogram_diff");
-  }
+// ============================================================================
+// Type Guard (wrapper to accept unknown)
+// ============================================================================
 
-  const params = run.params as HistogramDiffParams;
-  const base = run.result?.base;
-  const current = run.result?.current;
-  const min = run.result?.min;
-  const max = run.result?.max;
-  const binEdges = run.result?.bin_edges ?? [];
+function isHistogramDiffRunGuard(run: unknown): run is HistogramDiffRun {
+  return isHistogramDiffRun(run as Run);
+}
 
-  if (!base || !current) {
-    return <div>Loading...</div>;
-  }
+// ============================================================================
+// Factory-Created Component
+// ============================================================================
 
-  return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <ScreenshotBox
-        ref={ref}
-        height="100%"
-        backgroundColor={isDark ? "#1f2937" : "white"}
-      >
+export const HistogramDiffResultView = createResultView<
+  HistogramDiffRun,
+  unknown,
+  HTMLDivElement
+>({
+  displayName: "HistogramDiffResultView",
+  typeGuard: isHistogramDiffRunGuard,
+  expectedRunType: "histogram_diff",
+  screenshotWrapper: "box",
+  conditionalEmptyState: (run) => {
+    const base = run.result?.base;
+    const current = run.result?.current;
+    if (!base || !current) {
+      return <div>Loading...</div>;
+    }
+    return null;
+  },
+  transformData: (run): ResultViewData | null => {
+    const params = run.params as HistogramDiffParams;
+    const base = run.result?.base;
+    const current = run.result?.current;
+    const min = run.result?.min;
+    const max = run.result?.max;
+    const binEdges = run.result?.bin_edges ?? [];
+
+    // This shouldn't happen due to conditionalEmptyState, but type safety
+    if (!base || !current) {
+      return { isEmpty: true };
+    }
+
+    // Map column_type to HistogramDataType
+    const columnType = (run.params?.column_type ?? "numeric") as string;
+    const dataType: HistogramDataType =
+      columnType === "datetime"
+        ? "datetime"
+        : columnType === "string"
+          ? "string"
+          : "numeric";
+
+    return {
+      content: (
         <Box sx={{ display: "flex", flexDirection: "row" }}>
           <Box sx={{ flex: 1 }} />
           <Box sx={{ width: "80%", height: "35vh", m: 4 }}>
             <HistogramChart
-              data={{
-                title: `Model ${params.model}.${params.column_name}`,
-                type: run.params?.column_type ?? "",
-                datasets: [base, current],
-                min: min,
-                max: max,
-                samples: base.total,
-                binEdges: binEdges,
-              }}
+              title={`Model ${params.model}.${params.column_name}`}
+              dataType={dataType}
+              baseData={{ counts: base.counts }}
+              currentData={{ counts: current.counts }}
+              min={min}
+              max={max}
+              samples={base.total}
+              binEdges={binEdges}
             />
           </Box>
           <Box sx={{ flex: 1 }} />
         </Box>
-      </ScreenshotBox>
-    </Box>
-  );
-}
-
-export const HistogramDiffResultView = forwardRef(_HistogramDiffResultView);
+      ),
+    };
+  },
+}) as ForwardRefExoticComponent<
+  RunResultViewProps & RefAttributes<HTMLDivElement>
+>;

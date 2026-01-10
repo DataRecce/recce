@@ -1,3 +1,15 @@
+import {
+  type QueryParams,
+  type SubmitOptions,
+  submitQuery,
+  submitQueryBase,
+  submitQueryDiff,
+  waitRun,
+} from "@datarecce/ui/api";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+} from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
@@ -10,21 +22,12 @@ import { PiInfoFill } from "react-icons/pi";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
-import {
-  QueryParams,
-  submitQuery,
-  submitQueryBase,
-  submitQueryDiff,
-} from "@/lib/api/adhocQuery";
-import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import {
   defaultSqlQuery,
   useRecceQueryContext,
-} from "@/lib/hooks/RecceQueryContext";
+} from "@/lib/hooks/QueryContextAdapter";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { BaseEnvironmentSetupGuide } from "../lineage/SingleEnvironmentQueryView";
 import { QueryForm } from "./QueryForm";
 import SetupConnectionGuide from "./SetupConnectionGuide";

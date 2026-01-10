@@ -3,9 +3,8 @@
  * @description Tests for toRowCountDataGrid generator (single environment)
  */
 
-import { RowCountResult } from "@/lib/api/rowcount";
-import { RowObjectType } from "@/lib/api/types";
-import { toRowCountDataGrid } from "./toRowCountDataGrid";
+import { type RowCountResult, type RowObjectType } from "@datarecce/ui/api";
+import { toRowCountDataGrid } from "@datarecce/ui/utils";
 
 // ============================================================================
 // Mocks

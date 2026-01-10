@@ -1,0 +1,100 @@
+{
+  "name": "@datarecce/ui",
+  "version": "0.2.0",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./api": {
+      "types": "./dist/api.d.mts",
+      "import": "./dist/api.mjs",
+      "require": "./dist/api.cjs"
+    },
+    "./primitives": {
+      "types": "./dist/primitives.d.mts",
+      "import": "./dist/primitives.mjs",
+      "require": "./dist/primitives.cjs"
+    },
+    "./advanced": {
+      "types": "./dist/advanced.d.mts",
+      "import": "./dist/advanced.mjs",
+      "require": "./dist/advanced.cjs"
+    },
+    "./contexts": {
+      "types": "./dist/contexts.d.mts",
+      "import": "./dist/contexts.mjs",
+      "require": "./dist/contexts.cjs"
+    },
+    "./hooks": {
+      "types": "./dist/hooks.d.mts",
+      "import": "./dist/hooks.mjs",
+      "require": "./dist/hooks.cjs"
+    },
+    "./result": {
+      "types": "./dist/result.d.mts",
+      "import": "./dist/result.mjs",
+      "require": "./dist/result.cjs"
+    },
+    "./types": {
+      "types": "./dist/types.d.mts",
+      "import": "./dist/types.mjs",
+      "require": "./dist/types.cjs"
+    },
+    "./styles": {
+      "default": "./dist/styles.css"
+    },
+    "./utils": {
+      "types": "./dist/utils.d.mts",
+      "import": "./dist/utils.mjs",
+      "require": "./dist/utils.cjs"
+    },
+    "./theme": {
+      "types": "./dist/theme.d.mts",
+      "import": "./dist/theme.mjs",
+      "require": "./dist/theme.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": [
+    "*.css"
+  ],
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^7.0.0",
+    "@mui/system": "^7.0.0",
+    "@tanstack/react-query": "^5.0.0",
+    "@xyflow/react": "^12.0.0",
+    "axios": "^1.0.0",
+    "file-saver": "^2.0.5",
+    "lodash": "^4.17.21",
+    "next-themes": "^0.4.0",
+    "usehooks-ts": "^3.1.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.0.0",
+    "@tailwindcss/postcss": "^4.0.0",
+    "postcss": "^8.5.0",
+    "tailwindcss": "^4.0.0",
+    "tsdown": "^0.18.0",
+    "typescript": "^5.9.0"
+  },
+  "scripts": {
+    "build": "tsdown && pnpm build:styles",
+    "build:styles": "node scripts/build-styles.js",
+    "type:check": "tsc --noEmit"
+  }
+}

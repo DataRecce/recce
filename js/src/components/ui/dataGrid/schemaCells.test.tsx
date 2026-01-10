@@ -9,10 +9,10 @@
  * - Null data handling
  */
 
+import type { RowObjectType } from "@datarecce/ui/api";
 import { render, screen } from "@testing-library/react";
 import type { ICellRendererParams } from "ag-grid-community";
 import React from "react";
-import type { RowObjectType } from "@/lib/api/types";
 
 // Performance testing utilities
 const performance = {

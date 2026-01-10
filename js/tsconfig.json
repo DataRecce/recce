@@ -21,7 +21,9 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@theme/*": ["./theme/*"]
+      "@theme/*": ["./theme/*"],
+      "@datarecce/ui": ["./packages/ui/src/index.ts"],
+      "@datarecce/ui/*": ["./packages/ui/src/*"]
     },
     "downlevelIteration": true
   },
@@ -41,7 +43,9 @@
     ".next/types/**/*.ts",
     "eslint.config.mjs",
     ".next/dev/types/**/*.ts",
-    "./jest.setup.ts"
+    "./jest.setup.ts",
+    "packages/ui/src/**/*.ts",
+    "packages/ui/src/**/*.tsx"
   ],
   "exclude": ["node_modules"]
 }

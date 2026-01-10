@@ -1,3 +1,11 @@
+import { type LineageDiffViewOptions } from "@datarecce/ui/api";
+import { getIconForResourceType } from "@datarecce/ui/components/lineage";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+  useRecceServerFlag,
+} from "@datarecce/ui/contexts";
+import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
@@ -25,22 +33,19 @@ import { FiPackage } from "react-icons/fi";
 import { PiCaretDown } from "react-icons/pi";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
-import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { findByRunType } from "../run/registry";
 import { useLineageViewContextSafe } from "./LineageViewContext";
-import { getIconForResourceType } from "./styles";
 
-const codeBlockSx = (theme: { palette: { mode: string } }) => ({
+const getCodeBlockSx = (isDark: boolean) => ({
   fontSize: "8pt",
-  bgcolor: theme.palette.mode === "dark" ? "grey.700" : "grey.100",
+  bgcolor: isDark ? "grey.700" : "grey.100",
   px: 0.5,
   borderRadius: 1,
 });
 
 const SelectFilterTooltip = () => {
+  const isDark = useIsDark();
+  const codeBlockSx = getCodeBlockSx(isDark);
   return (
     <Stack alignItems="flex-start" spacing={0}>
       <Typography fontSize="10pt" color="text.secondary" pb={1}>

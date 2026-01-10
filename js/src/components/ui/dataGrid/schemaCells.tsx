@@ -3,11 +3,10 @@
  * @description Cell components and render functions for Schema grid views
  */
 
+import { type NodeData, type RowObjectType } from "@datarecce/ui/api";
 import type { ICellRendererParams } from "ag-grid-community";
 import React from "react";
 import { ColumnNameCell } from "@/components/schema/ColumnNameCell";
-import { NodeData } from "@/lib/api/info";
-import { RowObjectType } from "@/lib/api/types";
 import type {
   SchemaDiffRow,
   SchemaRow,

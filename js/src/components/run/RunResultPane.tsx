@@ -1,3 +1,13 @@
+import {
+  type AxiosQueryParams,
+  cacheKeys,
+  createCheckByRun,
+  isQueryBaseRun,
+  isQueryDiffRun,
+  isQueryRun,
+} from "@datarecce/ui/api";
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
+import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
@@ -7,7 +17,6 @@ import ListItemText from "@mui/material/ListItemText";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
@@ -26,20 +35,10 @@ import { TbCloudUpload } from "react-icons/tb";
 import YAML from "yaml";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { CodeEditor } from "@/components/editor";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { createCheckByRun } from "@/lib/api/checks";
 import { trackCopyToClipboard, trackShareState } from "@/lib/api/track";
-import {
-  AxiosQueryParams,
-  isQueryBaseRun,
-  isQueryDiffRun,
-  isQueryRun,
-  type Run,
-  RunParamTypes,
-} from "@/lib/api/types";
+import { Run, RunParamTypes } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
@@ -67,8 +66,7 @@ interface RunPageProps {
 }
 
 const _ParamView = (data: { type: string; params: RunParamTypes }) => {
-  const muiTheme = useTheme();
-  const isDark = muiTheme.palette.mode === "dark";
+  const isDark = useIsDark();
   const yaml = YAML.stringify(data, null, 2);
   return (
     <CodeEditor

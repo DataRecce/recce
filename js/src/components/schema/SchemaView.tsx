@@ -1,3 +1,5 @@
+import type { NodeData } from "@datarecce/ui/api";
+import { useLineageGraphContext } from "@datarecce/ui/contexts";
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import type {
@@ -14,14 +16,12 @@ import {
   useMemo,
   useState,
 } from "react";
-import { NodeData } from "@/lib/api/info";
 import { trackColumnLevelLineage } from "@/lib/api/track";
 import {
   createDataGridFromData,
   SchemaDiffRow,
   SchemaRow,
 } from "@/lib/dataGrid";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import {
   type DataGridHandle,
   EmptyRowsRenderer,

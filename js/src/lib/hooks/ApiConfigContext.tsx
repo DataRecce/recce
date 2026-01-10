@@ -1,6 +1,22 @@
+import { useApiConfigOptional as useDatarecceApiConfigOptional } from "@datarecce/ui";
 import axios, { AxiosInstance } from "axios";
 import React, { createContext, useContext, useMemo } from "react";
 import { PUBLIC_API_URL } from "@/lib/const";
+
+/**
+ * OSS API Configuration Adapter
+ *
+ * This file provides OSS-specific defaults and a fallback chain for API configuration.
+ * It is NOT a duplicate of @datarecce/ui's ApiContext - it wraps it with OSS defaults.
+ *
+ * Priority chain:
+ * 1. Local OSS ApiConfigProvider (if present)
+ * 2. @datarecce/ui RecceProvider (via useApiConfigOptional)
+ * 3. Default config with PUBLIC_API_URL (for backward compatibility)
+ *
+ * For @datarecce/ui consumers (like recce-cloud-infra), use @datarecce/ui's
+ * ApiProvider directly with your own baseUrl and config.
+ */
 
 /**
  * API Configuration Context
@@ -151,15 +167,20 @@ const defaultApiConfigContext: ApiConfigContextType = {
 /**
  * Hook to access the API configuration and configured axios client.
  *
- * When used outside ApiConfigProvider, returns default config with
- * standard axiosClient (for OSS backward compatibility).
+ * Priority order:
+ * 1. OSS ApiConfigProvider (local context)
+ * 2. @datarecce/ui RecceProvider (via useApiConfigOptional)
+ * 3. Default config (for backward compatibility)
  *
  * @returns ApiConfigContextType with apiPrefix, authToken, and apiClient
  */
 export function useApiConfig(): ApiConfigContextType {
-  const context = useContext(ApiConfigContext);
-  // Return default config if outside provider (OSS mode)
-  return context ?? defaultApiConfigContext;
+  // Call both hooks unconditionally (React hooks rules)
+  const localContext = useContext(ApiConfigContext);
+  const datarecceContext = useDatarecceApiConfigOptional();
+
+  // Priority: local OSS provider > @datarecce/ui provider > defaults
+  return localContext ?? datarecceContext ?? defaultApiConfigContext;
 }
 
 /**
@@ -174,8 +195,15 @@ export function useApiClient(): AxiosInstance {
 
 /**
  * Safe version of useApiConfig that returns null if outside provider.
- * Useful for components that need to detect if ApiConfigProvider is present.
+ * Useful for components that need to detect if any ApiConfigProvider is present.
+ *
+ * Checks both OSS ApiConfigProvider and @datarecce/ui RecceProvider.
  */
 export function useApiConfigSafe(): ApiConfigContextType | null {
-  return useContext(ApiConfigContext);
+  // Call both hooks unconditionally (React hooks rules)
+  const localContext = useContext(ApiConfigContext);
+  const datarecceContext = useDatarecceApiConfigOptional();
+
+  // Priority: local OSS provider > @datarecce/ui provider
+  return localContext ?? datarecceContext;
 }

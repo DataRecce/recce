@@ -1,4 +1,4 @@
-import { useTheme } from "@mui/material/styles";
+import { useIsDark } from "@datarecce/ui/hooks";
 import YAML from "yaml";
 import { CodeEditor } from "@/components/editor";
 
@@ -31,8 +31,7 @@ export function PresetCheckTemplateView({
 }: {
   yamlTemplate: string;
 }) {
-  const muiTheme = useTheme();
-  const isDark = muiTheme.palette.mode === "dark";
+  const isDark = useIsDark();
   return (
     <CodeEditor
       value={yamlTemplate}

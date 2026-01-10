@@ -9,9 +9,14 @@
  * - Column structure
  */
 
+import {
+  type ColumnRenderMode,
+  type ColumnType,
+  type RowObjectType,
+  type ValueDiffParams,
+  type ValueDiffResult,
+} from "@datarecce/ui/api";
 import type { CellClassParams } from "ag-grid-community";
-import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
-import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
 import { toValueDataGrid } from "./toValueDataGrid";
 
 // ============================================================================
@@ -63,13 +68,13 @@ jest.mock("@/components/ui/mui", () => ({
   Spacer: () => null,
 }));
 
-jest.mock("@/lib/hooks/RecceActionContext", () => ({
+jest.mock("@/lib/hooks/RecceActionAdapter", () => ({
   useRecceActionContext: () => ({
     runAction: jest.fn(),
   }),
 }));
 
-jest.mock("@/lib/hooks/RecceInstanceContext", () => ({
+jest.mock("@datarecce/ui/contexts", () => ({
   useRecceInstanceContext: () => ({
     featureToggles: {
       disableDatabaseQuery: false,

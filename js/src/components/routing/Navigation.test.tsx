@@ -4,12 +4,12 @@
  * Tests that navigation between main routes works correctly
  */
 
+import { theme } from "@datarecce/ui/theme";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import React, { ReactNode } from "react";
-import { lightTheme as theme } from "@/components/ui/mui-theme";
 
 // Create a fresh QueryClient for each test
 const createTestQueryClient = () =>
@@ -55,15 +55,12 @@ let mockRecceServerFlagData = {
 };
 
 // Mock the hooks used by NavBar
-jest.mock("@/lib/hooks/LineageGraphContext", () => ({
+jest.mock("@/lib/hooks/LineageGraphAdapter", () => ({
   useLineageGraphContext: () => mockLineageGraphContext,
 }));
 
-jest.mock("@/lib/hooks/RecceInstanceContext", () => ({
+jest.mock("@datarecce/ui/contexts", () => ({
   useRecceInstanceContext: () => mockRecceInstanceContext,
-}));
-
-jest.mock("@/lib/hooks/useRecceServerFlag", () => ({
   useRecceServerFlag: () => ({
     data: mockRecceServerFlagData,
     isLoading: false,
@@ -74,8 +71,21 @@ jest.mock("@/lib/api/track", () => ({
   trackNavigation: jest.fn(),
 }));
 
-jest.mock("@/lib/api/checks", () => ({
+jest.mock("@datarecce/ui/api", () => ({
   listChecks: jest.fn(() => Promise.resolve([])),
+  cacheKeys: {
+    rowCount: (model: string) => ["row_count", model],
+    lineage: () => ["lineage"],
+    checks: () => ["checks", "list"],
+    check: (checkId: string) => ["checks", checkId],
+    checkEvents: (checkId: string) => ["checks", checkId, "events"],
+    runs: () => ["runs"],
+    run: (runId: string) => ["runs", runId],
+    runsAggregated: () => ["runs_aggregated"],
+    flag: () => ["flag"],
+    instanceInfo: () => ["instance_info"],
+    user: () => ["user"],
+  },
 }));
 
 // Mock components that might cause issues in tests

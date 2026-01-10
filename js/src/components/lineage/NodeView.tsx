@@ -1,3 +1,9 @@
+import { createSchemaDiffCheck } from "@datarecce/ui/api";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+} from "@datarecce/ui/contexts";
+import { formatSelectColumns } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -10,19 +16,15 @@ import { type ReactElement, useCallback, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
-import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import {
   EXPLORE_ACTION,
   EXPLORE_SOURCE,
   trackExploreAction,
   trackPreviewChange,
 } from "@/lib/api/track";
-import { formatSelectColumns } from "@/lib/formatSelect";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
+import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import {

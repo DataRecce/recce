@@ -1,3 +1,4 @@
+import { mergeKeysWithStatus } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -5,7 +6,6 @@ import CardHeader from "@mui/material/CardHeader";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useEffect, useState } from "react";
-import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { LineageGraph, LineageGraphNode } from "../lineage/lineage";
 import { ResourceTypeTag, RowCountDiffTag } from "../lineage/NodeTag";
 import { SchemaView } from "../schema/SchemaView";

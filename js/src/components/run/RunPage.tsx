@@ -1,6 +1,7 @@
+import { cacheKeys, waitRun } from "@datarecce/ui/api";
 import { useQuery } from "@tanstack/react-query";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { waitRun } from "@/lib/api/runs";
+// Import Run from OSS types for proper discriminated union support
+import type { Run } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { RunView } from "./RunView";
 import { findByRunType, RegistryEntry, runTypeHasRef } from "./registry";
@@ -13,7 +14,8 @@ export const RunPage = ({ runId }: RunPageProps) => {
   const { apiClient } = useApiConfig();
   const { error, data: run } = useQuery({
     queryKey: cacheKeys.run(runId),
-    queryFn: async () => waitRun(runId, undefined, apiClient),
+    // Cast from library Run to OSS Run for discriminated union support
+    queryFn: async () => (await waitRun(runId, undefined, apiClient)) as Run,
   });
 
   let RunResultView: RegistryEntry["RunResultView"] | undefined;

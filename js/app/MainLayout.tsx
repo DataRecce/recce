@@ -7,6 +7,10 @@
 
 "use client";
 
+import {
+  useRecceInstanceContext,
+  useRecceServerFlag,
+} from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import { usePathname } from "next/navigation";
@@ -16,10 +20,8 @@ import { RunList } from "@/components/run/RunList";
 import { RunResultPane } from "@/components/run/RunResultPane";
 import { HSplit, VSplit } from "@/components/split/Split";
 import { trackInit } from "@/lib/api/track";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import "@fontsource/montserrat/800.css";
 import NavBar from "app/(mainComponents)/NavBar";
 import TopBar from "app/(mainComponents)/TopBar";

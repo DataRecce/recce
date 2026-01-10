@@ -1,25 +1,24 @@
-import Box from "@mui/material/Box";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import { useTheme } from "@mui/material/styles";
-import { useQuery } from "@tanstack/react-query";
-import React, { forwardRef, useMemo, useState } from "react";
-import { IconType } from "react-icons";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { Check } from "@/lib/api/checks";
-import { select } from "@/lib/api/select";
-import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { type DataGridHandle } from "../data-grid/ScreenshotDataGrid";
-import { LineageGraphNode } from "../lineage/lineage";
+import { HSplit, isSchemaChanged } from "@datarecce/ui";
+import { type Check, cacheKeys, select } from "@datarecce/ui/api";
 import {
   getIconForChangeStatus,
   getIconForResourceType,
-} from "../lineage/styles";
+  type IconComponent,
+} from "@datarecce/ui/components/lineage";
+import { useLineageGraphContext } from "@datarecce/ui/contexts";
+import { useIsDark } from "@datarecce/ui/hooks";
+import Box from "@mui/material/Box";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import { useQuery } from "@tanstack/react-query";
+import type { ComponentType } from "react";
+import React, { forwardRef, useMemo, useState } from "react";
+import type { IconType } from "react-icons";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
+import { type DataGridHandle } from "../data-grid/ScreenshotDataGrid";
+import { LineageGraphNode } from "../lineage/lineage";
 import { findByRunType } from "../run/registry";
 import { SchemaView } from "../schema/SchemaView";
-import { isSchemaChanged } from "../schema/schemaDiff";
-import { HSplit } from "../split/Split";
 
 interface SchemaDiffViewProps {
   check: Check;
@@ -49,7 +48,7 @@ const NodelistItem = ({
   const { icon } = getIconForResourceType(node.data.resourceType);
   const { base, current } = node.data.data;
 
-  let statusIcon: IconType | undefined;
+  let statusIcon: IconComponent | IconType | undefined;
   let statusColor: string | undefined;
 
   if (schemaChanged) {
@@ -105,8 +104,7 @@ export function PrivateSchemaDiffView(
   { check }: SchemaDiffViewProps,
   ref: React.Ref<DataGridHandle>,
 ) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   const { apiClient } = useApiConfig();
   const { lineageGraph } = useLineageGraphContext();
   const params = check.params as SchemaDiffParams;

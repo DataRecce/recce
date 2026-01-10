@@ -1,3 +1,9 @@
+import {
+  cacheKeys,
+  createCheckByRun,
+  listRuns,
+  waitRun,
+} from "@datarecce/ui/api";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
@@ -7,18 +13,17 @@ import React, { ReactNode, useCallback } from "react";
 import { IconType } from "react-icons";
 import { FaCheckCircle, FaRegCheckCircle } from "react-icons/fa";
 import SimpleBar from "simplebar-react";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { createCheckByRun } from "@/lib/api/checks";
-import { listRuns, waitRun } from "@/lib/api/runs";
-import { Run } from "@/lib/api/types";
+// Import Run from OSS types for proper discriminated union support
+import type { Run } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { findByRunType } from "../run/registry";
 import "simplebar/dist/simplebar.min.css";
+import { useRecceInstanceContext } from "@datarecce/ui/contexts";
+import { useIsDark } from "@datarecce/ui/hooks";
 import MuiTooltip from "@mui/material/Tooltip";
 import { PiX } from "react-icons/pi";
 import { trackHistoryAction } from "@/lib/api/track";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { formatRunDate, RunStatusAndDate } from "./RunStatusAndDate";
 
@@ -35,12 +40,14 @@ const RunListItem = ({
   onAddToChecklist: (runId: string) => void;
   onGoToCheck: (checkId: string) => void;
 }) => {
+  const isDark = useIsDark();
   const { featureToggles } = useRecceInstanceContext();
   const { apiClient } = useApiConfig();
   const { data: fetchedRun } = useQuery({
     queryKey: cacheKeys.run(run.run_id),
     queryFn: async () => {
-      return await waitRun(run.run_id, undefined, apiClient);
+      // Cast from library Run to OSS Run for discriminated union support
+      return (await waitRun(run.run_id, undefined, apiClient)) as Run;
     },
     enabled: run.status === "running",
     retry: false,
@@ -52,7 +59,7 @@ const RunListItem = ({
 
   return (
     <Box
-      sx={(theme) => ({
+      sx={{
         minWidth: "200px",
         display: "flex",
         flexDirection: "column",
@@ -64,20 +71,20 @@ const RunListItem = ({
         borderLeft: "4px solid",
         borderLeftColor: isSelected ? "amber.400" : "transparent",
         backgroundColor: isSelected
-          ? theme.palette.mode === "dark"
+          ? isDark
             ? "amber.900"
             : "amber.50"
           : "transparent",
         "&:hover": {
           bgcolor: isSelected
-            ? theme.palette.mode === "dark"
+            ? isDark
               ? "amber.800"
               : "orange.50"
-            : theme.palette.mode === "dark"
+            : isDark
               ? "grey.800"
               : "grey.200",
         },
-      })}
+      }}
       onClick={() => {
         onSelectRun(run.run_id);
       }}
@@ -176,7 +183,8 @@ export const RunList = () => {
   const { data: runs, isLoading } = useQuery({
     queryKey: cacheKeys.runs(),
     queryFn: async () => {
-      return await listRuns(apiClient);
+      // Cast from library Run[] to OSS Run[] for discriminated union support
+      return (await listRuns(apiClient)) as Run[];
     },
     retry: false,
   });

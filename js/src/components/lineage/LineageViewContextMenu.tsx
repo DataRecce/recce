@@ -1,3 +1,10 @@
+import { type SubmitRunTrackProps } from "@datarecce/ui/api";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+  useRecceServerFlag,
+} from "@datarecce/ui/contexts";
+import { formatSelectColumns } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import Menu from "@mui/material/Menu";
@@ -6,7 +13,6 @@ import { ReactNode, useState } from "react";
 import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
 import { FaRegDotCircle } from "react-icons/fa";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
-import { SubmitRunTrackProps } from "@/lib/api/runs";
 import {
   EXPLORE_ACTION,
   EXPLORE_SOURCE,
@@ -14,14 +20,10 @@ import {
   trackExploreAction,
   trackLineageSelection,
 } from "@/lib/api/track";
-import { formatSelectColumns } from "@/lib/formatSelect";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
+import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import useModelColumns from "@/lib/hooks/useModelColumns";
-import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { findByRunType } from "../run/registry";
 import { useLineageViewContextSafe } from "./LineageViewContext";

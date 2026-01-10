@@ -1,4 +1,4 @@
-import { LineageData } from "@/lib/api/info";
+import { type LineageData } from "@datarecce/ui/api";
 import { buildLineageGraph } from "./lineage";
 
 test("lineage diff", () => {

@@ -43,13 +43,13 @@ jest.mock("@/components/ui/mui", () => ({
   Text: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-jest.mock("@/lib/hooks/RecceActionContext", () => ({
+jest.mock("@/lib/hooks/RecceActionAdapter", () => ({
   useRecceActionContext: () => ({
     runAction: jest.fn(),
   }),
 }));
 
-jest.mock("@/lib/hooks/RecceInstanceContext", () => ({
+jest.mock("@datarecce/ui/contexts", () => ({
   useRecceInstanceContext: () => ({
     featureToggles: {
       disableDatabaseQuery: false,
@@ -58,7 +58,7 @@ jest.mock("@/lib/hooks/RecceInstanceContext", () => ({
 }));
 
 // Mock dataGrid UI components
-jest.mock("@/components/ui/dataGrid", () => ({
+jest.mock("@datarecce/ui/components/ui", () => ({
   DataFrameColumnGroupHeader: () => null,
   defaultRenderCell: jest.fn(),
   inlineRenderCell: jest.fn(),
@@ -117,10 +117,16 @@ jest.mock("@/lib/dataGrid/generators/toSchemaDataGrid", () => ({
   })),
 }));
 
+import {
+  type ColumnRenderMode,
+  type ColumnType,
+  type DataFrame,
+  type ProfileDiffResult,
+  type QueryDiffResult,
+} from "@datarecce/ui/api";
 import React from "react";
-import { QueryDiffResult } from "@/lib/api/adhocQuery";
-import { ProfileDiffResult } from "@/lib/api/profile";
-import { ColumnRenderMode, ColumnType, DataFrame, Run } from "@/lib/api/types";
+// Import Run from OSS types for proper discriminated union support with type guards
+import type { Run } from "@/lib/api/types";
 import { createDataGrid, createDataGridFromData } from "./dataGridFactory";
 
 // ============================================================================

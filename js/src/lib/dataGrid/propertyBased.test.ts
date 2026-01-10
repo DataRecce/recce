@@ -13,17 +13,19 @@
  * - Column alignment: output columns match input schema
  */
 
+import {
+  type ColumnRenderMode,
+  type ColumnType,
+  type DataFrame,
+  type RowObjectType,
+} from "@datarecce/ui/api";
+import {
+  toDataDiffGridConfigured as toDataDiffGrid,
+  toDataGridConfigured as toDataGrid,
+  toValueDiffGridConfigured as toValueDiffGrid,
+} from "@datarecce/ui/utils";
 import type { ColDef, ColGroupDef } from "ag-grid-community";
 import fc from "fast-check";
-import {
-  ColumnRenderMode,
-  ColumnType,
-  DataFrame,
-  RowObjectType,
-} from "@/lib/api/types";
-import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
-import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
-import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 
 // ============================================================================
 // Types

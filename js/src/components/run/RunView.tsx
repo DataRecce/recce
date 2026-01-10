@@ -1,9 +1,9 @@
+import { useIsDark } from "@datarecce/ui/hooks";
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
-import { useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import React, { forwardRef } from "react";
 import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
@@ -12,7 +12,8 @@ import {
   RegistryEntry,
   ViewOptionTypes,
 } from "@/components/run/registry";
-import { Run } from "@/lib/api/types";
+// Import Run from OSS types for proper discriminated union support
+import type { Run } from "@/lib/api/types";
 import ResultErrorFallback from "@/lib/result/ResultErrorFallback";
 import { RunResultViewProps } from "./types";
 
@@ -57,7 +58,7 @@ export const RunView = forwardRef(
     }: RunViewProps,
     ref: React.Ref<RefTypes>,
   ) => {
-    const theme = useTheme();
+    const isDark = useIsDark();
     const errorMessage =
       (error as ApiError | undefined)?.response?.data?.detail ?? run?.error;
 
@@ -88,7 +89,7 @@ export const RunView = forwardRef(
             justifyContent: "center",
             p: "1rem",
             height: "100%",
-            bgcolor: theme.palette.mode === "dark" ? "grey.900" : "grey.50",
+            bgcolor: isDark ? "grey.900" : "grey.50",
           }}
         >
           <Stack spacing={2} alignItems="center">
@@ -150,7 +151,7 @@ export const RunView = forwardRef(
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            bgcolor: theme.palette.mode === "dark" ? "grey.900" : "grey.50",
+            bgcolor: isDark ? "grey.900" : "grey.50",
             height: "100%",
           }}
         >

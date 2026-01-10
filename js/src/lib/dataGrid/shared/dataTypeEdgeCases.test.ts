@@ -14,17 +14,21 @@
  * anomalies gracefully without crashing or producing misleading output.
  */
 
-import { ColumnType, DataFrame, RowObjectType } from "@/lib/api/types";
-import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
-import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
-import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 import {
-  ColumnMapEntry,
+  type ColumnType,
+  type DataFrame,
+  type RowObjectType,
+} from "@datarecce/ui/api";
+import {
+  type ColumnMapEntry,
   columnRenderedValue,
   determineRowStatus,
   getPrimaryKeyValue,
+  toDataDiffGridConfigured as toDataDiffGrid,
+  toDataGridConfigured as toDataGrid,
   toRenderedValue,
-} from "@/lib/dataGrid/shared/gridUtils";
+  toValueDiffGridConfigured as toValueDiffGrid,
+} from "@datarecce/ui/utils";
 
 // Mock ag-grid-community
 jest.mock("ag-grid-community", () => ({

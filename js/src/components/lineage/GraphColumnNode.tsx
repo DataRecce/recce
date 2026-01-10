@@ -1,100 +1,56 @@
-import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
-import { Handle, NodeProps, Position, useStore } from "@xyflow/react";
-import React from "react";
-import { VscKebabVertical } from "react-icons/vsc";
-import { useThemeColors } from "@/lib/hooks/useThemeColors";
+"use client";
+
+/**
+ * @file GraphColumnNode.tsx
+ * @description OSS wrapper for UI package LineageColumnNode component
+ *
+ * This component wraps the @datarecce/ui LineageColumnNode with OSS-specific
+ * context integration. It extracts state from LineageViewContext and passes
+ * it as props to the presentation component.
+ *
+ * Migration: Phase 3 of lineage component migration plan
+ */
+
+import {
+  LineageColumnNode,
+  type LineageColumnNodeData,
+} from "@datarecce/ui/components/lineage";
+import { useThemeColors } from "@datarecce/ui/hooks";
+import type { NodeProps } from "@xyflow/react";
+import { useStore } from "@xyflow/react";
+import { type MouseEvent, memo } from "react";
+
 import { useLineageViewContextSafe } from "./LineageViewContext";
-import { COLUMN_HEIGHT, LineageGraphColumnNode } from "./lineage";
-import { getIconForChangeStatus } from "./styles";
+import type { LineageGraphColumnNode } from "./lineage";
 
-import "./styles.css";
+// =============================================================================
+// TYPES
+// =============================================================================
 
-type GrapeColumnNodeProps = NodeProps<LineageGraphColumnNode>;
+export type GraphColumnNodeProps = NodeProps<LineageGraphColumnNode>;
 
-export const ChangeStatus = ({
-  changeStatus,
-}: {
-  changeStatus?: "added" | "removed" | "modified";
-}) => {
-  if (!changeStatus) {
-    return <></>;
-  }
+// =============================================================================
+// MAIN COMPONENT
+// =============================================================================
 
-  const { color: colorChangeStatus, icon: IconChangeStatus } =
-    getIconForChangeStatus(changeStatus);
-
-  if (!IconChangeStatus) {
-    return <></>;
-  }
-
-  return (
-    <Box
-      component={IconChangeStatus}
-      sx={{
-        fontSize: 14,
-        display: "inline-flex",
-        color: colorChangeStatus,
-      }}
-    />
-  );
-};
-
-export const TransformationType = ({
-  transformationType,
-  legend,
-}: {
-  transformationType?: string;
-  legend?: boolean;
-}) => {
-  let letter = "U";
-  let color: "default" | "error" | "warning" | "info" | "success" = "error";
-
-  if (transformationType === "passthrough") {
-    letter = "P";
-    color = "default";
-  } else if (transformationType === "renamed") {
-    letter = "R";
-    color = "warning";
-  } else if (transformationType === "derived") {
-    letter = "D";
-    color = "warning";
-  } else if (transformationType === "source") {
-    letter = "S";
-    color = "info";
-  } else {
-    letter = "U";
-    color = "error";
-  }
-
-  if (!transformationType) {
-    return <></>;
-  }
-
-  return (
-    <Chip
-      label={letter}
-      size="small"
-      color={color}
-      sx={{
-        fontSize: "8pt",
-        height: 18,
-        minWidth: 18,
-        "& .MuiChip-label": {
-          px: 0.5,
-        },
-      }}
-    />
-  );
-};
-
-export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
+/**
+ * GraphColumnNode - OSS wrapper for UI package LineageColumnNode
+ *
+ * This component integrates LineageViewContext with the pure presentation
+ * LineageColumnNode from @datarecce/ui.
+ */
+function GraphColumnNodeComponent(nodeProps: GraphColumnNodeProps) {
   const { id: columnNodeId, data } = nodeProps;
   const { id: nodeId } = data.node;
   const { column, type, transformationType, changeStatus } = data;
-  const showContent = useStore((s) => s.transform[2] > 0.3);
-  const { background, text, border } = useThemeColors();
 
+  // Get zoom level for content visibility
+  const showContent = useStore((s) => s.transform[2] > 0.3);
+
+  // Get theme colors
+  const { isDark } = useThemeColors();
+
+  // Get context values
   const {
     viewOptions,
     showContextMenu,
@@ -102,98 +58,41 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
     isNodeShowingChangeAnalysis,
   } = useLineageViewContextSafe();
 
+  // Computed state
   const selectedNode = viewOptions.column_level_lineage?.node_id;
   const selectedColumn = viewOptions.column_level_lineage?.column;
-  const isFocus = column === selectedColumn && nodeId === selectedNode;
-  const [isHovered, setIsHovered] = React.useState(false);
+  const isFocused = column === selectedColumn && nodeId === selectedNode;
   const isHighlighted = isNodeHighlighted(columnNodeId);
   const isShowingChangeAnalysis = isNodeShowingChangeAnalysis(nodeId);
 
-  if (!showContent) {
-    return <></>;
-  }
+  // Build LineageColumnNodeData
+  const columnData: LineageColumnNodeData = {
+    column,
+    type,
+    nodeId,
+    transformationType:
+      transformationType as LineageColumnNodeData["transformationType"],
+    changeStatus: changeStatus as LineageColumnNodeData["changeStatus"],
+    isHighlighted,
+    isFocused,
+  };
+
+  // Callbacks
+  const handleContextMenu = (event: MouseEvent, _columnId: string) => {
+    showContextMenu(event, nodeProps as unknown as LineageGraphColumnNode);
+  };
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        width: 280,
-        padding: "0px 10px",
-        border: "1px solid",
-        borderColor: border.default,
-        backgroundColor: isFocus ? background.subtle : "inherit",
-        "&:hover": {
-          backgroundColor: background.subtle,
-        },
-        filter: isHighlighted ? "none" : "opacity(0.2) grayscale(50%)",
-        cursor: "pointer",
-      }}
-      onMouseEnter={() => {
-        setIsHovered(true);
-      }}
-      onMouseLeave={() => {
-        setIsHovered(false);
-      }}
-    >
-      <Box
-        sx={{
-          display: "flex",
-          fontSize: "11px",
-          color: text.primary,
-          width: "100%",
-          gap: "3px",
-          alignItems: "center",
-          height: `${COLUMN_HEIGHT - 1}px`,
-        }}
-      >
-        {isShowingChangeAnalysis && changeStatus ? (
-          <ChangeStatus changeStatus={changeStatus} />
-        ) : (
-          <TransformationType transformationType={transformationType} />
-        )}
-        <Box sx={{ height: `${COLUMN_HEIGHT + 1}px` }}>{column}</Box>
-        <Box sx={{ flexGrow: 1 }} />
-
-        {isHovered ? (
-          <Box
-            component={VscKebabVertical}
-            sx={{
-              fontSize: 14,
-              display: "inline-flex",
-              cursor: "pointer",
-              "&:hover": { color: text.primary },
-            }}
-            onClick={(e: React.MouseEvent) => {
-              e.preventDefault();
-              e.stopPropagation();
-              showContextMenu(
-                e,
-                nodeProps as unknown as LineageGraphColumnNode,
-              );
-            }}
-          />
-        ) : (
-          <Box sx={{ height: `${COLUMN_HEIGHT + 1} px` }}>{type}</Box>
-        )}
-      </Box>
-      <Handle
-        type="target"
-        position={Position.Left}
-        isConnectable={false}
-        style={{
-          left: 0,
-          visibility: "hidden",
-        }}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        isConnectable={false}
-        style={{
-          right: 0,
-          visibility: "hidden",
-        }}
-      />
-    </Box>
+    <LineageColumnNode
+      id={columnNodeId}
+      data={columnData}
+      showContent={showContent}
+      showChangeAnalysis={isShowingChangeAnalysis}
+      isDark={isDark}
+      onContextMenu={handleContextMenu}
+    />
   );
 }
+
+export const GraphColumnNode = memo(GraphColumnNodeComponent);
+GraphColumnNode.displayName = "GraphColumnNode";

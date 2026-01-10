@@ -3,7 +3,7 @@ import {
   getRowCountDiffStatus,
   rowCountDiffResultToDataFrame,
   rowCountResultToDataFrame,
-} from "./rowCountUtils";
+} from "@datarecce/ui/utils";
 
 // ============================================================================
 // calculateDelta Tests

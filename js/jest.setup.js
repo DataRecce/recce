@@ -89,3 +89,50 @@ global.mockNextNavigation = {
 beforeEach(() => {
   global.mockNextNavigation.reset();
 });
+
+// ============================================================================
+// Global mocks for ESM-only modules
+// ============================================================================
+
+// Mock react-markdown to avoid ESM issues
+jest.mock("react-markdown", () => ({
+  __esModule: true,
+  default: ({ children }) => <div data-testid="mock-markdown">{children}</div>,
+}));
+
+// Mock remark-gfm
+jest.mock("remark-gfm", () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
+// Mock react-syntax-highlighter
+jest.mock("react-syntax-highlighter", () => ({
+  Prism: ({ children, language }) => (
+    <pre data-testid="syntax-highlighter" data-language={language}>
+      <code>{children}</code>
+    </pre>
+  ),
+}));
+
+jest.mock("react-syntax-highlighter/dist/esm/styles/prism", () => ({
+  oneDark: {},
+}));
+
+// Mock ag-grid-community for theme configuration
+jest.mock("ag-grid-community", () => ({
+  themeQuartz: {
+    withParams: jest.fn(() => "mocked-theme"),
+  },
+  AllCommunityModule: {},
+  ModuleRegistry: {
+    registerModules: jest.fn(),
+  },
+}));
+
+// Mock ag-grid-react to avoid module resolution issues
+jest.mock("ag-grid-react", () => ({
+  AgGridReact: ({ children }) => (
+    <div data-testid="ag-grid-mock">{children}</div>
+  ),
+}));

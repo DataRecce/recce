@@ -9,6 +9,7 @@
 
 "use client";
 
+import { useThemeColors } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
@@ -22,6 +23,8 @@ interface ErrorProps {
 
 // biome-ignore lint/suspicious/noShadowRestrictedNames: https://nextjs.org/docs/app/api-reference/file-conventions/error
 export default function Error({ error, reset }: ErrorProps) {
+  const { background, border, text } = useThemeColors();
+
   useEffect(() => {
     // Log the error to Sentry
     Sentry.captureException(error, {
@@ -42,7 +45,7 @@ export default function Error({ error, reset }: ErrorProps) {
     <Box
       sx={{
         height: "100%",
-        bgcolor: "grey.50",
+        bgcolor: background.subtle,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -54,8 +57,9 @@ export default function Error({ error, reset }: ErrorProps) {
           display: "flex",
           flexDirection: "column",
           justifyContent: "flex-start",
-          bgcolor: "white",
-          border: "solid lightgray 1px",
+          bgcolor: background.paper,
+          border: "solid 1px",
+          borderColor: border.light,
           borderRadius: "8px",
           minHeight: "200px",
           boxShadow: 3,
@@ -65,12 +69,12 @@ export default function Error({ error, reset }: ErrorProps) {
           You have encountered an error
         </Typography>
 
-        <Box sx={{ flex: 1, fontSize: "10pt", color: "grey.600", mb: 2 }}>
+        <Box sx={{ flex: 1, fontSize: "10pt", color: text.secondary, mb: 2 }}>
           {error.message || String(error)}
         </Box>
 
         {error.digest && (
-          <Box sx={{ fontSize: "9pt", color: "grey.400", mb: 2 }}>
+          <Box sx={{ fontSize: "9pt", color: text.disabled, mb: 2 }}>
             Error ID: {error.digest}
           </Box>
         )}

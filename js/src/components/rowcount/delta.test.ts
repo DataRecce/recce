@@ -1,4 +1,4 @@
-import { deltaPercentageString } from "./delta";
+import { deltaPercentageString } from "@datarecce/ui/utils";
 
 describe("deltaPercentageString", () => {
   describe("when base < current (increase)", () => {

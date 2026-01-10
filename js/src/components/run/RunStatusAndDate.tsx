@@ -3,7 +3,8 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import { format } from "date-fns";
 import { token } from "@/components/ui/mui-theme";
-import { Run } from "@/lib/api/types";
+// Import Run from OSS types for proper discriminated union support
+import type { Run } from "@/lib/api/types";
 
 export function formatRunDate(date: Date | null) {
   const today = new Date();

@@ -1,9 +1,9 @@
+import type { TopKDiffParams } from "@datarecce/ui/api";
 import Box from "@mui/material/Box";
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
 import NativeSelect from "@mui/material/NativeSelect";
 import { useEffect } from "react";
-import { TopKDiffParams } from "@/lib/api/profile";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { RunFormProps } from "../run/types";
 

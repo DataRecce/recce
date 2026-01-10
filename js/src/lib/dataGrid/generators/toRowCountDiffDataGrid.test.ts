@@ -3,10 +3,9 @@
  * @description Tests for toRowCountDiffDataGrid generator
  */
 
+import { type RowCountDiffResult, type RowObjectType } from "@datarecce/ui/api";
+import { toRowCountDiffDataGrid } from "@datarecce/ui/utils";
 import type { CellClassParams } from "ag-grid-community";
-import { RowCountDiffResult } from "@/lib/api/rowcount";
-import { RowObjectType } from "@/lib/api/types";
-import { toRowCountDiffDataGrid } from "./toRowCountDiffDataGrid";
 
 // ============================================================================
 // Mocks

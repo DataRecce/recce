@@ -1,5 +1,33 @@
 "use client";
 
+import { VSplit } from "@datarecce/ui";
+import {
+  type Check,
+  cacheKeys,
+  cancelRun,
+  deleteCheck,
+  getCheck,
+  markAsPresetCheck,
+  type QueryDiffParams,
+  type QueryParams,
+  type QueryRunParams,
+  submitRunFromCheck,
+  updateCheck,
+} from "@datarecce/ui/api";
+import { toaster } from "@datarecce/ui/components/ui";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+} from "@datarecce/ui/contexts";
+import { useClipBoardToast, useIsDark } from "@datarecce/ui/hooks";
+import {
+  buildCheckDescription,
+  buildCheckTitle,
+  CheckBreadcrumb,
+  CheckDescription,
+  formatSqlAsMarkdown,
+  isDisabledByNoResult,
+} from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -38,31 +66,13 @@ import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
 import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { CheckTimeline } from "@/components/check/timeline";
-import { isDisabledByNoResult } from "@/components/check/utils";
-import {
-  QueryDiffParams,
-  QueryParams,
-  QueryRunParams,
-} from "@/lib/api/adhocQuery";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import {
-  Check,
-  deleteCheck,
-  getCheck,
-  markAsPresetCheck,
-  updateCheck,
-} from "@/lib/api/checks";
-import { cancelRun, submitRunFromCheck } from "@/lib/api/runs";
 import { trackCopyToClipboard } from "@/lib/api/track";
-import { Run, RunParamTypes } from "@/lib/api/types";
+// Import Run from OSS types for proper discriminated union support
+import { type Run, type RunParamTypes } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { useRecceCheckContext } from "@/lib/hooks/CheckContextAdapter";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
-import { useCheckToast } from "@/lib/hooks/useCheckToast";
-import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { useRun } from "@/lib/hooks/useRun";
 import { LineageViewRef } from "../lineage/LineageView";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
@@ -73,10 +83,6 @@ import {
   RegistryEntry,
   ViewOptionTypes,
 } from "../run/registry";
-import { VSplit } from "../split/Split";
-import { CheckBreadcrumb } from "./CheckBreadcrumb";
-import { CheckDescription } from "./CheckDescription";
-import { buildDescription, buildQuery, buildTitle } from "./check";
 import { LineageDiffView } from "./LineageDiffView";
 import {
   generateCheckTemplate,
@@ -96,7 +102,7 @@ export function CheckDetail({
   refreshCheckList,
 }: CheckDetailProps): ReactNode {
   const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  const isDark = useIsDark();
   const { apiClient } = useApiConfig();
   const { featureToggles, sessionId } = useRecceInstanceContext();
   const { setLatestSelectedCheckId } = useRecceCheckContext();
@@ -104,7 +110,6 @@ export function CheckDetail({
   const queryClient = useQueryClient();
   const [, setLocation] = useAppLocation();
   const { successToast, failToast } = useClipBoardToast();
-  const { markedAsApprovedToast } = useCheckToast();
   const [submittedRunId, setSubmittedRunId] = useState<string>();
   const [progress] = useState<Run["progress"]>();
   const [isAborting, setAborting] = useState(false);
@@ -212,7 +217,8 @@ export function CheckDetail({
       return;
     }
 
-    const markdown = buildMarkdown(check);
+    // Cast to Check<RunParamTypes> since we know the check params are valid
+    const markdown = buildMarkdown(check as Check<RunParamTypes>);
     // @see https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts
     if (!window.isSecureContext) {
       failToast(
@@ -236,9 +242,13 @@ export function CheckDetail({
     const isChecked = check?.is_checked;
     mutate({ is_checked: !isChecked });
     if (!isChecked) {
-      markedAsApprovedToast();
+      toaster.create({
+        title: "Marked as approved",
+        type: "success",
+        duration: 2000,
+      });
     }
-  }, [check?.is_checked, mutate, markedAsApprovedToast]);
+  }, [check?.is_checked, mutate]);
 
   const handelUpdateViewOptions = (viewOptions: ViewOptionTypes) => {
     mutate({ view_options: viewOptions });
@@ -318,12 +328,7 @@ export function CheckDetail({
               height: 40,
             }}
           >
-            <CheckBreadcrumb
-              name="Check not found"
-              setName={() => {
-                // do nothing
-              }}
-            />
+            <CheckBreadcrumb name="Check not found" disabled />
           </Box>
         </Box>
       </VSplit>
@@ -391,7 +396,7 @@ export function CheckDetail({
                 )}
                 <CheckBreadcrumb
                   name={check.name}
-                  setName={(name) => {
+                  onNameChange={(name) => {
                     mutate({ name });
                   }}
                 />
@@ -490,7 +495,11 @@ export function CheckDetail({
 
                   <MuiTooltip
                     title={
-                      isDisabledByNoResult(check.type, run)
+                      isDisabledByNoResult({
+                        type: check.type,
+                        hasResult: !!run?.result,
+                        hasError: !!run?.error,
+                      })
                         ? "Run the check first"
                         : check.is_checked
                           ? "Remove approval"
@@ -506,8 +515,11 @@ export function CheckDetail({
                         handleApproveCheck();
                       }}
                       disabled={
-                        isDisabledByNoResult(check.type, run) ||
-                        featureToggles.disableUpdateChecklist
+                        isDisabledByNoResult({
+                          type: check.type,
+                          hasResult: !!run?.result,
+                          hasError: !!run?.error,
+                        }) || featureToggles.disableUpdateChecklist
                       }
                       startIcon={
                         check.is_checked ? (
@@ -536,6 +548,7 @@ export function CheckDetail({
                   key={check.check_id}
                   value={check.description}
                   onChange={handleUpdateDescription}
+                  disabled={featureToggles.disableUpdateChecklist}
                 />
               </Box>
             </Box>
@@ -599,8 +612,11 @@ export function CheckDetail({
                     variant="outlined"
                     color="neutral"
                     disabled={
-                      isDisabledByNoResult(check.type, run) ||
-                      tabValue !== "result"
+                      isDisabledByNoResult({
+                        type: check.type,
+                        hasResult: !!run?.result,
+                        hasError: !!run?.error,
+                      }) || tabValue !== "result"
                     }
                     onMouseEnter={onMouseEnter}
                     onMouseLeave={onMouseLeave}
@@ -629,7 +645,12 @@ export function CheckDetail({
                           ref={ref as unknown as Ref<RefTypes>}
                           isRunning={isRunning}
                           isAborting={isAborting}
-                          run={trackedRunId ? run : check.last_run}
+                          run={
+                            trackedRunId
+                              ? run
+                              : // Cast from library Run to OSS Run
+                                (check.last_run as Run | undefined)
+                          }
                           error={rerunError}
                           progress={progress}
                           RunResultView={RunResultView}
@@ -780,8 +801,12 @@ export function CheckDetail({
 }
 
 function buildMarkdown(check: Check<RunParamTypes>) {
+  const title = buildCheckTitle({
+    name: check.name,
+    isChecked: check.is_checked,
+  });
   return stripIndents`
-  <details><summary>${buildTitle(check)}</summary>
+  <details><summary>${title}</summary>
 
   ${buildBody(check)}
 
@@ -789,9 +814,13 @@ function buildMarkdown(check: Check<RunParamTypes>) {
 }
 
 function buildBody(check: Check<RunParamTypes>) {
+  const description = buildCheckDescription({ description: check.description });
   if (check.type === "query" || check.type === "query_diff") {
-    return `${buildDescription(check)}\n\n${buildQuery(check)}`;
+    const params = check.params;
+    const sqlTemplate =
+      params && "sql_template" in params ? params.sql_template : "";
+    return `${description}\n\n${formatSqlAsMarkdown({ sql: sqlTemplate })}`;
   }
 
-  return buildDescription(check);
+  return description;
 }
