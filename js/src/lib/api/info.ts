@@ -2,16 +2,12 @@
 // OSS-specific functions (not in library)
 // ============================================================================
 
-import type { LineageData, NodeColumnData } from "@datarecce/ui/api";
+import type { NodeColumnData } from "@datarecce/ui/api";
 import type { AxiosResponse } from "axios";
 import { axiosClient } from "./axiosClient";
 
-export interface LineageDiffResult {
-  base?: LineageData;
-  current?: LineageData;
-  base_error?: string;
-  current_error?: string;
-}
+// Re-export LineageDiffResult from library for convenience
+export type { LineageDiffResult } from "@datarecce/ui/api";
 
 export interface ModelInfoResult {
   model: {

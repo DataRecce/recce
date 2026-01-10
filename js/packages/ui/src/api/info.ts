@@ -96,6 +96,16 @@ export type LineageDiffData = Record<
 >;
 
 /**
+ * Lineage diff result from lineage_diff run type
+ */
+export interface LineageDiffResult {
+  base?: LineageData;
+  current?: LineageData;
+  base_error?: string;
+  current_error?: string;
+}
+
+/**
  * State metadata for recce state file
  */
 export interface StateMetadata {

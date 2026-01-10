@@ -67,6 +67,7 @@ export type {
   LineageData,
   LineageDataFromMetadata,
   LineageDiffData,
+  LineageDiffResult,
   ManifestMetadata,
   NodeColumnData,
   NodeData,
