@@ -7,8 +7,12 @@ import {
   submitQueryDiff,
   waitRun,
 } from "@datarecce/ui/api";
-import { useRecceServerFlag } from "@datarecce/ui/contexts";
+import {
+  useLineageGraphContext,
+  useRecceServerFlag,
+} from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
+import { colors } from "@datarecce/ui/theme";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
@@ -26,14 +30,12 @@ import { AiOutlineExperiment } from "react-icons/ai";
 import { IoClose } from "react-icons/io5";
 import { VscFeedback } from "react-icons/vsc";
 import { DiffEditor } from "@/components/editor";
-import { colors } from "@/components/ui/mui-theme";
 import {
   trackPreviewChange,
   trackPreviewChangeFeedback,
   trackSingleEnvironment,
 } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";

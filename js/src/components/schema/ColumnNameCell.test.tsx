@@ -1,11 +1,11 @@
 // js/src/components/schema/ColumnNameCell.test.tsx
 
 import type { NodeData } from "@datarecce/ui/api";
+import { theme } from "@datarecce/ui/theme";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";
 import React from "react";
-import { lightTheme as theme } from "@/components/ui/mui-theme";
 import { SchemaDiffRow } from "@/lib/dataGrid/generators/toSchemaDataGrid";
 import { ColumnNameCell } from "./ColumnNameCell";
 

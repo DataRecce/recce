@@ -15,7 +15,10 @@ import {
   updateCheck,
 } from "@datarecce/ui/api";
 import { toaster } from "@datarecce/ui/components/ui";
-import { useRecceInstanceContext } from "@datarecce/ui/contexts";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+} from "@datarecce/ui/contexts";
 import { useClipBoardToast, useIsDark } from "@datarecce/ui/hooks";
 import {
   buildCheckDescription,
@@ -68,7 +71,6 @@ import { trackCopyToClipboard } from "@/lib/api/track";
 import { type Run, type RunParamTypes } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceCheckContext } from "@/lib/hooks/CheckContextAdapter";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useRun } from "@/lib/hooks/useRun";

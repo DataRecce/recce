@@ -1,6 +1,10 @@
 import type { ManifestMetadata } from "@datarecce/ui/api";
-import { useRecceInstanceContext } from "@datarecce/ui/contexts";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+} from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
+import { colors } from "@datarecce/ui/theme";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
@@ -10,8 +14,6 @@ import React, { useMemo } from "react";
 import { FaPlay } from "react-icons/fa6";
 import { extractSchemas, formatTimeToNow } from "@/components/app/EnvInfo";
 import { CodeEditor } from "@/components/editor";
-import { colors } from "@/components/ui/mui-theme";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 
 export interface SqlEditorProps {
   language?: string;

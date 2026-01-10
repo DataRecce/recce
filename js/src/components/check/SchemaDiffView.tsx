@@ -5,6 +5,7 @@ import {
   getIconForResourceType,
   type IconComponent,
 } from "@datarecce/ui/components/lineage";
+import { useLineageGraphContext } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import List from "@mui/material/List";
@@ -14,7 +15,6 @@ import type { ComponentType } from "react";
 import React, { forwardRef, useMemo, useState } from "react";
 import type { IconType } from "react-icons";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { type DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 import { LineageGraphNode } from "../lineage/lineage";
 import { findByRunType } from "../run/registry";

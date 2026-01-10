@@ -1,5 +1,8 @@
 import { createSchemaDiffCheck } from "@datarecce/ui/api";
-import { useRecceInstanceContext } from "@datarecce/ui/contexts";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+} from "@datarecce/ui/contexts";
 import { formatSelectColumns } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -20,7 +23,6 @@ import {
   trackPreviewChange,
 } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";

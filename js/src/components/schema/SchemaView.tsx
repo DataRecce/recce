@@ -1,4 +1,5 @@
 import type { NodeData } from "@datarecce/ui/api";
+import { useLineageGraphContext } from "@datarecce/ui/contexts";
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import type {
@@ -21,7 +22,6 @@ import {
   SchemaDiffRow,
   SchemaRow,
 } from "@/lib/dataGrid";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import {
   type DataGridHandle,
   EmptyRowsRenderer,

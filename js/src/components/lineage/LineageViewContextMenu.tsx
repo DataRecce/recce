@@ -1,5 +1,6 @@
 import { type SubmitRunTrackProps } from "@datarecce/ui/api";
 import {
+  useLineageGraphContext,
   useRecceInstanceContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
@@ -19,7 +20,6 @@ import {
   trackExploreAction,
   trackLineageSelection,
 } from "@/lib/api/track";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";

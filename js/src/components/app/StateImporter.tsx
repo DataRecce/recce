@@ -1,6 +1,10 @@
 import { cacheKeys, importState } from "@datarecce/ui/api";
 import { toaster } from "@datarecce/ui/components/ui";
-import { useRecceInstanceContext } from "@datarecce/ui/contexts";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+  useRunsAggregated,
+} from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -19,10 +23,6 @@ import { IoClose } from "react-icons/io5";
 import { PiInfo } from "react-icons/pi";
 import { trackStateAction } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import {
-  useLineageGraphContext,
-  useRunsAggregated,
-} from "@/lib/hooks/LineageGraphAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { IconImport } from "../icons";
 

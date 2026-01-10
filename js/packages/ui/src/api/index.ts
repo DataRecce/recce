@@ -175,6 +175,7 @@ export type {
   RowDataTypes,
   RowObjectType,
   Run,
+  RunParamTypes,
   RunProgress,
   RunStatus,
   RunType,

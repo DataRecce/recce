@@ -1,3 +1,7 @@
+import {
+  type EnvInfo as EnvInfoType,
+  useLineageGraphContext,
+} from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -26,8 +30,6 @@ import {
   type EnvironmentConfigProps,
   trackEnvironmentConfig,
 } from "@/lib/api/track";
-import type { EnvInfo as EnvInfoType } from "@/lib/hooks/LineageGraphAdapter";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { IconInfo } from "../icons";
 
 export function formatTimestamp(timestamp: string): string {

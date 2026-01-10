@@ -78,6 +78,9 @@ jest.mock("@datarecce/ui/contexts", () => ({
     },
     sessionId: "session-123",
   }),
+  useLineageGraphContext: () => ({
+    cloudMode: false,
+  }),
 }));
 
 // Mock API config

@@ -6,11 +6,11 @@
  * ResultView components in isolation.
  */
 
+import { theme as lightTheme } from "@datarecce/ui/theme";
 import { ThemeProvider } from "@mui/material/styles";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type RenderOptions, render } from "@testing-library/react";
 import React, { type ReactNode } from "react";
-import { lightTheme } from "@/components/ui/mui-theme";
 
 // ============================================================================
 // AG Grid Mock

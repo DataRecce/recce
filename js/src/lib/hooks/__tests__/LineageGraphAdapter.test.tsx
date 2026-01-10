@@ -145,9 +145,12 @@ afterAll(() => {
 });
 
 import { aggregateRuns, getServerInfo } from "@datarecce/ui/api";
-import { useLineageGraphContext } from "@datarecce/ui/contexts";
+import {
+  useLineageGraphContext,
+  useRunsAggregated,
+} from "@datarecce/ui/contexts";
 import { buildLineageGraph } from "@/components/lineage/lineage";
-import { LineageGraphAdapter, useRunsAggregated } from "../LineageGraphAdapter";
+import { LineageGraphAdapter } from "../LineageGraphAdapter";
 
 const mockGetServerInfo = getServerInfo as jest.MockedFunction<
   typeof getServerInfo

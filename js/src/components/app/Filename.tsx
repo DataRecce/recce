@@ -6,7 +6,10 @@ import {
   useChecks,
 } from "@datarecce/ui/api";
 import { toaster } from "@datarecce/ui/components/ui";
-import { useRecceInstanceContext } from "@datarecce/ui/contexts";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+} from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
@@ -25,7 +28,6 @@ import { AxiosError } from "axios";
 import React, { useEffect, useRef, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { IconEdit, IconSave } from "../icons";
 import { formatRunDateTime } from "../run/RunStatusAndDate";
 

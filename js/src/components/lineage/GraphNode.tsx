@@ -20,6 +20,7 @@ import {
   type NodeChangeStatus,
   type SelectMode,
 } from "@datarecce/ui/components/lineage";
+import { useLineageGraphContext } from "@datarecce/ui/contexts";
 import { useThemeColors } from "@datarecce/ui/hooks";
 import { deltaPercentageString } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
@@ -30,7 +31,6 @@ import MuiTooltip from "@mui/material/Tooltip";
 import { type NodeProps, useStore } from "@xyflow/react";
 import { memo } from "react";
 import { PiInfo, PiWarning } from "react-icons/pi";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { findByRunType } from "../run/registry";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 import { COLUMN_HEIGHT, type LineageGraphNode } from "./lineage";

@@ -1,4 +1,5 @@
 import { cacheKeys, cancelRun, waitRun } from "@datarecce/ui/api";
+import { useRunsAggregated } from "@datarecce/ui/contexts";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -9,7 +10,6 @@ import {
 // Import Run from OSS types for proper discriminated union support with type guards
 import type { Run } from "@/lib/api/types";
 import { useApiConfig } from "./ApiConfigContext";
-import { useRunsAggregated } from "./LineageGraphAdapter";
 
 interface UseRunResult {
   run?: Run;

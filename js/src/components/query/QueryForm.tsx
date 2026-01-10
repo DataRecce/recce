@@ -1,4 +1,5 @@
 import type { NodeColumnData } from "@datarecce/ui/api";
+import { useLineageGraphContext } from "@datarecce/ui/contexts";
 import { DropdownValuesInput } from "@datarecce/ui/primitives";
 import Box, { type BoxProps } from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
@@ -6,7 +7,6 @@ import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMemo } from "react";
 import { PiInfo } from "react-icons/pi";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 
 interface QueryFormProps extends BoxProps {
   defaultPrimaryKeys: string[] | undefined;

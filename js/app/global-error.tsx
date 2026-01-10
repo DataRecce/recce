@@ -10,9 +10,9 @@
 
 "use client";
 
+import { colors } from "@datarecce/ui/theme";
 import * as Sentry from "@sentry/nextjs";
 import { useEffect, useState } from "react";
-import { colors } from "@/components/ui/mui-theme";
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };

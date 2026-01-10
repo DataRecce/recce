@@ -1,10 +1,9 @@
 import type { NodeColumnData, NodeData } from "@datarecce/ui/api";
+import { useLineageGraphContext } from "@datarecce/ui/contexts";
 import _ from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LineageGraphNode } from "@/components/lineage/lineage";
 import { getModelInfo } from "../api/info";
-
-import { useLineageGraphContext } from "./LineageGraphAdapter";
 
 export function extractColumns(node: LineageGraphNode) {
   function getColumns(nodeData: NodeData | undefined) {

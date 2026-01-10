@@ -63,12 +63,15 @@ import {
 } from "@datarecce/ui/api";
 import { getIconForChangeStatus } from "@datarecce/ui/components/lineage";
 import { toaster } from "@datarecce/ui/components/ui";
-import { useRecceInstanceContext } from "@datarecce/ui/contexts";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+} from "@datarecce/ui/contexts";
 import { useClipBoardToast, useThemeColors } from "@datarecce/ui/hooks";
+import { colors } from "@datarecce/ui/theme";
 import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { FiCopy } from "react-icons/fi";
-import { colors } from "@/components/ui/mui-theme";
 import {
   type LineageViewRenderProps,
   trackCopyToClipboard,
@@ -76,7 +79,6 @@ import {
   trackMultiNodesAction,
 } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import {
   IGNORE_SCREENSHOT_CLASS,
