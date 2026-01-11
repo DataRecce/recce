@@ -1,7 +1,7 @@
 import { NodeSqlView as BaseNodeSqlView } from "@datarecce/ui/components/lineage";
 import { useRecceServerFlag } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
-import { CodeEditor, DiffEditor } from "@/components/editor";
+import { CodeEditor, DiffEditor } from "@datarecce/ui/primitives";
 import type { LineageGraphNode } from "./lineage";
 
 interface NodeSqlViewProps {

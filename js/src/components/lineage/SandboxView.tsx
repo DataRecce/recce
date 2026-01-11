@@ -12,6 +12,7 @@ import {
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
+import { DiffEditor } from "@datarecce/ui/primitives";
 import { colors } from "@datarecce/ui/theme";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -29,7 +30,6 @@ import React, { useState } from "react";
 import { AiOutlineExperiment } from "react-icons/ai";
 import { IoClose } from "react-icons/io5";
 import { VscFeedback } from "react-icons/vsc";
-import { DiffEditor } from "@/components/editor";
 import {
   trackPreviewChange,
   trackPreviewChangeFeedback,

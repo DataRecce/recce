@@ -27,8 +27,8 @@ jest.mock("@datarecce/ui/hooks", () => ({
   useIsDark: jest.fn(() => false),
 }));
 
-// Mock editor components
-jest.mock("@/components/editor", () => ({
+// Mock editor components from @datarecce/ui/primitives
+jest.mock("@datarecce/ui/primitives", () => ({
   CodeEditor: ({
     value,
     language,

@@ -224,6 +224,14 @@ export {
 // EDITOR PRIMITIVES
 // =============================================================================
 
+// Code editor (CodeMirror based code editing)
+export {
+  CodeEditor,
+  type CodeEditorLanguage,
+  type CodeEditorProps,
+  type CodeEditorTheme,
+} from "./components/editor/CodeEditor";
+
 // Diff editor (CodeMirror merge view for text diffs)
 export {
   DiffEditor,

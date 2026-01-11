@@ -8,6 +8,7 @@ import {
 } from "@datarecce/ui/api";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
+import { CodeEditor } from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
@@ -34,7 +35,6 @@ import {
 import { TbCloudUpload } from "react-icons/tb";
 import YAML from "yaml";
 import AuthModal from "@/components/AuthModal/AuthModal";
-import { CodeEditor } from "@/components/editor";
 import { trackCopyToClipboard, trackShareState } from "@/lib/api/track";
 import { Run, RunParamTypes } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";

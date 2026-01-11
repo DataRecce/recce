@@ -1,12 +1,17 @@
+/**
+ * @deprecated Import directly from @datarecce/ui/primitives instead.
+ *
+ * These re-exports exist for backwards compatibility.
+ * The canonical editor components are now in @datarecce/ui.
+ */
+
 export {
   CodeEditor,
   type CodeEditorLanguage,
   type CodeEditorProps,
   type CodeEditorTheme,
-} from "./CodeEditor";
-export {
   DiffEditor,
   type DiffEditorLanguage,
   type DiffEditorProps,
   type DiffEditorTheme,
-} from "./DiffEditor";
+} from "@datarecce/ui/primitives";

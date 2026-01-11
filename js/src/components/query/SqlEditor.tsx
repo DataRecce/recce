@@ -4,6 +4,7 @@ import {
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
+import { CodeEditor } from "@datarecce/ui/primitives";
 import { colors } from "@datarecce/ui/theme";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -13,7 +14,6 @@ import Typography from "@mui/material/Typography";
 import React, { useMemo } from "react";
 import { FaPlay } from "react-icons/fa6";
 import { extractSchemas, formatTimeToNow } from "@/components/app/EnvInfo";
-import { CodeEditor } from "@/components/editor";
 
 export interface SqlEditorProps {
   language?: string;
