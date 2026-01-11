@@ -1,5 +1,6 @@
 "use client";
 
+import { buildLineageGraph } from "@datarecce/ui";
 import {
   aggregateRuns,
   cacheKeys,
@@ -31,7 +32,6 @@ import React, {
   useState,
 } from "react";
 import { IoClose } from "react-icons/io5";
-import { buildLineageGraph } from "@/components/lineage/lineage";
 import {
   RecceInstanceDisconnectedModalContent,
   ServerDisconnectedModalContent,

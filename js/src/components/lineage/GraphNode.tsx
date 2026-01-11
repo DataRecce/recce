@@ -12,7 +12,7 @@
  */
 
 import type { LineageGraphNode } from "@datarecce/ui";
-import { isSchemaChanged } from "@datarecce/ui";
+import { COLUMN_HEIGHT, isSchemaChanged } from "@datarecce/ui";
 import { isRowCountDiffRun, type RowCountDiff } from "@datarecce/ui/api";
 import {
   type ChangeCategory,
@@ -34,7 +34,6 @@ import { memo } from "react";
 import { PiInfo, PiWarning } from "react-icons/pi";
 import { findByRunType } from "../run/registry";
 import { useLineageViewContextSafe } from "./LineageViewContext";
-import { COLUMN_HEIGHT } from "./lineage";
 
 // =============================================================================
 // TYPES

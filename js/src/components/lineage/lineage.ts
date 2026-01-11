@@ -1,8 +1,6 @@
 import dagre from "@dagrejs/dagre";
 import {
-  buildLineageGraph,
   COLUMN_HEIGHT,
-  isLineageGraphColumnNode,
   isLineageGraphNode,
   type LineageGraph,
   type LineageGraphColumnNode,
@@ -10,21 +8,9 @@ import {
   type LineageGraphNode,
   type LineageGraphNodes,
   type NodeColumnSetMap,
-  selectDownstream,
-  selectUpstream,
 } from "@datarecce/ui";
 import type { ColumnLineageData } from "@datarecce/ui/api";
 import { Position } from "@xyflow/react";
-
-// Re-export functions from @datarecce/ui
-export {
-  buildLineageGraph,
-  COLUMN_HEIGHT,
-  isLineageGraphColumnNode,
-  isLineageGraphNode,
-  selectDownstream,
-  selectUpstream,
-};
 
 export function toReactFlow(
   lineageGraph: LineageGraph,

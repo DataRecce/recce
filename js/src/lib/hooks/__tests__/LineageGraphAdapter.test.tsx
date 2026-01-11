@@ -38,21 +38,25 @@ jest.mock("@datarecce/ui/components/ui", () => ({
   },
 }));
 
-jest.mock("@/components/lineage/lineage", () => ({
-  buildLineageGraph: jest.fn((base, current, diff) => ({
-    nodes: {},
-    edges: {},
-    modifiedSet: [],
-    manifestMetadata: {
-      base: base?.manifest_metadata,
-      current: current?.manifest_metadata,
-    },
-    catalogMetadata: {
-      base: base?.catalog_metadata,
-      current: current?.catalog_metadata,
-    },
-  })),
-}));
+jest.mock("@datarecce/ui", () => {
+  const actual = jest.requireActual("@datarecce/ui");
+  return {
+    ...actual,
+    buildLineageGraph: jest.fn((base, current, diff) => ({
+      nodes: {},
+      edges: {},
+      modifiedSet: [],
+      manifestMetadata: {
+        base: base?.manifest_metadata,
+        current: current?.manifest_metadata,
+      },
+      catalogMetadata: {
+        base: base?.catalog_metadata,
+        current: current?.catalog_metadata,
+      },
+    })),
+  };
+});
 
 // Mock the hooks from @datarecce/ui/contexts (except LineageGraphProvider which is the real thing)
 const mockUseIdleTimeout = jest.fn(() => ({
@@ -144,12 +148,12 @@ afterAll(() => {
   global.WebSocket = originalWebSocket;
 });
 
+import { buildLineageGraph } from "@datarecce/ui";
 import { aggregateRuns, getServerInfo } from "@datarecce/ui/api";
 import {
   useLineageGraphContext,
   useRunsAggregated,
 } from "@datarecce/ui/contexts";
-import { buildLineageGraph } from "@/components/lineage/lineage";
 import { LineageGraphAdapter } from "../LineageGraphAdapter";
 
 const mockGetServerInfo = getServerInfo as jest.MockedFunction<

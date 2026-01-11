@@ -3,6 +3,7 @@ import type {
   LineageGraphNode,
   LineageGraphNodes,
 } from "@datarecce/ui";
+import { isLineageGraphColumnNode, isLineageGraphNode } from "@datarecce/ui";
 import { type SubmitRunTrackProps } from "@datarecce/ui/api";
 import {
   useLineageGraphContext,
@@ -32,7 +33,6 @@ import useModelColumns from "@/lib/hooks/useModelColumns";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { findByRunType } from "../run/registry";
 import { useLineageViewContextSafe } from "./LineageViewContext";
-import { isLineageGraphColumnNode, isLineageGraphNode } from "./lineage";
 
 interface LineageViewContextMenuProps<T> {
   x: number;

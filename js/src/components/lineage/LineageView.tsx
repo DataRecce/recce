@@ -5,6 +5,12 @@ import type {
   LineageGraphNodes,
   NodeColumnSetMap,
 } from "@datarecce/ui";
+import {
+  isLineageGraphColumnNode,
+  isLineageGraphNode,
+  selectDownstream,
+  selectUpstream,
+} from "@datarecce/ui";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -37,14 +43,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import {
-  isLineageGraphColumnNode,
-  isLineageGraphNode,
-  layout,
-  selectDownstream,
-  selectUpstream,
-  toReactFlow,
-} from "./lineage";
+import { layout, toReactFlow } from "./lineage";
 import "@xyflow/react/dist/style.css";
 import "./styles.css";
 import { HSplit, union } from "@datarecce/ui";

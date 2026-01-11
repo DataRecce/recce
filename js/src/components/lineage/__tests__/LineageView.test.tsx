@@ -54,16 +54,16 @@ import type {
   LineageGraphEdge,
   LineageGraphNode,
 } from "@datarecce/ui";
-import type { LineageDataFromMetadata } from "@datarecce/ui/api";
-import React from "react";
 import {
   buildLineageGraph,
   isLineageGraphColumnNode,
   isLineageGraphNode,
   selectDownstream,
   selectUpstream,
-  toReactFlow,
-} from "../lineage";
+} from "@datarecce/ui";
+import type { LineageDataFromMetadata } from "@datarecce/ui/api";
+import React from "react";
+import { toReactFlow } from "../lineage";
 
 // ============================================================================
 // Test Fixtures
