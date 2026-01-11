@@ -1,14 +1,5 @@
-import { type LineageViewContextType } from "@datarecce/ui";
+import type { LineageViewContextType } from "@datarecce/ui";
 import { createContext, useContext } from "react";
-
-// Re-export types from @datarecce/ui for backward compatibility
-export type {
-  ActionMode,
-  ActionState,
-  LineageViewContextType,
-  NodeAction,
-  SelectMode,
-} from "@datarecce/ui";
 
 export const LineageViewContext = createContext<
   LineageViewContextType | undefined

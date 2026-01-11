@@ -1,4 +1,4 @@
-import type { LineageGraphNode } from "@datarecce/ui";
+import type { ActionState, LineageGraphNode } from "@datarecce/ui";
 import {
   cancelRun,
   createLineageDiffCheck,
@@ -20,7 +20,6 @@ import {
 import type { Run } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
-import { ActionState } from "./LineageViewContext";
 
 const initValue: ActionState = {
   mode: "per_node",

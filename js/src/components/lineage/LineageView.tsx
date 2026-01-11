@@ -46,6 +46,7 @@ import React, {
 import { layout, toReactFlow } from "./lineage";
 import "@xyflow/react/dist/style.css";
 import "./styles.css";
+import type { LineageViewContextType } from "@datarecce/ui";
 import { HSplit, union } from "@datarecce/ui";
 import type { Check } from "@datarecce/ui/api";
 import {
@@ -95,10 +96,7 @@ import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
 import { GraphColumnNode } from "./GraphColumnNode";
 import GraphEdge from "./GraphEdge";
 import { GraphNode } from "./GraphNode";
-import {
-  LineageViewContext,
-  LineageViewContextType,
-} from "./LineageViewContext";
+import { LineageViewContext } from "./LineageViewContext";
 import {
   LineageViewContextMenu,
   useLineageViewContextMenu,

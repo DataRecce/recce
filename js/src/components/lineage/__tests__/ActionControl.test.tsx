@@ -26,12 +26,9 @@ jest.mock("../LineageViewContext", () => ({
 // Imports
 // ============================================================================
 
+import type { ActionState, LineageViewContextType } from "@datarecce/ui";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { ActionControl } from "../ActionControl";
-import type {
-  ActionState,
-  LineageViewContextType,
-} from "../LineageViewContext";
 import { useLineageViewContextSafe } from "../LineageViewContext";
 
 // ============================================================================
