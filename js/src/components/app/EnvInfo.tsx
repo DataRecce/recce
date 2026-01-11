@@ -1,3 +1,4 @@
+import type { LineageGraph } from "@datarecce/ui";
 import {
   type EnvInfo as EnvInfoType,
   useLineageGraphContext,
@@ -25,7 +26,6 @@ import { isEmpty } from "lodash";
 import React, { useEffect, useRef, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { LuExternalLink } from "react-icons/lu";
-import { LineageGraph } from "@/components/lineage/lineage";
 import {
   type EnvironmentConfigProps,
   trackEnvironmentConfig,

@@ -16,16 +16,6 @@ import {
 import type { ColumnLineageData } from "@datarecce/ui/api";
 import { Position } from "@xyflow/react";
 
-// Re-export types from @datarecce/ui
-export type {
-  LineageGraph,
-  LineageGraphColumnNode,
-  LineageGraphEdge,
-  LineageGraphNode,
-  LineageGraphNodes,
-  NodeColumnSetMap,
-};
-
 // Re-export functions from @datarecce/ui
 export {
   buildLineageGraph,

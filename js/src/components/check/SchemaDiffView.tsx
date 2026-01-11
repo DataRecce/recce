@@ -1,3 +1,4 @@
+import type { LineageGraphNode } from "@datarecce/ui";
 import { HSplit, isSchemaChanged } from "@datarecce/ui";
 import { type Check, cacheKeys, select } from "@datarecce/ui/api";
 import {
@@ -16,7 +17,6 @@ import React, { forwardRef, useMemo, useState } from "react";
 import type { IconType } from "react-icons";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { type DataGridHandle } from "../data-grid/ScreenshotDataGrid";
-import { LineageGraphNode } from "../lineage/lineage";
 import { findByRunType } from "../run/registry";
 import { SchemaView } from "../schema/SchemaView";
 

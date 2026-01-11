@@ -1,3 +1,4 @@
+import type { LineageGraph } from "@datarecce/ui";
 import type { NodeData } from "@datarecce/ui/api";
 import {
   IconAdded,
@@ -14,7 +15,6 @@ import Typography from "@mui/material/Typography";
 import { ReactNode } from "react";
 import { FiInfo } from "react-icons/fi";
 import { token } from "@/components/ui/mui-theme";
-import { LineageGraph } from "../lineage/lineage";
 
 export type ChangeStatus =
   // node change

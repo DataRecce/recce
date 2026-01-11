@@ -1,3 +1,10 @@
+import type {
+  LineageGraphColumnNode,
+  LineageGraphEdge,
+  LineageGraphNode,
+  LineageGraphNodes,
+  NodeColumnSetMap,
+} from "@datarecce/ui";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -33,12 +40,7 @@ import React, {
 import {
   isLineageGraphColumnNode,
   isLineageGraphNode,
-  LineageGraphColumnNode,
-  LineageGraphEdge,
-  LineageGraphNode,
-  LineageGraphNodes,
   layout,
-  NodeColumnSetMap,
   selectDownstream,
   selectUpstream,
   toReactFlow,

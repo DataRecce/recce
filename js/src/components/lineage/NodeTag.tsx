@@ -1,3 +1,4 @@
+import type { LineageGraphNode } from "@datarecce/ui";
 import { type RowCount, type RowCountDiff } from "@datarecce/ui/api";
 import { getIconForResourceType } from "@datarecce/ui/components/lineage";
 import {
@@ -17,7 +18,6 @@ import { PiRepeat } from "react-icons/pi";
 import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { findByRunType } from "../run/registry";
-import { LineageGraphNode } from "./lineage";
 
 // Reusable tag styles - accepts isDark parameter
 const getTagRootSx = (isDark: boolean) => ({

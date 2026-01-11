@@ -1,3 +1,4 @@
+import type { LineageGraphNode } from "@datarecce/ui";
 import { createSchemaDiffCheck } from "@datarecce/ui/api";
 import {
   useLineageGraphContext,
@@ -33,7 +34,6 @@ import {
 } from "../onboarding-guide/Notification";
 import { findByRunType } from "../run/registry";
 import { SchemaView, SingleEnvSchemaView } from "../schema/SchemaView";
-import { LineageGraphNode } from "./lineage";
 import { NodeSqlView } from "./NodeSqlView";
 import { ResourceTypeTag, RowCountDiffTag, RowCountTag } from "./NodeTag";
 import { SandboxView } from "./SandboxView";

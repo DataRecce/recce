@@ -97,11 +97,11 @@ jest.mock("@datarecce/ui/primitives", () => ({
 // Imports
 // ============================================================================
 
+import type { LineageGraphNode } from "@datarecce/ui";
 import { useRecceServerFlag } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { LineageGraphNode } from "../lineage";
 import { NodeSqlView } from "../NodeSqlView";
 
 // ============================================================================

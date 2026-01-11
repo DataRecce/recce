@@ -49,13 +49,13 @@ jest.mock("@xyflow/react", () => ({
 // Imports
 // ============================================================================
 
-import type { LineageDataFromMetadata } from "@datarecce/ui/api";
-import React from "react";
 import type {
   LineageGraph,
   LineageGraphEdge,
   LineageGraphNode,
-} from "../lineage";
+} from "@datarecce/ui";
+import type { LineageDataFromMetadata } from "@datarecce/ui/api";
+import React from "react";
 import {
   buildLineageGraph,
   isLineageGraphColumnNode,

@@ -81,6 +81,7 @@ jest.mock("@datarecce/ui/components/lineage", () => {
 // Imports
 // ============================================================================
 
+import type { LineageGraphColumnNode } from "@datarecce/ui";
 import {
   getIconForChangeStatus,
   LineageColumnNode,
@@ -91,7 +92,6 @@ import { useStore } from "@xyflow/react";
 import React from "react";
 import { GraphColumnNode } from "../GraphColumnNode";
 import { useLineageViewContextSafe } from "../LineageViewContext";
-import type { LineageGraphColumnNode } from "../lineage";
 
 // ============================================================================
 // Test Fixtures

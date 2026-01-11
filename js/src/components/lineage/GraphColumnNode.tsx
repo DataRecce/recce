@@ -11,6 +11,7 @@
  * Migration: Phase 3 of lineage component migration plan
  */
 
+import type { LineageGraphColumnNode } from "@datarecce/ui";
 import {
   LineageColumnNode,
   type LineageColumnNodeData,
@@ -19,9 +20,7 @@ import { useThemeColors } from "@datarecce/ui/hooks";
 import type { NodeProps } from "@xyflow/react";
 import { useStore } from "@xyflow/react";
 import { type MouseEvent, memo } from "react";
-
 import { useLineageViewContextSafe } from "./LineageViewContext";
-import type { LineageGraphColumnNode } from "./lineage";
 
 // =============================================================================
 // TYPES

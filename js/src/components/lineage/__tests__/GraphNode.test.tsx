@@ -115,6 +115,7 @@ jest.mock("@/components/ui/mui-theme", () => ({
 // Imports
 // ============================================================================
 
+import type { LineageGraphNode } from "@datarecce/ui";
 import { LineageNode } from "@datarecce/ui/components/lineage";
 import { useLineageGraphContext } from "@datarecce/ui/contexts";
 import { useThemeColors } from "@datarecce/ui/hooks";
@@ -123,7 +124,6 @@ import { useStore } from "@xyflow/react";
 import React from "react";
 import { GraphNode, type GraphNodeProps } from "../GraphNode";
 import { useLineageViewContextSafe } from "../LineageViewContext";
-import type { LineageGraphNode } from "../lineage";
 
 // Cast the mocked LineageNode for assertions
 const mockedLineageNode = LineageNode as unknown as jest.Mock;
