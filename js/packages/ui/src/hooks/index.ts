@@ -6,3 +6,8 @@
 export { useClipBoardToast } from "./useClipBoardToast";
 export { useIsDark } from "./useIsDark";
 export { type ThemeColors, useThemeColors } from "./useThemeColors";
+export {
+  type UseValueDiffAlertDialogOptions,
+  type UseValueDiffAlertDialogReturn,
+  useValueDiffAlertDialog,
+} from "./useValueDiffAlertDialog";

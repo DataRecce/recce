@@ -10,6 +10,9 @@ export type {
   LineageViewRef,
 } from "./lineage";
 export { LineageCanvas, LineageView } from "./lineage";
+// Notification components
+export type { NotificationProps } from "./notifications";
+export { LineageViewNotification } from "./notifications";
 // UI primitives
 export type { DiffTextProps, SplitProps, SquareIconProps } from "./ui";
 export { DiffText, HSplit, SquareIcon, VSplit } from "./ui";
