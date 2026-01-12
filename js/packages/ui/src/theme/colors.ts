@@ -256,3 +256,73 @@ export type ColorShade =
  * Type for semantic color variants
  */
 export type SemanticColorVariant = "light" | "main" | "dark" | "contrastText";
+
+/**
+ * Semantic variant mappings from Chakra-style tokens to scale values
+ * These map semantic names to numeric scale values in the color palette
+ *
+ * Used during Chakra UI -> MUI migration to translate Chakra token paths
+ * like "colors.green.solid" to actual color values
+ */
+export const semanticVariantMap: Record<string, number> = {
+  solid: 600, // Dark, for text/icons
+  subtle: 50, // Light, for backgrounds
+  muted: 200, // Slightly muted
+  emphasized: 500, // Standard emphasis
+  focusRing: 400, // Focus ring color
+  light: 300, // Light variant
+};
+
+/**
+ * Token lookup function to mimic Chakra UI's token API
+ *
+ * This utility function translates Chakra-style token paths to actual
+ * color values from the color palette. Used during migration from
+ * Chakra UI to MUI.
+ *
+ * @param path - Token path like "colors.green.solid" or "colors.neutral.500"
+ * @returns The hex color value, or undefined if not found
+ *
+ * @example
+ * token("colors.green.solid") // => "#16A34A"
+ * token("colors.neutral.500") // => "#737373"
+ * token("colors.orange.400")  // => "#FBBF24" (maps orange to amber)
+ */
+export function token(path: string): string | undefined {
+  const parts = path.split(".");
+
+  // Handle "colors.X.Y" paths
+  if (parts[0] === "colors" && parts.length >= 3) {
+    let colorName = parts[1];
+    const variant = parts[2];
+
+    // Apply color aliases (e.g., orange -> amber, gray -> neutral)
+    if (colorName in colorAliases) {
+      colorName = colorAliases[colorName];
+    }
+
+    // Handle "colors.white" and other special cases
+    if (colorName === "white") return colors.white;
+    if (colorName === "black") return colors.black;
+
+    // Try base colors
+    if (colorName in colors) {
+      const color = colors[colorName as keyof typeof colors];
+
+      // First check for numeric scale (e.g., "500")
+      if (typeof color === "object" && variant in color) {
+        return (color as Record<string, string>)[variant];
+      }
+
+      // Then check for semantic variant mapping (e.g., "solid" -> 600)
+      if (variant in semanticVariantMap) {
+        const scaleValue = semanticVariantMap[variant];
+        if (typeof color === "object" && scaleValue in color) {
+          return (color as Record<string, string>)[scaleValue];
+        }
+      }
+    }
+  }
+
+  return undefined;
+}

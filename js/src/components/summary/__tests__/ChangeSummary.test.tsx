@@ -1,45 +1,21 @@
 /**
- * @file ChangeSummary.simplified.test.tsx
- * @description Simplified tests for ChangeSummary component focusing on rendering and basic functionality
+ * @file ChangeSummary.test.tsx
+ * @description Tests for ChangeSummary component focusing on rendering and basic functionality
  *
  * Tests verify:
  * - Component renders without errors
  * - Displays correct section titles and labels
  * - Handles various data scenarios gracefully
- * - Icons are rendered correctly
+ * - Icons are rendered correctly (real SVG icons)
  *
- * Source of truth: OSS functionality - these tests document current behavior before migration
+ * Source of truth: @datarecce/ui implementation - OSS re-exports from there
  */
 
 // ============================================================================
 // Mocks
 // ============================================================================
 
-jest.mock("@datarecce/ui", () => ({
-  ...jest.requireActual("@datarecce/ui"),
-}));
-
-jest.mock("@datarecce/ui/api", () => ({
-  ...jest.requireActual("@datarecce/ui/api"),
-}));
-
-jest.mock("@datarecce/ui/components/lineage", () => ({
-  IconAdded: () => <span data-testid="icon-added">Added</span>,
-  IconRemoved: () => <span data-testid="icon-removed">Removed</span>,
-  IconModified: () => <span data-testid="icon-modified">Modified</span>,
-  IconChanged: () => <span data-testid="icon-changed">Changed</span>,
-}));
-
-jest.mock("@/components/ui/mui-theme", () => ({
-  token: jest.fn((path: string) => {
-    const tokens: Record<string, string> = {
-      "colors.green.solid": "#22c55e",
-      "colors.red.solid": "#ef4444",
-      "colors.amber.emphasized": "#f59e0b",
-    };
-    return tokens[path] || "#000000";
-  }),
-}));
+// No mocks needed - uses real @datarecce/ui implementation
 
 // ============================================================================
 // Imports
@@ -166,12 +142,13 @@ describe("ChangeSummary (Simplified)", () => {
 
     it("renders icons for each change type", () => {
       const lineageGraph = createMockLineageGraph([]);
-      render(<ChangeSummary lineageGraph={lineageGraph} />);
+      const { container } = render(
+        <ChangeSummary lineageGraph={lineageGraph} />,
+      );
 
-      // 2 of each: one for code changes, one for column changes
-      expect(screen.getAllByTestId("icon-added")).toHaveLength(2);
-      expect(screen.getAllByTestId("icon-removed")).toHaveLength(2);
-      expect(screen.getAllByTestId("icon-modified")).toHaveLength(2);
+      // Icons are SVG elements - 6 icons total (3 for code changes, 3 for column changes)
+      const svgIcons = container.querySelectorAll("svg");
+      expect(svgIcons.length).toBe(6);
     });
   });
 

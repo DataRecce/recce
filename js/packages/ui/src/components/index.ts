@@ -30,6 +30,20 @@ export type {
   RowCountRun,
 } from "./rowcount";
 export { RowCountDiffResultView, RowCountResultView } from "./rowcount";
+// Summary components
+export type {
+  ChangeStatus,
+  ChangeSummaryProps,
+  ChangeSummaryResult,
+  ColumnChangeResult,
+} from "./summary";
+export {
+  calculateChangeSummary,
+  calculateColumnChange,
+  ChangeSummary,
+  getIconForChangeStatus,
+  NODE_CHANGE_STATUS_MSGS,
+} from "./summary";
 // Top-K diff result views
 export type { TopKDiffResultViewProps, TopKDiffRun } from "./top-k";
 export { TopKDiffResultView } from "./top-k";

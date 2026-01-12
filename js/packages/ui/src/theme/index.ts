@@ -31,5 +31,7 @@ export {
   colorAliases,
   colors,
   type SemanticColorVariant,
+  semanticVariantMap,
+  token,
 } from "./colors";
 export { type RecceTheme, theme } from "./theme";
