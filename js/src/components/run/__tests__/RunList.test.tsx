@@ -86,7 +86,7 @@ jest.mock("../registry", () => ({
 
 // Mock RunStatusAndDate
 jest.mock("../RunStatusAndDate", () => ({
-  RunStatusAndDate: ({ run }: { run: any }) => (
+  RunStatusAndDate: ({ run }: { run: { status: string } }) => (
     <div data-testid="run-status">{run.status}</div>
   ),
   formatRunDate: jest.fn((date: Date | null) => {
@@ -402,7 +402,10 @@ describe("RunList", () => {
 
       await waitFor(() => {
         const runElement = screen.getByText("Clickable Run");
-        fireEvent.click(runElement.closest("div[role='button']")!);
+        const clickTarget = runElement.closest("div[role='button']");
+        if (clickTarget) {
+          fireEvent.click(clickTarget);
+        }
       });
 
       expect(jest.fn()).toHaveBeenCalledWith(run.run_id, false);
@@ -652,7 +655,7 @@ describe("RunList", () => {
 
       renderWithQueryClient(<RunList />);
 
-      await waitFor(async () => {
+      await waitFor(() => {
         const button = screen.getByRole("button", {
           name: /Add to Checklist/i,
         });

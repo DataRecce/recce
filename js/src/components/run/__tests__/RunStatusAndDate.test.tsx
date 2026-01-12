@@ -229,7 +229,7 @@ describe("RunStatusAndDate", () => {
   describe("status colors", () => {
     it("applies green color for finished status", () => {
       const run = createMockRun("finished");
-      const { container } = render(<RunStatusAndDate run={run as Run} />);
+      render(<RunStatusAndDate run={run as Run} />);
 
       const statusText = screen.getByText("Finished");
       expect(statusText).toBeInTheDocument();
@@ -238,7 +238,7 @@ describe("RunStatusAndDate", () => {
 
     it("applies red color for failed status", () => {
       const run = createMockRun("failed");
-      const { container } = render(<RunStatusAndDate run={run as Run} />);
+      render(<RunStatusAndDate run={run as Run} />);
 
       const statusText = screen.getByText("Failed");
       expect(statusText).toBeInTheDocument();
@@ -246,7 +246,7 @@ describe("RunStatusAndDate", () => {
 
     it("applies blue color for running status", () => {
       const run = createMockRun("running");
-      const { container } = render(<RunStatusAndDate run={run as Run} />);
+      render(<RunStatusAndDate run={run as Run} />);
 
       const statusText = screen.getByText("Running");
       expect(statusText).toBeInTheDocument();
@@ -254,7 +254,7 @@ describe("RunStatusAndDate", () => {
 
     it("applies gray color for cancelled status", () => {
       const run = createMockRun("cancelled");
-      const { container } = render(<RunStatusAndDate run={run as Run} />);
+      render(<RunStatusAndDate run={run as Run} />);
 
       const statusText = screen.getByText("Cancelled");
       expect(statusText).toBeInTheDocument();

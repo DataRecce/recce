@@ -90,7 +90,7 @@ jest.mock("../../run/RunStatusAndDate", () => ({
 
 import { toaster } from "@datarecce/ui/components/ui";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { AxiosError } from "axios";
+import { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import React from "react";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { Filename } from "../Filename";
@@ -706,7 +706,7 @@ describe("Filename", () => {
         data: { detail: "File already exists" },
         statusText: "Conflict",
         headers: {},
-        config: {} as unknown,
+        config: {} as InternalAxiosRequestConfig<unknown>,
       };
       mockSaveAs.mockRejectedValue(conflictError);
       mockRename.mockRejectedValue(conflictError);
@@ -773,7 +773,7 @@ describe("Filename", () => {
         data: { detail: "File already exists" },
         statusText: "Conflict",
         headers: {},
-        config: {} as unknown,
+        config: {} as InternalAxiosRequestConfig<unknown>,
       };
       mockSaveAs
         .mockRejectedValueOnce(conflictError)
@@ -836,7 +836,7 @@ describe("Filename", () => {
         data: { detail: "File already exists" },
         statusText: "Conflict",
         headers: {},
-        config: {} as unknown,
+        config: {} as InternalAxiosRequestConfig<unknown>,
       };
       mockSaveAs
         .mockRejectedValueOnce(conflictError)
@@ -942,7 +942,7 @@ describe("Filename", () => {
         data: { detail: "Internal server error" },
         statusText: "Error",
         headers: {},
-        config: {} as unknown,
+        config: {} as InternalAxiosRequestConfig<unknown>,
       };
       mockSaveAs.mockRejectedValue(axiosError);
 

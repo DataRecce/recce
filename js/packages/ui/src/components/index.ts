@@ -38,9 +38,9 @@ export type {
   ColumnChangeResult,
 } from "./summary";
 export {
+  ChangeSummary,
   calculateChangeSummary,
   calculateColumnChange,
-  ChangeSummary,
   getIconForChangeStatus,
   NODE_CHANGE_STATUS_MSGS,
 } from "./summary";

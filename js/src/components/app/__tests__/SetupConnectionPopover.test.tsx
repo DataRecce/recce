@@ -31,6 +31,19 @@ import React from "react";
 import SetupConnectionPopover from "../SetupConnectionPopover";
 
 // ============================================================================
+// Test Helpers
+// ============================================================================
+
+/** Helper to safely get parentElement - throws if null (fails test) */
+function getParentElement(element: HTMLElement): HTMLElement {
+  const parent = element.parentElement;
+  if (!parent) {
+    throw new Error("Expected element to have a parentElement");
+  }
+  return parent;
+}
+
+// ============================================================================
 // Test Setup
 // ============================================================================
 
@@ -108,7 +121,7 @@ describe("SetupConnectionPopover", () => {
       );
 
       const button = screen.getByText("Test Button");
-      fireEvent.mouseEnter(button.parentElement!);
+      fireEvent.mouseEnter(getParentElement(button));
 
       await waitFor(() => {
         expect(
@@ -140,7 +153,7 @@ describe("SetupConnectionPopover", () => {
       );
 
       const button = screen.getByText("Test Button");
-      fireEvent.mouseEnter(button.parentElement!);
+      fireEvent.mouseEnter(getParentElement(button));
 
       await waitFor(() => {
         expect(
@@ -148,7 +161,7 @@ describe("SetupConnectionPopover", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.mouseLeave(button.parentElement!);
+      fireEvent.mouseLeave(getParentElement(button));
 
       // Popover should still be visible before timeout
       expect(
@@ -175,7 +188,7 @@ describe("SetupConnectionPopover", () => {
       );
 
       const button = screen.getByText("Test Button");
-      const wrapper = button.parentElement!;
+      const wrapper = getParentElement(button);
 
       // Initial hover
       fireEvent.mouseEnter(wrapper);
@@ -214,7 +227,7 @@ describe("SetupConnectionPopover", () => {
       );
 
       const button = screen.getByText("Test Button");
-      fireEvent.mouseEnter(button.parentElement!);
+      fireEvent.mouseEnter(getParentElement(button));
 
       await waitFor(() => {
         expect(
@@ -223,7 +236,7 @@ describe("SetupConnectionPopover", () => {
       });
 
       // Mouse leaves button
-      fireEvent.mouseLeave(button.parentElement!);
+      fireEvent.mouseLeave(getParentElement(button));
 
       // But mouse enters popover content
       const popoverContent =
@@ -261,7 +274,7 @@ describe("SetupConnectionPopover", () => {
       );
 
       const button = screen.getByText("Test Button");
-      fireEvent.mouseEnter(button.parentElement!);
+      fireEvent.mouseEnter(getParentElement(button));
 
       await waitFor(() => {
         expect(
@@ -271,8 +284,9 @@ describe("SetupConnectionPopover", () => {
     });
 
     it("displays connection setup message", () => {
+      // Text includes "Learn more" link, so use regex for partial match
       expect(
-        screen.getByText("Connect to a data warehouse to unlock Diff."),
+        screen.getByText(/Connect to a data warehouse to unlock Diff/),
       ).toBeInTheDocument();
     });
 
@@ -381,7 +395,7 @@ describe("SetupConnectionPopover", () => {
       );
 
       const button = screen.getByText("Test Button");
-      fireEvent.mouseEnter(button.parentElement!);
+      fireEvent.mouseEnter(getParentElement(button));
 
       await waitFor(() => {
         expect(
@@ -428,7 +442,7 @@ describe("SetupConnectionPopover", () => {
       );
 
       const button = screen.getByText("Test Button");
-      const wrapper = button.parentElement!;
+      const wrapper = getParentElement(button);
 
       // Rapid enter/leave cycles
       for (let i = 0; i < 5; i++) {
@@ -454,8 +468,8 @@ describe("SetupConnectionPopover", () => {
       );
 
       const button = screen.getByText("Test Button");
-      fireEvent.mouseEnter(button.parentElement!);
-      fireEvent.mouseLeave(button.parentElement!);
+      fireEvent.mouseEnter(getParentElement(button));
+      fireEvent.mouseLeave(getParentElement(button));
 
       // Unmount before timeout fires
       unmount();
@@ -476,7 +490,7 @@ describe("SetupConnectionPopover", () => {
       expect(container).toBeInTheDocument();
     });
 
-    it("handles multiple children", async () => {
+    it("handles multiple children", () => {
       render(
         <SetupConnectionPopover display={true}>
           <div>
@@ -497,7 +511,7 @@ describe("SetupConnectionPopover", () => {
         </SetupConnectionPopover>,
       );
 
-      const button = screen.getByText("Test Button");
+      let button = screen.getByText("Test Button");
       fireEvent.mouseEnter(button);
 
       // Should not show popover
@@ -512,7 +526,9 @@ describe("SetupConnectionPopover", () => {
         </SetupConnectionPopover>,
       );
 
-      fireEvent.mouseEnter(button.parentElement!);
+      // Re-query button after rerender since DOM has changed
+      button = screen.getByText("Test Button");
+      fireEvent.mouseEnter(getParentElement(button));
 
       // Now should show popover
       await waitFor(() => {
@@ -536,7 +552,7 @@ describe("SetupConnectionPopover", () => {
       );
 
       const button = screen.getByText("Test Button");
-      fireEvent.mouseEnter(button.parentElement!);
+      fireEvent.mouseEnter(getParentElement(button));
 
       await waitFor(() => {
         expect(
@@ -564,7 +580,7 @@ describe("SetupConnectionPopover", () => {
       );
 
       const button = screen.getByText("Test Button");
-      fireEvent.mouseEnter(button.parentElement!);
+      fireEvent.mouseEnter(getParentElement(button));
 
       await waitFor(() => {
         expect(
@@ -585,7 +601,7 @@ describe("SetupConnectionPopover", () => {
       );
 
       const button = screen.getByText("Test Button");
-      fireEvent.mouseEnter(button.parentElement!);
+      fireEvent.mouseEnter(getParentElement(button));
 
       await waitFor(() => {
         expect(
