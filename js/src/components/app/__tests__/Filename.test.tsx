@@ -79,8 +79,8 @@ jest.mock("../../icons", () => ({
   IconSave: () => <span data-testid="save-icon">Save</span>,
 }));
 
-// Mock run components
-jest.mock("../../run/RunStatusAndDate", () => ({
+// Mock primitives for formatRunDateTime
+jest.mock("@datarecce/ui/primitives", () => ({
   formatRunDateTime: jest.fn((date) => date.toISOString()),
 }));
 

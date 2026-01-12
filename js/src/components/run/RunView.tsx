@@ -1,196 +1,140 @@
+/**
+ * @file run/RunView.tsx
+ * @description OSS wrapper for RunView component with Sentry error boundary injection.
+ *
+ * This thin wrapper imports the base RunView from @datarecce/ui and injects
+ * OSS-specific dependencies:
+ * - ErrorBoundary: Sentry error boundary for error tracking
+ * - ResultErrorFallback: Error fallback component for run results
+ *
+ * @example
+ * ```tsx
+ * import { RunView } from "@/components/run/RunView";
+ * import { QueryResultView } from "./QueryResultView";
+ *
+ * function MyComponent() {
+ *   return (
+ *     <RunView
+ *       run={run}
+ *       isRunning={isRunning}
+ *       RunResultView={QueryResultView}
+ *       onCancel={handleCancel}
+ *     />
+ *   );
+ * }
+ * ```
+ */
+
 import type { Run } from "@datarecce/ui/api";
-import { useIsDark } from "@datarecce/ui/hooks";
-import MuiAlert from "@mui/material/Alert";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import CircularProgress from "@mui/material/CircularProgress";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import React, { forwardRef } from "react";
-import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
+import type { RunResultViewProps } from "@datarecce/ui/components/run";
 import {
-  RefTypes,
-  RegistryEntry,
-  ViewOptionTypes,
-} from "@/components/run/registry";
+  RunView as BaseRunView,
+  type RunViewProps as BaseRunViewProps,
+} from "@datarecce/ui/components/run";
+import type { ReactNode, Ref } from "react";
+import { forwardRef } from "react";
+import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
 import ResultErrorFallback from "@/lib/result/ResultErrorFallback";
-import { RunResultViewProps } from "./types";
+import type { RefTypes, RegistryEntry, ViewOptionTypes } from "./registry";
 
-// Define an error type
-interface ApiError {
-  response?: {
-    data?: {
-      detail?: string;
-    };
-  };
-}
+// ============================================================================
+// Types
+// ============================================================================
 
-interface RunViewProps<VO = ViewOptionTypes> {
+/**
+ * OSS-specific RunView props using OSS types for backward compatibility.
+ *
+ * @typeParam VO - View options type (defaults to ViewOptionTypes union)
+ */
+export interface RunViewProps<VO = ViewOptionTypes> {
+  /** Whether a run is currently executing */
   isRunning?: boolean;
+
+  /** The run object containing execution state and results */
   run?: Run;
+
+  /** Error that occurred during run execution */
   error?: Error | null;
+
+  /** Progress information for the current run */
   progress?: Run["progress"];
+
+  /** Whether the run is being aborted */
   isAborting?: boolean;
+
+  /**
+   * Whether this is a check detail view.
+   * @deprecated This prop may be removed in future versions.
+   */
   isCheckDetail?: boolean;
+
+  /** Callback when user cancels the run */
   onCancel?: () => void;
+
+  /** Callback to execute/re-execute the run */
   onExecuteRun?: () => void;
+
+  /** Current view options for result display */
   viewOptions?: VO;
+
+  /** Callback when view options change */
   onViewOptionsChanged?: (viewOptions: VO) => void;
-  RunResultView?: RegistryEntry["RunResultView"] | undefined;
-  children?: (params: RunResultViewProps) => React.ReactNode;
+
+  /**
+   * Component to render run results.
+   * Either RunResultView or children is required.
+   */
+  RunResultView?: RegistryEntry["RunResultView"];
+
+  /**
+   * Render prop for custom result rendering.
+   * Either RunResultView or children is required.
+   */
+  children?: (params: RunResultViewProps<ViewOptionTypes>) => ReactNode;
 }
 
-export const RunView = forwardRef(
-  (
-    {
-      isRunning,
-      isAborting,
-      progress,
-      error,
-      run,
-      onCancel,
-      viewOptions,
-      onViewOptionsChanged,
-      RunResultView,
-      children,
-      onExecuteRun,
-    }: RunViewProps,
-    ref: React.Ref<RefTypes>,
-  ) => {
-    const isDark = useIsDark();
-    const errorMessage =
-      (error as ApiError | undefined)?.response?.data?.detail ?? run?.error;
+// ============================================================================
+// Component
+// ============================================================================
 
-    if (errorMessage) {
-      return (
-        <MuiAlert severity="error">
-          Error: <span className="no-track-pii-safe">{errorMessage}</span>
-        </MuiAlert>
-      );
-    }
+/**
+ * OSS RunView component with Sentry error boundary pre-injected.
+ *
+ * This is a thin wrapper around the base RunView from @datarecce/ui that
+ * injects OSS-specific error handling via Sentry.
+ *
+ * States:
+ * 1. **Error state**: Shows error message from API response or run.error
+ * 2. **Running state**: Shows loading spinner with progress and cancel button
+ * 3. **Loading state**: Shows spinner when run is undefined
+ * 4. **Result state**: Renders RunResultView or children with run results,
+ *    wrapped in Sentry error boundary for crash reporting
+ *
+ * @example
+ * ```tsx
+ * const ref = useRef<DataGridHandle>(null);
+ *
+ * <RunView
+ *   ref={ref}
+ *   run={run}
+ *   RunResultView={QueryResultView}
+ *   viewOptions={viewOptions}
+ *   onViewOptionsChanged={setViewOptions}
+ * />
+ * ```
+ */
+export const RunView = forwardRef<RefTypes, RunViewProps>(
+  function RunView(props, ref) {
+    // Cast to base props for compatibility
+    const baseProps: BaseRunViewProps = {
+      ...props,
+      ErrorBoundary,
+      errorBoundaryFallback: ResultErrorFallback,
+    };
 
-    if (isRunning ?? run?.status === "running") {
-      let loadingMessage = "Loading...";
-      if (progress?.message) {
-        loadingMessage = progress.message;
-      } else if (run?.progress?.message) {
-        loadingMessage = run.progress.message;
-      }
-
-      const progressValue =
-        progress?.percentage != null ? progress.percentage * 100 : undefined;
-
-      return (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            p: "1rem",
-            height: "100%",
-            bgcolor: isDark ? "grey.900" : "grey.50",
-          }}
-        >
-          <Stack spacing={2} alignItems="center">
-            <Stack direction="row" alignItems="center" spacing={1}>
-              {progressValue == null ? (
-                <CircularProgress size={32} />
-              ) : (
-                <Box sx={{ position: "relative", display: "inline-flex" }}>
-                  <CircularProgress
-                    variant="determinate"
-                    value={progressValue}
-                    size={32}
-                  />
-                  <Box
-                    sx={{
-                      top: 0,
-                      left: 0,
-                      bottom: 0,
-                      right: 0,
-                      position: "absolute",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Typography
-                      variant="caption"
-                      component="div"
-                      sx={{ fontSize: "0.6rem" }}
-                    >
-                      {`${Math.round(progressValue)}%`}
-                    </Typography>
-                  </Box>
-                </Box>
-              )}
-
-              {isAborting ? (
-                <Typography>Aborting...</Typography>
-              ) : (
-                <Typography className="no-track-pii-safe">
-                  {loadingMessage}
-                </Typography>
-              )}
-            </Stack>
-            {!isAborting && (
-              <Button variant="contained" onClick={onCancel} size="small">
-                Cancel
-              </Button>
-            )}
-          </Stack>
-        </Box>
-      );
-    }
-
-    if (!run) {
-      return (
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            bgcolor: isDark ? "grey.900" : "grey.50",
-            height: "100%",
-          }}
-        >
-          <CircularProgress size={32} />
-        </Box>
-      );
-    }
-
-    if (children && RunResultView) {
-      throw new Error(
-        "RunView requires either a children or a RunResultView prop, but not both.",
-      );
-    }
-    if (!children && !RunResultView) {
-      throw new Error(
-        "RunView requires at least one of children or RunResultView prop.",
-      );
-    }
-
-    return (
-      <Box
-        sx={{
-          height: "100%",
-          contain: "layout",
-          overflow: "auto",
-        }}
-        className="no-track-pii-safe"
-      >
-        {RunResultView && (run.error ?? run.result) && (
-          <ErrorBoundary fallback={ResultErrorFallback}>
-            <RunResultView
-              ref={ref}
-              run={run}
-              viewOptions={viewOptions}
-              onViewOptionsChanged={onViewOptionsChanged}
-            />
-          </ErrorBoundary>
-        )}
-        {children?.({ run, viewOptions, onViewOptionsChanged })}
-      </Box>
-    );
+    return <BaseRunView {...baseProps} ref={ref as Ref<unknown>} />;
   },
 );
+
+// Set display name for debugging
+RunView.displayName = "RunView";

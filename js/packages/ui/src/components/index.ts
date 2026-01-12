@@ -3,9 +3,13 @@
 // Components barrel export
 // Re-exports all UI components from @datarecce/ui
 
-// Histogram result views
+// Histogram components
 export type { HistogramDiffRun, HistogramResultViewProps } from "./histogram";
-export { HistogramDiffResultView } from "./histogram";
+export {
+  HistogramDiffForm,
+  HistogramDiffResultView,
+  supportsHistogramDiff,
+} from "./histogram";
 // Lineage visualization components
 export type {
   LineageCanvasProps,
@@ -16,13 +20,37 @@ export { LineageCanvas, LineageView } from "./lineage";
 // Notification components
 export type { NotificationProps } from "./notifications";
 export { LineageViewNotification } from "./notifications";
-// Profile result views
+// Profile result views and forms
 export type {
+  ProfileDiffFormParams,
   ProfileDiffRun,
   ProfileResultViewProps,
   ProfileRun,
 } from "./profile";
-export { ProfileDiffResultView, ProfileResultView } from "./profile";
+export {
+  ProfileDiffForm,
+  ProfileDiffResultView,
+  ProfileResultView,
+} from "./profile";
+// Query components
+export type {
+  DualSqlEditorProps,
+  QueryDiffResultViewProps,
+  QueryDiffViewOptions,
+  QueryFormProps,
+  QueryResultViewProps,
+  QueryViewOptions,
+  SetupConnectionGuideProps,
+  SqlEditorProps,
+} from "./query";
+export {
+  DualSqlEditor,
+  QueryDiffResultView,
+  QueryForm,
+  QueryResultView,
+  SetupConnectionGuide,
+  SqlEditor,
+} from "./query";
 // Row count result views
 export type {
   RowCountDiffRun,
@@ -30,6 +58,41 @@ export type {
   RowCountRun,
 } from "./rowcount";
 export { RowCountDiffResultView, RowCountResultView } from "./rowcount";
+export type {
+  IconComponent,
+  PartialRunTypeRegistry,
+  RunFormProps,
+  RunListItemData,
+  RunListItemProps,
+  RunListProps,
+  RunProgressOverlayProps,
+  RunProgressProps,
+  RunProgressVariant,
+  RunResultViewProps,
+  RunResultViewRef,
+  RunStatus,
+  RunStatusBadgeProps,
+  RunStatusWithDateProps,
+  RunToolbarProps,
+  RunTypeConfig,
+  RunTypeRegistry,
+} from "./run";
+// Run primitives and registry
+export {
+  createBoundFindByRunType,
+  createRunTypeRegistry,
+  defaultRunTypeConfig,
+  findByRunType,
+  formatRunDate,
+  formatRunDateTime,
+  RunList,
+  RunListItem,
+  RunProgress,
+  RunProgressOverlay,
+  RunStatusBadge,
+  RunStatusWithDate,
+  RunToolbar,
+} from "./run";
 // Summary components
 export type {
   ChangeStatus,
@@ -44,9 +107,9 @@ export {
   getIconForChangeStatus,
   NODE_CHANGE_STATUS_MSGS,
 } from "./summary";
-// Top-K diff result views
+// Top-K diff components
 export type { TopKDiffResultViewProps, TopKDiffRun } from "./top-k";
-export { TopKDiffResultView } from "./top-k";
+export { TopKDiffForm, TopKDiffResultView } from "./top-k";
 // UI primitives
 export type {
   ChangedOnlyCheckboxProps,
@@ -66,13 +129,20 @@ export {
   ToggleSwitch,
   VSplit,
 } from "./ui";
-// Value diff result views
+// Value diff result views and forms
 export type {
   ValueDiffDetailResultViewProps,
   ValueDiffDetailRun,
   ValueDiffDetailViewOptions,
+  ValueDiffFormParams,
+  ValueDiffResultViewProps,
+  ValueDiffRun,
 } from "./valuediff";
-export { ValueDiffDetailResultView } from "./valuediff";
+export {
+  ValueDiffDetailResultView,
+  ValueDiffForm,
+  ValueDiffResultView,
+} from "./valuediff";
 // High-level view components (Layer 3)
 export type {
   ChecksViewProps,

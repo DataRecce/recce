@@ -43,8 +43,8 @@ jest.mock("@/components/data-grid/ScreenshotDataGrid", () => ({
   ),
 }));
 
-// Mock RunToolbar
-jest.mock("../run/RunToolbar", () => ({
+// Mock RunToolbar from @datarecce/ui/primitives
+jest.mock("@datarecce/ui/primitives", () => ({
   RunToolbar: jest.fn(
     ({
       children,

@@ -6,6 +6,12 @@
 export { useClipBoardToast } from "./useClipBoardToast";
 export { useIsDark } from "./useIsDark";
 export {
+  extractColumns,
+  type UseModelColumnsReturn,
+  unionColumns,
+  useModelColumns,
+} from "./useModelColumns";
+export {
   type MultiNodesActionCallbacks,
   type MultiNodesActionTracking,
   type MultiNodesActionTrackProps,

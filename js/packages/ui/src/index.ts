@@ -11,6 +11,7 @@ export type {
   LineageDataFromMetadata,
   LineageDiffData,
   ManifestMetadata,
+  ModelInfoResult,
   NodeColumnData,
   NodeData,
   PullRequestInfo,
@@ -26,6 +27,7 @@ export {
   aggregateRuns,
   cacheKeys,
   getLastKeepAliveTime,
+  getModelInfo,
   getRecceInstanceInfo,
   getServerFlag,
   getServerInfo,
@@ -154,10 +156,18 @@ export type {
   MultiNodesActionTrackProps,
   MultiNodesActionType,
   ThemeColors,
+  UseModelColumnsReturn,
   UseMultiNodesActionOptions,
   UseMultiNodesActionReturn,
 } from "./hooks";
-export { useIsDark, useMultiNodesAction, useThemeColors } from "./hooks";
+export {
+  extractColumns,
+  unionColumns,
+  useIsDark,
+  useModelColumns,
+  useMultiNodesAction,
+  useThemeColors,
+} from "./hooks";
 // Provider (main entry point) and Hooks - from providers module
 export type {
   Check,
@@ -188,4 +198,10 @@ export {
 export type { Theme } from "./theme";
 export { colors, theme } from "./theme";
 // Utils - utility functions for data manipulation and formatting
-export { deltaPercentageString, isSchemaChanged } from "./utils";
+export {
+  deltaPercentageString,
+  extractSchemas,
+  formatTimestamp,
+  formatTimeToNow,
+  isSchemaChanged,
+} from "./utils";

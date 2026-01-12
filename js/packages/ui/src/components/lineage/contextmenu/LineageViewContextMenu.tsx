@@ -42,7 +42,6 @@ import Divider from "@mui/material/Divider";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import { type ReactNode, useState } from "react";
-import type { IconType } from "react-icons";
 import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
 import { FaRegDotCircle } from "react-icons/fa";
 import type { CllInput } from "../../../api/cll";
@@ -55,6 +54,7 @@ import {
   type LineageGraphNodes,
 } from "../../../contexts/lineage/types";
 import { formatSelectColumns } from "../../../utils/formatSelect";
+import type { IconComponent } from "../../run/types";
 
 // ============================================================================
 // Types
@@ -86,7 +86,7 @@ export interface LineageSelectionTrackProps {
  */
 export interface RunTypeMetadata {
   title: string;
-  icon: IconType;
+  icon: IconComponent;
 }
 
 /**

@@ -266,10 +266,16 @@ jest.mock("./LineageDiffView", () => ({
   ),
 }));
 
-jest.mock("../query/SqlEditor", () => ({
+jest.mock("@datarecce/ui/components/query", () => ({
   __esModule: true,
-  default: () => <div data-testid="sql-editor">SQL Editor</div>,
+  SqlEditor: () => <div data-testid="sql-editor">SQL Editor</div>,
   DualSqlEditor: () => <div data-testid="dual-sql-editor">Dual SQL Editor</div>,
+  QueryForm: () => <div data-testid="query-form">Query Form</div>,
+  QueryResultView: () => <div data-testid="query-result">Query Result</div>,
+  QueryDiffResultView: () => (
+    <div data-testid="query-diff-result">Query Diff Result</div>
+  ),
+  SetupConnectionGuide: () => <div data-testid="setup-guide">Setup Guide</div>,
 }));
 
 jest.mock("./PresetCheckTemplateView", () => ({

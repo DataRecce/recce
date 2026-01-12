@@ -21,9 +21,9 @@ import {
   type ProfileDiffViewOptions,
 } from "@datarecce/ui/api";
 import { DiffDisplayModeSwitch } from "@datarecce/ui/components/ui";
+import { RunToolbar } from "@datarecce/ui/primitives";
 import { createResultView } from "@datarecce/ui/result";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
-import { RunToolbar } from "../run/RunToolbar";
 
 // Re-export types from @datarecce/ui for API compatibility
 export type {
@@ -187,7 +187,7 @@ export const ProfileDiffResultView = createResultView<
 
     // OSS-specific header with RunToolbar and DiffDisplayModeSwitch
     const header = (
-      <RunToolbar run={run}>
+      <RunToolbar>
         <DiffDisplayModeSwitch
           displayMode={displayMode}
           onDisplayModeChanged={(mode) => {

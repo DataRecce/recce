@@ -35,6 +35,7 @@ jest.mock("@datarecce/ui/api", () => {
     isQueryDiffRun: jest.fn(
       (run: Record<string, unknown>) => run.type === "query_diff",
     ),
+    runTypeHasRef: jest.fn(() => true),
   };
 });
 
@@ -154,10 +155,10 @@ jest.mock("@/components/onboarding-guide/Notification", () => ({
   ),
 }));
 
-// Mock SqlEditor
-jest.mock("@/components/query/SqlEditor", () => ({
+// Mock SqlEditor from @datarecce/ui
+jest.mock("@datarecce/ui/components/query", () => ({
   __esModule: true,
-  default: ({ value }: { value: string }) => (
+  SqlEditor: ({ value }: { value: string }) => (
     <div data-testid="sql-editor">{value}</div>
   ),
   DualSqlEditor: ({
@@ -174,19 +175,256 @@ jest.mock("@/components/query/SqlEditor", () => ({
   ),
 }));
 
-// Mock RunView
-jest.mock("../RunView", () => ({
-  RunView: ({ run }: { run: any }) => (
-    <div data-testid="run-view">RunView: {run?.run_id}</div>
-  ),
-}));
+// Mock @datarecce/ui/components/run - the base RunResultPane
+jest.mock("@datarecce/ui/components/run", () => {
+  // Import types for proper typing
+  const React = require("react");
 
-// Mock RunStatusAndDate
-jest.mock("../RunStatusAndDate", () => ({
-  RunStatusAndDate: ({ run }: { run: any }) => (
-    <div data-testid="run-status">Status: {run.status}</div>
-  ),
-}));
+  // Create mock RunResultPane that mimics the real component's interface
+  const MockRunResultPane = ({
+    runId,
+    run,
+    isRunning,
+    error,
+    viewOptions,
+    onViewOptionsChanged,
+    isSingleEnvironment,
+    disableDatabaseQuery,
+    disableShare,
+    disableUpdateChecklist,
+    onClose,
+    onCancel,
+    onRerun,
+    onCopyAsImage,
+    onCopyMouseEnter,
+    onCopyMouseLeave,
+    csvExport,
+    authed,
+    onShareToCloud,
+    onShowAuthModal,
+    onGoToCheck,
+    onAddToChecklist,
+    SingleEnvironmentNotification,
+    SqlEditorComponent,
+    DualSqlEditorComponent,
+    AuthModalComponent,
+    RunResultView,
+    resultViewRef,
+  }: any) => {
+    const [tabValue, setTabValue] = React.useState("result");
+    const [showNotification, setShowNotification] = React.useState(true);
+    const [menuOpen, setMenuOpen] = React.useState(false);
+
+    const isQuery =
+      run?.type === "query" ||
+      run?.type === "query_diff" ||
+      run?.type === "query_base";
+    const disableCopyToClipboard =
+      !runId || !run?.result || !!error || tabValue !== "result";
+    const checkId = run?.check_id;
+
+    return React.createElement("div", { className: "MuiBox-root" }, [
+      // Single environment notification
+      isSingleEnvironment &&
+        showNotification &&
+        SingleEnvironmentNotification &&
+        React.createElement(SingleEnvironmentNotification, {
+          key: "notification",
+          runType: run?.type,
+          onClose: () => setShowNotification(false),
+        }),
+      // Header with tabs
+      React.createElement("div", { key: "header", className: "MuiBox-root" }, [
+        React.createElement(
+          "div",
+          { key: "tabs", className: "MuiTabs-root", role: "tablist" },
+          [
+            React.createElement(
+              "button",
+              {
+                key: "result-tab",
+                role: "tab",
+                "aria-selected": tabValue === "result",
+                onClick: () => setTabValue("result"),
+              },
+              "Result",
+            ),
+            React.createElement(
+              "button",
+              {
+                key: "params-tab",
+                role: "tab",
+                "aria-selected": tabValue === "params",
+                onClick: () => setTabValue("params"),
+              },
+              "Params",
+            ),
+            isQuery &&
+              React.createElement(
+                "button",
+                {
+                  key: "query-tab",
+                  role: "tab",
+                  "aria-selected": tabValue === "query",
+                  onClick: () => setTabValue("query"),
+                },
+                "Query",
+              ),
+          ],
+        ),
+        // Status display
+        run &&
+          React.createElement(
+            "div",
+            {
+              key: "status",
+              "data-testid": "run-status",
+            },
+            `Status: ${run.status}`,
+          ),
+        // Rerun button
+        React.createElement(
+          "button",
+          {
+            key: "rerun",
+            disabled: !runId || isRunning || disableDatabaseQuery,
+            onClick: onRerun,
+          },
+          "Rerun",
+        ),
+        // Share/Export button - clicking opens menu
+        disableShare
+          ? React.createElement(
+              "button",
+              { key: "export", onClick: () => setMenuOpen(true) },
+              "Export",
+            )
+          : React.createElement(
+              "button",
+              { key: "share", onClick: () => setMenuOpen(true) },
+              "Share",
+            ),
+        // Menu items - visible when menuOpen is true
+        menuOpen &&
+          React.createElement("div", { key: "menu", role: "menu" }, [
+            React.createElement(
+              "div",
+              {
+                key: "copy-image",
+                role: "menuitem",
+                "aria-disabled": disableCopyToClipboard,
+              },
+              "Copy as Image",
+            ),
+            React.createElement(
+              "div",
+              {
+                key: "copy-csv",
+                role: "menuitem",
+                "aria-disabled":
+                  disableCopyToClipboard || !csvExport?.canExportCSV,
+              },
+              "Copy as CSV",
+            ),
+            React.createElement(
+              "div",
+              {
+                key: "download-csv",
+                role: "menuitem",
+                "aria-disabled":
+                  disableCopyToClipboard || !csvExport?.canExportCSV,
+              },
+              "Download as CSV",
+            ),
+            !disableShare &&
+              (authed
+                ? React.createElement(
+                    "div",
+                    { key: "share-cloud", role: "menuitem" },
+                    "Share to Cloud",
+                  )
+                : React.createElement(
+                    "div",
+                    { key: "share-item", role: "menuitem" },
+                    "Share",
+                  )),
+          ]),
+        // Add to Checklist button
+        !disableUpdateChecklist &&
+          (checkId
+            ? React.createElement(
+                "button",
+                {
+                  key: "go-to-check",
+                  disabled: !runId || !run?.result || !!error,
+                  onClick: () => onGoToCheck?.(checkId),
+                },
+                "Go to Check",
+              )
+            : React.createElement(
+                "button",
+                {
+                  key: "add-to-checklist",
+                  disabled: !runId || !run?.result || !!error,
+                  onClick: onAddToChecklist,
+                },
+                "Add to Checklist",
+              )),
+        // Close button
+        React.createElement(
+          "button",
+          { key: "close", onClick: onClose },
+          React.createElement("span", { "data-testid": "close-icon" }, "X"),
+        ),
+      ]),
+      // Tab content
+      tabValue === "result" &&
+        run &&
+        RunResultView &&
+        React.createElement(
+          "div",
+          { key: "result-content", "data-testid": "run-view" },
+          `RunView: ${run.run_id}`,
+        ),
+      tabValue === "params" &&
+        run &&
+        React.createElement(
+          "div",
+          { key: "params-content", "data-testid": "code-editor" },
+          JSON.stringify({ type: run.type, params: run.params }),
+        ),
+      tabValue === "query" &&
+        run &&
+        isQuery &&
+        run.params?.sql_template &&
+        (run.type === "query_diff" && DualSqlEditorComponent
+          ? React.createElement(DualSqlEditorComponent, {
+              key: "dual-sql-editor",
+              value: run.params.sql_template,
+              baseValue: run.params.base_sql_template,
+              readOnly: true,
+            })
+          : SqlEditorComponent
+            ? React.createElement(SqlEditorComponent, {
+                key: "sql-editor",
+                value: run.params.sql_template,
+                readOnly: true,
+              })
+            : React.createElement(
+                "div",
+                { key: "code-editor", "data-testid": "code-editor" },
+                run.params.sql_template,
+              )),
+    ]);
+  };
+
+  return {
+    RunResultPane: MockRunResultPane,
+    RunView: ({ run }: { run: any }) => (
+      <div data-testid="run-view">RunView: {run?.run_id}</div>
+    ),
+  };
+});
 
 // Mock registry
 jest.mock("../registry", () => ({

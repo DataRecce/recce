@@ -1,3 +1,16 @@
+"use client";
+
+/**
+ * @file ProfileDiffForm.tsx
+ * @description Form component for configuring profile diff parameters.
+ *
+ * This component allows users to:
+ * - View the model being profiled
+ * - Select specific columns to profile (or all columns)
+ *
+ * Uses the useModelColumns hook from @datarecce/ui/hooks to fetch column metadata.
+ */
+
 import Box from "@mui/material/Box";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
@@ -9,8 +22,8 @@ import ReactSelect, {
   type CSSObjectWithLabel,
   type MultiValue,
 } from "react-select";
-import useModelColumns from "@/lib/hooks/useModelColumns";
-import { RunFormProps } from "../run/types";
+import { useModelColumns } from "../../hooks";
+import type { RunFormProps } from "../run";
 
 interface ColumnOption {
   label: string;

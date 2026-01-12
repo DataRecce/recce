@@ -1,186 +1,74 @@
+"use client";
+
+/**
+ * @file run/RunList.tsx
+ * @description OSS wrapper for RunList that injects OSS-specific dependencies.
+ *
+ * This component wraps the @datarecce/ui RunList with:
+ * - Data fetching via React Query
+ * - OSS-specific tracking
+ * - Context integration (RecceActionContext, RecceInstanceContext)
+ * - Navigation and check creation
+ */
+
 import {
   cacheKeys,
   createCheckByRun,
   listRuns,
   type Run,
-  waitRun,
 } from "@datarecce/ui/api";
+import {
+  RunList as BaseRunList,
+  type RunListItemData,
+} from "@datarecce/ui/components/run";
 import {
   useRecceActionContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
-import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import React, { ReactNode, useCallback } from "react";
-import { IconType } from "react-icons";
+import { useCallback, useMemo } from "react";
 import { FaCheckCircle, FaRegCheckCircle } from "react-icons/fa";
-import SimpleBar from "simplebar-react";
-import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { findByRunType } from "../run/registry";
-import "simplebar/dist/simplebar.min.css";
-import { useIsDark } from "@datarecce/ui/hooks";
-import MuiTooltip from "@mui/material/Tooltip";
 import { PiX } from "react-icons/pi";
 import { trackHistoryAction } from "@/lib/api/track";
+import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
-import { formatRunDate, RunStatusAndDate } from "./RunStatusAndDate";
+import { findByRunType } from "./registry";
 
-const RunListItem = ({
-  run,
-  isSelected,
-  onSelectRun,
-  onAddToChecklist,
-  onGoToCheck,
-}: {
-  run: Run;
-  isSelected: boolean;
-  onSelectRun: (runId: string) => void;
-  onAddToChecklist: (runId: string) => void;
-  onGoToCheck: (checkId: string) => void;
-}) => {
-  const isDark = useIsDark();
+/**
+ * Transform API Run to RunListItemData for the UI component
+ */
+function mapRunToListItem(run: Run): RunListItemData {
+  return {
+    id: run.run_id,
+    name: run.name,
+    type: run.type,
+    // Default to "finished" if status is not set (shouldn't happen in practice)
+    status: run.status ?? "finished",
+    runAt: run.run_at,
+    checkId: run.check_id,
+  };
+}
+
+/**
+ * RunList Component - OSS wrapper
+ *
+ * Provides the History panel with run list, integrating with OSS-specific
+ * contexts, tracking, and navigation.
+ *
+ * @example
+ * ```tsx
+ * <RunList />
+ * ```
+ */
+export function RunList() {
+  const { closeHistory, showRunId, runId } = useRecceActionContext();
   const { featureToggles } = useRecceInstanceContext();
   const { apiClient } = useApiConfig();
-  const { data: fetchedRun } = useQuery({
-    queryKey: cacheKeys.run(run.run_id),
-    queryFn: async () => {
-      // Cast from library Run to OSS Run for discriminated union support
-      return (await waitRun(run.run_id, undefined, apiClient)) as Run;
-    },
-    enabled: run.status === "running",
-    retry: false,
-  });
+  const [, setLocation] = useAppLocation();
+  const queryClient = useQueryClient();
 
-  const IconComponent: IconType = findByRunType(run.type).icon;
-  const checkId = run.check_id;
-  const hideAddToChecklist = featureToggles.disableUpdateChecklist;
-
-  return (
-    <Box
-      sx={{
-        minWidth: "200px",
-        display: "flex",
-        flexDirection: "column",
-        width: "100%",
-        p: "5px 20px",
-        cursor: "pointer",
-        borderBottom: "solid 1px",
-        borderBottomColor: "divider",
-        borderLeft: "4px solid",
-        borderLeftColor: isSelected ? "amber.400" : "transparent",
-        backgroundColor: isSelected
-          ? isDark
-            ? "amber.900"
-            : "amber.50"
-          : "transparent",
-        "&:hover": {
-          bgcolor: isSelected
-            ? isDark
-              ? "amber.800"
-              : "orange.50"
-            : isDark
-              ? "grey.800"
-              : "grey.200",
-        },
-      }}
-      onClick={() => {
-        onSelectRun(run.run_id);
-      }}
-    >
-      <Box
-        sx={{ display: "flex", alignItems: "center", gap: "12px" }}
-        onClick={() => {
-          return void 0;
-        }}
-      >
-        <IconComponent />
-        <Box
-          className="no-track-pii-safe"
-          sx={{
-            flex: 1,
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            color: run.name ? "inherit" : "grey.500",
-            fontSize: "11pt",
-            fontWeight: 500,
-          }}
-        >
-          {(run.name ?? "").trim() || "<no name>"}
-        </Box>
-        {checkId ? (
-          <MuiTooltip title="Go to Check">
-            <Typography
-              component="span"
-              aria-label="Go to Check"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onGoToCheck(checkId);
-              }}
-            >
-              <FaCheckCircle color="green" />
-            </Typography>
-          </MuiTooltip>
-        ) : !hideAddToChecklist ? (
-          <MuiTooltip title="Add to Checklist">
-            <Typography
-              component="span"
-              aria-label="Add to Checklist"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                trackHistoryAction({ name: "add_to_checklist" });
-                onAddToChecklist(run.run_id);
-              }}
-            >
-              <FaRegCheckCircle />
-            </Typography>
-          </MuiTooltip>
-        ) : null}
-      </Box>
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "start",
-          fontSize: "11pt",
-          color: "grey.500",
-          gap: "3px",
-          alignItems: "center",
-        }}
-      >
-        <RunStatusAndDate run={fetchedRun ?? run} />
-      </Box>
-    </Box>
-  );
-};
-
-const DateSegmentItem = ({ runAt }: { runAt?: string }) => {
-  const dateTime = runAt ? formatRunDate(new Date(runAt)) : null;
-
-  return (
-    <Box
-      sx={{
-        minWidth: "200px",
-        width: "100%",
-        p: "5px 20px",
-        borderBottom: "solid 1px",
-        borderBottomColor: "divider",
-        color: "grey.500",
-        fontSize: "11pt",
-      }}
-    >
-      {dateTime}
-    </Box>
-  );
-};
-
-export const RunList = () => {
-  const { closeHistory } = useRecceActionContext();
-  const { apiClient } = useApiConfig();
+  // Fetch all runs
   const { data: runs, isLoading } = useQuery({
     queryKey: cacheKeys.runs(),
     queryFn: async () => {
@@ -190,103 +78,32 @@ export const RunList = () => {
     retry: false,
   });
 
-  return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <Stack
-        direction="row"
-        alignItems="center"
-        sx={{
-          width: "100%",
-          flex: "0 0 54px",
-          px: "24px 8px",
-          borderBottom: "solid 1px",
-          borderBottomColor: "divider",
-        }}
-      >
-        <Typography variant="h6">History</Typography>
-        <Box sx={{ flex: 1 }} />
-        <IconButton
-          aria-label="Close History"
-          onClick={() => {
-            trackHistoryAction({ name: "hide" });
-            closeHistory();
-          }}
-        >
-          <PiX />
-        </IconButton>
-      </Stack>
-      <Box sx={{ flex: "1 1 auto" }}>
-        {isLoading ? (
-          "Loading..."
-        ) : runs?.length === 0 ? (
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              height: "100%",
-              color: "grey.400",
-            }}
-          >
-            No runs
-          </Box>
-        ) : (
-          <SimpleBar style={{ minHeight: "100%", height: 0 }}>
-            {(runs ?? []).map((run, idx) => {
-              if (runs != null) {
-                const previousDate =
-                  idx === 0
-                    ? null
-                    : new Date(runs[idx - 1].run_at).toDateString();
-                return (
-                  <DateDividedRunHistoryItem
-                    key={run.run_id}
-                    run={run}
-                    previousDate={previousDate}
-                  />
-                );
-              }
-            })}
-          </SimpleBar>
-        )}
-      </Box>
-    </Box>
+  // Transform runs to list item data format
+  const runListItems = useMemo(() => {
+    return (runs ?? []).map(mapRunToListItem);
+  }, [runs]);
+
+  // Handle run selection with tracking
+  const handleRunSelect = useCallback(
+    (selectedRunId: string) => {
+      trackHistoryAction({ name: "click_run" });
+      showRunId(selectedRunId, false);
+    },
+    [showRunId],
   );
-};
 
-interface DateDividedRunHistoryItemProps {
-  run: Run;
-  previousDate: string | null;
-}
-
-function DateDividedRunHistoryItem({
-  run,
-  previousDate,
-}: DateDividedRunHistoryItemProps): ReactNode {
-  const [, setLocation] = useAppLocation();
-  const queryClient = useQueryClient();
-  const { apiClient } = useApiConfig();
-  const { showRunId, runId } = useRecceActionContext();
-
-  const currentDate = new Date(run.run_at).toDateString();
-  const shouldRenderDateSegment =
-    previousDate != null && previousDate !== currentDate;
-
-  const handleSelectRun = (runId: string) => {
-    trackHistoryAction({ name: "click_run" });
-    showRunId(runId, false);
-  };
-
+  // Handle add to checklist with tracking and navigation
   const handleAddToChecklist = useCallback(
     async (clickedRunId: string) => {
+      trackHistoryAction({ name: "add_to_checklist" });
       const check = await createCheckByRun(clickedRunId, undefined, apiClient);
-
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       setLocation(`/checks/?id=${check.check_id}`);
     },
-    [setLocation, queryClient, apiClient],
+    [apiClient, queryClient, setLocation],
   );
 
+  // Handle go to check with tracking
   const handleGoToCheck = useCallback(
     (checkId: string) => {
       trackHistoryAction({ name: "go_to_check" });
@@ -294,19 +111,46 @@ function DateDividedRunHistoryItem({
     },
     [setLocation],
   );
+
+  // Handle close history with tracking
+  const handleCloseHistory = useCallback(() => {
+    trackHistoryAction({ name: "hide" });
+    closeHistory();
+  }, [closeHistory]);
+
+  // Get icon for run type
+  const getRunIcon = useCallback((runType: string) => {
+    const registryEntry = findByRunType(
+      runType as Parameters<typeof findByRunType>[0],
+    );
+    const IconComponent = registryEntry?.icon;
+    return IconComponent ? <IconComponent /> : null;
+  }, []);
+
+  // Header action - close button
+  const headerActions = (
+    <IconButton aria-label="Close History" onClick={handleCloseHistory}>
+      <PiX />
+    </IconButton>
+  );
+
   return (
-    <React.Fragment>
-      {shouldRenderDateSegment && (
-        <DateSegmentItem key={currentDate} runAt={run.run_at} />
-      )}
-      <RunListItem
-        key={run.run_id}
-        run={run}
-        isSelected={run.run_id === runId}
-        onSelectRun={handleSelectRun}
-        onGoToCheck={handleGoToCheck}
-        onAddToChecklist={handleAddToChecklist}
-      />
-    </React.Fragment>
+    <BaseRunList
+      runs={runListItems}
+      selectedId={runId}
+      isLoading={isLoading}
+      onRunSelect={handleRunSelect}
+      onAddToChecklist={handleAddToChecklist}
+      onGoToCheck={handleGoToCheck}
+      getRunIcon={getRunIcon}
+      hideAddToChecklist={featureToggles.disableUpdateChecklist}
+      title="History"
+      headerActions={headerActions}
+      emptyMessage="No runs"
+      loadingMessage="Loading..."
+      groupByDate={true}
+      addToChecklistIcon={<FaRegCheckCircle />}
+      goToCheckIcon={<FaCheckCircle color="green" />}
+    />
   );
 }

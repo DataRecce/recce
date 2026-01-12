@@ -10,6 +10,7 @@ import {
   useLineageGraphContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
+import { formatRunDateTime } from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
@@ -29,7 +30,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { IconEdit, IconSave } from "../icons";
-import { formatRunDateTime } from "../run/RunStatusAndDate";
 
 const useRecceToast = () => {
   const toastSuccess = (message: string) => {

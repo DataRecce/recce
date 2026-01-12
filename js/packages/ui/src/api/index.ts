@@ -69,6 +69,7 @@ export type {
   LineageDiffData,
   LineageDiffResult,
   ManifestMetadata,
+  ModelInfoResult,
   NodeColumnData,
   NodeData,
   PullRequestInfo,
@@ -76,7 +77,7 @@ export type {
   SQLMeshInfo,
   StateMetadata,
 } from "./info";
-export { getServerInfo } from "./info";
+export { getModelInfo, getServerInfo } from "./info";
 // Instance info API
 export type { RecceInstanceInfo, ServerMode } from "./instanceInfo";
 export { getRecceInstanceInfo } from "./instanceInfo";

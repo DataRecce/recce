@@ -1,44 +1,36 @@
+/**
+ * @file run/RunResultPane.tsx
+ * @description OSS wrapper for @datarecce/ui RunResultPane component.
+ *
+ * This thin wrapper:
+ * 1. Imports the base component from @datarecce/ui
+ * 2. Injects OSS-specific context and behavior (tracking, clipboard, API client)
+ *
+ * OSS-specific behaviors injected:
+ * - Analytics tracking (Amplitude via trackCopyToClipboard, trackShareState)
+ * - Share state context (RecceShareStateContext)
+ * - API client configuration (useApiConfig)
+ * - Screenshot/clipboard functionality (useCopyToClipboardButton)
+ * - CSV export functionality (useCSVExport)
+ * - Run management (useRun hook)
+ * - Navigation (useAppLocation)
+ */
+
 import {
   type AxiosQueryParams,
   cacheKeys,
   createCheckByRun,
-  isQueryBaseRun,
-  isQueryDiffRun,
-  isQueryRun,
-  type Run,
-  type RunParamTypes,
+  runTypeHasRef,
 } from "@datarecce/ui/api";
+import { DualSqlEditor, SqlEditor } from "@datarecce/ui/components/query";
+import { RunResultPane as BaseRunResultPane } from "@datarecce/ui/components/run";
 import {
   useRecceActionContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
-import { useIsDark } from "@datarecce/ui/hooks";
-import { CodeEditor } from "@datarecce/ui/primitives";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Divider from "@mui/material/Divider";
-import IconButton from "@mui/material/IconButton";
-import ListItemIcon from "@mui/material/ListItemIcon";
-import ListItemText from "@mui/material/ListItemText";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
-import Stack from "@mui/material/Stack";
-import Tab from "@mui/material/Tab";
-import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
-import { type MouseEvent, ReactNode, Ref, useCallback, useState } from "react";
-import { IoClose } from "react-icons/io5";
-import {
-  PiCaretDown,
-  PiCheck,
-  PiDownloadSimple,
-  PiImage,
-  PiRepeat,
-  PiTable,
-} from "react-icons/pi";
-import { TbCloudUpload } from "react-icons/tb";
-import YAML from "yaml";
+import { type Ref, useCallback, useState } from "react";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { trackCopyToClipboard, trackShareState } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
@@ -51,16 +43,16 @@ import {
   LearnHowLink,
   RecceNotification,
 } from "../onboarding-guide/Notification";
-import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
-import { RunStatusAndDate } from "./RunStatusAndDate";
-import { RunView } from "./RunView";
 import {
   findByRunType,
   RefTypes,
   RegistryEntry,
-  runTypeHasRef,
   ViewOptionTypes,
 } from "./registry";
+
+// ============================================================================
+// OSS Props Interface
+// ============================================================================
 
 interface RunPageProps {
   onClose?: () => void;
@@ -68,40 +60,21 @@ interface RunPageProps {
   isSingleEnvironment?: boolean;
 }
 
-const _ParamView = (data: { type: string; params: RunParamTypes }) => {
-  const isDark = useIsDark();
-  const yaml = YAML.stringify(data, null, 2);
-  return (
-    <CodeEditor
-      value={yaml}
-      language="yaml"
-      readOnly={true}
-      lineNumbers={false}
-      wordWrap={true}
-      fontSize={14}
-      height="100%"
-      theme={isDark ? "dark" : "light"}
-      className="no-track-pii-safe"
-    />
-  );
-};
+// ============================================================================
+// Single Environment Notification Component (OSS-specific)
+// ============================================================================
 
 const SingleEnvironmentSetupNotification = ({
   runType,
+  onClose,
 }: {
   runType?: string;
+  onClose: () => void;
 }) => {
-  const [open, setOpen] = useState(true);
-
-  if (!open) {
-    return <></>;
-  }
-
-  const handleClose = () => setOpen(false);
   switch (runType) {
     case "row_count":
       return (
-        <RecceNotification onClose={handleClose}>
+        <RecceNotification onClose={onClose}>
           <Typography>
             Enable row count diffing, and other Recce features, by configuring a
             base dbt environment to compare against. <LearnHowLink />
@@ -110,7 +83,7 @@ const SingleEnvironmentSetupNotification = ({
       );
     case "profile":
       return (
-        <RecceNotification onClose={handleClose}>
+        <RecceNotification onClose={onClose}>
           <Typography>
             Enable data-profile diffing, and other Recce features, by
             configuring a base dbt environment to compare against.{" "}
@@ -119,222 +92,59 @@ const SingleEnvironmentSetupNotification = ({
         </RecceNotification>
       );
     default:
-      return <></>;
+      return null;
   }
 };
 
-const RunResultExportMenu = ({
-  run,
-  viewOptions,
-  disableExport,
-  onCopyAsImage,
-  onMouseEnter,
-  onMouseLeave,
+// ============================================================================
+// SQL Editor Adapter Components
+// ============================================================================
+
+interface SqlEditorAdapterProps {
+  value: string;
+  baseValue?: string;
+  readOnly?: boolean;
+}
+
+const SqlEditorAdapter = ({ value, readOnly }: SqlEditorAdapterProps) => (
+  <SqlEditor value={value} options={{ readOnly }} />
+);
+
+const DualSqlEditorAdapter = ({
+  value,
+  baseValue,
+  readOnly,
+}: SqlEditorAdapterProps) => (
+  <DualSqlEditor value={value} baseValue={baseValue} options={{ readOnly }} />
+);
+
+// ============================================================================
+// Auth Modal Adapter Component
+// ============================================================================
+
+const AuthModalAdapter = ({
+  open,
+  onClose,
 }: {
-  run?: Run;
-  viewOptions?: ViewOptionTypes;
-  disableExport: boolean;
-  onCopyAsImage: () => Promise<void>;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
-}) => {
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const open = Boolean(anchorEl);
-  const { canExportCSV, copyAsCSV, downloadAsCSV } = useCSVExport({
-    run,
-    viewOptions: viewOptions as Record<string, unknown>,
-  });
+  open: boolean;
+  onClose: () => void;
+}) => (
+  <AuthModal
+    parentOpen={open}
+    handleParentClose={() => onClose()}
+    ignoreCookie
+    variant="enable-share"
+  />
+);
 
-  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
+// ============================================================================
+// PrivateLoadableRunView - Main Implementation (OSS Wrapper)
+// ============================================================================
 
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  return (
-    <>
-      <Button
-        size="small"
-        variant="outlined"
-        color="neutral"
-        onClick={handleClick}
-        endIcon={<PiCaretDown />}
-        sx={{ textTransform: "none" }}
-      >
-        Export
-      </Button>
-      <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
-        <MenuItem
-          onClick={async () => {
-            await onCopyAsImage();
-            handleClose();
-          }}
-          onMouseEnter={onMouseEnter}
-          onMouseLeave={onMouseLeave}
-          disabled={disableExport}
-        >
-          <ListItemIcon>
-            <PiImage />
-          </ListItemIcon>
-          <ListItemText>Copy as Image</ListItemText>
-        </MenuItem>
-        <MenuItem
-          onClick={async () => {
-            await copyAsCSV();
-            handleClose();
-          }}
-          disabled={disableExport || !canExportCSV}
-        >
-          <ListItemIcon>
-            <PiTable />
-          </ListItemIcon>
-          <ListItemText>Copy as CSV</ListItemText>
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            downloadAsCSV();
-            handleClose();
-          }}
-          disabled={disableExport || !canExportCSV}
-        >
-          <ListItemIcon>
-            <PiDownloadSimple />
-          </ListItemIcon>
-          <ListItemText>Download as CSV</ListItemText>
-        </MenuItem>
-      </Menu>
-    </>
-  );
-};
-
-const RunResultShareMenu = ({
-  run,
-  viewOptions,
-  disableCopyToClipboard,
-  onCopyToClipboard,
-  onMouseEnter,
-  onMouseLeave,
-}: {
-  run?: Run;
-  viewOptions?: ViewOptionTypes;
-  disableCopyToClipboard: boolean;
-  onCopyToClipboard: () => Promise<void>;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
-}) => {
-  const { authed } = useRecceInstanceContext();
-  const { handleShareClick } = useRecceShareStateContext();
-  const [showModal, setShowModal] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const open = Boolean(anchorEl);
-  const { canExportCSV, copyAsCSV, downloadAsCSV } = useCSVExport({
-    run,
-    viewOptions: viewOptions as Record<string, unknown>,
-  });
-
-  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  return (
-    <>
-      <Button
-        size="small"
-        variant="outlined"
-        color="neutral"
-        onClick={handleClick}
-        endIcon={<PiCaretDown />}
-        sx={{ textTransform: "none" }}
-      >
-        Share
-      </Button>
-      <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
-        <MenuItem
-          onClick={async () => {
-            await onCopyToClipboard();
-            handleClose();
-          }}
-          onMouseEnter={onMouseEnter}
-          onMouseLeave={onMouseLeave}
-          disabled={disableCopyToClipboard}
-        >
-          <ListItemIcon>
-            <PiImage />
-          </ListItemIcon>
-          <ListItemText>Copy as Image</ListItemText>
-        </MenuItem>
-        <MenuItem
-          onClick={async () => {
-            await copyAsCSV();
-            handleClose();
-          }}
-          disabled={disableCopyToClipboard || !canExportCSV}
-        >
-          <ListItemIcon>
-            <PiTable />
-          </ListItemIcon>
-          <ListItemText>Copy as CSV</ListItemText>
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            downloadAsCSV();
-            handleClose();
-          }}
-          disabled={disableCopyToClipboard || !canExportCSV}
-        >
-          <ListItemIcon>
-            <PiDownloadSimple />
-          </ListItemIcon>
-          <ListItemText>Download as CSV</ListItemText>
-        </MenuItem>
-        <Divider />
-        {authed ? (
-          <MenuItem
-            onClick={async () => {
-              await handleShareClick();
-              trackShareState({ name: "create" });
-              handleClose();
-            }}
-          >
-            <ListItemIcon>
-              <TbCloudUpload />
-            </ListItemIcon>
-            <ListItemText>Share to Cloud</ListItemText>
-          </MenuItem>
-        ) : (
-          <MenuItem
-            onClick={() => {
-              setShowModal(true);
-              handleClose();
-            }}
-          >
-            <ListItemIcon>
-              <TbCloudUpload />
-            </ListItemIcon>
-            <ListItemText>Share</ListItemText>
-          </MenuItem>
-        )}
-      </Menu>
-      {showModal && (
-        <AuthModal
-          parentOpen={showModal}
-          handleParentClose={setShowModal}
-          ignoreCookie
-          variant="enable-share"
-        />
-      )}
-    </>
-  );
-};
-
-type TabValueItems = "result" | "params" | "query";
-
+/**
+ * OSS implementation that loads run data and injects OSS-specific behavior
+ * into the @datarecce/ui RunResultPane component.
+ */
 export const PrivateLoadableRunView = ({
   runId,
   onClose,
@@ -344,159 +154,145 @@ export const PrivateLoadableRunView = ({
   onClose?: () => void;
   isSingleEnvironment?: boolean;
 }) => {
-  const { featureToggles } = useRecceInstanceContext();
+  const { featureToggles, authed } = useRecceInstanceContext();
   const { runAction } = useRecceActionContext();
   const { error, run, onCancel, isRunning } = useRun(runId);
   const [viewOptions, setViewOptions] = useState<ViewOptionTypes>();
-  const [tabValue, setTabValue] = useState<TabValueItems>("result");
-  const _disableAddToChecklist = isSingleEnvironment;
-  const showSingleEnvironmentSetupNotification = isSingleEnvironment;
+  const queryClient = useQueryClient();
+  const [, setLocation] = useAppLocation();
+  const { apiClient } = useApiConfig();
+  const { handleShareClick } = useRecceShareStateContext();
 
+  // Get the result view component from registry
   let RunResultView: RegistryEntry["RunResultView"] | undefined;
   if (run && runTypeHasRef(run.type)) {
     RunResultView = findByRunType(run.type)
       .RunResultView as RegistryEntry["RunResultView"];
   }
 
+  // Copy to clipboard functionality
+  const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } =
+    useCopyToClipboardButton();
+
+  // CSV export functionality
+  const csvExport = useCSVExport({
+    run,
+    viewOptions: viewOptions as Record<string, unknown>,
+  });
+
+  // Rerun handler
   const handleRerun = useCallback(() => {
     if (run) {
       runAction(run.type, run.params as unknown as AxiosQueryParams);
     }
   }, [run, runAction]);
 
-  const isQuery =
-    run?.type === "query" ||
-    run?.type === "query_diff" ||
-    run?.type === "query_base";
-  const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } =
-    useCopyToClipboardButton();
-  const disableCopyToClipboard =
-    !runId || !run?.result || !!error || tabValue !== "result";
+  // Share to cloud handler
+  const handleShareToCloud = useCallback(async () => {
+    await handleShareClick();
+    trackShareState({ name: "create" });
+  }, [handleShareClick]);
+
+  // Copy to clipboard handler with tracking
+  const handleCopyAsImage = useCallback(async () => {
+    await onCopyToClipboard();
+    trackCopyToClipboard({
+      type: run?.type ?? "unknown",
+      from: "run",
+    });
+  }, [onCopyToClipboard, run?.type]);
+
+  // Go to check handler
+  const handleGoToCheck = useCallback(
+    (checkId: string) => {
+      setLocation(`/checks/?id=${checkId}`);
+    },
+    [setLocation],
+  );
+
+  // Add to checklist handler
+  const handleAddToChecklist = useCallback(async () => {
+    if (!runId) {
+      return;
+    }
+    const check = await createCheckByRun(
+      runId,
+      viewOptions as Record<string, unknown>,
+      apiClient,
+    );
+    await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    setLocation(`/checks/?id=${check.check_id}`);
+  }, [runId, viewOptions, apiClient, queryClient, setLocation]);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      {showSingleEnvironmentSetupNotification && (
-        <SingleEnvironmentSetupNotification runType={run?.type} />
-      )}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          borderBottom: 1,
-          borderColor: "divider",
-          mb: "1px",
-        }}
-      >
-        <Tabs
-          value={tabValue}
-          onChange={(_, newValue) => setTabValue(newValue as TabValueItems)}
-        >
-          <Tab label="Result" value="result" />
-          <Tab label="Params" value="params" />
-          {isQuery && <Tab label="Query" value="query" />}
-        </Tabs>
-        <Box sx={{ flexGrow: 1 }} />
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{ overflow: "hidden", pr: 1 }}
-          alignItems="center"
-        >
-          {run && <RunStatusAndDate run={run} />}
-          <Button
-            variant="outlined"
-            color="neutral"
-            disabled={
-              !runId || isRunning || featureToggles.disableDatabaseQuery
-            }
-            size="small"
-            onClick={handleRerun}
-            startIcon={<PiRepeat />}
-            sx={{ textTransform: "none" }}
-          >
-            Rerun
-          </Button>
-          {featureToggles.disableShare ? (
-            <RunResultExportMenu
-              run={run}
-              viewOptions={viewOptions}
-              disableExport={
-                !runId || !run?.result || !!error || tabValue !== "result"
-              }
-              onCopyAsImage={onCopyToClipboard}
-              onMouseEnter={onMouseEnter}
-              onMouseLeave={onMouseLeave}
-            />
-          ) : (
-            <RunResultShareMenu
-              run={run}
-              viewOptions={viewOptions}
-              disableCopyToClipboard={disableCopyToClipboard}
-              onCopyToClipboard={async () => {
-                await onCopyToClipboard();
-                trackCopyToClipboard({
-                  type: run?.type ?? "unknown",
-                  from: "run",
-                });
-              }}
-              onMouseEnter={onMouseEnter}
-              onMouseLeave={onMouseLeave}
-            />
-          )}
-
-          <AddToCheckButton
-            runId={runId}
-            viewOptions={viewOptions as Record<string, unknown>}
-          />
-
-          <IconButton
-            size="small"
-            onClick={() => {
-              if (onClose) {
-                onClose();
-              }
-            }}
-          >
-            <IoClose />
-          </IconButton>
-        </Stack>
-      </Box>
-      {tabValue === "result" && (
-        <RunView
-          ref={ref as unknown as Ref<RefTypes>}
-          error={error}
-          run={run}
-          onCancel={onCancel}
-          viewOptions={viewOptions}
-          onViewOptionsChanged={setViewOptions}
-          RunResultView={RunResultView}
-        />
-      )}
-
-      {tabValue === "params" && run && (
-        <_ParamView type={run.type} params={run.params} />
-      )}
-
-      {tabValue === "query" &&
-        run &&
-        run.params &&
-        (isQueryRun(run) || isQueryBaseRun(run) || isQueryDiffRun(run)) &&
-        (isQueryDiffRun(run) ? (
-          <DualSqlEditor
-            value={run.params.sql_template}
-            baseValue={run.params.base_sql_template}
-            options={{ readOnly: true }}
-          />
-        ) : (
-          <SqlEditor
-            value={run.params.sql_template}
-            options={{ readOnly: true }}
-          />
-        ))}
-    </Box>
+    <BaseRunResultPane
+      // Core data
+      runId={runId}
+      run={run}
+      isRunning={isRunning}
+      error={error}
+      // View configuration
+      viewOptions={viewOptions}
+      onViewOptionsChanged={setViewOptions}
+      isSingleEnvironment={isSingleEnvironment}
+      // Feature toggles
+      disableDatabaseQuery={featureToggles.disableDatabaseQuery}
+      disableShare={featureToggles.disableShare}
+      disableUpdateChecklist={featureToggles.disableUpdateChecklist}
+      // Event handlers
+      onClose={onClose}
+      onCancel={onCancel}
+      onRerun={handleRerun}
+      // Export/Share handlers
+      onCopyAsImage={handleCopyAsImage}
+      onCopyMouseEnter={onMouseEnter}
+      onCopyMouseLeave={onMouseLeave}
+      csvExport={csvExport}
+      authed={authed}
+      onShareToCloud={handleShareToCloud}
+      // Checklist handlers
+      onGoToCheck={handleGoToCheck}
+      onAddToChecklist={handleAddToChecklist}
+      // Custom components (OSS-specific)
+      SingleEnvironmentNotification={SingleEnvironmentSetupNotification}
+      SqlEditorComponent={SqlEditorAdapter}
+      DualSqlEditorComponent={DualSqlEditorAdapter}
+      AuthModalComponent={AuthModalAdapter}
+      RunResultView={RunResultView}
+      resultViewRef={ref as Ref<RefTypes>}
+    />
   );
 };
 
+// ============================================================================
+// RunResultPane - Public Component (OSS Wrapper)
+// ============================================================================
+
+/**
+ * OSS RunResultPane Component
+ *
+ * A thin wrapper around @datarecce/ui RunResultPane that injects OSS-specific
+ * context and behavior including:
+ * - Analytics tracking (Amplitude)
+ * - Share state context
+ * - API client configuration
+ * - Screenshot/clipboard functionality
+ * - CSV export functionality
+ *
+ * @example
+ * ```tsx
+ * import { RunResultPane } from "@/components/run/RunResultPane";
+ *
+ * function MyRunView() {
+ *   return (
+ *     <RunResultPane
+ *       onClose={() => handleClose()}
+ *       isSingleEnvironment={isSingleEnv}
+ *     />
+ *   );
+ * }
+ * ```
+ */
 export const RunResultPane = ({
   onClose,
   isSingleEnvironment,
@@ -511,69 +307,3 @@ export const RunResultPane = ({
     />
   );
 };
-
-interface AddToCheckButtonProps {
-  runId?: string;
-  viewOptions: Record<string, unknown>;
-}
-
-function AddToCheckButton({
-  runId,
-  viewOptions,
-}: AddToCheckButtonProps): ReactNode {
-  const { featureToggles } = useRecceInstanceContext();
-  const { error, run } = useRun(runId);
-  const queryClient = useQueryClient();
-  const [, setLocation] = useAppLocation();
-  const { apiClient } = useApiConfig();
-
-  const checkId = run?.check_id;
-
-  const handleGoToCheck = useCallback(() => {
-    if (!checkId) {
-      return;
-    }
-
-    setLocation(`/checks/?id=${checkId}`);
-  }, [checkId, setLocation]);
-
-  const handleAddToChecklist = useCallback(async () => {
-    if (!runId) {
-      return;
-    }
-    const check = await createCheckByRun(runId, viewOptions, apiClient);
-
-    await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    setLocation(`/checks/?id=${check.check_id}`);
-  }, [runId, setLocation, queryClient, viewOptions, apiClient]);
-
-  if (featureToggles.disableUpdateChecklist) {
-    return <></>;
-  }
-  if (run?.check_id) {
-    return (
-      <Button
-        disabled={!runId || !run.result || !!error}
-        size="small"
-        variant="contained"
-        onClick={handleGoToCheck}
-        startIcon={<PiCheck />}
-        sx={{ textTransform: "none" }}
-      >
-        Go to Check
-      </Button>
-    );
-  }
-  return (
-    <Button
-      disabled={!runId || !run?.result || !!error}
-      size="small"
-      variant="contained"
-      onClick={handleAddToChecklist}
-      startIcon={<PiCheck />}
-      sx={{ textTransform: "none" }}
-    >
-      Add to Checklist
-    </Button>
-  );
-}

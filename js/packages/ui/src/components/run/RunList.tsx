@@ -220,6 +220,10 @@ export interface RunListProps {
   loadingMessage?: string;
   /** Group runs by date */
   groupByDate?: boolean;
+  /** Icon for "add to checklist" action - passed to all list items */
+  addToChecklistIcon?: ReactNode;
+  /** Icon for "go to check" action - passed to all list items */
+  goToCheckIcon?: ReactNode;
   /** Optional CSS class */
   className?: string;
 }
@@ -305,6 +309,8 @@ function RunListComponent({
   emptyMessage = "No runs",
   loadingMessage = "Loading...",
   groupByDate = false,
+  addToChecklistIcon,
+  goToCheckIcon,
   className,
 }: RunListProps) {
   // Group runs by date if needed
@@ -344,6 +350,8 @@ function RunListComponent({
             onAddToChecklist={onAddToChecklist}
             onGoToCheck={onGoToCheck}
             hideAddToChecklist={hideAddToChecklist}
+            addToChecklistIcon={addToChecklistIcon}
+            goToCheckIcon={goToCheckIcon}
           />
         </Box>
       );

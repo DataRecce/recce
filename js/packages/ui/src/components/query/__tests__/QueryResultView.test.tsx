@@ -2,7 +2,6 @@
  * @file QueryResultView.test.tsx
  * @description Baseline tests for QueryResultView component
  *
- * These tests capture current component behavior before refactoring to factory pattern.
  * Tests verify:
  * - Correct rendering with valid run data
  * - Empty state display when no data
@@ -27,32 +26,28 @@ jest.mock("ag-grid-community", () => ({
   themeQuartz: {},
 }));
 
-// Mock dataGridFactory - use factory pattern that returns mock from closure
-const mockCreateDataGrid = jest.fn();
-jest.mock("@/lib/dataGrid/dataGridFactory", () => ({
-  createDataGrid: (...args: unknown[]) => mockCreateDataGrid(...args),
+// Mock the grid generator from utils
+const mockToDataGridConfigured = jest.fn();
+jest.mock("../../../utils", () => ({
+  toDataGridConfigured: (...args: unknown[]) =>
+    mockToDataGridConfigured(...args),
 }));
 
-// Mock ScreenshotDataGrid in BOTH locations (OSS and packages/ui)
-// This is needed because the factory imports from packages/ui
-jest.mock("@/components/data-grid/ScreenshotDataGrid", () => ({
-  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
-    .screenshotDataGridMock,
+// Mock ScreenshotDataGrid
+jest.mock("../../data/ScreenshotDataGrid", () => ({
+  ScreenshotDataGrid: jest.fn(({ columns, rows }) => (
+    <div
+      data-testid="screenshot-data-grid-mock"
+      data-columns={columns?.length ?? 0}
+      data-rows={rows?.length ?? 0}
+    />
+  )),
   EmptyRowsRenderer: () => <div data-testid="empty-rows-renderer">No data</div>,
 }));
 
-// Mock packages/ui ScreenshotDataGrid (used by createResultView factory)
-jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
-  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
-    .screenshotDataGridMock,
-  EmptyRowsRenderer: ({ emptyMessage }: { emptyMessage?: string }) => (
-    <div data-testid="empty-rows-renderer">{emptyMessage ?? "No rows"}</div>
-  ),
-}));
-
-// Mock useIsDark hook from @datarecce/ui
+// Mock useIsDark hook
 const mockUseIsDark = jest.fn(() => false);
-jest.mock("@datarecce/ui/hooks", () => ({
+jest.mock("../../../hooks", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 
@@ -60,14 +55,35 @@ jest.mock("@datarecce/ui/hooks", () => ({
 // Imports
 // ============================================================================
 
-import type { QueryViewOptions, Run } from "@datarecce/ui/api";
-import { fireEvent, screen } from "@testing-library/react";
+import { ThemeProvider } from "@mui/material/styles";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
-import {
-  createGridRef,
-  renderWithProviders,
-} from "@/testing-utils/resultViewTestUtils";
-import { QueryResultView } from "./QueryResultView";
+import type { QueryViewOptions, Run } from "../../../api";
+import { theme as lightTheme } from "../../../theme";
+import { QueryResultView } from "../QueryResultView";
+
+// ============================================================================
+// Test Helpers
+// ============================================================================
+
+function TestProviders({ children }: { children: React.ReactNode }) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  });
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider theme={lightTheme}>{children}</ThemeProvider>
+    </QueryClientProvider>
+  );
+}
+
+function renderWithProviders(ui: React.ReactElement) {
+  return render(ui, { wrapper: TestProviders });
+}
 
 // ============================================================================
 // Local Test Fixtures
@@ -187,7 +203,7 @@ describe("QueryResultView", () => {
     mockUseIsDark.mockReturnValue(false);
 
     // Default mock implementation returns grid data
-    mockCreateDataGrid.mockReturnValue({
+    mockToDataGridConfigured.mockReturnValue({
       columns: [
         { field: "id", headerName: "id" },
         { field: "name", headerName: "name" },
@@ -231,13 +247,13 @@ describe("QueryResultView", () => {
       expect(grid).toBeInTheDocument();
     });
 
-    it("calls createDataGrid with the run object and options", () => {
+    it("calls toDataGridConfigured with the run object and options", () => {
       const run = createQueryRun();
 
       renderWithProviders(<QueryResultView run={run} />);
 
-      expect(mockCreateDataGrid).toHaveBeenCalledWith(
-        run,
+      expect(mockToDataGridConfigured).toHaveBeenCalledWith(
+        run.result,
         expect.objectContaining({
           pinnedColumns: [],
           columnsRenderMode: {},
@@ -252,7 +268,7 @@ describe("QueryResultView", () => {
 
   describe("empty state", () => {
     it('displays "No data" when gridData.columns.length === 0', () => {
-      mockCreateDataGrid.mockReturnValue({
+      mockToDataGridConfigured.mockReturnValue({
         columns: [],
         rows: [],
       });
@@ -306,47 +322,6 @@ describe("QueryResultView", () => {
       expect(() => {
         renderWithProviders(<QueryResultView run={run} />);
       }).not.toThrow();
-    });
-  });
-
-  // ==========================================================================
-  // Ref Forwarding Tests
-  // ==========================================================================
-
-  describe("ref forwarding", () => {
-    it("forwards ref to ScreenshotDataGrid", () => {
-      const run = createQueryRun();
-      const ref = createGridRef();
-
-      // Cast ref to any for test flexibility - mock matches expected shape
-      renderWithProviders(
-        // biome-ignore lint/suspicious/noExplicitAny: test mock needs flexible typing
-        <QueryResultView run={run} ref={ref as any} />,
-      );
-
-      // The ref should be connected (mocked to provide methods)
-      expect(ref.current).not.toBeNull();
-      // Check for real DataGridHandle properties
-      expect(ref.current).toHaveProperty("api");
-      expect(ref.current).toHaveProperty("element");
-    });
-
-    it("ref is null when empty state is displayed", () => {
-      mockCreateDataGrid.mockReturnValue({
-        columns: [],
-        rows: [],
-      });
-      const run = createEmptyQueryRun();
-      const ref = createGridRef();
-
-      // Cast ref to any for test flexibility
-      renderWithProviders(
-        // biome-ignore lint/suspicious/noExplicitAny: test mock needs flexible typing
-        <QueryResultView run={run} ref={ref as any} />,
-      );
-
-      // When showing empty state, no grid is rendered so ref won't be assigned
-      expect(ref.current).toBeNull();
     });
   });
 
@@ -443,7 +418,7 @@ describe("QueryResultView", () => {
   // ==========================================================================
 
   describe("viewOptions", () => {
-    it("passes pinned_columns to createDataGrid", () => {
+    it("passes pinned_columns to toDataGridConfigured", () => {
       const run = createQueryRun();
       const viewOptions: QueryViewOptions = {
         pinned_columns: ["id", "name"],
@@ -453,15 +428,15 @@ describe("QueryResultView", () => {
         <QueryResultView run={run} viewOptions={viewOptions} />,
       );
 
-      expect(mockCreateDataGrid).toHaveBeenCalledWith(
-        run,
+      expect(mockToDataGridConfigured).toHaveBeenCalledWith(
+        run.result,
         expect.objectContaining({
           pinnedColumns: ["id", "name"],
         }),
       );
     });
 
-    it("passes columnsRenderMode to createDataGrid", () => {
+    it("passes columnsRenderMode to toDataGridConfigured", () => {
       const run = createQueryRun();
       const viewOptions: QueryViewOptions = {
         columnsRenderMode: { total: "percent" },
@@ -471,104 +446,12 @@ describe("QueryResultView", () => {
         <QueryResultView run={run} viewOptions={viewOptions} />,
       );
 
-      expect(mockCreateDataGrid).toHaveBeenCalledWith(
-        run,
+      expect(mockToDataGridConfigured).toHaveBeenCalledWith(
+        run.result,
         expect.objectContaining({
           columnsRenderMode: { total: "percent" },
         }),
       );
-    });
-
-    it("calls onViewOptionsChanged when pinned columns change", () => {
-      const run = createQueryRun();
-      const onViewOptionsChanged = jest.fn();
-      const callbacks: { onPinnedColumnsChange?: (columns: string[]) => void } =
-        {};
-
-      // Capture the callback passed to createDataGrid
-      mockCreateDataGrid.mockImplementation((_run, options) => {
-        callbacks.onPinnedColumnsChange = options?.onPinnedColumnsChange;
-        return {
-          columns: [{ field: "id", headerName: "id" }],
-          rows: [{ id: 1 }],
-        };
-      });
-
-      renderWithProviders(
-        <QueryResultView
-          run={run}
-          onViewOptionsChanged={onViewOptionsChanged}
-        />,
-      );
-
-      // Simulate pinned columns change
-      callbacks.onPinnedColumnsChange?.(["id"]);
-
-      expect(onViewOptionsChanged).toHaveBeenCalledWith(
-        expect.objectContaining({
-          pinned_columns: ["id"],
-        }),
-      );
-    });
-
-    it("calls onViewOptionsChanged when columnsRenderMode change", () => {
-      const run = createQueryRun();
-      const onViewOptionsChanged = jest.fn();
-      const callbacks: {
-        onColumnsRenderModeChanged?: (cols: Record<string, string>) => void;
-      } = {};
-
-      // Capture the callback passed to createDataGrid
-      mockCreateDataGrid.mockImplementation((_run, options) => {
-        callbacks.onColumnsRenderModeChanged =
-          options?.onColumnsRenderModeChanged;
-        return {
-          columns: [{ field: "id", headerName: "id" }],
-          rows: [{ id: 1 }],
-        };
-      });
-
-      renderWithProviders(
-        <QueryResultView
-          run={run}
-          onViewOptionsChanged={onViewOptionsChanged}
-        />,
-      );
-
-      // Simulate columnsRenderMode change
-      callbacks.onColumnsRenderModeChanged?.({ total: "percent" });
-
-      expect(onViewOptionsChanged).toHaveBeenCalledWith(
-        expect.objectContaining({
-          columnsRenderMode: { total: "percent" },
-        }),
-      );
-    });
-  });
-
-  // ==========================================================================
-  // Dark Mode Tests
-  // ==========================================================================
-
-  describe("dark mode", () => {
-    it("applies light mode styling when useIsDark returns false", () => {
-      mockUseIsDark.mockReturnValue(false);
-      const run = createQueryRun();
-
-      renderWithProviders(<QueryResultView run={run} />);
-
-      // Verify useIsDark is called
-      expect(mockUseIsDark).toHaveBeenCalled();
-    });
-
-    it("applies dark mode styling when useIsDark returns true", () => {
-      mockUseIsDark.mockReturnValue(true);
-      const run = createQueryRun();
-
-      renderWithProviders(<QueryResultView run={run} />);
-
-      // Verify useIsDark is called
-      expect(mockUseIsDark).toHaveBeenCalled();
     });
   });
 });

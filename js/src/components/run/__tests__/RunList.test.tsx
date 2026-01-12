@@ -1,19 +1,15 @@
 /**
  * @file RunList.test.tsx
- * @description Comprehensive tests for RunList component
+ * @description Tests for RunList OSS wrapper component
  *
- * Tests verify:
- * - List rendering with multiple runs
- * - Empty state display
- * - Loading state
- * - Run selection behavior
- * - Add to checklist functionality
- * - Go to check navigation
- * - Date segmentation
- * - Run name display
- * - Icon display by run type
+ * Tests verify the OSS wrapper functionality:
+ * - Data fetching integration
+ * - OSS-specific tracking
+ * - Context integration (RecceActionContext, RecceInstanceContext)
+ * - Navigation and check creation
  *
- * Source of truth: OSS functionality - these tests document current behavior
+ * Note: Presentation logic is tested in @datarecce/ui RunList tests.
+ * These tests focus on OSS-specific behavior injected through the wrapper.
  */
 
 // ============================================================================
@@ -65,14 +61,6 @@ jest.mock("@/lib/api/track", () => ({
   trackHistoryAction: jest.fn(),
 }));
 
-// Mock SimplerBar
-jest.mock("simplebar-react", () => ({
-  __esModule: true,
-  default: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="simplebar">{children}</div>
-  ),
-}));
-
 // Mock registry
 jest.mock("../registry", () => ({
   findByRunType: jest.fn((type: string) => ({
@@ -81,35 +69,20 @@ jest.mock("../registry", () => ({
   })),
 }));
 
-// Mock RunStatusAndDate
-jest.mock("../RunStatusAndDate", () => ({
-  RunStatusAndDate: ({ run }: { run: { status: string } }) => (
-    <div data-testid="run-status">{run.status}</div>
-  ),
-  formatRunDate: jest.fn((date: Date | null) => {
-    if (!date) return null;
-    return "Today";
-  }),
-}));
-
 // ============================================================================
 // Imports
 // ============================================================================
 
-import {
-  createCheckByRun,
-  listRuns,
-  type Run,
-  waitRun,
-} from "@datarecce/ui/api";
+import { createCheckByRun, listRuns, type Run } from "@datarecce/ui/api";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { trackHistoryAction } from "@/lib/api/track";
 import { RunList } from "../RunList";
 
 // Cast to jest mocks
 const mockListRuns = listRuns as jest.Mock;
-const mockWaitRun = waitRun as jest.Mock;
 const mockCreateCheckByRun = createCheckByRun as jest.Mock;
+const mockTrackHistoryAction = trackHistoryAction as jest.Mock;
 
 // ============================================================================
 // Test Fixtures
@@ -207,6 +180,30 @@ describe("RunList", () => {
 
       expect(mockCloseHistory).toHaveBeenCalled();
     });
+
+    it("tracks hide action when close button is clicked", async () => {
+      const mockCloseHistory = jest.fn();
+      const useRecceActionContext =
+        require("@datarecce/ui/contexts").useRecceActionContext;
+      useRecceActionContext.mockReturnValue({
+        closeHistory: mockCloseHistory,
+        showRunId: jest.fn(),
+        runId: undefined,
+      });
+
+      mockListRuns.mockResolvedValue([]);
+
+      renderWithQueryClient(<RunList />);
+
+      await waitFor(() => {
+        const closeButton = screen.getByRole("button", {
+          name: /Close History/i,
+        });
+        fireEvent.click(closeButton);
+      });
+
+      expect(mockTrackHistoryAction).toHaveBeenCalledWith({ name: "hide" });
+    });
   });
 
   // ==========================================================================
@@ -237,16 +234,6 @@ describe("RunList", () => {
 
       await waitFor(() => {
         expect(screen.getByText("No runs")).toBeInTheDocument();
-      });
-    });
-
-    it("does not show SimplerBar in empty state", async () => {
-      mockListRuns.mockResolvedValue([]);
-
-      renderWithQueryClient(<RunList />);
-
-      await waitFor(() => {
-        expect(screen.queryByTestId("simplebar")).not.toBeInTheDocument();
       });
     });
   });
@@ -281,17 +268,6 @@ describe("RunList", () => {
         expect(screen.getByText("Run 1")).toBeInTheDocument();
         expect(screen.getByText("Run 2")).toBeInTheDocument();
         expect(screen.getByText("Run 3")).toBeInTheDocument();
-      });
-    });
-
-    it("renders SimplerBar when runs exist", async () => {
-      const run = createMockRun();
-      mockListRuns.mockResolvedValue([run]);
-
-      renderWithQueryClient(<RunList />);
-
-      await waitFor(() => {
-        expect(screen.getByTestId("simplebar")).toBeInTheDocument();
       });
     });
 
@@ -358,39 +334,6 @@ describe("RunList", () => {
   });
 
   // ==========================================================================
-  // Run Status Tests
-  // ==========================================================================
-
-  describe("run status", () => {
-    it("displays status for each run", async () => {
-      const run = createMockRun({ status: "finished" });
-      mockListRuns.mockResolvedValue([run]);
-
-      renderWithQueryClient(<RunList />);
-
-      await waitFor(() => {
-        expect(screen.getByTestId("run-status")).toHaveTextContent("finished");
-      });
-    });
-
-    it("polls for running runs", async () => {
-      const runningRun = createMockRun({ status: "running" });
-      mockListRuns.mockResolvedValue([runningRun]);
-      mockWaitRun.mockResolvedValue({ ...runningRun, status: "finished" });
-
-      renderWithQueryClient(<RunList />);
-
-      await waitFor(() => {
-        expect(mockWaitRun).toHaveBeenCalledWith(
-          runningRun.run_id,
-          undefined,
-          {},
-        );
-      });
-    });
-  });
-
-  // ==========================================================================
   // Selection Tests
   // ==========================================================================
 
@@ -425,27 +368,36 @@ describe("RunList", () => {
       });
     });
 
-    it("highlights selected run", async () => {
-      const selectedRun = createMockRun({ run_id: "selected-run" });
-      mockListRuns.mockResolvedValue([selectedRun]);
-
-      // Mock the context to return the selected run ID
-      const mockCloseHistory = jest.fn();
+    it("tracks click_run action when run is selected", async () => {
+      const mockShowRunId = jest.fn();
       const useRecceActionContext =
         require("@datarecce/ui/contexts").useRecceActionContext;
       useRecceActionContext.mockReturnValue({
-        closeHistory: mockCloseHistory,
-        showRunId: jest.fn(),
-        runId: "selected-run",
+        closeHistory: jest.fn(),
+        showRunId: mockShowRunId,
+        runId: undefined,
       });
+
+      const run = createMockRun({ name: "Trackable Run" });
+      mockListRuns.mockResolvedValue([run]);
 
       renderWithQueryClient(<RunList />);
 
       await waitFor(() => {
-        expect(screen.getByText("Test Run")).toBeInTheDocument();
+        expect(screen.getByText("Trackable Run")).toBeInTheDocument();
       });
 
-      // Selected run should have special styling (verified by component logic)
+      const runElement = screen.getByText("Trackable Run");
+      const clickTarget = runElement.closest(".MuiBox-root");
+      if (clickTarget) {
+        fireEvent.click(clickTarget);
+      }
+
+      await waitFor(() => {
+        expect(mockTrackHistoryAction).toHaveBeenCalledWith({
+          name: "click_run",
+        });
+      });
     });
   });
 
@@ -461,8 +413,9 @@ describe("RunList", () => {
       renderWithQueryClient(<RunList />);
 
       await waitFor(() => {
-        // The component uses Typography with aria-label, not a button
-        const element = screen.getByLabelText(/Add to Checklist/i);
+        const element = screen.getByRole("button", {
+          name: /Add to Checklist/i,
+        });
         expect(element).toBeInTheDocument();
       });
     });
@@ -475,10 +428,12 @@ describe("RunList", () => {
       renderWithQueryClient(<RunList />);
 
       await waitFor(() => {
-        expect(screen.getByLabelText(/Add to Checklist/i)).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /Add to Checklist/i }),
+        ).toBeInTheDocument();
       });
 
-      const element = screen.getByLabelText(/Add to Checklist/i);
+      const element = screen.getByRole("button", { name: /Add to Checklist/i });
       fireEvent.click(element);
 
       await waitFor(() => {
@@ -487,6 +442,29 @@ describe("RunList", () => {
           undefined,
           {},
         );
+      });
+    });
+
+    it("tracks add_to_checklist action when button is clicked", async () => {
+      const run = createMockRun({ run_id: "test-run", check_id: undefined });
+      mockListRuns.mockResolvedValue([run]);
+      mockCreateCheckByRun.mockResolvedValue({ check_id: "new-check" });
+
+      renderWithQueryClient(<RunList />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Add to Checklist/i }),
+        ).toBeInTheDocument();
+      });
+
+      const element = screen.getByRole("button", { name: /Add to Checklist/i });
+      fireEvent.click(element);
+
+      await waitFor(() => {
+        expect(mockTrackHistoryAction).toHaveBeenCalledWith({
+          name: "add_to_checklist",
+        });
       });
     });
 
@@ -502,10 +480,12 @@ describe("RunList", () => {
       renderWithQueryClient(<RunList />);
 
       await waitFor(() => {
-        expect(screen.getByLabelText(/Add to Checklist/i)).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /Add to Checklist/i }),
+        ).toBeInTheDocument();
       });
 
-      const element = screen.getByLabelText(/Add to Checklist/i);
+      const element = screen.getByRole("button", { name: /Add to Checklist/i });
       fireEvent.click(element);
 
       await waitFor(() => {
@@ -551,8 +531,7 @@ describe("RunList", () => {
       renderWithQueryClient(<RunList />);
 
       await waitFor(() => {
-        // The component uses Typography with aria-label, not a button
-        const element = screen.getByLabelText(/Go to Check/i);
+        const element = screen.getByRole("button", { name: /Go to Check/i });
         expect(element).toBeInTheDocument();
       });
     });
@@ -568,16 +547,44 @@ describe("RunList", () => {
       renderWithQueryClient(<RunList />);
 
       await waitFor(() => {
-        expect(screen.getByLabelText(/Go to Check/i)).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /Go to Check/i }),
+        ).toBeInTheDocument();
       });
 
-      const element = screen.getByLabelText(/Go to Check/i);
+      const element = screen.getByRole("button", { name: /Go to Check/i });
       fireEvent.click(element);
 
       await waitFor(() => {
         expect(mockSetLocation).toHaveBeenCalledWith(
           "/checks/?id=existing-check",
         );
+      });
+    });
+
+    it("tracks go_to_check action when button is clicked", async () => {
+      const mockSetLocation = jest.fn();
+      const useAppLocation = require("@/lib/hooks/useAppRouter").useAppLocation;
+      useAppLocation.mockReturnValue([undefined, mockSetLocation]);
+
+      const run = createMockRun({ check_id: "existing-check" });
+      mockListRuns.mockResolvedValue([run]);
+
+      renderWithQueryClient(<RunList />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Go to Check/i }),
+        ).toBeInTheDocument();
+      });
+
+      const element = screen.getByRole("button", { name: /Go to Check/i });
+      fireEvent.click(element);
+
+      await waitFor(() => {
+        expect(mockTrackHistoryAction).toHaveBeenCalledWith({
+          name: "go_to_check",
+        });
       });
     });
 
@@ -592,56 +599,6 @@ describe("RunList", () => {
           name: /Add to Checklist/i,
         });
         expect(addButton).not.toBeInTheDocument();
-      });
-    });
-  });
-
-  // ==========================================================================
-  // Date Segmentation Tests
-  // ==========================================================================
-
-  describe("date segmentation", () => {
-    it("shows date segment for first run", async () => {
-      const run = createMockRun({ run_at: new Date().toISOString() });
-      mockListRuns.mockResolvedValue([run]);
-
-      renderWithQueryClient(<RunList />);
-
-      await waitFor(() => {
-        // First run should not have a date segment above it
-        // This is tested by checking that the date segment only appears
-        // when the previous date differs
-        expect(screen.getByText("Test Run")).toBeInTheDocument();
-      });
-    });
-
-    it("shows date segment when date changes", async () => {
-      const today = new Date();
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-
-      const runs = [
-        createMockRun({
-          run_id: "1",
-          run_at: today.toISOString(),
-          name: "Today Run",
-        }),
-        createMockRun({
-          run_id: "2",
-          run_at: yesterday.toISOString(),
-          name: "Yesterday Run",
-        }),
-      ];
-      mockListRuns.mockResolvedValue(runs);
-
-      renderWithQueryClient(<RunList />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Today Run")).toBeInTheDocument();
-        expect(screen.getByText("Yesterday Run")).toBeInTheDocument();
-        // Date segments should be rendered
-        const todayLabels = screen.getAllByText("Today");
-        expect(todayLabels.length).toBeGreaterThan(0);
       });
     });
   });
@@ -704,10 +661,12 @@ describe("RunList", () => {
       renderWithQueryClient(<RunList />);
 
       await waitFor(() => {
-        expect(screen.getByLabelText(/Add to Checklist/i)).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /Add to Checklist/i }),
+        ).toBeInTheDocument();
       });
 
-      const element = screen.getByLabelText(/Add to Checklist/i);
+      const element = screen.getByRole("button", { name: /Add to Checklist/i });
       fireEvent.click(element);
 
       // Should not also trigger run selection (event propagation stopped)

@@ -1,14 +1,32 @@
-import type { Run } from "@datarecce/ui/api";
+"use client";
+
+/**
+ * @file QueryResultView.tsx
+ * @description Framework-agnostic Query result view for @datarecce/ui
+ *
+ * Displays query results in a data grid format. Uses the createResultView
+ * factory pattern and can be used by both Recce OSS and Recce Cloud.
+ *
+ * Features:
+ * - Displays query results with column pinning support
+ * - Shows amber warning when results are truncated (limit exceeded)
+ * - Optional "Add to Checklist" button in toolbar
+ * - Supports both "query" and "query_base" run types
+ */
+
+import Button from "@mui/material/Button";
+import type { ForwardRefExoticComponent, RefAttributes } from "react";
+import type { Run } from "../../api";
 import {
   type ColumnRenderMode,
   isQueryBaseRun,
   isQueryRun,
   type QueryViewOptions,
-} from "@datarecce/ui/api";
-import { createResultView, type ResultViewData } from "@datarecce/ui/result";
-import Button from "@mui/material/Button";
-import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
-import type { DataGridHandle } from "../data-grid/ScreenshotDataGrid";
+} from "../../api";
+import { toDataGridConfigured } from "../../utils";
+import type { DataGridHandle } from "../data/ScreenshotDataGrid";
+import { createResultView } from "../result/createResultView";
+import type { CreatedResultViewProps, ResultViewData } from "../result/types";
 
 // ============================================================================
 // Type Definitions
@@ -16,6 +34,14 @@ import type { DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 
 type QueryRun = Extract<Run, { type: "query" }>;
 type QueryBaseRun = Extract<Run, { type: "query_base" }>;
+
+/**
+ * Props for QueryResultView component
+ */
+export interface QueryResultViewProps
+  extends CreatedResultViewProps<QueryViewOptions> {
+  run: QueryRun | QueryBaseRun | unknown;
+}
 
 /**
  * Type guard for query or query_base runs.
@@ -87,13 +113,17 @@ export const QueryResultView = createResultView<
       }
     };
 
-    // Build grid data using createDataGrid factory
-    const gridData = createDataGrid(run as Run, {
+    // Build grid data using toDataGridConfigured
+    if (!run.result) {
+      return { isEmpty: true };
+    }
+
+    const gridData = toDataGridConfigured(run.result, {
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
       columnsRenderMode,
       onColumnsRenderModeChanged,
-    }) ?? { columns: [], rows: [] };
+    });
 
     // Empty state when no columns
     if (gridData.columns.length === 0) {
@@ -138,4 +168,9 @@ export const QueryResultView = createResultView<
       },
     };
   },
-});
+}) as ForwardRefExoticComponent<
+  QueryResultViewProps & RefAttributes<DataGridHandle>
+>;
+
+// Re-export the view options type for convenience
+export type { QueryViewOptions };

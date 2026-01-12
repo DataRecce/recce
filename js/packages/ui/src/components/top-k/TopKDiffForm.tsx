@@ -1,11 +1,22 @@
-import type { TopKDiffParams } from "@datarecce/ui/api";
+"use client";
+
+/**
+ * @file TopKDiffForm.tsx
+ * @description Form component for Top-K diff parameters.
+ *
+ * This component allows users to select a column for top-K analysis.
+ * It displays a dropdown of available columns from the model and
+ * requires catalog.json to be available for column listing.
+ */
+
 import Box from "@mui/material/Box";
 import FormControl from "@mui/material/FormControl";
 import FormLabel from "@mui/material/FormLabel";
 import NativeSelect from "@mui/material/NativeSelect";
 import { useEffect } from "react";
-import useModelColumns from "@/lib/hooks/useModelColumns";
-import { RunFormProps } from "../run/types";
+import type { TopKDiffParams } from "../../api";
+import { useModelColumns } from "../../hooks";
+import type { RunFormProps } from "../run";
 
 type TopKDiffFormProps = RunFormProps<TopKDiffParams>;
 

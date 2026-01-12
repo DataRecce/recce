@@ -58,7 +58,6 @@ import {
   useRef,
   useState,
 } from "react";
-import type { IconType } from "react-icons";
 import { FiPackage } from "react-icons/fi";
 import { PiCaretDown } from "react-icons/pi";
 import type { RecceServerFlags } from "../../../api/flag";
@@ -69,6 +68,7 @@ import type {
   LineageGraphNode,
 } from "../../../contexts/lineage/types";
 import { useIsDark } from "../../../hooks/useIsDark";
+import type { IconComponent } from "../../run/types";
 import { getIconForResourceType } from "../styles";
 
 // ============================================================================
@@ -81,13 +81,13 @@ import { getIconForResourceType } from "../styles";
  */
 export interface RunTypeIcons {
   /** Icon for row_count_diff action */
-  rowCountDiff: IconType;
+  rowCountDiff: IconComponent;
   /** Icon for value_diff action */
-  valueDiff: IconType;
+  valueDiff: IconComponent;
   /** Icon for lineage_diff action */
-  lineageDiff: IconType;
+  lineageDiff: IconComponent;
   /** Icon for schema_diff action */
-  schemaDiff: IconType;
+  schemaDiff: IconComponent;
 }
 
 /**

@@ -16,6 +16,8 @@ import {
   submitRunFromCheck,
   updateCheck,
 } from "@datarecce/ui/api";
+import { DualSqlEditor, SqlEditor } from "@datarecce/ui/components/query";
+import type { IconComponent } from "@datarecce/ui/components/run";
 import { toaster } from "@datarecce/ui/components/ui";
 import {
   useLineageGraphContext,
@@ -60,7 +62,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { IconType } from "react-icons";
 import { FaBookmark } from "react-icons/fa6";
 import { IoMdCodeWorking } from "react-icons/io";
 import { IoBookmarksOutline, IoClose } from "react-icons/io5";
@@ -75,7 +76,6 @@ import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useRun } from "@/lib/hooks/useRun";
 import { LineageViewRef } from "../lineage/LineageView";
-import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
 import { RunView } from "../run/RunView";
 import {
   findByRunType,
@@ -340,7 +340,7 @@ export function CheckDetail({
     : null;
 
   // Get the icon for the check type
-  const checkTypeIcon: IconType | undefined = runTypeEntry?.icon;
+  const checkTypeIcon: IconComponent | undefined = runTypeEntry?.icon;
 
   return (
     <Grid

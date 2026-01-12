@@ -2,9 +2,10 @@
 
 /**
  * @file top-k/index.ts
- * @description Exports for Top-K diff result view components
+ * @description Exports for Top-K diff components (form and result view)
  */
 
+export { TopKDiffForm } from "./TopKDiffForm";
 export {
   TopKDiffResultView,
   type TopKDiffResultViewProps,

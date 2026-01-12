@@ -4,11 +4,46 @@ import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import { memo } from "react";
+import type { Run } from "../../api";
 
 /**
  * Run status types
  */
 export type RunStatus = "running" | "finished" | "failed" | "cancelled";
+
+/**
+ * Infer run status from Run object
+ *
+ * When status is not explicitly set, infers from result/error:
+ * - Has result -> "finished"
+ * - Has error -> "failed"
+ * - Otherwise -> "finished" (default)
+ *
+ * @param run - The run object to infer status from
+ * @returns The inferred run status
+ *
+ * @example
+ * ```tsx
+ * const status = inferRunStatus(run);
+ * // Returns run.status if set, otherwise infers from result/error
+ * ```
+ */
+export function inferRunStatus(run: Run): RunStatus {
+  if (run.status) {
+    return run.status as RunStatus;
+  }
+
+  // Infer from result/error when status is missing
+  if (run.result) {
+    return "finished";
+  }
+  if (run.error) {
+    return "failed";
+  }
+
+  // Default to finished
+  return "finished";
+}
 
 /**
  * Props for the RunStatusBadge component
@@ -226,3 +261,48 @@ function RunStatusWithDateComponent({
 
 export const RunStatusWithDate = memo(RunStatusWithDateComponent);
 RunStatusWithDate.displayName = "RunStatusWithDate";
+
+/**
+ * Props for RunStatusAndDate component
+ */
+export interface RunStatusAndDateProps {
+  /** The run object to display status and date for */
+  run: Run;
+  /** Optional CSS class */
+  className?: string;
+}
+
+/**
+ * RunStatusAndDate Component
+ *
+ * Displays run status badge with formatted date/time.
+ * Accepts a Run object and infers status when not explicitly set.
+ *
+ * @example
+ * ```tsx
+ * import { RunStatusAndDate } from '@datarecce/ui/components/run';
+ *
+ * function RunItem({ run }) {
+ *   return (
+ *     <div>
+ *       <span>{run.name}</span>
+ *       <RunStatusAndDate run={run} />
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+function RunStatusAndDateComponent({ run, className }: RunStatusAndDateProps) {
+  const status = inferRunStatus(run);
+
+  return (
+    <RunStatusWithDate
+      status={status}
+      runAt={run.run_at}
+      className={className}
+    />
+  );
+}
+
+export const RunStatusAndDate = memo(RunStatusAndDateComponent);
+RunStatusAndDate.displayName = "RunStatusAndDate";

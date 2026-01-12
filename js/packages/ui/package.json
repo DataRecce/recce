@@ -63,6 +63,11 @@
       "types": "./dist/constants.d.mts",
       "import": "./dist/constants.mjs",
       "require": "./dist/constants.cjs"
+    },
+    "./components/run": {
+      "types": "./dist/components-run.d.mts",
+      "import": "./dist/components-run.mjs",
+      "require": "./dist/components-run.cjs"
     }
   },
   "files": [
@@ -84,9 +89,11 @@
     "@tanstack/react-query": "^5.0.0",
     "@xyflow/react": "^12.0.0",
     "axios": "^1.0.0",
+    "date-fns": "^4.1.0",
     "file-saver": "^2.0.5",
     "lodash": "^4.17.21",
     "next-themes": "^0.4.0",
+    "react-icons": "^5.5.0",
     "usehooks-ts": "^3.1.1"
   },
   "devDependencies": {

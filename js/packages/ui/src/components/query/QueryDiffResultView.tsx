@@ -1,25 +1,56 @@
-import type { Run } from "@datarecce/ui/api";
+"use client";
+
+/**
+ * @file QueryDiffResultView.tsx
+ * @description Framework-agnostic Query Diff result view for @datarecce/ui
+ *
+ * Handles both JOIN and non-JOIN modes:
+ * - JOIN mode: Server computes the diff, result has `run.result.diff`
+ * - Non-JOIN mode: Client-side diff, result has `run.result.base` and `run.result.current`
+ *
+ * Features:
+ * - Displays row-level diff data with changed highlighting
+ * - "Changed only" filter to show only differing rows
+ * - Side-by-side vs inline display mode toggle
+ * - Column pinning support
+ * - Primary key selection (non-JOIN mode)
+ * - Warning for truncated results
+ * - Warning for non-unique primary keys (non-JOIN mode)
+ */
+
+import type { ForwardRefExoticComponent, RefAttributes } from "react";
+import type { Run } from "../../api";
 import {
   type ColumnRenderMode,
   isQueryDiffRun,
   type QueryDiffViewOptions,
   type QueryPreviewChangeParams,
-} from "@datarecce/ui/api";
+} from "../../api";
 import {
-  ChangedOnlyCheckbox,
-  DiffDisplayModeSwitch,
-} from "@datarecce/ui/components/ui";
-import { createResultView, type ResultViewData } from "@datarecce/ui/result";
-import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
+  toDataDiffGridConfigured,
+  toValueDiffGridConfigured,
+} from "../../utils";
+import type { DataGridHandle } from "../data/ScreenshotDataGrid";
+import { createResultView } from "../result/createResultView";
+import type { CreatedResultViewProps, ResultViewData } from "../result/types";
+import { ChangedOnlyCheckbox } from "../ui/ChangedOnlyCheckbox";
+import { DiffDisplayModeSwitch } from "../ui/DiffDisplayModeSwitch";
 
 import "./styles.css";
-import type { DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 
 // ============================================================================
 // Type Definitions
 // ============================================================================
 
 type QueryDiffRun = Extract<Run, { type: "query_diff" }>;
+
+/**
+ * Props for QueryDiffResultView component
+ */
+export interface QueryDiffResultViewProps
+  extends CreatedResultViewProps<QueryDiffViewOptions> {
+  run: QueryDiffRun | unknown;
+}
 
 /**
  * Type guard wrapper that accepts unknown and delegates to typed guard.
@@ -130,21 +161,50 @@ export const QueryDiffResultView = createResultView<
       }
     };
 
-    // Build grid data using createDataGrid factory
-    const gridData = createDataGrid(run as Run, {
-      changedOnly,
-      pinnedColumns,
-      onPinnedColumnsChange: handlePinnedColumnsChanged,
-      columnsRenderMode,
-      onColumnsRenderModeChanged,
-      baseTitle,
-      currentTitle,
-      displayMode,
-      // Only pass onPrimaryKeyChange for non-JOIN mode
-      ...(handlePrimaryKeyChanged && {
-        onPrimaryKeyChange: handlePrimaryKeyChanged,
-      }),
-    }) ?? { columns: [], rows: [] };
+    // Build grid data using appropriate grid generator based on mode
+    let gridData: {
+      columns: unknown[];
+      rows: unknown[];
+      invalidPKeyBase?: boolean;
+      invalidPKeyCurrent?: boolean;
+    };
+
+    if (isJoinMode && run.result?.diff) {
+      // JOIN mode: use toValueDiffGrid with the diff data
+      const primaryKeysFromParams = run.params?.primary_keys ?? [];
+      gridData = toValueDiffGridConfigured(
+        run.result.diff,
+        primaryKeysFromParams,
+        {
+          changedOnly,
+          pinnedColumns,
+          onPinnedColumnsChange: handlePinnedColumnsChanged,
+          columnsRenderMode,
+          onColumnsRenderModeChanged,
+          baseTitle,
+          currentTitle,
+          displayMode,
+        },
+      );
+    } else {
+      // Non-JOIN mode: use toDataDiffGrid with base/current data
+      gridData = toDataDiffGridConfigured(
+        run.result?.base,
+        run.result?.current,
+        {
+          changedOnly,
+          pinnedColumns,
+          onPinnedColumnsChange: handlePinnedColumnsChanged,
+          columnsRenderMode,
+          onColumnsRenderModeChanged,
+          baseTitle,
+          currentTitle,
+          displayMode,
+          primaryKeys,
+          onPrimaryKeyChange: handlePrimaryKeyChanged,
+        },
+      );
+    }
 
     // Build warnings array
     const warnings: string[] = [];
@@ -240,4 +300,9 @@ export const QueryDiffResultView = createResultView<
       noRowsMessage: "No mismatched rows",
     };
   },
-});
+}) as ForwardRefExoticComponent<
+  QueryDiffResultViewProps & RefAttributes<DataGridHandle>
+>;
+
+// Re-export the view options type for convenience
+export type { QueryDiffViewOptions };

@@ -2,11 +2,10 @@
  * @file ValueDiffResultView.test.tsx
  * @description Baseline tests for ValueDiffResultView component
  *
- * These tests capture current component behavior before refactoring to factory pattern.
  * Tests verify:
  * - Correct rendering with valid run data
  * - Summary header displays correct model name and row counts
- * - Returns null when createDataGrid returns null
+ * - Returns null when toValueDataGrid returns null
  * - Type guard throws for wrong run types
  * - Ref forwarding to underlying grid
  */
@@ -25,9 +24,10 @@ jest.mock("ag-grid-community", () => ({
   themeQuartz: {},
 }));
 
-// Mock dataGrid - use factory pattern that returns mock from closure
-jest.mock("@/lib/dataGrid", () => ({
-  createDataGrid: jest.fn(),
+// Mock toValueDataGrid from @datarecce/ui
+const mockToValueDataGrid = jest.fn();
+jest.mock("@datarecce/ui/components/ui/dataGrid", () => ({
+  toValueDataGrid: (...args: unknown[]) => mockToValueDataGrid(...args),
 }));
 
 // Mock ScreenshotDataGrid with our test utility mock
@@ -54,7 +54,6 @@ jest.mock("@datarecce/ui/hooks", () => ({
 
 import { screen } from "@testing-library/react";
 import React from "react";
-import * as dataGridModule from "@/lib/dataGrid";
 import {
   createRowCountDiffRun,
   createValueDiffRun,
@@ -66,9 +65,6 @@ import {
 } from "@/testing-utils/resultViewTestUtils";
 import { ValueDiffResultView } from "./ValueDiffResultView";
 
-// Get the mock function from the mocked module
-const mockCreateDataGrid = dataGridModule.createDataGrid as jest.Mock;
-
 // ============================================================================
 // Test Setup
 // ============================================================================
@@ -78,7 +74,7 @@ describe("ValueDiffResultView", () => {
     jest.clearAllMocks();
 
     // Default mock implementation returns grid data
-    mockCreateDataGrid.mockReturnValue({
+    mockToValueDataGrid.mockReturnValue({
       columns: [
         { field: "column", headerName: "Column" },
         { field: "match", headerName: "Match" },
@@ -113,12 +109,14 @@ describe("ValueDiffResultView", () => {
       expect(grid).toHaveAttribute("data-columns", "3");
     });
 
-    it("calls createDataGrid with the run object", () => {
+    it("calls toValueDataGrid with the result and params", () => {
       const run = createValueDiffRun();
 
       renderWithProviders(<ValueDiffResultView run={run} />);
 
-      expect(mockCreateDataGrid).toHaveBeenCalledWith(run);
+      expect(mockToValueDataGrid).toHaveBeenCalledWith(run.result, {
+        params: run.params,
+      });
     });
   });
 
@@ -196,8 +194,8 @@ describe("ValueDiffResultView", () => {
   // ==========================================================================
 
   describe("null return when no grid data", () => {
-    it("returns null when createDataGrid returns null", () => {
-      mockCreateDataGrid.mockReturnValue(null);
+    it("returns null when toValueDataGrid returns null", () => {
+      mockToValueDataGrid.mockReturnValue(null);
       const run = createValueDiffRun();
 
       const { container } = renderWithProviders(
@@ -208,8 +206,8 @@ describe("ValueDiffResultView", () => {
       expect(container.firstChild).toBeNull();
     });
 
-    it("returns null when createDataGrid returns undefined", () => {
-      mockCreateDataGrid.mockReturnValue(undefined);
+    it("returns null when toValueDataGrid returns undefined", () => {
+      mockToValueDataGrid.mockReturnValue(undefined);
       const run = createValueDiffRun();
 
       const { container } = renderWithProviders(
@@ -275,7 +273,7 @@ describe("ValueDiffResultView", () => {
     });
 
     it("ref is null when component returns null (no grid data)", () => {
-      mockCreateDataGrid.mockReturnValue(null);
+      mockToValueDataGrid.mockReturnValue(null);
       const run = createValueDiffRun();
       const ref = createGridRef();
 
@@ -295,7 +293,7 @@ describe("ValueDiffResultView", () => {
   // ==========================================================================
 
   describe("data flow", () => {
-    it("passes columns from createDataGrid to ScreenshotDataGrid", () => {
+    it("passes columns from toValueDataGrid to ScreenshotDataGrid", () => {
       const run = createValueDiffRun();
 
       renderWithProviders(<ValueDiffResultView run={run} />);
@@ -305,7 +303,7 @@ describe("ValueDiffResultView", () => {
       expect(grid).toHaveAttribute("data-columns", "3");
     });
 
-    it("passes rows from createDataGrid to ScreenshotDataGrid", () => {
+    it("passes rows from toValueDataGrid to ScreenshotDataGrid", () => {
       const run = createValueDiffRun();
 
       renderWithProviders(<ValueDiffResultView run={run} />);
@@ -317,7 +315,7 @@ describe("ValueDiffResultView", () => {
 
     it("handles varying grid data sizes correctly", () => {
       // Test with different data sizes
-      mockCreateDataGrid.mockReturnValue({
+      mockToValueDataGrid.mockReturnValue({
         columns: [{ field: "column", headerName: "Column" }],
         rows: [{ column: "test1" }, { column: "test2" }],
       });

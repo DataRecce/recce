@@ -7,6 +7,12 @@ import {
   waitRun,
 } from "@datarecce/ui/api";
 import {
+  DualSqlEditor,
+  QueryForm,
+  SetupConnectionGuide,
+  SqlEditor,
+} from "@datarecce/ui/components/query";
+import {
   useLineageGraphContext,
   useRecceActionContext,
   useRecceInstanceContext,
@@ -29,9 +35,6 @@ import {
   useRecceQueryContext,
 } from "@/lib/hooks/QueryContextAdapter";
 import { BaseEnvironmentSetupGuide } from "../lineage/SingleEnvironmentQueryView";
-import { QueryForm } from "./QueryForm";
-import SetupConnectionGuide from "./SetupConnectionGuide";
-import SqlEditor, { DualSqlEditor } from "./SqlEditor";
 
 const QueryModeToggle = () => {
   const { isCustomQueries, setCustomQueries, sqlQuery, setBaseSqlQuery } =

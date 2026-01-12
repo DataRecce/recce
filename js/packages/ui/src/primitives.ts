@@ -89,6 +89,22 @@ export {
 // Check list (list of checks)
 export { CheckList, type CheckListProps } from "./components/check/CheckList";
 
+// Lineage diff view for check results
+export {
+  LineageDiffView,
+  type LineageDiffViewOptions,
+  type LineageDiffViewProps,
+  type LineageViewRef,
+} from "./components/check/LineageDiffView";
+
+// Preset check template view
+export {
+  type GenerateCheckTemplateOptions,
+  generateCheckTemplate,
+  PresetCheckTemplateView,
+  type PresetCheckTemplateViewProps,
+} from "./components/check/PresetCheckTemplateView";
+
 // Check timeline components
 export {
   CommentInput,
@@ -134,12 +150,32 @@ export {
 export {
   formatRunDate,
   formatRunDateTime,
+  inferRunStatus,
   type RunStatus,
+  RunStatusAndDate,
+  type RunStatusAndDateProps,
   RunStatusBadge,
   type RunStatusBadgeProps,
   RunStatusWithDate,
   type RunStatusWithDateProps,
 } from "./components/run/RunStatusBadge";
+
+// Run toolbar (warnings + action buttons)
+export {
+  type DiffViewOptions,
+  RunToolbar,
+  type RunToolbarProps,
+} from "./components/run/RunToolbar";
+
+// Run registry types (for extensibility)
+export type {
+  RefTypes,
+  RegistryEntry,
+  RunFormParamTypes,
+  RunFormProps,
+  RunResultViewProps,
+  ViewOptionTypes,
+} from "./components/run/types";
 
 // =============================================================================
 // DATA PRIMITIVES

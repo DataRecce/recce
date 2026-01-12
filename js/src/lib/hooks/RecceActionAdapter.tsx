@@ -1,12 +1,13 @@
 "use client";
 
-import type { Run, RunParamTypes } from "@datarecce/ui/api";
+import type { Run, RunParamTypes, RunType } from "@datarecce/ui/api";
 import {
   cacheKeys,
   type SubmitRunTrackProps,
   searchRuns,
   submitRun,
 } from "@datarecce/ui/api";
+import type { RunFormProps } from "@datarecce/ui/components/run";
 import { toaster } from "@datarecce/ui/components/ui";
 import {
   type AxiosQueryParams,
@@ -28,9 +29,7 @@ import {
   findByRunType,
   type RegistryEntry,
   type RunFormParamTypes,
-  type RunType,
 } from "@/components/run/registry";
-import type { RunFormProps } from "@/components/run/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 

@@ -1,4 +1,8 @@
-import type { LineageGraph } from "@datarecce/ui";
+import {
+  extractSchemas,
+  formatTimestamp,
+  formatTimeToNow,
+} from "@datarecce/ui";
 import {
   type EnvInfo as EnvInfoType,
   useLineageGraphContext,
@@ -21,7 +25,6 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { format, formatDistance, parseISO } from "date-fns";
 import { isEmpty } from "lodash";
 import React, { useEffect, useRef, useState } from "react";
 import { IoClose } from "react-icons/io5";
@@ -32,36 +35,12 @@ import {
 } from "@/lib/api/track";
 import { IconInfo } from "../icons";
 
-export function formatTimestamp(timestamp: string): string {
-  const date = parseISO(timestamp);
-  return format(date, "yyyy-MM-dd'T'HH:mm:ss");
-}
-
-export function formatTimeToNow(timestamp: string): string {
-  const date = parseISO(timestamp);
-  return formatDistance(date, new Date(), {
-    addSuffix: true,
-  });
-}
-
-export function extractSchemas(
-  lineageGraph: LineageGraph | undefined,
-): [Set<string>, Set<string>] {
-  const baseSchemas = new Set<string>();
-  const currentSchemas = new Set<string>();
-
-  if (lineageGraph?.nodes) {
-    for (const value of Object.values(lineageGraph.nodes)) {
-      if (value.data.data.base?.schema) {
-        baseSchemas.add(value.data.data.base.schema);
-      }
-      if (value.data.data.current?.schema) {
-        currentSchemas.add(value.data.data.current.schema);
-      }
-    }
-  }
-  return [baseSchemas, currentSchemas];
-}
+// Re-export for backwards compatibility
+export {
+  extractSchemas,
+  formatTimestamp,
+  formatTimeToNow,
+} from "@datarecce/ui";
 
 function buildEnvironmentTrackingData(
   envInfo: EnvInfoType | undefined,

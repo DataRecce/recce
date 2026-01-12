@@ -37,6 +37,22 @@ export {
   type CheckListProps,
 } from "./CheckList";
 
+// Lineage diff view for check results
+export {
+  LineageDiffView,
+  type LineageDiffViewOptions,
+  type LineageDiffViewProps,
+  type LineageViewRef,
+} from "./LineageDiffView";
+
+// Preset check template view
+export {
+  type GenerateCheckTemplateOptions,
+  generateCheckTemplate,
+  PresetCheckTemplateView,
+  type PresetCheckTemplateViewProps,
+} from "./PresetCheckTemplateView";
+
 // Timeline components
 export {
   CommentInput,

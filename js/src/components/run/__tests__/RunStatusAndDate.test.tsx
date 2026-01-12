@@ -10,36 +10,23 @@
  * - Loading indicator for running state
  *
  * Source of truth: OSS functionality - these tests document current behavior
+ *
+ * Note: The OSS RunStatusAndDate component is a thin wrapper around @datarecce/ui primitives.
+ * These tests verify both the wrapper logic (status inference from result/error) and the
+ * primitive component behavior.
  */
-
-// ============================================================================
-// Mocks - MUST be set up before imports
-// ============================================================================
-
-// Mock MUI theme token
-jest.mock("@/components/ui/mui-theme", () => ({
-  token: jest.fn((path: string) => {
-    const tokens: Record<string, string> = {
-      "colors.green.400": "#4ade80",
-      "colors.red.400": "#f87171",
-      "colors.gray.400": "#9ca3af",
-      "colors.blue.400": "#60a5fa",
-    };
-    return tokens[path] || "#000000";
-  }),
-}));
 
 // ============================================================================
 // Imports
 // ============================================================================
 
 import type { Run } from "@datarecce/ui/api";
-import { render, screen } from "@testing-library/react";
 import {
   formatRunDate,
   formatRunDateTime,
   RunStatusAndDate,
-} from "../RunStatusAndDate";
+} from "@datarecce/ui/primitives";
+import { render, screen } from "@testing-library/react";
 
 // ============================================================================
 // Test Fixtures

@@ -9,6 +9,7 @@ import {
   BaseSandboxView,
   type SandboxNodeData,
 } from "@datarecce/ui/components/lineage";
+import { QueryForm } from "@datarecce/ui/components/query";
 import {
   useRecceActionContext,
   useRecceServerFlag,
@@ -26,7 +27,6 @@ import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";
 import { useGuideToast } from "@/lib/hooks/useGuideToast";
-import { QueryForm } from "../query/QueryForm";
 import { RunResultPane } from "../run/RunResultPane";
 
 interface SandboxViewProps {

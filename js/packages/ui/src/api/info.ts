@@ -166,3 +166,32 @@ export async function getServerInfo(
   );
   return response.data;
 }
+
+/**
+ * Model info result from /api/model/:model endpoint
+ */
+export interface ModelInfoResult {
+  model: {
+    base: {
+      columns?: Record<string, NodeColumnData>;
+      primary_key?: string;
+    };
+    current: {
+      columns?: Record<string, NodeColumnData>;
+      primary_key?: string;
+    };
+  };
+}
+
+/**
+ * Fetch model info (columns and primary key) from API
+ */
+export async function getModelInfo(
+  model: string,
+  client: AxiosInstance,
+): Promise<ModelInfoResult> {
+  const response = await client.get<never, AxiosResponse<ModelInfoResult>>(
+    `/api/model/${model}`,
+  );
+  return response.data;
+}

@@ -1,7 +1,9 @@
 /**
  * @file formatTime.ts
- * @description Time formatting utilities for duration display
+ * @description Time formatting utilities for duration and timestamp display
  */
+
+import { format, formatDistance, parseISO } from "date-fns";
 
 export type TimeFormatStyle = "compact" | "verbose";
 
@@ -82,4 +84,44 @@ export function formatDuration(
     return formatCompact(components);
   }
   return formatVerbose(components);
+}
+
+// ============================================================================
+// ISO Timestamp Utilities
+// ============================================================================
+
+/**
+ * Format an ISO timestamp string to a consistent date-time format.
+ *
+ * @param timestamp - ISO 8601 timestamp string
+ * @returns Formatted string in "yyyy-MM-dd'T'HH:mm:ss" format
+ *
+ * @example
+ * ```ts
+ * formatTimestamp("2024-01-15T10:30:00Z")
+ * // Returns: "2024-01-15T10:30:00"
+ * ```
+ */
+export function formatTimestamp(timestamp: string): string {
+  const date = parseISO(timestamp);
+  return format(date, "yyyy-MM-dd'T'HH:mm:ss");
+}
+
+/**
+ * Format an ISO timestamp as a relative time string (e.g., "2 hours ago").
+ *
+ * @param timestamp - ISO 8601 timestamp string
+ * @returns Human-readable relative time string
+ *
+ * @example
+ * ```ts
+ * formatTimeToNow("2024-01-15T10:30:00Z")
+ * // Returns: "2 hours ago" (depending on current time)
+ * ```
+ */
+export function formatTimeToNow(timestamp: string): string {
+  const date = parseISO(timestamp);
+  return formatDistance(date, new Date(), {
+    addSuffix: true,
+  });
 }

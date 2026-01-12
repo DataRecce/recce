@@ -1,6 +1,18 @@
 "use client";
 
-// Run primitives - pure presentation components
+/**
+ * @file run/index.ts
+ * @description Run component exports including primitives, types, and extensible registry.
+ *
+ * This module provides:
+ * - Run primitives (RunList, RunProgress, RunStatusBadge, RunToolbar)
+ * - Extensible registry for run types (createRunTypeRegistry, defaultRunTypeConfig)
+ * - Shared types for run forms and result views
+ */
+
+// ============================================================================
+// Run Primitives - Pure Presentation Components
+// ============================================================================
 
 export {
   RunList,
@@ -9,7 +21,7 @@ export {
   type RunListItemProps,
   type RunListProps,
 } from "./RunList";
-
+export { RunModal, type RunModalProps } from "./RunModal";
 export {
   RunProgress,
   RunProgressOverlay,
@@ -17,13 +29,67 @@ export {
   type RunProgressProps,
   type RunProgressVariant,
 } from "./RunProgress";
-
+export {
+  type AddToCheckButtonProps,
+  type CSVExportProps,
+  type RunResultExportMenuProps,
+  RunResultPane,
+  type RunResultPaneProps,
+  type RunResultPaneTabValue,
+  type RunResultShareMenuProps,
+  type SingleEnvironmentNotificationProps,
+  type SqlEditorProps,
+} from "./RunResultPane";
 export {
   formatRunDate,
   formatRunDateTime,
+  inferRunStatus,
   type RunStatus,
+  RunStatusAndDate,
+  type RunStatusAndDateProps,
   RunStatusBadge,
   type RunStatusBadgeProps,
   RunStatusWithDate,
   type RunStatusWithDateProps,
 } from "./RunStatusBadge";
+export {
+  type DiffViewOptions,
+  RunToolbar,
+  type RunToolbarProps,
+} from "./RunToolbar";
+export {
+  type ErrorBoundaryWrapperProps,
+  RunView,
+  type RunViewProps,
+} from "./RunView";
+
+// ============================================================================
+// Registry - Run Type Configuration
+// ============================================================================
+
+export {
+  createBoundFindByRunType,
+  createRunTypeRegistry,
+  defaultRunTypeConfig,
+  findByRunType,
+  type RunRegistry,
+  registry,
+} from "./registry";
+
+// ============================================================================
+// Types - Shared Types for Run Components
+// ============================================================================
+
+export type {
+  IconComponent,
+  PartialRunTypeRegistry,
+  RefTypes,
+  RegistryEntry,
+  RunFormParamTypes,
+  RunFormProps,
+  RunResultViewProps,
+  RunResultViewRef,
+  RunTypeConfig,
+  RunTypeRegistry,
+  ViewOptionTypes,
+} from "./types";
