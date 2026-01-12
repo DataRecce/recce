@@ -22,6 +22,7 @@ changes with confidence by providing lineage visualization, data diffing, and co
   `recce/data/` before testing with `recce server`
 - ❌ **Use interactive git commands**: Never use `git rebase -i`, `git add -i`, or similar (interactive prompts don't
   work in CLI context)
+- ❌ **Create worktrees in subdirectories**: Git worktrees must only be created at the repository root (`/Users/jaredmscott/repos/recce/recce`), never inside subdirectories like `js/`
 - ❌ **Mix concerns across layers**: Keep strict separation between models, tasks, APIs, and adapters (see Code
   Organization Philosophy below)
 
