@@ -279,6 +279,9 @@ importers:
       axios:
         specifier: ^1.0.0
         version: 1.13.2
+      file-saver:
+        specifier: ^2.0.5
+        version: 2.0.5
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
