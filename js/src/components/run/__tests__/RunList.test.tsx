@@ -39,6 +39,11 @@ jest.mock("@datarecce/ui/contexts", () => ({
       disableUpdateChecklist: false,
     },
   })),
+  useRecceActionContext: jest.fn(() => ({
+    closeHistory: jest.fn(),
+    showRunId: jest.fn(),
+    runId: undefined,
+  })),
 }));
 
 jest.mock("@datarecce/ui/hooks", () => ({
@@ -48,14 +53,6 @@ jest.mock("@datarecce/ui/hooks", () => ({
 jest.mock("@/lib/hooks/ApiConfigContext", () => ({
   useApiConfig: jest.fn(() => ({
     apiClient: {},
-  })),
-}));
-
-jest.mock("@/lib/hooks/RecceActionAdapter", () => ({
-  useRecceActionContext: jest.fn(() => ({
-    closeHistory: jest.fn(),
-    showRunId: jest.fn(),
-    runId: undefined,
   })),
 }));
 
@@ -99,10 +96,14 @@ jest.mock("../RunStatusAndDate", () => ({
 // Imports
 // ============================================================================
 
-import { createCheckByRun, listRuns, waitRun } from "@datarecce/ui/api";
+import {
+  createCheckByRun,
+  listRuns,
+  type Run,
+  waitRun,
+} from "@datarecce/ui/api";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { Run } from "@/lib/api/types";
 import { RunList } from "../RunList";
 
 // Cast to jest mocks
@@ -186,7 +187,7 @@ describe("RunList", () => {
     it("calls closeHistory when close button is clicked", async () => {
       const mockCloseHistory = jest.fn();
       const useRecceActionContext =
-        require("@/lib/hooks/RecceActionAdapter").useRecceActionContext;
+        require("@datarecce/ui/contexts").useRecceActionContext;
       useRecceActionContext.mockReturnValue({
         closeHistory: mockCloseHistory,
         showRunId: jest.fn(),
@@ -397,7 +398,7 @@ describe("RunList", () => {
     it("calls showRunId when run is clicked", async () => {
       const mockShowRunId = jest.fn();
       const useRecceActionContext =
-        require("@/lib/hooks/RecceActionAdapter").useRecceActionContext;
+        require("@datarecce/ui/contexts").useRecceActionContext;
       useRecceActionContext.mockReturnValue({
         closeHistory: jest.fn(),
         showRunId: mockShowRunId,
@@ -431,7 +432,7 @@ describe("RunList", () => {
       // Mock the context to return the selected run ID
       const mockCloseHistory = jest.fn();
       const useRecceActionContext =
-        require("@/lib/hooks/RecceActionAdapter").useRecceActionContext;
+        require("@datarecce/ui/contexts").useRecceActionContext;
       useRecceActionContext.mockReturnValue({
         closeHistory: mockCloseHistory,
         showRunId: jest.fn(),
@@ -680,7 +681,7 @@ describe("RunList", () => {
     it("stops event propagation when clicking add to checklist", async () => {
       const mockShowRunId = jest.fn();
       const useRecceActionContext =
-        require("@/lib/hooks/RecceActionAdapter").useRecceActionContext;
+        require("@datarecce/ui/contexts").useRecceActionContext;
       useRecceActionContext.mockReturnValue({
         closeHistory: jest.fn(),
         showRunId: mockShowRunId,

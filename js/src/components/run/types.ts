@@ -1,6 +1,5 @@
+import type { Run } from "@datarecce/ui/api";
 import { ViewOptionTypes } from "@/components/run/registry";
-// Import Run from OSS types for proper discriminated union support
-import type { Run } from "@/lib/api/types";
 
 export interface RunFormProps<PT> {
   params: Partial<PT>;

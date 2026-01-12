@@ -38,6 +38,8 @@ jest.mock("@datarecce/ui/api", () => {
   };
 });
 
+const mockRunAction = jest.fn();
+
 // Mock contexts
 jest.mock("@datarecce/ui/contexts", () => ({
   useRecceInstanceContext: jest.fn(() => ({
@@ -47,6 +49,10 @@ jest.mock("@datarecce/ui/contexts", () => ({
       disableUpdateChecklist: false,
     },
     authed: false,
+  })),
+  useRecceActionContext: jest.fn(() => ({
+    runAction: mockRunAction,
+    runId: "test-run-id",
   })),
 }));
 
@@ -59,14 +65,6 @@ jest.mock("@datarecce/ui/primitives", () => ({
   CodeEditor: ({ value }: { value: string }) => (
     <div data-testid="code-editor">{value}</div>
   ),
-}));
-
-const mockRunAction = jest.fn();
-jest.mock("@/lib/hooks/RecceActionAdapter", () => ({
-  useRecceActionContext: jest.fn(() => ({
-    runAction: mockRunAction,
-    runId: "test-run-id",
-  })),
 }));
 
 jest.mock("@/lib/hooks/ApiConfigContext", () => ({

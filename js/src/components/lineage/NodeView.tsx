@@ -3,6 +3,7 @@ import { createSchemaDiffCheck } from "@datarecce/ui/api";
 import { DisableTooltipMessages } from "@datarecce/ui/constants";
 import {
   useLineageGraphContext,
+  useRecceActionContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
 import { formatSelectColumns } from "@datarecce/ui/utils";
@@ -25,7 +26,6 @@ import {
 } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import {

@@ -23,7 +23,7 @@ jest.mock("@datarecce/ui/contexts", () => ({
 }));
 
 // Mock ChangeSummary component
-jest.mock("../ChangeSummary", () => ({
+jest.mock("@datarecce/ui/components/summary", () => ({
   ChangeSummary: ({ lineageGraph }: { lineageGraph: unknown }) => (
     <div data-testid="change-summary">
       <span data-testid="change-summary-graph">

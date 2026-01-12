@@ -5,8 +5,13 @@ import {
   isQueryBaseRun,
   isQueryDiffRun,
   isQueryRun,
+  type Run,
+  type RunParamTypes,
 } from "@datarecce/ui/api";
-import { useRecceInstanceContext } from "@datarecce/ui/contexts";
+import {
+  useRecceActionContext,
+  useRecceInstanceContext,
+} from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import { CodeEditor } from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
@@ -36,9 +41,7 @@ import { TbCloudUpload } from "react-icons/tb";
 import YAML from "yaml";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { trackCopyToClipboard, trackShareState } from "@/lib/api/track";
-import { Run, RunParamTypes } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";

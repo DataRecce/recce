@@ -65,8 +65,8 @@ jest.mock("../run/RunToolbar", () => ({
   ),
 }));
 
-// Mock DiffDisplayModeSwitch
-jest.mock("../query/ToggleSwitch", () => ({
+// Mock DiffDisplayModeSwitch and ChangedOnlyCheckbox from @datarecce/ui/components/ui
+jest.mock("@datarecce/ui/components/ui", () => ({
   DiffDisplayModeSwitch: jest.fn(
     ({
       displayMode,
@@ -84,10 +84,6 @@ jest.mock("../query/ToggleSwitch", () => ({
       </button>
     ),
   ),
-}));
-
-// Mock ChangedOnlyCheckbox
-jest.mock("../query/ChangedOnlyCheckbox", () => ({
   ChangedOnlyCheckbox: jest.fn(
     ({
       changedOnly,
@@ -125,10 +121,9 @@ jest.mock("@datarecce/ui/hooks", () => ({
 // Imports
 // ============================================================================
 
+import type { Run } from "@datarecce/ui/api";
 import { fireEvent, screen } from "@testing-library/react";
 import React from "react";
-// Import Run from OSS types for proper discriminated union support with Extract<>
-import type { Run } from "@/lib/api/types";
 import { createRowCountDiffRun } from "@/testing-utils/fixtures/runFixtures";
 import {
   createGridRef,

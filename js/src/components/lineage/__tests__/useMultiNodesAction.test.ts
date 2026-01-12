@@ -34,9 +34,9 @@ jest.mock("@/lib/hooks/ApiConfigContext", () => ({
   })),
 }));
 
-// Mock RecceActionAdapter
+// Mock @datarecce/ui/contexts
 const mockShowRunId = jest.fn();
-jest.mock("@/lib/hooks/RecceActionAdapter", () => ({
+jest.mock("@datarecce/ui/contexts", () => ({
   useRecceActionContext: jest.fn(() => ({
     showRunId: mockShowRunId,
   })),

@@ -8,18 +8,19 @@
  * proper test mock integration.
  */
 
+import type { Run } from "@datarecce/ui/api";
 import {
   type ColumnRenderMode,
   isValueDiffDetailRun,
   type ValueDiffDetailViewOptions,
 } from "@datarecce/ui/api";
+import {
+  ChangedOnlyCheckbox,
+  DiffDisplayModeSwitch,
+} from "@datarecce/ui/components/ui";
 import { createResultView, type ResultViewData } from "@datarecce/ui/result";
-// Import Run from OSS types for proper discriminated union support with Extract<>
-import type { Run } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
 import type { DataGridHandle } from "../data-grid/ScreenshotDataGrid";
-import { ChangedOnlyCheckbox } from "../query/ChangedOnlyCheckbox";
-import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
 
 import "../query/styles.css";
 

@@ -1,10 +1,10 @@
 "use client";
 
+import { theme } from "@datarecce/ui/theme";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import { useTheme } from "next-themes";
 import { type ReactNode, useEffect } from "react";
-import { lightTheme } from "./mui-theme";
 
 interface MuiProviderProps {
   children: ReactNode;
@@ -52,7 +52,7 @@ export function MuiProvider({
 
   // Use single theme - CSS Variables mode handles light/dark via .dark class
   return (
-    <MuiThemeProvider theme={lightTheme}>
+    <MuiThemeProvider theme={theme}>
       {enableCssBaseline && <CssBaseline />}
       {children}
     </MuiThemeProvider>

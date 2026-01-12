@@ -93,6 +93,7 @@ jest.mock("@datarecce/ui/hooks/index", () => ({
 // ============================================================================
 
 import type { TopKDiffResult, TopKViewOptions } from "@datarecce/ui/api";
+import { TopKDiffResultView } from "@datarecce/ui/components";
 import { fireEvent, screen } from "@testing-library/react";
 import React from "react";
 import {
@@ -103,7 +104,6 @@ import {
   createBoxRef,
   renderWithProviders,
 } from "@/testing-utils/resultViewTestUtils";
-import { TopKDiffResultView } from "./TopKDiffResultView";
 
 // ============================================================================
 // Test Helpers

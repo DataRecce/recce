@@ -1,4 +1,4 @@
-import type { RunType } from "@datarecce/ui/api";
+import type { Run, RunType } from "@datarecce/ui/api";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -19,8 +19,6 @@ import {
   isExploreAction,
   trackExploreActionForm,
 } from "@/lib/api/track";
-// Import Run from OSS types for proper discriminated union support
-import type { Run } from "@/lib/api/types";
 import { RunFormProps } from "./types";
 
 interface RunModalProps {

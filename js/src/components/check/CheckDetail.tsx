@@ -11,6 +11,8 @@ import {
   type QueryDiffParams,
   type QueryParams,
   type QueryRunParams,
+  type Run,
+  type RunParamTypes,
   submitRunFromCheck,
   updateCheck,
 } from "@datarecce/ui/api";
@@ -67,8 +69,6 @@ import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { CheckTimeline } from "@/components/check/timeline";
 import { trackCopyToClipboard } from "@/lib/api/track";
-// Import Run from OSS types for proper discriminated union support
-import { type Run, type RunParamTypes } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceCheckContext } from "@/lib/hooks/CheckContextAdapter";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";

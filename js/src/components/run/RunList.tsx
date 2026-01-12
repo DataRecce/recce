@@ -2,8 +2,13 @@ import {
   cacheKeys,
   createCheckByRun,
   listRuns,
+  type Run,
   waitRun,
 } from "@datarecce/ui/api";
+import {
+  useRecceActionContext,
+  useRecceInstanceContext,
+} from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
@@ -13,13 +18,9 @@ import React, { ReactNode, useCallback } from "react";
 import { IconType } from "react-icons";
 import { FaCheckCircle, FaRegCheckCircle } from "react-icons/fa";
 import SimpleBar from "simplebar-react";
-// Import Run from OSS types for proper discriminated union support
-import type { Run } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { findByRunType } from "../run/registry";
 import "simplebar/dist/simplebar.min.css";
-import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import MuiTooltip from "@mui/material/Tooltip";
 import { PiX } from "react-icons/pi";

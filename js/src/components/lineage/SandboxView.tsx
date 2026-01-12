@@ -9,6 +9,7 @@ import {
 } from "@datarecce/ui/api";
 import {
   useLineageGraphContext,
+  useRecceActionContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
@@ -37,7 +38,6 @@ import {
 } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";
 import { useGuideToast } from "@/lib/hooks/useGuideToast";
 import { formatTimestamp } from "../app/EnvInfo";

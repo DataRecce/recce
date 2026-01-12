@@ -13,11 +13,10 @@ import type {
   QueryResult,
   RowCountDiffResult,
   RowCountResult,
+  Run,
   TopKDiffResult,
   ValueDiffResult,
 } from "@datarecce/ui/api";
-// Import Run from OSS types for proper discriminated union support with Extract<>
-import type { Run } from "@/lib/api/types";
 
 // ============================================================================
 // Helper Functions

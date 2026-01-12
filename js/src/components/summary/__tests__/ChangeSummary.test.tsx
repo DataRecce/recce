@@ -23,8 +23,8 @@
 
 import type { LineageGraph, LineageGraphNode } from "@datarecce/ui";
 import type { NodeData } from "@datarecce/ui/api";
+import { ChangeSummary } from "@datarecce/ui/components/summary";
 import { render, screen } from "@testing-library/react";
-import { ChangeSummary } from "../ChangeSummary";
 
 // ============================================================================
 // Test Fixtures

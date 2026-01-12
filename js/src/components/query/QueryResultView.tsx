@@ -1,3 +1,4 @@
+import type { Run } from "@datarecce/ui/api";
 import {
   type ColumnRenderMode,
   isQueryBaseRun,
@@ -6,8 +7,6 @@ import {
 } from "@datarecce/ui/api";
 import { createResultView, type ResultViewData } from "@datarecce/ui/result";
 import Button from "@mui/material/Button";
-// Import Run from OSS types for proper discriminated union support with Extract<>
-import type { Run } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
 import type { DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 

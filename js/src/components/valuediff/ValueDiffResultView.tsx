@@ -6,6 +6,7 @@
  * Each row represents a column with its match count and percentage.
  */
 
+import type { Run } from "@datarecce/ui/api";
 import {
   isValueDiffRun,
   type ValueDiffParams,
@@ -16,8 +17,6 @@ import { createResultView } from "@datarecce/ui/components/result/createResultVi
 import { type ResultViewData } from "@datarecce/ui/components/result/types";
 import Box from "@mui/material/Box";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
-// Import Run from OSS types for proper discriminated union support with Extract<>
-import type { Run } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid";
 import type { RunResultViewProps } from "../run/types";
 

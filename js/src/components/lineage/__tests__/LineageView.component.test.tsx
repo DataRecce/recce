@@ -132,6 +132,13 @@ const mockRecceInstanceContext = {
 jest.mock("@datarecce/ui/contexts", () => ({
   useLineageGraphContext: jest.fn(() => mockLineageGraphContext),
   useRecceInstanceContext: jest.fn(() => mockRecceInstanceContext),
+  useRecceActionContext: jest.fn(() => ({
+    runId: undefined,
+    showRunId: mockShowRunId,
+    closeRunResult: mockCloseRunResult,
+    runAction: mockRunAction,
+    isRunResultOpen: false,
+  })),
 }));
 
 // Mock @datarecce/ui hooks
@@ -327,16 +334,6 @@ jest.mock("@/lib/hooks/ApiConfigContext", () => ({
 const mockShowRunId = jest.fn();
 const mockCloseRunResult = jest.fn();
 const mockRunAction = jest.fn();
-
-jest.mock("@/lib/hooks/RecceActionAdapter", () => ({
-  useRecceActionContext: jest.fn(() => ({
-    runId: undefined,
-    showRunId: mockShowRunId,
-    closeRunResult: mockCloseRunResult,
-    runAction: mockRunAction,
-    isRunResultOpen: false,
-  })),
-}));
 
 jest.mock("@/lib/hooks/useAppRouter", () => ({
   useAppLocation: jest.fn(() => ["/lineage", jest.fn()]),

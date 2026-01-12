@@ -2,6 +2,7 @@
 
 import { type Check, cacheKeys, listChecks } from "@datarecce/ui/api";
 import {
+  useLineageGraphContext,
   useRecceInstanceContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
@@ -19,7 +20,6 @@ import { TopLevelShare } from "@/components/app/StateSharing";
 import { StateSynchronizer } from "@/components/app/StateSynchronizer";
 import { trackNavigation } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 
 /**
  * Route configuration for tabs

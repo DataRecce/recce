@@ -28,11 +28,13 @@ jest.mock("@datarecce/ui", () => ({
 const mockUseLineageGraphContext = jest.fn();
 const mockUseRecceInstanceContext = jest.fn();
 const mockUseRecceServerFlag = jest.fn();
+const mockUseRecceActionContext = jest.fn();
 
 jest.mock("@datarecce/ui/contexts", () => ({
   useLineageGraphContext: () => mockUseLineageGraphContext(),
   useRecceInstanceContext: () => mockUseRecceInstanceContext(),
   useRecceServerFlag: () => mockUseRecceServerFlag(),
+  useRecceActionContext: () => mockUseRecceActionContext(),
 }));
 
 // Mock @datarecce/ui/utils
@@ -47,12 +49,6 @@ jest.mock("@datarecce/ui/utils", () => ({
 const mockUseLineageViewContextSafe = jest.fn();
 jest.mock("../LineageViewContext", () => ({
   useLineageViewContextSafe: () => mockUseLineageViewContextSafe(),
-}));
-
-// Mock RecceActionAdapter
-const mockUseRecceActionContext = jest.fn();
-jest.mock("@/lib/hooks/RecceActionAdapter", () => ({
-  useRecceActionContext: () => mockUseRecceActionContext(),
 }));
 
 // Mock QueryContextAdapter

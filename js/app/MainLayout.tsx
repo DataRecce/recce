@@ -8,6 +8,8 @@
 "use client";
 
 import {
+  useLineageGraphContext,
+  useRecceActionContext,
   useRecceInstanceContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
@@ -20,8 +22,6 @@ import { RunList } from "@/components/run/RunList";
 import { RunResultPane } from "@/components/run/RunResultPane";
 import { HSplit, VSplit } from "@/components/split/Split";
 import { trackInit } from "@/lib/api/track";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import "@fontsource/montserrat/800.css";
 import NavBar from "app/(mainComponents)/NavBar";
 import TopBar from "app/(mainComponents)/TopBar";

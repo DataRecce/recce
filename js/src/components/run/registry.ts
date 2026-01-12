@@ -11,6 +11,12 @@ import {
   type TopKViewOptions,
   type ValueDiffDetailViewOptions,
 } from "@datarecce/ui/api";
+import { TopKDiffResultView } from "@datarecce/ui/components";
+import { HistogramDiffResultView } from "@datarecce/ui/components/histogram";
+import {
+  RowCountDiffResultView,
+  RowCountResultView,
+} from "@datarecce/ui/components/rowcount";
 import React, {
   ComponentType,
   ForwardRefExoticComponent,
@@ -30,7 +36,6 @@ import {
 import { DiffViewOptions } from "@/components/run/RunToolbar";
 import { type DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 import { HistogramDiffForm } from "../histogram/HistogramDiffForm";
-import { HistogramDiffResultView } from "../histogram/HistogramDiffResultView";
 import {
   ProfileDiffForm,
   ProfileDiffFormParams,
@@ -41,12 +46,7 @@ import {
 } from "../profile/ProfileDiffResultView";
 import { QueryDiffResultView } from "../query/QueryDiffResultView";
 import { QueryResultView } from "../query/QueryResultView";
-import {
-  RowCountDiffResultView,
-  RowCountResultView,
-} from "../rowcount/RowCountDiffResultView";
 import { TopKDiffForm } from "../top-k/TopKDiffForm";
-import { TopKDiffResultView } from "../top-k/TopKDiffResultView";
 import { ValueDiffDetailResultView } from "../valuediff/ValueDiffDetailResultView";
 import { ValueDiffForm, ValueDiffFormParams } from "../valuediff/ValueDiffForm";
 import { ValueDiffResultView } from "../valuediff/ValueDiffResultView";

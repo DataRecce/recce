@@ -1,7 +1,5 @@
-import { cacheKeys, waitRun } from "@datarecce/ui/api";
+import { cacheKeys, type Run, waitRun } from "@datarecce/ui/api";
 import { useQuery } from "@tanstack/react-query";
-// Import Run from OSS types for proper discriminated union support
-import type { Run } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { RunView } from "./RunView";
 import { findByRunType, RegistryEntry, runTypeHasRef } from "./registry";

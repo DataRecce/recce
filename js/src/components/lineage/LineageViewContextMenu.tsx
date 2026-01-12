@@ -7,6 +7,7 @@ import { isLineageGraphColumnNode, isLineageGraphNode } from "@datarecce/ui";
 import { type SubmitRunTrackProps } from "@datarecce/ui/api";
 import {
   useLineageGraphContext,
+  useRecceActionContext,
   useRecceInstanceContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
@@ -27,7 +28,6 @@ import {
   trackLineageSelection,
 } from "@/lib/api/track";
 import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";

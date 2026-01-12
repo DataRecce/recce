@@ -1,4 +1,7 @@
-import { useRecceInstanceContext } from "@datarecce/ui/contexts";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+} from "@datarecce/ui/contexts";
 import { colors } from "@datarecce/ui/theme";
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
@@ -13,7 +16,6 @@ import { VscGitPullRequest } from "react-icons/vsc";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import AvatarDropdown from "@/components/app/AvatarDropdown";
 import { IdleTimeoutBadge } from "@/components/timeout/IdleTimeoutBadge";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphAdapter";
 import DisplayModeToggle from "./DisplayModeToggle";
 import RecceVersionBadge from "./RecceVersionBadge";
 

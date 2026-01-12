@@ -68,12 +68,8 @@ export function QueryContextAdapter({ children }: QueryContextAdapterProps) {
   );
 }
 
-// Re-export types for backward compatibility
-export type {
-  QueryContextType,
-  QueryProviderProps,
-  QueryResult,
-} from "@datarecce/ui/providers";
+// Note: QueryContextType, QueryProviderProps, QueryResult are now imported directly from @datarecce/ui/providers
+// This adapter only exports QueryContextAdapter, useRecceQueryContext, defaultSqlQuery, and OSSQueryContext type
 
 // No-op fallbacks for when hook is used outside provider
 const noopSetSqlQuery = (_sql: string) => {
@@ -110,5 +106,4 @@ export function useRecceQueryContext(): OSSQueryContext {
   };
 }
 
-// Also export the raw hook for cases where the full type is needed
-export { useQueryContext };
+// Note: useQueryContext is now imported directly from @datarecce/ui/providers

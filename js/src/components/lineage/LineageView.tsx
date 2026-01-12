@@ -70,6 +70,7 @@ import {
 import { toaster } from "@datarecce/ui/components/ui";
 import {
   useLineageGraphContext,
+  useRecceActionContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
 import { useClipBoardToast, useThemeColors } from "@datarecce/ui/hooks";
@@ -84,7 +85,6 @@ import {
   trackMultiNodesAction,
 } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import {
   IGNORE_SCREENSHOT_CLASS,
   useCopyToClipboard,

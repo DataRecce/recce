@@ -5,21 +5,20 @@ import {
   createSchemaDiffCheck,
   type RowCountDiffParams,
   type RowCountParams,
+  type Run,
   type RunType,
   submitRun,
   type ValueDiffParams,
   waitRun,
 } from "@datarecce/ui/api";
+import { useRecceActionContext } from "@datarecce/ui/contexts";
 import { useRef } from "react";
 import {
   EXPLORE_ACTION,
   EXPLORE_SOURCE,
   trackExploreAction,
 } from "@/lib/api/track";
-// Import Run from OSS types for proper discriminated union support
-import type { Run } from "@/lib/api/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 
 const initValue: ActionState = {
   mode: "per_node",

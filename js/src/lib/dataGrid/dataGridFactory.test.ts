@@ -123,10 +123,9 @@ import {
   type DataFrame,
   type ProfileDiffResult,
   type QueryDiffResult,
+  type Run,
 } from "@datarecce/ui/api";
 import React from "react";
-// Import Run from OSS types for proper discriminated union support with type guards
-import type { Run } from "@/lib/api/types";
 import { createDataGrid, createDataGridFromData } from "./dataGridFactory";
 
 // ============================================================================

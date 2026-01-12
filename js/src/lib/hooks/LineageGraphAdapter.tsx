@@ -467,9 +467,5 @@ export function LineageGraphAdapter({ children }: LineageGraphAdapterProps) {
   );
 }
 
-// Re-export the hooks from @datarecce/ui for backward compatibility
-// This allows existing code to continue using these hooks from this file
-export {
-  useLineageGraphContext,
-  useRunsAggregated,
-} from "@datarecce/ui/contexts";
+// Note: useLineageGraphContext and useRunsAggregated are now imported directly from @datarecce/ui/contexts
+// This adapter only exports LineageGraphAdapter component and OSS-specific types (EnvInfo)

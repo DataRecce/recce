@@ -83,6 +83,7 @@ jest.mock("@datarecce/ui/hooks", () => ({
 // Imports
 // ============================================================================
 
+import { HistogramDiffResultView } from "@datarecce/ui/components/histogram";
 import { screen } from "@testing-library/react";
 import React from "react";
 import {
@@ -94,7 +95,6 @@ import {
   expectThrowsForWrongType,
   renderWithProviders,
 } from "@/testing-utils/resultViewTestUtils";
-import { HistogramDiffResultView } from "./HistogramDiffResultView";
 
 // ============================================================================
 // Test Setup

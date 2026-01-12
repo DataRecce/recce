@@ -2,17 +2,18 @@
  * Hook for CSV export functionality
  */
 
+import type { Run } from "@datarecce/ui/api";
 import { toaster } from "@datarecce/ui/components/ui";
 import {
   type CSVExportOptions,
+  copyCSVToClipboard,
+  downloadCSV,
   extractCSVData,
   generateCSVFilename,
   supportsCSVExport,
   toCSV,
 } from "@datarecce/ui/utils";
 import { useCallback, useMemo } from "react";
-import type { Run } from "@/lib/api/types";
-import { copyCSVToClipboard, downloadCSV } from "@/lib/csv";
 
 interface UseCSVExportOptions {
   run?: Run;

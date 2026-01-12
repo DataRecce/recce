@@ -12,6 +12,7 @@
  * - toValueDataGrid for value_diff summary (column match statistics)
  */
 
+import type { Run } from "@datarecce/ui/api";
 import {
   type ColumnRenderMode,
   type ColumnType,
@@ -34,6 +35,7 @@ import {
   type ValueDiffParams,
   type ValueDiffResult,
 } from "@datarecce/ui/api";
+import { toValueDataGrid } from "@datarecce/ui/components/ui/dataGrid";
 // Import existing implementations from @datarecce/ui
 import {
   toDataDiffGridConfigured as toDataDiffGrid,
@@ -43,8 +45,6 @@ import {
   toValueDiffGridConfigured as toValueDiffGrid,
 } from "@datarecce/ui/utils";
 import type { ColDef, ColGroupDef } from "ag-grid-community";
-// Import Run from OSS types for proper discriminated union support with type guards
-import type { Run } from "@/lib/api/types";
 import {
   mergeColumns,
   type SchemaDataGridOptions,
@@ -53,7 +53,6 @@ import {
   toSchemaDataGrid,
   toSingleEnvDataGrid,
 } from "@/lib/dataGrid/generators/toSchemaDataGrid";
-import { toValueDataGrid } from "@/lib/dataGrid/generators/toValueDataGrid";
 
 // ============================================================================
 // Types & Interfaces

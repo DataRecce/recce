@@ -16,8 +16,8 @@ import {
   type ValueDiffParams,
   type ValueDiffResult,
 } from "@datarecce/ui/api";
+import { toValueDataGrid } from "@datarecce/ui/components/ui/dataGrid";
 import type { CellClassParams } from "ag-grid-community";
-import { toValueDataGrid } from "./toValueDataGrid";
 
 // ============================================================================
 // Mocks

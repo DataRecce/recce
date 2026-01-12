@@ -33,8 +33,8 @@ jest.mock("@/components/ui/mui-theme", () => ({
 // Imports
 // ============================================================================
 
+import type { Run } from "@datarecce/ui/api";
 import { render, screen } from "@testing-library/react";
-import type { Run } from "@/lib/api/types";
 import {
   formatRunDate,
   formatRunDateTime,

@@ -60,9 +60,9 @@ jest.mock("../run/RunToolbar", () => ({
   )),
 }));
 
-// Mock DiffDisplayModeSwitch component
+// Mock DiffDisplayModeSwitch component from @datarecce/ui/components/ui
 const mockOnDisplayModeChanged = jest.fn();
-jest.mock("../query/ToggleSwitch", () => ({
+jest.mock("@datarecce/ui/components/ui", () => ({
   DiffDisplayModeSwitch: jest.fn(({ displayMode, onDisplayModeChanged }) => (
     <button
       data-testid="display-mode-switch"

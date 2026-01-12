@@ -1,3 +1,4 @@
+import type { Run } from "@datarecce/ui/api";
 import { useIsDark } from "@datarecce/ui/hooks";
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
@@ -12,8 +13,6 @@ import {
   RegistryEntry,
   ViewOptionTypes,
 } from "@/components/run/registry";
-// Import Run from OSS types for proper discriminated union support
-import type { Run } from "@/lib/api/types";
 import ResultErrorFallback from "@/lib/result/ResultErrorFallback";
 import { RunResultViewProps } from "./types";
 

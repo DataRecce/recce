@@ -1,5 +1,6 @@
 "use client";
 
+import type { Run, RunParamTypes } from "@datarecce/ui/api";
 import {
   cacheKeys,
   type SubmitRunTrackProps,
@@ -32,10 +33,9 @@ import {
 import type { RunFormProps } from "@/components/run/types";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
-import type { Run, RunParamTypes } from "../api/types";
 
-// Re-export types for backward compatibility
-export type { AxiosQueryParams } from "@datarecce/ui/contexts";
+// Note: AxiosQueryParams is now imported directly from @datarecce/ui/contexts
+// This adapter only exports RecceActionAdapter component and RecceActionOptions type
 
 /**
  * Extended options for OSS that include registry-specific features
@@ -313,5 +313,5 @@ function RecceActionAdapterInner({
   return <>{children}</>;
 }
 
-// Re-export the hook from @datarecce/ui for backward compatibility
-export { useRecceActionContext } from "@datarecce/ui/contexts";
+// Note: useRecceActionContext is now imported directly from @datarecce/ui/contexts
+// This adapter only exports RecceActionAdapter component and OSS-specific types

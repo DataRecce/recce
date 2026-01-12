@@ -12,6 +12,7 @@
  * while delegating state management to the @datarecce/ui provider.
  */
 
+import { useQueryContext } from "@datarecce/ui/providers";
 import {
   act,
   fireEvent,
@@ -20,11 +21,9 @@ import {
   screen,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
-
 import {
   defaultSqlQuery,
   QueryContextAdapter,
-  useQueryContext,
   useRecceQueryContext,
 } from "../QueryContextAdapter";
 

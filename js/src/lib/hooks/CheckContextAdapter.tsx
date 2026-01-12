@@ -46,12 +46,8 @@ export function CheckContextAdapter({ children }: CheckContextAdapterProps) {
   );
 }
 
-// Re-export types for backward compatibility
-export type {
-  Check,
-  CheckContextType,
-  CheckProviderProps,
-} from "@datarecce/ui/providers";
+// Note: Check, CheckContextType, CheckProviderProps are now imported directly from @datarecce/ui/providers
+// This adapter only exports CheckContextAdapter, useRecceCheckContext, and OSSCheckContext type
 
 // No-op fallback for when hook is used outside provider
 const noopSetCheckId = () => {
@@ -73,5 +69,4 @@ export function useRecceCheckContext(): OSSCheckContext {
   };
 }
 
-// Also export the raw hook for cases where the full type is needed
-export { useCheckContext };
+// Note: useCheckContext is now imported directly from @datarecce/ui/providers

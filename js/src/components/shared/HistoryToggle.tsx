@@ -1,11 +1,11 @@
 "use client";
 
+import { useRecceActionContext } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import React, { ReactNode } from "react";
 import { VscHistory } from "react-icons/vsc";
 import { trackHistoryAction } from "@/lib/api/track";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 
 export default function HistoryToggle(): ReactNode {
   const { isHistoryOpen, showHistory } = useRecceActionContext();

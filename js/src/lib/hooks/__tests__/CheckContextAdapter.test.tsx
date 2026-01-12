@@ -10,12 +10,11 @@
  * while delegating state management to the @datarecce/ui provider.
  */
 
+import { useCheckContext } from "@datarecce/ui/providers";
 import { act, render, renderHook, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-
 import {
   CheckContextAdapter,
-  useCheckContext,
   useRecceCheckContext,
 } from "../CheckContextAdapter";
 

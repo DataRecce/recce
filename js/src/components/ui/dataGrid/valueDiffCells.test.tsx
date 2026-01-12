@@ -8,16 +8,16 @@
  * - ValueDiffColumnNameCell rendering and context menu
  */
 
+import {
+  MatchedPercentCell,
+  PrimaryKeyIndicatorCell,
+  ValueDiffColumnNameCell,
+} from "@datarecce/ui/components/ui/dataGrid";
 import { theme } from "@datarecce/ui/theme";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";
 import React, { ReactNode } from "react";
-import {
-  MatchedPercentCell,
-  PrimaryKeyIndicatorCell,
-  ValueDiffColumnNameCell,
-} from "./valueDiffCells";
 
 // ============================================================================
 // Mocks

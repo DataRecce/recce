@@ -8,6 +8,7 @@ import {
 } from "@datarecce/ui/api";
 import {
   useLineageGraphContext,
+  useRecceActionContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
 import Box from "@mui/material/Box";
@@ -27,7 +28,6 @@ import {
   defaultSqlQuery,
   useRecceQueryContext,
 } from "@/lib/hooks/QueryContextAdapter";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionAdapter";
 import { BaseEnvironmentSetupGuide } from "../lineage/SingleEnvironmentQueryView";
 import { QueryForm } from "./QueryForm";
 import SetupConnectionGuide from "./SetupConnectionGuide";

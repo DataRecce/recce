@@ -91,6 +91,10 @@ jest.mock("@datarecce/ui/hooks", () => ({
 // Imports
 // ============================================================================
 
+import {
+  RowCountDiffResultView,
+  RowCountResultView,
+} from "@datarecce/ui/components/rowcount";
 import { screen } from "@testing-library/react";
 import React from "react";
 import {
@@ -104,10 +108,6 @@ import {
   expectThrowsForWrongType,
   renderWithProviders,
 } from "@/testing-utils/resultViewTestUtils";
-import {
-  RowCountDiffResultView,
-  RowCountResultView,
-} from "./RowCountDiffResultView";
 
 // ============================================================================
 // Test Setup
