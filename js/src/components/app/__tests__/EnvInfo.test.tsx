@@ -317,17 +317,12 @@ describe("EnvInfo", () => {
       fireEvent.click(infoButton);
 
       expect(screen.getByText("timestamp")).toBeInTheDocument();
-      // Timestamps are in table cells, look for them more flexibly
-      expect(
-        screen.getByText((content, element) => {
-          return element?.textContent === "2024-01-01T10:00:00";
-        }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText((content, element) => {
-          return element?.textContent === "2024-01-02T10:00:00";
-        }),
-      ).toBeInTheDocument();
+      // Timestamps are formatted in local timezone, so check for pattern instead of exact values
+      // The pattern is YYYY-MM-DDTHH:mm:ss
+      const timestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/;
+      const timestampCells = screen.getAllByText(timestampPattern);
+      // Should have 2 timestamp cells (base and current)
+      expect(timestampCells.length).toBeGreaterThanOrEqual(2);
     });
 
     it("does not display DBT section when adapter is not dbt", () => {
@@ -683,12 +678,22 @@ describe("EnvInfo", () => {
 describe("formatTimestamp", () => {
   it("formats ISO timestamp correctly", () => {
     const result = formatTimestamp("2024-01-15T10:30:45Z");
-    expect(result).toBe("2024-01-15T10:30:45");
+    // Result is in local timezone, so just verify the format pattern
+    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);
   });
 
   it("handles different timezone formats", () => {
     const result = formatTimestamp("2024-01-15T10:30:45+00:00");
-    expect(result).toBe("2024-01-15T10:30:45");
+    // Result is in local timezone, so just verify the format pattern
+    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);
+  });
+
+  it("preserves date for same-day local timezone conversion", () => {
+    // Test that the function doesn't throw and returns valid format
+    const result = formatTimestamp("2024-06-15T12:00:00Z");
+    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/);
+    // The date part should be 2024-06 (June)
+    expect(result).toMatch(/^2024-06/);
   });
 });
 

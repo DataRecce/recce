@@ -326,7 +326,7 @@ describe("Filename", () => {
       expect(input).toHaveValue("my_file.json");
     });
 
-    it("closes dialog when close icon is clicked", () => {
+    it("closes dialog when close icon is clicked", async () => {
       render(<Filename />);
 
       const saveButton = screen.getByRole("button", { name: /Save/i });
@@ -337,10 +337,12 @@ describe("Filename", () => {
         fireEvent.click(closeButton);
       }
 
-      expect(screen.queryByText("Save File")).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByText("Save File")).not.toBeInTheDocument();
+      });
     });
 
-    it("closes dialog when Escape key is pressed in input", () => {
+    it("closes dialog when Escape key is pressed in input", async () => {
       render(<Filename />);
 
       const saveButton = screen.getByRole("button", { name: /Save/i });
@@ -349,7 +351,9 @@ describe("Filename", () => {
       const input = screen.getByLabelText("File name");
       fireEvent.keyDown(input, { key: "Escape" });
 
-      expect(screen.queryByText("Save File")).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.queryByText("Save File")).not.toBeInTheDocument();
+      });
     });
   });
 

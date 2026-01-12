@@ -198,6 +198,11 @@ jest.mock("../registry", () => ({
   runTypeHasRef: jest.fn(() => true),
 }));
 
+// Mock react-icons
+jest.mock("react-icons/io5", () => ({
+  IoClose: () => <span data-testid="close-icon">X</span>,
+}));
+
 // ============================================================================
 // Imports
 // ============================================================================
@@ -295,8 +300,8 @@ describe("RunResultPane", () => {
       const onClose = jest.fn();
       renderWithQueryClient(<RunResultPane onClose={onClose} />);
 
-      const closeButton = screen.getByRole("button", { name: /close/i });
-      expect(closeButton).toBeInTheDocument();
+      const closeIcon = screen.getByTestId("close-icon");
+      expect(closeIcon.closest("button")).toBeInTheDocument();
     });
   });
 
@@ -389,6 +394,35 @@ describe("RunResultPane", () => {
 
   describe("rerun functionality", () => {
     it("calls runAction when rerun button is clicked", () => {
+      // Reset the context mock to ensure correct values
+      const useRecceInstanceContext =
+        require("@datarecce/ui/contexts").useRecceInstanceContext;
+      useRecceInstanceContext.mockReturnValue({
+        featureToggles: {
+          disableDatabaseQuery: false,
+          disableShare: false,
+          disableUpdateChecklist: false,
+        },
+        authed: false,
+      });
+
+      // Reset the useRun mock to ensure it returns the expected run
+      const useRun = require("@/lib/hooks/useRun").useRun;
+      useRun.mockReturnValue({
+        error: null,
+        run: {
+          run_id: "test-run-id",
+          type: "query",
+          params: { sql_template: "SELECT * FROM table" },
+          status: "finished",
+          result: { data: "test" },
+          run_at: new Date().toISOString(),
+          name: "Test Run",
+        },
+        onCancel: mockOnCancel,
+        isRunning: false,
+      });
+
       renderWithQueryClient(<RunResultPane />);
 
       const rerunButton = screen.getByRole("button", { name: /Rerun/i });
@@ -520,6 +554,18 @@ describe("RunResultPane", () => {
 
   describe("share menu", () => {
     it("shows Share button by default", () => {
+      // Reset the context mock to ensure share is not disabled
+      const useRecceInstanceContext =
+        require("@datarecce/ui/contexts").useRecceInstanceContext;
+      useRecceInstanceContext.mockReturnValue({
+        featureToggles: {
+          disableDatabaseQuery: false,
+          disableShare: false,
+          disableUpdateChecklist: false,
+        },
+        authed: false,
+      });
+
       renderWithQueryClient(<RunResultPane />);
 
       expect(
@@ -528,6 +574,18 @@ describe("RunResultPane", () => {
     });
 
     it("opens share menu when clicked", async () => {
+      // Reset the context mock to ensure share is not disabled
+      const useRecceInstanceContext =
+        require("@datarecce/ui/contexts").useRecceInstanceContext;
+      useRecceInstanceContext.mockReturnValue({
+        featureToggles: {
+          disableDatabaseQuery: false,
+          disableShare: false,
+          disableUpdateChecklist: false,
+        },
+        authed: false,
+      });
+
       renderWithQueryClient(<RunResultPane />);
 
       const shareButton = screen.getByRole("button", { name: /Share/i });
@@ -615,6 +673,34 @@ describe("RunResultPane", () => {
     });
 
     it("calls createCheckByRun when Add to Checklist is clicked", async () => {
+      // Reset mocks to ensure correct state
+      const useRecceInstanceContext =
+        require("@datarecce/ui/contexts").useRecceInstanceContext;
+      useRecceInstanceContext.mockReturnValue({
+        featureToggles: {
+          disableDatabaseQuery: false,
+          disableShare: false,
+          disableUpdateChecklist: false,
+        },
+        authed: false,
+      });
+
+      const useRun = require("@/lib/hooks/useRun").useRun;
+      useRun.mockReturnValue({
+        error: null,
+        run: {
+          run_id: "test-run-id",
+          type: "query",
+          params: { sql_template: "SELECT * FROM table" },
+          status: "finished",
+          result: { data: "test" },
+          run_at: new Date().toISOString(),
+          name: "Test Run",
+        },
+        onCancel: mockOnCancel,
+        isRunning: false,
+      });
+
       mockCreateCheckByRun.mockResolvedValue({ check_id: "new-check-id" });
 
       renderWithQueryClient(<RunResultPane />);
@@ -630,6 +716,34 @@ describe("RunResultPane", () => {
     });
 
     it("navigates to check after adding to checklist", async () => {
+      // Reset mocks to ensure correct state
+      const useRecceInstanceContext =
+        require("@datarecce/ui/contexts").useRecceInstanceContext;
+      useRecceInstanceContext.mockReturnValue({
+        featureToggles: {
+          disableDatabaseQuery: false,
+          disableShare: false,
+          disableUpdateChecklist: false,
+        },
+        authed: false,
+      });
+
+      const useRun = require("@/lib/hooks/useRun").useRun;
+      useRun.mockReturnValue({
+        error: null,
+        run: {
+          run_id: "test-run-id",
+          type: "query",
+          params: { sql_template: "SELECT * FROM table" },
+          status: "finished",
+          result: { data: "test" },
+          run_at: new Date().toISOString(),
+          name: "Test Run",
+        },
+        onCancel: mockOnCancel,
+        isRunning: false,
+      });
+
       mockCreateCheckByRun.mockResolvedValue({ check_id: "new-check-id" });
 
       renderWithQueryClient(<RunResultPane />);
@@ -754,6 +868,23 @@ describe("RunResultPane", () => {
     });
 
     it("does not show notification for other run types", () => {
+      // Reset useRun to return a query type run (which doesn't show notification)
+      const useRun = require("@/lib/hooks/useRun").useRun;
+      useRun.mockReturnValue({
+        error: null,
+        run: {
+          run_id: "test-run-id",
+          type: "query",
+          params: { sql_template: "SELECT * FROM table" },
+          status: "finished",
+          result: { data: "test" },
+          run_at: new Date().toISOString(),
+          name: "Test Run",
+        },
+        onCancel: mockOnCancel,
+        isRunning: false,
+      });
+
       renderWithQueryClient(<RunResultPane isSingleEnvironment={true} />);
 
       expect(screen.queryByTestId("notification")).not.toBeInTheDocument();
@@ -791,8 +922,11 @@ describe("RunResultPane", () => {
       const onClose = jest.fn();
       renderWithQueryClient(<RunResultPane onClose={onClose} />);
 
-      const closeButton = screen.getByRole("button", { name: /close/i });
-      fireEvent.click(closeButton);
+      const closeIcon = screen.getByTestId("close-icon");
+      const closeButton = closeIcon.closest("button");
+      if (closeButton) {
+        fireEvent.click(closeButton);
+      }
 
       expect(onClose).toHaveBeenCalled();
     });
@@ -800,8 +934,13 @@ describe("RunResultPane", () => {
     it("does not crash when onClose is not provided", () => {
       renderWithQueryClient(<RunResultPane />);
 
-      const closeButton = screen.getByRole("button", { name: /close/i });
-      expect(() => fireEvent.click(closeButton)).not.toThrow();
+      const closeIcon = screen.getByTestId("close-icon");
+      const closeButton = closeIcon.closest("button");
+      expect(() => {
+        if (closeButton) {
+          fireEvent.click(closeButton);
+        }
+      }).not.toThrow();
     });
   });
 
@@ -844,26 +983,100 @@ describe("RunResultPane", () => {
       expect(screen.getByTestId("run-view")).toBeInTheDocument();
     });
 
-    it("disables export/share on Params tab", () => {
+    it("disables export/share menu items on Params tab", async () => {
+      // Reset mocks to ensure Share button is shown
+      const useRecceInstanceContext =
+        require("@datarecce/ui/contexts").useRecceInstanceContext;
+      useRecceInstanceContext.mockReturnValue({
+        featureToggles: {
+          disableDatabaseQuery: false,
+          disableShare: false,
+          disableUpdateChecklist: false,
+        },
+        authed: false,
+      });
+
+      const useRun = require("@/lib/hooks/useRun").useRun;
+      useRun.mockReturnValue({
+        error: null,
+        run: {
+          run_id: "test-run-id",
+          type: "query",
+          params: { sql_template: "SELECT * FROM table" },
+          status: "finished",
+          result: { data: "test" },
+          run_at: new Date().toISOString(),
+          name: "Test Run",
+        },
+        onCancel: mockOnCancel,
+        isRunning: false,
+      });
+
       renderWithQueryClient(<RunResultPane />);
 
       // Switch to Params tab
       const paramsTab = screen.getByRole("tab", { name: /Params/i });
       fireEvent.click(paramsTab);
 
+      // Open the share menu
       const shareButton = screen.getByRole("button", { name: /Share/i });
-      expect(shareButton).toBeDisabled();
+      fireEvent.click(shareButton);
+
+      // Menu items should be disabled on Params tab
+      await waitFor(() => {
+        const copyAsImageItem = screen.getByRole("menuitem", {
+          name: /Copy as Image/i,
+        });
+        expect(copyAsImageItem).toHaveAttribute("aria-disabled", "true");
+      });
     });
 
-    it("disables export/share on Query tab", () => {
+    it("disables export/share menu items on Query tab", async () => {
+      // Reset mocks to ensure Share button is shown
+      const useRecceInstanceContext =
+        require("@datarecce/ui/contexts").useRecceInstanceContext;
+      useRecceInstanceContext.mockReturnValue({
+        featureToggles: {
+          disableDatabaseQuery: false,
+          disableShare: false,
+          disableUpdateChecklist: false,
+        },
+        authed: false,
+      });
+
+      const useRun = require("@/lib/hooks/useRun").useRun;
+      useRun.mockReturnValue({
+        error: null,
+        run: {
+          run_id: "test-run-id",
+          type: "query",
+          params: { sql_template: "SELECT * FROM table" },
+          status: "finished",
+          result: { data: "test" },
+          run_at: new Date().toISOString(),
+          name: "Test Run",
+        },
+        onCancel: mockOnCancel,
+        isRunning: false,
+      });
+
       renderWithQueryClient(<RunResultPane />);
 
       // Switch to Query tab
       const queryTab = screen.getByRole("tab", { name: /Query/i });
       fireEvent.click(queryTab);
 
+      // Open the share menu
       const shareButton = screen.getByRole("button", { name: /Share/i });
-      expect(shareButton).toBeDisabled();
+      fireEvent.click(shareButton);
+
+      // Menu items should be disabled on Query tab
+      await waitFor(() => {
+        const copyAsImageItem = screen.getByRole("menuitem", {
+          name: /Copy as Image/i,
+        });
+        expect(copyAsImageItem).toHaveAttribute("aria-disabled", "true");
+      });
     });
   });
 });

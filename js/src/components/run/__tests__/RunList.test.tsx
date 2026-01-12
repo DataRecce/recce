@@ -395,20 +395,33 @@ describe("RunList", () => {
 
   describe("selection", () => {
     it("calls showRunId when run is clicked", async () => {
+      const mockShowRunId = jest.fn();
+      const useRecceActionContext =
+        require("@/lib/hooks/RecceActionAdapter").useRecceActionContext;
+      useRecceActionContext.mockReturnValue({
+        closeHistory: jest.fn(),
+        showRunId: mockShowRunId,
+        runId: undefined,
+      });
+
       const run = createMockRun({ name: "Clickable Run" });
       mockListRuns.mockResolvedValue([run]);
 
       renderWithQueryClient(<RunList />);
 
       await waitFor(() => {
-        const runElement = screen.getByText("Clickable Run");
-        const clickTarget = runElement.closest("div[role='button']");
-        if (clickTarget) {
-          fireEvent.click(clickTarget);
-        }
+        expect(screen.getByText("Clickable Run")).toBeInTheDocument();
       });
 
-      expect(jest.fn()).toHaveBeenCalledWith(run.run_id, false);
+      const runElement = screen.getByText("Clickable Run");
+      const clickTarget = runElement.closest(".MuiBox-root");
+      if (clickTarget) {
+        fireEvent.click(clickTarget);
+      }
+
+      await waitFor(() => {
+        expect(mockShowRunId).toHaveBeenCalledWith(run.run_id, false);
+      });
     });
 
     it("highlights selected run", async () => {
@@ -447,10 +460,9 @@ describe("RunList", () => {
       renderWithQueryClient(<RunList />);
 
       await waitFor(() => {
-        const button = screen.getByRole("button", {
-          name: /Add to Checklist/i,
-        });
-        expect(button).toBeInTheDocument();
+        // The component uses Typography with aria-label, not a button
+        const element = screen.getByLabelText(/Add to Checklist/i);
+        expect(element).toBeInTheDocument();
       });
     });
 
@@ -461,38 +473,44 @@ describe("RunList", () => {
 
       renderWithQueryClient(<RunList />);
 
-      await waitFor(async () => {
-        const button = screen.getByRole("button", {
-          name: /Add to Checklist/i,
-        });
-        fireEvent.click(button);
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Add to Checklist/i)).toBeInTheDocument();
+      });
 
-        await waitFor(() => {
-          expect(mockCreateCheckByRun).toHaveBeenCalledWith(
-            "test-run",
-            undefined,
-            {},
-          );
-        });
+      const element = screen.getByLabelText(/Add to Checklist/i);
+      fireEvent.click(element);
+
+      await waitFor(() => {
+        expect(mockCreateCheckByRun).toHaveBeenCalledWith(
+          "test-run",
+          undefined,
+          {},
+        );
       });
     });
 
     it("navigates to check after adding to checklist", async () => {
+      const mockSetLocation = jest.fn();
+      const useAppLocation = require("@/lib/hooks/useAppRouter").useAppLocation;
+      useAppLocation.mockReturnValue([undefined, mockSetLocation]);
+
       const run = createMockRun({ run_id: "test-run", check_id: undefined });
       mockListRuns.mockResolvedValue([run]);
       mockCreateCheckByRun.mockResolvedValue({ check_id: "new-check-id" });
 
       renderWithQueryClient(<RunList />);
 
-      await waitFor(async () => {
-        const button = screen.getByRole("button", {
-          name: /Add to Checklist/i,
-        });
-        fireEvent.click(button);
+      await waitFor(() => {
+        expect(screen.getByLabelText(/Add to Checklist/i)).toBeInTheDocument();
+      });
 
-        await waitFor(() => {
-          expect(jest.fn()).toHaveBeenCalledWith("/checks/?id=new-check-id");
-        });
+      const element = screen.getByLabelText(/Add to Checklist/i);
+      fireEvent.click(element);
+
+      await waitFor(() => {
+        expect(mockSetLocation).toHaveBeenCalledWith(
+          "/checks/?id=new-check-id",
+        );
       });
     });
 
@@ -532,23 +550,34 @@ describe("RunList", () => {
       renderWithQueryClient(<RunList />);
 
       await waitFor(() => {
-        const button = screen.getByRole("button", { name: /Go to Check/i });
-        expect(button).toBeInTheDocument();
+        // The component uses Typography with aria-label, not a button
+        const element = screen.getByLabelText(/Go to Check/i);
+        expect(element).toBeInTheDocument();
       });
     });
 
     it("navigates to check when go to check is clicked", async () => {
+      const mockSetLocation = jest.fn();
+      const useAppLocation = require("@/lib/hooks/useAppRouter").useAppLocation;
+      useAppLocation.mockReturnValue([undefined, mockSetLocation]);
+
       const run = createMockRun({ check_id: "existing-check" });
       mockListRuns.mockResolvedValue([run]);
 
       renderWithQueryClient(<RunList />);
 
       await waitFor(() => {
-        const button = screen.getByRole("button", { name: /Go to Check/i });
-        fireEvent.click(button);
+        expect(screen.getByLabelText(/Go to Check/i)).toBeInTheDocument();
       });
 
-      expect(jest.fn()).toHaveBeenCalledWith("/checks/?id=existing-check");
+      const element = screen.getByLabelText(/Go to Check/i);
+      fireEvent.click(element);
+
+      await waitFor(() => {
+        expect(mockSetLocation).toHaveBeenCalledWith(
+          "/checks/?id=existing-check",
+        );
+      });
     });
 
     it("does not show add to checklist when check_id exists", async () => {
@@ -649,6 +678,24 @@ describe("RunList", () => {
     });
 
     it("stops event propagation when clicking add to checklist", async () => {
+      const mockShowRunId = jest.fn();
+      const useRecceActionContext =
+        require("@/lib/hooks/RecceActionAdapter").useRecceActionContext;
+      useRecceActionContext.mockReturnValue({
+        closeHistory: jest.fn(),
+        showRunId: mockShowRunId,
+        runId: undefined,
+      });
+
+      // Ensure the feature toggle is set correctly (may have been modified by previous test)
+      const useRecceInstanceContext =
+        require("@datarecce/ui/contexts").useRecceInstanceContext;
+      useRecceInstanceContext.mockReturnValue({
+        featureToggles: {
+          disableUpdateChecklist: false,
+        },
+      });
+
       const run = createMockRun({ check_id: undefined });
       mockListRuns.mockResolvedValue([run]);
       mockCreateCheckByRun.mockResolvedValue({ check_id: "new-check" });
@@ -656,14 +703,14 @@ describe("RunList", () => {
       renderWithQueryClient(<RunList />);
 
       await waitFor(() => {
-        const button = screen.getByRole("button", {
-          name: /Add to Checklist/i,
-        });
-        fireEvent.click(button);
-
-        // Should not also trigger run selection
-        expect(jest.fn()).not.toHaveBeenCalled();
+        expect(screen.getByLabelText(/Add to Checklist/i)).toBeInTheDocument();
       });
+
+      const element = screen.getByLabelText(/Add to Checklist/i);
+      fireEvent.click(element);
+
+      // Should not also trigger run selection (event propagation stopped)
+      expect(mockShowRunId).not.toHaveBeenCalled();
     });
   });
 });

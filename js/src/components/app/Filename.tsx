@@ -106,6 +106,7 @@ export const Filename = () => {
     setState,
   ] = useState<FilenameState>({
     newFileName: fileName ?? "recce_state.json",
+    bypass: false,
   });
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -116,6 +117,7 @@ export const Filename = () => {
     setState({
       newFileName: fileName ?? "recce_state.json",
       modified: !fileName,
+      bypass: false,
     });
 
     setModalOpen(true);
