@@ -23,13 +23,11 @@ import {
 // Mocks
 // ============================================================================
 
-jest.mock("@/lib/hooks/RecceActionAdapter", () => ({
+// Mock @datarecce/ui/contexts for both hooks used by the components
+jest.mock("@datarecce/ui/contexts", () => ({
   useRecceActionContext: () => ({
     runAction: jest.fn(),
   }),
-}));
-
-jest.mock("@datarecce/ui/contexts", () => ({
   useRecceInstanceContext: () => ({
     featureToggles: {
       disableDatabaseQuery: false,

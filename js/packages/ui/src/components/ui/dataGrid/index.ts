@@ -16,6 +16,12 @@ export type {
   RecceColumnContext,
 } from "./defaultRenderCell";
 export { defaultRenderCell } from "./defaultRenderCell";
+// Grid generators
+export type {
+  ValueDataGridOptions,
+  ValueDataGridResult,
+} from "./generators";
+export { toValueDataGrid } from "./generators";
 export type {
   InlineDiffTextProps,
   InlineRenderCellConfig,
@@ -25,3 +31,17 @@ export {
   createInlineRenderCell,
   inlineRenderCell,
 } from "./inlineRenderCell";
+// Value diff cell components and render functions
+export type {
+  MatchedPercentCellProps,
+  PrimaryKeyIndicatorCellProps,
+  ValueDiffColumnNameCellProps,
+} from "./valueDiffCells";
+export {
+  createColumnNameRenderer,
+  createPrimaryKeyIndicatorRenderer,
+  MatchedPercentCell,
+  PrimaryKeyIndicatorCell,
+  renderMatchedPercentCell,
+  ValueDiffColumnNameCell,
+} from "./valueDiffCells";

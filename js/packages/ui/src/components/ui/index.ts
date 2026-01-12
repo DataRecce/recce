@@ -28,15 +28,27 @@ export type {
   DataFrameColumnHeaderProps,
   InlineDiffTextProps,
   InlineRenderCellConfig,
+  MatchedPercentCellProps,
+  PrimaryKeyIndicatorCellProps,
   RecceColumnContext,
+  ValueDataGridOptions,
+  ValueDataGridResult,
+  ValueDiffColumnNameCellProps,
 } from "./dataGrid";
 export {
   asNumber,
+  createColumnNameRenderer,
   createInlineRenderCell,
+  createPrimaryKeyIndicatorRenderer,
   DataFrameColumnGroupHeader,
   DataFrameColumnHeader,
   defaultRenderCell,
   inlineRenderCell,
+  MatchedPercentCell,
+  PrimaryKeyIndicatorCell,
+  renderMatchedPercentCell,
+  toValueDataGrid,
+  ValueDiffColumnNameCell,
 } from "./dataGrid";
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
 // Markdown
