@@ -1,44 +1,60 @@
+"use client";
+
 /**
  * @file ValueDiffDetailResultView.tsx
- * @description OSS wrapper for Value Diff Detail result view component
+ * @description Framework-agnostic Value Diff Detail result view for @datarecce/ui
  *
- * This file provides the OSS-specific implementation using createDataGrid
- * for backwards compatibility with existing tests and mocks. The core logic
- * lives in @datarecce/ui but OSS maintains its own implementation for
- * proper test mock integration.
+ * Displays row-level value diff data in a data grid format. Uses the createResultView
+ * factory pattern and can be used by both Recce OSS and Recce Cloud.
+ *
+ * Features:
+ * - Displays row-level diff data with changed highlighting
+ * - "Changed only" filter to show only differing rows
+ * - Side-by-side vs inline display mode toggle
+ * - Column pinning support
+ * - Shows amber warning when results are truncated
+ * - Toolbar-in-empty-state pattern: shows "No change" when changed_only=true but no changes
  */
 
+import type { ForwardRefExoticComponent, RefAttributes } from "react";
 import {
   type ColumnRenderMode,
   isValueDiffDetailRun,
+  type Run,
   type ValueDiffDetailViewOptions,
-} from "@datarecce/ui/api";
-import { createResultView, type ResultViewData } from "@datarecce/ui/result";
-// Import Run from OSS types for proper discriminated union support with Extract<>
-import type { Run } from "@/lib/api/types";
-import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
-import type { DataGridHandle } from "../data-grid/ScreenshotDataGrid";
-import { ChangedOnlyCheckbox } from "../query/ChangedOnlyCheckbox";
-import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
+} from "../../api";
+import { toValueDiffGridConfigured } from "../../utils";
+import type { DataGridHandle } from "../data/ScreenshotDataGrid";
+import { createResultView } from "../result/createResultView";
+import type { CreatedResultViewProps, ResultViewData } from "../result/types";
+import { ChangedOnlyCheckbox } from "../ui/ChangedOnlyCheckbox";
+import { DiffDisplayModeSwitch } from "../ui/DiffDisplayModeSwitch";
 
-import "../query/styles.css";
+// Import AG Grid styles for context menu visibility
+import "../data/agGridStyles.css";
 
 // ============================================================================
 // Type Definitions
 // ============================================================================
 
-type ValueDiffDetailRun = Extract<Run, { type: "value_diff_detail" }>;
+/**
+ * Run type with value_diff_detail result
+ */
+export type ValueDiffDetailRun = Run & {
+  type: "value_diff_detail";
+};
 
-// Re-export types for backwards compatibility
-export type { ValueDiffDetailRun };
-export type { ValueDiffDetailViewOptions };
-
-// Export props type alias for backwards compatibility
-export interface ValueDiffDetailResultViewProps {
-  run: ValueDiffDetailRun;
-  viewOptions?: ValueDiffDetailViewOptions;
-  onViewOptionsChanged?: (options: ValueDiffDetailViewOptions) => void;
+/**
+ * Props for ValueDiffDetailResultView component
+ */
+export interface ValueDiffDetailResultViewProps
+  extends CreatedResultViewProps<ValueDiffDetailViewOptions> {
+  run: ValueDiffDetailRun | unknown;
 }
+
+// ============================================================================
+// Type Guard
+// ============================================================================
 
 /**
  * Type guard wrapper that accepts unknown and delegates to typed guard.
@@ -46,6 +62,10 @@ export interface ValueDiffDetailResultViewProps {
 function isValueDiffDetailRunGuard(run: unknown): run is ValueDiffDetailRun {
   return isValueDiffDetailRun(run as Run);
 }
+
+// ============================================================================
+// Factory-Created Component
+// ============================================================================
 
 /**
  * ValueDiffDetailResultView component - displays value diff details in a data grid.
@@ -86,6 +106,13 @@ export const ValueDiffDetailResultView = createResultView<
     const displayMode = viewOptions?.display_mode ?? "inline";
     const columnsRenderMode = viewOptions?.columnsRenderMode ?? {};
 
+    // Extract primary keys from params
+    const primaryKey = run.params?.primary_key;
+    if (!primaryKey || !run.result) {
+      return { isEmpty: true };
+    }
+    const primaryKeys = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
+
     // Create callbacks for view option changes
     const onColumnsRenderModeChanged = (
       cols: Record<string, ColumnRenderMode>,
@@ -102,24 +129,24 @@ export const ValueDiffDetailResultView = createResultView<
       }
     };
 
-    const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
+    const handlePinnedColumnsChanged = (pinnedCols: string[]) => {
       if (onViewOptionsChanged) {
         onViewOptionsChanged({
           ...viewOptions,
-          pinned_columns: pinnedColumns,
+          pinned_columns: pinnedCols,
         });
       }
     };
 
-    // Build grid data using createDataGrid factory
-    const gridData = createDataGrid(run as Run, {
+    // Build grid data using toValueDiffGridConfigured
+    const gridData = toValueDiffGridConfigured(run.result, primaryKeys, {
       changedOnly,
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
       columnsRenderMode,
       onColumnsRenderModeChanged,
       displayMode,
-    }) ?? { columns: [], rows: [] };
+    });
 
     // Empty state when no columns (no data at all)
     if (gridData.columns.length === 0) {
@@ -152,11 +179,11 @@ export const ValueDiffDetailResultView = createResultView<
         <ChangedOnlyCheckbox
           changedOnly={viewOptions?.changed_only}
           onChange={() => {
-            const changedOnly = !viewOptions?.changed_only;
+            const newChangedOnly = !viewOptions?.changed_only;
             if (onViewOptionsChanged) {
               onViewOptionsChanged({
                 ...viewOptions,
-                changed_only: changedOnly,
+                changed_only: newChangedOnly,
               });
             }
           }}
@@ -189,4 +216,9 @@ export const ValueDiffDetailResultView = createResultView<
       noRowsMessage: "No mismatched rows",
     };
   },
-});
+}) as ForwardRefExoticComponent<
+  ValueDiffDetailResultViewProps & RefAttributes<DataGridHandle>
+>;
+
+// Re-export the view options type for convenience
+export type { ValueDiffDetailViewOptions };

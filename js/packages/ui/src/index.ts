@@ -77,7 +77,11 @@ export type {
   ScreenshotWrapperType,
 } from "./components/result";
 export { createResultView } from "./components/result";
-
+// Constants - reusable constant values for UI components
+export {
+  type DisableTooltipMessageKey,
+  DisableTooltipMessages,
+} from "./constants";
 // Contexts - React contexts for state management
 export type {
   // LineageViewContext types
@@ -172,10 +176,8 @@ export {
   useRecceTheme,
   useRouting,
 } from "./providers";
-
 // Theme - colors palette and MUI theme with CSS Variables
 export type { Theme } from "./theme";
 export { colors, theme } from "./theme";
-
 // Utils - utility functions for data manipulation and formatting
 export { deltaPercentageString, isSchemaChanged } from "./utils";

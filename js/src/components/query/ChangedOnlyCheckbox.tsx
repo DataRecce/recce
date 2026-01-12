@@ -1,29 +1,13 @@
-import Checkbox from "@mui/material/Checkbox";
-import FormControlLabel from "@mui/material/FormControlLabel";
+/**
+ * @file ChangedOnlyCheckbox.tsx
+ * @description OSS wrapper for ChangedOnlyCheckbox component
+ *
+ * This file re-exports the framework-agnostic component from @datarecce/ui.
+ * The actual implementation lives in @datarecce/ui for use by both
+ * Recce OSS and Recce Cloud.
+ */
 
-interface ChangedOnlyCheckboxProps {
-  changedOnly?: boolean;
-  onChange: () => void;
-}
-export const ChangedOnlyCheckbox = ({
-  changedOnly,
-  onChange,
-}: ChangedOnlyCheckboxProps) => {
-  return (
-    <FormControlLabel
-      control={
-        <Checkbox
-          checked={changedOnly ?? false}
-          onChange={() => {
-            onChange();
-          }}
-          size="small"
-        />
-      }
-      label="Changed only"
-      slotProps={{
-        typography: { variant: "body2" },
-      }}
-    />
-  );
-};
+export {
+  ChangedOnlyCheckbox,
+  type ChangedOnlyCheckboxProps,
+} from "@datarecce/ui/components/ui";

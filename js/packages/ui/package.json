@@ -58,6 +58,11 @@
       "types": "./dist/theme.d.mts",
       "import": "./dist/theme.mjs",
       "require": "./dist/theme.cjs"
+    },
+    "./constants": {
+      "types": "./dist/constants.d.mts",
+      "import": "./dist/constants.mjs",
+      "require": "./dist/constants.cjs"
     }
   },
   "files": [

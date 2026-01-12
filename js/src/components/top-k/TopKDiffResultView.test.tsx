@@ -60,7 +60,12 @@ const mockTopKBarChart = jest.fn((props: MockTopKBarChartProps) => (
 // Mock useIsDark hook - declare first since it's used by multiple mocks
 const mockUseIsDark = jest.fn(() => false);
 
-// Mock ScreenshotBox and TopKBarChart with our test utility mocks
+// Mock TopKBarChart in the data directory (internal import path in @datarecce/ui)
+jest.mock("@datarecce/ui/components/data/TopKBarChart", () => ({
+  TopKBarChart: (props: MockTopKBarChartProps) => mockTopKBarChart(props),
+}));
+
+// Mock ScreenshotBox and TopKBarChart with our test utility mocks (for direct import)
 jest.mock("@datarecce/ui/primitives", () => ({
   ScreenshotBox: jest.requireActual("@/testing-utils/resultViewTestUtils")
     .screenshotBoxMock,
@@ -75,6 +80,11 @@ jest.mock("@datarecce/ui/components/ui/ScreenshotBox", () => ({
 
 // Mock useIsDark hook from @datarecce/ui
 jest.mock("@datarecce/ui/hooks", () => ({
+  useIsDark: () => mockUseIsDark(),
+}));
+
+// Mock hooks index - this is the path used by components inside @datarecce/ui
+jest.mock("@datarecce/ui/hooks/index", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 

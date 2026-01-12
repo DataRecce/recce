@@ -129,12 +129,16 @@ const registry: RunRegistry = {
   row_count: {
     title: "Row Count",
     icon: MdFormatListNumberedRtl,
-    RunResultView: RowCountResultView,
+    // Type assertion needed because RowCountResultView has more specific run type
+    RunResultView:
+      RowCountResultView as RegistryEntry<DataGridHandle>["RunResultView"],
   },
   row_count_diff: {
     title: "Row Count Diff",
     icon: MdFormatListNumberedRtl,
-    RunResultView: RowCountDiffResultView,
+    // Type assertion needed because RowCountDiffResultView has more specific run type
+    RunResultView:
+      RowCountDiffResultView as RegistryEntry<DataGridHandle>["RunResultView"],
   },
   profile: {
     title: "Profile",
@@ -169,7 +173,9 @@ const registry: RunRegistry = {
   histogram_diff: {
     title: "Histogram Diff",
     icon: TbChartHistogram,
-    RunResultView: HistogramDiffResultView,
+    // Type assertion needed because HistogramDiffResultView has more specific run type
+    RunResultView:
+      HistogramDiffResultView as RegistryEntry<HTMLDivElement>["RunResultView"],
     RunForm: HistogramDiffForm,
   },
   sandbox: {

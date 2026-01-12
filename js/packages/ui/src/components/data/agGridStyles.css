@@ -51,3 +51,32 @@
 .ag-header-icon {
   flex-shrink: 0;
 }
+
+/* ========================================
+ * Header hover behavior for pin/key icons
+ * Shows pin and key icons when hovering over headers
+ * ======================================== */
+.grid-header:hover .pin-icon {
+  display: block;
+}
+
+.grid-header:hover .key-icon {
+  display: block;
+}
+
+/* ========================================
+ * Context menu visibility on row hover
+ * Shows context menu button when hovering over rows
+ * ======================================== */
+.ag-row:hover .row-context-menu {
+  visibility: visible;
+  width: auto;
+}
+
+/* ========================================
+ * Cell overflow for context menu
+ * Allows context menu to overflow cell bounds
+ * ======================================== */
+.cell-show-context-menu {
+  overflow: visible;
+}

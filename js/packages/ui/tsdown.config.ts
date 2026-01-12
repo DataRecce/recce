@@ -16,6 +16,7 @@ export default defineConfig({
     theme: "src/theme/index.ts",
     types: "src/types/index.ts",
     utils: "src/utils/index.ts",
+    constants: "src/constants/index.ts",
   },
   format: ["cjs", "esm"],
   dts: true,

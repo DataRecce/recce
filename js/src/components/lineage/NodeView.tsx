@@ -1,5 +1,6 @@
 import type { LineageGraphNode } from "@datarecce/ui";
 import { createSchemaDiffCheck } from "@datarecce/ui/api";
+import { DisableTooltipMessages } from "@datarecce/ui/constants";
 import {
   useLineageGraphContext,
   useRecceInstanceContext,
@@ -16,7 +17,6 @@ import Typography from "@mui/material/Typography";
 import { type ReactElement, useCallback, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
-import { DisableTooltipMessages } from "@/constants/tooltipMessage";
 import {
   EXPLORE_ACTION,
   EXPLORE_SOURCE,

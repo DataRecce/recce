@@ -2,6 +2,15 @@
 
 // UI primitives - common presentation components
 
+export {
+  ChangedOnlyCheckbox,
+  type ChangedOnlyCheckboxProps,
+} from "./ChangedOnlyCheckbox";
+export {
+  type DiffDisplayMode,
+  DiffDisplayModeSwitch,
+  type DiffDisplayModeSwitchProps,
+} from "./DiffDisplayModeSwitch";
 export { DiffText, type DiffTextProps } from "./DiffText";
 export {
   DiffTextWithToast,
@@ -61,3 +70,4 @@ export {
   toaster,
   useToaster,
 } from "./Toaster";
+export { ToggleSwitch, type ToggleSwitchProps } from "./ToggleSwitch";
