@@ -37,7 +37,7 @@ jest.mock("@datarecce/ui/hooks", () => ({
 }));
 
 // Mock LineageViewContext
-jest.mock("../LineageViewContext", () => ({
+jest.mock("@datarecce/ui/contexts", () => ({
   useLineageViewContextSafe: jest.fn(),
 }));
 
@@ -86,12 +86,12 @@ import {
   getIconForChangeStatus,
   LineageColumnNode,
 } from "@datarecce/ui/components/lineage";
+import { useLineageViewContextSafe } from "@datarecce/ui/contexts";
 import { useThemeColors } from "@datarecce/ui/hooks";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useStore } from "@xyflow/react";
 import React from "react";
 import { GraphColumnNode } from "../GraphColumnNode";
-import { useLineageViewContextSafe } from "../LineageViewContext";
 
 // ============================================================================
 // Test Fixtures

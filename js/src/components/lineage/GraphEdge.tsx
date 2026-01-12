@@ -9,8 +9,8 @@
 
 import type { LineageGraphEdge } from "@datarecce/ui";
 import { GraphEdge as GraphEdgeBase } from "@datarecce/ui/components/lineage";
+import { useLineageViewContextSafe } from "@datarecce/ui/contexts";
 import type { EdgeProps } from "@xyflow/react";
-import { useLineageViewContextSafe } from "./LineageViewContext";
 
 import "@datarecce/ui/styles";
 

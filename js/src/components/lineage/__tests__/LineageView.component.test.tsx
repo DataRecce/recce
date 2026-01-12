@@ -129,17 +129,58 @@ const mockRecceInstanceContext = {
   singleEnv: false,
 };
 
-jest.mock("@datarecce/ui/contexts", () => ({
-  useLineageGraphContext: jest.fn(() => mockLineageGraphContext),
-  useRecceInstanceContext: jest.fn(() => mockRecceInstanceContext),
-  useRecceActionContext: jest.fn(() => ({
-    runId: undefined,
-    showRunId: mockShowRunId,
-    closeRunResult: mockCloseRunResult,
-    runAction: mockRunAction,
-    isRunResultOpen: false,
-  })),
-}));
+jest.mock("@datarecce/ui/contexts", () => {
+  const React = jest.requireActual("react");
+  return {
+    useLineageGraphContext: jest.fn(() => mockLineageGraphContext),
+    useRecceInstanceContext: jest.fn(() => mockRecceInstanceContext),
+    useRecceActionContext: jest.fn(() => ({
+      runId: undefined,
+      showRunId: mockShowRunId,
+      closeRunResult: mockCloseRunResult,
+      runAction: mockRunAction,
+      isRunResultOpen: false,
+    })),
+    LineageViewContext: React.createContext(undefined),
+    useLineageViewContextSafe: jest.fn(() => ({
+      interactive: true,
+      nodes: [],
+      focusedNode: undefined,
+      selectedNodes: [],
+      cll: undefined,
+      showContextMenu: jest.fn(),
+      viewOptions: {},
+      onViewOptionsChanged: jest.fn(),
+      selectMode: undefined,
+      selectNode: jest.fn(),
+      selectParentNodes: jest.fn(),
+      selectChildNodes: jest.fn(),
+      deselect: jest.fn(),
+      isNodeHighlighted: jest.fn(() => false),
+      isNodeSelected: jest.fn(() => false),
+      isEdgeHighlighted: jest.fn(() => false),
+      getNodeAction: jest.fn(() => ({ mode: "per_node" as const })),
+      getNodeColumnSet: jest.fn(() => new Set()),
+      isNodeShowingChangeAnalysis: jest.fn(() => false),
+      runRowCount: jest.fn(),
+      runRowCountDiff: jest.fn(),
+      runValueDiff: jest.fn(),
+      addLineageDiffCheck: jest.fn(),
+      addSchemaDiffCheck: jest.fn(),
+      cancel: jest.fn(),
+      actionState: {
+        mode: "per_node" as const,
+        status: "completed" as const,
+        completed: 0,
+        total: 0,
+        actions: {},
+      },
+      centerNode: jest.fn(),
+      showColumnLevelLineage: jest.fn(),
+      resetColumnLevelLineage: jest.fn(),
+    })),
+  };
+});
 
 // Mock @datarecce/ui hooks
 jest.mock("@datarecce/ui/hooks", () => ({
@@ -786,8 +827,7 @@ describe("LineageView Component", () => {
     });
 
     it("shows 'No nodes' text when nodes array is empty", async () => {
-      const lineageGraph = createMockLineageGraph();
-      mockLineageGraphContext.lineageGraph = lineageGraph;
+      mockLineageGraphContext.lineageGraph = createMockLineageGraph();
       mockLineageGraphContext.isLoading = false;
       mockLineageGraphContext.error = undefined;
 

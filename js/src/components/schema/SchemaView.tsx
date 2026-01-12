@@ -1,5 +1,8 @@
 import type { NodeData } from "@datarecce/ui/api";
-import { useLineageGraphContext } from "@datarecce/ui/contexts";
+import {
+  useLineageGraphContext,
+  useLineageViewContext,
+} from "@datarecce/ui/contexts";
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import type {
@@ -27,7 +30,6 @@ import {
   EmptyRowsRenderer,
   ScreenshotDataGrid,
 } from "../data-grid/ScreenshotDataGrid";
-import { useLineageViewContext } from "../lineage/LineageViewContext";
 
 interface SchemaViewProps {
   base?: NodeData;

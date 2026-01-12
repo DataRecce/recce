@@ -45,7 +45,7 @@ jest.mock("@xyflow/react", () => ({
 }));
 
 // Mock LineageViewContext
-jest.mock("../LineageViewContext", () => ({
+jest.mock("@datarecce/ui/contexts", () => ({
   useLineageViewContextSafe: jest.fn(),
 }));
 
@@ -128,11 +128,11 @@ jest.mock("@datarecce/ui/components/lineage", () => {
 
 import type { LineageGraphEdge } from "@datarecce/ui";
 import { getIconForChangeStatus } from "@datarecce/ui/components/lineage";
+import { useLineageViewContextSafe } from "@datarecce/ui/contexts";
 import { render, screen } from "@testing-library/react";
 import { getBezierPath, Position } from "@xyflow/react";
 import React from "react";
 import GraphEdge from "../GraphEdge";
-import { useLineageViewContextSafe } from "../LineageViewContext";
 
 // ============================================================================
 // Test Fixtures

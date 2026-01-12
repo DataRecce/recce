@@ -27,7 +27,10 @@ import {
   type NodeChangeStatus,
   type SelectMode,
 } from "@datarecce/ui/components/lineage";
-import { useLineageGraphContext } from "@datarecce/ui/contexts";
+import {
+  useLineageGraphContext,
+  useLineageViewContextSafe,
+} from "@datarecce/ui/contexts";
 import { useThemeColors } from "@datarecce/ui/hooks";
 import { deltaPercentageString } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
@@ -36,7 +39,6 @@ import MuiTooltip from "@mui/material/Tooltip";
 import { type NodeProps, useStore } from "@xyflow/react";
 import { memo } from "react";
 import { findByRunType } from "../run/registry";
-import { useLineageViewContextSafe } from "./LineageViewContext";
 
 // =============================================================================
 // TYPES
@@ -58,7 +60,7 @@ function RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
   const currentLabel = rowCount.curr === null ? "N/A" : `${rowCount.curr} Rows`;
 
   let tagLabel: string;
-  let chipColor: "default" | "success" | "error" = "default";
+  let chipColor: "default" | "success" | "error";
 
   if (base === null && current === null) {
     tagLabel = "Failed to load";
@@ -338,7 +340,7 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     selectNode(nodeId);
   };
 
-  const handleContextMenu = (event: React.MouseEvent, nodeId: string) => {
+  const handleContextMenu = (event: React.MouseEvent, _nodeId: string) => {
     showContextMenu(event, nodeProps as unknown as LineageGraphNode);
   };
 

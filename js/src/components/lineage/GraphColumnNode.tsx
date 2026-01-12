@@ -16,11 +16,11 @@ import {
   LineageColumnNode,
   type LineageColumnNodeData,
 } from "@datarecce/ui/components/lineage";
+import { useLineageViewContextSafe } from "@datarecce/ui/contexts";
 import { useThemeColors } from "@datarecce/ui/hooks";
 import type { NodeProps } from "@xyflow/react";
 import { useStore } from "@xyflow/react";
 import { type MouseEvent, memo } from "react";
-import { useLineageViewContextSafe } from "./LineageViewContext";
 
 // =============================================================================
 // TYPES

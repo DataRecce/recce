@@ -17,16 +17,12 @@
 // Mocks - MUST be set up before imports
 // ============================================================================
 
-// Mock LineageViewContext
-jest.mock("../LineageViewContext", () => ({
-  useLineageViewContextSafe: jest.fn(),
-}));
-
-// Mock @datarecce/ui/contexts
+// Mock LineageViewContext (included with other @datarecce/ui/contexts mocks)
 jest.mock("@datarecce/ui/contexts", () => ({
   useLineageGraphContext: jest.fn(),
   useRecceInstanceContext: jest.fn(),
   useRecceServerFlag: jest.fn(),
+  useLineageViewContextSafe: jest.fn(),
 }));
 
 // Mock @datarecce/ui/components/lineage - get the actual module and only mock what we need
@@ -90,11 +86,11 @@ import type {
 import type { LineageDiffViewOptions } from "@datarecce/ui/api";
 import {
   useLineageGraphContext,
+  useLineageViewContextSafe,
   useRecceInstanceContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { useLineageViewContextSafe } from "../LineageViewContext";
 import { LineageViewTopBar } from "../LineageViewTopBar";
 
 // ============================================================================

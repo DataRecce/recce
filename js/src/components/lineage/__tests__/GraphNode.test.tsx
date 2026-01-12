@@ -46,14 +46,10 @@ jest.mock("@datarecce/ui/utils", () => ({
   }),
 }));
 
-// Mock LineageViewContext
-jest.mock("../LineageViewContext", () => ({
-  useLineageViewContextSafe: jest.fn(),
-}));
-
-// Mock useLineageGraphContext from @datarecce/ui/contexts
+// Mock LineageViewContext (included with other @datarecce/ui/contexts mocks)
 jest.mock("@datarecce/ui/contexts", () => ({
   useLineageGraphContext: jest.fn(),
+  useLineageViewContextSafe: jest.fn(),
 }));
 
 // Mock @datarecce/ui/components/lineage
@@ -164,13 +160,15 @@ jest.mock("@/components/ui/mui-theme", () => ({
 
 import type { LineageGraphNode } from "@datarecce/ui";
 import { LineageNode } from "@datarecce/ui/components/lineage";
-import { useLineageGraphContext } from "@datarecce/ui/contexts";
+import {
+  useLineageGraphContext,
+  useLineageViewContextSafe,
+} from "@datarecce/ui/contexts";
 import { useThemeColors } from "@datarecce/ui/hooks";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useStore } from "@xyflow/react";
 import React from "react";
 import { GraphNode, type GraphNodeProps } from "../GraphNode";
-import { useLineageViewContextSafe } from "../LineageViewContext";
 
 // Cast the mocked LineageNode for assertions
 const mockedLineageNode = LineageNode as unknown as jest.Mock;

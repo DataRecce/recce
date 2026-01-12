@@ -15,9 +15,6 @@ jest.mock("@datarecce/ui/contexts", () => ({
   useRecceInstanceContext: () => ({
     featureToggles: { disableDatabaseQuery: false },
   }),
-}));
-
-jest.mock("../lineage/LineageViewContext", () => ({
   useLineageViewContext: () => undefined,
 }));
 

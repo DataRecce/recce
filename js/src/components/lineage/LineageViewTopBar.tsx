@@ -16,13 +16,13 @@ import {
 } from "@datarecce/ui/components/lineage";
 import {
   useLineageGraphContext,
+  useLineageViewContextSafe,
   useRecceInstanceContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
 import { findByRunType } from "../run/registry";
-import { useLineageViewContextSafe } from "./LineageViewContext";
 
 /**
  * Run type icons from the OSS registry.

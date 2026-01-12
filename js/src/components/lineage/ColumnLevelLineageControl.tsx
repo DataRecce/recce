@@ -12,10 +12,10 @@ import type { CllInput, ColumnLineageData } from "@datarecce/ui/api";
 import { ColumnLevelLineageControl as BaseColumnLevelLineageControl } from "@datarecce/ui/components/lineage/controls";
 import {
   useLineageGraphContext,
+  useLineageViewContextSafe,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
 import type { UseMutationResult } from "@tanstack/react-query";
-import { useLineageViewContextSafe } from "./LineageViewContext";
 
 /**
  * OSS wrapper for ColumnLevelLineageControl.

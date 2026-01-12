@@ -1,5 +1,7 @@
 import type { NodeData } from "@datarecce/ui/api";
+import { supportsHistogramDiff } from "@datarecce/ui/components/histogram";
 import {
+  useLineageViewContext,
   useRecceActionContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
@@ -18,8 +20,6 @@ import {
   trackExploreAction,
 } from "@/lib/api/track";
 import { SchemaDiffRow } from "@/lib/dataGrid/generators/toSchemaDataGrid";
-import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
-import { useLineageViewContext } from "../lineage/LineageViewContext";
 
 export function ColumnNameCell({
   model,

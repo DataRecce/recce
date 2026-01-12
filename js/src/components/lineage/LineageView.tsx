@@ -63,6 +63,7 @@ import {
 import { LineageLegend } from "@datarecce/ui/components/lineage";
 import { toaster } from "@datarecce/ui/components/ui";
 import {
+  LineageViewContext,
   useLineageGraphContext,
   useRecceActionContext,
   useRecceInstanceContext,
@@ -85,7 +86,6 @@ import {
   useResizeObserver,
   useTrackLineageRender,
 } from "./hooks";
-import { LineageViewContext } from "./LineageViewContext";
 import {
   LineageViewContextMenu,
   useLineageViewContextMenu,

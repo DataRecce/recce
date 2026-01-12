@@ -18,7 +18,7 @@
 // ============================================================================
 
 // Mock LineageViewContext
-jest.mock("../LineageViewContext", () => ({
+jest.mock("@datarecce/ui/contexts", () => ({
   useLineageViewContextSafe: jest.fn(),
 }));
 
@@ -27,9 +27,9 @@ jest.mock("../LineageViewContext", () => ({
 // ============================================================================
 
 import type { ActionState, LineageViewContextType } from "@datarecce/ui";
+import { useLineageViewContextSafe } from "@datarecce/ui/contexts";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { ActionControl } from "../ActionControl";
-import { useLineageViewContextSafe } from "../LineageViewContext";
 
 // ============================================================================
 // Test Fixtures

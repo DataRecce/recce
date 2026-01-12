@@ -16,11 +16,11 @@ import type {
   LineageGraphNode,
   LineageGraphNodes,
 } from "@datarecce/ui";
+import { supportsHistogramDiff } from "@datarecce/ui/components/histogram";
 import {
   ColumnNodeContextMenu as BaseColumnNodeContextMenu,
   LineageViewContextMenu as BaseLineageViewContextMenu,
   ModelNodeContextMenu as BaseModelNodeContextMenu,
-  type LineageViewContextMenuProps as BaseProps,
   useLineageViewContextMenu as baseUseLineageViewContextMenu,
   EXPLORE_ACTION,
   EXPLORE_SOURCE,
@@ -29,6 +29,7 @@ import {
 } from "@datarecce/ui/components/lineage";
 import {
   useLineageGraphContext,
+  useLineageViewContextSafe,
   useRecceActionContext,
   useRecceInstanceContext,
   useRecceServerFlag,
@@ -38,9 +39,7 @@ import { trackExploreAction, trackLineageSelection } from "@/lib/api/track";
 import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import useModelColumns from "@/lib/hooks/useModelColumns";
-import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { findByRunType } from "../run/registry";
-import { useLineageViewContextSafe } from "./LineageViewContext";
 
 // ============================================================================
 // Types

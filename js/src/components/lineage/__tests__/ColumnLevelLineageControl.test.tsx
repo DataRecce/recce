@@ -16,15 +16,11 @@
 // Mocks - MUST be set up before imports
 // ============================================================================
 
-// Mock LineageViewContext
-jest.mock("../LineageViewContext", () => ({
-  useLineageViewContextSafe: jest.fn(),
-}));
-
-// Mock @datarecce/ui/contexts
+// Mock LineageViewContext (included with other @datarecce/ui/contexts mocks)
 jest.mock("@datarecce/ui/contexts", () => ({
   useLineageGraphContext: jest.fn(),
   useRecceServerFlag: jest.fn(),
+  useLineageViewContextSafe: jest.fn(),
 }));
 
 // Mock @datarecce/ui/hooks
@@ -40,13 +36,13 @@ import type { LineageGraph, LineageViewContextType } from "@datarecce/ui";
 import type { CllInput, ColumnLineageData } from "@datarecce/ui/api";
 import {
   useLineageGraphContext,
+  useLineageViewContextSafe,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { ColumnLevelLineageControl } from "../ColumnLevelLineageControl";
-import { useLineageViewContextSafe } from "../LineageViewContext";
 
 // ============================================================================
 // Test Fixtures

@@ -6,6 +6,13 @@ export {
   useRunsAggregated,
 } from "./LineageGraphContext";
 
+// LineageView context exports
+export {
+  LineageViewContext,
+  useLineageViewContext,
+  useLineageViewContextSafe,
+} from "./LineageViewContext";
+
 // Type exports
 export type {
   // LineageViewContext types

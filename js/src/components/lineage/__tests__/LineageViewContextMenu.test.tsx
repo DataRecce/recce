@@ -29,12 +29,14 @@ const mockUseLineageGraphContext = jest.fn();
 const mockUseRecceInstanceContext = jest.fn();
 const mockUseRecceServerFlag = jest.fn();
 const mockUseRecceActionContext = jest.fn();
+const mockUseLineageViewContextSafe = jest.fn();
 
 jest.mock("@datarecce/ui/contexts", () => ({
   useLineageGraphContext: () => mockUseLineageGraphContext(),
   useRecceInstanceContext: () => mockUseRecceInstanceContext(),
   useRecceServerFlag: () => mockUseRecceServerFlag(),
   useRecceActionContext: () => mockUseRecceActionContext(),
+  useLineageViewContextSafe: () => mockUseLineageViewContextSafe(),
 }));
 
 // Mock @datarecce/ui/utils
@@ -43,12 +45,6 @@ jest.mock("@datarecce/ui/utils", () => ({
     if (base.length === 0 && current.length === 0) return [];
     return [...new Set([...base, ...current])];
   }),
-}));
-
-// Mock LineageViewContext
-const mockUseLineageViewContextSafe = jest.fn();
-jest.mock("../LineageViewContext", () => ({
-  useLineageViewContextSafe: () => mockUseLineageViewContextSafe(),
 }));
 
 // Mock QueryContextAdapter
@@ -117,7 +113,7 @@ jest.mock("@/components/app/SetupConnectionPopover", () => ({
 }));
 
 // Mock histogram form
-jest.mock("../../histogram/HistogramDiffForm", () => ({
+jest.mock("@datarecce/ui/components/histogram", () => ({
   supportsHistogramDiff: jest.fn((columnType: string) => {
     const unsupportedTypes = [
       "VARCHAR",
@@ -134,11 +130,7 @@ jest.mock("../../histogram/HistogramDiffForm", () => ({
 // Imports
 // ============================================================================
 
-import type {
-  LineageGraphColumnNode,
-  LineageGraphNode,
-  LineageGraphNodes,
-} from "@datarecce/ui";
+import type { LineageGraphColumnNode, LineageGraphNode } from "@datarecce/ui";
 import { isLineageGraphColumnNode, isLineageGraphNode } from "@datarecce/ui";
 import {
   act,

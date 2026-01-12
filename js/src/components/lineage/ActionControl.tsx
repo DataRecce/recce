@@ -1,5 +1,5 @@
 import { ActionControl as BaseActionControl } from "@datarecce/ui/components/lineage";
-import { useLineageViewContextSafe } from "./LineageViewContext";
+import { useLineageViewContextSafe } from "@datarecce/ui/contexts";
 
 /**
  * Props for the ActionControl wrapper component.
