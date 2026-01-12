@@ -556,8 +556,8 @@ class SelectNodesOutput(BaseModel):
 async def select_nodes(input: SelectNodesInput):
     context = default_context()
 
-    if context.adapter_type != "dbt":
-        raise HTTPException(status_code=400, detail="Only dbt adapter is supported")
+    if context.adapter_type == "sqlmesh":
+        raise HTTPException(status_code=400, detail="SQLMesh adapter does not support node selection")
 
     try:
         nodes = context.adapter.select_nodes(

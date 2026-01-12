@@ -187,6 +187,15 @@ sqlmesh_related_options = [
     click.option("--sqlmesh-config", is_flag=False, help="SQLMesh config name to use", hidden=True),
 ]
 
+metadata_adapter_options = [
+    click.option(
+        "--metadata", is_flag=True, help="Use metadata adapter (macro-free mode). Reads connection from profiles.yml."
+    ),
+    click.option("--metadata-schema", default="recce_metadata", help="Schema containing recce metadata tables"),
+    click.option("--base-invocation", help="Base invocation ID to compare (optional, defaults to second-latest)"),
+    click.option("--current-invocation", help="Current invocation ID to compare (optional, defaults to latest)"),
+]
+
 recce_options = [
     click.option(
         "--config",
@@ -518,6 +527,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @click.option("--single-env", is_flag=True, help="Launch in single environment mode directly.")
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
+@add_options(metadata_adapter_options)
 @add_options(recce_options)
 @add_options(recce_dbt_artifact_dir_options)
 @add_options(recce_warehouse_metadata_options)

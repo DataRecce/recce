@@ -6,6 +6,7 @@ from enum import Enum
 if t.TYPE_CHECKING:
     import agate
     import pandas
+
 from pydantic import BaseModel, Field
 
 
@@ -129,6 +130,56 @@ class DataFrame(BaseModel):
             more=more,
         )
         return df
+
+    @staticmethod
+    def from_result_table(table, limit: t.Optional[int] = None, more: t.Optional[bool] = None):
+        """
+        Create a DataFrame from a ResultTable (metadata adapter).
+
+        This is an alternative to from_agate() that doesn't require agate types,
+        used by the metadata adapter which doesn't depend on dbt.
+
+        Args:
+            table: ResultTable with column_names, column_types, and rows
+            limit: Optional limit on rows
+            more: Optional flag for pagination
+
+        Returns:
+            DataFrame instance
+        """
+        from recce.adapter.metadata_adapter.result_table import (
+            BooleanType,
+            DateTimeType,
+            DateType,
+            NumberType,
+            TextType,
+        )
+
+        columns = []
+        for col_name, col_type in zip(table.column_names, table.column_types):
+            if isinstance(col_type, NumberType):
+                df_type = DataFrameColumnType.NUMBER
+            elif isinstance(col_type, BooleanType):
+                df_type = DataFrameColumnType.BOOLEAN
+            elif isinstance(col_type, DateType):
+                df_type = DataFrameColumnType.DATE
+            elif isinstance(col_type, DateTimeType):
+                df_type = DataFrameColumnType.DATETIME
+            elif isinstance(col_type, TextType):
+                df_type = DataFrameColumnType.TEXT
+            else:
+                df_type = DataFrameColumnType.UNKNOWN
+            columns.append(DataFrameColumn(key=col_name, name=col_name, type=df_type))
+
+        # ResultTable rows are tuples, convert to list format
+        data = [tuple(row) for row in table.rows]
+
+        return DataFrame(
+            columns=columns,
+            data=data,
+            limit=limit,
+            more=more,
+        )
 
     @staticmethod
     def from_data(

@@ -29,9 +29,15 @@ class QueryMixin:
         :param limit: Limit the number of rows returned
         :return: Tuple of agate table and whether there are more rows to fetch
         """
+        context = default_context()
+
+        # Use metadata adapter path if applicable
+        if context.adapter_type == "metadata":
+            return cls._execute_sql_metadata(sql_template, base, limit)
+
         from jinja2.exceptions import TemplateSyntaxError
 
-        dbt_adapter = default_context().adapter
+        dbt_adapter = context.adapter
         from dbt.exceptions import TargetNotFoundError
 
         try:
@@ -49,6 +55,41 @@ class QueryMixin:
             raise RecceException(str(e), is_raise=False)
         except TemplateSyntaxError as e:
             raise RecceException(f"Jinja template error: line {e.lineno}: {str(e)}")
+
+    @classmethod
+    def _execute_sql_metadata(cls, sql_template, base: bool = False, limit: Optional[int] = None):
+        """
+        Execute SQL using the metadata adapter.
+
+        Returns ResultTable instead of agate.Table, but with compatible interface.
+        """
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        from recce.adapter.metadata_adapter import RecceMetadataAdapter
+
+        adapter: RecceMetadataAdapter = default_context().adapter
+
+        env_name = "base" if base else "current"
+        logger.info(f"=== _execute_sql_metadata called for {env_name} environment (base={base}) ===")
+        logger.info(f"SQL template: {sql_template[:200]}...")
+
+        # Generate SQL with ref() replacement
+        sql = adapter.generate_sql(sql_template, base)
+        logger.info(f"Generated SQL for {env_name}: {sql}")
+
+        try:
+            if limit is None:
+                _, result = adapter.execute(sql, fetch=True)
+                return result, False
+            else:
+                _, result = adapter.execute(sql, fetch=True)
+                if len(result.rows) > limit:
+                    return result.limit(limit), True
+                return result, False
+        except Exception as e:
+            raise RecceException(str(e), is_raise=False)
 
     @classmethod
     def execute_sql(cls, sql_template, base: bool = False) -> "agate.Table":
@@ -110,11 +151,28 @@ class QueryTask(Task, QueryMixin):
         df, more = sqlmesh_adapter.fetchdf_with_limit(sql, base=self.is_base, limit=limit)
         return DataFrame.from_pandas(df, limit=limit, more=more)
 
+    def execute_metadata(self):
+        from recce.adapter.metadata_adapter import RecceMetadataAdapter
+
+        adapter: RecceMetadataAdapter = default_context().adapter
+
+        limit = QUERY_LIMIT
+        with adapter.connection_named("query"):
+            self.connection = adapter.get_thread_connection()
+
+            sql_template = self.params.sql_template
+            table, more = self.execute_sql_with_limit(sql_template, base=self.is_base, limit=limit)
+            self.check_cancel()
+
+            return DataFrame.from_result_table(table, limit=limit, more=more)
+
     def execute(self):
         context = default_context()
 
         if context.adapter_type == "sqlmesh":
             return self.execute_sqlmesh()
+        elif context.adapter_type == "metadata":
+            return self.execute_metadata()
         else:
             return self.execute_dbt()
 
@@ -402,11 +460,78 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         else:
             return self._sqlmesh_query_diff(sql, base_sql=base_sql)
 
+    def _query_diff_metadata(
+        self,
+        adapter,
+        sql_template: str,
+        base_sql_template: Optional[str] = None,
+        preview_change: bool = False,
+    ):
+        """
+        Execute diff queries on base and current environments for metadata adapter.
+        Note: Mutates self.params.primary_keys to normalize values with actual column keys.
+        """
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        limit = QUERY_LIMIT
+
+        logger.info("=== _query_diff_metadata starting ===")
+        logger.info(f"sql_template: {sql_template}")
+        logger.info(f"base_sql_template: {base_sql_template}")
+        logger.info(f"preview_change: {preview_change}")
+
+        self.connection = adapter.get_thread_connection()
+        if preview_change:
+            logger.info("=== Executing BASE query (preview_change=True, so base=False) ===")
+            base, base_more = self.execute_sql_with_limit(base_sql_template, base=False, limit=limit)
+        else:
+            logger.info("=== Executing BASE query (base=True) ===")
+            base, base_more = self.execute_sql_with_limit(base_sql_template or sql_template, base=True, limit=limit)
+        self.check_cancel()
+
+        logger.info("=== Executing CURRENT query (base=False) ===")
+        current, current_more = self.execute_sql_with_limit(sql_template, base=False, limit=limit)
+        self.check_cancel()
+
+        base_df = DataFrame.from_result_table(base, limit=limit, more=base_more)
+        current_df = DataFrame.from_result_table(current, limit=limit, more=current_more)
+
+        # Normalize primary_keys if present (for non-join diff, use current columns as reference)
+        if self.params.primary_keys:
+            column_keys = [col.key for col in current_df.columns]
+            self.params.primary_keys = normalize_keys_to_columns(self.params.primary_keys, column_keys)
+
+        return QueryDiffResult(
+            base=base_df,
+            current=current_df,
+        )
+
+    def execute_metadata(self):
+        from recce.adapter.metadata_adapter import RecceMetadataAdapter
+
+        adapter: RecceMetadataAdapter = default_context().adapter
+
+        with adapter.connection_named("query"):
+            sql_template = self.params.sql_template
+            base_sql_template = self.params.base_sql_template
+
+            # Note: primary_keys join diff is not supported in metadata adapter
+            # (it requires dbt Jinja macros like {{ dbt.intersect() }})
+            return self._query_diff_metadata(
+                adapter,
+                sql_template,
+                base_sql_template=base_sql_template,
+            )
+
     def execute(self):
         context = default_context()
 
         if context.adapter_type == "sqlmesh":
             return self.execute_sqlmesh()
+        elif context.adapter_type == "metadata":
+            return self.execute_metadata()
         else:
             return self.execute_dbt()
 

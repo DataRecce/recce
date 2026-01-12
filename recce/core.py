@@ -46,6 +46,12 @@ class RecceContext:
 
             context.adapter_type = "sqlmesh"
             context.adapter = SqlmeshAdapter.load(**kwargs)
+        elif kwargs.get("metadata", False):
+            logger.info("Using metadata adapter (macro-free mode).")
+            from recce.adapter.metadata_adapter import RecceMetadataAdapter
+
+            context.adapter_type = "metadata"
+            context.adapter = RecceMetadataAdapter.load(**kwargs)
         else:
             from recce.adapter.dbt_adapter import DbtAdapter
 
@@ -280,6 +286,16 @@ class RecceContext:
     def verify_required_artifacts(**kwargs) -> Tuple[bool, Optional[str]]:
         if kwargs.get("sqlmesh", False):
             pass
+        elif kwargs.get("metadata", False):
+            # Metadata adapter - verify database connection
+            from recce.adapter.metadata_adapter import RecceMetadataAdapter
+
+            try:
+                RecceMetadataAdapter.load(**kwargs)
+            except ValueError as e:
+                return False, str(e)
+            except Exception as e:
+                return False, f"Cannot connect to metadata database: {e}"
         else:
             from recce.adapter.dbt_adapter import DbtAdapter
 

@@ -183,7 +183,7 @@ class RowCountDiffTask(Task, QueryMixin):
 
         query_candidates = []
 
-        for node_id in self.node_ids or []:
+        for node_id in self.params.node_ids or []:
             query_candidates.append(node_id)
         for node_name in self.params.node_names or []:
             query_candidates.append(node_name)
@@ -216,10 +216,75 @@ class RowCountDiffTask(Task, QueryMixin):
 
         return result
 
+    def execute_metadata(self):
+        """Execute row count diff using the metadata adapter (macro-free mode)."""
+        result = {}
+
+        query_candidates = []
+
+        # Build list of model names to query
+        for node_id in self.params.node_ids or []:
+            # Extract model name from unique_id (e.g., "model.jaffle_shop.orders" -> "orders")
+            parts = node_id.split(".")
+            if len(parts) >= 3:
+                query_candidates.append(parts[-1])
+            else:
+                query_candidates.append(node_id)
+        for node_name in self.params.node_names or []:
+            query_candidates.append(node_name)
+
+        from recce.adapter.metadata_adapter import RecceMetadataAdapter
+
+        adapter: RecceMetadataAdapter = default_context().adapter
+
+        completed = 0
+        total = len(query_candidates)
+        for name in query_candidates:
+            self.update_progress(
+                message=f"Diff: {name} [{completed}/{total}]", percentage=completed / total if total > 0 else 0
+            )
+
+            base_row_count = None
+            curr_row_count = None
+
+            # Get base model row count
+            base_model = adapter.find_model_by_name(name, base=True)
+            if base_model:
+                try:
+                    sql = f"SELECT COUNT(*) as row_count FROM {base_model.full_name}"
+                    result_set = adapter.execute_sql(sql)
+                    row = result_set.fetchone()
+                    base_row_count = int(row[0]) if row else None
+                except Exception:
+                    pass
+            self.check_cancel()
+
+            # Get current model row count
+            curr_model = adapter.find_model_by_name(name, base=False)
+            if curr_model:
+                try:
+                    sql = f"SELECT COUNT(*) as row_count FROM {curr_model.full_name}"
+                    result_set = adapter.execute_sql(sql)
+                    row = result_set.fetchone()
+                    curr_row_count = int(row[0]) if row else None
+                except Exception:
+                    pass
+            self.check_cancel()
+
+            result[name] = {
+                "base": base_row_count,
+                "curr": curr_row_count,
+            }
+            completed += 1
+
+        return result
+
     def execute(self):
         context = default_context()
         if context.adapter_type == "dbt":
             return self.execute_dbt()
+        elif context.adapter_type == "metadata":
+            return self.execute_metadata()
         else:
             return self.execute_sqlmesh()
 
