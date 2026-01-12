@@ -25,16 +25,9 @@
       "@datarecce/ui": ["./packages/ui/src/index.ts"],
       "@datarecce/ui/*": ["./packages/ui/src/*"]
     },
-    "downlevelIteration": true
+    "downlevelIteration": true,
+    "types": ["node", "jest", "@testing-library/jest-dom"]
   },
-  "types": [
-    "node",
-    "jest",
-    "react/next",
-    "react-dom/next",
-    "jest",
-    "@testing-library/jest-dom"
-  ],
   "include": [
     "next-env.d.ts",
     "jest.globals.d.ts",

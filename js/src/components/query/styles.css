@@ -1,0 +1,21 @@
+/* AG Grid custom styles for query views */
+
+/* Header hover behavior for pin/key icons */
+.grid-header:hover .pin-icon {
+  display: block;
+}
+
+.grid-header:hover .key-icon {
+  display: block;
+}
+
+/* Context menu visibility on row hover */
+.ag-row:hover .row-context-menu {
+  visibility: visible;
+  width: auto;
+}
+
+/* Cell overflow for context menu */
+.cell-show-context-menu {
+  overflow: visible;
+}
