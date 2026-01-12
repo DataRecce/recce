@@ -142,3 +142,4 @@ export {
   hashStringToNumber,
   keyToNumber,
 } from "./transforms";
+export { getSettingsUrl } from "./urls";

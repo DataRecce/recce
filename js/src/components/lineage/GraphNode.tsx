@@ -8,13 +8,19 @@
  * context integration. It extracts state from LineageViewContext and
  * LineageGraphContext and passes it as props to the presentation component.
  *
- * Migration: Phase 3 of lineage component migration plan
+ * Migration: Phase 4 of lineage component migration plan
+ *
+ * OSS-specific functionality injected:
+ * - Run type icons from registry (schema_diff, row_count_diff)
+ * - ActionTag with OSS run result parsing
+ * - NodeRunsAggregated with schema change detection
  */
 
 import type { LineageGraphNode } from "@datarecce/ui";
 import { COLUMN_HEIGHT, isSchemaChanged } from "@datarecce/ui";
 import { isRowCountDiffRun, type RowCountDiff } from "@datarecce/ui/api";
 import {
+  ActionTag,
   type ChangeCategory,
   getIconForChangeStatus,
   LineageNode,
@@ -26,12 +32,9 @@ import { useThemeColors } from "@datarecce/ui/hooks";
 import { deltaPercentageString } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
-import CircularProgress from "@mui/material/CircularProgress";
-import Stack from "@mui/material/Stack";
 import MuiTooltip from "@mui/material/Tooltip";
 import { type NodeProps, useStore } from "@xyflow/react";
 import { memo } from "react";
-import { PiInfo, PiWarning } from "react-icons/pi";
 import { findByRunType } from "../run/registry";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 
@@ -46,7 +49,7 @@ export type GraphNodeProps = NodeProps<LineageGraphNode>;
 // =============================================================================
 
 /**
- * Row count diff tag component
+ * Row count diff tag component with OSS icon injection
  */
 function RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
   const base = rowCount.base;
@@ -85,7 +88,7 @@ function RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
 }
 
 /**
- * Node runs aggregated display component
+ * Node runs aggregated display component with OSS-specific icons
  * Shows schema diff indicator and row count diff for models
  */
 function NodeRunsAggregatedDisplay({
@@ -164,8 +167,8 @@ function NodeRunsAggregatedDisplay({
 }
 
 /**
- * Action tag display component
- * Shows action status (pending, running, error, success) and results
+ * Action tag display component - bridges OSS run data to UI ActionTag
+ * Parses OSS-specific run results and renders using UI package ActionTag
  */
 function ActionTagDisplay({
   nodeId,
@@ -183,78 +186,39 @@ function ActionTagDisplay({
 
   const { status, skipReason, run } = action;
 
+  // Map OSS action status to UI ActionTag props
   if (status === "pending") {
-    return <CircularProgress size={16} />;
+    return <ActionTag status="pending" />;
   }
 
   if (status === "skipped") {
-    return (
-      <Chip
-        size="small"
-        label={
-          <Stack
-            direction="row"
-            sx={{
-              fontSize: "10pt",
-              color: "grey.500",
-              alignItems: "center",
-              gap: "3px",
-            }}
-          >
-            <Box>Skipped</Box>
-            {skipReason && (
-              <MuiTooltip title={skipReason}>
-                <Box component="span" sx={{ display: "flex" }}>
-                  <PiInfo />
-                </Box>
-              </MuiTooltip>
-            )}
-          </Stack>
-        }
-        sx={{ bgcolor: "grey.100" }}
-      />
-    );
+    return <ActionTag status="skipped" skipReason={skipReason} />;
   }
 
   if (!run) {
-    return <CircularProgress size={16} />;
+    return <ActionTag status="pending" />;
   }
 
   const { error, run_id, progress } = run;
 
   if (status === "running") {
-    if (progress?.percentage === undefined) {
-      return <CircularProgress size={16} />;
-    }
     return (
-      <CircularProgress
-        variant="determinate"
-        value={progress.percentage * 100}
-        size={16}
+      <ActionTag
+        status="running"
+        progress={{ percentage: progress?.percentage }}
       />
     );
   }
 
   if (error) {
-    return (
-      <Stack
-        direction="row"
-        sx={{ fontSize: "10pt", color: "gray", alignItems: "center" }}
-      >
-        <Box>Error</Box>
-        <MuiTooltip title={error}>
-          <Box component="span" sx={{ display: "flex" }}>
-            <PiWarning />
-          </Box>
-        </MuiTooltip>
-      </Stack>
-    );
+    return <ActionTag status="error" errorMessage={error} />;
   }
 
-  // Value diff result
+  // Value diff result - parse OSS format to UI format
   if (run.type === "value_diff" && run.result) {
     const r = run.result as { data: { data: unknown[][] } };
     let mismatched = 0;
+    const totalColumns = r.data.data.length;
 
     for (const c of r.data.data) {
       if ((c[2] as number) < 1) {
@@ -263,31 +227,14 @@ function ActionTagDisplay({
     }
 
     return (
-      <Chip
-        size="small"
-        sx={{
-          bgcolor: mismatched > 0 ? "error.light" : "success.light",
-        }}
-        label={
-          <Stack
-            direction="row"
-            sx={{
-              fontSize: "10pt",
-              color: mismatched > 0 ? "error.main" : "success.main",
-              alignItems: "center",
-              gap: "3px",
-            }}
-          >
-            {mismatched > 0
-              ? `${mismatched} columns mismatched`
-              : "All columns match"}
-          </Stack>
-        }
+      <ActionTag
+        status="success"
+        valueDiffResult={{ mismatchedColumns: mismatched, totalColumns }}
       />
     );
   }
 
-  // Row count diff result
+  // Row count diff result - use OSS RowCountDiffTag with icon
   if (isRowCountDiffRun(run) && run.result) {
     const result = run.result;
     const nodeResult = result[nodeName];
@@ -311,7 +258,7 @@ function ActionTagDisplay({
     }
   }
 
-  return <>{run_id}</>;
+  return <ActionTag status="success" runId={run_id} />;
 }
 
 // =============================================================================

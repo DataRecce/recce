@@ -1,59 +1,30 @@
+/**
+ * @file GraphEdge.tsx
+ * @description OSS wrapper for GraphEdge that injects LineageViewContext dependencies
+ *
+ * This thin wrapper imports the core GraphEdge component from @datarecce/ui
+ * and injects OSS-specific dependencies:
+ * - isEdgeHighlighted from LineageViewContext
+ */
+
 import type { LineageGraphEdge } from "@datarecce/ui";
-import { getIconForChangeStatus } from "@datarecce/ui/components/lineage";
-import { BaseEdge, type EdgeProps, getBezierPath } from "@xyflow/react";
+import { GraphEdge as GraphEdgeBase } from "@datarecce/ui/components/lineage";
+import type { EdgeProps } from "@xyflow/react";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 
-import "./styles.css";
+import "@datarecce/ui/styles";
 
 type GraphEdgeProps = EdgeProps<LineageGraphEdge>;
 
+/**
+ * OSS GraphEdge component that wraps the UI package's GraphEdge
+ * with context-based dependency injection.
+ *
+ * Injects:
+ * - isEdgeHighlighted: from LineageViewContext for context-aware highlighting
+ */
 export default function GraphEdge(props: GraphEdgeProps) {
-  const {
-    source,
-    target,
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-    style: styleOverride = {},
-    markerEnd,
-    data,
-  } = props;
-
-  const style = {
-    ...styleOverride,
-  };
-
   const { isEdgeHighlighted } = useLineageViewContextSafe();
 
-  if (data?.changeStatus) {
-    style.stroke = getIconForChangeStatus(data.changeStatus).hexColor;
-    style.strokeDasharray = "5";
-  }
-
-  const isHighlighted = isEdgeHighlighted(source, target);
-
-  if (!isHighlighted) {
-    style.filter = "opacity(0.2) grayscale(50%)";
-  }
-
-  const [edgePath] = getBezierPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  });
-  return (
-    <>
-      <BaseEdge
-        path={edgePath}
-        markerEnd={markerEnd}
-        style={{ ...style, ...styleOverride }}
-      />
-    </>
-  );
+  return <GraphEdgeBase {...props} isEdgeHighlighted={isEdgeHighlighted} />;
 }

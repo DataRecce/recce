@@ -50,9 +50,77 @@ jest.mock("../LineageViewContext", () => ({
 }));
 
 // Mock @datarecce/ui/components/lineage
-jest.mock("@datarecce/ui/components/lineage", () => ({
-  getIconForChangeStatus: jest.fn(),
-}));
+jest.mock("@datarecce/ui/components/lineage", () => {
+  const { BaseEdge, getBezierPath } = jest.requireMock("@xyflow/react");
+  const mockGetIconForChangeStatus = jest.fn();
+
+  // Create a mock GraphEdge component that matches the real implementation
+  const GraphEdge = ({
+    source,
+    target,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+    style: styleOverride = {},
+    markerEnd,
+    data,
+    isEdgeHighlighted,
+  }: {
+    source: string;
+    target: string;
+    sourceX: number;
+    sourceY: number;
+    targetX: number;
+    targetY: number;
+    sourcePosition: string;
+    targetPosition: string;
+    style?: Record<string, unknown>;
+    markerEnd?: string;
+    data?: { changeStatus?: string };
+    isEdgeHighlighted?: (source: string, target: string) => boolean;
+  }) => {
+    const style: Record<string, unknown> = { ...styleOverride };
+
+    if (data?.changeStatus) {
+      const statusStyle = mockGetIconForChangeStatus(data.changeStatus);
+      style.stroke = statusStyle.hexColor;
+      style.strokeDasharray = "5";
+    }
+
+    const isHighlighted = isEdgeHighlighted
+      ? isEdgeHighlighted(source, target)
+      : true;
+
+    if (!isHighlighted) {
+      style.filter = "opacity(0.2) grayscale(50%)";
+    }
+
+    const [edgePath] = getBezierPath({
+      sourceX,
+      sourceY,
+      sourcePosition,
+      targetX,
+      targetY,
+      targetPosition,
+    });
+
+    return (
+      <BaseEdge
+        path={edgePath}
+        markerEnd={markerEnd}
+        style={{ ...style, ...styleOverride }}
+      />
+    );
+  };
+
+  return {
+    getIconForChangeStatus: mockGetIconForChangeStatus,
+    GraphEdge,
+  };
+});
 
 // ============================================================================
 // Imports

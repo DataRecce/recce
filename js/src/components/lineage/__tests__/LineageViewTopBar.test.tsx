@@ -29,12 +29,16 @@ jest.mock("@datarecce/ui/contexts", () => ({
   useRecceServerFlag: jest.fn(),
 }));
 
-// Mock @datarecce/ui/components/lineage
-jest.mock("@datarecce/ui/components/lineage", () => ({
-  getIconForResourceType: jest.fn(() => ({
-    icon: () => <span data-testid="model-icon">ModelIcon</span>,
-  })),
-}));
+// Mock @datarecce/ui/components/lineage - get the actual module and only mock what we need
+jest.mock("@datarecce/ui/components/lineage", () => {
+  const actual = jest.requireActual("@datarecce/ui/components/lineage");
+  return {
+    ...actual,
+    getIconForResourceType: jest.fn(() => ({
+      icon: () => <span data-testid="model-icon">ModelIcon</span>,
+    })),
+  };
+});
 
 // Mock @datarecce/ui/hooks
 jest.mock("@datarecce/ui/hooks", () => ({

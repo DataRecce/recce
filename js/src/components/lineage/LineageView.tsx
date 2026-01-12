@@ -12,8 +12,6 @@ import {
   selectUpstream,
 } from "@datarecce/ui";
 import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -34,7 +32,6 @@ import {
 import React, {
   forwardRef,
   Ref,
-  RefObject,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -45,7 +42,7 @@ import React, {
 } from "react";
 import { layout, toReactFlow } from "./lineage";
 import "@xyflow/react/dist/style.css";
-import "./styles.css";
+import "@datarecce/ui/styles";
 import type { LineageViewContextType } from "@datarecce/ui";
 import { HSplit, union } from "@datarecce/ui";
 import type { Check } from "@datarecce/ui/api";
@@ -63,39 +60,31 @@ import {
   type LineageDiffViewOptions,
   select,
 } from "@datarecce/ui/api";
-import {
-  getIconForChangeStatus,
-  LineageLegend,
-} from "@datarecce/ui/components/lineage";
+import { LineageLegend } from "@datarecce/ui/components/lineage";
 import { toaster } from "@datarecce/ui/components/ui";
 import {
   useLineageGraphContext,
   useRecceActionContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
-import { useClipBoardToast, useThemeColors } from "@datarecce/ui/hooks";
+import { useThemeColors } from "@datarecce/ui/hooks";
 import { colors } from "@datarecce/ui/theme";
 import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { FiCopy } from "react-icons/fi";
-import {
-  type LineageViewRenderProps,
-  trackCopyToClipboard,
-  trackLineageViewRender,
-  trackMultiNodesAction,
-} from "@/lib/api/track";
+import { trackCopyToClipboard, trackMultiNodesAction } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import {
-  IGNORE_SCREENSHOT_CLASS,
-  useCopyToClipboard,
-} from "@/lib/hooks/ScreenShot";
-import { useAppLocation } from "@/lib/hooks/useAppRouter";
+import { IGNORE_SCREENSHOT_CLASS } from "@/lib/hooks/ScreenShot";
 import { useRun } from "@/lib/hooks/useRun";
 import { ActionControl } from "./ActionControl";
 import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
-import { GraphColumnNode } from "./GraphColumnNode";
-import GraphEdge from "./GraphEdge";
-import { GraphNode } from "./GraphNode";
+import { edgeTypes, getNodeColor, initialNodes, nodeTypes } from "./config";
+import {
+  useLineageCopyToClipboard,
+  useNavToCheck,
+  useResizeObserver,
+  useTrackLineageRender,
+} from "./hooks";
 import { LineageViewContext } from "./LineageViewContext";
 import {
   LineageViewContextMenu,
@@ -106,6 +95,11 @@ import { LineageViewTopBar } from "./LineageViewTopBar";
 import { NodeView } from "./NodeView";
 import SetupConnectionBanner from "./SetupConnectionBanner";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
+import {
+  LineageViewError,
+  LineageViewLoading,
+  LineageViewNoChanges,
+} from "./states";
 import { useMultiNodesAction } from "./useMultiNodesAction";
 import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
 
@@ -124,82 +118,6 @@ export interface LineageViewRef {
   copyToClipboard: () => void;
 }
 
-const nodeTypes = {
-  lineageGraphNode: GraphNode,
-  lineageGraphColumnNode: GraphColumnNode,
-};
-const initialNodes: LineageGraphNode[] = [];
-const edgeTypes = {
-  lineageGraphEdge: GraphEdge,
-};
-const nodeColor = (node: LineageGraphNode) => {
-  return node.data.changeStatus
-    ? getIconForChangeStatus(node.data.changeStatus).hexColor
-    : colors.neutral[400];
-};
-
-const useResizeObserver = (
-  ref: RefObject<HTMLElement | null>,
-  handler: () => void,
-) => {
-  const size = useRef({
-    width: 0,
-    height: 0,
-  });
-
-  useEffect(() => {
-    const target = ref.current;
-    const handleResize = (entries: ResizeObserverEntry[]) => {
-      for (const entry of entries) {
-        const newWidth = entry.contentRect.width;
-        const newHeight = entry.contentRect.height;
-
-        if (
-          Math.abs(newHeight - size.current.height) > 10 ||
-          Math.abs(newWidth - size.current.width) > 10
-        ) {
-          if (
-            size.current.height > 0 &&
-            newHeight > 0 &&
-            size.current.width > 0 &&
-            newWidth > 0
-          ) {
-            handler();
-          }
-        }
-        size.current = {
-          width: newWidth,
-          height: newHeight,
-        };
-      }
-    };
-
-    const resizeObserver = new ResizeObserver(handleResize);
-
-    if (target) {
-      resizeObserver.observe(target);
-    }
-
-    return () => {
-      if (target) {
-        resizeObserver.unobserve(target);
-      }
-    };
-  }, [handler, ref]);
-};
-
-const useNavToCheck = () => {
-  const [, setLocation] = useAppLocation();
-  return useCallback(
-    (check: Check) => {
-      if (check.check_id) {
-        setLocation(`/checks/?id=${check.check_id}`);
-      }
-    },
-    [setLocation],
-  );
-};
-
 export function PrivateLineageView(
   { interactive = false, ...props }: LineageViewProps,
   ref: Ref<LineageViewRef>,
@@ -208,34 +126,11 @@ export function PrivateLineageView(
   const { apiClient } = useApiConfig();
   const reactFlow = useReactFlow();
   const refResize = useRef<HTMLDivElement>(null);
-  const { successToast, failToast } = useClipBoardToast();
   const {
     copyToClipboard,
     ImageDownloadModal,
     ref: refReactFlow,
-  } = useCopyToClipboard({
-    renderLibrary: "html-to-image",
-    imageType: "png",
-    shadowEffect: true,
-    backgroundColor: isDark ? colors.neutral[900] : colors.neutral[50],
-    ignoreElements: (element: Element) => {
-      try {
-        return element.classList.contains(IGNORE_SCREENSHOT_CLASS);
-      } catch {
-        if (element.className) {
-          return element.className.includes(IGNORE_SCREENSHOT_CLASS);
-        }
-        return false;
-      }
-    },
-    onSuccess: () => {
-      successToast("Copied the Lineage View as an image to clipboard");
-    },
-    onError: (error) => {
-      console.error("Error taking screenshot", error);
-      failToast("Failed to copy image to clipboard", error);
-    },
-  });
+  } = useLineageCopyToClipboard();
   const [nodes, setNodes, onNodesChange] =
     useNodesState<LineageGraphNodes>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<LineageGraphEdge>([]);
@@ -257,42 +152,7 @@ export function PrivateLineageView(
     ...props.viewOptions,
   });
 
-  // Helper to track lineage view render with node counts
-  const trackLineageRender = useCallback(
-    (
-      nodes: LineageGraphNodes[],
-      currentViewMode: string,
-      impactRadiusEnabled: boolean,
-      cllColumnActive: boolean,
-      rightSidebarOpen: boolean,
-    ) => {
-      const lineageGraphNodesOnly = nodes.filter(isLineageGraphNode);
-      const grouped = Object.groupBy(
-        lineageGraphNodesOnly,
-        (node) => node.data.changeStatus ?? "unchanged",
-      );
-      // Prefix status counts with "nodes_"
-      const statusCounts = Object.fromEntries(
-        Object.entries(grouped).map(([status, nodes]) => [
-          `nodes_${status}`,
-          nodes?.length ?? 0,
-        ]),
-      );
-      const trackingData = {
-        node_count: lineageGraphNodesOnly.length,
-        view_mode: currentViewMode,
-        impact_radius_enabled: impactRadiusEnabled,
-        right_sidebar_open: rightSidebarOpen,
-        ...statusCounts,
-      } as LineageViewRenderProps;
-      // Only include cll_column_active when a column is being viewed
-      if (cllColumnActive) {
-        trackingData.cll_column_active = true;
-      }
-      trackLineageViewRender(trackingData);
-    },
-    [],
-  );
+  const trackLineageRender = useTrackLineageRender();
 
   const cllHistory = useRef<(CllInput | undefined)[]>([]).current;
 
@@ -1139,51 +999,11 @@ export function PrivateLineageView(
   };
 
   if (isLoading) {
-    return (
-      <Box
-        sx={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <CircularProgress size={48} />
-      </Box>
-    );
+    return <LineageViewLoading />;
   }
 
   if (error) {
-    return (
-      <Box
-        sx={{
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Stack alignItems="center" spacing={1}>
-          <Box>
-            Failed to load lineage data. This could be because the server has
-            been terminated or there is a network error.
-          </Box>
-          <Box>[Reason: {error}]</Box>
-          <Button
-            color="iochmara"
-            variant="contained"
-            onClick={() => {
-              if (retchLineageGraph) {
-                retchLineageGraph();
-              }
-            }}
-          >
-            Retry
-          </Button>
-        </Stack>
-      </Box>
-    );
+    return <LineageViewError error={error} onRetry={retchLineageGraph} />;
   }
 
   if (!lineageGraph || nodes == initialNodes) {
@@ -1192,30 +1012,10 @@ export function PrivateLineageView(
 
   if (viewMode === "changed_models" && !lineageGraph.modifiedSet.length) {
     return (
-      <Box
-        sx={{
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Stack alignItems="center" spacing={1}>
-          <>No change detected</>
-          <Button
-            color="iochmara"
-            variant="contained"
-            onClick={async () => {
-              await handleViewOptionsChanged({
-                ...viewOptions,
-                view_mode: "all",
-              });
-            }}
-          >
-            Show all nodes
-          </Button>
-        </Stack>
-      </Box>
+      <LineageViewNoChanges
+        viewOptions={viewOptions}
+        onViewOptionsChanged={handleViewOptionsChanged}
+      />
     );
   }
   return (
@@ -1336,7 +1136,7 @@ export function PrivateLineageView(
               </Stack>
             </Panel>
             <MiniMap
-              nodeColor={nodeColor}
+              nodeColor={getNodeColor}
               nodeStrokeWidth={3}
               zoomable
               pannable

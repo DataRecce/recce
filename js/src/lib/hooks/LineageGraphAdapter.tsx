@@ -7,6 +7,10 @@ import {
   getServerInfo,
   markRelaunchHintCompleted,
 } from "@datarecce/ui/api";
+import {
+  RecceInstanceDisconnectedModalContent,
+  ServerDisconnectedModalContent,
+} from "@datarecce/ui/components/lineage";
 import { toaster } from "@datarecce/ui/components/ui";
 import {
   type EnvInfo,
@@ -23,8 +27,10 @@ import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import NextLink from "next/link";
 import path from "path";
 import React, {
+  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -32,10 +38,7 @@ import React, {
   useState,
 } from "react";
 import { IoClose } from "react-icons/io5";
-import {
-  RecceInstanceDisconnectedModalContent,
-  ServerDisconnectedModalContent,
-} from "@/components/lineage/ServerDisconnectedModalContent";
+import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { trackSingleEnvironment } from "../api/track";
 import { PUBLIC_API_URL } from "../const";
@@ -416,6 +419,20 @@ export function LineageGraphAdapter({ children }: LineageGraphAdapterProps) {
           <RecceInstanceDisconnectedModalContent
             shareUrl={shareUrl}
             mode={featureToggles.mode}
+            supportCalendarUrl={RECCE_SUPPORT_CALENDAR_URL}
+            LinkComponent={({
+              href,
+              children,
+            }: {
+              href: string;
+              children: ReactNode;
+            }) => {
+              return (
+                <NextLink href={href} passHref>
+                  {children}
+                </NextLink>
+              );
+            }}
           />
         ) : (
           <ServerDisconnectedModalContent

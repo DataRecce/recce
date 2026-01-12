@@ -148,8 +148,16 @@ export {
   useRunsAggregated,
 } from "./contexts";
 // Hooks - utility hooks for theming and data
-export type { ThemeColors } from "./hooks";
-export { useIsDark, useThemeColors } from "./hooks";
+export type {
+  MultiNodesActionCallbacks,
+  MultiNodesActionTracking,
+  MultiNodesActionTrackProps,
+  MultiNodesActionType,
+  ThemeColors,
+  UseMultiNodesActionOptions,
+  UseMultiNodesActionReturn,
+} from "./hooks";
+export { useIsDark, useMultiNodesAction, useThemeColors } from "./hooks";
 // Provider (main entry point) and Hooks - from providers module
 export type {
   Check,

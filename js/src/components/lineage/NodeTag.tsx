@@ -1,6 +1,22 @@
+/**
+ * @file NodeTag.tsx
+ * @description Tag components for lineage graph nodes
+ *
+ * Contains OSS-specific tag components that require OSS dependencies:
+ * - RowCountDiffTag: Shows row count comparison between base and current
+ * - RowCountTag: Shows current row count (single env mode)
+ *
+ * Note: ResourceTypeTag has been migrated to @datarecce/ui and is re-exported here
+ * for backward compatibility.
+ */
+
 import type { LineageGraphNode } from "@datarecce/ui";
 import { type RowCount, type RowCountDiff } from "@datarecce/ui/api";
-import { getIconForResourceType } from "@datarecce/ui/components/lineage";
+import {
+  getTagRootSx,
+  ResourceTypeTag as ResourceTypeTagBase,
+  tagStartElementSx,
+} from "@datarecce/ui/components/lineage";
 import {
   useLineageGraphContext,
   useRecceInstanceContext,
@@ -19,46 +35,24 @@ import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { findByRunType } from "../run/registry";
 
-// Reusable tag styles - accepts isDark parameter
-const getTagRootSx = (isDark: boolean) => ({
-  display: "inline-flex",
-  alignItems: "center",
-  borderRadius: 16,
-  px: 1,
-  py: 0.25,
-  fontSize: "0.75rem",
-  bgcolor: isDark ? "grey.700" : "grey.100",
-  color: isDark ? "grey.100" : "inherit",
-});
+// =============================================================================
+// RE-EXPORTS FROM @datarecce/ui
+// =============================================================================
 
-const tagStartElementSx = {
-  mr: 0.5,
-  display: "flex",
-  alignItems: "center",
-};
-
+/**
+ * ResourceTypeTag - Wrapper for @datarecce/ui ResourceTypeTag
+ *
+ * Adapts the node-based API to the data-based API expected by the library component.
+ */
 export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
-  const isDark = useIsDark();
-  const { icon: ResourceTypeIcon } = getIconForResourceType(
-    node.data.resourceType,
-  );
   return (
-    <MuiTooltip arrow title="Type of resource">
-      <Box component="span" sx={getTagRootSx(isDark)}>
-        {ResourceTypeIcon && (
-          <Box component="span" sx={tagStartElementSx}>
-            <ResourceTypeIcon />
-          </Box>
-        )}
-        {node.data.resourceType}
-      </Box>
-    </MuiTooltip>
+    <ResourceTypeTagBase data={{ resourceType: node.data.resourceType }} />
   );
 }
 
-interface ModelRowCountProps {
-  rowCount?: RowCountDiff;
-}
+// =============================================================================
+// INTERNAL COMPONENTS
+// =============================================================================
 
 function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   const base = rowCount.base;
@@ -68,7 +62,8 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
 
   if (base === null && current === null) {
     return <> Failed to load</>;
-  } else if (base === null || current === null) {
+  }
+  if (base === null || current === null) {
     return (
       <Stack direction="row" alignItems="center" spacing={0.5}>
         <Typography variant="body2" component="span">
@@ -80,7 +75,8 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
         </Typography>
       </Stack>
     );
-  } else if (base === current) {
+  }
+  if (base === current) {
     return (
       <Stack direction="row" alignItems="center" spacing={0.5}>
         <Typography variant="body2" component="span">
@@ -94,7 +90,8 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
         </Typography>
       </Stack>
     );
-  } else if (base < current) {
+  }
+  if (base < current) {
     return (
       <Stack direction="row" alignItems="center" spacing={0.5}>
         <Typography variant="body2" component="span">
@@ -112,25 +109,28 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
         </Typography>
       </Stack>
     );
-  } else {
-    return (
-      <Stack direction="row" alignItems="center" spacing={0.5}>
-        <Typography variant="body2" component="span">
-          {currentLabel}
-        </Typography>
-        <Box component="span" sx={{ color: "error.main", display: "flex" }}>
-          <RiArrowDownSFill />
-        </Box>
-        <Typography
-          variant="body2"
-          component="span"
-          sx={{ color: "error.main" }}
-        >
-          {deltaPercentageString(base, current)}
-        </Typography>
-      </Stack>
-    );
   }
+  return (
+    <Stack direction="row" alignItems="center" spacing={0.5}>
+      <Typography variant="body2" component="span">
+        {currentLabel}
+      </Typography>
+      <Box component="span" sx={{ color: "error.main", display: "flex" }}>
+        <RiArrowDownSFill />
+      </Box>
+      <Typography variant="body2" component="span" sx={{ color: "error.main" }}>
+        {deltaPercentageString(base, current)}
+      </Typography>
+    </Stack>
+  );
+}
+
+// =============================================================================
+// EXPORTED COMPONENTS
+// =============================================================================
+
+interface ModelRowCountProps {
+  rowCount?: RowCountDiff;
 }
 
 export function ModelRowCount({ rowCount }: ModelRowCountProps) {
@@ -166,6 +166,14 @@ export interface RowCountDiffTagProps {
   error?: Error | null;
 }
 
+/**
+ * RowCountDiffTag - Shows row count comparison between base and current
+ *
+ * This component is OSS-specific because it requires:
+ * - SetupConnectionPopover for database connection prompts
+ * - findByRunType for getting run type icons from OSS registry
+ * - runsAggregated context for cached row count data
+ */
 export function RowCountDiffTag({
   rowCount: fetchedRowCount,
   node,
@@ -186,7 +194,6 @@ export function RowCountDiffTag({
     ? `${rowCount.base ?? "N/A"} -> ${rowCount.curr ?? "N/A"} rows`
     : "";
 
-  // TODO isFetching is not hooked up, so disabling it on the skeleton for now
   return (
     <MuiTooltip title={label}>
       <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
@@ -234,6 +241,13 @@ export interface RowCountTagProps {
   error?: Error | null;
 }
 
+/**
+ * RowCountTag - Shows current row count (single environment mode)
+ *
+ * This component is OSS-specific because it requires:
+ * - findByRunType for getting run type icons from OSS registry
+ * - runsAggregated context for cached row count data
+ */
 export function RowCountTag({
   rowCount: fetchedRowCount,
   node,

@@ -2,6 +2,8 @@
 
 // Primitives - pure presentation components
 export * from "./columns";
+// Context menu components for node actions
+export * from "./contextmenu";
 export * from "./controls";
 export * from "./edges";
 // Composed components for rendering lineage graphs
@@ -20,6 +22,48 @@ export {
   type NodeSqlViewNodeData,
   type NodeSqlViewProps,
 } from "./NodeSqlView";
+// Node detail view component with dependency-injected components
+export {
+  NodeView,
+  type NodeViewActionCallbacks,
+  type NodeViewNodeData,
+  type NodeViewProps,
+  type RunTypeIconMap,
+} from "./NodeView";
 export * from "./nodes";
+// Sandbox view component with dependency-injected editors and forms
+export {
+  type SandboxDiffEditorProps,
+  type SandboxNodeData,
+  type SandboxQueryFormProps,
+  type SandboxRunResultPaneProps,
+  type SandboxTrackingCallbacks,
+  SandboxView as BaseSandboxView,
+  type SandboxViewProps as BaseSandboxViewProps,
+} from "./SandboxView";
+// Server disconnected modal components
+export {
+  type LinkComponentProps,
+  RecceInstanceDisconnectedModalContent,
+  type RecceInstanceDisconnectedModalContentProps,
+  ServerDisconnectedModalContent,
+  type ServerDisconnectedModalContentProps,
+} from "./ServerDisconnectedModalContent";
+// Setup connection banner for metadata-only mode
+export {
+  SetupConnectionBanner,
+  type SetupConnectionBannerProps,
+} from "./SetupConnectionBanner";
+// Single environment mode guidance components
+export {
+  BaseEnvironmentSetupGuide,
+  type BaseEnvironmentSetupGuideProps,
+  BaseEnvironmentSetupNotification,
+  type BaseEnvironmentSetupNotificationProps,
+} from "./SingleEnvironmentQueryView";
 // Style utilities
 export * from "./styles";
+// Tag components for node metadata display
+export * from "./tags";
+// Top bar component for lineage view
+export * from "./topbar";

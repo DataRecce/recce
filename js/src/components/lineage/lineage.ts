@@ -1,17 +1,39 @@
 import dagre from "@dagrejs/dagre";
 import {
   COLUMN_HEIGHT,
-  isLineageGraphNode,
   type LineageGraph,
   type LineageGraphColumnNode,
   type LineageGraphEdge,
   type LineageGraphNode,
   type LineageGraphNodes,
+  layoutWithDagre,
   type NodeColumnSetMap,
 } from "@datarecce/ui";
 import type { ColumnLineageData } from "@datarecce/ui/api";
 import { Position } from "@xyflow/react";
 
+/**
+ * Convert a LineageGraph to React Flow nodes and edges with column-level lineage support
+ *
+ * This OSS-specific function extends the basic toReactFlow functionality with:
+ * - Column-level lineage (CLL) visualization
+ * - Dynamic node heights based on column count
+ * - Column nodes as child nodes within parent model nodes
+ *
+ * @param lineageGraph - The lineage graph to convert
+ * @param options - Conversion options
+ * @param options.selectedNodes - Optional filter for which nodes to include
+ * @param options.cll - Column-level lineage data for adding column nodes
+ * @returns Tuple of [nodes, edges, nodeColumnSetMap] where nodeColumnSetMap tracks columns per node
+ *
+ * @example
+ * ```tsx
+ * const [nodes, edges, columnSetMap] = toReactFlow(lineageGraph, {
+ *   selectedNodes: ['model.project.orders'],
+ *   cll: columnLineageData,
+ * });
+ * ```
+ */
 export function toReactFlow(
   lineageGraph: LineageGraph,
   options?: {
@@ -188,52 +210,20 @@ export function toReactFlow(
   return [nodes, edges, nodeColumnSetMap];
 }
 
+/**
+ * Apply dagre layout to lineage graph nodes and edges
+ *
+ * This is a thin wrapper around layoutWithDagre from @datarecce/ui
+ * that provides the dagre library instance.
+ *
+ * @param nodes - Array of lineage graph nodes
+ * @param edges - Array of lineage graph edges
+ * @param direction - Layout direction ("LR" for left-to-right, "TB" for top-to-bottom)
+ */
 export const layout = (
   nodes: LineageGraphNodes[],
   edges: LineageGraphEdge[],
   direction = "LR",
-) => {
-  const dagreGraph = new dagre.graphlib.Graph();
-  dagreGraph.setDefaultEdgeLabel(() => ({}));
-
-  dagreGraph.setGraph({ rankdir: direction, ranksep: 50, nodesep: 30 });
-
-  nodes.forEach((node) => {
-    if (!isLineageGraphNode(node)) {
-      return;
-    }
-    let width = 300;
-    let height = 60;
-    if (node.style?.height && node.style.width) {
-      width = parseInt(String(node.style.width), 10);
-      height = parseInt(String(node.style.height), 10);
-    }
-    dagreGraph.setNode(node.id, { width, height });
-  });
-
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(dagreGraph);
-
-  nodes.forEach((node) => {
-    if (!isLineageGraphNode(node)) {
-      return;
-    }
-
-    const nodeWidth = node.style?.width ?? 300;
-    const nodeHeight = node.style?.height ?? 60;
-
-    const nodeWithPosition = dagreGraph.node(node.id);
-
-    // We are shifting the dagre node position (anchor=center center) to the top left
-    // so it matches the React Flow node anchor point (top left).
-    node.position = {
-      x: nodeWithPosition.x - Number(nodeWidth) / 2,
-      y: nodeWithPosition.y - Number(nodeHeight) / 2,
-    };
-
-    return node;
-  });
+): void => {
+  layoutWithDagre(dagre, nodes, edges, direction);
 };

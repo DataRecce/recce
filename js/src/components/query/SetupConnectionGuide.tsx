@@ -1,10 +1,11 @@
 import { useRecceInstanceInfo } from "@datarecce/ui/contexts";
+import { getSettingsUrl } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { RiTerminalBoxLine } from "react-icons/ri";
-import { getSettingsUrl } from "@/lib/utils/urls";
+import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 
 export default function SetupConnectionGuide() {
   const { data: instanceInfo } = useRecceInstanceInfo();
@@ -45,7 +46,10 @@ export default function SetupConnectionGuide() {
             variant="contained"
             size="large"
             onClick={() => {
-              window.open(getSettingsUrl(instanceInfo), "_blank");
+              window.open(
+                getSettingsUrl(instanceInfo, RECCE_SUPPORT_CALENDAR_URL),
+                "_blank",
+              );
             }}
           >
             Connect to Data Warehouse

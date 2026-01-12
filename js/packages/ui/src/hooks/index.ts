@@ -5,6 +5,15 @@
 
 export { useClipBoardToast } from "./useClipBoardToast";
 export { useIsDark } from "./useIsDark";
+export {
+  type MultiNodesActionCallbacks,
+  type MultiNodesActionTracking,
+  type MultiNodesActionTrackProps,
+  type MultiNodesActionType,
+  type UseMultiNodesActionOptions,
+  type UseMultiNodesActionReturn,
+  useMultiNodesAction,
+} from "./useMultiNodesAction";
 export { type ThemeColors, useThemeColors } from "./useThemeColors";
 export {
   type UseValueDiffAlertDialogOptions,

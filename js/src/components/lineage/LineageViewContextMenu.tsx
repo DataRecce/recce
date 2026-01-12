@@ -1,38 +1,50 @@
+/**
+ * @file LineageViewContextMenu.tsx (OSS Wrapper)
+ * @description Thin wrapper that imports from @datarecce/ui and injects OSS-specific implementations.
+ *
+ * This file serves as the integration layer between the @datarecce/ui library and the OSS application.
+ * It injects:
+ * - Amplitude analytics tracking
+ * - Application routing
+ * - Query context management
+ * - Run type registry
+ * - Histogram diff support checking
+ */
+
 import type {
   LineageGraphColumnNode,
   LineageGraphNode,
   LineageGraphNodes,
 } from "@datarecce/ui";
-import { isLineageGraphColumnNode, isLineageGraphNode } from "@datarecce/ui";
-import { type SubmitRunTrackProps } from "@datarecce/ui/api";
+import {
+  ColumnNodeContextMenu as BaseColumnNodeContextMenu,
+  LineageViewContextMenu as BaseLineageViewContextMenu,
+  ModelNodeContextMenu as BaseModelNodeContextMenu,
+  type LineageViewContextMenuProps as BaseProps,
+  useLineageViewContextMenu as baseUseLineageViewContextMenu,
+  EXPLORE_ACTION,
+  EXPLORE_SOURCE,
+  LINEAGE_SELECTION_ACTION,
+  type LineageViewContextMenuDeps,
+} from "@datarecce/ui/components/lineage";
 import {
   useLineageGraphContext,
   useRecceActionContext,
   useRecceInstanceContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
-import { formatSelectColumns } from "@datarecce/ui/utils";
-import Box from "@mui/material/Box";
-import Divider from "@mui/material/Divider";
-import Menu from "@mui/material/Menu";
-import MenuItem from "@mui/material/MenuItem";
-import { ReactNode, useState } from "react";
-import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
-import { FaRegDotCircle } from "react-icons/fa";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
-import {
-  EXPLORE_ACTION,
-  EXPLORE_SOURCE,
-  LINEAGE_SELECTION_ACTION,
-  trackExploreAction,
-  trackLineageSelection,
-} from "@/lib/api/track";
+import { trackExploreAction, trackLineageSelection } from "@/lib/api/track";
 import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { findByRunType } from "../run/registry";
 import { useLineageViewContextSafe } from "./LineageViewContext";
+
+// ============================================================================
+// Types
+// ============================================================================
 
 interface LineageViewContextMenuProps<T> {
   x: number;
@@ -42,83 +54,65 @@ interface LineageViewContextMenuProps<T> {
   onClose: () => void;
 }
 
-interface ContextMenuItem {
-  label?: string;
-  itemIcon?: ReactNode;
-  action?: () => void;
-  isDisabled?: boolean;
-  isSeparator?: boolean;
-}
+// ============================================================================
+// Internal Hooks
+// ============================================================================
 
-interface ContextMenuProps {
-  menuItems: ContextMenuItem[];
-  open: boolean;
-  onClose: () => void;
-  x: number;
-  y: number;
-}
+/**
+ * Hook to create the dependency injection props for context menu components.
+ * Wires up OSS-specific implementations for tracking, navigation, etc.
+ */
+const useContextMenuDeps = (modelName?: string): LineageViewContextMenuDeps => {
+  const { runAction } = useRecceActionContext();
+  const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
+  const [, setLocation] = useAppLocation();
+  const { primaryKey } = useModelColumns(modelName);
 
-const ContextMenu = ({ menuItems, open, onClose, x, y }: ContextMenuProps) => {
-  const { featureToggles } = useRecceInstanceContext();
-
-  return (
-    <Menu
-      open={open}
-      onClose={onClose}
-      anchorReference="anchorPosition"
-      anchorPosition={{ top: y, left: x }}
-      slotProps={{
-        paper: {
-          sx: { fontSize: "0.85rem", width: "250px" },
-        },
-      }}
-    >
-      {menuItems.length === 0 ? (
-        <MenuItem disabled key="no action">
-          No action available
-        </MenuItem>
-      ) : (
-        menuItems.map(
-          ({ isSeparator, label, isDisabled, action, itemIcon }) => {
-            if (isSeparator) {
-              return <Divider key={label} />;
-            } else {
-              const menuItem = (
-                <MenuItem
-                  key={label}
-                  disabled={isDisabled}
-                  onClick={() => {
-                    if (action) {
-                      action();
-                    }
-                    onClose();
-                  }}
-                >
-                  {itemIcon} {label}
-                </MenuItem>
-              );
-
-              // Wrap disabled items with SetupConnectionPopover
-              if (isDisabled) {
-                return (
-                  <SetupConnectionPopover
-                    display={featureToggles.mode === "metadata only"}
-                    key={label}
-                  >
-                    {menuItem}
-                  </SetupConnectionPopover>
-                );
-              }
-
-              return menuItem;
-            }
-          },
-        )
-      )}
-    </Menu>
-  );
+  return {
+    runAction: (type, params, options) => {
+      runAction(type, params as Parameters<typeof runAction>[1], options);
+    },
+    onNavigate: (path) => {
+      setLocation(path);
+    },
+    onTrack: (event, props) => {
+      if (event === "explore_action") {
+        trackExploreAction({
+          action: (props as { action: string })
+            .action as (typeof EXPLORE_ACTION)[keyof typeof EXPLORE_ACTION],
+          source: EXPLORE_SOURCE.LINEAGE_VIEW_CONTEXT_MENU,
+          node_count: (props as { node_count: number }).node_count,
+        });
+      } else if (event === "lineage_selection") {
+        trackLineageSelection({
+          action: (props as { action: string })
+            .action as (typeof LINEAGE_SELECTION_ACTION)[keyof typeof LINEAGE_SELECTION_ACTION],
+        });
+      }
+    },
+    supportsHistogramDiff,
+    findByRunType: (type) => {
+      const entry = findByRunType(type as Parameters<typeof findByRunType>[0]);
+      return entry ? { title: entry.title, icon: entry.icon } : undefined;
+    },
+    setSqlQuery,
+    setPrimaryKeys,
+    getPrimaryKey: () => primaryKey,
+    // Note: SetupConnectionPopover has a more restrictive children type (ReactElement vs ReactNode)
+    // but it works correctly in practice since we always pass MenuItem elements
+    DisabledItemWrapper:
+      SetupConnectionPopover as LineageViewContextMenuDeps["DisabledItemWrapper"],
+  };
 };
 
+// ============================================================================
+// Exported Components
+// ============================================================================
+
+/**
+ * OSS wrapper for ModelNodeContextMenu.
+ * Injects OSS-specific dependencies and context.
+ */
 export const ModelNodeContextMenu = ({
   isOpen,
   onClose,
@@ -126,8 +120,6 @@ export const ModelNodeContextMenu = ({
   y,
   node,
 }: LineageViewContextMenuProps<LineageGraphNode>) => {
-  const menuItems: ContextMenuItem[] = [];
-
   const {
     selectParentNodes,
     selectChildNodes,
@@ -136,294 +128,46 @@ export const ModelNodeContextMenu = ({
     cll,
     showColumnLevelLineage,
   } = useLineageViewContextSafe();
-  const { runAction } = useRecceActionContext();
   const { featureToggles } = useRecceInstanceContext();
-  const { isActionAvailable } = useLineageGraphContext();
+  const { isActionAvailable, lineageGraph } = useLineageGraphContext();
   const { data: flag } = useRecceServerFlag();
-  const { lineageGraph } = useLineageGraphContext();
   const noCatalogCurrent = !lineageGraph?.catalogMetadata.current;
-  const singleEnv = flag?.single_env_onboarding ?? false;
-  const isQueryDisabled = featureToggles.disableDatabaseQuery;
 
-  // query
-  const { primaryKey } = useModelColumns(
-    (node?.data as LineageGraphNode | undefined)?.data.name,
-  );
-  const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
-  const [, setLocation] = useAppLocation();
-
-  if (!node?.data) {
-    return <></>;
-  }
-
-  const modelNode = node.data;
-  const resourceType = modelNode.resourceType;
-  const columns = Array.from(getNodeColumnSet(node.id));
-  const trackProps: SubmitRunTrackProps = {
-    source: "lineage_model_node",
-  };
-  const changeStatus = modelNode.changeStatus;
-
-  if (changeStatus === "modified") {
-    menuItems.push({
-      label: "Show Impact Radius",
-      itemIcon: <FaRegDotCircle />,
-      isDisabled: noCatalogCurrent,
-      action: () => {
-        void showColumnLevelLineage({
-          node_id: node.id,
-          change_analysis: true,
-          no_upstream: true,
-        });
-      },
-    });
-  }
-
-  if (
-    !selectMode &&
-    resourceType &&
-    ["model", "seed", "snapshot"].includes(resourceType)
-  ) {
-    if (menuItems.length > 0) {
-      menuItems.push({
-        label: "select group one",
-        isSeparator: true,
-      });
-    }
-
-    // query
-    const run = findByRunType(singleEnv ? "query" : "query_diff");
-    const baseColumns = Object.keys(modelNode.data.base?.columns ?? {});
-    const currentColumns = Object.keys(modelNode.data.current?.columns ?? {});
-    const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
-    let query = `select * from {{ ref("${modelNode.name}") }}`;
-    if (formattedColumns.length) {
-      query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
-    }
-
-    menuItems.push({
-      label: "Query",
-      itemIcon: <Box component={run.icon} sx={{ display: "inline-flex" }} />,
-      isDisabled: isQueryDisabled,
-      action: () => {
-        setSqlQuery(query);
-        if (isActionAvailable("query_diff_with_primary_key")) {
-          // Only set primary key if the action is available
-          setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
-        }
-        setLocation("/query");
-      },
-    });
-
-    if (columns.length > 0) {
-      if (cll !== undefined) {
-        const allColumns = new Set<string>();
-        if (primaryKey) {
-          allColumns.add(primaryKey);
-        }
-        columns.forEach((column) => {
-          allColumns.add(column);
-        });
-
-        menuItems.push({
-          label: "Query Related Columns",
-          itemIcon: (
-            <Box component={run.icon} sx={{ display: "inline-flex" }} />
-          ),
-          isDisabled: isQueryDisabled,
-          action: () => {
-            const query = `select \n  ${Array.from(allColumns).join(",\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
-            setSqlQuery(query);
-            if (isActionAvailable("query_diff_with_primary_key")) {
-              // Only set primary key if the action is available
-              setPrimaryKeys(
-                primaryKey !== undefined ? [primaryKey] : undefined,
-              );
-            }
-            setLocation("/query");
-          },
-        });
-      } else {
-        // modified columns
-        const changedColumns = Object.entries(modelNode.change?.columns ?? {})
-          .filter(([, value]) => value === "modified")
-          .map(([key]) => key);
-        if (changedColumns.length > 0) {
-          const allColumns = new Set<string>();
-          if (primaryKey) {
-            allColumns.add(primaryKey);
-          }
-          changedColumns.forEach((column) => {
-            allColumns.add(column);
-          });
-
-          menuItems.push({
-            label: "Query Modified Columns",
-            itemIcon: (
-              <Box component={run.icon} sx={{ display: "inline-flex" }} />
-            ),
-            isDisabled: isQueryDisabled,
-            action: () => {
-              const query = `select \n  ${Array.from(allColumns).join(",\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
-              setSqlQuery(query);
-              if (isActionAvailable("query_diff_with_primary_key")) {
-                // Only set primary key if the action is available
-                setPrimaryKeys(
-                  primaryKey !== undefined ? [primaryKey] : undefined,
-                );
-              }
-              setLocation("/query");
-            },
-          });
-        }
-      }
-    }
-
-    // row count & row count diff
-    const rowCountAndRowCountRun = findByRunType(
-      singleEnv ? "row_count" : "row_count_diff",
-    );
-    menuItems.push({
-      label: rowCountAndRowCountRun.title,
-      itemIcon: (
-        <Box
-          component={rowCountAndRowCountRun.icon}
-          sx={{ display: "inline-flex" }}
-        />
-      ),
-      isDisabled: isQueryDisabled,
-      action: () => {
-        trackExploreAction({
-          action: singleEnv
-            ? EXPLORE_ACTION.ROW_COUNT
-            : EXPLORE_ACTION.ROW_COUNT_DIFF,
-          source: EXPLORE_SOURCE.LINEAGE_VIEW_CONTEXT_MENU,
-          node_count: 1,
-        });
-        runAction(
-          singleEnv ? "row_count" : "row_count_diff",
-          { node_names: [modelNode.name] },
-          { showForm: false, trackProps },
-        );
-      },
-    });
-
-    // profile & profile diff
-    const profileAndProfileDiffRun = findByRunType(
-      singleEnv ? "profile" : "profile_diff",
-    );
-    menuItems.push({
-      label: profileAndProfileDiffRun.title,
-      itemIcon: (
-        <Box
-          component={profileAndProfileDiffRun.icon}
-          sx={{ display: "inline-flex" }}
-        />
-      ),
-      isDisabled: isQueryDisabled,
-      action: () => {
-        const columns = Array.from(getNodeColumnSet(node.id));
-        trackExploreAction({
-          action: singleEnv
-            ? EXPLORE_ACTION.PROFILE
-            : EXPLORE_ACTION.PROFILE_DIFF,
-          source: EXPLORE_SOURCE.LINEAGE_VIEW_CONTEXT_MENU,
-          node_count: 1,
-        });
-        runAction(
-          singleEnv ? "profile" : "profile_diff",
-          { model: modelNode.name, columns },
-          { showForm: true, trackProps },
-        );
-      },
-    });
-
-    // value diff
-    if (!singleEnv) {
-      const valueDiffRun = findByRunType("value_diff");
-      menuItems.push({
-        label: valueDiffRun.title,
-        itemIcon: (
-          <Box component={valueDiffRun.icon} sx={{ display: "inline-flex" }} />
-        ),
-        isDisabled: isQueryDisabled,
-        action: () => {
-          const columns = Array.from(getNodeColumnSet(node.id));
-          trackExploreAction({
-            action: EXPLORE_ACTION.VALUE_DIFF,
-            source: EXPLORE_SOURCE.LINEAGE_VIEW_CONTEXT_MENU,
-            node_count: 1,
-          });
-          runAction(
-            "value_diff",
-            { model: modelNode.name, columns },
-            { showForm: true, trackProps },
-          );
-        },
-      });
-    }
-  }
-
-  if (!singleEnv) {
-    if (menuItems.length > 0) {
-      menuItems.push({
-        label: "select group two",
-        isSeparator: true,
-      });
-    }
-    menuItems.push({
-      label: "Select Parent Nodes",
-      itemIcon: <BiArrowFromBottom />,
-      action: () => {
-        trackLineageSelection({
-          action: LINEAGE_SELECTION_ACTION.SELECT_PARENT_NODES,
-        });
-        selectParentNodes(node.id, 1);
-      },
-    });
-    menuItems.push({
-      label: "Select Child Nodes",
-      itemIcon: <BiArrowToBottom />,
-      action: () => {
-        trackLineageSelection({
-          action: LINEAGE_SELECTION_ACTION.SELECT_CHILD_NODES,
-        });
-        selectChildNodes(node.id, 1);
-      },
-    });
-    menuItems.push({
-      label: "Select All Upstream Nodes",
-      itemIcon: <BiArrowFromBottom />,
-      action: () => {
-        trackLineageSelection({
-          action: LINEAGE_SELECTION_ACTION.SELECT_ALL_UPSTREAM,
-        });
-        selectParentNodes(node.id);
-      },
-    });
-    menuItems.push({
-      label: "Select All Downstream Nodes",
-      itemIcon: <BiArrowToBottom />,
-      action: () => {
-        trackLineageSelection({
-          action: LINEAGE_SELECTION_ACTION.SELECT_ALL_DOWNSTREAM,
-        });
-        selectChildNodes(node.id);
-      },
-    });
-  }
+  const deps = useContextMenuDeps(node?.data?.name);
 
   return (
-    <ContextMenu
+    <BaseModelNodeContextMenu
       x={x}
       y={y}
-      menuItems={menuItems}
-      open={isOpen}
+      node={node}
+      isOpen={isOpen}
       onClose={onClose}
+      deps={deps}
+      viewOptions={{
+        selectMode,
+        cll,
+        showColumnLevelLineage,
+        selectParentNodes,
+        selectChildNodes,
+        getNodeColumnSet,
+      }}
+      featureToggles={{
+        disableDatabaseQuery: featureToggles.disableDatabaseQuery,
+        mode: featureToggles.mode ?? undefined,
+      }}
+      serverFlags={{
+        single_env_onboarding: flag?.single_env_onboarding,
+      }}
+      noCatalogCurrent={noCatalogCurrent}
+      isActionAvailable={isActionAvailable}
     />
   );
 };
 
+/**
+ * OSS wrapper for ColumnNodeContextMenu.
+ * Injects OSS-specific dependencies and context.
+ */
 export const ColumnNodeContextMenu = ({
   isOpen,
   onClose,
@@ -431,140 +175,36 @@ export const ColumnNodeContextMenu = ({
   y,
   node,
 }: LineageViewContextMenuProps<LineageGraphColumnNode>) => {
-  const menuItems: ContextMenuItem[] = [];
-
-  const { runAction } = useRecceActionContext();
-  const { isActionAvailable } = useLineageGraphContext();
   const { featureToggles } = useRecceInstanceContext();
+  const { isActionAvailable } = useLineageGraphContext();
   const { data: flag } = useRecceServerFlag();
-  const singleEnv = flag?.single_env_onboarding ?? false;
-  const isQueryDisabled = featureToggles.disableDatabaseQuery;
 
-  if (node?.data === undefined) {
-    return <></>;
-  }
-
-  const columnNode = node.data;
-  const modelNode = columnNode.node;
-  const column = columnNode.column;
-  const columnType = columnNode.type;
-  const trackProps: SubmitRunTrackProps = {
-    source: "lineage_column_node",
-  };
-
-  const handleProfileDiff = () => {
-    trackExploreAction({
-      action: EXPLORE_ACTION.PROFILE_DIFF,
-      source: EXPLORE_SOURCE.LINEAGE_VIEW_CONTEXT_MENU,
-      node_count: 1,
-    });
-    runAction(
-      "profile_diff",
-      { model: modelNode.name, columns: [column] },
-      { showForm: false, trackProps },
-    );
-  };
-
-  const handleHistogramDiff = () => {
-    trackExploreAction({
-      action: EXPLORE_ACTION.HISTOGRAM_DIFF,
-      source: EXPLORE_SOURCE.LINEAGE_VIEW_CONTEXT_MENU,
-      node_count: 1,
-    });
-    runAction(
-      "histogram_diff",
-      { model: modelNode.name, column_name: column, column_type: columnType },
-      { showForm: false, trackProps },
-    );
-  };
-
-  const handleTopkDiff = () => {
-    trackExploreAction({
-      action: EXPLORE_ACTION.TOP_K_DIFF,
-      source: EXPLORE_SOURCE.LINEAGE_VIEW_CONTEXT_MENU,
-      node_count: 1,
-    });
-    runAction(
-      "top_k_diff",
-      { model: modelNode.name, column_name: column, k: 50 },
-      { showForm: false, trackProps },
-    );
-  };
-
-  const handleValueDiff = () => {
-    trackExploreAction({
-      action: EXPLORE_ACTION.VALUE_DIFF,
-      source: EXPLORE_SOURCE.LINEAGE_VIEW_CONTEXT_MENU,
-      node_count: 1,
-    });
-    runAction(
-      "value_diff",
-      { model: modelNode.name, columns: [column] },
-      { showForm: true, trackProps },
-    );
-  };
-
-  const addedOrRemoved =
-    modelNode.data.base?.columns?.[column] === undefined ||
-    modelNode.data.current?.columns?.[column] === undefined;
-
-  const run = findByRunType(singleEnv ? "profile" : "profile_diff");
-  menuItems.push({
-    label: run.title,
-    itemIcon: <Box component={run.icon} sx={{ display: "inline-flex" }} />,
-    action: handleProfileDiff,
-    isDisabled:
-      addedOrRemoved || !isActionAvailable("profile_diff") || isQueryDisabled,
-  });
-
-  if (!singleEnv) {
-    const isHistogramDiffRun = findByRunType("histogram_diff");
-    menuItems.push({
-      label: isHistogramDiffRun.title,
-      itemIcon: (
-        <Box
-          component={isHistogramDiffRun.icon}
-          sx={{ display: "inline-flex" }}
-        />
-      ),
-      action: handleHistogramDiff,
-      isDisabled:
-        addedOrRemoved ||
-        (columnType ? !supportsHistogramDiff(columnType) : true) ||
-        isQueryDisabled,
-    });
-    const isTopKDiffRun = findByRunType("top_k_diff");
-    menuItems.push({
-      label: isTopKDiffRun.title,
-      itemIcon: (
-        <Box component={isTopKDiffRun.icon} sx={{ display: "inline-flex" }} />
-      ),
-      action: handleTopkDiff,
-      isDisabled: addedOrRemoved || isQueryDisabled,
-    });
-
-    const isValueDiffRun = findByRunType("value_diff");
-    menuItems.push({
-      label: isValueDiffRun.title,
-      itemIcon: (
-        <Box component={isValueDiffRun.icon} sx={{ display: "inline-flex" }} />
-      ),
-      action: handleValueDiff,
-      isDisabled: addedOrRemoved || isQueryDisabled,
-    });
-  }
+  const deps = useContextMenuDeps(node?.data?.node?.name);
 
   return (
-    <ContextMenu
+    <BaseColumnNodeContextMenu
       x={x}
       y={y}
-      menuItems={menuItems}
-      open={isOpen}
+      node={node}
+      isOpen={isOpen}
       onClose={onClose}
+      deps={deps}
+      featureToggles={{
+        disableDatabaseQuery: featureToggles.disableDatabaseQuery,
+        mode: featureToggles.mode ?? undefined,
+      }}
+      serverFlags={{
+        single_env_onboarding: flag?.single_env_onboarding,
+      }}
+      isActionAvailable={isActionAvailable}
     />
   );
 };
 
+/**
+ * OSS wrapper for LineageViewContextMenu.
+ * Injects OSS-specific dependencies and context.
+ */
 export const LineageViewContextMenu = ({
   isOpen,
   onClose,
@@ -572,67 +212,61 @@ export const LineageViewContextMenu = ({
   y,
   node,
 }: LineageViewContextMenuProps<LineageGraphNodes>) => {
+  const {
+    selectParentNodes,
+    selectChildNodes,
+    getNodeColumnSet,
+    selectMode,
+    cll,
+    showColumnLevelLineage,
+  } = useLineageViewContextSafe();
   const { featureToggles } = useRecceInstanceContext();
-  if (featureToggles.disableViewActionDropdown) {
-    return (
-      <ContextMenu menuItems={[]} open={isOpen} onClose={onClose} x={x} y={y} />
-    );
-  } else if (node && isLineageGraphNode(node)) {
-    return (
-      <ModelNodeContextMenu
-        x={x}
-        y={y}
-        isOpen={isOpen}
-        onClose={onClose}
-        node={node}
-      />
-    );
-  } else if (node && isLineageGraphColumnNode(node)) {
-    return (
-      <ColumnNodeContextMenu
-        x={x}
-        y={y}
-        isOpen={isOpen}
-        onClose={onClose}
-        node={node}
-      />
-    );
-  }
+  const { isActionAvailable, lineageGraph } = useLineageGraphContext();
+  const { data: flag } = useRecceServerFlag();
+  const noCatalogCurrent = !lineageGraph?.catalogMetadata.current;
+
+  // Get model name from either model node or column node
+  const modelName =
+    node?.type === "lineageGraphNode"
+      ? (node as LineageGraphNode).data?.name
+      : node?.type === "lineageGraphColumnNode"
+        ? (node as LineageGraphColumnNode).data?.node?.name
+        : undefined;
+
+  const deps = useContextMenuDeps(modelName);
+
+  return (
+    <BaseLineageViewContextMenu
+      x={x}
+      y={y}
+      node={node}
+      isOpen={isOpen}
+      onClose={onClose}
+      deps={deps}
+      viewOptions={{
+        selectMode,
+        cll,
+        showColumnLevelLineage,
+        selectParentNodes,
+        selectChildNodes,
+        getNodeColumnSet,
+      }}
+      featureToggles={{
+        disableDatabaseQuery: featureToggles.disableDatabaseQuery,
+        disableViewActionDropdown: featureToggles.disableViewActionDropdown,
+        mode: featureToggles.mode ?? undefined,
+      }}
+      serverFlags={{
+        single_env_onboarding: flag?.single_env_onboarding,
+      }}
+      noCatalogCurrent={noCatalogCurrent}
+      isActionAvailable={isActionAvailable}
+    />
+  );
 };
 
-export const useLineageViewContextMenu = () => {
-  const [open, setOpen] = useState(false);
-  const onOpen = () => setOpen(true);
-  const onClose = () => setOpen(false);
-  const [position, setPosition] = useState<{ x: number; y: number }>({
-    x: 0,
-    y: 0,
-  });
-  const [node, setNode] = useState<LineageGraphNodes>();
-
-  const showContextMenu = (x: number, y: number, node: LineageGraphNodes) => {
-    setPosition({ x, y });
-    setNode(node);
-    onOpen();
-  };
-
-  const closeContextMenu = () => {
-    setPosition({ x: 0, y: 0 });
-    setNode(undefined);
-    onClose();
-  };
-
-  const props: LineageViewContextMenuProps<LineageGraphNodes> = {
-    x: position.x,
-    y: position.y,
-    node,
-    isOpen: open,
-    onClose,
-  };
-
-  return {
-    props,
-    showContextMenu,
-    closeContextMenu,
-  };
-};
+/**
+ * Re-export the hook from @datarecce/ui.
+ * This hook doesn't need any OSS-specific modifications.
+ */
+export const useLineageViewContextMenu = baseUseLineageViewContextMenu;

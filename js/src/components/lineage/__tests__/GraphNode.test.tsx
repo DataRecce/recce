@@ -73,8 +73,55 @@ jest.mock("@datarecce/ui/components/lineage", () => {
         )}
       </div>
     ));
+  // Mock ActionTag component for testing action display
+  const MockActionTag = jest
+    .fn()
+    .mockImplementation(
+      ({
+        status,
+        skipReason,
+        errorMessage,
+        progress,
+        valueDiffResult,
+        rowCountDiffResult,
+        runId,
+      }) => (
+        <div data-testid="action-tag" data-status={status}>
+          {status === "pending" && <span>Loading...</span>}
+          {status === "skipped" && (
+            <span>Skipped{skipReason && `: ${skipReason}`}</span>
+          )}
+          {status === "running" && (
+            <span>
+              Running
+              {progress?.percentage ? ` ${progress.percentage * 100}%` : ""}
+            </span>
+          )}
+          {status === "error" && (
+            <span>Error{errorMessage && `: ${errorMessage}`}</span>
+          )}
+          {status === "success" && valueDiffResult && (
+            <span>
+              {valueDiffResult.mismatchedColumns > 0
+                ? `${valueDiffResult.mismatchedColumns} columns mismatched`
+                : "All columns match"}
+            </span>
+          )}
+          {status === "success" && rowCountDiffResult && (
+            <span>
+              {rowCountDiffResult.base} -&gt; {rowCountDiffResult.current}
+            </span>
+          )}
+          {status === "success" &&
+            !valueDiffResult &&
+            !rowCountDiffResult &&
+            runId && <span>{runId}</span>}
+        </div>
+      ),
+    );
   return {
     LineageNode: MockLineageNodeInline,
+    ActionTag: MockActionTag,
     getIconForChangeStatus: jest.fn().mockReturnValue({
       icon: () => <span data-testid="change-status-icon">Status</span>,
       color: "#22c55e",

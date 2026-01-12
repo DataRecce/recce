@@ -1,54 +1,44 @@
+"use client";
+
+import {
+  SetupConnectionBanner as BaseSetupConnectionBanner,
+  type SetupConnectionBannerProps as BaseSetupConnectionBannerProps,
+} from "@datarecce/ui/components/lineage";
 import {
   useRecceInstanceContext,
   useRecceInstanceInfo,
 } from "@datarecce/ui/contexts";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import { PiInfo } from "react-icons/pi";
-import { getSettingsUrl } from "@/lib/utils/urls";
+import { getSettingsUrl } from "@datarecce/ui/utils";
+import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 
-export default function SetupConnectionBanner() {
+/**
+ * Props for the OSS SetupConnectionBanner wrapper.
+ * Extends the base props but makes injected dependencies optional
+ * since they're provided by OSS-specific contexts.
+ */
+export type SetupConnectionBannerProps =
+  Partial<BaseSetupConnectionBannerProps>;
+
+/**
+ * OSS wrapper for SetupConnectionBanner.
+ *
+ * Provides OSS-specific context integration by automatically:
+ * - Fetching feature toggles from RecceInstanceContext
+ * - Generating settings URL from instance info
+ */
+export default function SetupConnectionBanner(
+  props: SetupConnectionBannerProps,
+) {
   const { featureToggles } = useRecceInstanceContext();
   const { data: instanceInfo } = useRecceInstanceInfo();
 
-  if (featureToggles.mode !== "metadata only") {
-    return null;
-  }
-
   return (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        width: "100%",
-        px: 1,
-        py: 0.25,
-        bgcolor: "cyan.50",
-      }}
-    >
-      <Stack
-        direction="row"
-        alignItems="center"
-        sx={{ flex: 1, fontSize: "0.875rem", color: "cyan.600" }}
-        spacing={1}
-      >
-        <Box component={PiInfo} />
-        <Typography sx={{ fontSize: "inherit", color: "inherit" }}>
-          Query functions disabled without a data warehouse connection.
-        </Typography>
-        <Button
-          sx={{ bgcolor: "iochmara.400" }}
-          size="small"
-          variant="contained"
-          onClick={() => {
-            window.open(getSettingsUrl(instanceInfo), "_blank");
-          }}
-        >
-          Connect to Data Warehouse
-        </Button>
-      </Stack>
-    </Box>
+    <BaseSetupConnectionBanner
+      featureToggles={props.featureToggles ?? featureToggles}
+      settingsUrl={
+        props.settingsUrl ??
+        getSettingsUrl(instanceInfo, RECCE_SUPPORT_CALENDAR_URL)
+      }
+    />
   );
 }

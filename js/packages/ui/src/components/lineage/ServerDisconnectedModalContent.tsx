@@ -1,20 +1,28 @@
-import type { RecceFeatureMode } from "@datarecce/ui/contexts";
-import { formatDuration } from "@datarecce/ui/utils";
+"use client";
+
 import Button from "@mui/material/Button";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Typography from "@mui/material/Typography";
-import NextLink from "next/link";
-import React from "react";
-import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
+import type { ComponentType, ReactNode } from "react";
+import type { RecceFeatureMode } from "../../contexts/instance";
+import { formatDuration } from "../../utils/formatTime";
 
-interface ServerDisconnectedModalContentProps {
+/**
+ * Props for the ServerDisconnectedModalContent component
+ */
+export interface ServerDisconnectedModalContentProps {
+  /** Callback to attempt reconnection */
   connect: () => void;
   /** If provided, indicates the server was idle for this many seconds before timeout */
   idleSeconds?: number | null;
 }
 
+/**
+ * Modal content displayed when the local server connection is lost.
+ * Shows different messages for idle timeout vs unexpected disconnection.
+ */
 export function ServerDisconnectedModalContent({
   connect,
   idleSeconds,
@@ -53,13 +61,44 @@ export function ServerDisconnectedModalContent({
   );
 }
 
+/**
+ * Props for a link component that can wrap children
+ */
+export interface LinkComponentProps {
+  href: string;
+  children: ReactNode;
+}
+
+/**
+ * Props for the RecceInstanceDisconnectedModalContent component
+ */
+export interface RecceInstanceDisconnectedModalContentProps {
+  /** URL to restart the share instance */
+  shareUrl: string;
+  /** The feature mode (determines which message to display) */
+  mode: Exclude<RecceFeatureMode, null>;
+  /** URL for scheduling support calls (used in metadata-only mode) */
+  supportCalendarUrl: string;
+  /**
+   * Optional link component for routing integration (e.g., Next.js Link).
+   * If provided, used for "read only" mode navigation.
+   * Should pass `href` to child and handle routing.
+   */
+  LinkComponent?: ComponentType<LinkComponentProps>;
+}
+
+/**
+ * Modal content displayed when a cloud instance expires.
+ * Shows different messages based on the feature mode:
+ * - "read only": Share instance expired, offers restart
+ * - "metadata only": Preview instance expired, offers contact option
+ */
 export function RecceInstanceDisconnectedModalContent({
   shareUrl,
   mode,
-}: {
-  shareUrl: string;
-  mode: Exclude<RecceFeatureMode, null>;
-}) {
+  supportCalendarUrl,
+  LinkComponent,
+}: RecceInstanceDisconnectedModalContentProps) {
   const contents = {
     "read only": {
       title: "Share Instance Expired",
@@ -71,11 +110,17 @@ export function RecceInstanceDisconnectedModalContent({
       title: "Preview Instance Expired",
       body: "This Preview Instance has expired. To browse more, please book a meeting with us.",
       action: "Contact us",
-      link: RECCE_SUPPORT_CALENDAR_URL,
+      link: supportCalendarUrl,
     },
   };
 
   const content = contents[mode];
+
+  const button = (
+    <Button color="iochmara" variant="contained">
+      {content.action}
+    </Button>
+  );
 
   return (
     <>
@@ -85,11 +130,11 @@ export function RecceInstanceDisconnectedModalContent({
       </DialogContent>
       <DialogActions>
         {mode === "read only" ? (
-          <NextLink href={content.link} passHref>
-            <Button color="iochmara" variant="contained">
-              {content.action}
-            </Button>
-          </NextLink>
+          LinkComponent ? (
+            <LinkComponent href={content.link}>{button}</LinkComponent>
+          ) : (
+            <a href={content.link}>{button}</a>
+          )
         ) : (
           <Button
             color="iochmara"
