@@ -18,11 +18,11 @@ import {
   ChangedOnlyCheckbox,
   DiffDisplayModeSwitch,
 } from "@datarecce/ui/components/ui";
+import { createDataGrid } from "@datarecce/ui/components/ui/dataGrid";
 import { createResultView, type ResultViewData } from "@datarecce/ui/result";
-import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
 import type { DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 
-import "../query/styles.css";
+import "@datarecce/ui/components/query/styles.css";
 
 // ============================================================================
 // Type Definitions

@@ -30,7 +30,7 @@ jest.mock("ag-grid-community", () => ({
 
 // Mock dataGridFactory - use factory pattern
 const mockCreateDataGrid = jest.fn();
-jest.mock("@/lib/dataGrid/dataGridFactory", () => ({
+jest.mock("@datarecce/ui/components/ui/dataGrid", () => ({
   createDataGrid: (...args: unknown[]) => mockCreateDataGrid(...args),
 }));
 

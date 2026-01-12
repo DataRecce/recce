@@ -14,11 +14,11 @@ import type {
   ColumnType,
   RowObjectType,
 } from "@datarecce/ui/api";
+import { type ColDefWithMetadata } from "@datarecce/ui/components/ui/dataGrid/defaultRenderCell";
 import {
   asNumber,
-  type ColDefWithMetadata,
   inlineRenderCell,
-} from "@datarecce/ui/components/ui";
+} from "@datarecce/ui/components/ui/dataGrid/inlineRenderCell";
 import CssBaseline from "@mui/material/CssBaseline";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";

@@ -12,7 +12,12 @@
  * - toValueDataGrid for value_diff summary (column match statistics)
  */
 
-import type { Run } from "@datarecce/ui/api";
+import type { ColDef, ColGroupDef } from "ag-grid-community";
+import type { QueryDiffResult } from "../../../api/adhocQuery";
+import type { NodeData } from "../../../api/info";
+import type { ProfileDiffResult } from "../../../api/profile";
+import type { RowCountDiffResult, RowCountResult } from "../../../api/rowcount";
+import type { Run } from "../../../api/types";
 import {
   type ColumnRenderMode,
   type ColumnType,
@@ -26,25 +31,9 @@ import {
   isRowCountRun,
   isValueDiffDetailRun,
   isValueDiffRun,
-  type NodeData,
-  type ProfileDiffResult,
-  type QueryDiffResult,
-  type RowCountDiffResult,
-  type RowCountResult,
   type RowObjectType,
-  type ValueDiffParams,
-  type ValueDiffResult,
-} from "@datarecce/ui/api";
-import { toValueDataGrid } from "@datarecce/ui/components/ui/dataGrid";
-// Import existing implementations from @datarecce/ui
-import {
-  toDataDiffGridConfigured as toDataDiffGrid,
-  toDataGridConfigured as toDataGrid,
-  toRowCountDataGrid,
-  toRowCountDiffDataGrid,
-  toValueDiffGridConfigured as toValueDiffGrid,
-} from "@datarecce/ui/utils";
-import type { ColDef, ColGroupDef } from "ag-grid-community";
+} from "../../../api/types";
+import type { ValueDiffParams, ValueDiffResult } from "../../../api/valuediff";
 import {
   mergeColumns,
   type SchemaDataGridOptions,
@@ -52,7 +41,16 @@ import {
   type SingleEnvSchemaDataGridResult,
   toSchemaDataGrid,
   toSingleEnvDataGrid,
-} from "@/lib/dataGrid/generators/toSchemaDataGrid";
+} from "../../../lib/dataGrid/generators/toSchemaDataGrid";
+// Import existing implementations from @datarecce/ui
+import {
+  toDataDiffGridConfigured as toDataDiffGrid,
+  toDataGridConfigured as toDataGrid,
+  toRowCountDataGrid,
+  toRowCountDiffDataGrid,
+  toValueDiffGridConfigured as toValueDiffGrid,
+} from "../../../utils/dataGrid";
+import { toValueDataGrid } from "./generators/toValueDataGrid";
 
 // ============================================================================
 // Types & Interfaces
@@ -395,7 +393,3 @@ export function createDataGridFromData(
       );
   }
 }
-
-// Re-export the underlying functions for backward compatibility
-export { toDataGrid, toDataDiffGrid, toValueDiffGrid };
-export { mergeColumns, toSchemaDataGrid, toSingleEnvDataGrid };

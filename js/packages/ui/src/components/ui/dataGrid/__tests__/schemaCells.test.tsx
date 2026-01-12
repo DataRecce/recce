@@ -9,10 +9,10 @@
  * - Null data handling
  */
 
-import type { RowObjectType } from "@datarecce/ui/api";
 import { render, screen } from "@testing-library/react";
 import type { ICellRendererParams } from "ag-grid-community";
 import React from "react";
+import type { RowObjectType } from "../../../../api";
 
 // Performance testing utilities
 const performance = {
@@ -23,11 +23,11 @@ const performance = {
 // Mocks - Must be defined before imports that use them
 // ============================================================================
 
-jest.mock("@/components/schema/ColumnNameCell", () => ({
+jest.mock("../../../schema/ColumnNameCell", () => ({
   ColumnNameCell: () => null,
 }));
 
-jest.mock("@/lib/api/info", () => ({}));
+jest.mock("../../../../api/info", () => ({}));
 
 // Import after mocks
 import {
@@ -35,7 +35,7 @@ import {
   MemoizedRenderTypeCell,
   renderIndexCell,
   renderTypeCell,
-} from "./schemaCells";
+} from "../schemaCells";
 
 // ============================================================================
 // Test Helpers

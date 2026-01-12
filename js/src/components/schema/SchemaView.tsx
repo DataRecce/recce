@@ -1,4 +1,6 @@
+import { SchemaDiffRow, SchemaRow } from "@datarecce/ui";
 import type { NodeData } from "@datarecce/ui/api";
+import { createDataGridFromData } from "@datarecce/ui/components/ui/dataGrid";
 import {
   useLineageGraphContext,
   useLineageViewContext,
@@ -20,11 +22,6 @@ import {
   useState,
 } from "react";
 import { trackColumnLevelLineage } from "@/lib/api/track";
-import {
-  createDataGridFromData,
-  SchemaDiffRow,
-  SchemaRow,
-} from "@/lib/dataGrid";
 import {
   type DataGridHandle,
   EmptyRowsRenderer,

@@ -1,21 +1,21 @@
 "use client";
 
-import { VSplit } from "@datarecce/ui";
 import {
-  type Check,
-  cacheKeys,
-  cancelRun,
-  deleteCheck,
-  getCheck,
-  markAsPresetCheck,
   type QueryDiffParams,
   type QueryParams,
   type QueryRunParams,
-  type Run,
-  type RunParamTypes,
-  submitRunFromCheck,
+} from "@datarecce/ui/api/adhocQuery";
+import { cacheKeys } from "@datarecce/ui/api/cacheKeys";
+import {
+  type Check,
+  deleteCheck,
+  getCheck,
+  markAsPresetCheck,
   updateCheck,
-} from "@datarecce/ui/api";
+} from "@datarecce/ui/api/checks";
+import { cancelRun, submitRunFromCheck } from "@datarecce/ui/api/runs";
+import type { Run, RunParamTypes } from "@datarecce/ui/api/types";
+import { VSplit } from "@datarecce/ui/components";
 import { DualSqlEditor, SqlEditor } from "@datarecce/ui/components/query";
 import type { IconComponent } from "@datarecce/ui/components/run";
 import { toaster } from "@datarecce/ui/components/ui";

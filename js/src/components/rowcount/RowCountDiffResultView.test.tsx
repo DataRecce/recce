@@ -27,7 +27,7 @@ jest.mock("ag-grid-community", () => ({
 
 // Mock dataGridFactory to avoid deep import chain issues
 // This prevents importing toSchemaDataGrid -> schemaCells -> ag-grid-react
-jest.mock("@/lib/dataGrid/dataGridFactory", () => ({
+jest.mock("@datarecce/ui/components/ui/dataGrid", () => ({
   createDataGrid: jest.fn((run) => {
     // Return mock grid data based on run result
     if (!run.result || Object.keys(run.result).length === 0) {

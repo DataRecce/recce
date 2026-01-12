@@ -6,20 +6,20 @@
  * to schemaCells.tsx via render functions.
  */
 
-import "@/components/schema/style.css";
+import "../../../components/schema/style.css";
+import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
 import {
   type NodeColumnData,
   type NodeData,
   type RowObjectType,
-} from "@datarecce/ui/api";
-import { mergeKeysWithStatus } from "@datarecce/ui/utils";
-import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
+} from "../../../api";
 import {
-  createColumnNameRenderer,
+  createSchemaColumnNameRenderer,
   createSingleEnvColumnNameRenderer,
   renderIndexCell,
   renderTypeCell,
-} from "@/components/ui/dataGrid/schemaCells";
+} from "../../../components/ui/dataGrid/schemaCells";
+import { mergeKeysWithStatus } from "../../../utils";
 
 // ============================================================================
 // Types
@@ -156,7 +156,7 @@ export function toSchemaDataGrid(
       headerName: "Name",
       resizable: true,
       cellRenderer: node
-        ? createColumnNameRenderer(node, cllRunningMap, showMenu)
+        ? createSchemaColumnNameRenderer(node, cllRunningMap, showMenu)
         : undefined,
       cellClass: getColumnNameCellClass,
     },

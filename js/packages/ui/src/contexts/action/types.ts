@@ -11,11 +11,47 @@ export type AxiosQueryParams = Record<
 >;
 
 /**
+ * Explore action sources - matches EXPLORE_SOURCE in track.ts
+ */
+export type ExploreSource =
+  | "lineage_view_top_bar"
+  | "lineage_view_context_menu"
+  | "node_kebab_menu"
+  | "node_sidebar_single_env"
+  | "node_sidebar_multi_env"
+  | "schema_row_count_button"
+  | "schema_column_menu"
+  | "lineage_model_node"
+  | "lineage_column_node";
+
+/**
+ * Explore action types - matches EXPLORE_ACTION in track.ts
+ */
+export type ExploreAction =
+  | "row_count"
+  | "row_count_diff"
+  | "profile"
+  | "profile_diff"
+  | "value_diff"
+  | "schema_diff"
+  | "lineage_diff"
+  | "query"
+  | "histogram_diff"
+  | "top_k_diff";
+
+/**
  * Tracking properties for run submissions
  */
 export interface SubmitRunTrackProps {
+  /** The explore action type being performed */
+  action?: ExploreAction;
+  /** The source UI element triggering the action */
+  source?: ExploreSource;
+  /** Number of nodes involved in the action */
+  node_count?: number;
+  /** Whether breaking change analysis is enabled */
   breaking_change_analysis?: boolean;
-  source?: "lineage_model_node" | "lineage_column_node";
+  /** Additional tracking properties */
   [key: string]: unknown;
 }
 

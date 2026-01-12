@@ -12,7 +12,7 @@ import {
   MatchedPercentCell,
   PrimaryKeyIndicatorCell,
   ValueDiffColumnNameCell,
-} from "@datarecce/ui/components/ui/dataGrid";
+} from "@datarecce/ui/components/ui/dataGrid/valueDiffCells";
 import { theme } from "@datarecce/ui/theme";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";

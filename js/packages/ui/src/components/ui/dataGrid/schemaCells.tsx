@@ -1,16 +1,15 @@
+"use client";
+
 /**
  * @file schemaCells.tsx
  * @description Cell components and render functions for Schema grid views
  */
 
-import { type NodeData, type RowObjectType } from "@datarecce/ui/api";
 import type { ICellRendererParams } from "ag-grid-community";
 import React from "react";
-import { ColumnNameCell } from "@/components/schema/ColumnNameCell";
-import type {
-  SchemaDiffRow,
-  SchemaRow,
-} from "@/lib/dataGrid/generators/toSchemaDataGrid";
+import type { NodeData, RowObjectType } from "../../../api";
+import type { SchemaDiffRow, SchemaRow } from "../../schema";
+import { ColumnNameCell } from "../../schema/ColumnNameCell";
 
 // ============================================================================
 // Render Functions for toSchemaDataGrid.ts
@@ -19,7 +18,7 @@ import type {
 /**
  * Creates a cellRenderer function for schema diff column names
  */
-export function createColumnNameRenderer(
+export function createSchemaColumnNameRenderer(
   node: NodeData,
   cllRunningMap?: Map<string, boolean>,
   showMenu?: boolean,

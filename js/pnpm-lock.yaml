@@ -279,6 +279,9 @@ importers:
       axios:
         specifier: ^1.0.0
         version: 1.13.2
+      date-fns:
+        specifier: ^4.1.0
+        version: 4.1.0
       file-saver:
         specifier: ^2.0.5
         version: 2.0.5
@@ -294,6 +297,9 @@ importers:
       react-dom:
         specifier: ^18.0.0 || ^19.0.0
         version: 19.2.3(react@19.2.3)
+      react-icons:
+        specifier: ^5.5.0
+        version: 5.5.0(react@19.2.3)
       usehooks-ts:
         specifier: ^3.1.1
         version: 3.1.1(react@19.2.3)

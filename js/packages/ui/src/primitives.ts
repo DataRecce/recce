@@ -181,11 +181,6 @@ export type {
 // DATA PRIMITIVES
 // =============================================================================
 
-// AG Grid theme
-export {
-  dataGridThemeDark,
-  dataGridThemeLight,
-} from "./components/data/agGridTheme";
 // Histogram chart (Chart.js based data distribution)
 export {
   type ChartBarColors,

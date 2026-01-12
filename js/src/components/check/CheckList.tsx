@@ -1,4 +1,5 @@
-import { type Check, cacheKeys, updateCheck } from "@datarecce/ui/api";
+import { cacheKeys } from "@datarecce/ui/api/cacheKeys";
+import { type Check, updateCheck } from "@datarecce/ui/api/checks";
 import { toaster } from "@datarecce/ui/components/ui";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import {

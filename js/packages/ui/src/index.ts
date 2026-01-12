@@ -168,6 +168,19 @@ export {
   useMultiNodesAction,
   useThemeColors,
 } from "./hooks";
+export type {
+  SchemaDataGridOptions,
+  SchemaDataGridResult,
+  SchemaDiffRow,
+  SchemaRow,
+  SingleEnvSchemaDataGridResult,
+} from "./lib";
+// Lib - library utilities including data grid generators
+export {
+  mergeColumns,
+  toSchemaDataGrid,
+  toSingleEnvDataGrid,
+} from "./lib";
 // Provider (main entry point) and Hooks - from providers module
 export type {
   Check,

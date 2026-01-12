@@ -1,16 +1,19 @@
-// js/src/components/schema/ColumnNameCell.test.tsx
+/**
+ * @file ColumnNameCell.test.tsx
+ * @description Tests for the ColumnNameCell component
+ */
 
-import type { NodeData } from "@datarecce/ui/api";
-import { theme } from "@datarecce/ui/theme";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";
 import React from "react";
-import { SchemaDiffRow } from "@/lib/dataGrid/generators/toSchemaDataGrid";
-import { ColumnNameCell } from "./ColumnNameCell";
+import type { NodeData } from "../../../api";
+import { theme } from "../../../theme";
+import { ColumnNameCell } from "../ColumnNameCell";
+import type { SchemaDiffRow } from "../SchemaDiff";
 
 // Mock dependencies
-jest.mock("@datarecce/ui/contexts", () => ({
+jest.mock("../../../contexts", () => ({
   useRecceActionContext: () => ({ runAction: jest.fn() }),
   useRecceInstanceContext: () => ({
     featureToggles: { disableDatabaseQuery: false },

@@ -21,9 +21,9 @@ import {
   type ProfileDiffViewOptions,
 } from "@datarecce/ui/api";
 import { DiffDisplayModeSwitch } from "@datarecce/ui/components/ui";
+import { createDataGrid } from "@datarecce/ui/components/ui/dataGrid";
 import { RunToolbar } from "@datarecce/ui/primitives";
 import { createResultView } from "@datarecce/ui/result";
-import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
 
 // Re-export types from @datarecce/ui for API compatibility
 export type {

@@ -8,14 +8,14 @@
  * - toSingleEnvDataGrid: Single environment grid generation
  */
 
-import { type NodeData, type RowObjectType } from "@datarecce/ui/api";
 import type { CellClassParams } from "ag-grid-community";
 import React from "react";
+import { type NodeData, type RowObjectType } from "../../../../api";
 import {
   mergeColumns,
   toSchemaDataGrid,
   toSingleEnvDataGrid,
-} from "./toSchemaDataGrid";
+} from "../toSchemaDataGrid";
 
 // ============================================================================
 // Mocks
@@ -50,8 +50,8 @@ const createCellClassParams = (
   }) as unknown as CellClassParams<RowObjectType>;
 
 // Mock the schemaCells module
-jest.mock("@/components/ui/dataGrid/schemaCells", () => ({
-  createColumnNameRenderer: jest.fn(() => jest.fn()),
+jest.mock("../../../../components/ui/dataGrid/schemaCells", () => ({
+  createSchemaColumnNameRenderer: jest.fn(() => jest.fn()),
   createSingleEnvColumnNameRenderer: jest.fn(() => jest.fn()),
   renderIndexCell: jest.fn(),
   renderTypeCell: jest.fn(),

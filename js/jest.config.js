@@ -18,6 +18,7 @@ const customJestConfig = {
     "^@datarecce/ui/result$": "<rootDir>/packages/ui/src/result.ts",
     "^@datarecce/ui$": "<rootDir>/packages/ui/src/index.ts",
     "^@datarecce/ui/(.*)$": "<rootDir>/packages/ui/src/$1",
+    "^(.*)agGridTheme$": "<rootDir>/__mocks__/agGridTheme.ts",
   },
   // Test file patterns
   testMatch: ["**/__tests__/**/*.[jt]s?(x)", "**/?(*.)+(spec|test).[jt]s?(x)"],

@@ -7,6 +7,11 @@
 
 // Re-export MUI's Theme type for convenience
 export type { Theme } from "@mui/material/styles";
+// AG Grid theme
+export {
+  dataGridThemeDark,
+  dataGridThemeLight,
+} from "../components/data/agGridTheme";
 export {
   // Bar color constants
   BASE_BAR_COLOR,

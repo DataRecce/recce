@@ -33,7 +33,7 @@ jest.mock("ag-grid-react", () => ({
 
 // Mock dataGridFactory - use factory pattern that returns mock from closure
 const mockCreateDataGrid = jest.fn();
-jest.mock("@/lib/dataGrid/dataGridFactory", () => ({
+jest.mock("@datarecce/ui/components/ui/dataGrid", () => ({
   createDataGrid: (...args: unknown[]) => mockCreateDataGrid(...args),
 }));
 

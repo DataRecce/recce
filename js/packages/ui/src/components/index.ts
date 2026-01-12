@@ -93,6 +93,22 @@ export {
   RunStatusWithDate,
   RunToolbar,
 } from "./run";
+// Schema components
+export type { ColumnNameCellProps } from "./schema";
+export {
+  ColumnNameCell,
+  mergeSchemaColumns,
+  type SchemaColumnData,
+  SchemaDiff,
+  type SchemaDiffHandle,
+  type SchemaDiffProps,
+  type SchemaDiffRow,
+  type SchemaDiffStatus,
+  type SchemaRow,
+  SchemaTable,
+  type SchemaTableHandle,
+  type SchemaTableProps,
+} from "./schema";
 // Summary components
 export type {
   ChangeStatus,

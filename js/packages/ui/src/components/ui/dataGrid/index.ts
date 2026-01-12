@@ -10,6 +10,17 @@ export { DataFrameColumnGroupHeader } from "./DataFrameColumnGroupHeader";
 // Column header components
 export type { DataFrameColumnHeaderProps } from "./DataFrameColumnHeader";
 export { DataFrameColumnHeader } from "./DataFrameColumnHeader";
+export type {
+  BaseGridOptions,
+  DataGridFromDataResult,
+  DataGridInput,
+  DataGridResult,
+  DiffGridOptions,
+} from "./dataGridFactory";
+export {
+  createDataGrid,
+  createDataGridFromData,
+} from "./dataGridFactory";
 // Cell renderers
 export type {
   ColDefWithMetadata,
@@ -31,6 +42,15 @@ export {
   createInlineRenderCell,
   inlineRenderCell,
 } from "./inlineRenderCell";
+// Schema cell components and render functions
+export {
+  createSchemaColumnNameRenderer,
+  createSingleEnvColumnNameRenderer,
+  MemoizedRenderIndexCell,
+  MemoizedRenderTypeCell,
+  renderIndexCell,
+  renderTypeCell,
+} from "./schemaCells";
 // Value diff cell components and render functions
 export type {
   MatchedPercentCellProps,
