@@ -11,6 +11,8 @@ export {
   Filename,
   SetupConnectionPopover,
   StateExporter,
+  StateImporter,
+  TopLevelShare,
 } from "./app";
 // Error boundary components
 export { ErrorBoundary, ErrorButton } from "./errorboundary";

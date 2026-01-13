@@ -6,3 +6,6 @@ export { EnvInfo } from "./EnvInfo";
 export { Filename } from "./Filename";
 export { default as SetupConnectionPopover } from "./SetupConnectionPopover";
 export { StateExporter } from "./StateExporter";
+export { StateImporter } from "./StateImporter";
+export { TopLevelShare } from "./StateSharing";
+export { StateSynchronizer } from "./StateSynchronizer";

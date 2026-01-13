@@ -1,12 +1,3 @@
-import { cacheKeys, importState } from "@datarecce/ui/api";
-import { toaster } from "@datarecce/ui/components/ui";
-import {
-  useLineageGraphContext,
-  useRecceInstanceContext,
-  useRunsAggregated,
-} from "@datarecce/ui/contexts";
-import { useApiConfig, useIsDark } from "@datarecce/ui/hooks";
-import { trackStateAction } from "@datarecce/ui/lib/api/track";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -23,6 +14,15 @@ import React, { ChangeEvent, useCallback, useRef, useState } from "react";
 import { FaFileImport } from "react-icons/fa6";
 import { IoClose } from "react-icons/io5";
 import { PiInfo } from "react-icons/pi";
+import { cacheKeys, importState } from "../../api";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+  useRunsAggregated,
+} from "../../contexts";
+import { useApiConfig, useIsDark } from "../../hooks";
+import { trackStateAction } from "../../lib/api/track";
+import { toaster } from "../ui";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   const isDark = useIsDark();

@@ -1,12 +1,3 @@
-import {
-  cacheKeys,
-  isStateSyncing,
-  type SyncStateInput,
-  syncState,
-} from "@datarecce/ui/api";
-import { toaster } from "@datarecce/ui/components/ui";
-import { useRecceInstanceInfo } from "@datarecce/ui/contexts";
-import { useApiConfig } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -26,6 +17,15 @@ import { usePathname, useRouter } from "next/navigation";
 import React, { useCallback, useState } from "react";
 import { IoClose, IoSync } from "react-icons/io5";
 import { PiInfo } from "react-icons/pi";
+import {
+  cacheKeys,
+  isStateSyncing,
+  type SyncStateInput,
+  syncState,
+} from "../../api";
+import { useRecceInstanceInfo } from "../../contexts";
+import { useApiConfig } from "../../hooks";
+import { toaster } from "../ui";
 
 function isCheckDetailPage(href: string): boolean {
   const pattern =

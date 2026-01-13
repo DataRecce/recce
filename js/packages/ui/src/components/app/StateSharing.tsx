@@ -1,10 +1,3 @@
-import { AuthModal } from "@datarecce/ui/components/app";
-import { useRecceInstanceContext } from "@datarecce/ui/contexts";
-import {
-  useClipBoardToast,
-  useRecceShareStateContext,
-} from "@datarecce/ui/hooks";
-import { trackShareState } from "@datarecce/ui/lib/api/track";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -14,6 +7,10 @@ import { useEffect, useState } from "react";
 import { PiCheckCircle, PiCopy } from "react-icons/pi";
 import { TbCloudUpload } from "react-icons/tb";
 import { useCopyToClipboard, useInterval } from "usehooks-ts";
+import { useRecceInstanceContext } from "../../contexts";
+import { useClipBoardToast, useRecceShareStateContext } from "../../hooks";
+import { trackShareState } from "../../lib/api/track";
+import AuthModal from "./AuthModal";
 
 const LOADING_MESSAGES = [
   "Processing...", // 0-30s

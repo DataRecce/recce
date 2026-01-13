@@ -98,11 +98,11 @@ jest.mock("@datarecce/ui/components/app/StateExporter", () => ({
   StateExporter: () => <div data-testid="state-exporter">StateExporter</div>,
 }));
 
-jest.mock("@/components/app/StateSharing", () => ({
+jest.mock("@datarecce/ui/components/app/StateSharing", () => ({
   TopLevelShare: () => <div data-testid="top-level-share">TopLevelShare</div>,
 }));
 
-jest.mock("@/components/app/StateSynchronizer", () => ({
+jest.mock("@datarecce/ui/components/app/StateSynchronizer", () => ({
   StateSynchronizer: () => (
     <div data-testid="state-synchronizer">StateSynchronizer</div>
   ),
