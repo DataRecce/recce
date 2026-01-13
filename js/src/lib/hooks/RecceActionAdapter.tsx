@@ -12,6 +12,7 @@ import {
   findByRunType,
   type RegistryEntry,
   type RunFormParamTypes,
+  RunModalOss,
 } from "@datarecce/ui/components/run";
 import { toaster } from "@datarecce/ui/components/ui";
 import {
@@ -30,7 +31,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { RunModal } from "@/components/run/RunModal";
 
 // Note: AxiosQueryParams is now imported directly from @datarecce/ui/contexts
 // This adapter only exports RecceActionAdapter component and RecceActionOptions type
@@ -264,7 +264,7 @@ export function RecceActionAdapter({ children }: RecceActionAdapterProps) {
 
       {/* RunModal for form-based runs */}
       {action && (
-        <RunModal
+        <RunModalOss
           key={action.session}
           isOpen={isModalOpen}
           onClose={onModalClose}

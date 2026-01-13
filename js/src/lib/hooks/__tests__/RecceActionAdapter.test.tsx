@@ -54,12 +54,23 @@ jest.mock("@datarecce/ui/hooks", () => ({
 
 // Mock the run registry
 jest.mock("@datarecce/ui/components/run", () => ({
+  ...jest.requireActual("@datarecce/ui/components/run"),
   findByRunType: jest.fn((type: string) => ({
     title: `${type} Title`,
     icon: () => null,
     RunResultView: () => <div>Result View</div>,
     RunForm: undefined,
   })),
+  RunModalOss: jest.fn(({ isOpen, onClose, title }) =>
+    isOpen ? (
+      <div data-testid="run-modal">
+        <span data-testid="modal-title">{title}</span>
+        <button type="button" onClick={onClose} data-testid="modal-close">
+          Close
+        </button>
+      </div>
+    ) : null,
+  ),
 }));
 
 // Mock next/navigation
@@ -71,18 +82,6 @@ jest.mock("next/navigation", () => ({
 }));
 
 // Mock RunModal component
-jest.mock("@/components/run/RunModal", () => ({
-  RunModal: jest.fn(({ isOpen, onClose, title }) =>
-    isOpen ? (
-      <div data-testid="run-modal">
-        <span data-testid="modal-title">{title}</span>
-        <button type="button" onClick={onClose} data-testid="modal-close">
-          Close
-        </button>
-      </div>
-    ) : null,
-  ),
-}));
 
 import { searchRuns, submitRun } from "@datarecce/ui/api";
 import { findByRunType } from "@datarecce/ui/components/run";

@@ -1,5 +1,5 @@
 /**
- * @file run/RunModal.tsx
+ * @file run/RunModalOss.tsx
  * @description OSS wrapper for RunModal from @datarecce/ui.
  *
  * This wrapper injects OSS-specific behavior:
@@ -7,20 +7,17 @@
  * - Documentation URL mapping for run types
  */
 
-import type { Run, RunType } from "@datarecce/ui/api";
-import type {
-  RunFormParamTypes,
-  RunFormProps,
-  RunModalProps as UIRunModalProps,
-} from "@datarecce/ui/components/run";
-import { RunModal as UIRunModal } from "@datarecce/ui/components/run";
+import type { ComponentType } from "react";
+import { PiInfo } from "react-icons/pi";
+import type { Run, RunType } from "../../api";
 import {
   EXPLORE_FORM_EVENT,
   isExploreAction,
   trackExploreActionForm,
-} from "@datarecce/ui/lib/api/track";
-import type { ComponentType } from "react";
-import { PiInfo } from "react-icons/pi";
+} from "../../lib/api/track";
+import type { RunModalProps as UIRunModalProps } from "./RunModal";
+import { RunModal as UIRunModal } from "./RunModal";
+import type { RunFormParamTypes, RunFormProps } from "./types";
 
 // ============================================================================
 // Types
@@ -100,7 +97,7 @@ const getDocumentationUrl = (type: RunType): string | null => {
  * />
  * ```
  */
-export function RunModal({
+export function RunModalOss({
   isOpen,
   onClose,
   onExecute,
