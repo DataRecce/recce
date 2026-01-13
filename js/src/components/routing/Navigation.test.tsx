@@ -90,7 +90,7 @@ jest.mock("@datarecce/ui/components/app/EnvInfo", () => ({
   EnvInfo: () => <div data-testid="env-info">EnvInfo</div>,
 }));
 
-jest.mock("@/components/app/Filename", () => ({
+jest.mock("@datarecce/ui/components/app/Filename", () => ({
   Filename: () => <div data-testid="filename">Filename</div>,
 }));
 

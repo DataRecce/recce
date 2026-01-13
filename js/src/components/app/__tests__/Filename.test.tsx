@@ -90,12 +90,12 @@ jest.mock("@datarecce/ui/primitives", () => ({
 // Imports
 // ============================================================================
 
+import { Filename } from "@datarecce/ui/components/app";
 import { toaster } from "@datarecce/ui/components/ui";
 import { useApiConfig } from "@datarecce/ui/hooks";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import React from "react";
-import { Filename } from "../Filename";
 
 // ============================================================================
 // Test Fixtures

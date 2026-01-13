@@ -8,6 +8,7 @@ export {
   AuthModal,
   AvatarDropdown,
   EnvInfo,
+  Filename,
   SetupConnectionPopover,
 } from "./app";
 // Error boundary components
