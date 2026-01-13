@@ -33,6 +33,7 @@ import {
   useApiConfig,
   useClipBoardToast,
   useIsDark,
+  useRun,
 } from "@datarecce/ui/hooks";
 import { trackCopyToClipboard } from "@datarecce/ui/lib/api/track";
 import {
@@ -83,7 +84,6 @@ import { CheckTimeline } from "@/components/check/timeline";
 import { useRecceCheckContext } from "@/lib/hooks/CheckContextAdapter";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
-import { useRun } from "@/lib/hooks/useRun";
 import { LineageViewRef } from "../lineage/LineageView";
 import { RunView } from "../run/RunView";
 import { LineageDiffView } from "./LineageDiffView";

@@ -363,6 +363,7 @@ jest.mock("@datarecce/ui/hooks", () => ({
     successToast: jest.fn(),
     failToast: jest.fn(),
   })),
+  useRun: jest.fn(() => ({ run: undefined })),
   useThemeColors: jest.fn(() => ({
     isDark: false,
   })),
@@ -374,10 +375,6 @@ const mockRunAction = jest.fn();
 
 jest.mock("@/lib/hooks/useAppRouter", () => ({
   useAppLocation: jest.fn(() => ["/lineage", jest.fn()]),
-}));
-
-jest.mock("@/lib/hooks/useRun", () => ({
-  useRun: jest.fn(() => ({ run: undefined })),
 }));
 
 // Mock ScreenShot hook

@@ -1,17 +1,13 @@
-import type { Run } from "@datarecce/ui/api";
-import {
-  cacheKeys,
-  cancelRun,
-  runTypeHasRef,
-  waitRun,
-} from "@datarecce/ui/api";
-import { findByRunType, RegistryEntry } from "@datarecce/ui/components/run";
-import { useRunsAggregated } from "@datarecce/ui/contexts";
-import { useApiConfig } from "@datarecce/ui/hooks";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
+import type { Run } from "../api";
+import { cacheKeys, cancelRun, runTypeHasRef, waitRun } from "../api";
+import type { RegistryEntry } from "../components/run";
+import { findByRunType } from "../components/run";
+import { useRunsAggregated } from "../contexts";
+import { useApiConfig } from "./useApiConfig";
 
-interface UseRunResult {
+export interface UseRunResult {
   run?: Run;
   aborting: boolean;
   isRunning: boolean;

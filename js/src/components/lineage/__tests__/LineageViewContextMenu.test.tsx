@@ -61,9 +61,9 @@ jest.mock("@/lib/hooks/useAppRouter", () => ({
 
 // Mock useModelColumns
 const mockUseModelColumns = jest.fn();
-jest.mock("@/lib/hooks/useModelColumns", () => ({
-  __esModule: true,
-  default: (model: string | undefined) => mockUseModelColumns(model),
+jest.mock("@datarecce/ui/hooks", () => ({
+  ...jest.requireActual("@datarecce/ui/hooks"),
+  useModelColumns: (model: string | undefined) => mockUseModelColumns(model),
 }));
 
 // Mock run registry

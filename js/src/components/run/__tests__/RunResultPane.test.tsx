@@ -40,6 +40,7 @@ jest.mock("@datarecce/ui/api", () => {
 });
 
 const mockRunAction = jest.fn();
+const mockOnCancel = jest.fn();
 
 // Mock contexts
 jest.mock("@datarecce/ui/contexts", () => ({
@@ -58,30 +59,10 @@ jest.mock("@datarecce/ui/contexts", () => ({
 }));
 
 jest.mock("@datarecce/ui/hooks", () => ({
-  useIsDark: jest.fn(() => false),
-}));
-
-// Mock CodeEditor
-jest.mock("@datarecce/ui/primitives", () => ({
-  CodeEditor: ({ value }: { value: string }) => (
-    <div data-testid="code-editor">{value}</div>
-  ),
-}));
-
-jest.mock("@datarecce/ui/hooks", () => ({
   useApiConfig: jest.fn(() => ({
     apiClient: {},
   })),
-}));
-
-const mockSetLocation = jest.fn();
-jest.mock("@/lib/hooks/useAppRouter", () => ({
-  useAppLocation: jest.fn(() => [undefined, mockSetLocation]),
-}));
-
-// Mock useRun hook
-const mockOnCancel = jest.fn();
-jest.mock("@/lib/hooks/useRun", () => ({
+  useIsDark: jest.fn(() => false),
   useRun: jest.fn((runId?: string) => ({
     error: null,
     run: runId
@@ -98,6 +79,18 @@ jest.mock("@/lib/hooks/useRun", () => ({
     onCancel: mockOnCancel,
     isRunning: false,
   })),
+}));
+
+// Mock CodeEditor
+jest.mock("@datarecce/ui/primitives", () => ({
+  CodeEditor: ({ value }: { value: string }) => (
+    <div data-testid="code-editor">{value}</div>
+  ),
+}));
+
+const mockSetLocation = jest.fn();
+jest.mock("@/lib/hooks/useAppRouter", () => ({
+  useAppLocation: jest.fn(() => [undefined, mockSetLocation]),
 }));
 
 // Mock CSV export hook
@@ -579,7 +572,7 @@ describe("RunResultPane", () => {
     });
 
     it("displays dual SQL editor for query_diff type", () => {
-      const useRun = require("@/lib/hooks/useRun").useRun;
+      const useRun = require("@datarecce/ui/hooks").useRun;
       useRun.mockReturnValue({
         error: null,
         run: {
@@ -639,7 +632,7 @@ describe("RunResultPane", () => {
       });
 
       // Reset the useRun mock to ensure it returns the expected run
-      const useRun = require("@/lib/hooks/useRun").useRun;
+      const useRun = require("@datarecce/ui/hooks").useRun;
       useRun.mockReturnValue({
         error: null,
         run: {
@@ -666,7 +659,7 @@ describe("RunResultPane", () => {
     });
 
     it("disables rerun button when run is running", () => {
-      const useRun = require("@/lib/hooks/useRun").useRun;
+      const useRun = require("@datarecce/ui/hooks").useRun;
       useRun.mockReturnValue({
         error: null,
         run: {
@@ -702,7 +695,7 @@ describe("RunResultPane", () => {
     });
 
     it("disables rerun button when no run exists", () => {
-      const useRun = require("@/lib/hooks/useRun").useRun;
+      const useRun = require("@datarecce/ui/hooks").useRun;
       useRun.mockReturnValue({
         error: null,
         run: undefined,
@@ -882,7 +875,7 @@ describe("RunResultPane", () => {
     });
 
     it("shows Go to Check button when run has check_id", () => {
-      const useRun = require("@/lib/hooks/useRun").useRun;
+      const useRun = require("@datarecce/ui/hooks").useRun;
       useRun.mockReturnValue({
         error: null,
         run: {
@@ -917,7 +910,7 @@ describe("RunResultPane", () => {
         authed: false,
       });
 
-      const useRun = require("@/lib/hooks/useRun").useRun;
+      const useRun = require("@datarecce/ui/hooks").useRun;
       useRun.mockReturnValue({
         error: null,
         run: {
@@ -960,7 +953,7 @@ describe("RunResultPane", () => {
         authed: false,
       });
 
-      const useRun = require("@/lib/hooks/useRun").useRun;
+      const useRun = require("@datarecce/ui/hooks").useRun;
       useRun.mockReturnValue({
         error: null,
         run: {
@@ -993,7 +986,7 @@ describe("RunResultPane", () => {
     });
 
     it("disables Add to Checklist when run has error", () => {
-      const useRun = require("@/lib/hooks/useRun").useRun;
+      const useRun = require("@datarecce/ui/hooks").useRun;
       useRun.mockReturnValue({
         error: "Test error",
         run: {
@@ -1016,7 +1009,7 @@ describe("RunResultPane", () => {
     });
 
     it("disables Add to Checklist when run has no result", () => {
-      const useRun = require("@/lib/hooks/useRun").useRun;
+      const useRun = require("@datarecce/ui/hooks").useRun;
       useRun.mockReturnValue({
         error: null,
         run: {
@@ -1060,7 +1053,7 @@ describe("RunResultPane", () => {
 
   describe("single environment notifications", () => {
     it("shows notification for row_count in single env mode", () => {
-      const useRun = require("@/lib/hooks/useRun").useRun;
+      const useRun = require("@datarecce/ui/hooks").useRun;
       useRun.mockReturnValue({
         error: null,
         run: {
@@ -1080,7 +1073,7 @@ describe("RunResultPane", () => {
     });
 
     it("shows notification for profile in single env mode", () => {
-      const useRun = require("@/lib/hooks/useRun").useRun;
+      const useRun = require("@datarecce/ui/hooks").useRun;
       useRun.mockReturnValue({
         error: null,
         run: {
@@ -1101,7 +1094,7 @@ describe("RunResultPane", () => {
 
     it("does not show notification for other run types", () => {
       // Reset useRun to return a query type run (which doesn't show notification)
-      const useRun = require("@/lib/hooks/useRun").useRun;
+      const useRun = require("@datarecce/ui/hooks").useRun;
       useRun.mockReturnValue({
         error: null,
         run: {
@@ -1123,7 +1116,7 @@ describe("RunResultPane", () => {
     });
 
     it("allows closing notification", () => {
-      const useRun = require("@/lib/hooks/useRun").useRun;
+      const useRun = require("@datarecce/ui/hooks").useRun;
       useRun.mockReturnValue({
         error: null,
         run: {
@@ -1182,7 +1175,7 @@ describe("RunResultPane", () => {
 
   describe("edge cases", () => {
     it("handles missing run gracefully", () => {
-      const useRun = require("@/lib/hooks/useRun").useRun;
+      const useRun = require("@datarecce/ui/hooks").useRun;
       useRun.mockReturnValue({
         error: null,
         run: undefined,
@@ -1196,7 +1189,7 @@ describe("RunResultPane", () => {
     });
 
     it("handles run with error state", () => {
-      const useRun = require("@/lib/hooks/useRun").useRun;
+      const useRun = require("@datarecce/ui/hooks").useRun;
       useRun.mockReturnValue({
         error: "Test error message",
         run: {
@@ -1228,7 +1221,7 @@ describe("RunResultPane", () => {
         authed: false,
       });
 
-      const useRun = require("@/lib/hooks/useRun").useRun;
+      const useRun = require("@datarecce/ui/hooks").useRun;
       useRun.mockReturnValue({
         error: null,
         run: {
@@ -1276,7 +1269,7 @@ describe("RunResultPane", () => {
         authed: false,
       });
 
-      const useRun = require("@/lib/hooks/useRun").useRun;
+      const useRun = require("@datarecce/ui/hooks").useRun;
       useRun.mockReturnValue({
         error: null,
         run: {

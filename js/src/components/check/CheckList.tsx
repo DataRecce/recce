@@ -2,7 +2,7 @@ import { cacheKeys } from "@datarecce/ui/api/cacheKeys";
 import { type Check, updateCheck } from "@datarecce/ui/api/checks";
 import { toaster } from "@datarecce/ui/components/ui";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
-import { useApiConfig } from "@datarecce/ui/hooks";
+import { useApiConfig, useRun } from "@datarecce/ui/hooks";
 import {
   CheckCard,
   type CheckCardData,
@@ -31,7 +31,6 @@ import Typography from "@mui/material/Typography";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { IoClose } from "react-icons/io5";
-import { useRun } from "@/lib/hooks/useRun";
 
 /**
  * Wrapper component that adapts Check data to CheckCard props.
