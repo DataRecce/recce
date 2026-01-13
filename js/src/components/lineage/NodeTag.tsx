@@ -12,6 +12,7 @@
 
 import type { LineageGraphNode } from "@datarecce/ui";
 import { type RowCount, type RowCountDiff } from "@datarecce/ui/api";
+import { SetupConnectionPopover } from "@datarecce/ui/components/app";
 import {
   getTagRootSx,
   ResourceTypeTag as ResourceTypeTagBase,
@@ -33,7 +34,6 @@ import Typography from "@mui/material/Typography";
 import { FiArrowRight, FiFrown } from "react-icons/fi";
 import { PiRepeat } from "react-icons/pi";
 import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
-import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 
 // =============================================================================
 // RE-EXPORTS FROM @datarecce/ui

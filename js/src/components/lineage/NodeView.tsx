@@ -11,6 +11,7 @@
 
 import type { LineageGraphNode } from "@datarecce/ui";
 import { createSchemaDiffCheck } from "@datarecce/ui/api";
+import { SetupConnectionPopover } from "@datarecce/ui/components/app";
 import {
   NodeView as BaseNodeView,
   type NodeViewActionCallbacks,
@@ -41,7 +42,6 @@ import { formatSelectColumns } from "@datarecce/ui/utils";
 import Typography from "@mui/material/Typography";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
-import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import {
   LearnHowLink,
   RecceNotification,

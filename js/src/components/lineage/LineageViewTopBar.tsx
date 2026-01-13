@@ -10,6 +10,7 @@
  * - Context hooks for state management
  */
 
+import { SetupConnectionPopover } from "@datarecce/ui/components/app";
 import {
   LineageViewTopBar as LineageViewTopBarCore,
   type SetupConnectionPopoverSlotProps,
@@ -21,7 +22,6 @@ import {
   useRecceInstanceContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
-import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
 
 /**

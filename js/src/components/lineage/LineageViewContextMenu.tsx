@@ -16,6 +16,7 @@ import type {
   LineageGraphNode,
   LineageGraphNodes,
 } from "@datarecce/ui";
+import { SetupConnectionPopover } from "@datarecce/ui/components/app";
 import { supportsHistogramDiff } from "@datarecce/ui/components/histogram";
 import {
   ColumnNodeContextMenu as BaseColumnNodeContextMenu,
@@ -41,7 +42,6 @@ import {
   trackLineageSelection,
 } from "@datarecce/ui/lib/api/track";
 import { useRouter } from "next/navigation";
-import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 
 // ============================================================================
 // Types

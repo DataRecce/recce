@@ -26,9 +26,9 @@ jest.mock("@datarecce/ui/lib/const", () => ({
 // Imports
 // ============================================================================
 
+import { SetupConnectionPopover } from "@datarecce/ui/components/app";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
-import SetupConnectionPopover from "../SetupConnectionPopover";
 
 // ============================================================================
 // Test Helpers

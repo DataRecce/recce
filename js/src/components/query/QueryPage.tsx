@@ -6,6 +6,7 @@ import {
   submitQueryDiff,
   waitRun,
 } from "@datarecce/ui/api";
+import { SetupConnectionPopover } from "@datarecce/ui/components/app";
 import {
   DualSqlEditor,
   QueryForm,
@@ -32,7 +33,6 @@ import Typography from "@mui/material/Typography";
 import { useMutation } from "@tanstack/react-query";
 import React, { useMemo } from "react";
 import { PiInfoFill } from "react-icons/pi";
-import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
 import { BaseEnvironmentSetupGuide } from "../lineage/SingleEnvironmentQueryView";
 

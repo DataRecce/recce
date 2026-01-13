@@ -16,6 +16,7 @@ import {
 import { cancelRun, submitRunFromCheck } from "@datarecce/ui/api/runs";
 import type { Run, RunParamTypes } from "@datarecce/ui/api/types";
 import { VSplit } from "@datarecce/ui/components";
+import { SetupConnectionPopover } from "@datarecce/ui/components/app";
 import { DualSqlEditor, SqlEditor } from "@datarecce/ui/components/query";
 import type { IconComponent } from "@datarecce/ui/components/run";
 import {
@@ -82,7 +83,6 @@ import { IoMdCodeWorking } from "react-icons/io";
 import { IoBookmarksOutline, IoClose } from "react-icons/io5";
 import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
 import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
-import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { CheckTimeline } from "@/components/check/timeline";
 import { LineageViewRef } from "../lineage/LineageView";
 import { RunView } from "../run/RunView";

@@ -3,6 +3,9 @@
 // Components barrel export
 // Re-exports all UI components from @datarecce/ui
 
+// App components
+export { SetupConnectionPopover } from "./app";
+
 // Histogram components
 export type { HistogramDiffRun, HistogramResultViewProps } from "./histogram";
 export {

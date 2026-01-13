@@ -60,9 +60,11 @@ jest.mock("@datarecce/ui/lib/api/track", () => ({
 }));
 
 // Mock SetupConnectionPopover
-jest.mock("@/components/app/SetupConnectionPopover", () => ({
+jest.mock("@datarecce/ui/components/app", () => ({
   __esModule: true,
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  SetupConnectionPopover: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
 }));
 
 // Mock HistoryToggle
