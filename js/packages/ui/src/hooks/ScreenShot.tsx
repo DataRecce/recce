@@ -1,6 +1,3 @@
-import { useClipBoardToast } from "@datarecce/ui/hooks";
-import { type DataGridHandle } from "@datarecce/ui/primitives";
-import { colors } from "@datarecce/ui/theme";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -14,7 +11,7 @@ import { format } from "date-fns";
 import saveAs from "file-saver";
 import { toCanvas } from "html-to-image";
 import React, {
-  RefObject,
+  type RefObject,
   useCallback,
   useEffect,
   useRef,
@@ -22,6 +19,9 @@ import React, {
 } from "react";
 import { IoClose } from "react-icons/io5";
 import { PiCopy, PiInfo } from "react-icons/pi";
+import type { DataGridHandle } from "../primitives";
+import { colors } from "../theme";
+import { useClipBoardToast } from "./useClipBoardToast";
 
 // Dynamic import directly from ESM distribution file to work around Turbopack issues
 // Turbopack doesn't properly resolve the package's main entry point, so we import the ESM file directly
@@ -295,6 +295,7 @@ export function useCopyToClipboardButton(options?: HookOptions) {
           onMouseLeave={onMouseLeave}
           onClick={onCopyToClipboard}
           startIcon={<PiCopy />}
+          {...props}
         >
           Copy to Clipboard
         </Button>

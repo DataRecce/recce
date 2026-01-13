@@ -32,6 +32,7 @@ import {
 import {
   useApiConfig,
   useClipBoardToast,
+  useCopyToClipboardButton,
   useIsDark,
   useRun,
 } from "@datarecce/ui/hooks";
@@ -83,7 +84,6 @@ import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { CheckTimeline } from "@/components/check/timeline";
 import { useRecceCheckContext } from "@/lib/hooks/CheckContextAdapter";
-import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { LineageViewRef } from "../lineage/LineageView";
 import { RunView } from "../run/RunView";
 import { LineageDiffView } from "./LineageDiffView";

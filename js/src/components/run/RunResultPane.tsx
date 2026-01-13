@@ -34,7 +34,12 @@ import {
   useRecceActionContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
-import { useApiConfig, useCSVExport, useRun } from "@datarecce/ui/hooks";
+import {
+  useApiConfig,
+  useCopyToClipboardButton,
+  useCSVExport,
+  useRun,
+} from "@datarecce/ui/hooks";
 import {
   trackCopyToClipboard,
   trackShareState,
@@ -45,7 +50,6 @@ import { useRouter } from "next/navigation";
 import { type Ref, useCallback, useState } from "react";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
-import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import {
   LearnHowLink,
   RecceNotification,

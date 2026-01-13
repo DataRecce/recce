@@ -1,9 +1,10 @@
-import { useClipBoardToast, useThemeColors } from "@datarecce/ui/hooks";
-import { colors } from "@datarecce/ui/theme";
 import {
   IGNORE_SCREENSHOT_CLASS,
+  useClipBoardToast,
   useCopyToClipboard,
-} from "@/lib/hooks/ScreenShot";
+  useThemeColors,
+} from "@datarecce/ui/hooks";
+import { colors } from "@datarecce/ui/theme";
 
 /**
  * Hook that provides clipboard functionality for the lineage view.

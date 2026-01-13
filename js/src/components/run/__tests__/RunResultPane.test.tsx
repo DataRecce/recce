@@ -84,6 +84,12 @@ jest.mock("@datarecce/ui/hooks", () => ({
     copyAsCSV: jest.fn(),
     downloadAsCSV: jest.fn(),
   })),
+  useCopyToClipboardButton: jest.fn(() => ({
+    ref: { current: null },
+    onCopyToClipboard: jest.fn(),
+    onMouseEnter: jest.fn(),
+    onMouseLeave: jest.fn(),
+  })),
 }));
 
 // Mock CodeEditor
@@ -96,16 +102,6 @@ jest.mock("@datarecce/ui/primitives", () => ({
 const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
-}));
-
-// Mock screenshot hook
-jest.mock("@/lib/hooks/ScreenShot", () => ({
-  useCopyToClipboardButton: jest.fn(() => ({
-    ref: { current: null },
-    onCopyToClipboard: jest.fn(),
-    onMouseEnter: jest.fn(),
-    onMouseLeave: jest.fn(),
-  })),
 }));
 
 // Mock share state context

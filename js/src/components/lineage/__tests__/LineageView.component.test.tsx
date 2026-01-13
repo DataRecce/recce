@@ -354,6 +354,8 @@ jest.mock("../useMultiNodesAction", () => ({
   useMultiNodesAction: jest.fn(() => mockMultiNodesAction),
 }));
 
+const mockCopyToClipboard = jest.fn().mockResolvedValue(undefined);
+
 // Mock OSS hooks
 jest.mock("@datarecce/ui/hooks", () => ({
   useApiConfig: jest.fn(() => ({
@@ -362,6 +364,12 @@ jest.mock("@datarecce/ui/hooks", () => ({
   useClipBoardToast: jest.fn(() => ({
     successToast: jest.fn(),
     failToast: jest.fn(),
+  })),
+  IGNORE_SCREENSHOT_CLASS: "ignore-screenshot",
+  useCopyToClipboard: jest.fn(() => ({
+    copyToClipboard: mockCopyToClipboard,
+    ImageDownloadModal: () => null,
+    ref: { current: null },
   })),
   useRun: jest.fn(() => ({ run: undefined })),
   useThemeColors: jest.fn(() => ({
@@ -377,18 +385,6 @@ jest.mock("next/navigation", () => ({
   usePathname: jest.fn(() => "/lineage"),
   useRouter: jest.fn(() => ({
     push: jest.fn(),
-  })),
-}));
-
-// Mock ScreenShot hook
-const mockCopyToClipboard = jest.fn().mockResolvedValue(undefined);
-
-jest.mock("@/lib/hooks/ScreenShot", () => ({
-  IGNORE_SCREENSHOT_CLASS: "ignore-screenshot",
-  useCopyToClipboard: jest.fn(() => ({
-    copyToClipboard: mockCopyToClipboard,
-    ImageDownloadModal: () => null,
-    ref: { current: null },
   })),
 }));
 
