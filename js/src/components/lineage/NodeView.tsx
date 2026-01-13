@@ -15,6 +15,9 @@ import { SetupConnectionPopover } from "@datarecce/ui/components/app";
 import {
   NodeView as BaseNodeView,
   type NodeViewActionCallbacks,
+  ResourceTypeTag as ResourceTypeTagBase,
+  RowCountDiffTag,
+  RowCountTag,
   type RunTypeIconMap,
 } from "@datarecce/ui/components/lineage";
 import { findByRunType } from "@datarecce/ui/components/run";
@@ -47,7 +50,6 @@ import {
   RecceNotification,
 } from "../onboarding-guide/Notification";
 import { NodeSqlView } from "./NodeSqlView";
-import { ResourceTypeTag, RowCountDiffTag, RowCountTag } from "./NodeTag";
 import { SandboxView } from "./SandboxView";
 
 // =============================================================================
@@ -58,6 +60,10 @@ interface NodeViewProps {
   node: LineageGraphNode;
   onCloseNode: () => void;
 }
+
+const ResourceTypeTag = ({ node }: { node: LineageGraphNode }) => (
+  <ResourceTypeTagBase data={{ resourceType: node.data.resourceType }} />
+);
 
 // =============================================================================
 // OSS-SPECIFIC WRAPPER COMPONENTS

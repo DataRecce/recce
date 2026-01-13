@@ -2,29 +2,11 @@
  * @file NodeTag.tsx
  * @description Tag components for lineage graph nodes
  *
- * Contains OSS-specific tag components that require OSS dependencies:
+ * Includes tag components that rely on app-level dependencies:
  * - RowCountDiffTag: Shows row count comparison between base and current
  * - RowCountTag: Shows current row count (single env mode)
- *
- * Note: ResourceTypeTag has been migrated to @datarecce/ui and is re-exported here
- * for backward compatibility.
  */
 
-import type { LineageGraphNode } from "@datarecce/ui";
-import { type RowCount, type RowCountDiff } from "@datarecce/ui/api";
-import { SetupConnectionPopover } from "@datarecce/ui/components/app";
-import {
-  getTagRootSx,
-  ResourceTypeTag as ResourceTypeTagBase,
-  tagStartElementSx,
-} from "@datarecce/ui/components/lineage";
-import { findByRunType } from "@datarecce/ui/components/run";
-import {
-  useLineageGraphContext,
-  useRecceInstanceContext,
-} from "@datarecce/ui/contexts";
-import { useIsDark } from "@datarecce/ui/hooks";
-import { deltaPercentageString } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Skeleton from "@mui/material/Skeleton";
@@ -34,21 +16,17 @@ import Typography from "@mui/material/Typography";
 import { FiArrowRight, FiFrown } from "react-icons/fi";
 import { PiRepeat } from "react-icons/pi";
 import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
-
-// =============================================================================
-// RE-EXPORTS FROM @datarecce/ui
-// =============================================================================
-
-/**
- * ResourceTypeTag - Wrapper for @datarecce/ui ResourceTypeTag
- *
- * Adapts the node-based API to the data-based API expected by the library component.
- */
-export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
-  return (
-    <ResourceTypeTagBase data={{ resourceType: node.data.resourceType }} />
-  );
-}
+import type { RowCount, RowCountDiff } from "../../api";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+} from "../../contexts";
+import type { LineageGraphNode } from "../../contexts/lineage/types";
+import { useIsDark } from "../../hooks";
+import { deltaPercentageString } from "../../utils";
+import { SetupConnectionPopover } from "../app";
+import { findByRunType } from "../run";
+import { getTagRootSx, tagStartElementSx } from "./tags";
 
 // =============================================================================
 // INTERNAL COMPONENTS
@@ -169,9 +147,9 @@ export interface RowCountDiffTagProps {
 /**
  * RowCountDiffTag - Shows row count comparison between base and current
  *
- * This component is OSS-specific because it requires:
+ * This component is app-specific because it requires:
  * - SetupConnectionPopover for database connection prompts
- * - findByRunType for getting run type icons from OSS registry
+ * - findByRunType for getting run type icons from registry
  * - runsAggregated context for cached row count data
  */
 export function RowCountDiffTag({
@@ -244,8 +222,8 @@ export interface RowCountTagProps {
 /**
  * RowCountTag - Shows current row count (single environment mode)
  *
- * This component is OSS-specific because it requires:
- * - findByRunType for getting run type icons from OSS registry
+ * This component is app-specific because it requires:
+ * - findByRunType for getting run type icons from registry
  * - runsAggregated context for cached row count data
  */
 export function RowCountTag({

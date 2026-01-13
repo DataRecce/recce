@@ -1,4 +1,8 @@
 import type { LineageGraph, LineageGraphNode } from "@datarecce/ui";
+import {
+  ResourceTypeTag,
+  RowCountDiffTag,
+} from "@datarecce/ui/components/lineage";
 import { SchemaView } from "@datarecce/ui/components/schema";
 import { mergeKeysWithStatus } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
@@ -8,7 +12,6 @@ import CardHeader from "@mui/material/CardHeader";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useEffect, useState } from "react";
-import { ResourceTypeTag, RowCountDiffTag } from "../lineage/NodeTag";
 
 interface SchemaDiffCardProps {
   title: string;
@@ -26,7 +29,7 @@ function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
         }
         subheader={
           <Stack direction="row" spacing="8px" sx={{ p: "16px" }}>
-            <ResourceTypeTag node={node} />
+            <ResourceTypeTag data={{ resourceType: node.data.resourceType }} />
             {node.data.resourceType === "model" && (
               <RowCountDiffTag node={node} />
             )}

@@ -29,7 +29,7 @@ jest.mock("@datarecce/ui/contexts", () => ({
 jest.mock("@datarecce/ui/components/lineage", () => {
   const actual = jest.requireActual("@datarecce/ui/components/lineage");
   return {
-    ...actual,
+    LineageViewTopBar: actual.LineageViewTopBar,
     getIconForResourceType: jest.fn(() => ({
       icon: () => <span data-testid="model-icon">ModelIcon</span>,
     })),
@@ -38,7 +38,6 @@ jest.mock("@datarecce/ui/components/lineage", () => {
 
 // Mock @datarecce/ui/hooks
 jest.mock("@datarecce/ui/hooks", () => ({
-  ...jest.requireActual("@datarecce/ui/hooks"),
   useIsDark: jest.fn(() => false),
   useRecceActionContext: jest.fn(() => ({
     isHistoryOpen: false,

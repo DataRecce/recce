@@ -22,6 +22,7 @@ export {
   type NodeSqlViewNodeData,
   type NodeSqlViewProps,
 } from "./NodeSqlView";
+export * from "./NodeTag";
 // Node detail view component with dependency-injected components
 export {
   NodeView,

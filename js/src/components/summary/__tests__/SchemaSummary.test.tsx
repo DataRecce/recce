@@ -53,9 +53,9 @@ jest.mock("@datarecce/ui/components/schema", () => ({
   ),
 }));
 
-jest.mock("../../lineage/NodeTag", () => ({
-  ResourceTypeTag: ({ node }: { node: { data: { resourceType: string } } }) => (
-    <span data-testid="resource-type-tag">{node.data.resourceType}</span>
+jest.mock("@datarecce/ui/components/lineage", () => ({
+  ResourceTypeTag: ({ data }: { data: { resourceType: string } }) => (
+    <span data-testid="resource-type-tag">{data.resourceType}</span>
   ),
   RowCountDiffTag: () => <span data-testid="row-count-diff-tag">RowCount</span>,
 }));
