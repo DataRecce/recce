@@ -67,6 +67,7 @@ export {
   RunView,
   type RunViewProps,
 } from "./RunView";
+export { RunViewOss, type RunViewOssProps } from "./RunViewOss";
 
 // ============================================================================
 // Registry - Run Type Configuration

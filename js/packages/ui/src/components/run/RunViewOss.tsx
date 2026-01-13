@@ -1,5 +1,7 @@
+"use client";
+
 /**
- * @file run/RunView.tsx
+ * @file run/RunViewOss.tsx
  * @description OSS wrapper for RunView component with Sentry error boundary injection.
  *
  * This thin wrapper imports the base RunView from @datarecce/ui and injects
@@ -9,12 +11,12 @@
  *
  * @example
  * ```tsx
- * import { RunView } from "@/components/run/RunView";
+ * import { RunViewOss } from "@datarecce/ui/components/run";
  * import { QueryResultView } from "./QueryResultView";
  *
  * function MyComponent() {
  *   return (
- *     <RunView
+ *     <RunViewOss
  *       run={run}
  *       isRunning={isRunning}
  *       RunResultView={QueryResultView}
@@ -25,19 +27,21 @@
  * ```
  */
 
-import type { Run } from "@datarecce/ui/api";
-import { ErrorBoundary } from "@datarecce/ui/components/errorboundary";
+import type { ReactNode, Ref } from "react";
+import { forwardRef } from "react";
+import type { Run } from "../../api";
+import ResultErrorFallback from "../../lib/result/ResultErrorFallback";
+import { ErrorBoundary } from "../errorboundary";
 import {
   RunView as BaseRunView,
   type RunViewProps as BaseRunViewProps,
+} from "./RunView";
+import {
   RefTypes,
   RegistryEntry,
   RunResultViewProps,
   ViewOptionTypes,
-} from "@datarecce/ui/components/run";
-import ResultErrorFallback from "@datarecce/ui/lib/result/ResultErrorFallback";
-import type { ReactNode, Ref } from "react";
-import { forwardRef } from "react";
+} from "./types";
 
 // ============================================================================
 // Types
@@ -48,7 +52,7 @@ import { forwardRef } from "react";
  *
  * @typeParam VO - View options type (defaults to ViewOptionTypes union)
  */
-export interface RunViewProps<VO = ViewOptionTypes> {
+export interface RunViewOssProps<VO = ViewOptionTypes> {
   /** Whether a run is currently executing */
   isRunning?: boolean;
 
@@ -116,7 +120,7 @@ export interface RunViewProps<VO = ViewOptionTypes> {
  * ```tsx
  * const ref = useRef<DataGridHandle>(null);
  *
- * <RunView
+ * <RunViewOss
  *   ref={ref}
  *   run={run}
  *   RunResultView={QueryResultView}
@@ -125,8 +129,8 @@ export interface RunViewProps<VO = ViewOptionTypes> {
  * />
  * ```
  */
-export const RunView = forwardRef<RefTypes, RunViewProps>(
-  function RunView(props, ref) {
+export const RunViewOss = forwardRef<RefTypes, RunViewOssProps>(
+  function RunViewOss(props, ref) {
     // Cast to base props for compatibility
     const baseProps: BaseRunViewProps = {
       ...props,
@@ -139,4 +143,4 @@ export const RunView = forwardRef<RefTypes, RunViewProps>(
 );
 
 // Set display name for debugging
-RunView.displayName = "RunView";
+RunViewOss.displayName = "RunViewOss";

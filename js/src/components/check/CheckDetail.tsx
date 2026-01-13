@@ -18,11 +18,12 @@ import type { Run, RunParamTypes } from "@datarecce/ui/api/types";
 import { VSplit } from "@datarecce/ui/components";
 import { SetupConnectionPopover } from "@datarecce/ui/components/app";
 import { DualSqlEditor, SqlEditor } from "@datarecce/ui/components/query";
-import type { IconComponent } from "@datarecce/ui/components/run";
 import {
   findByRunType,
+  type IconComponent,
   RefTypes,
   RegistryEntry,
+  RunViewOss,
   ViewOptionTypes,
 } from "@datarecce/ui/components/run";
 import { toaster } from "@datarecce/ui/components/ui";
@@ -85,7 +86,6 @@ import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
 import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
 import { CheckTimeline } from "@/components/check/timeline";
 import { LineageViewRef } from "../lineage/LineageView";
-import { RunView } from "../run/RunView";
 import { LineageDiffView } from "./LineageDiffView";
 import {
   generateCheckTemplate,
@@ -644,7 +644,7 @@ export function CheckDetail({
                   <Box sx={{ width: "100%", height: "100%" }}>
                     {RunResultView &&
                       (check.last_run || trackedRunId ? (
-                        <RunView
+                        <RunViewOss
                           ref={ref as unknown as Ref<RefTypes>}
                           isRunning={isRunning}
                           isAborting={isAborting}
