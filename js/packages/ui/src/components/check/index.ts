@@ -52,6 +52,7 @@ export {
   PresetCheckTemplateView,
   type PresetCheckTemplateViewProps,
 } from "./PresetCheckTemplateView";
+export { SchemaDiffView } from "./SchemaDiffView";
 
 // Timeline components
 export {

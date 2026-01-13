@@ -1,6 +1,6 @@
 /**
  * @file NodeView.tsx
- * @description OSS wrapper for NodeView that injects OSS-specific dependencies.
+ * @description wrapper for NodeView that injects dependencies.
  *
  * This wrapper:
  * 1. Provides OSS-specific schema view components

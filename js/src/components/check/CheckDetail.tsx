@@ -17,6 +17,7 @@ import { cancelRun, submitRunFromCheck } from "@datarecce/ui/api/runs";
 import type { Run, RunParamTypes } from "@datarecce/ui/api/types";
 import { VSplit } from "@datarecce/ui/components";
 import { SetupConnectionPopover } from "@datarecce/ui/components/app";
+import { SchemaDiffView } from "@datarecce/ui/components/check";
 import { DualSqlEditor, SqlEditor } from "@datarecce/ui/components/query";
 import {
   findByRunType,
@@ -91,7 +92,6 @@ import {
   generateCheckTemplate,
   PresetCheckTemplateView,
 } from "./PresetCheckTemplateView";
-import { SchemaDiffView } from "./SchemaDiffView";
 
 interface CheckDetailProps {
   checkId: string;

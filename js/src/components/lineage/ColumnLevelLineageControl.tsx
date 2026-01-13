@@ -1,9 +1,9 @@
 /**
- * @file ColumnLevelLineageControl.tsx (OSS Wrapper)
+ * @file ColumnLevelLineageControl.tsx (Wrapper)
  * @description Thin wrapper around @datarecce/ui ColumnLevelLineageControl
  *
  * This wrapper:
- * 1. Connects the @datarecce/ui component to OSS-specific contexts
+ * 1. Connects the @datarecce/ui component to specific contexts
  * 2. Provides LineageViewContext callbacks as props
  * 3. Fetches server flags for single_env_onboarding
  */

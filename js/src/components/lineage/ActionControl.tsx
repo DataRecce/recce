@@ -12,7 +12,7 @@ export interface ActionControlProps {
 }
 
 /**
- * ActionControl Component (OSS Wrapper)
+ * ActionControl Component (Wrapper)
  *
  * Wraps the @datarecce/ui ActionControl component with context from
  * LineageViewContext. This provides the same functionality as before

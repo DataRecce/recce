@@ -1,9 +1,9 @@
 /**
  * @file GraphEdge.tsx
- * @description OSS wrapper for GraphEdge that injects LineageViewContext dependencies
+ * @description wrapper for GraphEdge that injects LineageViewContext dependencies
  *
  * This thin wrapper imports the core GraphEdge component from @datarecce/ui
- * and injects OSS-specific dependencies:
+ * and injects dependencies:
  * - isEdgeHighlighted from LineageViewContext
  */
 

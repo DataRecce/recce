@@ -1,22 +1,24 @@
-import type { LineageGraphNode } from "@datarecce/ui";
-import { HSplit, isSchemaChanged } from "@datarecce/ui";
-import { type Check, cacheKeys, select } from "@datarecce/ui/api";
-import {
-  getIconForChangeStatus,
-  getIconForResourceType,
-  type IconComponent,
-} from "@datarecce/ui/components/lineage";
-import { findByRunType } from "@datarecce/ui/components/run";
-import { SchemaView } from "@datarecce/ui/components/schema";
-import { useLineageGraphContext } from "@datarecce/ui/contexts";
-import { useApiConfig, useIsDark } from "@datarecce/ui/hooks";
-import type { DataGridHandle } from "@datarecce/ui/primitives";
+"use client";
+
 import Box from "@mui/material/Box";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import { useQuery } from "@tanstack/react-query";
 import React, { forwardRef, useMemo, useState } from "react";
 import type { IconType } from "react-icons";
+import type { LineageGraphNode } from "../..";
+import { HSplit, isSchemaChanged } from "../..";
+import { type Check, cacheKeys, select } from "../../api";
+import { useLineageGraphContext } from "../../contexts";
+import { useApiConfig, useIsDark } from "../../hooks";
+import type { DataGridHandle } from "../../primitives";
+import {
+  getIconForChangeStatus,
+  getIconForResourceType,
+  type IconComponent,
+} from "../lineage";
+import { findByRunType } from "../run";
+import { SchemaView } from "../schema";
 
 interface SchemaDiffViewProps {
   check: Check;

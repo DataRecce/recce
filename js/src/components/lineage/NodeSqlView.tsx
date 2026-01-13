@@ -9,11 +9,11 @@ interface NodeSqlViewProps {
 }
 
 /**
- * OSS wrapper for NodeSqlView that injects CodeMirror-based editors.
+ * wrapper for NodeSqlView that injects CodeMirror-based editors.
  *
  * This wrapper:
  * 1. Handles loading state from useRecceServerFlag
- * 2. Injects the OSS editor components (CodeEditor, DiffEditor)
+ * 2. Injects editor components (CodeEditor, DiffEditor)
  * 3. Provides dark mode detection via useIsDark hook
  *
  * The underlying BaseNodeSqlView from @datarecce/ui is framework-agnostic
