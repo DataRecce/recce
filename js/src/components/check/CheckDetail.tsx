@@ -47,7 +47,9 @@ import {
   CheckBreadcrumb,
   CheckDescription,
   formatSqlAsMarkdown,
+  generateCheckTemplate,
   isDisabledByNoResult,
+  PresetCheckTemplateView,
 } from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -88,10 +90,6 @@ import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
 import { CheckTimeline } from "@/components/check/timeline";
 import { LineageViewRef } from "../lineage/LineageView";
 import { LineageDiffView } from "./LineageDiffView";
-import {
-  generateCheckTemplate,
-  PresetCheckTemplateView,
-} from "./PresetCheckTemplateView";
 
 interface CheckDetailProps {
   checkId: string;
