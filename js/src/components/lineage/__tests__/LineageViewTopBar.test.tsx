@@ -23,13 +23,17 @@ jest.mock("@datarecce/ui/contexts", () => ({
   useRecceInstanceContext: jest.fn(),
   useRecceServerFlag: jest.fn(),
   useLineageViewContextSafe: jest.fn(),
+  useRecceActionContext: jest.fn(() => ({
+    isHistoryOpen: false,
+    showHistory: jest.fn(),
+  })),
 }));
 
 // Mock @datarecce/ui/components/lineage - get the actual module and only mock what we need
 jest.mock("@datarecce/ui/components/lineage", () => {
   const actual = jest.requireActual("@datarecce/ui/components/lineage");
   return {
-    LineageViewTopBar: actual.LineageViewTopBar,
+    ...actual,
     getIconForResourceType: jest.fn(() => ({
       icon: () => <span data-testid="model-icon">ModelIcon</span>,
     })),
@@ -39,10 +43,6 @@ jest.mock("@datarecce/ui/components/lineage", () => {
 // Mock @datarecce/ui/hooks
 jest.mock("@datarecce/ui/hooks", () => ({
   useIsDark: jest.fn(() => false),
-  useRecceActionContext: jest.fn(() => ({
-    isHistoryOpen: false,
-    showHistory: jest.fn(),
-  })),
 }));
 
 // Mock registry
@@ -83,6 +83,7 @@ import type {
   LineageViewContextType,
 } from "@datarecce/ui";
 import type { LineageDiffViewOptions } from "@datarecce/ui/api";
+import { LineageViewTopBarOss as LineageViewTopBar } from "@datarecce/ui/components/lineage";
 import {
   useLineageGraphContext,
   useLineageViewContextSafe,
@@ -90,7 +91,6 @@ import {
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { LineageViewTopBar } from "../LineageViewTopBar";
 
 // ============================================================================
 // Test Fixtures
@@ -280,7 +280,7 @@ describe("LineageViewTopBar", () => {
       render(<LineageViewTopBar />);
 
       // The top bar should render with children
-      expect(screen.getByTestId("history-toggle")).toBeInTheDocument();
+      expect(screen.getByText("History")).toBeInTheDocument();
     });
 
     it("renders mode control with label", () => {
@@ -1099,7 +1099,7 @@ describe("LineageViewTopBar", () => {
       render(<LineageViewTopBar />);
 
       // All main controls should be present
-      expect(screen.getByTestId("history-toggle")).toBeInTheDocument();
+      expect(screen.getByText("History")).toBeInTheDocument();
       expect(screen.getByText("Mode")).toBeInTheDocument();
       expect(screen.getByText("Package")).toBeInTheDocument();
       expect(screen.getByText("Select")).toBeInTheDocument();

@@ -1,56 +1,51 @@
+"use client";
+
 /**
- * @file NodeView.tsx
+ * @file NodeViewOss.tsx
  * @description wrapper for NodeView that injects dependencies.
  *
  * This wrapper:
  * 1. Provides OSS-specific schema view components
  * 2. Injects action callbacks that integrate with OSS contexts
- * 3. Provides run type icons from OSS registry
+ * 3. Provides run type icons from the OSS registry
  * 4. Handles navigation and tracking
  */
 
-import type { LineageGraphNode } from "@datarecce/ui";
-import { createSchemaDiffCheck } from "@datarecce/ui/api";
-import { SetupConnectionPopover } from "@datarecce/ui/components/app";
-import {
-  NodeView as BaseNodeView,
-  type NodeViewActionCallbacks,
-  ResourceTypeTag as ResourceTypeTagBase,
-  RowCountDiffTag,
-  RowCountTag,
-  type RunTypeIconMap,
-} from "@datarecce/ui/components/lineage";
-import {
-  LearnHowLink,
-  RecceNotification,
-} from "@datarecce/ui/components/onboarding-guide";
-import { findByRunType } from "@datarecce/ui/components/run";
-import {
-  SchemaView,
-  SingleEnvSchemaView,
-} from "@datarecce/ui/components/schema";
+import Typography from "@mui/material/Typography";
+import { useRouter } from "next/navigation";
+import { useMemo } from "react";
+import type { LineageGraphNode } from "../..";
+import { createSchemaDiffCheck } from "../../api";
 import {
   useLineageGraphContext,
   useRecceActionContext,
   useRecceInstanceContext,
-} from "@datarecce/ui/contexts";
+} from "../../contexts";
 import {
   useApiConfig,
   useModelColumns,
   useRecceQueryContext,
-} from "@datarecce/ui/hooks";
+} from "../../hooks";
 import {
   EXPLORE_ACTION,
   EXPLORE_SOURCE,
   trackExploreAction,
   trackPreviewChange,
-} from "@datarecce/ui/lib/api/track";
-import { formatSelectColumns } from "@datarecce/ui/utils";
-import Typography from "@mui/material/Typography";
-import { useRouter } from "next/navigation";
-import { useMemo } from "react";
-import { NodeSqlView } from "./NodeSqlView";
-import { SandboxView } from "./SandboxView";
+} from "../../lib/api/track";
+import { formatSelectColumns } from "../../utils";
+import { SetupConnectionPopover } from "../app";
+import { LearnHowLink, RecceNotification } from "../onboarding-guide";
+import { findByRunType } from "../run";
+import { SchemaView, SingleEnvSchemaView } from "../schema";
+import { NodeSqlViewOss } from "./NodeSqlViewOss";
+import { RowCountDiffTag, RowCountTag } from "./NodeTag";
+import {
+  NodeView as BaseNodeView,
+  type NodeViewActionCallbacks,
+  type RunTypeIconMap,
+} from "./NodeView";
+import { SandboxViewOss } from "./SandboxViewOss";
+import { ResourceTypeTag as ResourceTypeTagBase } from "./tags";
 
 // =============================================================================
 // TYPES
@@ -72,7 +67,7 @@ const ResourceTypeTag = ({ node }: { node: LineageGraphNode }) => (
 /**
  * Notification component that includes the LearnHowLink.
  */
-function OSSNotificationComponent({ onClose }: { onClose: () => void }) {
+function OssNotificationComponent({ onClose }: { onClose: () => void }) {
   return (
     <RecceNotification onClose={onClose} align="flex-start">
       <Typography variant="body2">
@@ -95,11 +90,11 @@ function OSSNotificationComponent({ onClose }: { onClose: () => void }) {
  * This wrapper provides:
  * - OSS-specific schema view components
  * - Action callbacks that integrate with OSS contexts (tracking, navigation)
- * - Run type icons from OSS registry
+ * - Run type icons from the OSS registry
  * - Connection popover wrapper for database setup prompts
  * - Sandbox dialog component
  */
-export function NodeView({ node, onCloseNode }: NodeViewProps) {
+export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
   const router = useRouter();
   const { runAction } = useRecceActionContext();
   const { isActionAvailable, envInfo } = useLineageGraphContext();
@@ -294,17 +289,17 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
       // Schema components
       SchemaView={SchemaView}
       SingleEnvSchemaView={SingleEnvSchemaView}
-      NodeSqlView={NodeSqlView}
+      NodeSqlView={NodeSqlViewOss}
       // Tag components
       ResourceTypeTag={ResourceTypeTag}
       RowCountDiffTag={RowCountDiffTag}
       RowCountTag={RowCountTag}
       // Notification for single env
-      NotificationComponent={OSSNotificationComponent}
+      NotificationComponent={OssNotificationComponent}
       // Connection popover wrapper
       ConnectionPopoverWrapper={SetupConnectionPopover}
       // Sandbox dialog
-      SandboxDialog={SandboxView}
+      SandboxDialog={SandboxViewOss}
       // Icons
       runTypeIcons={runTypeIcons}
       // Callbacks

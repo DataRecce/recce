@@ -22,6 +22,7 @@ export {
   type NodeSqlViewNodeData,
   type NodeSqlViewProps,
 } from "./NodeSqlView";
+export { NodeSqlViewOss } from "./NodeSqlViewOss";
 export * from "./NodeTag";
 // Node detail view component with dependency-injected components
 export {
@@ -42,6 +43,7 @@ export {
   SandboxView as BaseSandboxView,
   type SandboxViewProps as BaseSandboxViewProps,
 } from "./SandboxView";
+export { SandboxViewOss } from "./SandboxViewOss";
 // Server disconnected modal components
 export {
   type LinkComponentProps,

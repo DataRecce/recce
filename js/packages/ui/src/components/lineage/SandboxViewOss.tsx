@@ -1,35 +1,32 @@
+import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
 import {
   LOCAL_STORAGE_KEYS,
   type QueryParams,
   type SubmitOptions,
   submitQueryDiff,
   waitRun,
-} from "@datarecce/ui/api";
-import {
-  BaseSandboxView,
-  type SandboxNodeData,
-} from "@datarecce/ui/components/lineage";
-import { QueryForm } from "@datarecce/ui/components/query";
-import { RunResultPaneOss as RunResultPane } from "@datarecce/ui/components/run";
-import {
-  useRecceActionContext,
-  useRecceServerFlag,
-} from "@datarecce/ui/contexts";
+} from "../../api";
+import { useRecceActionContext, useRecceServerFlag } from "../../contexts";
 import {
   useApiConfig,
   useFeedbackCollectionToast,
   useGuideToast,
   useIsDark,
   useRecceQueryContext,
-} from "@datarecce/ui/hooks";
+} from "../../hooks";
 import {
   trackPreviewChange,
   trackPreviewChangeFeedback,
   trackSingleEnvironment,
-} from "@datarecce/ui/lib/api/track";
-import { DiffEditor } from "@datarecce/ui/primitives";
-import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+} from "../../lib/api/track";
+import { DiffEditor } from "../../primitives";
+import { QueryForm } from "../query";
+import { RunResultPaneOss as RunResultPane } from "../run";
+import {
+  SandboxView as BaseSandboxView,
+  type SandboxNodeData,
+} from "./SandboxView";
 
 interface SandboxViewProps {
   isOpen: boolean;
@@ -50,7 +47,7 @@ interface SandboxViewProps {
  * The underlying BaseSandboxView from @datarecce/ui is framework-agnostic
  * and accepts components as props for dependency injection.
  */
-export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
+export function SandboxViewOss({ isOpen, onClose, current }: SandboxViewProps) {
   const [modifiedCode, setModifiedCode] = useState<string>(
     current?.raw_code ?? "",
   );

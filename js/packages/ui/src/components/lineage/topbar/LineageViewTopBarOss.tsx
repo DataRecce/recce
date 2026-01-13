@@ -1,5 +1,7 @@
+"use client";
+
 /**
- * @file LineageViewTopBar.tsx
+ * @file LineageViewTopBarOss.tsx
  * @description OSS wrapper for the LineageViewTopBar component.
  *
  * This thin wrapper imports the core component from @datarecce/ui and injects
@@ -10,30 +12,20 @@
  * - Context hooks for state management
  */
 
-import { HistoryToggle } from "@datarecce/ui/components";
-import { SetupConnectionPopover } from "@datarecce/ui/components/app";
-import {
-  LineageViewTopBar as LineageViewTopBarCore,
-  type SetupConnectionPopoverSlotProps,
-} from "@datarecce/ui/components/lineage";
-import { findByRunType } from "@datarecce/ui/components/run";
+import type { ReactElement, Ref } from "react";
 import {
   useLineageGraphContext,
   useLineageViewContextSafe,
   useRecceInstanceContext,
   useRecceServerFlag,
-} from "@datarecce/ui/contexts";
-
-/**
- * Run type icons from the OSS registry.
- * These are injected into the core component for action menus.
- */
-const runTypeIcons = {
-  rowCountDiff: findByRunType("row_count_diff").icon,
-  valueDiff: findByRunType("value_diff").icon,
-  lineageDiff: findByRunType("lineage_diff").icon,
-  schemaDiff: findByRunType("schema_diff").icon,
-};
+} from "../../../contexts";
+import { SetupConnectionPopover } from "../../app";
+import { findByRunType } from "../../run";
+import { HistoryToggle } from "../../shared";
+import {
+  LineageViewTopBar as LineageViewTopBarCore,
+  type SetupConnectionPopoverSlotProps,
+} from "./LineageViewTopBar";
 
 /**
  * SetupConnectionPopover wrapper to adapt to the slot props interface.
@@ -46,8 +38,8 @@ const SetupConnectionPopoverSlot = ({
   return (
     <SetupConnectionPopover display={display}>
       {
-        children as React.ReactElement<{
-          ref?: React.Ref<HTMLElement>;
+        children as ReactElement<{
+          ref?: Ref<HTMLElement>;
           [key: string]: unknown;
         }>
       }
@@ -64,7 +56,7 @@ const SetupConnectionPopoverSlot = ({
  * - Provides SetupConnectionPopover slot
  * - Connects to LineageViewContext for state
  */
-export const LineageViewTopBar = () => {
+export const LineageViewTopBarOss = () => {
   const {
     deselect,
     focusedNode,
@@ -81,6 +73,12 @@ export const LineageViewTopBar = () => {
   const { lineageGraph } = useLineageGraphContext();
   const { featureToggles } = useRecceInstanceContext();
   const { data: flags } = useRecceServerFlag();
+  const runTypeIcons = {
+    rowCountDiff: findByRunType("row_count_diff").icon,
+    valueDiff: findByRunType("value_diff").icon,
+    lineageDiff: findByRunType("lineage_diff").icon,
+    schemaDiff: findByRunType("schema_diff").icon,
+  };
 
   return (
     <LineageViewTopBarCore

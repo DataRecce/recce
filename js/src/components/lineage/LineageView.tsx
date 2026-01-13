@@ -3,48 +3,17 @@ import type {
   LineageGraphEdge,
   LineageGraphNode,
   LineageGraphNodes,
+  LineageViewContextType,
   NodeColumnSetMap,
 } from "@datarecce/ui";
 import {
+  HSplit,
   isLineageGraphColumnNode,
   isLineageGraphNode,
   selectDownstream,
   selectUpstream,
+  union,
 } from "@datarecce/ui";
-import Box from "@mui/material/Box";
-import Divider from "@mui/material/Divider";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import {
-  Background,
-  BackgroundVariant,
-  ControlButton,
-  Controls,
-  getNodesBounds,
-  MiniMap,
-  Node,
-  Panel,
-  ReactFlow,
-  useEdgesState,
-  useNodesState,
-  useReactFlow,
-} from "@xyflow/react";
-import React, {
-  forwardRef,
-  Ref,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { layout, toReactFlow } from "./lineage";
-import "@xyflow/react/dist/style.css";
-import "@datarecce/ui/styles";
-import type { LineageViewContextType } from "@datarecce/ui";
-import { HSplit, union } from "@datarecce/ui";
 import type { Check } from "@datarecce/ui/api";
 import {
   type CllInput,
@@ -63,7 +32,9 @@ import {
 import {
   BaseEnvironmentSetupNotification,
   LineageLegend,
+  LineageViewTopBarOss as LineageViewTopBar,
 } from "@datarecce/ui/components/lineage";
+import { NodeViewOss as NodeView } from "@datarecce/ui/components/lineage/NodeViewOss";
 import SetupConnectionBanner from "@datarecce/ui/components/lineage/SetupConnectionBannerOss";
 import { toaster } from "@datarecce/ui/components/ui";
 import {
@@ -84,10 +55,42 @@ import {
   trackCopyToClipboard,
   trackMultiNodesAction,
 } from "@datarecce/ui/lib/api/track";
+import "@datarecce/ui/styles";
 import { colors } from "@datarecce/ui/theme";
+import Box from "@mui/material/Box";
+import Divider from "@mui/material/Divider";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
 import { useMutation } from "@tanstack/react-query";
+import {
+  Background,
+  BackgroundVariant,
+  ControlButton,
+  Controls,
+  getNodesBounds,
+  MiniMap,
+  Node,
+  Panel,
+  ReactFlow,
+  useEdgesState,
+  useNodesState,
+  useReactFlow,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 import { AxiosError } from "axios";
+import React, {
+  forwardRef,
+  Ref,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { FiCopy } from "react-icons/fi";
+
 import { ActionControl } from "./ActionControl";
 import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
 import { edgeTypes, getNodeColor, initialNodes, nodeTypes } from "./config";
@@ -102,8 +105,7 @@ import {
   useLineageViewContextMenu,
 } from "./LineageViewContextMenu";
 import { LineageViewNotification } from "./LineageViewNotification";
-import { LineageViewTopBar } from "./LineageViewTopBar";
-import { NodeView } from "./NodeView";
+import { layout, toReactFlow } from "./lineage";
 import {
   LineageViewError,
   LineageViewLoading,

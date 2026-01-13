@@ -224,11 +224,28 @@ jest.mock("@datarecce/ui/api", () => ({
 }));
 
 // Mock @datarecce/ui/components/lineage
-jest.mock("@datarecce/ui/components/lineage", () => ({
-  BaseEnvironmentSetupNotification: jest.fn(() => null),
-  getIconForChangeStatus: jest.fn(() => ({ hexColor: "#000000" })),
-  LineageLegend: jest.fn(({ variant }) => (
-    <div data-testid={`lineage-legend-${variant}`} />
+jest.mock("@datarecce/ui/components/lineage", () => {
+  const actual = jest.requireActual("@datarecce/ui/components/lineage");
+  return {
+    ...actual,
+    BaseEnvironmentSetupNotification: jest.fn(() => null),
+    getIconForChangeStatus: jest.fn(() => ({ hexColor: "#000000" })),
+    LineageLegend: jest.fn(({ variant }) => (
+      <div data-testid={`lineage-legend-${variant}`} />
+    )),
+    LineageViewTopBarOss: jest.fn(() => (
+      <div data-testid="lineage-view-topbar" />
+    )),
+  };
+});
+
+jest.mock("@datarecce/ui/components/lineage/NodeViewOss", () => ({
+  NodeViewOss: jest.fn(({ node, onCloseNode }) => (
+    <div data-testid="node-view" data-node-id={node?.id}>
+      <button data-testid="close-node-view" onClick={onCloseNode}>
+        Close
+      </button>
+    </div>
   )),
 }));
 
@@ -257,19 +274,6 @@ jest.mock("@datarecce/ui/theme", () => ({
 }));
 
 // Mock child components to isolate testing
-jest.mock("../LineageViewTopBar", () => ({
-  LineageViewTopBar: jest.fn(() => <div data-testid="lineage-view-topbar" />),
-}));
-
-jest.mock("../NodeView", () => ({
-  NodeView: jest.fn(({ node, onCloseNode }) => (
-    <div data-testid="node-view" data-node-id={node?.id}>
-      <button data-testid="close-node-view" onClick={onCloseNode}>
-        Close
-      </button>
-    </div>
-  )),
-}));
 
 jest.mock("../ActionControl", () => ({
   ActionControl: jest.fn(({ onClose }) => (

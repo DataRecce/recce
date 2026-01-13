@@ -1,8 +1,10 @@
-import type { LineageGraphNode } from "@datarecce/ui";
-import { NodeSqlView as BaseNodeSqlView } from "@datarecce/ui/components/lineage";
-import { useRecceServerFlag } from "@datarecce/ui/contexts";
-import { useIsDark } from "@datarecce/ui/hooks";
-import { CodeEditor, DiffEditor } from "@datarecce/ui/primitives";
+"use client";
+
+import type { LineageGraphNode } from "../..";
+import { useRecceServerFlag } from "../../contexts";
+import { useIsDark } from "../../hooks";
+import { CodeEditor, DiffEditor } from "../../primitives";
+import { NodeSqlView as BaseNodeSqlView } from "./NodeSqlView";
 
 interface NodeSqlViewProps {
   node: LineageGraphNode;
@@ -19,7 +21,7 @@ interface NodeSqlViewProps {
  * The underlying BaseNodeSqlView from @datarecce/ui is framework-agnostic
  * and accepts editor components as props for dependency injection.
  */
-export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
+export const NodeSqlViewOss = ({ node }: NodeSqlViewProps) => {
   const { data: flags, isLoading } = useRecceServerFlag();
   const isDark = useIsDark();
 
