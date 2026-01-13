@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * @file GraphColumnNode.tsx
+ * @file GraphColumnNodeOss.tsx
  * @description OSS wrapper for UI package LineageColumnNode component
  *
  * This component wraps the @datarecce/ui LineageColumnNode with OSS-specific
@@ -11,16 +11,13 @@
  * Migration: Phase 3 of lineage component migration plan
  */
 
-import type { LineageGraphColumnNode } from "@datarecce/ui";
-import {
-  LineageColumnNode,
-  type LineageColumnNodeData,
-} from "@datarecce/ui/components/lineage";
-import { useLineageViewContextSafe } from "@datarecce/ui/contexts";
-import { useThemeColors } from "@datarecce/ui/hooks";
 import type { NodeProps } from "@xyflow/react";
 import { useStore } from "@xyflow/react";
 import { type MouseEvent, memo } from "react";
+import type { LineageGraphColumnNode } from "../..";
+import { useLineageViewContextSafe } from "../../contexts";
+import { useThemeColors } from "../../hooks";
+import { LineageColumnNode, type LineageColumnNodeData } from "./columns";
 
 // =============================================================================
 // TYPES

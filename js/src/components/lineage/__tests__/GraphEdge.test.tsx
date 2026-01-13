@@ -49,90 +49,22 @@ jest.mock("@datarecce/ui/contexts", () => ({
   useLineageViewContextSafe: jest.fn(),
 }));
 
-// Mock @datarecce/ui/components/lineage
-jest.mock("@datarecce/ui/components/lineage", () => {
-  const { BaseEdge, getBezierPath } = jest.requireMock("@xyflow/react");
-  const mockGetIconForChangeStatus = jest.fn();
-
-  // Create a mock GraphEdge component that matches the real implementation
-  const GraphEdge = ({
-    source,
-    target,
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-    style: styleOverride = {},
-    markerEnd,
-    data,
-    isEdgeHighlighted,
-  }: {
-    source: string;
-    target: string;
-    sourceX: number;
-    sourceY: number;
-    targetX: number;
-    targetY: number;
-    sourcePosition: string;
-    targetPosition: string;
-    style?: Record<string, unknown>;
-    markerEnd?: string;
-    data?: { changeStatus?: string };
-    isEdgeHighlighted?: (source: string, target: string) => boolean;
-  }) => {
-    const style: Record<string, unknown> = { ...styleOverride };
-
-    if (data?.changeStatus) {
-      const statusStyle = mockGetIconForChangeStatus(data.changeStatus);
-      style.stroke = statusStyle.hexColor;
-      style.strokeDasharray = "5";
-    }
-
-    const isHighlighted = isEdgeHighlighted
-      ? isEdgeHighlighted(source, target)
-      : true;
-
-    if (!isHighlighted) {
-      style.filter = "opacity(0.2) grayscale(50%)";
-    }
-
-    const [edgePath] = getBezierPath({
-      sourceX,
-      sourceY,
-      sourcePosition,
-      targetX,
-      targetY,
-      targetPosition,
-    });
-
-    return (
-      <BaseEdge
-        path={edgePath}
-        markerEnd={markerEnd}
-        style={{ ...style, ...styleOverride }}
-      />
-    );
-  };
-
-  return {
-    getIconForChangeStatus: mockGetIconForChangeStatus,
-    GraphEdge,
-  };
-});
+// Mock @datarecce/ui/components/lineage/styles
+jest.mock("@datarecce/ui/components/lineage/styles", () => ({
+  getIconForChangeStatus: jest.fn(),
+}));
 
 // ============================================================================
 // Imports
 // ============================================================================
 
 import type { LineageGraphEdge } from "@datarecce/ui";
-import { getIconForChangeStatus } from "@datarecce/ui/components/lineage";
+import GraphEdge from "@datarecce/ui/components/lineage/GraphEdgeOss";
+import { getIconForChangeStatus } from "@datarecce/ui/components/lineage/styles";
 import { useLineageViewContextSafe } from "@datarecce/ui/contexts";
 import { render, screen } from "@testing-library/react";
 import { getBezierPath, Position } from "@xyflow/react";
 import React from "react";
-import GraphEdge from "../GraphEdge";
 
 // ============================================================================
 // Test Fixtures

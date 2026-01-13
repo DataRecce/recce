@@ -42,7 +42,7 @@ jest.mock("@datarecce/ui/contexts", () => ({
 }));
 
 // Mock @datarecce/ui/components/lineage
-jest.mock("@datarecce/ui/components/lineage", () => {
+jest.mock("@datarecce/ui/components/lineage/columns", () => {
   const MockLineageColumnNodeInline = jest
     .fn()
     .mockImplementation(({ id, data, showContent, showChangeAnalysis }) => {
@@ -70,10 +70,6 @@ jest.mock("@datarecce/ui/components/lineage", () => {
     });
   return {
     LineageColumnNode: MockLineageColumnNodeInline,
-    getIconForChangeStatus: jest.fn().mockReturnValue({
-      icon: () => <span data-testid="change-status-icon">Status</span>,
-      color: "#22c55e",
-    }),
   };
 });
 
@@ -82,16 +78,13 @@ jest.mock("@datarecce/ui/components/lineage", () => {
 // ============================================================================
 
 import type { LineageGraphColumnNode } from "@datarecce/ui";
-import {
-  getIconForChangeStatus,
-  LineageColumnNode,
-} from "@datarecce/ui/components/lineage";
+import { LineageColumnNode } from "@datarecce/ui/components/lineage/columns";
+import { GraphColumnNode } from "@datarecce/ui/components/lineage/GraphColumnNodeOss";
 import { useLineageViewContextSafe } from "@datarecce/ui/contexts";
 import { useThemeColors } from "@datarecce/ui/hooks";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useStore } from "@xyflow/react";
 import React from "react";
-import { GraphColumnNode } from "../GraphColumnNode";
 
 // ============================================================================
 // Test Fixtures
@@ -192,7 +185,6 @@ describe("GraphColumnNode", () => {
   const mockUseStore = useStore as jest.Mock;
   const mockUseThemeColors = useThemeColors as jest.Mock;
   const mockUseLineageViewContextSafe = useLineageViewContextSafe as jest.Mock;
-  const mockGetIconForChangeStatus = getIconForChangeStatus as jest.Mock;
   const mockedLineageColumnNode = LineageColumnNode as unknown as jest.Mock;
 
   beforeEach(() => {
@@ -202,10 +194,6 @@ describe("GraphColumnNode", () => {
     mockUseStore.mockReturnValue(true); // showContent = true (zoom > 30%)
     mockUseThemeColors.mockReturnValue(mockThemeColors);
     mockUseLineageViewContextSafe.mockReturnValue(createMockContext());
-    mockGetIconForChangeStatus.mockReturnValue({
-      icon: () => <span data-testid="change-status-icon">Status</span>,
-      color: "#22c55e",
-    });
   });
 
   // ==========================================================================

@@ -34,10 +34,13 @@ import {
   LineageLegend,
   LineageViewTopBarOss as LineageViewTopBar,
 } from "@datarecce/ui/components/lineage";
+import { ActionControlOss } from "@datarecce/ui/components/lineage/ActionControlOss";
+import { ColumnLevelLineageControlOss } from "@datarecce/ui/components/lineage/ColumnLevelLineageControlOss";
 import {
   LineageViewContextMenu,
   useLineageViewContextMenu,
 } from "@datarecce/ui/components/lineage/LineageViewContextMenuOss";
+import { layout, toReactFlow } from "@datarecce/ui/components/lineage/lineage";
 import { NodeViewOss as NodeView } from "@datarecce/ui/components/lineage/NodeViewOss";
 import SetupConnectionBanner from "@datarecce/ui/components/lineage/SetupConnectionBannerOss";
 import { LineageViewNotification } from "@datarecce/ui/components/notifications";
@@ -82,7 +85,23 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { layout, toReactFlow } from "@datarecce/ui/components/lineage/lineage";
+import {
+  edgeTypes,
+  getNodeColor,
+  initialNodes,
+  nodeTypes,
+} from "@datarecce/ui/components/lineage/config";
+import {
+  useLineageCopyToClipboard,
+  useNavToCheck,
+  useResizeObserver,
+  useTrackLineageRender,
+} from "@datarecce/ui/components/lineage/hooks";
+import {
+  LineageViewError,
+  LineageViewLoading,
+  LineageViewNoChanges,
+} from "@datarecce/ui/components/lineage/states";
 import { AxiosError } from "axios";
 import React, {
   forwardRef,
@@ -96,21 +115,6 @@ import React, {
   useState,
 } from "react";
 import { FiCopy } from "react-icons/fi";
-
-import { ActionControl } from "./ActionControl";
-import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
-import { edgeTypes, getNodeColor, initialNodes, nodeTypes } from "./config";
-import {
-  useLineageCopyToClipboard,
-  useNavToCheck,
-  useResizeObserver,
-  useTrackLineageRender,
-} from "./hooks";
-import {
-  LineageViewError,
-  LineageViewLoading,
-  LineageViewNoChanges,
-} from "./states";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -1134,7 +1138,7 @@ export function PrivateLineageView(
             </Panel>
             <Panel position="top-left">
               <Stack spacing="5px">
-                <ColumnLevelLineageControl action={actionGetCll} />
+                <ColumnLevelLineageControlOss action={actionGetCll} />
                 {nodes.length == 0 && (
                   <Typography
                     sx={{ fontSize: "1.25rem", color: "grey", opacity: 0.5 }}
@@ -1159,7 +1163,7 @@ export function PrivateLineageView(
                 position="bottom-center"
                 className={IGNORE_SCREENSHOT_CLASS}
               >
-                <ActionControl
+                <ActionControlOss
                   onClose={() => {
                     deselect();
                   }}

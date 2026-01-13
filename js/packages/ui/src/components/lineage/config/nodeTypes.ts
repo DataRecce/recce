@@ -1,9 +1,9 @@
-import type { LineageGraphNode } from "@datarecce/ui";
-import { getIconForChangeStatus } from "@datarecce/ui/components/lineage";
-import { GraphNode } from "@datarecce/ui/components/lineage/GraphNodeOss";
-import { colors } from "@datarecce/ui/theme";
-import { GraphColumnNode } from "../GraphColumnNode";
-import GraphEdge from "../GraphEdge";
+import type { LineageGraphNode } from "../../../contexts/lineage/types";
+import { colors } from "../../../theme";
+import { GraphColumnNode } from "../GraphColumnNodeOss";
+import GraphEdge from "../GraphEdgeOss";
+import { GraphNode } from "../GraphNodeOss";
+import { getIconForChangeStatus } from "../styles";
 
 /**
  * Node types configuration for ReactFlow.

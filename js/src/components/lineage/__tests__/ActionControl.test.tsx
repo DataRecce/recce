@@ -27,9 +27,9 @@ jest.mock("@datarecce/ui/contexts", () => ({
 // ============================================================================
 
 import type { ActionState, LineageViewContextType } from "@datarecce/ui";
+import { ActionControlOss } from "@datarecce/ui/components/lineage/ActionControlOss";
 import { useLineageViewContextSafe } from "@datarecce/ui/contexts";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { ActionControl } from "../ActionControl";
 
 // ============================================================================
 // Test Fixtures
@@ -88,7 +88,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByText(/Progress:/)).toHaveTextContent(
         "Progress: 3 / 10",
@@ -106,7 +106,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByText(/Progress:/)).toHaveTextContent(
         "Progress: 0 / 5",
@@ -124,7 +124,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByText(/Progress:/)).toHaveTextContent(
         "Progress: 10 / 10",
@@ -132,7 +132,7 @@ describe("ActionControl", () => {
     });
 
     it("updates display as completed changes", () => {
-      const { rerender } = render(<ActionControl onClose={jest.fn()} />);
+      const { rerender } = render(<ActionControlOss onClose={jest.fn()} />);
 
       // Initial state: 3 / 10
       mockUseLineageViewContextSafe.mockReturnValue(
@@ -144,7 +144,7 @@ describe("ActionControl", () => {
           }),
         }),
       );
-      rerender(<ActionControl onClose={jest.fn()} />);
+      rerender(<ActionControlOss onClose={jest.fn()} />);
       expect(screen.getByText(/Progress:/)).toHaveTextContent(
         "Progress: 3 / 10",
       );
@@ -159,7 +159,7 @@ describe("ActionControl", () => {
           }),
         }),
       );
-      rerender(<ActionControl onClose={jest.fn()} />);
+      rerender(<ActionControlOss onClose={jest.fn()} />);
       expect(screen.getByText(/Progress:/)).toHaveTextContent(
         "Progress: 7 / 10",
       );
@@ -185,7 +185,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByText(/Progress:/)).toHaveTextContent("Progress: 50%");
     });
@@ -204,7 +204,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByText(/Progress:/)).toHaveTextContent("Progress: 75%");
     });
@@ -220,7 +220,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByText(/Progress:/)).toHaveTextContent("Progress: 100%");
     });
@@ -238,7 +238,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByText(/Progress:/)).toHaveTextContent("Progress: 100%");
     });
@@ -254,7 +254,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByText(/Progress:/)).toHaveTextContent("Progress: 0%");
     });
@@ -270,7 +270,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByText(/Progress:/)).toHaveTextContent("Progress: 0%");
     });
@@ -286,7 +286,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByText(/Progress:/)).toHaveTextContent("Progress: 0%");
     });
@@ -302,7 +302,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       // Note: canceled status shows 0% because it's not "completed"
       expect(screen.getByText(/Progress:/)).toHaveTextContent("Progress: 0%");
@@ -323,7 +323,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByText(/\(canceled\)/)).toBeInTheDocument();
     });
@@ -337,7 +337,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.queryByText(/\(canceled\)/)).not.toBeInTheDocument();
     });
@@ -351,7 +351,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.queryByText(/\(canceled\)/)).not.toBeInTheDocument();
     });
@@ -365,7 +365,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.queryByText(/\(canceled\)/)).not.toBeInTheDocument();
     });
@@ -379,7 +379,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.queryByText(/\(canceled\)/)).not.toBeInTheDocument();
     });
@@ -399,7 +399,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(
         screen.getByRole("button", { name: "Cancel" }),
@@ -415,7 +415,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(
         screen.getByRole("button", { name: "Canceling" }),
@@ -431,7 +431,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       const cancelButton = screen.getByRole("button", { name: "Cancel" });
       expect(cancelButton).not.toBeDisabled();
@@ -446,7 +446,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       const cancelingButton = screen.getByRole("button", { name: "Canceling" });
       expect(cancelingButton).toBeDisabled();
@@ -463,7 +463,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       const cancelButton = screen.getByRole("button", { name: "Cancel" });
       fireEvent.click(cancelButton);
@@ -480,7 +480,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(
         screen.queryByRole("button", { name: "Cancel" }),
@@ -499,7 +499,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(
         screen.queryByRole("button", { name: "Cancel" }),
@@ -518,7 +518,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(
         screen.queryByRole("button", { name: "Cancel" }),
@@ -543,7 +543,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
     });
@@ -557,7 +557,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
     });
@@ -571,7 +571,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
     });
@@ -586,7 +586,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={mockOnClose} />);
+      render(<ActionControlOss onClose={mockOnClose} />);
 
       const closeButton = screen.getByRole("button", { name: "Close" });
       fireEvent.click(closeButton);
@@ -603,7 +603,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(
         screen.queryByRole("button", { name: "Close" }),
@@ -619,7 +619,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(
         screen.queryByRole("button", { name: "Close" }),
@@ -644,7 +644,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByText(/Progress:/)).toHaveTextContent(
         "Progress: 5 / 10",
@@ -670,7 +670,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByText(/Progress:/)).toHaveTextContent("Progress: 35%");
       expect(screen.getByRole("button", { name: "Canceling" })).toBeDisabled();
@@ -689,7 +689,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByText(/Progress:/)).toHaveTextContent(
         "Progress: 3 / 10",
@@ -710,7 +710,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      render(<ActionControl onClose={jest.fn()} />);
+      render(<ActionControlOss onClose={jest.fn()} />);
 
       expect(screen.getByText(/Progress:/)).toHaveTextContent(
         "Progress: 10 / 10",
@@ -735,7 +735,7 @@ describe("ActionControl", () => {
         }),
       );
 
-      const { rerender } = render(<ActionControl onClose={mockOnClose} />);
+      const { rerender } = render(<ActionControlOss onClose={mockOnClose} />);
 
       // Click cancel
       fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -752,7 +752,7 @@ describe("ActionControl", () => {
           }),
         }),
       );
-      rerender(<ActionControl onClose={mockOnClose} />);
+      rerender(<ActionControlOss onClose={mockOnClose} />);
 
       expect(screen.getByRole("button", { name: "Canceling" })).toBeDisabled();
 
@@ -767,7 +767,7 @@ describe("ActionControl", () => {
           }),
         }),
       );
-      rerender(<ActionControl onClose={mockOnClose} />);
+      rerender(<ActionControlOss onClose={mockOnClose} />);
 
       expect(screen.getByText(/\(canceled\)/)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();

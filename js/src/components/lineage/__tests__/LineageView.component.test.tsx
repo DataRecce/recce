@@ -275,8 +275,8 @@ jest.mock("@datarecce/ui/theme", () => ({
 
 // Mock child components to isolate testing
 
-jest.mock("../ActionControl", () => ({
-  ActionControl: jest.fn(({ onClose }) => (
+jest.mock("@datarecce/ui/components/lineage/ActionControlOss", () => ({
+  ActionControlOss: jest.fn(({ onClose }) => (
     <div data-testid="action-control">
       <button data-testid="close-action" onClick={onClose}>
         Close
@@ -285,19 +285,24 @@ jest.mock("../ActionControl", () => ({
   )),
 }));
 
-jest.mock("../ColumnLevelLineageControl", () => ({
-  ColumnLevelLineageControl: jest.fn(() => <div data-testid="cll-control" />),
-}));
+jest.mock(
+  "@datarecce/ui/components/lineage/ColumnLevelLineageControlOss",
+  () => ({
+    ColumnLevelLineageControlOss: jest.fn(() => (
+      <div data-testid="cll-control" />
+    )),
+  }),
+);
 
 jest.mock("@datarecce/ui/components/lineage/GraphNodeOss", () => ({
   GraphNode: jest.fn(() => <div data-testid="graph-node" />),
 }));
 
-jest.mock("../GraphColumnNode", () => ({
+jest.mock("@datarecce/ui/components/lineage/GraphColumnNodeOss", () => ({
   GraphColumnNode: jest.fn(() => <div data-testid="graph-column-node" />),
 }));
 
-jest.mock("../GraphEdge", () => ({
+jest.mock("@datarecce/ui/components/lineage/GraphEdgeOss", () => ({
   __esModule: true,
   default: jest.fn(() => <div data-testid="graph-edge" />),
 }));

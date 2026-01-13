@@ -1,6 +1,8 @@
+"use client";
+
 /**
- * @file ColumnLevelLineageControl.tsx (Wrapper)
- * @description Thin wrapper around @datarecce/ui ColumnLevelLineageControl
+ * @file ColumnLevelLineageControlOss.tsx
+ * @description OSS wrapper around @datarecce/ui ColumnLevelLineageControl
  *
  * This wrapper:
  * 1. Connects the @datarecce/ui component to specific contexts
@@ -8,14 +10,14 @@
  * 3. Fetches server flags for single_env_onboarding
  */
 
-import type { CllInput, ColumnLineageData } from "@datarecce/ui/api";
-import { ColumnLevelLineageControl as BaseColumnLevelLineageControl } from "@datarecce/ui/components/lineage/controls";
+import type { UseMutationResult } from "@tanstack/react-query";
+import type { CllInput, ColumnLineageData } from "../../api";
 import {
   useLineageGraphContext,
   useLineageViewContextSafe,
   useRecceServerFlag,
-} from "@datarecce/ui/contexts";
-import type { UseMutationResult } from "@tanstack/react-query";
+} from "../../contexts";
+import { ColumnLevelLineageControl as BaseColumnLevelLineageControl } from "./controls";
 
 /**
  * OSS wrapper for ColumnLevelLineageControl.
@@ -25,7 +27,7 @@ import type { UseMutationResult } from "@tanstack/react-query";
  * - LineageGraphContext for graph data
  * - Server flags for environment mode
  */
-export const ColumnLevelLineageControl = ({
+export const ColumnLevelLineageControlOss = ({
   action,
 }: {
   action: UseMutationResult<ColumnLineageData, Error, CllInput>;

@@ -34,6 +34,7 @@ jest.mock("@datarecce/ui/hooks", () => ({
 
 import type { LineageGraph, LineageViewContextType } from "@datarecce/ui";
 import type { CllInput, ColumnLineageData } from "@datarecce/ui/api";
+import { ColumnLevelLineageControlOss } from "@datarecce/ui/components/lineage/ColumnLevelLineageControlOss";
 import {
   useLineageGraphContext,
   useLineageViewContextSafe,
@@ -42,7 +43,6 @@ import {
 import { useIsDark } from "@datarecce/ui/hooks";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { ColumnLevelLineageControl } from "../ColumnLevelLineageControl";
 
 // ============================================================================
 // Test Fixtures
@@ -147,7 +147,7 @@ describe("ColumnLevelLineageControl", () => {
 
   describe("Impact Radius button", () => {
     it('renders "Impact Radius" button', () => {
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       expect(
         screen.getByRole("button", { name: /Impact Radius/i }),
@@ -159,7 +159,7 @@ describe("ColumnLevelLineageControl", () => {
         createMockLineageViewContext({ interactive: false }),
       );
 
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       const button = screen.getByRole("button", { name: /Impact Radius/i });
       expect(button).toBeDisabled();
@@ -175,7 +175,7 @@ describe("ColumnLevelLineageControl", () => {
         }),
       });
 
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       const button = screen.getByRole("button", { name: /Impact Radius/i });
       expect(button).toBeDisabled();
@@ -187,7 +187,7 @@ describe("ColumnLevelLineageControl", () => {
         isLoading: false,
       });
 
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       expect(
         screen.queryByRole("button", { name: /Impact Radius/i }),
@@ -200,7 +200,7 @@ describe("ColumnLevelLineageControl", () => {
         createMockLineageViewContext({ showColumnLevelLineage: mockShowCll }),
       );
 
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       const button = screen.getByRole("button", { name: /Impact Radius/i });
       fireEvent.click(button);
@@ -212,7 +212,7 @@ describe("ColumnLevelLineageControl", () => {
     });
 
     it("button is enabled when interactive and catalog is available", () => {
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       const button = screen.getByRole("button", { name: /Impact Radius/i });
       expect(button).not.toBeDisabled();
@@ -231,7 +231,7 @@ describe("ColumnLevelLineageControl", () => {
         }),
       );
 
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       // The mode message panel should not be rendered
       expect(screen.queryByText(/Impact Radius for/i)).not.toBeInTheDocument();
@@ -249,7 +249,7 @@ describe("ColumnLevelLineageControl", () => {
         }),
       );
 
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       expect(
         screen.getByText("Impact Radius for All Changed Models"),
@@ -271,7 +271,7 @@ describe("ColumnLevelLineageControl", () => {
         lineageGraph: createMockLineageGraph(),
       });
 
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       expect(screen.getByText(/Impact Radius for/i)).toBeInTheDocument();
       expect(screen.getByText("my_model")).toBeInTheDocument();
@@ -292,7 +292,7 @@ describe("ColumnLevelLineageControl", () => {
         lineageGraph: createMockLineageGraph(),
       });
 
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       expect(screen.getByText(/Column Lineage for/i)).toBeInTheDocument();
       expect(screen.getByText("my_model.user_id")).toBeInTheDocument();
@@ -311,7 +311,7 @@ describe("ColumnLevelLineageControl", () => {
         }),
       );
 
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       const nodeName = screen.getByText("my_model");
       fireEvent.click(nodeName);
@@ -333,7 +333,7 @@ describe("ColumnLevelLineageControl", () => {
         }),
       );
 
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       const columnName = screen.getByText("my_model.user_id");
       fireEvent.click(columnName);
@@ -359,7 +359,7 @@ describe("ColumnLevelLineageControl", () => {
         }),
       });
 
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       // Should show the node_id itself when not found
       expect(screen.getByText("model.test.unknown_model")).toBeInTheDocument();
@@ -383,7 +383,7 @@ describe("ColumnLevelLineageControl", () => {
       );
 
       render(
-        <ColumnLevelLineageControl
+        <ColumnLevelLineageControlOss
           action={createMockMutation({ isPending: true })}
         />,
       );
@@ -403,7 +403,7 @@ describe("ColumnLevelLineageControl", () => {
       );
 
       render(
-        <ColumnLevelLineageControl
+        <ColumnLevelLineageControlOss
           action={createMockMutation({ isPending: true })}
         />,
       );
@@ -431,7 +431,7 @@ describe("ColumnLevelLineageControl", () => {
       );
 
       render(
-        <ColumnLevelLineageControl
+        <ColumnLevelLineageControlOss
           action={createMockMutation({
             isError: true,
             error: new Error("Test error message"),
@@ -458,7 +458,7 @@ describe("ColumnLevelLineageControl", () => {
 
       const errorMessage = "Connection failed";
       render(
-        <ColumnLevelLineageControl
+        <ColumnLevelLineageControlOss
           action={createMockMutation({
             isError: true,
             error: new Error(errorMessage),
@@ -488,7 +488,7 @@ describe("ColumnLevelLineageControl", () => {
         }),
       );
 
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       expect(
         screen.getByRole("button", { name: /Reset Column Level Lineage/i }),
@@ -502,7 +502,7 @@ describe("ColumnLevelLineageControl", () => {
         }),
       );
 
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       expect(
         screen.queryByRole("button", { name: /Reset Column Level Lineage/i }),
@@ -522,7 +522,7 @@ describe("ColumnLevelLineageControl", () => {
         }),
       );
 
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       const closeButton = screen.getByRole("button", {
         name: /Reset Column Level Lineage/i,
@@ -550,7 +550,7 @@ describe("ColumnLevelLineageControl", () => {
         }),
       );
 
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       // Impact Radius button should be present
       expect(
@@ -582,7 +582,7 @@ describe("ColumnLevelLineageControl", () => {
         }),
       );
 
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       // Impact Radius button should be hidden
       expect(
@@ -610,7 +610,7 @@ describe("ColumnLevelLineageControl", () => {
       );
 
       render(
-        <ColumnLevelLineageControl
+        <ColumnLevelLineageControlOss
           action={createMockMutation({ isPending: true })}
         />,
       );
@@ -640,7 +640,7 @@ describe("ColumnLevelLineageControl", () => {
 
       // Should not throw
       expect(() =>
-        render(<ColumnLevelLineageControl action={createMockMutation()} />),
+        render(<ColumnLevelLineageControlOss action={createMockMutation()} />),
       ).not.toThrow();
     });
 
@@ -654,7 +654,7 @@ describe("ColumnLevelLineageControl", () => {
         }),
       });
 
-      render(<ColumnLevelLineageControl action={createMockMutation()} />);
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
 
       // The button should be disabled
       const button = screen.getByRole("button", { name: /Impact Radius/i });
@@ -681,7 +681,7 @@ describe("ColumnLevelLineageControl", () => {
 
       // Should render without errors in dark mode
       expect(() =>
-        render(<ColumnLevelLineageControl action={createMockMutation()} />),
+        render(<ColumnLevelLineageControlOss action={createMockMutation()} />),
       ).not.toThrow();
     });
 
@@ -699,7 +699,7 @@ describe("ColumnLevelLineageControl", () => {
 
       // Should render without errors in light mode
       expect(() =>
-        render(<ColumnLevelLineageControl action={createMockMutation()} />),
+        render(<ColumnLevelLineageControlOss action={createMockMutation()} />),
       ).not.toThrow();
     });
   });

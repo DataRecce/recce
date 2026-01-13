@@ -1,6 +1,6 @@
-import type { Check } from "@datarecce/ui/api";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
+import type { Check } from "../../../api";
 
 /**
  * Hook that provides navigation to a check's detail page.

@@ -1,12 +1,19 @@
 "use client";
 
+export {
+  ActionControlOss,
+  type ActionControlOssProps,
+} from "./ActionControlOss";
+export { ColumnLevelLineageControlOss } from "./ColumnLevelLineageControlOss";
 // Primitives - pure presentation components
 export * from "./columns";
+export * from "./config";
 // Context menu components for node actions
 export * from "./contextmenu";
 export * from "./controls";
 export * from "./edges";
 export { GraphNode as GraphNodeOss, type GraphNodeProps } from "./GraphNodeOss";
+export * from "./hooks";
 // Composed components for rendering lineage graphs
 export { LineageCanvas, type LineageCanvasProps } from "./LineageCanvas";
 export {
@@ -72,6 +79,7 @@ export {
   BaseEnvironmentSetupNotification,
   type BaseEnvironmentSetupNotificationProps,
 } from "./SingleEnvironmentQueryView";
+export * from "./states";
 // Style utilities
 export * from "./styles";
 // Tag components for node metadata display

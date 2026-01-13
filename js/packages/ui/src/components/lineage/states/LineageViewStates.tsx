@@ -1,8 +1,8 @@
-import type { LineageDiffViewOptions } from "@datarecce/ui/api";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
+import type { LineageDiffViewOptions } from "../../../api";
 
 /**
  * Loading state component for LineageView.

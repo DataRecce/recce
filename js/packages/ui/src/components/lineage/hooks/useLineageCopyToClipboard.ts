@@ -3,8 +3,8 @@ import {
   useClipBoardToast,
   useCopyToClipboard,
   useThemeColors,
-} from "@datarecce/ui/hooks";
-import { colors } from "@datarecce/ui/theme";
+} from "../../../hooks";
+import { colors } from "../../../theme";
 
 /**
  * Hook that provides clipboard functionality for the lineage view.

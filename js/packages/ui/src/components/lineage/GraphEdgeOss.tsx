@@ -1,5 +1,7 @@
+"use client";
+
 /**
- * @file GraphEdge.tsx
+ * @file GraphEdgeOss.tsx
  * @description wrapper for GraphEdge that injects LineageViewContext dependencies
  *
  * This thin wrapper imports the core GraphEdge component from @datarecce/ui
@@ -7,12 +9,12 @@
  * - isEdgeHighlighted from LineageViewContext
  */
 
-import type { LineageGraphEdge } from "@datarecce/ui";
-import { GraphEdge as GraphEdgeBase } from "@datarecce/ui/components/lineage";
-import { useLineageViewContextSafe } from "@datarecce/ui/contexts";
 import type { EdgeProps } from "@xyflow/react";
+import type { LineageGraphEdge } from "../..";
+import { useLineageViewContextSafe } from "../../contexts";
+import { GraphEdge as GraphEdgeBase } from "./edges";
 
-import "@datarecce/ui/styles";
+import "../../styles";
 
 type GraphEdgeProps = EdgeProps<LineageGraphEdge>;
 
@@ -23,7 +25,7 @@ type GraphEdgeProps = EdgeProps<LineageGraphEdge>;
  * Injects:
  * - isEdgeHighlighted: from LineageViewContext for context-aware highlighting
  */
-export default function GraphEdge(props: GraphEdgeProps) {
+export default function GraphEdgeOss(props: GraphEdgeProps) {
   const { isEdgeHighlighted } = useLineageViewContextSafe();
 
   return <GraphEdgeBase {...props} isEdgeHighlighted={isEdgeHighlighted} />;
