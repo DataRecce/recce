@@ -12,7 +12,7 @@ import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
 import { type MouseEvent, useState } from "react";
 import { FaCloud, FaUser } from "react-icons/fa";
-import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
+import { RECCE_SUPPORT_CALENDAR_URL } from "@/lib/const";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 
 export default function AvatarDropdown() {

@@ -39,7 +39,7 @@ import React, {
   useState,
 } from "react";
 import { IoClose } from "react-icons/io5";
-import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
+import { RECCE_SUPPORT_CALENDAR_URL } from "@/lib/const";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { PUBLIC_API_URL } from "../const";
 

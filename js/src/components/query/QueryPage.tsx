@@ -28,7 +28,7 @@ import React, { useMemo } from "react";
 import { PiInfoFill } from "react-icons/pi";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
-import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
+import { RECCE_SUPPORT_CALENDAR_URL } from "@/lib/const";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import {
   defaultSqlQuery,

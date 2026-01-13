@@ -18,7 +18,7 @@
 // ============================================================================
 
 // Mock constants
-jest.mock("@/constants/urls", () => ({
+jest.mock("@/lib/const", () => ({
   RECCE_SUPPORT_CALENDAR_URL: "https://cal.com/team/recce/chat",
 }));
 
