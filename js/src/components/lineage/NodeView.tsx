@@ -20,6 +20,10 @@ import {
   RowCountTag,
   type RunTypeIconMap,
 } from "@datarecce/ui/components/lineage";
+import {
+  LearnHowLink,
+  RecceNotification,
+} from "@datarecce/ui/components/onboarding-guide";
 import { findByRunType } from "@datarecce/ui/components/run";
 import {
   SchemaView,
@@ -45,10 +49,6 @@ import { formatSelectColumns } from "@datarecce/ui/utils";
 import Typography from "@mui/material/Typography";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
-import {
-  LearnHowLink,
-  RecceNotification,
-} from "../onboarding-guide/Notification";
 import { NodeSqlView } from "./NodeSqlView";
 import { SandboxView } from "./SandboxView";
 

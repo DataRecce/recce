@@ -23,6 +23,8 @@ export { LineageCanvas, LineageView } from "./lineage";
 // Notification components
 export type { NotificationProps } from "./notifications";
 export { LineageViewNotification } from "./notifications";
+// Onboarding guide components
+export { LearnHowLink, RecceNotification } from "./onboarding-guide";
 // Profile result views and forms
 export type {
   ProfileDiffFormParams,

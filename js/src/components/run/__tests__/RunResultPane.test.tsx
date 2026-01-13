@@ -120,7 +120,7 @@ jest.mock("@/components/AuthModal/AuthModal", () => ({
 }));
 
 // Mock notification component
-jest.mock("@/components/onboarding-guide/Notification", () => ({
+jest.mock("@datarecce/ui/components/onboarding-guide/Notification", () => ({
   LearnHowLink: () => <a href="#">Learn how</a>,
   RecceNotification: ({
     children,

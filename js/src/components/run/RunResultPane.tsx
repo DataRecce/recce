@@ -22,6 +22,10 @@ import {
   createCheckByRun,
   runTypeHasRef,
 } from "@datarecce/ui/api";
+import {
+  LearnHowLink,
+  RecceNotification,
+} from "@datarecce/ui/components/onboarding-guide";
 import { DualSqlEditor, SqlEditor } from "@datarecce/ui/components/query";
 import {
   RunResultPane as BaseRunResultPane,
@@ -50,10 +54,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { type Ref, useCallback, useState } from "react";
 import AuthModal from "@/components/AuthModal/AuthModal";
-import {
-  LearnHowLink,
-  RecceNotification,
-} from "../onboarding-guide/Notification";
 
 // ============================================================================
 // OSS Props Interface
