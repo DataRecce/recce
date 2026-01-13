@@ -36,6 +36,7 @@ export {
   CheckList,
   type CheckListProps,
 } from "./CheckList";
+export { CheckListOss } from "./CheckListOss";
 
 // Lineage diff view for check results
 export {

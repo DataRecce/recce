@@ -3,6 +3,7 @@
 import { HSplit } from "@datarecce/ui";
 import { cacheKeys, listChecks, reorderChecks } from "@datarecce/ui/api";
 import { StateImporter } from "@datarecce/ui/components/app";
+import { CheckListOss as CheckList } from "@datarecce/ui/components/check";
 import { useApiConfig, useRecceCheckContext } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -21,7 +22,6 @@ import React, {
 } from "react";
 import { CheckDetail } from "@/components/check/CheckDetail";
 import { CheckEmptyState } from "@/components/check/CheckEmptyState";
-import { CheckList } from "@/components/check/CheckList";
 
 /**
  * Wrapper component that handles the Suspense boundary for useSearchParams

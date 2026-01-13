@@ -1,20 +1,10 @@
-import { cacheKeys } from "@datarecce/ui/api/cacheKeys";
-import { type Check, updateCheck } from "@datarecce/ui/api/checks";
-import { toaster } from "@datarecce/ui/components/ui";
-import { useRecceInstanceContext } from "@datarecce/ui/contexts";
-import { useApiConfig, useRun } from "@datarecce/ui/hooks";
-import {
-  CheckCard,
-  type CheckCardData,
-  type CheckRunStatus,
-  type CheckType,
-  isDisabledByNoResult,
-} from "@datarecce/ui/primitives";
+"use client";
+
 import {
   DragDropContext,
   Draggable,
   Droppable,
-  DropResult,
+  type DropResult,
 } from "@hello-pangea/dnd";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -31,6 +21,18 @@ import Typography from "@mui/material/Typography";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { IoClose } from "react-icons/io5";
+import { cacheKeys } from "../../api/cacheKeys";
+import { type Check, updateCheck } from "../../api/checks";
+import { useRecceInstanceContext } from "../../contexts";
+import { useApiConfig, useRun } from "../../hooks";
+import { toaster } from "../ui";
+import {
+  CheckCard,
+  type CheckCardData,
+  type CheckRunStatus,
+  type CheckType,
+} from "./CheckCard";
+import { isDisabledByNoResult } from "./utils";
 
 /**
  * Wrapper component that adapts Check data to CheckCard props.
@@ -90,7 +92,7 @@ const ChecklistItem = ({
   );
 };
 
-export const CheckList = ({
+export const CheckListOss = ({
   checks,
   selectedItem,
   onCheckSelected,
