@@ -17,23 +17,6 @@ jest.mock("ag-grid-community", () => ({
   AllCommunityModule: {},
 }));
 
-// Mock MUI wrapper components
-jest.mock("@/components/ui/mui", () => ({
-  Box: ({ children }: { children: React.ReactNode }) => children,
-  Flex: ({ children }: { children: React.ReactNode }) => children,
-  Icon: () => null,
-  IconButton: () => null,
-  Menu: {
-    Root: ({ children }: { children: React.ReactNode }) => children,
-    Trigger: ({ children }: { children: React.ReactNode }) => children,
-    Content: ({ children }: { children: React.ReactNode }) => children,
-    Item: ({ children }: { children: React.ReactNode }) => children,
-    ItemGroup: ({ children }: { children: React.ReactNode }) => children,
-  },
-  Portal: ({ children }: { children: React.ReactNode }) => children,
-  Text: ({ children }: { children: React.ReactNode }) => children,
-}));
-
 import { type DataFrame, type RowObjectType } from "@datarecce/ui/api";
 import { toDataDiffGridConfigured as toDataDiffGrid } from "@datarecce/ui/utils";
 import type { ColDef } from "ag-grid-community";

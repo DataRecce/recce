@@ -61,6 +61,8 @@ export {
   MarkdownContent,
   type MarkdownContentProps,
 } from "./MarkdownContent";
+export { MuiProvider } from "./mui-provider";
+export { semanticColors } from "./mui-theme";
 export { ScreenshotBox, type ScreenshotBoxProps } from "./ScreenshotBox";
 export { HSplit, type SplitProps, VSplit } from "./Split";
 export {

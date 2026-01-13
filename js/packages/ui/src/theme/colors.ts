@@ -6,7 +6,7 @@
  * colors for status indicators, and neutral grays.
  *
  * Color values are aligned with the main Recce theme at
- * js/src/components/ui/mui-theme.ts for consistency.
+ * ui/src/components/ui/mui-theme.ts for consistency.
  */
 
 export const colors = {

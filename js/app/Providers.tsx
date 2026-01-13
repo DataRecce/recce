@@ -11,7 +11,7 @@
 
 "use client";
 
-import { Toaster } from "@datarecce/ui/components/ui";
+import { MuiProvider, Toaster } from "@datarecce/ui/components/ui";
 import { ApiProvider, IdleTimeoutProvider } from "@datarecce/ui/contexts";
 import { RecceContextProvider } from "@datarecce/ui/hooks";
 import { reactQueryClient } from "@datarecce/ui/lib/api/axiosClient";
@@ -19,7 +19,6 @@ import { PUBLIC_API_URL } from "@datarecce/ui/lib/const";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { ReactNode } from "react";
-import { MuiProvider } from "@/components/ui/mui-provider";
 import { MainLayout } from "./MainLayout";
 
 interface ProvidersProps {

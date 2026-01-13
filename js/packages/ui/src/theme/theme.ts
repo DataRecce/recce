@@ -6,7 +6,7 @@
  * This integrates with the ThemeContext which manages the class toggle.
  *
  * Color values and component variants are aligned with the main Recce theme at
- * js/src/components/ui/mui-theme.ts for consistency.
+ * ui/src/components/ui/mui-theme.ts for consistency.
  */
 
 import { createTheme, type ThemeOptions } from "@mui/material/styles";

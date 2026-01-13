@@ -143,7 +143,7 @@ jest.mock("@datarecce/ui", () => ({
 }));
 
 // Mock MUI theme token
-jest.mock("@/components/ui/mui-theme", () => ({
+jest.mock("@datarecce/ui/components/ui/mui-theme", () => ({
   token: jest.fn((path: string) => {
     const tokens: Record<string, string> = {
       "colors.gray.400": "#9ca3af",
