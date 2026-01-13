@@ -57,10 +57,10 @@ jest.mock("@datarecce/ui/lib/const", () => ({
 // Imports
 // ============================================================================
 
+import { AvatarDropdown } from "@datarecce/ui/components/app";
 import { useApiConfig } from "@datarecce/ui/hooks";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
-import AvatarDropdown from "../AvatarDropdown";
 
 // ============================================================================
 // Test Fixtures
