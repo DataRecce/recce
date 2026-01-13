@@ -1,11 +1,14 @@
-import { ChangeSummary, SchemaSummary } from "@datarecce/ui/components/summary";
-import { useLineageGraphContext } from "@datarecce/ui/contexts";
+"use client";
+
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { useLineageGraphContext } from "../../contexts";
+import { ChangeSummary } from "./ChangeSummary";
+import { SchemaSummary } from "./SchemaSummary";
 
-export default function SummaryView() {
+export function SummaryView() {
   const { lineageGraph } = useLineageGraphContext();
   return (
     <>

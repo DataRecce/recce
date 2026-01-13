@@ -23,7 +23,7 @@ jest.mock("@datarecce/ui/contexts", () => ({
 }));
 
 // Mock ChangeSummary component
-jest.mock("@datarecce/ui/components/summary", () => ({
+jest.mock("@datarecce/ui/components/summary/ChangeSummary", () => ({
   ChangeSummary: ({ lineageGraph }: { lineageGraph: unknown }) => (
     <div data-testid="change-summary">
       <span data-testid="change-summary-graph">
@@ -31,6 +31,10 @@ jest.mock("@datarecce/ui/components/summary", () => ({
       </span>
     </div>
   ),
+}));
+
+// Mock SchemaSummary component
+jest.mock("@datarecce/ui/components/summary/SchemaSummary", () => ({
   SchemaSummary: ({ lineageGraph }: { lineageGraph: unknown }) => (
     <div data-testid="schema-summary">
       <span data-testid="schema-summary-graph">
@@ -45,9 +49,9 @@ jest.mock("@datarecce/ui/components/summary", () => ({
 // ============================================================================
 
 import type { LineageGraph } from "@datarecce/ui";
+import { SummaryView } from "@datarecce/ui/components/summary";
 import { useLineageGraphContext } from "@datarecce/ui/contexts";
 import { render, screen } from "@testing-library/react";
-import SummaryView from "../SummaryView";
 
 // ============================================================================
 // Test Fixtures
