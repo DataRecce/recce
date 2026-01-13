@@ -1,10 +1,10 @@
 "use client";
 
-import { useIdleTimeout } from "@datarecce/ui/contexts";
-import { formatDuration } from "@datarecce/ui/utils";
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import { IoWarning } from "react-icons/io5";
+import { useIdleTimeout } from "../../contexts";
+import { formatDuration } from "../../utils";
 
 /**
  * Warning threshold in seconds - badge appears when remaining time is below this

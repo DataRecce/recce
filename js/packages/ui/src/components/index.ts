@@ -123,6 +123,8 @@ export {
   getIconForChangeStatus,
   NODE_CHANGE_STATUS_MSGS,
 } from "./summary";
+// Timeout components
+export { IdleTimeoutBadge } from "./timeout";
 // Top-K diff components
 export type { TopKDiffResultViewProps, TopKDiffRun } from "./top-k";
 export { TopKDiffForm, TopKDiffResultView } from "./top-k";
