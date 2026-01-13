@@ -5,6 +5,8 @@
 
 // App components
 export { SetupConnectionPopover } from "./app";
+// Error boundary components
+export { ErrorBoundary, ErrorButton } from "./errorboundary";
 
 // Histogram components
 export type { HistogramDiffRun, HistogramResultViewProps } from "./histogram";

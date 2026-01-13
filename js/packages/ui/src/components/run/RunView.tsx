@@ -38,7 +38,7 @@
  *
  * @example With error boundary injection (OSS pattern)
  * ```tsx
- * import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
+ * import { ErrorBoundary } from "@datarecce/ui/components/errorboundary";
  * import ResultErrorFallback from "@datarecce/ui/lib/result/ResultErrorFallback";
  *
  * <RunView

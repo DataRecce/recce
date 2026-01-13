@@ -26,6 +26,7 @@
  */
 
 import type { Run } from "@datarecce/ui/api";
+import { ErrorBoundary } from "@datarecce/ui/components/errorboundary";
 import {
   RunView as BaseRunView,
   type RunViewProps as BaseRunViewProps,
@@ -37,7 +38,6 @@ import {
 import ResultErrorFallback from "@datarecce/ui/lib/result/ResultErrorFallback";
 import type { ReactNode, Ref } from "react";
 import { forwardRef } from "react";
-import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
 
 // ============================================================================
 // Types
