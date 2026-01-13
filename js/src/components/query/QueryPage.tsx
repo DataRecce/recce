@@ -17,7 +17,11 @@ import {
   useRecceActionContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
-import { useApiConfig } from "@datarecce/ui/hooks";
+import {
+  defaultSqlQuery,
+  useApiConfig,
+  useRecceQueryContext,
+} from "@datarecce/ui/hooks";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@datarecce/ui/lib/const";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -30,10 +34,6 @@ import React, { useMemo } from "react";
 import { PiInfoFill } from "react-icons/pi";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
-import {
-  defaultSqlQuery,
-  useRecceQueryContext,
-} from "@/lib/hooks/QueryContextAdapter";
 import { BaseEnvironmentSetupGuide } from "../lineage/SingleEnvironmentQueryView";
 
 const QueryModeToggle = () => {

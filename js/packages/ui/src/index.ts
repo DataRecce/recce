@@ -155,6 +155,7 @@ export type {
   MultiNodesActionTracking,
   MultiNodesActionTrackProps,
   MultiNodesActionType,
+  OSSQueryContext,
   ThemeColors,
   UseModelColumnsReturn,
   UseMultiNodesActionOptions,
@@ -162,8 +163,10 @@ export type {
   UseRunResult,
 } from "./hooks";
 export {
+  defaultSqlQuery,
   extractColumns,
   IGNORE_SCREENSHOT_CLASS,
+  QueryContextAdapter,
   RecceShareStateContextProvider,
   unionColumns,
   useCheckEvents,
@@ -175,6 +178,7 @@ export {
   useIsDark,
   useModelColumns,
   useMultiNodesAction,
+  useRecceQueryContext,
   useRecceShareStateContext,
   useRun,
   useThemeColors,

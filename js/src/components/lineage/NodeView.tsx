@@ -22,7 +22,11 @@ import {
   useRecceActionContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
-import { useApiConfig, useModelColumns } from "@datarecce/ui/hooks";
+import {
+  useApiConfig,
+  useModelColumns,
+  useRecceQueryContext,
+} from "@datarecce/ui/hooks";
 import {
   EXPLORE_ACTION,
   EXPLORE_SOURCE,
@@ -34,7 +38,6 @@ import Typography from "@mui/material/Typography";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
-import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 import {
   LearnHowLink,
   RecceNotification,

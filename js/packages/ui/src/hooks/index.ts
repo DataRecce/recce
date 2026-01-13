@@ -4,6 +4,12 @@
  */
 
 export {
+  defaultSqlQuery,
+  type OSSQueryContext,
+  QueryContextAdapter,
+  useRecceQueryContext,
+} from "./QueryContextAdapter";
+export {
   RecceShareStateContextProvider,
   useRecceShareStateContext,
 } from "./RecceShareStateContext";

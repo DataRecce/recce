@@ -1,7 +1,7 @@
 "use client";
 
-import { QueryProvider, useQueryContext } from "@datarecce/ui/providers";
 import { type ReactNode, useState } from "react";
+import { QueryProvider, useQueryContext } from "../providers";
 
 interface QueryContextAdapterProps {
   children: ReactNode;

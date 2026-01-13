@@ -49,9 +49,6 @@ jest.mock("@datarecce/ui/utils", () => ({
 
 // Mock QueryContextAdapter
 const mockUseRecceQueryContext = jest.fn();
-jest.mock("@/lib/hooks/QueryContextAdapter", () => ({
-  useRecceQueryContext: () => mockUseRecceQueryContext(),
-}));
 
 // Mock next/navigation
 const mockUseRouter = jest.fn();
@@ -64,6 +61,7 @@ const mockUseModelColumns = jest.fn();
 jest.mock("@datarecce/ui/hooks", () => ({
   ...jest.requireActual("@datarecce/ui/hooks"),
   useModelColumns: (model: string | undefined) => mockUseModelColumns(model),
+  useRecceQueryContext: () => mockUseRecceQueryContext(),
 }));
 
 // Mock run registry

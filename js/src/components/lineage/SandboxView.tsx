@@ -18,6 +18,7 @@ import {
   useApiConfig,
   useFeedbackCollectionToast,
   useIsDark,
+  useRecceQueryContext,
 } from "@datarecce/ui/hooks";
 import {
   trackPreviewChange,
@@ -27,7 +28,6 @@ import {
 import { DiffEditor } from "@datarecce/ui/primitives";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 import { useGuideToast } from "@/lib/hooks/useGuideToast";
 import { RunResultPane } from "../run/RunResultPane";
 

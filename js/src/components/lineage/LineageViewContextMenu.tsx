@@ -35,14 +35,13 @@ import {
   useRecceInstanceContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
-import { useModelColumns } from "@datarecce/ui/hooks";
+import { useModelColumns, useRecceQueryContext } from "@datarecce/ui/hooks";
 import {
   trackExploreAction,
   trackLineageSelection,
 } from "@datarecce/ui/lib/api/track";
 import { useRouter } from "next/navigation";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
-import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 
 // ============================================================================
 // Types
