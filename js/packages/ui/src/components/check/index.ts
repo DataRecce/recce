@@ -28,6 +28,7 @@ export {
   type CheckDetailProps,
   type CheckDetailTab,
 } from "./CheckDetail";
+export { CheckDetailOss } from "./CheckDetailOss";
 export {
   CheckEmptyState,
   type CheckEmptyStateProps,

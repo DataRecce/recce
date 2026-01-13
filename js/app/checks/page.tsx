@@ -7,6 +7,7 @@ import {
   CheckEmptyStateOss as CheckEmptyState,
   CheckListOss as CheckList,
 } from "@datarecce/ui/components/check";
+import { CheckDetailOss as CheckDetail } from "@datarecce/ui/components/check/CheckDetailOss";
 import { useApiConfig, useRecceCheckContext } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -23,7 +24,6 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { CheckDetail } from "@/components/check/CheckDetail";
 
 /**
  * Wrapper component that handles the Suspense boundary for useSearchParams

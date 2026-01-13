@@ -1,59 +1,5 @@
 "use client";
 
-import {
-  type QueryDiffParams,
-  type QueryParams,
-  type QueryRunParams,
-} from "@datarecce/ui/api/adhocQuery";
-import { cacheKeys } from "@datarecce/ui/api/cacheKeys";
-import {
-  type Check,
-  deleteCheck,
-  getCheck,
-  markAsPresetCheck,
-  updateCheck,
-} from "@datarecce/ui/api/checks";
-import { cancelRun, submitRunFromCheck } from "@datarecce/ui/api/runs";
-import type { Run, RunParamTypes } from "@datarecce/ui/api/types";
-import { VSplit } from "@datarecce/ui/components";
-import { SetupConnectionPopover } from "@datarecce/ui/components/app";
-import { SchemaDiffView } from "@datarecce/ui/components/check";
-import { LineageDiffViewOss as LineageDiffView } from "@datarecce/ui/components/check/LineageDiffViewOss";
-import { CheckTimelineOss as CheckTimeline } from "@datarecce/ui/components/check/timeline/CheckTimelineOss";
-import type { LineageViewRef } from "@datarecce/ui/components/lineage/LineageViewOss";
-import { DualSqlEditor, SqlEditor } from "@datarecce/ui/components/query";
-import {
-  findByRunType,
-  type IconComponent,
-  RefTypes,
-  RegistryEntry,
-  RunViewOss,
-  ViewOptionTypes,
-} from "@datarecce/ui/components/run";
-import { toaster } from "@datarecce/ui/components/ui";
-import {
-  useLineageGraphContext,
-  useRecceInstanceContext,
-} from "@datarecce/ui/contexts";
-import {
-  useApiConfig,
-  useClipBoardToast,
-  useCopyToClipboardButton,
-  useIsDark,
-  useRecceCheckContext,
-  useRun,
-} from "@datarecce/ui/hooks";
-import { trackCopyToClipboard } from "@datarecce/ui/lib/api/track";
-import {
-  buildCheckDescription,
-  buildCheckTitle,
-  CheckBreadcrumb,
-  CheckDescription,
-  formatSqlAsMarkdown,
-  generateCheckTemplate,
-  isDisabledByNoResult,
-  PresetCheckTemplateView,
-} from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -90,6 +36,60 @@ import { IoMdCodeWorking } from "react-icons/io";
 import { IoBookmarksOutline, IoClose } from "react-icons/io5";
 import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
 import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
+import {
+  type QueryDiffParams,
+  type QueryParams,
+  type QueryRunParams,
+} from "../../api/adhocQuery";
+import { cacheKeys } from "../../api/cacheKeys";
+import {
+  type Check,
+  deleteCheck,
+  getCheck,
+  markAsPresetCheck,
+  updateCheck,
+} from "../../api/checks";
+import { cancelRun, submitRunFromCheck } from "../../api/runs";
+import type { Run, RunParamTypes } from "../../api/types";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+} from "../../contexts";
+import {
+  useApiConfig,
+  useClipBoardToast,
+  useCopyToClipboardButton,
+  useIsDark,
+  useRecceCheckContext,
+  useRun,
+} from "../../hooks";
+import { trackCopyToClipboard } from "../../lib/api/track";
+import {
+  buildCheckDescription,
+  buildCheckTitle,
+  CheckBreadcrumb,
+  CheckDescription,
+  formatSqlAsMarkdown,
+  generateCheckTemplate,
+  isDisabledByNoResult,
+  PresetCheckTemplateView,
+} from "../../primitives";
+import { VSplit } from "..";
+import { SetupConnectionPopover } from "../app";
+import type { LineageViewRef } from "../lineage/LineageViewOss";
+import { DualSqlEditor, SqlEditor } from "../query";
+import {
+  findByRunType,
+  type IconComponent,
+  RefTypes,
+  RegistryEntry,
+  RunViewOss,
+  ViewOptionTypes,
+} from "../run";
+import { toaster } from "../ui";
+import { LineageDiffViewOss as LineageDiffView } from "./LineageDiffViewOss";
+import { SchemaDiffView } from "./SchemaDiffView";
+import { CheckTimelineOss as CheckTimeline } from "./timeline/CheckTimelineOss";
 
 interface CheckDetailProps {
   checkId: string;
@@ -98,7 +98,7 @@ interface CheckDetailProps {
 
 type TabValueList = "result" | "query";
 
-export function CheckDetail({
+export function CheckDetailOss({
   checkId,
   refreshCheckList,
 }: CheckDetailProps): ReactNode {
