@@ -445,6 +445,101 @@ class RecceCloudClientTests(unittest.TestCase):
 
         self.assertEqual(context.exception.status_code, 500)
 
+    @patch("recce_cloud.api.client.requests.request")
+    def test_upload_completed_success_with_json(self, mock_request):
+        """Test successful upload_completed call with JSON response."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock 200 response with JSON body
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = b'{"message": "Upload completed"}'
+        mock_response.json.return_value = {"message": "Upload completed"}
+        mock_request.return_value = mock_response
+
+        result = client.upload_completed(self.session_id)
+
+        self.assertEqual(result["message"], "Upload completed")
+
+        # Verify request was made correctly
+        mock_request.assert_called_once()
+        call_args = mock_request.call_args
+        self.assertEqual(call_args[0][0], "POST")
+        self.assertIn(self.session_id, call_args[0][1])
+        self.assertIn("upload-completed", call_args[0][1])
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_upload_completed_success_204_no_content(self, mock_request):
+        """Test successful upload_completed call with 204 No Content response."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock 204 No Content response
+        mock_response = MagicMock()
+        mock_response.status_code = 204
+        mock_response.content = b""
+        mock_request.return_value = mock_response
+
+        result = client.upload_completed(self.session_id)
+
+        self.assertEqual(result, {})
+
+        # Verify request was made correctly
+        mock_request.assert_called_once()
+        call_args = mock_request.call_args
+        self.assertEqual(call_args[0][0], "POST")
+        self.assertIn(self.session_id, call_args[0][1])
+        self.assertIn("upload-completed", call_args[0][1])
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_upload_completed_not_found(self, mock_request):
+        """Test upload_completed with 404 response."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock 404 response
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_response.text = "Session not found"
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as context:
+            client.upload_completed(self.session_id)
+
+        self.assertEqual(context.exception.status_code, 404)
+        self.assertIn("Session not found", context.exception.reason)
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_upload_completed_forbidden(self, mock_request):
+        """Test upload_completed with 403 response."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock 403 response
+        mock_response = MagicMock()
+        mock_response.status_code = 403
+        mock_response.json.return_value = {"detail": "Permission denied"}
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as context:
+            client.upload_completed(self.session_id)
+
+        self.assertEqual(context.exception.status_code, 403)
+        self.assertIn("Permission denied", context.exception.reason)
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_upload_completed_server_error(self, mock_request):
+        """Test upload_completed with 500 response."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock 500 response
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal server error"
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as context:
+            client.upload_completed(self.session_id)
+
+        self.assertEqual(context.exception.status_code, 500)
+
 
 if __name__ == "__main__":
     unittest.main()
