@@ -84,6 +84,11 @@
       "import": "./dist/lib/api/user.mjs",
       "require": "./dist/lib/api/user.cjs"
     },
+    "./lib/api/axiosClient": {
+      "types": "./dist/lib/api/axiosClient.d.mts",
+      "import": "./dist/lib/api/axiosClient.mjs",
+      "require": "./dist/lib/api/axiosClient.cjs"
+    },
     "./lib/result/ResultErrorFallback": {
       "types": "./dist/lib/result/ResultErrorFallback.d.mts",
       "import": "./dist/lib/result/ResultErrorFallback.mjs",
