@@ -166,6 +166,7 @@ export {
   defaultSqlQuery,
   extractColumns,
   IGNORE_SCREENSHOT_CLASS,
+  LineageGraphAdapter,
   QueryContextAdapter,
   RecceShareStateContextProvider,
   unionColumns,

@@ -32,7 +32,7 @@ jest.mock("@datarecce/ui/lib/api/track", () => ({
   trackSingleEnvironment: jest.fn(),
 }));
 
-jest.mock("@datarecce/ui/components/ui", () => ({
+jest.mock("@datarecce/ui/components/ui/Toaster", () => ({
   toaster: {
     create: jest.fn(() => "toast-id"),
   },
@@ -85,15 +85,6 @@ jest.mock("@datarecce/ui/contexts", () => {
     })),
   };
 });
-
-// Mock ApiConfigContext
-jest.mock("@datarecce/ui/hooks", () => ({
-  useApiConfig: jest.fn(() => ({
-    apiClient: {},
-    apiPrefix: "",
-    baseUrl: undefined,
-  })),
-}));
 
 // Mock WebSocket globally
 class MockWebSocket {
@@ -154,7 +145,7 @@ import {
   useLineageGraphContext,
   useRunsAggregated,
 } from "@datarecce/ui/contexts";
-import { LineageGraphAdapter } from "../LineageGraphAdapter";
+import { LineageGraphAdapter } from "@datarecce/ui/hooks";
 
 const mockGetServerInfo = getServerInfo as jest.MockedFunction<
   typeof getServerInfo

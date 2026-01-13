@@ -1,30 +1,5 @@
 "use client";
 
-import { buildLineageGraph } from "@datarecce/ui";
-import {
-  aggregateRuns,
-  cacheKeys,
-  getServerInfo,
-  markRelaunchHintCompleted,
-} from "@datarecce/ui/api";
-import {
-  RecceInstanceDisconnectedModalContent,
-  ServerDisconnectedModalContent,
-} from "@datarecce/ui/components/lineage";
-import { toaster } from "@datarecce/ui/components/ui";
-import {
-  type EnvInfo,
-  LineageGraphProvider,
-  useIdleTimeout,
-  useRecceInstanceContext,
-  useRecceServerFlag,
-} from "@datarecce/ui/contexts";
-import { useApiConfig } from "@datarecce/ui/hooks";
-import { trackSingleEnvironment } from "@datarecce/ui/lib/api/track";
-import {
-  PUBLIC_API_URL,
-  RECCE_SUPPORT_CALENDAR_URL,
-} from "@datarecce/ui/lib/const";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -44,6 +19,28 @@ import React, {
   useState,
 } from "react";
 import { IoClose } from "react-icons/io5";
+import {
+  aggregateRuns,
+  cacheKeys,
+  getServerInfo,
+  markRelaunchHintCompleted,
+} from "../api";
+import {
+  RecceInstanceDisconnectedModalContent,
+  ServerDisconnectedModalContent,
+} from "../components/lineage";
+import { toaster } from "../components/ui/Toaster";
+import {
+  buildLineageGraph,
+  type EnvInfo,
+  LineageGraphProvider,
+  useIdleTimeout,
+  useRecceInstanceContext,
+  useRecceServerFlag,
+} from "../contexts";
+import { trackSingleEnvironment } from "../lib/api/track";
+import { PUBLIC_API_URL, RECCE_SUPPORT_CALENDAR_URL } from "../lib/const";
+import { useApiConfig } from "./useApiConfig";
 
 type LineageWatcherStatus = "pending" | "connected" | "disconnected";
 type EnvWatcherStatus = undefined | "relaunch";

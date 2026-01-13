@@ -1,11 +1,11 @@
 import { RecceInstanceInfoProvider } from "@datarecce/ui/contexts";
 import {
+  LineageGraphAdapter,
   QueryContextAdapter,
   RecceShareStateContextProvider,
 } from "@datarecce/ui/hooks";
 import React from "react";
 import { CheckContextAdapter } from "./CheckContextAdapter";
-import { LineageGraphAdapter } from "./LineageGraphAdapter";
 import { RecceActionAdapter } from "./RecceActionAdapter";
 
 interface RecceContextProps {

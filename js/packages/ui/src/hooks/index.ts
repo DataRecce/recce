@@ -3,6 +3,7 @@
  * @description Barrel export for @datarecce/ui hooks
  */
 
+export { LineageGraphAdapter } from "./LineageGraphAdapter";
 export {
   defaultSqlQuery,
   type OSSQueryContext,
