@@ -12,7 +12,7 @@ import { PiMoon, PiSun } from "react-icons/pi";
  * Uses next-themes to persist the user's preference.
  * Default is light theme, with future support for system preference.
  */
-export default function DisplayModeToggle() {
+export const DisplayModeToggleOss = () => {
   const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -62,4 +62,4 @@ export default function DisplayModeToggle() {
       </IconButton>
     </Tooltip>
   );
-}
+};

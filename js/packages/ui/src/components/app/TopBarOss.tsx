@@ -1,10 +1,5 @@
-import { AuthModal, AvatarDropdown } from "@datarecce/ui/components/app";
-import { IdleTimeoutBadge } from "@datarecce/ui/components/timeout";
-import {
-  useLineageGraphContext,
-  useRecceInstanceContext,
-} from "@datarecce/ui/contexts";
-import { colors } from "@datarecce/ui/theme";
+"use client";
+
 import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
@@ -15,8 +10,16 @@ import React, { useState } from "react";
 import { IconType } from "react-icons";
 import { FaGithub, FaQuestionCircle, FaSlack } from "react-icons/fa";
 import { VscGitPullRequest } from "react-icons/vsc";
-import DisplayModeToggle from "./DisplayModeToggle";
-import RecceVersionBadge from "./RecceVersionBadge";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+} from "../../contexts";
+import { colors } from "../../theme";
+import { IdleTimeoutBadge } from "../timeout/IdleTimeoutBadge";
+import AuthModal from "./AuthModal";
+import AvatarDropdown from "./AvatarDropdown";
+import { DisplayModeToggleOss as DisplayModeToggle } from "./DisplayModeToggleOss";
+import { RecceVersionBadgeOss as RecceVersionBadge } from "./RecceVersionBadgeOss";
 
 interface LinkIconProps {
   icon: IconType;
@@ -40,7 +43,7 @@ function LinkIcon({ icon: IconComponent, href, sx, ...props }: LinkIconProps) {
   );
 }
 
-export default function TopBar() {
+export const TopBarOss = () => {
   const { reviewMode, isDemoSite, envInfo, cloudMode } =
     useLineageGraphContext();
   const { featureToggles, authed } = useRecceInstanceContext();
@@ -250,4 +253,4 @@ export default function TopBar() {
       )}
     </Box>
   );
-}
+};

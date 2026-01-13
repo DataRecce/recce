@@ -1,20 +1,7 @@
 "use client";
 
-import { type Check, cacheKeys, listChecks } from "@datarecce/ui/api";
-import {
-  EnvInfo,
-  Filename,
-  StateExporter,
-  StateSynchronizer,
-  TopLevelShare,
-} from "@datarecce/ui/components/app";
-import {
-  useLineageGraphContext,
-  useRecceInstanceContext,
-  useRecceServerFlag,
-} from "@datarecce/ui/contexts";
-import { useApiConfig } from "@datarecce/ui/hooks";
-import { trackNavigation } from "@datarecce/ui/lib/api/track";
+"use client";
+
 import Box from "@mui/material/Box";
 import Tab from "@mui/material/Tab";
 import MuiTabs from "@mui/material/Tabs";
@@ -22,6 +9,19 @@ import { useQuery } from "@tanstack/react-query";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import React, { type ReactNode, useEffect, useMemo, useRef } from "react";
+import { type Check, cacheKeys, listChecks } from "../../api";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+  useRecceServerFlag,
+} from "../../contexts";
+import { useApiConfig } from "../../hooks/useApiConfig";
+import { trackNavigation } from "../../lib/api/track";
+import { EnvInfo } from "./EnvInfo";
+import { Filename } from "./Filename";
+import { StateExporter } from "./StateExporter";
+import { TopLevelShare } from "./StateSharing";
+import { StateSynchronizer } from "./StateSynchronizer";
 
 /**
  * Route configuration for tabs
@@ -88,7 +88,7 @@ function ChecklistBadge(): ReactNode {
 }
 
 // NavBar component with Next.js Link navigation
-export default function NavBar() {
+export const NavBarOss = () => {
   const pathname = usePathname();
   const { isDemoSite, isLoading, cloudMode } = useLineageGraphContext();
   const { featureToggles } = useRecceInstanceContext();
@@ -230,4 +230,4 @@ export default function NavBar() {
       </Box>
     </Box>
   );
-}
+};

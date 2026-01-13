@@ -118,7 +118,7 @@ jest.mock("@datarecce/ui/components/app/StateSynchronizer", () => ({
 }));
 
 // Import after mocks are set up
-import NavBar from "app/(mainComponents)/NavBar";
+import { NavBarOss as NavBar } from "@datarecce/ui/components/app/NavBarOss";
 
 /**
  * Test wrapper that provides all necessary context providers

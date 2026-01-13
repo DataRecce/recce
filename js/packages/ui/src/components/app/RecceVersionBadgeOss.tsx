@@ -1,11 +1,11 @@
-import { useVersionNumber } from "@datarecce/ui/api";
-import { toaster } from "@datarecce/ui/components/ui";
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import Typography from "@mui/material/Typography";
 import React, { useEffect, useMemo } from "react";
+import { useVersionNumber } from "../../api";
+import { toaster } from "../ui";
 
-export default function RecceVersionBadge() {
+export const RecceVersionBadgeOss = () => {
   const { version, latestVersion } = useVersionNumber();
   const versionFormatRegex = useMemo(
     () => new RegExp("^\\d+\\.\\d+\\.\\d+$"),
@@ -104,4 +104,4 @@ export default function RecceVersionBadge() {
       {version}
     </Link>
   );
-}
+};

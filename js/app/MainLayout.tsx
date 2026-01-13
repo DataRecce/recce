@@ -7,8 +7,13 @@
 
 "use client";
 
+import "@fontsource/montserrat/800.css";
 import { HSplit, VSplit } from "@datarecce/ui";
-import { AuthModal } from "@datarecce/ui/components/app";
+import {
+  AuthModal,
+  NavBarOss as NavBar,
+  TopBarOss as TopBar,
+} from "@datarecce/ui/components/app";
 import {
   RunListOss,
   RunResultPaneOss as RunResultPane,
@@ -24,9 +29,6 @@ import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import { usePathname } from "next/navigation";
 import React, { ReactNode, Suspense, useEffect } from "react";
-import "@fontsource/montserrat/800.css";
-import NavBar from "app/(mainComponents)/NavBar";
-import TopBar from "app/(mainComponents)/TopBar";
 
 interface MainLayoutProps {
   children: ReactNode;
