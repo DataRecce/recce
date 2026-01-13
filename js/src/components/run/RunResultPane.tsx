@@ -34,19 +34,18 @@ import {
   useRecceActionContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
-import { useApiConfig, useRun } from "@datarecce/ui/hooks";
+import { useApiConfig, useCSVExport, useRun } from "@datarecce/ui/hooks";
 import {
   trackCopyToClipboard,
   trackShareState,
 } from "@datarecce/ui/lib/api/track";
 import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { type Ref, useCallback, useState } from "react";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
-import { useAppLocation } from "@/lib/hooks/useAppRouter";
-import { useCSVExport } from "@/lib/hooks/useCSVExport";
 import {
   LearnHowLink,
   RecceNotification,
@@ -161,7 +160,7 @@ export const PrivateLoadableRunView = ({
   const { error, run, onCancel, isRunning } = useRun(runId);
   const [viewOptions, setViewOptions] = useState<ViewOptionTypes>();
   const queryClient = useQueryClient();
-  const [, setLocation] = useAppLocation();
+  const router = useRouter();
   const { apiClient } = useApiConfig();
   const { handleShareClick } = useRecceShareStateContext();
 
@@ -207,9 +206,9 @@ export const PrivateLoadableRunView = ({
   // Go to check handler
   const handleGoToCheck = useCallback(
     (checkId: string) => {
-      setLocation(`/checks/?id=${checkId}`);
+      router.push(`/checks/?id=${checkId}`);
     },
-    [setLocation],
+    [router.push],
   );
 
   // Add to checklist handler
@@ -223,8 +222,8 @@ export const PrivateLoadableRunView = ({
       apiClient,
     );
     await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    setLocation(`/checks/?id=${check.check_id}`);
-  }, [runId, viewOptions, apiClient, queryClient, setLocation]);
+    router.push(`/checks/?id=${check.check_id}`);
+  }, [runId, viewOptions, apiClient, queryClient, router.push]);
 
   return (
     <BaseRunResultPane

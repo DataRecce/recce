@@ -9,7 +9,7 @@ import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import { useTheme } from "@mui/material/styles";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import React, {
   ReactNode,
   Suspense,
@@ -23,7 +23,6 @@ import { CheckDetail } from "@/components/check/CheckDetail";
 import { CheckEmptyState } from "@/components/check/CheckEmptyState";
 import { CheckList } from "@/components/check/CheckList";
 import { useRecceCheckContext } from "@/lib/hooks/CheckContextAdapter";
-import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
 /**
  * Wrapper component that handles the Suspense boundary for useSearchParams
@@ -85,7 +84,7 @@ function CheckPageContent(): ReactNode {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const borderColor = isDark ? "grey.700" : "grey.300";
-  const [, setLocation] = useAppLocation();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const checkId = searchParams.get("id");
   const { latestSelectedCheckId, setLatestSelectedCheckId } =
@@ -114,9 +113,9 @@ function CheckPageContent(): ReactNode {
 
   const handleSelectItem = useCallback(
     (checkId: string) => {
-      setLocation(`/checks/?id=${checkId}`);
+      router.push(`/checks/?id=${checkId}`);
     },
-    [setLocation],
+    [router.push],
   );
 
   const [orderedChecks, setOrderedChecks] = useState(checks ?? []);
@@ -175,13 +174,19 @@ function CheckPageContent(): ReactNode {
         checks.some((check) => check.check_id === latestSelectedCheckId);
 
       if (isValidLatestSelectedCheckId) {
-        setLocation(`/checks/?id=${latestSelectedCheckId}`, { replace: true });
+        router.replace(`/checks/?id=${latestSelectedCheckId}`);
       } else {
         // Fall back to the first check
-        setLocation(`/checks/?id=${checks[0].check_id}`, { replace: true });
+        router.replace(`/checks/?id=${checks[0].check_id}`);
       }
     }
-  }, [status, isValidSelection, checks, setLocation, latestSelectedCheckId]);
+  }, [
+    status,
+    isValidSelection,
+    checks,
+    latestSelectedCheckId, // Fall back to the first check
+    router.replace,
+  ]);
 
   if (isLoading) {
     return null;

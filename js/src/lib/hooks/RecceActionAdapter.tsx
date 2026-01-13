@@ -22,7 +22,7 @@ import {
 } from "@datarecce/ui/contexts";
 import { useApiConfig } from "@datarecce/ui/hooks";
 import { useQueryClient } from "@tanstack/react-query";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import React, {
   type ComponentType,
   useCallback,
@@ -31,7 +31,6 @@ import React, {
   useState,
 } from "react";
 import { RunModal } from "@/components/run/RunModal";
-import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
 // Note: AxiosQueryParams is now imported directly from @datarecce/ui/contexts
 // This adapter only exports RecceActionAdapter component and RecceActionOptions type
@@ -96,7 +95,8 @@ export function RecceActionAdapter({ children }: RecceActionAdapterProps) {
   const onModalOpen = useCallback(() => setModalOpen(true), []);
   const onModalClose = useCallback(() => setModalOpen(false), []);
 
-  const [location, setLocation] = useAppLocation();
+  const router = useRouter();
+  const pathname = usePathname();
   const queryClient = useQueryClient();
 
   // Store a ref to the showRunId function from the provider
@@ -182,8 +182,8 @@ export function RecceActionAdapter({ children }: RecceActionAdapterProps) {
           }
 
           // Navigate to lineage base if we're on a lineage subpath
-          if (location.startsWith("/lineage")) {
-            setLocation("/lineage");
+          if (pathname.startsWith("/lineage")) {
+            router.push("/lineage");
           }
 
           // Return undefined since we already called showRunId via ref
@@ -214,7 +214,7 @@ export function RecceActionAdapter({ children }: RecceActionAdapterProps) {
         return undefined;
       }
     },
-    [onModalOpen, location, setLocation, queryClient, apiClient],
+    [onModalOpen, queryClient, apiClient, pathname, router],
   );
 
   /**

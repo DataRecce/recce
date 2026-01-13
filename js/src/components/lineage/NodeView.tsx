@@ -31,10 +31,10 @@ import {
 } from "@datarecce/ui/lib/api/track";
 import { formatSelectColumns } from "@datarecce/ui/utils";
 import Typography from "@mui/material/Typography";
+import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
-import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import {
   LearnHowLink,
   RecceNotification,
@@ -88,7 +88,7 @@ function OSSNotificationComponent({ onClose }: { onClose: () => void }) {
  * - Sandbox dialog component
  */
 export function NodeView({ node, onCloseNode }: NodeViewProps) {
-  const [, setLocation] = useAppLocation();
+  const router = useRouter();
   const { runAction } = useRecceActionContext();
   const { isActionAvailable, envInfo } = useLineageGraphContext();
   const { singleEnv: isSingleEnvOnboarding, featureToggles } =
@@ -135,7 +135,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         } else if (envInfo?.adapterType === "sqlmesh") {
           setSqlQuery(`select * from ${node.data.name}`);
         }
-        setLocation("/query");
+        router.push("/query");
       },
 
       onRowCountClick: () => {
@@ -199,7 +199,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         if (isActionAvailable("query_diff_with_primary_key")) {
           setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
         }
-        setLocation("/query");
+        router.push("/query");
       },
 
       onValueDiffClick: () => {
@@ -246,7 +246,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           { node_id: node.id },
           apiClient,
         );
-        setLocation(`/checks/?id=${check.check_id}`);
+        router.push(`/checks/?id=${check.check_id}`);
       },
 
       onSandboxClick: () => {
@@ -264,12 +264,12 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
       query,
       envInfo,
       setSqlQuery,
-      setLocation,
       runAction,
       isActionAvailable,
       setPrimaryKeys,
       primaryKey,
       apiClient,
+      router.push,
     ],
   );
 

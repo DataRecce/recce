@@ -40,9 +40,9 @@ import {
   trackExploreAction,
   trackLineageSelection,
 } from "@datarecce/ui/lib/api/track";
+import { useRouter } from "next/navigation";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
-import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
 // ============================================================================
 // Types
@@ -67,7 +67,7 @@ interface LineageViewContextMenuProps<T> {
 const useContextMenuDeps = (modelName?: string): LineageViewContextMenuDeps => {
   const { runAction } = useRecceActionContext();
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
-  const [, setLocation] = useAppLocation();
+  const router = useRouter();
   const { primaryKey } = useModelColumns(modelName);
 
   return {
@@ -75,7 +75,7 @@ const useContextMenuDeps = (modelName?: string): LineageViewContextMenuDeps => {
       runAction(type, params as Parameters<typeof runAction>[1], options);
     },
     onNavigate: (path) => {
-      setLocation(path);
+      router.push(path);
     },
     onTrack: (event, props) => {
       if (event === "explore_action") {

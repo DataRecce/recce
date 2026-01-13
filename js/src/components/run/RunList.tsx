@@ -30,10 +30,10 @@ import { useApiConfig } from "@datarecce/ui/hooks";
 import { trackHistoryAction } from "@datarecce/ui/lib/api/track";
 import IconButton from "@mui/material/IconButton";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useCallback, useMemo } from "react";
 import { FaCheckCircle, FaRegCheckCircle } from "react-icons/fa";
 import { PiX } from "react-icons/pi";
-import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
 /**
  * Transform API Run to RunListItemData for the UI component
@@ -65,7 +65,7 @@ export function RunList() {
   const { closeHistory, showRunId, runId } = useRecceActionContext();
   const { featureToggles } = useRecceInstanceContext();
   const { apiClient } = useApiConfig();
-  const [, setLocation] = useAppLocation();
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   // Fetch all runs
@@ -98,18 +98,18 @@ export function RunList() {
       trackHistoryAction({ name: "add_to_checklist" });
       const check = await createCheckByRun(clickedRunId, undefined, apiClient);
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-      setLocation(`/checks/?id=${check.check_id}`);
+      router.push(`/checks/?id=${check.check_id}`);
     },
-    [apiClient, queryClient, setLocation],
+    [apiClient, queryClient, router.push],
   );
 
   // Handle go to check with tracking
   const handleGoToCheck = useCallback(
     (checkId: string) => {
       trackHistoryAction({ name: "go_to_check" });
-      setLocation(`/checks/?id=${checkId}`);
+      router.push(`/checks/?id=${checkId}`);
     },
-    [setLocation],
+    [router.push],
   );
 
   // Handle close history with tracking

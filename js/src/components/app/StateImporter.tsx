@@ -18,11 +18,11 @@ import Stack from "@mui/material/Stack";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePathname, useRouter } from "next/navigation";
 import React, { ChangeEvent, useCallback, useRef, useState } from "react";
 import { FaFileImport } from "react-icons/fa6";
 import { IoClose } from "react-icons/io5";
 import { PiInfo } from "react-icons/pi";
-import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   const isDark = useIsDark();
@@ -33,7 +33,8 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [open, setOpen] = useState(false);
-  const [location, setLocation] = useAppLocation();
+  const router = useRouter();
+  const pathname = usePathname();
   const [, refetchRunsAggregated] = useRunsAggregated();
 
   const handleImport = useCallback(async () => {
@@ -50,8 +51,8 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
       refetchRunsAggregated?.();
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       await queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
-      if (location.includes("/checks")) {
-        setLocation("/checks");
+      if (pathname.includes("/checks")) {
+        router.push("/checks");
       }
       const description = checksOnly
         ? `${checks} checks imported successfully`
@@ -77,11 +78,11 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   }, [
     queryClient,
     selectedFile,
-    location,
-    setLocation,
+    pathname,
     refetchRunsAggregated,
     checksOnly,
     apiClient,
+    router.push,
   ]);
 
   const handleClick = () => {

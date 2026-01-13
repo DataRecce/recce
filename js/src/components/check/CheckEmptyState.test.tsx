@@ -26,9 +26,9 @@ jest.mock("@datarecce/ui/api", () => ({
 }));
 
 // Mock the app router
-const mockSetLocation = jest.fn();
-jest.mock("@/lib/hooks/useAppRouter", () => ({
-  useAppLocation: () => ["/checks", mockSetLocation],
+const mockPush = jest.fn();
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
 }));
 
 // Mock the API config
@@ -56,7 +56,7 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 describe("CheckEmptyState", () => {
   beforeEach(() => {
     mockCreateSchemaDiffCheck.mockClear();
-    mockSetLocation.mockClear();
+    mockPush.mockClear();
   });
 
   describe("rendering", () => {
@@ -131,9 +131,7 @@ describe("CheckEmptyState", () => {
       );
 
       await waitFor(() => {
-        expect(mockSetLocation).toHaveBeenCalledWith(
-          "/checks/?id=new-check-123",
-        );
+        expect(mockPush).toHaveBeenCalledWith("/checks/?id=new-check-123");
       });
     });
 

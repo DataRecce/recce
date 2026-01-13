@@ -1,6 +1,6 @@
 import type { Check } from "@datarecce/ui/api";
+import { useRouter } from "next/navigation";
 import { useCallback } from "react";
-import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
 /**
  * Hook that provides navigation to a check's detail page.
@@ -10,13 +10,13 @@ import { useAppLocation } from "@/lib/hooks/useAppRouter";
  * @returns A function that navigates to the given check's detail page
  */
 export const useNavToCheck = () => {
-  const [, setLocation] = useAppLocation();
+  const router = useRouter();
   return useCallback(
     (check: Check) => {
       if (check.check_id) {
-        setLocation(`/checks/?id=${check.check_id}`);
+        router.push(`/checks/?id=${check.check_id}`);
       }
     },
-    [setLocation],
+    [router.push],
   );
 };

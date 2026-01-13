@@ -66,6 +66,7 @@ import Typography from "@mui/material/Typography";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { stripIndents } from "common-tags";
 import { formatDistanceToNow } from "date-fns";
+import { useRouter } from "next/navigation";
 import React, {
   type MouseEvent,
   ReactNode,
@@ -83,7 +84,6 @@ import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { CheckTimeline } from "@/components/check/timeline";
 import { useRecceCheckContext } from "@/lib/hooks/CheckContextAdapter";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
-import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { LineageViewRef } from "../lineage/LineageView";
 import { RunView } from "../run/RunView";
 import { LineageDiffView } from "./LineageDiffView";
@@ -111,7 +111,7 @@ export function CheckDetail({
   const { setLatestSelectedCheckId } = useRecceCheckContext();
   const { cloudMode } = useLineageGraphContext();
   const queryClient = useQueryClient();
-  const [, setLocation] = useAppLocation();
+  const router = useRouter();
   const { successToast, failToast } = useClipBoardToast();
   const [submittedRunId, setSubmittedRunId] = useState<string>();
   const [progress] = useState<Run["progress"]>();
@@ -165,7 +165,7 @@ export function CheckDetail({
     onSuccess: async () => {
       setLatestSelectedCheckId("");
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-      setLocation("/checks");
+      router.push("/checks");
     },
   });
 

@@ -373,8 +373,11 @@ const mockShowRunId = jest.fn();
 const mockCloseRunResult = jest.fn();
 const mockRunAction = jest.fn();
 
-jest.mock("@/lib/hooks/useAppRouter", () => ({
-  useAppLocation: jest.fn(() => ["/lineage", jest.fn()]),
+jest.mock("next/navigation", () => ({
+  usePathname: jest.fn(() => "/lineage"),
+  useRouter: jest.fn(() => ({
+    push: jest.fn(),
+  })),
 }));
 
 // Mock ScreenShot hook

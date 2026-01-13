@@ -15,12 +15,12 @@ import {
 import { useApiConfig } from "@datarecce/ui/hooks";
 import { CheckEmptyState as CheckEmptyStateUI } from "@datarecce/ui/primitives";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { TbChecklist } from "react-icons/tb";
-import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
 export const CheckEmptyState = () => {
   const queryClient = useQueryClient();
-  const [, setLocation] = useAppLocation();
+  const router = useRouter();
   const { apiClient } = useApiConfig();
 
   const { mutate: createSchemaCheck, isPending } = useMutation({
@@ -28,7 +28,7 @@ export const CheckEmptyState = () => {
       createSchemaDiffCheck({ select: "state:modified" }, apiClient),
     onSuccess: async (check: Check) => {
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-      setLocation(`/checks/?id=${check.check_id}`);
+      router.push(`/checks/?id=${check.check_id}`);
     },
   });
 

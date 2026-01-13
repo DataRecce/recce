@@ -52,8 +52,10 @@ jest.mock("@datarecce/ui/hooks", () => ({
   })),
 }));
 
-jest.mock("@/lib/hooks/useAppRouter", () => ({
-  useAppLocation: jest.fn(() => [undefined, jest.fn()]),
+jest.mock("next/navigation", () => ({
+  useRouter: jest.fn(() => ({
+    push: jest.fn(),
+  })),
 }));
 
 // Mock track functions
@@ -550,9 +552,9 @@ describe("RunList", () => {
     });
 
     it("navigates to check after adding to checklist", async () => {
-      const mockSetLocation = jest.fn();
-      const useAppLocation = require("@/lib/hooks/useAppRouter").useAppLocation;
-      useAppLocation.mockReturnValue([undefined, mockSetLocation]);
+      const mockPush = jest.fn();
+      const useRouter = require("next/navigation").useRouter;
+      useRouter.mockReturnValue({ push: mockPush });
 
       const run = createMockRun({ run_id: "test-run", check_id: undefined });
       mockListRuns.mockResolvedValue([run]);
@@ -570,9 +572,7 @@ describe("RunList", () => {
       fireEvent.click(element);
 
       await waitFor(() => {
-        expect(mockSetLocation).toHaveBeenCalledWith(
-          "/checks/?id=new-check-id",
-        );
+        expect(mockPush).toHaveBeenCalledWith("/checks/?id=new-check-id");
       });
     });
 
@@ -618,9 +618,9 @@ describe("RunList", () => {
     });
 
     it("navigates to check when go to check is clicked", async () => {
-      const mockSetLocation = jest.fn();
-      const useAppLocation = require("@/lib/hooks/useAppRouter").useAppLocation;
-      useAppLocation.mockReturnValue([undefined, mockSetLocation]);
+      const mockPush = jest.fn();
+      const useRouter = require("next/navigation").useRouter;
+      useRouter.mockReturnValue({ push: mockPush });
 
       const run = createMockRun({ check_id: "existing-check" });
       mockListRuns.mockResolvedValue([run]);
@@ -637,16 +637,14 @@ describe("RunList", () => {
       fireEvent.click(element);
 
       await waitFor(() => {
-        expect(mockSetLocation).toHaveBeenCalledWith(
-          "/checks/?id=existing-check",
-        );
+        expect(mockPush).toHaveBeenCalledWith("/checks/?id=existing-check");
       });
     });
 
     it("tracks go_to_check action when button is clicked", async () => {
-      const mockSetLocation = jest.fn();
-      const useAppLocation = require("@/lib/hooks/useAppRouter").useAppLocation;
-      useAppLocation.mockReturnValue([undefined, mockSetLocation]);
+      const mockPush = jest.fn();
+      const useRouter = require("next/navigation").useRouter;
+      useRouter.mockReturnValue({ push: mockPush });
 
       const run = createMockRun({ check_id: "existing-check" });
       mockListRuns.mockResolvedValue([run]);

@@ -79,6 +79,11 @@ jest.mock("@datarecce/ui/hooks", () => ({
     onCancel: mockOnCancel,
     isRunning: false,
   })),
+  useCSVExport: jest.fn(() => ({
+    canExportCSV: true,
+    copyAsCSV: jest.fn(),
+    downloadAsCSV: jest.fn(),
+  })),
 }));
 
 // Mock CodeEditor
@@ -88,18 +93,9 @@ jest.mock("@datarecce/ui/primitives", () => ({
   ),
 }));
 
-const mockSetLocation = jest.fn();
-jest.mock("@/lib/hooks/useAppRouter", () => ({
-  useAppLocation: jest.fn(() => [undefined, mockSetLocation]),
-}));
-
-// Mock CSV export hook
-jest.mock("@/lib/hooks/useCSVExport", () => ({
-  useCSVExport: jest.fn(() => ({
-    canExportCSV: true,
-    copyAsCSV: jest.fn(),
-    downloadAsCSV: jest.fn(),
-  })),
+const mockPush = jest.fn();
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
 }));
 
 // Mock screenshot hook
@@ -979,9 +975,7 @@ describe("RunResultPane", () => {
       fireEvent.click(addButton);
 
       await waitFor(() => {
-        expect(mockSetLocation).toHaveBeenCalledWith(
-          "/checks/?id=new-check-id",
-        );
+        expect(mockPush).toHaveBeenCalledWith("/checks/?id=new-check-id");
       });
     });
 

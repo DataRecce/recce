@@ -62,9 +62,12 @@ jest.mock("@datarecce/ui/components/run", () => ({
   })),
 }));
 
-// Mock useAppLocation
-jest.mock("../useAppRouter", () => ({
-  useAppLocation: jest.fn(() => ["/lineage", jest.fn()]),
+// Mock next/navigation
+jest.mock("next/navigation", () => ({
+  usePathname: jest.fn(() => "/lineage"),
+  useRouter: jest.fn(() => ({
+    push: jest.fn(),
+  })),
 }));
 
 // Mock RunModal component
@@ -85,16 +88,27 @@ import { searchRuns, submitRun } from "@datarecce/ui/api";
 import { findByRunType } from "@datarecce/ui/components/run";
 import { toaster } from "@datarecce/ui/components/ui";
 import { useRecceActionContext } from "@datarecce/ui/contexts";
+import { usePathname, useRouter } from "next/navigation";
 import { RecceActionAdapter } from "../RecceActionAdapter";
-import { useAppLocation } from "../useAppRouter";
 
 const mockSubmitRun = submitRun as jest.MockedFunction<typeof submitRun>;
 const mockSearchRuns = searchRuns as jest.MockedFunction<typeof searchRuns>;
 const mockFindByRunType = findByRunType as jest.Mock;
 const mockToaster = toaster as jest.Mocked<typeof toaster>;
-const mockUseAppLocation = useAppLocation as jest.MockedFunction<
-  typeof useAppLocation
->;
+const mockUsePathname = usePathname as jest.MockedFunction<typeof usePathname>;
+const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
+
+const createMockRouter = (
+  overrides: Partial<ReturnType<typeof useRouter>> = {},
+) => ({
+  back: jest.fn(),
+  forward: jest.fn(),
+  prefetch: jest.fn(),
+  push: jest.fn(),
+  refresh: jest.fn(),
+  replace: jest.fn(),
+  ...overrides,
+});
 
 function createTestQueryClient() {
   return new QueryClient({
@@ -182,9 +196,9 @@ function TestConsumer() {
 describe("RecceActionAdapter", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset location mock
-    const mockSetLocation = jest.fn();
-    mockUseAppLocation.mockReturnValue(["/lineage", mockSetLocation]);
+    // Reset router mocks
+    mockUsePathname.mockReturnValue("/lineage");
+    mockUseRouter.mockReturnValue(createMockRouter());
   });
 
   describe("provider basics", () => {
@@ -838,11 +852,9 @@ describe("RecceActionAdapter", () => {
      * and the handler returns undefined (not the run_id) to prevent double calls.
      */
     it("sets run result state and navigates when on lineage subpath", async () => {
-      const mockSetLocation = jest.fn();
-      mockUseAppLocation.mockReturnValue([
-        "/lineage/node/test",
-        mockSetLocation,
-      ]);
+      const mockPush = jest.fn();
+      mockUsePathname.mockReturnValue("/lineage/node/test");
+      mockUseRouter.mockReturnValue(createMockRouter({ push: mockPush }));
 
       mockFindByRunType.mockReturnValue({
         title: "Profile Diff",
@@ -885,12 +897,13 @@ describe("RecceActionAdapter", () => {
       expect(screen.getByTestId("is-run-result-open")).toHaveTextContent(
         "true",
       );
-      expect(mockSetLocation).toHaveBeenCalledWith("/lineage");
+      expect(mockPush).toHaveBeenCalledWith("/lineage");
     });
 
     it("does not navigate when not on lineage path", async () => {
-      const mockSetLocation = jest.fn();
-      mockUseAppLocation.mockReturnValue(["/checks", mockSetLocation]);
+      const mockPush = jest.fn();
+      mockUsePathname.mockReturnValue("/checks");
+      mockUseRouter.mockReturnValue(createMockRouter({ push: mockPush }));
 
       mockFindByRunType.mockReturnValue({
         title: "Query Diff",
@@ -924,8 +937,8 @@ describe("RecceActionAdapter", () => {
         "true",
       );
 
-      // But setLocation should NOT have been called since we're not on /lineage
-      expect(mockSetLocation).not.toHaveBeenCalled();
+      // But push should NOT have been called since we're not on /lineage
+      expect(mockPush).not.toHaveBeenCalled();
     });
   });
 

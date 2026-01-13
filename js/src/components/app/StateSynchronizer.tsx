@@ -22,10 +22,10 @@ import Stack from "@mui/material/Stack";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePathname, useRouter } from "next/navigation";
 import React, { useCallback, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { PiInfo } from "react-icons/pi";
-import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { IconSync } from "../icons";
 
 function isCheckDetailPage(href: string): boolean {
@@ -48,7 +48,8 @@ export function StateSynchronizer() {
   const [isSyncing, setSyncing] = useState(false);
   const queryClient = useQueryClient();
   const { apiClient } = useApiConfig();
-  const [location, setLocation] = useAppLocation();
+  const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [syncOption, setSyncOption] = useState<
     "overwrite" | "revert" | "merge" | ""
@@ -87,11 +88,11 @@ export function StateSynchronizer() {
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       await queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
 
-      if (isCheckDetailPage(location)) {
-        setLocation("/checks");
+      if (isCheckDetailPage(pathname)) {
+        router.push("/checks");
       }
     },
-    [queryClient, location, setLocation, apiClient],
+    [queryClient, pathname, apiClient, router.push],
   );
 
   if (isSyncing) return <StateSpinner />;

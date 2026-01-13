@@ -53,10 +53,10 @@ jest.mock("@/lib/hooks/QueryContextAdapter", () => ({
   useRecceQueryContext: () => mockUseRecceQueryContext(),
 }));
 
-// Mock useAppRouter
-const mockUseAppLocation = jest.fn();
-jest.mock("@/lib/hooks/useAppRouter", () => ({
-  useAppLocation: () => mockUseAppLocation(),
+// Mock next/navigation
+const mockUseRouter = jest.fn();
+jest.mock("next/navigation", () => ({
+  useRouter: () => mockUseRouter(),
 }));
 
 // Mock useModelColumns
@@ -279,8 +279,8 @@ const setupDefaultMocks = () => {
     setPrimaryKeys: jest.fn(),
   });
 
-  // Default AppLocation mock
-  mockUseAppLocation.mockReturnValue(["/lineage", jest.fn()]);
+  // Default router mock
+  mockUseRouter.mockReturnValue({ push: jest.fn() });
 
   // Default useModelColumns mock
   mockUseModelColumns.mockReturnValue({
@@ -831,9 +831,9 @@ describe("LineageViewContextMenu", () => {
     });
 
     it("navigates to /query when Query is clicked", () => {
-      const mockSetLocation = jest.fn();
+      const mockPush = jest.fn();
       const mockSetSqlQuery = jest.fn();
-      mockUseAppLocation.mockReturnValue(["/lineage", mockSetLocation]);
+      mockUseRouter.mockReturnValue({ push: mockPush });
       mockUseRecceQueryContext.mockReturnValue({
         setSqlQuery: mockSetSqlQuery,
         setPrimaryKeys: jest.fn(),
@@ -853,7 +853,7 @@ describe("LineageViewContextMenu", () => {
       fireEvent.click(screen.getByText("Query"));
 
       expect(mockSetSqlQuery).toHaveBeenCalled();
-      expect(mockSetLocation).toHaveBeenCalledWith("/query");
+      expect(mockPush).toHaveBeenCalledWith("/query");
     });
   });
 
