@@ -1,5 +1,5 @@
+import { LineageViewOss as LineageView } from "@datarecce/ui/components/lineage/LineageViewOss";
 import { ReactFlowProvider } from "@xyflow/react";
-import { LineageView } from "./LineageView";
 
 export function LineagePage() {
   return (

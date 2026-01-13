@@ -230,14 +230,23 @@ jest.mock("@datarecce/ui/components/lineage", () => {
     ...actual,
     BaseEnvironmentSetupNotification: jest.fn(() => null),
     getIconForChangeStatus: jest.fn(() => ({ hexColor: "#000000" })),
-    LineageLegend: jest.fn(({ variant }) => (
-      <div data-testid={`lineage-legend-${variant}`} />
-    )),
+  };
+});
+
+jest.mock("@datarecce/ui/components/lineage/legend", () => ({
+  LineageLegend: jest.fn(({ variant }) => (
+    <div data-testid={`lineage-legend-${variant}`} />
+  )),
+}));
+
+jest.mock(
+  "@datarecce/ui/components/lineage/topbar/LineageViewTopBarOss",
+  () => ({
     LineageViewTopBarOss: jest.fn(() => (
       <div data-testid="lineage-view-topbar" />
     )),
-  };
-});
+  }),
+);
 
 jest.mock("@datarecce/ui/components/lineage/NodeViewOss", () => ({
   NodeViewOss: jest.fn(({ node, onCloseNode }) => (
@@ -251,6 +260,20 @@ jest.mock("@datarecce/ui/components/lineage/NodeViewOss", () => ({
 
 // Mock @datarecce/ui/components/ui
 jest.mock("@datarecce/ui/components/ui", () => ({
+  HSplit: ({
+    children,
+    sizes,
+  }: {
+    children?: React.ReactNode;
+    sizes?: number[];
+  }) => (
+    <div
+      data-testid="hsplit"
+      data-sizes={sizes ? JSON.stringify(sizes) : undefined}
+    >
+      {children}
+    </div>
+  ),
   toaster: {
     create: jest.fn(),
   },
@@ -420,11 +443,11 @@ jest.mock("@tanstack/react-query", () => ({
 
 import { select } from "@datarecce/ui/api";
 import {
-  LineageView,
+  LineageViewOss as LineageView,
   type LineageViewProps,
   type LineageViewRef,
   PrivateLineageView,
-} from "../LineageView";
+} from "@datarecce/ui/components/lineage/LineageViewOss";
 
 // Wrap PrivateLineageView with forwardRef for testing purposes
 // This is needed because PrivateLineageView is a function that takes (props, ref)

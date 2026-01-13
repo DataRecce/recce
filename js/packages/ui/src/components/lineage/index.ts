@@ -27,6 +27,11 @@ export {
   ModelNodeContextMenu,
   useLineageViewContextMenu,
 } from "./LineageViewContextMenuOss";
+export {
+  LineageViewOss,
+  type LineageViewProps as LineageViewOssProps,
+  type LineageViewRef as LineageViewOssRef,
+} from "./LineageViewOss";
 export * from "./legend";
 export { layout, toReactFlow } from "./lineage";
 // SQL view component with dependency-injected editors

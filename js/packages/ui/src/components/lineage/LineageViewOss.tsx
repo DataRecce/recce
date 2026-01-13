@@ -1,20 +1,6 @@
-import type {
-  LineageGraphColumnNode,
-  LineageGraphEdge,
-  LineageGraphNode,
-  LineageGraphNodes,
-  LineageViewContextType,
-  NodeColumnSetMap,
-} from "@datarecce/ui";
-import {
-  HSplit,
-  isLineageGraphColumnNode,
-  isLineageGraphNode,
-  selectDownstream,
-  selectUpstream,
-  union,
-} from "@datarecce/ui";
-import type { Check } from "@datarecce/ui/api";
+"use client";
+
+import type { Check } from "../../api";
 import {
   type CllInput,
   type ColumnLineageData,
@@ -28,43 +14,41 @@ import {
   isValueDiffRun,
   type LineageDiffViewOptions,
   select,
-} from "@datarecce/ui/api";
-import {
-  BaseEnvironmentSetupNotification,
-  LineageLegend,
-  LineageViewTopBarOss as LineageViewTopBar,
-} from "@datarecce/ui/components/lineage";
-import { ActionControlOss } from "@datarecce/ui/components/lineage/ActionControlOss";
-import { ColumnLevelLineageControlOss } from "@datarecce/ui/components/lineage/ColumnLevelLineageControlOss";
-import {
-  LineageViewContextMenu,
-  useLineageViewContextMenu,
-} from "@datarecce/ui/components/lineage/LineageViewContextMenuOss";
-import { layout, toReactFlow } from "@datarecce/ui/components/lineage/lineage";
-import { NodeViewOss as NodeView } from "@datarecce/ui/components/lineage/NodeViewOss";
-import SetupConnectionBanner from "@datarecce/ui/components/lineage/SetupConnectionBannerOss";
-import { LineageViewNotification } from "@datarecce/ui/components/notifications";
-import { toaster } from "@datarecce/ui/components/ui";
+} from "../../api";
 import {
   LineageViewContext,
   useLineageGraphContext,
   useRecceActionContext,
   useRecceInstanceContext,
-} from "@datarecce/ui/contexts";
+} from "../../contexts";
+import {
+  isLineageGraphColumnNode,
+  isLineageGraphNode,
+  type LineageGraphColumnNode,
+  type LineageGraphEdge,
+  type LineageGraphNode,
+  type LineageGraphNodes,
+  type LineageViewContextType,
+} from "../../contexts/lineage/types";
+import {
+  type NodeColumnSetMap,
+  selectDownstream,
+  selectUpstream,
+  union,
+} from "../../contexts/lineage/utils";
 import {
   IGNORE_SCREENSHOT_CLASS,
   useApiConfig,
   useRun,
   useThemeColors,
-} from "@datarecce/ui/hooks";
-import { useMultiNodesActionOss as useMultiNodesAction } from "@datarecce/ui/hooks/useMultiNodesActionOss";
-import useValueDiffAlertDialog from "@datarecce/ui/hooks/useValueDiffAlertDialogOss";
+} from "../../hooks";
+import { useMultiNodesActionOss as useMultiNodesAction } from "../../hooks/useMultiNodesActionOss";
+import useValueDiffAlertDialog from "../../hooks/useValueDiffAlertDialogOss";
 import {
   trackCopyToClipboard,
   trackMultiNodesAction,
-} from "@datarecce/ui/lib/api/track";
-import "@datarecce/ui/styles";
-import { colors } from "@datarecce/ui/theme";
+} from "../../lib/api/track";
+import "../../styles";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
@@ -85,23 +69,6 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import {
-  edgeTypes,
-  getNodeColor,
-  initialNodes,
-  nodeTypes,
-} from "@datarecce/ui/components/lineage/config";
-import {
-  useLineageCopyToClipboard,
-  useNavToCheck,
-  useResizeObserver,
-  useTrackLineageRender,
-} from "@datarecce/ui/components/lineage/hooks";
-import {
-  LineageViewError,
-  LineageViewLoading,
-  LineageViewNoChanges,
-} from "@datarecce/ui/components/lineage/states";
 import { AxiosError } from "axios";
 import React, {
   forwardRef,
@@ -115,6 +82,33 @@ import React, {
   useState,
 } from "react";
 import { FiCopy } from "react-icons/fi";
+import { colors } from "../../theme";
+import { LineageViewNotification } from "../notifications";
+import { HSplit, toaster } from "../ui";
+import { ActionControlOss } from "./ActionControlOss";
+import { ColumnLevelLineageControlOss } from "./ColumnLevelLineageControlOss";
+import { edgeTypes, getNodeColor, initialNodes, nodeTypes } from "./config";
+import {
+  useLineageCopyToClipboard,
+  useNavToCheck,
+  useResizeObserver,
+  useTrackLineageRender,
+} from "./hooks";
+import {
+  LineageViewContextMenu,
+  useLineageViewContextMenu,
+} from "./LineageViewContextMenuOss";
+import { LineageLegend } from "./legend";
+import { layout, toReactFlow } from "./lineage";
+import { NodeViewOss as NodeView } from "./NodeViewOss";
+import SetupConnectionBanner from "./SetupConnectionBannerOss";
+import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
+import {
+  LineageViewError,
+  LineageViewLoading,
+  LineageViewNoChanges,
+} from "./states";
+import { LineageViewTopBarOss as LineageViewTopBar } from "./topbar/LineageViewTopBarOss";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -1192,6 +1186,6 @@ export function PrivateLineageView(
   );
 }
 
-export const LineageView = forwardRef<LineageViewRef, LineageViewProps>(
+export const LineageViewOss = forwardRef<LineageViewRef, LineageViewProps>(
   PrivateLineageView,
 );

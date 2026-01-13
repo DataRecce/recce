@@ -9,5 +9,4 @@
 
 export { CheckTimeline } from "./CheckTimeline";
 
-// TimelineEvent is kept local (has OSS-specific avatar fetching via React Query)
 export { TimelineEvent } from "./TimelineEvent";
