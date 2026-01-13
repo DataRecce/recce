@@ -1,8 +1,8 @@
+import { RECCE_SUPPORT_CALENDAR_URL } from "@datarecce/ui/lib/const";
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import MuiPopover from "@mui/material/Popover";
 import { ReactElement, useCallback, useRef, useState } from "react";
-import { RECCE_SUPPORT_CALENDAR_URL } from "@/lib/const";
 
 interface SetupConnectionPopoverProps {
   children: ReactElement<{

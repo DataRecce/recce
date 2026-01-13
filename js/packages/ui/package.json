@@ -69,6 +69,11 @@
       "import": "./dist/components-run.mjs",
       "require": "./dist/components-run.cjs"
     },
+    "./lib/const": {
+      "types": "./dist/lib/const.d.mts",
+      "import": "./dist/lib/const.mjs",
+      "require": "./dist/lib/const.cjs"
+    },
     "./lib/api/track": {
       "types": "./dist/lib/api/track.d.mts",
       "import": "./dist/lib/api/track.mjs",

@@ -20,6 +20,10 @@ import {
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
 import { trackSingleEnvironment } from "@datarecce/ui/lib/api/track";
+import {
+  PUBLIC_API_URL,
+  RECCE_SUPPORT_CALENDAR_URL,
+} from "@datarecce/ui/lib/const";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -39,9 +43,7 @@ import React, {
   useState,
 } from "react";
 import { IoClose } from "react-icons/io5";
-import { RECCE_SUPPORT_CALENDAR_URL } from "@/lib/const";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { PUBLIC_API_URL } from "../const";
 
 // Re-export types for backward compatibility
 export type { EnvInfo } from "@datarecce/ui/contexts";

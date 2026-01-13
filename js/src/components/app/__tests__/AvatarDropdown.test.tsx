@@ -49,7 +49,7 @@ jest.mock("react-icons/fa", () => ({
 }));
 
 // Mock constants
-jest.mock("@/lib/const", () => ({
+jest.mock("@datarecce/ui/lib/const", () => ({
   RECCE_SUPPORT_CALENDAR_URL: "https://cal.com/team/recce/chat",
 }));
 

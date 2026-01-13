@@ -1,5 +1,6 @@
 import { cacheKeys } from "@datarecce/ui/api";
 import { fetchGitHubAvatar, fetchUser } from "@datarecce/ui/lib/api/user";
+import { RECCE_SUPPORT_CALENDAR_URL } from "@datarecce/ui/lib/const";
 import MuiAvatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -12,7 +13,6 @@ import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
 import { type MouseEvent, useState } from "react";
 import { FaCloud, FaUser } from "react-icons/fa";
-import { RECCE_SUPPORT_CALENDAR_URL } from "@/lib/const";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 
 export default function AvatarDropdown() {

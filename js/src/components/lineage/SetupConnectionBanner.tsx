@@ -8,8 +8,8 @@ import {
   useRecceInstanceContext,
   useRecceInstanceInfo,
 } from "@datarecce/ui/contexts";
+import { RECCE_SUPPORT_CALENDAR_URL } from "@datarecce/ui/lib/const";
 import { getSettingsUrl } from "@datarecce/ui/utils";
-import { RECCE_SUPPORT_CALENDAR_URL } from "@/lib/const";
 
 /**
  * Props for the OSS SetupConnectionBanner wrapper.

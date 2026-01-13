@@ -1,6 +1,6 @@
 import { useApiConfigOptional as useDatarecceApiConfigOptional } from "@datarecce/ui";
+import { PUBLIC_API_URL } from "@datarecce/ui/lib/const";
 import axios, { AxiosInstance } from "axios";
-import { PUBLIC_API_URL } from "@/lib/const";
 
 /**
  * OSS API Configuration Adapter

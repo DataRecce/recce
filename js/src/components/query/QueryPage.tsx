@@ -17,6 +17,7 @@ import {
   useRecceActionContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
+import { RECCE_SUPPORT_CALENDAR_URL } from "@datarecce/ui/lib/const";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
@@ -28,7 +29,6 @@ import React, { useMemo } from "react";
 import { PiInfoFill } from "react-icons/pi";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
-import { RECCE_SUPPORT_CALENDAR_URL } from "@/lib/const";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import {
   defaultSqlQuery,
