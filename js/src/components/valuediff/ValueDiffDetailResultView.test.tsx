@@ -35,16 +35,12 @@ jest.mock("@datarecce/ui/components/ui/dataGrid", () => ({
 }));
 
 // Mock ScreenshotDataGrid with our test utility mock
-jest.mock("@/components/data-grid/ScreenshotDataGrid", () => ({
+jest.mock("@datarecce/ui/primitives", () => ({
   ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
     .screenshotDataGridMock,
   EmptyRowsRenderer: ({ emptyMessage }: { emptyMessage: string }) => (
     <div data-testid="empty-rows-renderer">{emptyMessage}</div>
   ),
-}));
-
-// Mock RunToolbar from @datarecce/ui/primitives
-jest.mock("@datarecce/ui/primitives", () => ({
   RunToolbar: jest.fn(
     ({
       children,

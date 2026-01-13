@@ -6,6 +6,11 @@ import {
   useLineageViewContext,
 } from "@datarecce/ui/contexts";
 import { trackColumnLevelLineage } from "@datarecce/ui/lib/api/track";
+import {
+  type DataGridHandle,
+  EmptyRowsRenderer,
+  ScreenshotDataGrid,
+} from "@datarecce/ui/primitives";
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import type {
@@ -22,11 +27,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import {
-  type DataGridHandle,
-  EmptyRowsRenderer,
-  ScreenshotDataGrid,
-} from "../data-grid/ScreenshotDataGrid";
 
 interface SchemaViewProps {
   base?: NodeData;
@@ -157,6 +157,8 @@ function PrivateSingleEnvSchemaView(
           onCellClicked={handleCellClicked}
           onGridReady={handleGridReady}
           rowSelection={{ mode: "singleRow" }}
+          containerClassName="no-track-pii-safe"
+          rowClassName="no-track-pii-safe"
         />
       )}
     </Box>
@@ -325,6 +327,8 @@ export function PrivateSchemaView(
           onCellClicked={handleCellClicked}
           onGridReady={handleGridReady}
           rowSelection={{ mode: "singleRow" }}
+          containerClassName="no-track-pii-safe"
+          rowClassName="no-track-pii-safe"
         />
       )}
     </Box>

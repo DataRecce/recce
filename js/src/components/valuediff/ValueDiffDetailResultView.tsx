@@ -19,8 +19,8 @@ import {
   DiffDisplayModeSwitch,
 } from "@datarecce/ui/components/ui";
 import { createDataGrid } from "@datarecce/ui/components/ui/dataGrid";
+import type { DataGridHandle } from "@datarecce/ui/primitives";
 import { createResultView, type ResultViewData } from "@datarecce/ui/result";
-import type { DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 
 import "@datarecce/ui/components/query/styles.css";
 
