@@ -45,6 +45,7 @@ export {
   type SingleEnvironmentNotificationProps,
   type SqlEditorProps,
 } from "./RunResultPane";
+export { RunResultPaneOss } from "./RunResultPaneOss";
 export {
   formatRunDate,
   formatRunDateTime,

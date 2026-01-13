@@ -15,7 +15,6 @@ import Box from "@mui/material/Box";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import { useQuery } from "@tanstack/react-query";
-import type { ComponentType } from "react";
 import React, { forwardRef, useMemo, useState } from "react";
 import type { IconType } from "react-icons";
 

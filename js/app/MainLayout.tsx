@@ -9,7 +9,10 @@
 
 import { HSplit, VSplit } from "@datarecce/ui";
 import { AuthModal } from "@datarecce/ui/components/app";
-import { RunListOss } from "@datarecce/ui/components/run";
+import {
+  RunListOss,
+  RunResultPaneOss as RunResultPane,
+} from "@datarecce/ui/components/run";
 import {
   useLineageGraphContext,
   useRecceActionContext,
@@ -21,7 +24,6 @@ import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import { usePathname } from "next/navigation";
 import React, { ReactNode, Suspense, useEffect } from "react";
-import { RunResultPane } from "@/components/run/RunResultPane";
 import "@fontsource/montserrat/800.css";
 import NavBar from "app/(mainComponents)/NavBar";
 import TopBar from "app/(mainComponents)/TopBar";

@@ -10,6 +10,7 @@ import {
   type SandboxNodeData,
 } from "@datarecce/ui/components/lineage";
 import { QueryForm } from "@datarecce/ui/components/query";
+import { RunResultPaneOss as RunResultPane } from "@datarecce/ui/components/run";
 import {
   useRecceActionContext,
   useRecceServerFlag,
@@ -29,7 +30,6 @@ import {
 import { DiffEditor } from "@datarecce/ui/primitives";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { RunResultPane } from "../run/RunResultPane";
 
 interface SandboxViewProps {
   isOpen: boolean;

@@ -1,7 +1,7 @@
 /**
- * CheckEmptyState - OSS wrapper around @datarecce/ui primitive
+ * CheckEmptyState - wrapper around @datarecce/ui primitive
  *
- * Adds OSS-specific business logic:
+ * Adds business logic:
  * - API calls to create schema diff check
  * - Navigation after check creation
  * - Query cache invalidation

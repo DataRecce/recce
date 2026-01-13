@@ -1,6 +1,8 @@
+"use client";
+
 /**
- * @file run/RunResultPane.tsx
- * @description OSS wrapper for @datarecce/ui RunResultPane component.
+ * @file run/RunResultPaneOss.tsx
+ * @description OSS wrapper for RunResultPane component.
  *
  * This thin wrapper:
  * 1. Imports the base component from @datarecce/ui
@@ -13,47 +15,34 @@
  * - Screenshot/clipboard functionality (useCopyToClipboardButton)
  * - CSV export functionality (useCSVExport)
  * - Run management (useRun hook)
- * - Navigation (useAppLocation)
+ * - Navigation (useRouter)
  */
 
+import Typography from "@mui/material/Typography";
+import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { type Ref, useCallback, useState } from "react";
 import {
   type AxiosQueryParams,
   cacheKeys,
   createCheckByRun,
   runTypeHasRef,
-} from "@datarecce/ui/api";
-import { AuthModal } from "@datarecce/ui/components/app";
-import {
-  LearnHowLink,
-  RecceNotification,
-} from "@datarecce/ui/components/onboarding-guide";
-import { DualSqlEditor, SqlEditor } from "@datarecce/ui/components/query";
-import {
-  RunResultPane as BaseRunResultPane,
-  findByRunType,
-  RefTypes,
-  RegistryEntry,
-  ViewOptionTypes,
-} from "@datarecce/ui/components/run";
-import {
-  useRecceActionContext,
-  useRecceInstanceContext,
-} from "@datarecce/ui/contexts";
+} from "../../api";
+import { useRecceActionContext, useRecceInstanceContext } from "../../contexts";
 import {
   useApiConfig,
   useCopyToClipboardButton,
   useCSVExport,
   useRecceShareStateContext,
   useRun,
-} from "@datarecce/ui/hooks";
-import {
-  trackCopyToClipboard,
-  trackShareState,
-} from "@datarecce/ui/lib/api/track";
-import Typography from "@mui/material/Typography";
-import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { type Ref, useCallback, useState } from "react";
+} from "../../hooks";
+import { trackCopyToClipboard, trackShareState } from "../../lib/api/track";
+import AuthModal from "../app/AuthModal";
+import { LearnHowLink, RecceNotification } from "../onboarding-guide";
+import { DualSqlEditor, SqlEditor } from "../query";
+import { RunResultPane as BaseRunResultPane } from "./RunResultPane";
+import { findByRunType } from "./registry";
+import { RefTypes, RegistryEntry, ViewOptionTypes } from "./types";
 
 // ============================================================================
 // OSS Props Interface
@@ -148,7 +137,7 @@ const AuthModalAdapter = ({
 
 /**
  * OSS implementation that loads run data and injects OSS-specific behavior
- * into the @datarecce/ui RunResultPane component.
+ * into the RunResultPane component.
  */
 export const PrivateLoadableRunView = ({
   runId,
@@ -270,13 +259,13 @@ export const PrivateLoadableRunView = ({
 };
 
 // ============================================================================
-// RunResultPane - Public Component (OSS Wrapper)
+// RunResultPaneOss - Public Component (OSS Wrapper)
 // ============================================================================
 
 /**
  * OSS RunResultPane Component
  *
- * A thin wrapper around @datarecce/ui RunResultPane that injects OSS-specific
+ * A thin wrapper around RunResultPane that injects OSS-specific
  * context and behavior including:
  * - Analytics tracking (Amplitude)
  * - Share state context
@@ -286,11 +275,11 @@ export const PrivateLoadableRunView = ({
  *
  * @example
  * ```tsx
- * import { RunResultPane } from "@/components/run/RunResultPane";
+ * import { RunResultPaneOss } from "@datarecce/ui/components/run";
  *
  * function MyRunView() {
  *   return (
- *     <RunResultPane
+ *     <RunResultPaneOss
  *       onClose={() => handleClose()}
  *       isSingleEnvironment={isSingleEnv}
  *     />
@@ -298,7 +287,7 @@ export const PrivateLoadableRunView = ({
  * }
  * ```
  */
-export const RunResultPane = ({
+export const RunResultPaneOss = ({
   onClose,
   isSingleEnvironment,
 }: RunPageProps) => {
