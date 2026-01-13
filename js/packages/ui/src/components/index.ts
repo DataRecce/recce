@@ -127,6 +127,7 @@ export {
   calculateColumnChange,
   getIconForChangeStatus,
   NODE_CHANGE_STATUS_MSGS,
+  SchemaSummary,
 } from "./summary";
 // Timeout components
 export { IdleTimeoutBadge } from "./timeout";

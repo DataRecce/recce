@@ -31,10 +31,6 @@ jest.mock("@datarecce/ui/components/summary", () => ({
       </span>
     </div>
   ),
-}));
-
-// Mock SchemaSummary component
-jest.mock("../SchemaSummary", () => ({
   SchemaSummary: ({ lineageGraph }: { lineageGraph: unknown }) => (
     <div data-testid="schema-summary">
       <span data-testid="schema-summary-graph">

@@ -66,8 +66,8 @@ jest.mock("@datarecce/ui/components/lineage", () => ({
 
 import type { LineageGraph, LineageGraphNode } from "@datarecce/ui";
 import type { NodeData } from "@datarecce/ui/api";
+import { SchemaSummary } from "@datarecce/ui/components/summary";
 import { render, screen, waitFor } from "@testing-library/react";
-import { SchemaSummary } from "../SchemaSummary";
 
 // ============================================================================
 // Test Fixtures

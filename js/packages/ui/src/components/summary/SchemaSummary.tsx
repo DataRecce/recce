@@ -1,10 +1,5 @@
-import type { LineageGraph, LineageGraphNode } from "@datarecce/ui";
-import {
-  ResourceTypeTag,
-  RowCountDiffTag,
-} from "@datarecce/ui/components/lineage";
-import { SchemaView } from "@datarecce/ui/components/schema";
-import { mergeKeysWithStatus } from "@datarecce/ui/utils";
+"use client";
+
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -12,6 +7,10 @@ import CardHeader from "@mui/material/CardHeader";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useEffect, useState } from "react";
+import type { LineageGraph, LineageGraphNode } from "../../contexts";
+import { mergeKeysWithStatus } from "../../utils";
+import { ResourceTypeTag, RowCountDiffTag } from "../lineage";
+import { SchemaView } from "../schema";
 
 interface SchemaDiffCardProps {
   title: string;
@@ -68,11 +67,11 @@ function listChangedNodes(lineageGraph: LineageGraph) {
   return changedNodes;
 }
 
-export interface Props {
+export interface SchemaSummaryProps {
   lineageGraph: LineageGraph;
 }
 
-export function SchemaSummary({ lineageGraph }: Props) {
+export function SchemaSummary({ lineageGraph }: SchemaSummaryProps) {
   const [changedNodes, setChangedNodes] = useState<LineageGraphNode[]>([]);
 
   useEffect(() => {
