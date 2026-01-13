@@ -2,8 +2,8 @@
 
 // Timeline primitives - pure presentation components for check event timelines
 
+export { CheckTimelineOss } from "./CheckTimelineOss";
 export { CommentInput, type CommentInputProps } from "./CommentInput";
-
 export {
   type TimelineActor,
   TimelineEvent,
@@ -11,3 +11,4 @@ export {
   type TimelineEventProps,
   type TimelineEventType,
 } from "./TimelineEvent";
+export { TimelineEventOss } from "./TimelineEventOss";

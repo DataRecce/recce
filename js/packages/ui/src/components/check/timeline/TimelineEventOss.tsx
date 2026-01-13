@@ -10,10 +10,8 @@
  * - preset_applied: Shows preset application
  */
 
-import { type CheckEvent, getEventIconType } from "@datarecce/ui/api";
-import { useIsDark } from "@datarecce/ui/hooks";
-import { fetchGitHubAvatar } from "@datarecce/ui/lib/api/user";
-import { MarkdownContent } from "@datarecce/ui/primitives";
+"use client";
+
 import MuiAvatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -36,6 +34,10 @@ import {
   PiPlusCircle,
   PiTrashSimple,
 } from "react-icons/pi";
+import { type CheckEvent, getEventIconType } from "../../../api";
+import { useIsDark } from "../../../hooks/useIsDark";
+import { fetchGitHubAvatar } from "../../../lib/api/user";
+import { MarkdownContent } from "../../../primitives";
 
 interface TimelineEventProps {
   event: CheckEvent;
@@ -446,7 +448,7 @@ function CommentEvent({
   );
 }
 
-export function TimelineEvent({
+export function TimelineEventOss({
   event,
   currentUserId,
   onEdit,

@@ -1,31 +1,5 @@
-import {
-  type QueryParams,
-  type SubmitOptions,
-  submitQuery,
-  submitQueryBase,
-  submitQueryDiff,
-  waitRun,
-} from "@datarecce/ui/api";
-import { HistoryToggle } from "@datarecce/ui/components";
-import { SetupConnectionPopover } from "@datarecce/ui/components/app";
-import { BaseEnvironmentSetupGuide } from "@datarecce/ui/components/lineage";
-import {
-  DualSqlEditor,
-  QueryForm,
-  SetupConnectionGuide,
-  SqlEditor,
-} from "@datarecce/ui/components/query";
-import {
-  useLineageGraphContext,
-  useRecceActionContext,
-  useRecceInstanceContext,
-} from "@datarecce/ui/contexts";
-import {
-  defaultSqlQuery,
-  useApiConfig,
-  useRecceQueryContext,
-} from "@datarecce/ui/hooks";
-import { RECCE_SUPPORT_CALENDAR_URL } from "@datarecce/ui/lib/const";
+"use client";
+
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
@@ -33,8 +7,33 @@ import MuiSwitch from "@mui/material/Switch";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMutation } from "@tanstack/react-query";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { PiInfoFill } from "react-icons/pi";
+import {
+  type QueryParams,
+  type SubmitOptions,
+  submitQuery,
+  submitQueryBase,
+  submitQueryDiff,
+  waitRun,
+} from "../../api";
+import { HistoryToggle } from "../../components";
+import { SetupConnectionPopover } from "../../components/app";
+import { BaseEnvironmentSetupGuide } from "../../components/lineage";
+import {
+  useLineageGraphContext,
+  useRecceActionContext,
+  useRecceInstanceContext,
+} from "../../contexts";
+import {
+  defaultSqlQuery,
+  useApiConfig,
+  useRecceQueryContext,
+} from "../../hooks";
+import { RECCE_SUPPORT_CALENDAR_URL } from "../../lib/const";
+import { QueryForm } from "./QueryForm";
+import { SetupConnectionGuide } from "./SetupConnectionGuide";
+import SqlEditor, { DualSqlEditor } from "./SqlEditor";
 
 const QueryModeToggle = () => {
   const { isCustomQueries, setCustomQueries, sqlQuery, setBaseSqlQuery } =
@@ -72,7 +71,7 @@ const QueryModeToggle = () => {
   );
 };
 
-export const QueryPage = () => {
+export const QueryPageOss = () => {
   const {
     sqlQuery: _sqlQuery,
     baseSqlQuery,
@@ -87,7 +86,7 @@ export const QueryPage = () => {
 
   let sqlQuery = _sqlQuery;
   if (envInfo?.adapterType === "sqlmesh" && _sqlQuery === defaultSqlQuery) {
-    sqlQuery = `select * from db.mymodel`;
+    sqlQuery = "select * from db.mymodel";
   }
 
   if (featureToggles.mode === "read only") {

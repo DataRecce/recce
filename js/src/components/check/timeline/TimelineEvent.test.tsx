@@ -12,13 +12,13 @@
  */
 
 import type { CheckEvent } from "@datarecce/ui/api";
+import { TimelineEventOss as TimelineEvent } from "@datarecce/ui/components/check/timeline/TimelineEventOss";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { TimelineEvent } from "./TimelineEvent";
 
 // Mock useIsDark hook
-jest.mock("@datarecce/ui/hooks", () => ({
+jest.mock("@datarecce/ui/hooks/useIsDark", () => ({
   useIsDark: () => false,
 }));
 
@@ -33,15 +33,11 @@ jest.mock("@datarecce/ui/lib/api/user", () => ({
 }));
 
 // Mock MarkdownContent from @datarecce/ui/primitives
-jest.mock("@datarecce/ui/primitives", () => {
-  const actual = jest.requireActual("@datarecce/ui/primitives");
-  return {
-    ...actual,
-    MarkdownContent: ({ content }: { content: string }) => (
-      <div data-testid="markdown-content">{content}</div>
-    ),
-  };
-});
+jest.mock("@datarecce/ui/primitives", () => ({
+  MarkdownContent: ({ content }: { content: string }) => (
+    <div data-testid="markdown-content">{content}</div>
+  ),
+}));
 
 const createEvent = (overrides: Partial<CheckEvent> = {}): CheckEvent => ({
   id: "event-1",

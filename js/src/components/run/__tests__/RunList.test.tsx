@@ -60,7 +60,16 @@ jest.mock("next/navigation", () => ({
 
 // Mock track functions
 jest.mock("@datarecce/ui/lib/api/track", () => ({
+  EXPLORE_ACTION: {
+    ROW_COUNT: "row_count",
+    ROW_COUNT_DIFF: "row_count_diff",
+    VALUE_DIFF: "value_diff",
+  },
+  EXPLORE_SOURCE: {
+    LINEAGE_VIEW_TOP_BAR: "lineage_view_top_bar",
+  },
   trackHistoryAction: jest.fn(),
+  trackExploreAction: jest.fn(),
 }));
 
 // Mock registry

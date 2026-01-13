@@ -16,6 +16,7 @@ export { GraphNode as GraphNodeOss, type GraphNodeProps } from "./GraphNodeOss";
 export * from "./hooks";
 // Composed components for rendering lineage graphs
 export { LineageCanvas, type LineageCanvasProps } from "./LineageCanvas";
+export { LineagePageOss } from "./LineagePageOss";
 export {
   LineageView,
   type LineageViewProps,

@@ -7,23 +7,25 @@
  * This component is only rendered when connected to Recce Cloud.
  */
 
-import { cacheKeys } from "@datarecce/ui/api";
-import { useApiConfig, useCheckEvents, useIsDark } from "@datarecce/ui/hooks";
-import { fetchUser } from "@datarecce/ui/lib/api/user";
-import { CommentInput } from "@datarecce/ui/primitives";
+"use client";
+
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
-import { TimelineEvent } from ".";
+import { cacheKeys } from "../../../api";
+import { useApiConfig, useCheckEvents, useIsDark } from "../../../hooks";
+import { fetchUser } from "../../../lib/api/user";
+import { CommentInput } from "../../../primitives";
+import { TimelineEventOss as TimelineEvent } from "./TimelineEventOss";
 
 interface CheckTimelineProps {
   checkId: string;
 }
 
-export function CheckTimeline({ checkId }: CheckTimelineProps) {
+export function CheckTimelineOss({ checkId }: CheckTimelineProps) {
   const isDark = useIsDark();
   const { apiClient } = useApiConfig();
   const {

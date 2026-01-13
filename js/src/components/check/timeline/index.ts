@@ -7,6 +7,5 @@
  * NOTE: This feature is only available when connected to Recce Cloud.
  */
 
-export { CheckTimeline } from "./CheckTimeline";
-
-export { TimelineEvent } from "./TimelineEvent";
+export { CheckTimelineOss as CheckTimeline } from "@datarecce/ui/components/check/timeline/CheckTimelineOss";
+export { TimelineEventOss as TimelineEvent } from "@datarecce/ui/components/check/timeline/TimelineEventOss";

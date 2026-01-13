@@ -19,6 +19,7 @@ import { VSplit } from "@datarecce/ui/components";
 import { SetupConnectionPopover } from "@datarecce/ui/components/app";
 import { SchemaDiffView } from "@datarecce/ui/components/check";
 import { LineageDiffViewOss as LineageDiffView } from "@datarecce/ui/components/check/LineageDiffViewOss";
+import { CheckTimelineOss as CheckTimeline } from "@datarecce/ui/components/check/timeline/CheckTimelineOss";
 import type { LineageViewRef } from "@datarecce/ui/components/lineage/LineageViewOss";
 import { DualSqlEditor, SqlEditor } from "@datarecce/ui/components/query";
 import {
@@ -89,7 +90,6 @@ import { IoMdCodeWorking } from "react-icons/io";
 import { IoBookmarksOutline, IoClose } from "react-icons/io5";
 import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
 import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
-import { CheckTimeline } from "@/components/check/timeline";
 
 interface CheckDetailProps {
   checkId: string;

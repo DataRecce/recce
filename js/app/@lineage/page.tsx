@@ -7,7 +7,7 @@
  */
 "use client";
 
-import { LineagePage } from "@/components/lineage/LineagePage";
+import { LineagePageOss as LineagePage } from "@datarecce/ui/components/lineage/LineagePageOss";
 
 export default function LineageSlotPage() {
   return <LineagePage />;

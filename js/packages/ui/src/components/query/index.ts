@@ -13,6 +13,7 @@ export {
 } from "./QueryDiffResultView";
 // QueryForm - Primary key selection for query diff
 export { QueryForm, type QueryFormProps } from "./QueryForm";
+export { QueryPageOss } from "./QueryPageOss";
 // QueryResultView - Displays single query results
 export {
   QueryResultView,
