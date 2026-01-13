@@ -34,27 +34,14 @@ jest.mock("@datarecce/ui/api", () => {
 });
 
 // Mock the toaster
-jest.mock("@datarecce/ui/components/ui", () => ({
+jest.mock("@datarecce/ui/components/ui/Toaster", () => ({
   toaster: {
     create: jest.fn(),
   },
 }));
 
-// Mock the ApiConfigContext
-jest.mock("@datarecce/ui/hooks", () => ({
-  useApiConfig: jest.fn(() => ({
-    apiPrefix: "",
-    authToken: undefined,
-    apiClient: {
-      post: jest.fn(),
-      get: jest.fn(),
-    },
-  })),
-}));
-
 // Mock the run registry
 jest.mock("@datarecce/ui/components/run", () => ({
-  ...jest.requireActual("@datarecce/ui/components/run"),
   findByRunType: jest.fn((type: string) => ({
     title: `${type} Title`,
     icon: () => null,
@@ -85,10 +72,10 @@ jest.mock("next/navigation", () => ({
 
 import { searchRuns, submitRun } from "@datarecce/ui/api";
 import { findByRunType } from "@datarecce/ui/components/run";
-import { toaster } from "@datarecce/ui/components/ui";
+import { toaster } from "@datarecce/ui/components/ui/Toaster";
 import { useRecceActionContext } from "@datarecce/ui/contexts";
+import { RecceActionAdapter } from "@datarecce/ui/hooks";
 import { usePathname, useRouter } from "next/navigation";
-import { RecceActionAdapter } from "../RecceActionAdapter";
 
 const mockSubmitRun = submitRun as jest.MockedFunction<typeof submitRun>;
 const mockSearchRuns = searchRuns as jest.MockedFunction<typeof searchRuns>;

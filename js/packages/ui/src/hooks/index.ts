@@ -16,6 +16,10 @@ export {
   useRecceQueryContext,
 } from "./QueryContextAdapter";
 export {
+  RecceActionAdapter,
+  type RecceActionOptions,
+} from "./RecceActionAdapter";
+export {
   RecceShareStateContextProvider,
   useRecceShareStateContext,
 } from "./RecceShareStateContext";

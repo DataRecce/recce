@@ -68,17 +68,14 @@ jest.mock("@/components/ui/mui", () => ({
   Spacer: () => null,
 }));
 
-jest.mock("@/lib/hooks/RecceActionAdapter", () => ({
-  useRecceActionContext: () => ({
-    runAction: jest.fn(),
-  }),
-}));
-
 jest.mock("@datarecce/ui/contexts", () => ({
   useRecceInstanceContext: () => ({
     featureToggles: {
       disableDatabaseQuery: false,
     },
+  }),
+  useRecceActionContext: () => ({
+    runAction: jest.fn(),
   }),
 }));
 

@@ -38,11 +38,8 @@ jest.mock("@datarecce/ui/components/lineage", () => {
 
 // Mock @datarecce/ui/hooks
 jest.mock("@datarecce/ui/hooks", () => ({
+  ...jest.requireActual("@datarecce/ui/hooks"),
   useIsDark: jest.fn(() => false),
-}));
-
-// Mock RecceActionAdapter
-jest.mock("@/lib/hooks/RecceActionAdapter", () => ({
   useRecceActionContext: jest.fn(() => ({
     isHistoryOpen: false,
     showHistory: jest.fn(),

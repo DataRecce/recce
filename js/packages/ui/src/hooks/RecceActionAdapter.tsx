@@ -1,27 +1,5 @@
 "use client";
 
-import type { Run, RunParamTypes, RunType } from "@datarecce/ui/api";
-import {
-  cacheKeys,
-  type SubmitRunTrackProps,
-  searchRuns,
-  submitRun,
-} from "@datarecce/ui/api";
-import type { RunFormProps } from "@datarecce/ui/components/run";
-import {
-  findByRunType,
-  type RegistryEntry,
-  type RunFormParamTypes,
-  RunModalOss,
-} from "@datarecce/ui/components/run";
-import { toaster } from "@datarecce/ui/components/ui";
-import {
-  type AxiosQueryParams,
-  RecceActionProvider,
-  type RecceActionOptions as UIRecceActionOptions,
-  useRecceActionContext as useUIRecceActionContext,
-} from "@datarecce/ui/contexts";
-import { useApiConfig } from "@datarecce/ui/hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import React, {
@@ -31,6 +9,28 @@ import React, {
   useRef,
   useState,
 } from "react";
+import type { Run, RunParamTypes, RunType } from "../api";
+import {
+  cacheKeys,
+  type SubmitRunTrackProps,
+  searchRuns,
+  submitRun,
+} from "../api";
+import {
+  findByRunType,
+  type RegistryEntry,
+  type RunFormParamTypes,
+  type RunFormProps,
+  RunModalOss,
+} from "../components/run";
+import { toaster } from "../components/ui/Toaster";
+import {
+  type AxiosQueryParams,
+  RecceActionProvider,
+  type RecceActionOptions as UIRecceActionOptions,
+  useRecceActionContext as useUIRecceActionContext,
+} from "../contexts";
+import { useApiConfig } from "./useApiConfig";
 
 // Note: AxiosQueryParams is now imported directly from @datarecce/ui/contexts
 // This adapter only exports RecceActionAdapter component and RecceActionOptions type

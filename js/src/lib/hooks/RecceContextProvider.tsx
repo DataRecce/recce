@@ -3,10 +3,10 @@ import {
   CheckContextAdapter,
   LineageGraphAdapter,
   QueryContextAdapter,
+  RecceActionAdapter,
   RecceShareStateContextProvider,
 } from "@datarecce/ui/hooks";
 import React from "react";
-import { RecceActionAdapter } from "./RecceActionAdapter";
 
 interface RecceContextProps {
   children: React.ReactNode;
