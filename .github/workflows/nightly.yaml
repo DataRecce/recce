@@ -154,13 +154,13 @@ jobs:
       - name: Patch Recce Cloud Version
         id: patch_version
         run: |
-          # Patch version
+          # Patch version directly in recce_cloud/recce_cloud/VERSION
           if [[ "$RELEASE_TYPE" == "Alpha Release" && "$ALPHA_VERSION" != "" ]]; then
             echo "Manually alpha version serial number: $ALPHA_VERSION"
-            sed -i.bak "s/\.dev.*$/\.$(date '+%Y%m%d')a$ALPHA_VERSION/" recce/VERSION
+            sed -i.bak "s/\.dev.*$/\.$(date '+%Y%m%d')a$ALPHA_VERSION/" recce_cloud/recce_cloud/VERSION
           else
             latest_version=$(curl -s https://pypi.org/pypi/recce-cloud-nightly/json  | jq -r .info.version)
-            new_version=$(cat recce/VERSION | sed "s/\.dev.*$/\.$(date '+%Y%m%d')/")
+            new_version=$(cat recce_cloud/recce_cloud/VERSION | sed "s/\.dev.*$/\.$(date '+%Y%m%d')/")
 
             # Extract date-only portion of both
             latest_date=$(echo "$latest_version" | sed -E 's/^.*\.([0-9]{8}).*/\1/')
@@ -177,14 +177,11 @@ jobs:
               fi
               final_version="${new_version}-post${post_num}"
             fi
-            echo "$final_version" > recce/VERSION
+            echo "$final_version" > recce_cloud/recce_cloud/VERSION
           fi
 
-          # Copy to recce_cloud (CRITICAL)
-          cp recce/VERSION recce_cloud/VERSION
-
-          echo "Nightly version: $(cat recce_cloud/VERSION)"
-          echo "nightly_version=$(cat recce_cloud/VERSION)" >> $GITHUB_OUTPUT
+          echo "Nightly version: $(cat recce_cloud/recce_cloud/VERSION)"
+          echo "nightly_version=$(cat recce_cloud/recce_cloud/VERSION)" >> $GITHUB_OUTPUT
         env:
           ALPHA_VERSION: ${{ inputs.alpha_version || '' }}
           RELEASE_TYPE: ${{ inputs.release_type || 'Release' }}
