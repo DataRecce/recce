@@ -1,16 +1,3 @@
-import { SchemaDiffRow, SchemaRow } from "@datarecce/ui";
-import type { NodeData } from "@datarecce/ui/api";
-import { createDataGridFromData } from "@datarecce/ui/components/ui/dataGrid";
-import {
-  useLineageGraphContext,
-  useLineageViewContext,
-} from "@datarecce/ui/contexts";
-import { trackColumnLevelLineage } from "@datarecce/ui/lib/api/track";
-import {
-  type DataGridHandle,
-  EmptyRowsRenderer,
-  ScreenshotDataGrid,
-} from "@datarecce/ui/primitives";
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import type {
@@ -27,6 +14,19 @@ import {
   useMemo,
   useState,
 } from "react";
+import type { NodeData } from "../../api";
+import { useLineageGraphContext, useLineageViewContext } from "../../contexts";
+import { trackColumnLevelLineage } from "../../lib/api/track";
+import type {
+  SchemaDiffRow,
+  SchemaRow,
+} from "../../lib/dataGrid/generators/toSchemaDataGrid";
+import {
+  type DataGridHandle,
+  EmptyRowsRenderer,
+  ScreenshotDataGrid,
+} from "../../primitives";
+import { createDataGridFromData } from "../ui/dataGrid";
 
 interface SchemaViewProps {
   base?: NodeData;

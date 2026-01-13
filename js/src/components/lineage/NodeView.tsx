@@ -18,6 +18,10 @@ import {
 } from "@datarecce/ui/components/lineage";
 import { findByRunType } from "@datarecce/ui/components/run";
 import {
+  SchemaView,
+  SingleEnvSchemaView,
+} from "@datarecce/ui/components/schema";
+import {
   useLineageGraphContext,
   useRecceActionContext,
   useRecceInstanceContext,
@@ -42,7 +46,6 @@ import {
   LearnHowLink,
   RecceNotification,
 } from "../onboarding-guide/Notification";
-import { SchemaView, SingleEnvSchemaView } from "../schema/SchemaView";
 import { NodeSqlView } from "./NodeSqlView";
 import { ResourceTypeTag, RowCountDiffTag, RowCountTag } from "./NodeTag";
 import { SandboxView } from "./SandboxView";

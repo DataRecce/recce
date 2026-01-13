@@ -108,6 +108,8 @@ export {
   SchemaTable,
   type SchemaTableHandle,
   type SchemaTableProps,
+  SchemaView,
+  SingleEnvSchemaView,
 } from "./schema";
 // Summary components
 export type {

@@ -21,3 +21,4 @@ export {
   type SchemaTableHandle,
   type SchemaTableProps,
 } from "./SchemaTable";
+export { SchemaView, SingleEnvSchemaView } from "./SchemaView";

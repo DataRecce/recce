@@ -44,7 +44,7 @@ jest.mock("@datarecce/ui/utils", () => ({
   }),
 }));
 
-jest.mock("../../schema/SchemaView", () => ({
+jest.mock("@datarecce/ui/components/schema", () => ({
   SchemaView: ({ base, current }: { base?: unknown; current?: unknown }) => (
     <div data-testid="schema-view">
       <span>{base ? "Has Base" : "No Base"}</span>

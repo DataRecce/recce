@@ -1,4 +1,5 @@
 import type { LineageGraph, LineageGraphNode } from "@datarecce/ui";
+import { SchemaView } from "@datarecce/ui/components/schema";
 import { mergeKeysWithStatus } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
@@ -8,7 +9,6 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useEffect, useState } from "react";
 import { ResourceTypeTag, RowCountDiffTag } from "../lineage/NodeTag";
-import { SchemaView } from "../schema/SchemaView";
 
 interface SchemaDiffCardProps {
   title: string;

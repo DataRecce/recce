@@ -7,6 +7,7 @@ import {
   type IconComponent,
 } from "@datarecce/ui/components/lineage";
 import { findByRunType } from "@datarecce/ui/components/run";
+import { SchemaView } from "@datarecce/ui/components/schema";
 import { useLineageGraphContext } from "@datarecce/ui/contexts";
 import { useApiConfig, useIsDark } from "@datarecce/ui/hooks";
 import type { DataGridHandle } from "@datarecce/ui/primitives";
@@ -17,7 +18,6 @@ import { useQuery } from "@tanstack/react-query";
 import type { ComponentType } from "react";
 import React, { forwardRef, useMemo, useState } from "react";
 import type { IconType } from "react-icons";
-import { SchemaView } from "../schema/SchemaView";
 
 interface SchemaDiffViewProps {
   check: Check;
