@@ -73,10 +73,12 @@ jest.mock("react-icons/io5", () => ({
   IoClose: () => <span data-testid="close-icon">X</span>,
 }));
 
-// Mock icons
-jest.mock("../../icons", () => ({
-  IconEdit: () => <span data-testid="edit-icon">Edit</span>,
-  IconSave: () => <span data-testid="save-icon">Save</span>,
+jest.mock("react-icons/lu", () => ({
+  LuSave: () => <span data-testid="save-icon">Save</span>,
+}));
+
+jest.mock("react-icons/pi", () => ({
+  PiPencil: () => <span data-testid="edit-icon">Edit</span>,
 }));
 
 // Mock primitives for formatRunDateTime

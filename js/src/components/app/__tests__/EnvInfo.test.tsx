@@ -40,9 +40,8 @@ jest.mock("react-icons/lu", () => ({
   LuExternalLink: () => <span data-testid="external-link-icon">↗</span>,
 }));
 
-// Mock icons
-jest.mock("../../icons", () => ({
-  IconInfo: () => <span data-testid="info-icon">i</span>,
+jest.mock("react-icons/pi", () => ({
+  PiInfo: () => <span data-testid="info-icon">i</span>,
 }));
 
 // ============================================================================

@@ -8,7 +8,7 @@ import IconButton from "@mui/material/IconButton";
 import MuiTooltip from "@mui/material/Tooltip";
 import { format } from "date-fns";
 import saveAs from "file-saver";
-import { IconExport } from "../icons";
+import { PiExport } from "react-icons/pi";
 
 export function StateExporter() {
   const { featureToggles } = useRecceInstanceContext();
@@ -48,7 +48,7 @@ export function StateExporter() {
         disabled={featureToggles.disableExportStateFile}
       >
         <Box
-          component={IconExport}
+          component={PiExport}
           sx={{ verticalAlign: "middle", width: "16px", height: "16px" }}
         />
       </IconButton>

@@ -114,6 +114,8 @@ export {
   SchemaView,
   SingleEnvSchemaView,
 } from "./schema";
+// Shared components
+export { HistoryToggle } from "./shared";
 // Summary components
 export type {
   ChangeStatus,

@@ -24,9 +24,8 @@ import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useCallback, useState } from "react";
-import { IoClose } from "react-icons/io5";
+import { IoClose, IoSync } from "react-icons/io5";
 import { PiInfo } from "react-icons/pi";
-import { IconSync } from "../icons";
 
 function isCheckDetailPage(href: string): boolean {
   const pattern =
@@ -107,7 +106,7 @@ export function StateSynchronizer() {
           }
         >
           <Box
-            component={IconSync}
+            component={IoSync}
             sx={{ fontSize: 16, verticalAlign: "middle" }}
           />
         </IconButton>

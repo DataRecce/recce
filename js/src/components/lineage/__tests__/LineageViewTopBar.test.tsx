@@ -67,9 +67,10 @@ jest.mock("@datarecce/ui/components/app", () => ({
 }));
 
 // Mock HistoryToggle
-jest.mock("@/components/shared/HistoryToggle", () => ({
+jest.mock("@datarecce/ui/components", () => ({
+  ...jest.requireActual("@datarecce/ui/components"),
   __esModule: true,
-  default: () => <div data-testid="history-toggle">History Toggle</div>,
+  HistoryToggle: () => <div data-testid="history-toggle">History Toggle</div>,
 }));
 
 // ============================================================================

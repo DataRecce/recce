@@ -6,6 +6,7 @@ import {
   submitQueryDiff,
   waitRun,
 } from "@datarecce/ui/api";
+import { HistoryToggle } from "@datarecce/ui/components";
 import { SetupConnectionPopover } from "@datarecce/ui/components/app";
 import {
   DualSqlEditor,
@@ -33,7 +34,6 @@ import Typography from "@mui/material/Typography";
 import { useMutation } from "@tanstack/react-query";
 import React, { useMemo } from "react";
 import { PiInfoFill } from "react-icons/pi";
-import HistoryToggle from "@/components/shared/HistoryToggle";
 import { BaseEnvironmentSetupGuide } from "../lineage/SingleEnvironmentQueryView";
 
 const QueryModeToggle = () => {

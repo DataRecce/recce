@@ -10,6 +10,7 @@
  * - Context hooks for state management
  */
 
+import { HistoryToggle } from "@datarecce/ui/components";
 import { SetupConnectionPopover } from "@datarecce/ui/components/app";
 import {
   LineageViewTopBar as LineageViewTopBarCore,
@@ -22,7 +23,6 @@ import {
   useRecceInstanceContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
-import HistoryToggle from "@/components/shared/HistoryToggle";
 
 /**
  * Run type icons from the OSS registry.

@@ -29,7 +29,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import React, { useEffect, useRef, useState } from "react";
 import { IoClose } from "react-icons/io5";
-import { IconEdit, IconSave } from "../icons";
+import { LuSave } from "react-icons/lu";
+import { PiPencil } from "react-icons/pi";
 
 const useRecceToast = () => {
   const toastSuccess = (message: string) => {
@@ -230,7 +231,7 @@ export const Filename = () => {
               size="small"
             >
               <Box
-                component={fileName ? IconEdit : IconSave}
+                component={fileName ? PiPencil : LuSave}
                 sx={{ fontSize: 16, verticalAlign: "middle" }}
               />
             </IconButton>

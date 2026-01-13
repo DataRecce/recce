@@ -33,7 +33,7 @@ import { isEmpty } from "lodash";
 import React, { useEffect, useRef, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { LuExternalLink } from "react-icons/lu";
-import { IconInfo } from "../icons";
+import { PiInfo } from "react-icons/pi";
 
 // Re-export for backwards compatibility
 export {
@@ -189,7 +189,7 @@ export function EnvInfo() {
           </div>
           <IconButton size="small" aria-label="Environment Info">
             <Box
-              component={IconInfo}
+              component={PiInfo}
               sx={{ fontSize: 16, verticalAlign: "middle" }}
             />
           </IconButton>
