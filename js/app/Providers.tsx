@@ -13,13 +13,13 @@
 
 import { Toaster } from "@datarecce/ui/components/ui";
 import { ApiProvider, IdleTimeoutProvider } from "@datarecce/ui/contexts";
+import { RecceContextProvider } from "@datarecce/ui/hooks";
 import { PUBLIC_API_URL } from "@datarecce/ui/lib/const";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { ReactNode } from "react";
 import { MuiProvider } from "@/components/ui/mui-provider";
 import { reactQueryClient } from "@/lib/api/axiosClient";
-import RecceContextProvider from "@/lib/hooks/RecceContextProvider";
 import { MainLayout } from "./MainLayout";
 
 interface ProvidersProps {

@@ -19,6 +19,7 @@ export {
   RecceActionAdapter,
   type RecceActionOptions,
 } from "./RecceActionAdapter";
+export { default as RecceContextProvider } from "./RecceContextProvider";
 export {
   RecceShareStateContextProvider,
   useRecceShareStateContext,
