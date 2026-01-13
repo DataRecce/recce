@@ -34,6 +34,7 @@ export { useCheckEvents } from "./useCheckEvents";
 export { useClipBoardToast } from "./useClipBoardToast";
 export { useCSVExport } from "./useCSVExport";
 export { useFeedbackCollectionToast } from "./useFeedbackCollectionToast";
+export { useGuideToast } from "./useGuideToast";
 export { useIsDark } from "./useIsDark";
 export {
   extractColumns,

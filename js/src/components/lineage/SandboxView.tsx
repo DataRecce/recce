@@ -17,6 +17,7 @@ import {
 import {
   useApiConfig,
   useFeedbackCollectionToast,
+  useGuideToast,
   useIsDark,
   useRecceQueryContext,
 } from "@datarecce/ui/hooks";
@@ -28,7 +29,6 @@ import {
 import { DiffEditor } from "@datarecce/ui/primitives";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { useGuideToast } from "@/lib/hooks/useGuideToast";
 import { RunResultPane } from "../run/RunResultPane";
 
 interface SandboxViewProps {
