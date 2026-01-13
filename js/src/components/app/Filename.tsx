@@ -10,6 +10,7 @@ import {
   useLineageGraphContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
+import { useApiConfig } from "@datarecce/ui/hooks";
 import { formatRunDateTime } from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -28,7 +29,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import React, { useEffect, useRef, useState } from "react";
 import { IoClose } from "react-icons/io5";
-import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { IconEdit, IconSave } from "../icons";
 
 const useRecceToast = () => {

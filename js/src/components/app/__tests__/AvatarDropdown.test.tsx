@@ -38,7 +38,7 @@ jest.mock("@datarecce/ui/lib/api/user", () => ({
 }));
 
 // Mock ApiConfigContext
-jest.mock("@/lib/hooks/ApiConfigContext", () => ({
+jest.mock("@datarecce/ui/hooks", () => ({
   useApiConfig: jest.fn(),
 }));
 
@@ -57,9 +57,9 @@ jest.mock("@datarecce/ui/lib/const", () => ({
 // Imports
 // ============================================================================
 
+import { useApiConfig } from "@datarecce/ui/hooks";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
-import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import AvatarDropdown from "../AvatarDropdown";
 
 // ============================================================================

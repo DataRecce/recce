@@ -68,7 +68,7 @@ jest.mock("@datarecce/ui/primitives", () => ({
   ),
 }));
 
-jest.mock("@/lib/hooks/ApiConfigContext", () => ({
+jest.mock("@datarecce/ui/hooks", () => ({
   useApiConfig: jest.fn(() => ({
     apiClient: {},
   })),

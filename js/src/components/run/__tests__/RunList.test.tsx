@@ -46,7 +46,7 @@ jest.mock("@datarecce/ui/hooks", () => ({
   useIsDark: jest.fn(() => false),
 }));
 
-jest.mock("@/lib/hooks/ApiConfigContext", () => ({
+jest.mock("@datarecce/ui/hooks", () => ({
   useApiConfig: jest.fn(() => ({
     apiClient: {},
   })),

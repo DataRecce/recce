@@ -20,6 +20,7 @@ import {
   type RecceActionOptions as UIRecceActionOptions,
   useRecceActionContext as useUIRecceActionContext,
 } from "@datarecce/ui/contexts";
+import { useApiConfig } from "@datarecce/ui/hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
 import React, {
@@ -30,7 +31,6 @@ import React, {
   useState,
 } from "react";
 import { RunModal } from "@/components/run/RunModal";
-import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
 // Note: AxiosQueryParams is now imported directly from @datarecce/ui/contexts

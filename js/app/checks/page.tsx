@@ -2,6 +2,7 @@
 
 import { HSplit } from "@datarecce/ui";
 import { cacheKeys, listChecks, reorderChecks } from "@datarecce/ui/api";
+import { useApiConfig } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
@@ -21,7 +22,6 @@ import { StateImporter } from "@/components/app/StateImporter";
 import { CheckDetail } from "@/components/check/CheckDetail";
 import { CheckEmptyState } from "@/components/check/CheckEmptyState";
 import { CheckList } from "@/components/check/CheckList";
-import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceCheckContext } from "@/lib/hooks/CheckContextAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 

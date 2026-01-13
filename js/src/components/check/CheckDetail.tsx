@@ -29,7 +29,11 @@ import {
   useLineageGraphContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
-import { useClipBoardToast, useIsDark } from "@datarecce/ui/hooks";
+import {
+  useApiConfig,
+  useClipBoardToast,
+  useIsDark,
+} from "@datarecce/ui/hooks";
 import { trackCopyToClipboard } from "@datarecce/ui/lib/api/track";
 import {
   buildCheckDescription,
@@ -76,7 +80,6 @@ import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
 import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { CheckTimeline } from "@/components/check/timeline";
-import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceCheckContext } from "@/lib/hooks/CheckContextAdapter";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";

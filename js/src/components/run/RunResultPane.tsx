@@ -34,6 +34,7 @@ import {
   useRecceActionContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
+import { useApiConfig } from "@datarecce/ui/hooks";
 import {
   trackCopyToClipboard,
   trackShareState,
@@ -42,7 +43,6 @@ import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
 import { type Ref, useCallback, useState } from "react";
 import AuthModal from "@/components/AuthModal/AuthModal";
-import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";

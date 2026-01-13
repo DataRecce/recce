@@ -14,7 +14,7 @@ import {
   useRecceActionContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
-import { useIsDark } from "@datarecce/ui/hooks";
+import { useApiConfig, useIsDark } from "@datarecce/ui/hooks";
 import {
   trackPreviewChange,
   trackPreviewChangeFeedback,
@@ -23,7 +23,6 @@ import {
 import { DiffEditor } from "@datarecce/ui/primitives";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";
 import { useGuideToast } from "@/lib/hooks/useGuideToast";

@@ -87,7 +87,7 @@ jest.mock("@datarecce/ui/contexts", () => {
 });
 
 // Mock ApiConfigContext
-jest.mock("../ApiConfigContext", () => ({
+jest.mock("@datarecce/ui/hooks", () => ({
   useApiConfig: jest.fn(() => ({
     apiClient: {},
     apiPrefix: "",

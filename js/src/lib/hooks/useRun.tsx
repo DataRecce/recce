@@ -7,9 +7,9 @@ import {
 } from "@datarecce/ui/api";
 import { findByRunType, RegistryEntry } from "@datarecce/ui/components/run";
 import { useRunsAggregated } from "@datarecce/ui/contexts";
+import { useApiConfig } from "@datarecce/ui/hooks";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
-import { useApiConfig } from "./ApiConfigContext";
 
 interface UseRunResult {
   run?: Run;

@@ -3,6 +3,7 @@
  * @description Barrel export for @datarecce/ui hooks
  */
 
+export { type ApiConfigContextType, useApiConfig } from "./useApiConfig";
 export { useClipBoardToast } from "./useClipBoardToast";
 export { useIsDark } from "./useIsDark";
 export {

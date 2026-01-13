@@ -1,13 +1,13 @@
 import { exportState } from "@datarecce/ui/api";
 import { toaster } from "@datarecce/ui/components/ui";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
+import { useApiConfig } from "@datarecce/ui/hooks";
 import { trackStateAction } from "@datarecce/ui/lib/api/track";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import MuiTooltip from "@mui/material/Tooltip";
 import { format } from "date-fns";
 import saveAs from "file-saver";
-import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { IconExport } from "../icons";
 
 export function StateExporter() {

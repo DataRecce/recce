@@ -1,23 +1,17 @@
-import { useApiConfigOptional as useDatarecceApiConfigOptional } from "@datarecce/ui";
-import { PUBLIC_API_URL } from "@datarecce/ui/lib/const";
-import axios, { AxiosInstance } from "axios";
+import axios, { type AxiosInstance } from "axios";
+import { PUBLIC_API_URL } from "../lib/const";
+import { useApiConfigOptional } from "../providers";
 
 /**
- * OSS API Configuration Adapter
+ * API Configuration Adapter
  *
- * This file provides OSS-specific defaults and a fallback chain for API configuration.
- * It is NOT a duplicate of @datarecce/ui's ApiContext - it wraps it with OSS defaults.
+ * Provides a fallback chain for API configuration.
  *
  * Priority chain:
- * 1. Local OSS ApiConfigProvider (if present)
- * 2. @datarecce/ui RecceProvider (via useApiConfigOptional)
- * 3. Default config with PUBLIC_API_URL (for backward compatibility)
- *
- * For @datarecce/ui consumers (like recce-cloud-infra), use @datarecce/ui's
- * ApiProvider directly with your own baseUrl and config.
+ * 1. @datarecce/ui RecceProvider (via useApiConfigOptional)
+ * 2. Default config with PUBLIC_API_URL (for backward compatibility)
  */
-
-interface ApiConfigContextType {
+export interface ApiConfigContextType {
   /**
    * API endpoint prefix to replace `/api` in all requests.
    * For OSS: "" (empty string, uses default /api/* paths)
@@ -62,7 +56,7 @@ const defaultApiConfigContext: ApiConfigContextType = {
  */
 export function useApiConfig(): ApiConfigContextType {
   // Call both hooks unconditionally (React hooks rules)
-  const datarecceContext = useDatarecceApiConfigOptional();
+  const datarecceContext = useApiConfigOptional();
 
   // Priority: @datarecce/ui provider > defaults
   return datarecceContext ?? defaultApiConfigContext;

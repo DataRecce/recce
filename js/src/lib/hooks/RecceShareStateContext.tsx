@@ -13,8 +13,8 @@
  */
 
 import { shareState } from "@datarecce/ui/api";
+import { useApiConfig } from "@datarecce/ui/hooks";
 import React, { createContext, useContext, useState } from "react";
-import { useApiConfig } from "./ApiConfigContext";
 
 interface ShareStateProps {
   shareUrl?: string;

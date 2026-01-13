@@ -55,7 +55,7 @@ jest.mock("@datarecce/ui/contexts", () => ({
 }));
 
 // Mock ApiConfigContext
-jest.mock("@/lib/hooks/ApiConfigContext", () => ({
+jest.mock("@datarecce/ui/hooks", () => ({
   useApiConfig: jest.fn(),
 }));
 
@@ -89,10 +89,10 @@ jest.mock("@datarecce/ui/primitives", () => ({
 // ============================================================================
 
 import { toaster } from "@datarecce/ui/components/ui";
+import { useApiConfig } from "@datarecce/ui/hooks";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import React from "react";
-import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { Filename } from "../Filename";
 
 // ============================================================================

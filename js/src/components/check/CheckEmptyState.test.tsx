@@ -33,7 +33,7 @@ jest.mock("@/lib/hooks/useAppRouter", () => ({
 
 // Mock the API config
 const mockApiClient = {};
-jest.mock("@/lib/hooks/ApiConfigContext", () => ({
+jest.mock("@datarecce/ui/hooks", () => ({
   useApiConfig: () => ({ apiClient: mockApiClient }),
 }));
 

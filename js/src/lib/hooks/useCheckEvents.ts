@@ -25,8 +25,8 @@ import {
   listCheckEvents,
   updateComment,
 } from "@datarecce/ui/api";
+import { useApiConfig } from "@datarecce/ui/hooks";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useApiConfig } from "./ApiConfigContext";
 
 const POLLING_INTERVAL = 10000; // 10 seconds
 

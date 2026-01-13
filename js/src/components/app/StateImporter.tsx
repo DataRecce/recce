@@ -5,7 +5,7 @@ import {
   useRecceInstanceContext,
   useRunsAggregated,
 } from "@datarecce/ui/contexts";
-import { useIsDark } from "@datarecce/ui/hooks";
+import { useApiConfig, useIsDark } from "@datarecce/ui/hooks";
 import { trackStateAction } from "@datarecce/ui/lib/api/track";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -22,7 +22,6 @@ import React, { ChangeEvent, useCallback, useRef, useState } from "react";
 import { FaFileImport } from "react-icons/fa6";
 import { IoClose } from "react-icons/io5";
 import { PiInfo } from "react-icons/pi";
-import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {

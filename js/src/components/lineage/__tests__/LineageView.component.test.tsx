@@ -182,17 +182,6 @@ jest.mock("@datarecce/ui/contexts", () => {
   };
 });
 
-// Mock @datarecce/ui hooks
-jest.mock("@datarecce/ui/hooks", () => ({
-  useClipBoardToast: jest.fn(() => ({
-    successToast: jest.fn(),
-    failToast: jest.fn(),
-  })),
-  useThemeColors: jest.fn(() => ({
-    isDark: false,
-  })),
-}));
-
 // Mock @datarecce/ui
 jest.mock("@datarecce/ui", () => ({
   isLineageGraphColumnNode: jest.fn(
@@ -366,9 +355,16 @@ jest.mock("../useMultiNodesAction", () => ({
 }));
 
 // Mock OSS hooks
-jest.mock("@/lib/hooks/ApiConfigContext", () => ({
+jest.mock("@datarecce/ui/hooks", () => ({
   useApiConfig: jest.fn(() => ({
     apiClient: {},
+  })),
+  useClipBoardToast: jest.fn(() => ({
+    successToast: jest.fn(),
+    failToast: jest.fn(),
+  })),
+  useThemeColors: jest.fn(() => ({
+    isDark: false,
   })),
 }));
 

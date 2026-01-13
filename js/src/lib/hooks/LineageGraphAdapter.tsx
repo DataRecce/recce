@@ -19,6 +19,7 @@ import {
   useRecceInstanceContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
+import { useApiConfig } from "@datarecce/ui/hooks";
 import { trackSingleEnvironment } from "@datarecce/ui/lib/api/track";
 import {
   PUBLIC_API_URL,
@@ -43,7 +44,6 @@ import React, {
   useState,
 } from "react";
 import { IoClose } from "react-icons/io5";
-import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 
 // Re-export types for backward compatibility
 export type { EnvInfo } from "@datarecce/ui/contexts";

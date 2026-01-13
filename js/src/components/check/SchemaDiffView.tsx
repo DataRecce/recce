@@ -8,7 +8,7 @@ import {
 } from "@datarecce/ui/components/lineage";
 import { findByRunType } from "@datarecce/ui/components/run";
 import { useLineageGraphContext } from "@datarecce/ui/contexts";
-import { useIsDark } from "@datarecce/ui/hooks";
+import { useApiConfig, useIsDark } from "@datarecce/ui/hooks";
 import Box from "@mui/material/Box";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
@@ -16,7 +16,6 @@ import { useQuery } from "@tanstack/react-query";
 import type { ComponentType } from "react";
 import React, { forwardRef, useMemo, useState } from "react";
 import type { IconType } from "react-icons";
-import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { type DataGridHandle } from "../data-grid/ScreenshotDataGrid";
 import { SchemaView } from "../schema/SchemaView";
 

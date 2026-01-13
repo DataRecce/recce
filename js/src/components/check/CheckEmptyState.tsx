@@ -12,10 +12,10 @@ import {
   cacheKeys,
   createSchemaDiffCheck,
 } from "@datarecce/ui/api";
+import { useApiConfig } from "@datarecce/ui/hooks";
 import { CheckEmptyState as CheckEmptyStateUI } from "@datarecce/ui/primitives";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { TbChecklist } from "react-icons/tb";
-import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
 export const CheckEmptyState = () => {

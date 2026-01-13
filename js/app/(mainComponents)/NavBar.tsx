@@ -6,6 +6,7 @@ import {
   useRecceInstanceContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
+import { useApiConfig } from "@datarecce/ui/hooks";
 import { trackNavigation } from "@datarecce/ui/lib/api/track";
 import Box from "@mui/material/Box";
 import Tab from "@mui/material/Tab";
@@ -19,7 +20,6 @@ import { Filename } from "@/components/app/Filename";
 import { StateExporter } from "@/components/app/StateExporter";
 import { TopLevelShare } from "@/components/app/StateSharing";
 import { StateSynchronizer } from "@/components/app/StateSynchronizer";
-import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 
 /**
  * Route configuration for tabs

@@ -1,4 +1,5 @@
 import { cacheKeys } from "@datarecce/ui/api";
+import { useApiConfig } from "@datarecce/ui/hooks";
 import { fetchGitHubAvatar, fetchUser } from "@datarecce/ui/lib/api/user";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@datarecce/ui/lib/const";
 import MuiAvatar from "@mui/material/Avatar";
@@ -13,7 +14,6 @@ import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
 import { type MouseEvent, useState } from "react";
 import { FaCloud, FaUser } from "react-icons/fa";
-import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 
 export default function AvatarDropdown() {
   const { apiClient } = useApiConfig();
