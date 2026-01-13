@@ -86,7 +86,7 @@ jest.mock("@datarecce/ui/api", () => ({
 }));
 
 // Mock components that might cause issues in tests
-jest.mock("@/components/app/EnvInfo", () => ({
+jest.mock("@datarecce/ui/components/app/EnvInfo", () => ({
   EnvInfo: () => <div data-testid="env-info">EnvInfo</div>,
 }));
 

@@ -49,15 +49,15 @@ jest.mock("react-icons/pi", () => ({
 // ============================================================================
 
 import type { LineageGraph } from "@datarecce/ui";
+import { EnvInfo } from "@datarecce/ui/components/app";
 import { trackEnvironmentConfig } from "@datarecce/ui/lib/api/track";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import React from "react";
 import {
-  EnvInfo,
   extractSchemas,
   formatTimestamp,
   formatTimeToNow,
-} from "../EnvInfo";
+} from "@datarecce/ui/utils";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import React from "react";
 
 // ============================================================================
 // Test Fixtures

@@ -1,16 +1,3 @@
-import {
-  extractSchemas,
-  formatTimestamp,
-  formatTimeToNow,
-} from "@datarecce/ui";
-import {
-  type EnvInfo as EnvInfoType,
-  useLineageGraphContext,
-} from "@datarecce/ui/contexts";
-import {
-  type EnvironmentConfigProps,
-  trackEnvironmentConfig,
-} from "@datarecce/ui/lib/api/track";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -34,13 +21,15 @@ import React, { useEffect, useRef, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { LuExternalLink } from "react-icons/lu";
 import { PiInfo } from "react-icons/pi";
-
-// Re-export for backwards compatibility
-export {
-  extractSchemas,
-  formatTimestamp,
-  formatTimeToNow,
-} from "@datarecce/ui";
+import {
+  type EnvInfo as EnvInfoType,
+  useLineageGraphContext,
+} from "../../contexts";
+import {
+  type EnvironmentConfigProps,
+  trackEnvironmentConfig,
+} from "../../lib/api/track";
+import { extractSchemas, formatTimestamp, formatTimeToNow } from "../../utils";
 
 function buildEnvironmentTrackingData(
   envInfo: EnvInfoType | undefined,
