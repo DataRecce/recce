@@ -28,10 +28,11 @@ jest.mock("ag-grid-community", () => ({
   themeQuartz: {},
 }));
 
-// Mock dataGridFactory - use factory pattern
+// Mock toValueDiffGridConfigured - use factory pattern
 const mockCreateDataGrid = jest.fn();
-jest.mock("@datarecce/ui/components/ui/dataGrid", () => ({
-  createDataGrid: (...args: unknown[]) => mockCreateDataGrid(...args),
+jest.mock("@datarecce/ui/utils", () => ({
+  toValueDiffGridConfigured: (...args: unknown[]) =>
+    mockCreateDataGrid(...args),
 }));
 
 // Mock ScreenshotDataGrid with our test utility mock
@@ -61,8 +62,8 @@ jest.mock("@datarecce/ui/primitives", () => ({
   ),
 }));
 
-// Mock DiffDisplayModeSwitch and ChangedOnlyCheckbox from @datarecce/ui/components/ui
-jest.mock("@datarecce/ui/components/ui", () => ({
+// Mock DiffDisplayModeSwitch and ChangedOnlyCheckbox from @datarecce/ui
+jest.mock("@datarecce/ui/components/ui/DiffDisplayModeSwitch", () => ({
   DiffDisplayModeSwitch: jest.fn(
     ({
       displayMode,
@@ -80,6 +81,9 @@ jest.mock("@datarecce/ui/components/ui", () => ({
       </button>
     ),
   ),
+}));
+
+jest.mock("@datarecce/ui/components/ui/ChangedOnlyCheckbox", () => ({
   ChangedOnlyCheckbox: jest.fn(
     ({
       changedOnly,
@@ -118,6 +122,7 @@ jest.mock("@datarecce/ui/hooks", () => ({
 // ============================================================================
 
 import type { Run } from "@datarecce/ui/api";
+import { ValueDiffDetailResultView } from "@datarecce/ui/components/valuediff/ValueDiffDetailResultView";
 import { fireEvent, screen } from "@testing-library/react";
 import React from "react";
 import { createRowCountDiffRun } from "@/testing-utils/fixtures/runFixtures";
@@ -126,7 +131,6 @@ import {
   expectThrowsForWrongType,
   renderWithProviders,
 } from "@/testing-utils/resultViewTestUtils";
-import { ValueDiffDetailResultView } from "./ValueDiffDetailResultView";
 
 // ============================================================================
 // Fixtures
@@ -258,13 +262,14 @@ describe("ValueDiffDetailResultView", () => {
       expect(grid).toHaveAttribute("data-columns", "3");
     });
 
-    it("calls createDataGrid with run and options", () => {
+    it("calls toValueDiffGridConfigured with result and options", () => {
       const run = createValueDiffDetailRun();
 
       renderWithProviders(<ValueDiffDetailResultView run={run} />);
 
       expect(mockCreateDataGrid).toHaveBeenCalledWith(
-        run,
+        run.result,
+        ["id"],
         expect.objectContaining({
           changedOnly: false,
           pinnedColumns: [],
@@ -432,7 +437,8 @@ describe("ValueDiffDetailResultView", () => {
       renderWithProviders(<ValueDiffDetailResultView run={run} />);
 
       expect(mockCreateDataGrid).toHaveBeenCalledWith(
-        run,
+        run.result,
+        ["id"],
         expect.objectContaining({
           changedOnly: false,
         }),
@@ -450,7 +456,8 @@ describe("ValueDiffDetailResultView", () => {
       );
 
       expect(mockCreateDataGrid).toHaveBeenCalledWith(
-        run,
+        run.result,
+        ["id"],
         expect.objectContaining({
           changedOnly: true,
         }),
@@ -463,7 +470,8 @@ describe("ValueDiffDetailResultView", () => {
       renderWithProviders(<ValueDiffDetailResultView run={run} />);
 
       expect(mockCreateDataGrid).toHaveBeenCalledWith(
-        run,
+        run.result,
+        ["id"],
         expect.objectContaining({
           displayMode: "inline",
         }),
@@ -485,7 +493,8 @@ describe("ValueDiffDetailResultView", () => {
       );
 
       expect(mockCreateDataGrid).toHaveBeenCalledWith(
-        run,
+        run.result,
+        ["id"],
         expect.objectContaining({
           displayMode: "side_by_side",
         }),
@@ -543,7 +552,8 @@ describe("ValueDiffDetailResultView", () => {
       renderWithProviders(<ValueDiffDetailResultView run={run} />);
 
       expect(mockCreateDataGrid).toHaveBeenCalledWith(
-        run,
+        run.result,
+        ["id"],
         expect.objectContaining({
           pinnedColumns: [],
         }),
@@ -561,7 +571,8 @@ describe("ValueDiffDetailResultView", () => {
       );
 
       expect(mockCreateDataGrid).toHaveBeenCalledWith(
-        run,
+        run.result,
+        ["id"],
         expect.objectContaining({
           pinnedColumns: ["id", "name"],
         }),
@@ -574,7 +585,8 @@ describe("ValueDiffDetailResultView", () => {
       renderWithProviders(<ValueDiffDetailResultView run={run} />);
 
       expect(mockCreateDataGrid).toHaveBeenCalledWith(
-        run,
+        run.result,
+        ["id"],
         expect.objectContaining({
           columnsRenderMode: {},
         }),
@@ -592,7 +604,8 @@ describe("ValueDiffDetailResultView", () => {
       );
 
       expect(mockCreateDataGrid).toHaveBeenCalledWith(
-        run,
+        run.result,
+        ["id"],
         expect.objectContaining({
           columnsRenderMode: { amount: "percent" },
         }),
@@ -696,7 +709,8 @@ describe("ValueDiffDetailResultView", () => {
 
       // Should use default for display_mode while respecting changed_only
       expect(mockCreateDataGrid).toHaveBeenCalledWith(
-        run,
+        run.result,
+        ["id"],
         expect.objectContaining({
           changedOnly: true,
           displayMode: "inline",
