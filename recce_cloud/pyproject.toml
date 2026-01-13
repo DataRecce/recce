@@ -43,7 +43,4 @@ allow-direct-references = true
 [tool.hatch.metadata.hooks.custom]
 
 [tool.hatch.build.targets.wheel]
-packages = ["."]
-
-[tool.hatch.build.targets.wheel.sources]
-"." = "recce_cloud"
+packages = ["recce_cloud"]
