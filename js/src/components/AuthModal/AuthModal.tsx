@@ -2,6 +2,7 @@
 
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useApiConfig } from "@datarecce/ui/hooks";
+import { connectToCloud } from "@datarecce/ui/lib/api/connectToCloud";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -14,7 +15,6 @@ import Typography from "@mui/material/Typography";
 import Cookies from "js-cookie";
 import { Dispatch, ReactNode, SetStateAction, useState } from "react";
 import { LuExternalLink } from "react-icons/lu";
-import { connectToCloud } from "@/lib/api/connectToCloud";
 
 type AuthState = "authenticating" | "pending" | "canceled" | "ignored";
 
