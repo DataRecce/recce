@@ -3,6 +3,11 @@
  * @description Barrel export for @datarecce/ui hooks
  */
 
+export {
+  CheckContextAdapter,
+  type OSSCheckContext,
+  useRecceCheckContext,
+} from "./CheckContextAdapter";
 export { LineageGraphAdapter } from "./LineageGraphAdapter";
 export {
   defaultSqlQuery,

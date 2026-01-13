@@ -22,7 +22,8 @@ const mockRecceCheckContext = {
   setLatestSelectedCheckId: jest.fn(),
 };
 
-jest.mock("@/lib/hooks/CheckContextAdapter", () => ({
+jest.mock("@datarecce/ui/hooks", () => ({
+  ...jest.requireActual("@datarecce/ui/hooks"),
   useRecceCheckContext: () => mockRecceCheckContext,
 }));
 
