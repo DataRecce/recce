@@ -39,6 +39,8 @@ export {
   type CheckListProps,
 } from "./CheckList";
 export { CheckListOss } from "./CheckListOss";
+export { CheckPageContentOss } from "./CheckPageContentOss";
+export { CheckPageLoadingOss } from "./CheckPageLoadingOss";
 
 // Lineage diff view for check results
 export {

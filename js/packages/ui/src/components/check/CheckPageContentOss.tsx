@@ -1,12 +1,5 @@
-import { HSplit } from "@datarecce/ui";
-import { cacheKeys, listChecks, reorderChecks } from "@datarecce/ui/api";
-import { StateImporter } from "@datarecce/ui/components/app";
-import {
-  CheckEmptyStateOss as CheckEmptyState,
-  CheckListOss as CheckList,
-} from "@datarecce/ui/components/check";
-import { CheckDetailOss as CheckDetail } from "@datarecce/ui/components/check/CheckDetailOss";
-import { useApiConfig, useRecceCheckContext } from "@datarecce/ui/hooks";
+"use client";
+
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
@@ -20,8 +13,15 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { cacheKeys, listChecks, reorderChecks } from "../../api";
+import { useApiConfig, useRecceCheckContext } from "../../hooks";
+import { StateImporter } from "../app";
+import { HSplit } from "../ui";
+import { CheckDetailOss as CheckDetail } from "./CheckDetailOss";
+import { CheckEmptyStateOss as CheckEmptyState } from "./CheckEmptyStateOss";
+import { CheckListOss as CheckList } from "./CheckListOss";
 
-export default function CheckPageContent(): ReactNode {
+export const CheckPageContentOss = (): ReactNode => {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const borderColor = isDark ? "grey.700" : "grey.300";
@@ -238,4 +238,4 @@ export default function CheckPageContent(): ReactNode {
       </Box>
     </HSplit>
   );
-}
+};

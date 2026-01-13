@@ -1,13 +1,15 @@
-import { HSplit } from "@datarecce/ui";
+"use client";
+
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import { useTheme } from "@mui/material/styles";
 import React, { ReactNode } from "react";
+import { HSplit } from "../ui";
 
 /**
  * Loading fallback - shows minimal UI while search params are being read
  */
-export default function CheckPageLoading(): ReactNode {
+export const CheckPageLoadingOss = (): ReactNode => {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const borderColor = isDark ? "grey.700" : "grey.300";
@@ -47,4 +49,4 @@ export default function CheckPageLoading(): ReactNode {
       </Box>
     </HSplit>
   );
-}
+};

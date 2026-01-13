@@ -1,16 +1,16 @@
 "use client";
 
+import { CheckPageContentOss } from "@datarecce/ui/components/check/CheckPageContentOss";
+import { CheckPageLoadingOss } from "@datarecce/ui/components/check/CheckPageLoadingOss";
 import React, { ReactNode, Suspense } from "react";
-import CheckPageContent from "@/components/check/CheckPageContent";
-import CheckPageLoading from "@/components/check/CheckPageLoading";
 
 /**
  * Wrapper component that handles the Suspense boundary for useSearchParams
  */
 export default function CheckPageWrapper(): ReactNode {
   return (
-    <Suspense fallback={<CheckPageLoading />}>
-      <CheckPageContent />
+    <Suspense fallback={<CheckPageLoadingOss />}>
+      <CheckPageContentOss />
     </Suspense>
   );
 }
