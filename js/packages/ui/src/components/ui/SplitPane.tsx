@@ -1,5 +1,6 @@
 "use client";
 
+import "./splitStyles.css";
 import Box from "@mui/material/Box";
 import { type CSSProperties, memo, type ReactNode } from "react";
 import Split from "react-split";

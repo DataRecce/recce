@@ -7,6 +7,7 @@
 
 "use client";
 
+import { HSplit, VSplit } from "@datarecce/ui";
 import {
   useLineageGraphContext,
   useRecceActionContext,
@@ -21,7 +22,6 @@ import React, { ReactNode, Suspense, useEffect } from "react";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { RunList } from "@/components/run/RunList";
 import { RunResultPane } from "@/components/run/RunResultPane";
-import { HSplit, VSplit } from "@/components/split/Split";
 import "@fontsource/montserrat/800.css";
 import NavBar from "app/(mainComponents)/NavBar";
 import TopBar from "app/(mainComponents)/TopBar";
