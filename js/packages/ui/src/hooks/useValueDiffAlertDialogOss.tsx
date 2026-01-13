@@ -1,24 +1,26 @@
+"use client";
+
 /**
- * @file useValueDiffAlertDialog.tsx
+ * @file useValueDiffAlertDialogOss.tsx
  * @description OSS wrapper for useValueDiffAlertDialog that adds tracking.
  *
- * This is a thin wrapper around the @datarecce/ui hook that injects
+ * This is a thin wrapper around the base hook that injects
  * tracking callbacks for analytics.
  */
 
-import { useValueDiffAlertDialog as useBaseDialog } from "@datarecce/ui/hooks";
 import {
   EXPLORE_ACTION,
   EXPLORE_FORM_EVENT,
   trackExploreActionForm,
-} from "@datarecce/ui/lib/api/track";
+} from "../lib/api/track";
+import { useValueDiffAlertDialog as useBaseDialog } from "./useValueDiffAlertDialog";
 
 /**
  * Hook for displaying a value diff confirmation dialog with tracking.
  *
- * This wrapper adds tracking callbacks to the base @datarecce/ui hook.
+ * This wrapper adds tracking callbacks to the base hook.
  */
-function useValueDiffAlertDialog() {
+function useValueDiffAlertDialogOss() {
   return useBaseDialog({
     onConfirm: () =>
       trackExploreActionForm({
@@ -33,4 +35,4 @@ function useValueDiffAlertDialog() {
   });
 }
 
-export default useValueDiffAlertDialog;
+export default useValueDiffAlertDialogOss;

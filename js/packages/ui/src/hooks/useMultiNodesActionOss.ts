@@ -1,24 +1,23 @@
 /**
- * @file useMultiNodesAction.ts
- * @description OSS wrapper for useMultiNodesAction hook from @datarecce/ui.
+ * @file useMultiNodesActionOss.ts
+ * @description OSS wrapper for useMultiNodesAction hook.
  *
- * This file re-exports the base hook from @datarecce/ui and provides
- * OSS-specific tracking integration via Amplitude analytics.
+ * This wraps the base hook and adds Amplitude tracking.
  *
- * @see packages/ui/src/hooks/useMultiNodesAction.ts for the base implementation
+ * @see useMultiNodesAction for the base implementation
  */
 
-import type { LineageGraphNode } from "@datarecce/ui";
-import {
-  type MultiNodesActionCallbacks,
-  type MultiNodesActionTrackProps,
-  useMultiNodesAction as useMultiNodesActionBase,
-} from "@datarecce/ui";
+import type { LineageGraphNode } from "../index";
 import {
   EXPLORE_ACTION,
   EXPLORE_SOURCE,
   trackExploreAction,
-} from "@datarecce/ui/lib/api/track";
+} from "../lib/api/track";
+import {
+  type MultiNodesActionCallbacks,
+  type MultiNodesActionTrackProps,
+  useMultiNodesAction as useMultiNodesActionBase,
+} from "./useMultiNodesAction";
 
 /**
  * Maps the generic action type to OSS-specific tracking constants.
@@ -49,26 +48,11 @@ const handleTrackAction = (props: MultiNodesActionTrackProps) => {
 /**
  * OSS wrapper for useMultiNodesAction that provides Amplitude tracking.
  *
- * This hook wraps the base implementation from @datarecce/ui and adds
- * OSS-specific analytics tracking via Amplitude.
- *
  * @param nodes - Array of lineage graph nodes to operate on
  * @param callbacks - Lifecycle callbacks for action execution
  * @returns Object containing action state and operation methods
- *
- * @example
- * ```tsx
- * const { actionState, runRowCount, cancel } = useMultiNodesAction(
- *   selectedNodes,
- *   {
- *     onActionStarted: () => setIsRunning(true),
- *     onActionNodeUpdated: (node) => updateNodeUI(node),
- *     onActionCompleted: () => setIsRunning(false),
- *   }
- * );
- * ```
  */
-export const useMultiNodesAction = (
+export const useMultiNodesActionOss = (
   nodes: LineageGraphNode[],
   callbacks: MultiNodesActionCallbacks,
 ) => {

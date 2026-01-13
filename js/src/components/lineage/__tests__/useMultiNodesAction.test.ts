@@ -40,7 +40,7 @@ let capturedOptions: {
   trackingSource?: string;
 } = {};
 
-jest.mock("@datarecce/ui", () => ({
+jest.mock("@datarecce/ui/hooks/useMultiNodesAction", () => ({
   useMultiNodesAction: jest.fn((nodes, options) => {
     capturedOptions = options;
     return {
@@ -74,13 +74,13 @@ jest.mock("@datarecce/ui/lib/api/track", () => ({
 // ============================================================================
 
 import type { LineageGraphNode } from "@datarecce/ui";
+import { useMultiNodesActionOss as useMultiNodesAction } from "@datarecce/ui/hooks/useMultiNodesActionOss";
 import {
   EXPLORE_ACTION,
   EXPLORE_SOURCE,
   trackExploreAction,
 } from "@datarecce/ui/lib/api/track";
 import { renderHook } from "@testing-library/react";
-import { useMultiNodesAction } from "../useMultiNodesAction";
 
 // Get the mocked function for assertions
 const mockTrackExploreAction = trackExploreAction as jest.MockedFunction<

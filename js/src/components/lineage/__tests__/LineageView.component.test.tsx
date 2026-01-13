@@ -225,6 +225,7 @@ jest.mock("@datarecce/ui/api", () => ({
 
 // Mock @datarecce/ui/components/lineage
 jest.mock("@datarecce/ui/components/lineage", () => ({
+  BaseEnvironmentSetupNotification: jest.fn(() => null),
   getIconForChangeStatus: jest.fn(() => ({ hexColor: "#000000" })),
   LineageLegend: jest.fn(({ variant }) => (
     <div data-testid={`lineage-legend-${variant}`} />
@@ -310,16 +311,12 @@ jest.mock("../LineageViewNotification", () => ({
   LineageViewNotification: jest.fn(() => null),
 }));
 
-jest.mock("../SetupConnectionBanner", () => ({
+jest.mock("@datarecce/ui/components/lineage/SetupConnectionBannerOss", () => ({
   __esModule: true,
   default: jest.fn(() => null),
 }));
 
-jest.mock("../SingleEnvironmentQueryView", () => ({
-  BaseEnvironmentSetupNotification: jest.fn(() => null),
-}));
-
-jest.mock("../useValueDiffAlertDialog", () => ({
+jest.mock("@datarecce/ui/hooks/useValueDiffAlertDialogOss", () => ({
   __esModule: true,
   default: jest.fn(() => ({
     confirm: jest.fn().mockResolvedValue(true),
@@ -350,8 +347,8 @@ const mockMultiNodesAction = {
   reset: jest.fn(),
 };
 
-jest.mock("../useMultiNodesAction", () => ({
-  useMultiNodesAction: jest.fn(() => mockMultiNodesAction),
+jest.mock("@datarecce/ui/hooks/useMultiNodesActionOss", () => ({
+  useMultiNodesActionOss: jest.fn(() => mockMultiNodesAction),
 }));
 
 const mockCopyToClipboard = jest.fn().mockResolvedValue(undefined);
@@ -428,8 +425,8 @@ const TestablePrivateLineageView = React.forwardRef<
   LineageViewProps
 >(PrivateLineageView);
 
+import { useMultiNodesActionOss as useMultiNodesAction } from "@datarecce/ui/hooks/useMultiNodesActionOss";
 import { toReactFlow } from "../lineage";
-import { useMultiNodesAction } from "../useMultiNodesAction";
 
 // ============================================================================
 // Test Fixtures

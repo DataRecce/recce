@@ -1,22 +1,19 @@
 "use client";
 
+import { useRecceInstanceContext, useRecceInstanceInfo } from "../../contexts";
+import { RECCE_SUPPORT_CALENDAR_URL } from "../../lib/const";
+import { getSettingsUrl } from "../../utils";
 import {
   SetupConnectionBanner as BaseSetupConnectionBanner,
   type SetupConnectionBannerProps as BaseSetupConnectionBannerProps,
-} from "@datarecce/ui/components/lineage";
-import {
-  useRecceInstanceContext,
-  useRecceInstanceInfo,
-} from "@datarecce/ui/contexts";
-import { RECCE_SUPPORT_CALENDAR_URL } from "@datarecce/ui/lib/const";
-import { getSettingsUrl } from "@datarecce/ui/utils";
+} from "./SetupConnectionBanner";
 
 /**
  * Props for the OSS SetupConnectionBanner wrapper.
  * Extends the base props but makes injected dependencies optional
  * since they're provided by OSS-specific contexts.
  */
-export type SetupConnectionBannerProps =
+export type SetupConnectionBannerOssProps =
   Partial<BaseSetupConnectionBannerProps>;
 
 /**
@@ -26,8 +23,8 @@ export type SetupConnectionBannerProps =
  * - Fetching feature toggles from RecceInstanceContext
  * - Generating settings URL from instance info
  */
-export default function SetupConnectionBanner(
-  props: SetupConnectionBannerProps,
+export default function SetupConnectionBannerOss(
+  props: SetupConnectionBannerOssProps,
 ) {
   const { featureToggles } = useRecceInstanceContext();
   const { data: instanceInfo } = useRecceInstanceInfo();

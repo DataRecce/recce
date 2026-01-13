@@ -60,7 +60,11 @@ import {
   type LineageDiffViewOptions,
   select,
 } from "@datarecce/ui/api";
-import { LineageLegend } from "@datarecce/ui/components/lineage";
+import {
+  BaseEnvironmentSetupNotification,
+  LineageLegend,
+} from "@datarecce/ui/components/lineage";
+import SetupConnectionBanner from "@datarecce/ui/components/lineage/SetupConnectionBannerOss";
 import { toaster } from "@datarecce/ui/components/ui";
 import {
   LineageViewContext,
@@ -74,6 +78,8 @@ import {
   useRun,
   useThemeColors,
 } from "@datarecce/ui/hooks";
+import { useMultiNodesActionOss as useMultiNodesAction } from "@datarecce/ui/hooks/useMultiNodesActionOss";
+import useValueDiffAlertDialog from "@datarecce/ui/hooks/useValueDiffAlertDialogOss";
 import {
   trackCopyToClipboard,
   trackMultiNodesAction,
@@ -98,15 +104,11 @@ import {
 import { LineageViewNotification } from "./LineageViewNotification";
 import { LineageViewTopBar } from "./LineageViewTopBar";
 import { NodeView } from "./NodeView";
-import SetupConnectionBanner from "./SetupConnectionBanner";
-import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
 import {
   LineageViewError,
   LineageViewLoading,
   LineageViewNoChanges,
 } from "./states";
-import { useMultiNodesAction } from "./useMultiNodesAction";
-import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;

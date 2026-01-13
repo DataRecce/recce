@@ -8,6 +8,7 @@
  * Source of truth: OSS functionality - these tests document current behavior
  */
 
+import useValueDiffAlertDialog from "@datarecce/ui/hooks/useValueDiffAlertDialogOss";
 import {
   act,
   render,
@@ -16,7 +17,6 @@ import {
   waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import useValueDiffAlertDialog from "../useValueDiffAlertDialog";
 
 // ============================================================================
 // Mocks - MUST be set up before imports
