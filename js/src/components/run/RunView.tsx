@@ -34,10 +34,10 @@ import {
   RunResultViewProps,
   ViewOptionTypes,
 } from "@datarecce/ui/components/run";
+import ResultErrorFallback from "@datarecce/ui/lib/result/ResultErrorFallback";
 import type { ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
-import ResultErrorFallback from "@/lib/result/ResultErrorFallback";
 
 // ============================================================================
 // Types

@@ -39,7 +39,7 @@
  * @example With error boundary injection (OSS pattern)
  * ```tsx
  * import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
- * import ResultErrorFallback from "@/lib/result/ResultErrorFallback";
+ * import ResultErrorFallback from "@datarecce/ui/lib/result/ResultErrorFallback";
  *
  * <RunView
  *   run={run}
@@ -176,7 +176,7 @@ export interface RunViewProps {
    *
    * @example Using Sentry FallbackRender
    * ```tsx
-   * import ResultErrorFallback from "@/lib/result/ResultErrorFallback";
+   * import ResultErrorFallback from "@datarecce/ui/lib/result/ResultErrorFallback";
    * <RunView errorBoundaryFallback={ResultErrorFallback} />
    * ```
    */

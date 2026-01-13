@@ -18,6 +18,7 @@ export default defineConfig({
     utils: "src/utils/index.ts",
     constants: "src/constants/index.ts",
     "components-run": "src/components/run/index.ts",
+    "lib/result/ResultErrorFallback": "src/lib/result/ResultErrorFallback.tsx",
     "lib/api/track": "src/lib/api/track.ts",
     "lib/api/user": "src/lib/api/user.ts",
   },

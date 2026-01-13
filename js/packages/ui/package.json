@@ -78,6 +78,11 @@
       "types": "./dist/lib/api/user.d.mts",
       "import": "./dist/lib/api/user.mjs",
       "require": "./dist/lib/api/user.cjs"
+    },
+    "./lib/result/ResultErrorFallback": {
+      "types": "./dist/lib/result/ResultErrorFallback.d.mts",
+      "import": "./dist/lib/result/ResultErrorFallback.mjs",
+      "require": "./dist/lib/result/ResultErrorFallback.cjs"
     }
   },
   "files": [
