@@ -164,6 +164,7 @@ export type {
 export {
   extractColumns,
   IGNORE_SCREENSHOT_CLASS,
+  RecceShareStateContextProvider,
   unionColumns,
   useCheckEvents,
   useCopyToClipboard,
@@ -174,6 +175,7 @@ export {
   useIsDark,
   useModelColumns,
   useMultiNodesAction,
+  useRecceShareStateContext,
   useRun,
   useThemeColors,
 } from "./hooks";

@@ -90,6 +90,9 @@ jest.mock("@datarecce/ui/hooks", () => ({
     onMouseEnter: jest.fn(),
     onMouseLeave: jest.fn(),
   })),
+  useRecceShareStateContext: jest.fn(() => ({
+    handleShareClick: jest.fn(),
+  })),
 }));
 
 // Mock CodeEditor
@@ -102,13 +105,6 @@ jest.mock("@datarecce/ui/primitives", () => ({
 const mockPush = jest.fn();
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
-}));
-
-// Mock share state context
-jest.mock("@/lib/hooks/RecceShareStateContext", () => ({
-  useRecceShareStateContext: jest.fn(() => ({
-    handleShareClick: jest.fn(),
-  })),
 }));
 
 // Mock track functions

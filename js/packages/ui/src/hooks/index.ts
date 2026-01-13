@@ -4,6 +4,10 @@
  */
 
 export {
+  RecceShareStateContextProvider,
+  useRecceShareStateContext,
+} from "./RecceShareStateContext";
+export {
   IGNORE_SCREENSHOT_CLASS,
   useCopyToClipboard,
   useCopyToClipboardButton,
