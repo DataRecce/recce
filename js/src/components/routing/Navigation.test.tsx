@@ -94,7 +94,7 @@ jest.mock("@datarecce/ui/components/app/Filename", () => ({
   Filename: () => <div data-testid="filename">Filename</div>,
 }));
 
-jest.mock("@/components/app/StateExporter", () => ({
+jest.mock("@datarecce/ui/components/app/StateExporter", () => ({
   StateExporter: () => <div data-testid="state-exporter">StateExporter</div>,
 }));
 

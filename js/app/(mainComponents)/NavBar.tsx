@@ -1,7 +1,7 @@
 "use client";
 
 import { type Check, cacheKeys, listChecks } from "@datarecce/ui/api";
-import { EnvInfo, Filename } from "@datarecce/ui/components/app";
+import { EnvInfo, Filename, StateExporter } from "@datarecce/ui/components/app";
 import {
   useLineageGraphContext,
   useRecceInstanceContext,
@@ -16,7 +16,6 @@ import { useQuery } from "@tanstack/react-query";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import React, { type ReactNode, useEffect, useMemo, useRef } from "react";
-import { StateExporter } from "@/components/app/StateExporter";
 import { TopLevelShare } from "@/components/app/StateSharing";
 import { StateSynchronizer } from "@/components/app/StateSynchronizer";
 

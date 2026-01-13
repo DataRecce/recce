@@ -10,6 +10,7 @@ export {
   EnvInfo,
   Filename,
   SetupConnectionPopover,
+  StateExporter,
 } from "./app";
 // Error boundary components
 export { ErrorBoundary, ErrorButton } from "./errorboundary";
