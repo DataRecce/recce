@@ -6,6 +6,7 @@ export * from "./columns";
 export * from "./contextmenu";
 export * from "./controls";
 export * from "./edges";
+export { GraphNode as GraphNodeOss, type GraphNodeProps } from "./GraphNodeOss";
 // Composed components for rendering lineage graphs
 export { LineageCanvas, type LineageCanvasProps } from "./LineageCanvas";
 export {
@@ -13,7 +14,14 @@ export {
   type LineageViewProps,
   type LineageViewRef,
 } from "./LineageView";
+export {
+  ColumnNodeContextMenu,
+  LineageViewContextMenu,
+  ModelNodeContextMenu,
+  useLineageViewContextMenu,
+} from "./LineageViewContextMenuOss";
 export * from "./legend";
+export { layout, toReactFlow } from "./lineage";
 // SQL view component with dependency-injected editors
 export {
   type CodeEditorProps,

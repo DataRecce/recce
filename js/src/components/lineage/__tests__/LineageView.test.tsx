@@ -62,8 +62,8 @@ import {
   selectUpstream,
 } from "@datarecce/ui";
 import type { LineageDataFromMetadata } from "@datarecce/ui/api";
+import { toReactFlow } from "@datarecce/ui/components/lineage/lineage";
 import React from "react";
-import { toReactFlow } from "../lineage";
 
 // ============================================================================
 // Test Fixtures

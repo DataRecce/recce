@@ -53,7 +53,7 @@ jest.mock("@datarecce/ui/contexts", () => ({
 }));
 
 // Mock @datarecce/ui/components/lineage
-jest.mock("@datarecce/ui/components/lineage", () => {
+jest.mock("@datarecce/ui/components/lineage/nodes", () => {
   const MockLineageNodeInline = jest
     .fn()
     .mockImplementation(({ id, data, actionTag, runsAggregatedTag }) => (
@@ -118,15 +118,6 @@ jest.mock("@datarecce/ui/components/lineage", () => {
   return {
     LineageNode: MockLineageNodeInline,
     ActionTag: MockActionTag,
-    getIconForChangeStatus: jest.fn().mockReturnValue({
-      icon: () => <span data-testid="change-status-icon">Status</span>,
-      color: "#22c55e",
-      backgroundColor: "#dcfce7",
-    }),
-    getIconForResourceType: jest.fn().mockReturnValue({
-      icon: () => <span data-testid="resource-type-icon">Resource</span>,
-      color: "#06b6d4",
-    }),
   };
 });
 
@@ -159,7 +150,11 @@ jest.mock("@datarecce/ui/components/ui/mui-theme", () => ({
 // ============================================================================
 
 import type { LineageGraphNode } from "@datarecce/ui";
-import { LineageNode } from "@datarecce/ui/components/lineage";
+import {
+  GraphNode,
+  type GraphNodeProps,
+} from "@datarecce/ui/components/lineage/GraphNodeOss";
+import { LineageNode } from "@datarecce/ui/components/lineage/nodes";
 import {
   useLineageGraphContext,
   useLineageViewContextSafe,
@@ -168,7 +163,6 @@ import { useThemeColors } from "@datarecce/ui/hooks";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useStore } from "@xyflow/react";
 import React from "react";
-import { GraphNode, type GraphNodeProps } from "../GraphNode";
 
 // Cast the mocked LineageNode for assertions
 const mockedLineageNode = LineageNode as unknown as jest.Mock;

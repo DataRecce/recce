@@ -38,25 +38,21 @@ jest.mock("@datarecce/ui/components/ui/Toaster", () => ({
   },
 }));
 
-jest.mock("@datarecce/ui", () => {
-  const actual = jest.requireActual("@datarecce/ui");
-  return {
-    ...actual,
-    buildLineageGraph: jest.fn((base, current, diff) => ({
-      nodes: {},
-      edges: {},
-      modifiedSet: [],
-      manifestMetadata: {
-        base: base?.manifest_metadata,
-        current: current?.manifest_metadata,
-      },
-      catalogMetadata: {
-        base: base?.catalog_metadata,
-        current: current?.catalog_metadata,
-      },
-    })),
-  };
-});
+jest.mock("@datarecce/ui", () => ({
+  buildLineageGraph: jest.fn((base, current, diff) => ({
+    nodes: {},
+    edges: {},
+    modifiedSet: [],
+    manifestMetadata: {
+      base: base?.manifest_metadata,
+      current: current?.manifest_metadata,
+    },
+    catalogMetadata: {
+      base: base?.catalog_metadata,
+      current: current?.catalog_metadata,
+    },
+  })),
+}));
 
 // Mock the hooks from @datarecce/ui/contexts (except LineageGraphProvider which is the real thing)
 const mockUseIdleTimeout = jest.fn(() => ({

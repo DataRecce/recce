@@ -289,7 +289,7 @@ jest.mock("../ColumnLevelLineageControl", () => ({
   ColumnLevelLineageControl: jest.fn(() => <div data-testid="cll-control" />),
 }));
 
-jest.mock("../GraphNode", () => ({
+jest.mock("@datarecce/ui/components/lineage/GraphNodeOss", () => ({
   GraphNode: jest.fn(() => <div data-testid="graph-node" />),
 }));
 
@@ -302,7 +302,7 @@ jest.mock("../GraphEdge", () => ({
   default: jest.fn(() => <div data-testid="graph-edge" />),
 }));
 
-jest.mock("../LineageViewContextMenu", () => ({
+jest.mock("@datarecce/ui/components/lineage/LineageViewContextMenuOss", () => ({
   LineageViewContextMenu: jest.fn(() => <div data-testid="context-menu" />),
   useLineageViewContextMenu: jest.fn(() => ({
     showContextMenu: jest.fn(),
@@ -311,7 +311,7 @@ jest.mock("../LineageViewContextMenu", () => ({
   })),
 }));
 
-jest.mock("../LineageViewNotification", () => ({
+jest.mock("@datarecce/ui/components/notifications", () => ({
   LineageViewNotification: jest.fn(() => null),
 }));
 
@@ -397,7 +397,7 @@ jest.mock("@datarecce/ui/lib/api/track", () => ({
 }));
 
 // Mock lineage utilities
-jest.mock("../lineage", () => ({
+jest.mock("@datarecce/ui/components/lineage/lineage", () => ({
   layout: jest.fn(),
   toReactFlow: jest.fn(() => [[], [], {}]),
 }));
@@ -429,8 +429,8 @@ const TestablePrivateLineageView = React.forwardRef<
   LineageViewProps
 >(PrivateLineageView);
 
+import { toReactFlow } from "@datarecce/ui/components/lineage/lineage";
 import { useMultiNodesActionOss as useMultiNodesAction } from "@datarecce/ui/hooks/useMultiNodesActionOss";
-import { toReactFlow } from "../lineage";
 
 // ============================================================================
 // Test Fixtures

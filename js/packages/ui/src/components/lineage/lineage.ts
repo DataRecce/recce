@@ -1,4 +1,5 @@
 import dagre from "@dagrejs/dagre";
+import { Position } from "@xyflow/react";
 import {
   COLUMN_HEIGHT,
   type LineageGraph,
@@ -8,9 +9,8 @@ import {
   type LineageGraphNodes,
   layoutWithDagre,
   type NodeColumnSetMap,
-} from "@datarecce/ui";
-import type { ColumnLineageData } from "@datarecce/ui/api";
-import { Position } from "@xyflow/react";
+} from "../..";
+import type { ColumnLineageData } from "../../api";
 
 /**
  * Convert a LineageGraph to React Flow nodes and edges with column-level lineage support
@@ -29,7 +29,7 @@ import { Position } from "@xyflow/react";
  * @example
  * ```tsx
  * const [nodes, edges, columnSetMap] = toReactFlow(lineageGraph, {
- *   selectedNodes: ['model.project.orders'],
+ *   selectedNodes: ["model.project.orders"],
  *   cll: columnLineageData,
  * });
  * ```

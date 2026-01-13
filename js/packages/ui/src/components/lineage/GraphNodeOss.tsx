@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * @file GraphNode.tsx
+ * @file GraphNodeOss.tsx
  * @description OSS wrapper for UI package LineageNode component
  *
  * This component wraps the @datarecce/ui LineageNode with OSS-specific
@@ -16,29 +16,29 @@
  * - NodeRunsAggregated with schema change detection
  */
 
-import type { LineageGraphNode } from "@datarecce/ui";
-import { COLUMN_HEIGHT, isSchemaChanged } from "@datarecce/ui";
-import { isRowCountDiffRun, type RowCountDiff } from "@datarecce/ui/api";
-import {
-  ActionTag,
-  type ChangeCategory,
-  getIconForChangeStatus,
-  LineageNode,
-  type NodeChangeStatus,
-  type SelectMode,
-} from "@datarecce/ui/components/lineage";
-import { findByRunType } from "@datarecce/ui/components/run";
-import {
-  useLineageGraphContext,
-  useLineageViewContextSafe,
-} from "@datarecce/ui/contexts";
-import { useThemeColors } from "@datarecce/ui/hooks";
-import { deltaPercentageString } from "@datarecce/ui/utils";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import MuiTooltip from "@mui/material/Tooltip";
 import { type NodeProps, useStore } from "@xyflow/react";
 import { memo } from "react";
+import type { LineageGraphNode } from "../..";
+import { COLUMN_HEIGHT, isSchemaChanged } from "../..";
+import { isRowCountDiffRun, type RowCountDiff } from "../../api";
+import {
+  useLineageGraphContext,
+  useLineageViewContextSafe,
+} from "../../contexts";
+import { useThemeColors } from "../../hooks";
+import { deltaPercentageString } from "../../utils";
+import { findByRunType } from "../run";
+import {
+  ActionTag,
+  type ChangeCategory,
+  LineageNode,
+  type NodeChangeStatus,
+  type SelectMode,
+} from "./nodes";
+import { getIconForChangeStatus } from "./styles";
 
 // =============================================================================
 // TYPES

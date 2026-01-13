@@ -30,15 +30,14 @@ jest.mock("@datarecce/ui/contexts", () => ({
 }));
 
 // Mock @datarecce/ui/components/lineage - get the actual module and only mock what we need
-jest.mock("@datarecce/ui/components/lineage", () => {
-  const actual = jest.requireActual("@datarecce/ui/components/lineage");
-  return {
-    ...actual,
-    getIconForResourceType: jest.fn(() => ({
-      icon: () => <span data-testid="model-icon">ModelIcon</span>,
-    })),
-  };
-});
+jest.mock("@datarecce/ui/components/lineage", () => ({
+  LineageViewTopBarOss: jest.requireActual(
+    "@datarecce/ui/components/lineage/topbar/LineageViewTopBarOss",
+  ).LineageViewTopBarOss,
+  getIconForResourceType: jest.fn(() => ({
+    icon: () => <span data-testid="model-icon">ModelIcon</span>,
+  })),
+}));
 
 // Mock @datarecce/ui/hooks
 jest.mock("@datarecce/ui/hooks", () => ({
@@ -68,7 +67,6 @@ jest.mock("@datarecce/ui/components/app", () => ({
 
 // Mock HistoryToggle
 jest.mock("@datarecce/ui/components", () => ({
-  ...jest.requireActual("@datarecce/ui/components"),
   __esModule: true,
   HistoryToggle: () => <div data-testid="history-toggle">History Toggle</div>,
 }));

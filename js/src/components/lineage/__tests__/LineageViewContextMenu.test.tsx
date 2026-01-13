@@ -59,7 +59,6 @@ jest.mock("next/navigation", () => ({
 // Mock useModelColumns
 const mockUseModelColumns = jest.fn();
 jest.mock("@datarecce/ui/hooks", () => ({
-  ...jest.requireActual("@datarecce/ui/hooks"),
   useModelColumns: (model: string | undefined) => mockUseModelColumns(model),
   useRecceQueryContext: () => mockUseRecceQueryContext(),
 }));
@@ -130,6 +129,12 @@ jest.mock("@datarecce/ui/components/histogram", () => ({
 import type { LineageGraphColumnNode, LineageGraphNode } from "@datarecce/ui";
 import { isLineageGraphColumnNode, isLineageGraphNode } from "@datarecce/ui";
 import {
+  ColumnNodeContextMenu,
+  LineageViewContextMenu,
+  ModelNodeContextMenu,
+  useLineageViewContextMenu,
+} from "@datarecce/ui/components/lineage/LineageViewContextMenuOss";
+import {
   act,
   fireEvent,
   render,
@@ -137,12 +142,6 @@ import {
   screen,
 } from "@testing-library/react";
 import React from "react";
-import {
-  ColumnNodeContextMenu,
-  LineageViewContextMenu,
-  ModelNodeContextMenu,
-  useLineageViewContextMenu,
-} from "../LineageViewContextMenu";
 
 // ============================================================================
 // Test Fixtures

@@ -34,8 +34,13 @@ import {
   LineageLegend,
   LineageViewTopBarOss as LineageViewTopBar,
 } from "@datarecce/ui/components/lineage";
+import {
+  LineageViewContextMenu,
+  useLineageViewContextMenu,
+} from "@datarecce/ui/components/lineage/LineageViewContextMenuOss";
 import { NodeViewOss as NodeView } from "@datarecce/ui/components/lineage/NodeViewOss";
 import SetupConnectionBanner from "@datarecce/ui/components/lineage/SetupConnectionBannerOss";
+import { LineageViewNotification } from "@datarecce/ui/components/notifications";
 import { toaster } from "@datarecce/ui/components/ui";
 import {
   LineageViewContext,
@@ -77,6 +82,7 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { layout, toReactFlow } from "@datarecce/ui/components/lineage/lineage";
 import { AxiosError } from "axios";
 import React, {
   forwardRef,
@@ -100,12 +106,6 @@ import {
   useResizeObserver,
   useTrackLineageRender,
 } from "./hooks";
-import {
-  LineageViewContextMenu,
-  useLineageViewContextMenu,
-} from "./LineageViewContextMenu";
-import { LineageViewNotification } from "./LineageViewNotification";
-import { layout, toReactFlow } from "./lineage";
 import {
   LineageViewError,
   LineageViewLoading,

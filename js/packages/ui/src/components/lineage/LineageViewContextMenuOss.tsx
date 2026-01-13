@@ -1,5 +1,7 @@
+"use client";
+
 /**
- * @file LineageViewContextMenu.tsx (OSS Wrapper)
+ * @file LineageViewContextMenuOss.tsx
  * @description Thin wrapper that imports from @datarecce/ui and injects OSS-specific implementations.
  *
  * This file serves as the integration layer between the @datarecce/ui library and the OSS application.
@@ -11,13 +13,24 @@
  * - Histogram diff support checking
  */
 
+import { useRouter } from "next/navigation";
 import type {
   LineageGraphColumnNode,
   LineageGraphNode,
   LineageGraphNodes,
-} from "@datarecce/ui";
-import { SetupConnectionPopover } from "@datarecce/ui/components/app";
-import { supportsHistogramDiff } from "@datarecce/ui/components/histogram";
+} from "../..";
+import {
+  useLineageGraphContext,
+  useLineageViewContextSafe,
+  useRecceActionContext,
+  useRecceInstanceContext,
+  useRecceServerFlag,
+} from "../../contexts";
+import { useModelColumns, useRecceQueryContext } from "../../hooks";
+import { trackExploreAction, trackLineageSelection } from "../../lib/api/track";
+import { SetupConnectionPopover } from "../app";
+import { supportsHistogramDiff } from "../histogram";
+import { findByRunType } from "../run";
 import {
   ColumnNodeContextMenu as BaseColumnNodeContextMenu,
   LineageViewContextMenu as BaseLineageViewContextMenu,
@@ -27,21 +40,7 @@ import {
   EXPLORE_SOURCE,
   LINEAGE_SELECTION_ACTION,
   type LineageViewContextMenuDeps,
-} from "@datarecce/ui/components/lineage";
-import { findByRunType } from "@datarecce/ui/components/run";
-import {
-  useLineageGraphContext,
-  useLineageViewContextSafe,
-  useRecceActionContext,
-  useRecceInstanceContext,
-  useRecceServerFlag,
-} from "@datarecce/ui/contexts";
-import { useModelColumns, useRecceQueryContext } from "@datarecce/ui/hooks";
-import {
-  trackExploreAction,
-  trackLineageSelection,
-} from "@datarecce/ui/lib/api/track";
-import { useRouter } from "next/navigation";
+} from "./contextmenu";
 
 // ============================================================================
 // Types

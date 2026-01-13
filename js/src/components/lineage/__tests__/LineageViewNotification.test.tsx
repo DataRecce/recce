@@ -34,9 +34,9 @@ jest.mock("react-icons/io5", () => ({
 // ============================================================================
 
 import { SESSION_STORAGE_KEYS } from "@datarecce/ui/api";
+import { LineageViewNotification } from "@datarecce/ui/components/notifications";
 import { fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
-import { LineageViewNotification } from "../LineageViewNotification";
 
 // ============================================================================
 // Test Setup
