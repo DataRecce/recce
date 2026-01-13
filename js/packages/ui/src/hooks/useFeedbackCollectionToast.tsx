@@ -1,24 +1,10 @@
-/**
- * @recce-migration NOT_APPLICABLE
- *
- * This hook is specific to Recce OSS and should not be migrated to @datarecce/ui.
- *
- * Reason: Feedback collection UI with emoji reactions and localStorage persistence
- * is an OSS-specific engagement feature. It uses OSS-specific feature flags and
- * analytics endpoints.
- *
- * If this changes in the future, consider:
- * - Moving to @datarecce/ui if feedback collection becomes cross-platform
- * - Abstracting the storage and analytics backends
- */
-
-import { toaster } from "@datarecce/ui/components/ui";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import { useState } from "react";
 import { LuExternalLink } from "react-icons/lu";
+import { toaster } from "../components/ui/Toaster";
 
 function ReactionFeedback({
   description,

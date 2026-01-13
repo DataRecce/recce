@@ -5,6 +5,7 @@
 
 export { type ApiConfigContextType, useApiConfig } from "./useApiConfig";
 export { useClipBoardToast } from "./useClipBoardToast";
+export { useFeedbackCollectionToast } from "./useFeedbackCollectionToast";
 export { useIsDark } from "./useIsDark";
 export {
   extractColumns,
