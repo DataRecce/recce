@@ -4,7 +4,7 @@
 // Re-exports all UI components from @datarecce/ui
 
 // App components
-export { SetupConnectionPopover } from "./app";
+export { AuthModal, SetupConnectionPopover } from "./app";
 // Error boundary components
 export { ErrorBoundary, ErrorButton } from "./errorboundary";
 

@@ -1,3 +1,4 @@
+import { AuthModal } from "@datarecce/ui/components/app";
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import {
   useClipBoardToast,
@@ -13,7 +14,6 @@ import { useEffect, useState } from "react";
 import { PiCheckCircle, PiCopy } from "react-icons/pi";
 import { TbCloudUpload } from "react-icons/tb";
 import { useCopyToClipboard, useInterval } from "usehooks-ts";
-import AuthModal from "@/components/AuthModal/AuthModal";
 
 const LOADING_MESSAGES = [
   "Processing...", // 0-30s

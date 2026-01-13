@@ -22,6 +22,7 @@ import {
   createCheckByRun,
   runTypeHasRef,
 } from "@datarecce/ui/api";
+import { AuthModal } from "@datarecce/ui/components/app";
 import {
   LearnHowLink,
   RecceNotification,
@@ -53,7 +54,6 @@ import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { type Ref, useCallback, useState } from "react";
-import AuthModal from "@/components/AuthModal/AuthModal";
 
 // ============================================================================
 // OSS Props Interface

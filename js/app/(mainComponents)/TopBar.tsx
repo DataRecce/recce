@@ -1,3 +1,4 @@
+import { AuthModal } from "@datarecce/ui/components/app";
 import { IdleTimeoutBadge } from "@datarecce/ui/components/timeout";
 import {
   useLineageGraphContext,
@@ -14,7 +15,6 @@ import React, { useState } from "react";
 import { IconType } from "react-icons";
 import { FaGithub, FaQuestionCircle, FaSlack } from "react-icons/fa";
 import { VscGitPullRequest } from "react-icons/vsc";
-import AuthModal from "@/components/AuthModal/AuthModal";
 import AvatarDropdown from "@/components/app/AvatarDropdown";
 import DisplayModeToggle from "./DisplayModeToggle";
 import RecceVersionBadge from "./RecceVersionBadge";

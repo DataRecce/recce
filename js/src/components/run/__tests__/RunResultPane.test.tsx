@@ -114,7 +114,7 @@ jest.mock("@datarecce/ui/lib/api/track", () => ({
 }));
 
 // Mock AuthModal
-jest.mock("@/components/AuthModal/AuthModal", () => ({
+jest.mock("@datarecce/ui/components/app/AuthModal", () => ({
   __esModule: true,
   default: () => <div data-testid="auth-modal">Auth Modal</div>,
 }));
