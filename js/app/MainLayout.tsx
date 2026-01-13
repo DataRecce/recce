@@ -8,6 +8,7 @@
 "use client";
 
 import { HSplit, VSplit } from "@datarecce/ui";
+import { RunListOss } from "@datarecce/ui/components/run";
 import {
   useLineageGraphContext,
   useRecceActionContext,
@@ -20,7 +21,6 @@ import CircularProgress from "@mui/material/CircularProgress";
 import { usePathname } from "next/navigation";
 import React, { ReactNode, Suspense, useEffect } from "react";
 import AuthModal from "@/components/AuthModal/AuthModal";
-import { RunList } from "@/components/run/RunList";
 import { RunResultPane } from "@/components/run/RunResultPane";
 import "@fontsource/montserrat/800.css";
 import NavBar from "app/(mainComponents)/NavBar";
@@ -118,7 +118,7 @@ function Main({ children, lineage, isLineageRoute }: MainProps) {
     >
       {/* suppressHydrationWarning: react-split adds inline styles after mount */}
       <Box style={{ contain: "size" }} suppressHydrationWarning>
-        {_isHistoryOpen && <RunList />}
+        {_isHistoryOpen && <RunListOss />}
       </Box>
       <VSplit
         sizes={_isRunResultOpen ? [50, 50] : [100, 0]}

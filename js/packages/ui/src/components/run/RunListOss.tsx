@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * @file run/RunList.tsx
+ * @file run/RunListOss.tsx
  * @description OSS wrapper for RunList that injects OSS-specific dependencies.
  *
  * This component wraps the @datarecce/ui RunList with:
@@ -11,29 +11,18 @@
  * - Navigation and check creation
  */
 
-import {
-  cacheKeys,
-  createCheckByRun,
-  listRuns,
-  type Run,
-} from "@datarecce/ui/api";
-import {
-  RunList as BaseRunList,
-  findByRunType,
-  type RunListItemData,
-} from "@datarecce/ui/components/run";
-import {
-  useRecceActionContext,
-  useRecceInstanceContext,
-} from "@datarecce/ui/contexts";
-import { useApiConfig } from "@datarecce/ui/hooks";
-import { trackHistoryAction } from "@datarecce/ui/lib/api/track";
 import IconButton from "@mui/material/IconButton";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo } from "react";
 import { FaCheckCircle, FaRegCheckCircle } from "react-icons/fa";
 import { PiX } from "react-icons/pi";
+import { cacheKeys, createCheckByRun, listRuns, type Run } from "../../api";
+import { useRecceActionContext, useRecceInstanceContext } from "../../contexts";
+import { useApiConfig } from "../../hooks";
+import { trackHistoryAction } from "../../lib/api/track";
+import { RunList as BaseRunList, type RunListItemData } from "./RunList";
+import { findByRunType } from "./registry";
 
 /**
  * Transform API Run to RunListItemData for the UI component
@@ -51,17 +40,17 @@ function mapRunToListItem(run: Run): RunListItemData {
 }
 
 /**
- * RunList Component - OSS wrapper
+ * RunListOss Component - OSS wrapper
  *
  * Provides the History panel with run list, integrating with OSS-specific
  * contexts, tracking, and navigation.
  *
  * @example
  * ```tsx
- * <RunList />
+ * <RunListOss />
  * ```
  */
-export function RunList() {
+export function RunListOss() {
   const { closeHistory, showRunId, runId } = useRecceActionContext();
   const { featureToggles } = useRecceInstanceContext();
   const { apiClient } = useApiConfig();

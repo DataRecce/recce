@@ -21,6 +21,7 @@ export {
   type RunListItemProps,
   type RunListProps,
 } from "./RunList";
+export { RunListOss } from "./RunListOss";
 export { RunModal, type RunModalProps } from "./RunModal";
 export {
   RunModalOss,

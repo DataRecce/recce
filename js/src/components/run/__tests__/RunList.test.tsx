@@ -64,7 +64,7 @@ jest.mock("@datarecce/ui/lib/api/track", () => ({
 }));
 
 // Mock registry
-jest.mock("@datarecce/ui/components/run", () => ({
+jest.mock("@datarecce/ui/components/run/RunList", () => ({
   RunList: ({
     runs,
     isLoading,
@@ -146,6 +146,9 @@ jest.mock("@datarecce/ui/components/run", () => ({
       )}
     </div>
   ),
+}));
+
+jest.mock("@datarecce/ui/components/run/registry", () => ({
   findByRunType: jest.fn((type: string) => ({
     icon: () => <span data-testid={`${type}-icon`}>{type}</span>,
     title: type.replace(/_/g, " "),
@@ -157,10 +160,10 @@ jest.mock("@datarecce/ui/components/run", () => ({
 // ============================================================================
 
 import { createCheckByRun, listRuns, type Run } from "@datarecce/ui/api";
+import { RunListOss } from "@datarecce/ui/components/run";
 import { trackHistoryAction } from "@datarecce/ui/lib/api/track";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { RunList } from "../RunList";
 
 // Cast to jest mocks
 const mockListRuns = listRuns as jest.Mock;
@@ -220,7 +223,7 @@ describe("RunList", () => {
     it("renders the header with title", async () => {
       mockListRuns.mockResolvedValue([]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(screen.getByText("History")).toBeInTheDocument();
@@ -230,7 +233,7 @@ describe("RunList", () => {
     it("renders close button", async () => {
       mockListRuns.mockResolvedValue([]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         const closeButton = screen.getByRole("button", {
@@ -252,7 +255,7 @@ describe("RunList", () => {
 
       mockListRuns.mockResolvedValue([]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         const closeButton = screen.getByRole("button", {
@@ -276,7 +279,7 @@ describe("RunList", () => {
 
       mockListRuns.mockResolvedValue([]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         const closeButton = screen.getByRole("button", {
@@ -299,7 +302,7 @@ describe("RunList", () => {
         () => new Promise((resolve) => setTimeout(() => resolve([]), 100)),
       );
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       expect(screen.getByText("Loading...")).toBeInTheDocument();
     });
@@ -313,7 +316,7 @@ describe("RunList", () => {
     it("shows empty state when no runs exist", async () => {
       mockListRuns.mockResolvedValue([]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(screen.getByText("No runs")).toBeInTheDocument();
@@ -330,7 +333,7 @@ describe("RunList", () => {
       const run = createMockRun({ name: "Test Query Run" });
       mockListRuns.mockResolvedValue([run]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(screen.getByText("Test Query Run")).toBeInTheDocument();
@@ -345,7 +348,7 @@ describe("RunList", () => {
       ];
       mockListRuns.mockResolvedValue(runs);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(screen.getByText("Run 1")).toBeInTheDocument();
@@ -358,7 +361,7 @@ describe("RunList", () => {
       const run = createMockRun({ name: "" });
       mockListRuns.mockResolvedValue([run]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(screen.getByText("<no name>")).toBeInTheDocument();
@@ -369,7 +372,7 @@ describe("RunList", () => {
       const run = createMockRun({ name: "   " });
       mockListRuns.mockResolvedValue([run]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(screen.getByText("<no name>")).toBeInTheDocument();
@@ -386,7 +389,7 @@ describe("RunList", () => {
       const run = createMockRun({ type: "query" });
       mockListRuns.mockResolvedValue([run]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(screen.getByTestId("query-icon")).toBeInTheDocument();
@@ -397,7 +400,7 @@ describe("RunList", () => {
       const run = createMockRun({ type: "value_diff" });
       mockListRuns.mockResolvedValue([run]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(screen.getByTestId("value_diff-icon")).toBeInTheDocument();
@@ -408,7 +411,7 @@ describe("RunList", () => {
       const run = createMockRun({ type: "profile_diff" });
       mockListRuns.mockResolvedValue([run]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(screen.getByTestId("profile_diff-icon")).toBeInTheDocument();
@@ -434,7 +437,7 @@ describe("RunList", () => {
       const run = createMockRun({ name: "Clickable Run" });
       mockListRuns.mockResolvedValue([run]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(screen.getByText("Clickable Run")).toBeInTheDocument();
@@ -464,7 +467,7 @@ describe("RunList", () => {
       const run = createMockRun({ name: "Trackable Run" });
       mockListRuns.mockResolvedValue([run]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(screen.getByText("Trackable Run")).toBeInTheDocument();
@@ -493,7 +496,7 @@ describe("RunList", () => {
       const run = createMockRun({ check_id: undefined });
       mockListRuns.mockResolvedValue([run]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         const element = screen.getByRole("button", {
@@ -508,7 +511,7 @@ describe("RunList", () => {
       mockListRuns.mockResolvedValue([run]);
       mockCreateCheckByRun.mockResolvedValue({ check_id: "new-check" });
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(
@@ -533,7 +536,7 @@ describe("RunList", () => {
       mockListRuns.mockResolvedValue([run]);
       mockCreateCheckByRun.mockResolvedValue({ check_id: "new-check" });
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(
@@ -560,7 +563,7 @@ describe("RunList", () => {
       mockListRuns.mockResolvedValue([run]);
       mockCreateCheckByRun.mockResolvedValue({ check_id: "new-check-id" });
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(
@@ -589,7 +592,7 @@ describe("RunList", () => {
         },
       });
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         const button = screen.queryByRole("button", {
@@ -609,7 +612,7 @@ describe("RunList", () => {
       const run = createMockRun({ check_id: "existing-check" });
       mockListRuns.mockResolvedValue([run]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         const element = screen.getByRole("button", { name: /Go to Check/i });
@@ -625,7 +628,7 @@ describe("RunList", () => {
       const run = createMockRun({ check_id: "existing-check" });
       mockListRuns.mockResolvedValue([run]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(
@@ -649,7 +652,7 @@ describe("RunList", () => {
       const run = createMockRun({ check_id: "existing-check" });
       mockListRuns.mockResolvedValue([run]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(
@@ -671,7 +674,7 @@ describe("RunList", () => {
       const run = createMockRun({ check_id: "existing-check" });
       mockListRuns.mockResolvedValue([run]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         const addButton = screen.queryByRole("button", {
@@ -696,7 +699,7 @@ describe("RunList", () => {
       };
       mockListRuns.mockResolvedValue([run as Run]);
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(screen.getByText("<no name>")).toBeInTheDocument();
@@ -706,7 +709,7 @@ describe("RunList", () => {
     it("handles API errors gracefully", async () => {
       mockListRuns.mockRejectedValue(new Error("API Error"));
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       // Should not crash, but may not show runs
       await waitFor(() => {
@@ -737,7 +740,7 @@ describe("RunList", () => {
       mockListRuns.mockResolvedValue([run]);
       mockCreateCheckByRun.mockResolvedValue({ check_id: "new-check" });
 
-      renderWithQueryClient(<RunList />);
+      renderWithQueryClient(<RunListOss />);
 
       await waitFor(() => {
         expect(
