@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI Agents when working with code in this repository.
 
 ## Overview
 
@@ -91,7 +91,7 @@ Signed-off-by: Your Name <your.email@example.com>
 ```bash
 git commit -s -m "feat(check): add timeline component for check events"
 git commit -s -m "fix(adapter): normalize column casing for Snowflake"
-git commit -s -m "docs: update CLAUDE.md with git practices"
+git commit -s -m "docs: update AGENTS.md with git practices"
 git commit -s -m "refactor(dataGrid): extract shared utilities"
 ```
 

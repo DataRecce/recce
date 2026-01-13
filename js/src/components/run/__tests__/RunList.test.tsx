@@ -63,6 +63,87 @@ jest.mock("@/lib/api/track", () => ({
 
 // Mock registry
 jest.mock("@datarecce/ui/components/run", () => ({
+  RunList: ({
+    runs,
+    isLoading,
+    onRunSelect,
+    onAddToChecklist,
+    onGoToCheck,
+    getRunIcon,
+    hideAddToChecklist,
+    title,
+    headerActions,
+    emptyMessage,
+    loadingMessage,
+  }: {
+    runs: Array<{
+      id: string;
+      name?: string;
+      type: string;
+      checkId?: string | null;
+    }>;
+    isLoading?: boolean;
+    onRunSelect?: (runId: string) => void;
+    onAddToChecklist?: (runId: string) => void;
+    onGoToCheck?: (checkId: string) => void;
+    getRunIcon?: (runType: string) => React.ReactNode;
+    hideAddToChecklist?: boolean;
+    title?: string;
+    headerActions?: React.ReactNode;
+    emptyMessage?: string;
+    loadingMessage?: string;
+  }) => (
+    <div>
+      <div>
+        <span>{title}</span>
+        {headerActions}
+      </div>
+      {isLoading ? (
+        <div>{loadingMessage}</div>
+      ) : runs.length === 0 ? (
+        <div>{emptyMessage}</div>
+      ) : (
+        <div>
+          {runs.map((run) => {
+            const name =
+              typeof run.name === "string" && run.name.trim().length > 0
+                ? run.name
+                : "<no name>";
+            return (
+              <div
+                key={run.id}
+                className="MuiBox-root"
+                onClick={() => onRunSelect?.(run.id)}
+              >
+                <span>{name}</span>
+                {getRunIcon?.(run.type)}
+                {!hideAddToChecklist && !run.checkId ? (
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onAddToChecklist?.(run.id);
+                    }}
+                  >
+                    Add to Checklist
+                  </button>
+                ) : null}
+                {run.checkId ? (
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onGoToCheck?.(run.checkId ?? "");
+                    }}
+                  >
+                    Go to Check
+                  </button>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  ),
   findByRunType: jest.fn((type: string) => ({
     icon: () => <span data-testid={`${type}-icon`}>{type}</span>,
     title: type.replace(/_/g, " "),

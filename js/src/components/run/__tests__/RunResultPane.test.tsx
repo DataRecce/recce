@@ -423,16 +423,12 @@ jest.mock("@datarecce/ui/components/run", () => {
     RunView: ({ run }: { run: any }) => (
       <div data-testid="run-view">RunView: {run?.run_id}</div>
     ),
+    findByRunType: jest.fn(() => ({
+      RunResultView: () => <div>Result View</div>,
+    })),
+    runTypeHasRef: jest.fn(() => true),
   };
 });
-
-// Mock registry
-jest.mock("@datarecce/ui/components/run", () => ({
-  findByRunType: jest.fn(() => ({
-    RunResultView: () => <div>Result View</div>,
-  })),
-  runTypeHasRef: jest.fn(() => true),
-}));
 
 // Mock react-icons
 jest.mock("react-icons/io5", () => ({

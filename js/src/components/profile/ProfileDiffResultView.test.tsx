@@ -33,7 +33,7 @@ jest.mock("ag-grid-react", () => ({
 
 // Mock dataGridFactory - use factory pattern that returns mock from closure
 const mockCreateDataGrid = jest.fn();
-jest.mock("@datarecce/ui/components/ui/dataGrid", () => ({
+jest.mock("@datarecce/ui/components/ui/dataGrid/dataGridFactory", () => ({
   createDataGrid: (...args: unknown[]) => mockCreateDataGrid(...args),
 }));
 
@@ -53,8 +53,8 @@ jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
   DataGridHandle: {},
 }));
 
-// Mock RunToolbar component from @datarecce/ui/primitives
-jest.mock("@datarecce/ui/primitives", () => ({
+// Mock RunToolbar component from @datarecce/ui
+jest.mock("@datarecce/ui/components/run/RunToolbar", () => ({
   RunToolbar: jest.fn(({ children }) => (
     <div data-testid="run-toolbar">{children}</div>
   )),
@@ -62,7 +62,7 @@ jest.mock("@datarecce/ui/primitives", () => ({
 
 // Mock DiffDisplayModeSwitch component from @datarecce/ui/components/ui
 const mockOnDisplayModeChanged = jest.fn();
-jest.mock("@datarecce/ui/components/ui", () => ({
+jest.mock("@datarecce/ui/components/ui/DiffDisplayModeSwitch", () => ({
   DiffDisplayModeSwitch: jest.fn(({ displayMode, onDisplayModeChanged }) => (
     <button
       data-testid="display-mode-switch"
