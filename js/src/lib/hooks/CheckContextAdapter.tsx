@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  CheckProvider,
-  type CheckProviderProps,
-  useCheckContext,
-} from "@datarecce/ui/providers";
+import { CheckProvider, useCheckContext } from "@datarecce/ui/providers";
 import { type ReactNode, useState } from "react";
 
 interface CheckContextAdapterProps {

@@ -45,9 +45,6 @@ import React, {
 } from "react";
 import { IoClose } from "react-icons/io5";
 
-// Re-export types for backward compatibility
-export type { EnvInfo } from "@datarecce/ui/contexts";
-
 type LineageWatcherStatus = "pending" | "connected" | "disconnected";
 type EnvWatcherStatus = undefined | "relaunch";
 
