@@ -14,6 +14,7 @@ import {
   LineageViewTopBar as LineageViewTopBarCore,
   type SetupConnectionPopoverSlotProps,
 } from "@datarecce/ui/components/lineage";
+import { findByRunType } from "@datarecce/ui/components/run";
 import {
   useLineageGraphContext,
   useLineageViewContextSafe,
@@ -22,7 +23,6 @@ import {
 } from "@datarecce/ui/contexts";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
-import { findByRunType } from "../run/registry";
 
 /**
  * Run type icons from the OSS registry.

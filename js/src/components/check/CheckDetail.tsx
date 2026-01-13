@@ -18,6 +18,12 @@ import type { Run, RunParamTypes } from "@datarecce/ui/api/types";
 import { VSplit } from "@datarecce/ui/components";
 import { DualSqlEditor, SqlEditor } from "@datarecce/ui/components/query";
 import type { IconComponent } from "@datarecce/ui/components/run";
+import {
+  findByRunType,
+  RefTypes,
+  RegistryEntry,
+  ViewOptionTypes,
+} from "@datarecce/ui/components/run";
 import { toaster } from "@datarecce/ui/components/ui";
 import {
   useLineageGraphContext,
@@ -77,12 +83,6 @@ import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useRun } from "@/lib/hooks/useRun";
 import { LineageViewRef } from "../lineage/LineageView";
 import { RunView } from "../run/RunView";
-import {
-  findByRunType,
-  RefTypes,
-  RegistryEntry,
-  ViewOptionTypes,
-} from "../run/registry";
 import { LineageDiffView } from "./LineageDiffView";
 import {
   generateCheckTemplate,

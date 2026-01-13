@@ -68,7 +68,7 @@ jest.mock("@/lib/hooks/useModelColumns", () => ({
 
 // Mock run registry
 const mockFindByRunType = jest.fn();
-jest.mock("@/components/run/registry", () => ({
+jest.mock("@datarecce/ui/components/run", () => ({
   findByRunType: (type: string) => mockFindByRunType(type),
 }));
 

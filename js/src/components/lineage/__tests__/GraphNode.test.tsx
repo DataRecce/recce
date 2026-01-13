@@ -131,7 +131,7 @@ jest.mock("@datarecce/ui/components/lineage", () => {
 });
 
 // Mock run registry
-jest.mock("../../run/registry", () => ({
+jest.mock("@datarecce/ui/components/run", () => ({
   findByRunType: jest.fn(() => ({
     icon: () => <span data-testid="run-type-icon">Icon</span>,
   })),

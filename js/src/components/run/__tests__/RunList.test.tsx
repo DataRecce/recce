@@ -62,7 +62,7 @@ jest.mock("@/lib/api/track", () => ({
 }));
 
 // Mock registry
-jest.mock("../registry", () => ({
+jest.mock("@datarecce/ui/components/run", () => ({
   findByRunType: jest.fn((type: string) => ({
     icon: () => <span data-testid={`${type}-icon`}>{type}</span>,
     title: type.replace(/_/g, " "),

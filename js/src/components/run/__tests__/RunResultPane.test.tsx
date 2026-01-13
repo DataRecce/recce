@@ -427,7 +427,7 @@ jest.mock("@datarecce/ui/components/run", () => {
 });
 
 // Mock registry
-jest.mock("../registry", () => ({
+jest.mock("@datarecce/ui/components/run", () => ({
   findByRunType: jest.fn(() => ({
     RunResultView: () => <div>Result View</div>,
   })),

@@ -16,6 +16,7 @@ import {
   type NodeViewActionCallbacks,
   type RunTypeIconMap,
 } from "@datarecce/ui/components/lineage";
+import { findByRunType } from "@datarecce/ui/components/run";
 import {
   useLineageGraphContext,
   useRecceActionContext,
@@ -39,7 +40,6 @@ import {
   LearnHowLink,
   RecceNotification,
 } from "../onboarding-guide/Notification";
-import { findByRunType } from "../run/registry";
 import { SchemaView, SingleEnvSchemaView } from "../schema/SchemaView";
 import { NodeSqlView } from "./NodeSqlView";
 import { ResourceTypeTag, RowCountDiffTag, RowCountTag } from "./NodeTag";

@@ -8,6 +8,11 @@ import {
   submitRun,
 } from "@datarecce/ui/api";
 import type { RunFormProps } from "@datarecce/ui/components/run";
+import {
+  findByRunType,
+  type RegistryEntry,
+  type RunFormParamTypes,
+} from "@datarecce/ui/components/run";
 import { toaster } from "@datarecce/ui/components/ui";
 import {
   type AxiosQueryParams,
@@ -25,11 +30,6 @@ import React, {
   useState,
 } from "react";
 import { RunModal } from "@/components/run/RunModal";
-import {
-  findByRunType,
-  type RegistryEntry,
-  type RunFormParamTypes,
-} from "@/components/run/registry";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 

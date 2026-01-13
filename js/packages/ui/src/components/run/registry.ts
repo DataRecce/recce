@@ -26,12 +26,24 @@ import {
 } from "react-icons/tb";
 import type { RunType } from "../../api";
 import type { DataGridHandle } from "../data/ScreenshotDataGrid";
+import { HistogramDiffForm } from "../histogram/HistogramDiffForm";
 import { HistogramDiffResultView } from "../histogram/HistogramResultView";
+import { ProfileDiffForm } from "../profile/ProfileDiffForm";
+import {
+  ProfileDiffResultView,
+  ProfileResultView,
+} from "../profile/ProfileResultView";
+import { QueryDiffResultView } from "../query/QueryDiffResultView";
+import { QueryResultView } from "../query/QueryResultView";
 import {
   RowCountDiffResultView,
   RowCountResultView,
 } from "../rowcount/RowCountResultView";
+import { TopKDiffForm } from "../top-k/TopKDiffForm";
 import { TopKDiffResultView } from "../top-k/TopKDiffResultView";
+import { ValueDiffDetailResultView } from "../valuediff/ValueDiffDetailResultView";
+import { ValueDiffForm } from "../valuediff/ValueDiffForm";
+import { ValueDiffResultView } from "../valuediff/ValueDiffResultView";
 import type {
   RefTypes,
   RegistryEntry,
@@ -114,17 +126,20 @@ export const registry: RunRegistry = {
   query: {
     title: "Query",
     icon: TbSql,
-    // RunResultView: QueryResultView - in OSS, inject via consumer
+    RunResultView:
+      QueryResultView as RegistryEntry<DataGridHandle>["RunResultView"],
   },
   query_base: {
     title: "Query Base",
     icon: TbSql,
-    // RunResultView: QueryResultView - in OSS, inject via consumer
+    RunResultView:
+      QueryResultView as RegistryEntry<DataGridHandle>["RunResultView"],
   },
   query_diff: {
     title: "Query Diff",
     icon: TbSql,
-    // RunResultView: QueryDiffResultView - in OSS, inject via consumer
+    RunResultView:
+      QueryDiffResultView as RegistryEntry<DataGridHandle>["RunResultView"],
   },
   row_count: {
     title: "Row Count",
@@ -141,40 +156,44 @@ export const registry: RunRegistry = {
   profile: {
     title: "Profile",
     icon: TbEyeSearch,
-    // RunResultView: ProfileResultView - in OSS, inject via consumer
-    // RunForm: ProfileDiffForm - in OSS, inject via consumer
+    RunResultView:
+      ProfileResultView as RegistryEntry<DataGridHandle>["RunResultView"],
+    RunForm: ProfileDiffForm,
   },
   profile_diff: {
     title: "Profile Diff",
     icon: TbEyeSearch,
-    // RunResultView: ProfileDiffResultView - in OSS, inject via consumer
-    // RunForm: ProfileDiffForm - in OSS, inject via consumer
+    RunResultView:
+      ProfileDiffResultView as RegistryEntry<DataGridHandle>["RunResultView"],
+    RunForm: ProfileDiffForm,
   },
   value_diff: {
     title: "Value Diff",
     icon: TbAlignBoxLeftStretch,
-    // RunResultView: ValueDiffResultView - in OSS, inject via consumer
-    // RunForm: ValueDiffForm - in OSS, inject via consumer
+    RunResultView:
+      ValueDiffResultView as RegistryEntry<DataGridHandle>["RunResultView"],
+    RunForm: ValueDiffForm,
   },
   value_diff_detail: {
     title: "Value Diff Detail",
     icon: TbAlignBoxLeftStretch,
-    // RunResultView: ValueDiffDetailResultView - in OSS, inject via consumer
-    // RunForm: ValueDiffForm - in OSS, inject via consumer
+    RunResultView:
+      ValueDiffDetailResultView as RegistryEntry<DataGridHandle>["RunResultView"],
+    RunForm: ValueDiffForm,
   },
   top_k_diff: {
     title: "Top-K Diff",
     icon: LuChartBarBig,
     RunResultView:
       TopKDiffResultView as RegistryEntry<HTMLDivElement>["RunResultView"],
-    // RunForm: TopKDiffForm - in OSS, inject via consumer
+    RunForm: TopKDiffForm,
   },
   histogram_diff: {
     title: "Histogram Diff",
     icon: TbChartHistogram,
     RunResultView:
       HistogramDiffResultView as RegistryEntry<HTMLDivElement>["RunResultView"],
-    // RunForm: HistogramDiffForm - in OSS, inject via consumer
+    RunForm: HistogramDiffForm,
   },
   sandbox: {
     title: "Sandbox",

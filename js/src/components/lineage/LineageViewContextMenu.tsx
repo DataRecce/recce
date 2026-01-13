@@ -27,6 +27,7 @@ import {
   LINEAGE_SELECTION_ACTION,
   type LineageViewContextMenuDeps,
 } from "@datarecce/ui/components/lineage";
+import { findByRunType } from "@datarecce/ui/components/run";
 import {
   useLineageGraphContext,
   useLineageViewContextSafe,
@@ -39,7 +40,6 @@ import { trackExploreAction, trackLineageSelection } from "@/lib/api/track";
 import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import useModelColumns from "@/lib/hooks/useModelColumns";
-import { findByRunType } from "../run/registry";
 
 // ============================================================================
 // Types

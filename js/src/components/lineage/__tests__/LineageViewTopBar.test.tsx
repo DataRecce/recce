@@ -50,7 +50,7 @@ jest.mock("@/lib/hooks/RecceActionAdapter", () => ({
 }));
 
 // Mock registry
-jest.mock("@/components/run/registry", () => ({
+jest.mock("@datarecce/ui/components/run", () => ({
   findByRunType: jest.fn((type: string) => ({
     icon: () => <span data-testid={`${type}-icon`}>{type}</span>,
     title: type.replace(/_/g, " "),

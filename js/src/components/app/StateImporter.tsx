@@ -24,7 +24,6 @@ import { PiInfo } from "react-icons/pi";
 import { trackStateAction } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
-import { IconImport } from "../icons";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   const isDark = useIsDark();

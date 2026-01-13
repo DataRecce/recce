@@ -91,6 +91,10 @@ jest.mock("@datarecce/ui/hooks", () => ({
 // Imports
 // ============================================================================
 
+import {
+  ProfileDiffResultView,
+  ProfileResultView,
+} from "@datarecce/ui/components";
 import { fireEvent, screen } from "@testing-library/react";
 import React from "react";
 import {
@@ -103,10 +107,6 @@ import {
   expectThrowsForWrongType,
   renderWithProviders,
 } from "@/testing-utils/resultViewTestUtils";
-import {
-  ProfileDiffResultView,
-  ProfileResultView,
-} from "./ProfileDiffResultView";
 
 // ============================================================================
 // Test Setup

@@ -16,7 +16,7 @@
 // ============================================================================
 
 import type { RunType } from "@datarecce/ui/api";
-import { findByRunType } from "../registry";
+import { findByRunType } from "@datarecce/ui/components/run";
 
 // ============================================================================
 // Test Suites

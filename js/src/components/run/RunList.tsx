@@ -19,6 +19,7 @@ import {
 } from "@datarecce/ui/api";
 import {
   RunList as BaseRunList,
+  findByRunType,
   type RunListItemData,
 } from "@datarecce/ui/components/run";
 import {
@@ -33,7 +34,6 @@ import { PiX } from "react-icons/pi";
 import { trackHistoryAction } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
-import { findByRunType } from "./registry";
 
 /**
  * Transform API Run to RunListItemData for the UI component

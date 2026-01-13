@@ -63,31 +63,6 @@ export const IconExport = (props: React.SVGProps<SVGSVGElement>) => {
   );
 };
 
-export const IconImport = (props: React.SVGProps<SVGSVGElement>) => {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-    >
-      <g clipPath="url(#clip0_1426_8619)">
-        <path
-          d="M15.5572 3.06188L12.9356 0.440625C12.6544 0.159375 12.2731 0 11.8766 0H5.49969C4.67188 0.003125 4 0.675 4 1.50281V8.25219H0.375C0.167812 8.25219 0 8.42 0 8.62719V9.37719C0 9.58438 0.167812 9.75219 0.375 9.75219H9V11.2797C9 11.6144 9.40531 11.7812 9.64125 11.5437L11.8841 9.28406C12.0388 9.12813 12.0388 8.87656 11.8841 8.72062L9.64125 6.46094C9.40531 6.22344 9 6.39031 9 6.725V8.2525H5.49969V1.50281H10.4987V4.75219C10.4987 5.16781 10.8331 5.50187 11.2487 5.50187H14.5V14.5003H5.49969V11.2522H4V14.5003C4 15.3281 4.67188 16 5.49969 16H14.4978C15.3259 16 16 15.3281 16 14.5003V4.12406C16 3.7275 15.8384 3.34313 15.5572 3.06188ZM11.9984 4.00219V1.62469L14.3763 4.00219H11.9984Z"
-          fill="black"
-        />
-      </g>
-      <defs>
-        <clipPath id="clip0_1426_8619">
-          <rect width="16" height="16" fill="white" />
-        </clipPath>
-      </defs>
-    </svg>
-  );
-};
-
 export const IconSave = (props: React.SVGProps<SVGSVGElement>) => {
   return (
     <svg

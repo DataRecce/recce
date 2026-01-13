@@ -23,7 +23,13 @@ import {
   runTypeHasRef,
 } from "@datarecce/ui/api";
 import { DualSqlEditor, SqlEditor } from "@datarecce/ui/components/query";
-import { RunResultPane as BaseRunResultPane } from "@datarecce/ui/components/run";
+import {
+  RunResultPane as BaseRunResultPane,
+  findByRunType,
+  RefTypes,
+  RegistryEntry,
+  ViewOptionTypes,
+} from "@datarecce/ui/components/run";
 import {
   useRecceActionContext,
   useRecceInstanceContext,
@@ -43,12 +49,6 @@ import {
   LearnHowLink,
   RecceNotification,
 } from "../onboarding-guide/Notification";
-import {
-  findByRunType,
-  RefTypes,
-  RegistryEntry,
-  ViewOptionTypes,
-} from "./registry";
 
 // ============================================================================
 // OSS Props Interface

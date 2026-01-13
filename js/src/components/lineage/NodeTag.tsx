@@ -17,6 +17,7 @@ import {
   ResourceTypeTag as ResourceTypeTagBase,
   tagStartElementSx,
 } from "@datarecce/ui/components/lineage";
+import { findByRunType } from "@datarecce/ui/components/run";
 import {
   useLineageGraphContext,
   useRecceInstanceContext,
@@ -33,7 +34,6 @@ import { FiArrowRight, FiFrown } from "react-icons/fi";
 import { PiRepeat } from "react-icons/pi";
 import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
-import { findByRunType } from "../run/registry";
 
 // =============================================================================
 // RE-EXPORTS FROM @datarecce/ui

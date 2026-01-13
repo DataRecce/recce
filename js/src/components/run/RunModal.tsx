@@ -8,11 +8,12 @@
  */
 
 import type { Run, RunType } from "@datarecce/ui/api";
-import type { RunFormProps } from "@datarecce/ui/components/run";
-import {
-  RunModal as UIRunModal,
-  type RunModalProps as UIRunModalProps,
+import type {
+  RunFormParamTypes,
+  RunFormProps,
+  RunModalProps as UIRunModalProps,
 } from "@datarecce/ui/components/run";
+import { RunModal as UIRunModal } from "@datarecce/ui/components/run";
 import type { ComponentType } from "react";
 import { PiInfo } from "react-icons/pi";
 import {
@@ -20,7 +21,6 @@ import {
   isExploreAction,
   trackExploreActionForm,
 } from "@/lib/api/track";
-import type { RunFormParamTypes } from "./registry";
 
 // ============================================================================
 // Types

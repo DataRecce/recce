@@ -27,6 +27,7 @@ import {
   type NodeChangeStatus,
   type SelectMode,
 } from "@datarecce/ui/components/lineage";
+import { findByRunType } from "@datarecce/ui/components/run";
 import {
   useLineageGraphContext,
   useLineageViewContextSafe,
@@ -38,7 +39,6 @@ import Chip from "@mui/material/Chip";
 import MuiTooltip from "@mui/material/Tooltip";
 import { type NodeProps, useStore } from "@xyflow/react";
 import { memo } from "react";
-import { findByRunType } from "../run/registry";
 
 // =============================================================================
 // TYPES

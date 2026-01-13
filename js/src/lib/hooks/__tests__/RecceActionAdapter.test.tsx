@@ -53,7 +53,7 @@ jest.mock("../ApiConfigContext", () => ({
 }));
 
 // Mock the run registry
-jest.mock("@/components/run/registry", () => ({
+jest.mock("@datarecce/ui/components/run", () => ({
   findByRunType: jest.fn((type: string) => ({
     title: `${type} Title`,
     icon: () => null,
@@ -82,9 +82,9 @@ jest.mock("@/components/run/RunModal", () => ({
 }));
 
 import { searchRuns, submitRun } from "@datarecce/ui/api";
+import { findByRunType } from "@datarecce/ui/components/run";
 import { toaster } from "@datarecce/ui/components/ui";
 import { useRecceActionContext } from "@datarecce/ui/contexts";
-import { findByRunType } from "@/components/run/registry";
 import { RecceActionAdapter } from "../RecceActionAdapter";
 import { useAppLocation } from "../useAppRouter";
 

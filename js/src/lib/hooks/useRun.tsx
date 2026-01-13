@@ -5,10 +5,10 @@ import {
   runTypeHasRef,
   waitRun,
 } from "@datarecce/ui/api";
+import { findByRunType, RegistryEntry } from "@datarecce/ui/components/run";
 import { useRunsAggregated } from "@datarecce/ui/contexts";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
-import { findByRunType, RegistryEntry } from "@/components/run/registry";
 import { useApiConfig } from "./ApiConfigContext";
 
 interface UseRunResult {
