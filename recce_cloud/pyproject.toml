@@ -40,7 +40,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.version]
-path = "VERSION"
+path = "recce_cloud/VERSION"
 pattern = "(?P<version>.+)"
 
 [tool.hatch.metadata]
