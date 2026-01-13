@@ -27,7 +27,7 @@ jest.mock("@datarecce/ui/contexts", () => ({
 }));
 
 // Mock tracking
-jest.mock("@/lib/api/track", () => ({
+jest.mock("@datarecce/ui/lib/api/track", () => ({
   trackEnvironmentConfig: jest.fn(),
 }));
 
@@ -50,9 +50,9 @@ jest.mock("../../icons", () => ({
 // ============================================================================
 
 import type { LineageGraph } from "@datarecce/ui";
+import { trackEnvironmentConfig } from "@datarecce/ui/lib/api/track";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
-import { trackEnvironmentConfig } from "@/lib/api/track";
 import {
   EnvInfo,
   extractSchemas,

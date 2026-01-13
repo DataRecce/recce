@@ -9,6 +9,7 @@
 
 import { cacheKeys } from "@datarecce/ui/api";
 import { useIsDark } from "@datarecce/ui/hooks";
+import { fetchUser } from "@datarecce/ui/lib/api/user";
 import { CommentInput } from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -16,7 +17,6 @@ import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useQuery } from "@tanstack/react-query";
-import { fetchUser } from "@/lib/api/user";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useCheckEvents } from "@/lib/hooks/useCheckEvents";
 import { TimelineEvent } from ".";

@@ -28,7 +28,7 @@ jest.mock("date-fns", () => ({
 }));
 
 // Mock avatar fetching
-jest.mock("@/lib/api/user", () => ({
+jest.mock("@datarecce/ui/lib/api/user", () => ({
   fetchGitHubAvatar: jest.fn().mockResolvedValue(null),
 }));
 

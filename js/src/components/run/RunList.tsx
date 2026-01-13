@@ -26,12 +26,12 @@ import {
   useRecceActionContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
+import { trackHistoryAction } from "@datarecce/ui/lib/api/track";
 import IconButton from "@mui/material/IconButton";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import { FaCheckCircle, FaRegCheckCircle } from "react-icons/fa";
 import { PiX } from "react-icons/pi";
-import { trackHistoryAction } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 

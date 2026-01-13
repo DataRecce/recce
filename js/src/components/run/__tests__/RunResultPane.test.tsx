@@ -127,7 +127,7 @@ jest.mock("@/lib/hooks/RecceShareStateContext", () => ({
 }));
 
 // Mock track functions
-jest.mock("@/lib/api/track", () => ({
+jest.mock("@datarecce/ui/lib/api/track", () => ({
   trackCopyToClipboard: jest.fn(),
   trackShareState: jest.fn(),
 }));

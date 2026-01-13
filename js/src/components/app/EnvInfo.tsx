@@ -7,6 +7,10 @@ import {
   type EnvInfo as EnvInfoType,
   useLineageGraphContext,
 } from "@datarecce/ui/contexts";
+import {
+  type EnvironmentConfigProps,
+  trackEnvironmentConfig,
+} from "@datarecce/ui/lib/api/track";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
@@ -29,10 +33,6 @@ import { isEmpty } from "lodash";
 import React, { useEffect, useRef, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { LuExternalLink } from "react-icons/lu";
-import {
-  type EnvironmentConfigProps,
-  trackEnvironmentConfig,
-} from "@/lib/api/track";
 import { IconInfo } from "../icons";
 
 // Re-export for backwards compatibility

@@ -69,11 +69,14 @@ import {
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
 import { useThemeColors } from "@datarecce/ui/hooks";
+import {
+  trackCopyToClipboard,
+  trackMultiNodesAction,
+} from "@datarecce/ui/lib/api/track";
 import { colors } from "@datarecce/ui/theme";
 import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { FiCopy } from "react-icons/fi";
-import { trackCopyToClipboard, trackMultiNodesAction } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { IGNORE_SCREENSHOT_CLASS } from "@/lib/hooks/ScreenShot";
 import { useRun } from "@/lib/hooks/useRun";

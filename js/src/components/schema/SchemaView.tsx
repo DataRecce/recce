@@ -5,6 +5,7 @@ import {
   useLineageGraphContext,
   useLineageViewContext,
 } from "@datarecce/ui/contexts";
+import { trackColumnLevelLineage } from "@datarecce/ui/lib/api/track";
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import type {
@@ -21,7 +22,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import { trackColumnLevelLineage } from "@/lib/api/track";
 import {
   type DataGridHandle,
   EmptyRowsRenderer,

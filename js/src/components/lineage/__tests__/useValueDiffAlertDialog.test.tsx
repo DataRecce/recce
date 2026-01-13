@@ -23,14 +23,14 @@ import useValueDiffAlertDialog from "../useValueDiffAlertDialog";
 // ============================================================================
 
 // Mock tracking API
-jest.mock("@/lib/api/track", () => ({
+jest.mock("@datarecce/ui/lib/api/track", () => ({
   EXPLORE_ACTION: { VALUE_DIFF: "value_diff" },
   EXPLORE_FORM_EVENT: { EXECUTE: "execute", CANCEL: "cancel" },
   trackExploreActionForm: jest.fn(),
 }));
 
 // Import the mocked module for assertions
-import { trackExploreActionForm } from "@/lib/api/track";
+import { trackExploreActionForm } from "@datarecce/ui/lib/api/track";
 
 // ============================================================================
 // Test Helpers

@@ -57,7 +57,7 @@ jest.mock("@/lib/hooks/useAppRouter", () => ({
 }));
 
 // Mock track functions
-jest.mock("@/lib/api/track", () => ({
+jest.mock("@datarecce/ui/lib/api/track", () => ({
   trackHistoryAction: jest.fn(),
 }));
 
@@ -155,9 +155,9 @@ jest.mock("@datarecce/ui/components/run", () => ({
 // ============================================================================
 
 import { createCheckByRun, listRuns, type Run } from "@datarecce/ui/api";
+import { trackHistoryAction } from "@datarecce/ui/lib/api/track";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { trackHistoryAction } from "@/lib/api/track";
 import { RunList } from "../RunList";
 
 // Cast to jest mocks

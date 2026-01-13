@@ -6,6 +6,7 @@ import {
   useRecceInstanceContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
+import { trackNavigation } from "@datarecce/ui/lib/api/track";
 import Box from "@mui/material/Box";
 import Tab from "@mui/material/Tab";
 import MuiTabs from "@mui/material/Tabs";
@@ -18,7 +19,6 @@ import { Filename } from "@/components/app/Filename";
 import { StateExporter } from "@/components/app/StateExporter";
 import { TopLevelShare } from "@/components/app/StateSharing";
 import { StateSynchronizer } from "@/components/app/StateSynchronizer";
-import { trackNavigation } from "@/lib/api/track";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 
 /**

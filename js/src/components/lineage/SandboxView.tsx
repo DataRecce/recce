@@ -15,14 +15,14 @@ import {
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
-import { DiffEditor } from "@datarecce/ui/primitives";
-import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
 import {
   trackPreviewChange,
   trackPreviewChangeFeedback,
   trackSingleEnvironment,
-} from "@/lib/api/track";
+} from "@datarecce/ui/lib/api/track";
+import { DiffEditor } from "@datarecce/ui/primitives";
+import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";

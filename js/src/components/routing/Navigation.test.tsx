@@ -64,7 +64,7 @@ jest.mock("@datarecce/ui/contexts", () => ({
   }),
 }));
 
-jest.mock("@/lib/api/track", () => ({
+jest.mock("@datarecce/ui/lib/api/track", () => ({
   trackNavigation: jest.fn(),
 }));
 

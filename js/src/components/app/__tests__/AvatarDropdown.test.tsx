@@ -32,7 +32,7 @@ jest.mock("@tanstack/react-query", () => ({
 }));
 
 // Mock user API functions
-jest.mock("@/lib/api/user", () => ({
+jest.mock("@datarecce/ui/lib/api/user", () => ({
   fetchUser: jest.fn(),
   fetchGitHubAvatar: jest.fn(),
 }));

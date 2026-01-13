@@ -35,8 +35,11 @@ import {
   useRecceInstanceContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
+import {
+  trackExploreAction,
+  trackLineageSelection,
+} from "@datarecce/ui/lib/api/track";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
-import { trackExploreAction, trackLineageSelection } from "@/lib/api/track";
 import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import useModelColumns from "@/lib/hooks/useModelColumns";

@@ -1,10 +1,10 @@
 import type { LineageGraphNodes } from "@datarecce/ui";
 import { isLineageGraphNode } from "@datarecce/ui";
-import { useCallback } from "react";
 import {
   type LineageViewRenderProps,
   trackLineageViewRender,
-} from "@/lib/api/track";
+} from "@datarecce/ui/lib/api/track";
+import { useCallback } from "react";
 
 /**
  * Hook that provides a function to track lineage view render events.

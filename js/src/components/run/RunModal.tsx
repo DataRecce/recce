@@ -14,13 +14,13 @@ import type {
   RunModalProps as UIRunModalProps,
 } from "@datarecce/ui/components/run";
 import { RunModal as UIRunModal } from "@datarecce/ui/components/run";
-import type { ComponentType } from "react";
-import { PiInfo } from "react-icons/pi";
 import {
   EXPLORE_FORM_EVENT,
   isExploreAction,
   trackExploreActionForm,
-} from "@/lib/api/track";
+} from "@datarecce/ui/lib/api/track";
+import type { ComponentType } from "react";
+import { PiInfo } from "react-icons/pi";
 
 // ============================================================================
 // Types

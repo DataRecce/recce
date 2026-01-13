@@ -1,5 +1,4 @@
 import axios, { AxiosInstance, AxiosResponse } from "axios";
-import { axiosClient } from "./axiosClient";
 
 export interface User {
   id: string;
@@ -15,9 +14,7 @@ interface GitHubUser {
   avatar_url: string;
 }
 
-export async function fetchUser(
-  client: AxiosInstance = axiosClient,
-): Promise<User> {
+export async function fetchUser(client: AxiosInstance = axios): Promise<User> {
   try {
     const response = await client.get<never, AxiosResponse<User>>("/api/users");
     return response.data;

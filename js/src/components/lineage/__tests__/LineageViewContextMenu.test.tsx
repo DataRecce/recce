@@ -73,7 +73,7 @@ jest.mock("@datarecce/ui/components/run", () => ({
 }));
 
 // Mock tracking functions
-jest.mock("@/lib/api/track", () => ({
+jest.mock("@datarecce/ui/lib/api/track", () => ({
   trackExploreAction: jest.fn(),
   trackLineageSelection: jest.fn(),
   EXPLORE_ACTION: {

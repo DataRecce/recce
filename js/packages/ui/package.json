@@ -68,6 +68,16 @@
       "types": "./dist/components-run.d.mts",
       "import": "./dist/components-run.mjs",
       "require": "./dist/components-run.cjs"
+    },
+    "./lib/api/track": {
+      "types": "./dist/lib/api/track.d.mts",
+      "import": "./dist/lib/api/track.mjs",
+      "require": "./dist/lib/api/track.cjs"
+    },
+    "./lib/api/user": {
+      "types": "./dist/lib/api/user.d.mts",
+      "import": "./dist/lib/api/user.mjs",
+      "require": "./dist/lib/api/user.cjs"
     }
   },
   "files": [

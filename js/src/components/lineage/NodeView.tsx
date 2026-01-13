@@ -22,16 +22,16 @@ import {
   useRecceActionContext,
   useRecceInstanceContext,
 } from "@datarecce/ui/contexts";
-import { formatSelectColumns } from "@datarecce/ui/utils";
-import Typography from "@mui/material/Typography";
-import { useMemo } from "react";
-import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import {
   EXPLORE_ACTION,
   EXPLORE_SOURCE,
   trackExploreAction,
   trackPreviewChange,
-} from "@/lib/api/track";
+} from "@datarecce/ui/lib/api/track";
+import { formatSelectColumns } from "@datarecce/ui/utils";
+import Typography from "@mui/material/Typography";
+import { useMemo } from "react";
+import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
 import { useRecceQueryContext } from "@/lib/hooks/QueryContextAdapter";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";

@@ -13,6 +13,7 @@ import {
   useRecceInstanceContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
+import { trackInit } from "@datarecce/ui/lib/api/track";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import { usePathname } from "next/navigation";
@@ -21,7 +22,6 @@ import AuthModal from "@/components/AuthModal/AuthModal";
 import { RunList } from "@/components/run/RunList";
 import { RunResultPane } from "@/components/run/RunResultPane";
 import { HSplit, VSplit } from "@/components/split/Split";
-import { trackInit } from "@/lib/api/track";
 import "@fontsource/montserrat/800.css";
 import NavBar from "app/(mainComponents)/NavBar";
 import TopBar from "app/(mainComponents)/TopBar";

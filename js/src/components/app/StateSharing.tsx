@@ -1,5 +1,6 @@
 import { useRecceInstanceContext } from "@datarecce/ui/contexts";
 import { useClipBoardToast } from "@datarecce/ui/hooks";
+import { trackShareState } from "@datarecce/ui/lib/api/track";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -10,7 +11,6 @@ import { PiCheckCircle, PiCopy } from "react-icons/pi";
 import { TbCloudUpload } from "react-icons/tb";
 import { useCopyToClipboard, useInterval } from "usehooks-ts";
 import AuthModal from "@/components/AuthModal/AuthModal";
-import { trackShareState } from "@/lib/api/track";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 
 const LOADING_MESSAGES = [

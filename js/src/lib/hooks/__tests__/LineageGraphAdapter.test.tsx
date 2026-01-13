@@ -28,7 +28,7 @@ jest.mock("@datarecce/ui/api", () => {
   };
 });
 
-jest.mock("@/lib/api/track", () => ({
+jest.mock("@datarecce/ui/lib/api/track", () => ({
   trackSingleEnvironment: jest.fn(),
 }));
 

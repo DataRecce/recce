@@ -19,6 +19,7 @@ import {
   useRecceInstanceContext,
   useRecceServerFlag,
 } from "@datarecce/ui/contexts";
+import { trackSingleEnvironment } from "@datarecce/ui/lib/api/track";
 import Button from "@mui/material/Button";
 import MuiDialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -40,7 +41,6 @@ import React, {
 import { IoClose } from "react-icons/io5";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import { useApiConfig } from "@/lib/hooks/ApiConfigContext";
-import { trackSingleEnvironment } from "../api/track";
 import { PUBLIC_API_URL } from "../const";
 
 // Re-export types for backward compatibility

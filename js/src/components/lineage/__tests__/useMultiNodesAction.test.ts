@@ -57,7 +57,7 @@ jest.mock("@datarecce/ui", () => ({
 }));
 
 // Mock tracking functions
-jest.mock("@/lib/api/track", () => ({
+jest.mock("@datarecce/ui/lib/api/track", () => ({
   trackExploreAction: jest.fn(),
   EXPLORE_ACTION: {
     ROW_COUNT: "row_count",
@@ -74,12 +74,12 @@ jest.mock("@/lib/api/track", () => ({
 // ============================================================================
 
 import type { LineageGraphNode } from "@datarecce/ui";
-import { renderHook } from "@testing-library/react";
 import {
   EXPLORE_ACTION,
   EXPLORE_SOURCE,
   trackExploreAction,
-} from "@/lib/api/track";
+} from "@datarecce/ui/lib/api/track";
+import { renderHook } from "@testing-library/react";
 import { useMultiNodesAction } from "../useMultiNodesAction";
 
 // Get the mocked function for assertions

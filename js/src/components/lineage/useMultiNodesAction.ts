@@ -18,7 +18,7 @@ import {
   EXPLORE_ACTION,
   EXPLORE_SOURCE,
   trackExploreAction,
-} from "@/lib/api/track";
+} from "@datarecce/ui/lib/api/track";
 
 /**
  * Maps the generic action type to OSS-specific tracking constants.

@@ -11,7 +11,7 @@ import {
   EXPLORE_ACTION,
   EXPLORE_FORM_EVENT,
   trackExploreActionForm,
-} from "@/lib/api/track";
+} from "@datarecce/ui/lib/api/track";
 
 /**
  * Hook for displaying a value diff confirmation dialog with tracking.

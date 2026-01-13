@@ -397,7 +397,7 @@ jest.mock("@/lib/hooks/ScreenShot", () => ({
 }));
 
 // Mock tracking
-jest.mock("@/lib/api/track", () => ({
+jest.mock("@datarecce/ui/lib/api/track", () => ({
   trackCopyToClipboard: jest.fn(),
   trackLineageViewRender: jest.fn(),
   trackMultiNodesAction: jest.fn(),
