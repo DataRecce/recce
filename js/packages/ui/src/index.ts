@@ -164,6 +164,7 @@ export type {
 export {
   extractColumns,
   unionColumns,
+  useCheckEvents,
   useCSVExport,
   useFeedbackCollectionToast,
   useIsDark,

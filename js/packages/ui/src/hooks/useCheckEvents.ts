@@ -1,32 +1,19 @@
 /**
- * @recce-migration NOT_APPLICABLE
- *
- * This hook is specific to Recce Cloud and should not be migrated to @datarecce/ui.
- *
- * Reason: Check events (timeline, comments, approvals) are a Cloud-only feature
- * that requires the Recce Cloud backend API. OSS does not have this functionality.
- *
- * If this changes in the future, consider:
- * - Moving to @datarecce/ui if check events become available in OSS
- * - Creating an abstract interface if multiple backends need to support events
- */
-
-/**
  * Custom hook for managing check events (timeline/conversation).
  *
  * Provides data fetching with polling for real-time updates,
  * and mutation functions for CRUD operations.
  */
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   cacheKeys,
   createComment,
   deleteComment,
   listCheckEvents,
   updateComment,
-} from "@datarecce/ui/api";
-import { useApiConfig } from "@datarecce/ui/hooks";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+} from "../api";
+import { useApiConfig } from "./useApiConfig";
 
 const POLLING_INTERVAL = 10000; // 10 seconds
 

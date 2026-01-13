@@ -4,6 +4,7 @@
  */
 
 export { type ApiConfigContextType, useApiConfig } from "./useApiConfig";
+export { useCheckEvents } from "./useCheckEvents";
 export { useClipBoardToast } from "./useClipBoardToast";
 export { useCSVExport } from "./useCSVExport";
 export { useFeedbackCollectionToast } from "./useFeedbackCollectionToast";
