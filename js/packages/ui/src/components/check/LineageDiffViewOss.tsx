@@ -1,11 +1,9 @@
-import { type Check, type LineageDiffViewOptions } from "@datarecce/ui/api";
-import {
-  LineageViewOss as LineageView,
-  type LineageViewRef,
-} from "@datarecce/ui/components/lineage/LineageViewOss";
 import Box from "@mui/material/Box";
 import { ReactFlowProvider } from "@xyflow/react";
 import { forwardRef, Ref } from "react";
+import type { Check, LineageDiffViewOptions } from "../../api";
+import type { LineageViewRef } from "../lineage/LineageViewOss";
+import { LineageViewOss as LineageView } from "../lineage/LineageViewOss";
 
 export interface LineageDiffViewProps {
   check: Check;
@@ -29,6 +27,7 @@ function _LineageDiffView(
   );
 }
 
-export const LineageDiffView = forwardRef<LineageViewRef, LineageDiffViewProps>(
-  _LineageDiffView,
-);
+export const LineageDiffViewOss = forwardRef<
+  LineageViewRef,
+  LineageDiffViewProps
+>(_LineageDiffView);

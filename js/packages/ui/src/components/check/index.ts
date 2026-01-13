@@ -46,6 +46,10 @@ export {
   type LineageDiffViewProps,
   type LineageViewRef,
 } from "./LineageDiffView";
+export {
+  LineageDiffViewOss,
+  type LineageDiffViewProps as LineageDiffViewOssProps,
+} from "./LineageDiffViewOss";
 
 // Preset check template view
 export {
