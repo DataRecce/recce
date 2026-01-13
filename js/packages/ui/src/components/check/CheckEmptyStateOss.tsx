@@ -1,5 +1,7 @@
+"use client";
+
 /**
- * CheckEmptyState - wrapper around @datarecce/ui primitive
+ * CheckEmptyStateOss - wrapper around CheckEmptyState primitive
  *
  * Adds business logic:
  * - API calls to create schema diff check
@@ -7,18 +9,14 @@
  * - Query cache invalidation
  */
 
-import {
-  type Check,
-  cacheKeys,
-  createSchemaDiffCheck,
-} from "@datarecce/ui/api";
-import { useApiConfig } from "@datarecce/ui/hooks";
-import { CheckEmptyState as CheckEmptyStateUI } from "@datarecce/ui/primitives";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { TbChecklist } from "react-icons/tb";
+import { type Check, cacheKeys, createSchemaDiffCheck } from "../../api";
+import { useApiConfig } from "../../hooks";
+import { CheckEmptyState as CheckEmptyStateUI } from "../../primitives";
 
-export const CheckEmptyState = () => {
+export const CheckEmptyStateOss = () => {
   const queryClient = useQueryClient();
   const router = useRouter();
   const { apiClient } = useApiConfig();

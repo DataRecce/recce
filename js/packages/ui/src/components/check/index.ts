@@ -32,6 +32,7 @@ export {
   CheckEmptyState,
   type CheckEmptyStateProps,
 } from "./CheckEmptyState";
+export { CheckEmptyStateOss } from "./CheckEmptyStateOss";
 export {
   CheckList,
   type CheckListProps,

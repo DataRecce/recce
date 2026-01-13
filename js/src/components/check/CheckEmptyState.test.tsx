@@ -10,10 +10,10 @@
  * - Shows loading state while creating
  */
 
+import { CheckEmptyStateOss as CheckEmptyState } from "@datarecce/ui/components/check/CheckEmptyStateOss";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CheckEmptyState } from "./CheckEmptyState";
 
 // Mock the API
 const mockCreateSchemaDiffCheck = jest.fn();
