@@ -9,14 +9,12 @@ on:
       - main
     paths:
       - "recce/**" # Recce OSS codebase
-      - "recce_cloud/**" # Recce Cloud CLI
       - "tests/**" # Recce OSS python unit tests
   pull_request:
     branches:
       - main
     paths:
       - "recce/**" # Recce OSS codebase
-      - "recce_cloud/**" # Recce Cloud CLI
       - "tests/**" # Recce OSS python unit tests
       - "pyproject.toml"
 
