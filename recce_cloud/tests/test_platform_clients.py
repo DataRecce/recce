@@ -177,6 +177,27 @@ class TestGitHubRecceCloudClient:
             assert call_args[1]["params"]["base"] == "true"
             assert "pr_number" not in call_args[1]["params"]
 
+    def test_delete_session_cr(self):
+        """Test delete_session for CR (pull request) session."""
+        client = GitHubRecceCloudClient(token="test_token", repository="owner/repo")
+
+        with patch.object(client, "_make_request") as mock_request:
+            mock_request.return_value = {
+                "session_id": "deleted_cr_session_id",
+            }
+
+            response = client.delete_session(cr_number=123, session_type="cr")
+
+            assert response["session_id"] == "deleted_cr_session_id"
+
+            # Verify correct API endpoint was called
+            mock_request.assert_called_once()
+            call_args = mock_request.call_args
+            assert call_args[0][0] == "DELETE"
+            assert "github/owner/repo/session" in call_args[0][1]
+            assert call_args[1]["params"]["pr_number"] == 123
+            assert "base" not in call_args[1]["params"]
+
 
 class TestGitLabRecceCloudClient:
     """Tests for GitLab CI API client."""
@@ -381,6 +402,31 @@ class TestGitLabRecceCloudClient:
             call_args = mock_request.call_args
             assert call_args[1]["params"]["base"] == "true"
             assert "mr_iid" not in call_args[1]["params"]
+
+    def test_delete_session_cr(self):
+        """Test delete_session for CR (merge request) session."""
+        client = GitLabRecceCloudClient(
+            token="test_token",
+            project_path="group/project",
+            repository_url="https://gitlab.com/group/project",
+        )
+
+        with patch.object(client, "_make_request") as mock_request:
+            mock_request.return_value = {
+                "session_id": "deleted_mr_session_id",
+            }
+
+            response = client.delete_session(cr_number=456, session_type="cr")
+
+            assert response["session_id"] == "deleted_mr_session_id"
+
+            # Verify correct API endpoint was called
+            mock_request.assert_called_once()
+            call_args = mock_request.call_args
+            assert call_args[0][0] == "DELETE"
+            assert "gitlab/group/project/session" in call_args[0][1]
+            assert call_args[1]["params"]["mr_iid"] == 456
+            assert "base" not in call_args[1]["params"]
 
 
 class TestFactoryCreatePlatformClient:

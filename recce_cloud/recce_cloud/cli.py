@@ -5,6 +5,7 @@ Recce Cloud CLI - Lightweight command for managing Recce Cloud operations.
 
 import logging
 import os
+import subprocess
 import sys
 
 import click
@@ -14,10 +15,15 @@ from rich.logging import RichHandler
 from recce_cloud import __version__
 from recce_cloud.artifact import get_adapter_type, verify_artifacts_path
 from recce_cloud.ci_providers import CIDetector
+from recce_cloud.delete import (
+    delete_existing_session,
+    delete_with_platform_apis,
+)
 from recce_cloud.download import (
     download_from_existing_session,
     download_with_platform_apis,
 )
+from recce_cloud.report import fetch_and_generate_report
 from recce_cloud.upload import upload_to_existing_session, upload_with_platform_apis
 
 # Configure logging
@@ -428,6 +434,297 @@ def download(target_path, session_id, prod, dry_run, force):
             console.print("[cyan]Info:[/cyan] Using CI_JOB_TOKEN for platform-specific authentication")
 
         download_with_platform_apis(console, token, ci_info, target_path, force)
+
+
+@cloud_cli.command()
+@click.option(
+    "--session-id",
+    envvar="RECCE_SESSION_ID",
+    help="Session ID to delete. Required for non-CI workflows.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be deleted without actually deleting",
+)
+@click.option(
+    "--force",
+    "-f",
+    is_flag=True,
+    help="Skip confirmation prompt",
+)
+def delete(session_id, dry_run, force):
+    """
+    Delete a Recce Cloud session.
+
+    Note: Deleting production sessions is not supported. To update production,
+    upload a new session to overwrite it. Contact us if you need to delete
+    a production session.
+
+    \b
+    Authentication (auto-detected):
+    - RECCE_API_TOKEN (for --session-id workflow)
+    - GITHUB_TOKEN (GitHub Actions)
+    - CI_JOB_TOKEN (GitLab CI)
+
+    \b
+    Common Examples:
+      # Delete current PR/MR session (in CI)
+      recce-cloud delete
+
+      # Delete a specific session by ID
+      recce-cloud delete --session-id abc123
+
+      # Skip confirmation prompt
+      recce-cloud delete --force
+    """
+    console = Console()
+
+    # 1. Auto-detect CI environment information
+    console.rule("CI Environment Detection", style="blue")
+    try:
+        ci_info = CIDetector.detect()
+
+        # Display detected CI information immediately
+        if ci_info:
+            info_table = []
+            if ci_info.platform:
+                info_table.append(f"[cyan]Platform:[/cyan] {ci_info.platform}")
+
+            if ci_info.repository:
+                info_table.append(f"[cyan]Repository:[/cyan] {ci_info.repository}")
+
+            # Only show session type and CR info for platform workflow
+            if not session_id:
+                if ci_info.session_type:
+                    info_table.append(f"[cyan]Session Type:[/cyan] {ci_info.session_type}")
+
+                # Only show CR number and URL for CR sessions (not for prod)
+                if ci_info.session_type == "cr" and ci_info.cr_number is not None:
+                    if ci_info.platform == "github-actions":
+                        info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.cr_number}")
+                    elif ci_info.platform == "gitlab-ci":
+                        info_table.append(f"[cyan]MR Number:[/cyan] {ci_info.cr_number}")
+                    else:
+                        info_table.append(f"[cyan]CR Number:[/cyan] {ci_info.cr_number}")
+
+                # Only show CR URL for CR sessions
+                if ci_info.session_type == "cr" and ci_info.cr_url:
+                    if ci_info.platform == "github-actions":
+                        info_table.append(f"[cyan]PR URL:[/cyan] {ci_info.cr_url}")
+                    elif ci_info.platform == "gitlab-ci":
+                        info_table.append(f"[cyan]MR URL:[/cyan] {ci_info.cr_url}")
+                    else:
+                        info_table.append(f"[cyan]CR URL:[/cyan] {ci_info.cr_url}")
+
+            for line in info_table:
+                console.print(line)
+        else:
+            console.print("[yellow]No CI environment detected[/yellow]")
+    except Exception as e:
+        console.print(f"[yellow]Warning:[/yellow] Failed to detect CI environment: {e}")
+        console.print("Continuing without CI metadata...")
+        ci_info = None
+
+    # 2. Handle dry-run mode (before authentication or API calls)
+    if dry_run:
+        console.rule("Dry Run Summary", style="yellow")
+        console.print("[yellow]Dry run mode enabled - no actual deletion will be performed[/yellow]")
+        console.print()
+
+        # Display platform information if detected
+        if ci_info and ci_info.platform:
+            console.print("[cyan]Platform Information:[/cyan]")
+            console.print(f"  • Platform: {ci_info.platform}")
+            if ci_info.repository:
+                console.print(f"  • Repository: {ci_info.repository}")
+            if ci_info.session_type:
+                console.print(f"  • Session Type: {ci_info.session_type}")
+            if ci_info.session_type == "cr" and ci_info.cr_number is not None:
+                console.print(f"  • CR Number: {ci_info.cr_number}")
+            console.print()
+
+        # Display delete summary
+        console.print("[cyan]Delete Workflow:[/cyan]")
+        if session_id:
+            console.print("  • Delete specific session by ID")
+            console.print(f"  • Session ID: {session_id}")
+        else:
+            console.print("  • Auto-detect and delete PR/MR session")
+
+            if ci_info and ci_info.platform in ["github-actions", "gitlab-ci"]:
+                console.print("  • Platform-specific APIs will be used")
+            else:
+                console.print("  • [yellow]Warning: Platform not supported for auto-session discovery[/yellow]")
+
+        console.print()
+        console.print("[green]✓[/green] Dry run completed successfully")
+        sys.exit(0)
+
+    # 3. Confirmation prompt (unless --force is provided)
+    if not force:
+        console.print()
+        if session_id:
+            confirm_msg = f'Are you sure you want to delete session "{session_id}"?'
+        else:
+            confirm_msg = "Are you sure you want to delete the PR/MR session?"
+
+        if not click.confirm(confirm_msg):
+            console.print("[yellow]Aborted[/yellow]")
+            sys.exit(0)
+
+    # 4. Choose delete workflow based on whether session_id is provided
+    if session_id:
+        # Generic workflow: Delete from existing session using session ID
+        # This workflow requires RECCE_API_TOKEN
+        token = os.getenv("RECCE_API_TOKEN")
+        if not token:
+            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided")
+            console.print("Set RECCE_API_TOKEN environment variable for session-based delete")
+            sys.exit(2)
+
+        delete_existing_session(console, token, session_id)
+    else:
+        # Platform-specific workflow: Use platform APIs to find and delete session
+        # This workflow MUST use CI job tokens (CI_JOB_TOKEN or GITHUB_TOKEN)
+        if not ci_info or not ci_info.access_token:
+            console.print("[red]Error:[/red] Platform-specific delete requires CI environment")
+            console.print("Either run in GitHub Actions/GitLab CI or provide --session-id for generic delete")
+            sys.exit(2)
+
+        token = ci_info.access_token
+        if ci_info.platform == "github-actions":
+            console.print("[cyan]Info:[/cyan] Using GITHUB_TOKEN for platform-specific authentication")
+        elif ci_info.platform == "gitlab-ci":
+            console.print("[cyan]Info:[/cyan] Using CI_JOB_TOKEN for platform-specific authentication")
+
+        delete_with_platform_apis(console, token, ci_info, prod=False)
+
+
+@cloud_cli.command()
+@click.option(
+    "--repo",
+    type=str,
+    help="Repository full name (owner/repo). Auto-detected from git remote if not provided.",
+)
+@click.option(
+    "--since",
+    type=str,
+    default="30d",
+    help="Start date (ISO format 2024-11-01 or relative like 30d). Default: 30d",
+)
+@click.option(
+    "--until",
+    type=str,
+    default=None,
+    help="End date (ISO format or relative). Default: today",
+)
+@click.option(
+    "--base-branch",
+    type=str,
+    default="main",
+    help="Target branch filter. Default: main",
+)
+@click.option(
+    "--merged-only/--include-open",
+    default=True,
+    help="Only include merged CRs (default) or include open CRs too",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(),
+    default=None,
+    help="Output file path for CSV report",
+)
+def report(repo, since, until, base_branch, merged_only, output):
+    """
+    Generate PR (Pull Request) metrics report.
+
+    Tracks commit counts before/after PR open, time to merge, and Recce session data.
+    Useful for measuring Recce's effectiveness in catching issues before merge.
+
+    By default, displays a summary to the console. Use -o to save as CSV file.
+
+    \b
+    Authentication:
+    - Requires RECCE_API_TOKEN environment variable
+
+    \b
+    Examples:
+      # Last 30 days for current repo (auto-detected)
+      recce-cloud report
+
+      # Last 60 days, save to CSV file
+      recce-cloud report --since 60d -o report.csv
+
+      # Specific date range
+      recce-cloud report --since 2024-11-01 --until 2024-12-15
+
+      # Different repo and branch
+      recce-cloud report --repo super/analytics --base-branch develop
+
+      # Include open PRs (not just merged)
+      recce-cloud report --include-open
+    """
+    console = Console()
+
+    # Check for API token
+    token = os.getenv("RECCE_API_TOKEN")
+    if not token:
+        console.print("[red]Error:[/red] RECCE_API_TOKEN environment variable is required")
+        console.print("Set RECCE_API_TOKEN to your Recce Cloud API token")
+        sys.exit(2)
+
+    # Auto-detect repo from git remote if not provided
+    if not repo:
+        try:
+            result = subprocess.run(
+                ["git", "remote", "get-url", "origin"],
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=5,
+            )
+            remote_url = result.stdout.strip()
+
+            # Parse repo from various URL formats
+            # SSH: git@gitlab.com:owner/repo.git
+            # HTTPS: https://gitlab.com/owner/repo.git
+            if remote_url.startswith("git@"):
+                # git@gitlab.com:owner/repo.git -> owner/repo
+                repo = remote_url.split(":")[-1].replace(".git", "")
+            elif "://" in remote_url:
+                # https://gitlab.com/owner/repo.git -> owner/repo
+                path = remote_url.split("://")[-1].split("/", 1)[-1]
+                repo = path.replace(".git", "")
+
+            if repo:
+                console.print(f"[cyan]Auto-detected repository:[/cyan] {repo}")
+        except FileNotFoundError:
+            # git executable not found
+            logger.debug("git not found while auto-detecting repository")
+        except Exception as e:
+            # Unexpected failure during git remote parsing
+            logger.debug("Failed to auto-detect repository from git remote: %s", e)
+
+    if not repo:
+        console.print("[red]Error:[/red] Could not detect repository. Please provide --repo option.")
+        sys.exit(1)
+
+    # Generate report
+    exit_code = fetch_and_generate_report(
+        console=console,
+        token=token,
+        repo=repo,
+        since=since,
+        until=until,
+        base_branch=base_branch,
+        merged_only=merged_only,
+        output_path=output,
+    )
+
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":

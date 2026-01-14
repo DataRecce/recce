@@ -731,5 +731,163 @@ class TestDownloadDryRun(unittest.TestCase):
         self.assertIn("manifest.json, catalog.json", result.output)
 
 
+class TestDeleteDryRun(unittest.TestCase):
+    """Test cases for the --dry-run flag in delete command."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        """Clean up test fixtures."""
+        import shutil
+
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    def test_dry_run_github_actions_pr_context(self):
+        """Test dry-run with GitHub Actions PR context."""
+        env = {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_REPOSITORY": "DataRecce/recce",
+            "GITHUB_EVENT_NAME": "pull_request",
+            "GITHUB_SHA": "abc123def456",
+            "GITHUB_HEAD_REF": "feature/test-branch",
+            "GITHUB_BASE_REF": "main",
+            "GITHUB_TOKEN": "test_token_123",
+        }
+
+        # Create mock event file
+        event_file = Path(self.temp_dir) / "github_event.json"
+        import json
+
+        with open(event_file, "w") as f:
+            json.dump({"pull_request": {"number": 42}}, f)
+
+        env["GITHUB_EVENT_PATH"] = str(event_file)
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                ["delete", "--dry-run"],
+            )
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("Dry run mode enabled", result.output)
+        self.assertIn("Platform Information:", result.output)
+        self.assertIn("Platform: github-actions", result.output)
+        self.assertIn("Repository: DataRecce/recce", result.output)
+        self.assertIn("Session Type: cr", result.output)
+        self.assertIn("PR Number: 42", result.output)
+        self.assertIn("Delete Workflow:", result.output)
+        self.assertIn("Auto-detect and delete PR/MR session", result.output)
+        self.assertIn("Platform-specific APIs will be used", result.output)
+        self.assertIn("Dry run completed successfully", result.output)
+
+    def test_dry_run_gitlab_ci_mr_context(self):
+        """Test dry-run with GitLab CI MR context."""
+        env = {
+            "GITLAB_CI": "true",
+            "CI_PROJECT_PATH": "recce/jaffle-shop",
+            "CI_PROJECT_URL": "https://gitlab.com/recce/jaffle-shop",
+            "CI_MERGE_REQUEST_IID": "5",
+            "CI_MERGE_REQUEST_SOURCE_BRANCH_NAME": "feature/new-models",
+            "CI_MERGE_REQUEST_TARGET_BRANCH_NAME": "main",
+            "CI_COMMIT_SHA": "def456abc789",
+            "CI_SERVER_URL": "https://gitlab.com",
+            "CI_JOB_TOKEN": "test_job_token_abc",
+        }
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                ["delete", "--dry-run"],
+            )
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("Dry run mode enabled", result.output)
+        self.assertIn("Platform Information:", result.output)
+        self.assertIn("Platform: gitlab-ci", result.output)
+        self.assertIn("Repository: recce/jaffle-shop", result.output)
+        self.assertIn("Session Type: cr", result.output)
+        self.assertIn("MR Number: 5", result.output)
+        self.assertIn("Auto-detect and delete PR/MR session", result.output)
+        self.assertIn("Platform-specific APIs will be used", result.output)
+
+    def test_dry_run_with_session_id(self):
+        """Test dry-run with existing session ID (generic workflow)."""
+        env = {
+            "RECCE_API_TOKEN": "test_token_789",
+        }
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                [
+                    "delete",
+                    "--session-id",
+                    "sess_abc123xyz",
+                    "--dry-run",
+                ],
+            )
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("Dry run mode enabled", result.output)
+        self.assertIn("Delete Workflow:", result.output)
+        self.assertIn("Delete specific session by ID", result.output)
+        self.assertIn("Session ID: sess_abc123xyz", result.output)
+
+        # User interactive mode should NOT show session type
+        self.assertNotIn("Session Type:", result.output)
+
+    def test_dry_run_no_ci_without_session_id(self):
+        """Test dry-run without CI environment and no session ID."""
+        env = {
+            "RECCE_API_TOKEN": "test_token",
+        }
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                ["delete", "--dry-run"],
+            )
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("Dry run mode enabled", result.output)
+        self.assertIn("Warning: Platform not supported for auto-session discovery", result.output)
+
+    def test_dry_run_gitlab_ci_self_hosted(self):
+        """Test dry-run with self-hosted GitLab instance."""
+        env = {
+            "GITLAB_CI": "true",
+            "CI_PROJECT_PATH": "data-team/dbt-project",
+            "CI_PROJECT_URL": "https://gitlab.mycompany.com/data-team/dbt-project",
+            "CI_MERGE_REQUEST_IID": "25",
+            "CI_MERGE_REQUEST_SOURCE_BRANCH_NAME": "develop",
+            "CI_MERGE_REQUEST_TARGET_BRANCH_NAME": "production",
+            "CI_COMMIT_SHA": "fedcba987654",
+            "CI_SERVER_URL": "https://gitlab.mycompany.com",
+            "CI_JOB_TOKEN": "test_job_token_xyz",
+        }
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                ["delete", "--dry-run"],
+            )
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("Platform: gitlab-ci", result.output)
+        self.assertIn("Repository: data-team/dbt-project", result.output)
+        self.assertIn("Session Type: cr", result.output)
+        self.assertIn("MR Number: 25", result.output)
+
+
 if __name__ == "__main__":
     unittest.main()

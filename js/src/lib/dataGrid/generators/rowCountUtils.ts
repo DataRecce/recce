@@ -41,7 +41,7 @@ export function calculateDelta(
   current: number | null,
 ): string {
   if (base !== null && current !== null) {
-    return base !== current ? deltaPercentageString(base, current) : "=";
+    return base !== current ? deltaPercentageString(base, current) : "0";
   }
 
   if (base === current) return "N/A";

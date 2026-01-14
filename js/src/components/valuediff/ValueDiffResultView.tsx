@@ -72,7 +72,6 @@ function _ValueDiffResultView(
           rows={rows}
           renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
           defaultColumnOptions={{ resizable: true }}
-          className="rdg-light"
         />
       </Box>
     </Box>

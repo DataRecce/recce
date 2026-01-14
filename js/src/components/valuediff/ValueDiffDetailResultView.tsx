@@ -206,7 +206,6 @@ const PrivateValueDiffDetailResultView = (
           ),
         }}
         defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
-        className="rdg-light"
       />
     </Box>
   );
