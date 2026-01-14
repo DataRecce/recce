@@ -9,7 +9,6 @@ import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import NextLink from "next/link";
-import path from "path";
 import React, {
   type ReactNode,
   useCallback,
@@ -174,7 +173,8 @@ function useLineageWatcher({
         if (data.command === "refresh") {
           const { eventType, srcPath } = data.event;
           const [targetName, fileName] = srcPath.split("/").slice(-2);
-          const name = path.parse(fileName).name;
+          // Extract filename without extension (browser-compatible alternative to path.parse)
+          const name = fileName.replace(/\.[^/.]+$/, "");
           const eventId = `${targetName}-${name}-${eventType}`;
           if (ref.current.artifactsUpdatedToastId == null) {
             setArtifactsUpdatedToastId(

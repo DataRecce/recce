@@ -258,6 +258,12 @@ importers:
 
   packages/ui:
     dependencies:
+      '@amplitude/analytics-core':
+        specifier: ^2.34.1
+        version: 2.34.1
+      '@amplitude/unified':
+        specifier: 1.0.0-beta.9
+        version: 1.0.0-beta.9(@amplitude/rrweb@2.0.0-alpha.33)(rollup@4.53.3)
       '@emotion/react':
         specifier: ^11.14.0
         version: 11.14.0(@types/react@19.2.7)(react@19.2.3)
@@ -285,6 +291,9 @@ importers:
       file-saver:
         specifier: ^2.0.5
         version: 2.0.5
+      html-to-image:
+        specifier: ^1.11.11
+        version: 1.11.13
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
@@ -300,6 +309,9 @@ importers:
       react-icons:
         specifier: ^5.5.0
         version: 5.5.0(react@19.2.3)
+      react-split:
+        specifier: ^2.0.14
+        version: 2.0.14(react@19.2.3)
       usehooks-ts:
         specifier: ^3.1.1
         version: 3.1.1(react@19.2.3)

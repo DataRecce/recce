@@ -43,10 +43,40 @@ export default defineConfig({
     "@xyflow/react",
     "next-themes",
     "axios",
+    // Amplitude packages contain Node.js-specific code (node:module)
+    // and must be provided by the consuming application
+    /^@amplitude\//,
+    // react-split uses split.js for resizable panes
+    "react-split",
+    "split.js",
+    // html-to-image and html2canvas-pro are used for screenshot functionality
+    "html-to-image",
+    "html2canvas-pro",
+    // Utility packages - externalize to prevent CJS interop issues
+    "file-saver",
+    "lodash",
+    /^lodash\//,
+    "date-fns",
+    /^date-fns\//,
+    "react-icons",
+    /^react-icons\//,
+    "usehooks-ts",
+    // yaml package uses process.env which requires Node.js
+    "yaml",
+    // Next.js packages are provided by the consuming application
+    /^next\//,
+    "next",
+    // CodeMirror packages
+    /^@codemirror\//,
+    // react-markdown and remark/unified ecosystem use Node.js built-ins (vfile uses path, process, url)
+    "react-markdown",
+    /^remark-/,
+    "react-syntax-highlighter",
+    /^react-syntax-highlighter\//,
+    // vfile and unified ecosystem packages
+    /^vfile/,
+    /^unified/,
   ],
-
-  // Bundle these to ensure consistent versions
-  noExternal: ["html-to-image", /^html2canvas-pro/],
 
   banner: {
     js: '"use client";',

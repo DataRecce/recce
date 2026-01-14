@@ -23,16 +23,14 @@ import type { DataGridHandle } from "../primitives";
 import { colors } from "../theme";
 import { useClipBoardToast } from "./useClipBoardToast";
 
-// Dynamic import directly from ESM distribution file to work around Turbopack issues
-// Turbopack doesn't properly resolve the package's main entry point, so we import the ESM file directly
+// Dynamic import for html2canvas-pro (externalized to consuming app)
 type Html2CanvasFn = (
   element: HTMLElement,
   options?: Record<string, unknown>,
 ) => Promise<HTMLCanvasElement>;
 
 const loadHtml2Canvas = async (): Promise<Html2CanvasFn> => {
-  // @ts-expect-error - Direct path import for Turbopack compatibility
-  const module = await import("html2canvas-pro/dist/html2canvas-pro.esm.js");
+  const module = await import("html2canvas-pro");
   return module.default as Html2CanvasFn;
 };
 
