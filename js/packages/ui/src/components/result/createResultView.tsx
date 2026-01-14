@@ -116,15 +116,21 @@ function ToolbarArea({
 }
 
 /**
- * Factory function to create type-safe ResultView components
+ * Factory function to create type-safe ResultView components.
  *
+ * @remarks
  * Reduces boilerplate by handling:
  * - Type guard validation with consistent error messages
  * - forwardRef setup for screenshot capture
  * - Dark/light theme handling
  * - Empty state rendering
  *
+ * @typeParam TRun - Run payload type validated by the type guard.
+ * @typeParam TViewOptions - Optional view options shape used by the view.
+ * @typeParam TRef - Ref type exposed by the view (defaults to DataGridHandle).
+ *
  * @example
+ * ```tsx
  * export const RowCountResultView = createResultView({
  *   displayName: "RowCountResultView",
  *   typeGuard: isRowCountRun,
@@ -135,6 +141,7 @@ function ToolbarArea({
  *     rows: toRowCountGrid(run).rows,
  *   }),
  * });
+ * ```
  */
 export function createResultView<
   TRun,

@@ -126,12 +126,15 @@
     "@tailwindcss/postcss": "^4.0.0",
     "postcss": "^8.5.0",
     "tailwindcss": "^4.0.0",
+    "typedoc": "^0.28.12",
+    "typedoc-plugin-markdown": "^4.9.0",
     "tsdown": "^0.18.0",
     "typescript": "^5.9.0"
   },
   "scripts": {
     "build": "tsdown && pnpm build:styles",
     "build:styles": "node scripts/build-styles.js",
+    "docs:api": "typedoc --options typedoc.json",
     "type:check": "tsc --noEmit"
   }
 }

@@ -3,13 +3,12 @@ import { PUBLIC_API_URL } from "../lib/const";
 import { useApiConfigOptional } from "../providers";
 
 /**
- * API Configuration Adapter
+ * API configuration adapter for OSS and cloud hosts.
  *
- * Provides a fallback chain for API configuration.
- *
- * Priority chain:
- * 1. @datarecce/ui RecceProvider (via useApiConfigOptional)
- * 2. Default config with PUBLIC_API_URL (for backward compatibility)
+ * @remarks
+ * Fallback chain:
+ * 1. RecceProvider (via useApiConfigOptional)
+ * 2. Default config using PUBLIC_API_URL
  */
 export interface ApiConfigContextType {
   /**
@@ -46,13 +45,12 @@ const defaultApiConfigContext: ApiConfigContextType = {
 };
 
 /**
- * Hook to access the API configuration and configured axios client.
+ * Access the API configuration and configured axios client.
  *
+ * @remarks
  * Priority order:
- * 1. @datarecce/ui RecceProvider (via useApiConfigOptional)
+ * 1. RecceProvider (via useApiConfigOptional)
  * 2. Default config (for backward compatibility)
- *
- * @returns ApiConfigContextType with apiPrefix, authToken, and apiClient
  */
 export function useApiConfig(): ApiConfigContextType {
   // Call both hooks unconditionally (React hooks rules)

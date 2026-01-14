@@ -20,9 +20,9 @@ export interface QueryContextType {
   onCancel?: () => void;
 
   // --- OSS input state (merged for backward compatibility) ---
-  /** @alias sql - OSS backward compatibility */
+  /** @remarks Alias of sql (OSS backward compatibility). */
   sqlQuery?: string;
-  /** @alias onSqlChange - OSS backward compatibility */
+  /** @remarks Alias of onSqlChange (OSS backward compatibility). */
   setSqlQuery?: (sql: string) => void;
   /** Primary key columns for diff matching */
   primaryKeys?: string[];

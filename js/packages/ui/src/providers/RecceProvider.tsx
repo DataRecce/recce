@@ -18,12 +18,20 @@ import { QueryProvider } from "./contexts/QueryContext";
 import { RoutingProvider } from "./contexts/RoutingContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 
+/**
+ * Theme mode selection for RecceProvider.
+ */
 type ThemeMode = "light" | "dark" | "system";
 
+/**
+ * Props for {@link RecceProvider}.
+ */
 interface RecceProviderProps {
   children: ReactNode;
 
-  /** API configuration - simple config OR custom client */
+  /**
+   * API configuration - simple config OR custom client.
+   */
   api:
     | {
         baseUrl: string;
@@ -34,7 +42,11 @@ interface RecceProviderProps {
         client: AxiosInstance;
       };
 
-  /** Theme mode. Default: "system" */
+  /**
+   * Theme mode.
+   *
+   * @defaultValue "system"
+   */
   theme?: ThemeMode;
 
   /**
@@ -66,7 +78,9 @@ interface RecceProviderProps {
     ) => void;
   };
 
-  /** TanStack Query client configuration */
+  /**
+   * TanStack Query client configuration.
+   */
   queryClient?: {
     staleTime?: number;
     gcTime?: number;

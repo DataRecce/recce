@@ -18,6 +18,9 @@ import {
  * headers: Additional headers
  * timeout: Request timeout in ms
  */
+/**
+ * API configuration inputs for {@link ApiProvider}.
+ */
 interface ApiConfig {
   baseUrl: string;
   apiPrefix?: string;
@@ -26,6 +29,9 @@ interface ApiConfig {
   timeout?: number;
 }
 
+/**
+ * Resolved API context values exposed by {@link useApiConfig}.
+ */
 interface ApiContextValue {
   apiClient: AxiosInstance;
   apiPrefix: string;
@@ -37,10 +43,10 @@ const ApiContext = createContext<ApiContextValue | null>(null);
 ApiContext.displayName = "RecceApiContext";
 
 /**
- * Hook to access the full API configuration including apiClient, apiPrefix, authToken, and baseUrl.
+ * Access the API configuration, including the configured axios client.
  *
- * @returns ApiContextValue with apiClient, apiPrefix, authToken, and baseUrl
- * @throws Error if used outside RecceProvider
+ * @returns The API context values (client, baseUrl, apiPrefix, authToken).
+ * @throws Error if used outside {@link RecceProvider}.
  */
 export function useApiConfig(): ApiContextValue {
   const context = useContext(ApiContext);
@@ -51,21 +57,19 @@ export function useApiConfig(): ApiContextValue {
 }
 
 /**
- * Non-throwing version of useApiConfig.
- * Returns null if not within RecceProvider, allowing for graceful fallbacks.
+ * Non-throwing version of {@link useApiConfig}.
  *
- * @returns ApiContextValue or null if outside provider
+ * @returns The API context values, or null if outside {@link RecceProvider}.
  */
 export function useApiConfigOptional(): ApiContextValue | null {
   return useContext(ApiContext);
 }
 
 /**
- * Hook to get the configured axios client.
- * Convenience wrapper around useApiConfig().apiClient
+ * Convenience hook for the configured axios client.
  *
- * @returns AxiosInstance configured with API prefix and auth token
- * @throws Error if used outside RecceProvider
+ * @returns AxiosInstance configured with API prefix and auth token.
+ * @throws Error if used outside {@link RecceProvider}.
  */
 export function useApiClient(): AxiosInstance {
   return useApiConfig().apiClient;
@@ -75,6 +79,9 @@ export function useApiClient(): AxiosInstance {
  * Custom client config that allows passing a pre-configured axios instance
  * along with the API configuration values for context.
  */
+/**
+ * Custom client configuration for {@link ApiProvider}.
+ */
 interface CustomClientConfig {
   client: AxiosInstance;
   apiPrefix?: string;
@@ -82,6 +89,9 @@ interface CustomClientConfig {
   baseUrl?: string;
 }
 
+/**
+ * Props for {@link ApiProvider}.
+ */
 interface ApiProviderProps {
   children: ReactNode;
   config: ApiConfig | CustomClientConfig;
@@ -165,6 +175,9 @@ function createApiClient(
   return client;
 }
 
+/**
+ * Provides API configuration and an axios client to the subtree.
+ */
 export function ApiProvider({ children, config }: ApiProviderProps) {
   // Extract primitive values to stabilize dependency - prevents axios instance recreation
   // when parent re-renders with new object reference but same values

@@ -23,9 +23,9 @@ export interface CheckContextType {
   refetchChecks?: () => void;
 
   // OSS aliases for backward compatibility
-  /** @alias selectedCheckId - OSS backward compatibility */
+  /** @remarks Alias of selectedCheckId (OSS backward compatibility). */
   latestSelectedCheckId?: string;
-  /** @alias onSelectCheck - OSS backward compatibility */
+  /** @remarks Alias of onSelectCheck (OSS backward compatibility). */
   setLatestSelectedCheckId?: (checkId: string) => void;
 }
 
@@ -51,9 +51,9 @@ export interface CheckProviderProps {
   refetchChecks?: () => void;
 
   // OSS aliases for backward compatibility (prefer canonical names above)
-  /** @alias selectedCheckId - OSS backward compatibility */
+  /** @remarks Alias of selectedCheckId (OSS backward compatibility). */
   latestSelectedCheckId?: string;
-  /** @alias onSelectCheck - OSS backward compatibility */
+  /** @remarks Alias of onSelectCheck (OSS backward compatibility). */
   setLatestSelectedCheckId?: (checkId: string) => void;
 }
 

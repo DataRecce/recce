@@ -78,7 +78,7 @@ export interface RecceActionContextType {
    * Execute a run action.
    * @param type - The run type (e.g., "row_count_diff", "value_diff")
    * @param params - Query parameters for the run
-   * @param options - Action options (showForm, trackProps)
+   * @param actionOptions - Action options (showForm, trackProps)
    */
   runAction: (
     type: string,

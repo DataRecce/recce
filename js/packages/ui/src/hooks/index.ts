@@ -1,6 +1,5 @@
 /**
- * @file hooks/index.ts
- * @description Barrel export for @datarecce/ui hooks
+ * Barrel export for @datarecce/ui hooks.
  */
 
 export {

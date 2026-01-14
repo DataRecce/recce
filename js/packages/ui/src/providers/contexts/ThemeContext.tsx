@@ -8,8 +8,14 @@ import {
   useState,
 } from "react";
 
+/**
+ * Theme mode selection for {@link ThemeProvider}.
+ */
 type ThemeMode = "light" | "dark" | "system";
 
+/**
+ * Theme context values exposed by {@link useRecceTheme}.
+ */
 interface ThemeContextValue {
   mode: ThemeMode;
   resolvedMode: "light" | "dark";
@@ -19,6 +25,11 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 ThemeContext.displayName = "RecceThemeContext";
 
+/**
+ * Access the theme context.
+ *
+ * @throws Error if used outside {@link RecceProvider}.
+ */
 export function useRecceTheme(): ThemeContextValue {
   const context = useContext(ThemeContext);
   if (!context) {
@@ -28,18 +39,25 @@ export function useRecceTheme(): ThemeContextValue {
 }
 
 /**
- * Non-throwing version of useRecceTheme
- * Returns null if not within RecceProvider, allowing for graceful fallbacks
+ * Non-throwing version of {@link useRecceTheme}.
+ *
+ * @returns Theme context values, or null if outside {@link RecceProvider}.
  */
 export function useRecceThemeOptional(): ThemeContextValue | null {
   return useContext(ThemeContext);
 }
 
+/**
+ * Props for {@link ThemeProvider}.
+ */
 interface ThemeProviderProps {
   children: ReactNode;
   defaultMode?: ThemeMode;
 }
 
+/**
+ * Provides theme mode and resolved color scheme for UI components.
+ */
 export function ThemeProvider({
   children,
   defaultMode = "system",
