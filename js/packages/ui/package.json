@@ -64,6 +64,11 @@
       "import": "./dist/constants.mjs",
       "require": "./dist/constants.cjs"
     },
+    "./adapters": {
+      "types": "./dist/adapters.d.mts",
+      "import": "./dist/adapters.mjs",
+      "require": "./dist/adapters.cjs"
+    },
     "./components": {
       "types": "./dist/components.d.mts",
       "import": "./dist/components.mjs",
