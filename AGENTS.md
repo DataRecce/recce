@@ -25,6 +25,8 @@ changes with confidence by providing lineage visualization, data diffing, and co
 - ❌ **Create worktrees in subdirectories**: Git worktrees must only be created at the repository root (`/Users/jaredmscott/repos/recce/recce`), never inside subdirectories like `js/`
 - ❌ **Mix concerns across layers**: Keep strict separation between models, tasks, APIs, and adapters (see Code
   Organization Philosophy below)
+- ❌ **Import UI internals from OSS**: OSS app code must not import from `js/packages/ui/src/*` directly; use
+  `@datarecce/ui` export paths instead
 
 ### Always:
 
@@ -38,6 +40,8 @@ changes with confidence by providing lineage visualization, data diffing, and co
   compared
 - ✅ **Follow monorepo structure**: Backend (Python) and frontend (TypeScript) are tightly coupled but maintain clear
   boundaries
+- ✅ **Keep OSS shell thin**: Route composition and OSS-only glue stay in `js/app`; shared UI and logic live in
+  `@datarecce/ui`
 
 ## Git Development Practices
 
@@ -121,6 +125,9 @@ recce/
 - ✅ `state/` can import from `models/` only
 - ❌ Backend (`recce/`) NEVER imports from frontend (`js/`)
 - ❌ Frontend uses API clients (`lib/api/`) NEVER direct backend imports
+- ✅ `js/app/` imports from `@datarecce/ui` (components, contexts, hooks, lib)
+- ✅ `js/packages/ui/` can import within its own package only
+- ❌ `js/packages/ui/` NEVER imports from `js/app/` or `js/src/`
 
 ### Why This Matters
 
@@ -139,8 +146,10 @@ recce/
 | New data model     | `models/` (Pydantic class)                         | Only standard library           |
 | Platform support   | `adapter/` (extend BaseAdapter)                    | Can use models only             |
 | State storage      | `state/` (extend RecceStateLoader)                 | Can use models only             |
-| UI component       | `js/src/components/`                               | Use API clients from `lib/api/` |
-| API client         | `js/src/lib/api/`                                  | Axios, React Query              |
+| UI component (shared) | `js/packages/ui/src/components/`               | Use `@datarecce/ui/api`, hooks  |
+| UI component (OSS-only shell) | `js/app/`                             | Use `@datarecce/ui` exports     |
+| API client (shared) | `js/packages/ui/src/api/`                        | Axios, React Query              |
+| OSS tests/utilities | `js/src/`                                        | Prefer `@datarecce/ui` imports  |
 
 ## Architecture & Tech Stack
 
@@ -167,7 +176,7 @@ recce/
 - **Next.js 16.0.10** - React framework with App Router
 - **React 19.2.3** - UI library with new JSX transform
 - **TypeScript 5.9** - Type safety
-- **Chakra UI 3** - Component library
+- **MUI 7** - Component library
 - **Biome 2.3** - Fast linter and formatter (replaces ESLint + Prettier)
 - **Tailwind CSS 4** - Utility-first CSS
 - **CodeMirror 6** - Code editor (SQL, YAML support)
@@ -175,7 +184,7 @@ recce/
 - **Reactflow 12** - Lineage graph visualization
 
 - Next.js 16 app built with React 19, compiled to static files
-- UI built with Chakra UI + Tailwind CSS
+- UI built in a shared workspace package `@datarecce/ui`
 - React Query handles API communication and state management
 - Reactflow for lineage graph visualization
 - Built frontend is embedded in Python package at `recce/data/`
@@ -206,22 +215,34 @@ recce/                     # Backend (Python)
 └── data/                  # GENERATED - DO NOT EDIT (from js/out/)
 
 js/                        # Frontend (Next.js)
-├── src/
-│   ├── app/               # Next.js App Router pages
-│   ├── lib/
-│   │   ├── api/           # API client files (checks.ts, runs.ts, checkEvents.ts)
-│   │   └── hooks/         # React contexts & custom hooks
-│   ├── components/        # React components
-│   │   ├── lineage/       # Lineage visualization
-│   │   ├── check/         # Check management UI
-│   │   │   └── timeline/  # Check Events timeline (cloud-only)
-│   │   ├── run/           # Run execution UI
-│   │   └── editor/        # CodeMirror editor components
-│   ├── constants/
-│   └── utils/
+├── app/                   # OSS Next.js App Router shell (routes/layout only)
+├── src/                   # OSS tests + test utilities (Jest)
+│   ├── components/        # Test suites for UI behavior
+│   ├── lib/               # Test helpers for data grid + adapters
+│   └── testing-utils/     # Shared test harnesses and fixtures
+├── packages/
+│   └── ui/                # @datarecce/ui package source
+│       ├── src/
+│       │   ├── api/        # Shared API clients
+│       │   ├── components/ # Shared UI + OSS variants (*Oss)
+│       │   ├── contexts/   # Shared React contexts
+│       │   ├── hooks/      # Shared hooks
+│       │   ├── lib/        # Shared lib utilities
+│       │   └── styles/     # Shared styles
+│       └── dist/          # Built package outputs
 ├── biome.json             # Biome linter & formatter config
 └── package.json
 ```
+
+## Frontend Separation & Usage Patterns
+
+- `@datarecce/ui` is the source of truth for UI components, contexts, hooks, and API clients.
+- OSS Next.js routes/layouts live in `js/app/` and should stay thin (compose `@datarecce/ui` exports only).
+- OSS-specific variants are suffixed `*Oss` and live in `js/packages/ui/src/components/` (pages import these via
+  `@datarecce/ui/components/...`).
+- `js/src/` is test-only (Jest suites + utilities) and should not contain runtime app code.
+- Prefer public export paths (`@datarecce/ui`, `@datarecce/ui/components/...`, `@datarecce/ui/contexts`, etc.); avoid
+  deep imports into `js/packages/ui/src`.
 
 ## Development Commands
 
@@ -327,7 +348,7 @@ When you modify frontend code and want to test it with the Python backend:
 **Frontend (TypeScript/React):**
 
 - Next.js 16 app built with React 19, compiled to static files
-- UI built with Chakra UI 3 + Tailwind CSS 4
+- UI built in `@datarecce/ui` (MUI + Tailwind)
 - React Query handles API communication and state management
 - Reactflow for lineage graph visualization
 - CodeMirror 6 for SQL/YAML editing
@@ -385,8 +406,8 @@ GitHub PR-style discussion feature for checks, only available when connected to 
 **Key Files:**
 
 - Backend: `recce/apis/check_events_api.py`, `recce/util/cloud/check_events.py`
-- Frontend: `js/src/lib/api/checkEvents.ts`, `js/src/lib/hooks/useCheckEvents.ts`
-- Components: `js/src/components/check/timeline/`
+- Frontend: `js/packages/ui/src/api/checkEvents.ts`, `js/packages/ui/src/hooks/useCheckEvents.ts`
+- Components: `js/packages/ui/src/components/check/timeline/`
 
 ## Code Style
 
@@ -430,8 +451,8 @@ GitHub PR-style discussion feature for checks, only available when connected to 
 2. Implement `execute()` method with check logic
 3. Add run type enum to `recce/models/types.py`
 4. Add API handler in `recce/apis/run_func.py`
-5. Create frontend UI component in `js/src/components/`
-6. Add API client method in `js/src/lib/api/`
+5. Create frontend UI component in `js/packages/ui/src/components/`
+6. Add API client method in `js/packages/ui/src/api/`
 7. Update validation in `recce/config.py` for `recce.yml` support
 
 ### Adding a New Adapter
