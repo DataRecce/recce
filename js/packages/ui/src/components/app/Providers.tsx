@@ -11,14 +11,14 @@
 
 "use client";
 
-import { MuiProvider, Toaster } from "@datarecce/ui/components/ui";
-import { ApiProvider, IdleTimeoutProvider } from "@datarecce/ui/contexts";
-import { RecceContextProvider } from "@datarecce/ui/hooks";
-import { reactQueryClient } from "@datarecce/ui/lib/api/axiosClient";
-import { PUBLIC_API_URL } from "@datarecce/ui/lib/const";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
-import { ReactNode } from "react";
+import { type ReactNode } from "react";
+import { ApiProvider, IdleTimeoutProvider } from "../../contexts";
+import { RecceContextProvider } from "../../hooks";
+import { reactQueryClient } from "../../lib/api/axiosClient";
+import { PUBLIC_API_URL } from "../../lib/const";
+import { MuiProvider, Toaster } from "../ui";
 import { MainLayout } from "./MainLayout";
 
 interface ProvidersProps {

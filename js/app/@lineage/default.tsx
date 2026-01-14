@@ -8,6 +8,7 @@
  * This is crucial for preserving React state across navigation.
  *
  * @see https://nextjs.org/docs/app/api-reference/file-conventions/parallel-routes#defaultjs
+ * @see packages/ui/src/components/app/MainLayout.tsx - Controls visibility of the parallel slot
  */
 "use client";
 
