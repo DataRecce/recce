@@ -64,6 +64,11 @@
       "import": "./dist/constants.mjs",
       "require": "./dist/constants.cjs"
     },
+    "./components": {
+      "types": "./dist/components.d.mts",
+      "import": "./dist/components.mjs",
+      "require": "./dist/components.cjs"
+    },
     "./components/run": {
       "types": "./dist/components-run.d.mts",
       "import": "./dist/components-run.mjs",
