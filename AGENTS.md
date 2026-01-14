@@ -43,6 +43,7 @@ changes with confidence by providing lineage visualization, data diffing, and co
   boundaries
 - ✅ **Keep OSS shell thin**: Route composition and OSS-only glue stay in `js/app`; shared UI and logic live in
   `@datarecce/ui`
+- ✅ **Use standard American English**: All repository communication and documentation must be written in standard American English.
 
 ## Git Development Practices
 
