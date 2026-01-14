@@ -14,6 +14,37 @@ export {
   StateImporter,
   TopLevelShare,
 } from "./app";
+// Check components
+export type {
+  CheckAction,
+  CheckActionsProps,
+  CheckActionType,
+  CheckBreadcrumbProps,
+  CheckCardData,
+  CheckCardProps,
+  CheckDescriptionProps,
+  CheckDetailProps,
+  CheckDetailTab,
+  CheckEmptyStateProps,
+  CheckListProps,
+  CheckRunStatus,
+  CheckType,
+} from "./check";
+export {
+  CheckActions,
+  CheckBreadcrumb,
+  CheckCard,
+  CheckDescription,
+  CheckDetail,
+  CheckDetailOss,
+  CheckEmptyState,
+  CheckEmptyStateOss,
+  CheckList,
+  CheckListOss,
+  CheckPageContentOss,
+  CheckPageLoadingOss,
+  isDisabledByNoResult,
+} from "./check";
 // Error boundary components
 export { ErrorBoundary, ErrorButton } from "./errorboundary";
 

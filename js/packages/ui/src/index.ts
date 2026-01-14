@@ -32,9 +32,11 @@ export {
   getServerFlag,
   getServerInfo,
   markRelaunchHintCompleted,
+  reorderChecks,
   resetKeepAliveState,
   sendKeepAlive,
   setKeepAliveCallback,
+  useChecks,
 } from "./api";
 
 // Components - UI components for data validation interfaces
