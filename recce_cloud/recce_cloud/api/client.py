@@ -224,6 +224,42 @@ class RecceCloudClient:
             status_code=response.status_code,
         )
 
+    def upload_completed(self, session_id: str) -> dict:
+        """
+        Notify Recce Cloud that upload is complete for a session.
+
+        This triggers post-upload processing such as AI summary generation.
+
+        Args:
+            session_id: Session ID to notify completion for
+
+        Returns:
+            dict containing acknowledgement or empty dict
+
+        Raises:
+            RecceCloudException: If the request fails
+        """
+        api_url = f"{self.base_url_v2}/sessions/{session_id}/upload-completed"
+        response = self._request("POST", api_url)
+        if response.status_code in [200, 204]:
+            if response.status_code == 204 or not response.content:
+                return {}
+            return response.json()
+        if response.status_code == 403:
+            raise RecceCloudException(
+                reason=response.json().get("detail", "Permission denied"),
+                status_code=response.status_code,
+            )
+        if response.status_code == 404:
+            raise RecceCloudException(
+                reason="Session not found",
+                status_code=response.status_code,
+            )
+        raise RecceCloudException(
+            reason=response.text,
+            status_code=response.status_code,
+        )
+
 
 class ReportClient:
     """Client for fetching reports from Recce Cloud API."""

@@ -102,6 +102,19 @@ def upload_to_existing_session(
         console.print(f"Reason: {e}")
         sys.exit(4)
 
+    # Notify upload completion
+    console.print("Notifying upload completion...")
+    try:
+        client.upload_completed(session_id)
+    except RecceCloudException as e:
+        console.print("[yellow]Warning:[/yellow] Failed to notify upload completion")
+        console.print(f"Reason: {e.reason}")
+        # Non-fatal, continue
+    except Exception as e:
+        console.print("[yellow]Warning:[/yellow] Failed to notify upload completion")
+        console.print(f"Reason: {e}")
+        # Non-fatal, continue
+
     # Success!
     console.rule("Uploaded Successfully", style="green")
     console.print(

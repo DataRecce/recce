@@ -113,14 +113,11 @@ jobs:
       - name: Patch Recce Cloud Version
         id: patch_version
         run: |
-          # Patch version from tag
-          echo "${GITHUB_REF:11}" > ./recce/VERSION
+          # Patch version from tag directly to recce_cloud/recce_cloud/VERSION
+          echo "${GITHUB_REF:11}" > ./recce_cloud/recce_cloud/VERSION
 
-          # Copy to recce_cloud (CRITICAL STEP)
-          cp recce/VERSION recce_cloud/VERSION
-
-          echo "Release Version: $(cat recce_cloud/VERSION)"
-          echo "release_version=$(cat recce_cloud/VERSION)" >> $GITHUB_OUTPUT
+          echo "Release Version: $(cat recce_cloud/recce_cloud/VERSION)"
+          echo "release_version=$(cat recce_cloud/recce_cloud/VERSION)" >> $GITHUB_OUTPUT
 
       - name: Release to Pypi
         run: |
