@@ -11,7 +11,7 @@ tools and a web UI for comparing data environments, performing diffs, and collab
 - **Languages:** Python 3.9-3.13, TypeScript/React 19, Next.js 16
 - **Size:** ~50K lines (Python: 30K, TypeScript: 20K)
 - **Main Commands:** `recce server`, `recce run`, `recce-cloud upload`
-- **Frameworks:** FastAPI, Next.js, React 19, Chakra UI, pnpm
+- **Frameworks:** FastAPI, Next.js, React 19, MUI, pnpm
 
 ## Build & Validation
 
@@ -93,9 +93,8 @@ make dev
 cd js
 pnpm run build
 # This does:
-# 1. Cleans ../recce/data/
-# 2. Builds Next.js to js/out/
-# 3. Moves js/out/ to ../recce/data/
+# 1. Builds Next.js to js/out/
+# 2. Moves js/out/ to ../recce/data/
 # You MUST run this after ANY frontend changes before testing with 'recce server'
 ```
 
@@ -207,15 +206,16 @@ recce/
 js/
 ├── package.json        # pnpm 10, Node >=20, React 19, Next.js 16
 ├── tsconfig.json       # TypeScript config
-├── next.config.mjs     # Next.js config (output: 'export')
-├── src/
-│   ├── app/            # Next.js app router
-│   ├── lib/
-│   │   ├── api/        # API client (axios)
-│   │   └── hooks/      # React hooks
-│   ├── components/     # React components (Chakra UI)
-│   ├── constants/
-│   └── utils/
+├── next.config.js      # Next.js config (output: 'export')
+├── app/                # OSS Next.js App Router shell (routes/layout only)
+├── src/                # OSS tests + test utilities
+│   ├── components/     # Test suites for UI behavior
+│   ├── lib/            # Test helpers for data grid + adapters
+│   └── testing-utils/  # Shared test harnesses and fixtures
+├── packages/
+│   └── ui/             # @datarecce/ui workspace package (shared UI)
+│       ├── src/        # API, components, contexts, hooks, lib, styles
+│       └── dist/       # Built package outputs
 ├── .husky/             # Git hooks for JS files
 └── out/                # Build output (moved to ../recce/data/)
 ```
@@ -240,7 +240,7 @@ recce_cloud/
 
 - **Python linting:** `.flake8` (line-length 120, ignores E203/W503/E501)
 - **Python formatting:** `pyproject.toml` (Black line-length 120, isort profile black)
-- **Frontend:** `js/eslint.config.mjs`, `js/tsconfig.json`
+- **Frontend:** `js/biome.json`, `js/tsconfig.json`
 - **Pre-commit:** `.pre-commit-config.yaml` (excludes `recce/data/`)
 
 ## Architecture Notes
@@ -262,6 +262,7 @@ recce_cloud/
 
 - Next.js builds static export to `js/out/`
 - Build script moves to `recce/data/` which Python serves
+- Shared UI lives in `js/packages/ui` (`@datarecce/ui`)
 - Changes require rebuild: `cd js && pnpm run build`
 
 **Adapter Pattern:**
@@ -299,7 +300,7 @@ make test-tox              # Multi-version dbt tests (~10 min)
 cd js && pnpm install      # Install dependencies
 cd js && pnpm dev          # Dev server (port 3000)
 cd js && pnpm run build    # REQUIRED after frontend changes
-cd js && pnpm lint         # ESLint
+cd js && pnpm lint         # Biome
 cd js && pnpm type:check   # TypeScript check
 
 # Running Recce
