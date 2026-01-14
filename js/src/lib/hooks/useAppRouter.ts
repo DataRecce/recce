@@ -54,19 +54,47 @@ export function useAppLocation(): [
   (to: string, options?: NavigateOptions) => void,
 ] {
   const router = useRouter();
-  const pathname = usePathname();
-  const { resolvePath } = useRouteConfig();
+  const rawPathname = usePathname();
+  const { resolvePath, stripBasePath } = useRouteConfig();
+
+  // Strip basePath from pathname so components receive logical paths
+  // e.g., "/oss/abc123/checks" becomes "/checks"
+  const pathname = useMemo(
+    () => stripBasePath(rawPathname),
+    [rawPathname, stripBasePath],
+  );
 
   // Navigation function compatible with Wouter's setLocation
   // Automatically applies basePath prefix from RouteConfigContext
   const setLocation = useCallback(
     (to: string, options?: NavigateOptions) => {
-      // Separate path and query string for proper handling
-      const [pathPart, queryPart] = to.split("?");
+      // Separate path, query string, and fragment for proper handling
+      // Use indexOf to split only on the first occurrence
+      let pathAndQuery = to;
+      let hashPart = "";
+
+      const hashIndex = to.indexOf("#");
+      if (hashIndex !== -1) {
+        pathAndQuery = to.slice(0, hashIndex);
+        hashPart = to.slice(hashIndex); // includes the '#'
+      }
+
+      let pathPart = pathAndQuery;
+      let queryPart = "";
+      const queryIndex = pathAndQuery.indexOf("?");
+      if (queryIndex !== -1) {
+        pathPart = pathAndQuery.slice(0, queryIndex);
+        queryPart = pathAndQuery.slice(queryIndex + 1);
+      }
+
       const resolvedPath = resolvePath(pathPart);
-      const fullPath = queryPart
-        ? `${resolvedPath}?${queryPart}`
-        : resolvedPath;
+      let fullPath = resolvedPath;
+      if (queryPart) {
+        fullPath += `?${queryPart}`;
+      }
+      if (hashPart) {
+        fullPath += hashPart;
+      }
 
       if (options?.replace) {
         router.replace(fullPath, { scroll: options?.scroll ?? true });
@@ -95,9 +123,15 @@ export function useAppLocationWithSearch(): [
   (to: string, options?: NavigateOptions) => void,
 ] {
   const router = useRouter();
-  const pathname = usePathname();
+  const rawPathname = usePathname();
   const searchParams = useSearchParams();
-  const { resolvePath } = useRouteConfig();
+  const { resolvePath, stripBasePath } = useRouteConfig();
+
+  // Strip basePath from pathname so components receive logical paths
+  const pathname = useMemo(
+    () => stripBasePath(rawPathname),
+    [rawPathname, stripBasePath],
+  );
 
   // Construct full location string including search params
   const location = useMemo(() => {
@@ -108,11 +142,33 @@ export function useAppLocationWithSearch(): [
   // Navigation function with RouteConfigContext support
   const setLocation = useCallback(
     (to: string, options?: NavigateOptions) => {
-      const [pathPart, queryPart] = to.split("?");
+      // Separate path, query string, and fragment for proper handling
+      // Use indexOf to split only on the first occurrence
+      let pathAndQuery = to;
+      let hashPart = "";
+
+      const hashIndex = to.indexOf("#");
+      if (hashIndex !== -1) {
+        pathAndQuery = to.slice(0, hashIndex);
+        hashPart = to.slice(hashIndex); // includes the '#'
+      }
+
+      let pathPart = pathAndQuery;
+      let queryPart = "";
+      const queryIndex = pathAndQuery.indexOf("?");
+      if (queryIndex !== -1) {
+        pathPart = pathAndQuery.slice(0, queryIndex);
+        queryPart = pathAndQuery.slice(queryIndex + 1);
+      }
+
       const resolvedPath = resolvePath(pathPart);
-      const fullPath = queryPart
-        ? `${resolvedPath}?${queryPart}`
-        : resolvedPath;
+      let fullPath = resolvedPath;
+      if (queryPart) {
+        fullPath += `?${queryPart}`;
+      }
+      if (hashPart) {
+        fullPath += hashPart;
+      }
 
       if (options?.replace) {
         router.replace(fullPath, { scroll: options?.scroll ?? true });
@@ -142,8 +198,15 @@ export function useAppLocationWithSearch(): [
 export function useAppRoute(
   pattern: string,
 ): [boolean, Record<string, string>] {
-  const pathname = usePathname();
+  const rawPathname = usePathname();
   const params = useParams();
+  const { stripBasePath } = useRouteConfig();
+
+  // Strip basePath from pathname so route matching works with logical paths
+  const pathname = useMemo(
+    () => stripBasePath(rawPathname),
+    [rawPathname, stripBasePath],
+  );
 
   const isMatch = useMemo(() => {
     // Convert Next.js dynamic route pattern to regex
@@ -200,33 +263,67 @@ export function navigateTo(path: string, replace = false): void {
  */
 export function useAppNavigation() {
   const router = useRouter();
-  const pathname = usePathname();
+  const rawPathname = usePathname();
   const params = useParams();
-  const { resolvePath } = useRouteConfig();
+  const { resolvePath, stripBasePath } = useRouteConfig();
+
+  // Strip basePath from pathname so components receive logical paths
+  const pathname = useMemo(
+    () => stripBasePath(rawPathname),
+    [rawPathname, stripBasePath],
+  );
+
+  // Helper to build resolved href with proper path/query/fragment handling
+  const buildResolvedHref = useCallback(
+    (href: string): string => {
+      // Separate fragment (hash) from the rest of the URL
+      let pathAndQuery = href;
+      let hashPart = "";
+
+      const hashIndex = href.indexOf("#");
+      if (hashIndex !== -1) {
+        pathAndQuery = href.slice(0, hashIndex);
+        hashPart = href.slice(hashIndex); // includes the '#'
+      }
+
+      // Split only on the first "?" to separate path and query
+      let pathPart = pathAndQuery;
+      let queryPart = "";
+      const queryIndex = pathAndQuery.indexOf("?");
+      if (queryIndex !== -1) {
+        pathPart = pathAndQuery.slice(0, queryIndex);
+        queryPart = pathAndQuery.slice(queryIndex + 1);
+      }
+
+      const resolvedPath = resolvePath(pathPart);
+      let fullPath = resolvedPath;
+      if (queryPart) {
+        fullPath += `?${queryPart}`;
+      }
+      if (hashPart) {
+        fullPath += hashPart;
+      }
+
+      return fullPath;
+    },
+    [resolvePath],
+  );
 
   // Wrap router.push and router.replace with path resolution
   const push = useCallback(
     (href: string, options?: { scroll?: boolean }) => {
-      const [pathPart, queryPart] = href.split("?");
-      const resolvedPath = resolvePath(pathPart);
-      const fullPath = queryPart
-        ? `${resolvedPath}?${queryPart}`
-        : resolvedPath;
+      const fullPath = buildResolvedHref(href);
       router.push(fullPath, options);
     },
-    [router, resolvePath],
+    [router, buildResolvedHref],
   );
 
   const replace = useCallback(
     (href: string, options?: { scroll?: boolean }) => {
-      const [pathPart, queryPart] = href.split("?");
-      const resolvedPath = resolvePath(pathPart);
-      const fullPath = queryPart
-        ? `${resolvedPath}?${queryPart}`
-        : resolvedPath;
+      const fullPath = buildResolvedHref(href);
       router.replace(fullPath, options);
     },
-    [router, resolvePath],
+    [router, buildResolvedHref],
   );
 
   return {

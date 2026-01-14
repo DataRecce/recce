@@ -32,6 +32,14 @@ export interface RouteConfigContextType extends RouteConfig {
    * @returns The resolved path (e.g., "/oss/abc123/query")
    */
   resolvePath: (path: string) => string;
+
+  /**
+   * Strips the base path prefix from a pathname.
+   * Used to normalize pathnames for route matching.
+   * @param pathname - The full pathname (e.g., "/oss/abc123/query")
+   * @returns The logical path without prefix (e.g., "/query")
+   */
+  stripBasePath: (pathname: string) => string;
 }
 
 const defaultConfig: RouteConfig = {
@@ -74,8 +82,8 @@ export function RouteConfigProvider({
         return path;
       }
 
-      // Handle absolute URLs (http://, https://, etc.) - don't prefix
-      if (path.match(/^https?:\/\//)) {
+      // Handle absolute URLs with any valid scheme (http://, mailto:, tel:, etc.) - don't prefix
+      if (/^[a-z][a-z0-9+.-]*:/i.test(path)) {
         return path;
       }
 
@@ -95,12 +103,38 @@ export function RouteConfigProvider({
     [basePath],
   );
 
+  const stripBasePath = useCallback(
+    (pathname: string): string => {
+      // If no basePath configured, return pathname as-is (OSS mode)
+      if (!basePath) {
+        return pathname;
+      }
+
+      // Normalize basePath (remove trailing slash if present)
+      const cleanBasePath = basePath.endsWith("/")
+        ? basePath.slice(0, -1)
+        : basePath;
+
+      // If pathname starts with basePath, strip it
+      if (pathname.startsWith(cleanBasePath)) {
+        const stripped = pathname.slice(cleanBasePath.length);
+        // Ensure we return a path starting with "/" or "/" if empty
+        return stripped || "/";
+      }
+
+      // If pathname doesn't start with basePath, return as-is
+      return pathname;
+    },
+    [basePath],
+  );
+
   const contextValue: RouteConfigContextType = useMemo(
     () => ({
       basePath,
       resolvePath,
+      stripBasePath,
     }),
-    [basePath, resolvePath],
+    [basePath, resolvePath, stripBasePath],
   );
 
   return (
@@ -114,6 +148,7 @@ export function RouteConfigProvider({
 const defaultRouteConfigContext: RouteConfigContextType = {
   basePath: "",
   resolvePath: (path: string) => path,
+  stripBasePath: (pathname: string) => pathname,
 };
 
 /**
