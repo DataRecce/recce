@@ -5,7 +5,7 @@ export { default as AvatarDropdown } from "./AvatarDropdown";
 export { DisplayModeToggleOss } from "./DisplayModeToggleOss";
 export { EnvInfo } from "./EnvInfo";
 export { Filename } from "./Filename";
-export { MainLayout } from "./MainLayout";
+export { Main, MainLayout } from "./MainLayout";
 export { NavBarOss } from "./NavBarOss";
 export { RecceVersionBadgeOss } from "./RecceVersionBadgeOss";
 export { default as SetupConnectionPopover } from "./SetupConnectionPopover";

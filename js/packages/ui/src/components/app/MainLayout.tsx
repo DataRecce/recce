@@ -17,6 +17,7 @@ import {
   useRecceActionContext,
   useRecceInstanceContext,
   useRecceServerFlag,
+  useRouteConfig,
 } from "../../contexts";
 import { trackInit } from "../../lib/api/track";
 import { RunListOss, RunResultPaneOss as RunResultPane } from "../run";
@@ -97,16 +98,29 @@ interface MainProps {
   children: ReactNode;
   lineage: ReactNode;
   isLineageRoute: boolean;
+  /** Disable internal history panel (RunListOss) - cloud uses its own */
+  disableInternalHistory?: boolean;
 }
 
-function Main({ children, lineage, isLineageRoute }: MainProps) {
+export function Main({
+  children,
+  lineage,
+  isLineageRoute,
+  disableInternalHistory = false,
+}: MainProps) {
   const { isRunResultOpen, isHistoryOpen, closeRunResult } =
     useRecceActionContext();
+  const { basePath } = useRouteConfig();
   const { data: flag } = useRecceServerFlag();
   const pathname = usePathname();
 
-  const _isRunResultOpen = isRunResultOpen && !pathname.startsWith("/checks");
-  const _isHistoryOpen = isHistoryOpen && !pathname.startsWith("/checks");
+  const _isRunResultOpen =
+    isRunResultOpen && !pathname.startsWith(`${basePath}/checks`);
+  // When disableInternalHistory is true, always hide internal history panel
+  // Cloud mode uses its own RunHistoryDrawer instead
+  const _isHistoryOpen = disableInternalHistory
+    ? false
+    : isHistoryOpen && !pathname.startsWith(`${basePath}/checks`);
 
   return (
     <HSplit

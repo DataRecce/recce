@@ -9,6 +9,8 @@ export {
   AvatarDropdown,
   EnvInfo,
   Filename,
+  Main,
+  MainLayout,
   SetupConnectionPopover,
   StateExporter,
   StateImporter,
