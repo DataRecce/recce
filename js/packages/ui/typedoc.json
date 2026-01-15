@@ -1,0 +1,27 @@
+{
+  "entryPoints": [
+    "src/index.ts",
+    "src/primitives.ts",
+    "src/advanced.ts",
+    "src/api.ts",
+    "src/contexts-entry.ts",
+    "src/providers/index.ts",
+    "src/hooks/index.ts",
+    "src/result.ts",
+    "src/types/index.ts"
+  ],
+  "out": "docs/api",
+  "tsconfig": "tsconfig.typedoc.json",
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**"],
+  "plugin": ["typedoc-plugin-markdown"],
+  "theme": "markdown",
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "sort": ["source-order"],
+  "readme": "README.md",
+  "validation": {
+    "notExported": false
+  }
+}

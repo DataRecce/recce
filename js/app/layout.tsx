@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./global.css";
+import Providers from "@datarecce/ui/components/app/Providers";
 import { GoogleTagManager } from "@next/third-parties/google";
-import Providers from "app/Providers";
 import Script from "next/script";
 import { ReactNode } from "react";
 

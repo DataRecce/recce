@@ -1,4 +1,4 @@
-import { getNeighborSet } from "./graph";
+import { getNeighborSet } from "@datarecce/ui";
 
 test("Neighbor set", () => {
   /*

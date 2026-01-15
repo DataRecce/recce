@@ -1,0 +1,462 @@
+/**
+ * @datarecce/ui - Third-party component style overrides
+ *
+ * This file contains style overrides for third-party libraries
+ * to ensure they respect the Recce theme and dark mode.
+ *
+ * Included:
+ * - ag-Grid dark mode
+ * - CodeMirror dark mode
+ * - Split pane styling
+ */
+
+/* ========================================
+ * ag-Grid Dark Mode Overrides
+ * Styles for ag-Grid data tables in dark mode
+ * ======================================== */
+.dark .ag-theme-alpine,
+.dark .ag-theme-quartz {
+  --ag-background-color: var(--recce-bg-paper);
+  --ag-foreground-color: var(--recce-text-primary);
+  --ag-secondary-foreground-color: var(--recce-text-secondary);
+  --ag-header-background-color: var(--recce-bg-elevated);
+  --ag-header-foreground-color: var(--recce-text-primary);
+  --ag-odd-row-background-color: var(--recce-bg-paper);
+  --ag-row-hover-color: var(--recce-bg-subtle);
+  --ag-border-color: var(--recce-border);
+  --ag-selected-row-background-color: var(--color-brand-900);
+  --ag-range-selection-border-color: var(--recce-brand);
+  --ag-input-focus-border-color: var(--recce-brand);
+}
+
+.dark .ag-theme-alpine .ag-row-selected,
+.dark .ag-theme-quartz .ag-row-selected {
+  background-color: var(--color-brand-900);
+}
+
+.dark .ag-theme-alpine .ag-row-hover:not(.ag-row-selected),
+.dark .ag-theme-quartz .ag-row-hover:not(.ag-row-selected) {
+  background-color: var(--recce-bg-elevated);
+}
+
+.dark .ag-theme-alpine .ag-cell-focus,
+.dark .ag-theme-quartz .ag-cell-focus {
+  border-color: var(--recce-brand);
+}
+
+.dark .ag-theme-alpine .ag-header-cell,
+.dark .ag-theme-quartz .ag-header-cell {
+  border-bottom-color: var(--recce-border);
+}
+
+.dark .ag-theme-alpine .ag-cell,
+.dark .ag-theme-quartz .ag-cell {
+  border-right-color: var(--recce-border-subtle);
+}
+
+.dark .ag-theme-alpine .ag-paging-panel,
+.dark .ag-theme-quartz .ag-paging-panel {
+  border-top-color: var(--recce-border);
+  color: var(--recce-text-secondary);
+}
+
+/* ========================================
+ * CodeMirror Dark Mode Overrides
+ * Styles for CodeMirror editors in dark mode
+ * ======================================== */
+.dark .cm-editor {
+  background-color: var(--recce-bg-paper);
+  color: var(--recce-text-primary);
+}
+
+.dark .cm-editor .cm-gutters {
+  background-color: var(--recce-bg-elevated);
+  color: var(--recce-text-muted);
+  border-right-color: var(--recce-border);
+}
+
+.dark .cm-editor .cm-activeLineGutter {
+  background-color: var(--recce-bg-subtle);
+}
+
+.dark .cm-editor .cm-activeLine {
+  background-color: var(--recce-bg-subtle);
+}
+
+.dark .cm-editor .cm-selectionBackground,
+.dark .cm-editor .cm-content ::selection {
+  background-color: var(--color-brand-900) !important;
+}
+
+.dark .cm-editor .cm-cursor {
+  border-left-color: var(--recce-text-primary);
+}
+
+.dark .cm-editor .cm-matchingBracket {
+  background-color: var(--color-brand-800);
+  color: var(--recce-text-primary);
+}
+
+.dark .cm-editor .cm-searchMatch {
+  background-color: var(--color-amber-800);
+  color: var(--color-amber-100);
+}
+
+.dark .cm-editor .cm-searchMatch.cm-searchMatch-selected {
+  background-color: var(--color-amber-600);
+}
+
+.dark .cm-editor .cm-tooltip {
+  background-color: var(--recce-bg-elevated);
+  border-color: var(--recce-border);
+  color: var(--recce-text-primary);
+}
+
+.dark .cm-editor .cm-tooltip-autocomplete {
+  background-color: var(--recce-bg-elevated);
+}
+
+.dark .cm-editor .cm-tooltip-autocomplete > ul > li {
+  color: var(--recce-text-primary);
+}
+
+.dark .cm-editor .cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background-color: var(--color-brand-800);
+  color: var(--recce-text-primary);
+}
+
+/* CodeMirror syntax highlighting for dark mode */
+.dark .cm-editor .cm-keyword {
+  color: var(--color-fuchsia-400);
+}
+.dark .cm-editor .cm-operator {
+  color: var(--recce-text-primary);
+}
+.dark .cm-editor .cm-variable {
+  color: var(--color-cyan-400);
+}
+.dark .cm-editor .cm-variable-2 {
+  color: var(--color-cyan-300);
+}
+.dark .cm-editor .cm-variable-3 {
+  color: var(--color-cyan-200);
+}
+.dark .cm-editor .cm-builtin {
+  color: var(--color-fuchsia-300);
+}
+.dark .cm-editor .cm-atom {
+  color: var(--color-amber-400);
+}
+.dark .cm-editor .cm-number {
+  color: var(--color-amber-400);
+}
+.dark .cm-editor .cm-def {
+  color: var(--color-iochmara-400);
+}
+.dark .cm-editor .cm-string {
+  color: var(--color-green-400);
+}
+.dark .cm-editor .cm-string-2 {
+  color: var(--color-green-300);
+}
+.dark .cm-editor .cm-comment {
+  color: var(--recce-text-muted);
+}
+.dark .cm-editor .cm-tag {
+  color: var(--color-red-400);
+}
+.dark .cm-editor .cm-meta {
+  color: var(--recce-text-secondary);
+}
+.dark .cm-editor .cm-attribute {
+  color: var(--color-cyan-400);
+}
+.dark .cm-editor .cm-property {
+  color: var(--color-cyan-400);
+}
+.dark .cm-editor .cm-qualifier {
+  color: var(--color-iochmara-400);
+}
+.dark .cm-editor .cm-type {
+  color: var(--color-amber-300);
+}
+.dark .cm-editor .cm-error {
+  color: var(--color-red-400);
+}
+.dark .cm-editor .cm-link {
+  color: var(--color-iochmara-400);
+}
+
+/* ========================================
+ * Split Pane Styling
+ * Styles for resizable split pane components
+ * ======================================== */
+.recce-split-pane {
+  display: flex;
+  height: 100%;
+  width: 100%;
+}
+
+.recce-split-pane-horizontal {
+  flex-direction: row;
+}
+
+.recce-split-pane-vertical {
+  flex-direction: column;
+}
+
+.recce-split-pane-resizer {
+  background-color: var(--recce-border);
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+}
+
+.recce-split-pane-resizer:hover {
+  background-color: var(--recce-brand);
+}
+
+.recce-split-pane-resizer-horizontal {
+  width: 4px;
+  cursor: col-resize;
+}
+
+.recce-split-pane-resizer-vertical {
+  height: 4px;
+  cursor: row-resize;
+}
+
+.dark .recce-split-pane-resizer {
+  background-color: var(--recce-border);
+}
+
+.dark .recce-split-pane-resizer:hover {
+  background-color: var(--recce-brand);
+}
+
+/* ========================================
+ * Panel and Card Styling
+ * Common panel and card component styles
+ * ======================================== */
+.recce-panel {
+  background-color: var(--recce-bg-paper);
+  border: 1px solid var(--recce-border);
+  border-radius: 8px;
+}
+
+.recce-panel-elevated {
+  background-color: var(--recce-bg-elevated);
+  box-shadow: var(--recce-shadow);
+}
+
+.recce-card {
+  background-color: var(--recce-bg-paper);
+  border: 1px solid var(--recce-border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.recce-card:hover {
+  border-color: var(--recce-brand);
+}
+
+/* ========================================
+ * Button Base Styling
+ * Base button styles that work with MUI
+ * ======================================== */
+.recce-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.recce-btn-primary {
+  background-color: var(--recce-brand);
+  color: white;
+}
+
+.recce-btn-primary:hover {
+  background-color: var(--recce-brand-hover);
+}
+
+.recce-btn-primary:active {
+  background-color: var(--recce-brand-active);
+}
+
+.recce-btn-secondary {
+  background-color: transparent;
+  color: var(--recce-text-primary);
+  border: 1px solid var(--recce-border);
+}
+
+.recce-btn-secondary:hover {
+  background-color: var(--recce-bg-subtle);
+  border-color: var(--recce-text-muted);
+}
+
+/* ========================================
+ * Loading States
+ * Styles for loading indicators
+ * ======================================== */
+.recce-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--recce-bg-subtle) 25%,
+    var(--recce-bg-elevated) 50%,
+    var(--recce-bg-subtle) 75%
+  );
+  background-size: 200% 100%;
+  animation: recce-skeleton-shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes recce-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ========================================
+ * Tooltip Styling
+ * Consistent tooltip appearance
+ * ======================================== */
+.recce-tooltip {
+  background-color: var(--color-neutral-800);
+  color: var(--color-neutral-50);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  box-shadow: var(--recce-shadow-md);
+}
+
+.dark .recce-tooltip {
+  background-color: var(--color-neutral-200);
+  color: var(--color-neutral-900);
+}
+
+/* ========================================
+ * Badge Styling
+ * Status badges and labels
+ * ======================================== */
+.recce-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 9999px;
+}
+
+.recce-badge-success {
+  background-color: var(--color-green-100);
+  color: var(--color-green-700);
+}
+
+.dark .recce-badge-success {
+  background-color: var(--color-green-900);
+  color: var(--color-green-300);
+}
+
+.recce-badge-warning {
+  background-color: var(--color-amber-100);
+  color: var(--color-amber-700);
+}
+
+.dark .recce-badge-warning {
+  background-color: var(--color-amber-900);
+  color: var(--color-amber-300);
+}
+
+.recce-badge-error {
+  background-color: var(--color-red-100);
+  color: var(--color-red-700);
+}
+
+.dark .recce-badge-error {
+  background-color: var(--color-red-900);
+  color: var(--color-red-300);
+}
+
+.recce-badge-info {
+  background-color: var(--color-iochmara-100);
+  color: var(--color-iochmara-700);
+}
+
+.dark .recce-badge-info {
+  background-color: var(--color-iochmara-900);
+  color: var(--color-iochmara-300);
+}
+
+/* ========================================
+ * Transition Utilities
+ * Common transition classes
+ * ======================================== */
+.recce-transition-colors {
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.recce-transition-all {
+  transition: all 0.15s ease;
+}
+
+.recce-transition-opacity {
+  transition: opacity 0.15s ease;
+}
+
+.recce-transition-transform {
+  transition: transform 0.15s ease;
+}
+
+/* ========================================
+ * React Flow Controls
+ * Theme-aware colors for React Flow controls
+ * Uses CSS custom properties that map to the Recce theme
+ * ======================================== */
+
+/* Light mode (default) */
+:root,
+.light {
+  --rf-controls-bg: #fafafa; /* neutral[50] */
+  --rf-controls-border: #e5e5e5; /* neutral[200] */
+  --rf-controls-text: #404040; /* neutral[700] */
+  --rf-controls-hover-bg: #e5e5e5; /* neutral[200] */
+}
+
+/* Dark mode */
+.dark {
+  --rf-controls-bg: #404040; /* neutral[700] */
+  --rf-controls-border: #525252; /* neutral[600] */
+  --rf-controls-text: #e5e5e5; /* neutral[200] */
+  --rf-controls-hover-bg: #525252; /* neutral[600] */
+}
+
+/* React Flow Controls container */
+.react-flow__controls {
+  background-color: var(--rf-controls-bg);
+  border-color: var(--rf-controls-border);
+}
+
+/* React Flow Controls buttons */
+.react-flow__controls-button {
+  background-color: var(--rf-controls-bg);
+  color: var(--rf-controls-text);
+  border-bottom-color: var(--rf-controls-border);
+}
+
+.react-flow__controls-button:hover {
+  background-color: var(--rf-controls-hover-bg);
+}
+
+.react-flow__controls-button svg {
+  fill: var(--rf-controls-text);
+}

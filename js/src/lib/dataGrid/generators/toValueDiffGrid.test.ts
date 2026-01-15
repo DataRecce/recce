@@ -24,26 +24,12 @@ jest.mock("ag-grid-community", () => ({
   },
 }));
 
-// Mock MUI wrapper components
-jest.mock("@/components/ui/mui", () => ({
-  Box: ({ children }: { children: React.ReactNode }) => children,
-  Flex: ({ children }: { children: React.ReactNode }) => children,
-  Icon: () => null,
-  IconButton: () => null,
-  Menu: {
-    Root: ({ children }: { children: React.ReactNode }) => children,
-    Trigger: ({ children }: { children: React.ReactNode }) => children,
-    Content: ({ children }: { children: React.ReactNode }) => children,
-    Item: ({ children }: { children: React.ReactNode }) => children,
-    ItemGroup: ({ children }: { children: React.ReactNode }) => children,
-    Positioner: ({ children }: { children: React.ReactNode }) => children,
-  },
-  Portal: ({ children }: { children: React.ReactNode }) => children,
-  Text: ({ children }: { children: React.ReactNode }) => children,
-}));
-
-import { ColumnType, DataFrame, RowData } from "@/lib/api/types";
-import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
+import {
+  type ColumnType,
+  type DataFrame,
+  type RowData,
+} from "@datarecce/ui/api";
+import { toValueDiffGridConfigured as toValueDiffGrid } from "@datarecce/ui/utils";
 
 // ============================================================================
 // Test Fixtures

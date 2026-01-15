@@ -1,7 +1,7 @@
 "use client";
 
+import { QueryPageOss as QueryPage } from "@datarecce/ui/components/query/QueryPageOss";
 import { ReactNode } from "react";
-import { QueryPage } from "@/components/query/QueryPage";
 
 export default function QueryRoutingPage(): ReactNode {
   return <QueryPage />;

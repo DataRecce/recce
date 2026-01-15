@@ -1,5 +1,5 @@
-import { LineageData } from "@/lib/api/info";
-import { buildLineageGraph } from "./lineage";
+import { buildLineageGraph } from "@datarecce/ui";
+import { type LineageData } from "@datarecce/ui/api";
 
 test("lineage diff", () => {
   const base: LineageData = {

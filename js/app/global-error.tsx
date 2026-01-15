@@ -10,9 +10,9 @@
 
 "use client";
 
+import { colors } from "@datarecce/ui/theme";
 import * as Sentry from "@sentry/nextjs";
-import { useEffect } from "react";
-import { colors } from "@/components/ui/mui-theme";
+import { useEffect, useState } from "react";
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };
@@ -20,6 +20,22 @@ interface GlobalErrorProps {
 }
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    // Check localStorage (next-themes storage) or system preference
+    // This is needed because global-error renders its own <html> outside of providers
+    const stored = localStorage.getItem("theme");
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)",
+    ).matches;
+    const dark =
+      stored === "dark" ||
+      (stored === "system" && prefersDark) ||
+      (!stored && prefersDark);
+    setIsDark(dark);
+  }, []);
+
   useEffect(() => {
     // Log the error to Sentry with high priority
     Sentry.captureException(error, {
@@ -36,8 +52,19 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
     console.error("Global Error Boundary caught error:", error);
   }, [error]);
 
+  // Theme-aware colors
+  const themeColors = {
+    outerBg: isDark ? colors.neutral[900] : colors.neutral[50],
+    cardBg: isDark ? colors.neutral[800] : colors.white,
+    border: isDark ? colors.neutral[700] : colors.neutral[200],
+    heading: isDark ? colors.neutral[50] : colors.neutral[900],
+    bodyText: isDark ? colors.neutral[400] : colors.neutral[600],
+    mutedText: isDark ? colors.neutral[500] : colors.neutral[400],
+    shadow: isDark ? "rgba(0, 0, 0, 0.3)" : "rgba(0, 0, 0, 0.1)",
+  };
+
   return (
-    <html lang="en">
+    <html lang="en" className={isDark ? "dark" : ""}>
       <body>
         <div
           style={{
@@ -46,18 +73,18 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             alignItems: "center",
             justifyContent: "center",
             height: "100vh",
-            backgroundColor: colors.neutral[50],
+            backgroundColor: themeColors.outerBg,
             fontFamily: "system-ui, sans-serif",
           }}
         >
           <div
             style={{
               padding: "2rem",
-              backgroundColor: "#FFFFFF",
-              border: `1px solid ${colors.neutral[200]}`,
+              backgroundColor: themeColors.cardBg,
+              border: `1px solid ${themeColors.border}`,
               borderRadius: "8px",
               maxWidth: "600px",
-              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+              boxShadow: `0 4px 6px ${themeColors.shadow}`,
             }}
           >
             <h1
@@ -65,7 +92,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                 fontSize: "1.5rem",
                 fontWeight: 600,
                 marginBottom: "1rem",
-                color: colors.neutral[900],
+                color: themeColors.heading,
               }}
             >
               Something went wrong
@@ -74,7 +101,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             <p
               style={{
                 fontSize: "0.875rem",
-                color: colors.neutral[600],
+                color: themeColors.bodyText,
                 marginBottom: "1rem",
               }}
             >
@@ -85,7 +112,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               <p
                 style={{
                   fontSize: "0.75rem",
-                  color: colors.neutral[400],
+                  color: themeColors.mutedText,
                   marginBottom: "1.5rem",
                 }}
               >
@@ -94,11 +121,12 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             )}
 
             <button
+              type="button"
               onClick={() => reset()}
               style={{
                 padding: "0.5rem 1rem",
                 backgroundColor: colors.iochmara[500],
-                color: "#FFFFFF",
+                color: colors.white,
                 border: "none",
                 borderRadius: "4px",
                 fontSize: "0.875rem",

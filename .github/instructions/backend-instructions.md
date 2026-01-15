@@ -4,6 +4,8 @@ applyTo: "*.py,recce/**/*.py,tests/**/*.py,recce_cloud/**/*.py"
 
 # Backend Build Instructions (Python)
 
+For broader repository rules (frontend build, generated files, separation), see `AGENTS.md`.
+
 ## Critical Python Development Requirements
 
 **MANDATORY: Always run these commands in sequence for Python changes:**
