@@ -168,10 +168,12 @@ def login_with_browser() -> bool:
     connect_url, callback_port = prepare_connection_url(public_key)
 
     # Open browser
-    if not webbrowser.open(connect_url):
-        console.print("[yellow]Could not open browser automatically.[/yellow]")
-        console.print(f"Please visit: {connect_url}")
-        console.print()
+    webbrowser.open(connect_url)
+
+    # Always show the URL for manual access
+    console.print("If the browser does not open, please visit:")
+    console.print(f"  [cyan]{connect_url}[/cyan]")
+    console.print()
 
     # Wait for callback
     console.print(f"Waiting for authentication (listening on port {callback_port})...")
