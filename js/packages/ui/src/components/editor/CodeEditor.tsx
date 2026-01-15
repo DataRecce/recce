@@ -2,10 +2,11 @@
 
 import { PostgreSQL, sql } from "@codemirror/lang-sql";
 import { yaml } from "@codemirror/lang-yaml";
-import { EditorState, type Extension, Prec } from "@codemirror/state";
-import { EditorView, keymap, lineNumbers } from "@codemirror/view";
-import Box from "@mui/material/Box";
-import { memo, useEffect, useRef } from "react";
+import { Prec } from "@codemirror/state";
+import { EditorView, keymap } from "@codemirror/view";
+import { githubDark, githubLight } from "@uiw/codemirror-theme-github";
+import CodeMirror from "@uiw/react-codemirror";
+import { useMemo } from "react";
 
 /**
  * Supported languages for the code editor
@@ -48,7 +49,7 @@ export interface CodeEditorProps {
 /**
  * Get language extension for CodeMirror
  */
-function getLanguageExtension(language: CodeEditorLanguage): Extension | null {
+function getLanguageExtension(language: CodeEditorLanguage) {
   switch (language) {
     case "sql":
       return sql({ dialect: PostgreSQL });
@@ -60,53 +61,9 @@ function getLanguageExtension(language: CodeEditorLanguage): Extension | null {
 }
 
 /**
- * Get theme extensions for CodeMirror
- * Matches the style used by DiffEditor for consistency
- */
-function getThemeExtensions(isDark: boolean, fontSize: number): Extension[] {
-  const baseTheme = EditorView.theme(
-    {
-      "&": {
-        backgroundColor: isDark ? "#1e1e1e" : "#ffffff",
-        color: isDark ? "#d4d4d4" : "#1f2937",
-        fontSize: `${fontSize}px`,
-      },
-      ".cm-content": {
-        caretColor: isDark ? "#d4d4d4" : "#1f2937",
-        fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-      },
-      ".cm-gutters": {
-        backgroundColor: isDark ? "#252526" : "#f5f5f5",
-        color: isDark ? "#858585" : "#6b7280",
-        border: "none",
-        fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-      },
-      ".cm-activeLineGutter": {
-        backgroundColor: isDark ? "#2a2d2e" : "#e5e7eb",
-      },
-      ".cm-activeLine": {
-        backgroundColor: isDark ? "#2a2d2e40" : "#f3f4f640",
-      },
-      ".cm-cursor": {
-        borderLeftColor: isDark ? "#d4d4d4" : "#1f2937",
-      },
-      ".cm-selectionBackground": {
-        backgroundColor: isDark ? "#264f78" : "#add6ff",
-      },
-      "&.cm-focused .cm-selectionBackground": {
-        backgroundColor: isDark ? "#264f78" : "#add6ff",
-      },
-    },
-    { dark: isDark },
-  );
-
-  return [baseTheme];
-}
-
-/**
  * CodeEditor Component
  *
- * A pure presentation component for editing code using CodeMirror.
+ * A code editor component using CodeMirror with React integration.
  * Supports SQL and YAML syntax highlighting with customizable theming.
  *
  * @example Basic usage
@@ -149,148 +106,79 @@ function getThemeExtensions(isDark: boolean, fontSize: number): Extension[] {
  * />
  * ```
  */
-function CodeEditorComponent({
+export function CodeEditor({
   value,
   onChange,
   language = "sql",
   readOnly = false,
-  lineNumbers: showLineNumbers = true,
+  lineNumbers = true,
   wordWrap = true,
   fontSize = 14,
   height = "100%",
-  className,
+  className = "",
   theme = "light",
   keyBindings = [],
 }: CodeEditorProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const viewRef = useRef<EditorView | null>(null);
-  // Track value prop to detect external changes vs internal edits
-  const lastValueRef = useRef<string>(value);
-  // Store onChange in ref to avoid recreating editor when callback changes
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  const extensions = useMemo(() => {
+    const exts = [
+      EditorView.theme({
+        "&": { fontSize: `${fontSize}px` },
+        ".cm-content": {
+          fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+        },
+        ".cm-gutters": {
+          fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+        },
+      }),
+    ];
 
-  const isDark = theme === "dark";
-
-  // Create and configure editor
-  // biome-ignore lint/correctness/useExhaustiveDependencies: value is intentionally omitted - it's handled by the sync effect below to avoid recreating the editor on every keystroke
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    // Clear previous view
-    if (viewRef.current) {
-      viewRef.current.destroy();
-      viewRef.current = null;
-    }
-
-    // Build extensions
-    const extensions: Extension[] = [...getThemeExtensions(isDark, fontSize)];
-
-    // Add line numbers
-    if (showLineNumbers) {
-      extensions.push(lineNumbers());
-    }
-
-    // Add language extension
+    // Add language extension if not plain text
     const langExt = getLanguageExtension(language);
     if (langExt) {
-      extensions.push(langExt);
+      exts.push(langExt);
     }
 
-    // Add word wrap
     if (wordWrap) {
-      extensions.push(EditorView.lineWrapping);
+      exts.push(EditorView.lineWrapping);
     }
 
-    // Add read-only state
-    if (readOnly) {
-      extensions.push(EditorState.readOnly.of(true));
-    }
-
-    // Add custom key bindings with highest precedence
+    // Use Prec.highest to ensure custom keybindings take precedence
+    // over defaultKeymap bindings (e.g., Mod-Enter -> insertBlankLine)
     if (keyBindings.length > 0) {
-      extensions.push(Prec.highest(keymap.of(keyBindings)));
+      exts.push(Prec.highest(keymap.of(keyBindings)));
     }
 
-    // Add change listener - use ref to always call current onChange
-    if (!readOnly) {
-      extensions.push(
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            const newValue = update.state.doc.toString();
-            lastValueRef.current = newValue;
-            onChangeRef.current?.(newValue);
-          }
-        }),
-      );
+    return exts;
+  }, [language, fontSize, wordWrap, keyBindings]);
+
+  const themeExtension = useMemo(() => {
+    return theme === "dark" ? githubDark : githubLight;
+  }, [theme]);
+
+  const handleChange = (val: string) => {
+    if (onChange) {
+      onChange(val);
     }
-
-    // Create editor view with initial value
-    const view = new EditorView({
-      state: EditorState.create({
-        doc: value,
-        extensions,
-      }),
-      parent: containerRef.current,
-    });
-
-    viewRef.current = view;
-    lastValueRef.current = value;
-
-    return () => {
-      if (viewRef.current) {
-        viewRef.current.destroy();
-        viewRef.current = null;
-      }
-    };
-  }, [
-    language,
-    readOnly,
-    showLineNumbers,
-    wordWrap,
-    fontSize,
-    isDark,
-    keyBindings,
-  ]);
-
-  // Sync external value changes into editor without recreating it
-  useEffect(() => {
-    if (viewRef.current && value !== lastValueRef.current) {
-      const currentContent = viewRef.current.state.doc.toString();
-      if (currentContent !== value) {
-        viewRef.current.dispatch({
-          changes: {
-            from: 0,
-            to: currentContent.length,
-            insert: value,
-          },
-        });
-        lastValueRef.current = value;
-      }
-    }
-  }, [value]);
+  };
 
   return (
-    <Box
-      ref={containerRef}
-      className={`${className || ""} no-track-pii-safe`}
-      sx={{
-        height,
-        width: "100%",
-        overflow: "auto",
-        border: "1px solid",
-        borderColor: isDark ? "grey.700" : "grey.300",
-        borderRadius: 1,
-        "& .cm-editor": {
-          height: "100%",
-        },
-        "& .cm-scroller": {
-          overflow: "auto",
-        },
+    <CodeMirror
+      value={value}
+      onChange={handleChange}
+      extensions={extensions}
+      readOnly={readOnly}
+      basicSetup={{
+        lineNumbers,
+        foldGutter: true,
+        highlightActiveLineGutter: !readOnly,
+        highlightActiveLine: !readOnly,
+        tabSize: 2,
       }}
+      height={height}
+      className={`${className} no-track-pii-safe`}
+      theme={themeExtension}
     />
   );
 }
 
-export const CodeEditor = memo(CodeEditorComponent);
-CodeEditor.displayName = "CodeEditor";
+export default CodeEditor;

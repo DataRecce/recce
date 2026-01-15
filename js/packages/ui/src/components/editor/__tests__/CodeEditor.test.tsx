@@ -1,22 +1,18 @@
 /**
  * @file CodeEditor.test.tsx
- * @description Comprehensive tests for UI Package CodeEditor component
+ * @description Tests for UI Package CodeEditor component
  *
  * Tests verify:
- * - Rendering of editor container and height prop
+ * - Rendering of editor container
  * - Language support (SQL, YAML, text)
  * - Theme support (light and dark modes)
- * - Read-only mode via EditorState.readOnly
+ * - Read-only mode
  * - Line numbers toggle
- * - Word wrap via EditorView.lineWrapping
- * - Font size customization via theme
+ * - Word wrap
+ * - Font size customization
  * - onChange callback invocation
- * - Custom key bindings via Prec.highest
+ * - Custom key bindings
  * - className prop (custom class + no-track-pii-safe)
- * - External value synchronization
- * - EditorView cleanup on unmount
- *
- * Source of truth: UI package primitives
  */
 
 // ============================================================================
@@ -27,35 +23,19 @@
 declare global {
   // eslint-disable-next-line no-var
   var __codeMirrorMockStore: {
-    lineWrapping: { type: string };
-    editorViewDestroy: jest.Mock;
-    editorViewDispatch: jest.Mock;
-    editorViewTheme: jest.Mock;
-    lineNumbers: jest.Mock;
-    keymapOf: jest.Mock;
-    readOnlyOf: jest.Mock;
-    precHighest: jest.Mock;
     sql: jest.Mock;
     yaml: jest.Mock;
-    updateListenerOf: jest.Mock;
-    editorStateCreate: jest.Mock;
-    lastCreatedExtensions: unknown[];
-    lastCreatedDoc: string;
-    editorViewInstance: {
-      destroy: jest.Mock;
-      dispatch: jest.Mock;
-      state: { doc: { toString: () => string } };
-    } | null;
+    lineWrapping: { type: string };
+    editorViewTheme: jest.Mock;
+    keymapOf: jest.Mock;
+    precHighest: jest.Mock;
+    codeMirrorProps: Record<string, unknown> | null;
   };
 }
 
-// Note: globalThis.__codeMirrorMockStore is initialized in each mock factory
-// because jest.mock calls are hoisted before any other code runs
-
-// Set up mocks - all implementation details are inside factory functions
-// lang-sql is imported first in CodeEditor, so its mock factory runs first
+// Mock CodeMirror dependencies - each mock factory initializes the global store
 jest.mock("@codemirror/lang-sql", () => {
-  // Initialize store if not exists (this factory runs first based on import order)
+  // Initialize store if not exists
   globalThis.__codeMirrorMockStore =
     globalThis.__codeMirrorMockStore ||
     ({} as typeof globalThis.__codeMirrorMockStore);
@@ -70,7 +50,6 @@ jest.mock("@codemirror/lang-sql", () => {
 });
 
 jest.mock("@codemirror/lang-yaml", () => {
-  // Ensure store exists
   globalThis.__codeMirrorMockStore =
     globalThis.__codeMirrorMockStore ||
     ({} as typeof globalThis.__codeMirrorMockStore);
@@ -83,59 +62,23 @@ jest.mock("@codemirror/lang-yaml", () => {
   };
 });
 
+jest.mock("@uiw/codemirror-theme-github", () => ({
+  githubDark: { type: "githubDark" },
+  githubLight: { type: "githubLight" },
+}));
+
 jest.mock("@codemirror/state", () => {
-  // Ensure store exists
   globalThis.__codeMirrorMockStore =
     globalThis.__codeMirrorMockStore ||
     ({} as typeof globalThis.__codeMirrorMockStore);
 
-  const readOnlyOfFn = jest.fn((value: boolean) => ({
-    type: "readOnly",
-    value,
-  }));
   const precHighestFn = jest.fn((ext: unknown) => ({
     type: "precHighest",
-    extension: ext,
+    ext,
   }));
-
-  // Storage
-  let lastExtensions: unknown[] = [];
-
-  const editorStateCreateFn = jest.fn(
-    (config: { extensions?: unknown[]; doc?: string }) => {
-      lastExtensions = config.extensions || [];
-      globalThis.__codeMirrorMockStore.lastCreatedDoc = config.doc || "";
-      return {
-        doc: { toString: () => config.doc || "" },
-        extensions: config.extensions || [],
-      };
-    },
-  );
-
-  // Assign to global store
-  globalThis.__codeMirrorMockStore.readOnlyOf = readOnlyOfFn;
   globalThis.__codeMirrorMockStore.precHighest = precHighestFn;
-  globalThis.__codeMirrorMockStore.editorStateCreate = editorStateCreateFn;
-
-  Object.defineProperty(
-    globalThis.__codeMirrorMockStore,
-    "lastCreatedExtensions",
-    {
-      get: () => lastExtensions,
-      set: (value: unknown[]) => {
-        lastExtensions = value;
-      },
-      configurable: true,
-    },
-  );
 
   return {
-    EditorState: {
-      create: editorStateCreateFn,
-      readOnly: {
-        of: readOnlyOfFn,
-      },
-    },
     Prec: {
       highest: precHighestFn,
     },
@@ -143,73 +86,48 @@ jest.mock("@codemirror/state", () => {
 });
 
 jest.mock("@codemirror/view", () => {
-  // Ensure store exists
   globalThis.__codeMirrorMockStore =
     globalThis.__codeMirrorMockStore ||
     ({} as typeof globalThis.__codeMirrorMockStore);
-  // Define mocks inside factory so they exist when hoisted
+
   const lineWrapping = { type: "lineWrapping" };
-  const destroy = jest.fn();
-  const dispatch = jest.fn();
-  const theme = jest.fn(() => ({ type: "theme" }));
-  const lineNumbersFn = jest.fn(() => ({ type: "lineNumbers" }));
+  const themeFn = jest.fn(() => ({ type: "theme" }));
   const keymapOfFn = jest.fn((bindings: unknown) => ({
     type: "keymap",
     bindings,
   }));
-  const updateListenerOfFn = jest.fn((callback: unknown) => ({
-    type: "updateListener",
-    callback,
-  }));
 
-  // Storage for tracking state
-  let lastDoc = "";
-
-  // Assign to global store for test access
   globalThis.__codeMirrorMockStore.lineWrapping = lineWrapping;
-  globalThis.__codeMirrorMockStore.editorViewDestroy = destroy;
-  globalThis.__codeMirrorMockStore.editorViewDispatch = dispatch;
-  globalThis.__codeMirrorMockStore.editorViewTheme = theme;
-  globalThis.__codeMirrorMockStore.lineNumbers = lineNumbersFn;
+  globalThis.__codeMirrorMockStore.editorViewTheme = themeFn;
   globalThis.__codeMirrorMockStore.keymapOf = keymapOfFn;
-  globalThis.__codeMirrorMockStore.updateListenerOf = updateListenerOfFn;
-
-  const mockEditorView = jest.fn().mockImplementation(() => {
-    globalThis.__codeMirrorMockStore.editorViewInstance = {
-      destroy,
-      dispatch,
-      state: {
-        doc: {
-          toString: () => lastDoc,
-        },
-      },
-    };
-    return globalThis.__codeMirrorMockStore.editorViewInstance;
-  });
-
-  // Add static properties
-  (mockEditorView as unknown as Record<string, unknown>).theme = theme;
-  (mockEditorView as unknown as Record<string, unknown>).lineWrapping =
-    lineWrapping;
-  (mockEditorView as unknown as Record<string, unknown>).updateListener = {
-    of: updateListenerOfFn,
-  };
-
-  // Track lastDoc for external access
-  Object.defineProperty(globalThis.__codeMirrorMockStore, "lastCreatedDoc", {
-    get: () => lastDoc,
-    set: (value: string) => {
-      lastDoc = value;
-    },
-    configurable: true,
-  });
 
   return {
-    EditorView: mockEditorView,
+    EditorView: {
+      theme: themeFn,
+      lineWrapping: lineWrapping,
+    },
     keymap: {
       of: keymapOfFn,
     },
-    lineNumbers: lineNumbersFn,
+  };
+});
+
+// Mock @uiw/react-codemirror to capture props
+jest.mock("@uiw/react-codemirror", () => {
+  globalThis.__codeMirrorMockStore =
+    globalThis.__codeMirrorMockStore ||
+    ({} as typeof globalThis.__codeMirrorMockStore);
+
+  const React = require("react");
+  return {
+    __esModule: true,
+    default: (props: Record<string, unknown>) => {
+      globalThis.__codeMirrorMockStore.codeMirrorProps = props;
+      return React.createElement("div", {
+        "data-testid": "codemirror",
+        className: props.className,
+      });
+    },
   };
 });
 
@@ -217,7 +135,7 @@ jest.mock("@codemirror/view", () => {
 // Imports (MUST come after jest.mock calls)
 // ============================================================================
 
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { CodeEditor, type CodeEditorProps } from "../CodeEditor";
 
 // ============================================================================
@@ -238,24 +156,13 @@ const createMockProps = (
 // Test Utilities
 // ============================================================================
 
-/**
- * Reset all mocks between tests
- */
 function resetMocks() {
-  mockStore.editorViewDestroy.mockClear();
-  mockStore.editorViewDispatch.mockClear();
-  mockStore.editorViewTheme.mockClear();
-  mockStore.lineNumbers.mockClear();
-  mockStore.keymapOf.mockClear();
-  mockStore.editorStateCreate.mockClear();
-  mockStore.readOnlyOf.mockClear();
-  mockStore.precHighest.mockClear();
   mockStore.sql.mockClear();
   mockStore.yaml.mockClear();
-  mockStore.updateListenerOf.mockClear();
-  mockStore.editorViewInstance = null;
-  mockStore.lastCreatedExtensions = [];
-  mockStore.lastCreatedDoc = "";
+  mockStore.editorViewTheme.mockClear();
+  mockStore.keymapOf.mockClear();
+  mockStore.precHighest.mockClear();
+  mockStore.codeMirrorProps = null;
 }
 
 // ============================================================================
@@ -272,29 +179,28 @@ describe("CodeEditor", () => {
   // ==========================================================================
 
   describe("rendering", () => {
-    it("creates editor container with default height", () => {
-      const { container } = render(<CodeEditor {...createMockProps()} />);
+    it("creates editor container", () => {
+      render(<CodeEditor {...createMockProps()} />);
 
-      // Should have a container element
-      const box = container.firstChild as HTMLElement;
-      expect(box).toBeInTheDocument();
+      expect(screen.getByTestId("codemirror")).toBeInTheDocument();
     });
 
-    it("respects custom height prop", () => {
-      const { container } = render(
-        <CodeEditor {...createMockProps({ height: "500px" })} />,
-      );
-
-      const box = container.firstChild as HTMLElement;
-      expect(box).toBeInTheDocument();
-      // Height is applied via sx prop - we verify the component accepts it
-    });
-
-    it("creates EditorView with initial value", () => {
+    it("passes value to CodeMirror", () => {
       render(<CodeEditor {...createMockProps({ value: "SELECT 1;" })} />);
 
-      expect(mockStore.editorStateCreate).toHaveBeenCalled();
-      expect(mockStore.lastCreatedDoc).toBe("SELECT 1;");
+      expect(mockStore.codeMirrorProps?.value).toBe("SELECT 1;");
+    });
+
+    it("passes height to CodeMirror", () => {
+      render(<CodeEditor {...createMockProps({ height: "500px" })} />);
+
+      expect(mockStore.codeMirrorProps?.height).toBe("500px");
+    });
+
+    it("uses default height of 100%", () => {
+      render(<CodeEditor {...createMockProps()} />);
+
+      expect(mockStore.codeMirrorProps?.height).toBe("100%");
     });
   });
 
@@ -336,29 +242,22 @@ describe("CodeEditor", () => {
   // ==========================================================================
 
   describe("theme support", () => {
-    it("applies light theme by default", () => {
+    it("passes light theme by default", () => {
       render(<CodeEditor {...createMockProps()} />);
 
-      expect(mockStore.editorViewTheme).toHaveBeenCalled();
-      const themeCall = mockStore.editorViewTheme.mock.calls[0];
-      // Second argument to EditorView.theme is { dark: boolean }
-      expect(themeCall[1]).toEqual({ dark: false });
+      expect(mockStore.codeMirrorProps?.theme).toEqual({ type: "githubLight" });
     });
 
-    it("applies dark theme when theme prop is dark", () => {
+    it("passes dark theme when theme prop is dark", () => {
       render(<CodeEditor {...createMockProps({ theme: "dark" })} />);
 
-      expect(mockStore.editorViewTheme).toHaveBeenCalled();
-      const themeCall = mockStore.editorViewTheme.mock.calls[0];
-      expect(themeCall[1]).toEqual({ dark: true });
+      expect(mockStore.codeMirrorProps?.theme).toEqual({ type: "githubDark" });
     });
 
-    it("applies light theme when theme prop is light", () => {
+    it("passes light theme when theme prop is light", () => {
       render(<CodeEditor {...createMockProps({ theme: "light" })} />);
 
-      expect(mockStore.editorViewTheme).toHaveBeenCalled();
-      const themeCall = mockStore.editorViewTheme.mock.calls[0];
-      expect(themeCall[1]).toEqual({ dark: false });
+      expect(mockStore.codeMirrorProps?.theme).toEqual({ type: "githubLight" });
     });
   });
 
@@ -367,30 +266,22 @@ describe("CodeEditor", () => {
   // ==========================================================================
 
   describe("read-only mode", () => {
-    it("adds readOnly extension when readOnly is true", () => {
+    it("passes readOnly true to CodeMirror", () => {
       render(<CodeEditor {...createMockProps({ readOnly: true })} />);
 
-      expect(mockStore.readOnlyOf).toHaveBeenCalledWith(true);
+      expect(mockStore.codeMirrorProps?.readOnly).toBe(true);
     });
 
-    it("does not add readOnly extension when readOnly is false", () => {
+    it("passes readOnly false to CodeMirror", () => {
       render(<CodeEditor {...createMockProps({ readOnly: false })} />);
 
-      expect(mockStore.readOnlyOf).not.toHaveBeenCalled();
+      expect(mockStore.codeMirrorProps?.readOnly).toBe(false);
     });
 
     it("defaults to editable (readOnly false)", () => {
       render(<CodeEditor {...createMockProps()} />);
 
-      expect(mockStore.readOnlyOf).not.toHaveBeenCalled();
-    });
-
-    it("does not add updateListener when readOnly is true", () => {
-      const onChange = jest.fn();
-      render(<CodeEditor {...createMockProps({ readOnly: true, onChange })} />);
-
-      // updateListener should not be called even when onChange is provided
-      expect(mockStore.updateListenerOf).not.toHaveBeenCalled();
+      expect(mockStore.codeMirrorProps?.readOnly).toBe(false);
     });
   });
 
@@ -402,19 +293,31 @@ describe("CodeEditor", () => {
     it("shows line numbers by default", () => {
       render(<CodeEditor {...createMockProps()} />);
 
-      expect(mockStore.lineNumbers).toHaveBeenCalled();
+      const basicSetup = mockStore.codeMirrorProps?.basicSetup as Record<
+        string,
+        unknown
+      >;
+      expect(basicSetup?.lineNumbers).toBe(true);
     });
 
     it("shows line numbers when lineNumbers is true", () => {
       render(<CodeEditor {...createMockProps({ lineNumbers: true })} />);
 
-      expect(mockStore.lineNumbers).toHaveBeenCalled();
+      const basicSetup = mockStore.codeMirrorProps?.basicSetup as Record<
+        string,
+        unknown
+      >;
+      expect(basicSetup?.lineNumbers).toBe(true);
     });
 
     it("hides line numbers when lineNumbers is false", () => {
       render(<CodeEditor {...createMockProps({ lineNumbers: false })} />);
 
-      expect(mockStore.lineNumbers).not.toHaveBeenCalled();
+      const basicSetup = mockStore.codeMirrorProps?.basicSetup as Record<
+        string,
+        unknown
+      >;
+      expect(basicSetup?.lineNumbers).toBe(false);
     });
   });
 
@@ -426,26 +329,22 @@ describe("CodeEditor", () => {
     it("enables word wrap by default", () => {
       render(<CodeEditor {...createMockProps()} />);
 
-      // Verify that lineWrapping extension was included in the created state
-      expect(mockStore.lastCreatedExtensions).toContainEqual(
-        mockStore.lineWrapping,
-      );
+      const extensions = mockStore.codeMirrorProps?.extensions as unknown[];
+      expect(extensions).toContainEqual(mockStore.lineWrapping);
     });
 
     it("enables word wrap when wordWrap is true", () => {
       render(<CodeEditor {...createMockProps({ wordWrap: true })} />);
 
-      expect(mockStore.lastCreatedExtensions).toContainEqual(
-        mockStore.lineWrapping,
-      );
+      const extensions = mockStore.codeMirrorProps?.extensions as unknown[];
+      expect(extensions).toContainEqual(mockStore.lineWrapping);
     });
 
     it("disables word wrap when wordWrap is false", () => {
       render(<CodeEditor {...createMockProps({ wordWrap: false })} />);
 
-      expect(mockStore.lastCreatedExtensions).not.toContainEqual(
-        mockStore.lineWrapping,
-      );
+      const extensions = mockStore.codeMirrorProps?.extensions as unknown[];
+      expect(extensions).not.toContainEqual(mockStore.lineWrapping);
     });
   });
 
@@ -458,31 +357,24 @@ describe("CodeEditor", () => {
       render(<CodeEditor {...createMockProps()} />);
 
       expect(mockStore.editorViewTheme).toHaveBeenCalled();
-      const themeStyles = mockStore.editorViewTheme.mock.calls[0][0];
-      expect(themeStyles["&"].fontSize).toBe("14px");
+      const calls = mockStore.editorViewTheme.mock.calls as unknown as Record<
+        string,
+        Record<string, string>
+      >[][];
+      const themeStyles = calls[0]?.[0];
+      expect(themeStyles?.["&"]?.fontSize).toBe("14px");
     });
 
     it("uses custom font size when provided", () => {
       render(<CodeEditor {...createMockProps({ fontSize: 16 })} />);
 
       expect(mockStore.editorViewTheme).toHaveBeenCalled();
-      const themeStyles = mockStore.editorViewTheme.mock.calls[0][0];
-      expect(themeStyles["&"].fontSize).toBe("16px");
-    });
-
-    it("accepts various font sizes", () => {
-      const { rerender } = render(
-        <CodeEditor {...createMockProps({ fontSize: 12 })} />,
-      );
-
-      let themeStyles = mockStore.editorViewTheme.mock.calls[0][0];
-      expect(themeStyles["&"].fontSize).toBe("12px");
-
-      mockStore.editorViewTheme.mockClear();
-      rerender(<CodeEditor {...createMockProps({ fontSize: 18 })} />);
-
-      themeStyles = mockStore.editorViewTheme.mock.calls[0][0];
-      expect(themeStyles["&"].fontSize).toBe("18px");
+      const calls = mockStore.editorViewTheme.mock.calls as unknown as Record<
+        string,
+        Record<string, string>
+      >[][];
+      const themeStyles = calls[0]?.[0];
+      expect(themeStyles?.["&"]?.fontSize).toBe("16px");
     });
   });
 
@@ -491,70 +383,34 @@ describe("CodeEditor", () => {
   // ==========================================================================
 
   describe("onChange callback", () => {
-    it("registers updateListener when onChange is provided", () => {
+    it("passes onChange handler to CodeMirror", () => {
       const onChange = jest.fn();
       render(<CodeEditor {...createMockProps({ onChange })} />);
 
-      expect(mockStore.updateListenerOf).toHaveBeenCalled();
+      expect(mockStore.codeMirrorProps?.onChange).toBeDefined();
     });
 
-    it("still registers updateListener for internal tracking even without onChange", () => {
-      // The component always registers updateListener for internal value tracking
-      // when not in read-only mode, regardless of whether onChange is provided
+    it("calls provided onChange when CodeMirror onChange fires", () => {
+      const onChange = jest.fn();
+      render(<CodeEditor {...createMockProps({ onChange })} />);
+
+      // Simulate CodeMirror calling our onChange handler
+      const cmOnChange = mockStore.codeMirrorProps?.onChange as (
+        val: string,
+      ) => void;
+      cmOnChange("new value");
+
+      expect(onChange).toHaveBeenCalledWith("new value");
+    });
+
+    it("handles undefined onChange gracefully", () => {
       render(<CodeEditor {...createMockProps({ onChange: undefined })} />);
 
-      expect(mockStore.updateListenerOf).toHaveBeenCalled();
-    });
-
-    it("calls onChange when document changes", () => {
-      const onChange = jest.fn();
-      render(<CodeEditor {...createMockProps({ onChange })} />);
-
-      // Get the callback registered with updateListener
-      const listenerCallback = mockStore.updateListenerOf.mock
-        .calls[0][0] as (update: {
-        docChanged: boolean;
-        state: { doc: { toString: () => string } };
-      }) => void;
-
-      // Simulate a document change
-      const mockUpdate = {
-        docChanged: true,
-        state: {
-          doc: {
-            toString: () => "SELECT * FROM orders;",
-          },
-        },
-      };
-
-      listenerCallback(mockUpdate);
-
-      expect(onChange).toHaveBeenCalledWith("SELECT * FROM orders;");
-    });
-
-    it("does not call onChange when document has not changed", () => {
-      const onChange = jest.fn();
-      render(<CodeEditor {...createMockProps({ onChange })} />);
-
-      const listenerCallback = mockStore.updateListenerOf.mock
-        .calls[0][0] as (update: {
-        docChanged: boolean;
-        state: { doc: { toString: () => string } };
-      }) => void;
-
-      // Simulate an update that is not a document change
-      const mockUpdate = {
-        docChanged: false,
-        state: {
-          doc: {
-            toString: () => "SELECT * FROM users;",
-          },
-        },
-      };
-
-      listenerCallback(mockUpdate);
-
-      expect(onChange).not.toHaveBeenCalled();
+      // Should not throw when CodeMirror onChange fires without a handler
+      const cmOnChange = mockStore.codeMirrorProps?.onChange as (
+        val: string,
+      ) => void;
+      expect(() => cmOnChange("new value")).not.toThrow();
     });
   });
 
@@ -588,16 +444,6 @@ describe("CodeEditor", () => {
       expect(mockStore.keymapOf).not.toHaveBeenCalled();
       expect(mockStore.precHighest).not.toHaveBeenCalled();
     });
-
-    it("wraps keymap with Prec.highest for precedence", () => {
-      const keyBindings = [{ key: "Mod-Enter", run: () => true }];
-
-      render(<CodeEditor {...createMockProps({ keyBindings })} />);
-
-      // Verify Prec.highest was called with the keymap result
-      const keymapResult = mockStore.keymapOf.mock.results[0].value;
-      expect(mockStore.precHighest).toHaveBeenCalledWith(keymapResult);
-    });
   });
 
   // ==========================================================================
@@ -606,112 +452,93 @@ describe("CodeEditor", () => {
 
   describe("className prop", () => {
     it("includes no-track-pii-safe class by default", () => {
-      const { container } = render(<CodeEditor {...createMockProps()} />);
+      render(<CodeEditor {...createMockProps()} />);
 
-      const box = container.firstChild as HTMLElement;
-      expect(box.className).toContain("no-track-pii-safe");
+      const className = mockStore.codeMirrorProps?.className as string;
+      expect(className).toContain("no-track-pii-safe");
     });
 
     it("includes custom className when provided", () => {
-      const { container } = render(
+      render(
         <CodeEditor {...createMockProps({ className: "custom-editor" })} />,
       );
 
-      const box = container.firstChild as HTMLElement;
-      expect(box.className).toContain("custom-editor");
-      expect(box.className).toContain("no-track-pii-safe");
+      const className = mockStore.codeMirrorProps?.className as string;
+      expect(className).toContain("custom-editor");
+      expect(className).toContain("no-track-pii-safe");
     });
 
     it("handles undefined className gracefully", () => {
-      const { container } = render(
-        <CodeEditor {...createMockProps({ className: undefined })} />,
-      );
+      render(<CodeEditor {...createMockProps({ className: undefined })} />);
 
-      const box = container.firstChild as HTMLElement;
-      expect(box.className).toContain("no-track-pii-safe");
+      const className = mockStore.codeMirrorProps?.className as string;
+      expect(className).toContain("no-track-pii-safe");
     });
   });
 
   // ==========================================================================
-  // External Value Sync Tests
+  // Basic Setup Tests
   // ==========================================================================
 
-  describe("external value sync", () => {
-    it("accepts value prop changes without throwing", () => {
-      const { rerender } = render(
-        <CodeEditor {...createMockProps({ value: "SELECT 1;" })} />,
-      );
+  describe("basicSetup configuration", () => {
+    it("enables foldGutter", () => {
+      render(<CodeEditor {...createMockProps()} />);
 
-      // Should not throw when value changes
-      expect(() => {
-        rerender(<CodeEditor {...createMockProps({ value: "SELECT 2;" })} />);
-      }).not.toThrow();
+      const basicSetup = mockStore.codeMirrorProps?.basicSetup as Record<
+        string,
+        unknown
+      >;
+      expect(basicSetup?.foldGutter).toBe(true);
     });
 
-    it("component remains mounted after value updates", () => {
-      const { rerender, container } = render(
-        <CodeEditor {...createMockProps({ value: "SELECT 1;" })} />,
-      );
+    it("sets tabSize to 2", () => {
+      render(<CodeEditor {...createMockProps()} />);
 
-      rerender(<CodeEditor {...createMockProps({ value: "SELECT 2;" })} />);
-
-      // Container should still have content
-      expect(container.firstChild).toBeInTheDocument();
-    });
-  });
-
-  // ==========================================================================
-  // Cleanup Tests
-  // ==========================================================================
-
-  describe("cleanup", () => {
-    it("destroys EditorView on unmount", () => {
-      const { unmount } = render(<CodeEditor {...createMockProps()} />);
-
-      // Clear any calls from initialization
-      mockStore.editorViewDestroy.mockClear();
-
-      unmount();
-
-      expect(mockStore.editorViewDestroy).toHaveBeenCalled();
+      const basicSetup = mockStore.codeMirrorProps?.basicSetup as Record<
+        string,
+        unknown
+      >;
+      expect(basicSetup?.tabSize).toBe(2);
     });
 
-    it("destroys previous EditorView when recreating editor", () => {
-      const { rerender } = render(
-        <CodeEditor {...createMockProps({ language: "sql" })} />,
-      );
+    it("enables highlightActiveLineGutter when not readOnly", () => {
+      render(<CodeEditor {...createMockProps({ readOnly: false })} />);
 
-      mockStore.editorViewDestroy.mockClear();
-
-      // Change a prop that triggers editor recreation
-      rerender(<CodeEditor {...createMockProps({ language: "yaml" })} />);
-
-      expect(mockStore.editorViewDestroy).toHaveBeenCalled();
+      const basicSetup = mockStore.codeMirrorProps?.basicSetup as Record<
+        string,
+        unknown
+      >;
+      expect(basicSetup?.highlightActiveLineGutter).toBe(true);
     });
 
-    it("cleans up correctly after multiple recreations", () => {
-      const { rerender, unmount } = render(
-        <CodeEditor {...createMockProps({ language: "sql" })} />,
-      );
+    it("disables highlightActiveLineGutter when readOnly", () => {
+      render(<CodeEditor {...createMockProps({ readOnly: true })} />);
 
-      rerender(<CodeEditor {...createMockProps({ language: "yaml" })} />);
-      rerender(<CodeEditor {...createMockProps({ language: "text" })} />);
-
-      mockStore.editorViewDestroy.mockClear();
-
-      unmount();
-
-      expect(mockStore.editorViewDestroy).toHaveBeenCalledTimes(1);
+      const basicSetup = mockStore.codeMirrorProps?.basicSetup as Record<
+        string,
+        unknown
+      >;
+      expect(basicSetup?.highlightActiveLineGutter).toBe(false);
     });
-  });
 
-  // ==========================================================================
-  // Memoization Tests
-  // ==========================================================================
+    it("enables highlightActiveLine when not readOnly", () => {
+      render(<CodeEditor {...createMockProps({ readOnly: false })} />);
 
-  describe("memoization", () => {
-    it("has displayName set for debugging", () => {
-      expect(CodeEditor.displayName).toBe("CodeEditor");
+      const basicSetup = mockStore.codeMirrorProps?.basicSetup as Record<
+        string,
+        unknown
+      >;
+      expect(basicSetup?.highlightActiveLine).toBe(true);
+    });
+
+    it("disables highlightActiveLine when readOnly", () => {
+      render(<CodeEditor {...createMockProps({ readOnly: true })} />);
+
+      const basicSetup = mockStore.codeMirrorProps?.basicSetup as Record<
+        string,
+        unknown
+      >;
+      expect(basicSetup?.highlightActiveLine).toBe(false);
     });
   });
 
@@ -724,7 +551,7 @@ describe("CodeEditor", () => {
       const onChange = jest.fn();
       const keyBindings = [{ key: "Mod-Enter", run: () => true }];
 
-      const { container } = render(
+      render(
         <CodeEditor
           value="SELECT * FROM users WHERE id = 1;"
           onChange={onChange}
@@ -741,22 +568,24 @@ describe("CodeEditor", () => {
       );
 
       // Verify container renders
-      expect(container.firstChild).toBeInTheDocument();
+      expect(screen.getByTestId("codemirror")).toBeInTheDocument();
 
       // Verify all extensions are configured
       expect(mockStore.sql).toHaveBeenCalled();
-      expect(mockStore.lineNumbers).toHaveBeenCalled();
       expect(mockStore.editorViewTheme).toHaveBeenCalled();
-      expect(mockStore.updateListenerOf).toHaveBeenCalled();
       expect(mockStore.precHighest).toHaveBeenCalled();
 
       // Verify theme is dark
-      const themeCall = mockStore.editorViewTheme.mock.calls[0];
-      expect(themeCall[1]).toEqual({ dark: true });
+      expect(mockStore.codeMirrorProps?.theme).toEqual({ type: "githubDark" });
+
+      // Verify value is passed
+      expect(mockStore.codeMirrorProps?.value).toBe(
+        "SELECT * FROM users WHERE id = 1;",
+      );
     });
 
     it("renders read-only YAML editor", () => {
-      const { container } = render(
+      render(
         <CodeEditor
           value="key: value\nlist:\n  - item1\n  - item2"
           language="yaml"
@@ -767,14 +596,19 @@ describe("CodeEditor", () => {
         />,
       );
 
-      expect(container.firstChild).toBeInTheDocument();
+      expect(screen.getByTestId("codemirror")).toBeInTheDocument();
       expect(mockStore.yaml).toHaveBeenCalled();
-      expect(mockStore.readOnlyOf).toHaveBeenCalledWith(true);
-      expect(mockStore.lineNumbers).toHaveBeenCalled();
+      expect(mockStore.codeMirrorProps?.readOnly).toBe(true);
+
+      const basicSetup = mockStore.codeMirrorProps?.basicSetup as Record<
+        string,
+        unknown
+      >;
+      expect(basicSetup?.lineNumbers).toBe(true);
     });
 
     it("renders minimal text editor", () => {
-      const { container } = render(
+      render(
         <CodeEditor
           value="Plain text content"
           language="text"
@@ -783,13 +617,18 @@ describe("CodeEditor", () => {
         />,
       );
 
-      expect(container.firstChild).toBeInTheDocument();
+      expect(screen.getByTestId("codemirror")).toBeInTheDocument();
       expect(mockStore.sql).not.toHaveBeenCalled();
       expect(mockStore.yaml).not.toHaveBeenCalled();
-      expect(mockStore.lineNumbers).not.toHaveBeenCalled();
-      expect(mockStore.lastCreatedExtensions).not.toContainEqual(
-        mockStore.lineWrapping,
-      );
+
+      const basicSetup = mockStore.codeMirrorProps?.basicSetup as Record<
+        string,
+        unknown
+      >;
+      expect(basicSetup?.lineNumbers).toBe(false);
+
+      const extensions = mockStore.codeMirrorProps?.extensions as unknown[];
+      expect(extensions).not.toContainEqual(mockStore.lineWrapping);
     });
   });
 
@@ -799,22 +638,18 @@ describe("CodeEditor", () => {
 
   describe("edge cases", () => {
     it("handles empty string value", () => {
-      const { container } = render(
-        <CodeEditor {...createMockProps({ value: "" })} />,
-      );
+      render(<CodeEditor {...createMockProps({ value: "" })} />);
 
-      expect(container.firstChild).toBeInTheDocument();
-      expect(mockStore.lastCreatedDoc).toBe("");
+      expect(screen.getByTestId("codemirror")).toBeInTheDocument();
+      expect(mockStore.codeMirrorProps?.value).toBe("");
     });
 
     it("handles very long content", () => {
       const longContent = "SELECT ".repeat(10000);
-      const { container } = render(
-        <CodeEditor {...createMockProps({ value: longContent })} />,
-      );
+      render(<CodeEditor {...createMockProps({ value: longContent })} />);
 
-      expect(container.firstChild).toBeInTheDocument();
-      expect(mockStore.lastCreatedDoc).toBe(longContent);
+      expect(screen.getByTestId("codemirror")).toBeInTheDocument();
+      expect(mockStore.codeMirrorProps?.value).toBe(longContent);
     });
 
     it("handles multiline content", () => {
@@ -826,39 +661,33 @@ FROM users
 WHERE active = true
 ORDER BY created_at DESC;`;
 
-      const { container } = render(
-        <CodeEditor {...createMockProps({ value: multilineContent })} />,
-      );
+      render(<CodeEditor {...createMockProps({ value: multilineContent })} />);
 
-      expect(container.firstChild).toBeInTheDocument();
-      expect(mockStore.lastCreatedDoc).toBe(multilineContent);
+      expect(screen.getByTestId("codemirror")).toBeInTheDocument();
+      expect(mockStore.codeMirrorProps?.value).toBe(multilineContent);
     });
 
     it("handles special characters in content", () => {
       const specialContent =
         "SELECT * FROM users WHERE name = 'O\\'Brien' AND data->>'key' = 'value';";
-      const { container } = render(
-        <CodeEditor {...createMockProps({ value: specialContent })} />,
-      );
+      render(<CodeEditor {...createMockProps({ value: specialContent })} />);
 
-      expect(container.firstChild).toBeInTheDocument();
-      expect(mockStore.lastCreatedDoc).toBe(specialContent);
+      expect(screen.getByTestId("codemirror")).toBeInTheDocument();
+      expect(mockStore.codeMirrorProps?.value).toBe(specialContent);
     });
 
     it("handles rapid value changes without throwing", () => {
-      const { rerender, container } = render(
+      const { rerender } = render(
         <CodeEditor {...createMockProps({ value: "v1" })} />,
       );
 
-      // Component should handle rapid updates without errors
       expect(() => {
         for (let i = 2; i <= 5; i++) {
           rerender(<CodeEditor {...createMockProps({ value: `v${i}` })} />);
         }
       }).not.toThrow();
 
-      // Container should still be mounted
-      expect(container.firstChild).toBeInTheDocument();
+      expect(screen.getByTestId("codemirror")).toBeInTheDocument();
     });
   });
 
@@ -867,104 +696,44 @@ ORDER BY created_at DESC;`;
   // ==========================================================================
 
   describe("prop changes", () => {
-    it("recreates editor when language changes", () => {
+    it("updates when language changes", () => {
       const { rerender } = render(
         <CodeEditor {...createMockProps({ language: "sql" })} />,
       );
 
-      mockStore.editorViewDestroy.mockClear();
       mockStore.sql.mockClear();
 
       rerender(<CodeEditor {...createMockProps({ language: "yaml" })} />);
 
-      expect(mockStore.editorViewDestroy).toHaveBeenCalled();
       expect(mockStore.yaml).toHaveBeenCalled();
     });
 
-    it("recreates editor when readOnly changes", () => {
-      const { rerender } = render(
-        <CodeEditor {...createMockProps({ readOnly: false })} />,
-      );
-
-      mockStore.editorViewDestroy.mockClear();
-
-      rerender(<CodeEditor {...createMockProps({ readOnly: true })} />);
-
-      expect(mockStore.editorViewDestroy).toHaveBeenCalled();
-      expect(mockStore.readOnlyOf).toHaveBeenCalledWith(true);
-    });
-
-    it("recreates editor when lineNumbers changes", () => {
-      const { rerender } = render(
-        <CodeEditor {...createMockProps({ lineNumbers: true })} />,
-      );
-
-      mockStore.editorViewDestroy.mockClear();
-      mockStore.lineNumbers.mockClear();
-
-      rerender(<CodeEditor {...createMockProps({ lineNumbers: false })} />);
-
-      expect(mockStore.editorViewDestroy).toHaveBeenCalled();
-      expect(mockStore.lineNumbers).not.toHaveBeenCalled();
-    });
-
-    it("recreates editor when theme changes", () => {
+    it("updates when theme changes", () => {
       const { rerender } = render(
         <CodeEditor {...createMockProps({ theme: "light" })} />,
       );
 
-      mockStore.editorViewDestroy.mockClear();
-      mockStore.editorViewTheme.mockClear();
-
       rerender(<CodeEditor {...createMockProps({ theme: "dark" })} />);
 
-      expect(mockStore.editorViewDestroy).toHaveBeenCalled();
-      const themeCall = mockStore.editorViewTheme.mock.calls[0];
-      expect(themeCall[1]).toEqual({ dark: true });
+      expect(mockStore.codeMirrorProps?.theme).toEqual({ type: "githubDark" });
     });
 
-    it("recreates editor when fontSize changes", () => {
+    it("updates when fontSize changes", () => {
       const { rerender } = render(
         <CodeEditor {...createMockProps({ fontSize: 14 })} />,
       );
 
-      mockStore.editorViewDestroy.mockClear();
       mockStore.editorViewTheme.mockClear();
 
       rerender(<CodeEditor {...createMockProps({ fontSize: 16 })} />);
 
-      expect(mockStore.editorViewDestroy).toHaveBeenCalled();
-      const themeStyles = mockStore.editorViewTheme.mock.calls[0][0];
-      expect(themeStyles["&"].fontSize).toBe("16px");
-    });
-
-    it("recreates editor when wordWrap changes", () => {
-      const { rerender } = render(
-        <CodeEditor {...createMockProps({ wordWrap: true })} />,
-      );
-
-      mockStore.editorViewDestroy.mockClear();
-
-      rerender(<CodeEditor {...createMockProps({ wordWrap: false })} />);
-
-      expect(mockStore.editorViewDestroy).toHaveBeenCalled();
-    });
-
-    it("recreates editor when keyBindings change", () => {
-      const keyBindings1 = [{ key: "Mod-Enter", run: () => true }];
-      const keyBindings2 = [{ key: "Mod-s", run: () => true }];
-
-      const { rerender } = render(
-        <CodeEditor {...createMockProps({ keyBindings: keyBindings1 })} />,
-      );
-
-      mockStore.editorViewDestroy.mockClear();
-
-      rerender(
-        <CodeEditor {...createMockProps({ keyBindings: keyBindings2 })} />,
-      );
-
-      expect(mockStore.editorViewDestroy).toHaveBeenCalled();
+      expect(mockStore.editorViewTheme).toHaveBeenCalled();
+      const calls = mockStore.editorViewTheme.mock.calls as unknown as Record<
+        string,
+        Record<string, string>
+      >[][];
+      const themeStyles = calls[0]?.[0];
+      expect(themeStyles?.["&"]?.fontSize).toBe("16px");
     });
   });
 });
