@@ -12,7 +12,8 @@ The Recce Cloud CLI (`recce-cloud`) is a standalone tool designed for CI/CD pipe
 - 🤖 Auto-detection - automatically detects CI platform, repository, and PR/MR context
 - ⬆️ Upload - push dbt artifacts to Recce Cloud sessions
 - ⬇️ Download - pull dbt artifacts from Recce Cloud sessions
-- 🔐 Flexible authentication - works with CI tokens or explicit API tokens
+- 🔐 Flexible authentication - browser-based login, token-based auth, or CI tokens
+- 🔗 Project binding - link local projects to Recce Cloud organizations
 - ✅ Platform-specific - optimized for GitHub Actions and GitLab CI
 
 ## Installation
@@ -35,6 +36,34 @@ install:
 ```
 
 ## Quick Start
+
+### Local Development
+
+**Login to Recce Cloud:**
+
+```bash
+# Browser-based login (recommended)
+recce-cloud login
+
+# Token-based login (for headless environments)
+recce-cloud login --token <your-api-token>
+```
+
+**Initialize project binding:**
+
+```bash
+# Interactive project selection
+recce-cloud init
+
+# Check current status
+recce-cloud status
+```
+
+**Logout:**
+
+```bash
+recce-cloud logout
+```
 
 ### GitHub Actions
 
@@ -210,6 +239,85 @@ recce-cloud download --session-id abc123 --force
 - Session must exist in Recce Cloud
 
 ## Command Reference
+
+### `recce-cloud login`
+
+Authenticate with Recce Cloud.
+
+**Options:**
+
+| Option    | Type   | Default | Description                                      |
+| --------- | ------ | ------- | ------------------------------------------------ |
+| `--token` | string | -       | API token for direct authentication (optional)   |
+
+**Usage:**
+
+```bash
+# Browser-based login (opens browser for OAuth)
+recce-cloud login
+
+# Direct token authentication (for CI/headless environments)
+recce-cloud login --token <your-api-token>
+```
+
+**Notes:**
+
+- Browser login opens Recce Cloud in your default browser for secure OAuth authentication
+- If the browser doesn't open automatically, the URL is displayed for manual access
+- Token-based login is useful for CI/CD environments or when browser access is unavailable
+- Credentials are saved to `~/.recce/profile.yml`
+
+### `recce-cloud logout`
+
+Clear stored Recce Cloud credentials.
+
+**Usage:**
+
+```bash
+recce-cloud logout
+```
+
+### `recce-cloud init`
+
+Initialize project binding to link a local project with a Recce Cloud organization and project.
+
+**Usage:**
+
+```bash
+recce-cloud init
+```
+
+**Workflow:**
+
+1. Verifies you are logged in (prompts for login if not)
+2. Lists available organizations (shows display names)
+3. Prompts you to select an organization
+4. Lists available projects in selected organization (excludes archived projects)
+5. Prompts you to select a project
+6. Saves binding to `.recce/config`
+7. Optionally adds `.recce/` to `.gitignore`
+
+**Notes:**
+
+- Requires authentication (run `recce-cloud login` first)
+- Creates `.recce/config` file in current directory
+- Binding can be overridden with environment variables (`RECCE_ORG`, `RECCE_PROJECT`)
+
+### `recce-cloud status`
+
+Display current authentication and project binding status.
+
+**Usage:**
+
+```bash
+recce-cloud status
+```
+
+**Output:**
+
+- Shows logged-in user email (or "Not logged in")
+- Shows current project binding (organization/project or "Not bound")
+- Indicates configuration source (CLI flags, environment variables, or local config)
 
 ### `recce-cloud upload`
 
