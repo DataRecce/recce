@@ -117,10 +117,10 @@ export const CheckPageContentOss = (): ReactNode => {
         checks.some((check) => check.check_id === latestSelectedCheckId);
 
       if (isValidLatestSelectedCheckId) {
-        router.replace(`/checks/?id=${latestSelectedCheckId}`);
+        router.replace(`${basePath}/checks/?id=${latestSelectedCheckId}`);
       } else {
         // Fall back to the first check
-        router.replace(`/checks/?id=${checks[0].check_id}`);
+        router.replace(`${basePath}/checks/?id=${checks[0].check_id}`);
       }
     }
   }, [
@@ -129,6 +129,7 @@ export const CheckPageContentOss = (): ReactNode => {
     checks,
     latestSelectedCheckId, // Fall back to the first check
     router.replace,
+    basePath,
   ]);
 
   if (isLoading) {
