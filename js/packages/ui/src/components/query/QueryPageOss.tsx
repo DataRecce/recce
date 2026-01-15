@@ -252,7 +252,7 @@ export const QueryPageOss = () => {
         </Button>
       </Box>
 
-      <Box sx={{ width: "100%", flex: 1 }}>
+      <Box sx={{ width: "100%", flex: 1, overflowY: "auto" }}>
         {isCustomQueries ? (
           <DualSqlEditor
             value={sqlQuery}
