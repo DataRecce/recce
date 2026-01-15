@@ -28,7 +28,11 @@ import {
   createCheckByRun,
   runTypeHasRef,
 } from "../../api";
-import { useRecceActionContext, useRecceInstanceContext } from "../../contexts";
+import {
+  useRecceActionContext,
+  useRecceInstanceContext,
+  useRouteConfig,
+} from "../../contexts";
 import {
   useApiConfig,
   useCopyToClipboardButton,
@@ -155,6 +159,7 @@ export const PrivateLoadableRunView = ({
   const queryClient = useQueryClient();
   const router = useRouter();
   const { apiClient } = useApiConfig();
+  const { basePath } = useRouteConfig();
   const { handleShareClick } = useRecceShareStateContext();
 
   // Get the result view component from registry
@@ -199,9 +204,9 @@ export const PrivateLoadableRunView = ({
   // Go to check handler
   const handleGoToCheck = useCallback(
     (checkId: string) => {
-      router.push(`/checks/?id=${checkId}`);
+      router.push(`${basePath}/checks/?id=${checkId}`);
     },
-    [router.push],
+    [router.push, basePath],
   );
 
   // Add to checklist handler
@@ -215,8 +220,8 @@ export const PrivateLoadableRunView = ({
       apiClient,
     );
     await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    router.push(`/checks/?id=${check.check_id}`);
-  }, [runId, viewOptions, apiClient, queryClient, router.push]);
+    router.push(`${basePath}/checks/?id=${check.check_id}`);
+  }, [runId, viewOptions, apiClient, queryClient, router.push, basePath]);
 
   return (
     <BaseRunResultPane

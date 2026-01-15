@@ -132,6 +132,7 @@ const mockRecceInstanceContext = {
 jest.mock("@datarecce/ui/contexts", () => {
   const React = jest.requireActual("react");
   return {
+    useRouteConfig: jest.fn(() => ({ basePath: "" })),
     useLineageGraphContext: jest.fn(() => mockLineageGraphContext),
     useRecceInstanceContext: jest.fn(() => mockRecceInstanceContext),
     useRecceActionContext: jest.fn(() => ({

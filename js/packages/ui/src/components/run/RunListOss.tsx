@@ -18,7 +18,11 @@ import { useCallback, useMemo } from "react";
 import { FaCheckCircle, FaRegCheckCircle } from "react-icons/fa";
 import { PiX } from "react-icons/pi";
 import { cacheKeys, createCheckByRun, listRuns, type Run } from "../../api";
-import { useRecceActionContext, useRecceInstanceContext } from "../../contexts";
+import {
+  useRecceActionContext,
+  useRecceInstanceContext,
+  useRouteConfig,
+} from "../../contexts";
 import { useApiConfig } from "../../hooks";
 import { trackHistoryAction } from "../../lib/api/track";
 import { RunList as BaseRunList, type RunListItemData } from "./RunList";
@@ -56,6 +60,7 @@ export function RunListOss() {
   const { apiClient } = useApiConfig();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { basePath } = useRouteConfig();
 
   // Fetch all runs
   const { data: runs, isLoading } = useQuery({
@@ -87,18 +92,18 @@ export function RunListOss() {
       trackHistoryAction({ name: "add_to_checklist" });
       const check = await createCheckByRun(clickedRunId, undefined, apiClient);
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-      router.push(`/checks/?id=${check.check_id}`);
+      router.push(`${basePath}/checks/?id=${check.check_id}`);
     },
-    [apiClient, queryClient, router.push],
+    [apiClient, queryClient, router.push, basePath],
   );
 
   // Handle go to check with tracking
   const handleGoToCheck = useCallback(
     (checkId: string) => {
       trackHistoryAction({ name: "go_to_check" });
-      router.push(`/checks/?id=${checkId}`);
+      router.push(`${basePath}/checks/?id=${checkId}`);
     },
-    [router.push],
+    [router.push, basePath],
   );
 
   // Handle close history with tracking

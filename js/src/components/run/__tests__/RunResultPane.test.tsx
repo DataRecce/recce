@@ -283,6 +283,7 @@ const mockOnCancel = jest.fn();
 
 // Mock contexts
 jest.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: jest.fn(() => ({ basePath: "" })),
   useRecceInstanceContext: jest.fn(() => ({
     featureToggles: {
       disableDatabaseQuery: false,

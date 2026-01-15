@@ -19,6 +19,7 @@
 
 // Mock @datarecce/ui/contexts
 jest.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: jest.fn(() => ({ basePath: "" })),
   useRecceServerFlag: jest.fn(),
 }));
 

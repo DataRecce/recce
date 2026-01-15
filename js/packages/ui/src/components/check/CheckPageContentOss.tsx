@@ -14,6 +14,7 @@ import React, {
   useState,
 } from "react";
 import { cacheKeys, listChecks, reorderChecks } from "../../api";
+import { useRouteConfig } from "../../contexts";
 import { useApiConfig, useRecceCheckContext } from "../../hooks";
 import { StateImporter } from "../app";
 import { HSplit } from "../ui";
@@ -32,6 +33,7 @@ export const CheckPageContentOss = (): ReactNode => {
     useRecceCheckContext();
   const queryClient = useQueryClient();
   const { apiClient } = useApiConfig();
+  const { basePath } = useRouteConfig();
   const selectedItem = checkId;
 
   useEffect(() => {
@@ -54,9 +56,9 @@ export const CheckPageContentOss = (): ReactNode => {
 
   const handleSelectItem = useCallback(
     (checkId: string) => {
-      router.push(`/checks/?id=${checkId}`);
+      router.push(`${basePath}/checks/?id=${checkId}`);
     },
-    [router.push],
+    [router.push, basePath],
   );
 
   const [orderedChecks, setOrderedChecks] = useState(checks ?? []);

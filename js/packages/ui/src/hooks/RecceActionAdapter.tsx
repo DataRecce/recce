@@ -28,6 +28,7 @@ import {
   type AxiosQueryParams,
   RecceActionProvider,
   type RecceActionOptions as UIRecceActionOptions,
+  useRouteConfig,
   useRecceActionContext as useUIRecceActionContext,
 } from "../contexts";
 import { useApiConfig } from "./useApiConfig";
@@ -98,6 +99,7 @@ export function RecceActionAdapter({ children }: RecceActionAdapterProps) {
   const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
+  const { basePath } = useRouteConfig();
 
   // Store a ref to the showRunId function from the provider
   // This is set by the inner component after the provider mounts
@@ -183,7 +185,7 @@ export function RecceActionAdapter({ children }: RecceActionAdapterProps) {
 
           // Navigate to lineage base if we're on a lineage subpath
           if (pathname.startsWith("/lineage")) {
-            router.push("/lineage");
+            router.push(`${basePath}/lineage`);
           }
 
           // Return undefined since we already called showRunId via ref
@@ -214,7 +216,7 @@ export function RecceActionAdapter({ children }: RecceActionAdapterProps) {
         return undefined;
       }
     },
-    [onModalOpen, queryClient, apiClient, pathname, router],
+    [onModalOpen, queryClient, apiClient, pathname, router, basePath],
   );
 
   /**

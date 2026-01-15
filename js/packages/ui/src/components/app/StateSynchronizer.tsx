@@ -23,7 +23,7 @@ import {
   type SyncStateInput,
   syncState,
 } from "../../api";
-import { useRecceInstanceInfo } from "../../contexts";
+import { useRecceInstanceInfo, useRouteConfig } from "../../contexts";
 import { useApiConfig } from "../../hooks";
 import { toaster } from "../ui";
 
@@ -49,6 +49,7 @@ export function StateSynchronizer() {
   const { apiClient } = useApiConfig();
   const router = useRouter();
   const pathname = usePathname();
+  const { basePath } = useRouteConfig();
   const [open, setOpen] = useState(false);
   const [syncOption, setSyncOption] = useState<
     "overwrite" | "revert" | "merge" | ""
@@ -88,10 +89,10 @@ export function StateSynchronizer() {
       await queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
 
       if (isCheckDetailPage(pathname)) {
-        router.push("/checks");
+        router.push(`${basePath}/checks`);
       }
     },
-    [queryClient, pathname, apiClient, router.push],
+    [queryClient, pathname, apiClient, router.push, basePath],
   );
 
   if (isSyncing) return <StateSpinner />;

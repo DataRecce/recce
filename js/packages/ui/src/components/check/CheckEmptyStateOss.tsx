@@ -13,6 +13,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { TbChecklist } from "react-icons/tb";
 import { type Check, cacheKeys, createSchemaDiffCheck } from "../../api";
+import { useRouteConfig } from "../../contexts";
 import { useApiConfig } from "../../hooks";
 import { CheckEmptyState as CheckEmptyStateUI } from "../../primitives";
 
@@ -20,13 +21,14 @@ export const CheckEmptyStateOss = () => {
   const queryClient = useQueryClient();
   const router = useRouter();
   const { apiClient } = useApiConfig();
+  const { basePath } = useRouteConfig();
 
   const { mutate: createSchemaCheck, isPending } = useMutation({
     mutationFn: () =>
       createSchemaDiffCheck({ select: "state:modified" }, apiClient),
     onSuccess: async (check: Check) => {
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-      router.push(`/checks/?id=${check.check_id}`);
+      router.push(`${basePath}/checks/?id=${check.check_id}`);
     },
   });
 

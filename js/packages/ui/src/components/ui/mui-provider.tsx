@@ -1,10 +1,10 @@
 "use client";
 
-import { theme } from "@datarecce/ui/theme";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import { useTheme } from "next-themes";
 import { type ReactNode, useEffect } from "react";
+import { theme } from "../../theme";
 
 interface MuiProviderProps {
   children: ReactNode;

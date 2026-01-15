@@ -20,6 +20,7 @@ import {
   useLineageGraphContext,
   useRecceActionContext,
   useRecceInstanceContext,
+  useRouteConfig,
 } from "../../contexts";
 import {
   useApiConfig,
@@ -103,6 +104,7 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
   const { primaryKey } = useModelColumns(node.data.name);
   const { apiClient } = useApiConfig();
+  const { basePath } = useRouteConfig();
 
   // Build run type icons map from OSS registry
   const runTypeIcons: RunTypeIconMap = useMemo(
@@ -142,7 +144,7 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
         } else if (envInfo?.adapterType === "sqlmesh") {
           setSqlQuery(`select * from ${node.data.name}`);
         }
-        router.push("/query");
+        router.push(`${basePath}/query`);
       },
 
       onRowCountClick: () => {
@@ -206,7 +208,7 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
         if (isActionAvailable("query_diff_with_primary_key")) {
           setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
         }
-        router.push("/query");
+        router.push(`${basePath}/query`);
       },
 
       onValueDiffClick: () => {
@@ -253,7 +255,7 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
           { node_id: node.id },
           apiClient,
         );
-        router.push(`/checks/?id=${check.check_id}`);
+        router.push(`${basePath}/checks/?id=${check.check_id}`);
       },
 
       onSandboxClick: () => {
@@ -277,6 +279,7 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
       primaryKey,
       apiClient,
       router.push,
+      basePath,
     ],
   );
 

@@ -56,6 +56,7 @@ let mockRecceServerFlagData = {
 
 // Mock the hooks used by NavBar
 jest.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: jest.fn(() => ({ basePath: "" })),
   useLineageGraphContext: () => mockLineageGraphContext,
   useRecceInstanceContext: () => mockRecceInstanceContext,
   useRecceServerFlag: () => ({

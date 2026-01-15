@@ -32,6 +32,7 @@ const mockUseRecceActionContext = jest.fn();
 const mockUseLineageViewContextSafe = jest.fn();
 
 jest.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: jest.fn(() => ({ basePath: "" })),
   useLineageGraphContext: () => mockUseLineageGraphContext(),
   useRecceInstanceContext: () => mockUseRecceInstanceContext(),
   useRecceServerFlag: () => mockUseRecceServerFlag(),

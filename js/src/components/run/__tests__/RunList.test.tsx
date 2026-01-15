@@ -30,6 +30,7 @@ jest.mock("@datarecce/ui/api", () => ({
 
 // Mock contexts
 jest.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: jest.fn(() => ({ basePath: "" })),
   useRecceInstanceContext: jest.fn(() => ({
     featureToggles: {
       disableUpdateChecklist: false,

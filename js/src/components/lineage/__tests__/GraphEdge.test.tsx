@@ -46,6 +46,7 @@ jest.mock("@xyflow/react", () => ({
 
 // Mock LineageViewContext
 jest.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: jest.fn(() => ({ basePath: "" })),
   useLineageViewContextSafe: jest.fn(),
 }));
 

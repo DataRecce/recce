@@ -10,7 +10,7 @@
  * base/current environment comparison UI.
  */
 
-import { colors } from "@datarecce/ui/theme";
+import { colors } from "../../theme";
 
 /**
  * Semantic color tokens for environment identification

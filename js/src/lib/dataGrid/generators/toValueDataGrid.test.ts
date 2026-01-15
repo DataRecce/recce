@@ -51,6 +51,7 @@ const createCellClassParams = (
   }) as unknown as CellClassParams<RowObjectType>;
 
 jest.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: jest.fn(() => ({ basePath: "" })),
   useRecceInstanceContext: () => ({
     featureToggles: {
       disableDatabaseQuery: false,

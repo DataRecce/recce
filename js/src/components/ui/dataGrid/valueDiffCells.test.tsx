@@ -25,6 +25,7 @@ import React, { ReactNode } from "react";
 
 // Mock @datarecce/ui/contexts for both hooks used by the components
 jest.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: jest.fn(() => ({ basePath: "" })),
   useRecceActionContext: () => ({
     runAction: jest.fn(),
   }),

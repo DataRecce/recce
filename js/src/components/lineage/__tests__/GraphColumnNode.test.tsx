@@ -38,6 +38,7 @@ jest.mock("@datarecce/ui/hooks", () => ({
 
 // Mock LineageViewContext
 jest.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: jest.fn(() => ({ basePath: "" })),
   useLineageViewContextSafe: jest.fn(),
 }));
 

@@ -50,6 +50,7 @@ const mockUseLineageGraphContext = jest.fn();
 const mockUseRecceInstanceContext = jest.fn();
 
 jest.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: jest.fn(() => ({ basePath: "" })),
   useLineageGraphContext: () => mockUseLineageGraphContext(),
   useRecceInstanceContext: () => mockUseRecceInstanceContext(),
 }));

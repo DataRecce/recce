@@ -18,6 +18,7 @@ import { cacheKeys, importState } from "../../api";
 import {
   useLineageGraphContext,
   useRecceInstanceContext,
+  useRouteConfig,
   useRunsAggregated,
 } from "../../contexts";
 import { useApiConfig, useIsDark } from "../../hooks";
@@ -35,6 +36,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const { basePath } = useRouteConfig();
   const [, refetchRunsAggregated] = useRunsAggregated();
 
   const handleImport = useCallback(async () => {
@@ -52,7 +54,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       await queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
       if (pathname.includes("/checks")) {
-        router.push("/checks");
+        router.push(`${basePath}/checks`);
       }
       const description = checksOnly
         ? `${checks} checks imported successfully`
@@ -83,6 +85,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
     checksOnly,
     apiClient,
     router.push,
+    basePath,
   ]);
 
   const handleClick = () => {
