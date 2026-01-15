@@ -63,7 +63,7 @@ export type RunType =
 /**
  * Possible status values for a run
  */
-export type RunStatus = "finished" | "failed" | "cancelled" | "running";
+export type RunStatus = "Finished" | "Failed" | "Cancelled" | "Running";
 
 /**
  * Progress information for a running task

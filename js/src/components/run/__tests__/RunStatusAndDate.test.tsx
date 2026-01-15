@@ -33,7 +33,7 @@ import { render, screen } from "@testing-library/react";
 // ============================================================================
 
 const createMockRun = (
-  status: "running" | "finished" | "failed" | "cancelled",
+  status: "Running" | "Finished" | "Failed" | "Cancelled",
   runAt?: string,
   result?: unknown,
   error?: string,
@@ -60,28 +60,28 @@ describe("RunStatusAndDate", () => {
 
   describe("status display", () => {
     it("shows 'Running' status for running state", () => {
-      const run = createMockRun("running");
+      const run = createMockRun("Running");
       render(<RunStatusAndDate run={run as Run} />);
 
       expect(screen.getByText("Running")).toBeInTheDocument();
     });
 
     it("shows 'Finished' status for finished state", () => {
-      const run = createMockRun("finished");
+      const run = createMockRun("Finished");
       render(<RunStatusAndDate run={run as Run} />);
 
       expect(screen.getByText("Finished")).toBeInTheDocument();
     });
 
     it("shows 'Failed' status for failed state", () => {
-      const run = createMockRun("failed");
+      const run = createMockRun("Failed");
       render(<RunStatusAndDate run={run as Run} />);
 
       expect(screen.getByText("Failed")).toBeInTheDocument();
     });
 
     it("shows 'Cancelled' status for cancelled state", () => {
-      const run = createMockRun("cancelled");
+      const run = createMockRun("Cancelled");
       render(<RunStatusAndDate run={run as Run} />);
 
       expect(screen.getByText("Cancelled")).toBeInTheDocument();
@@ -89,7 +89,7 @@ describe("RunStatusAndDate", () => {
 
     it("infers finished status from result when status is missing", () => {
       const run = {
-        ...createMockRun("finished"),
+        ...createMockRun("Finished"),
         status: undefined,
         result: { data: "test" },
       };
@@ -100,7 +100,7 @@ describe("RunStatusAndDate", () => {
 
     it("infers failed status from error when status is missing", () => {
       const run = {
-        ...createMockRun("failed"),
+        ...createMockRun("Failed"),
         status: undefined,
         error: "Test error",
       };
@@ -110,7 +110,7 @@ describe("RunStatusAndDate", () => {
     });
 
     it("shows loading indicator for running state", () => {
-      const run = createMockRun("running");
+      const run = createMockRun("Running");
       const { container } = render(<RunStatusAndDate run={run as Run} />);
 
       // CircularProgress should be rendered
@@ -119,7 +119,7 @@ describe("RunStatusAndDate", () => {
     });
 
     it("does not show loading indicator for finished state", () => {
-      const run = createMockRun("finished");
+      const run = createMockRun("Finished");
       const { container } = render(<RunStatusAndDate run={run as Run} />);
 
       const progressElement = container.querySelector('[role="progressbar"]');
@@ -134,7 +134,7 @@ describe("RunStatusAndDate", () => {
   describe("date formatting", () => {
     it("shows 'Today' for runs executed today", () => {
       const today = new Date();
-      const run = createMockRun("finished", today.toISOString());
+      const run = createMockRun("Finished", today.toISOString());
       render(<RunStatusAndDate run={run as Run} />);
 
       expect(screen.getByText(/Today/)).toBeInTheDocument();
@@ -143,7 +143,7 @@ describe("RunStatusAndDate", () => {
     it("shows 'Yesterday' for runs executed yesterday", () => {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
-      const run = createMockRun("finished", yesterday.toISOString());
+      const run = createMockRun("Finished", yesterday.toISOString());
       render(<RunStatusAndDate run={run as Run} />);
 
       expect(screen.getByText(/Yesterday/)).toBeInTheDocument();
@@ -151,7 +151,7 @@ describe("RunStatusAndDate", () => {
 
     it("shows formatted date for older runs", () => {
       const oldDate = new Date("2024-01-15T10:30:00Z");
-      const run = createMockRun("finished", oldDate.toISOString());
+      const run = createMockRun("Finished", oldDate.toISOString());
       render(<RunStatusAndDate run={run as Run} />);
 
       // Should show something like "Jan 15"
@@ -159,7 +159,7 @@ describe("RunStatusAndDate", () => {
     });
 
     it("handles missing run_at gracefully", () => {
-      const run = { ...createMockRun("finished"), run_at: undefined };
+      const run = { ...createMockRun("Finished"), run_at: undefined };
       const { container } = render(
         <RunStatusAndDate run={run as unknown as Run} />,
       );
@@ -179,7 +179,7 @@ describe("RunStatusAndDate", () => {
     it("includes time in display for today's runs", () => {
       const today = new Date();
       today.setHours(14, 30, 0, 0); // 2:30 PM
-      const run = createMockRun("finished", today.toISOString());
+      const run = createMockRun("Finished", today.toISOString());
       render(<RunStatusAndDate run={run as Run} />);
 
       // Should show "Today, HH:mm" format
@@ -191,7 +191,7 @@ describe("RunStatusAndDate", () => {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       yesterday.setHours(10, 15, 0, 0); // 10:15 AM
-      const run = createMockRun("finished", yesterday.toISOString());
+      const run = createMockRun("Finished", yesterday.toISOString());
       render(<RunStatusAndDate run={run as Run} />);
 
       const text = screen.getByText(/Yesterday/);
@@ -200,7 +200,7 @@ describe("RunStatusAndDate", () => {
 
     it("includes time in display for older runs", () => {
       const oldDate = new Date("2024-01-15T16:45:00Z");
-      const run = createMockRun("finished", oldDate.toISOString());
+      const run = createMockRun("Finished", oldDate.toISOString());
       render(<RunStatusAndDate run={run as Run} />);
 
       // Should show "MMM d, HH:mm" format (date may vary based on timezone)
@@ -215,7 +215,7 @@ describe("RunStatusAndDate", () => {
 
   describe("status colors", () => {
     it("applies green color for finished status", () => {
-      const run = createMockRun("finished");
+      const run = createMockRun("Finished");
       render(<RunStatusAndDate run={run as Run} />);
 
       const statusText = screen.getByText("Finished");
@@ -224,7 +224,7 @@ describe("RunStatusAndDate", () => {
     });
 
     it("applies red color for failed status", () => {
-      const run = createMockRun("failed");
+      const run = createMockRun("Failed");
       render(<RunStatusAndDate run={run as Run} />);
 
       const statusText = screen.getByText("Failed");
@@ -232,7 +232,7 @@ describe("RunStatusAndDate", () => {
     });
 
     it("applies blue color for running status", () => {
-      const run = createMockRun("running");
+      const run = createMockRun("Running");
       render(<RunStatusAndDate run={run as Run} />);
 
       const statusText = screen.getByText("Running");
@@ -240,7 +240,7 @@ describe("RunStatusAndDate", () => {
     });
 
     it("applies gray color for cancelled status", () => {
-      const run = createMockRun("cancelled");
+      const run = createMockRun("Cancelled");
       render(<RunStatusAndDate run={run as Run} />);
 
       const statusText = screen.getByText("Cancelled");
@@ -295,7 +295,7 @@ describe("RunStatusAndDate", () => {
     });
 
     it("shows bullet separator between status and date", () => {
-      const run = createMockRun("finished");
+      const run = createMockRun("Finished");
       render(<RunStatusAndDate run={run as Run} />);
 
       expect(screen.getByText("•")).toBeInTheDocument();

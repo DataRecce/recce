@@ -188,7 +188,7 @@ const createMockRun = (overrides: Partial<Run> = {}): Run => {
   const baseRun: Run = {
     run_id: "test-run-1",
     run_at: new Date().toISOString(),
-    status: "finished",
+    status: "Finished",
     type: "query",
     params: {},
     name: "Test Run",

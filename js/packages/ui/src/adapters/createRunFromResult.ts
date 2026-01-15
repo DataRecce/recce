@@ -43,7 +43,7 @@ export function createRunFromResult<TResult, TParams = unknown>({
     run_at,
     params,
     result,
-    status: "finished",
+    status: "Finished",
   } as Run;
 }
 

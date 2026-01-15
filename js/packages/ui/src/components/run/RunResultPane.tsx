@@ -25,6 +25,7 @@ import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
+import { formatDistanceToNow } from "date-fns";
 import {
   type ComponentType,
   type ForwardRefExoticComponent,
@@ -557,17 +558,39 @@ DefaultAddToCheckButton.displayName = "DefaultAddToCheckButton";
  * Run status and date display component
  */
 const RunStatusAndDateDisplay = memo(({ run }: { run: Run }) => {
-  // Import dynamically to avoid circular dependencies
-  // Using inline status display for now
   const statusText =
-    run.status || (run.result ? "finished" : run.error ? "failed" : "unknown");
-  const runAt = run.run_at
-    ? new Date(run.run_at).toLocaleString()
+    run.status || (run.result ? "Finished" : run.error ? "Failed" : "unknown");
+
+  // Determine color based on status
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "finished":
+        return "success.main";
+      case "failed":
+        return "error.main";
+      case "running":
+        return "primary.main";
+      case "cancelled":
+      default:
+        return "text.secondary";
+    }
+  };
+
+  const relativeTime = run.run_at
+    ? formatDistanceToNow(new Date(run.run_at), { addSuffix: true })
     : "Unknown time";
 
   return (
     <Typography variant="body2" sx={{ color: "text.secondary" }}>
-      {statusText} - {runAt}
+      <Box
+        component="span"
+        sx={{ color: getStatusColor(statusText) }}
+        fontWeight={600}
+      >
+        {statusText}
+      </Box>
+      {"・"}
+      {relativeTime}
     </Typography>
   );
 });

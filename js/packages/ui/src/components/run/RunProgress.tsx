@@ -57,7 +57,7 @@ export interface RunProgressProps {
  * @example With progress bar
  * ```tsx
  * <RunProgress
- *   status="running"
+ *   status="Running"
  *   variant="linear"
  *   progress={65}
  *   message="Processing records: 65,000 / 100,000"
@@ -67,7 +67,7 @@ export interface RunProgressProps {
  * @example Error state
  * ```tsx
  * <RunProgress
- *   status="failed"
+ *   status="Failed"
  *   errorMessage="Connection timeout after 30 seconds"
  * />
  * ```
@@ -82,8 +82,8 @@ function RunProgressComponent({
   icon,
   className,
 }: RunProgressProps) {
-  const isRunning = status === "running";
-  const isFailed = status === "failed";
+  const isRunning = status === "Running";
+  const isFailed = status === "Failed";
   const hasProgress = progress !== undefined && progress >= 0;
 
   return (
@@ -193,7 +193,7 @@ export interface RunProgressOverlayProps extends RunProgressProps {
  *   <YourContent />
  *   <RunProgressOverlay
  *     visible={isLoading}
- *     status="running"
+ *     status="Running"
  *     message="Loading data..."
  *   />
  * </div>

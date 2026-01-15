@@ -9,15 +9,15 @@ import type { Run } from "../../api";
 /**
  * Run status types
  */
-export type RunStatus = "running" | "finished" | "failed" | "cancelled";
+export type RunStatus = "Running" | "Finished" | "Failed" | "Cancelled";
 
 /**
  * Infer run status from Run object
  *
  * When status is not explicitly set, infers from result/error:
- * - Has result -> "finished"
- * - Has error -> "failed"
- * - Otherwise -> "finished" (default)
+ * - Has result -> "Finished"
+ * - Has error -> "Failed"
+ * - Otherwise -> "Finished" (default)
  *
  * @param run - The run object to infer status from
  * @returns The inferred run status
@@ -35,14 +35,14 @@ export function inferRunStatus(run: Run): RunStatus {
 
   // Infer from result/error when status is missing
   if (run.result) {
-    return "finished";
+    return "Finished";
   }
   if (run.error) {
-    return "failed";
+    return "Failed";
   }
 
   // Default to finished
-  return "finished";
+  return "Finished";
 }
 
 /**
@@ -64,13 +64,13 @@ export interface RunStatusBadgeProps {
  */
 function getStatusDisplay(status: RunStatus): { color: string; label: string } {
   switch (status) {
-    case "running":
+    case "Running":
       return { color: "blue", label: "Running" };
-    case "finished":
+    case "Finished":
       return { color: "green", label: "Finished" };
-    case "failed":
+    case "Failed":
       return { color: "red", label: "Failed" };
-    case "cancelled":
+    case "Cancelled":
       return { color: "grey", label: "Cancelled" };
     default:
       return { color: "green", label: "Finished" };
@@ -99,7 +99,7 @@ function getStatusDisplay(status: RunStatus): { color: string; label: string } {
  * @example With spinner
  * ```tsx
  * <RunStatusBadge
- *   status="running"
+ *   status="Running"
  *   showSpinner
  * />
  * ```
@@ -111,7 +111,7 @@ function RunStatusBadgeComponent({
   className,
 }: RunStatusBadgeProps) {
   const { color, label } = getStatusDisplay(status);
-  const isRunning = status === "running";
+  const isRunning = status === "Running";
   const fontSize = size === "small" ? "0.75rem" : "0.875rem";
   const spinnerSize = size === "small" ? 12 : 16;
 
@@ -211,7 +211,7 @@ export interface RunStatusWithDateProps {
  * @example
  * ```tsx
  * <RunStatusWithDate
- *   status="finished"
+ *   status="Finished"
  *   runAt={run.run_at}
  * />
  * ```
