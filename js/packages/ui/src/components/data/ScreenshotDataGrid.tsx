@@ -12,7 +12,6 @@
  */
 
 import Box from "@mui/material/Box";
-import { useTheme } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import type {
   ColDef,
@@ -176,8 +175,6 @@ function _ScreenshotDataGrid<TData = DataGridRow>(
     [],
   );
 
-  // Get MUI theme for palette colors
-  const muiTheme = useTheme();
   // Use useIsDark for reliable dark mode detection with CSS Variables
   const isDark = useIsDark();
 
@@ -269,15 +266,15 @@ function _ScreenshotDataGrid<TData = DataGridRow>(
         // Diff cell styling - theme-aware colors
         "& .diff-cell-added": {
           backgroundColor: isDark ? "#1a4d1a !important" : "#cefece !important",
-          color: muiTheme.palette.text.primary,
+          color: "var(--mui-palette-text-primary)",
         },
         "& .diff-cell-removed": {
           backgroundColor: isDark ? "#5c1f1f !important" : "#ffc5c5 !important",
-          color: muiTheme.palette.text.primary,
+          color: "var(--mui-palette-text-primary)",
         },
         "& .diff-cell-modified": {
           backgroundColor: isDark ? "#5c1f1f !important" : "#ffc5c5 !important",
-          color: muiTheme.palette.text.primary,
+          color: "var(--mui-palette-text-primary)",
         },
         // Diff header styling
         "& .diff-header-added": {
@@ -290,7 +287,7 @@ function _ScreenshotDataGrid<TData = DataGridRow>(
         },
         // Index column styling
         "& .index-column": {
-          color: muiTheme.palette.text.secondary,
+          color: "var(--mui-palette-text-secondary)",
           textAlign: "right",
         },
         // Frozen/pinned column styling
