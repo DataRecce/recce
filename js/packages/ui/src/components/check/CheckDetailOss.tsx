@@ -54,6 +54,7 @@ import type { Run, RunParamTypes } from "../../api/types";
 import {
   useLineageGraphContext,
   useRecceInstanceContext,
+  useRouteConfig,
 } from "../../contexts";
 import {
   useApiConfig,
@@ -110,6 +111,7 @@ export function CheckDetailOss({
   const { cloudMode } = useLineageGraphContext();
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { basePath } = useRouteConfig();
   const { successToast, failToast } = useClipBoardToast();
   const [submittedRunId, setSubmittedRunId] = useState<string>();
   const [progress] = useState<Run["progress"]>();
@@ -163,7 +165,7 @@ export function CheckDetailOss({
     onSuccess: async () => {
       setLatestSelectedCheckId("");
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-      router.push("/checks");
+      router.push(`${basePath}/checks`);
     },
   });
 

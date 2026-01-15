@@ -2,6 +2,7 @@
  * Barrel export for @datarecce/ui hooks.
  */
 
+export { MuiProvider } from "../components/ui/mui-provider";
 export {
   CheckContextAdapter,
   type OSSCheckContext,

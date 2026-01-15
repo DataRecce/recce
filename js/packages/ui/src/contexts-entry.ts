@@ -22,6 +22,7 @@
  * ```
  */
 
+export { RecceActionProvider, useRecceActionContext } from "./contexts/action";
 // IdleTimeoutContext exports - session management and keep-alive
 export type { IdleTimeoutContextType } from "./contexts/idle";
 export {

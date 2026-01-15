@@ -25,6 +25,7 @@ import {
   useRecceActionContext,
   useRecceInstanceContext,
   useRecceServerFlag,
+  useRouteConfig,
 } from "../../contexts";
 import { useModelColumns, useRecceQueryContext } from "../../hooks";
 import { trackExploreAction, trackLineageSelection } from "../../lib/api/track";
@@ -67,13 +68,14 @@ const useContextMenuDeps = (modelName?: string): LineageViewContextMenuDeps => {
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
   const router = useRouter();
   const { primaryKey } = useModelColumns(modelName);
+  const { basePath } = useRouteConfig();
 
   return {
     runAction: (type, params, options) => {
       runAction(type, params as Parameters<typeof runAction>[1], options);
     },
     onNavigate: (path) => {
-      router.push(path);
+      router.push(`${basePath}${path}`);
     },
     onTrack: (event, props) => {
       if (event === "explore_action") {

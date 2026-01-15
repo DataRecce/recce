@@ -25,11 +25,12 @@ export default defineConfig({
     "lib/api/track": "src/lib/api/track.ts",
     "lib/api/user": "src/lib/api/user.ts",
   },
-  format: ["cjs", "esm"],
+  format: ["esm"],
   dts: true,
   sourcemap: true,
   clean: true,
   minify: true,
+  platform: "browser",
 
   // Path aliases for importing from the main js/src directory
   alias: {
@@ -37,6 +38,8 @@ export default defineConfig({
   },
 
   external: [
+    // Node.js built-ins - prevent CJS interop shim
+    /^node:/,
     "react",
     "react-dom",
     /^@emotion\//,
@@ -55,6 +58,7 @@ export default defineConfig({
     "html-to-image",
     "html2canvas-pro",
     // Utility packages - externalize to prevent CJS interop issues
+    "js-cookie",
     "file-saver",
     "lodash",
     /^lodash\//,
@@ -78,6 +82,18 @@ export default defineConfig({
     // vfile and unified ecosystem packages
     /^vfile/,
     /^unified/,
+    // react-select has CJS code that causes "dynamic usage of require" error
+    "react-select",
+    /^react-select\//,
+    // react-redux and its dependencies have CJS code
+    "react-redux",
+    /^react-redux\//,
+    "use-sync-external-store",
+    /^use-sync-external-store\//,
+    "redux",
+    /^redux\//,
+    "@reduxjs/toolkit",
+    /^@reduxjs\//,
   ],
 
   banner: {
