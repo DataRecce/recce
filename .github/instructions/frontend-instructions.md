@@ -11,9 +11,8 @@ applyTo: "js/**/*.ts,js/**/*.tsx,js/**/*.js,js/**/*.jsx,js/**/*.json,js/**/*.mjs
 cd js
 pnpm run build
 # This process:
-# 1. Cleans ../recce/data/ directory
-# 2. Builds Next.js to js/out/
-# 3. Moves js/out/ to ../recce/data/
+# 1. Builds Next.js to js/out/
+# 2. Moves js/out/ to ../recce/data/
 # YOU MUST restart 'recce server' after this completes
 ```
 
@@ -91,10 +90,17 @@ pnpm run clean
 - **React 19.2** - UI library with new JSX transform
 - **React DOM 19.2** - React renderer
 - **TypeScript 5.9** - Type safety
-- **Chakra UI 3** - Component library
+- **MUI 7** - Component library
 - **Biome 2.3** - Fast linter and formatter (replaces ESLint + Prettier)
 - **Turbopack** - Fast dev server bundler
 - **Tailwind CSS 4** - Utility-first CSS
+
+## OSS vs @datarecce/ui Separation
+
+- `js/app` is a thin OSS shell (routes/layout only); it should compose `@datarecce/ui` exports.
+- Shared UI, contexts, hooks, and API clients live in `js/packages/ui` (`@datarecce/ui`).
+- `js/src` is test-only (Jest suites and utilities); avoid runtime app code there.
+- Avoid importing from `js/packages/ui/src/*` in OSS app code; use `@datarecce/ui` exports.
 
 ## File Structure (js/ directory)
 
@@ -102,21 +108,17 @@ pnpm run clean
 js/
 ├── package.json         # Dependencies (Node >=20 required)
 ├── tsconfig.json        # TypeScript config
-├── next.config.mjs      # Next.js config (output: 'export')
+├── next.config.js       # Next.js config (output: 'export')
 ├── biome.json           # Biome linter & formatter config
-├── src/
-│   ├── app/             # Next.js App Router pages
-│   │   ├── layout.tsx   # Root layout
-│   │   └── page.tsx     # Home page
-│   ├── lib/
-│   │   ├── api/         # API client functions (axios)
-│   │   └── hooks/       # Custom React hooks
-│   ├── components/      # React components
-│   │   ├── lineage/     # DAG/lineage visualization
-│   │   ├── check/       # Check management UI
-│   │   └── run/         # Run execution UI
-│   ├── constants/       # App constants
-│   └── utils/           # Utility functions
+├── app/                 # OSS Next.js App Router shell (routes/layout only)
+├── src/                 # OSS tests + test utilities
+│   ├── components/      # Test suites for UI behavior
+│   ├── lib/             # Test helpers for data grid + adapters
+│   └── testing-utils/   # Shared test harnesses and fixtures
+├── packages/
+│   └── ui/              # @datarecce/ui workspace package (shared UI)
+│       ├── src/         # API, components, contexts, hooks, lib, styles
+│       └── dist/        # Built package outputs
 ├── .husky/              # Git hooks (pre-commit)
 ├── .next/               # Next.js build cache (gitignored)
 └── out/                 # Build output (moved to ../recce/data/)
@@ -126,7 +128,7 @@ js/
 
 **package.json:**
 - Requires Node.js >=20
-- Uses pnpm@10.22.0 as package manager
+- Uses pnpm@10.26.x as package manager
 - Key scripts:
   - `dev`: Start development server with Turbopack
   - `build`: Clean, build Next.js, move to ../recce/data
@@ -142,7 +144,7 @@ js/
 - Strict mode enabled
 - Path aliases: `@/*` → `./src/*`, `@theme/*` → `./theme/*`
 
-**next.config.mjs:**
+**next.config.js:**
 - Output mode: `export` (static site generation)
 - Exports to `./out` directory
 - Build script moves to `../recce/data/`

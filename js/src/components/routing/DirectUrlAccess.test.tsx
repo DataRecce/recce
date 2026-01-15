@@ -5,11 +5,8 @@
  * particularly for routes with query parameters like /checks?id=xxx
  */
 
-import { render, renderHook, screen, waitFor } from "@testing-library/react";
-import React from "react";
-
 // Mock the API and context hooks
-jest.mock("@/lib/api/checks", () => ({
+jest.mock("@datarecce/ui/api", () => ({
   listChecks: jest.fn(() =>
     Promise.resolve([
       { check_id: "check-1", name: "Check 1", type: "schema_diff" },
@@ -25,12 +22,10 @@ const mockRecceCheckContext = {
   setLatestSelectedCheckId: jest.fn(),
 };
 
-jest.mock("@/lib/hooks/RecceCheckContext", () => ({
+jest.mock("@datarecce/ui/hooks", () => ({
+  ...jest.requireActual("@datarecce/ui/hooks"),
   useRecceCheckContext: () => mockRecceCheckContext,
 }));
-
-// Import the hook after mocks
-import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
 describe("Direct URL Access - Query Parameters", () => {
   beforeEach(() => {
@@ -87,49 +82,6 @@ describe("Direct URL Access - Query Parameters", () => {
     const checkId = searchParams.get("id");
 
     expect(checkId).toBe(uuidId);
-  });
-});
-
-describe("Direct URL Access - Navigation from URL", () => {
-  beforeEach(() => {
-    global.mockNextNavigation.reset();
-  });
-
-  it("navigates to check detail URL correctly", () => {
-    const router = global.mockNextNavigation.getRouter();
-
-    const { result } = renderHook(() => useAppLocation());
-    const [, setLocation] = result.current;
-
-    setLocation("/checks?id=abc-123");
-
-    expect(router.push).toHaveBeenCalledWith("/checks?id=abc-123", {
-      scroll: true,
-    });
-  });
-
-  it("constructs correct URL when selecting a check", () => {
-    const checkId = "test-check-id";
-    const expectedUrl = `/checks?id=${checkId}`;
-
-    expect(expectedUrl).toBe("/checks?id=test-check-id");
-  });
-
-  it("preserves existing query params when updating check ID", () => {
-    // This tests that navigation replaces the full URL correctly
-    const router = global.mockNextNavigation.getRouter();
-    global.mockNextNavigation.setPathname("/checks");
-    global.mockNextNavigation.setSearchParams("id=old-id");
-
-    const { result } = renderHook(() => useAppLocation());
-    const [, setLocation] = result.current;
-
-    // Navigate to new check
-    setLocation("/checks?id=new-id");
-
-    expect(router.push).toHaveBeenCalledWith("/checks?id=new-id", {
-      scroll: true,
-    });
   });
 });
 

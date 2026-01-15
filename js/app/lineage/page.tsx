@@ -8,7 +8,7 @@ import { ReactNode } from "react";
  * which stays mounted to preserve React Flow state across navigation.
  *
  * @see app/@lineage/page.tsx - The actual LineagePage render
- * @see app/MainLayout.tsx - Controls visibility of the parallel slot
+ * @see packages/ui/src/components/app/MainLayout.tsx - Controls visibility of the parallel slot
  */
 export default function LineageRoutingPage(): ReactNode {
   return null;

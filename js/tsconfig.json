@@ -21,18 +21,13 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@theme/*": ["./theme/*"]
+      "@theme/*": ["./theme/*"],
+      "@datarecce/ui": ["./packages/ui/src/index.ts"],
+      "@datarecce/ui/*": ["./packages/ui/src/*"]
     },
-    "downlevelIteration": true
+    "downlevelIteration": true,
+    "types": ["node", "jest", "@testing-library/jest-dom"]
   },
-  "types": [
-    "node",
-    "jest",
-    "react/next",
-    "react-dom/next",
-    "jest",
-    "@testing-library/jest-dom"
-  ],
   "include": [
     "next-env.d.ts",
     "jest.globals.d.ts",
@@ -41,7 +36,9 @@
     ".next/types/**/*.ts",
     "eslint.config.mjs",
     ".next/dev/types/**/*.ts",
-    "./jest.setup.ts"
+    "./jest.setup.ts",
+    "packages/ui/src/**/*.ts",
+    "packages/ui/src/**/*.tsx"
   ],
   "exclude": ["node_modules"]
 }

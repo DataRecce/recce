@@ -9,10 +9,15 @@
  * - Column structure
  */
 
+import {
+  type ColumnRenderMode,
+  type ColumnType,
+  type RowObjectType,
+  type ValueDiffParams,
+  type ValueDiffResult,
+} from "@datarecce/ui/api";
+import { toValueDataGrid } from "@datarecce/ui/components/ui/dataGrid/generators/toValueDataGrid";
 import type { CellClassParams } from "ag-grid-community";
-import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
-import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
-import { toValueDataGrid } from "./toValueDataGrid";
 
 // ============================================================================
 // Mocks
@@ -45,35 +50,15 @@ const createCellClassParams = (
     rowIndex: 0,
   }) as unknown as CellClassParams<RowObjectType>;
 
-jest.mock("@/components/ui/mui", () => ({
-  Box: ({ children }: { children: React.ReactNode }) => children,
-  Center: ({ children }: { children: React.ReactNode }) => children,
-  Flex: ({ children }: { children: React.ReactNode }) => children,
-  Icon: () => null,
-  IconButton: () => null,
-  Menu: {
-    Root: ({ children }: { children: React.ReactNode }) => children,
-    Trigger: ({ children }: { children: React.ReactNode }) => children,
-    Content: ({ children }: { children: React.ReactNode }) => children,
-    Item: ({ children }: { children: React.ReactNode }) => children,
-    ItemGroup: ({ children }: { children: React.ReactNode }) => children,
-    Positioner: ({ children }: { children: React.ReactNode }) => children,
-  },
-  Portal: ({ children }: { children: React.ReactNode }) => children,
-  Spacer: () => null,
-}));
-
-jest.mock("@/lib/hooks/RecceActionContext", () => ({
-  useRecceActionContext: () => ({
-    runAction: jest.fn(),
-  }),
-}));
-
-jest.mock("@/lib/hooks/RecceInstanceContext", () => ({
+jest.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: jest.fn(() => ({ basePath: "" })),
   useRecceInstanceContext: () => ({
     featureToggles: {
       disableDatabaseQuery: false,
     },
+  }),
+  useRecceActionContext: () => ({
+    runAction: jest.fn(),
   }),
 }));
 

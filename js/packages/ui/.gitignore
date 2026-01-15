@@ -1,0 +1,8 @@
+# Build output
+dist/
+
+# Dependencies (if installed locally)
+node_modules/
+
+# TypeScript cache
+*.tsbuildinfo

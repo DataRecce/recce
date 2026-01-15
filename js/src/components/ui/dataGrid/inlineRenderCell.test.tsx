@@ -9,19 +9,28 @@
  * - Diff display (base vs current)
  */
 
-import CssBaseline from "@mui/material/CssBaseline";
-import { ThemeProvider } from "@mui/material/styles";
-import { render, screen } from "@testing-library/react";
-import type { ICellRendererParams } from "ag-grid-community";
-import type { ReactNode } from "react";
-import { lightTheme as theme } from "@/components/ui/mui-theme";
 import type {
   ColumnRenderMode,
   ColumnType,
   RowObjectType,
-} from "@/lib/api/types";
-import type { ColDefWithMetadata } from "./defaultRenderCell";
-import { asNumber, inlineRenderCell } from "./inlineRenderCell";
+} from "@datarecce/ui/api";
+import { type ColDefWithMetadata } from "@datarecce/ui/components/ui/dataGrid/defaultRenderCell";
+import {
+  asNumber,
+  inlineRenderCell,
+} from "@datarecce/ui/components/ui/dataGrid/inlineRenderCell";
+import CssBaseline from "@mui/material/CssBaseline";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
+import { render, screen } from "@testing-library/react";
+import type { ICellRendererParams } from "ag-grid-community";
+import type { ReactNode } from "react";
+
+// Create a minimal theme for testing
+const theme = createTheme({
+  palette: {
+    mode: "light",
+  },
+});
 
 // ============================================================================
 // Test Wrapper

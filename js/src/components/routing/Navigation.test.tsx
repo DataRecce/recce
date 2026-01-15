@@ -4,12 +4,12 @@
  * Tests that navigation between main routes works correctly
  */
 
+import { theme } from "@datarecce/ui/theme";
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import React, { ReactNode } from "react";
-import { lightTheme as theme } from "@/components/ui/mui-theme";
 
 // Create a fresh QueryClient for each test
 const createTestQueryClient = () =>
@@ -55,54 +55,71 @@ let mockRecceServerFlagData = {
 };
 
 // Mock the hooks used by NavBar
-jest.mock("@/lib/hooks/LineageGraphContext", () => ({
+jest.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: jest.fn(() => ({ basePath: "" })),
   useLineageGraphContext: () => mockLineageGraphContext,
-}));
-
-jest.mock("@/lib/hooks/RecceInstanceContext", () => ({
   useRecceInstanceContext: () => mockRecceInstanceContext,
-}));
-
-jest.mock("@/lib/hooks/useRecceServerFlag", () => ({
   useRecceServerFlag: () => ({
     data: mockRecceServerFlagData,
     isLoading: false,
   }),
 }));
 
-jest.mock("@/lib/api/track", () => ({
+jest.mock("@datarecce/ui/lib/api/track", () => ({
+  EXPLORE_ACTION: {
+    ROW_COUNT: "row_count",
+    ROW_COUNT_DIFF: "row_count_diff",
+    VALUE_DIFF: "value_diff",
+  },
+  EXPLORE_SOURCE: {
+    LINEAGE_VIEW_TOP_BAR: "lineage_view_top_bar",
+  },
+  trackExploreAction: jest.fn(),
   trackNavigation: jest.fn(),
 }));
 
-jest.mock("@/lib/api/checks", () => ({
+jest.mock("@datarecce/ui/api", () => ({
   listChecks: jest.fn(() => Promise.resolve([])),
+  cacheKeys: {
+    rowCount: (model: string) => ["row_count", model],
+    lineage: () => ["lineage"],
+    checks: () => ["checks", "list"],
+    check: (checkId: string) => ["checks", checkId],
+    checkEvents: (checkId: string) => ["checks", checkId, "events"],
+    runs: () => ["runs"],
+    run: (runId: string) => ["runs", runId],
+    runsAggregated: () => ["runs_aggregated"],
+    flag: () => ["flag"],
+    instanceInfo: () => ["instance_info"],
+    user: () => ["user"],
+  },
 }));
 
 // Mock components that might cause issues in tests
-jest.mock("@/components/app/EnvInfo", () => ({
+jest.mock("@datarecce/ui/components/app/EnvInfo", () => ({
   EnvInfo: () => <div data-testid="env-info">EnvInfo</div>,
 }));
 
-jest.mock("@/components/app/Filename", () => ({
+jest.mock("@datarecce/ui/components/app/Filename", () => ({
   Filename: () => <div data-testid="filename">Filename</div>,
 }));
 
-jest.mock("@/components/app/StateExporter", () => ({
+jest.mock("@datarecce/ui/components/app/StateExporter", () => ({
   StateExporter: () => <div data-testid="state-exporter">StateExporter</div>,
 }));
 
-jest.mock("@/components/app/StateSharing", () => ({
+jest.mock("@datarecce/ui/components/app/StateSharing", () => ({
   TopLevelShare: () => <div data-testid="top-level-share">TopLevelShare</div>,
 }));
 
-jest.mock("@/components/app/StateSynchronizer", () => ({
+jest.mock("@datarecce/ui/components/app/StateSynchronizer", () => ({
   StateSynchronizer: () => (
     <div data-testid="state-synchronizer">StateSynchronizer</div>
   ),
 }));
 
 // Import after mocks are set up
-import NavBar from "app/(mainComponents)/NavBar";
+import { NavBarOss as NavBar } from "@datarecce/ui/components/app/NavBarOss";
 
 /**
  * Test wrapper that provides all necessary context providers

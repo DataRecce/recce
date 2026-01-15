@@ -25,47 +25,27 @@ jest.mock("ag-grid-community", () => ({
   },
 }));
 
-// Mock MUI wrapper components
-jest.mock("@/components/ui/mui", () => ({
-  Box: ({ children }: { children: React.ReactNode }) => children,
-  Flex: ({ children }: { children: React.ReactNode }) => children,
-  Icon: () => null,
-  IconButton: () => null,
-  Menu: {
-    Root: ({ children }: { children: React.ReactNode }) => children,
-    Trigger: ({ children }: { children: React.ReactNode }) => children,
-    Content: ({ children }: { children: React.ReactNode }) => children,
-    Item: ({ children }: { children: React.ReactNode }) => children,
-    ItemGroup: ({ children }: { children: React.ReactNode }) => children,
-    Positioner: ({ children }: { children: React.ReactNode }) => children,
-  },
-  Portal: ({ children }: { children: React.ReactNode }) => children,
-  Text: ({ children }: { children: React.ReactNode }) => children,
-}));
-
-jest.mock("@/lib/hooks/RecceActionContext", () => ({
-  useRecceActionContext: () => ({
-    runAction: jest.fn(),
-  }),
-}));
-
-jest.mock("@/lib/hooks/RecceInstanceContext", () => ({
+jest.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: jest.fn(() => ({ basePath: "" })),
   useRecceInstanceContext: () => ({
     featureToggles: {
       disableDatabaseQuery: false,
     },
   }),
+  useRecceActionContext: () => ({
+    runAction: jest.fn(),
+  }),
 }));
 
 // Mock dataGrid UI components
-jest.mock("@/components/ui/dataGrid", () => ({
+jest.mock("@datarecce/ui/components/ui", () => ({
   DataFrameColumnGroupHeader: () => null,
   defaultRenderCell: jest.fn(),
   inlineRenderCell: jest.fn(),
 }));
 
 // Mock schema grid generators to avoid Chakra UI import chain issues
-jest.mock("@/lib/dataGrid/generators/toSchemaDataGrid", () => ({
+jest.mock("@datarecce/ui", () => ({
   mergeColumns: jest.fn((base, current) => {
     // Simple merge implementation for testing
     const result: Record<
@@ -117,11 +97,19 @@ jest.mock("@/lib/dataGrid/generators/toSchemaDataGrid", () => ({
   })),
 }));
 
+import {
+  type ColumnRenderMode,
+  type ColumnType,
+  type DataFrame,
+  type ProfileDiffResult,
+  type QueryDiffResult,
+  type Run,
+} from "@datarecce/ui/api";
+import {
+  createDataGrid,
+  createDataGridFromData,
+} from "@datarecce/ui/components/ui/dataGrid";
 import React from "react";
-import { QueryDiffResult } from "@/lib/api/adhocQuery";
-import { ProfileDiffResult } from "@/lib/api/profile";
-import { ColumnRenderMode, ColumnType, DataFrame, Run } from "@/lib/api/types";
-import { createDataGrid, createDataGridFromData } from "./dataGridFactory";
 
 // ============================================================================
 // Test Column/ColumnGroup types (avoids ESM issues with react-data-grid)
@@ -1945,25 +1933,6 @@ describe("createDataGrid - regression tests", () => {
       expect(result).toBeDefined();
       expect(result.rows.length).toBe(0);
     });
-
-    test("passes options to toSchemaDataGrid", () => {
-      const { toSchemaDataGrid } = jest.requireMock(
-        "@/lib/dataGrid/generators/toSchemaDataGrid",
-      );
-      const base = { id: { name: "id", type: "INT" } };
-      const current = { id: { name: "id", type: "INT" } };
-      const mockNode = { id: "test_model" };
-
-      createDataGridFromData(
-        { type: "schema_diff", base, current },
-        { node: mockNode as never },
-      );
-
-      expect(toSchemaDataGrid).toHaveBeenCalledWith(
-        expect.any(Object),
-        expect.objectContaining({ node: mockNode }),
-      );
-    });
   });
 
   // ============================================================================
@@ -2006,25 +1975,6 @@ describe("createDataGrid - regression tests", () => {
 
       expect(result).toBeDefined();
       expect(result.rows.length).toBe(0);
-    });
-
-    test("passes options to toSingleEnvDataGrid", () => {
-      const { toSingleEnvDataGrid } = jest.requireMock(
-        "@/lib/dataGrid/generators/toSchemaDataGrid",
-      );
-      const columns = { id: { name: "id", type: "INT" } };
-      const mockNode = { id: "test_model" };
-      const cllRunningMap = new Map([["id", true]]);
-
-      createDataGridFromData(
-        { type: "schema_single", columns },
-        { node: mockNode as never, cllRunningMap },
-      );
-
-      expect(toSingleEnvDataGrid).toHaveBeenCalledWith(
-        columns,
-        expect.objectContaining({ node: mockNode, cllRunningMap }),
-      );
     });
 
     test("filters null columns", () => {

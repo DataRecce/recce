@@ -8,28 +8,27 @@
  * - ValueDiffColumnNameCell rendering and context menu
  */
 
-import CssBaseline from "@mui/material/CssBaseline";
-import { ThemeProvider } from "@mui/material/styles";
-import { render, screen } from "@testing-library/react";
-import React, { ReactNode } from "react";
-import { lightTheme as theme } from "@/components/ui/mui-theme";
 import {
   MatchedPercentCell,
   PrimaryKeyIndicatorCell,
   ValueDiffColumnNameCell,
-} from "./valueDiffCells";
+} from "@datarecce/ui/components/ui/dataGrid/valueDiffCells";
+import { theme } from "@datarecce/ui/theme";
+import CssBaseline from "@mui/material/CssBaseline";
+import { ThemeProvider } from "@mui/material/styles";
+import { render, screen } from "@testing-library/react";
+import React, { ReactNode } from "react";
 
 // ============================================================================
 // Mocks
 // ============================================================================
 
-jest.mock("@/lib/hooks/RecceActionContext", () => ({
+// Mock @datarecce/ui/contexts for both hooks used by the components
+jest.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: jest.fn(() => ({ basePath: "" })),
   useRecceActionContext: () => ({
     runAction: jest.fn(),
   }),
-}));
-
-jest.mock("@/lib/hooks/RecceInstanceContext", () => ({
   useRecceInstanceContext: () => ({
     featureToggles: {
       disableDatabaseQuery: false,

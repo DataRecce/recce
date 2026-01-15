@@ -14,41 +14,27 @@
  * anomalies gracefully without crashing or producing misleading output.
  */
 
-import { ColumnType, DataFrame, RowObjectType } from "@/lib/api/types";
-import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
-import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
-import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 import {
-  ColumnMapEntry,
+  type ColumnType,
+  type DataFrame,
+  type RowObjectType,
+} from "@datarecce/ui/api";
+import {
+  type ColumnMapEntry,
   columnRenderedValue,
   determineRowStatus,
   getPrimaryKeyValue,
+  toDataDiffGridConfigured as toDataDiffGrid,
+  toDataGridConfigured as toDataGrid,
   toRenderedValue,
-} from "@/lib/dataGrid/shared/gridUtils";
+  toValueDiffGridConfigured as toValueDiffGrid,
+} from "@datarecce/ui/utils";
 
 // Mock ag-grid-community
 jest.mock("ag-grid-community", () => ({
   ModuleRegistry: {
     registerModules: jest.fn(),
   },
-}));
-
-// Mock MUI wrapper components
-jest.mock("@/components/ui/mui", () => ({
-  Box: ({ children }: { children: React.ReactNode }) => children,
-  Flex: ({ children }: { children: React.ReactNode }) => children,
-  Icon: () => null,
-  IconButton: () => null,
-  Menu: {
-    Root: ({ children }: { children: React.ReactNode }) => children,
-    Trigger: ({ children }: { children: React.ReactNode }) => children,
-    Content: ({ children }: { children: React.ReactNode }) => children,
-    Item: ({ children }: { children: React.ReactNode }) => children,
-    ItemGroup: ({ children }: { children: React.ReactNode }) => children,
-    Positioner: ({ children }: { children: React.ReactNode }) => children,
-  },
-  Portal: ({ children }: { children: React.ReactNode }) => children,
-  Text: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 // ============================================================================
