@@ -289,52 +289,62 @@ def init(org, project, status, clear):
             console.print("Please create an organization at https://cloud.datarecce.io first")
             sys.exit(1)
 
-        # Build org choices
+        # Build org choices: (id for API, name for config, display_name for UI)
         org_choices = []
         for o in orgs:
-            name = o.get("name", o.get("slug", "Unknown"))
-            slug = o.get("slug", o.get("id"))
-            org_choices.append((slug, name))
+            org_id = o.get("id")
+            org_name = o.get("name") or o.get("slug") or str(org_id)
+            display_name = o.get("display_name") or org_name
+            org_choices.append((org_id, org_name, display_name))
 
         # Select organization
         console.print()
         console.print("[cyan]Select organization:[/cyan]")
-        for i, (slug, name) in enumerate(org_choices, 1):
-            console.print(f"  {i}. {name} ({slug})")
+        for i, (_, _, display_name) in enumerate(org_choices, 1):
+            console.print(f"  {i}. {display_name}")
 
         org_idx = click.prompt("Enter number", type=click.IntRange(1, len(org_choices)))
-        selected_org_slug, selected_org_name = org_choices[org_idx - 1]
+        selected_org_id, selected_org_name, selected_org_display = org_choices[org_idx - 1]
 
-        # List projects
+        # List projects (use org_id for API call)
         console.print()
-        console.print(f"Fetching projects for {selected_org_name}...")
-        projects = api.list_projects(selected_org_slug)
+        console.print(f"Fetching projects for {selected_org_display}...")
+        projects = api.list_projects(selected_org_id)
 
         if not projects:
-            console.print(f"[yellow]No projects found in {selected_org_name}[/yellow]")
+            console.print(f"[yellow]No projects found in {selected_org_display}[/yellow]")
             console.print("Please create a project at https://cloud.datarecce.io first")
             sys.exit(1)
 
-        # Build project choices
+        # Build project choices: (name for config, display_name for UI)
+        # Filter out archived projects
         project_choices = []
         for p in projects:
-            name = p.get("name", p.get("slug", "Unknown"))
-            slug = p.get("slug", p.get("id"))
-            project_choices.append((slug, name))
+            # Skip archived projects (check status field and archived flags)
+            if p.get("status") == "archived" or p.get("archived") or p.get("is_archived"):
+                continue
+            project_name = p.get("name") or p.get("slug") or str(p.get("id"))
+            display_name = p.get("display_name") or project_name
+            project_choices.append((project_name, display_name))
+
+        if not project_choices:
+            console.print(f"[yellow]No active projects found in {selected_org_display}[/yellow]")
+            console.print("Please create a project at https://cloud.datarecce.io first")
+            sys.exit(1)
 
         # Select project
         console.print()
         console.print("[cyan]Select project:[/cyan]")
-        for i, (slug, name) in enumerate(project_choices, 1):
-            console.print(f"  {i}. {name} ({slug})")
+        for i, (_, display_name) in enumerate(project_choices, 1):
+            console.print(f"  {i}. {display_name}")
 
         project_idx = click.prompt("Enter number", type=click.IntRange(1, len(project_choices)))
-        selected_project_slug, selected_project_name = project_choices[project_idx - 1]
+        selected_project_name, selected_project_display = project_choices[project_idx - 1]
 
-        # Save binding
-        save_project_binding(selected_org_slug, selected_project_slug, user_email)
+        # Save binding (use names for config, not IDs)
+        save_project_binding(selected_org_name, selected_project_name, user_email)
         console.print()
-        console.print(f"[green]✓[/green] Bound to [cyan]{selected_org_slug}/{selected_project_slug}[/cyan]")
+        console.print(f"[green]✓[/green] Bound to [cyan]{selected_org_name}/{selected_project_name}[/cyan]")
         console.print(f"  Config saved to {get_config_path()}")
 
         # Offer to add to .gitignore
