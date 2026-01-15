@@ -58,8 +58,8 @@ def version():
 @cloud_cli.command()
 @click.option(
     "--token",
-    is_flag=True,
-    help="Manually enter API token instead of browser authentication",
+    default=None,
+    help="API token for authentication (for headless/CI environments)",
 )
 @click.option(
     "--status",
@@ -81,8 +81,8 @@ def login(token, status):
       # Check if already logged in
       recce-cloud login --status
 
-      # Manual token entry (for headless/SSH environments)
-      recce-cloud login --token
+      # Direct token authentication (for headless/CI environments)
+      recce-cloud login --token <your-api-token>
     """
     from recce_cloud.auth.login import (
         check_login_status,
@@ -114,10 +114,9 @@ def login(token, status):
         if not click.confirm("Do you want to re-authenticate?", default=False):
             sys.exit(0)
 
-    # Manual token entry mode
+    # Direct token authentication mode
     if token:
-        api_token = click.prompt("Enter your Recce Cloud API token", hide_input=True)
-        if login_with_token(api_token):
+        if login_with_token(token):
             sys.exit(0)
         else:
             sys.exit(1)
@@ -127,7 +126,7 @@ def login(token, status):
         sys.exit(0)
     else:
         console.print()
-        console.print("[yellow]Tip:[/yellow] For headless environments, use 'recce-cloud login --token'")
+        console.print("[yellow]Tip:[/yellow] For headless environments, use 'recce-cloud login --token <token>'")
         sys.exit(1)
 
 
