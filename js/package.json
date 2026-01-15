@@ -24,7 +24,6 @@
     "prepare": "cd .. && husky js/.husky"
   },
   "dependencies": {
-    "@datarecce/ui": "workspace:*",
     "@amplitude/unified": "1.0.0-beta.9",
     "@babel/helpers": "^7.28.4",
     "@babel/runtime": "^7.28.4",
@@ -34,6 +33,7 @@
     "@codemirror/state": "^6.5.2",
     "@codemirror/view": "^6.39.4",
     "@dagrejs/dagre": "^1.1.8",
+    "@datarecce/ui": "workspace:*",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@fontsource/montserrat": "^5.2.8",
@@ -59,7 +59,7 @@
     "date-fns": "^4.1.0",
     "file-saver": "^2.0.5",
     "html-to-image": "^1.11.13",
-    "html2canvas-pro": "^1.6.1",
+    "html2canvas-pro": "^1.6.4",
     "import-in-the-middle": "^2.0.1",
     "js-cookie": "^3.0.5",
     "lodash": "^4.17.21",

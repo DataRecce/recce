@@ -120,8 +120,8 @@ importers:
         specifier: ^1.11.13
         version: 1.11.13
       html2canvas-pro:
-        specifier: ^1.6.1
-        version: 1.6.1
+        specifier: ^1.6.4
+        version: 1.6.4
       import-in-the-middle:
         specifier: ^2.0.1
         version: 2.0.1
@@ -709,8 +709,14 @@ packages:
   '@codemirror/state@6.5.2':
     resolution: {integrity: sha512-FVqsPqtPWKVVL3dPSxy8wEF/ymIEuVzF1PK3VbUgrxXpJUSHQWWZz4JMToquRxnkw+36LTamCZG2iua2Ptq0fA==}
 
+  '@codemirror/state@6.5.4':
+    resolution: {integrity: sha512-8y7xqG/hpB53l25CIoit9/ngxdfoG+fx+V3SHBrinnhOtLvKHRyAJJuHzkWrR4YXXLX8eXBsejgAAxHUOdW1yw==}
+
   '@codemirror/theme-one-dark@6.1.3':
     resolution: {integrity: sha512-NzBdIvEJmx6fjeremiGp3t/okrLPYT0d9orIc7AFun8oZcRk58aejkqhv6spnz4MLAevrKNPMQYXEWMg4s+sKA==}
+
+  '@codemirror/view@6.39.11':
+    resolution: {integrity: sha512-bWdeR8gWM87l4DB/kYSF9A+dVackzDb/V56Tq7QVrQ7rn86W0rgZFtlL3g3pem6AeGcb9NQNoy3ao4WpW4h5tQ==}
 
   '@codemirror/view@6.39.4':
     resolution: {integrity: sha512-xMF6OfEAUVY5Waega4juo1QGACfNkNF+aJLqpd8oUJz96ms2zbfQ9Gh35/tI3y8akEV31FruKfj7hBnIU/nkqA==}
@@ -2169,6 +2175,9 @@ packages:
   '@types/node@25.0.3':
     resolution: {integrity: sha512-W609buLVRVmeW693xKfzHeIV6nJGGz98uCPfeXI1ELMLXVeKYZ9m15fAMSaUPBHYLGFsVRcMmSCksQOrZV9BYA==}
 
+  '@types/node@25.0.8':
+    resolution: {integrity: sha512-powIePYMmC3ibL0UJ2i2s0WIbq6cg6UyVFQxSCpaPxxzAaziRfimGivjdF943sSGV6RADVbk0Nvlm5P/FB44Zg==}
+
   '@types/parse-json@4.0.2':
     resolution: {integrity: sha512-dISoDXWWQwUquiKsyZ4Ng+HX2KsPL7LyHKHQwgGFEA3IaKac4Obd+h2a/a6waisAoepJlBcx9paWqjA8/HVjCw==}
 
@@ -2571,6 +2580,10 @@ packages:
     resolution: {integrity: sha512-Sg0xJUNDU1sJNGdfGWhVHX0kkZ+HWcvmVymJbj6NSgZZmW/8S9Y2HQ5euytnIgakgxN6papOAWiwDo1ctFDcoQ==}
     hasBin: true
 
+  baseline-browser-mapping@2.9.14:
+    resolution: {integrity: sha512-B0xUquLkiGLgHhpPBqvl7GWegWBUNuujQ6kXd/r1U38ElPT6Ok8KZ8e+FpUGEc2ZoRQUzq/aUnaKFc/svWUGSg==}
+    hasBin: true
+
   binary-extensions@2.3.0:
     resolution: {integrity: sha512-Ceh+7ox5qe7LJuLHoY0feh3pHuUDHAcRUeyL2VYghZwfpkNIy/+8Ocg0a3UuSoYzavmylwuLWQOf3hl0jjMMIw==}
     engines: {node: '>=8'}
@@ -2624,6 +2637,9 @@ packages:
 
   caniuse-lite@1.0.30001760:
     resolution: {integrity: sha512-7AAMPcueWELt1p3mi13HR/LHH0TJLT11cnwDJEs3xA4+CK/PLKeO9Kl1oru24htkyUKtkGCvAx4ohB0Ttry8Dw==}
+
+  caniuse-lite@1.0.30001764:
+    resolution: {integrity: sha512-9JGuzl2M+vPL+pz70gtMF9sHdMFbY9FJaQBi186cHKH3pSzDvzoUJUPV6fqiKIMyXbud9ZLg4F3Yza1vJ1+93g==}
 
   ccount@2.0.1:
     resolution: {integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==}
@@ -3186,6 +3202,10 @@ packages:
 
   html2canvas-pro@1.6.1:
     resolution: {integrity: sha512-TAwiVhNNmMGIqCax3cPirMaAqp7GbPTAAFAU95DO13diXZTWEI2Ih0hDez5yUplvmqirklZQkKVVXLTpEt2o9Q==}
+    engines: {node: '>=16.0.0'}
+
+  html2canvas-pro@1.6.4:
+    resolution: {integrity: sha512-VuaqBaAujT0sheyny4omQwoJKznEutgOWuYfeGiXl9iRbbLKlRejdQCdaxHyGlfQWSP74lRtYSIgMMBsggfgtg==}
     engines: {node: '>=16.0.0'}
 
   http-proxy-agent@7.0.2:
@@ -4714,8 +4734,8 @@ packages:
   walker@1.0.8:
     resolution: {integrity: sha512-ts/8E8l5b7kY0vlWLewOkDXMmPdLcVV4GmOQLyxuSswIJsweeFZtAsMF7k1Nszz+TYBQrlYRmzOnr398y1JemQ==}
 
-  watchpack@2.4.4:
-    resolution: {integrity: sha512-c5EGNOiyxxV5qmTtAB7rbiXxi1ooX1pQKMLX/MIabJjRA0SJBQOjKF+KSVfHkr9U1cADPon0mRiVe/riyaiDUA==}
+  watchpack@2.5.1:
+    resolution: {integrity: sha512-Zn5uXdcFNIA1+1Ei5McRd+iRzfhENPCe7LeABkJtNulSxjma+l7ltNx55BWZkRlwRnpOgHqxnjyaDgJnNXnqzg==}
     engines: {node: '>=10.13.0'}
 
   web-vitals@5.1.0:
@@ -4748,6 +4768,7 @@ packages:
   whatwg-encoding@3.1.1:
     resolution: {integrity: sha512-6qN4hJdMwfYBtE3YBTTHhoeuUrDBPZmbQaxWAqSALV/MeEnR5z1xd8UKud2RAkFoPkmB+hli1TZSnyi84xz1vQ==}
     engines: {node: '>=18'}
+    deprecated: Use @exodus/bytes instead for a more spec-conformant and faster implementation
 
   whatwg-mimetype@4.0.0:
     resolution: {integrity: sha512-QaKxh0eNIi2mE9p2vEdzfagOKHCcj1pJ56EEHGQOVxp8r9/iszLUUV7v89x9O1p/T+NlTM5W7jW6+cz4Fq1YVg==}
@@ -5346,12 +5367,23 @@ snapshots:
     dependencies:
       '@marijn/find-cluster-break': 1.0.2
 
+  '@codemirror/state@6.5.4':
+    dependencies:
+      '@marijn/find-cluster-break': 1.0.2
+
   '@codemirror/theme-one-dark@6.1.3':
     dependencies:
       '@codemirror/language': 6.11.3
-      '@codemirror/state': 6.5.2
-      '@codemirror/view': 6.39.4
+      '@codemirror/state': 6.5.4
+      '@codemirror/view': 6.39.11
       '@lezer/highlight': 1.2.3
+
+  '@codemirror/view@6.39.11':
+    dependencies:
+      '@codemirror/state': 6.5.4
+      crelt: 1.0.6
+      style-mod: 4.1.3
+      w3c-keyname: 2.2.8
 
   '@codemirror/view@6.39.4':
     dependencies:
@@ -6939,6 +6971,10 @@ snapshots:
     dependencies:
       undici-types: 7.16.0
 
+  '@types/node@25.0.8':
+    dependencies:
+      undici-types: 7.16.0
+
   '@types/parse-json@4.0.2': {}
 
   '@types/pg-pool@2.0.6':
@@ -7361,6 +7397,8 @@ snapshots:
 
   baseline-browser-mapping@2.9.11: {}
 
+  baseline-browser-mapping@2.9.14: {}
+
   binary-extensions@2.3.0: {}
 
   birpc@4.0.0: {}
@@ -7383,8 +7421,8 @@ snapshots:
 
   browserslist@4.28.1:
     dependencies:
-      baseline-browser-mapping: 2.9.11
-      caniuse-lite: 1.0.30001760
+      baseline-browser-mapping: 2.9.14
+      caniuse-lite: 1.0.30001764
       electron-to-chromium: 1.5.267
       node-releases: 2.0.27
       update-browserslist-db: 1.2.3(browserslist@4.28.1)
@@ -7409,6 +7447,8 @@ snapshots:
   camelcase@6.3.0: {}
 
   caniuse-lite@1.0.30001760: {}
+
+  caniuse-lite@1.0.30001764: {}
 
   ccount@2.0.1: {}
 
@@ -7929,6 +7969,11 @@ snapshots:
       css-line-break: 2.1.0
       text-segmentation: 1.0.3
 
+  html2canvas-pro@1.6.4:
+    dependencies:
+      css-line-break: 2.1.0
+      text-segmentation: 1.0.3
+
   http-proxy-agent@7.0.2:
     dependencies:
       agent-base: 7.1.4
@@ -8380,7 +8425,7 @@ snapshots:
 
   jest-worker@27.5.1:
     dependencies:
-      '@types/node': 25.0.3
+      '@types/node': 25.0.8
       merge-stream: 2.0.0
       supports-color: 8.1.1
 
@@ -9885,7 +9930,7 @@ snapshots:
     dependencies:
       makeerror: 1.0.12
 
-  watchpack@2.4.4:
+  watchpack@2.5.1:
     dependencies:
       glob-to-regexp: 0.4.1
       graceful-fs: 4.2.11
@@ -9925,7 +9970,7 @@ snapshots:
       schema-utils: 4.3.3
       tapable: 2.3.0
       terser-webpack-plugin: 5.3.16(webpack@5.103.0)
-      watchpack: 2.4.4
+      watchpack: 2.5.1
       webpack-sources: 3.3.3
     transitivePeerDependencies:
       - '@swc/core'
