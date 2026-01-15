@@ -57,6 +57,304 @@ def version():
 
 @cloud_cli.command()
 @click.option(
+    "--token",
+    is_flag=True,
+    help="Manually enter API token instead of browser authentication",
+)
+@click.option(
+    "--status",
+    is_flag=True,
+    help="Check current login status without modifying credentials",
+)
+def login(token, status):
+    """
+    Authenticate with Recce Cloud.
+
+    By default, opens a browser for OAuth authentication. The browser flow
+    securely exchanges credentials using RSA encryption.
+
+    \b
+    Examples:
+      # Browser-based OAuth login (recommended)
+      recce-cloud login
+
+      # Check if already logged in
+      recce-cloud login --status
+
+      # Manual token entry (for headless/SSH environments)
+      recce-cloud login --token
+    """
+    from recce_cloud.auth.login import (
+        check_login_status,
+        get_api_token,
+        login_with_browser,
+        login_with_token,
+    )
+
+    console = Console()
+
+    # Status check mode
+    if status:
+        is_logged_in, email = check_login_status()
+        if is_logged_in:
+            console.print(f"[green]✓[/green] Logged in as [cyan]{email or 'Unknown'}[/cyan]")
+            token_value = get_api_token()
+            if token_value:
+                masked = f"{token_value[:8]}...{token_value[-4:]}" if len(token_value) > 12 else "***"
+                console.print(f"  Token: {masked} (valid)")
+        else:
+            console.print("[yellow]Not logged in[/yellow]")
+            console.print("Run 'recce-cloud login' to authenticate")
+        sys.exit(0 if is_logged_in else 1)
+
+    # Check if already logged in
+    is_logged_in, email = check_login_status()
+    if is_logged_in:
+        console.print(f"[green]✓[/green] Already logged in as [cyan]{email or 'Unknown'}[/cyan]")
+        if not click.confirm("Do you want to re-authenticate?", default=False):
+            sys.exit(0)
+
+    # Manual token entry mode
+    if token:
+        api_token = click.prompt("Enter your Recce Cloud API token", hide_input=True)
+        if login_with_token(api_token):
+            sys.exit(0)
+        else:
+            sys.exit(1)
+
+    # Browser OAuth flow
+    if login_with_browser():
+        sys.exit(0)
+    else:
+        console.print()
+        console.print("[yellow]Tip:[/yellow] For headless environments, use 'recce-cloud login --token'")
+        sys.exit(1)
+
+
+@cloud_cli.command()
+def logout():
+    """
+    Remove stored Recce Cloud credentials.
+
+    Clears the API token from ~/.recce/profile.yml.
+    """
+    from recce_cloud.auth.login import logout as do_logout
+    from recce_cloud.auth.profile import get_profile_path
+
+    console = Console()
+
+    do_logout()
+    console.print("[green]✓[/green] Logged out successfully")
+    console.print(f"  Credentials removed from {get_profile_path()}")
+
+
+@cloud_cli.command()
+@click.option(
+    "--org",
+    help="Organization name or slug to bind to",
+)
+@click.option(
+    "--project",
+    help="Project name or slug to bind to",
+)
+@click.option(
+    "--status",
+    is_flag=True,
+    help="Show current project binding without modifying",
+)
+@click.option(
+    "--clear",
+    is_flag=True,
+    help="Remove current project binding",
+)
+def init(org, project, status, clear):
+    """
+    Bind current directory to a Recce Cloud project.
+
+    Creates a .recce/config file that stores the org/project binding.
+    Subsequent commands will auto-detect this binding.
+
+    \b
+    Examples:
+      # Interactive mode: Select org and project
+      recce-cloud init
+
+      # Explicit mode: Direct binding (for scripts/CI)
+      recce-cloud init --org myorg --project my-dbt-project
+
+      # Check current binding
+      recce-cloud init --status
+
+      # Remove binding
+      recce-cloud init --clear
+    """
+    from recce_cloud.api.cloud_api import CloudAPI, CloudAPIError
+    from recce_cloud.auth.login import get_user_info
+    from recce_cloud.auth.profile import get_api_token
+    from recce_cloud.config.project_config import (
+        add_to_gitignore,
+        clear_project_binding,
+        get_config_path,
+        get_project_binding,
+        save_project_binding,
+    )
+
+    console = Console()
+
+    # Check authentication first
+    token = get_api_token()
+    if not token:
+        console.print("[red]Error:[/red] Not logged in")
+        console.print("Run 'recce-cloud login' first")
+        sys.exit(1)
+
+    # Status check mode
+    if status:
+        binding = get_project_binding()
+        if binding:
+            console.print(f"[green]✓[/green] Bound to [cyan]{binding['org']}/{binding['project']}[/cyan]")
+            if binding.get("bound_at"):
+                console.print(f"  Bound at: {binding['bound_at']}")
+            if binding.get("bound_by"):
+                console.print(f"  Bound by: {binding['bound_by']}")
+            console.print(f"  Config file: {get_config_path()}")
+        else:
+            console.print("[yellow]Not bound to any project[/yellow]")
+            console.print("Run 'recce-cloud init' to bind this directory")
+        sys.exit(0 if binding else 1)
+
+    # Clear mode
+    if clear:
+        if clear_project_binding():
+            console.print("[green]✓[/green] Project binding removed")
+        else:
+            console.print("[yellow]No project binding to remove[/yellow]")
+        sys.exit(0)
+
+    # Validate flag combinations
+    if (org and not project) or (project and not org):
+        console.print("[red]Error:[/red] Both --org and --project must be provided together")
+        sys.exit(1)
+
+    # Get user email for binding metadata
+    user_info = get_user_info(token)
+    user_email = user_info.get("email") if user_info else None
+
+    # Explicit mode: Direct binding
+    if org and project:
+        # Validate org/project exist
+        try:
+            api = CloudAPI(token)
+            org_obj = api.get_organization(org)
+            if not org_obj:
+                console.print(f"[red]Error:[/red] Organization '{org}' not found")
+                sys.exit(1)
+
+            # Use org ID for project lookup (API requires ID)
+            project_obj = api.get_project(org_obj.get("id"), project)
+            if not project_obj:
+                console.print(f"[red]Error:[/red] Project '{project}' not found in organization '{org}'")
+                sys.exit(1)
+
+            # Use slug for storage (more stable than name)
+            org_slug = org_obj.get("slug", org)
+            project_slug = project_obj.get("slug", project)
+
+            save_project_binding(org_slug, project_slug, user_email)
+            console.print(f"[green]✓[/green] Bound to [cyan]{org_slug}/{project_slug}[/cyan]")
+            console.print(f"  Config saved to {get_config_path()}")
+
+            # Offer to add to .gitignore
+            if click.confirm("Add .recce/ to .gitignore?", default=True):
+                if add_to_gitignore():
+                    console.print("[green]✓[/green] Added .recce/ to .gitignore")
+                else:
+                    console.print("  .recce/ already in .gitignore")
+
+            sys.exit(0)
+
+        except CloudAPIError as e:
+            console.print(f"[red]Error:[/red] {e}")
+            sys.exit(1)
+
+    # Interactive mode: Select org → project
+    try:
+        api = CloudAPI(token)
+
+        # List organizations
+        console.print("Fetching organizations...")
+        orgs = api.list_organizations()
+
+        if not orgs:
+            console.print("[yellow]No organizations found[/yellow]")
+            console.print("Please create an organization at https://cloud.datarecce.io first")
+            sys.exit(1)
+
+        # Build org choices
+        org_choices = []
+        for o in orgs:
+            name = o.get("name", o.get("slug", "Unknown"))
+            slug = o.get("slug", o.get("id"))
+            org_choices.append((slug, name))
+
+        # Select organization
+        console.print()
+        console.print("[cyan]Select organization:[/cyan]")
+        for i, (slug, name) in enumerate(org_choices, 1):
+            console.print(f"  {i}. {name} ({slug})")
+
+        org_idx = click.prompt("Enter number", type=click.IntRange(1, len(org_choices)))
+        selected_org_slug, selected_org_name = org_choices[org_idx - 1]
+
+        # List projects
+        console.print()
+        console.print(f"Fetching projects for {selected_org_name}...")
+        projects = api.list_projects(selected_org_slug)
+
+        if not projects:
+            console.print(f"[yellow]No projects found in {selected_org_name}[/yellow]")
+            console.print("Please create a project at https://cloud.datarecce.io first")
+            sys.exit(1)
+
+        # Build project choices
+        project_choices = []
+        for p in projects:
+            name = p.get("name", p.get("slug", "Unknown"))
+            slug = p.get("slug", p.get("id"))
+            project_choices.append((slug, name))
+
+        # Select project
+        console.print()
+        console.print("[cyan]Select project:[/cyan]")
+        for i, (slug, name) in enumerate(project_choices, 1):
+            console.print(f"  {i}. {name} ({slug})")
+
+        project_idx = click.prompt("Enter number", type=click.IntRange(1, len(project_choices)))
+        selected_project_slug, selected_project_name = project_choices[project_idx - 1]
+
+        # Save binding
+        save_project_binding(selected_org_slug, selected_project_slug, user_email)
+        console.print()
+        console.print(f"[green]✓[/green] Bound to [cyan]{selected_org_slug}/{selected_project_slug}[/cyan]")
+        console.print(f"  Config saved to {get_config_path()}")
+
+        # Offer to add to .gitignore
+        if click.confirm("Add .recce/ to .gitignore?", default=True):
+            if add_to_gitignore():
+                console.print("[green]✓[/green] Added .recce/ to .gitignore")
+            else:
+                console.print("  .recce/ already in .gitignore")
+
+    except CloudAPIError as e:
+        console.print(f"[red]Error:[/red] Failed to fetch data from Recce Cloud: {e}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]Error:[/red] {e}")
+        sys.exit(1)
+
+
+@cloud_cli.command()
+@click.option(
     "--target-path",
     type=click.Path(exists=True),
     default="target",
