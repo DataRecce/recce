@@ -352,6 +352,140 @@ class RecceCloudClient:
                 return project
         return None
 
+    def list_sessions(
+        self,
+        org_id: str,
+        project_id: str,
+        session_name: Optional[str] = None,
+        session_type: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        List sessions in a project with optional filtering.
+
+        Args:
+            org_id: Organization ID or slug.
+            project_id: Project ID or slug.
+            session_name: Filter by session name (exact match).
+            session_type: Filter by session type (e.g., "pr", "prod", "manual").
+
+        Returns:
+            List of session dictionaries.
+
+        Raises:
+            RecceCloudException: If the API call fails.
+        """
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions"
+        params = {}
+        if session_name:
+            params["name"] = session_name
+        if session_type:
+            params["type"] = session_type
+
+        response = self._request("GET", api_url, params=params if params else None)
+
+        if response.status_code == 404:
+            raise RecceCloudException(
+                reason="Organization or project not found",
+                status_code=response.status_code,
+            )
+        if response.status_code != 200:
+            raise RecceCloudException(
+                reason=response.text,
+                status_code=response.status_code,
+            )
+
+        data = response.json()
+        return data.get("sessions", [])
+
+    def get_session_by_name(
+        self,
+        org_id: str,
+        project_id: str,
+        session_name: str,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get a session by its name.
+
+        Args:
+            org_id: Organization ID or slug.
+            project_id: Project ID or slug.
+            session_name: The session name to look up.
+
+        Returns:
+            Session dictionary if found, None otherwise.
+
+        Raises:
+            RecceCloudException: If the API call fails.
+        """
+        # Note: The API may not support server-side name filtering yet,
+        # so we filter client-side to ensure exact match
+        sessions = self.list_sessions(org_id, project_id)
+        for session in sessions:
+            if session.get("name") == session_name:
+                return session
+        return None
+
+    def create_session(
+        self,
+        org_id: str,
+        project_id: str,
+        session_name: str,
+        adapter_type: Optional[str] = None,
+        session_type: str = "manual",
+    ) -> Dict[str, Any]:
+        """
+        Create a new session with the given name.
+
+        Args:
+            org_id: Organization ID or slug.
+            project_id: Project ID or slug.
+            session_name: The name for the new session.
+            adapter_type: dbt adapter type (e.g., "postgres", "snowflake").
+            session_type: Session type (default: "manual").
+
+        Returns:
+            Created session dictionary with id, name, and other fields.
+
+        Raises:
+            RecceCloudException: If the API call fails or session creation fails.
+        """
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions"
+        data = {
+            "name": session_name,
+            "type": session_type,
+        }
+        if adapter_type:
+            data["adapter_type"] = adapter_type
+
+        response = self._request("POST", api_url, json=data)
+
+        if response.status_code == 404:
+            raise RecceCloudException(
+                reason="Organization or project not found",
+                status_code=response.status_code,
+            )
+        if response.status_code == 409:
+            raise RecceCloudException(
+                reason=f"Session with name '{session_name}' already exists",
+                status_code=response.status_code,
+            )
+        if response.status_code == 403:
+            raise RecceCloudException(
+                reason=response.json().get("detail", "Permission denied"),
+                status_code=response.status_code,
+            )
+        if response.status_code not in [200, 201]:
+            raise RecceCloudException(
+                reason=response.text,
+                status_code=response.status_code,
+            )
+
+        result = response.json()
+        # Handle both direct session response and wrapped response
+        if "session" in result:
+            return result["session"]
+        return result
+
 
 class ReportClient:
     """Client for fetching reports from Recce Cloud API."""
