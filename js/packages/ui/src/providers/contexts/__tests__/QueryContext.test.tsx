@@ -1398,7 +1398,7 @@ describe("QueryContext (@datarecce/ui)", () => {
         executionSteps.push("execution_complete");
       });
       const mockOnCancel = jest.fn().mockImplementation(() => {
-        executionSteps.push("Cancelled");
+        executionSteps.push("cancelled");
       });
 
       const { result } = renderHook(() => useQueryContext(), {
