@@ -22,8 +22,12 @@ const customJestConfig = {
   },
   // Test file patterns
   testMatch: ["**/__tests__/**/*.[jt]s?(x)", "**/?(*.)+(spec|test).[jt]s?(x)"],
-  // Ignore worktrees to prevent duplicate module detection
-  testPathIgnorePatterns: ["/node_modules/", "/.worktrees/"],
+  // Ignore worktrees and storybook package (uses Vitest instead of Jest)
+  testPathIgnorePatterns: [
+    "/node_modules/",
+    "/.worktrees/",
+    "/packages/storybook/",
+  ],
   modulePathIgnorePatterns: ["/.worktrees/"],
   // Coverage configuration
   collectCoverageFrom: [
