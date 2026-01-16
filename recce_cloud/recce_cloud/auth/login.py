@@ -176,7 +176,7 @@ def login_with_browser() -> bool:
     console.print()
 
     # Wait for callback
-    console.print(f"Waiting for authentication (listening on port {callback_port})...")
+    console.print("Waiting for authentication...")
     result = CallbackResult()
 
     if not run_callback_server(callback_port, result, SUCCESS_HTML, ERROR_HTML):

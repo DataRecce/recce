@@ -52,3 +52,13 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["recce_cloud"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "recce_cloud/**/*.py",
+    "recce_cloud/**/*.html",
+    "recce_cloud/VERSION",
+]
+
+[tool.hatch.build.targets.wheel.force-include]
+"recce_cloud/auth/templates" = "recce_cloud/auth/templates"

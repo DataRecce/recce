@@ -1,13 +1,13 @@
 """
 Recce Cloud API clients for lightweight operations.
 
-Provides clients for session management and report generation.
+Provides clients for session management, organization/project listing, and report generation.
 """
 
 import json
 import logging
 import os
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 
@@ -259,6 +259,98 @@ class RecceCloudClient:
             reason=response.text,
             status_code=response.status_code,
         )
+
+    def list_organizations(self) -> List[Dict[str, Any]]:
+        """
+        List all organizations the user has access to.
+
+        Returns:
+            List of organization dictionaries with id, name, slug fields.
+
+        Raises:
+            RecceCloudException: If the API call fails.
+        """
+        api_url = f"{self.base_url_v2}/organizations"
+        response = self._request("GET", api_url)
+
+        if response.status_code != 200:
+            raise RecceCloudException(
+                reason=response.text,
+                status_code=response.status_code,
+            )
+
+        data = response.json()
+        return data.get("organizations", [])
+
+    def list_projects(self, org_id: str) -> List[Dict[str, Any]]:
+        """
+        List all projects in an organization.
+
+        Args:
+            org_id: Organization ID or slug.
+
+        Returns:
+            List of project dictionaries with id, name, slug fields.
+
+        Raises:
+            RecceCloudException: If the API call fails.
+        """
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects"
+        response = self._request("GET", api_url)
+
+        if response.status_code != 200:
+            raise RecceCloudException(
+                reason=response.text,
+                status_code=response.status_code,
+            )
+
+        data = response.json()
+        return data.get("projects", [])
+
+    def get_organization(self, org_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get a specific organization by ID or slug.
+
+        Args:
+            org_id: Organization ID or slug.
+
+        Returns:
+            Organization dictionary, or None if not found.
+
+        Raises:
+            RecceCloudException: If the API call fails.
+        """
+        orgs = self.list_organizations()
+        for org in orgs:
+            # Compare as strings to handle both int and str IDs
+            if str(org.get("id")) == str(org_id) or org.get("slug") == org_id or org.get("name") == org_id:
+                return org
+        return None
+
+    def get_project(self, org_id: str, project_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get a specific project by ID or slug.
+
+        Args:
+            org_id: Organization ID or slug.
+            project_id: Project ID or slug.
+
+        Returns:
+            Project dictionary, or None if not found.
+
+        Raises:
+            RecceCloudException: If the API call fails.
+        """
+        projects = self.list_projects(org_id)
+        for project in projects:
+            # Compare as strings to handle both int and str IDs
+            if (
+                str(project.get("id")) == str(project_id)
+                or project.get("slug") == project_id
+                or project.get("name") == project_id
+            ):
+                return project
+        return None
 
 
 class ReportClient:

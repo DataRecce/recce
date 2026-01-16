@@ -187,7 +187,8 @@ def init(org, project, status, clear):
       # Remove binding
       recce-cloud init --clear
     """
-    from recce_cloud.api.cloud_api import CloudAPI, CloudAPIError
+    from recce_cloud.api.client import RecceCloudClient
+    from recce_cloud.api.exceptions import RecceCloudException
     from recce_cloud.auth.login import get_user_info
     from recce_cloud.auth.profile import get_api_token
     from recce_cloud.config.project_config import (
@@ -243,7 +244,7 @@ def init(org, project, status, clear):
     if org and project:
         # Validate org/project exist
         try:
-            api = CloudAPI(token)
+            api = RecceCloudClient(token)
             org_obj = api.get_organization(org)
             if not org_obj:
                 console.print(f"[red]Error:[/red] Organization '{org}' not found")
@@ -272,13 +273,13 @@ def init(org, project, status, clear):
 
             sys.exit(0)
 
-        except CloudAPIError as e:
+        except RecceCloudException as e:
             console.print(f"[red]Error:[/red] {e}")
             sys.exit(1)
 
     # Interactive mode: Select org → project
     try:
-        api = CloudAPI(token)
+        api = RecceCloudClient(token)
 
         # List organizations
         console.print("Fetching organizations...")
@@ -354,7 +355,7 @@ def init(org, project, status, clear):
             else:
                 console.print("  .recce/ already in .gitignore")
 
-    except CloudAPIError as e:
+    except RecceCloudException as e:
         console.print(f"[red]Error:[/red] Failed to fetch data from Recce Cloud: {e}")
         sys.exit(1)
     except Exception as e:
@@ -397,7 +398,7 @@ def upload(target_path, session_id, cr, session_type, dry_run):
 
     \b
     Authentication (auto-detected):
-    - RECCE_API_TOKEN (for --session-id workflow)
+    - RECCE_API_TOKEN env var or 'recce-cloud login' profile (for --session-id workflow)
     - GITHUB_TOKEN (GitHub Actions)
     - CI_JOB_TOKEN (GitLab CI)
 
@@ -533,11 +534,13 @@ def upload(target_path, session_id, cr, session_type, dry_run):
     # 5. Choose upload workflow based on whether session_id is provided
     if session_id:
         # Generic workflow: Upload to existing session using session ID
-        # This workflow requires RECCE_API_TOKEN
-        token = os.getenv("RECCE_API_TOKEN")
+        # This workflow requires RECCE_API_TOKEN or logged-in profile
+        from recce_cloud.auth.profile import get_api_token
+
+        token = os.getenv("RECCE_API_TOKEN") or get_api_token()
         if not token:
-            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided")
-            console.print("Set RECCE_API_TOKEN environment variable for session-based upload")
+            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
+            console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
             sys.exit(2)
 
         upload_to_existing_session(console, token, session_id, manifest_path, catalog_path, adapter_type, target_path)
@@ -593,7 +596,7 @@ def download(target_path, session_id, prod, dry_run, force):
 
     \b
     Authentication (auto-detected):
-    - RECCE_API_TOKEN (for --session-id workflow)
+    - RECCE_API_TOKEN env var or 'recce-cloud login' profile (for --session-id workflow)
     - GITHUB_TOKEN (GitHub Actions)
     - CI_JOB_TOKEN (GitLab CI)
 
@@ -718,11 +721,13 @@ def download(target_path, session_id, prod, dry_run, force):
     # 3. Choose download workflow based on whether session_id is provided
     if session_id:
         # Generic workflow: Download from existing session using session ID
-        # This workflow requires RECCE_API_TOKEN
-        token = os.getenv("RECCE_API_TOKEN")
+        # This workflow requires RECCE_API_TOKEN or logged-in profile
+        from recce_cloud.auth.profile import get_api_token
+
+        token = os.getenv("RECCE_API_TOKEN") or get_api_token()
         if not token:
-            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided")
-            console.print("Set RECCE_API_TOKEN environment variable for session-based download")
+            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
+            console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
             sys.exit(2)
 
         download_from_existing_session(console, token, session_id, target_path, force)
@@ -770,7 +775,7 @@ def delete(session_id, dry_run, force):
 
     \b
     Authentication (auto-detected):
-    - RECCE_API_TOKEN (for --session-id workflow)
+    - RECCE_API_TOKEN env var or 'recce-cloud login' profile (for --session-id workflow)
     - GITHUB_TOKEN (GitHub Actions)
     - CI_JOB_TOKEN (GitLab CI)
 
@@ -883,11 +888,13 @@ def delete(session_id, dry_run, force):
     # 4. Choose delete workflow based on whether session_id is provided
     if session_id:
         # Generic workflow: Delete from existing session using session ID
-        # This workflow requires RECCE_API_TOKEN
-        token = os.getenv("RECCE_API_TOKEN")
+        # This workflow requires RECCE_API_TOKEN or logged-in profile
+        from recce_cloud.auth.profile import get_api_token
+
+        token = os.getenv("RECCE_API_TOKEN") or get_api_token()
         if not token:
-            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided")
-            console.print("Set RECCE_API_TOKEN environment variable for session-based delete")
+            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
+            console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
             sys.exit(2)
 
         delete_existing_session(console, token, session_id)
@@ -955,7 +962,7 @@ def report(repo, since, until, base_branch, merged_only, output):
 
     \b
     Authentication:
-    - Requires RECCE_API_TOKEN environment variable
+    - Requires RECCE_API_TOKEN env var or 'recce-cloud login' profile
 
     \b
     Examples:
@@ -976,11 +983,13 @@ def report(repo, since, until, base_branch, merged_only, output):
     """
     console = Console()
 
-    # Check for API token
-    token = os.getenv("RECCE_API_TOKEN")
+    # Check for API token (env var or logged-in profile)
+    from recce_cloud.auth.profile import get_api_token
+
+    token = os.getenv("RECCE_API_TOKEN") or get_api_token()
     if not token:
-        console.print("[red]Error:[/red] RECCE_API_TOKEN environment variable is required")
-        console.print("Set RECCE_API_TOKEN to your Recce Cloud API token")
+        console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
+        console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
         sys.exit(2)
 
     # Auto-detect repo from git remote if not provided
