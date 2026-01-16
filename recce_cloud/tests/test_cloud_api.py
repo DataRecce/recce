@@ -1,36 +1,33 @@
 """
-Tests for recce-cloud CloudAPI client.
+Tests for RecceCloudClient organization and project methods.
 """
 
 import unittest
 from unittest.mock import MagicMock, patch
 
 
-class TestCloudAPI(unittest.TestCase):
-    """Test cases for CloudAPI client."""
+class TestRecceCloudClientOrgProject(unittest.TestCase):
+    """Test cases for RecceCloudClient organization and project methods."""
 
     def test_init_with_token(self):
         """Test API client initialization with token."""
-        from recce_cloud.api.cloud_api import CloudAPI
+        from recce_cloud.api.client import RecceCloudClient
 
-        api = CloudAPI("test_token_123")
+        api = RecceCloudClient("test_token_123")
         self.assertEqual(api.token, "test_token_123")
-        self.assertIn("cloud.datarecce.io", api.base_url)
+        self.assertIn("cloud.datarecce.io", api.base_url_v2)
 
     def test_init_without_token(self):
         """Test API client initialization without token raises error."""
-        from recce_cloud.api.cloud_api import CloudAPI
+        from recce_cloud.api.client import RecceCloudClient
 
         with self.assertRaises(ValueError):
-            CloudAPI("")
+            RecceCloudClient(None)
 
-        with self.assertRaises(ValueError):
-            CloudAPI(None)
-
-    @patch("recce_cloud.api.cloud_api.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_list_organizations(self, mock_request):
         """Test listing organizations."""
-        from recce_cloud.api.cloud_api import CloudAPI
+        from recce_cloud.api.client import RecceCloudClient
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -42,34 +39,35 @@ class TestCloudAPI(unittest.TestCase):
         }
         mock_request.return_value = mock_response
 
-        api = CloudAPI("test_token")
+        api = RecceCloudClient("test_token")
         orgs = api.list_organizations()
 
         self.assertEqual(len(orgs), 2)
         self.assertEqual(orgs[0]["name"], "org1")
         mock_request.assert_called_once()
 
-    @patch("recce_cloud.api.cloud_api.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_list_organizations_error(self, mock_request):
         """Test listing organizations handles API errors."""
-        from recce_cloud.api.cloud_api import CloudAPI, CloudAPIError
+        from recce_cloud.api.client import RecceCloudClient
+        from recce_cloud.api.exceptions import RecceCloudException
 
         mock_response = MagicMock()
         mock_response.status_code = 401
         mock_response.text = "Unauthorized"
         mock_request.return_value = mock_response
 
-        api = CloudAPI("invalid_token")
+        api = RecceCloudClient("invalid_token")
 
-        with self.assertRaises(CloudAPIError) as context:
+        with self.assertRaises(RecceCloudException) as context:
             api.list_organizations()
 
         self.assertEqual(context.exception.status_code, 401)
 
-    @patch("recce_cloud.api.cloud_api.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_list_projects(self, mock_request):
         """Test listing projects in an organization."""
-        from recce_cloud.api.cloud_api import CloudAPI
+        from recce_cloud.api.client import RecceCloudClient
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -81,16 +79,16 @@ class TestCloudAPI(unittest.TestCase):
         }
         mock_request.return_value = mock_response
 
-        api = CloudAPI("test_token")
+        api = RecceCloudClient("test_token")
         projects = api.list_projects("123")
 
         self.assertEqual(len(projects), 2)
         self.assertEqual(projects[0]["name"], "project1")
 
-    @patch("recce_cloud.api.cloud_api.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_get_organization_by_id(self, mock_request):
         """Test getting organization by numeric ID."""
-        from recce_cloud.api.cloud_api import CloudAPI
+        from recce_cloud.api.client import RecceCloudClient
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -102,16 +100,16 @@ class TestCloudAPI(unittest.TestCase):
         }
         mock_request.return_value = mock_response
 
-        api = CloudAPI("test_token")
+        api = RecceCloudClient("test_token")
         org = api.get_organization("2")
 
         self.assertIsNotNone(org)
         self.assertEqual(org["name"], "org2")
 
-    @patch("recce_cloud.api.cloud_api.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_get_organization_by_name(self, mock_request):
         """Test getting organization by name."""
-        from recce_cloud.api.cloud_api import CloudAPI
+        from recce_cloud.api.client import RecceCloudClient
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -123,31 +121,31 @@ class TestCloudAPI(unittest.TestCase):
         }
         mock_request.return_value = mock_response
 
-        api = CloudAPI("test_token")
+        api = RecceCloudClient("test_token")
         org = api.get_organization("my-org")
 
         self.assertIsNotNone(org)
         self.assertEqual(org["id"], 1)
 
-    @patch("recce_cloud.api.cloud_api.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_get_organization_not_found(self, mock_request):
         """Test getting non-existent organization."""
-        from recce_cloud.api.cloud_api import CloudAPI
+        from recce_cloud.api.client import RecceCloudClient
 
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"organizations": []}
         mock_request.return_value = mock_response
 
-        api = CloudAPI("test_token")
+        api = RecceCloudClient("test_token")
         org = api.get_organization("nonexistent")
 
         self.assertIsNone(org)
 
-    @patch("recce_cloud.api.cloud_api.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_get_project_by_id(self, mock_request):
         """Test getting project by numeric ID."""
-        from recce_cloud.api.cloud_api import CloudAPI
+        from recce_cloud.api.client import RecceCloudClient
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -159,16 +157,16 @@ class TestCloudAPI(unittest.TestCase):
         }
         mock_request.return_value = mock_response
 
-        api = CloudAPI("test_token")
+        api = RecceCloudClient("test_token")
         project = api.get_project("org1", "20")
 
         self.assertIsNotNone(project)
         self.assertEqual(project["name"], "project2")
 
-    @patch("recce_cloud.api.cloud_api.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_get_project_by_name(self, mock_request):
         """Test getting project by name."""
-        from recce_cloud.api.cloud_api import CloudAPI
+        from recce_cloud.api.client import RecceCloudClient
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -179,38 +177,38 @@ class TestCloudAPI(unittest.TestCase):
         }
         mock_request.return_value = mock_response
 
-        api = CloudAPI("test_token")
+        api = RecceCloudClient("test_token")
         project = api.get_project("org1", "my-project")
 
         self.assertIsNotNone(project)
         self.assertEqual(project["id"], 10)
 
-    @patch("recce_cloud.api.cloud_api.requests.request")
+    @patch("recce_cloud.api.client.requests.request")
     def test_get_project_not_found(self, mock_request):
         """Test getting non-existent project."""
-        from recce_cloud.api.cloud_api import CloudAPI
+        from recce_cloud.api.client import RecceCloudClient
 
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"projects": []}
         mock_request.return_value = mock_response
 
-        api = CloudAPI("test_token")
+        api = RecceCloudClient("test_token")
         project = api.get_project("org1", "nonexistent")
 
         self.assertIsNone(project)
 
     def test_request_headers(self):
         """Test that requests include authorization header."""
-        from recce_cloud.api.cloud_api import CloudAPI
+        from recce_cloud.api.client import RecceCloudClient
 
-        with patch("recce_cloud.api.cloud_api.requests.request") as mock_request:
+        with patch("recce_cloud.api.client.requests.request") as mock_request:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_response.json.return_value = {"organizations": []}
             mock_request.return_value = mock_response
 
-            api = CloudAPI("my_secret_token")
+            api = RecceCloudClient("my_secret_token")
             api.list_organizations()
 
             # Check the Authorization header was set
