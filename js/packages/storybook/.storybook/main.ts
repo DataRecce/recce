@@ -29,6 +29,13 @@ const config: StorybookConfig = {
       // Fix for html2canvas-pro strict exports in Vite 7.x
       "html2canvas-pro/dist/html2canvas-pro.esm.js": "html2canvas-pro",
     };
+
+    // Polyfill Node.js globals for browser (Next.js uses process.env)
+    config.define = {
+      ...config.define,
+      "process.env": {},
+    };
+
     return config;
   },
 };
