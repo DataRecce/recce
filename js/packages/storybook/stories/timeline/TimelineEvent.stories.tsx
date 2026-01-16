@@ -1,6 +1,6 @@
 import { TimelineEvent } from "@datarecce/ui/primitives";
 import type { Meta, StoryObj } from "@storybook/react";
-import { fn } from "@storybook/test";
+import { expect, fn, userEvent, within } from "@storybook/test";
 import {
   createCommentEvent,
   createEvent,
@@ -172,6 +172,25 @@ export const CommentWithActions: Story = {
     onEdit: fn(),
     onDelete: fn(),
   },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Hover to reveal action buttons
+    const comment = canvas.getByText(
+      "My own comment that I can edit or delete.",
+    );
+    await userEvent.hover(comment);
+
+    // Verify edit button is visible
+    const editButton = canvas.getByRole("button", { name: /edit comment/i });
+    expect(editButton).toBeInTheDocument();
+
+    // Verify delete button is visible
+    const deleteButton = canvas.getByRole("button", {
+      name: /delete comment/i,
+    });
+    expect(deleteButton).toBeInTheDocument();
+  },
 };
 
 export const CommentFromOtherUser: Story = {
@@ -209,6 +228,94 @@ Key observations:
 I recommend proceeding with the merge after addressing the minor formatting issues mentioned in the inline comments.`,
       actor: sampleActor,
     }),
+  },
+};
+
+// ============================================
+// Interactive Tests
+// ============================================
+
+export const CommentEditInteraction: Story = {
+  name: "Comment Edit Interaction",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Demonstrates the edit flow: hover -> click edit -> see textarea.",
+      },
+    },
+  },
+  args: {
+    event: createCommentEvent({
+      content: "Click edit to modify this comment.",
+      actor: sampleActor,
+    }),
+    currentUserId: "user-1",
+    onEdit: fn(),
+    onDelete: fn(),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Hover to reveal edit button
+    const comment = canvas.getByText("Click edit to modify this comment.");
+    await userEvent.hover(comment);
+
+    // Click edit button
+    const editButton = canvas.getByRole("button", { name: /edit comment/i });
+    await userEvent.click(editButton);
+
+    // Verify edit textarea appears
+    const textarea = canvas.getByRole("textbox");
+    expect(textarea).toBeInTheDocument();
+    expect(textarea).toHaveValue("Click edit to modify this comment.");
+
+    // Verify save and cancel buttons
+    expect(canvas.getByRole("button", { name: /save/i })).toBeInTheDocument();
+    expect(canvas.getByRole("button", { name: /cancel/i })).toBeInTheDocument();
+  },
+};
+
+export const CommentDeleteConfirmation: Story = {
+  name: "Comment Delete Confirmation",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Demonstrates the delete flow: hover -> click delete -> see confirmation.",
+      },
+    },
+  },
+  args: {
+    event: createCommentEvent({
+      content: "Click delete to see confirmation dialog.",
+      actor: sampleActor,
+    }),
+    currentUserId: "user-1",
+    onEdit: fn(),
+    onDelete: fn(),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // Hover to reveal delete button
+    const comment = canvas.getByText(
+      "Click delete to see confirmation dialog.",
+    );
+    await userEvent.hover(comment);
+
+    // Click delete button
+    const deleteButton = canvas.getByRole("button", {
+      name: /delete comment/i,
+    });
+    await userEvent.click(deleteButton);
+
+    // Verify confirmation popover appears
+    expect(canvas.getByText("Delete this comment?")).toBeInTheDocument();
+    expect(
+      canvas.getByRole("button", { name: /^delete$/i }),
+    ).toBeInTheDocument();
+    expect(canvas.getByRole("button", { name: /cancel/i })).toBeInTheDocument();
   },
 };
 
