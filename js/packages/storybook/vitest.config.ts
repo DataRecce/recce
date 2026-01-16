@@ -6,7 +6,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./.storybook/vitest.setup.ts"],
-    include: ["stories/**/*.test.ts"],
+    include: ["stories/**/*.test.{ts,tsx}"],
     exclude: ["node_modules"],
     globals: true,
   },

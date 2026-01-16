@@ -12,5 +12,5 @@
     "isolatedModules": true,
     "noEmit": true
   },
-  "include": ["stories/**/*", ".storybook/**/*"]
+  "include": ["stories/**/*", ".storybook/**/*", "vitest.config.ts"]
 }
