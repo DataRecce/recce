@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Dict, List, Literal, Optional, Set
 
-from pydantic import UUID4, BaseModel, Field
+from pydantic import UUID4, BaseModel, Field, field_validator
 
 from recce.util.pydantic_model import pydantic_model_dump
 
@@ -51,6 +51,28 @@ class Run(BaseModel):
     progress: Optional[RunProgress] = None
     run_id: UUID4 = Field(default_factory=uuid.uuid4)
     run_at: str = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def normalize_status(cls, v):
+        """Normalize status values for backward compatibility.
+
+        Accepts both lowercase (legacy) and capitalized (current) status values.
+        """
+        if v is None:
+            return v
+        if isinstance(v, RunStatus):
+            return v
+        if isinstance(v, str):
+            # Map lowercase to capitalized for backward compatibility
+            status_map = {
+                "finished": "Finished",
+                "failed": "Failed",
+                "cancelled": "Cancelled",
+                "running": "Running",
+            }
+            return status_map.get(v, v)
+        return v
 
     def __init__(self, **data):
         type = data.get("type")
