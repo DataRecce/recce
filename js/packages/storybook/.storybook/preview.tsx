@@ -1,6 +1,6 @@
 import CssBaseline from "@mui/material/CssBaseline";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import type { Preview } from "@storybook/react";
+import type { Preview } from "@storybook/react-vite";
 
 // Import styles from @datarecce/ui
 import "@datarecce/ui/styles";

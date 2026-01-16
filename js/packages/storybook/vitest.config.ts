@@ -11,6 +11,8 @@ export default defineConfig({
         "../ui/src/primitives.ts",
       ),
       "@datarecce/ui": path.resolve(__dirname, "../ui/src/index.ts"),
+      // Fix for html2canvas-pro strict exports in Vite 7.x
+      "html2canvas-pro/dist/html2canvas-pro.esm.js": "html2canvas-pro",
     },
   },
   test: {

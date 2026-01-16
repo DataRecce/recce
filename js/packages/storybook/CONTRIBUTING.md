@@ -19,7 +19,7 @@ Stories are organized by functional category:
 
 ```typescript
 // stories/<category>/<ComponentName>.stories.tsx
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ComponentName } from "@datarecce/ui/primitives";
 
 const meta: Meta<typeof ComponentName> = {
@@ -70,7 +70,7 @@ export const Disabled: Story = {
 Play functions run in the browser and can test interactions:
 
 ```typescript
-import { expect, userEvent, within } from "@storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 
 export const Interactive: Story = {
   args: {
@@ -162,7 +162,7 @@ git add stories/<category>/<ComponentName>.visual.ts-snapshots/
 ### Args and Controls
 
 - Define `argTypes` for better controls in Storybook UI
-- Use `fn()` from `@storybook/test` for action callbacks
+- Use `fn()` from `storybook/test` for action callbacks
 
 ### Documentation
 

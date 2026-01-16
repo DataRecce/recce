@@ -15,18 +15,16 @@
     "@datarecce/ui": "workspace:*"
   },
   "devDependencies": {
-    "@storybook/addon-essentials": "^8.5.0",
-    "@storybook/experimental-addon-test": "^8.5.0",
-    "@storybook/react": "^8.5.0",
-    "@storybook/react-vite": "^8.5.0",
-    "@storybook/test": "^8.5.0",
-    "@testing-library/jest-dom": "^6.9.0",
-    "@testing-library/react": "^16.0.0",
-    "@vitejs/plugin-react": "^4.3.0",
-    "jsdom": "^25.0.0",
-    "@playwright/test": "^1.48.0",
-    "storybook": "^8.5.0",
-    "vitest": "^2.1.0"
+    "@playwright/test": "^1.52.0",
+    "@storybook/addon-docs": "^10.1.11",
+    "@storybook/react": "^10.1.11",
+    "@storybook/react-vite": "^10.1.11",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@vitejs/plugin-react": "^4.5.2",
+    "jsdom": "^26.1.0",
+    "storybook": "^10.1.11",
+    "vitest": "^4.0.17"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
