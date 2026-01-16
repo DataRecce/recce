@@ -377,6 +377,18 @@ def init(org, project, status, clear):
     "If not provided, session will be created automatically using platform-specific APIs (GitHub/GitLab).",
 )
 @click.option(
+    "--session-name",
+    help="Session name to look up or create. If a session with this name exists, "
+    "uploads to it; otherwise prompts to create a new session (use --yes to skip prompt).",
+)
+@click.option(
+    "--yes",
+    "-y",
+    "skip_confirmation",
+    is_flag=True,
+    help="Skip confirmation prompts (auto-create session if not found).",
+)
+@click.option(
     "--cr",
     type=int,
     help="Change request number (PR/MR) (overrides auto-detection)",
@@ -392,13 +404,13 @@ def init(org, project, status, clear):
     is_flag=True,
     help="Show what would be uploaded without actually uploading",
 )
-def upload(target_path, session_id, cr, session_type, dry_run):
+def upload(target_path, session_id, session_name, skip_confirmation, cr, session_type, dry_run):
     """
     Upload dbt artifacts (manifest.json, catalog.json) to Recce Cloud.
 
     \b
     Authentication (auto-detected):
-    - RECCE_API_TOKEN env var or 'recce-cloud login' profile (for --session-id workflow)
+    - RECCE_API_TOKEN env var or 'recce-cloud login' profile (for --session-id/--session-name workflow)
     - GITHUB_TOKEN (GitHub Actions)
     - CI_JOB_TOKEN (GitLab CI)
 
@@ -410,8 +422,14 @@ def upload(target_path, session_id, cr, session_type, dry_run):
       # Upload production metadata from main branch
       recce-cloud upload --type prod
 
-      # Upload to specific session
+      # Upload to specific session by ID
       recce-cloud upload --session-id abc123
+
+      # Upload by session name (creates if not exists)
+      recce-cloud upload --session-name "my-evaluation-session"
+
+      # Auto-create session without confirmation
+      recce-cloud upload --session-name "new-session" --yes
 
       # Custom target path
       recce-cloud upload --target-path custom-target
@@ -512,8 +530,15 @@ def upload(target_path, session_id, cr, session_type, dry_run):
         # Display upload summary
         console.print("[cyan]Upload Workflow:[/cyan]")
         if session_id:
-            console.print("  • Upload to existing session")
+            console.print("  • Upload to existing session by ID")
             console.print(f"  • Session ID: {session_id}")
+        elif session_name:
+            console.print("  • Upload by session name (lookup or create)")
+            console.print(f"  • Session Name: {session_name}")
+            if skip_confirmation:
+                console.print("  • Auto-create if not exists (--yes flag)")
+            else:
+                console.print("  • Will prompt before creating if not exists")
         else:
             console.print("  • Auto-create session and upload")
             if ci_info and ci_info.platform in ["github-actions", "gitlab-ci"]:
@@ -531,7 +556,8 @@ def upload(target_path, session_id, cr, session_type, dry_run):
         console.print("[green]✓[/green] Dry run completed successfully")
         sys.exit(0)
 
-    # 5. Choose upload workflow based on whether session_id is provided
+    # 5. Choose upload workflow based on provided options
+    # Priority: --session-id > --session-name > platform-specific auto-detection
     if session_id:
         # Generic workflow: Upload to existing session using session ID
         # This workflow requires RECCE_API_TOKEN or logged-in profile
@@ -544,12 +570,36 @@ def upload(target_path, session_id, cr, session_type, dry_run):
             sys.exit(2)
 
         upload_to_existing_session(console, token, session_id, manifest_path, catalog_path, adapter_type, target_path)
+    elif session_name:
+        # Session name workflow: Look up session by name, create if not exists
+        # This workflow requires RECCE_API_TOKEN or logged-in profile, plus org/project config
+        from recce_cloud.auth.profile import get_api_token
+        from recce_cloud.upload import upload_with_session_name
+
+        token = os.getenv("RECCE_API_TOKEN") or get_api_token()
+        if not token:
+            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
+            console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
+            sys.exit(2)
+
+        upload_with_session_name(
+            console,
+            token,
+            session_name,
+            manifest_path,
+            catalog_path,
+            adapter_type,
+            target_path,
+            skip_confirmation=skip_confirmation,
+        )
     else:
         # Platform-specific workflow: Use platform APIs to create session and upload
         # This workflow MUST use CI job tokens (CI_JOB_TOKEN or GITHUB_TOKEN)
         if not ci_info or not ci_info.access_token:
             console.print("[red]Error:[/red] Platform-specific upload requires CI environment")
-            console.print("Either run in GitHub Actions/GitLab CI or provide --session-id for generic upload")
+            console.print(
+                "Either run in GitHub Actions/GitLab CI or provide --session-id/--session-name for generic upload"
+            )
             sys.exit(2)
 
         token = ci_info.access_token
