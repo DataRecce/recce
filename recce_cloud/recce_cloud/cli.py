@@ -57,6 +57,314 @@ def version():
 
 @cloud_cli.command()
 @click.option(
+    "--token",
+    default=None,
+    help="API token for authentication (for headless/CI environments)",
+)
+@click.option(
+    "--status",
+    is_flag=True,
+    help="Check current login status without modifying credentials",
+)
+def login(token, status):
+    """
+    Authenticate with Recce Cloud.
+
+    By default, opens a browser for OAuth authentication. The browser flow
+    securely exchanges credentials using RSA encryption.
+
+    \b
+    Examples:
+      # Browser-based OAuth login (recommended)
+      recce-cloud login
+
+      # Check if already logged in
+      recce-cloud login --status
+
+      # Direct token authentication (for headless/CI environments)
+      recce-cloud login --token <your-api-token>
+    """
+    from recce_cloud.auth.login import (
+        check_login_status,
+        get_api_token,
+        login_with_browser,
+        login_with_token,
+    )
+
+    console = Console()
+
+    # Status check mode
+    if status:
+        is_logged_in, email = check_login_status()
+        if is_logged_in:
+            console.print(f"[green]✓[/green] Logged in as [cyan]{email or 'Unknown'}[/cyan]")
+            token_value = get_api_token()
+            if token_value:
+                masked = f"{token_value[:8]}...{token_value[-4:]}" if len(token_value) > 12 else "***"
+                console.print(f"  Token: {masked} (valid)")
+        else:
+            console.print("[yellow]Not logged in[/yellow]")
+            console.print("Run 'recce-cloud login' to authenticate")
+        sys.exit(0 if is_logged_in else 1)
+
+    # Check if already logged in
+    is_logged_in, email = check_login_status()
+    if is_logged_in:
+        console.print(f"[green]✓[/green] Already logged in as [cyan]{email or 'Unknown'}[/cyan]")
+        if not click.confirm("Do you want to re-authenticate?", default=False):
+            sys.exit(0)
+
+    # Direct token authentication mode
+    if token:
+        if login_with_token(token):
+            sys.exit(0)
+        else:
+            sys.exit(1)
+
+    # Browser OAuth flow
+    if login_with_browser():
+        sys.exit(0)
+    else:
+        console.print()
+        console.print("[yellow]Tip:[/yellow] For headless environments, use 'recce-cloud login --token <token>'")
+        sys.exit(1)
+
+
+@cloud_cli.command()
+def logout():
+    """
+    Remove stored Recce Cloud credentials.
+
+    Clears the API token from ~/.recce/profile.yml.
+    """
+    from recce_cloud.auth.login import logout as do_logout
+    from recce_cloud.auth.profile import get_profile_path
+
+    console = Console()
+
+    do_logout()
+    console.print("[green]✓[/green] Logged out successfully")
+    console.print(f"  Credentials removed from {get_profile_path()}")
+
+
+@cloud_cli.command()
+@click.option(
+    "--org",
+    help="Organization name or slug to bind to",
+)
+@click.option(
+    "--project",
+    help="Project name or slug to bind to",
+)
+@click.option(
+    "--status",
+    is_flag=True,
+    help="Show current project binding without modifying",
+)
+@click.option(
+    "--clear",
+    is_flag=True,
+    help="Remove current project binding",
+)
+def init(org, project, status, clear):
+    """
+    Bind current directory to a Recce Cloud project.
+
+    Creates a .recce/config file that stores the org/project binding.
+    Subsequent commands will auto-detect this binding.
+
+    \b
+    Examples:
+      # Interactive mode: Select org and project
+      recce-cloud init
+
+      # Explicit mode: Direct binding (for scripts/CI)
+      recce-cloud init --org myorg --project my-dbt-project
+
+      # Check current binding
+      recce-cloud init --status
+
+      # Remove binding
+      recce-cloud init --clear
+    """
+    from recce_cloud.api.client import RecceCloudClient
+    from recce_cloud.api.exceptions import RecceCloudException
+    from recce_cloud.auth.login import get_user_info
+    from recce_cloud.auth.profile import get_api_token
+    from recce_cloud.config.project_config import (
+        add_to_gitignore,
+        clear_project_binding,
+        get_config_path,
+        get_project_binding,
+        save_project_binding,
+    )
+
+    console = Console()
+
+    # Check authentication first
+    token = get_api_token()
+    if not token:
+        console.print("[red]Error:[/red] Not logged in")
+        console.print("Run 'recce-cloud login' first")
+        sys.exit(1)
+
+    # Status check mode
+    if status:
+        binding = get_project_binding()
+        if binding:
+            console.print(f"[green]✓[/green] Bound to [cyan]{binding['org']}/{binding['project']}[/cyan]")
+            if binding.get("bound_at"):
+                console.print(f"  Bound at: {binding['bound_at']}")
+            if binding.get("bound_by"):
+                console.print(f"  Bound by: {binding['bound_by']}")
+            console.print(f"  Config file: {get_config_path()}")
+        else:
+            console.print("[yellow]Not bound to any project[/yellow]")
+            console.print("Run 'recce-cloud init' to bind this directory")
+        sys.exit(0 if binding else 1)
+
+    # Clear mode
+    if clear:
+        if clear_project_binding():
+            console.print("[green]✓[/green] Project binding removed")
+        else:
+            console.print("[yellow]No project binding to remove[/yellow]")
+        sys.exit(0)
+
+    # Validate flag combinations
+    if (org and not project) or (project and not org):
+        console.print("[red]Error:[/red] Both --org and --project must be provided together")
+        sys.exit(1)
+
+    # Get user email for binding metadata
+    user_info = get_user_info(token)
+    user_email = user_info.get("email") if user_info else None
+
+    # Explicit mode: Direct binding
+    if org and project:
+        # Validate org/project exist
+        try:
+            api = RecceCloudClient(token)
+            org_obj = api.get_organization(org)
+            if not org_obj:
+                console.print(f"[red]Error:[/red] Organization '{org}' not found")
+                sys.exit(1)
+
+            # Use org ID for project lookup (API requires ID)
+            project_obj = api.get_project(org_obj.get("id"), project)
+            if not project_obj:
+                console.print(f"[red]Error:[/red] Project '{project}' not found in organization '{org}'")
+                sys.exit(1)
+
+            # Use slug for storage (more stable than name)
+            org_slug = org_obj.get("slug", org)
+            project_slug = project_obj.get("slug", project)
+
+            save_project_binding(org_slug, project_slug, user_email)
+            console.print(f"[green]✓[/green] Bound to [cyan]{org_slug}/{project_slug}[/cyan]")
+            console.print(f"  Config saved to {get_config_path()}")
+
+            # Offer to add to .gitignore
+            if click.confirm("Add .recce/ to .gitignore?", default=True):
+                if add_to_gitignore():
+                    console.print("[green]✓[/green] Added .recce/ to .gitignore")
+                else:
+                    console.print("  .recce/ already in .gitignore")
+
+            sys.exit(0)
+
+        except RecceCloudException as e:
+            console.print(f"[red]Error:[/red] {e}")
+            sys.exit(1)
+
+    # Interactive mode: Select org → project
+    try:
+        api = RecceCloudClient(token)
+
+        # List organizations
+        console.print("Fetching organizations...")
+        orgs = api.list_organizations()
+
+        if not orgs:
+            console.print("[yellow]No organizations found[/yellow]")
+            console.print("Please create an organization at https://cloud.datarecce.io first")
+            sys.exit(1)
+
+        # Build org choices: (id for API, name for config, display_name for UI)
+        org_choices = []
+        for o in orgs:
+            org_id = o.get("id")
+            org_name = o.get("name") or o.get("slug") or str(org_id)
+            display_name = o.get("display_name") or org_name
+            org_choices.append((org_id, org_name, display_name))
+
+        # Select organization
+        console.print()
+        console.print("[cyan]Select organization:[/cyan]")
+        for i, (_, _, display_name) in enumerate(org_choices, 1):
+            console.print(f"  {i}. {display_name}")
+
+        org_idx = click.prompt("Enter number", type=click.IntRange(1, len(org_choices)))
+        selected_org_id, selected_org_name, selected_org_display = org_choices[org_idx - 1]
+
+        # List projects (use org_id for API call)
+        console.print()
+        console.print(f"Fetching projects for {selected_org_display}...")
+        projects = api.list_projects(selected_org_id)
+
+        if not projects:
+            console.print(f"[yellow]No projects found in {selected_org_display}[/yellow]")
+            console.print("Please create a project at https://cloud.datarecce.io first")
+            sys.exit(1)
+
+        # Build project choices: (name for config, display_name for UI)
+        # Filter out archived projects
+        project_choices = []
+        for p in projects:
+            # Skip archived projects (check status field and archived flags)
+            if p.get("status") == "archived" or p.get("archived") or p.get("is_archived"):
+                continue
+            project_name = p.get("name") or p.get("slug") or str(p.get("id"))
+            display_name = p.get("display_name") or project_name
+            project_choices.append((project_name, display_name))
+
+        if not project_choices:
+            console.print(f"[yellow]No active projects found in {selected_org_display}[/yellow]")
+            console.print("Please create a project at https://cloud.datarecce.io first")
+            sys.exit(1)
+
+        # Select project
+        console.print()
+        console.print("[cyan]Select project:[/cyan]")
+        for i, (_, display_name) in enumerate(project_choices, 1):
+            console.print(f"  {i}. {display_name}")
+
+        project_idx = click.prompt("Enter number", type=click.IntRange(1, len(project_choices)))
+        selected_project_name, selected_project_display = project_choices[project_idx - 1]
+
+        # Save binding (use names for config, not IDs)
+        save_project_binding(selected_org_name, selected_project_name, user_email)
+        console.print()
+        console.print(f"[green]✓[/green] Bound to [cyan]{selected_org_name}/{selected_project_name}[/cyan]")
+        console.print(f"  Config saved to {get_config_path()}")
+
+        # Offer to add to .gitignore
+        if click.confirm("Add .recce/ to .gitignore?", default=True):
+            if add_to_gitignore():
+                console.print("[green]✓[/green] Added .recce/ to .gitignore")
+            else:
+                console.print("  .recce/ already in .gitignore")
+
+    except RecceCloudException as e:
+        console.print(f"[red]Error:[/red] Failed to fetch data from Recce Cloud: {e}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]Error:[/red] {e}")
+        sys.exit(1)
+
+
+@cloud_cli.command()
+@click.option(
     "--target-path",
     type=click.Path(exists=True),
     default="target",
@@ -90,7 +398,7 @@ def upload(target_path, session_id, cr, session_type, dry_run):
 
     \b
     Authentication (auto-detected):
-    - RECCE_API_TOKEN (for --session-id workflow)
+    - RECCE_API_TOKEN env var or 'recce-cloud login' profile (for --session-id workflow)
     - GITHUB_TOKEN (GitHub Actions)
     - CI_JOB_TOKEN (GitLab CI)
 
@@ -226,11 +534,13 @@ def upload(target_path, session_id, cr, session_type, dry_run):
     # 5. Choose upload workflow based on whether session_id is provided
     if session_id:
         # Generic workflow: Upload to existing session using session ID
-        # This workflow requires RECCE_API_TOKEN
-        token = os.getenv("RECCE_API_TOKEN")
+        # This workflow requires RECCE_API_TOKEN or logged-in profile
+        from recce_cloud.auth.profile import get_api_token
+
+        token = os.getenv("RECCE_API_TOKEN") or get_api_token()
         if not token:
-            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided")
-            console.print("Set RECCE_API_TOKEN environment variable for session-based upload")
+            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
+            console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
             sys.exit(2)
 
         upload_to_existing_session(console, token, session_id, manifest_path, catalog_path, adapter_type, target_path)
@@ -286,7 +596,7 @@ def download(target_path, session_id, prod, dry_run, force):
 
     \b
     Authentication (auto-detected):
-    - RECCE_API_TOKEN (for --session-id workflow)
+    - RECCE_API_TOKEN env var or 'recce-cloud login' profile (for --session-id workflow)
     - GITHUB_TOKEN (GitHub Actions)
     - CI_JOB_TOKEN (GitLab CI)
 
@@ -411,11 +721,13 @@ def download(target_path, session_id, prod, dry_run, force):
     # 3. Choose download workflow based on whether session_id is provided
     if session_id:
         # Generic workflow: Download from existing session using session ID
-        # This workflow requires RECCE_API_TOKEN
-        token = os.getenv("RECCE_API_TOKEN")
+        # This workflow requires RECCE_API_TOKEN or logged-in profile
+        from recce_cloud.auth.profile import get_api_token
+
+        token = os.getenv("RECCE_API_TOKEN") or get_api_token()
         if not token:
-            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided")
-            console.print("Set RECCE_API_TOKEN environment variable for session-based download")
+            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
+            console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
             sys.exit(2)
 
         download_from_existing_session(console, token, session_id, target_path, force)
@@ -463,7 +775,7 @@ def delete(session_id, dry_run, force):
 
     \b
     Authentication (auto-detected):
-    - RECCE_API_TOKEN (for --session-id workflow)
+    - RECCE_API_TOKEN env var or 'recce-cloud login' profile (for --session-id workflow)
     - GITHUB_TOKEN (GitHub Actions)
     - CI_JOB_TOKEN (GitLab CI)
 
@@ -576,11 +888,13 @@ def delete(session_id, dry_run, force):
     # 4. Choose delete workflow based on whether session_id is provided
     if session_id:
         # Generic workflow: Delete from existing session using session ID
-        # This workflow requires RECCE_API_TOKEN
-        token = os.getenv("RECCE_API_TOKEN")
+        # This workflow requires RECCE_API_TOKEN or logged-in profile
+        from recce_cloud.auth.profile import get_api_token
+
+        token = os.getenv("RECCE_API_TOKEN") or get_api_token()
         if not token:
-            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided")
-            console.print("Set RECCE_API_TOKEN environment variable for session-based delete")
+            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
+            console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
             sys.exit(2)
 
         delete_existing_session(console, token, session_id)
@@ -648,7 +962,7 @@ def report(repo, since, until, base_branch, merged_only, output):
 
     \b
     Authentication:
-    - Requires RECCE_API_TOKEN environment variable
+    - Requires RECCE_API_TOKEN env var or 'recce-cloud login' profile
 
     \b
     Examples:
@@ -669,11 +983,13 @@ def report(repo, since, until, base_branch, merged_only, output):
     """
     console = Console()
 
-    # Check for API token
-    token = os.getenv("RECCE_API_TOKEN")
+    # Check for API token (env var or logged-in profile)
+    from recce_cloud.auth.profile import get_api_token
+
+    token = os.getenv("RECCE_API_TOKEN") or get_api_token()
     if not token:
-        console.print("[red]Error:[/red] RECCE_API_TOKEN environment variable is required")
-        console.print("Set RECCE_API_TOKEN to your Recce Cloud API token")
+        console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
+        console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
         sys.exit(2)
 
     # Auto-detect repo from git remote if not provided
