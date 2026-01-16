@@ -240,7 +240,20 @@ export const RunView = forwardRef<unknown, RunViewProps>(function RunView(
   // ============================================================================
   if (errorMessage) {
     return (
-      <MuiAlert severity="error">
+      <MuiAlert
+        severity="error"
+        sx={
+          isDark
+            ? {
+                bgcolor: "error.dark",
+                color: "common.white",
+                "& .MuiAlert-icon": {
+                  color: "common.white",
+                },
+              }
+            : undefined
+        }
+      >
         Error: <span className="no-track-pii-safe">{errorMessage}</span>
       </MuiAlert>
     );
@@ -249,7 +262,7 @@ export const RunView = forwardRef<unknown, RunViewProps>(function RunView(
   // ============================================================================
   // Running State
   // ============================================================================
-  if (isRunning ?? run?.status === "Running") {
+  if (isRunning || run?.status === "Running") {
     let loadingMessage = "Loading...";
     if (progress?.message) {
       loadingMessage = progress.message;
@@ -403,6 +416,7 @@ export const RunView = forwardRef<unknown, RunViewProps>(function RunView(
         height: "100%",
         contain: "layout",
         overflow: "auto",
+        bgcolor: isDark ? "grey.900" : "grey.50",
       }}
       className="no-track-pii-safe"
     >
