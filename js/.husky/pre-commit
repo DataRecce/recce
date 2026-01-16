@@ -5,7 +5,9 @@ staged_js_files=$(git diff --cached --name-only | grep "^js/" | grep -E '\.(ts|t
 
 if [ -n "$staged_js_files" ]; then
 	echo "TypeScript/JavaScript files changed, running lint and type check..."
-	(cd js && pnpm lint:staged && pnpm type:check && pnpm test)
+	# Convert js/path/to/file.ts to path/to/file.ts (relative to js/)
+	relative_files=$(echo "$staged_js_files" | sed 's|^js/||')
+	(cd js && pnpm exec biome check --diagnostic-level=error $relative_files && pnpm type:check && pnpm exec jest --passWithNoTests)
 else
 	echo "No TypeScript/JavaScript files changed, skipping lint and type check."
 fi
