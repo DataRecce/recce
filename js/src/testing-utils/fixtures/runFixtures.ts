@@ -194,12 +194,12 @@ export function createHistogramDiffRun(): Extract<
 export function createTopKDiffRun(): Extract<Run, { type: "top_k_diff" }> {
   const result: TopKDiffResult = {
     base: {
-      values: ["pending", "shipped", "delivered", "Cancelled", "returned"],
+      values: ["pending", "shipped", "delivered", "cancelled", "returned"],
       counts: [100, 250, 400, 80, 50],
       valids: 880,
     },
     current: {
-      values: ["pending", "shipped", "delivered", "Cancelled", "returned"],
+      values: ["pending", "shipped", "delivered", "cancelled", "returned"],
       counts: [120, 230, 420, 75, 55],
       valids: 900,
     },
