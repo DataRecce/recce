@@ -234,7 +234,6 @@ function CheckCardComponent({
         alignItems: "center",
         gap: 1,
         padding: "8px 12px",
-        borderRadius: 1,
         cursor: disabled ? "default" : "pointer",
         borderLeft: isSelected ? "3px solid" : "3px solid transparent",
         borderLeftColor: isSelected ? "primary.main" : "transparent",

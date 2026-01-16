@@ -147,7 +147,7 @@ function createValueDiffDetailRun(): Extract<
     type: "value_diff_detail",
     run_id: `test-run-${Date.now()}`,
     run_at: new Date().toISOString(),
-    status: "finished",
+    status: "Finished",
     params: {
       model: "orders",
       primary_key: "id",
@@ -179,7 +179,7 @@ function createValueDiffDetailRunWithMore(): Extract<
     type: "value_diff_detail",
     run_id: `test-run-${Date.now()}`,
     run_at: new Date().toISOString(),
-    status: "finished",
+    status: "Finished",
     params: {
       model: "orders",
       primary_key: "id",
@@ -207,7 +207,7 @@ function createValueDiffDetailRunEmpty(): Extract<
     type: "value_diff_detail",
     run_id: `test-run-${Date.now()}`,
     run_at: new Date().toISOString(),
-    status: "finished",
+    status: "Finished",
     params: {
       model: "orders",
       primary_key: "id",

@@ -1,5 +1,58 @@
+import pytest
+
 from recce.models.types import Run, RunStatus, RunType
 from recce.state import RecceState
+
+
+class TestRunStatusNormalization:
+    """Test Run.__init__ status normalization for backward compatibility"""
+
+    @pytest.mark.parametrize(
+        "legacy_status,expected_status",
+        [
+            ("finished", RunStatus.FINISHED),
+            ("failed", RunStatus.FAILED),
+            ("cancelled", RunStatus.CANCELLED),
+            ("running", RunStatus.RUNNING),
+        ],
+    )
+    def test_legacy_lowercase_status_normalized(self, legacy_status, expected_status):
+        """Test that legacy lowercase status values are normalized to capitalized enum values"""
+        run = Run(type=RunType.QUERY, status=legacy_status)
+        assert run.status == expected_status
+
+    @pytest.mark.parametrize(
+        "current_status,expected_status",
+        [
+            ("Finished", RunStatus.FINISHED),
+            ("Failed", RunStatus.FAILED),
+            ("Cancelled", RunStatus.CANCELLED),
+            ("Running", RunStatus.RUNNING),
+        ],
+    )
+    def test_current_capitalized_status_preserved(self, current_status, expected_status):
+        """Test that current capitalized status values work correctly"""
+        run = Run(type=RunType.QUERY, status=current_status)
+        assert run.status == expected_status
+
+    @pytest.mark.parametrize(
+        "enum_status",
+        [RunStatus.FINISHED, RunStatus.FAILED, RunStatus.CANCELLED, RunStatus.RUNNING],
+    )
+    def test_enum_status_preserved(self, enum_status):
+        """Test that RunStatus enum values are preserved"""
+        run = Run(type=RunType.QUERY, status=enum_status)
+        assert run.status == enum_status
+
+    def test_none_status_preserved(self):
+        """Test that None status is preserved"""
+        run = Run(type=RunType.QUERY, status=None)
+        assert run.status is None
+
+    def test_missing_status_is_none(self):
+        """Test that missing status defaults to None"""
+        run = Run(type=RunType.QUERY)
+        assert run.status is None
 
 
 class TestRecceStateWithRuns:

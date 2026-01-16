@@ -97,7 +97,7 @@ function createQueryRun(): Extract<Run, { type: "query" }> {
     type: "query",
     run_id: `test-run-${Date.now()}`,
     run_at: new Date().toISOString(),
-    status: "finished",
+    status: "Finished",
     params: { sql_template: "SELECT * FROM orders LIMIT 100" },
     result: {
       columns: [
@@ -124,7 +124,7 @@ function createQueryBaseRun(): Extract<Run, { type: "query_base" }> {
     type: "query_base",
     run_id: `test-run-${Date.now()}`,
     run_at: new Date().toISOString(),
-    status: "finished",
+    status: "Finished",
     params: { sql_template: "SELECT * FROM orders LIMIT 100" },
     result: {
       columns: [
@@ -149,7 +149,7 @@ function createQueryRunWithLimitWarning(): Extract<Run, { type: "query" }> {
     type: "query",
     run_id: `test-run-${Date.now()}`,
     run_at: new Date().toISOString(),
-    status: "finished",
+    status: "Finished",
     params: { sql_template: "SELECT * FROM orders" },
     result: {
       columns: [{ key: "id", name: "id", type: "integer" }],
@@ -168,7 +168,7 @@ function createEmptyQueryRun(): Extract<Run, { type: "query" }> {
     type: "query",
     run_id: `test-run-${Date.now()}`,
     run_at: new Date().toISOString(),
-    status: "finished",
+    status: "Finished",
     params: { sql_template: "SELECT * FROM orders WHERE 1=0" },
     result: {
       columns: [],
@@ -187,7 +187,7 @@ function createWrongTypeRun(): Extract<Run, { type: "row_count_diff" }> {
     type: "row_count_diff",
     run_id: `test-run-${Date.now()}`,
     run_at: new Date().toISOString(),
-    status: "finished",
+    status: "Finished",
     params: { node_names: ["orders"] },
     result: { orders: { base: 100, curr: 200 } },
   };

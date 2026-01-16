@@ -34,10 +34,10 @@ class RunProgress(BaseModel):
 
 
 class RunStatus(Enum):
-    FINISHED = "finished"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-    RUNNING = "running"
+    FINISHED = "Finished"
+    FAILED = "Failed"
+    CANCELLED = "Cancelled"
+    RUNNING = "Running"
 
 
 class Run(BaseModel):
@@ -53,6 +53,18 @@ class Run(BaseModel):
     run_at: str = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
 
     def __init__(self, **data):
+        # Normalize status for backward compatibility (lowercase -> capitalized)
+        if "status" in data and data["status"] is not None:
+            status = data["status"]
+            if isinstance(status, str) and status not in [s.value for s in RunStatus]:
+                status_map = {
+                    "finished": "Finished",
+                    "failed": "Failed",
+                    "cancelled": "Cancelled",
+                    "running": "Running",
+                }
+                data["status"] = status_map.get(status, status)
+
         type = data.get("type")
 
         if "result" in data and data["result"] is not None:

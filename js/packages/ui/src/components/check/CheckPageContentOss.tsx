@@ -202,14 +202,7 @@ export const CheckPageContentOss = (): ReactNode => {
 
   return (
     <HSplit style={{ height: "100%" }} minSize={50} sizes={[20, 80]}>
-      <Box
-        sx={{
-          borderRight: "1px solid",
-          borderRightColor: borderColor,
-          height: "100%",
-        }}
-        style={{ contain: "size" }}
-      >
+      <Box sx={{ height: "100%" }} style={{ contain: "size" }}>
         <Stack
           sx={{ height: "100%", alignItems: "stretch" }}
           style={{ contain: "strict" }}

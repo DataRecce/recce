@@ -44,7 +44,7 @@ export const useRun = (runId?: string): UseRunResult => {
 
     if (error || run?.result || run?.error) {
       setIsRunning(false);
-    } else if (run?.status === "running") {
+    } else if (run?.status === "Running") {
       setIsRunning(true);
     }
   }

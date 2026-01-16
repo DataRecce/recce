@@ -59,7 +59,7 @@ export function createRowCountDiffRun(): Extract<
     type: "row_count_diff",
     run_id: generateRunId(),
     run_at: getCurrentTimestamp(),
-    status: "finished",
+    status: "Finished",
     params: { node_names: ["orders", "customers", "products", "old_model"] },
     result,
   };
@@ -79,7 +79,7 @@ export function createRowCountRun(): Extract<Run, { type: "row_count" }> {
     type: "row_count",
     run_id: generateRunId(),
     run_at: getCurrentTimestamp(),
-    status: "finished",
+    status: "Finished",
     params: { node_names: ["orders", "customers", "products"] },
     result,
   };
@@ -96,7 +96,7 @@ export function createEmptyRowCountDiffRun(): Extract<
     type: "row_count_diff",
     run_id: generateRunId(),
     run_at: getCurrentTimestamp(),
-    status: "finished",
+    status: "Finished",
     params: { node_names: [] },
     result: {},
   };
@@ -135,7 +135,7 @@ export function createValueDiffRun(): Extract<Run, { type: "value_diff" }> {
     type: "value_diff",
     run_id: generateRunId(),
     run_at: getCurrentTimestamp(),
-    status: "finished",
+    status: "Finished",
     params: {
       model: "orders",
       primary_key: "id",
@@ -174,7 +174,7 @@ export function createHistogramDiffRun(): Extract<
     type: "histogram_diff",
     run_id: generateRunId(),
     run_at: getCurrentTimestamp(),
-    status: "finished",
+    status: "Finished",
     params: {
       model: "orders",
       column_name: "amount",
@@ -209,7 +209,7 @@ export function createTopKDiffRun(): Extract<Run, { type: "top_k_diff" }> {
     type: "top_k_diff",
     run_id: generateRunId(),
     run_at: getCurrentTimestamp(),
-    status: "finished",
+    status: "Finished",
     params: {
       model: "orders",
       column_name: "status",
@@ -266,7 +266,7 @@ export function createProfileDiffRun(): Extract<Run, { type: "profile_diff" }> {
     type: "profile_diff",
     run_id: generateRunId(),
     run_at: getCurrentTimestamp(),
-    status: "finished",
+    status: "Finished",
     params: {
       model: "orders",
       columns: ["id", "name", "amount"],
@@ -300,7 +300,7 @@ export function createProfileRun(): Extract<Run, { type: "profile" }> {
     type: "profile",
     run_id: generateRunId(),
     run_at: getCurrentTimestamp(),
-    status: "finished",
+    status: "Finished",
     params: {
       model: "orders",
       columns: ["id", "name", "amount"],
@@ -348,7 +348,7 @@ export function createQueryDiffRun(): Extract<Run, { type: "query_diff" }> {
     type: "query_diff",
     run_id: generateRunId(),
     run_at: getCurrentTimestamp(),
-    status: "finished",
+    status: "Finished",
     params: {
       sql_template: "SELECT * FROM orders LIMIT 100",
       primary_keys: ["id"],
@@ -378,7 +378,7 @@ export function createQueryRun(): Extract<Run, { type: "query" }> {
     type: "query",
     run_id: generateRunId(),
     run_at: getCurrentTimestamp(),
-    status: "finished",
+    status: "Finished",
     params: {
       sql_template: "SELECT * FROM orders LIMIT 100",
     },
@@ -398,7 +398,7 @@ export function createRunWithError(): Extract<Run, { type: "row_count_diff" }> {
     type: "row_count_diff",
     run_id: generateRunId(),
     run_at: getCurrentTimestamp(),
-    status: "failed",
+    status: "Failed",
     error: "Database connection timeout after 30 seconds",
     params: { node_names: ["orders"] },
     result: undefined,
@@ -413,7 +413,7 @@ export function createRunningRun(): Extract<Run, { type: "row_count_diff" }> {
     type: "row_count_diff",
     run_id: generateRunId(),
     run_at: getCurrentTimestamp(),
-    status: "running",
+    status: "Running",
     progress: {
       message: "Querying database...",
       percentage: 50,

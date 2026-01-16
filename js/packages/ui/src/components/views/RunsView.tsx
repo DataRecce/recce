@@ -259,7 +259,7 @@ function RunsViewComponent({
         {/* Left pane: Run list */}
         <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
           {/* Show current progress at top if running */}
-          {currentProgress && currentProgress.status === "running" && (
+          {currentProgress && currentProgress.status === "Running" && (
             <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
               <RunProgress
                 status={currentProgress.status}

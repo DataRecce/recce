@@ -249,7 +249,7 @@ export const RunView = forwardRef<unknown, RunViewProps>(function RunView(
   // ============================================================================
   // Running State
   // ============================================================================
-  if (isRunning ?? run?.status === "running") {
+  if (isRunning ?? run?.status === "Running") {
     let loadingMessage = "Loading...";
     if (progress?.message) {
       loadingMessage = progress.message;

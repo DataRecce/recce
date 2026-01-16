@@ -150,39 +150,54 @@ export function EnvInfo() {
   return (
     <>
       <MuiTooltip title="Environment Info" placement="bottom-end">
-        <div
-          className="flex items-center hover:cursor-pointer hover:text-black"
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            cursor: "pointer",
+            "&:hover": {
+              color: "text.primary",
+            },
+          }}
           onClick={handleOpen}
         >
-          <div className="hidden text-sm lg:flex lg:flex-col">
-            <div className="flex gap-1">
+          <Stack
+            direction="column"
+            sx={{
+              display: { xs: "none", lg: "flex" },
+              fontSize: "0.875rem",
+            }}
+          >
+            <Box sx={{ display: "flex", gap: 0.5 }}>
               <Typography
                 component="span"
-                sx={{ color: "warning.main" }}
-                className="no-track-pii-safe max-w-32 truncate"
+                noWrap
+                sx={{ color: "warning.main", maxWidth: 128 }}
+                className="no-track-pii-safe"
               >
                 {Array.from(baseSchemas).join(", ")}
               </Typography>{" "}
               ({baseRelativeTime})
-            </div>
-            <div className="flex gap-1">
+            </Box>
+            <Box sx={{ display: "flex", gap: 0.5 }}>
               <Typography
                 component="span"
-                sx={{ color: "primary.main" }}
-                className="no-track-pii-safe max-w-32 truncate"
+                noWrap
+                sx={{ color: "primary.main", maxWidth: 128 }}
+                className="no-track-pii-safe"
               >
                 {Array.from(currentSchemas).join(", ")}
               </Typography>{" "}
               ({currentRelativeTime})
-            </div>
-          </div>
+            </Box>
+          </Stack>
           <IconButton size="small" aria-label="Environment Info">
             <Box
               component={PiInfo}
               sx={{ fontSize: 16, verticalAlign: "middle" }}
             />
           </IconButton>
-        </div>
+        </Box>
       </MuiTooltip>
       <MuiDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ display: "flex", alignItems: "center" }}>

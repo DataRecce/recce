@@ -152,7 +152,7 @@ describe("runFixtures - createRowCountDiffRun", () => {
     expect(run.type).toBe("row_count_diff");
     expect(run.run_id).toBeDefined();
     expect(run.run_at).toBeDefined();
-    expect(run.status).toBe("finished");
+    expect(run.status).toBe("Finished");
     expect(run.result).toBeDefined();
     expect(run.params?.node_names).toBeDefined();
   });
@@ -236,14 +236,14 @@ describe("runFixtures - createQueryDiffRun", () => {
 describe("runFixtures - error cases", () => {
   test("createRunWithError creates failed run", () => {
     const run = createRunWithError();
-    expect(run.status).toBe("failed");
+    expect(run.status).toBe("Failed");
     expect(run.error).toBeDefined();
     expect(run.result).toBeUndefined();
   });
 
   test("createRunningRun creates running run", () => {
     const run = createRunningRun();
-    expect(run.status).toBe("running");
+    expect(run.status).toBe("Running");
     expect(run.progress).toBeDefined();
     expect(run.progress?.percentage).toBeDefined();
   });

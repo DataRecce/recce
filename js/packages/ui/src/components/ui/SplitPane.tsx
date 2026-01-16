@@ -4,6 +4,7 @@ import "./splitStyles.css";
 import Box from "@mui/material/Box";
 import { type CSSProperties, memo, type ReactNode } from "react";
 import Split from "react-split";
+import { useIsDark } from "../../hooks/useIsDark";
 
 /**
  * Split direction
@@ -98,11 +99,12 @@ function SplitPaneComponent({
   dragInterval = 1,
   onDragEnd,
   onDrag,
-  theme = "light",
+  theme,
   style,
   className,
 }: SplitPaneProps) {
-  const isDark = theme === "dark";
+  const isDarkAuto = useIsDark();
+  const isDark = theme ? theme === "dark" : isDarkAuto;
 
   const containerStyle: CSSProperties = {
     display: "flex",
@@ -119,7 +121,7 @@ function SplitPaneComponent({
         height: "100%",
         width: "100%",
         "& .gutter": {
-          backgroundColor: isDark ? "grey.700" : "grey.200",
+          backgroundColor: "divider",
           backgroundRepeat: "no-repeat",
           backgroundPosition: "50%",
           transition: "background-color 0.15s ease",

@@ -134,8 +134,8 @@ export function CheckDetailOss({
   const trackedRunId = submittedRunId ?? check?.last_run?.run_id;
   const { run, error: rerunError } = useRun(trackedRunId);
   const isRunning = submittedRunId
-    ? !run || run.status === "running"
-    : run?.status === "running";
+    ? !run || run.status === "Running"
+    : run?.status === "Running";
 
   const runTypeEntry = check?.type ? findByRunType(check.type) : undefined;
 

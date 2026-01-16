@@ -111,7 +111,7 @@ function createQueryDiffRun(): Extract<Run, { type: "query_diff" }> {
     type: "query_diff",
     run_id: `test-run-${Date.now()}`,
     run_at: new Date().toISOString(),
-    status: "finished",
+    status: "Finished",
     params: {
       sql_template: "SELECT * FROM orders LIMIT 100",
       primary_keys: ["id"],
@@ -155,7 +155,7 @@ function createQueryDiffJoinRun(): Extract<Run, { type: "query_diff" }> {
     type: "query_diff",
     run_id: `test-run-${Date.now()}`,
     run_at: new Date().toISOString(),
-    status: "finished",
+    status: "Finished",
     params: {
       sql_template: "SELECT * FROM orders LIMIT 100",
       primary_keys: ["id"],
@@ -186,7 +186,7 @@ function createWrongTypeRun(): Extract<Run, { type: "row_count_diff" }> {
     type: "row_count_diff",
     run_id: `test-run-${Date.now()}`,
     run_at: new Date().toISOString(),
-    status: "finished",
+    status: "Finished",
     params: { node_names: ["orders"] },
     result: { orders: { base: 100, curr: 200 } },
   };

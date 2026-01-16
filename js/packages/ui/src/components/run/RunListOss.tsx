@@ -36,8 +36,8 @@ function mapRunToListItem(run: Run): RunListItemData {
     id: run.run_id,
     name: run.name,
     type: run.type,
-    // Default to "finished" if status is not set (shouldn't happen in practice)
-    status: run.status ?? "finished",
+    // Default to "Finished" if status is not set (shouldn't happen in practice)
+    status: run.status ?? "Finished",
     runAt: run.run_at,
     checkId: run.check_id,
   };
