@@ -611,6 +611,156 @@ def upload(target_path, session_id, session_name, skip_confirmation, cr, session
         upload_with_platform_apis(console, token, ci_info, manifest_path, catalog_path, adapter_type, target_path)
 
 
+@cloud_cli.command(name="list")
+@click.option(
+    "--type",
+    "session_type",
+    type=click.Choice(["cr", "prod", "dev"]),
+    help="Filter by session type (prod=base, cr=has PR link, dev=other)",
+)
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    help="Output in JSON format",
+)
+def list_sessions_cmd(session_type, output_json):
+    """
+    List sessions in the configured Recce Cloud project.
+
+    \b
+    Requires:
+    - RECCE_API_TOKEN env var or 'recce-cloud login'
+    - Project binding via 'recce-cloud init' or RECCE_ORG/RECCE_PROJECT env vars
+
+    \b
+    Examples:
+      # List all sessions
+      recce-cloud list
+
+      # List only production sessions
+      recce-cloud list --type prod
+
+      # Output as JSON
+      recce-cloud list --json
+    """
+    import json
+
+    from rich.table import Table
+
+    from recce_cloud.api.client import RecceCloudClient
+    from recce_cloud.auth.profile import get_api_token
+    from recce_cloud.config.resolver import ConfigurationError, resolve_config
+
+    console = Console()
+
+    # 1. Get API token
+    token = os.getenv("RECCE_API_TOKEN") or get_api_token()
+    if not token:
+        console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
+        console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
+        sys.exit(2)
+
+    # 2. Resolve org/project configuration
+    try:
+        config = resolve_config()
+        org = config.org
+        project = config.project
+    except ConfigurationError as e:
+        console.print("[red]Error:[/red] Could not resolve org/project configuration")
+        console.print(f"Reason: {e}")
+        console.print()
+        console.print("Run 'recce-cloud init' to bind this directory to a project,")
+        console.print("or set RECCE_ORG and RECCE_PROJECT environment variables")
+        sys.exit(2)
+
+    # 3. Initialize client and resolve IDs
+    try:
+        client = RecceCloudClient(token)
+
+        org_info = client.get_organization(org)
+        if not org_info:
+            console.print(f"[red]Error:[/red] Organization '{org}' not found or you don't have access")
+            sys.exit(2)
+        org_id = org_info["id"]
+
+        project_info = client.get_project(org_id, project)
+        if not project_info:
+            console.print(f"[red]Error:[/red] Project '{project}' not found in organization '{org}'")
+            sys.exit(2)
+        project_id = project_info["id"]
+
+    except Exception as e:
+        console.print(f"[red]Error:[/red] Failed to initialize: {e}")
+        sys.exit(2)
+
+    # Helper to derive session type from fields:
+    # - prod: is_base = True
+    # - cr: pr_link is not null
+    # - dev: everything else
+    def get_session_type(s):
+        if s.get("is_base"):
+            return "prod"
+        elif s.get("pr_link"):
+            return "cr"
+        else:
+            return "dev"
+
+    # 4. List sessions
+    try:
+        sessions = client.list_sessions(org_id, project_id)
+
+        if session_type:
+            sessions = [s for s in sessions if get_session_type(s) == session_type]
+    except Exception as e:
+        console.print(f"[red]Error:[/red] Failed to list sessions: {e}")
+        sys.exit(2)
+
+    # 5. Output results
+    if output_json:
+        console.print(json.dumps(sessions, indent=2, default=str))
+        sys.exit(0)
+
+    if not sessions:
+        console.print("[yellow]No sessions found[/yellow]")
+        if session_type:
+            console.print(f"(filtered by type: {session_type})")
+        sys.exit(0)
+
+    # Display as table
+    console.print(f"[cyan]Organization:[/cyan] {org}")
+    console.print(f"[cyan]Project:[/cyan] {project}")
+    console.print()
+
+    table = Table(title=f"Sessions ({len(sessions)} total)")
+    table.add_column("Name", style="cyan", no_wrap=True)
+    table.add_column("ID", style="dim")
+    table.add_column("Type", style="green")
+    table.add_column("Created At")
+    table.add_column("Adapter")
+
+    for session in sessions:
+        name = session.get("name", "-")
+        session_id = session.get("id", "-")
+        s_type = get_session_type(session)
+        created_at = session.get("created_at", "-")
+        if created_at and created_at != "-":
+            # Format datetime if present
+            try:
+                from datetime import datetime
+
+                dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                created_at = dt.strftime("%Y-%m-%d %H:%M")
+            except (ValueError, AttributeError):
+                pass
+        adapter = session.get("adapter_type", "-")
+
+        table.add_row(name or "(unnamed)", session_id, s_type, created_at, adapter or "-")
+
+    console.print(table)
+    sys.exit(0)
+
+
 @cloud_cli.command()
 @click.option(
     "--target-path",

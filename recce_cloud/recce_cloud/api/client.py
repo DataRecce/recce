@@ -417,10 +417,12 @@ class RecceCloudClient:
         Raises:
             RecceCloudException: If the API call fails.
         """
-        sessions = self.list_sessions(org_id, project_id, session_name=session_name)
-        if sessions:
-            # Return the first matching session
-            return sessions[0]
+        # Note: The API may not support server-side name filtering yet,
+        # so we filter client-side to ensure exact match
+        sessions = self.list_sessions(org_id, project_id)
+        for session in sessions:
+            if session.get("name") == session_name:
+                return session
         return None
 
     def create_session(
