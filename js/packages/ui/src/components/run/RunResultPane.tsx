@@ -51,6 +51,7 @@ import YAML from "yaml";
 import type { Run, RunParamTypes } from "../../api";
 import { useIsDark } from "../../hooks/useIsDark";
 import { CodeEditor } from "../../primitives";
+import { RunView } from "./RunView";
 import type { RunResultViewProps, RunResultViewRef } from "./types";
 
 // ============================================================================
@@ -685,6 +686,7 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
   // Children
   children,
 }: RunResultPaneProps<VO, RefType>) {
+  const isDark = useIsDark();
   const [tabValue, setTabValue] = useState<RunResultPaneTabValue>("result");
   const [showSingleEnvNotification, setShowSingleEnvNotification] =
     useState(true);
@@ -720,7 +722,14 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
     | undefined;
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        bgcolor: isDark ? "grey.900" : "grey.50",
+      }}
+    >
       {/* Single environment notification */}
       {isSingleEnvironment &&
         showSingleEnvNotification &&
@@ -813,35 +822,19 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
       </Box>
 
       {/* Tab content */}
-      {tabValue === "result" && run && RunResultView && (
-        <Box
-          sx={{
-            height: "100%",
-            contain: "layout",
-            overflow: "auto",
-          }}
-          className="no-track-pii-safe"
+      {tabValue === "result" && (RunResultView || children) && (
+        <RunView
+          ref={resultViewRef}
+          isRunning={isRunning}
+          error={error}
+          run={run}
+          onCancel={_onCancel}
+          viewOptions={viewOptions}
+          onViewOptionsChanged={onViewOptionsChanged}
+          RunResultView={RunResultView}
         >
-          <RunResultView
-            ref={resultViewRef as Ref<RefType>}
-            run={run}
-            viewOptions={viewOptions}
-            onViewOptionsChanged={onViewOptionsChanged}
-          />
-        </Box>
-      )}
-
-      {tabValue === "result" && run && children && (
-        <Box
-          sx={{
-            height: "100%",
-            contain: "layout",
-            overflow: "auto",
-          }}
-          className="no-track-pii-safe"
-        >
-          {children({ run, viewOptions, onViewOptionsChanged })}
-        </Box>
+          {children}
+        </RunView>
       )}
 
       {tabValue === "params" && run && (

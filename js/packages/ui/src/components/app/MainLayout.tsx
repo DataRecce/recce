@@ -19,6 +19,7 @@ import {
   useRecceServerFlag,
   useRouteConfig,
 } from "../../contexts";
+import { useIsDark } from "../../hooks/useIsDark";
 import { trackInit } from "../../lib/api/track";
 import { RunListOss, RunResultPaneOss as RunResultPane } from "../run";
 import { HSplit, VSplit } from "../ui";
@@ -113,6 +114,7 @@ export function Main({
   const { basePath } = useRouteConfig();
   const { data: flag } = useRecceServerFlag();
   const pathname = usePathname();
+  const isDark = useIsDark();
 
   const _isRunResultOpen =
     isRunResultOpen && !pathname.startsWith(`${basePath}/checks`);
@@ -171,7 +173,10 @@ export function Main({
           </Box>
         </Suspense>
         {/* suppressHydrationWarning: react-split adds inline styles after mount */}
-        <Box sx={{ height: "100%" }} suppressHydrationWarning>
+        <Box
+          sx={{ height: "100%", bgcolor: isDark ? "grey.900" : "grey.50" }}
+          suppressHydrationWarning
+        >
           {_isRunResultOpen ? (
             <RunResultPane
               onClose={closeRunResult}
