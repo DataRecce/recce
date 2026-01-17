@@ -298,9 +298,6 @@ export default defineConfig({
     // Environment
     environment: "jsdom",
 
-    // Use threads pool instead of forks for better ESM compatibility
-    pool: "threads",
-
     // Setup files
     setupFiles: ["./vitest.setup.mts"],
 
@@ -366,6 +363,9 @@ export default defineConfig({
             "html-url-attributes",
             // React icons is ESM-only
             "react-icons",
+            // jsdom dependencies with ESM issues (jsdom 27+)
+            "@exodus/bytes",
+            "html-encoding-sniffer",
           ],
         },
       },
