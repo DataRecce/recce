@@ -7,7 +7,8 @@
     "defaultBranch": "main"
   },
   "files": {
-    "ignoreUnknown": false
+    "ignoreUnknown": false,
+    "includes": ["**", "!**/dist"]
   },
   "formatter": {
     "enabled": true,
@@ -126,6 +127,7 @@
       "!**/.github",
       "!**/public",
       "!**/node_modules",
+      "!**/dist",
       "!**/out",
       "!eslint.config.*",
       "!next-env.d.ts"

@@ -10,6 +10,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
+import { type MockedFunction, vi } from "vitest";
 
 import type { RecceInstanceInfo } from "../../../api/instanceInfo";
 import {
@@ -19,18 +20,18 @@ import {
 } from "../../../api/keepAlive";
 
 // Mock dependencies
-jest.mock("../../instance/useRecceInstanceInfo", () => ({
-  useRecceInstanceInfo: jest.fn(),
+vi.mock("../../instance/useRecceInstanceInfo", () => ({
+  useRecceInstanceInfo: vi.fn(),
 }));
 
-jest.mock("../useIdleDetection", () => ({
-  useIdleDetection: jest.fn(),
+vi.mock("../useIdleDetection", () => ({
+  useIdleDetection: vi.fn(),
 }));
 
-jest.mock("../../../api/keepAlive", () => ({
-  setKeepAliveCallback: jest.fn(),
-  getLastKeepAliveTime: jest.fn(() => 0),
-  resetKeepAliveState: jest.fn(),
+vi.mock("../../../api/keepAlive", () => ({
+  setKeepAliveCallback: vi.fn(),
+  getLastKeepAliveTime: vi.fn(() => 0),
+  resetKeepAliveState: vi.fn(),
 }));
 
 import { useRecceInstanceInfo } from "../../instance/useRecceInstanceInfo";
@@ -40,13 +41,13 @@ import {
   useIdleTimeoutSafe,
 } from "../IdleTimeoutContext";
 
-const mockUseRecceInstanceInfo = useRecceInstanceInfo as jest.MockedFunction<
+const mockUseRecceInstanceInfo = useRecceInstanceInfo as MockedFunction<
   typeof useRecceInstanceInfo
 >;
-const mockSetKeepAliveCallback = setKeepAliveCallback as jest.MockedFunction<
+const mockSetKeepAliveCallback = setKeepAliveCallback as MockedFunction<
   typeof setKeepAliveCallback
 >;
-const mockGetLastKeepAliveTime = getLastKeepAliveTime as jest.MockedFunction<
+const mockGetLastKeepAliveTime = getLastKeepAliveTime as MockedFunction<
   typeof getLastKeepAliveTime
 >;
 
@@ -178,13 +179,14 @@ class ErrorBoundary extends React.Component<
 
 describe("IdleTimeoutContext (@datarecce/ui)", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
+    vi.clearAllMocks();
+    // Use shouldAdvanceTime to allow waitFor retries to work with fake timers
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     mockGetLastKeepAliveTime.mockReturnValue(0);
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   describe("disabled state (timeout is null)", () => {
@@ -396,7 +398,7 @@ describe("IdleTimeoutContext (@datarecce/ui)", () => {
 
       // Advance time by 2 seconds
       act(() => {
-        jest.advanceTimersByTime(2000);
+        vi.advanceTimersByTime(2000);
       });
 
       // Remaining should have decreased
@@ -430,7 +432,7 @@ describe("IdleTimeoutContext (@datarecce/ui)", () => {
 
       // Advance time beyond the timeout
       act(() => {
-        jest.advanceTimersByTime(10000); // 10 seconds
+        vi.advanceTimersByTime(10000); // 10 seconds
       });
 
       await waitFor(() => {
@@ -479,7 +481,7 @@ describe("IdleTimeoutContext (@datarecce/ui)", () => {
 
       // Advance time
       act(() => {
-        jest.advanceTimersByTime(5000);
+        vi.advanceTimersByTime(5000);
       });
 
       // Remaining should NOT have changed after disconnect
@@ -577,7 +579,7 @@ describe("IdleTimeoutContext (@datarecce/ui)", () => {
   describe("useIdleTimeout (strict hook)", () => {
     it("throws error when used outside provider", () => {
       // Suppress console.error for this test since React will log the error
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, "error")
         // biome-ignore lint/suspicious/noEmptyBlockStatements: Intentionally suppressing console.error
         .mockImplementation(() => {});

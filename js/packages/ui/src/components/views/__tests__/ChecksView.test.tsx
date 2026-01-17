@@ -5,16 +5,17 @@
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 import type { Check } from "../../../providers/contexts/CheckContext";
 import { ChecksView } from "../ChecksView";
 
-const mockUseCheckContext = jest.fn();
+const mockUseCheckContext = vi.fn();
 
-jest.mock("../../../providers/contexts/CheckContext", () => ({
+vi.mock("../../../providers/contexts/CheckContext", () => ({
   useCheckContext: () => mockUseCheckContext(),
 }));
 
-jest.mock("../../check/CheckList", () => ({
+vi.mock("../../check/CheckList", () => ({
   CheckList: ({
     checks,
     onCheckSelect,
@@ -32,7 +33,7 @@ jest.mock("../../check/CheckList", () => ({
   ),
 }));
 
-jest.mock("../../check/CheckDetail", () => ({
+vi.mock("../../check/CheckDetail", () => ({
   CheckDetail: ({ checkId, name }: { checkId: string; name: string }) => (
     <div data-testid="check-detail">
       {checkId}:{name}
@@ -40,13 +41,13 @@ jest.mock("../../check/CheckDetail", () => ({
   ),
 }));
 
-jest.mock("../../check/CheckEmptyState", () => ({
+vi.mock("../../check/CheckEmptyState", () => ({
   CheckEmptyState: ({ onAction }: { onAction?: () => void }) => (
     <button onClick={onAction}>Create Check</button>
   ),
 }));
 
-jest.mock("../../ui/SplitPane", () => ({
+vi.mock("../../ui/SplitPane", () => ({
   SplitPane: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="split-pane">{children}</div>
   ),
@@ -72,7 +73,7 @@ describe("ChecksView", () => {
       isLoading: false,
       error: undefined,
       selectedCheckId: undefined,
-      onSelectCheck: jest.fn(),
+      onSelectCheck: vi.fn(),
     });
   });
 
@@ -82,7 +83,7 @@ describe("ChecksView", () => {
       isLoading: true,
       error: undefined,
       selectedCheckId: undefined,
-      onSelectCheck: jest.fn(),
+      onSelectCheck: vi.fn(),
     });
 
     render(<ChecksView />);
@@ -96,7 +97,7 @@ describe("ChecksView", () => {
       isLoading: false,
       error: "Failed to load",
       selectedCheckId: undefined,
-      onSelectCheck: jest.fn(),
+      onSelectCheck: vi.fn(),
     });
 
     render(<ChecksView />);
@@ -106,7 +107,7 @@ describe("ChecksView", () => {
 
   it("renders empty state and handles create action", async () => {
     const user = userEvent.setup();
-    const handleCreate = jest.fn();
+    const handleCreate = vi.fn();
 
     render(<ChecksView onCreateCheck={handleCreate} />);
 
@@ -117,7 +118,7 @@ describe("ChecksView", () => {
 
   it("renders check details and handles selection", async () => {
     const user = userEvent.setup();
-    const handleSelect = jest.fn();
+    const handleSelect = vi.fn();
 
     render(
       <ChecksView

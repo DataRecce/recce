@@ -431,7 +431,7 @@ describe("extractCSVData", () => {
     });
 
     test("should return null and log error for malformed data", () => {
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, "error")
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentional mock
         .mockImplementation(() => {});

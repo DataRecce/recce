@@ -10,7 +10,8 @@
     "jsx": "react-jsx",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true
+    "noEmit": true,
+    "types": ["node", "vitest/globals", "@testing-library/jest-dom"]
   },
   "include": ["stories/**/*", ".storybook/**/*", "vitest.config.ts"]
 }

@@ -16,21 +16,26 @@
 // Mocks - MUST be set up before imports
 // ============================================================================
 
+import { vi } from "vitest";
+
 // Mock AG Grid to avoid ES module parsing errors
-jest.mock("ag-grid-community", () => ({
+vi.mock("ag-grid-community", () => ({
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
   ClientSideRowModelModule: {},
   AllCommunityModule: {},
-  themeQuartz: {},
+  themeQuartz: {
+    withParams: vi.fn(() => "mocked-theme"),
+  },
 }));
 
 // Mock ScreenshotDataGrid component
-jest.mock("../data/ScreenshotDataGrid", () => {
-  const utils = jest.requireActual("@/testing-utils/resultViewTestUtils");
+vi.mock("../data/ScreenshotDataGrid", async () => {
+  const utils = await vi.importActual("@/testing-utils/resultViewTestUtils");
   return {
-    ScreenshotDataGrid: utils.screenshotDataGridMock,
+    ScreenshotDataGrid: (utils as { screenshotDataGridMock: unknown })
+      .screenshotDataGridMock,
     EmptyRowsRenderer: () => (
       <div data-testid="empty-rows-renderer">No rows</div>
     ),
@@ -38,16 +43,16 @@ jest.mock("../data/ScreenshotDataGrid", () => {
 });
 
 // Mock ScreenshotBox component
-jest.mock("../ui/ScreenshotBox", () => {
-  const utils = jest.requireActual("@/testing-utils/resultViewTestUtils");
+vi.mock("../ui/ScreenshotBox", async () => {
+  const utils = await vi.importActual("@/testing-utils/resultViewTestUtils");
   return {
-    ScreenshotBox: utils.screenshotBoxMock,
+    ScreenshotBox: (utils as { screenshotBoxMock: unknown }).screenshotBoxMock,
   };
 });
 
 // Mock useIsDark hook
-const mockUseIsDark = jest.fn(() => false);
-jest.mock("../../hooks", () => ({
+const mockUseIsDark = vi.fn(() => false);
+vi.mock("../../hooks", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 
@@ -187,7 +192,7 @@ const TestConditionalEmptyView = createResultView<
 describe("createResultView", () => {
   beforeEach(() => {
     mockUseIsDark.mockReturnValue(false);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   // ==========================================================================
@@ -210,7 +215,7 @@ describe("createResultView", () => {
       const wrongRun = createWrongTypeRun();
 
       // Suppress console.error for expected throw
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, "error")
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});
@@ -327,7 +332,7 @@ describe("createResultView", () => {
       const wrongRun = createWrongTypeRun();
 
       // Suppress console.error for expected throw
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, "error")
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});
@@ -507,7 +512,7 @@ describe("createResultView", () => {
 
   describe("transformData", () => {
     it("calls transformData with run and options", () => {
-      const transformSpy = jest.fn(
+      const transformSpy = vi.fn(
         (run: TestGridRun): ResultViewData => ({
           columns: [{ field: "value", headerName: "Value" }],
           rows: run.data.map((value, index) => ({ value, _index: index })),
@@ -538,7 +543,7 @@ describe("createResultView", () => {
         filter: string;
       }
 
-      const transformSpy = jest.fn(
+      const transformSpy = vi.fn(
         (
           run: TestGridRun,
           // biome-ignore lint/suspicious/noExplicitAny: test allows flexible typing
@@ -1459,7 +1464,7 @@ describe("createResultView", () => {
 
   describe("onAddToChecklist callback", () => {
     it("passes onAddToChecklist to transformData", () => {
-      const transformSpy = jest.fn(
+      const transformSpy = vi.fn(
         (run: TestGridRun): ResultViewData => ({
           columns: [{ field: "value", headerName: "Value" }],
           rows: run.data.map((value, index) => ({ value, _index: index })),
@@ -1479,7 +1484,7 @@ describe("createResultView", () => {
       });
 
       const run = createTestGridRun();
-      const mockOnAddToChecklist = jest.fn();
+      const mockOnAddToChecklist = vi.fn();
 
       renderWithProviders(
         <ChecklistGridView run={run} onAddToChecklist={mockOnAddToChecklist} />,
@@ -1518,7 +1523,7 @@ describe("createResultView", () => {
       });
 
       const run = createTestGridRun();
-      const mockOnAddToChecklist = jest.fn();
+      const mockOnAddToChecklist = vi.fn();
 
       renderWithProviders(
         <AddToChecklistView

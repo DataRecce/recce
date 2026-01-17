@@ -24,20 +24,24 @@
 // Mocks - MUST be set up before imports
 // ============================================================================
 
+import { vi } from "vitest";
+
 // Mock AG Grid to avoid ES module parsing errors
-jest.mock("ag-grid-community", () => ({
+vi.mock("ag-grid-community", () => ({
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
   ClientSideRowModelModule: {},
   AllCommunityModule: {},
-  themeQuartz: {},
+  themeQuartz: {
+    withParams: vi.fn(() => "mocked-theme"),
+  },
 }));
 
 // Mock the grid generators from utils
-const mockToDataDiffGridConfigured = jest.fn();
-const mockToValueDiffGridConfigured = jest.fn();
-jest.mock("../../../utils", () => ({
+const mockToDataDiffGridConfigured = vi.fn();
+const mockToValueDiffGridConfigured = vi.fn();
+vi.mock("../../../utils", () => ({
   toDataDiffGridConfigured: (...args: unknown[]) =>
     mockToDataDiffGridConfigured(...args),
   toValueDiffGridConfigured: (...args: unknown[]) =>
@@ -45,14 +49,14 @@ jest.mock("../../../utils", () => ({
 }));
 
 // Mock useIsDark hook
-const mockUseIsDark = jest.fn(() => false);
-jest.mock("../../../hooks", () => ({
+const mockUseIsDark = vi.fn(() => false);
+vi.mock("../../../hooks", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 
 // Mock ScreenshotDataGrid
-jest.mock("../../data/ScreenshotDataGrid", () => ({
-  ScreenshotDataGrid: jest.fn(({ columns, rows }) => (
+vi.mock("../../data/ScreenshotDataGrid", () => ({
+  ScreenshotDataGrid: vi.fn(({ columns, rows }) => (
     <div
       data-testid="screenshot-data-grid-mock"
       data-columns={columns?.length ?? 0}
@@ -198,7 +202,7 @@ function createWrongTypeRun(): Extract<Run, { type: "row_count_diff" }> {
 
 describe("QueryDiffResultView", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockUseIsDark.mockReturnValue(false);
 
     // Default mock implementation returns grid data
@@ -297,7 +301,7 @@ describe("QueryDiffResultView", () => {
       const wrongRun = createWrongTypeRun();
 
       // Suppress console.error for expected throws
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, "error")
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});
@@ -361,7 +365,7 @@ describe("QueryDiffResultView", () => {
 
     it("calls onViewOptionsChanged when changed_only checkbox toggled", () => {
       const run = createQueryDiffRun();
-      const onViewOptionsChanged = jest.fn();
+      const onViewOptionsChanged = vi.fn();
 
       renderWithProviders(
         <QueryDiffResultView

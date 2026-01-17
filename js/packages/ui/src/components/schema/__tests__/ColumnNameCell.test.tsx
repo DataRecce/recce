@@ -7,14 +7,15 @@ import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";
 import React from "react";
+import { vi } from "vitest";
 import type { NodeData } from "../../../api";
 import { theme } from "../../../theme";
 import { ColumnNameCell } from "../ColumnNameCell";
 import type { SchemaDiffRow } from "../SchemaDiff";
 
 // Mock dependencies
-jest.mock("../../../contexts", () => ({
-  useRecceActionContext: () => ({ runAction: jest.fn() }),
+vi.mock("../../../contexts", () => ({
+  useRecceActionContext: () => ({ runAction: vi.fn() }),
   useRecceInstanceContext: () => ({
     featureToggles: { disableDatabaseQuery: false },
   }),

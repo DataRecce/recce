@@ -1,8 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { vi } from "vitest";
 import { DiffText } from "../DiffText";
 
 // Mock react-icons
-jest.mock("react-icons/pi", () => ({
+vi.mock("react-icons/pi", () => ({
   PiCopy: () => <span data-testid="copy-icon">Copy</span>,
 }));
 
@@ -99,7 +100,7 @@ describe("DiffText", () => {
     });
 
     test("calls onCopy callback when copy button clicked", () => {
-      const onCopy = jest.fn();
+      const onCopy = vi.fn();
       render(
         <DiffText value="copy_value" colorPalette="green" onCopy={onCopy} />,
       );
@@ -114,7 +115,7 @@ describe("DiffText", () => {
     });
 
     test("uses navigator.clipboard when no onCopy callback provided", () => {
-      const writeText = jest.fn();
+      const writeText = vi.fn();
       Object.assign(navigator, {
         clipboard: { writeText },
       });

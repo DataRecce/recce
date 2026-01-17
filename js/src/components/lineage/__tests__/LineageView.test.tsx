@@ -12,31 +12,33 @@
  * Source of truth: OSS functionality - these tests document current behavior
  */
 
+import { vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock @xyflow/react
-jest.mock("@xyflow/react", () => ({
-  ReactFlow: jest.fn(() => null),
+vi.mock("@xyflow/react", () => ({
+  ReactFlow: vi.fn(() => null),
   ReactFlowProvider: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
-  Background: jest.fn(() => null),
+  Background: vi.fn(() => null),
   BackgroundVariant: { Dots: "dots" },
-  Controls: jest.fn(() => null),
-  ControlButton: jest.fn(() => null),
-  MiniMap: jest.fn(() => null),
-  Panel: jest.fn(() => null),
-  useReactFlow: jest.fn(() => ({
-    fitView: jest.fn(),
-    setCenter: jest.fn(),
-    getNodes: jest.fn(() => []),
+  Controls: vi.fn(() => null),
+  ControlButton: vi.fn(() => null),
+  MiniMap: vi.fn(() => null),
+  Panel: vi.fn(() => null),
+  useReactFlow: vi.fn(() => ({
+    fitView: vi.fn(),
+    setCenter: vi.fn(),
+    getNodes: vi.fn(() => []),
   })),
-  useNodesState: jest.fn(() => [[], jest.fn(), jest.fn()]),
-  useEdgesState: jest.fn(() => [[], jest.fn(), jest.fn()]),
-  getNodesBounds: jest.fn(() => ({ x: 0, y: 0, width: 100, height: 100 })),
-  Handle: jest.fn(() => null),
+  useNodesState: vi.fn(() => [[], vi.fn(), vi.fn()]),
+  useEdgesState: vi.fn(() => [[], vi.fn(), vi.fn()]),
+  getNodesBounds: vi.fn(() => ({ x: 0, y: 0, width: 100, height: 100 })),
+  Handle: vi.fn(() => null),
   Position: {
     Left: "left",
     Right: "right",

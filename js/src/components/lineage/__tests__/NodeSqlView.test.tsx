@@ -13,23 +13,25 @@
  * Source of truth: OSS functionality - these tests document current behavior
  */
 
+import { type Mock, vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock @datarecce/ui/contexts
-jest.mock("@datarecce/ui/contexts", () => ({
-  useRouteConfig: jest.fn(() => ({ basePath: "" })),
-  useRecceServerFlag: jest.fn(),
+vi.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: vi.fn(() => ({ basePath: "" })),
+  useRecceServerFlag: vi.fn(),
 }));
 
 // Mock @datarecce/ui/hooks
-jest.mock("@datarecce/ui/hooks", () => ({
-  useIsDark: jest.fn(() => false),
+vi.mock("@datarecce/ui/hooks", () => ({
+  useIsDark: vi.fn(() => false),
 }));
 
 // Mock editor components from @datarecce/ui/primitives
-jest.mock("@datarecce/ui/primitives", () => ({
+vi.mock("@datarecce/ui/primitives", () => ({
   CodeEditor: ({
     value,
     language,
@@ -194,11 +196,11 @@ const createMockNode = (
 // ============================================================================
 
 describe("NodeSqlView", () => {
-  const mockUseRecceServerFlag = useRecceServerFlag as jest.Mock;
-  const mockUseIsDark = useIsDark as jest.Mock;
+  const mockUseRecceServerFlag = useRecceServerFlag as Mock;
+  const mockUseIsDark = useIsDark as Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Default mock implementations
     mockUseRecceServerFlag.mockReturnValue({

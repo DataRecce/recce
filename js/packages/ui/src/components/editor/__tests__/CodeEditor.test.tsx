@@ -19,28 +19,30 @@
 // Mock Setup - Use globalThis to avoid Jest hoisting issues
 // ============================================================================
 
+import { type Mock, vi } from "vitest";
+
 // TypeScript declaration for global mock store
 declare global {
   // eslint-disable-next-line no-var
   var __codeMirrorMockStore: {
-    sql: jest.Mock;
-    yaml: jest.Mock;
+    sql: Mock;
+    yaml: Mock;
     lineWrapping: { type: string };
-    editorViewTheme: jest.Mock;
-    keymapOf: jest.Mock;
-    precHighest: jest.Mock;
+    editorViewTheme: Mock;
+    keymapOf: Mock;
+    precHighest: Mock;
     codeMirrorProps: Record<string, unknown> | null;
   };
 }
 
 // Mock CodeMirror dependencies - each mock factory initializes the global store
-jest.mock("@codemirror/lang-sql", () => {
+vi.mock("@codemirror/lang-sql", () => {
   // Initialize store if not exists
   globalThis.__codeMirrorMockStore =
     globalThis.__codeMirrorMockStore ||
     ({} as typeof globalThis.__codeMirrorMockStore);
 
-  const sqlFn = jest.fn(() => ({ type: "sql" }));
+  const sqlFn = vi.fn(() => ({ type: "sql" }));
   globalThis.__codeMirrorMockStore.sql = sqlFn;
 
   return {
@@ -49,12 +51,12 @@ jest.mock("@codemirror/lang-sql", () => {
   };
 });
 
-jest.mock("@codemirror/lang-yaml", () => {
+vi.mock("@codemirror/lang-yaml", () => {
   globalThis.__codeMirrorMockStore =
     globalThis.__codeMirrorMockStore ||
     ({} as typeof globalThis.__codeMirrorMockStore);
 
-  const yamlFn = jest.fn(() => ({ type: "yaml" }));
+  const yamlFn = vi.fn(() => ({ type: "yaml" }));
   globalThis.__codeMirrorMockStore.yaml = yamlFn;
 
   return {
@@ -62,17 +64,17 @@ jest.mock("@codemirror/lang-yaml", () => {
   };
 });
 
-jest.mock("@uiw/codemirror-theme-github", () => ({
+vi.mock("@uiw/codemirror-theme-github", () => ({
   githubDark: { type: "githubDark" },
   githubLight: { type: "githubLight" },
 }));
 
-jest.mock("@codemirror/state", () => {
+vi.mock("@codemirror/state", () => {
   globalThis.__codeMirrorMockStore =
     globalThis.__codeMirrorMockStore ||
     ({} as typeof globalThis.__codeMirrorMockStore);
 
-  const precHighestFn = jest.fn((ext: unknown) => ({
+  const precHighestFn = vi.fn((ext: unknown) => ({
     type: "precHighest",
     ext,
   }));
@@ -85,14 +87,14 @@ jest.mock("@codemirror/state", () => {
   };
 });
 
-jest.mock("@codemirror/view", () => {
+vi.mock("@codemirror/view", () => {
   globalThis.__codeMirrorMockStore =
     globalThis.__codeMirrorMockStore ||
     ({} as typeof globalThis.__codeMirrorMockStore);
 
   const lineWrapping = { type: "lineWrapping" };
-  const themeFn = jest.fn(() => ({ type: "theme" }));
-  const keymapOfFn = jest.fn((bindings: unknown) => ({
+  const themeFn = vi.fn(() => ({ type: "theme" }));
+  const keymapOfFn = vi.fn((bindings: unknown) => ({
     type: "keymap",
     bindings,
   }));
@@ -113,7 +115,7 @@ jest.mock("@codemirror/view", () => {
 });
 
 // Mock @uiw/react-codemirror to capture props
-jest.mock("@uiw/react-codemirror", () => {
+vi.mock("@uiw/react-codemirror", () => {
   globalThis.__codeMirrorMockStore =
     globalThis.__codeMirrorMockStore ||
     ({} as typeof globalThis.__codeMirrorMockStore);
@@ -132,7 +134,7 @@ jest.mock("@uiw/react-codemirror", () => {
 });
 
 // ============================================================================
-// Imports (MUST come after jest.mock calls)
+// Imports (MUST come after vi.mock calls)
 // ============================================================================
 
 import { render, screen } from "@testing-library/react";
@@ -384,14 +386,14 @@ describe("CodeEditor", () => {
 
   describe("onChange callback", () => {
     it("passes onChange handler to CodeMirror", () => {
-      const onChange = jest.fn();
+      const onChange = vi.fn();
       render(<CodeEditor {...createMockProps({ onChange })} />);
 
       expect(mockStore.codeMirrorProps?.onChange).toBeDefined();
     });
 
     it("calls provided onChange when CodeMirror onChange fires", () => {
-      const onChange = jest.fn();
+      const onChange = vi.fn();
       render(<CodeEditor {...createMockProps({ onChange })} />);
 
       // Simulate CodeMirror calling our onChange handler
@@ -548,7 +550,7 @@ describe("CodeEditor", () => {
 
   describe("integration", () => {
     it("renders complete editor with all features", () => {
-      const onChange = jest.fn();
+      const onChange = vi.fn();
       const keyBindings = [{ key: "Mod-Enter", run: () => true }];
 
       render(

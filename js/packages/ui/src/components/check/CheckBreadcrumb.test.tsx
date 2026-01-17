@@ -13,10 +13,11 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 import { CheckBreadcrumb } from "./CheckBreadcrumb";
 
 describe("CheckBreadcrumb", () => {
-  const mockOnNameChange = jest.fn();
+  const mockOnNameChange = vi.fn();
 
   beforeEach(() => {
     mockOnNameChange.mockClear();

@@ -16,8 +16,10 @@
 // Mocks - MUST be set up before imports
 // ============================================================================
 
+import { type Mock, vi } from "vitest";
+
 // Mock @xyflow/react
-jest.mock("@xyflow/react", () => ({
+vi.mock("@xyflow/react", () => ({
   BaseEdge: ({
     id,
     path,
@@ -34,7 +36,7 @@ jest.mock("@xyflow/react", () => ({
   EdgeLabelRenderer: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="edge-label-renderer">{children}</div>
   ),
-  getBezierPath: jest.fn(() => ["M0,0 C100,0 200,100 300,100", 150, 50]),
+  getBezierPath: vi.fn(() => ["M0,0 C100,0 200,100 300,100", 150, 50]),
 }));
 
 // ============================================================================
@@ -80,10 +82,10 @@ const createMockEdgeProps = (
 // ============================================================================
 
 describe("LineageEdge", () => {
-  const mockGetBezierPath = getBezierPath as jest.Mock;
+  const mockGetBezierPath = getBezierPath as Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockGetBezierPath.mockReturnValue(["M0,0 C100,0 200,100 300,100", 150, 50]);
   });
 

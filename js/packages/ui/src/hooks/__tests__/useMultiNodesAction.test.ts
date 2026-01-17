@@ -16,6 +16,7 @@
  */
 
 import type React from "react";
+import { vi } from "vitest";
 
 // ============================================================================
 // Mocks - MUST be set up before imports
@@ -23,33 +24,33 @@ import type React from "react";
 
 // Mock ApiClient
 const mockApiClient = {
-  get: jest.fn(),
-  post: jest.fn(),
-  put: jest.fn(),
-  delete: jest.fn(),
+  get: vi.fn(),
+  post: vi.fn(),
+  put: vi.fn(),
+  delete: vi.fn(),
 };
 
 // Mock providers module
-jest.mock("../../providers", () => ({
-  useApiClient: jest.fn(() => mockApiClient),
+vi.mock("../../providers", () => ({
+  useApiClient: vi.fn(() => mockApiClient),
 }));
 
 // Mock action context
-const mockShowRunId = jest.fn();
-jest.mock("../../contexts/action", () => ({
-  useRecceActionContext: jest.fn(() => ({
+const mockShowRunId = vi.fn();
+vi.mock("../../contexts/action", () => ({
+  useRecceActionContext: vi.fn(() => ({
     showRunId: mockShowRunId,
   })),
 }));
 
 // Mock API functions
-const mockSubmitRun = jest.fn();
-const mockWaitRun = jest.fn();
-const mockCancelRun = jest.fn();
-const mockCreateLineageDiffCheck = jest.fn();
-const mockCreateSchemaDiffCheck = jest.fn();
+const mockSubmitRun = vi.fn();
+const mockWaitRun = vi.fn();
+const mockCancelRun = vi.fn();
+const mockCreateLineageDiffCheck = vi.fn();
+const mockCreateSchemaDiffCheck = vi.fn();
 
-jest.mock("../../api", () => ({
+vi.mock("../../api", () => ({
   submitRun: (...args: unknown[]) => mockSubmitRun(...args),
   waitRun: (...args: unknown[]) => mockWaitRun(...args),
   cancelRun: (...args: unknown[]) => mockCancelRun(...args),
@@ -136,10 +137,10 @@ const createMockRun = (
 // ============================================================================
 
 describe("useMultiNodesAction", () => {
-  const mockOnActionStarted = jest.fn();
-  const mockOnActionNodeUpdated = jest.fn();
-  const mockOnActionCompleted = jest.fn();
-  const mockOnTrackAction = jest.fn();
+  const mockOnActionStarted = vi.fn();
+  const mockOnActionNodeUpdated = vi.fn();
+  const mockOnActionCompleted = vi.fn();
+  const mockOnTrackAction = vi.fn();
 
   const defaultOptions = {
     onActionStarted: mockOnActionStarted,
@@ -150,7 +151,7 @@ describe("useMultiNodesAction", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockSubmitRun.mockReset();
     mockWaitRun.mockReset();
     mockCancelRun.mockReset();

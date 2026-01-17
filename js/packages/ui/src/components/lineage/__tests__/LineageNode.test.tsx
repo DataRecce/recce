@@ -20,8 +20,10 @@
 // Mocks - MUST be set up before imports
 // ============================================================================
 
+import { vi } from "vitest";
+
 // Mock @xyflow/react
-jest.mock("@xyflow/react", () => ({
+vi.mock("@xyflow/react", () => ({
   Handle: ({ type, position }: { type: string; position: string }) => (
     <div data-testid={`handle-${type}`} data-position={position} />
   ),
@@ -302,7 +304,7 @@ describe("LineageNode", () => {
     });
 
     it("calls onSelect when checkbox is clicked in selecting mode", () => {
-      const onSelect = jest.fn();
+      const onSelect = vi.fn();
       const props = createMockNodeProps(
         { interactive: true, selectMode: "selecting", onSelect },
         { label: "test" },
@@ -315,7 +317,7 @@ describe("LineageNode", () => {
     });
 
     it("does not call onSelect when checkbox is clicked in action_result mode", () => {
-      const onSelect = jest.fn();
+      const onSelect = vi.fn();
       const props = createMockNodeProps(
         {
           interactive: true,
@@ -532,7 +534,7 @@ describe("LineageNode", () => {
 
   describe("callbacks", () => {
     it("calls onNodeClick with node id when clicked", () => {
-      const onNodeClick = jest.fn();
+      const onNodeClick = vi.fn();
       const props = createMockNodeProps({ onNodeClick }, { label: "test" });
 
       const { container } = render(<LineageNode {...props} />);
@@ -543,7 +545,7 @@ describe("LineageNode", () => {
     });
 
     it("calls onNodeDoubleClick with node id when double-clicked", () => {
-      const onNodeDoubleClick = jest.fn();
+      const onNodeDoubleClick = vi.fn();
       const props = createMockNodeProps(
         { onNodeDoubleClick },
         { label: "test" },

@@ -5,9 +5,11 @@
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import React from "react";
+import { vi } from "vitest";
 import { CheckDetail, type CheckDetailTab } from "../CheckDetail";
 
-jest.mock("../CheckActions", () => ({
+vi.mock("../CheckActions", () => ({
   CheckActions: ({
     checkId,
     primaryActions = [],
@@ -32,9 +34,7 @@ jest.mock("../CheckActions", () => ({
   ),
 }));
 
-jest.mock("../CheckDescription", () => {
-  const React = require("react");
-
+vi.mock("../CheckDescription", () => {
   return {
     CheckDescription: ({
       value,
@@ -84,7 +84,7 @@ describe("CheckDetail", () => {
 
   it("invokes onAction when action is triggered", async () => {
     const user = userEvent.setup();
-    const handleAction = jest.fn();
+    const handleAction = vi.fn();
 
     render(
       <CheckDetail
@@ -103,7 +103,7 @@ describe("CheckDetail", () => {
 
   it("allows editing the name and calls onNameChange", async () => {
     const user = userEvent.setup();
-    const handleNameChange = jest.fn();
+    const handleNameChange = vi.fn();
 
     render(
       <CheckDetail
@@ -144,7 +144,7 @@ describe("CheckDetail", () => {
 
   it("invokes onDescriptionChange from description editor", async () => {
     const user = userEvent.setup();
-    const handleDescriptionChange = jest.fn();
+    const handleDescriptionChange = vi.fn();
 
     render(
       <CheckDetail

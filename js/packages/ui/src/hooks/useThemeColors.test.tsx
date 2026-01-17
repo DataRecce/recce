@@ -11,12 +11,13 @@
 
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { vi } from "vitest";
 import { ThemeProvider } from "../providers/contexts/ThemeContext";
 import { colors } from "../theme/colors";
 import { useThemeColors } from "./useThemeColors";
 
 // Mock MUI theme hook
-jest.mock("@mui/material/styles", () => ({
+vi.mock("@mui/material/styles", () => ({
   useTheme: () => ({
     palette: { mode: "light" },
   }),

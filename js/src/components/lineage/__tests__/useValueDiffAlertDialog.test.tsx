@@ -8,7 +8,25 @@
  * Source of truth: OSS functionality - these tests document current behavior
  */
 
+import { vi } from "vitest";
+
+// ============================================================================
+// Mocks - MUST be set up before imports
+// ============================================================================
+
+// Mock tracking API
+vi.mock("@datarecce/ui/lib/api/track", () => ({
+  EXPLORE_ACTION: { VALUE_DIFF: "value_diff" },
+  EXPLORE_FORM_EVENT: { EXECUTE: "execute", CANCEL: "cancel" },
+  trackExploreActionForm: vi.fn(),
+}));
+
+// ============================================================================
+// Imports
+// ============================================================================
+
 import useValueDiffAlertDialog from "@datarecce/ui/hooks/useValueDiffAlertDialogOss";
+import { trackExploreActionForm } from "@datarecce/ui/lib/api/track";
 import {
   act,
   render,
@@ -17,20 +35,6 @@ import {
   waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-
-// ============================================================================
-// Mocks - MUST be set up before imports
-// ============================================================================
-
-// Mock tracking API
-jest.mock("@datarecce/ui/lib/api/track", () => ({
-  EXPLORE_ACTION: { VALUE_DIFF: "value_diff" },
-  EXPLORE_FORM_EVENT: { EXECUTE: "execute", CANCEL: "cancel" },
-  trackExploreActionForm: jest.fn(),
-}));
-
-// Import the mocked module for assertions
-import { trackExploreActionForm } from "@datarecce/ui/lib/api/track";
 
 // ============================================================================
 // Test Helpers
@@ -75,7 +79,7 @@ function renderHookWithDialog() {
 
 describe("useValueDiffAlertDialog - hook return value", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("returns confirm function", () => {
@@ -100,7 +104,7 @@ describe("useValueDiffAlertDialog - hook return value", () => {
 
 describe("useValueDiffAlertDialog - dialog rendering", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("dialog is initially closed (not visible)", () => {
@@ -219,7 +223,7 @@ describe("useValueDiffAlertDialog - dialog rendering", () => {
 
 describe("useValueDiffAlertDialog - confirm behavior", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("Execute button resolves promise with true", async () => {
@@ -310,7 +314,7 @@ describe("useValueDiffAlertDialog - confirm behavior", () => {
 
 describe("useValueDiffAlertDialog - cancel behavior", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("Cancel button resolves promise with false", async () => {
@@ -478,7 +482,7 @@ describe("useValueDiffAlertDialog - cancel behavior", () => {
 
 describe("useValueDiffAlertDialog - multiple confirm calls", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("can be confirmed multiple times", async () => {

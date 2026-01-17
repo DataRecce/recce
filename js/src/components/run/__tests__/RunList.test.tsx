@@ -12,55 +12,62 @@
  * These tests focus on OSS-specific behavior injected through the wrapper.
  */
 
+import { vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock @datarecce/ui/api
-jest.mock("@datarecce/ui/api", () => ({
+vi.mock("@datarecce/ui/api", () => ({
   cacheKeys: {
     runs: () => ["runs"],
     run: (runId: string) => ["run", runId],
     checks: () => ["checks"],
   },
-  listRuns: jest.fn(),
-  waitRun: jest.fn(),
-  createCheckByRun: jest.fn(),
+  listRuns: vi.fn(),
+  waitRun: vi.fn(),
+  createCheckByRun: vi.fn(),
 }));
 
 // Mock contexts
-jest.mock("@datarecce/ui/contexts", () => ({
-  useRouteConfig: jest.fn(() => ({ basePath: "" })),
-  useRecceInstanceContext: jest.fn(() => ({
+vi.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: vi.fn(() => ({ basePath: "" })),
+  useRecceInstanceContext: vi.fn(() => ({
     featureToggles: {
       disableUpdateChecklist: false,
     },
   })),
-  useRecceActionContext: jest.fn(() => ({
-    closeHistory: jest.fn(),
-    showRunId: jest.fn(),
+  useRecceActionContext: vi.fn(() => ({
+    closeHistory: vi.fn(),
+    showRunId: vi.fn(),
     runId: undefined,
   })),
 }));
 
-jest.mock("@datarecce/ui/hooks", () => ({
-  useIsDark: jest.fn(() => false),
+vi.mock("@datarecce/ui/hooks", () => ({
+  useIsDark: vi.fn(() => false),
 }));
 
-jest.mock("@datarecce/ui/hooks", () => ({
-  useApiConfig: jest.fn(() => ({
+vi.mock("@datarecce/ui/hooks", () => ({
+  useApiConfig: vi.fn(() => ({
     apiClient: {},
   })),
 }));
 
-jest.mock("next/navigation", () => ({
-  useRouter: jest.fn(() => ({
-    push: jest.fn(),
+// Use vi.hoisted to create mock functions that can be accessed in tests
+const { mockUseRouter } = vi.hoisted(() => ({
+  mockUseRouter: vi.fn(() => ({
+    push: vi.fn(),
   })),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: mockUseRouter,
+}));
+
 // Mock track functions
-jest.mock("@datarecce/ui/lib/api/track", () => ({
+vi.mock("@datarecce/ui/lib/api/track", () => ({
   EXPLORE_ACTION: {
     ROW_COUNT: "row_count",
     ROW_COUNT_DIFF: "row_count_diff",
@@ -69,12 +76,12 @@ jest.mock("@datarecce/ui/lib/api/track", () => ({
   EXPLORE_SOURCE: {
     LINEAGE_VIEW_TOP_BAR: "lineage_view_top_bar",
   },
-  trackHistoryAction: jest.fn(),
-  trackExploreAction: jest.fn(),
+  trackHistoryAction: vi.fn(),
+  trackExploreAction: vi.fn(),
 }));
 
 // Mock registry
-jest.mock("@datarecce/ui/components/run/RunList", () => ({
+vi.mock("@datarecce/ui/components/run/RunList", () => ({
   RunList: ({
     runs,
     isLoading,
@@ -158,8 +165,8 @@ jest.mock("@datarecce/ui/components/run/RunList", () => ({
   ),
 }));
 
-jest.mock("@datarecce/ui/components/run/registry", () => ({
-  findByRunType: jest.fn((type: string) => ({
+vi.mock("@datarecce/ui/components/run/registry", () => ({
+  findByRunType: vi.fn((type: string) => ({
     icon: () => <span data-testid={`${type}-icon`}>{type}</span>,
     title: type.replace(/_/g, " "),
   })),
@@ -171,14 +178,21 @@ jest.mock("@datarecce/ui/components/run/registry", () => ({
 
 import { createCheckByRun, listRuns, type Run } from "@datarecce/ui/api";
 import { RunListOss } from "@datarecce/ui/components/run";
+import {
+  useRecceActionContext,
+  useRecceInstanceContext,
+} from "@datarecce/ui/contexts";
 import { trackHistoryAction } from "@datarecce/ui/lib/api/track";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { Mock } from "vitest";
 
-// Cast to jest mocks
-const mockListRuns = listRuns as jest.Mock;
-const mockCreateCheckByRun = createCheckByRun as jest.Mock;
-const mockTrackHistoryAction = trackHistoryAction as jest.Mock;
+// Cast to vitest mocks
+const mockListRuns = listRuns as Mock;
+const mockCreateCheckByRun = createCheckByRun as Mock;
+const mockTrackHistoryAction = trackHistoryAction as Mock;
+const mockUseRecceActionContext = useRecceActionContext as Mock;
+const mockUseRecceInstanceContext = useRecceInstanceContext as Mock;
 
 // ============================================================================
 // Test Fixtures
@@ -222,7 +236,7 @@ const renderWithQueryClient = (component: React.ReactElement) => {
 
 describe("RunList", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   // ==========================================================================
@@ -254,12 +268,10 @@ describe("RunList", () => {
     });
 
     it("calls closeHistory when close button is clicked", async () => {
-      const mockCloseHistory = jest.fn();
-      const useRecceActionContext =
-        require("@datarecce/ui/contexts").useRecceActionContext;
-      useRecceActionContext.mockReturnValue({
+      const mockCloseHistory = vi.fn();
+      mockUseRecceActionContext.mockReturnValue({
         closeHistory: mockCloseHistory,
-        showRunId: jest.fn(),
+        showRunId: vi.fn(),
         runId: undefined,
       });
 
@@ -278,12 +290,10 @@ describe("RunList", () => {
     });
 
     it("tracks hide action when close button is clicked", async () => {
-      const mockCloseHistory = jest.fn();
-      const useRecceActionContext =
-        require("@datarecce/ui/contexts").useRecceActionContext;
-      useRecceActionContext.mockReturnValue({
+      const mockCloseHistory = vi.fn();
+      mockUseRecceActionContext.mockReturnValue({
         closeHistory: mockCloseHistory,
-        showRunId: jest.fn(),
+        showRunId: vi.fn(),
         runId: undefined,
       });
 
@@ -435,11 +445,9 @@ describe("RunList", () => {
 
   describe("selection", () => {
     it("calls showRunId when run is clicked", async () => {
-      const mockShowRunId = jest.fn();
-      const useRecceActionContext =
-        require("@datarecce/ui/contexts").useRecceActionContext;
-      useRecceActionContext.mockReturnValue({
-        closeHistory: jest.fn(),
+      const mockShowRunId = vi.fn();
+      mockUseRecceActionContext.mockReturnValue({
+        closeHistory: vi.fn(),
         showRunId: mockShowRunId,
         runId: undefined,
       });
@@ -465,11 +473,9 @@ describe("RunList", () => {
     });
 
     it("tracks click_run action when run is selected", async () => {
-      const mockShowRunId = jest.fn();
-      const useRecceActionContext =
-        require("@datarecce/ui/contexts").useRecceActionContext;
-      useRecceActionContext.mockReturnValue({
-        closeHistory: jest.fn(),
+      const mockShowRunId = vi.fn();
+      mockUseRecceActionContext.mockReturnValue({
+        closeHistory: vi.fn(),
         showRunId: mockShowRunId,
         runId: undefined,
       });
@@ -565,9 +571,8 @@ describe("RunList", () => {
     });
 
     it("navigates to check after adding to checklist", async () => {
-      const mockPush = jest.fn();
-      const useRouter = require("next/navigation").useRouter;
-      useRouter.mockReturnValue({ push: mockPush });
+      const mockPush = vi.fn();
+      mockUseRouter.mockReturnValue({ push: mockPush });
 
       const run = createMockRun({ run_id: "test-run", check_id: undefined });
       mockListRuns.mockResolvedValue([run]);
@@ -594,9 +599,7 @@ describe("RunList", () => {
       mockListRuns.mockResolvedValue([run]);
 
       // Mock disabled feature
-      const useRecceInstanceContext =
-        require("@datarecce/ui/contexts").useRecceInstanceContext;
-      useRecceInstanceContext.mockReturnValue({
+      mockUseRecceInstanceContext.mockReturnValue({
         featureToggles: {
           disableUpdateChecklist: true,
         },
@@ -631,9 +634,8 @@ describe("RunList", () => {
     });
 
     it("navigates to check when go to check is clicked", async () => {
-      const mockPush = jest.fn();
-      const useRouter = require("next/navigation").useRouter;
-      useRouter.mockReturnValue({ push: mockPush });
+      const mockPush = vi.fn();
+      mockUseRouter.mockReturnValue({ push: mockPush });
 
       const run = createMockRun({ check_id: "existing-check" });
       mockListRuns.mockResolvedValue([run]);
@@ -655,9 +657,8 @@ describe("RunList", () => {
     });
 
     it("tracks go_to_check action when button is clicked", async () => {
-      const mockPush = jest.fn();
-      const useRouter = require("next/navigation").useRouter;
-      useRouter.mockReturnValue({ push: mockPush });
+      const mockPush = vi.fn();
+      mockUseRouter.mockReturnValue({ push: mockPush });
 
       const run = createMockRun({ check_id: "existing-check" });
       mockListRuns.mockResolvedValue([run]);
@@ -728,19 +729,15 @@ describe("RunList", () => {
     });
 
     it("stops event propagation when clicking add to checklist", async () => {
-      const mockShowRunId = jest.fn();
-      const useRecceActionContext =
-        require("@datarecce/ui/contexts").useRecceActionContext;
-      useRecceActionContext.mockReturnValue({
-        closeHistory: jest.fn(),
+      const mockShowRunId = vi.fn();
+      mockUseRecceActionContext.mockReturnValue({
+        closeHistory: vi.fn(),
         showRunId: mockShowRunId,
         runId: undefined,
       });
 
       // Ensure the feature toggle is set correctly (may have been modified by previous test)
-      const useRecceInstanceContext =
-        require("@datarecce/ui/contexts").useRecceInstanceContext;
-      useRecceInstanceContext.mockReturnValue({
+      mockUseRecceInstanceContext.mockReturnValue({
         featureToggles: {
           disableUpdateChecklist: false,
         },

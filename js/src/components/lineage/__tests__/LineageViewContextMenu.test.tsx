@@ -12,27 +12,29 @@
  * Source of truth: OSS functionality - these tests document current behavior
  */
 
+import { type Mock, vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock @datarecce/ui
-jest.mock("@datarecce/ui", () => ({
-  isLineageGraphNode: jest.fn((node) => node?.type === "lineageGraphNode"),
-  isLineageGraphColumnNode: jest.fn(
+vi.mock("@datarecce/ui", () => ({
+  isLineageGraphNode: vi.fn((node) => node?.type === "lineageGraphNode"),
+  isLineageGraphColumnNode: vi.fn(
     (node) => node?.type === "lineageGraphColumnNode",
   ),
 }));
 
 // Mock @datarecce/ui/contexts
-const mockUseLineageGraphContext = jest.fn();
-const mockUseRecceInstanceContext = jest.fn();
-const mockUseRecceServerFlag = jest.fn();
-const mockUseRecceActionContext = jest.fn();
-const mockUseLineageViewContextSafe = jest.fn();
+const mockUseLineageGraphContext = vi.fn();
+const mockUseRecceInstanceContext = vi.fn();
+const mockUseRecceServerFlag = vi.fn();
+const mockUseRecceActionContext = vi.fn();
+const mockUseLineageViewContextSafe = vi.fn();
 
-jest.mock("@datarecce/ui/contexts", () => ({
-  useRouteConfig: jest.fn(() => ({ basePath: "" })),
+vi.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: vi.fn(() => ({ basePath: "" })),
   useLineageGraphContext: () => mockUseLineageGraphContext(),
   useRecceInstanceContext: () => mockUseRecceInstanceContext(),
   useRecceServerFlag: () => mockUseRecceServerFlag(),
@@ -41,39 +43,39 @@ jest.mock("@datarecce/ui/contexts", () => ({
 }));
 
 // Mock @datarecce/ui/utils
-jest.mock("@datarecce/ui/utils", () => ({
-  formatSelectColumns: jest.fn((base, current) => {
+vi.mock("@datarecce/ui/utils", () => ({
+  formatSelectColumns: vi.fn((base, current) => {
     if (base.length === 0 && current.length === 0) return [];
     return [...new Set([...base, ...current])];
   }),
 }));
 
 // Mock QueryContextAdapter
-const mockUseRecceQueryContext = jest.fn();
+const mockUseRecceQueryContext = vi.fn();
 
 // Mock next/navigation
-const mockUseRouter = jest.fn();
-jest.mock("next/navigation", () => ({
+const mockUseRouter = vi.fn();
+vi.mock("next/navigation", () => ({
   useRouter: () => mockUseRouter(),
 }));
 
 // Mock useModelColumns
-const mockUseModelColumns = jest.fn();
-jest.mock("@datarecce/ui/hooks", () => ({
+const mockUseModelColumns = vi.fn();
+vi.mock("@datarecce/ui/hooks", () => ({
   useModelColumns: (model: string | undefined) => mockUseModelColumns(model),
   useRecceQueryContext: () => mockUseRecceQueryContext(),
 }));
 
 // Mock run registry
-const mockFindByRunType = jest.fn();
-jest.mock("@datarecce/ui/components/run", () => ({
+const mockFindByRunType = vi.fn();
+vi.mock("@datarecce/ui/components/run", () => ({
   findByRunType: (type: string) => mockFindByRunType(type),
 }));
 
 // Mock tracking functions
-jest.mock("@datarecce/ui/lib/api/track", () => ({
-  trackExploreAction: jest.fn(),
-  trackLineageSelection: jest.fn(),
+vi.mock("@datarecce/ui/lib/api/track", () => ({
+  trackExploreAction: vi.fn(),
+  trackLineageSelection: vi.fn(),
   EXPLORE_ACTION: {
     ROW_COUNT: "row_count",
     ROW_COUNT_DIFF: "row_count_diff",
@@ -95,7 +97,7 @@ jest.mock("@datarecce/ui/lib/api/track", () => ({
 }));
 
 // Mock SetupConnectionPopover
-jest.mock("@datarecce/ui/components/app", () => ({
+vi.mock("@datarecce/ui/components/app", () => ({
   SetupConnectionPopover: ({
     children,
     display,
@@ -110,8 +112,8 @@ jest.mock("@datarecce/ui/components/app", () => ({
 }));
 
 // Mock histogram form
-jest.mock("@datarecce/ui/components/histogram", () => ({
-  supportsHistogramDiff: jest.fn((columnType: string) => {
+vi.mock("@datarecce/ui/components/histogram", () => ({
+  supportsHistogramDiff: vi.fn((columnType: string) => {
     const unsupportedTypes = [
       "VARCHAR",
       "TEXT",
@@ -233,17 +235,17 @@ const MockIcon = () => <span data-testid="mock-icon">Icon</span>;
 const setupDefaultMocks = () => {
   // Default LineageViewContext mock
   mockUseLineageViewContextSafe.mockReturnValue({
-    selectParentNodes: jest.fn(),
-    selectChildNodes: jest.fn(),
-    getNodeColumnSet: jest.fn().mockReturnValue(new Set(["col1", "col2"])),
+    selectParentNodes: vi.fn(),
+    selectChildNodes: vi.fn(),
+    getNodeColumnSet: vi.fn().mockReturnValue(new Set(["col1", "col2"])),
     selectMode: false,
     cll: undefined,
-    showColumnLevelLineage: jest.fn(),
+    showColumnLevelLineage: vi.fn(),
   });
 
   // Default RecceActionContext mock
   mockUseRecceActionContext.mockReturnValue({
-    runAction: jest.fn(),
+    runAction: vi.fn(),
   });
 
   // Default RecceInstanceContext mock
@@ -257,7 +259,7 @@ const setupDefaultMocks = () => {
 
   // Default LineageGraphContext mock
   mockUseLineageGraphContext.mockReturnValue({
-    isActionAvailable: jest.fn().mockReturnValue(true),
+    isActionAvailable: vi.fn().mockReturnValue(true),
     lineageGraph: {
       nodes: {},
       edges: {},
@@ -272,12 +274,12 @@ const setupDefaultMocks = () => {
 
   // Default QueryContext mock
   mockUseRecceQueryContext.mockReturnValue({
-    setSqlQuery: jest.fn(),
-    setPrimaryKeys: jest.fn(),
+    setSqlQuery: vi.fn(),
+    setPrimaryKeys: vi.fn(),
   });
 
   // Default router mock
-  mockUseRouter.mockReturnValue({ push: jest.fn() });
+  mockUseRouter.mockReturnValue({ push: vi.fn() });
 
   // Default useModelColumns mock
   mockUseModelColumns.mockReturnValue({
@@ -322,7 +324,7 @@ const setupDefaultMocks = () => {
 
 describe("LineageViewContextMenu", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     setupDefaultMocks();
   });
 
@@ -410,7 +412,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -419,8 +421,8 @@ describe("LineageViewContextMenu", () => {
     });
 
     it("delegates to ModelNodeContextMenu for model nodes", () => {
-      (isLineageGraphNode as unknown as jest.Mock).mockReturnValue(true);
-      (isLineageGraphColumnNode as unknown as jest.Mock).mockReturnValue(false);
+      (isLineageGraphNode as unknown as Mock).mockReturnValue(true);
+      (isLineageGraphColumnNode as unknown as Mock).mockReturnValue(false);
 
       const mockNode = createMockModelNode();
       render(
@@ -429,7 +431,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -438,8 +440,8 @@ describe("LineageViewContextMenu", () => {
     });
 
     it("delegates to ColumnNodeContextMenu for column nodes", () => {
-      (isLineageGraphNode as unknown as jest.Mock).mockReturnValue(false);
-      (isLineageGraphColumnNode as unknown as jest.Mock).mockReturnValue(true);
+      (isLineageGraphNode as unknown as Mock).mockReturnValue(false);
+      (isLineageGraphColumnNode as unknown as Mock).mockReturnValue(true);
 
       const mockNode = createMockColumnNode();
       render(
@@ -448,7 +450,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -470,7 +472,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode as unknown as LineageGraphNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -485,7 +487,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -501,7 +503,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -516,7 +518,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -534,7 +536,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -549,7 +551,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -564,7 +566,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -583,7 +585,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -598,7 +600,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -622,7 +624,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -631,13 +633,13 @@ describe("LineageViewContextMenu", () => {
     });
 
     it("calls runAction when Row Count Diff is clicked", () => {
-      const mockRunAction = jest.fn();
+      const mockRunAction = vi.fn();
       mockUseRecceActionContext.mockReturnValue({
         runAction: mockRunAction,
       });
 
       const mockNode = createMockModelNode();
-      const onClose = jest.fn();
+      const onClose = vi.fn();
       render(
         <ModelNodeContextMenu
           x={100}
@@ -659,13 +661,13 @@ describe("LineageViewContextMenu", () => {
     });
 
     it("calls runAction when Profile Diff is clicked", () => {
-      const mockRunAction = jest.fn();
+      const mockRunAction = vi.fn();
       mockUseRecceActionContext.mockReturnValue({
         runAction: mockRunAction,
       });
 
       const mockNode = createMockModelNode();
-      const onClose = jest.fn();
+      const onClose = vi.fn();
       render(
         <ModelNodeContextMenu
           x={100}
@@ -687,18 +689,18 @@ describe("LineageViewContextMenu", () => {
     });
 
     it("calls selectParentNodes when Select Parent Nodes is clicked", () => {
-      const mockSelectParentNodes = jest.fn();
+      const mockSelectParentNodes = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue({
         selectParentNodes: mockSelectParentNodes,
-        selectChildNodes: jest.fn(),
-        getNodeColumnSet: jest.fn().mockReturnValue(new Set()),
+        selectChildNodes: vi.fn(),
+        getNodeColumnSet: vi.fn().mockReturnValue(new Set()),
         selectMode: false,
         cll: undefined,
-        showColumnLevelLineage: jest.fn(),
+        showColumnLevelLineage: vi.fn(),
       });
 
       const mockNode = createMockModelNode();
-      const onClose = jest.fn();
+      const onClose = vi.fn();
       render(
         <ModelNodeContextMenu
           x={100}
@@ -716,18 +718,18 @@ describe("LineageViewContextMenu", () => {
     });
 
     it("calls selectChildNodes when Select Child Nodes is clicked", () => {
-      const mockSelectChildNodes = jest.fn();
+      const mockSelectChildNodes = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue({
-        selectParentNodes: jest.fn(),
+        selectParentNodes: vi.fn(),
         selectChildNodes: mockSelectChildNodes,
-        getNodeColumnSet: jest.fn().mockReturnValue(new Set()),
+        getNodeColumnSet: vi.fn().mockReturnValue(new Set()),
         selectMode: false,
         cll: undefined,
-        showColumnLevelLineage: jest.fn(),
+        showColumnLevelLineage: vi.fn(),
       });
 
       const mockNode = createMockModelNode();
-      const onClose = jest.fn();
+      const onClose = vi.fn();
       render(
         <ModelNodeContextMenu
           x={100}
@@ -760,7 +762,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -785,7 +787,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -795,18 +797,18 @@ describe("LineageViewContextMenu", () => {
     });
 
     it("calls showColumnLevelLineage when Show Impact Radius is clicked", () => {
-      const mockShowColumnLevelLineage = jest.fn();
+      const mockShowColumnLevelLineage = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue({
-        selectParentNodes: jest.fn(),
-        selectChildNodes: jest.fn(),
-        getNodeColumnSet: jest.fn().mockReturnValue(new Set()),
+        selectParentNodes: vi.fn(),
+        selectChildNodes: vi.fn(),
+        getNodeColumnSet: vi.fn().mockReturnValue(new Set()),
         selectMode: false,
         cll: undefined,
         showColumnLevelLineage: mockShowColumnLevelLineage,
       });
 
       const mockNode = createMockModelNode({ changeStatus: "modified" });
-      const onClose = jest.fn();
+      const onClose = vi.fn();
       render(
         <ModelNodeContextMenu
           x={100}
@@ -828,12 +830,12 @@ describe("LineageViewContextMenu", () => {
     });
 
     it("navigates to /query when Query is clicked", () => {
-      const mockPush = jest.fn();
-      const mockSetSqlQuery = jest.fn();
+      const mockPush = vi.fn();
+      const mockSetSqlQuery = vi.fn();
       mockUseRouter.mockReturnValue({ push: mockPush });
       mockUseRecceQueryContext.mockReturnValue({
         setSqlQuery: mockSetSqlQuery,
-        setPrimaryKeys: jest.fn(),
+        setPrimaryKeys: vi.fn(),
       });
 
       const mockNode = createMockModelNode();
@@ -843,7 +845,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -860,8 +862,8 @@ describe("LineageViewContextMenu", () => {
 
   describe("ColumnNodeContextMenu", () => {
     beforeEach(() => {
-      (isLineageGraphNode as unknown as jest.Mock).mockReturnValue(false);
-      (isLineageGraphColumnNode as unknown as jest.Mock).mockReturnValue(true);
+      (isLineageGraphNode as unknown as Mock).mockReturnValue(false);
+      (isLineageGraphColumnNode as unknown as Mock).mockReturnValue(true);
     });
 
     it("renders nothing when node data is undefined", () => {
@@ -872,7 +874,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode as unknown as LineageGraphColumnNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -887,7 +889,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -902,7 +904,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -917,7 +919,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -935,7 +937,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -950,7 +952,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -978,7 +980,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={nodeWithAddedColumn}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -1007,7 +1009,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={nodeWithRemovedColumn}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -1016,13 +1018,13 @@ describe("LineageViewContextMenu", () => {
     });
 
     it("calls runAction when Profile Diff is clicked", () => {
-      const mockRunAction = jest.fn();
+      const mockRunAction = vi.fn();
       mockUseRecceActionContext.mockReturnValue({
         runAction: mockRunAction,
       });
 
       const mockNode = createMockColumnNode();
-      const onClose = jest.fn();
+      const onClose = vi.fn();
       render(
         <ColumnNodeContextMenu
           x={100}
@@ -1047,13 +1049,13 @@ describe("LineageViewContextMenu", () => {
     });
 
     it("calls runAction when Histogram Diff is clicked", () => {
-      const mockRunAction = jest.fn();
+      const mockRunAction = vi.fn();
       mockUseRecceActionContext.mockReturnValue({
         runAction: mockRunAction,
       });
 
       const mockNode = createMockColumnNode({ type: "INTEGER" });
-      const onClose = jest.fn();
+      const onClose = vi.fn();
       render(
         <ColumnNodeContextMenu
           x={100}
@@ -1079,13 +1081,13 @@ describe("LineageViewContextMenu", () => {
     });
 
     it("calls runAction when Top-K Diff is clicked", () => {
-      const mockRunAction = jest.fn();
+      const mockRunAction = vi.fn();
       mockUseRecceActionContext.mockReturnValue({
         runAction: mockRunAction,
       });
 
       const mockNode = createMockColumnNode();
-      const onClose = jest.fn();
+      const onClose = vi.fn();
       render(
         <ColumnNodeContextMenu
           x={100}
@@ -1111,13 +1113,13 @@ describe("LineageViewContextMenu", () => {
     });
 
     it("calls runAction when Value Diff is clicked", () => {
-      const mockRunAction = jest.fn();
+      const mockRunAction = vi.fn();
       mockUseRecceActionContext.mockReturnValue({
         runAction: mockRunAction,
       });
 
       const mockNode = createMockColumnNode();
-      const onClose = jest.fn();
+      const onClose = vi.fn();
       render(
         <ColumnNodeContextMenu
           x={100}
@@ -1153,7 +1155,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -1164,7 +1166,7 @@ describe("LineageViewContextMenu", () => {
 
     it("disables Profile Diff when action is not available", () => {
       mockUseLineageGraphContext.mockReturnValue({
-        isActionAvailable: jest.fn().mockReturnValue(false),
+        isActionAvailable: vi.fn().mockReturnValue(false),
         lineageGraph: {
           nodes: {},
           edges: {},
@@ -1179,7 +1181,7 @@ describe("LineageViewContextMenu", () => {
           y={200}
           node={mockNode}
           isOpen={true}
-          onClose={jest.fn()}
+          onClose={vi.fn()}
         />,
       );
 

@@ -13,6 +13,7 @@
 import { render, screen } from "@testing-library/react";
 import type { ColDef, ICellRendererParams } from "ag-grid-community";
 import React from "react";
+import { vi } from "vitest";
 import type { RowObjectType } from "../../../../api";
 import {
   asNumber,
@@ -51,12 +52,12 @@ function createParams(
     rowIndex: 0,
     column: undefined,
     eGridCell: document.createElement("div"),
-    getValue: jest.fn(),
-    setValue: jest.fn(),
-    formatValue: jest.fn(),
-    refreshCell: jest.fn(),
-    registerRowDragger: jest.fn(),
-    setTooltip: jest.fn(),
+    getValue: vi.fn(),
+    setValue: vi.fn(),
+    formatValue: vi.fn(),
+    refreshCell: vi.fn(),
+    registerRowDragger: vi.fn(),
+    setTooltip: vi.fn(),
   } as unknown as ICellRendererParams<RowObjectType>;
 }
 

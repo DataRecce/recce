@@ -16,9 +16,9 @@
     "lint": "biome check --diagnostic-level=error",
     "lint:fix": "biome check --write --diagnostic-level=error",
     "lint:staged": "biome check --staged --diagnostic-level=error",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage --watchAll=false",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage",
     "type:check": "tsc --noEmit",
     "clean": "rimraf ../recce/data",
     "prepare": "cd .. && husky js/.husky"
@@ -90,22 +90,23 @@
     "@types/common-tags": "^1.8.4",
     "@types/dagre": "^0.7.53",
     "@types/file-saver": "^2.0.7",
-    "@types/jest": "30.0.0",
     "@types/lodash": "^4.17.21",
     "@types/node": "^25.0.3",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
     "@types/react-syntax-highlighter": "^15.5.13",
+    "@vitejs/plugin-react": "^5.1.2",
+    "@vitest/coverage-v8": "^4.0.17",
     "baseline-browser-mapping": "^2.9.11",
     "fast-check": "^4.5.2",
     "globals": "^16.5.0",
     "husky": "^9.1.7",
-    "jest": "^30.2.0",
-    "jest-environment-jsdom": "30.2.0",
+    "jsdom": "^25.0.1",
     "postcss": "^8.5.6",
     "rimraf": "^6.1.2",
     "tailwindcss": "^4.1.18",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.17"
   },
   "pnpm": {
     "overrides": {
@@ -115,10 +116,8 @@
       "glob@>=10.2.0 <10.5.0": ">=10.5.0"
     },
     "onlyBuiltDependencies": [
-      "@parcel/watcher",
-      "@sentry/cli",
       "@tailwindcss/oxide",
-      "esbuild",
+      "sharp",
       "unrs-resolver"
     ]
   },

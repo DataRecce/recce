@@ -19,6 +19,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { vi } from "vitest";
 import { useValueDiffAlertDialog } from "./useValueDiffAlertDialog";
 
 // Helper component to render the hook and dialog
@@ -231,7 +232,7 @@ describe("useValueDiffAlertDialog", () => {
 
   describe("callback behavior", () => {
     it("calls onConfirm callback with nodeCount when user confirms", () => {
-      const onConfirm = jest.fn();
+      const onConfirm = vi.fn();
       render(<TestComponent onConfirm={onConfirm} />);
 
       act(() => {
@@ -247,7 +248,7 @@ describe("useValueDiffAlertDialog", () => {
     });
 
     it("calls onCancel callback with nodeCount when user cancels", () => {
-      const onCancel = jest.fn();
+      const onCancel = vi.fn();
       render(<TestComponent onCancel={onCancel} />);
 
       act(() => {
@@ -263,7 +264,7 @@ describe("useValueDiffAlertDialog", () => {
     });
 
     it("calls onCancel callback when dialog is closed via X button", () => {
-      const onCancel = jest.fn();
+      const onCancel = vi.fn();
       render(<TestComponent onCancel={onCancel} />);
 
       act(() => {

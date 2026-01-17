@@ -17,16 +17,18 @@
  * before migration to @datarecce/ui
  */
 
+import { type Mock, vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock @datarecce/ui/api
-const mockSaveAs = jest.fn();
-const mockRename = jest.fn();
-const mockUseChecks = jest.fn();
+const mockSaveAs = vi.fn();
+const mockRename = vi.fn();
+const mockUseChecks = vi.fn();
 
-jest.mock("@datarecce/ui/api", () => ({
+vi.mock("@datarecce/ui/api", () => ({
   cacheKeys: {
     lineage: () => ["lineage"],
   },
@@ -38,53 +40,59 @@ jest.mock("@datarecce/ui/api", () => ({
   useChecks: (...args: unknown[]) => mockUseChecks(...args),
 }));
 
-// Mock toaster
-jest.mock("@datarecce/ui/components/ui", () => ({
+// Mock UI components (toaster and dataGrid components)
+vi.mock("@datarecce/ui/components/ui", () => ({
   toaster: {
-    create: jest.fn(),
+    create: vi.fn(),
   },
+  DataFrameColumnGroupHeader: () => null,
+  DataFrameColumnHeader: () => null,
+  defaultRenderCell: vi.fn(),
+  inlineRenderCell: vi.fn(),
 }));
 
 // Mock @datarecce/ui/contexts
-const mockUseLineageGraphContext = jest.fn();
-const mockUseRecceInstanceContext = jest.fn();
+const mockUseLineageGraphContext = vi.fn();
+const mockUseRecceInstanceContext = vi.fn();
 
-jest.mock("@datarecce/ui/contexts", () => ({
-  useRouteConfig: jest.fn(() => ({ basePath: "" })),
+vi.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: vi.fn(() => ({ basePath: "" })),
   useLineageGraphContext: () => mockUseLineageGraphContext(),
   useRecceInstanceContext: () => mockUseRecceInstanceContext(),
 }));
 
 // Mock ApiConfigContext
-jest.mock("@datarecce/ui/hooks", () => ({
-  useApiConfig: jest.fn(),
+vi.mock("@datarecce/ui/hooks", () => ({
+  useApiConfig: vi.fn(),
 }));
 
 // Mock @tanstack/react-query
 const mockQueryClient = {
-  invalidateQueries: jest.fn(),
+  invalidateQueries: vi.fn(),
 };
 
-jest.mock("@tanstack/react-query", () => ({
+vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => mockQueryClient,
 }));
 
 // Mock react-icons
-jest.mock("react-icons/io5", () => ({
+vi.mock("react-icons/io5", () => ({
   IoClose: () => <span data-testid="close-icon">X</span>,
 }));
 
-jest.mock("react-icons/lu", () => ({
+vi.mock("react-icons/lu", () => ({
   LuSave: () => <span data-testid="save-icon">Save</span>,
+  LuChartBarBig: () => <span data-testid="chart-icon">Chart</span>,
+  LuExternalLink: () => <span data-testid="external-link-icon">Link</span>,
 }));
 
-jest.mock("react-icons/pi", () => ({
+vi.mock("react-icons/pi", () => ({
   PiPencil: () => <span data-testid="edit-icon">Edit</span>,
 }));
 
 // Mock primitives for formatRunDateTime
-jest.mock("@datarecce/ui/primitives", () => ({
-  formatRunDateTime: jest.fn((date) => date.toISOString()),
+vi.mock("@datarecce/ui/primitives", () => ({
+  formatRunDateTime: vi.fn((date) => date.toISOString()),
 }));
 
 // ============================================================================
@@ -103,10 +111,10 @@ import React from "react";
 // ============================================================================
 
 const createMockApiClient = () => ({
-  get: jest.fn(),
-  post: jest.fn(),
-  put: jest.fn(),
-  delete: jest.fn(),
+  get: vi.fn(),
+  post: vi.fn(),
+  put: vi.fn(),
+  delete: vi.fn(),
 });
 
 // ============================================================================
@@ -114,11 +122,11 @@ const createMockApiClient = () => ({
 // ============================================================================
 
 describe("Filename", () => {
-  const mockUseApiConfig = useApiConfig as jest.Mock;
+  const mockUseApiConfig = useApiConfig as Mock;
   let mockApiClient: ReturnType<typeof createMockApiClient>;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockApiClient = createMockApiClient();
     mockUseApiConfig.mockReturnValue({ apiClient: mockApiClient });
 
@@ -981,7 +989,7 @@ describe("Filename", () => {
 
   describe("beforeunload warning", () => {
     it("adds beforeunload listener when there are unsaved non-preset checks", () => {
-      const addEventListenerSpy = jest.spyOn(window, "addEventListener");
+      const addEventListenerSpy = vi.spyOn(window, "addEventListener");
 
       mockUseChecks.mockReturnValue({
         data: [{ id: "1", name: "Check 1", is_preset: false }],
@@ -998,7 +1006,7 @@ describe("Filename", () => {
     });
 
     it("does not add beforeunload listener when filename exists", () => {
-      const addEventListenerSpy = jest.spyOn(window, "addEventListener");
+      const addEventListenerSpy = vi.spyOn(window, "addEventListener");
 
       mockUseLineageGraphContext.mockReturnValue({
         fileName: "existing.json",
@@ -1022,7 +1030,7 @@ describe("Filename", () => {
     });
 
     it("does not add beforeunload listener when only preset checks exist", () => {
-      const addEventListenerSpy = jest.spyOn(window, "addEventListener");
+      const addEventListenerSpy = vi.spyOn(window, "addEventListener");
 
       mockUseChecks.mockReturnValue({
         data: [{ id: "1", name: "Preset Check", is_preset: true }],
@@ -1039,7 +1047,7 @@ describe("Filename", () => {
     });
 
     it("removes beforeunload listener on unmount", () => {
-      const removeEventListenerSpy = jest.spyOn(window, "removeEventListener");
+      const removeEventListenerSpy = vi.spyOn(window, "removeEventListener");
 
       mockUseChecks.mockReturnValue({
         data: [{ id: "1", name: "Check 1", is_preset: false }],

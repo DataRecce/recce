@@ -28,6 +28,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { vi } from "vitest";
 
 import {
   QueryProvider,
@@ -129,7 +130,7 @@ function TestConsumer() {
 
 describe("QueryContext (@datarecce/ui)", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("provider basics", () => {
@@ -452,7 +453,7 @@ describe("QueryContext (@datarecce/ui)", () => {
 
   describe("callback props - onSqlChange", () => {
     it("invokes onSqlChange when called", () => {
-      const mockOnSqlChange = jest.fn();
+      const mockOnSqlChange = vi.fn();
 
       render(
         <QueryProvider
@@ -472,7 +473,7 @@ describe("QueryContext (@datarecce/ui)", () => {
     });
 
     it("passes correct sql to onSqlChange", () => {
-      const mockOnSqlChange = jest.fn();
+      const mockOnSqlChange = vi.fn();
 
       function SqlChangeConsumer() {
         const context = useQueryContext();
@@ -527,7 +528,7 @@ describe("QueryContext (@datarecce/ui)", () => {
 
   describe("callback props - onExecute", () => {
     it("invokes onExecute with SQL", async () => {
-      const mockOnExecute = jest.fn().mockResolvedValue(undefined);
+      const mockOnExecute = vi.fn().mockResolvedValue(undefined);
 
       render(
         <QueryProvider
@@ -549,7 +550,7 @@ describe("QueryContext (@datarecce/ui)", () => {
     });
 
     it("passes correct SQL to onExecute", async () => {
-      const mockOnExecute = jest.fn().mockResolvedValue(undefined);
+      const mockOnExecute = vi.fn().mockResolvedValue(undefined);
 
       function ExecuteConsumer() {
         const context = useQueryContext();
@@ -591,7 +592,7 @@ describe("QueryContext (@datarecce/ui)", () => {
 
     it("handles async onExecute properly", async () => {
       let executionComplete = false;
-      const mockOnExecute = jest.fn().mockImplementation(async () => {
+      const mockOnExecute = vi.fn().mockImplementation(async () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
         executionComplete = true;
       });
@@ -625,7 +626,7 @@ describe("QueryContext (@datarecce/ui)", () => {
 
   describe("callback props - onCancel", () => {
     it("invokes onCancel when called", () => {
-      const mockOnCancel = jest.fn();
+      const mockOnCancel = vi.fn();
 
       render(
         <QueryProvider
@@ -645,7 +646,7 @@ describe("QueryContext (@datarecce/ui)", () => {
     });
 
     it("onCancel takes no arguments", () => {
-      const mockOnCancel = jest.fn();
+      const mockOnCancel = vi.fn();
 
       const { result } = renderHook(() => useQueryContext(), {
         wrapper: createWrapper({ onCancel: mockOnCancel }),
@@ -706,7 +707,7 @@ describe("QueryContext (@datarecce/ui)", () => {
     });
 
     it("allows calling execute operations via renderHook", async () => {
-      const mockOnExecute = jest.fn().mockResolvedValue(undefined);
+      const mockOnExecute = vi.fn().mockResolvedValue(undefined);
 
       const { result } = renderHook(() => useQueryContext(), {
         wrapper: createWrapper({ onExecute: mockOnExecute }),
@@ -776,9 +777,9 @@ describe("QueryContext (@datarecce/ui)", () => {
     it("does not make any API calls - all actions delegated to callbacks", async () => {
       // This test verifies the key design of the props-driven context
       // No need to mock API functions because none are called
-      const mockOnSqlChange = jest.fn();
-      const mockOnExecute = jest.fn().mockResolvedValue(undefined);
-      const mockOnCancel = jest.fn();
+      const mockOnSqlChange = vi.fn();
+      const mockOnExecute = vi.fn().mockResolvedValue(undefined);
+      const mockOnCancel = vi.fn();
 
       render(
         <QueryProvider
@@ -813,14 +814,14 @@ describe("QueryContext (@datarecce/ui)", () => {
 
     it("consumer controls all side effects via callbacks", async () => {
       const sideEffects: string[] = [];
-      const mockOnSqlChange = jest.fn().mockImplementation(() => {
+      const mockOnSqlChange = vi.fn().mockImplementation(() => {
         sideEffects.push("sql_change");
       });
-      const mockOnExecute = jest.fn().mockImplementation(() => {
+      const mockOnExecute = vi.fn().mockImplementation(() => {
         sideEffects.push("execute");
         return Promise.resolve();
       });
-      const mockOnCancel = jest.fn().mockImplementation(() => {
+      const mockOnCancel = vi.fn().mockImplementation(() => {
         sideEffects.push("cancel");
       });
 
@@ -920,7 +921,7 @@ describe("QueryContext (@datarecce/ui)", () => {
     });
 
     it("all consumers invoke the same callback", () => {
-      const mockOnSqlChange = jest.fn();
+      const mockOnSqlChange = vi.fn();
 
       function Consumer1() {
         const context = useQueryContext();
@@ -1019,7 +1020,7 @@ describe("QueryContext (@datarecce/ui)", () => {
     });
 
     it("handles rapid successive callback invocations", () => {
-      const mockOnSqlChange = jest.fn();
+      const mockOnSqlChange = vi.fn();
 
       const { result } = renderHook(() => useQueryContext(), {
         wrapper: createWrapper({ onSqlChange: mockOnSqlChange }),
@@ -1038,7 +1039,7 @@ describe("QueryContext (@datarecce/ui)", () => {
     });
 
     it("handles callback that rejects", async () => {
-      const mockOnExecute = jest
+      const mockOnExecute = vi
         .fn()
         .mockRejectedValue(new Error("Execution failed"));
 
@@ -1141,7 +1142,7 @@ describe("QueryContext (@datarecce/ui)", () => {
     });
 
     it("provides setSqlQuery callback", () => {
-      const mockSetSql = jest.fn();
+      const mockSetSql = vi.fn();
       function SetSqlQueryConsumer() {
         const { setSqlQuery } = useQueryContext();
         return (
@@ -1169,7 +1170,7 @@ describe("QueryContext (@datarecce/ui)", () => {
     });
 
     it("provides primaryKeys and setPrimaryKeys", () => {
-      const mockSetPKs = jest.fn();
+      const mockSetPKs = vi.fn();
       function PrimaryKeysConsumer() {
         const { primaryKeys, setPrimaryKeys } = useQueryContext();
         return (
@@ -1202,7 +1203,7 @@ describe("QueryContext (@datarecce/ui)", () => {
     });
 
     it("provides isCustomQueries and setCustomQueries", () => {
-      const mockSetCustom = jest.fn();
+      const mockSetCustom = vi.fn();
       function CustomQueriesConsumer() {
         const { isCustomQueries, setCustomQueries } = useQueryContext();
         return (
@@ -1235,7 +1236,7 @@ describe("QueryContext (@datarecce/ui)", () => {
     });
 
     it("provides baseSqlQuery and setBaseSqlQuery", () => {
-      const mockSetBase = jest.fn();
+      const mockSetBase = vi.fn();
       function BaseSqlConsumer() {
         const { baseSqlQuery, setBaseSqlQuery } = useQueryContext();
         return (
@@ -1283,7 +1284,7 @@ describe("QueryContext (@datarecce/ui)", () => {
     });
 
     it("handles setPrimaryKeys with undefined to clear", () => {
-      const mockSetPKs = jest.fn();
+      const mockSetPKs = vi.fn();
       function ClearPrimaryKeysConsumer() {
         const { setPrimaryKeys } = useQueryContext();
         return (
@@ -1331,8 +1332,8 @@ describe("QueryContext (@datarecce/ui)", () => {
     });
 
     it("can use both @datarecce/ui and OSS fields together", () => {
-      const mockOnSqlChange = jest.fn();
-      const mockSetSqlQuery = jest.fn();
+      const mockOnSqlChange = vi.fn();
+      const mockSetSqlQuery = vi.fn();
 
       function CombinedConsumer() {
         const { sql, sqlQuery, onSqlChange, setSqlQuery } = useQueryContext();
@@ -1389,15 +1390,15 @@ describe("QueryContext (@datarecce/ui)", () => {
   describe("query execution workflow", () => {
     it("simulates typical query execution flow", async () => {
       const executionSteps: string[] = [];
-      const mockOnSqlChange = jest.fn().mockImplementation((sql) => {
+      const mockOnSqlChange = vi.fn().mockImplementation((sql) => {
         executionSteps.push(`sql_changed: ${sql}`);
       });
-      const mockOnExecute = jest.fn().mockImplementation(async (sql) => {
+      const mockOnExecute = vi.fn().mockImplementation(async (sql) => {
         executionSteps.push(`executing: ${sql}`);
         await new Promise((resolve) => setTimeout(resolve, 10));
         executionSteps.push("execution_complete");
       });
-      const mockOnCancel = jest.fn().mockImplementation(() => {
+      const mockOnCancel = vi.fn().mockImplementation(() => {
         executionSteps.push("cancelled");
       });
 
@@ -1428,12 +1429,12 @@ describe("QueryContext (@datarecce/ui)", () => {
 
     it("simulates query cancellation flow", () => {
       const executionSteps: string[] = [];
-      const mockOnExecute = jest.fn().mockImplementation(() => {
+      const mockOnExecute = vi.fn().mockImplementation(() => {
         executionSteps.push("execution_started");
         // This would be a long-running query in real usage
         return Promise.resolve();
       });
-      const mockOnCancel = jest.fn().mockImplementation(() => {
+      const mockOnCancel = vi.fn().mockImplementation(() => {
         executionSteps.push("execution_cancelled");
       });
 

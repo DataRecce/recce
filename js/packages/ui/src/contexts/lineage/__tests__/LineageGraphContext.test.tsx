@@ -13,6 +13,7 @@
  */
 
 import { render, screen } from "@testing-library/react";
+import { vi } from "vitest";
 
 import type { RunsAggregated } from "../../../api/runs";
 import {
@@ -389,7 +390,7 @@ describe("LineageGraphContext (@datarecce/ui)", () => {
 
   describe("callback props", () => {
     it("exposes onRefetchLineageGraph callback via retchLineageGraph", () => {
-      const mockRefetch = jest.fn();
+      const mockRefetch = vi.fn();
       render(
         <LineageGraphProvider
           onRefetchLineageGraph={mockRefetch}
@@ -413,7 +414,7 @@ describe("LineageGraphContext (@datarecce/ui)", () => {
     });
 
     it("exposes onRefetchRunsAggregated callback", () => {
-      const mockRefetch = jest.fn();
+      const mockRefetch = vi.fn();
       render(
         <LineageGraphProvider
           onRefetchRunsAggregated={mockRefetch}
@@ -508,7 +509,7 @@ describe("LineageGraphContext (@datarecce/ui)", () => {
   describe("useRunsAggregated hook", () => {
     it("returns runsAggregated and refetch function from context", () => {
       const mockRuns = createMockRunsAggregated();
-      const mockRefetch = jest.fn();
+      const mockRefetch = vi.fn();
       render(
         <LineageGraphProvider
           runsAggregated={mockRuns}
@@ -561,7 +562,7 @@ describe("LineageGraphContext (@datarecce/ui)", () => {
   describe("context value stability", () => {
     it("memoizes context value based on props", () => {
       const mockGraph = createMockLineageGraph();
-      const mockRefetch = jest.fn();
+      const mockRefetch = vi.fn();
 
       let firstContext: ReturnType<typeof useLineageGraphContext> | null = null;
       let secondContext: ReturnType<typeof useLineageGraphContext> | null =
@@ -666,8 +667,8 @@ describe("LineageGraphContext (@datarecce/ui)", () => {
       const mockGraph = createMockLineageGraph();
       const mockEnvInfo = createMockEnvInfo();
       const mockRuns = createMockRunsAggregated();
-      const mockRefetch = jest.fn();
-      const mockRefetchRuns = jest.fn();
+      const mockRefetch = vi.fn();
+      const mockRefetchRuns = vi.fn();
 
       render(
         <LineageGraphProvider

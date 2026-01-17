@@ -11,6 +11,7 @@ import { ThemeProvider } from "@mui/material/styles";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type RenderOptions, render } from "@testing-library/react";
 import React, { type ReactNode } from "react";
+import { type Mock, vi } from "vitest";
 
 // ============================================================================
 // AG Grid Mock
@@ -18,20 +19,20 @@ import React, { type ReactNode } from "react";
 
 /**
  * Mock for AG Grid Community to avoid React 19 compatibility issues
- * and ES module parsing errors in Jest
+ * and ES module parsing errors in Vitest
  *
  * Use this in test files:
  * ```ts
- * jest.mock("ag-grid-community", () => agGridMock);
+ * vi.mock("ag-grid-community", () => agGridMock);
  * ```
  */
 export const agGridMock = {
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
   ClientSideRowModelModule: {},
   AllCommunityModule: {},
-  themeQuartz: {},
+  themeQuartz: { withParams: vi.fn(() => "mocked-theme") },
 };
 
 /**
@@ -40,7 +41,7 @@ export const agGridMock = {
  */
 export const agGridCoreMock = {
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
 };
 
@@ -48,7 +49,7 @@ export const agGridCoreMock = {
  * Mock for ag-grid-react to avoid rendering issues in tests
  */
 export const agGridReactMock = {
-  AgGridReact: jest.fn().mockImplementation(({ children }) => {
+  AgGridReact: vi.fn().mockImplementation(({ children }) => {
     return React.createElement(
       "div",
       { "data-testid": "ag-grid-mock" },
@@ -198,8 +199,8 @@ export interface MockDataGridHandle {
   api: unknown | null;
   element: HTMLElement | null;
   // Legacy methods (kept for backward compatibility with existing tests)
-  getScreenshotElement?: jest.Mock<HTMLDivElement | null>;
-  exportToClipboard?: jest.Mock<Promise<void>>;
+  getScreenshotElement?: Mock<() => HTMLDivElement | null>;
+  exportToClipboard?: Mock<() => Promise<void>>;
 }
 
 /**
@@ -223,8 +224,8 @@ export const screenshotDataGridMock = React.forwardRef<
     api: null,
     element: null,
     // Legacy methods for backward compatibility
-    getScreenshotElement: jest.fn(() => null),
-    exportToClipboard: jest.fn(() => Promise.resolve()),
+    getScreenshotElement: vi.fn(() => null),
+    exportToClipboard: vi.fn(() => Promise.resolve()),
   }));
 
   // Filter out non-DOM props to avoid React warnings
@@ -368,7 +369,7 @@ export function expectThrowsForWrongType(
 ) {
   // Suppress console.error for expected throws
   // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
-  const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+  const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
   expect(() => {
     renderWithProviders(
@@ -410,7 +411,7 @@ export function expectRefForwarded(
  * Mock for useIsDark hook
  * Returns false (light mode) by default
  */
-export const useIsDarkMock = jest.fn(() => false);
+export const useIsDarkMock = vi.fn(() => false);
 
 /**
  * Set dark mode for tests

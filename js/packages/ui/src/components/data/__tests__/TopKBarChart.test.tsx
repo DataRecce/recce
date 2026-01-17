@@ -12,6 +12,7 @@
  */
 
 import { render, screen } from "@testing-library/react";
+import { vi } from "vitest";
 import {
   SingleBarChart,
   TopKBarChart,
@@ -20,20 +21,24 @@ import {
 } from "../TopKBarChart";
 
 // Mock Chart.js to avoid canvas rendering issues in tests
-jest.mock("react-chartjs-2", () => ({
+vi.mock("react-chartjs-2", () => ({
   Bar: ({ data }: { data: unknown }) => (
     <div data-testid="mock-bar-chart" data-data={JSON.stringify(data)} />
   ),
 }));
 
-// Mock Chart.js register
-jest.mock("chart.js", () => ({
+// Mock Chart.js register with all needed exports
+vi.mock("chart.js", () => ({
   Chart: {
-    register: jest.fn(),
+    register: vi.fn(),
   },
   BarElement: {},
   CategoryScale: {},
   LinearScale: {},
+  TimeSeriesScale: {},
+  Title: {},
+  Legend: {},
+  Tooltip: {},
 }));
 
 describe("TopKBarChart", () => {

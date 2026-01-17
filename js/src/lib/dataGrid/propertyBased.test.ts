@@ -26,6 +26,7 @@ import {
 } from "@datarecce/ui/utils";
 import type { ColDef, ColGroupDef } from "ag-grid-community";
 import fc from "fast-check";
+import { vi } from "vitest";
 
 // ============================================================================
 // Types
@@ -43,8 +44,9 @@ type ExtendedColumn = (ColDef<RowObjectType> | ColGroupDef<RowObjectType>) & {
 // Mocks
 // ============================================================================
 
-jest.mock("ag-grid-community", () => ({
-  ModuleRegistry: { registerModules: jest.fn() },
+vi.mock("ag-grid-community", () => ({
+  themeQuartz: { withParams: vi.fn(() => "mocked-theme") },
+  ModuleRegistry: { registerModules: vi.fn() },
   AllCommunityModule: {},
 }));
 

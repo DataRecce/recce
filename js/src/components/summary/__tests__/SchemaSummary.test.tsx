@@ -11,20 +11,28 @@
  * Source of truth: OSS functionality - these tests document current behavior before migration
  */
 
+import { vi } from "vitest";
+
 // ============================================================================
 // Mocks
 // ============================================================================
 
-jest.mock("@datarecce/ui", () => ({
-  ...jest.requireActual("@datarecce/ui"),
-}));
+vi.mock("@datarecce/ui", async () => {
+  const actual = await vi.importActual("@datarecce/ui");
+  return {
+    ...(actual as Record<string, unknown>),
+  };
+});
 
-jest.mock("@datarecce/ui/api", () => ({
-  ...jest.requireActual("@datarecce/ui/api"),
-}));
+vi.mock("@datarecce/ui/api", async () => {
+  const actual = await vi.importActual("@datarecce/ui/api");
+  return {
+    ...(actual as Record<string, unknown>),
+  };
+});
 
-jest.mock("@datarecce/ui/utils", () => ({
-  mergeKeysWithStatus: jest.fn((baseKeys, currentKeys) => {
+vi.mock("@datarecce/ui/utils", () => ({
+  mergeKeysWithStatus: vi.fn((baseKeys, currentKeys) => {
     const result: Record<string, "added" | "removed" | undefined> = {};
     for (const key of baseKeys) {
       if (!currentKeys.includes(key)) {
@@ -44,7 +52,7 @@ jest.mock("@datarecce/ui/utils", () => ({
   }),
 }));
 
-jest.mock("@datarecce/ui/components/schema", () => ({
+vi.mock("@datarecce/ui/components/schema", () => ({
   SchemaView: ({ base, current }: { base?: unknown; current?: unknown }) => (
     <div data-testid="schema-view">
       <span>{base ? "Has Base" : "No Base"}</span>
@@ -53,7 +61,7 @@ jest.mock("@datarecce/ui/components/schema", () => ({
   ),
 }));
 
-jest.mock("@datarecce/ui/components/lineage", () => ({
+vi.mock("@datarecce/ui/components/lineage", () => ({
   ResourceTypeTag: ({ data }: { data: { resourceType: string } }) => (
     <span data-testid="resource-type-tag">{data.resourceType}</span>
   ),
