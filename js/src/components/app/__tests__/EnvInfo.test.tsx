@@ -232,9 +232,10 @@ describe("EnvInfo", () => {
       expect(screen.getByText("Environment Information")).toBeInTheDocument();
     });
 
-    // Skip: MUI dialog transitions hang in jsdom with vitest
-    // These tests work in Jest but need investigation for vitest
-    it.skip("closes dialog when close button is clicked", async () => {
+    it("closes dialog when close button is clicked", async () => {
+      // Use real timers for this test to allow MUI transitions to complete
+      vi.useRealTimers();
+
       render(<EnvInfo />);
 
       // Open dialog
@@ -242,6 +243,9 @@ describe("EnvInfo", () => {
         name: /Environment Info/i,
       });
       fireEvent.click(infoButton);
+
+      // Verify dialog is open
+      expect(screen.getByText("Environment Information")).toBeInTheDocument();
 
       // Close dialog
       const closeButton = screen
@@ -251,21 +255,25 @@ describe("EnvInfo", () => {
         fireEvent.click(closeButton);
       }
 
-      // Dialog should be closed - wait for transition
-      // Note: Use shorter timeout since MUI dialog transitions can be flaky in jsdom
+      // Wait for MUI transition to complete (default is ~225ms)
       await waitFor(
         () => {
           expect(
             screen.queryByText("Environment Information"),
           ).not.toBeInTheDocument();
         },
-        { timeout: 2000 },
+        { timeout: 1000 },
       );
+
+      // Restore fake timers for other tests
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2024-01-15T12:00:00Z"));
     });
 
-    // Skip: MUI dialog transitions hang in jsdom with vitest
-    // These tests work in Jest but need investigation for vitest
-    it.skip("closes dialog when Close button in actions is clicked", async () => {
+    it("closes dialog when Close button in actions is clicked", async () => {
+      // Use real timers for this test to allow MUI transitions to complete
+      vi.useRealTimers();
+
       render(<EnvInfo />);
 
       // Open dialog
@@ -274,20 +282,26 @@ describe("EnvInfo", () => {
       });
       fireEvent.click(infoButton);
 
+      // Verify dialog is open
+      expect(screen.getByText("Environment Information")).toBeInTheDocument();
+
       // Close via action button
       const closeActionButton = screen.getByRole("button", { name: /Close/i });
       fireEvent.click(closeActionButton);
 
-      // Dialog should be closed - wait for transition
-      // Note: Use shorter timeout since MUI dialog transitions can be flaky in jsdom
+      // Wait for MUI transition to complete (default is ~225ms)
       await waitFor(
         () => {
           expect(
             screen.queryByText("Environment Information"),
           ).not.toBeInTheDocument();
         },
-        { timeout: 2000 },
+        { timeout: 1000 },
       );
+
+      // Restore fake timers for other tests
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2024-01-15T12:00:00Z"));
     });
   });
 
