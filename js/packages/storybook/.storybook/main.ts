@@ -6,7 +6,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const config: StorybookConfig = {
   stories: ["../stories/**/*.stories.@(ts|tsx)"],
-  addons: [getAbsolutePath("@storybook/addon-docs")],
+  addons: [
+    getAbsolutePath("@storybook/addon-docs"),
+    getAbsolutePath("@storybook/addon-vitest"),
+  ],
 
   framework: {
     name: getAbsolutePath("@storybook/react-vite"),
@@ -24,6 +27,14 @@ const config: StorybookConfig = {
       "@datarecce/ui/primitives": resolve(
         __dirname,
         "../../ui/src/primitives.ts",
+      ),
+      "@datarecce/ui/components": resolve(
+        __dirname,
+        "../../ui/src/components/index.ts",
+      ),
+      "@datarecce/ui/contexts": resolve(
+        __dirname,
+        "../../ui/src/contexts/index.ts",
       ),
       "@datarecce/ui": resolve(__dirname, "../../ui/src/index.ts"),
       // Fix for html2canvas-pro strict exports in Vite 7.x

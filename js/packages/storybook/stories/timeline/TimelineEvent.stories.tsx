@@ -1,6 +1,6 @@
 import { TimelineEvent } from "@datarecce/ui/primitives";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, screen, userEvent, within } from "storybook/test";
 import {
   createCommentEvent,
   createEvent,
@@ -310,12 +310,12 @@ export const CommentDeleteConfirmation: Story = {
     });
     await userEvent.click(deleteButton);
 
-    // Verify confirmation popover appears
-    expect(canvas.getByText("Delete this comment?")).toBeInTheDocument();
+    // Verify confirmation popover appears (use screen for portal-rendered content)
+    expect(screen.getByText("Delete this comment?")).toBeInTheDocument();
     expect(
-      canvas.getByRole("button", { name: /^delete$/i }),
+      screen.getByRole("button", { name: /^delete$/i }),
     ).toBeInTheDocument();
-    expect(canvas.getByRole("button", { name: /cancel/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cancel/i })).toBeInTheDocument();
   },
 };
 
