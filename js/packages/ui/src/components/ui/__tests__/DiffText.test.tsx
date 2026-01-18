@@ -49,8 +49,9 @@ describe("DiffText", () => {
       render(<DiffText value="null" colorPalette="red" grayOut />);
 
       const valueBox = screen.getByText("null");
-      // Color "gray" is rendered as rgb(128, 128, 128)
-      expect(valueBox).toHaveStyle({ color: "rgb(128, 128, 128)" });
+      // Color "gray" may be returned as "gray" (happy-dom) or "rgb(128, 128, 128)" (jsdom)
+      const computedColor = getComputedStyle(valueBox).color;
+      expect(["gray", "rgb(128, 128, 128)"]).toContain(computedColor);
     });
 
     test("does not show copy button when grayOut is true", () => {
@@ -116,8 +117,11 @@ describe("DiffText", () => {
 
     test("uses navigator.clipboard when no onCopy callback provided", () => {
       const writeText = vi.fn();
-      Object.assign(navigator, {
-        clipboard: { writeText },
+      // Use Object.defineProperty to override read-only clipboard (works with happy-dom)
+      Object.defineProperty(navigator, "clipboard", {
+        value: { writeText },
+        writable: true,
+        configurable: true,
       });
 
       render(<DiffText value="clipboard_value" colorPalette="green" />);

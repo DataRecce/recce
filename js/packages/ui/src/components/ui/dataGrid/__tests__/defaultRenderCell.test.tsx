@@ -91,7 +91,7 @@ describe("defaultRenderCell - Basic Rendering", () => {
     expect(screen.getByText("true")).toBeInTheDocument();
   });
 
-  it.skip("renders boolean false without gray styling", () => {
+  test("renders boolean false without gray styling", () => {
     const colDef: ColDefWithMetadata = { field: "active" };
     const params = createParams({ active: false }, colDef);
 
@@ -117,8 +117,9 @@ describe("defaultRenderCell - Null/Empty Values", () => {
 
     // toRenderedValue returns "-" for null with grayOut=true
     const element = screen.getByText("-");
-    // Gray is rendered as rgb(128, 128, 128) by MUI
-    expect(element).toHaveStyle({ color: "rgb(128, 128, 128)" });
+    // Color "gray" may be returned as "gray" (happy-dom) or "rgb(128, 128, 128)" (jsdom)
+    const computedColor = getComputedStyle(element).color;
+    expect(["gray", "rgb(128, 128, 128)"]).toContain(computedColor);
   });
 
   test("renders empty string with gray styling", () => {
@@ -128,8 +129,9 @@ describe("defaultRenderCell - Null/Empty Values", () => {
     render(<>{defaultRenderCell(params)}</>);
 
     const element = screen.getByText("(empty)");
-    // Gray is rendered as rgb(128, 128, 128) by MUI
-    expect(element).toHaveStyle({ color: "rgb(128, 128, 128)" });
+    // Color "gray" may be returned as "gray" (happy-dom) or "rgb(128, 128, 128)" (jsdom)
+    const computedColor = getComputedStyle(element).color;
+    expect(["gray", "rgb(128, 128, 128)"]).toContain(computedColor);
   });
 });
 

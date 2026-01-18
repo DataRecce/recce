@@ -296,7 +296,7 @@ export default defineConfig({
   },
   test: {
     // Environment
-    environment: "jsdom",
+    environment: "happy-dom",
 
     // Setup files
     setupFiles: ["./vitest.setup.mts"],
@@ -363,9 +363,6 @@ export default defineConfig({
             "html-url-attributes",
             // React icons is ESM-only
             "react-icons",
-            // jsdom dependencies with ESM issues (jsdom 27+)
-            "@exodus/bytes",
-            "html-encoding-sniffer",
           ],
         },
       },
@@ -376,9 +373,6 @@ export default defineConfig({
       deps: {
         // Modules that require inline processing for ESM compatibility
         inline: [
-          // jsdom dependencies with ESM issues
-          "@exodus/bytes",
-          "html-encoding-sniffer",
           // ag-grid packages need inline processing for mock compatibility
           "ag-grid-community",
           "ag-grid-react",

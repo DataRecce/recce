@@ -58,6 +58,7 @@
     "common-tags": "^1.8.2",
     "date-fns": "^4.1.0",
     "file-saver": "^2.0.5",
+    "happy-dom": "^20.3.1",
     "html-to-image": "^1.11.13",
     "html2canvas-pro": "^1.6.4",
     "import-in-the-middle": "^2.0.4",

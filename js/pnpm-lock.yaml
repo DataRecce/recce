@@ -116,6 +116,9 @@ importers:
       file-saver:
         specifier: ^2.0.5
         version: 2.0.5
+      happy-dom:
+        specifier: ^20.3.1
+        version: 20.3.1
       html-to-image:
         specifier: ^1.11.13
         version: 1.11.13
@@ -227,7 +230,7 @@ importers:
         version: 5.1.2(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))
       '@vitest/coverage-v8':
         specifier: ^4.0.17
-        version: 4.0.17(vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))
+        version: 4.0.17(vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))
       baseline-browser-mapping:
         specifier: ^2.9.15
         version: 2.9.15
@@ -257,7 +260,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^4.0.17
-        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2)
+        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2)
 
   packages/storybook:
     dependencies:
@@ -300,7 +303,7 @@ importers:
         version: 10.1.11(@testing-library/dom@10.4.1)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       vitest:
         specifier: ^4.0.17
-        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2)
+        version: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2)
 
   packages/ui:
     dependencies:
@@ -2378,6 +2381,9 @@ packages:
   '@types/mysql@2.15.27':
     resolution: {integrity: sha512-YfWiV16IY0OeBfBCk8+hXKmdTKrKlwKN1MNKAPBu5JYxLwBEZl7QzeEpGnlZb3VMGJrrGmB84gXiH+ofs/TezA==}
 
+  '@types/node@20.19.30':
+    resolution: {integrity: sha512-WJtwWJu7UdlvzEAUm484QNg5eAoq5QR08KDNx7g45Usrs2NtOPiX8ugDqmKdXkyL03rBqU5dYNYVQetEpBHq2g==}
+
   '@types/node@25.0.9':
     resolution: {integrity: sha512-/rpCXHlCWeqClNBwUhDcusJxXYDjZTyE8v5oTO7WbL8eij2nKhUeU89/6xgjU7N4/Vh3He0BtyhJdQbDyhiXAw==}
 
@@ -2426,6 +2432,12 @@ packages:
 
   '@types/use-sync-external-store@0.0.6':
     resolution: {integrity: sha512-zFDAD+tlpf2r4asuHEj0XH6pY6i0g5NeAHPn+15wk3BV6JA69eERFXC1gyGThDkVa1zCyKr5jox1+2LbV/AMLg==}
+
+  '@types/whatwg-mimetype@3.0.2':
+    resolution: {integrity: sha512-c2AKvDT8ToxLIOUlN51gTiHXflsfIFisS4pO7pDPoKouJCESkhZnEy623gwP9laCy5lnLDAw1vAzu2vM2YLOrA==}
+
+  '@types/ws@8.18.1':
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
   '@types/zen-observable@0.8.3':
     resolution: {integrity: sha512-fbF6oTd4sGGy0xjHPKAt+eS2CrxJ3+6gQ3FGcBoIJR2TLAyCkCyI8JqZNy+FeON0AhVgNJoUumVoZQjBFUqHkw==}
@@ -3249,6 +3261,10 @@ packages:
 
   graceful-fs@4.2.11:
     resolution: {integrity: sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==}
+
+  happy-dom@20.3.1:
+    resolution: {integrity: sha512-tLvsizNno05Hij0PoB0QN/S8xf0YU2AGvO11/JlJDw5McA/gzyn0Ni1RwbTI1/zteUbOekJH0t6q8HFvjbxsGg==}
+    engines: {node: '>=20.0.0'}
 
   has-flag@4.0.0:
     resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
@@ -4527,6 +4543,9 @@ packages:
   unconfig-core@7.4.2:
     resolution: {integrity: sha512-VgPCvLWugINbXvMQDf8Jh0mlbvNjNC6eSUziHsBCMpxR05OPrNrvDnyatdMjRgcHaaNsCqz+wjNXxNw1kRLHUg==}
 
+  undici-types@6.21.0:
+    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+
   undici-types@7.16.0:
     resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
 
@@ -4721,6 +4740,10 @@ packages:
     peerDependenciesMeta:
       webpack-cli:
         optional: true
+
+  whatwg-mimetype@3.0.0:
+    resolution: {integrity: sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q==}
+    engines: {node: '>=12'}
 
   whatwg-mimetype@4.0.0:
     resolution: {integrity: sha512-QaKxh0eNIi2mE9p2vEdzfagOKHCcj1pJ56EEHGQOVxp8r9/iszLUUV7v89x9O1p/T+NlTM5W7jW6+cz4Fq1YVg==}
@@ -6846,6 +6869,10 @@ snapshots:
     dependencies:
       '@types/node': 25.0.9
 
+  '@types/node@20.19.30':
+    dependencies:
+      undici-types: 6.21.0
+
   '@types/node@25.0.9':
     dependencies:
       undici-types: 7.16.0
@@ -6893,6 +6920,12 @@ snapshots:
   '@types/unist@3.0.3': {}
 
   '@types/use-sync-external-store@0.0.6': {}
+
+  '@types/whatwg-mimetype@3.0.2': {}
+
+  '@types/ws@8.18.1':
+    dependencies:
+      '@types/node': 25.0.9
 
   '@types/zen-observable@0.8.3': {}
 
@@ -6951,7 +6984,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vitest/coverage-v8@4.0.17(vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))':
+  '@vitest/coverage-v8@4.0.17(vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))':
     dependencies:
       '@bcoe/v8-coverage': 1.0.2
       '@vitest/utils': 4.0.17
@@ -6963,7 +6996,7 @@ snapshots:
       obug: 2.1.1
       std-env: 3.10.0
       tinyrainbow: 3.0.3
-      vitest: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2)
+      vitest: 4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2)
 
   '@vitest/expect@3.2.4':
     dependencies:
@@ -7741,6 +7774,17 @@ snapshots:
   gopd@1.2.0: {}
 
   graceful-fs@4.2.11: {}
+
+  happy-dom@20.3.1:
+    dependencies:
+      '@types/node': 20.19.30
+      '@types/whatwg-mimetype': 3.0.2
+      '@types/ws': 8.18.1
+      whatwg-mimetype: 3.0.0
+      ws: 8.19.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   has-flag@4.0.0: {}
 
@@ -9300,6 +9344,8 @@ snapshots:
       '@quansync/fs': 1.0.0
       quansync: 1.0.0
 
+  undici-types@6.21.0: {}
+
   undici-types@7.16.0: {}
 
   unfetch@4.1.0: {}
@@ -9408,7 +9454,7 @@ snapshots:
       terser: 5.46.0
       yaml: 2.8.2
 
-  vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2):
+  vitest@4.0.17(@opentelemetry/api@1.9.0)(@types/node@25.0.9)(happy-dom@20.3.1)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2):
     dependencies:
       '@vitest/expect': 4.0.17
       '@vitest/mocker': 4.0.17(vite@7.3.1(@types/node@25.0.9)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))
@@ -9433,6 +9479,7 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
       '@types/node': 25.0.9
+      happy-dom: 20.3.1
       jsdom: 27.4.0
     transitivePeerDependencies:
       - jiti
@@ -9534,6 +9581,8 @@ snapshots:
       - esbuild
       - uglify-js
     optional: true
+
+  whatwg-mimetype@3.0.0: {}
 
   whatwg-mimetype@4.0.0: {}
 
