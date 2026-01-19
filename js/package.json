@@ -117,8 +117,11 @@
       "glob@>=10.2.0 <10.5.0": ">=10.5.0"
     },
     "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "@sentry/cli",
       "@tailwindcss/oxide",
       "sharp",
+      "esbuild",
       "unrs-resolver"
     ]
   },
