@@ -7,6 +7,7 @@
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
+import { vi } from "vitest";
 
 import type { ActionState } from "../../../../contexts/lineage/types";
 import { ActionControl } from "../ActionControl";
@@ -30,8 +31,8 @@ function createMockActionState(
 describe("ActionControl (@datarecce/ui)", () => {
   describe("rendering", () => {
     it("renders progress and cancel button when running", () => {
-      const mockCancel = jest.fn();
-      const mockClose = jest.fn();
+      const mockCancel = vi.fn();
+      const mockClose = vi.fn();
 
       render(
         <ActionControl
@@ -55,8 +56,8 @@ describe("ActionControl (@datarecce/ui)", () => {
     });
 
     it("renders close button when completed", () => {
-      const mockCancel = jest.fn();
-      const mockClose = jest.fn();
+      const mockCancel = vi.fn();
+      const mockClose = vi.fn();
 
       render(
         <ActionControl
@@ -78,8 +79,8 @@ describe("ActionControl (@datarecce/ui)", () => {
     });
 
     it("renders canceled indicator when status is canceled", () => {
-      const mockCancel = jest.fn();
-      const mockClose = jest.fn();
+      const mockCancel = vi.fn();
+      const mockClose = vi.fn();
 
       render(
         <ActionControl
@@ -98,8 +99,8 @@ describe("ActionControl (@datarecce/ui)", () => {
     });
 
     it("shows canceling button when status is canceling", () => {
-      const mockCancel = jest.fn();
-      const mockClose = jest.fn();
+      const mockCancel = vi.fn();
+      const mockClose = vi.fn();
 
       render(
         <ActionControl
@@ -129,8 +130,8 @@ describe("ActionControl (@datarecce/ui)", () => {
             total: 15,
             status: "running",
           })}
-          onCancel={jest.fn()}
-          onClose={jest.fn()}
+          onCancel={vi.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -146,8 +147,8 @@ describe("ActionControl (@datarecce/ui)", () => {
             total: 5,
             status: "running",
           })}
-          onCancel={jest.fn()}
-          onClose={jest.fn()}
+          onCancel={vi.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -168,8 +169,8 @@ describe("ActionControl (@datarecce/ui)", () => {
               },
             },
           })}
-          onCancel={jest.fn()}
-          onClose={jest.fn()}
+          onCancel={vi.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -183,8 +184,8 @@ describe("ActionControl (@datarecce/ui)", () => {
             mode: "multi_nodes",
             status: "completed",
           })}
-          onCancel={jest.fn()}
-          onClose={jest.fn()}
+          onCancel={vi.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -198,8 +199,8 @@ describe("ActionControl (@datarecce/ui)", () => {
             mode: "multi_nodes",
             status: "running",
           })}
-          onCancel={jest.fn()}
-          onClose={jest.fn()}
+          onCancel={vi.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -213,8 +214,8 @@ describe("ActionControl (@datarecce/ui)", () => {
             mode: "multi_nodes",
             status: "pending",
           })}
-          onCancel={jest.fn()}
-          onClose={jest.fn()}
+          onCancel={vi.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -224,8 +225,8 @@ describe("ActionControl (@datarecce/ui)", () => {
 
   describe("callbacks", () => {
     it("calls onCancel when Cancel button is clicked", () => {
-      const mockCancel = jest.fn();
-      const mockClose = jest.fn();
+      const mockCancel = vi.fn();
+      const mockClose = vi.fn();
 
       render(
         <ActionControl
@@ -242,8 +243,8 @@ describe("ActionControl (@datarecce/ui)", () => {
     });
 
     it("calls onClose when Close button is clicked", () => {
-      const mockCancel = jest.fn();
-      const mockClose = jest.fn();
+      const mockCancel = vi.fn();
+      const mockClose = vi.fn();
 
       render(
         <ActionControl
@@ -260,8 +261,8 @@ describe("ActionControl (@datarecce/ui)", () => {
     });
 
     it("does not call onCancel when Canceling button is clicked (disabled)", () => {
-      const mockCancel = jest.fn();
-      const mockClose = jest.fn();
+      const mockCancel = vi.fn();
+      const mockClose = vi.fn();
 
       render(
         <ActionControl
@@ -282,8 +283,8 @@ describe("ActionControl (@datarecce/ui)", () => {
       render(
         <ActionControl
           actionState={createMockActionState({ status: "running" })}
-          onCancel={jest.fn()}
-          onClose={jest.fn()}
+          onCancel={vi.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -296,8 +297,8 @@ describe("ActionControl (@datarecce/ui)", () => {
       render(
         <ActionControl
           actionState={createMockActionState({ status: "canceling" })}
-          onCancel={jest.fn()}
-          onClose={jest.fn()}
+          onCancel={vi.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -310,8 +311,8 @@ describe("ActionControl (@datarecce/ui)", () => {
       render(
         <ActionControl
           actionState={createMockActionState({ status: "canceled" })}
-          onCancel={jest.fn()}
-          onClose={jest.fn()}
+          onCancel={vi.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -322,8 +323,8 @@ describe("ActionControl (@datarecce/ui)", () => {
       render(
         <ActionControl
           actionState={createMockActionState({ status: "completed" })}
-          onCancel={jest.fn()}
-          onClose={jest.fn()}
+          onCancel={vi.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -334,8 +335,8 @@ describe("ActionControl (@datarecce/ui)", () => {
       render(
         <ActionControl
           actionState={createMockActionState({ status: "pending" })}
-          onCancel={jest.fn()}
-          onClose={jest.fn()}
+          onCancel={vi.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -353,8 +354,8 @@ describe("ActionControl (@datarecce/ui)", () => {
             total: 0,
             status: "completed",
           })}
-          onCancel={jest.fn()}
-          onClose={jest.fn()}
+          onCancel={vi.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -369,8 +370,8 @@ describe("ActionControl (@datarecce/ui)", () => {
             status: "running",
             currentRun: {},
           })}
-          onCancel={jest.fn()}
-          onClose={jest.fn()}
+          onCancel={vi.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -389,8 +390,8 @@ describe("ActionControl (@datarecce/ui)", () => {
               },
             },
           })}
-          onCancel={jest.fn()}
-          onClose={jest.fn()}
+          onCancel={vi.fn()}
+          onClose={vi.fn()}
         />,
       );
 
@@ -410,8 +411,8 @@ describe("ActionControl (@datarecce/ui)", () => {
               },
             },
           })}
-          onCancel={jest.fn()}
-          onClose={jest.fn()}
+          onCancel={vi.fn()}
+          onClose={vi.fn()}
         />,
       );
 

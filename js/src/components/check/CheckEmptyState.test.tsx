@@ -14,10 +14,11 @@ import { CheckEmptyStateOss as CheckEmptyState } from "@datarecce/ui/components/
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 
 // Mock the API
-const mockCreateSchemaDiffCheck = jest.fn();
-jest.mock("@datarecce/ui/api", () => ({
+const mockCreateSchemaDiffCheck = vi.fn();
+vi.mock("@datarecce/ui/api", () => ({
   cacheKeys: {
     checks: () => ["checks"],
   },
@@ -26,14 +27,14 @@ jest.mock("@datarecce/ui/api", () => ({
 }));
 
 // Mock the app router
-const mockPush = jest.fn();
-jest.mock("next/navigation", () => ({
+const mockPush = vi.fn();
+vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
 // Mock the API config
 const mockApiClient = {};
-jest.mock("@datarecce/ui/hooks", () => ({
+vi.mock("@datarecce/ui/hooks", () => ({
   useApiConfig: () => ({ apiClient: mockApiClient }),
 }));
 

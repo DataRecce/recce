@@ -8,6 +8,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React, { useEffect, useRef, useState } from "react";
+import { vi } from "vitest";
 
 /**
  * Mock component that simulates LineagePage with internal state
@@ -87,8 +88,8 @@ const MockMainLayout = ({
 
 describe("Lineage State Preservation", () => {
   it("keeps lineage slot mounted when navigating away", () => {
-    const onMount = jest.fn();
-    const onUnmount = jest.fn();
+    const onMount = vi.fn();
+    const onUnmount = vi.fn();
 
     const { rerender } = render(
       <MockMainLayout
@@ -227,8 +228,8 @@ describe("Lineage State Preservation", () => {
   });
 
   it("does not remount lineage component during navigation cycle", () => {
-    const onMount = jest.fn();
-    const onUnmount = jest.fn();
+    const onMount = vi.fn();
+    const onUnmount = vi.fn();
 
     const { rerender } = render(
       <MockMainLayout

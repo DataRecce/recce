@@ -21,8 +21,10 @@
 // Mocks - MUST be set up before imports
 // ============================================================================
 
+import { vi } from "vitest";
+
 // Mock @xyflow/react
-jest.mock("@xyflow/react", () => ({
+vi.mock("@xyflow/react", () => ({
   Handle: ({
     type,
     position,
@@ -335,7 +337,7 @@ describe("LineageColumnNode", () => {
 
   describe("callbacks", () => {
     it("calls onColumnClick with column id when clicked", () => {
-      const onColumnClick = jest.fn();
+      const onColumnClick = vi.fn();
       const props = createMockColumnNodeProps({ onColumnClick });
 
       const { container } = render(<LineageColumnNode {...props} />);
@@ -489,7 +491,7 @@ describe("LineageColumnNode", () => {
 
   describe("onContextMenu callback", () => {
     it("shows kebab menu on hover when onContextMenu is provided", () => {
-      const onContextMenu = jest.fn();
+      const onContextMenu = vi.fn();
       const props = createMockColumnNodeProps({ onContextMenu });
 
       const { container } = render(<LineageColumnNode {...props} />);
@@ -507,7 +509,7 @@ describe("LineageColumnNode", () => {
     });
 
     it("calls onContextMenu when kebab menu is clicked", () => {
-      const onContextMenu = jest.fn();
+      const onContextMenu = vi.fn();
       const props = createMockColumnNodeProps({ onContextMenu });
 
       const { container } = render(<LineageColumnNode {...props} />);
@@ -527,8 +529,8 @@ describe("LineageColumnNode", () => {
     });
 
     it("kebab menu click stops event propagation", () => {
-      const onContextMenu = jest.fn();
-      const onColumnClick = jest.fn();
+      const onContextMenu = vi.fn();
+      const onColumnClick = vi.fn();
       const props = createMockColumnNodeProps({ onContextMenu, onColumnClick });
 
       const { container } = render(<LineageColumnNode {...props} />);
@@ -547,7 +549,7 @@ describe("LineageColumnNode", () => {
     });
 
     it("shows column type when not hovering even with onContextMenu", () => {
-      const onContextMenu = jest.fn();
+      const onContextMenu = vi.fn();
       const props = createMockColumnNodeProps({ onContextMenu });
 
       const { container } = render(<LineageColumnNode {...props} />);
@@ -647,7 +649,7 @@ describe("LineageColumnNode", () => {
     });
 
     it("renders column node with all new props", () => {
-      const onContextMenu = jest.fn();
+      const onContextMenu = vi.fn();
       const props = createMockColumnNodeProps(
         {
           showContent: true,

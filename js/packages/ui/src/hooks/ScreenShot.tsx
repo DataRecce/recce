@@ -30,11 +30,8 @@ type Html2CanvasFn = (
 ) => Promise<HTMLCanvasElement>;
 
 const loadHtml2Canvas = async (): Promise<Html2CanvasFn> => {
-  // Import directly from ESM distribution file to work around Turbopack/bundler issues
-  // Turbopack doesn't properly resolve externalized packages via dynamic import,
-  // so we import the ESM file directly which has a proper default export
-  // @ts-expect-error - Direct path import for bundler compatibility
-  const module = await import("html2canvas-pro/dist/html2canvas-pro.esm.js");
+  // Use the package's main export - it resolves to ESM via package.json exports
+  const module = await import("html2canvas-pro");
   return module.default as Html2CanvasFn;
 };
 

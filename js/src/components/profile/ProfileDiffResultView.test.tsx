@@ -12,58 +12,70 @@
  * - ViewOptions handling (display_mode, pinned_columns, columnsRenderMode)
  */
 
+import { vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock AG Grid to avoid ES module parsing errors
-jest.mock("ag-grid-community", () => ({
+vi.mock("ag-grid-community", () => ({
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
   ClientSideRowModelModule: {},
   AllCommunityModule: {},
-  themeQuartz: {},
+  themeQuartz: { withParams: vi.fn(() => "mocked-theme") },
 }));
 
 // Mock ag-grid-react to avoid class extension error
-jest.mock("ag-grid-react", () => ({
-  AgGridReact: jest.fn(() => null),
+vi.mock("ag-grid-react", () => ({
+  AgGridReact: vi.fn(() => null),
 }));
 
 // Mock dataGridFactory - use factory pattern that returns mock from closure
-const mockCreateDataGrid = jest.fn();
-jest.mock("@datarecce/ui/components/ui/dataGrid/dataGridFactory", () => ({
+const mockCreateDataGrid = vi.fn();
+vi.mock("@datarecce/ui/components/ui/dataGrid/dataGridFactory", () => ({
   createDataGrid: (...args: unknown[]) => mockCreateDataGrid(...args),
 }));
 
 // Mock ScreenshotDataGrid with our test utility mock
-jest.mock("@datarecce/ui/primitives", () => ({
-  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
-    .screenshotDataGridMock,
-  DataGridHandle: {},
-}));
+vi.mock("@datarecce/ui/primitives", async () => {
+  const testUtils = await vi.importActual(
+    "@/testing-utils/resultViewTestUtils",
+  );
+  return {
+    ScreenshotDataGrid: (testUtils as Record<string, unknown>)
+      .screenshotDataGridMock,
+    DataGridHandle: {},
+  };
+});
 
 // Mock ScreenshotDataGrid from @datarecce/ui package (used by factory)
 // This path is resolved by Jest's moduleNameMapper to packages/ui/src
-jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
-  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
-    .screenshotDataGridMock,
-  EmptyRowsRenderer: () => null,
-  DataGridHandle: {},
-}));
+vi.mock("@datarecce/ui/components/data/ScreenshotDataGrid", async () => {
+  const testUtils = await vi.importActual(
+    "@/testing-utils/resultViewTestUtils",
+  );
+  return {
+    ScreenshotDataGrid: (testUtils as Record<string, unknown>)
+      .screenshotDataGridMock,
+    EmptyRowsRenderer: () => null,
+    DataGridHandle: {},
+  };
+});
 
 // Mock RunToolbar component from @datarecce/ui
-jest.mock("@datarecce/ui/components/run/RunToolbar", () => ({
-  RunToolbar: jest.fn(({ children }) => (
+vi.mock("@datarecce/ui/components/run/RunToolbar", () => ({
+  RunToolbar: vi.fn(({ children }) => (
     <div data-testid="run-toolbar">{children}</div>
   )),
 }));
 
 // Mock DiffDisplayModeSwitch component from @datarecce/ui/components/ui
-const mockOnDisplayModeChanged = jest.fn();
-jest.mock("@datarecce/ui/components/ui/DiffDisplayModeSwitch", () => ({
-  DiffDisplayModeSwitch: jest.fn(({ displayMode, onDisplayModeChanged }) => (
+const mockOnDisplayModeChanged = vi.fn();
+vi.mock("@datarecce/ui/components/ui/DiffDisplayModeSwitch", () => ({
+  DiffDisplayModeSwitch: vi.fn(({ displayMode, onDisplayModeChanged }) => (
     <button
       data-testid="display-mode-switch"
       data-display-mode={displayMode}
@@ -82,8 +94,8 @@ jest.mock("@datarecce/ui/components/ui/DiffDisplayModeSwitch", () => ({
 }));
 
 // Mock useIsDark hook from @datarecce/ui
-const mockUseIsDark = jest.fn(() => false);
-jest.mock("@datarecce/ui/hooks", () => ({
+const mockUseIsDark = vi.fn(() => false);
+vi.mock("@datarecce/ui/hooks", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 
@@ -116,7 +128,7 @@ describe("ProfileDiffResultView", () => {
   beforeEach(() => {
     mockUseIsDark.mockReturnValue(false);
     mockOnDisplayModeChanged.mockClear();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Default mock implementation returns grid data
     mockCreateDataGrid.mockReturnValue({
@@ -242,7 +254,7 @@ describe("ProfileDiffResultView", () => {
       const wrongRun = createValueDiffRun();
 
       // Suppress console.error for expected throws
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, "error")
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});
@@ -268,7 +280,7 @@ describe("ProfileDiffResultView", () => {
       const wrongRun = createProfileRun();
 
       // Suppress console.error for expected throws
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, "error")
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});
@@ -384,7 +396,7 @@ describe("ProfileDiffResultView", () => {
 
     it("calls onViewOptionsChanged when display mode changes", () => {
       const run = createProfileDiffRun();
-      const mockOnViewOptionsChanged = jest.fn();
+      const mockOnViewOptionsChanged = vi.fn();
 
       renderWithProviders(
         <ProfileDiffResultView
@@ -522,7 +534,7 @@ describe("ProfileDiffResultView", () => {
 describe("ProfileResultView", () => {
   beforeEach(() => {
     mockUseIsDark.mockReturnValue(false);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Default mock implementation returns grid data for single environment
     mockCreateDataGrid.mockReturnValue({
@@ -608,7 +620,7 @@ describe("ProfileResultView", () => {
       const wrongRun = createValueDiffRun();
 
       // Suppress console.error for expected throws
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, "error")
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});
@@ -625,7 +637,7 @@ describe("ProfileResultView", () => {
       const wrongRun = createProfileDiffRun();
 
       // Suppress console.error for expected throws
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, "error")
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});
@@ -772,7 +784,7 @@ describe("ProfileResultView", () => {
 describe("ProfileResultView shared behavior", () => {
   beforeEach(() => {
     mockUseIsDark.mockReturnValue(false);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Default mock for shared tests
     mockCreateDataGrid.mockReturnValue({

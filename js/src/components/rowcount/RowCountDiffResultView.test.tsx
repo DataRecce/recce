@@ -11,24 +11,26 @@
  * - Dark mode styling (via useIsDark hook)
  */
 
+import { vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock AG Grid to avoid ES module parsing errors
-jest.mock("ag-grid-community", () => ({
+vi.mock("ag-grid-community", () => ({
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
   ClientSideRowModelModule: {},
   AllCommunityModule: {},
-  themeQuartz: {},
+  themeQuartz: { withParams: vi.fn(() => "mocked-theme") },
 }));
 
 // Mock dataGridFactory to avoid deep import chain issues
 // This prevents importing toSchemaDataGrid -> schemaCells -> ag-grid-react
-jest.mock("@datarecce/ui/components/ui/dataGrid", () => ({
-  createDataGrid: jest.fn((run) => {
+vi.mock("@datarecce/ui/components/ui/dataGrid", () => ({
+  createDataGrid: vi.fn((run) => {
     // Return mock grid data based on run result
     if (!run.result || Object.keys(run.result).length === 0) {
       return { columns: [], rows: [] };
@@ -69,21 +71,35 @@ jest.mock("@datarecce/ui/components/ui/dataGrid", () => ({
 }));
 
 // Mock ScreenshotDataGrid with our test utility mock (both local and packages/ui versions)
-jest.mock("@datarecce/ui/primitives", () => ({
-  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
-    .screenshotDataGridMock,
-  EmptyRowsRenderer: () => <div data-testid="empty-rows-renderer">No data</div>,
-}));
+vi.mock("@datarecce/ui/primitives", async () => {
+  const testUtils = await vi.importActual(
+    "@/testing-utils/resultViewTestUtils",
+  );
+  return {
+    ScreenshotDataGrid: (testUtils as Record<string, unknown>)
+      .screenshotDataGridMock,
+    EmptyRowsRenderer: () => (
+      <div data-testid="empty-rows-renderer">No data</div>
+    ),
+  };
+});
 
-jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
-  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
-    .screenshotDataGridMock,
-  EmptyRowsRenderer: () => <div data-testid="empty-rows-renderer">No data</div>,
-}));
+vi.mock("@datarecce/ui/components/data/ScreenshotDataGrid", async () => {
+  const testUtils = await vi.importActual(
+    "@/testing-utils/resultViewTestUtils",
+  );
+  return {
+    ScreenshotDataGrid: (testUtils as Record<string, unknown>)
+      .screenshotDataGridMock,
+    EmptyRowsRenderer: () => (
+      <div data-testid="empty-rows-renderer">No data</div>
+    ),
+  };
+});
 
 // Mock useIsDark hook from @datarecce/ui
-const mockUseIsDark = jest.fn(() => false);
-jest.mock("@datarecce/ui/hooks", () => ({
+const mockUseIsDark = vi.fn(() => false);
+vi.mock("@datarecce/ui/hooks", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 
@@ -116,7 +132,7 @@ import {
 describe("RowCountDiffResultView", () => {
   beforeEach(() => {
     mockUseIsDark.mockReturnValue(false);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   // ==========================================================================
@@ -185,7 +201,7 @@ describe("RowCountDiffResultView", () => {
       const wrongRun = createValueDiffRun();
 
       // Suppress console.error for expected throws
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, "error")
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});
@@ -273,7 +289,7 @@ describe("RowCountDiffResultView", () => {
 describe("RowCountResultView", () => {
   beforeEach(() => {
     mockUseIsDark.mockReturnValue(false);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   // ==========================================================================
@@ -325,7 +341,7 @@ describe("RowCountResultView", () => {
       const wrongRun = createValueDiffRun();
 
       // Suppress console.error for expected throws
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, "error")
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});
@@ -341,7 +357,7 @@ describe("RowCountResultView", () => {
       const wrongRun = createRowCountDiffRun();
 
       // Suppress console.error for expected throws
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, "error")
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});
@@ -405,7 +421,7 @@ describe("RowCountResultView", () => {
 describe("RowCountGridView shared behavior", () => {
   beforeEach(() => {
     mockUseIsDark.mockReturnValue(false);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it("both components use the same internal RowCountGridView", () => {

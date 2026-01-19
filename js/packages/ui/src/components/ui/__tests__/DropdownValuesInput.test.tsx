@@ -17,6 +17,7 @@
 
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 import {
   DropdownValuesInput,
   type DropdownValuesInputProps,
@@ -28,7 +29,7 @@ import {
 
 const defaultProps: DropdownValuesInputProps = {
   unitName: "key",
-  onValuesChange: jest.fn(),
+  onValuesChange: vi.fn(),
 };
 
 const renderDropdown = (props: Partial<DropdownValuesInputProps> = {}) => {
@@ -42,7 +43,7 @@ const renderDropdown = (props: Partial<DropdownValuesInputProps> = {}) => {
 
 describe("DropdownValuesInput", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("rendering", () => {
@@ -134,7 +135,7 @@ describe("DropdownValuesInput", () => {
 
   describe("value selection", () => {
     it("calls onValuesChange when selecting a value", async () => {
-      const onValuesChange = jest.fn();
+      const onValuesChange = vi.fn();
       const user = userEvent.setup();
 
       renderDropdown({
@@ -153,7 +154,7 @@ describe("DropdownValuesInput", () => {
     });
 
     it("does not add duplicate values", async () => {
-      const onValuesChange = jest.fn();
+      const onValuesChange = vi.fn();
       const user = userEvent.setup();
 
       renderDropdown({
@@ -207,7 +208,7 @@ describe("DropdownValuesInput", () => {
     });
 
     it("clears all values when Clear is clicked", async () => {
-      const onValuesChange = jest.fn();
+      const onValuesChange = vi.fn();
       const user = userEvent.setup();
 
       renderDropdown({
@@ -227,7 +228,7 @@ describe("DropdownValuesInput", () => {
 
   describe("removing individual values", () => {
     it("removes value when chip delete button is clicked", async () => {
-      const onValuesChange = jest.fn();
+      const onValuesChange = vi.fn();
       const user = userEvent.setup();
 
       renderDropdown({
@@ -360,7 +361,7 @@ describe("DropdownValuesInput", () => {
 
   describe("keyboard navigation", () => {
     it("adds value on Enter key", async () => {
-      const onValuesChange = jest.fn();
+      const onValuesChange = vi.fn();
       const user = userEvent.setup();
 
       renderDropdown({
@@ -377,7 +378,7 @@ describe("DropdownValuesInput", () => {
     });
 
     it("adds value on comma key", async () => {
-      const onValuesChange = jest.fn();
+      const onValuesChange = vi.fn();
       const user = userEvent.setup();
 
       renderDropdown({
@@ -394,7 +395,7 @@ describe("DropdownValuesInput", () => {
     });
 
     it("removes last value on Backspace when input is empty", async () => {
-      const onValuesChange = jest.fn();
+      const onValuesChange = vi.fn();
       const user = userEvent.setup();
 
       renderDropdown({
@@ -411,7 +412,7 @@ describe("DropdownValuesInput", () => {
     });
 
     it("does not remove value on Backspace when input has text", async () => {
-      const onValuesChange = jest.fn();
+      const onValuesChange = vi.fn();
       const user = userEvent.setup();
 
       renderDropdown({

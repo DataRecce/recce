@@ -14,39 +14,44 @@
  * - RowObjectType: Record with __status: "added" | "removed" | "modified" | undefined
  */
 
+import { vi } from "vitest";
+
 // ============================================================================
 // Mocks
 // ============================================================================
 
 // Mock ag-grid-community to avoid ES module parsing issues
-jest.mock("ag-grid-community", () => ({
+vi.mock("ag-grid-community", () => ({
+  themeQuartz: { withParams: vi.fn(() => "mocked-theme") },
+  AllCommunityModule: {},
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
 }));
 
-jest.mock("@datarecce/ui/contexts", () => ({
-  useRouteConfig: jest.fn(() => ({ basePath: "" })),
+vi.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: vi.fn(() => ({ basePath: "" })),
   useRecceInstanceContext: () => ({
     featureToggles: {
       disableDatabaseQuery: false,
     },
   }),
   useRecceActionContext: () => ({
-    runAction: jest.fn(),
+    runAction: vi.fn(),
   }),
 }));
 
 // Mock dataGrid UI components
-jest.mock("@datarecce/ui/components/ui", () => ({
+vi.mock("@datarecce/ui/components/ui", () => ({
   DataFrameColumnGroupHeader: () => null,
-  defaultRenderCell: jest.fn(),
-  inlineRenderCell: jest.fn(),
+  DataFrameColumnHeader: () => null,
+  defaultRenderCell: vi.fn(),
+  inlineRenderCell: vi.fn(),
 }));
 
 // Mock schema grid generators to avoid Chakra UI import chain issues
-jest.mock("@datarecce/ui", () => ({
-  mergeColumns: jest.fn((base, current) => {
+vi.mock("@datarecce/ui", () => ({
+  mergeColumns: vi.fn((base, current) => {
     // Simple merge implementation for testing
     const result: Record<
       string,
@@ -69,7 +74,7 @@ jest.mock("@datarecce/ui", () => ({
     }
     return result;
   }),
-  toSchemaDataGrid: jest.fn((schemaDiff) => ({
+  toSchemaDataGrid: vi.fn((schemaDiff) => ({
     columns: [
       { key: "baseIndex", name: "" },
       { key: "currentIndex", name: "" },
@@ -79,7 +84,7 @@ jest.mock("@datarecce/ui", () => ({
     ],
     rows: Object.values(schemaDiff),
   })),
-  toSingleEnvDataGrid: jest.fn((columns) => ({
+  toSingleEnvDataGrid: vi.fn((columns) => ({
     columns: [
       { key: "index", name: "" },
       { key: "name", name: "Name" },
@@ -896,7 +901,7 @@ describe("createDataGrid - options handling", () => {
   test("calls onPinnedColumnsChange callback when provided", () => {
     const df = createSimpleDataFrame();
     const run = createQueryRun(df);
-    const onPinnedColumnsChange = jest.fn();
+    const onPinnedColumnsChange = vi.fn();
 
     const result = createDataGrid(run, { onPinnedColumnsChange });
 
@@ -907,7 +912,7 @@ describe("createDataGrid - options handling", () => {
   test("calls onColumnsRenderModeChanged callback when provided", () => {
     const df = createSimpleDataFrame();
     const run = createQueryRun(df);
-    const onColumnsRenderModeChanged = jest.fn();
+    const onColumnsRenderModeChanged = vi.fn();
 
     const result = createDataGrid(run, { onColumnsRenderModeChanged });
 
@@ -1190,7 +1195,7 @@ describe("createDataGrid - callback invocation", () => {
   test("onPrimaryKeyChange is passed through for query runs", () => {
     const df = createNumericDataFrame();
     const run = createQueryRun(df);
-    const onPrimaryKeyChange = jest.fn();
+    const onPrimaryKeyChange = vi.fn();
 
     const result = createDataGrid(run, {
       primaryKeys: ["id"],
@@ -1204,7 +1209,7 @@ describe("createDataGrid - callback invocation", () => {
   test("onPinnedColumnsChange is passed through for all run types", () => {
     const df = createNumericDataFrame();
     const run = createQueryRun(df);
-    const onPinnedColumnsChange = jest.fn();
+    const onPinnedColumnsChange = vi.fn();
 
     const result = createDataGrid(run, {
       pinnedColumns: ["value"],
@@ -1218,7 +1223,7 @@ describe("createDataGrid - callback invocation", () => {
     const base = createProfileDataFrame();
     const current = createProfileDataFrame();
     const run = createProfileDiffRun({ base, current });
-    const onColumnsRenderModeChanged = jest.fn();
+    const onColumnsRenderModeChanged = vi.fn();
 
     const result = createDataGrid(run, {
       columnsRenderMode: { count: 2 },

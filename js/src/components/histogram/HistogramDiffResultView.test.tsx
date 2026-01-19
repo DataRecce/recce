@@ -12,18 +12,20 @@
  * - Correct data passed to HistogramChart
  */
 
+import { vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock AG Grid to avoid ES module parsing errors
-jest.mock("ag-grid-community", () => ({
+vi.mock("ag-grid-community", () => ({
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
   ClientSideRowModelModule: {},
   AllCommunityModule: {},
-  themeQuartz: {},
+  themeQuartz: { withParams: vi.fn(() => "mocked-theme") },
 }));
 
 // Define prop interface for mock
@@ -39,7 +41,7 @@ interface MockHistogramChartProps {
 }
 
 // Mock HistogramChart component to avoid chart.js complexity
-const mockHistogramChart = jest.fn((props: MockHistogramChartProps) => (
+const mockHistogramChart = vi.fn((props: MockHistogramChartProps) => (
   <div data-testid="histogram-chart" data-title={props.title}>
     <span data-testid="chart-title">{props.title}</span>
     <span data-testid="chart-type">{props.dataType}</span>
@@ -56,26 +58,37 @@ const mockHistogramChart = jest.fn((props: MockHistogramChartProps) => (
   </div>
 ));
 
-jest.mock("@datarecce/ui/primitives", () => ({
+vi.mock("@datarecce/ui/primitives", () => ({
   HistogramChart: (props: MockHistogramChartProps) => mockHistogramChart(props),
 }));
 
 // Mock ScreenshotBox component (both local and packages/ui versions)
-jest.mock("@datarecce/ui/components/ui/ScreenshotBox", () => ({
-  ScreenshotBox: jest.requireActual("@/testing-utils/resultViewTestUtils")
-    .screenshotBoxMock,
-}));
+vi.mock("@datarecce/ui/components/ui/ScreenshotBox", async () => {
+  const testUtils = await vi.importActual(
+    "@/testing-utils/resultViewTestUtils",
+  );
+  return {
+    ScreenshotBox: (testUtils as Record<string, unknown>).screenshotBoxMock,
+  };
+});
 
 // Mock ScreenshotDataGrid to avoid ag-grid-react ES module issues
-jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
-  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
-    .screenshotDataGridMock,
-  EmptyRowsRenderer: () => <div data-testid="empty-rows-renderer">No data</div>,
-}));
+vi.mock("@datarecce/ui/components/data/ScreenshotDataGrid", async () => {
+  const testUtils = await vi.importActual(
+    "@/testing-utils/resultViewTestUtils",
+  );
+  return {
+    ScreenshotDataGrid: (testUtils as Record<string, unknown>)
+      .screenshotDataGridMock,
+    EmptyRowsRenderer: () => (
+      <div data-testid="empty-rows-renderer">No data</div>
+    ),
+  };
+});
 
 // Mock useIsDark hook from @datarecce/ui
-const mockUseIsDark = jest.fn(() => false);
-jest.mock("@datarecce/ui/hooks", () => ({
+const mockUseIsDark = vi.fn(() => false);
+vi.mock("@datarecce/ui/hooks", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 
@@ -104,7 +117,7 @@ describe("HistogramDiffResultView", () => {
   beforeEach(() => {
     mockUseIsDark.mockReturnValue(false);
     mockHistogramChart.mockClear();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   // ==========================================================================
@@ -256,7 +269,7 @@ describe("HistogramDiffResultView", () => {
       const wrongRun = createRowCountDiffRun();
 
       // Suppress console.error for expected throws
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, "error")
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});

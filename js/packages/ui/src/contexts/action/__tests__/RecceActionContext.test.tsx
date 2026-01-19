@@ -23,6 +23,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { vi } from "vitest";
 
 import {
   RecceActionProvider,
@@ -118,7 +119,7 @@ function TestConsumer() {
 
 describe("RecceActionContext (@datarecce/ui)", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("provider basics", () => {
@@ -216,7 +217,7 @@ describe("RecceActionContext (@datarecce/ui)", () => {
 
   describe("callback props - onRunAction", () => {
     it("invokes onRunAction callback when runAction is called", async () => {
-      const mockOnRunAction = jest.fn();
+      const mockOnRunAction = vi.fn();
 
       render(
         <RecceActionProvider onRunAction={mockOnRunAction}>
@@ -238,7 +239,7 @@ describe("RecceActionContext (@datarecce/ui)", () => {
     });
 
     it("passes correct type parameter to onRunAction", async () => {
-      const mockOnRunAction = jest.fn();
+      const mockOnRunAction = vi.fn();
 
       function TypeTestConsumer() {
         const context = useRecceActionContext();
@@ -273,7 +274,7 @@ describe("RecceActionContext (@datarecce/ui)", () => {
     });
 
     it("passes correct params to onRunAction", async () => {
-      const mockOnRunAction = jest.fn();
+      const mockOnRunAction = vi.fn();
 
       function ParamsTestConsumer() {
         const context = useRecceActionContext();
@@ -313,7 +314,7 @@ describe("RecceActionContext (@datarecce/ui)", () => {
     });
 
     it("passes options to onRunAction when provided", async () => {
-      const mockOnRunAction = jest.fn();
+      const mockOnRunAction = vi.fn();
 
       function OptionsTestConsumer() {
         const context = useRecceActionContext();
@@ -362,7 +363,7 @@ describe("RecceActionContext (@datarecce/ui)", () => {
     });
 
     it("shows run result when onRunAction returns a run ID", async () => {
-      const mockOnRunAction = jest.fn().mockResolvedValue("returned-run-789");
+      const mockOnRunAction = vi.fn().mockResolvedValue("returned-run-789");
 
       render(
         <RecceActionProvider onRunAction={mockOnRunAction}>
@@ -385,7 +386,7 @@ describe("RecceActionContext (@datarecce/ui)", () => {
     });
 
     it("does not update state when onRunAction returns undefined", async () => {
-      const mockOnRunAction = jest.fn().mockResolvedValue(undefined);
+      const mockOnRunAction = vi.fn().mockResolvedValue(undefined);
 
       render(
         <RecceActionProvider onRunAction={mockOnRunAction}>
@@ -409,7 +410,7 @@ describe("RecceActionContext (@datarecce/ui)", () => {
     });
 
     it("handles synchronous return value from onRunAction", async () => {
-      const mockOnRunAction = jest.fn().mockReturnValue("sync-run-123");
+      const mockOnRunAction = vi.fn().mockReturnValue("sync-run-123");
 
       render(
         <RecceActionProvider onRunAction={mockOnRunAction}>
@@ -427,7 +428,8 @@ describe("RecceActionContext (@datarecce/ui)", () => {
     });
 
     it("logs warning when onRunAction is not provided", async () => {
-      const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
+      // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
       render(
         <RecceActionProvider>
@@ -451,7 +453,7 @@ describe("RecceActionContext (@datarecce/ui)", () => {
 
   describe("callback props - onShowRunId", () => {
     it("invokes onShowRunId callback when showRunId is called", () => {
-      const mockOnShowRunId = jest.fn();
+      const mockOnShowRunId = vi.fn();
 
       render(
         <RecceActionProvider onShowRunId={mockOnShowRunId}>
@@ -467,7 +469,7 @@ describe("RecceActionContext (@datarecce/ui)", () => {
     });
 
     it("passes refreshHistory parameter to onShowRunId", () => {
-      const mockOnShowRunId = jest.fn();
+      const mockOnShowRunId = vi.fn();
 
       function RefreshHistoryConsumer() {
         const context = useRecceActionContext();
@@ -496,8 +498,8 @@ describe("RecceActionContext (@datarecce/ui)", () => {
     });
 
     it("calls onShowRunId when runAction returns an ID", async () => {
-      const mockOnRunAction = jest.fn().mockResolvedValue("action-run-999");
-      const mockOnShowRunId = jest.fn();
+      const mockOnRunAction = vi.fn().mockResolvedValue("action-run-999");
+      const mockOnShowRunId = vi.fn();
 
       render(
         <RecceActionProvider
@@ -743,7 +745,7 @@ describe("RecceActionContext (@datarecce/ui)", () => {
     });
 
     it("allows calling runAction with renderHook", async () => {
-      const mockOnRunAction = jest.fn().mockResolvedValue("hook-run-123");
+      const mockOnRunAction = vi.fn().mockResolvedValue("hook-run-123");
 
       const { result } = renderHook(() => useRecceActionContext(), {
         wrapper: createWrapper({ onRunAction: mockOnRunAction }),
@@ -765,7 +767,7 @@ describe("RecceActionContext (@datarecce/ui)", () => {
     it("does not make any API calls - all actions delegated to callbacks", async () => {
       // This test verifies the key difference from OSS version
       // No need to mock API functions because none are called
-      const mockOnRunAction = jest.fn().mockResolvedValue("delegated-run");
+      const mockOnRunAction = vi.fn().mockResolvedValue("delegated-run");
 
       render(
         <RecceActionProvider onRunAction={mockOnRunAction}>
@@ -787,11 +789,11 @@ describe("RecceActionContext (@datarecce/ui)", () => {
 
     it("consumer controls all side effects via callbacks", async () => {
       const sideEffects: string[] = [];
-      const mockOnRunAction = jest.fn().mockImplementation(() => {
+      const mockOnRunAction = vi.fn().mockImplementation(() => {
         sideEffects.push("runAction");
         return Promise.resolve("run-id");
       });
-      const mockOnShowRunId = jest.fn().mockImplementation(() => {
+      const mockOnShowRunId = vi.fn().mockImplementation(() => {
         sideEffects.push("showRunId");
       });
 
@@ -871,7 +873,7 @@ describe("RecceActionContext (@datarecce/ui)", () => {
 
   describe("edge cases", () => {
     it("handles undefined params in runAction", async () => {
-      const mockOnRunAction = jest.fn();
+      const mockOnRunAction = vi.fn();
 
       function UndefinedParamsConsumer() {
         const context = useRecceActionContext();
@@ -906,7 +908,7 @@ describe("RecceActionContext (@datarecce/ui)", () => {
     });
 
     it("handles empty string run ID", async () => {
-      const mockOnRunAction = jest.fn().mockReturnValue("");
+      const mockOnRunAction = vi.fn().mockReturnValue("");
 
       render(
         <RecceActionProvider onRunAction={mockOnRunAction}>
@@ -935,7 +937,7 @@ describe("RecceActionContext (@datarecce/ui)", () => {
       // Note: The RecceActionContext does NOT catch errors from onRunAction.
       // Error handling is the consumer's responsibility since they provide the callback.
       // This test verifies that a rejected promise just means no run ID is returned.
-      const mockOnRunAction = jest.fn().mockImplementation(() => {
+      const mockOnRunAction = vi.fn().mockImplementation(() => {
         // Simulate an async operation that fails but handles it gracefully
         // by returning undefined instead of throwing
         return Promise.resolve(undefined);

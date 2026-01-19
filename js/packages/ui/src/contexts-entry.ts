@@ -44,6 +44,43 @@ export {
   useRecceInstanceContext,
   useRecceInstanceInfo,
 } from "./contexts/instance";
+// LineageGraphContext exports - lineage data and utilities
+export type {
+  ActionMode,
+  ActionState,
+  EnvInfo,
+  LineageGraph,
+  LineageGraphColumnNode,
+  LineageGraphContextType,
+  LineageGraphEdge,
+  LineageGraphNode,
+  LineageGraphNodes,
+  LineageGraphProviderProps,
+  LineageViewContextType,
+  NodeAction,
+  NodeColumnSetMap,
+  SelectMode,
+} from "./contexts/lineage";
+export {
+  buildLineageGraph,
+  COLUMN_HEIGHT,
+  getNeighborSet,
+  intersect,
+  isLineageGraphColumnNode,
+  isLineageGraphNode,
+  LineageGraphProvider,
+  LineageViewContext,
+  layoutWithDagre,
+  selectDownstream,
+  selectUpstream,
+  toReactFlowBasic,
+  union,
+  useLineageGraphContext,
+  useLineageViewContext,
+  useLineageViewContextSafe,
+  useRecceServerFlag,
+  useRunsAggregated,
+} from "./contexts/lineage";
 // ApiContext exports - API client configuration
 export {
   ApiProvider,

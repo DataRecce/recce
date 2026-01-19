@@ -16,24 +16,25 @@ import { TimelineEventOss as TimelineEvent } from "@datarecce/ui/components/chec
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 
 // Mock useIsDark hook
-jest.mock("@datarecce/ui/hooks/useIsDark", () => ({
+vi.mock("@datarecce/ui/hooks/useIsDark", () => ({
   useIsDark: () => false,
 }));
 
 // Mock date-fns to return predictable relative times
-jest.mock("date-fns", () => ({
+vi.mock("date-fns", () => ({
   formatDistanceToNow: () => "5 minutes ago",
 }));
 
 // Mock avatar fetching
-jest.mock("@datarecce/ui/lib/api/user", () => ({
-  fetchGitHubAvatar: jest.fn().mockResolvedValue(null),
+vi.mock("@datarecce/ui/lib/api/user", () => ({
+  fetchGitHubAvatar: vi.fn().mockResolvedValue(null),
 }));
 
 // Mock MarkdownContent from @datarecce/ui/primitives
-jest.mock("@datarecce/ui/primitives", () => ({
+vi.mock("@datarecce/ui/primitives", () => ({
   MarkdownContent: ({ content }: { content: string }) => (
     <div data-testid="markdown-content">{content}</div>
   ),
@@ -252,7 +253,7 @@ describe("TimelineEvent", () => {
 
   describe("comment editing", () => {
     it("shows edit button for author on hover", () => {
-      const onEdit = jest.fn();
+      const onEdit = vi.fn();
 
       renderWithQueryClient(
         <TimelineEvent
@@ -291,7 +292,7 @@ describe("TimelineEvent", () => {
             },
           })}
           currentUserId="1"
-          onEdit={jest.fn()}
+          onEdit={vi.fn()}
         />,
       );
 
@@ -338,7 +339,7 @@ describe("TimelineEvent", () => {
             },
           })}
           currentUserId="1"
-          onDelete={jest.fn()}
+          onDelete={vi.fn()}
         />,
       );
 
@@ -363,7 +364,7 @@ describe("TimelineEvent", () => {
             },
           })}
           currentUserId="1"
-          onDelete={jest.fn()}
+          onDelete={vi.fn()}
         />,
       );
 
@@ -374,7 +375,7 @@ describe("TimelineEvent", () => {
 
     it("calls onDelete when confirmed", async () => {
       const user = userEvent.setup();
-      const onDelete = jest.fn().mockResolvedValue(undefined);
+      const onDelete = vi.fn().mockResolvedValue(undefined);
 
       renderWithQueryClient(
         <TimelineEvent
@@ -418,7 +419,7 @@ describe("TimelineEvent", () => {
             },
           })}
           currentUserId="1"
-          onDelete={jest.fn()}
+          onDelete={vi.fn()}
         />,
       );
 

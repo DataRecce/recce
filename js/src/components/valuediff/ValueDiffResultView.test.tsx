@@ -10,41 +10,57 @@
  * - Ref forwarding to underlying grid
  */
 
+import { vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock AG Grid to avoid ES module parsing errors
-jest.mock("ag-grid-community", () => ({
+vi.mock("ag-grid-community", () => ({
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
   ClientSideRowModelModule: {},
   AllCommunityModule: {},
-  themeQuartz: {},
+  themeQuartz: { withParams: vi.fn(() => "mocked-theme") },
 }));
 
 // Mock toValueDataGrid from @datarecce/ui
-const mockToValueDataGrid = jest.fn();
-jest.mock("@datarecce/ui/components/ui/dataGrid", () => ({
+const mockToValueDataGrid = vi.fn();
+vi.mock("@datarecce/ui/components/ui/dataGrid", () => ({
   toValueDataGrid: (...args: unknown[]) => mockToValueDataGrid(...args),
 }));
 
 // Mock ScreenshotDataGrid with our test utility mock
-jest.mock("@datarecce/ui/primitives", () => ({
-  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
-    .screenshotDataGridMock,
-  EmptyRowsRenderer: () => <div data-testid="empty-rows-renderer">No data</div>,
-}));
+vi.mock("@datarecce/ui/primitives", async () => {
+  const testUtils = await vi.importActual(
+    "@/testing-utils/resultViewTestUtils",
+  );
+  return {
+    ScreenshotDataGrid: (testUtils as Record<string, unknown>)
+      .screenshotDataGridMock,
+    EmptyRowsRenderer: () => (
+      <div data-testid="empty-rows-renderer">No data</div>
+    ),
+  };
+});
 
 // Mock @datarecce/ui components used by factory pattern
-jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
-  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
-    .screenshotDataGridMock,
-  EmptyRowsRenderer: () => <div data-testid="empty-rows-renderer">No data</div>,
-}));
+vi.mock("@datarecce/ui/components/data/ScreenshotDataGrid", async () => {
+  const testUtils = await vi.importActual(
+    "@/testing-utils/resultViewTestUtils",
+  );
+  return {
+    ScreenshotDataGrid: (testUtils as Record<string, unknown>)
+      .screenshotDataGridMock,
+    EmptyRowsRenderer: () => (
+      <div data-testid="empty-rows-renderer">No data</div>
+    ),
+  };
+});
 
-jest.mock("@datarecce/ui/hooks", () => ({
+vi.mock("@datarecce/ui/hooks", () => ({
   useIsDark: () => false,
 }));
 
@@ -71,7 +87,7 @@ import {
 
 describe("ValueDiffResultView", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Default mock implementation returns grid data
     mockToValueDataGrid.mockReturnValue({
@@ -228,7 +244,7 @@ describe("ValueDiffResultView", () => {
       const wrongRun = createRowCountDiffRun();
 
       // Suppress console.error for expected throws
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, "error")
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});

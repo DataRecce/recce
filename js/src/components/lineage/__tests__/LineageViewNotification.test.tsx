@@ -13,19 +13,21 @@
  * before migration to @datarecce/ui
  */
 
+import { vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock @datarecce/ui/api
-jest.mock("@datarecce/ui/api", () => ({
+vi.mock("@datarecce/ui/api", () => ({
   SESSION_STORAGE_KEYS: {
     lineageNotificationDismissed: "lineage-notification-dismissed",
   },
 }));
 
 // Mock react-icons
-jest.mock("react-icons/io5", () => ({
+vi.mock("react-icons/io5", () => ({
   IoClose: () => <span data-testid="close-icon">X</span>,
 }));
 
@@ -45,12 +47,12 @@ import React from "react";
 describe("LineageViewNotification", () => {
   // Mock sessionStorage
   const mockSessionStorage = {
-    getItem: jest.fn(),
-    setItem: jest.fn(),
-    removeItem: jest.fn(),
-    clear: jest.fn(),
+    getItem: vi.fn(),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+    clear: vi.fn(),
     length: 0,
-    key: jest.fn(),
+    key: vi.fn(),
   };
 
   // Helper to get close button with proper assertion
@@ -64,7 +66,7 @@ describe("LineageViewNotification", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     Object.defineProperty(window, "sessionStorage", {
       value: mockSessionStorage,
       writable: true,

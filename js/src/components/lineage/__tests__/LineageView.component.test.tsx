@@ -40,6 +40,7 @@ if (typeof Object.groupBy === "undefined") {
 import type { LineageGraph, LineageGraphNode } from "@datarecce/ui";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React, { createRef } from "react";
+import { type Mock, vi } from "vitest";
 
 // ============================================================================
 // Mocks - MUST be set up before component imports
@@ -47,14 +48,14 @@ import React, { createRef } from "react";
 
 // Mock @xyflow/react - critical for ReactFlow component
 // These will be populated after mocks are set up
-let mockUseNodesStateReturnValue: [unknown[], jest.Mock, jest.Mock] = [
+let mockUseNodesStateReturnValue: [unknown[], Mock, Mock] = [
   [],
-  jest.fn(),
-  jest.fn(),
+  vi.fn(),
+  vi.fn(),
 ];
 
-jest.mock("@xyflow/react", () => ({
-  ReactFlow: jest.fn(
+vi.mock("@xyflow/react", () => ({
+  ReactFlow: vi.fn(
     ({ children, nodes }: { children: React.ReactNode; nodes?: unknown[] }) => (
       <div data-testid="reactflow" data-node-count={nodes?.length ?? 0}>
         {children}
@@ -64,12 +65,12 @@ jest.mock("@xyflow/react", () => ({
   ReactFlowProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="reactflow-provider">{children}</div>
   ),
-  Background: jest.fn(() => <div data-testid="rf-background" />),
+  Background: vi.fn(() => <div data-testid="rf-background" />),
   BackgroundVariant: { Dots: "dots" },
-  Controls: jest.fn(({ children }: { children?: React.ReactNode }) => (
+  Controls: vi.fn(({ children }: { children?: React.ReactNode }) => (
     <div data-testid="rf-controls">{children}</div>
   )),
-  ControlButton: jest.fn(
+  ControlButton: vi.fn(
     ({
       children,
       onClick,
@@ -84,8 +85,8 @@ jest.mock("@xyflow/react", () => ({
       </button>
     ),
   ),
-  MiniMap: jest.fn(() => <div data-testid="rf-minimap" />),
-  Panel: jest.fn(
+  MiniMap: vi.fn(() => <div data-testid="rf-minimap" />),
+  Panel: vi.fn(
     ({
       children,
       position,
@@ -94,16 +95,16 @@ jest.mock("@xyflow/react", () => ({
       position?: string;
     }) => <div data-testid={`rf-panel-${position}`}>{children}</div>,
   ),
-  useReactFlow: jest.fn(() => ({
-    fitView: jest.fn().mockResolvedValue(undefined),
-    setCenter: jest.fn().mockResolvedValue(undefined),
-    getZoom: jest.fn().mockReturnValue(1),
-    getNodes: jest.fn().mockReturnValue([]),
+  useReactFlow: vi.fn(() => ({
+    fitView: vi.fn().mockResolvedValue(undefined),
+    setCenter: vi.fn().mockResolvedValue(undefined),
+    getZoom: vi.fn().mockReturnValue(1),
+    getNodes: vi.fn().mockReturnValue([]),
   })),
-  useNodesState: jest.fn(() => mockUseNodesStateReturnValue),
-  useEdgesState: jest.fn(() => [[], jest.fn(), jest.fn()]),
-  getNodesBounds: jest.fn(() => ({ x: 0, y: 0, width: 100, height: 100 })),
-  Handle: jest.fn(() => null),
+  useNodesState: vi.fn(() => mockUseNodesStateReturnValue),
+  useEdgesState: vi.fn(() => [[], vi.fn(), vi.fn()]),
+  getNodesBounds: vi.fn(() => ({ x: 0, y: 0, width: 100, height: 100 })),
+  Handle: vi.fn(() => null),
   Position: {
     Left: "left",
     Right: "right",
@@ -113,8 +114,8 @@ jest.mock("@xyflow/react", () => ({
 }));
 
 // Mock @datarecce/ui contexts
-const mockRetchLineageGraph = jest.fn();
-const mockRefetchRunsAggregated = jest.fn();
+const mockRetchLineageGraph = vi.fn();
+const mockRefetchRunsAggregated = vi.fn();
 
 const mockLineageGraphContext = {
   lineageGraph: undefined as LineageGraph | undefined,
@@ -129,13 +130,13 @@ const mockRecceInstanceContext = {
   singleEnv: false,
 };
 
-jest.mock("@datarecce/ui/contexts", () => {
-  const React = jest.requireActual("react");
+vi.mock("@datarecce/ui/contexts", async () => {
+  const React = await vi.importActual<typeof import("react")>("react");
   return {
-    useRouteConfig: jest.fn(() => ({ basePath: "" })),
-    useLineageGraphContext: jest.fn(() => mockLineageGraphContext),
-    useRecceInstanceContext: jest.fn(() => mockRecceInstanceContext),
-    useRecceActionContext: jest.fn(() => ({
+    useRouteConfig: vi.fn(() => ({ basePath: "" })),
+    useLineageGraphContext: vi.fn(() => mockLineageGraphContext),
+    useRecceInstanceContext: vi.fn(() => mockRecceInstanceContext),
+    useRecceActionContext: vi.fn(() => ({
       runId: undefined,
       showRunId: mockShowRunId,
       closeRunResult: mockCloseRunResult,
@@ -143,32 +144,32 @@ jest.mock("@datarecce/ui/contexts", () => {
       isRunResultOpen: false,
     })),
     LineageViewContext: React.createContext(undefined),
-    useLineageViewContextSafe: jest.fn(() => ({
+    useLineageViewContextSafe: vi.fn(() => ({
       interactive: true,
       nodes: [],
       focusedNode: undefined,
       selectedNodes: [],
       cll: undefined,
-      showContextMenu: jest.fn(),
+      showContextMenu: vi.fn(),
       viewOptions: {},
-      onViewOptionsChanged: jest.fn(),
+      onViewOptionsChanged: vi.fn(),
       selectMode: undefined,
-      selectNode: jest.fn(),
-      selectParentNodes: jest.fn(),
-      selectChildNodes: jest.fn(),
-      deselect: jest.fn(),
-      isNodeHighlighted: jest.fn(() => false),
-      isNodeSelected: jest.fn(() => false),
-      isEdgeHighlighted: jest.fn(() => false),
-      getNodeAction: jest.fn(() => ({ mode: "per_node" as const })),
-      getNodeColumnSet: jest.fn(() => new Set()),
-      isNodeShowingChangeAnalysis: jest.fn(() => false),
-      runRowCount: jest.fn(),
-      runRowCountDiff: jest.fn(),
-      runValueDiff: jest.fn(),
-      addLineageDiffCheck: jest.fn(),
-      addSchemaDiffCheck: jest.fn(),
-      cancel: jest.fn(),
+      selectNode: vi.fn(),
+      selectParentNodes: vi.fn(),
+      selectChildNodes: vi.fn(),
+      deselect: vi.fn(),
+      isNodeHighlighted: vi.fn(() => false),
+      isNodeSelected: vi.fn(() => false),
+      isEdgeHighlighted: vi.fn(() => false),
+      getNodeAction: vi.fn(() => ({ mode: "per_node" as const })),
+      getNodeColumnSet: vi.fn(() => new Set()),
+      isNodeShowingChangeAnalysis: vi.fn(() => false),
+      runRowCount: vi.fn(),
+      runRowCountDiff: vi.fn(),
+      runValueDiff: vi.fn(),
+      addLineageDiffCheck: vi.fn(),
+      addSchemaDiffCheck: vi.fn(),
+      cancel: vi.fn(),
       actionState: {
         mode: "per_node" as const,
         status: "completed" as const,
@@ -176,27 +177,27 @@ jest.mock("@datarecce/ui/contexts", () => {
         total: 0,
         actions: {},
       },
-      centerNode: jest.fn(),
-      showColumnLevelLineage: jest.fn(),
-      resetColumnLevelLineage: jest.fn(),
+      centerNode: vi.fn(),
+      showColumnLevelLineage: vi.fn(),
+      resetColumnLevelLineage: vi.fn(),
     })),
   };
 });
 
 // Mock @datarecce/ui
-jest.mock("@datarecce/ui", () => ({
-  isLineageGraphColumnNode: jest.fn(
+vi.mock("@datarecce/ui", () => ({
+  isLineageGraphColumnNode: vi.fn(
     (node) => node?.type === "lineageGraphColumnNode",
   ),
-  isLineageGraphNode: jest.fn((node) => node?.type === "lineageGraphNode"),
-  selectDownstream: jest.fn(() => new Set()),
-  selectUpstream: jest.fn(() => new Set()),
-  HSplit: jest.fn(({ children, sizes }) => (
+  isLineageGraphNode: vi.fn((node) => node?.type === "lineageGraphNode"),
+  selectDownstream: vi.fn(() => new Set()),
+  selectUpstream: vi.fn(() => new Set()),
+  HSplit: vi.fn(({ children, sizes }) => (
     <div data-testid="hsplit" data-sizes={JSON.stringify(sizes)}>
       {children}
     </div>
   )),
-  union: jest.fn((...sets) => {
+  union: vi.fn((...sets) => {
     const result = new Set<string>();
     for (const set of sets) {
       for (const item of set) {
@@ -208,49 +209,40 @@ jest.mock("@datarecce/ui", () => ({
 }));
 
 // Mock @datarecce/ui/api
-jest.mock("@datarecce/ui/api", () => ({
-  getCll: jest.fn().mockResolvedValue(undefined),
-  select: jest.fn().mockResolvedValue({ nodes: [] }),
-  createLineageDiffCheck: jest
-    .fn()
-    .mockResolvedValue({ check_id: "test-check" }),
-  createSchemaDiffCheck: jest
-    .fn()
-    .mockResolvedValue({ check_id: "test-check" }),
-  isHistogramDiffRun: jest.fn(() => false),
-  isProfileDiffRun: jest.fn(() => false),
-  isTopKDiffRun: jest.fn(() => false),
-  isValueDiffDetailRun: jest.fn(() => false),
-  isValueDiffRun: jest.fn(() => false),
+vi.mock("@datarecce/ui/api", () => ({
+  getCll: vi.fn().mockResolvedValue(undefined),
+  select: vi.fn().mockResolvedValue({ nodes: [] }),
+  createLineageDiffCheck: vi.fn().mockResolvedValue({ check_id: "test-check" }),
+  createSchemaDiffCheck: vi.fn().mockResolvedValue({ check_id: "test-check" }),
+  isHistogramDiffRun: vi.fn(() => false),
+  isProfileDiffRun: vi.fn(() => false),
+  isTopKDiffRun: vi.fn(() => false),
+  isValueDiffDetailRun: vi.fn(() => false),
+  isValueDiffRun: vi.fn(() => false),
 }));
 
 // Mock @datarecce/ui/components/lineage
-jest.mock("@datarecce/ui/components/lineage", () => {
-  const actual = jest.requireActual("@datarecce/ui/components/lineage");
+vi.mock("@datarecce/ui/components/lineage", async () => {
+  const actual = await vi.importActual("@datarecce/ui/components/lineage");
   return {
-    ...actual,
-    BaseEnvironmentSetupNotification: jest.fn(() => null),
-    getIconForChangeStatus: jest.fn(() => ({ hexColor: "#000000" })),
+    ...(actual as Record<string, unknown>),
+    BaseEnvironmentSetupNotification: vi.fn(() => null),
+    getIconForChangeStatus: vi.fn(() => ({ hexColor: "#000000" })),
   };
 });
 
-jest.mock("@datarecce/ui/components/lineage/legend", () => ({
-  LineageLegend: jest.fn(({ variant }) => (
+vi.mock("@datarecce/ui/components/lineage/legend", () => ({
+  LineageLegend: vi.fn(({ variant }) => (
     <div data-testid={`lineage-legend-${variant}`} />
   )),
 }));
 
-jest.mock(
-  "@datarecce/ui/components/lineage/topbar/LineageViewTopBarOss",
-  () => ({
-    LineageViewTopBarOss: jest.fn(() => (
-      <div data-testid="lineage-view-topbar" />
-    )),
-  }),
-);
+vi.mock("@datarecce/ui/components/lineage/topbar/LineageViewTopBarOss", () => ({
+  LineageViewTopBarOss: vi.fn(() => <div data-testid="lineage-view-topbar" />),
+}));
 
-jest.mock("@datarecce/ui/components/lineage/NodeViewOss", () => ({
-  NodeViewOss: jest.fn(({ node, onCloseNode }) => (
+vi.mock("@datarecce/ui/components/lineage/NodeViewOss", () => ({
+  NodeViewOss: vi.fn(({ node, onCloseNode }) => (
     <div data-testid="node-view" data-node-id={node?.id}>
       <button data-testid="close-node-view" onClick={onCloseNode}>
         Close
@@ -260,7 +252,7 @@ jest.mock("@datarecce/ui/components/lineage/NodeViewOss", () => ({
 }));
 
 // Mock @datarecce/ui/components/ui
-jest.mock("@datarecce/ui/components/ui", () => ({
+vi.mock("@datarecce/ui/components/ui", () => ({
   HSplit: ({
     children,
     sizes,
@@ -276,12 +268,16 @@ jest.mock("@datarecce/ui/components/ui", () => ({
     </div>
   ),
   toaster: {
-    create: jest.fn(),
+    create: vi.fn(),
   },
+  DataFrameColumnGroupHeader: () => null,
+  DataFrameColumnHeader: () => null,
+  defaultRenderCell: vi.fn(),
+  inlineRenderCell: vi.fn(),
 }));
 
 // Mock @datarecce/ui/theme
-jest.mock("@datarecce/ui/theme", () => ({
+vi.mock("@datarecce/ui/theme", () => ({
   colors: {
     neutral: {
       50: "#fafafa",
@@ -299,8 +295,8 @@ jest.mock("@datarecce/ui/theme", () => ({
 
 // Mock child components to isolate testing
 
-jest.mock("@datarecce/ui/components/lineage/ActionControlOss", () => ({
-  ActionControlOss: jest.fn(({ onClose }) => (
+vi.mock("@datarecce/ui/components/lineage/ActionControlOss", () => ({
+  ActionControlOss: vi.fn(({ onClose }) => (
     <div data-testid="action-control">
       <button data-testid="close-action" onClick={onClose}>
         Close
@@ -309,50 +305,50 @@ jest.mock("@datarecce/ui/components/lineage/ActionControlOss", () => ({
   )),
 }));
 
-jest.mock(
+vi.mock(
   "@datarecce/ui/components/lineage/ColumnLevelLineageControlOss",
   () => ({
-    ColumnLevelLineageControlOss: jest.fn(() => (
+    ColumnLevelLineageControlOss: vi.fn(() => (
       <div data-testid="cll-control" />
     )),
   }),
 );
 
-jest.mock("@datarecce/ui/components/lineage/GraphNodeOss", () => ({
-  GraphNode: jest.fn(() => <div data-testid="graph-node" />),
+vi.mock("@datarecce/ui/components/lineage/GraphNodeOss", () => ({
+  GraphNode: vi.fn(() => <div data-testid="graph-node" />),
 }));
 
-jest.mock("@datarecce/ui/components/lineage/GraphColumnNodeOss", () => ({
-  GraphColumnNode: jest.fn(() => <div data-testid="graph-column-node" />),
+vi.mock("@datarecce/ui/components/lineage/GraphColumnNodeOss", () => ({
+  GraphColumnNode: vi.fn(() => <div data-testid="graph-column-node" />),
 }));
 
-jest.mock("@datarecce/ui/components/lineage/GraphEdgeOss", () => ({
+vi.mock("@datarecce/ui/components/lineage/GraphEdgeOss", () => ({
   __esModule: true,
-  default: jest.fn(() => <div data-testid="graph-edge" />),
+  default: vi.fn(() => <div data-testid="graph-edge" />),
 }));
 
-jest.mock("@datarecce/ui/components/lineage/LineageViewContextMenuOss", () => ({
-  LineageViewContextMenu: jest.fn(() => <div data-testid="context-menu" />),
-  useLineageViewContextMenu: jest.fn(() => ({
-    showContextMenu: jest.fn(),
-    closeContextMenu: jest.fn(),
+vi.mock("@datarecce/ui/components/lineage/LineageViewContextMenuOss", () => ({
+  LineageViewContextMenu: vi.fn(() => <div data-testid="context-menu" />),
+  useLineageViewContextMenu: vi.fn(() => ({
+    showContextMenu: vi.fn(),
+    closeContextMenu: vi.fn(),
     props: {},
   })),
 }));
 
-jest.mock("@datarecce/ui/components/notifications", () => ({
-  LineageViewNotification: jest.fn(() => null),
+vi.mock("@datarecce/ui/components/notifications", () => ({
+  LineageViewNotification: vi.fn(() => null),
 }));
 
-jest.mock("@datarecce/ui/components/lineage/SetupConnectionBannerOss", () => ({
+vi.mock("@datarecce/ui/components/lineage/SetupConnectionBannerOss", () => ({
   __esModule: true,
-  default: jest.fn(() => null),
+  default: vi.fn(() => null),
 }));
 
-jest.mock("@datarecce/ui/hooks/useValueDiffAlertDialogOss", () => ({
+vi.mock("@datarecce/ui/hooks/useValueDiffAlertDialogOss", () => ({
   __esModule: true,
-  default: jest.fn(() => ({
-    confirm: jest.fn().mockResolvedValue(true),
+  default: vi.fn(() => ({
+    confirm: vi.fn().mockResolvedValue(true),
     AlertDialog: null,
   })),
 }));
@@ -371,70 +367,70 @@ const mockMultiNodesAction = {
     total: 0,
     actions: {},
   },
-  runRowCount: jest.fn(),
-  runRowCountDiff: jest.fn(),
-  runValueDiff: jest.fn(),
-  addLineageDiffCheck: jest.fn(),
-  addSchemaDiffCheck: jest.fn(),
-  cancel: jest.fn(),
-  reset: jest.fn(),
+  runRowCount: vi.fn(),
+  runRowCountDiff: vi.fn(),
+  runValueDiff: vi.fn(),
+  addLineageDiffCheck: vi.fn(),
+  addSchemaDiffCheck: vi.fn(),
+  cancel: vi.fn(),
+  reset: vi.fn(),
 };
 
-jest.mock("@datarecce/ui/hooks/useMultiNodesActionOss", () => ({
-  useMultiNodesActionOss: jest.fn(() => mockMultiNodesAction),
+vi.mock("@datarecce/ui/hooks/useMultiNodesActionOss", () => ({
+  useMultiNodesActionOss: vi.fn(() => mockMultiNodesAction),
 }));
 
-const mockCopyToClipboard = jest.fn().mockResolvedValue(undefined);
+const mockCopyToClipboard = vi.fn().mockResolvedValue(undefined);
 
 // Mock OSS hooks
-jest.mock("@datarecce/ui/hooks", () => ({
-  useApiConfig: jest.fn(() => ({
+vi.mock("@datarecce/ui/hooks", () => ({
+  useApiConfig: vi.fn(() => ({
     apiClient: {},
   })),
-  useClipBoardToast: jest.fn(() => ({
-    successToast: jest.fn(),
-    failToast: jest.fn(),
+  useClipBoardToast: vi.fn(() => ({
+    successToast: vi.fn(),
+    failToast: vi.fn(),
   })),
   IGNORE_SCREENSHOT_CLASS: "ignore-screenshot",
-  useCopyToClipboard: jest.fn(() => ({
+  useCopyToClipboard: vi.fn(() => ({
     copyToClipboard: mockCopyToClipboard,
     ImageDownloadModal: () => null,
     ref: { current: null },
   })),
-  useRun: jest.fn(() => ({ run: undefined })),
-  useThemeColors: jest.fn(() => ({
+  useRun: vi.fn(() => ({ run: undefined })),
+  useThemeColors: vi.fn(() => ({
     isDark: false,
   })),
 }));
 
-const mockShowRunId = jest.fn();
-const mockCloseRunResult = jest.fn();
-const mockRunAction = jest.fn();
+const mockShowRunId = vi.fn();
+const mockCloseRunResult = vi.fn();
+const mockRunAction = vi.fn();
 
-jest.mock("next/navigation", () => ({
-  usePathname: jest.fn(() => "/lineage"),
-  useRouter: jest.fn(() => ({
-    push: jest.fn(),
+vi.mock("next/navigation", () => ({
+  usePathname: vi.fn(() => "/lineage"),
+  useRouter: vi.fn(() => ({
+    push: vi.fn(),
   })),
 }));
 
 // Mock tracking
-jest.mock("@datarecce/ui/lib/api/track", () => ({
-  trackCopyToClipboard: jest.fn(),
-  trackLineageViewRender: jest.fn(),
-  trackMultiNodesAction: jest.fn(),
+vi.mock("@datarecce/ui/lib/api/track", () => ({
+  trackCopyToClipboard: vi.fn(),
+  trackLineageViewRender: vi.fn(),
+  trackMultiNodesAction: vi.fn(),
 }));
 
 // Mock lineage utilities
-jest.mock("@datarecce/ui/components/lineage/lineage", () => ({
-  layout: jest.fn(),
-  toReactFlow: jest.fn(() => [[], [], {}]),
+vi.mock("@datarecce/ui/components/lineage/lineage", () => ({
+  layout: vi.fn(),
+  toReactFlow: vi.fn(() => [[], [], {}]),
 }));
 
 // Mock @tanstack/react-query
-jest.mock("@tanstack/react-query", () => ({
-  useMutation: jest.fn(() => ({
-    mutateAsync: jest.fn().mockResolvedValue(undefined),
+vi.mock("@tanstack/react-query", () => ({
+  useMutation: vi.fn(() => ({
+    mutateAsync: vi.fn().mockResolvedValue(undefined),
   })),
 }));
 
@@ -530,15 +526,15 @@ function setupWithLineageGraph(lineageGraph?: LineageGraph) {
   const mockNodes = lineageGraph ? Object.values(lineageGraph.nodes) : [];
 
   // Update the return value that the mock will use
-  mockUseNodesStateReturnValue = [mockNodes, jest.fn(), jest.fn()];
+  mockUseNodesStateReturnValue = [mockNodes, vi.fn(), vi.fn()];
 
-  (toReactFlow as jest.Mock).mockReturnValue([
+  (toReactFlow as Mock).mockReturnValue([
     mockNodes,
     [],
     Object.fromEntries(mockNodes.map((n) => [n.id, new Set<string>()])),
   ]);
 
-  (select as jest.Mock).mockResolvedValue({
+  (select as Mock).mockResolvedValue({
     nodes: mockNodes.map((n) => n.id),
   });
 }
@@ -557,7 +553,7 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
 
 describe("LineageView Component", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Reset context mocks to defaults
     mockLineageGraphContext.lineageGraph = undefined;
@@ -567,7 +563,7 @@ describe("LineageView Component", () => {
     mockRecceInstanceContext.singleEnv = false;
 
     // Reset node state mock
-    mockUseNodesStateReturnValue = [[], jest.fn(), jest.fn()];
+    mockUseNodesStateReturnValue = [[], vi.fn(), vi.fn()];
   });
 
   // ==========================================================================
@@ -854,9 +850,9 @@ describe("LineageView Component", () => {
       mockLineageGraphContext.error = undefined;
 
       // Setup with empty nodes
-      mockUseNodesStateReturnValue = [[], jest.fn(), jest.fn()];
-      (toReactFlow as jest.Mock).mockReturnValue([[], [], {}]);
-      (select as jest.Mock).mockResolvedValue({ nodes: [] });
+      mockUseNodesStateReturnValue = [[], vi.fn(), vi.fn()];
+      (toReactFlow as Mock).mockReturnValue([[], [], {}]);
+      (select as Mock).mockResolvedValue({ nodes: [] });
 
       render(
         <TestWrapper>
@@ -1018,7 +1014,7 @@ describe("LineageView Component", () => {
       });
 
       // Verify the hook was called with callbacks
-      const callArgs = (useMultiNodesAction as jest.Mock).mock.calls[0];
+      const callArgs = (useMultiNodesAction as Mock).mock.calls[0];
       expect(callArgs[1]).toHaveProperty("onActionStarted");
       expect(callArgs[1]).toHaveProperty("onActionNodeUpdated");
       expect(callArgs[1]).toHaveProperty("onActionCompleted");

@@ -18,16 +18,17 @@ import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";
 import React, { ReactNode } from "react";
+import { vi } from "vitest";
 
 // ============================================================================
 // Mocks
 // ============================================================================
 
 // Mock @datarecce/ui/contexts for both hooks used by the components
-jest.mock("@datarecce/ui/contexts", () => ({
-  useRouteConfig: jest.fn(() => ({ basePath: "" })),
+vi.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: vi.fn(() => ({ basePath: "" })),
   useRecceActionContext: () => ({
-    runAction: jest.fn(),
+    runAction: vi.fn(),
   }),
   useRecceInstanceContext: () => ({
     featureToggles: {

@@ -1,5 +1,6 @@
 import { render, renderHook, screen } from "@testing-library/react";
 import axios from "axios";
+import { vi } from "vitest";
 import {
   ApiProvider,
   useApiClient,
@@ -8,33 +9,40 @@ import {
 } from "../ApiContext";
 
 // Mock axios.create to track interceptor registration
-jest.mock("axios", () => {
-  const actualAxios = jest.requireActual("axios");
-  const mockCreate = jest.fn((config) => {
+vi.mock("axios", async () => {
+  const actualAxios = await vi.importActual<typeof axios>("axios");
+  const mockCreate = vi.fn((config) => {
     const instance = actualAxios.create(config);
-    // Track interceptors for testing
-    instance.__requestInterceptors = [];
+    // Track interceptors for testing - use type assertion for test-only property
+    const testInstance = instance as typeof instance & {
+      __requestInterceptors: unknown[];
+    };
+    testInstance.__requestInterceptors = [];
     const originalUse = instance.interceptors.request.use.bind(
       instance.interceptors.request,
     );
-    instance.interceptors.request.use = (
-      onFulfilled: (config: unknown) => unknown,
-      onRejected: (error: unknown) => unknown,
+    // Override interceptor use to track calls - cast to any for test mock flexibility
+    // biome-ignore lint/suspicious/noExplicitAny: test mock needs flexible typing
+    (instance.interceptors.request as any).use = (
+      onFulfilled: unknown,
+      onRejected: unknown,
     ) => {
-      instance.__requestInterceptors.push({ onFulfilled, onRejected });
-      return originalUse(onFulfilled, onRejected);
+      testInstance.__requestInterceptors.push({ onFulfilled, onRejected });
+      // biome-ignore lint/suspicious/noExplicitAny: test mock needs flexible typing
+      return originalUse(onFulfilled as any, onRejected as any);
     };
     return instance;
   });
   return {
     ...actualAxios,
+    default: { ...actualAxios, create: mockCreate },
     create: mockCreate,
   };
 });
 
 describe("ApiContext (@datarecce/ui)", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("Provider Basics", () => {
@@ -163,7 +171,7 @@ describe("ApiContext (@datarecce/ui)", () => {
   describe("CRITICAL: Required Provider Behavior", () => {
     it("throws error when useApiConfig is called outside provider", () => {
       // Suppress console.error for expected error
-      const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
         // Intentionally empty - suppress React error boundary output
       });
 
@@ -176,7 +184,7 @@ describe("ApiContext (@datarecce/ui)", () => {
 
     it("throws error when useApiClient is called outside provider", () => {
       // Suppress console.error for expected error
-      const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
         // Intentionally empty - suppress React error boundary output
       });
 
@@ -188,13 +196,13 @@ describe("ApiContext (@datarecce/ui)", () => {
     });
 
     it("error message mentions RecceProvider", () => {
-      const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
         // Intentionally empty - suppress React error boundary output
       });
 
       try {
         renderHook(() => useApiConfig());
-        fail("Expected error to be thrown");
+        expect.fail("Expected error to be thrown");
       } catch (error) {
         expect((error as Error).message).toContain("RecceProvider");
       }

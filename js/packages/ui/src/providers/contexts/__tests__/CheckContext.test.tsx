@@ -29,6 +29,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { vi } from "vitest";
 
 import {
   type Check,
@@ -152,7 +153,7 @@ function TestConsumer() {
 
 describe("CheckContext (@datarecce/ui)", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("provider basics", () => {
@@ -336,7 +337,7 @@ describe("CheckContext (@datarecce/ui)", () => {
 
   describe("callback props - onSelectCheck", () => {
     it("invokes onSelectCheck when called", () => {
-      const mockOnSelectCheck = jest.fn();
+      const mockOnSelectCheck = vi.fn();
 
       render(
         <CheckProvider
@@ -356,7 +357,7 @@ describe("CheckContext (@datarecce/ui)", () => {
     });
 
     it("passes correct checkId to onSelectCheck", () => {
-      const mockOnSelectCheck = jest.fn();
+      const mockOnSelectCheck = vi.fn();
 
       function SelectCheckConsumer() {
         const context = useCheckContext();
@@ -408,7 +409,7 @@ describe("CheckContext (@datarecce/ui)", () => {
 
   describe("callback props - onCreateCheck", () => {
     it("invokes onCreateCheck with check data", async () => {
-      const mockOnCreateCheck = jest.fn().mockResolvedValue({
+      const mockOnCreateCheck = vi.fn().mockResolvedValue({
         check_id: "new-check",
         name: "New Check",
         type: "profile_diff",
@@ -442,7 +443,7 @@ describe("CheckContext (@datarecce/ui)", () => {
         name: "New Check",
         type: "profile_diff",
       };
-      const mockOnCreateCheck = jest.fn().mockResolvedValue(createdCheck);
+      const mockOnCreateCheck = vi.fn().mockResolvedValue(createdCheck);
 
       const { result } = renderHook(() => useCheckContext(), {
         wrapper: createWrapper({ onCreateCheck: mockOnCreateCheck }),
@@ -460,7 +461,7 @@ describe("CheckContext (@datarecce/ui)", () => {
     });
 
     it("passes partial check data correctly", async () => {
-      const mockOnCreateCheck = jest.fn().mockResolvedValue({
+      const mockOnCreateCheck = vi.fn().mockResolvedValue({
         check_id: "new",
         name: "Test",
         type: "query_diff",
@@ -528,7 +529,7 @@ describe("CheckContext (@datarecce/ui)", () => {
 
   describe("callback props - onUpdateCheck", () => {
     it("invokes onUpdateCheck with id and updates", async () => {
-      const mockOnUpdateCheck = jest.fn().mockResolvedValue({
+      const mockOnUpdateCheck = vi.fn().mockResolvedValue({
         check_id: "check-1",
         name: "Updated Check 1",
         type: "query_diff",
@@ -561,7 +562,7 @@ describe("CheckContext (@datarecce/ui)", () => {
         name: "Updated",
         type: "query_diff",
       };
-      const mockOnUpdateCheck = jest.fn().mockResolvedValue(updatedCheck);
+      const mockOnUpdateCheck = vi.fn().mockResolvedValue(updatedCheck);
 
       const { result } = renderHook(() => useCheckContext(), {
         wrapper: createWrapper({ onUpdateCheck: mockOnUpdateCheck }),
@@ -578,7 +579,7 @@ describe("CheckContext (@datarecce/ui)", () => {
     });
 
     it("passes multiple update fields correctly", async () => {
-      const mockOnUpdateCheck = jest.fn().mockResolvedValue({
+      const mockOnUpdateCheck = vi.fn().mockResolvedValue({
         check_id: "check-1",
         name: "New Name",
         type: "schema_diff",
@@ -643,7 +644,7 @@ describe("CheckContext (@datarecce/ui)", () => {
 
   describe("callback props - onDeleteCheck", () => {
     it("invokes onDeleteCheck with check id", async () => {
-      const mockOnDeleteCheck = jest.fn().mockResolvedValue(undefined);
+      const mockOnDeleteCheck = vi.fn().mockResolvedValue(undefined);
 
       render(
         <CheckProvider
@@ -665,7 +666,7 @@ describe("CheckContext (@datarecce/ui)", () => {
     });
 
     it("passes correct id to onDeleteCheck", async () => {
-      const mockOnDeleteCheck = jest.fn().mockResolvedValue(undefined);
+      const mockOnDeleteCheck = vi.fn().mockResolvedValue(undefined);
 
       function DeleteCheckConsumer() {
         const context = useCheckContext();
@@ -716,7 +717,7 @@ describe("CheckContext (@datarecce/ui)", () => {
 
   describe("callback props - onReorderChecks", () => {
     it("invokes onReorderChecks with source and destination indices", async () => {
-      const mockOnReorderChecks = jest.fn().mockResolvedValue(undefined);
+      const mockOnReorderChecks = vi.fn().mockResolvedValue(undefined);
 
       render(
         <CheckProvider
@@ -738,7 +739,7 @@ describe("CheckContext (@datarecce/ui)", () => {
     });
 
     it("passes correct indices to onReorderChecks", async () => {
-      const mockOnReorderChecks = jest.fn().mockResolvedValue(undefined);
+      const mockOnReorderChecks = vi.fn().mockResolvedValue(undefined);
 
       function ReorderConsumer() {
         const context = useCheckContext();
@@ -789,7 +790,7 @@ describe("CheckContext (@datarecce/ui)", () => {
 
   describe("callback props - refetchChecks", () => {
     it("invokes refetchChecks when called", () => {
-      const mockRefetchChecks = jest.fn();
+      const mockRefetchChecks = vi.fn();
 
       render(
         <CheckProvider
@@ -857,7 +858,7 @@ describe("CheckContext (@datarecce/ui)", () => {
     });
 
     it("allows calling CRUD operations via renderHook", async () => {
-      const mockOnCreateCheck = jest.fn().mockResolvedValue({
+      const mockOnCreateCheck = vi.fn().mockResolvedValue({
         check_id: "hook-check",
         name: "Hook Check",
         type: "query_diff",
@@ -927,15 +928,15 @@ describe("CheckContext (@datarecce/ui)", () => {
     it("does not make any API calls - all actions delegated to callbacks", async () => {
       // This test verifies the key design of the props-driven context
       // No need to mock API functions because none are called
-      const mockOnCreateCheck = jest
+      const mockOnCreateCheck = vi
         .fn()
         .mockResolvedValue({ check_id: "new", name: "New", type: "test" });
-      const mockOnUpdateCheck = jest.fn().mockResolvedValue({
+      const mockOnUpdateCheck = vi.fn().mockResolvedValue({
         check_id: "check-1",
         name: "Updated",
         type: "test",
       });
-      const mockOnDeleteCheck = jest.fn().mockResolvedValue(undefined);
+      const mockOnDeleteCheck = vi.fn().mockResolvedValue(undefined);
 
       render(
         <CheckProvider
@@ -974,14 +975,14 @@ describe("CheckContext (@datarecce/ui)", () => {
 
     it("consumer controls all side effects via callbacks", async () => {
       const sideEffects: string[] = [];
-      const mockOnCreateCheck = jest.fn().mockImplementation(() => {
+      const mockOnCreateCheck = vi.fn().mockImplementation(() => {
         sideEffects.push("create");
         return Promise.resolve({ check_id: "new", name: "New", type: "test" });
       });
-      const mockOnSelectCheck = jest.fn().mockImplementation(() => {
+      const mockOnSelectCheck = vi.fn().mockImplementation(() => {
         sideEffects.push("select");
       });
-      const mockRefetchChecks = jest.fn().mockImplementation(() => {
+      const mockRefetchChecks = vi.fn().mockImplementation(() => {
         sideEffects.push("refetch");
       });
 
@@ -1085,7 +1086,7 @@ describe("CheckContext (@datarecce/ui)", () => {
     });
 
     it("all consumers invoke the same callback", () => {
-      const mockOnSelectCheck = jest.fn();
+      const mockOnSelectCheck = vi.fn();
 
       function Consumer1() {
         const context = useCheckContext();
@@ -1176,7 +1177,7 @@ describe("CheckContext (@datarecce/ui)", () => {
     });
 
     it("handles rapid successive callback invocations", () => {
-      const mockOnSelectCheck = jest.fn();
+      const mockOnSelectCheck = vi.fn();
 
       const { result } = renderHook(() => useCheckContext(), {
         wrapper: createWrapper({ onSelectCheck: mockOnSelectCheck }),
@@ -1195,7 +1196,7 @@ describe("CheckContext (@datarecce/ui)", () => {
     });
 
     it("handles callback that rejects", async () => {
-      const mockOnCreateCheck = jest
+      const mockOnCreateCheck = vi
         .fn()
         .mockRejectedValue(new Error("Create failed"));
 
@@ -1327,7 +1328,7 @@ describe("CheckContext (@datarecce/ui)", () => {
 
     describe("setLatestSelectedCheckId alias", () => {
       it("exposes setLatestSelectedCheckId as alias for onSelectCheck", () => {
-        const mockOnSelectCheck = jest.fn();
+        const mockOnSelectCheck = vi.fn();
 
         const { result } = renderHook(() => useCheckContext(), {
           wrapper: createWrapper({ onSelectCheck: mockOnSelectCheck }),
@@ -1346,7 +1347,7 @@ describe("CheckContext (@datarecce/ui)", () => {
       });
 
       it("accepts setLatestSelectedCheckId prop and maps to onSelectCheck", () => {
-        const mockSetLatestSelectedCheckId = jest.fn();
+        const mockSetLatestSelectedCheckId = vi.fn();
 
         function WrapperWithOSSAlias({ children }: { children: ReactNode }) {
           return (
@@ -1379,8 +1380,8 @@ describe("CheckContext (@datarecce/ui)", () => {
       });
 
       it("canonical onSelectCheck takes precedence over setLatestSelectedCheckId", () => {
-        const mockOnSelectCheck = jest.fn();
-        const mockSetLatestSelectedCheckId = jest.fn();
+        const mockOnSelectCheck = vi.fn();
+        const mockSetLatestSelectedCheckId = vi.fn();
 
         function WrapperWithBothProps({ children }: { children: ReactNode }) {
           return (
@@ -1409,7 +1410,7 @@ describe("CheckContext (@datarecce/ui)", () => {
       });
 
       it("OSS consumer can use setLatestSelectedCheckId to select checks", () => {
-        const mockOnSelectCheck = jest.fn();
+        const mockOnSelectCheck = vi.fn();
 
         function OSSConsumer() {
           const context = useCheckContext();
@@ -1444,7 +1445,7 @@ describe("CheckContext (@datarecce/ui)", () => {
 
     describe("OSS-style provider usage", () => {
       it("works with OSS-style props only", () => {
-        const mockSetLatestSelectedCheckId = jest.fn();
+        const mockSetLatestSelectedCheckId = vi.fn();
 
         function OSSStyleConsumer() {
           const context = useCheckContext();
@@ -1492,7 +1493,7 @@ describe("CheckContext (@datarecce/ui)", () => {
       });
 
       it("mixed consumer can use both canonical and OSS properties", () => {
-        const mockOnSelectCheck = jest.fn();
+        const mockOnSelectCheck = vi.fn();
 
         function MixedConsumer() {
           const context = useCheckContext();

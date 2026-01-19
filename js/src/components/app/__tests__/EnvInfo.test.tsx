@@ -16,19 +16,21 @@
  * before migration to @datarecce/ui
  */
 
+import { vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock @datarecce/ui/contexts
-const mockUseLineageGraphContext = jest.fn();
-jest.mock("@datarecce/ui/contexts", () => ({
-  useRouteConfig: jest.fn(() => ({ basePath: "" })),
+const mockUseLineageGraphContext = vi.fn();
+vi.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: vi.fn(() => ({ basePath: "" })),
   useLineageGraphContext: () => mockUseLineageGraphContext(),
 }));
 
 // Mock tracking
-jest.mock("@datarecce/ui/lib/api/track", () => ({
+vi.mock("@datarecce/ui/lib/api/track", () => ({
   EXPLORE_ACTION: {
     ROW_COUNT: "row_count",
     ROW_COUNT_DIFF: "row_count_diff",
@@ -37,20 +39,22 @@ jest.mock("@datarecce/ui/lib/api/track", () => ({
   EXPLORE_SOURCE: {
     LINEAGE_VIEW_TOP_BAR: "lineage_view_top_bar",
   },
-  trackEnvironmentConfig: jest.fn(),
-  trackExploreAction: jest.fn(),
+  trackEnvironmentConfig: vi.fn(),
+  trackExploreAction: vi.fn(),
 }));
 
 // Mock react-icons
-jest.mock("react-icons/io5", () => ({
+vi.mock("react-icons/io5", () => ({
   IoClose: () => <span data-testid="close-icon">X</span>,
 }));
 
-jest.mock("react-icons/lu", () => ({
+vi.mock("react-icons/lu", () => ({
   LuExternalLink: () => <span data-testid="external-link-icon">↗</span>,
+  LuChartBarBig: () => <span data-testid="chart-icon">Chart</span>,
+  LuSave: () => <span data-testid="save-icon">Save</span>,
 }));
 
-jest.mock("react-icons/pi", () => ({
+vi.mock("react-icons/pi", () => ({
   PiInfo: () => <span data-testid="info-icon">i</span>,
 }));
 
@@ -169,9 +173,9 @@ const createMockLineageGraph = (): LineageGraph => ({
 
 describe("EnvInfo", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date("2024-01-15T12:00:00Z"));
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-15T12:00:00Z"));
 
     // Default mock context
     mockUseLineageGraphContext.mockReturnValue({
@@ -182,7 +186,7 @@ describe("EnvInfo", () => {
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   // ==========================================================================
@@ -229,6 +233,9 @@ describe("EnvInfo", () => {
     });
 
     it("closes dialog when close button is clicked", async () => {
+      // Use real timers for this test to allow MUI transitions to complete
+      vi.useRealTimers();
+
       render(<EnvInfo />);
 
       // Open dialog
@@ -236,6 +243,9 @@ describe("EnvInfo", () => {
         name: /Environment Info/i,
       });
       fireEvent.click(infoButton);
+
+      // Verify dialog is open
+      expect(screen.getByText("Environment Information")).toBeInTheDocument();
 
       // Close dialog
       const closeButton = screen
@@ -245,15 +255,25 @@ describe("EnvInfo", () => {
         fireEvent.click(closeButton);
       }
 
-      // Dialog should be closed - wait for transition
-      await waitFor(() => {
-        expect(
-          screen.queryByText("Environment Information"),
-        ).not.toBeInTheDocument();
-      });
+      // Wait for MUI transition to complete (default is ~225ms)
+      await waitFor(
+        () => {
+          expect(
+            screen.queryByText("Environment Information"),
+          ).not.toBeInTheDocument();
+        },
+        { timeout: 1000 },
+      );
+
+      // Restore fake timers for other tests
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2024-01-15T12:00:00Z"));
     });
 
     it("closes dialog when Close button in actions is clicked", async () => {
+      // Use real timers for this test to allow MUI transitions to complete
+      vi.useRealTimers();
+
       render(<EnvInfo />);
 
       // Open dialog
@@ -262,16 +282,26 @@ describe("EnvInfo", () => {
       });
       fireEvent.click(infoButton);
 
+      // Verify dialog is open
+      expect(screen.getByText("Environment Information")).toBeInTheDocument();
+
       // Close via action button
       const closeActionButton = screen.getByRole("button", { name: /Close/i });
       fireEvent.click(closeActionButton);
 
-      // Dialog should be closed - wait for transition
-      await waitFor(() => {
-        expect(
-          screen.queryByText("Environment Information"),
-        ).not.toBeInTheDocument();
-      });
+      // Wait for MUI transition to complete (default is ~225ms)
+      await waitFor(
+        () => {
+          expect(
+            screen.queryByText("Environment Information"),
+          ).not.toBeInTheDocument();
+        },
+        { timeout: 1000 },
+      );
+
+      // Restore fake timers for other tests
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2024-01-15T12:00:00Z"));
     });
   });
 
@@ -708,12 +738,12 @@ describe("formatTimestamp", () => {
 
 describe("formatTimeToNow", () => {
   beforeEach(() => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date("2024-01-15T12:00:00Z"));
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2024-01-15T12:00:00Z"));
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it("formats time from past correctly", () => {

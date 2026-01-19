@@ -11,8 +11,10 @@
  * - Custom labels
  */
 
+import { vi } from "vitest";
+
 // Mock useIsDark hook
-jest.mock("../../../hooks/useIsDark", () => ({
+vi.mock("../../../hooks/useIsDark", () => ({
   useIsDark: () => false,
 }));
 
@@ -21,7 +23,7 @@ import userEvent from "@testing-library/user-event";
 import { CommentInput } from "./CommentInput";
 
 describe("CommentInput", () => {
-  const mockOnSubmit = jest.fn();
+  const mockOnSubmit = vi.fn();
 
   beforeEach(() => {
     mockOnSubmit.mockClear();

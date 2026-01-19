@@ -13,22 +13,56 @@ import type { RunsAggregated, ServerInfoResult } from "@datarecce/ui/api";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
+import { type MockedFunction, vi } from "vitest";
 
-// Mock dependencies BEFORE importing the component
-// Mock @datarecce/ui/api for functions that the component imports directly
-jest.mock("@datarecce/ui/api", () => {
-  const actual = jest.requireActual("@datarecce/ui/api");
+// Mock axios to prevent real network requests
+vi.mock("axios", async () => {
+  const actual = await vi.importActual("axios");
+  const mockAxiosInstance = {
+    get: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
+    post: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
+    put: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
+    delete: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
+    patch: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
+    interceptors: {
+      request: { use: vi.fn(), eject: vi.fn() },
+      response: { use: vi.fn(), eject: vi.fn() },
+    },
+  };
   return {
     ...actual,
-    getServerInfo: jest.fn(),
-    aggregateRuns: jest.fn(),
-    getServerFlag: jest.fn().mockResolvedValue({}),
-    markRelaunchHintCompleted: jest.fn().mockResolvedValue(undefined),
-    cacheKeys: actual.cacheKeys,
+    default: {
+      ...(actual as { default: object }).default,
+      create: vi.fn(() => mockAxiosInstance),
+      get: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
+      post: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
+    },
   };
 });
 
-jest.mock("@datarecce/ui/lib/api/track", () => ({
+// Mock dependencies BEFORE importing the component
+// Mock @datarecce/ui/api for functions that the component imports directly
+vi.mock("@datarecce/ui/api", async () => {
+  const actual = await vi.importActual("@datarecce/ui/api");
+  return {
+    ...actual,
+    getServerInfo: vi.fn(),
+    aggregateRuns: vi.fn(),
+    getServerFlag: vi.fn().mockResolvedValue({}),
+    markRelaunchHintCompleted: vi.fn().mockResolvedValue(undefined),
+    cacheKeys: (actual as Record<string, unknown>).cacheKeys,
+    // Mock keepAlive API used by IdleTimeoutProvider
+    getLastKeepAliveTime: vi.fn().mockReturnValue(0),
+    setKeepAliveCallback: vi.fn(),
+    // Mock getRecceInstanceInfo to return null idle_timeout so IdleTimeout is disabled
+    getRecceInstanceInfo: vi.fn().mockResolvedValue({
+      idle_timeout: null,
+      server_mode: "oss",
+    }),
+  };
+});
+
+vi.mock("@datarecce/ui/lib/api/track", () => ({
   EXPLORE_ACTION: {
     ROW_COUNT: "row_count",
     ROW_COUNT_DIFF: "row_count_diff",
@@ -37,18 +71,18 @@ jest.mock("@datarecce/ui/lib/api/track", () => ({
   EXPLORE_SOURCE: {
     LINEAGE_VIEW_TOP_BAR: "lineage_view_top_bar",
   },
-  trackExploreAction: jest.fn(),
-  trackSingleEnvironment: jest.fn(),
+  trackExploreAction: vi.fn(),
+  trackSingleEnvironment: vi.fn(),
 }));
 
-jest.mock("@datarecce/ui/components/ui/Toaster", () => ({
+vi.mock("@datarecce/ui/components/ui/Toaster", () => ({
   toaster: {
-    create: jest.fn(() => "toast-id"),
+    create: vi.fn(() => "toast-id"),
   },
 }));
 
-jest.mock("@datarecce/ui", () => ({
-  buildLineageGraph: jest.fn((base, current, diff) => ({
+vi.mock("@datarecce/ui", () => ({
+  buildLineageGraph: vi.fn((base, current, diff) => ({
     nodes: {},
     edges: {},
     modifiedSet: [],
@@ -64,32 +98,22 @@ jest.mock("@datarecce/ui", () => ({
 }));
 
 // Mock the hooks from @datarecce/ui/contexts (except LineageGraphProvider which is the real thing)
-const mockUseIdleTimeout = jest.fn(() => ({
+const mockUseIdleTimeout = vi.fn(() => ({
   idleTimeout: null,
   remainingSeconds: null,
   isEnabled: false,
-  setDisconnected: jest.fn(),
-  resetConnection: jest.fn(),
+  setDisconnected: vi.fn(),
+  resetConnection: vi.fn(),
   isDisconnected: false,
 }));
 
-const mockUseRecceInstanceContext = jest.fn(() => ({
+const _mockUseRecceInstanceContext = vi.fn(() => ({
   featureToggles: { mode: null },
   shareUrl: undefined,
 }));
 
-jest.mock("@datarecce/ui/contexts", () => {
-  const actual = jest.requireActual("@datarecce/ui/contexts");
-  return {
-    ...actual,
-    useIdleTimeout: () => mockUseIdleTimeout(),
-    useRecceInstanceContext: () => mockUseRecceInstanceContext(),
-    useRecceServerFlag: jest.fn(() => ({
-      data: {},
-      isLoading: false,
-    })),
-  };
-});
+// We don't mock @datarecce/ui/contexts to avoid breaking the import chain
+// Instead, we use providers with mocked dependencies
 
 // Mock WebSocket globally
 class MockWebSocket {
@@ -147,18 +171,16 @@ afterAll(() => {
 import { buildLineageGraph } from "@datarecce/ui";
 import { aggregateRuns, getServerInfo } from "@datarecce/ui/api";
 import {
+  IdleTimeoutProvider,
+  RecceInstanceInfoProvider,
   useLineageGraphContext,
   useRunsAggregated,
 } from "@datarecce/ui/contexts";
 import { LineageGraphAdapter } from "@datarecce/ui/hooks";
 
-const mockGetServerInfo = getServerInfo as jest.MockedFunction<
-  typeof getServerInfo
->;
-const mockAggregateRuns = aggregateRuns as jest.MockedFunction<
-  typeof aggregateRuns
->;
-const mockBuildLineageGraph = buildLineageGraph as jest.MockedFunction<
+const mockGetServerInfo = getServerInfo as MockedFunction<typeof getServerInfo>;
+const mockAggregateRuns = aggregateRuns as MockedFunction<typeof aggregateRuns>;
+const mockBuildLineageGraph = buildLineageGraph as MockedFunction<
   typeof buildLineageGraph
 >;
 
@@ -168,6 +190,20 @@ function createTestQueryClient() {
       queries: { retry: false },
     },
   });
+}
+
+/**
+ * Test wrapper that provides all required contexts
+ */
+function TestWrapper({ children }: { children: React.ReactNode }) {
+  const queryClient = createTestQueryClient();
+  return (
+    <QueryClientProvider client={queryClient}>
+      <RecceInstanceInfoProvider>
+        <IdleTimeoutProvider>{children}</IdleTimeoutProvider>
+      </RecceInstanceInfoProvider>
+    </QueryClientProvider>
+  );
 }
 
 /**
@@ -283,15 +319,15 @@ function TestRunsAggregatedConsumer() {
 
 describe("LineageGraphAdapter", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Reset mocks to default values
     mockUseIdleTimeout.mockReturnValue({
       idleTimeout: null,
       remainingSeconds: null,
       isEnabled: false,
-      setDisconnected: jest.fn(),
-      resetConnection: jest.fn(),
+      setDisconnected: vi.fn(),
+      resetConnection: vi.fn(),
       isDisconnected: false,
     });
   });
@@ -308,13 +344,12 @@ describe("LineageGraphAdapter", () => {
       mockGetServerInfo.mockReturnValue(serverInfoPromise);
       mockAggregateRuns.mockResolvedValue({});
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <TestConsumer />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       // Initially loading
@@ -349,13 +384,12 @@ describe("LineageGraphAdapter", () => {
       mockGetServerInfo.mockResolvedValue(createServerInfoResult());
       mockAggregateRuns.mockResolvedValue({});
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <TestConsumer />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {
@@ -374,13 +408,12 @@ describe("LineageGraphAdapter", () => {
       mockGetServerInfo.mockResolvedValue(serverInfo);
       mockAggregateRuns.mockResolvedValue({});
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <TestConsumer />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {
@@ -406,13 +439,12 @@ describe("LineageGraphAdapter", () => {
       mockGetServerInfo.mockResolvedValue(serverInfo);
       mockAggregateRuns.mockResolvedValue({});
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <TestConsumer />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {
@@ -441,13 +473,12 @@ describe("LineageGraphAdapter", () => {
       mockGetServerInfo.mockResolvedValue(createServerInfoResult());
       mockAggregateRuns.mockResolvedValue(mockRunsAggregated);
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <TestConsumer />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {
@@ -466,13 +497,12 @@ describe("LineageGraphAdapter", () => {
       mockGetServerInfo.mockRejectedValue(new Error(errorMessage));
       mockAggregateRuns.mockResolvedValue({});
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <TestConsumer />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {
@@ -484,13 +514,12 @@ describe("LineageGraphAdapter", () => {
       mockGetServerInfo.mockRejectedValue(new Error("Network error"));
       mockAggregateRuns.mockResolvedValue({});
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <TestConsumer />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {
@@ -510,13 +539,12 @@ describe("LineageGraphAdapter", () => {
       mockGetServerInfo.mockResolvedValue(createServerInfoResult());
       mockAggregateRuns.mockResolvedValue({});
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <TestConsumerWithAction actionName="any_action" />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {
@@ -534,13 +562,12 @@ describe("LineageGraphAdapter", () => {
       mockGetServerInfo.mockResolvedValue(serverInfo);
       mockAggregateRuns.mockResolvedValue({});
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <TestConsumerWithAction actionName="profile_diff" />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {
@@ -558,13 +585,12 @@ describe("LineageGraphAdapter", () => {
       mockGetServerInfo.mockResolvedValue(serverInfo);
       mockAggregateRuns.mockResolvedValue({});
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <TestConsumerWithAction actionName="value_diff" />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {
@@ -582,13 +608,12 @@ describe("LineageGraphAdapter", () => {
       mockGetServerInfo.mockResolvedValue(serverInfo);
       mockAggregateRuns.mockResolvedValue({});
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <TestConsumerWithAction actionName="unknown_action" />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {
@@ -604,13 +629,12 @@ describe("LineageGraphAdapter", () => {
       mockGetServerInfo.mockResolvedValue(createServerInfoResult());
       mockAggregateRuns.mockResolvedValue({});
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <TestConsumer />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {
@@ -634,13 +658,12 @@ describe("LineageGraphAdapter", () => {
       mockGetServerInfo.mockResolvedValue(createServerInfoResult());
       mockAggregateRuns.mockResolvedValue(mockRunsAggregated);
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <TestRunsAggregatedConsumer />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {
@@ -660,13 +683,12 @@ describe("LineageGraphAdapter", () => {
       mockGetServerInfo.mockResolvedValue(createServerInfoResult());
       mockAggregateRuns.mockResolvedValue({});
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <TestConsumer />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {
@@ -714,13 +736,12 @@ describe("LineageGraphAdapter", () => {
         );
       }
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <PRInfoConsumer />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {
@@ -763,13 +784,12 @@ describe("LineageGraphAdapter", () => {
         );
       }
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <SQLMeshInfoConsumer />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {
@@ -841,13 +861,12 @@ describe("LineageGraphAdapter", () => {
         );
       }
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <DbtMetadataConsumer />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {
@@ -895,13 +914,12 @@ describe("LineageGraphAdapter", () => {
         );
       }
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <StateMetadataConsumer />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {
@@ -922,13 +940,12 @@ describe("LineageGraphAdapter", () => {
       mockGetServerInfo.mockResolvedValue(serverInfo);
       mockAggregateRuns.mockResolvedValue({});
 
-      const queryClient = createTestQueryClient();
       render(
-        <QueryClientProvider client={queryClient}>
+        <TestWrapper>
           <LineageGraphAdapter>
             <TestConsumer />
           </LineageGraphAdapter>
-        </QueryClientProvider>,
+        </TestWrapper>,
       );
 
       await waitFor(() => {

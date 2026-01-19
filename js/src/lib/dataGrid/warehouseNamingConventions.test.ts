@@ -28,14 +28,17 @@ import {
   toValueDiffGridConfigured as toValueDiffGrid,
 } from "@datarecce/ui/utils";
 import fc from "fast-check";
+import { vi } from "vitest";
 
 // ============================================================================
 // Mocks
 // ============================================================================
 
-jest.mock("ag-grid-community", () => ({
+vi.mock("ag-grid-community", () => ({
+  themeQuartz: { withParams: vi.fn(() => "mocked-theme") },
+  AllCommunityModule: {},
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
 }));
 

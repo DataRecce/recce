@@ -11,9 +11,12 @@
  * - Invalid primary key detection
  */
 
+import { vi } from "vitest";
+
 // Mock AG Grid modules
-jest.mock("ag-grid-community", () => ({
-  ModuleRegistry: { registerModules: jest.fn() },
+vi.mock("ag-grid-community", () => ({
+  themeQuartz: { withParams: vi.fn(() => "mocked-theme") },
+  ModuleRegistry: { registerModules: vi.fn() },
   AllCommunityModule: {},
 }));
 

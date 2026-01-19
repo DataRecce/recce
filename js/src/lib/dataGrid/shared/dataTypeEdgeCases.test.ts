@@ -29,11 +29,14 @@ import {
   toRenderedValue,
   toValueDiffGridConfigured as toValueDiffGrid,
 } from "@datarecce/ui/utils";
+import { vi } from "vitest";
 
 // Mock ag-grid-community
-jest.mock("ag-grid-community", () => ({
+vi.mock("ag-grid-community", () => ({
+  themeQuartz: { withParams: vi.fn(() => "mocked-theme") },
+  AllCommunityModule: {},
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
 }));
 

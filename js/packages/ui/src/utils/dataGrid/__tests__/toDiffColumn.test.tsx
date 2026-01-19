@@ -14,6 +14,7 @@
 
 import type { CellClassParams } from "ag-grid-community";
 import React from "react";
+import { vi } from "vitest";
 import type { ColumnRenderMode, ColumnType, RowObjectType } from "../../../api";
 import type { DiffColumnRenderComponents } from "../renderTypes";
 import {
@@ -33,8 +34,8 @@ const mockRenderComponents: DiffColumnRenderComponents = {
   DataFrameColumnGroupHeader: ({ name }) => (
     <div data-testid="header">{name}</div>
   ),
-  defaultRenderCell: jest.fn(() => null),
-  inlineRenderCell: jest.fn(() => null),
+  defaultRenderCell: vi.fn(() => null),
+  inlineRenderCell: vi.fn(() => null),
 };
 
 // ============================================================================
@@ -391,7 +392,7 @@ describe("toDiffColumn - render component injection", () => {
   });
 
   test("uses injected inlineRenderCell for inline mode", () => {
-    const customInlineRenderer = jest.fn();
+    const customInlineRenderer = vi.fn();
 
     const result = toDiffColumn(
       createConfig({
@@ -408,7 +409,7 @@ describe("toDiffColumn - render component injection", () => {
   });
 
   test("uses injected defaultRenderCell for side_by_side mode", () => {
-    const customDefaultRenderer = jest.fn();
+    const customDefaultRenderer = vi.fn();
 
     const result = toDiffColumn(
       createConfig({

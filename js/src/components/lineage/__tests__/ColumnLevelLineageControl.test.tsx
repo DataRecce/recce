@@ -12,21 +12,23 @@
  * Source of truth: OSS functionality - these tests document current behavior
  */
 
+import { type Mock, vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock LineageViewContext (included with other @datarecce/ui/contexts mocks)
-jest.mock("@datarecce/ui/contexts", () => ({
-  useRouteConfig: jest.fn(() => ({ basePath: "" })),
-  useLineageGraphContext: jest.fn(),
-  useRecceServerFlag: jest.fn(),
-  useLineageViewContextSafe: jest.fn(),
+vi.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: vi.fn(() => ({ basePath: "" })),
+  useLineageGraphContext: vi.fn(),
+  useRecceServerFlag: vi.fn(),
+  useLineageViewContextSafe: vi.fn(),
 }));
 
 // Mock @datarecce/ui/hooks
-jest.mock("@datarecce/ui/hooks", () => ({
-  useIsDark: jest.fn(() => false),
+vi.mock("@datarecce/ui/hooks", () => ({
+  useIsDark: vi.fn(() => false),
 }));
 
 // ============================================================================
@@ -83,11 +85,11 @@ const createMockLineageGraph = (
 const createMockLineageViewContext = (
   overrides: Partial<LineageViewContextType> = {},
 ): Partial<LineageViewContextType> => ({
-  showColumnLevelLineage: jest.fn().mockResolvedValue(undefined),
-  resetColumnLevelLineage: jest.fn().mockResolvedValue(undefined),
+  showColumnLevelLineage: vi.fn().mockResolvedValue(undefined),
+  resetColumnLevelLineage: vi.fn().mockResolvedValue(undefined),
   interactive: true,
   viewOptions: {},
-  centerNode: jest.fn(),
+  centerNode: vi.fn(),
   ...overrides,
 });
 
@@ -103,9 +105,9 @@ const createMockMutation = (
     isIdle: true,
     error: null,
     data: undefined,
-    mutate: jest.fn(),
-    mutateAsync: jest.fn(),
-    reset: jest.fn(),
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    reset: vi.fn(),
     status: "idle",
     failureCount: 0,
     failureReason: null,
@@ -120,13 +122,13 @@ const createMockMutation = (
 // ============================================================================
 
 describe("ColumnLevelLineageControl", () => {
-  const mockUseLineageViewContextSafe = useLineageViewContextSafe as jest.Mock;
-  const mockUseLineageGraphContext = useLineageGraphContext as jest.Mock;
-  const mockUseRecceServerFlag = useRecceServerFlag as jest.Mock;
-  const mockUseIsDark = useIsDark as jest.Mock;
+  const mockUseLineageViewContextSafe = useLineageViewContextSafe as Mock;
+  const mockUseLineageGraphContext = useLineageGraphContext as Mock;
+  const mockUseRecceServerFlag = useRecceServerFlag as Mock;
+  const mockUseIsDark = useIsDark as Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Default mock implementations
     mockUseLineageViewContextSafe.mockReturnValue(
@@ -196,7 +198,7 @@ describe("ColumnLevelLineageControl", () => {
     });
 
     it("clicking button calls showColumnLevelLineage with correct params", () => {
-      const mockShowCll = jest.fn().mockResolvedValue(undefined);
+      const mockShowCll = vi.fn().mockResolvedValue(undefined);
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({ showColumnLevelLineage: mockShowCll }),
       );
@@ -300,7 +302,7 @@ describe("ColumnLevelLineageControl", () => {
     });
 
     it("clicking node name calls centerNode with node_id", () => {
-      const mockCenterNode = jest.fn();
+      const mockCenterNode = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({
           viewOptions: {
@@ -321,7 +323,7 @@ describe("ColumnLevelLineageControl", () => {
     });
 
     it("clicking column name calls centerNode with column node_id", () => {
-      const mockCenterNode = jest.fn();
+      const mockCenterNode = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({
           viewOptions: {
@@ -511,7 +513,7 @@ describe("ColumnLevelLineageControl", () => {
     });
 
     it("clicking close calls resetColumnLevelLineage", () => {
-      const mockResetCll = jest.fn().mockResolvedValue(undefined);
+      const mockResetCll = vi.fn().mockResolvedValue(undefined);
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({
           viewOptions: {

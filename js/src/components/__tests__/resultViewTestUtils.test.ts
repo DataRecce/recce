@@ -3,10 +3,14 @@
  * @description Tests to verify resultViewTestUtils loads and exports correctly
  */
 
+import { vi } from "vitest";
+
 // Mock ag-grid-community before any imports
-jest.mock("ag-grid-community", () => ({
+vi.mock("ag-grid-community", () => ({
+  themeQuartz: { withParams: vi.fn(() => "mocked-theme") },
+  AllCommunityModule: {},
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
 }));
 

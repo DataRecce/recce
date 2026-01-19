@@ -13,53 +13,59 @@
  * Source of truth: OSS functionality - these tests document current behavior
  */
 
+import { type Mock, vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock LineageViewContext (included with other @datarecce/ui/contexts mocks)
-jest.mock("@datarecce/ui/contexts", () => ({
-  useRouteConfig: jest.fn(() => ({ basePath: "" })),
-  useLineageGraphContext: jest.fn(),
-  useRecceInstanceContext: jest.fn(),
-  useRecceServerFlag: jest.fn(),
-  useLineageViewContextSafe: jest.fn(),
-  useRecceActionContext: jest.fn(() => ({
+vi.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: vi.fn(() => ({ basePath: "" })),
+  useLineageGraphContext: vi.fn(),
+  useRecceInstanceContext: vi.fn(),
+  useRecceServerFlag: vi.fn(),
+  useLineageViewContextSafe: vi.fn(),
+  useRecceActionContext: vi.fn(() => ({
     isHistoryOpen: false,
-    showHistory: jest.fn(),
+    showHistory: vi.fn(),
   })),
 }));
 
 // Mock @datarecce/ui/components/lineage - get the actual module and only mock what we need
-jest.mock("@datarecce/ui/components/lineage", () => ({
-  LineageViewTopBarOss: jest.requireActual(
+vi.mock("@datarecce/ui/components/lineage", async () => {
+  const actual = await vi.importActual(
     "@datarecce/ui/components/lineage/topbar/LineageViewTopBarOss",
-  ).LineageViewTopBarOss,
-  getIconForResourceType: jest.fn(() => ({
-    icon: () => <span data-testid="model-icon">ModelIcon</span>,
-  })),
-}));
+  );
+  return {
+    LineageViewTopBarOss: (actual as Record<string, unknown>)
+      .LineageViewTopBarOss,
+    getIconForResourceType: vi.fn(() => ({
+      icon: () => <span data-testid="model-icon">ModelIcon</span>,
+    })),
+  };
+});
 
 // Mock @datarecce/ui/hooks
-jest.mock("@datarecce/ui/hooks", () => ({
-  useIsDark: jest.fn(() => false),
+vi.mock("@datarecce/ui/hooks", () => ({
+  useIsDark: vi.fn(() => false),
 }));
 
 // Mock registry
-jest.mock("@datarecce/ui/components/run", () => ({
-  findByRunType: jest.fn((type: string) => ({
+vi.mock("@datarecce/ui/components/run", () => ({
+  findByRunType: vi.fn((type: string) => ({
     icon: () => <span data-testid={`${type}-icon`}>{type}</span>,
     title: type.replace(/_/g, " "),
   })),
 }));
 
 // Mock track functions
-jest.mock("@datarecce/ui/lib/api/track", () => ({
-  trackHistoryAction: jest.fn(),
+vi.mock("@datarecce/ui/lib/api/track", () => ({
+  trackHistoryAction: vi.fn(),
 }));
 
 // Mock SetupConnectionPopover
-jest.mock("@datarecce/ui/components/app", () => ({
+vi.mock("@datarecce/ui/components/app", () => ({
   __esModule: true,
   SetupConnectionPopover: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
@@ -67,7 +73,7 @@ jest.mock("@datarecce/ui/components/app", () => ({
 }));
 
 // Mock HistoryToggle
-jest.mock("@datarecce/ui/components", () => ({
+vi.mock("@datarecce/ui/components", () => ({
   __esModule: true,
   HistoryToggle: () => <div data-testid="history-toggle">History Toggle</div>,
 }));
@@ -109,24 +115,24 @@ const createMockLineageViewContext = (
     select: undefined,
     exclude: undefined,
   } as LineageDiffViewOptions,
-  onViewOptionsChanged: jest.fn(),
+  onViewOptionsChanged: vi.fn(),
   selectMode: undefined,
-  selectNode: jest.fn(),
-  selectParentNodes: jest.fn(),
-  selectChildNodes: jest.fn(),
-  deselect: jest.fn(),
-  isNodeHighlighted: jest.fn(() => false),
-  isNodeSelected: jest.fn(() => false),
-  isEdgeHighlighted: jest.fn(() => false),
-  getNodeAction: jest.fn(() => ({ mode: "per_node" as const })),
-  getNodeColumnSet: jest.fn(() => new Set()),
-  isNodeShowingChangeAnalysis: jest.fn(() => false),
-  runRowCount: jest.fn(),
-  runRowCountDiff: jest.fn(),
-  runValueDiff: jest.fn(),
-  addLineageDiffCheck: jest.fn(),
-  addSchemaDiffCheck: jest.fn(),
-  cancel: jest.fn(),
+  selectNode: vi.fn(),
+  selectParentNodes: vi.fn(),
+  selectChildNodes: vi.fn(),
+  deselect: vi.fn(),
+  isNodeHighlighted: vi.fn(() => false),
+  isNodeSelected: vi.fn(() => false),
+  isEdgeHighlighted: vi.fn(() => false),
+  getNodeAction: vi.fn(() => ({ mode: "per_node" as const })),
+  getNodeColumnSet: vi.fn(() => new Set<string>()),
+  isNodeShowingChangeAnalysis: vi.fn(() => false),
+  runRowCount: vi.fn(),
+  runRowCountDiff: vi.fn(),
+  runValueDiff: vi.fn(),
+  addLineageDiffCheck: vi.fn(),
+  addSchemaDiffCheck: vi.fn(),
+  cancel: vi.fn(),
   actionState: {
     mode: "per_node" as const,
     status: "completed" as const,
@@ -134,10 +140,10 @@ const createMockLineageViewContext = (
     total: 0,
     actions: {},
   },
-  centerNode: jest.fn(),
-  showColumnLevelLineage: jest.fn(),
-  resetColumnLevelLineage: jest.fn(),
-  showContextMenu: jest.fn(),
+  centerNode: vi.fn(),
+  showColumnLevelLineage: vi.fn(),
+  resetColumnLevelLineage: vi.fn(),
+  showContextMenu: vi.fn(),
   ...overrides,
 });
 
@@ -204,7 +210,7 @@ const createMockLineageGraphContext = () => ({
   cloudMode: false,
   fileMode: false,
   isDemoSite: false,
-  isActionAvailable: jest.fn(() => true),
+  isActionAvailable: vi.fn(() => true),
 });
 
 const createMockNode = (
@@ -251,13 +257,13 @@ const createMockInstanceContext = (
 // ============================================================================
 
 describe("LineageViewTopBar", () => {
-  const mockUseLineageViewContextSafe = useLineageViewContextSafe as jest.Mock;
-  const mockUseLineageGraphContext = useLineageGraphContext as jest.Mock;
-  const mockUseRecceInstanceContext = useRecceInstanceContext as jest.Mock;
-  const mockUseRecceServerFlag = useRecceServerFlag as jest.Mock;
+  const mockUseLineageViewContextSafe = useLineageViewContextSafe as Mock;
+  const mockUseLineageGraphContext = useLineageGraphContext as Mock;
+  const mockUseRecceInstanceContext = useRecceInstanceContext as Mock;
+  const mockUseRecceServerFlag = useRecceServerFlag as Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Default mock implementations
     mockUseLineageViewContextSafe.mockReturnValue(
@@ -396,7 +402,7 @@ describe("LineageViewTopBar", () => {
     });
 
     it("calls onViewOptionsChanged when mode is changed to all", async () => {
-      const mockOnViewOptionsChanged = jest.fn();
+      const mockOnViewOptionsChanged = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({
           viewOptions: { view_mode: "changed_models" },
@@ -422,7 +428,7 @@ describe("LineageViewTopBar", () => {
     });
 
     it("calls onViewOptionsChanged when mode is changed to changed_models", async () => {
-      const mockOnViewOptionsChanged = jest.fn();
+      const mockOnViewOptionsChanged = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({
           viewOptions: { view_mode: "all" },
@@ -500,7 +506,7 @@ describe("LineageViewTopBar", () => {
     });
 
     it("calls onViewOptionsChanged on Enter key", () => {
-      const mockOnViewOptionsChanged = jest.fn();
+      const mockOnViewOptionsChanged = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({
           viewOptions: { select: "" },
@@ -601,7 +607,7 @@ describe("LineageViewTopBar", () => {
     });
 
     it("calls onViewOptionsChanged when package is toggled", async () => {
-      const mockOnViewOptionsChanged = jest.fn();
+      const mockOnViewOptionsChanged = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({
           viewOptions: { packages: ["my_project"] },
@@ -757,7 +763,7 @@ describe("LineageViewTopBar", () => {
     });
 
     it("calls runRowCountDiff when Row Count Diff is clicked", async () => {
-      const mockRunRowCountDiff = jest.fn();
+      const mockRunRowCountDiff = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({
           runRowCountDiff: mockRunRowCountDiff,
@@ -778,7 +784,7 @@ describe("LineageViewTopBar", () => {
     });
 
     it("calls runValueDiff when Value Diff is clicked", async () => {
-      const mockRunValueDiff = jest.fn();
+      const mockRunValueDiff = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({
           runValueDiff: mockRunValueDiff,
@@ -799,7 +805,7 @@ describe("LineageViewTopBar", () => {
     });
 
     it("calls addLineageDiffCheck when Lineage Diff is clicked", async () => {
-      const mockAddLineageDiffCheck = jest.fn();
+      const mockAddLineageDiffCheck = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({
           addLineageDiffCheck: mockAddLineageDiffCheck,
@@ -821,7 +827,7 @@ describe("LineageViewTopBar", () => {
     });
 
     it("calls addSchemaDiffCheck when Schema Diff is clicked", async () => {
-      const mockAddSchemaDiffCheck = jest.fn();
+      const mockAddSchemaDiffCheck = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({
           addSchemaDiffCheck: mockAddSchemaDiffCheck,
@@ -889,7 +895,7 @@ describe("LineageViewTopBar", () => {
     });
 
     it("calls deselect when Deselect button is clicked", () => {
-      const mockDeselect = jest.fn();
+      const mockDeselect = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({
           selectedNodes: [createMockNode("node1", "node1")],
@@ -965,7 +971,7 @@ describe("LineageViewTopBar", () => {
     });
 
     it("calls runRowCount when Row Count is clicked in single env mode", async () => {
-      const mockRunRowCount = jest.fn();
+      const mockRunRowCount = vi.fn();
       mockUseRecceServerFlag.mockReturnValue({
         data: { single_env_onboarding: true },
       });
@@ -1130,7 +1136,7 @@ describe("LineageViewTopBar", () => {
     });
 
     it("closes menu after selecting an action", async () => {
-      const mockRunRowCountDiff = jest.fn();
+      const mockRunRowCountDiff = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({
           runRowCountDiff: mockRunRowCountDiff,

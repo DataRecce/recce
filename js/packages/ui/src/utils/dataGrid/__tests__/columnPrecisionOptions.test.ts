@@ -8,18 +8,19 @@
  * - All precision option types (raw, 2 decimal, percent, delta)
  */
 
+import { vi } from "vitest";
 import { columnPrecisionSelectOptions } from "../columnPrecisionOptions";
 
 describe("columnPrecisionSelectOptions", () => {
   test("returns array of 4 options", () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
     const options = columnPrecisionSelectOptions("price", callback);
 
     expect(options).toHaveLength(4);
   });
 
   test("each option has value and onClick", () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
     const options = columnPrecisionSelectOptions("price", callback);
 
     options.forEach((option) => {
@@ -31,7 +32,7 @@ describe("columnPrecisionSelectOptions", () => {
   });
 
   test("first option is 'Show raw value'", () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
     const options = columnPrecisionSelectOptions("price", callback);
 
     expect(options[0].value).toBe("Show raw value");
@@ -40,7 +41,7 @@ describe("columnPrecisionSelectOptions", () => {
   });
 
   test("second option is 'Show 2 decimal points'", () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
     const options = columnPrecisionSelectOptions("price", callback);
 
     expect(options[1].value).toBe("Show 2 decimal points");
@@ -49,7 +50,7 @@ describe("columnPrecisionSelectOptions", () => {
   });
 
   test("third option is 'Show as percentage'", () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
     const options = columnPrecisionSelectOptions("price", callback);
 
     expect(options[2].value).toBe("Show as percentage");
@@ -58,7 +59,7 @@ describe("columnPrecisionSelectOptions", () => {
   });
 
   test("fourth option is 'Show with net change'", () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
     const options = columnPrecisionSelectOptions("price", callback);
 
     expect(options[3].value).toBe("Show with net change");
@@ -67,7 +68,7 @@ describe("columnPrecisionSelectOptions", () => {
   });
 
   test("uses column name in callback key", () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
     const options = columnPrecisionSelectOptions("total_amount", callback);
 
     options[0].onClick();
@@ -75,7 +76,7 @@ describe("columnPrecisionSelectOptions", () => {
   });
 
   test("handles special characters in column name", () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
     const options = columnPrecisionSelectOptions("col-with-dashes", callback);
 
     options[0].onClick();
@@ -83,7 +84,7 @@ describe("columnPrecisionSelectOptions", () => {
   });
 
   test("each onClick calls the callback independently", () => {
-    const callback = jest.fn();
+    const callback = vi.fn();
     const options = columnPrecisionSelectOptions("price", callback);
 
     // Click all options
