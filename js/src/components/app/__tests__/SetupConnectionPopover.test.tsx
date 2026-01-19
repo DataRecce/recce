@@ -29,8 +29,26 @@ vi.mock("@datarecce/ui/lib/const", () => ({
 // ============================================================================
 
 import { SetupConnectionPopover } from "@datarecce/ui/components/app";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import React from "react";
+
+// Helper to advance timers and flush React updates for MUI transitions
+async function advanceTimers(ms: number) {
+  // Use act to wrap the timer advance and subsequent state updates
+  await act(async () => {
+    vi.advanceTimersByTime(ms);
+  });
+  // Run any remaining pending timers for MUI transitions
+  await act(async () => {
+    vi.runOnlyPendingTimers();
+  });
+}
 
 // ============================================================================
 // Test Helpers
@@ -126,7 +144,7 @@ describe("SetupConnectionPopover", () => {
       fireEvent.mouseEnter(getParentElement(button));
 
       // Advance timers for MUI Popover transitions, then check
-      await vi.advanceTimersByTimeAsync(100);
+      await advanceTimers(100);
       expect(
         screen.getByText(/Connect to a data warehouse/),
       ).toBeInTheDocument();
@@ -158,7 +176,7 @@ describe("SetupConnectionPopover", () => {
       fireEvent.mouseEnter(getParentElement(button));
 
       // Advance timers for popover to show
-      await vi.advanceTimersByTimeAsync(100);
+      await advanceTimers(100);
       expect(
         screen.getByText(/Connect to a data warehouse/),
       ).toBeInTheDocument();
@@ -171,7 +189,7 @@ describe("SetupConnectionPopover", () => {
       ).toBeInTheDocument();
 
       // Fast-forward timers to trigger hide
-      await vi.advanceTimersByTimeAsync(150);
+      await advanceTimers(150);
 
       expect(
         screen.queryByText(/Connect to a data warehouse/),
@@ -192,7 +210,7 @@ describe("SetupConnectionPopover", () => {
       fireEvent.mouseEnter(wrapper);
 
       // Advance timers for popover to show
-      await vi.advanceTimersByTimeAsync(100);
+      await advanceTimers(100);
       expect(
         screen.getByText(/Connect to a data warehouse/),
       ).toBeInTheDocument();
@@ -201,13 +219,13 @@ describe("SetupConnectionPopover", () => {
       fireEvent.mouseLeave(wrapper);
 
       // Fast-forward a bit but not enough to hide
-      await vi.advanceTimersByTimeAsync(50);
+      await advanceTimers(50);
 
       // Mouse re-enters before timeout
       fireEvent.mouseEnter(wrapper);
 
       // Fast-forward past original timeout
-      await vi.advanceTimersByTimeAsync(100);
+      await advanceTimers(100);
 
       // Popover should still be visible
       expect(
@@ -226,7 +244,7 @@ describe("SetupConnectionPopover", () => {
       fireEvent.mouseEnter(getParentElement(button));
 
       // Advance timers for popover to show
-      await vi.advanceTimersByTimeAsync(100);
+      await advanceTimers(100);
       expect(
         screen.getByText(/Connect to a data warehouse/),
       ).toBeInTheDocument();
@@ -245,7 +263,7 @@ describe("SetupConnectionPopover", () => {
         fireEvent.mouseEnter(popoverPaper);
 
         // Advance past the original hide timeout
-        await vi.advanceTimersByTimeAsync(200);
+        await advanceTimers(200);
 
         // Popover should still be visible since hover is maintained
         expect(
@@ -275,7 +293,7 @@ describe("SetupConnectionPopover", () => {
       fireEvent.mouseEnter(getParentElement(button));
 
       // Advance timers for popover to show
-      await vi.advanceTimersByTimeAsync(100);
+      await advanceTimers(100);
       expect(
         screen.getByText(/Connect to a data warehouse/),
       ).toBeInTheDocument();
@@ -372,7 +390,7 @@ describe("SetupConnectionPopover", () => {
         fireEvent.mouseEnter(wrapper);
 
         // Advance timers for popover to show
-        await vi.advanceTimersByTimeAsync(100);
+        await advanceTimers(100);
         expect(
           screen.getByText(/Connect to a data warehouse/),
         ).toBeInTheDocument();
@@ -396,7 +414,7 @@ describe("SetupConnectionPopover", () => {
       fireEvent.mouseEnter(getParentElement(button));
 
       // Advance timers for popover to show
-      await vi.advanceTimersByTimeAsync(100);
+      await advanceTimers(100);
       expect(
         screen.getByText(/Connect to a data warehouse/),
       ).toBeInTheDocument();
@@ -452,7 +470,7 @@ describe("SetupConnectionPopover", () => {
       fireEvent.mouseEnter(wrapper);
 
       // Advance timers for popover to show
-      await vi.advanceTimersByTimeAsync(100);
+      await advanceTimers(100);
       expect(
         screen.getByText(/Connect to a data warehouse/),
       ).toBeInTheDocument();
@@ -473,7 +491,7 @@ describe("SetupConnectionPopover", () => {
       unmount();
 
       // Should not throw error
-      await vi.advanceTimersByTimeAsync(200);
+      await advanceTimers(200);
     });
 
     it("handles empty children gracefully", () => {
@@ -527,7 +545,7 @@ describe("SetupConnectionPopover", () => {
       fireEvent.mouseEnter(getParentElement(button));
 
       // Advance timers for popover to show
-      await vi.advanceTimersByTimeAsync(100);
+      await advanceTimers(100);
       expect(
         screen.getByText(/Connect to a data warehouse/),
       ).toBeInTheDocument();
@@ -550,7 +568,7 @@ describe("SetupConnectionPopover", () => {
       fireEvent.mouseEnter(getParentElement(button));
 
       // Advance timers for popover to show
-      await vi.advanceTimersByTimeAsync(100);
+      await advanceTimers(100);
       expect(
         screen.getByText(/Connect to a data warehouse/),
       ).toBeInTheDocument();
@@ -578,7 +596,7 @@ describe("SetupConnectionPopover", () => {
       fireEvent.mouseEnter(getParentElement(button));
 
       // Advance timers for popover to show
-      await vi.advanceTimersByTimeAsync(100);
+      await advanceTimers(100);
       expect(
         screen.getByText(/Connect to a data warehouse/),
       ).toBeInTheDocument();
@@ -599,7 +617,7 @@ describe("SetupConnectionPopover", () => {
       fireEvent.mouseEnter(getParentElement(button));
 
       // Advance timers for popover to show
-      await vi.advanceTimersByTimeAsync(100);
+      await advanceTimers(100);
       expect(
         screen.getByText(/Connect to a data warehouse/),
       ).toBeInTheDocument();

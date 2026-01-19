@@ -15,6 +15,31 @@ import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { type MockedFunction, vi } from "vitest";
 
+// Mock axios to prevent real network requests
+vi.mock("axios", async () => {
+  const actual = await vi.importActual("axios");
+  const mockAxiosInstance = {
+    get: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
+    post: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
+    put: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
+    delete: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
+    patch: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
+    interceptors: {
+      request: { use: vi.fn(), eject: vi.fn() },
+      response: { use: vi.fn(), eject: vi.fn() },
+    },
+  };
+  return {
+    ...actual,
+    default: {
+      ...(actual as { default: object }).default,
+      create: vi.fn(() => mockAxiosInstance),
+      get: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
+      post: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
+    },
+  };
+});
+
 // Mock dependencies BEFORE importing the component
 // Mock @datarecce/ui/api for functions that the component imports directly
 vi.mock("@datarecce/ui/api", async () => {
