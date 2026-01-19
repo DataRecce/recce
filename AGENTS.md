@@ -218,21 +218,27 @@ recce/                     # Backend (Python)
 
 js/                        # Frontend (Next.js)
 ├── app/                   # OSS Next.js App Router shell (routes/layout only)
-├── src/                   # OSS tests + test utilities (Jest)
+├── src/                   # OSS tests + test utilities (Vitest)
 │   ├── components/        # Test suites for UI behavior
 │   ├── lib/               # Test helpers for data grid + adapters
 │   └── testing-utils/     # Shared test harnesses and fixtures
 ├── packages/
-│   └── ui/                # @datarecce/ui package source
-│       ├── src/
-│       │   ├── api/        # Shared API clients
-│       │   ├── components/ # Shared UI + OSS variants (*Oss)
-│       │   ├── contexts/   # Shared React contexts
-│       │   ├── hooks/      # Shared hooks
-│       │   ├── lib/        # Shared lib utilities
-│       │   └── styles/     # Shared styles
-│       └── dist/          # Built package outputs
+│   ├── ui/                # @datarecce/ui package source
+│   │   ├── src/
+│   │   │   ├── api/        # Shared API clients
+│   │   │   ├── components/ # Shared UI + OSS variants (*Oss)
+│   │   │   ├── contexts/   # Shared React contexts
+│   │   │   ├── hooks/      # Shared hooks
+│   │   │   ├── lib/        # Shared lib utilities
+│   │   │   └── styles/     # Shared styles
+│   │   └── dist/          # Built package outputs
+│   └── storybook/         # @datarecce/storybook - Storybook stories and visual tests
+│       ├── stories/        # Component stories
+│       ├── .storybook/     # Storybook configuration
+│       └── tests/          # Visual regression tests (Playwright)
 ├── biome.json             # Biome linter & formatter config
+├── vitest.config.mts      # Vitest test configuration
+├── vitest.setup.mts       # Test setup (mocks, polyfills)
 └── package.json
 ```
 
@@ -242,7 +248,7 @@ js/                        # Frontend (Next.js)
 - OSS Next.js routes/layouts live in `js/app/` and should stay thin (compose `@datarecce/ui` exports only).
 - OSS-specific variants are suffixed `*Oss` and live in `js/packages/ui/src/components/` (pages import these via
   `@datarecce/ui/components/...`).
-- `js/src/` is test-only (Jest suites + utilities) and should not contain runtime app code.
+- `js/src/` is test-only (Vitest suites + utilities) and should not contain runtime app code.
 - Prefer public export paths (`@datarecce/ui`, `@datarecce/ui/components/...`, `@datarecce/ui/contexts`, etc.); avoid
   deep imports into `js/packages/ui/src`.
 
@@ -431,7 +437,9 @@ GitHub PR-style discussion feature for checks, only available when connected to 
 ## Testing Strategy
 
 - **Python Unit Tests**: `pytest` in `tests/` directory
-- **Frontend Tests**: Jest 30 + React Testing Library in `js/`
+- **Frontend Tests**: Vitest 4 + React Testing Library + happy-dom in `js/`
+- **Storybook Tests**: Component stories with interaction tests via `@storybook/addon-vitest`
+- **Visual Regression**: Playwright-based visual tests in `js/packages/storybook/`
 - **Integration Tests**: Separate CI jobs in `integration_tests/` for dbt and SQLMesh
 - **Multi-Version Testing**: Tox for testing against dbt 1.6-1.9 and Python 3.9-3.13
 - **Property-Based Testing**: fast-check for data grid utilities
