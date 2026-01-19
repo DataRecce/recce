@@ -358,6 +358,9 @@ class RecceCloudClient:
         project_id: str,
         session_name: Optional[str] = None,
         session_type: Optional[str] = None,
+        branch: Optional[str] = None,
+        limit: Optional[int] = None,
+        offset: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
         List sessions in a project with optional filtering.
@@ -367,6 +370,9 @@ class RecceCloudClient:
             project_id: Project ID or slug.
             session_name: Filter by session name (exact match).
             session_type: Filter by session type (e.g., "pr", "prod", "manual").
+            branch: Filter by branch name (exact match).
+            limit: Maximum number of results to return (1-1000).
+            offset: Number of results to skip for pagination.
 
         Returns:
             List of session dictionaries.
@@ -380,6 +386,12 @@ class RecceCloudClient:
             params["name"] = session_name
         if session_type:
             params["type"] = session_type
+        if branch:
+            params["branch"] = branch
+        if limit is not None:
+            params["limit"] = limit
+        if offset is not None:
+            params["offset"] = offset
 
         response = self._request("GET", api_url, params=params if params else None)
 
@@ -415,15 +427,22 @@ class RecceCloudClient:
             Session dictionary if found, None otherwise.
 
         Raises:
-            RecceCloudException: If the API call fails.
+            RecceCloudException: If the API call fails (except 404).
         """
-        # Note: The API may not support server-side name filtering yet,
-        # so we filter client-side to ensure exact match
-        sessions = self.list_sessions(org_id, project_id)
-        for session in sessions:
-            if session.get("name") == session_name:
-                return session
-        return None
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/by-name/{session_name}"
+        response = self._request("GET", api_url)
+
+        if response.status_code == 404:
+            # Session not found - return None instead of raising
+            return None
+        if response.status_code != 200:
+            raise RecceCloudException(
+                reason=response.text,
+                status_code=response.status_code,
+            )
+
+        data = response.json()
+        return data.get("session")
 
     def create_session(
         self,

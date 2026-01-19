@@ -540,6 +540,148 @@ class RecceCloudClientTests(unittest.TestCase):
 
         self.assertEqual(context.exception.status_code, 500)
 
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_sessions_success(self, mock_request):
+        """Test successful list_sessions call."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock successful response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "sessions": [
+                {"id": "session-1", "name": "test-session-1"},
+                {"id": "session-2", "name": "test-session-2"},
+            ],
+            "total": 2,
+        }
+        mock_request.return_value = mock_response
+
+        result = client.list_sessions(self.org_id, self.project_id)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]["id"], "session-1")
+
+        # Verify request was made correctly
+        mock_request.assert_called_once()
+        call_args = mock_request.call_args
+        self.assertEqual(call_args[0][0], "GET")
+        self.assertIn(self.org_id, call_args[0][1])
+        self.assertIn(self.project_id, call_args[0][1])
+        self.assertIn("sessions", call_args[0][1])
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_sessions_with_filters(self, mock_request):
+        """Test list_sessions with filtering parameters."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock successful response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "sessions": [{"id": "session-1", "name": "my-session", "branch": "main"}],
+            "total": 1,
+        }
+        mock_request.return_value = mock_response
+
+        result = client.list_sessions(
+            self.org_id,
+            self.project_id,
+            session_name="my-session",
+            session_type="duckdb",
+            branch="main",
+            limit=10,
+            offset=5,
+        )
+
+        self.assertEqual(len(result), 1)
+
+        # Verify request was made with correct params
+        mock_request.assert_called_once()
+        call_args = mock_request.call_args
+        params = call_args[1].get("params", {})
+        self.assertEqual(params["name"], "my-session")
+        self.assertEqual(params["type"], "duckdb")
+        self.assertEqual(params["branch"], "main")
+        self.assertEqual(params["limit"], 10)
+        self.assertEqual(params["offset"], 5)
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_sessions_not_found(self, mock_request):
+        """Test list_sessions with 404 response."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock 404 response
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_response.text = "Organization or project not found"
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as context:
+            client.list_sessions(self.org_id, self.project_id)
+
+        self.assertEqual(context.exception.status_code, 404)
+        self.assertIn("Organization or project not found", context.exception.reason)
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_get_session_by_name_success(self, mock_request):
+        """Test successful get_session_by_name call."""
+        client = RecceCloudClient(self.api_token)
+        session_name = "my-test-session"
+
+        # Mock successful response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "session": {"id": "session-123", "name": session_name},
+            "success": True,
+        }
+        mock_request.return_value = mock_response
+
+        result = client.get_session_by_name(self.org_id, self.project_id, session_name)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["name"], session_name)
+
+        # Verify request used the by-name endpoint
+        mock_request.assert_called_once()
+        call_args = mock_request.call_args
+        self.assertEqual(call_args[0][0], "GET")
+        self.assertIn("by-name", call_args[0][1])
+        self.assertIn(session_name, call_args[0][1])
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_get_session_by_name_not_found(self, mock_request):
+        """Test get_session_by_name with session not found."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock 404 response
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_response.text = "Session not found"
+        mock_request.return_value = mock_response
+
+        result = client.get_session_by_name(self.org_id, self.project_id, "nonexistent")
+
+        # Should return None instead of raising exception
+        self.assertIsNone(result)
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_get_session_by_name_server_error(self, mock_request):
+        """Test get_session_by_name with server error."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock 500 response
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal server error"
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as context:
+            client.get_session_by_name(self.org_id, self.project_id, "test-session")
+
+        self.assertEqual(context.exception.status_code, 500)
+
 
 if __name__ == "__main__":
     unittest.main()
