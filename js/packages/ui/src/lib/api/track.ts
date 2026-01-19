@@ -12,8 +12,8 @@ function track(
   eventProperties?: Record<string, any> | undefined,
   eventOptions?: EventOptions | undefined,
 ): AmplitudeReturn<Result> {
-  // If Amplitude isn't initialized, log to console instead
-  if (!amplitudeInitialized) {
+  // If Amplitude isn't initialized, log to console instead (but not during tests)
+  if (!amplitudeInitialized && process.env.NODE_ENV !== "test") {
     console.log("[Tracking]", eventInput, eventProperties, eventOptions);
   }
   return trk(eventInput, eventProperties, eventOptions);

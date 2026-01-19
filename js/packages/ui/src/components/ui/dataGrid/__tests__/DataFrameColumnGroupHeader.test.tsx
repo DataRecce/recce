@@ -12,6 +12,7 @@
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
+import { vi } from "vitest";
 import { DataFrameColumnGroupHeader } from "../DataFrameColumnGroupHeader";
 
 // ============================================================================
@@ -83,7 +84,7 @@ describe("DataFrameColumnGroupHeader - Primary Key", () => {
         columnStatus=""
         columnType="integer"
         primaryKeys={["id"]}
-        onPrimaryKeyChange={jest.fn()}
+        onPrimaryKeyChange={vi.fn()}
       />,
     );
 
@@ -92,7 +93,7 @@ describe("DataFrameColumnGroupHeader - Primary Key", () => {
   });
 
   test("calls onPrimaryKeyChange when removing PK", () => {
-    const onPrimaryKeyChange = jest.fn();
+    const onPrimaryKeyChange = vi.fn();
     render(
       <DataFrameColumnGroupHeader
         name="id"
@@ -111,7 +112,7 @@ describe("DataFrameColumnGroupHeader - Primary Key", () => {
   });
 
   test("calls onPrimaryKeyChange when adding PK", () => {
-    const onPrimaryKeyChange = jest.fn();
+    const onPrimaryKeyChange = vi.fn();
     render(
       <DataFrameColumnGroupHeader
         name="price"
@@ -130,7 +131,7 @@ describe("DataFrameColumnGroupHeader - Primary Key", () => {
   });
 
   test("removes index from PKs when adding new PK", () => {
-    const onPrimaryKeyChange = jest.fn();
+    const onPrimaryKeyChange = vi.fn();
     render(
       <DataFrameColumnGroupHeader
         name="price"
@@ -162,7 +163,7 @@ describe("DataFrameColumnGroupHeader - Pin/Unpin", () => {
         columnType="number"
         primaryKeys={["id"]}
         pinnedColumns={[]}
-        onPinnedColumnsChange={jest.fn()}
+        onPinnedColumnsChange={vi.fn()}
       />,
     );
 
@@ -178,7 +179,7 @@ describe("DataFrameColumnGroupHeader - Pin/Unpin", () => {
         columnType="integer"
         primaryKeys={["id"]}
         pinnedColumns={[]}
-        onPinnedColumnsChange={jest.fn()}
+        onPinnedColumnsChange={vi.fn()}
       />,
     );
 
@@ -187,7 +188,7 @@ describe("DataFrameColumnGroupHeader - Pin/Unpin", () => {
   });
 
   test("calls onPinnedColumnsChange when pinning", () => {
-    const onPinnedColumnsChange = jest.fn();
+    const onPinnedColumnsChange = vi.fn();
     render(
       <DataFrameColumnGroupHeader
         name="price"
@@ -207,7 +208,7 @@ describe("DataFrameColumnGroupHeader - Pin/Unpin", () => {
   });
 
   test("calls onPinnedColumnsChange when unpinning", () => {
-    const onPinnedColumnsChange = jest.fn();
+    const onPinnedColumnsChange = vi.fn();
     render(
       <DataFrameColumnGroupHeader
         name="price"
@@ -239,7 +240,7 @@ describe("DataFrameColumnGroupHeader - Precision Menu", () => {
         columnStatus=""
         columnType="number"
         primaryKeys={["id"]}
-        onColumnsRenderModeChanged={jest.fn()}
+        onColumnsRenderModeChanged={vi.fn()}
       />,
     );
 
@@ -253,7 +254,7 @@ describe("DataFrameColumnGroupHeader - Precision Menu", () => {
         columnStatus=""
         columnType="number"
         primaryKeys={["id"]}
-        onColumnsRenderModeChanged={jest.fn()}
+        onColumnsRenderModeChanged={vi.fn()}
       />,
     );
 
@@ -267,7 +268,7 @@ describe("DataFrameColumnGroupHeader - Precision Menu", () => {
         columnStatus=""
         columnType="text"
         primaryKeys={["id"]}
-        onColumnsRenderModeChanged={jest.fn()}
+        onColumnsRenderModeChanged={vi.fn()}
       />,
     );
 
@@ -281,7 +282,7 @@ describe("DataFrameColumnGroupHeader - Precision Menu", () => {
         columnStatus=""
         columnType="number"
         primaryKeys={["id"]}
-        onColumnsRenderModeChanged={jest.fn()}
+        onColumnsRenderModeChanged={vi.fn()}
       />,
     );
 
@@ -304,7 +305,7 @@ describe("DataFrameColumnGroupHeader - Column Status", () => {
         columnStatus="added"
         columnType="text"
         primaryKeys={["id"]}
-        onPrimaryKeyChange={jest.fn()}
+        onPrimaryKeyChange={vi.fn()}
       />,
     );
 
@@ -320,7 +321,7 @@ describe("DataFrameColumnGroupHeader - Column Status", () => {
         columnStatus="removed"
         columnType="text"
         primaryKeys={["id"]}
-        onPrimaryKeyChange={jest.fn()}
+        onPrimaryKeyChange={vi.fn()}
       />,
     );
 
@@ -336,7 +337,7 @@ describe("DataFrameColumnGroupHeader - Column Status", () => {
         columnStatus="modified"
         columnType="number"
         primaryKeys={["id"]}
-        onPrimaryKeyChange={jest.fn()}
+        onPrimaryKeyChange={vi.fn()}
       />,
     );
 

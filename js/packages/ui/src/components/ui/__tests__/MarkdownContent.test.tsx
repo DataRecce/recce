@@ -13,14 +13,15 @@
  */
 
 import type { ReactNode } from "react";
+import { vi } from "vitest";
 
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock useIsDark hook
-const mockUseIsDark = jest.fn(() => false);
-jest.mock("../../../hooks", () => ({
+const mockUseIsDark = vi.fn(() => false);
+vi.mock("../../../hooks", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 
@@ -34,7 +35,7 @@ interface MockMarkdownProps {
 }
 
 // Mock react-markdown to avoid ESM issues
-jest.mock("react-markdown", () => ({
+vi.mock("react-markdown", () => ({
   __esModule: true,
   default: ({ children, components }: MockMarkdownProps) => {
     // Simple mock that parses basic markdown
@@ -234,7 +235,7 @@ jest.mock("react-markdown", () => ({
 }));
 
 // Mock remark-gfm
-jest.mock("remark-gfm", () => ({
+vi.mock("remark-gfm", () => ({
   __esModule: true,
   default: () => {
     // Empty plugin mock - returns identity transform
@@ -243,7 +244,7 @@ jest.mock("remark-gfm", () => ({
 }));
 
 // Mock react-syntax-highlighter
-jest.mock("react-syntax-highlighter", () => ({
+vi.mock("react-syntax-highlighter", () => ({
   Prism: ({ children, language }: { children: string; language?: string }) => (
     <pre data-testid="syntax-highlighter" data-language={language}>
       <code>{children}</code>
@@ -251,7 +252,7 @@ jest.mock("react-syntax-highlighter", () => ({
   ),
 }));
 
-jest.mock("react-syntax-highlighter/dist/esm/styles/prism", () => ({
+vi.mock("react-syntax-highlighter/dist/esm/styles/prism", () => ({
   oneDark: {},
 }));
 
@@ -269,7 +270,7 @@ import { MarkdownContent } from "../MarkdownContent";
 describe("MarkdownContent", () => {
   beforeEach(() => {
     mockUseIsDark.mockReturnValue(false);
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   // ==========================================================================

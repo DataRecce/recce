@@ -4,22 +4,23 @@
  */
 
 import { render, screen } from "@testing-library/react";
+import { vi } from "vitest";
 import { LineageView } from "../LineageView";
 
-const mockUseLineageGraphContext = jest.fn();
-const mockToReactFlowBasic = jest.fn();
+const mockUseLineageGraphContext = vi.fn();
+const mockToReactFlowBasic = vi.fn();
 
-jest.mock("../../../contexts/lineage", () => ({
+vi.mock("../../../contexts/lineage", () => ({
   useLineageGraphContext: () => mockUseLineageGraphContext(),
 }));
 
-jest.mock("../../../contexts/lineage/utils", () => ({
-  selectDownstream: jest.fn(() => []),
-  selectUpstream: jest.fn(() => []),
+vi.mock("../../../contexts/lineage/utils", () => ({
+  selectDownstream: vi.fn(() => []),
+  selectUpstream: vi.fn(() => []),
   toReactFlowBasic: (...args: unknown[]) => mockToReactFlowBasic(...args),
 }));
 
-jest.mock("../LineageCanvas", () => ({
+vi.mock("../LineageCanvas", () => ({
   LineageCanvas: ({
     nodes,
     edges,

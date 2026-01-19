@@ -25,10 +25,12 @@ import {
   toValueDiffGridConfigured as toValueDiffGrid,
 } from "@datarecce/ui/utils";
 import type { ColDef, ColGroupDef } from "ag-grid-community";
+import { vi } from "vitest";
 
 // Mock AG Grid modules
-jest.mock("ag-grid-community", () => ({
-  ModuleRegistry: { registerModules: jest.fn() },
+vi.mock("ag-grid-community", () => ({
+  themeQuartz: { withParams: vi.fn(() => "mocked-theme") },
+  ModuleRegistry: { registerModules: vi.fn() },
   AllCommunityModule: {},
 }));
 

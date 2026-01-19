@@ -10,6 +10,7 @@
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
+import { vi } from "vitest";
 import { DataFrameColumnHeader } from "../DataFrameColumnHeader";
 
 // ============================================================================
@@ -43,7 +44,7 @@ describe("DataFrameColumnHeader - Pin/Unpin", () => {
         name="price"
         columnType="number"
         pinnedColumns={[]}
-        onPinnedColumnsChange={jest.fn()}
+        onPinnedColumnsChange={vi.fn()}
       />,
     );
 
@@ -58,7 +59,7 @@ describe("DataFrameColumnHeader - Pin/Unpin", () => {
         name="price"
         columnType="number"
         pinnedColumns={["price"]}
-        onPinnedColumnsChange={jest.fn()}
+        onPinnedColumnsChange={vi.fn()}
       />,
     );
 
@@ -67,7 +68,7 @@ describe("DataFrameColumnHeader - Pin/Unpin", () => {
   });
 
   test("calls onPinnedColumnsChange when pinning", () => {
-    const onPinnedColumnsChange = jest.fn();
+    const onPinnedColumnsChange = vi.fn();
     render(
       <DataFrameColumnHeader
         name="price"
@@ -85,7 +86,7 @@ describe("DataFrameColumnHeader - Pin/Unpin", () => {
   });
 
   test("calls onPinnedColumnsChange when unpinning", () => {
-    const onPinnedColumnsChange = jest.fn();
+    const onPinnedColumnsChange = vi.fn();
     render(
       <DataFrameColumnHeader
         name="price"
@@ -113,7 +114,7 @@ describe("DataFrameColumnHeader - Precision Menu", () => {
       <DataFrameColumnHeader
         name="price"
         columnType="number"
-        onColumnsRenderModeChanged={jest.fn()}
+        onColumnsRenderModeChanged={vi.fn()}
       />,
     );
 
@@ -125,7 +126,7 @@ describe("DataFrameColumnHeader - Precision Menu", () => {
       <DataFrameColumnHeader
         name="name"
         columnType="text"
-        onColumnsRenderModeChanged={jest.fn()}
+        onColumnsRenderModeChanged={vi.fn()}
       />,
     );
 
@@ -137,7 +138,7 @@ describe("DataFrameColumnHeader - Precision Menu", () => {
       <DataFrameColumnHeader
         name="price"
         columnType="number"
-        onColumnsRenderModeChanged={jest.fn()}
+        onColumnsRenderModeChanged={vi.fn()}
       />,
     );
 
@@ -150,7 +151,7 @@ describe("DataFrameColumnHeader - Precision Menu", () => {
   });
 
   test("calls onColumnsRenderModeChanged when option is selected", () => {
-    const onColumnsRenderModeChanged = jest.fn();
+    const onColumnsRenderModeChanged = vi.fn();
     render(
       <DataFrameColumnHeader
         name="price"

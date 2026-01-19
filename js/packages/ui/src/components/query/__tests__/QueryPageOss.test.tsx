@@ -4,72 +4,61 @@
  */
 
 import { render, screen } from "@testing-library/react";
+import { vi } from "vitest";
 import { QueryPageOss } from "../QueryPageOss";
 
-const mockUseRecceQueryContext = jest.fn();
-const mockUseLineageGraphContext = jest.fn();
-const mockUseRecceInstanceContext = jest.fn();
-const mockUseRecceActionContext = jest.fn();
-const mockUseApiConfig = jest.fn();
+const mockUseRecceQueryContext = vi.fn();
+const mockUseLineageGraphContext = vi.fn();
+const mockUseRecceInstanceContext = vi.fn();
+const mockUseRecceActionContext = vi.fn();
+const mockUseApiConfig = vi.fn();
 
-jest.mock("@tanstack/react-query", () => ({
-  useMutation: () => ({ mutate: jest.fn(), isPending: false }),
+vi.mock("@tanstack/react-query", () => ({
+  useMutation: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
-jest.mock("../../../api", () => ({
-  submitQuery: jest.fn(),
-  submitQueryBase: jest.fn(),
-  submitQueryDiff: jest.fn(),
-  waitRun: jest.fn(),
+vi.mock("../../../api", () => ({
+  submitQuery: vi.fn(),
+  submitQueryBase: vi.fn(),
+  submitQueryDiff: vi.fn(),
+  waitRun: vi.fn(),
 }));
 
-jest.mock(
-  "../../components",
-  () => ({
-    HistoryToggle: () => <div data-testid="history-toggle" />,
-  }),
-  { virtual: true },
-);
+vi.mock("../../components", () => ({
+  HistoryToggle: () => <div data-testid="history-toggle" />,
+}));
 
-jest.mock(
-  "../../components/app",
-  () => ({
-    SetupConnectionPopover: ({ children }: { children: React.ReactNode }) => (
-      <div data-testid="setup-connection-popover">{children}</div>
-    ),
-  }),
-  { virtual: true },
-);
+vi.mock("../../components/app", () => ({
+  SetupConnectionPopover: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="setup-connection-popover">{children}</div>
+  ),
+}));
 
-jest.mock(
-  "../../components/lineage",
-  () => ({
-    BaseEnvironmentSetupGuide: () => <div data-testid="base-env-setup" />,
-  }),
-  { virtual: true },
-);
+vi.mock("../../components/lineage", () => ({
+  BaseEnvironmentSetupGuide: () => <div data-testid="base-env-setup" />,
+}));
 
-jest.mock("../QueryForm", () => ({
+vi.mock("../QueryForm", () => ({
   QueryForm: () => <div data-testid="query-form" />,
 }));
 
-jest.mock("../SetupConnectionGuide", () => ({
+vi.mock("../SetupConnectionGuide", () => ({
   SetupConnectionGuide: () => <div data-testid="setup-connection-guide" />,
 }));
 
-jest.mock("../SqlEditor", () => ({
+vi.mock("../SqlEditor", () => ({
   __esModule: true,
   default: () => <div data-testid="sql-editor" />,
   DualSqlEditor: () => <div data-testid="dual-sql-editor" />,
 }));
 
-jest.mock("../../../hooks", () => ({
+vi.mock("../../../hooks", () => ({
   defaultSqlQuery: "select * from my_model",
   useRecceQueryContext: () => mockUseRecceQueryContext(),
   useApiConfig: () => mockUseApiConfig(),
 }));
 
-jest.mock("../../../contexts", () => ({
+vi.mock("../../../contexts", () => ({
   useLineageGraphContext: () => mockUseLineageGraphContext(),
   useRecceActionContext: () => mockUseRecceActionContext(),
   useRecceInstanceContext: () => mockUseRecceInstanceContext(),
@@ -80,12 +69,12 @@ describe("QueryPageOss", () => {
     mockUseRecceQueryContext.mockReturnValue({
       sqlQuery: "select * from my_model",
       baseSqlQuery: "",
-      setSqlQuery: jest.fn(),
-      setBaseSqlQuery: jest.fn(),
+      setSqlQuery: vi.fn(),
+      setBaseSqlQuery: vi.fn(),
       primaryKeys: [],
-      setPrimaryKeys: jest.fn(),
+      setPrimaryKeys: vi.fn(),
       isCustomQueries: false,
-      setCustomQueries: jest.fn(),
+      setCustomQueries: vi.fn(),
     });
     mockUseLineageGraphContext.mockReturnValue({
       lineageGraph: undefined,
@@ -96,7 +85,7 @@ describe("QueryPageOss", () => {
       singleEnv: true,
     });
     mockUseRecceActionContext.mockReturnValue({
-      showRunId: jest.fn(),
+      showRunId: vi.fn(),
     });
     mockUseApiConfig.mockReturnValue({
       apiClient: {},

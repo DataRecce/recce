@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 
 import type { RecceFeatureToggles } from "../../../contexts/instance";
 import {
@@ -58,7 +59,7 @@ describe("SetupConnectionBanner", () => {
   describe("interactions", () => {
     it("opens settings URL in new tab when button is clicked", async () => {
       const user = userEvent.setup();
-      const mockOpen = jest.fn();
+      const mockOpen = vi.fn();
       const originalOpen = window.open;
       window.open = mockOpen;
 

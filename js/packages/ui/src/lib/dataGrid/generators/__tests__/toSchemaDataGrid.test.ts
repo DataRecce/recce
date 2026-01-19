@@ -10,6 +10,7 @@
 
 import type { CellClassParams } from "ag-grid-community";
 import React from "react";
+import { vi } from "vitest";
 import { type NodeData, type RowObjectType } from "../../../../api";
 import {
   mergeColumns,
@@ -22,9 +23,13 @@ import {
 // ============================================================================
 
 // Mock ag-grid-community to avoid ES module parsing issues
-jest.mock("ag-grid-community", () => ({
+vi.mock("ag-grid-community", () => ({
+  themeQuartz: {
+    withParams: vi.fn(() => "mocked-theme"),
+  },
+  AllCommunityModule: {},
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
 }));
 
@@ -50,11 +55,11 @@ const createCellClassParams = (
   }) as unknown as CellClassParams<RowObjectType>;
 
 // Mock the schemaCells module
-jest.mock("../../../../components/ui/dataGrid/schemaCells", () => ({
-  createSchemaColumnNameRenderer: jest.fn(() => jest.fn()),
-  createSingleEnvColumnNameRenderer: jest.fn(() => jest.fn()),
-  renderIndexCell: jest.fn(),
-  renderTypeCell: jest.fn(),
+vi.mock("../../../../components/ui/dataGrid/schemaCells", () => ({
+  createSchemaColumnNameRenderer: vi.fn(() => vi.fn()),
+  createSingleEnvColumnNameRenderer: vi.fn(() => vi.fn()),
+  renderIndexCell: vi.fn(),
+  renderTypeCell: vi.fn(),
 }));
 
 // ============================================================================

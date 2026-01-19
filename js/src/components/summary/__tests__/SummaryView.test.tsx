@@ -13,18 +13,20 @@
  * Source of truth: OSS functionality - these tests document current behavior
  */
 
+import { type Mock, vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock @datarecce/ui/contexts
-jest.mock("@datarecce/ui/contexts", () => ({
-  useRouteConfig: jest.fn(() => ({ basePath: "" })),
-  useLineageGraphContext: jest.fn(),
+vi.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: vi.fn(() => ({ basePath: "" })),
+  useLineageGraphContext: vi.fn(),
 }));
 
 // Mock ChangeSummary component
-jest.mock("@datarecce/ui/components/summary/ChangeSummary", () => ({
+vi.mock("@datarecce/ui/components/summary/ChangeSummary", () => ({
   ChangeSummary: ({ lineageGraph }: { lineageGraph: unknown }) => (
     <div data-testid="change-summary">
       <span data-testid="change-summary-graph">
@@ -35,7 +37,7 @@ jest.mock("@datarecce/ui/components/summary/ChangeSummary", () => ({
 }));
 
 // Mock SchemaSummary component
-jest.mock("@datarecce/ui/components/summary/SchemaSummary", () => ({
+vi.mock("@datarecce/ui/components/summary/SchemaSummary", () => ({
   SchemaSummary: ({ lineageGraph }: { lineageGraph: unknown }) => (
     <div data-testid="schema-summary">
       <span data-testid="schema-summary-graph">
@@ -117,10 +119,10 @@ const createMockContext = (
 // ============================================================================
 
 describe("SummaryView", () => {
-  const mockUseLineageGraphContext = useLineageGraphContext as jest.Mock;
+  const mockUseLineageGraphContext = useLineageGraphContext as Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   // ==========================================================================

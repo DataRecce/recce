@@ -11,6 +11,7 @@
  */
 
 import { render } from "@testing-library/react";
+import { vi } from "vitest";
 import {
   getChartBarColors,
   getChartThemeColors,
@@ -18,16 +19,16 @@ import {
 } from "../HistogramChart";
 
 // Mock Chart.js to avoid canvas rendering issues in tests
-jest.mock("react-chartjs-2", () => ({
+vi.mock("react-chartjs-2", () => ({
   Chart: ({ data }: { data: unknown }) => (
     <div data-testid="mock-chart" data-data={JSON.stringify(data)} />
   ),
 }));
 
 // Mock Chart.js register
-jest.mock("chart.js", () => ({
+vi.mock("chart.js", () => ({
   Chart: {
-    register: jest.fn(),
+    register: vi.fn(),
   },
   BarElement: {},
   TimeSeriesScale: {},

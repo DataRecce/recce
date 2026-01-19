@@ -14,57 +14,64 @@
  * - Warning message when limit > 0 && result.more
  */
 
+import { vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock AG Grid to avoid ES module parsing errors
-jest.mock("ag-grid-community", () => ({
+vi.mock("ag-grid-community", () => ({
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
   ClientSideRowModelModule: {},
   AllCommunityModule: {},
-  themeQuartz: {},
+  themeQuartz: { withParams: vi.fn(() => "mocked-theme") },
 }));
 
 // Mock toValueDiffGridConfigured - use factory pattern
-const mockCreateDataGrid = jest.fn();
-jest.mock("@datarecce/ui/utils", () => ({
+const mockCreateDataGrid = vi.fn();
+vi.mock("@datarecce/ui/utils", async () => ({
   toValueDiffGridConfigured: (...args: unknown[]) =>
     mockCreateDataGrid(...args),
 }));
 
 // Mock ScreenshotDataGrid with our test utility mock
-jest.mock("@datarecce/ui/primitives", () => ({
-  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
-    .screenshotDataGridMock,
-  EmptyRowsRenderer: ({ emptyMessage }: { emptyMessage: string }) => (
-    <div data-testid="empty-rows-renderer">{emptyMessage}</div>
-  ),
-  RunToolbar: jest.fn(
-    ({
-      children,
-      warnings,
-    }: {
-      children?: React.ReactNode;
-      warnings?: string[];
-    }) => (
-      <div data-testid="run-toolbar">
-        {warnings?.map((w) => (
-          <div key={w} data-testid="warning">
-            {w}
-          </div>
-        ))}
-        {children}
-      </div>
+vi.mock("@datarecce/ui/primitives", async () => {
+  const testUtils = await vi.importActual(
+    "@/testing-utils/resultViewTestUtils",
+  );
+  return {
+    ScreenshotDataGrid: (testUtils as Record<string, unknown>)
+      .screenshotDataGridMock,
+    EmptyRowsRenderer: ({ emptyMessage }: { emptyMessage: string }) => (
+      <div data-testid="empty-rows-renderer">{emptyMessage}</div>
     ),
-  ),
-}));
+    RunToolbar: vi.fn(
+      ({
+        children,
+        warnings,
+      }: {
+        children?: React.ReactNode;
+        warnings?: string[];
+      }) => (
+        <div data-testid="run-toolbar">
+          {warnings?.map((w) => (
+            <div key={w} data-testid="warning">
+              {w}
+            </div>
+          ))}
+          {children}
+        </div>
+      ),
+    ),
+  };
+});
 
 // Mock DiffDisplayModeSwitch and ChangedOnlyCheckbox from @datarecce/ui
-jest.mock("@datarecce/ui/components/ui/DiffDisplayModeSwitch", () => ({
-  DiffDisplayModeSwitch: jest.fn(
+vi.mock("@datarecce/ui/components/ui/DiffDisplayModeSwitch", () => ({
+  DiffDisplayModeSwitch: vi.fn(
     ({
       displayMode,
       onDisplayModeChanged,
@@ -83,8 +90,8 @@ jest.mock("@datarecce/ui/components/ui/DiffDisplayModeSwitch", () => ({
   ),
 }));
 
-jest.mock("@datarecce/ui/components/ui/ChangedOnlyCheckbox", () => ({
-  ChangedOnlyCheckbox: jest.fn(
+vi.mock("@datarecce/ui/components/ui/ChangedOnlyCheckbox", () => ({
+  ChangedOnlyCheckbox: vi.fn(
     ({
       changedOnly,
       onChange,
@@ -103,17 +110,22 @@ jest.mock("@datarecce/ui/components/ui/ChangedOnlyCheckbox", () => ({
 }));
 
 // Mock packages/ui ScreenshotDataGrid (used by createResultView factory)
-jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
-  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
-    .screenshotDataGridMock,
-  EmptyRowsRenderer: ({ emptyMessage }: { emptyMessage?: string }) => (
-    <div data-testid="empty-rows-renderer">{emptyMessage ?? "No rows"}</div>
-  ),
-}));
+vi.mock("@datarecce/ui/components/data/ScreenshotDataGrid", async () => {
+  const testUtils = await vi.importActual(
+    "@/testing-utils/resultViewTestUtils",
+  );
+  return {
+    ScreenshotDataGrid: (testUtils as Record<string, unknown>)
+      .screenshotDataGridMock,
+    EmptyRowsRenderer: ({ emptyMessage }: { emptyMessage?: string }) => (
+      <div data-testid="empty-rows-renderer">{emptyMessage ?? "No rows"}</div>
+    ),
+  };
+});
 
 // Mock useIsDark hook from @datarecce/ui
-const mockUseIsDark = jest.fn(() => false);
-jest.mock("@datarecce/ui/hooks", () => ({
+const mockUseIsDark = vi.fn(() => false);
+vi.mock("@datarecce/ui/hooks", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 
@@ -227,7 +239,7 @@ function createValueDiffDetailRunEmpty(): Extract<
 
 describe("ValueDiffDetailResultView", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Default mock implementation returns grid data
     mockCreateDataGrid.mockReturnValue({
@@ -351,7 +363,7 @@ describe("ValueDiffDetailResultView", () => {
       const wrongRun = createRowCountDiffRun();
 
       // Suppress console.error for expected throws
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, "error")
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});
@@ -503,7 +515,7 @@ describe("ValueDiffDetailResultView", () => {
 
     it("calls onViewOptionsChanged when changed_only checkbox is toggled", () => {
       const run = createValueDiffDetailRun();
-      const mockOnViewOptionsChanged = jest.fn();
+      const mockOnViewOptionsChanged = vi.fn();
 
       renderWithProviders(
         <ValueDiffDetailResultView
@@ -526,7 +538,7 @@ describe("ValueDiffDetailResultView", () => {
 
     it("calls onViewOptionsChanged when display_mode is toggled", () => {
       const run = createValueDiffDetailRun();
-      const mockOnViewOptionsChanged = jest.fn();
+      const mockOnViewOptionsChanged = vi.fn();
 
       renderWithProviders(
         <ValueDiffDetailResultView
@@ -667,7 +679,7 @@ describe("ValueDiffDetailResultView", () => {
   describe("onAddToChecklist", () => {
     it("accepts onAddToChecklist prop without error", () => {
       const run = createValueDiffDetailRun();
-      const mockOnAddToChecklist = jest.fn();
+      const mockOnAddToChecklist = vi.fn();
 
       // Should not throw
       expect(() => {

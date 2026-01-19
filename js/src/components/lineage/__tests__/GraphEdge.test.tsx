@@ -11,12 +11,14 @@
  * Source of truth: OSS functionality - these tests document current behavior
  */
 
+import { type Mock, vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock @xyflow/react
-jest.mock("@xyflow/react", () => ({
+vi.mock("@xyflow/react", () => ({
   BaseEdge: ({
     path,
     style,
@@ -35,7 +37,7 @@ jest.mock("@xyflow/react", () => ({
       />
     </svg>
   ),
-  getBezierPath: jest.fn(() => ["M0,0 C100,0 200,100 300,100"]),
+  getBezierPath: vi.fn(() => ["M0,0 C100,0 200,100 300,100"]),
   Position: {
     Left: "left",
     Right: "right",
@@ -45,14 +47,14 @@ jest.mock("@xyflow/react", () => ({
 }));
 
 // Mock LineageViewContext
-jest.mock("@datarecce/ui/contexts", () => ({
-  useRouteConfig: jest.fn(() => ({ basePath: "" })),
-  useLineageViewContextSafe: jest.fn(),
+vi.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: vi.fn(() => ({ basePath: "" })),
+  useLineageViewContextSafe: vi.fn(),
 }));
 
 // Mock @datarecce/ui/components/lineage/styles
-jest.mock("@datarecce/ui/components/lineage/styles", () => ({
-  getIconForChangeStatus: jest.fn(),
+vi.mock("@datarecce/ui/components/lineage/styles", () => ({
+  getIconForChangeStatus: vi.fn(),
 }));
 
 // ============================================================================
@@ -95,7 +97,7 @@ const createMockEdgeProps = (
 const createMockContext = (
   overrides: Partial<ReturnType<typeof useLineageViewContextSafe>> = {},
 ) => ({
-  isEdgeHighlighted: jest.fn(() => true),
+  isEdgeHighlighted: vi.fn(() => true),
   ...overrides,
 });
 
@@ -104,12 +106,12 @@ const createMockContext = (
 // ============================================================================
 
 describe("GraphEdge", () => {
-  const mockUseLineageViewContextSafe = useLineageViewContextSafe as jest.Mock;
-  const mockGetIconForChangeStatus = getIconForChangeStatus as jest.Mock;
-  const mockGetBezierPath = getBezierPath as jest.Mock;
+  const mockUseLineageViewContextSafe = useLineageViewContextSafe as Mock;
+  const mockGetIconForChangeStatus = getIconForChangeStatus as Mock;
+  const mockGetBezierPath = getBezierPath as Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Default mock implementations
     mockUseLineageViewContextSafe.mockReturnValue(createMockContext());
@@ -240,7 +242,7 @@ describe("GraphEdge", () => {
 
   describe("highlighting", () => {
     it("calls isEdgeHighlighted with source and target", () => {
-      const mockIsEdgeHighlighted = jest.fn(() => true);
+      const mockIsEdgeHighlighted = vi.fn(() => true);
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           isEdgeHighlighted: mockIsEdgeHighlighted,
@@ -256,7 +258,7 @@ describe("GraphEdge", () => {
     it("does not apply filter when edge is highlighted", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
-          isEdgeHighlighted: jest.fn(() => true),
+          isEdgeHighlighted: vi.fn(() => true),
         }),
       );
       const props = createMockEdgeProps();
@@ -271,7 +273,7 @@ describe("GraphEdge", () => {
     it("applies dim filter when edge is not highlighted", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
-          isEdgeHighlighted: jest.fn(() => false),
+          isEdgeHighlighted: vi.fn(() => false),
         }),
       );
       const props = createMockEdgeProps();
@@ -333,7 +335,7 @@ describe("GraphEdge", () => {
       });
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
-          isEdgeHighlighted: jest.fn(() => true),
+          isEdgeHighlighted: vi.fn(() => true),
         }),
       );
       const props = createMockEdgeProps({ changeStatus: "added" });
@@ -352,7 +354,7 @@ describe("GraphEdge", () => {
       });
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
-          isEdgeHighlighted: jest.fn(() => false),
+          isEdgeHighlighted: vi.fn(() => false),
         }),
       );
       const props = createMockEdgeProps({ changeStatus: "removed" });
@@ -368,7 +370,7 @@ describe("GraphEdge", () => {
     it("renders plain edge without change status", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
-          isEdgeHighlighted: jest.fn(() => true),
+          isEdgeHighlighted: vi.fn(() => true),
         }),
       );
       const props = createMockEdgeProps({ changeStatus: undefined });

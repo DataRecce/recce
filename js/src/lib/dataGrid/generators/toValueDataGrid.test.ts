@@ -18,14 +18,17 @@ import {
 } from "@datarecce/ui/api";
 import { toValueDataGrid } from "@datarecce/ui/components/ui/dataGrid/generators/toValueDataGrid";
 import type { CellClassParams } from "ag-grid-community";
+import { vi } from "vitest";
 
 // ============================================================================
 // Mocks
 // ============================================================================
 
-jest.mock("ag-grid-community", () => ({
+vi.mock("ag-grid-community", () => ({
+  themeQuartz: { withParams: vi.fn(() => "mocked-theme") },
+  AllCommunityModule: {},
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
 }));
 
@@ -50,15 +53,15 @@ const createCellClassParams = (
     rowIndex: 0,
   }) as unknown as CellClassParams<RowObjectType>;
 
-jest.mock("@datarecce/ui/contexts", () => ({
-  useRouteConfig: jest.fn(() => ({ basePath: "" })),
+vi.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: vi.fn(() => ({ basePath: "" })),
   useRecceInstanceContext: () => ({
     featureToggles: {
       disableDatabaseQuery: false,
     },
   }),
   useRecceActionContext: () => ({
-    runAction: jest.fn(),
+    runAction: vi.fn(),
   }),
 }));
 

@@ -1,8 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { vi } from "vitest";
 import { DiffText } from "../DiffText";
 
 // Mock react-icons
-jest.mock("react-icons/pi", () => ({
+vi.mock("react-icons/pi", () => ({
   PiCopy: () => <span data-testid="copy-icon">Copy</span>,
 }));
 
@@ -48,8 +49,9 @@ describe("DiffText", () => {
       render(<DiffText value="null" colorPalette="red" grayOut />);
 
       const valueBox = screen.getByText("null");
-      // Color "gray" is rendered as rgb(128, 128, 128)
-      expect(valueBox).toHaveStyle({ color: "rgb(128, 128, 128)" });
+      // Color "gray" may be returned as "gray" (happy-dom) or "rgb(128, 128, 128)" (jsdom)
+      const computedColor = getComputedStyle(valueBox).color;
+      expect(["gray", "rgb(128, 128, 128)"]).toContain(computedColor);
     });
 
     test("does not show copy button when grayOut is true", () => {
@@ -99,7 +101,7 @@ describe("DiffText", () => {
     });
 
     test("calls onCopy callback when copy button clicked", () => {
-      const onCopy = jest.fn();
+      const onCopy = vi.fn();
       render(
         <DiffText value="copy_value" colorPalette="green" onCopy={onCopy} />,
       );
@@ -114,9 +116,12 @@ describe("DiffText", () => {
     });
 
     test("uses navigator.clipboard when no onCopy callback provided", () => {
-      const writeText = jest.fn();
-      Object.assign(navigator, {
-        clipboard: { writeText },
+      const writeText = vi.fn();
+      // Use Object.defineProperty to override read-only clipboard (works with happy-dom)
+      Object.defineProperty(navigator, "clipboard", {
+        value: { writeText },
+        writable: true,
+        configurable: true,
       });
 
       render(<DiffText value="clipboard_value" colorPalette="green" />);

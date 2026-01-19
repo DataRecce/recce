@@ -5,15 +5,20 @@
 
 import { type RowCountResult, type RowObjectType } from "@datarecce/ui/api";
 import { toRowCountDataGrid } from "@datarecce/ui/utils";
+import { vi } from "vitest";
 
 // ============================================================================
 // Mocks
 // ============================================================================
 
 // Mock ag-grid-community to avoid ES module parsing issues
-jest.mock("ag-grid-community", () => ({
+vi.mock("ag-grid-community", () => ({
+  themeQuartz: {
+    withParams: vi.fn(() => "mocked-theme"),
+  },
+  AllCommunityModule: {},
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
 }));
 

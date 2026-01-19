@@ -14,42 +14,44 @@
  * before migration to @datarecce/ui
  */
 
+import { type Mock, type MockInstance, vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock @datarecce/ui/api
-jest.mock("@datarecce/ui/api", () => ({
+vi.mock("@datarecce/ui/api", () => ({
   cacheKeys: {
     user: () => ["user"],
   },
 }));
 
 // Mock @tanstack/react-query
-const mockUseQuery = jest.fn();
-jest.mock("@tanstack/react-query", () => ({
+const mockUseQuery = vi.fn();
+vi.mock("@tanstack/react-query", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
 }));
 
 // Mock user API functions
-jest.mock("@datarecce/ui/lib/api/user", () => ({
-  fetchUser: jest.fn(),
-  fetchGitHubAvatar: jest.fn(),
+vi.mock("@datarecce/ui/lib/api/user", () => ({
+  fetchUser: vi.fn(),
+  fetchGitHubAvatar: vi.fn(),
 }));
 
 // Mock ApiConfigContext
-jest.mock("@datarecce/ui/hooks", () => ({
-  useApiConfig: jest.fn(),
+vi.mock("@datarecce/ui/hooks", () => ({
+  useApiConfig: vi.fn(),
 }));
 
 // Mock react-icons
-jest.mock("react-icons/fa", () => ({
+vi.mock("react-icons/fa", () => ({
   FaCloud: () => <span data-testid="cloud-icon">Cloud</span>,
   FaUser: () => <span data-testid="user-icon">User</span>,
 }));
 
 // Mock constants
-jest.mock("@datarecce/ui/lib/const", () => ({
+vi.mock("@datarecce/ui/lib/const", () => ({
   RECCE_SUPPORT_CALENDAR_URL: "https://cal.com/team/recce/chat",
 }));
 
@@ -67,10 +69,10 @@ import React from "react";
 // ============================================================================
 
 const createMockApiClient = () => ({
-  get: jest.fn(),
-  post: jest.fn(),
-  put: jest.fn(),
-  delete: jest.fn(),
+  get: vi.fn(),
+  post: vi.fn(),
+  put: vi.fn(),
+  delete: vi.fn(),
 });
 
 const createMockUser = (overrides = {}) => ({
@@ -86,17 +88,17 @@ const createMockUser = (overrides = {}) => ({
 // ============================================================================
 
 describe("AvatarDropdown", () => {
-  const mockUseApiConfig = useApiConfig as jest.Mock;
+  const mockUseApiConfig = useApiConfig as Mock;
   let mockApiClient: ReturnType<typeof createMockApiClient>;
-  let windowOpenSpy: jest.SpyInstance;
+  let windowOpenSpy: MockInstance;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockApiClient = createMockApiClient();
     mockUseApiConfig.mockReturnValue({ apiClient: mockApiClient });
 
     // Mock window.open
-    windowOpenSpy = jest.spyOn(window, "open").mockImplementation(() => null);
+    windowOpenSpy = vi.spyOn(window, "open").mockImplementation(() => null);
 
     // Default: successful user query
     mockUseQuery.mockImplementation(({ queryKey }) => {

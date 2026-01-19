@@ -10,11 +10,12 @@
  */
 
 import { render, screen } from "@testing-library/react";
+import { vi } from "vitest";
 import { ResourceTypeTag } from "../ResourceTypeTag";
 
 // Mock useIsDark hook
-const mockIsDark = jest.fn(() => false);
-jest.mock("../../../../hooks/useIsDark", () => ({
+const mockIsDark = vi.fn(() => false);
+vi.mock("../../../../hooks/useIsDark", () => ({
   useIsDark: () => mockIsDark(),
 }));
 

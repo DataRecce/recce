@@ -12,33 +12,40 @@
  * - Ref forwarding to ScreenshotBox (HTMLDivElement ref)
  */
 
+import { vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock AG Grid to avoid ES module parsing errors
-jest.mock("ag-grid-community", () => ({
+vi.mock("ag-grid-community", () => ({
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
   ClientSideRowModelModule: {},
   AllCommunityModule: {},
-  themeQuartz: {},
+  themeQuartz: { withParams: vi.fn(() => "mocked-theme") },
 }));
 
 // Mock ag-grid-react to avoid the extends value error
-jest.mock("ag-grid-react", () => ({
-  AgGridReact: jest.fn(() => null),
+vi.mock("ag-grid-react", () => ({
+  AgGridReact: vi.fn(() => null),
 }));
 
 // Mock packages/ui ScreenshotDataGrid (used by createResultView factory)
-jest.mock("@datarecce/ui/components/data/ScreenshotDataGrid", () => ({
-  ScreenshotDataGrid: jest.requireActual("@/testing-utils/resultViewTestUtils")
-    .screenshotDataGridMock,
-  EmptyRowsRenderer: ({ emptyMessage }: { emptyMessage?: string }) => (
-    <div data-testid="empty-rows-renderer">{emptyMessage ?? "No rows"}</div>
-  ),
-}));
+vi.mock("@datarecce/ui/components/data/ScreenshotDataGrid", async () => {
+  const testUtils = await vi.importActual(
+    "@/testing-utils/resultViewTestUtils",
+  );
+  return {
+    ScreenshotDataGrid: (testUtils as Record<string, unknown>)
+      .screenshotDataGridMock,
+    EmptyRowsRenderer: ({ emptyMessage }: { emptyMessage?: string }) => (
+      <div data-testid="empty-rows-renderer">{emptyMessage ?? "No rows"}</div>
+    ),
+  };
+});
 
 // Mock TopKBarChart props interface
 interface MockTopKBarChartProps {
@@ -49,7 +56,7 @@ interface MockTopKBarChartProps {
 }
 
 // Mock TopKBarChart component to avoid chart.js complexity
-const mockTopKBarChart = jest.fn((props: MockTopKBarChartProps) => (
+const mockTopKBarChart = vi.fn((props: MockTopKBarChartProps) => (
   <div data-testid="topk-chart">
     <span data-testid="display-mode">
       {props.maxItems === 10 ? "top10" : "all"}
@@ -58,33 +65,41 @@ const mockTopKBarChart = jest.fn((props: MockTopKBarChartProps) => (
 ));
 
 // Mock useIsDark hook - declare first since it's used by multiple mocks
-const mockUseIsDark = jest.fn(() => false);
+const mockUseIsDark = vi.fn(() => false);
 
 // Mock TopKBarChart in the data directory (internal import path in @datarecce/ui)
-jest.mock("@datarecce/ui/components/data/TopKBarChart", () => ({
+vi.mock("@datarecce/ui/components/data/TopKBarChart", () => ({
   TopKBarChart: (props: MockTopKBarChartProps) => mockTopKBarChart(props),
 }));
 
 // Mock ScreenshotBox and TopKBarChart with our test utility mocks (for direct import)
-jest.mock("@datarecce/ui/primitives", () => ({
-  ScreenshotBox: jest.requireActual("@/testing-utils/resultViewTestUtils")
-    .screenshotBoxMock,
-  TopKBarChart: (props: MockTopKBarChartProps) => mockTopKBarChart(props),
-}));
+vi.mock("@datarecce/ui/primitives", async () => {
+  const testUtils = await vi.importActual(
+    "@/testing-utils/resultViewTestUtils",
+  );
+  return {
+    ScreenshotBox: (testUtils as Record<string, unknown>).screenshotBoxMock,
+    TopKBarChart: (props: MockTopKBarChartProps) => mockTopKBarChart(props),
+  };
+});
 
 // Mock packages/ui ScreenshotBox (used by createResultView factory)
-jest.mock("@datarecce/ui/components/ui/ScreenshotBox", () => ({
-  ScreenshotBox: jest.requireActual("@/testing-utils/resultViewTestUtils")
-    .screenshotBoxMock,
-}));
+vi.mock("@datarecce/ui/components/ui/ScreenshotBox", async () => {
+  const testUtils = await vi.importActual(
+    "@/testing-utils/resultViewTestUtils",
+  );
+  return {
+    ScreenshotBox: (testUtils as Record<string, unknown>).screenshotBoxMock,
+  };
+});
 
 // Mock useIsDark hook from @datarecce/ui
-jest.mock("@datarecce/ui/hooks", () => ({
+vi.mock("@datarecce/ui/hooks", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 
 // Mock hooks index - this is the path used by components inside @datarecce/ui
-jest.mock("@datarecce/ui/hooks/index", () => ({
+vi.mock("@datarecce/ui/hooks/index", () => ({
   useIsDark: () => mockUseIsDark(),
 }));
 
@@ -173,7 +188,7 @@ describe("TopKDiffResultView", () => {
   beforeEach(() => {
     mockUseIsDark.mockReturnValue(false);
     mockTopKBarChart.mockClear();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   // ==========================================================================
@@ -339,7 +354,7 @@ describe("TopKDiffResultView", () => {
 
     it("calls onViewOptionsChanged with show_all=true when clicking View More Items", () => {
       const run = createRunWith15Items();
-      const onViewOptionsChanged = jest.fn();
+      const onViewOptionsChanged = vi.fn();
 
       renderWithProviders(
         <TopKDiffResultView
@@ -362,7 +377,7 @@ describe("TopKDiffResultView", () => {
     it("calls onViewOptionsChanged with show_all=false when clicking View Only Top-10", () => {
       const run = createRunWith15Items();
       const viewOptions: TopKViewOptions = { show_all: true };
-      const onViewOptionsChanged = jest.fn();
+      const onViewOptionsChanged = vi.fn();
 
       renderWithProviders(
         <TopKDiffResultView
@@ -432,7 +447,7 @@ describe("TopKDiffResultView", () => {
       const wrongRun = createRowCountDiffRun();
 
       // Suppress console.error for expected errors
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, "error")
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});

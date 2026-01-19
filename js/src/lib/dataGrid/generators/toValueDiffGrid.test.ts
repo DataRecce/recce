@@ -17,10 +17,14 @@
  * - displayMode: "side_by_side" | "inline" (default is "inline" for valuediff)
  */
 
+import { vi } from "vitest";
+
 // Mock ag-grid-community since tests don't need actual rendering
-jest.mock("ag-grid-community", () => ({
+vi.mock("ag-grid-community", () => ({
+  themeQuartz: { withParams: vi.fn(() => "mocked-theme") },
+  AllCommunityModule: {},
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
 }));
 

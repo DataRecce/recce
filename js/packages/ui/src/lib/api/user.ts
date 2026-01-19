@@ -33,7 +33,9 @@ export async function fetchGitHubAvatar(
     );
     return response.data.avatar_url;
   } catch (error) {
-    console.warn("Failed to fetch GitHub avatar:", error);
+    if (process.env.NODE_ENV !== "test") {
+      console.warn("Failed to fetch GitHub avatar:", error);
+    }
     return null;
   }
 }

@@ -6,15 +6,18 @@
 import { type RowCountDiffResult, type RowObjectType } from "@datarecce/ui/api";
 import { toRowCountDiffDataGrid } from "@datarecce/ui/utils";
 import type { CellClassParams } from "ag-grid-community";
+import { vi } from "vitest";
 
 // ============================================================================
 // Mocks
 // ============================================================================
 
 // Mock ag-grid-community to avoid ES module parsing issues
-jest.mock("ag-grid-community", () => ({
+vi.mock("ag-grid-community", () => ({
+  themeQuartz: { withParams: vi.fn(() => "mocked-theme") },
+  AllCommunityModule: {},
   ModuleRegistry: {
-    registerModules: jest.fn(),
+    registerModules: vi.fn(),
   },
 }));
 

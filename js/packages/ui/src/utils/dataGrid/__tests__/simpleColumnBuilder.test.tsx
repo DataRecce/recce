@@ -12,6 +12,7 @@
 
 import type { ColDef } from "ag-grid-community";
 import React from "react";
+import { vi } from "vitest";
 import type { RowObjectType } from "../../../api";
 import type { ColumnConfig } from "../columnBuilders";
 import type { SimpleColumnRenderComponents } from "../renderTypes";
@@ -31,7 +32,7 @@ const mockRenderComponents: SimpleColumnRenderComponents = {
     <div data-testid="group-header">{name}</div>
   ),
   DataFrameColumnHeader: ({ name }) => <div data-testid="header">{name}</div>,
-  defaultRenderCell: jest.fn(() => null),
+  defaultRenderCell: vi.fn(() => null),
 };
 
 // ============================================================================
@@ -349,7 +350,7 @@ describe("buildSimpleColumnDefinitions - Index Fallback", () => {
 
 describe("buildSimpleColumnDefinitions - Render Component Injection", () => {
   test("uses injected render components", () => {
-    const customDefaultRenderer = jest.fn();
+    const customDefaultRenderer = vi.fn();
     const customGroupHeader = ({ name }: { name: string }) => (
       <div data-testid="custom-group">{name}</div>
     );

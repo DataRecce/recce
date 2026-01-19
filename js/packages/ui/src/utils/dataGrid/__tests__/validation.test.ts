@@ -304,7 +304,7 @@ describe("validateColumnDataAlignment", () => {
 
     try {
       validateColumnDataAlignment(df);
-      fail("Should have thrown");
+      expect.fail("Should have thrown");
     } catch (e) {
       expect(e).toBeInstanceOf(DataGridValidationError);
       const error = e as DataGridValidationError;
@@ -400,7 +400,7 @@ describe("validatePrimaryKeyConfig", () => {
   test("error includes available columns", () => {
     try {
       validatePrimaryKeyConfig(["missing"], columns);
-      fail("Should have thrown");
+      expect.fail("Should have thrown");
     } catch (e) {
       const error = e as DataGridValidationError;
       expect(error.details?.availableColumns).toEqual(["id", "name"]);

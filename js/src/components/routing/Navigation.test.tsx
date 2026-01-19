@@ -24,10 +24,12 @@ const createTestQueryClient = () =>
     },
   });
 
+import { vi } from "vitest";
+
 // Mock the context providers and their values
 const mockLineageGraphContext = {
   lineageGraph: null,
-  retchLineageGraph: jest.fn(),
+  retchLineageGraph: vi.fn(),
   envInfo: null,
   reviewMode: false,
   cloudMode: false,
@@ -37,10 +39,10 @@ const mockLineageGraphContext = {
   isCodespace: false,
   error: null,
   supportTasks: null,
-  isActionAvailable: jest.fn(() => true),
+  isActionAvailable: vi.fn(() => true),
   isLoading: false,
   runsAggregated: null,
-  refetchRunsAggregated: jest.fn(),
+  refetchRunsAggregated: vi.fn(),
 };
 
 const mockRecceInstanceContext = {
@@ -55,8 +57,8 @@ let mockRecceServerFlagData = {
 };
 
 // Mock the hooks used by NavBar
-jest.mock("@datarecce/ui/contexts", () => ({
-  useRouteConfig: jest.fn(() => ({ basePath: "" })),
+vi.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: vi.fn(() => ({ basePath: "" })),
   useLineageGraphContext: () => mockLineageGraphContext,
   useRecceInstanceContext: () => mockRecceInstanceContext,
   useRecceServerFlag: () => ({
@@ -65,7 +67,7 @@ jest.mock("@datarecce/ui/contexts", () => ({
   }),
 }));
 
-jest.mock("@datarecce/ui/lib/api/track", () => ({
+vi.mock("@datarecce/ui/lib/api/track", () => ({
   EXPLORE_ACTION: {
     ROW_COUNT: "row_count",
     ROW_COUNT_DIFF: "row_count_diff",
@@ -74,12 +76,13 @@ jest.mock("@datarecce/ui/lib/api/track", () => ({
   EXPLORE_SOURCE: {
     LINEAGE_VIEW_TOP_BAR: "lineage_view_top_bar",
   },
-  trackExploreAction: jest.fn(),
-  trackNavigation: jest.fn(),
+  trackExploreAction: vi.fn(),
+  trackNavigation: vi.fn(),
 }));
 
-jest.mock("@datarecce/ui/api", () => ({
-  listChecks: jest.fn(() => Promise.resolve([])),
+vi.mock("@datarecce/ui/api", () => ({
+  listChecks: vi.fn(() => Promise.resolve([])),
+  useChecks: vi.fn(() => ({ data: [], isLoading: false })),
   cacheKeys: {
     rowCount: (model: string) => ["row_count", model],
     lineage: () => ["lineage"],
@@ -96,23 +99,23 @@ jest.mock("@datarecce/ui/api", () => ({
 }));
 
 // Mock components that might cause issues in tests
-jest.mock("@datarecce/ui/components/app/EnvInfo", () => ({
+vi.mock("@datarecce/ui/components/app/EnvInfo", () => ({
   EnvInfo: () => <div data-testid="env-info">EnvInfo</div>,
 }));
 
-jest.mock("@datarecce/ui/components/app/Filename", () => ({
+vi.mock("@datarecce/ui/components/app/Filename", () => ({
   Filename: () => <div data-testid="filename">Filename</div>,
 }));
 
-jest.mock("@datarecce/ui/components/app/StateExporter", () => ({
+vi.mock("@datarecce/ui/components/app/StateExporter", () => ({
   StateExporter: () => <div data-testid="state-exporter">StateExporter</div>,
 }));
 
-jest.mock("@datarecce/ui/components/app/StateSharing", () => ({
+vi.mock("@datarecce/ui/components/app/StateSharing", () => ({
   TopLevelShare: () => <div data-testid="top-level-share">TopLevelShare</div>,
 }));
 
-jest.mock("@datarecce/ui/components/app/StateSynchronizer", () => ({
+vi.mock("@datarecce/ui/components/app/StateSynchronizer", () => ({
   StateSynchronizer: () => (
     <div data-testid="state-synchronizer">StateSynchronizer</div>
   ),
@@ -147,7 +150,7 @@ function renderWithProviders(ui: React.ReactElement) {
 describe("NavBar Tab Navigation", () => {
   beforeEach(() => {
     global.mockNextNavigation.reset();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Reset the mock data
     mockRecceServerFlagData = {
       single_env_onboarding: false,

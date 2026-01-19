@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
+import { vi } from "vitest";
 import { HSplit, VSplit } from "../Split";
 
 // Mock react-split since it's a third-party component
-jest.mock("react-split", () => ({
+vi.mock("react-split", () => ({
   __esModule: true,
   default: ({
     children,

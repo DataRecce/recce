@@ -10,6 +10,8 @@
  * packages/ui/src/hooks/__tests__/useMultiNodesAction.test.ts
  */
 
+import { type MockedFunction, vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
@@ -23,13 +25,13 @@ const mockActionState = {
   actions: {},
 };
 
-const mockRunRowCount = jest.fn();
-const mockRunRowCountDiff = jest.fn();
-const mockRunValueDiff = jest.fn();
-const mockAddLineageDiffCheck = jest.fn();
-const mockAddSchemaDiffCheck = jest.fn();
-const mockCancel = jest.fn();
-const mockReset = jest.fn();
+const mockRunRowCount = vi.fn();
+const mockRunRowCountDiff = vi.fn();
+const mockRunValueDiff = vi.fn();
+const mockAddLineageDiffCheck = vi.fn();
+const mockAddSchemaDiffCheck = vi.fn();
+const mockCancel = vi.fn();
+const mockReset = vi.fn();
 
 // Capture the options passed to the base hook
 let capturedOptions: {
@@ -40,8 +42,8 @@ let capturedOptions: {
   trackingSource?: string;
 } = {};
 
-jest.mock("@datarecce/ui/hooks/useMultiNodesAction", () => ({
-  useMultiNodesAction: jest.fn((nodes, options) => {
+vi.mock("@datarecce/ui/hooks/useMultiNodesAction", () => ({
+  useMultiNodesAction: vi.fn((nodes, options) => {
     capturedOptions = options;
     return {
       actionState: mockActionState,
@@ -57,8 +59,8 @@ jest.mock("@datarecce/ui/hooks/useMultiNodesAction", () => ({
 }));
 
 // Mock tracking functions
-jest.mock("@datarecce/ui/lib/api/track", () => ({
-  trackExploreAction: jest.fn(),
+vi.mock("@datarecce/ui/lib/api/track", () => ({
+  trackExploreAction: vi.fn(),
   EXPLORE_ACTION: {
     ROW_COUNT: "row_count",
     ROW_COUNT_DIFF: "row_count_diff",
@@ -83,7 +85,7 @@ import {
 import { renderHook } from "@testing-library/react";
 
 // Get the mocked function for assertions
-const mockTrackExploreAction = trackExploreAction as jest.MockedFunction<
+const mockTrackExploreAction = trackExploreAction as MockedFunction<
   typeof trackExploreAction
 >;
 
@@ -136,9 +138,9 @@ const createMockNode = (
 // ============================================================================
 
 describe("useMultiNodesAction (OSS wrapper)", () => {
-  const mockOnActionStarted = jest.fn();
-  const mockOnActionNodeUpdated = jest.fn();
-  const mockOnActionCompleted = jest.fn();
+  const mockOnActionStarted = vi.fn();
+  const mockOnActionNodeUpdated = vi.fn();
+  const mockOnActionCompleted = vi.fn();
 
   const defaultCallbacks = {
     onActionStarted: mockOnActionStarted,
@@ -147,7 +149,7 @@ describe("useMultiNodesAction (OSS wrapper)", () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     capturedOptions = {};
   });
 

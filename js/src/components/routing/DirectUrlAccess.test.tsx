@@ -5,27 +5,32 @@
  * particularly for routes with query parameters like /checks?id=xxx
  */
 
+import { vi } from "vitest";
+
 // Mock the API and context hooks
-jest.mock("@datarecce/ui/api", () => ({
-  listChecks: jest.fn(() =>
+vi.mock("@datarecce/ui/api", () => ({
+  listChecks: vi.fn(() =>
     Promise.resolve([
       { check_id: "check-1", name: "Check 1", type: "schema_diff" },
       { check_id: "check-2", name: "Check 2", type: "row_count" },
       { check_id: "abc-123", name: "Target Check", type: "query_diff" },
     ]),
   ),
-  reorderChecks: jest.fn(() => Promise.resolve()),
+  reorderChecks: vi.fn(() => Promise.resolve()),
 }));
 
 const mockRecceCheckContext = {
   latestSelectedCheckId: null as string | null,
-  setLatestSelectedCheckId: jest.fn(),
+  setLatestSelectedCheckId: vi.fn(),
 };
 
-jest.mock("@datarecce/ui/hooks", () => ({
-  ...jest.requireActual("@datarecce/ui/hooks"),
-  useRecceCheckContext: () => mockRecceCheckContext,
-}));
+vi.mock("@datarecce/ui/hooks", async () => {
+  const actual = await vi.importActual("@datarecce/ui/hooks");
+  return {
+    ...(actual as Record<string, unknown>),
+    useRecceCheckContext: () => mockRecceCheckContext,
+  };
+});
 
 describe("Direct URL Access - Query Parameters", () => {
   beforeEach(() => {

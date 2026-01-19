@@ -10,13 +10,15 @@
  * - Edit/delete buttons shown for author
  */
 
+import { vi } from "vitest";
+
 // Mock useIsDark hook
-jest.mock("../../../hooks/useIsDark", () => ({
+vi.mock("../../../hooks/useIsDark", () => ({
   useIsDark: () => false,
 }));
 
 // Mock date-fns to return predictable relative times
-jest.mock("date-fns", () => ({
+vi.mock("date-fns", () => ({
   formatDistanceToNow: () => "5 minutes ago",
 }));
 
@@ -208,7 +210,7 @@ describe("TimelineEvent", () => {
   describe("comment editing", () => {
     it("shows edit button for author", async () => {
       const user = userEvent.setup();
-      const onEdit = jest.fn();
+      const onEdit = vi.fn();
 
       render(
         <TimelineEvent
@@ -242,7 +244,7 @@ describe("TimelineEvent", () => {
             actor: { user_id: "user-2", fullname: "Jane Doe" },
           })}
           currentUserId="user-1"
-          onEdit={jest.fn()}
+          onEdit={vi.fn()}
         />,
       );
 
@@ -264,7 +266,7 @@ describe("TimelineEvent", () => {
             actor: { user_id: "user-1", fullname: "John Doe" },
           })}
           currentUserId="user-1"
-          onDelete={jest.fn()}
+          onDelete={vi.fn()}
         />,
       );
 
@@ -290,7 +292,7 @@ describe("TimelineEvent", () => {
             actor: { user_id: "user-1", fullname: "John Doe" },
           })}
           currentUserId="user-1"
-          onDelete={jest.fn()}
+          onDelete={vi.fn()}
         />,
       );
 
@@ -302,7 +304,7 @@ describe("TimelineEvent", () => {
 
     it("calls onDelete when confirmed", async () => {
       const user = userEvent.setup();
-      const onDelete = jest.fn().mockResolvedValue(undefined);
+      const onDelete = vi.fn().mockResolvedValue(undefined);
 
       render(
         <TimelineEvent

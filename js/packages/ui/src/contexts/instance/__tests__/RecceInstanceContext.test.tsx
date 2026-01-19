@@ -9,12 +9,13 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import { type MockedFunction, vi } from "vitest";
 
 import type { RecceInstanceInfo } from "../../../api/instanceInfo";
 
 // Mock the useRecceInstanceInfo hook which fetches data
-jest.mock("../useRecceInstanceInfo", () => ({
-  useRecceInstanceInfo: jest.fn(),
+vi.mock("../useRecceInstanceInfo", () => ({
+  useRecceInstanceInfo: vi.fn(),
 }));
 
 import {
@@ -23,7 +24,7 @@ import {
 } from "../RecceInstanceContext";
 import { useRecceInstanceInfo } from "../useRecceInstanceInfo";
 
-const mockUseRecceInstanceInfo = useRecceInstanceInfo as jest.MockedFunction<
+const mockUseRecceInstanceInfo = useRecceInstanceInfo as MockedFunction<
   typeof useRecceInstanceInfo
 >;
 
@@ -86,7 +87,7 @@ function TestConsumer() {
 
 describe("RecceInstanceContext (@datarecce/ui)", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("loading state", () => {

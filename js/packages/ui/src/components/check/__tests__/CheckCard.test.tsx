@@ -5,6 +5,7 @@
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 import { CheckCard, type CheckCardData } from "../CheckCard";
 
 const baseCheck: CheckCardData = {
@@ -23,7 +24,7 @@ describe("CheckCard", () => {
 
   it("invokes onClick with the check id", async () => {
     const user = userEvent.setup();
-    const handleClick = jest.fn();
+    const handleClick = vi.fn();
 
     render(<CheckCard check={baseCheck} onClick={handleClick} />);
 
@@ -34,7 +35,7 @@ describe("CheckCard", () => {
 
   it("does not invoke onClick when disabled", async () => {
     const user = userEvent.setup();
-    const handleClick = jest.fn();
+    const handleClick = vi.fn();
 
     render(
       <CheckCard check={baseCheck} onClick={handleClick} disabled={true} />,
@@ -47,7 +48,7 @@ describe("CheckCard", () => {
 
   it("invokes onApprovalChange when toggled", async () => {
     const user = userEvent.setup();
-    const handleApprovalChange = jest.fn();
+    const handleApprovalChange = vi.fn();
 
     render(
       <CheckCard

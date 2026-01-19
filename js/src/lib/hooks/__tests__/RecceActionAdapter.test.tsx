@@ -21,34 +21,35 @@ import {
   waitFor,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { type Mock, type Mocked, type MockedFunction, vi } from "vitest";
 
 // Mock the API functions from @datarecce/ui/api
-jest.mock("@datarecce/ui/api", () => {
-  const actual = jest.requireActual("@datarecce/ui/api");
+vi.mock("@datarecce/ui/api", async () => {
+  const actual = await vi.importActual("@datarecce/ui/api");
   return {
     ...actual,
-    submitRun: jest.fn(),
-    searchRuns: jest.fn(),
-    cacheKeys: actual.cacheKeys,
+    submitRun: vi.fn(),
+    searchRuns: vi.fn(),
+    cacheKeys: (actual as Record<string, unknown>).cacheKeys,
   };
 });
 
 // Mock the toaster
-jest.mock("@datarecce/ui/components/ui/Toaster", () => ({
+vi.mock("@datarecce/ui/components/ui/Toaster", () => ({
   toaster: {
-    create: jest.fn(),
+    create: vi.fn(),
   },
 }));
 
 // Mock the run registry
-jest.mock("@datarecce/ui/components/run", () => ({
-  findByRunType: jest.fn((type: string) => ({
+vi.mock("@datarecce/ui/components/run", () => ({
+  findByRunType: vi.fn((type: string) => ({
     title: `${type} Title`,
     icon: () => null,
     RunResultView: () => <div>Result View</div>,
     RunForm: undefined,
   })),
-  RunModalOss: jest.fn(({ isOpen, onClose, title }) =>
+  RunModalOss: vi.fn(({ isOpen, onClose, title }) =>
     isOpen ? (
       <div data-testid="run-modal">
         <span data-testid="modal-title">{title}</span>
@@ -61,10 +62,10 @@ jest.mock("@datarecce/ui/components/run", () => ({
 }));
 
 // Mock next/navigation
-jest.mock("next/navigation", () => ({
-  usePathname: jest.fn(() => "/lineage"),
-  useRouter: jest.fn(() => ({
-    push: jest.fn(),
+vi.mock("next/navigation", () => ({
+  usePathname: vi.fn(() => "/lineage"),
+  useRouter: vi.fn(() => ({
+    push: vi.fn(),
   })),
 }));
 
@@ -77,22 +78,22 @@ import { useRecceActionContext } from "@datarecce/ui/contexts";
 import { RecceActionAdapter } from "@datarecce/ui/hooks";
 import { usePathname, useRouter } from "next/navigation";
 
-const mockSubmitRun = submitRun as jest.MockedFunction<typeof submitRun>;
-const mockSearchRuns = searchRuns as jest.MockedFunction<typeof searchRuns>;
-const mockFindByRunType = findByRunType as jest.Mock;
-const mockToaster = toaster as jest.Mocked<typeof toaster>;
-const mockUsePathname = usePathname as jest.MockedFunction<typeof usePathname>;
-const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
+const mockSubmitRun = submitRun as MockedFunction<typeof submitRun>;
+const mockSearchRuns = searchRuns as MockedFunction<typeof searchRuns>;
+const mockFindByRunType = findByRunType as Mock;
+const mockToaster = toaster as Mocked<typeof toaster>;
+const mockUsePathname = usePathname as MockedFunction<typeof usePathname>;
+const mockUseRouter = useRouter as MockedFunction<typeof useRouter>;
 
 const createMockRouter = (
   overrides: Partial<ReturnType<typeof useRouter>> = {},
 ) => ({
-  back: jest.fn(),
-  forward: jest.fn(),
-  prefetch: jest.fn(),
-  push: jest.fn(),
-  refresh: jest.fn(),
-  replace: jest.fn(),
+  back: vi.fn(),
+  forward: vi.fn(),
+  prefetch: vi.fn(),
+  push: vi.fn(),
+  refresh: vi.fn(),
+  replace: vi.fn(),
   ...overrides,
 });
 
@@ -181,7 +182,7 @@ function TestConsumer() {
 
 describe("RecceActionAdapter", () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Reset router mocks
     mockUsePathname.mockReturnValue("/lineage");
     mockUseRouter.mockReturnValue(createMockRouter());
@@ -838,7 +839,7 @@ describe("RecceActionAdapter", () => {
      * and the handler returns undefined (not the run_id) to prevent double calls.
      */
     it("sets run result state and navigates when on lineage subpath", async () => {
-      const mockPush = jest.fn();
+      const mockPush = vi.fn();
       mockUsePathname.mockReturnValue("/lineage/node/test");
       mockUseRouter.mockReturnValue(createMockRouter({ push: mockPush }));
 
@@ -887,7 +888,7 @@ describe("RecceActionAdapter", () => {
     });
 
     it("does not navigate when not on lineage path", async () => {
-      const mockPush = jest.fn();
+      const mockPush = vi.fn();
       mockUsePathname.mockReturnValue("/checks");
       mockUseRouter.mockReturnValue(createMockRouter({ push: mockPush }));
 

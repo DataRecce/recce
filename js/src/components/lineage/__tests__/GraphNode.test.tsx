@@ -14,12 +14,14 @@
  * Source of truth: OSS functionality - these tests document current behavior
  */
 
+import { type Mock, vi } from "vitest";
+
 // ============================================================================
 // Mocks - MUST be set up before imports
 // ============================================================================
 
 // Mock @xyflow/react
-jest.mock("@xyflow/react", () => ({
+vi.mock("@xyflow/react", () => ({
   Handle: ({ type, position }: { type: string; position: string }) => (
     <div data-testid={`handle-${type}`} data-position={position} />
   ),
@@ -29,17 +31,17 @@ jest.mock("@xyflow/react", () => ({
     Top: "top",
     Bottom: "bottom",
   },
-  useStore: jest.fn(),
+  useStore: vi.fn(),
 }));
 
 // Mock @datarecce/ui/hooks
-jest.mock("@datarecce/ui/hooks", () => ({
-  useThemeColors: jest.fn(),
+vi.mock("@datarecce/ui/hooks", () => ({
+  useThemeColors: vi.fn(),
 }));
 
 // Mock @datarecce/ui/utils
-jest.mock("@datarecce/ui/utils", () => ({
-  deltaPercentageString: jest.fn((base, current) => {
+vi.mock("@datarecce/ui/utils", () => ({
+  deltaPercentageString: vi.fn((base, current) => {
     if (base === current) return "=";
     const delta = ((current - base) / base) * 100;
     return `${delta > 0 ? "+" : ""}${delta.toFixed(1)}%`;
@@ -47,15 +49,15 @@ jest.mock("@datarecce/ui/utils", () => ({
 }));
 
 // Mock LineageViewContext (included with other @datarecce/ui/contexts mocks)
-jest.mock("@datarecce/ui/contexts", () => ({
-  useRouteConfig: jest.fn(() => ({ basePath: "" })),
-  useLineageGraphContext: jest.fn(),
-  useLineageViewContextSafe: jest.fn(),
+vi.mock("@datarecce/ui/contexts", () => ({
+  useRouteConfig: vi.fn(() => ({ basePath: "" })),
+  useLineageGraphContext: vi.fn(),
+  useLineageViewContextSafe: vi.fn(),
 }));
 
 // Mock @datarecce/ui/components/lineage
-jest.mock("@datarecce/ui/components/lineage/nodes", () => {
-  const MockLineageNodeInline = jest
+vi.mock("@datarecce/ui/components/lineage/nodes", () => {
+  const MockLineageNodeInline = vi
     .fn()
     .mockImplementation(({ id, data, actionTag, runsAggregatedTag }) => (
       <div data-testid={`lineage-node-${id}`}>
@@ -71,7 +73,7 @@ jest.mock("@datarecce/ui/components/lineage/nodes", () => {
       </div>
     ));
   // Mock ActionTag component for testing action display
-  const MockActionTag = jest
+  const MockActionTag = vi
     .fn()
     .mockImplementation(
       ({
@@ -123,20 +125,21 @@ jest.mock("@datarecce/ui/components/lineage/nodes", () => {
 });
 
 // Mock run registry
-jest.mock("@datarecce/ui/components/run", () => ({
-  findByRunType: jest.fn(() => ({
+vi.mock("@datarecce/ui/components/run", () => ({
+  findByRunType: vi.fn(() => ({
     icon: () => <span data-testid="run-type-icon">Icon</span>,
   })),
 }));
 
-// Mock @datarecce/ui - add isSchemaChanged to existing mock
-jest.mock("@datarecce/ui", () => ({
-  isSchemaChanged: jest.fn(() => false),
+// Mock @datarecce/ui - add isSchemaChanged and COLUMN_HEIGHT to existing mock
+vi.mock("@datarecce/ui", () => ({
+  isSchemaChanged: vi.fn(() => false),
+  COLUMN_HEIGHT: 28,
 }));
 
 // Mock MUI theme token
-jest.mock("@datarecce/ui/components/ui/mui-theme", () => ({
-  token: jest.fn((path: string) => {
+vi.mock("@datarecce/ui/components/ui/mui-theme", () => ({
+  token: vi.fn((path: string) => {
     const tokens: Record<string, string> = {
       "colors.gray.400": "#9ca3af",
       "colors.gray.700": "#374151",
@@ -166,7 +169,7 @@ import { useStore } from "@xyflow/react";
 import React from "react";
 
 // Cast the mocked LineageNode for assertions
-const mockedLineageNode = LineageNode as unknown as jest.Mock;
+const mockedLineageNode = LineageNode as unknown as Mock;
 
 // ============================================================================
 // Test Fixtures
@@ -246,18 +249,18 @@ const createMockContext = (
   overrides: Partial<ReturnType<typeof useLineageViewContextSafe>> = {},
 ) => ({
   interactive: true,
-  selectNode: jest.fn(),
+  selectNode: vi.fn(),
   selectMode: undefined,
   focusedNode: undefined,
-  getNodeAction: jest.fn(() => undefined),
-  getNodeColumnSet: jest.fn(() => new Set<string>()),
-  isNodeHighlighted: jest.fn(() => true),
-  isNodeSelected: jest.fn(() => false),
-  isNodeShowingChangeAnalysis: jest.fn(() => false),
-  showContextMenu: jest.fn(),
+  getNodeAction: vi.fn(() => undefined),
+  getNodeColumnSet: vi.fn(() => new Set<string>()),
+  isNodeHighlighted: vi.fn(() => true),
+  isNodeSelected: vi.fn(() => false),
+  isNodeShowingChangeAnalysis: vi.fn(() => false),
+  showContextMenu: vi.fn(),
   viewOptions: {},
   cll: undefined,
-  showColumnLevelLineage: jest.fn(),
+  showColumnLevelLineage: vi.fn(),
   ...overrides,
 });
 
@@ -272,13 +275,13 @@ const createMockLineageGraphContext = (overrides = {}) => ({
 // ============================================================================
 
 describe("GraphNode", () => {
-  const mockUseStore = useStore as jest.Mock;
-  const mockUseThemeColors = useThemeColors as jest.Mock;
-  const mockUseLineageViewContextSafe = useLineageViewContextSafe as jest.Mock;
-  const mockUseLineageGraphContext = useLineageGraphContext as jest.Mock;
+  const mockUseStore = useStore as Mock;
+  const mockUseThemeColors = useThemeColors as Mock;
+  const mockUseLineageViewContextSafe = useLineageViewContextSafe as Mock;
+  const mockUseLineageGraphContext = useLineageGraphContext as Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Default mock implementations
     mockUseStore.mockReturnValue(true); // showContent = true (zoom > 30%)
@@ -350,7 +353,7 @@ describe("GraphNode", () => {
       ];
 
       for (const resourceType of resourceTypes) {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
         mockUseStore.mockReturnValue(true);
         mockUseThemeColors.mockReturnValue(mockThemeColors);
         mockUseLineageViewContextSafe.mockReturnValue(createMockContext());
@@ -386,7 +389,7 @@ describe("GraphNode", () => {
     });
 
     it("checkbox toggles selection in selecting mode", () => {
-      const mockSelectNode = jest.fn();
+      const mockSelectNode = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           interactive: true,
@@ -409,15 +412,15 @@ describe("GraphNode", () => {
     });
 
     it("checkbox does not toggle selection in action_result mode", () => {
-      const mockSelectNode = jest.fn();
+      const mockSelectNode = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           interactive: true,
           selectMode: "action_result",
           selectNode: mockSelectNode,
-          getNodeAction: jest.fn(() => ({
-            mode: "per_node",
-            status: "success",
+          getNodeAction: vi.fn(() => ({
+            mode: "per_node" as const,
+            status: "success" as const,
           })),
         }),
       );
@@ -441,7 +444,7 @@ describe("GraphNode", () => {
         createMockContext({
           interactive: true,
           selectMode: "selecting",
-          isNodeSelected: jest.fn(() => true),
+          isNodeSelected: vi.fn(() => true),
         }),
       );
       const props = createMockNodeProps();
@@ -458,7 +461,7 @@ describe("GraphNode", () => {
     it("applies highlighted styling when node is highlighted", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
-          isNodeHighlighted: jest.fn(() => true),
+          isNodeHighlighted: vi.fn(() => true),
         }),
       );
       const props = createMockNodeProps();
@@ -471,7 +474,7 @@ describe("GraphNode", () => {
     });
 
     it("applies dim filter when node is not highlighted", () => {
-      const mockIsNodeHighlighted = jest.fn(() => false);
+      const mockIsNodeHighlighted = vi.fn(() => false);
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           isNodeHighlighted: mockIsNodeHighlighted,
@@ -555,9 +558,9 @@ describe("GraphNode", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           selectMode: "action_result",
-          getNodeAction: jest.fn(() => ({
-            status: "running",
-            mode: "multi_nodes",
+          getNodeAction: vi.fn(() => ({
+            status: "running" as const,
+            mode: "multi_nodes" as const,
           })),
         }),
       );
@@ -574,7 +577,7 @@ describe("GraphNode", () => {
         createMockContext({
           selectMode: "action_result",
           // biome-ignore lint/suspicious/noExplicitAny: Mock returns undefined for testing no-action case
-          getNodeAction: jest.fn(() => undefined) as any,
+          getNodeAction: vi.fn(() => undefined) as any,
         }),
       );
       const props = createMockNodeProps();
@@ -596,7 +599,7 @@ describe("GraphNode", () => {
         createMockContext({
           selectMode: "action_result",
           // biome-ignore lint/suspicious/noExplicitAny: Simplified mock avoids complex Run type
-          getNodeAction: jest.fn(() => mockAction) as any,
+          getNodeAction: vi.fn(() => mockAction) as any,
         }),
       );
       const props = createMockNodeProps();
@@ -615,7 +618,7 @@ describe("GraphNode", () => {
 
   describe("context integration", () => {
     it("calls selectNode on checkbox click in selecting mode", () => {
-      const mockSelectNode = jest.fn();
+      const mockSelectNode = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           interactive: true,
@@ -638,7 +641,7 @@ describe("GraphNode", () => {
     });
 
     it("calls showContextMenu on kebab menu click", () => {
-      const mockShowContextMenu = jest.fn();
+      const mockShowContextMenu = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           showContextMenu: mockShowContextMenu,
@@ -657,7 +660,7 @@ describe("GraphNode", () => {
     });
 
     it("calls showColumnLevelLineage on impact radius click for modified nodes", () => {
-      const mockShowColumnLevelLineage = jest.fn();
+      const mockShowColumnLevelLineage = vi.fn();
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           showColumnLevelLineage: mockShowColumnLevelLineage,
@@ -706,7 +709,7 @@ describe("GraphNode", () => {
     it("passes showChangeAnalysis=true and changeCategory to LineageNode", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
-          isNodeShowingChangeAnalysis: jest.fn(() => true),
+          isNodeShowingChangeAnalysis: vi.fn(() => true),
           cll: {
             current: createMockCllCurrent("breaking"),
           },
@@ -724,7 +727,7 @@ describe("GraphNode", () => {
     it("passes non_breaking changeCategory to LineageNode", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
-          isNodeShowingChangeAnalysis: jest.fn(() => true),
+          isNodeShowingChangeAnalysis: vi.fn(() => true),
           cll: {
             current: createMockCllCurrent("non_breaking"),
           },
@@ -741,7 +744,7 @@ describe("GraphNode", () => {
     it("passes partial_breaking changeCategory to LineageNode", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
-          isNodeShowingChangeAnalysis: jest.fn(() => true),
+          isNodeShowingChangeAnalysis: vi.fn(() => true),
           cll: {
             current: createMockCllCurrent("partial_breaking"),
           },
@@ -758,7 +761,7 @@ describe("GraphNode", () => {
     it("passes unknown changeCategory to LineageNode", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
-          isNodeShowingChangeAnalysis: jest.fn(() => true),
+          isNodeShowingChangeAnalysis: vi.fn(() => true),
           cll: {
             current: createMockCllCurrent("unknown"),
           },
@@ -775,7 +778,7 @@ describe("GraphNode", () => {
     it("passes showChangeAnalysis=false when not showing change analysis", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
-          isNodeShowingChangeAnalysis: jest.fn(() => false),
+          isNodeShowingChangeAnalysis: vi.fn(() => false),
         }),
       );
       const props = createMockNodeProps();
@@ -887,7 +890,7 @@ describe("GraphNode", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
           selectMode: undefined,
-          isNodeShowingChangeAnalysis: jest.fn(() => false),
+          isNodeShowingChangeAnalysis: vi.fn(() => false),
         }),
       );
       mockUseLineageGraphContext.mockReturnValue(
@@ -943,7 +946,7 @@ describe("GraphNode", () => {
     it("renders column container when columns exist", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
-          getNodeColumnSet: jest.fn(() => new Set(["col1", "col2", "col3"])),
+          getNodeColumnSet: vi.fn(() => new Set(["col1", "col2", "col3"])),
         }),
       );
       const props = createMockNodeProps();
@@ -961,7 +964,7 @@ describe("GraphNode", () => {
     it("does not render column container when no columns", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
-          getNodeColumnSet: jest.fn(() => new Set()),
+          getNodeColumnSet: vi.fn(() => new Set<string>()),
         }),
       );
       const props = createMockNodeProps();
@@ -974,7 +977,7 @@ describe("GraphNode", () => {
     it("adjusts border radius when columns are shown", () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockContext({
-          getNodeColumnSet: jest.fn(() => new Set(["col1"])),
+          getNodeColumnSet: vi.fn(() => new Set(["col1"])),
         }),
       );
       const props = createMockNodeProps();

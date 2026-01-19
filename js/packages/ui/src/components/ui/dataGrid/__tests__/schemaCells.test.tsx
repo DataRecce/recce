@@ -12,6 +12,7 @@
 import { render, screen } from "@testing-library/react";
 import type { ICellRendererParams } from "ag-grid-community";
 import React from "react";
+import { vi } from "vitest";
 import type { RowObjectType } from "../../../../api";
 
 // Performance testing utilities
@@ -23,11 +24,11 @@ const performance = {
 // Mocks - Must be defined before imports that use them
 // ============================================================================
 
-jest.mock("../../../schema/ColumnNameCell", () => ({
+vi.mock("../../../schema/ColumnNameCell", () => ({
   ColumnNameCell: () => null,
 }));
 
-jest.mock("../../../../api/info", () => ({}));
+vi.mock("../../../../api/info", () => ({}));
 
 // Import after mocks
 import {
