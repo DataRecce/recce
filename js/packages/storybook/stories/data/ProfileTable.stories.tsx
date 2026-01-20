@@ -10,7 +10,7 @@ import {
 } from "./fixtures";
 
 const meta: Meta<typeof ProfileTable> = {
-  title: "Data/ProfileTable",
+  title: "Visualizations/Data/ProfileTable",
   component: ProfileTable,
   tags: ["autodocs"],
   parameters: {
@@ -56,7 +56,14 @@ const meta: Meta<typeof ProfileTable> = {
   },
   decorators: [
     (Story) => (
-      <div style={{ height: "600px", width: "100%", padding: "20px" }}>
+      <div
+        style={{
+          height: "100vh",
+          minHeight: "600px",
+          width: "100%",
+          padding: "20px",
+        }}
+      >
         <Story />
       </div>
     ),

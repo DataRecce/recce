@@ -1,10 +1,11 @@
 import { TopKDiffForm } from "@datarecce/ui/components";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
+import { MockLineageProvider } from "../mocks/MockProviders";
 import { createTopKDiffParams } from "./fixtures";
 
 const meta: Meta<typeof TopKDiffForm> = {
-  title: "Top-K/TopKDiffForm",
+  title: "Visualizations/Top-K/TopKDiffForm",
   component: TopKDiffForm,
   tags: ["autodocs"],
   parameters: {
@@ -32,9 +33,11 @@ const meta: Meta<typeof TopKDiffForm> = {
   },
   decorators: [
     (Story) => (
-      <div style={{ width: "500px" }}>
-        <Story />
-      </div>
+      <MockLineageProvider>
+        <div style={{ width: "500px" }}>
+          <Story />
+        </div>
+      </MockLineageProvider>
     ),
   ],
 };

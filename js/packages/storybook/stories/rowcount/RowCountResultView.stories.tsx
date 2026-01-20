@@ -12,7 +12,7 @@ import {
 // ============================================
 
 const meta: Meta<typeof RowCountResultView> = {
-  title: "RowCount/RowCountResultView",
+  title: "Visualizations/RowCount/RowCountResultView",
   component: RowCountResultView,
   tags: ["autodocs"],
   parameters: {
@@ -32,7 +32,14 @@ const meta: Meta<typeof RowCountResultView> = {
   },
   decorators: [
     (Story) => (
-      <div style={{ height: "600px", width: "100%", padding: "20px" }}>
+      <div
+        style={{
+          height: "100vh",
+          minHeight: "600px",
+          width: "100%",
+          padding: "20px",
+        }}
+      >
         <Story />
       </div>
     ),

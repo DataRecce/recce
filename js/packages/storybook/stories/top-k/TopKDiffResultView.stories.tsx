@@ -8,7 +8,7 @@ import {
 } from "./fixtures";
 
 const meta: Meta<typeof TopKDiffResultView> = {
-  title: "Top-K/TopKDiffResultView",
+  title: "Visualizations/Top-K/TopKDiffResultView",
   component: TopKDiffResultView,
   tags: ["autodocs"],
   parameters: {
@@ -36,7 +36,14 @@ const meta: Meta<typeof TopKDiffResultView> = {
   },
   decorators: [
     (Story) => (
-      <div style={{ height: "600px", width: "100%", padding: "20px" }}>
+      <div
+        style={{
+          height: "100vh",
+          minHeight: "600px",
+          width: "100%",
+          padding: "20px",
+        }}
+      >
         <Story />
       </div>
     ),

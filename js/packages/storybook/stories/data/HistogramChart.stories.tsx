@@ -10,7 +10,7 @@ import {
 } from "./fixtures";
 
 const meta: Meta<typeof HistogramChart> = {
-  title: "Data/HistogramChart",
+  title: "Visualizations/Data/HistogramChart",
   component: HistogramChart,
   tags: ["autodocs"],
   parameters: {

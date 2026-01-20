@@ -3,7 +3,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { createHistogramDiffResult, createHistogramDiffRun } from "./fixtures";
 
 const meta: Meta<typeof HistogramDiffResultView> = {
-  title: "Histogram/HistogramResultView",
+  title: "Visualizations/Histogram/HistogramResultView",
   component: HistogramDiffResultView,
   tags: ["autodocs"],
   parameters: {
@@ -23,7 +23,14 @@ const meta: Meta<typeof HistogramDiffResultView> = {
   },
   decorators: [
     (Story) => (
-      <div style={{ height: "600px", width: "100%", padding: "20px" }}>
+      <div
+        style={{
+          height: "100vh",
+          minHeight: "600px",
+          width: "100%",
+          padding: "20px",
+        }}
+      >
         <Story />
       </div>
     ),

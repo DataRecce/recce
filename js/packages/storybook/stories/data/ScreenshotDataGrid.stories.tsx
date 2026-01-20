@@ -14,7 +14,7 @@ import {
 } from "./fixtures";
 
 const meta: Meta<typeof ScreenshotDataGrid> = {
-  title: "Data/ScreenshotDataGrid",
+  title: "Visualizations/Data/ScreenshotDataGrid",
   component: ScreenshotDataGrid,
   tags: ["autodocs"],
   parameters: {
@@ -54,7 +54,14 @@ const meta: Meta<typeof ScreenshotDataGrid> = {
   },
   decorators: [
     (Story) => (
-      <div style={{ height: "600px", width: "100%", padding: "20px" }}>
+      <div
+        style={{
+          height: "100vh",
+          minHeight: "600px",
+          width: "100%",
+          padding: "20px",
+        }}
+      >
         <Story />
       </div>
     ),

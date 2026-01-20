@@ -27,8 +27,8 @@ export const createHistogramDiffResult = (
     total: 262,
   },
   current: {
-    counts: [12, 28, 48, 62, 52, 38, 22, 12, 6, 3],
-    total: 283,
+    counts: [5, 15, 60, 80, 70, 45, 25, 15, 8, 4],
+    total: 327,
   },
   min: 0,
   max: 1000,

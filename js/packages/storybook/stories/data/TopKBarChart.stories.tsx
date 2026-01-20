@@ -8,7 +8,7 @@ import {
 } from "./fixtures";
 
 const meta: Meta<typeof TopKBarChart> = {
-  title: "Data/TopKBarChart",
+  title: "Visualizations/Data/TopKBarChart",
   component: TopKBarChart,
   tags: ["autodocs"],
   parameters: {

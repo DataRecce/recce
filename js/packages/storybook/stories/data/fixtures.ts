@@ -253,6 +253,7 @@ export const createGridRow = (
   name: `Row ${index}`,
   value: Math.floor(Math.random() * 1000),
   status: index % 2 === 0 ? "active" : "inactive",
+  created_at: new Date(Date.now() - index * 86400000).toISOString(),
   ...overrides,
 });
 
@@ -278,12 +279,22 @@ export const generateGridRows = (count: number): DataGridRow[] => {
  * Sample grid rows with diff status
  */
 export const gridRowsWithDiff: DataGridRow[] = [
-  { __rowKey: "1", id: 1, name: "Added Row", value: 100, __status: "added" },
+  {
+    __rowKey: "1",
+    id: 1,
+    name: "Added Row",
+    value: 100,
+    status: "active",
+    created_at: new Date().toISOString(),
+    __status: "added",
+  },
   {
     __rowKey: "2",
     id: 2,
     name: "Removed Row",
     value: 200,
+    status: "inactive",
+    created_at: new Date().toISOString(),
     __status: "removed",
   },
   {
@@ -291,6 +302,8 @@ export const gridRowsWithDiff: DataGridRow[] = [
     id: 3,
     name: "Modified Row",
     value: 300,
+    status: "active",
+    created_at: new Date().toISOString(),
     __status: "modified",
   },
   {
@@ -298,6 +311,8 @@ export const gridRowsWithDiff: DataGridRow[] = [
     id: 4,
     name: "Unchanged Row",
     value: 400,
+    status: "inactive",
+    created_at: new Date().toISOString(),
     __status: "unchanged",
   },
 ];
