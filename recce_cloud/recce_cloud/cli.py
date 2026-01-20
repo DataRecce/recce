@@ -377,6 +377,18 @@ def init(org, project, status, clear):
     "If not provided, session will be created automatically using platform-specific APIs (GitHub/GitLab).",
 )
 @click.option(
+    "--session-name",
+    help="Session name to look up or create. If a session with this name exists, "
+    "uploads to it; otherwise prompts to create a new session (use --yes to skip prompt).",
+)
+@click.option(
+    "--yes",
+    "-y",
+    "skip_confirmation",
+    is_flag=True,
+    help="Skip confirmation prompts (auto-create session if not found).",
+)
+@click.option(
     "--cr",
     type=int,
     help="Change request number (PR/MR) (overrides auto-detection)",
@@ -392,13 +404,13 @@ def init(org, project, status, clear):
     is_flag=True,
     help="Show what would be uploaded without actually uploading",
 )
-def upload(target_path, session_id, cr, session_type, dry_run):
+def upload(target_path, session_id, session_name, skip_confirmation, cr, session_type, dry_run):
     """
     Upload dbt artifacts (manifest.json, catalog.json) to Recce Cloud.
 
     \b
     Authentication (auto-detected):
-    - RECCE_API_TOKEN env var or 'recce-cloud login' profile (for --session-id workflow)
+    - RECCE_API_TOKEN env var or 'recce-cloud login' profile (for --session-id/--session-name workflow)
     - GITHUB_TOKEN (GitHub Actions)
     - CI_JOB_TOKEN (GitLab CI)
 
@@ -410,8 +422,14 @@ def upload(target_path, session_id, cr, session_type, dry_run):
       # Upload production metadata from main branch
       recce-cloud upload --type prod
 
-      # Upload to specific session
+      # Upload to specific session by ID
       recce-cloud upload --session-id abc123
+
+      # Upload by session name (creates if not exists)
+      recce-cloud upload --session-name "my-evaluation-session"
+
+      # Auto-create session without confirmation
+      recce-cloud upload --session-name "new-session" --yes
 
       # Custom target path
       recce-cloud upload --target-path custom-target
@@ -512,8 +530,15 @@ def upload(target_path, session_id, cr, session_type, dry_run):
         # Display upload summary
         console.print("[cyan]Upload Workflow:[/cyan]")
         if session_id:
-            console.print("  • Upload to existing session")
+            console.print("  • Upload to existing session by ID")
             console.print(f"  • Session ID: {session_id}")
+        elif session_name:
+            console.print("  • Upload by session name (lookup or create)")
+            console.print(f"  • Session Name: {session_name}")
+            if skip_confirmation:
+                console.print("  • Auto-create if not exists (--yes flag)")
+            else:
+                console.print("  • Will prompt before creating if not exists")
         else:
             console.print("  • Auto-create session and upload")
             if ci_info and ci_info.platform in ["github-actions", "gitlab-ci"]:
@@ -531,7 +556,8 @@ def upload(target_path, session_id, cr, session_type, dry_run):
         console.print("[green]✓[/green] Dry run completed successfully")
         sys.exit(0)
 
-    # 5. Choose upload workflow based on whether session_id is provided
+    # 5. Choose upload workflow based on provided options
+    # Priority: --session-id > --session-name > platform-specific auto-detection
     if session_id:
         # Generic workflow: Upload to existing session using session ID
         # This workflow requires RECCE_API_TOKEN or logged-in profile
@@ -544,12 +570,36 @@ def upload(target_path, session_id, cr, session_type, dry_run):
             sys.exit(2)
 
         upload_to_existing_session(console, token, session_id, manifest_path, catalog_path, adapter_type, target_path)
+    elif session_name:
+        # Session name workflow: Look up session by name, create if not exists
+        # This workflow requires RECCE_API_TOKEN or logged-in profile, plus org/project config
+        from recce_cloud.auth.profile import get_api_token
+        from recce_cloud.upload import upload_with_session_name
+
+        token = os.getenv("RECCE_API_TOKEN") or get_api_token()
+        if not token:
+            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
+            console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
+            sys.exit(2)
+
+        upload_with_session_name(
+            console,
+            token,
+            session_name,
+            manifest_path,
+            catalog_path,
+            adapter_type,
+            target_path,
+            skip_confirmation=skip_confirmation,
+        )
     else:
         # Platform-specific workflow: Use platform APIs to create session and upload
         # This workflow MUST use CI job tokens (CI_JOB_TOKEN or GITHUB_TOKEN)
         if not ci_info or not ci_info.access_token:
             console.print("[red]Error:[/red] Platform-specific upload requires CI environment")
-            console.print("Either run in GitHub Actions/GitLab CI or provide --session-id for generic upload")
+            console.print(
+                "Either run in GitHub Actions/GitLab CI or provide --session-id/--session-name for generic upload"
+            )
             sys.exit(2)
 
         token = ci_info.access_token
@@ -559,6 +609,156 @@ def upload(target_path, session_id, cr, session_type, dry_run):
             console.print("[cyan]Info:[/cyan] Using CI_JOB_TOKEN for platform-specific authentication")
 
         upload_with_platform_apis(console, token, ci_info, manifest_path, catalog_path, adapter_type, target_path)
+
+
+@cloud_cli.command(name="list")
+@click.option(
+    "--type",
+    "session_type",
+    type=click.Choice(["cr", "prod", "dev"]),
+    help="Filter by session type (prod=base, cr=has PR link, dev=other)",
+)
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    help="Output in JSON format",
+)
+def list_sessions_cmd(session_type, output_json):
+    """
+    List sessions in the configured Recce Cloud project.
+
+    \b
+    Requires:
+    - RECCE_API_TOKEN env var or 'recce-cloud login'
+    - Project binding via 'recce-cloud init' or RECCE_ORG/RECCE_PROJECT env vars
+
+    \b
+    Examples:
+      # List all sessions
+      recce-cloud list
+
+      # List only production sessions
+      recce-cloud list --type prod
+
+      # Output as JSON
+      recce-cloud list --json
+    """
+    import json
+
+    from rich.table import Table
+
+    from recce_cloud.api.client import RecceCloudClient
+    from recce_cloud.auth.profile import get_api_token
+    from recce_cloud.config.resolver import ConfigurationError, resolve_config
+
+    console = Console()
+
+    # 1. Get API token
+    token = os.getenv("RECCE_API_TOKEN") or get_api_token()
+    if not token:
+        console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
+        console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
+        sys.exit(2)
+
+    # 2. Resolve org/project configuration
+    try:
+        config = resolve_config()
+        org = config.org
+        project = config.project
+    except ConfigurationError as e:
+        console.print("[red]Error:[/red] Could not resolve org/project configuration")
+        console.print(f"Reason: {e}")
+        console.print()
+        console.print("Run 'recce-cloud init' to bind this directory to a project,")
+        console.print("or set RECCE_ORG and RECCE_PROJECT environment variables")
+        sys.exit(2)
+
+    # 3. Initialize client and resolve IDs
+    try:
+        client = RecceCloudClient(token)
+
+        org_info = client.get_organization(org)
+        if not org_info:
+            console.print(f"[red]Error:[/red] Organization '{org}' not found or you don't have access")
+            sys.exit(2)
+        org_id = org_info["id"]
+
+        project_info = client.get_project(org_id, project)
+        if not project_info:
+            console.print(f"[red]Error:[/red] Project '{project}' not found in organization '{org}'")
+            sys.exit(2)
+        project_id = project_info["id"]
+
+    except Exception as e:
+        console.print(f"[red]Error:[/red] Failed to initialize: {e}")
+        sys.exit(2)
+
+    # Helper to derive session type from fields:
+    # - prod: is_base = True
+    # - cr: pr_link is not null
+    # - dev: everything else
+    def get_session_type(s):
+        if s.get("is_base"):
+            return "prod"
+        elif s.get("pr_link"):
+            return "cr"
+        else:
+            return "dev"
+
+    # 4. List sessions
+    try:
+        sessions = client.list_sessions(org_id, project_id)
+
+        if session_type:
+            sessions = [s for s in sessions if get_session_type(s) == session_type]
+    except Exception as e:
+        console.print(f"[red]Error:[/red] Failed to list sessions: {e}")
+        sys.exit(2)
+
+    # 5. Output results
+    if output_json:
+        console.print(json.dumps(sessions, indent=2, default=str))
+        sys.exit(0)
+
+    if not sessions:
+        console.print("[yellow]No sessions found[/yellow]")
+        if session_type:
+            console.print(f"(filtered by type: {session_type})")
+        sys.exit(0)
+
+    # Display as table
+    console.print(f"[cyan]Organization:[/cyan] {org}")
+    console.print(f"[cyan]Project:[/cyan] {project}")
+    console.print()
+
+    table = Table(title=f"Sessions ({len(sessions)} total)")
+    table.add_column("Name", style="cyan", no_wrap=True)
+    table.add_column("ID", style="dim")
+    table.add_column("Type", style="green")
+    table.add_column("Created At")
+    table.add_column("Adapter")
+
+    for session in sessions:
+        name = session.get("name", "-")
+        session_id = session.get("id", "-")
+        s_type = get_session_type(session)
+        created_at = session.get("created_at", "-")
+        if created_at and created_at != "-":
+            # Format datetime if present
+            try:
+                from datetime import datetime
+
+                dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                created_at = dt.strftime("%Y-%m-%d %H:%M")
+            except (ValueError, AttributeError):
+                pass
+        adapter = session.get("adapter_type", "-")
+
+        table.add_row(name or "(unnamed)", session_id, s_type, created_at, adapter or "-")
+
+    console.print(table)
+    sys.exit(0)
 
 
 @cloud_cli.command()
