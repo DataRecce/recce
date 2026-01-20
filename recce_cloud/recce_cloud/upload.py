@@ -2,6 +2,7 @@
 Upload helper functions for recce-cloud CLI.
 """
 
+import logging
 import os
 import sys
 
@@ -12,6 +13,8 @@ from recce_cloud.api.client import RecceCloudClient
 from recce_cloud.api.exceptions import RecceCloudException
 from recce_cloud.api.factory import create_platform_client
 from recce_cloud.config.resolver import ConfigurationError, resolve_config
+
+logger = logging.getLogger(__name__)
 
 
 def upload_to_existing_session(
@@ -281,18 +284,25 @@ def upload_with_session_name(
         if not org_info:
             console.print(f"[red]Error:[/red] Organization '{org}' not found or you don't have access")
             sys.exit(2)
-        org_id = org_info["id"]
+        org_id = org_info.get("id")
+        if not org_id:
+            console.print(f"[red]Error:[/red] Organization '{org}' response missing ID")
+            sys.exit(2)
 
         project_info = client.get_project(org_id, project)
         if not project_info:
             console.print(f"[red]Error:[/red] Project '{project}' not found in organization '{org}'")
             sys.exit(2)
-        project_id = project_info["id"]
+        project_id = project_info.get("id")
+        if not project_id:
+            console.print(f"[red]Error:[/red] Project '{project}' response missing ID")
+            sys.exit(2)
     except RecceCloudException as e:
         console.print("[red]Error:[/red] Failed to resolve organization/project")
         console.print(f"Reason: {e.reason}")
         sys.exit(2)
     except Exception as e:
+        logger.exception("Failed to resolve organization/project: %s", e)
         console.print("[red]Error:[/red] Failed to resolve organization/project")
         console.print(f"Reason: {e}")
         sys.exit(2)
@@ -306,6 +316,7 @@ def upload_with_session_name(
         console.print(f"Reason: {e.reason}")
         sys.exit(2)
     except Exception as e:
+        logger.exception("Failed to look up session: %s", e)
         console.print("[red]Error:[/red] Failed to look up session")
         console.print(f"Reason: {e}")
         sys.exit(2)

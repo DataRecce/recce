@@ -1177,6 +1177,322 @@ class TestDoctor(unittest.TestCase):
         self.assertIn("Token invalid or expired", result.output)
         self.assertIn("recce-cloud login", result.output)
 
+    def test_doctor_json_output_includes_suggestion(self):
+        """Test that doctor JSON output includes suggestion field."""
+        import json
+
+        env = {}
+
+        with patch.dict(os.environ, env, clear=True):
+            with patch("recce_cloud.auth.profile.get_api_token", return_value=None):
+                with patch("recce_cloud.config.project_config.get_project_binding", return_value=None):
+                    result = self.runner.invoke(cloud_cli, ["doctor", "--json"])
+
+        # Assertions
+        self.assertNotEqual(result.exit_code, 0, "Should fail when not logged in")
+
+        # Parse JSON output
+        data = json.loads(result.output)
+        self.assertEqual(data["login"]["status"], "fail")
+        self.assertIn("suggestion", data["login"])
+        self.assertIsNotNone(data["login"]["suggestion"])
+        self.assertIn("recce-cloud login", data["login"]["suggestion"])
+
+
+class TestGetProductionSessionId(unittest.TestCase):
+    """Test cases for _get_production_session_id helper function."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    def test_get_production_session_id_no_binding(self):
+        """Test _get_production_session_id when no project binding exists."""
+        from rich.console import Console
+
+        from recce_cloud.cli import _get_production_session_id
+
+        console = Console(force_terminal=True)
+        env = {}
+
+        with patch.dict(os.environ, env, clear=True):
+            with patch("recce_cloud.config.project_config.get_project_binding", return_value=None):
+                result = _get_production_session_id(console, "test_token")
+
+        self.assertIsNone(result)
+
+    def test_get_production_session_id_org_not_found(self):
+        """Test _get_production_session_id when organization is not found."""
+        from rich.console import Console
+
+        from recce_cloud.cli import _get_production_session_id
+
+        console = Console(force_terminal=True)
+        env = {}
+
+        with patch.dict(os.environ, env, clear=True):
+            with patch(
+                "recce_cloud.config.project_config.get_project_binding",
+                return_value={"org": "test-org", "project": "test-project"},
+            ):
+                with patch("recce_cloud.api.client.RecceCloudClient.get_organization", return_value=None):
+                    result = _get_production_session_id(console, "test_token")
+
+        self.assertIsNone(result)
+
+    def test_get_production_session_id_org_missing_id(self):
+        """Test _get_production_session_id when org response missing ID."""
+        from rich.console import Console
+
+        from recce_cloud.cli import _get_production_session_id
+
+        console = Console(force_terminal=True)
+        env = {}
+
+        with patch.dict(os.environ, env, clear=True):
+            with patch(
+                "recce_cloud.config.project_config.get_project_binding",
+                return_value={"org": "test-org", "project": "test-project"},
+            ):
+                with patch(
+                    "recce_cloud.api.client.RecceCloudClient.get_organization",
+                    return_value={"slug": "test-org"},  # Missing "id" key
+                ):
+                    result = _get_production_session_id(console, "test_token")
+
+        self.assertIsNone(result)
+
+    def test_get_production_session_id_project_not_found(self):
+        """Test _get_production_session_id when project is not found."""
+        from rich.console import Console
+
+        from recce_cloud.cli import _get_production_session_id
+
+        console = Console(force_terminal=True)
+        env = {}
+
+        with patch.dict(os.environ, env, clear=True):
+            with patch(
+                "recce_cloud.config.project_config.get_project_binding",
+                return_value={"org": "test-org", "project": "test-project"},
+            ):
+                with patch(
+                    "recce_cloud.api.client.RecceCloudClient.get_organization",
+                    return_value={"id": "org-123", "slug": "test-org"},
+                ):
+                    with patch("recce_cloud.api.client.RecceCloudClient.get_project", return_value=None):
+                        result = _get_production_session_id(console, "test_token")
+
+        self.assertIsNone(result)
+
+    def test_get_production_session_id_project_missing_id(self):
+        """Test _get_production_session_id when project response missing ID."""
+        from rich.console import Console
+
+        from recce_cloud.cli import _get_production_session_id
+
+        console = Console(force_terminal=True)
+        env = {}
+
+        with patch.dict(os.environ, env, clear=True):
+            with patch(
+                "recce_cloud.config.project_config.get_project_binding",
+                return_value={"org": "test-org", "project": "test-project"},
+            ):
+                with patch(
+                    "recce_cloud.api.client.RecceCloudClient.get_organization",
+                    return_value={"id": "org-123", "slug": "test-org"},
+                ):
+                    with patch(
+                        "recce_cloud.api.client.RecceCloudClient.get_project",
+                        return_value={"slug": "test-project"},  # Missing "id" key
+                    ):
+                        result = _get_production_session_id(console, "test_token")
+
+        self.assertIsNone(result)
+
+    def test_get_production_session_id_no_production_session(self):
+        """Test _get_production_session_id when no production session exists."""
+        from rich.console import Console
+
+        from recce_cloud.cli import _get_production_session_id
+
+        console = Console(force_terminal=True)
+        env = {}
+
+        with patch.dict(os.environ, env, clear=True):
+            with patch(
+                "recce_cloud.config.project_config.get_project_binding",
+                return_value={"org": "test-org", "project": "test-project"},
+            ):
+                with patch(
+                    "recce_cloud.api.client.RecceCloudClient.get_organization",
+                    return_value={"id": "org-123", "slug": "test-org"},
+                ):
+                    with patch(
+                        "recce_cloud.api.client.RecceCloudClient.get_project",
+                        return_value={"id": "proj-456", "slug": "test-project"},
+                    ):
+                        with patch(
+                            "recce_cloud.api.client.RecceCloudClient.list_sessions",
+                            return_value=[],  # No sessions
+                        ):
+                            result = _get_production_session_id(console, "test_token")
+
+        self.assertIsNone(result)
+
+    def test_get_production_session_id_session_missing_id(self):
+        """Test _get_production_session_id when session has no ID."""
+        from rich.console import Console
+
+        from recce_cloud.cli import _get_production_session_id
+
+        console = Console(force_terminal=True)
+        env = {}
+
+        with patch.dict(os.environ, env, clear=True):
+            with patch(
+                "recce_cloud.config.project_config.get_project_binding",
+                return_value={"org": "test-org", "project": "test-project"},
+            ):
+                with patch(
+                    "recce_cloud.api.client.RecceCloudClient.get_organization",
+                    return_value={"id": "org-123", "slug": "test-org"},
+                ):
+                    with patch(
+                        "recce_cloud.api.client.RecceCloudClient.get_project",
+                        return_value={"id": "proj-456", "slug": "test-project"},
+                    ):
+                        with patch(
+                            "recce_cloud.api.client.RecceCloudClient.list_sessions",
+                            return_value=[
+                                {
+                                    "name": "prod",
+                                    "is_base": True,
+                                    # Missing "id" key
+                                }
+                            ],
+                        ):
+                            result = _get_production_session_id(console, "test_token")
+
+        self.assertIsNone(result)
+
+    def test_get_production_session_id_success(self):
+        """Test _get_production_session_id returns session ID on success."""
+        from rich.console import Console
+
+        from recce_cloud.cli import _get_production_session_id
+
+        console = Console(force_terminal=True)
+        env = {}
+
+        with patch.dict(os.environ, env, clear=True):
+            with patch(
+                "recce_cloud.config.project_config.get_project_binding",
+                return_value={"org": "test-org", "project": "test-project"},
+            ):
+                with patch(
+                    "recce_cloud.api.client.RecceCloudClient.get_organization",
+                    return_value={"id": "org-123", "slug": "test-org"},
+                ):
+                    with patch(
+                        "recce_cloud.api.client.RecceCloudClient.get_project",
+                        return_value={"id": "proj-456", "slug": "test-project"},
+                    ):
+                        with patch(
+                            "recce_cloud.api.client.RecceCloudClient.list_sessions",
+                            return_value=[
+                                {
+                                    "id": "sess-prod-123",
+                                    "name": "prod",
+                                    "is_base": True,
+                                }
+                            ],
+                        ):
+                            result = _get_production_session_id(console, "test_token")
+
+        self.assertEqual(result, "sess-prod-123")
+
+    def test_get_production_session_id_api_exception(self):
+        """Test _get_production_session_id handles RecceCloudException."""
+        from rich.console import Console
+
+        from recce_cloud.api.exceptions import RecceCloudException
+        from recce_cloud.cli import _get_production_session_id
+
+        console = Console(force_terminal=True)
+        env = {}
+
+        with patch.dict(os.environ, env, clear=True):
+            with patch(
+                "recce_cloud.config.project_config.get_project_binding",
+                return_value={"org": "test-org", "project": "test-project"},
+            ):
+                with patch(
+                    "recce_cloud.api.client.RecceCloudClient.get_organization",
+                    side_effect=RecceCloudException("API Error", 500),
+                ):
+                    result = _get_production_session_id(console, "test_token")
+
+        self.assertIsNone(result)
+
+
+class TestDiagnosticServiceAPIErrors(unittest.TestCase):
+    """Test cases for diagnostic service API error handling."""
+
+    def test_diagnostic_service_org_missing_id(self):
+        """Test diagnostic service handles org response missing ID."""
+        from recce_cloud.services.diagnostic_service import DiagnosticService
+
+        env = {}
+
+        with patch.dict(os.environ, env, clear=True):
+            with patch("recce_cloud.auth.profile.get_api_token", return_value="test_token"):
+                with patch("recce_cloud.auth.login.check_login_status", return_value=(True, "test@example.com")):
+                    with patch(
+                        "recce_cloud.config.project_config.get_project_binding",
+                        return_value={"org": "test-org", "project": "test-project"},
+                    ):
+                        with patch(
+                            "recce_cloud.api.client.RecceCloudClient.get_organization",
+                            return_value={"slug": "test-org"},  # Missing "id" key
+                        ):
+                            service = DiagnosticService()
+                            # Manually set the token and org/project to simulate login/binding checks passing
+                            service._token = "test_token"
+                            service._org = "test-org"
+                            service._project = "test-project"
+
+                            prod_result, dev_result = service._check_sessions()
+
+        self.assertFalse(prod_result.passed)
+        self.assertIn("missing ID", prod_result.message)
+
+    def test_diagnostic_service_project_missing_id(self):
+        """Test diagnostic service handles project response missing ID."""
+        from recce_cloud.services.diagnostic_service import DiagnosticService
+
+        env = {}
+
+        with patch.dict(os.environ, env, clear=True):
+            with patch(
+                "recce_cloud.api.client.RecceCloudClient.get_organization",
+                return_value={"id": "org-123", "slug": "test-org"},
+            ):
+                with patch(
+                    "recce_cloud.api.client.RecceCloudClient.get_project",
+                    return_value={"slug": "test-project"},  # Missing "id" key
+                ):
+                    service = DiagnosticService()
+                    service._token = "test_token"
+                    service._org = "test-org"
+                    service._project = "test-project"
+
+                    prod_result, dev_result = service._check_sessions()
+
+        self.assertFalse(prod_result.passed)
+        self.assertIn("missing ID", prod_result.message)
+
 
 if __name__ == "__main__":
     unittest.main()

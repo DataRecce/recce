@@ -5,11 +5,14 @@ This service contains the business logic for health checks, separated from
 CLI presentation concerns.
 """
 
+import logging
 import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 class CheckStatus(Enum):
@@ -38,6 +41,7 @@ class CheckResult:
         result = {
             "status": self.status.value,
             "message": self.message,
+            "suggestion": self.suggestion,
         }
         result.update(self.details)
         return result
@@ -218,12 +222,16 @@ class DiagnosticService:
             org_info = client.get_organization(self._org)
             if not org_info:
                 raise RecceCloudException(f"Organization '{self._org}' not found", 404)
-            org_id = org_info["id"]
+            org_id = org_info.get("id")
+            if not org_id:
+                raise RecceCloudException(f"Organization '{self._org}' response missing ID", 500)
 
             project_info = client.get_project(org_id, self._project)
             if not project_info:
                 raise RecceCloudException(f"Project '{self._project}' not found", 404)
-            project_id = project_info["id"]
+            project_id = project_info.get("id")
+            if not project_id:
+                raise RecceCloudException(f"Project '{self._project}' response missing ID", 500)
 
             # List sessions
             sessions = client.list_sessions(org_id, project_id)
@@ -253,6 +261,7 @@ class DiagnosticService:
             return error_result, error_result
 
         except Exception as e:
+            logger.exception("Unexpected error during session check: %s", e)
             error_result = CheckResult(
                 status=CheckStatus.FAIL,
                 message=f"Unexpected error: {e}",
