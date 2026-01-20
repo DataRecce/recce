@@ -992,7 +992,7 @@ class TestDoctor(unittest.TestCase):
                                             "id": "sess-prod",
                                             "name": "prod",
                                             "is_base": True,
-                                            "adapter": "snowflake",
+                                            "adapter_type": "snowflake",
                                             "updated_at": "2026-01-20T10:00:00Z",
                                         },
                                         {
@@ -1045,7 +1045,7 @@ class TestDoctor(unittest.TestCase):
         self.assertNotEqual(result.exit_code, 0, "Should fail when no production session")
         self.assertIn("No production artifacts found", result.output)
         self.assertIn("dbt docs generate --target prod", result.output)
-        self.assertIn("recce-cloud upload --session-name prod", result.output)
+        self.assertIn("recce-cloud upload --type prod", result.output)
 
     def test_doctor_production_session_no_data(self):
         """Test doctor command when production session exists but has no data (adapter is null)."""
@@ -1072,7 +1072,7 @@ class TestDoctor(unittest.TestCase):
                                             "id": "sess-prod",
                                             "name": "prod",
                                             "is_base": True,
-                                            "adapter": None,  # No data uploaded yet
+                                            "adapter_type": None,  # No data uploaded yet
                                             "updated_at": "2026-01-20T10:00:00Z",
                                         },
                                     ]
@@ -1083,7 +1083,7 @@ class TestDoctor(unittest.TestCase):
         self.assertNotEqual(result.exit_code, 0, "Should fail when production session has no data")
         self.assertIn("Production session exists but has no data", result.output)
         self.assertIn("dbt docs generate --target prod", result.output)
-        self.assertIn("recce-cloud upload --session-name prod", result.output)
+        self.assertIn("recce-cloud upload --type prod", result.output)
 
     def test_doctor_json_output(self):
         """Test doctor command with JSON output."""
@@ -1111,7 +1111,7 @@ class TestDoctor(unittest.TestCase):
                                             "id": "sess-prod",
                                             "name": "prod",
                                             "is_base": True,
-                                            "adapter": "snowflake",
+                                            "adapter_type": "snowflake",
                                             "updated_at": "2026-01-20T10:00:00Z",
                                         },
                                         {
