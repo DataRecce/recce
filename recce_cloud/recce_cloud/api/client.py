@@ -418,6 +418,9 @@ class RecceCloudClient:
         """
         Get a session by its name.
 
+        Uses the list sessions endpoint with filtering to find a session
+        by name, which is unique within a project.
+
         Args:
             org_id: Organization ID or slug.
             project_id: Project ID or slug.
@@ -427,22 +430,17 @@ class RecceCloudClient:
             Session dictionary if found, None otherwise.
 
         Raises:
-            RecceCloudException: If the API call fails (except 404).
+            RecceCloudException: If the API call fails.
         """
-        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/by-name/{session_name}"
-        response = self._request("GET", api_url)
-
-        if response.status_code == 404:
-            # Session not found - return None instead of raising
-            return None
-        if response.status_code != 200:
-            raise RecceCloudException(
-                reason=response.text,
-                status_code=response.status_code,
-            )
-
-        data = response.json()
-        return data.get("session")
+        sessions = self.list_sessions(
+            org_id=org_id,
+            project_id=project_id,
+            session_name=session_name,
+            limit=1,
+        )
+        if sessions:
+            return sessions[0]
+        return None
 
     def create_session(
         self,

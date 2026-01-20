@@ -629,11 +629,12 @@ class RecceCloudClientTests(unittest.TestCase):
         client = RecceCloudClient(self.api_token)
         session_name = "my-test-session"
 
-        # Mock successful response
+        # Mock successful response from list_sessions endpoint
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "session": {"id": "session-123", "name": session_name},
+            "sessions": [{"id": "session-123", "name": session_name}],
+            "total": 1,
             "success": True,
         }
         mock_request.return_value = mock_response
@@ -643,27 +644,34 @@ class RecceCloudClientTests(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result["name"], session_name)
 
-        # Verify request used the by-name endpoint
+        # Verify request used the list sessions endpoint with name filter
         mock_request.assert_called_once()
         call_args = mock_request.call_args
         self.assertEqual(call_args[0][0], "GET")
-        self.assertIn("by-name", call_args[0][1])
-        self.assertIn(session_name, call_args[0][1])
+        self.assertIn("/sessions", call_args[0][1])
+        self.assertNotIn("by-name", call_args[0][1])
+        # Check that name filter is in params
+        self.assertIn("params", call_args[1])
+        self.assertEqual(call_args[1]["params"]["name"], session_name)
 
     @patch("recce_cloud.api.client.requests.request")
     def test_get_session_by_name_not_found(self, mock_request):
         """Test get_session_by_name with session not found."""
         client = RecceCloudClient(self.api_token)
 
-        # Mock 404 response
+        # Mock response with empty sessions list
         mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_response.text = "Session not found"
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "sessions": [],
+            "total": 0,
+            "success": True,
+        }
         mock_request.return_value = mock_response
 
         result = client.get_session_by_name(self.org_id, self.project_id, "nonexistent")
 
-        # Should return None instead of raising exception
+        # Should return None when no sessions match
         self.assertIsNone(result)
 
     @patch("recce_cloud.api.client.requests.request")
