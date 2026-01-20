@@ -56,16 +56,17 @@ const meta: Meta<typeof HistogramChart> = {
       description: "Hide axis labels and ticks",
       control: "boolean",
     },
-    theme: {
-      description: "Theme mode (light or dark)",
-      control: "select",
-      options: ["light", "dark"],
-    },
     height: {
       description: "Chart height in pixels",
       control: "number",
     },
   },
+  decorators: [
+    (Story, context) => {
+      const theme = context.globals.theme || "light";
+      return <Story args={{ ...context.args, theme }} />;
+    },
+  ],
 };
 
 export default meta;
@@ -148,27 +149,6 @@ export const UniformDistribution: Story = {
     currentData: createUniformHistogram(),
     samples: 300,
     height: 300,
-  },
-};
-
-// ============================================
-// Theme Variants
-// ============================================
-
-export const DarkTheme: Story = {
-  name: "Dark Theme",
-  args: {
-    title: "Temperature Distribution",
-    dataType: "numeric",
-    binEdges: sampleBinEdges,
-    baseData: createHistogramDataset({ label: "Base" }),
-    currentData: createHistogramDataset({ label: "Current" }),
-    samples: 262,
-    theme: "dark",
-    height: 300,
-  },
-  parameters: {
-    backgrounds: { default: "dark" },
   },
 };
 

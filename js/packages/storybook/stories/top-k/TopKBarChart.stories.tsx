@@ -37,22 +37,20 @@ const meta: Meta<typeof TopKBarChart> = {
       description: "Show comparison with base data",
       control: "boolean",
     },
-    theme: {
-      description: "Theme mode (light or dark)",
-      control: "select",
-      options: ["light", "dark"],
-    },
     title: {
       description: "Chart title",
       control: "text",
     },
   },
   decorators: [
-    (Story) => (
-      <div style={{ width: "800px", padding: "20px" }}>
-        <Story />
-      </div>
-    ),
+    (Story, context) => {
+      const theme = context.globals.theme || "light";
+      return (
+        <div style={{ width: "800px", padding: "20px" }}>
+          <Story args={{ ...context.args, theme }} />
+        </div>
+      );
+    },
   ],
 };
 
@@ -142,28 +140,6 @@ export const WithOthers: Story = {
           "When maxItems is less than total values, remaining values are grouped as '(others)'.",
       },
     },
-  },
-};
-
-// ============================================
-// Theme Variants
-// ============================================
-
-export const DarkTheme: Story = {
-  name: "Dark Theme",
-  args: {
-    baseData: createTopKDataset({
-      values: ["apple", "banana", "orange", "grape", "melon"],
-      counts: [90, 85, 55, 45, 25],
-      valids: 300,
-    }),
-    currentData: createTopKDataset(),
-    showComparison: true,
-    theme: "dark",
-    maxItems: 10,
-  },
-  parameters: {
-    backgrounds: { default: "dark" },
   },
 };
 
