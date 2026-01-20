@@ -6,7 +6,7 @@ import {
   ErrorBoundary as SentryErrorBoundary,
 } from "@sentry/react";
 import * as React from "react";
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 import { useThemeColors } from "../../hooks";
 
 /**
@@ -79,23 +79,6 @@ const Fallback: FallbackRender = (errorData) => {
       error={errorData.error as Error}
       resetError={errorData.resetError}
     />
-  );
-};
-
-/* For testing purposes only */
-// noinspection JSUnusedGlobalSymbols
-export const ErrorButton = () => {
-  const [a, setA] = useState<{ foo: string } | undefined>({ foo: "bar" });
-
-  return (
-    <Button
-      sx={{ position: "absolute", zIndex: 1 }}
-      onClick={() => {
-        setA(undefined);
-      }}
-    >
-      {a?.foo}
-    </Button>
   );
 };
 

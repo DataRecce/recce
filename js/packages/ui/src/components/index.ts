@@ -38,7 +38,7 @@ export {
   isDisabledByNoResult,
 } from "./check";
 // Error boundary components
-export { ErrorBoundary, ErrorButton } from "./errorboundary";
+export { ErrorBoundary } from "./errorboundary";
 
 // Histogram components
 export type { HistogramDiffRun, HistogramResultViewProps } from "./histogram";

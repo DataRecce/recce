@@ -7,7 +7,7 @@
 
 ## ✅ ALL UNUSED COMPONENTS REMOVED
 
-These 6 components were found unused and have been **DELETED**:
+These 7 components were found unused and have been **DELETED**:
 
 | Component | File Path | Status |
 |-----------|-----------|--------|
@@ -17,6 +17,7 @@ These 6 components were found unused and have been **DELETED**:
 | **SchemaTable** | `js/packages/ui/src/components/schema/SchemaTable.tsx` | ✅ Deleted |
 | **StatusBadge** | `js/packages/ui/src/components/ui/StatusBadge.tsx` | ✅ Deleted + test |
 | **SummaryView** | `js/packages/ui/src/components/summary/SummaryView.tsx` | ✅ Deleted |
+| **ErrorButton** | `js/packages/ui/src/components/errorboundary/ErrorBoundary.tsx` | ✅ Deleted |
 
 **Test files deleted:**
 - js/packages/ui/src/components/ui/__tests__/StatusBadge.test.tsx
@@ -43,7 +44,7 @@ These 6 components were found unused and have been **DELETED**:
 | **ProfileTable test** | `js/packages/ui/src/components/data/__tests__/ProfileTable.test.tsx` | ✅ Deleted |
 | **RunStatusAndDate test** | `js/src/components/run/__tests__/RunStatusAndDate.test.tsx` | ✅ Deleted (orphaned test) |
 
-**Total removed this session:** 10 components/tests deleted
+**Total removed this session:** 11 components/tests deleted
 
 ---
 
@@ -158,7 +159,7 @@ These components were exported but only used within js/packages/ui. They have be
 
 ## SUMMARY
 
-### Components Deleted (10 total):
+### Components Deleted (11 total):
 ```
 ✅ LineageControls.tsx
 ✅ RecceLayout.tsx
@@ -170,6 +171,7 @@ These components were exported but only used within js/packages/ui. They have be
 ✅ ProfileTable.tsx
 ✅ ProfileTable.test.tsx
 ✅ RunStatusAndDate.test.tsx
+✅ ErrorButton (from ErrorBoundary.tsx) - testing-only component
 ```
 
 ### Components Removed from Public Exports (13 total):
@@ -187,3 +189,23 @@ For each component, checked:
 4. ✅ Verified no dynamic imports or registry lookups
 
 **Confidence:** High - verified through multiple search patterns.
+
+---
+
+## ADDITIONAL VERIFICATION (Follow-up Analysis)
+
+### Candidates Investigated
+
+| Component | File | Verdict |
+|-----------|------|---------|
+| **ErrorButton** | `errorboundary/ErrorBoundary.tsx` | **DELETED** - Test-only component, never used |
+| DiffTextWithToast | `ui/DiffTextWithToast.tsx` | KEPT - Used internally in dataGrid |
+| Toaster | `ui/Toaster.tsx` | KEPT - Heavily used (7+ hooks) |
+| LearnHowLink | `onboarding-guide/Notification.tsx` | KEPT - Used in OSS components |
+| RecceNotification | `onboarding-guide/Notification.tsx` | KEPT - Used in OSS components |
+
+### Storybook Documentation Cleanup
+
+Removed references to deleted components from Storybook docs:
+- `js/packages/storybook/CONTRIBUTING.md` - Removed ProfileTable, StatusBadge from category table
+- `js/packages/storybook/stories/README.md` - Removed ProfileTable, StatusBadge from component lists

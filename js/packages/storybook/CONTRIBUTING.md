@@ -11,9 +11,9 @@ Stories are organized by functional category:
 | Category    | Components                                   |
 | ----------- | -------------------------------------------- |
 | `timeline/` | TimelineEvent, CommentInput                  |
-| `data/`     | HistogramChart, ProfileTable, TopKBarChart   |
+| `data/`     | HistogramChart, TopKBarChart                 |
 | `lineage/`  | LineageNode, LineageView, LineageEdge        |
-| `ui/`       | StatusBadge, Split, MarkdownContent          |
+| `ui/`       | Split, MarkdownContent                       |
 
 ### 2. Create the Story File
 

@@ -16,7 +16,6 @@ Components for displaying check activity and comments.
 Components for data visualization and profiling.
 
 - **HistogramChart** - Distribution visualization
-- **ProfileTable** - Column profile statistics
 - **TopKBarChart** - Top K values bar chart
 
 ### `lineage/` (planned)
@@ -31,7 +30,6 @@ Components for data lineage visualization.
 
 Generic UI primitives used across the application.
 
-- **StatusBadge** - Status indicator badges
 - **Split** - Resizable split panes
 - **MarkdownContent** - Markdown renderer
 
