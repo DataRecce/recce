@@ -109,7 +109,7 @@ class DiagnosticRenderer:
             self.console.print("[green]✓ All checks passed![/green] Your Recce setup is ready.")
             self.console.print()
             self.console.print("Next step:")
-            self.console.print("  $ recce-cloud summarize --session-name <session_name>")
+            self.console.print("  $ recce-cloud review --session-name <session_name>")
         else:
             self.console.print(
                 f"[yellow]⚠ {results.passed_count}/{results.total_count} checks passed.[/yellow] "

@@ -365,6 +365,7 @@ def init(org, project, status, clear):
         console.print(f"[red]Error:[/red] Failed to fetch data from Recce Cloud: {e}")
         sys.exit(1)
     except Exception as e:
+        logger.exception("Unexpected error during init: %s", e)
         console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)
 
@@ -403,31 +404,44 @@ def _get_production_session_id(console: Console, token: str) -> Optional[str]:
         if not org_info:
             console.print(f"[red]Error:[/red] Organization '{org_slug}' not found")
             return None
-        org_id = org_info["id"]
+        org_id = org_info.get("id")
+        if not org_id:
+            console.print(f"[red]Error:[/red] Organization '{org_slug}' response missing ID")
+            return None
 
         project_info = client.get_project(org_id, project_slug)
         if not project_info:
             console.print(f"[red]Error:[/red] Project '{project_slug}' not found")
             return None
-        project_id = project_info["id"]
+        project_id = project_info.get("id")
+        if not project_id:
+            console.print(f"[red]Error:[/red] Project '{project_slug}' response missing ID")
+            return None
 
         # List sessions and find production session
         sessions = client.list_sessions(org_id, project_id)
         for session in sessions:
             if session.get("is_base"):
                 session_id = session.get("id")
+                if not session_id:
+                    console.print("[red]Error:[/red] Production session found but has no ID")
+                    return None
                 session_name = session.get("name") or "(unnamed)"
-                console.print(f"[cyan]Info:[/cyan] Found production session '{session_name}' (ID: {session_id[:8]}...)")
+                session_id_display = session_id[:8] if len(session_id) >= 8 else session_id
+                console.print(
+                    f"[cyan]Info:[/cyan] Found production session '{session_name}' (ID: {session_id_display}...)"
+                )
                 return session_id
 
         console.print("[red]Error:[/red] No production session found")
-        console.print("Create a production session first using 'recce-cloud init' or via CI pipeline")
+        console.print("Create a production session first using 'recce-cloud upload --type prod' or via CI pipeline")
         return None
 
     except RecceCloudException as e:
         console.print(f"[red]Error:[/red] Failed to fetch sessions: {e}")
         return None
     except Exception as e:
+        logger.exception("Unexpected error in _get_production_session_id: %s", e)
         console.print(f"[red]Error:[/red] Unexpected error: {e}")
         return None
 
@@ -770,15 +784,22 @@ def list_sessions_cmd(session_type, output_json):
         if not org_info:
             console.print(f"[red]Error:[/red] Organization '{org}' not found or you don't have access")
             sys.exit(2)
-        org_id = org_info["id"]
+        org_id = org_info.get("id")
+        if not org_id:
+            console.print(f"[red]Error:[/red] Organization '{org}' response missing ID")
+            sys.exit(2)
 
         project_info = client.get_project(org_id, project)
         if not project_info:
             console.print(f"[red]Error:[/red] Project '{project}' not found in organization '{org}'")
             sys.exit(2)
-        project_id = project_info["id"]
+        project_id = project_info.get("id")
+        if not project_id:
+            console.print(f"[red]Error:[/red] Project '{project}' response missing ID")
+            sys.exit(2)
 
     except Exception as e:
+        logger.exception("Failed to initialize client for list_sessions: %s", e)
         console.print(f"[red]Error:[/red] Failed to initialize: {e}")
         sys.exit(2)
 
