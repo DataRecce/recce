@@ -13,10 +13,6 @@ export {
 } from "./DiffDisplayModeSwitch";
 export { DiffText, type DiffTextProps } from "./DiffText";
 export {
-  DiffTextWithToast,
-  type DiffTextWithToastProps,
-} from "./DiffTextWithToast";
-export {
   DropdownValuesInput,
   type DropdownValuesInputProps,
   type DropdownValuesInputSize,
@@ -71,11 +67,6 @@ export {
   type SplitPaneProps,
 } from "./SplitPane";
 export { SquareIcon, type SquareIconProps } from "./SquareIcon";
-export {
-  StatusBadge,
-  type StatusBadgeProps,
-  type StatusType,
-} from "./StatusBadge";
 // Toast notification system
 export {
   Toaster,

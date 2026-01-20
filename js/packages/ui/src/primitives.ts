@@ -28,17 +28,6 @@ export {
   type LineageColumnNodeProps,
 } from "./components/lineage/columns";
 /**
- * Lineage control primitives (zoom/pan/fit-view UI).
- *
- * @remarks
- * Exports: ControlButton, LineageControls, LineageControlsProps.
- */
-export {
-  ControlButton,
-  LineageControls,
-  type LineageControlsProps,
-} from "./components/lineage/controls";
-/**
  * Lineage edge primitives for graph edges.
  *
  * @remarks
@@ -317,22 +306,6 @@ export {
   type HistogramDataType,
 } from "./components/data/HistogramChart";
 /**
- * Profile table primitives (AG Grid based).
- *
- * @remarks
- * Exports: ColumnRenderMode, ProfileColumn, ProfileDisplayMode, ProfileRow,
- * ProfileTable, ProfileTableHandle, ProfileTableProps.
- */
-export {
-  type ColumnRenderMode,
-  type ProfileColumn,
-  type ProfileDisplayMode,
-  type ProfileRow,
-  ProfileTable,
-  type ProfileTableHandle,
-  type ProfileTableProps,
-} from "./components/data/ProfileTable";
-/**
  * Screenshot data grid primitives (AG Grid wrapper).
  *
  * @remarks
@@ -358,18 +331,13 @@ export {
  * Top-K bar chart primitives (value distribution).
  *
  * @remarks
- * Exports: SingleBarChart, SingleBarChartProps, TopKBarChart, TopKBarChartProps,
- * TopKDataset, TopKItem, TopKSummaryList, TopKSummaryListProps.
+ * Exports: TopKBarChart, TopKBarChartProps, TopKDataset, TopKItem.
  */
 export {
-  SingleBarChart,
-  type SingleBarChartProps,
   TopKBarChart,
   type TopKBarChartProps,
   type TopKDataset,
   type TopKItem,
-  TopKSummaryList,
-  type TopKSummaryListProps,
 } from "./components/data/TopKBarChart";
 
 // =============================================================================
@@ -391,20 +359,6 @@ export {
   type SchemaDiffRow,
   type SchemaDiffStatus,
 } from "./components/schema/SchemaDiff";
-/**
- * Schema table primitives for single environment schemas.
- *
- * @remarks
- * Exports: SchemaColumnData, SchemaRow, SchemaTable, SchemaTableHandle,
- * SchemaTableProps.
- */
-export {
-  type SchemaColumnData,
-  type SchemaRow,
-  SchemaTable,
-  type SchemaTableHandle,
-  type SchemaTableProps,
-} from "./components/schema/SchemaTable";
 
 // =============================================================================
 // EDITOR PRIMITIVES
@@ -514,17 +468,6 @@ export {
   SplitPane,
   type SplitPaneProps,
 } from "./components/ui/SplitPane";
-/**
- * Status badge primitives.
- *
- * @remarks
- * Exports: StatusBadge, StatusBadgeProps, StatusType.
- */
-export {
-  StatusBadge,
-  type StatusBadgeProps,
-  type StatusType,
-} from "./components/ui/StatusBadge";
 
 // =============================================================================
 // RESULT VIEW PRIMITIVES
