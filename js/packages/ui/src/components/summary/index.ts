@@ -8,7 +8,6 @@
 // Components
 export { ChangeSummary } from "./ChangeSummary";
 export { SchemaSummary, type SchemaSummaryProps } from "./SchemaSummary";
-export { SummaryView } from "./SummaryView";
 // Types
 export type {
   ChangeStatus,

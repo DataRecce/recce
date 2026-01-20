@@ -14,15 +14,6 @@ export {
   type HistogramDataset,
   type HistogramDataType,
 } from "./HistogramChart";
-export {
-  type ColumnRenderMode,
-  type ProfileColumn,
-  type ProfileDisplayMode,
-  type ProfileRow,
-  ProfileTable,
-  type ProfileTableHandle,
-  type ProfileTableProps,
-} from "./ProfileTable";
 // AG Grid wrapper with screenshot support
 export {
   type ColDef,
@@ -39,12 +30,8 @@ export {
 } from "./ScreenshotDataGrid";
 
 export {
-  SingleBarChart,
-  type SingleBarChartProps,
   TopKBarChart,
   type TopKBarChartProps,
   type TopKDataset,
   type TopKItem,
-  TopKSummaryList,
-  type TopKSummaryListProps,
 } from "./TopKBarChart";

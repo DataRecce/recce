@@ -4,18 +4,8 @@
 // Re-exports all UI components from @datarecce/ui
 
 // App components
-export {
-  AuthModal,
-  AvatarDropdown,
-  EnvInfo,
-  Filename,
-  Main,
-  MainLayout,
-  SetupConnectionPopover,
-  StateExporter,
-  StateImporter,
-  TopLevelShare,
-} from "./app";
+export { EnvInfo } from "./app";
+
 // Check components
 export type {
   CheckAction,
@@ -150,16 +140,11 @@ export type { ColumnNameCellProps } from "./schema";
 export {
   ColumnNameCell,
   mergeSchemaColumns,
-  type SchemaColumnData,
   SchemaDiff,
   type SchemaDiffHandle,
   type SchemaDiffProps,
   type SchemaDiffRow,
   type SchemaDiffStatus,
-  type SchemaRow,
-  SchemaTable,
-  type SchemaTableHandle,
-  type SchemaTableProps,
   SchemaView,
   SingleEnvSchemaView,
 } from "./schema";
@@ -179,7 +164,6 @@ export {
   getIconForChangeStatus,
   NODE_CHANGE_STATUS_MSGS,
   SchemaSummary,
-  SummaryView,
 } from "./summary";
 // Timeout components
 export { IdleTimeoutBadge } from "./timeout";
@@ -220,10 +204,5 @@ export {
   ValueDiffResultView,
 } from "./valuediff";
 // High-level view components (Layer 3)
-export type {
-  ChecksViewProps,
-  NavItem,
-  RecceLayoutProps,
-  RunsViewProps,
-} from "./views";
-export { ChecksView, RecceLayout, RunsView } from "./views";
+export type { ChecksViewProps } from "./views";
+export { ChecksView } from "./views";

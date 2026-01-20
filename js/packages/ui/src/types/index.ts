@@ -14,8 +14,6 @@ export type {
   LineageColumnNodeData,
   LineageColumnNodeProps,
 } from "../components/lineage/columns";
-// Controls types
-export type { LineageControlsProps } from "../components/lineage/controls";
 // Edge types
 export type {
   EdgeChangeStatus,
@@ -100,20 +98,9 @@ export type {
 } from "../components/data/HistogramChart";
 
 export type {
-  ColumnRenderMode,
-  ProfileColumn,
-  ProfileDisplayMode,
-  ProfileRow,
-  ProfileTableHandle,
-  ProfileTableProps,
-} from "../components/data/ProfileTable";
-
-export type {
-  SingleBarChartProps,
   TopKBarChartProps,
   TopKDataset,
   TopKItem,
-  TopKSummaryListProps,
 } from "../components/data/TopKBarChart";
 
 // =============================================================================
@@ -126,13 +113,6 @@ export type {
   SchemaDiffRow,
   SchemaDiffStatus,
 } from "../components/schema/SchemaDiff";
-
-export type {
-  SchemaColumnData,
-  SchemaRow,
-  SchemaTableHandle,
-  SchemaTableProps,
-} from "../components/schema/SchemaTable";
 
 // =============================================================================
 // EDITOR TYPES
@@ -154,11 +134,6 @@ export type {
   SplitDirection,
   SplitPaneProps,
 } from "../components/ui/SplitPane";
-
-export type {
-  StatusBadgeProps,
-  StatusType,
-} from "../components/ui/StatusBadge";
 
 // =============================================================================
 // CONTEXT TYPES
