@@ -268,20 +268,20 @@ class DiagnosticService:
                 suggestion=(
                     "Upload production metadata:\n"
                     "  $ dbt docs generate --target prod\n"
-                    "  $ recce-cloud upload --session-name prod"
+                    "  $ recce-cloud upload --type prod"
                 ),
             )
 
-        # Check if the session has actual data (adapter is not null)
-        # An empty session created by default will have adapter=null
-        if not prod_session.get("adapter"):
+        # Check if the session has actual data (adapter_type is not null)
+        # An empty session created by default will have adapter_type=null
+        if not prod_session.get("adapter_type"):
             return CheckResult(
                 status=CheckStatus.FAIL,
                 message="Production session exists but has no data",
                 suggestion=(
                     "Upload production metadata to the existing session:\n"
                     "  $ dbt docs generate --target prod\n"
-                    "  $ recce-cloud upload --session-name prod"
+                    "  $ recce-cloud upload --type prod"
                 ),
             )
 
