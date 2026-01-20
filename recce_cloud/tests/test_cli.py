@@ -992,6 +992,7 @@ class TestDoctor(unittest.TestCase):
                                             "id": "sess-prod",
                                             "name": "prod",
                                             "is_base": True,
+                                            "adapter": "snowflake",
                                             "updated_at": "2026-01-20T10:00:00Z",
                                         },
                                         {
@@ -1046,6 +1047,44 @@ class TestDoctor(unittest.TestCase):
         self.assertIn("dbt docs generate --target prod", result.output)
         self.assertIn("recce-cloud upload --session-name prod", result.output)
 
+    def test_doctor_production_session_no_data(self):
+        """Test doctor command when production session exists but has no data (adapter is null)."""
+        env = {}
+
+        with patch.dict(os.environ, env, clear=True):
+            with patch("recce_cloud.auth.profile.get_api_token", return_value="test_token"):
+                with patch("recce_cloud.auth.login.check_login_status", return_value=(True, "test@example.com")):
+                    with patch(
+                        "recce_cloud.config.project_config.get_project_binding",
+                        return_value={"org": "myorg", "project": "myproject"},
+                    ):
+                        # Mock API calls
+                        with patch("recce_cloud.api.client.RecceCloudClient.get_organization") as mock_get_org:
+                            with patch("recce_cloud.api.client.RecceCloudClient.get_project") as mock_get_project:
+                                with patch(
+                                    "recce_cloud.api.client.RecceCloudClient.list_sessions"
+                                ) as mock_list_sessions:
+                                    mock_get_org.return_value = {"id": "org-123", "slug": "myorg"}
+                                    mock_get_project.return_value = {"id": "proj-456", "slug": "myproject"}
+                                    # Production session exists but has no data (adapter is null)
+                                    mock_list_sessions.return_value = [
+                                        {
+                                            "id": "sess-prod",
+                                            "name": "prod",
+                                            "is_base": True,
+                                            "adapter": None,  # No data uploaded yet
+                                            "updated_at": "2026-01-20T10:00:00Z",
+                                        },
+                                    ]
+
+                                    result = self.runner.invoke(cloud_cli, ["doctor"])
+
+        # Assertions
+        self.assertNotEqual(result.exit_code, 0, "Should fail when production session has no data")
+        self.assertIn("Production session exists but has no data", result.output)
+        self.assertIn("dbt docs generate --target prod", result.output)
+        self.assertIn("recce-cloud upload --session-name prod", result.output)
+
     def test_doctor_json_output(self):
         """Test doctor command with JSON output."""
         import json
@@ -1072,6 +1111,7 @@ class TestDoctor(unittest.TestCase):
                                             "id": "sess-prod",
                                             "name": "prod",
                                             "is_base": True,
+                                            "adapter": "snowflake",
                                             "updated_at": "2026-01-20T10:00:00Z",
                                         },
                                         {
