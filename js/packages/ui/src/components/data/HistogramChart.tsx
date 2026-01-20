@@ -256,7 +256,7 @@ function HistogramChartComponent({
     ) => {
       const counts = data.counts ?? [];
       const chartValues = isDatetime
-        ? counts.map((v, i) => [binEdges[i], v] as [number, number])
+        ? counts.map((v, i) => ({ x: binEdges[i], y: v }))
         : counts;
 
       return {
@@ -350,8 +350,12 @@ function HistogramChartComponent({
               type: "timeseries",
               min,
               max,
-              adapters: { date: {} },
-              time: { minUnit: "day" },
+              time: {
+                unit: "month",
+                displayFormats: {
+                  month: "MMM yyyy",
+                },
+              },
               grid: { display: false },
               ticks: {
                 minRotation: 30,
