@@ -55,18 +55,24 @@ const meta: Meta<typeof ProfileTable> = {
     },
   },
   decorators: [
-    (Story) => (
-      <div
-        style={{
-          height: "100vh",
-          minHeight: "600px",
-          width: "100%",
-          padding: "20px",
-        }}
-      >
-        <Story />
-      </div>
-    ),
+    (Story, context) => {
+      // Only apply padding in Canvas view, not in Docs view
+      const isDocsView = context.viewMode === "docs";
+      return (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            height: isDocsView ? "600px" : "100vh",
+            minHeight: "600px",
+            width: "100%",
+            padding: isDocsView ? "0" : "20px",
+          }}
+        >
+          <Story />
+        </div>
+      );
+    },
   ],
 };
 

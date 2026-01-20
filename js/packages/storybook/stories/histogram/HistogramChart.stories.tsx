@@ -1,4 +1,4 @@
-// packages/storybook/stories/data/HistogramChart.stories.tsx
+// packages/storybook/stories/histogram/HistogramChart.stories.tsx
 import { HistogramChart } from "@datarecce/ui/primitives";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
@@ -7,10 +7,10 @@ import {
   createUniformHistogram,
   sampleBinEdges,
   sampleDatetimeBinEdges,
-} from "./fixtures";
+} from "../data/fixtures";
 
 const meta: Meta<typeof HistogramChart> = {
-  title: "Visualizations/Data/HistogramChart",
+  title: "Visualizations/Histogram/HistogramChart",
   component: HistogramChart,
   tags: ["autodocs"],
   parameters: {

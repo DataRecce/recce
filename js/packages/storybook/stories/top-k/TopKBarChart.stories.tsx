@@ -1,14 +1,14 @@
-// packages/storybook/stories/data/TopKBarChart.stories.tsx
+// packages/storybook/stories/top-k/TopKBarChart.stories.tsx
 import { TopKBarChart } from "@datarecce/ui/primitives";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
   createTopKDataset,
   sampleTopKDataset,
   topKWithSpecialValues,
-} from "./fixtures";
+} from "../data/fixtures";
 
 const meta: Meta<typeof TopKBarChart> = {
-  title: "Visualizations/Data/TopKBarChart",
+  title: "Visualizations/Top-K/TopKBarChart",
   component: TopKBarChart,
   tags: ["autodocs"],
   parameters: {

@@ -56,6 +56,8 @@ const meta: Meta<typeof ScreenshotDataGrid> = {
     (Story) => (
       <div
         style={{
+          display: "flex",
+          flexDirection: "column",
           height: "100vh",
           minHeight: "600px",
           width: "100%",
