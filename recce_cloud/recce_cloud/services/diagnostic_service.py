@@ -275,9 +275,12 @@ class DiagnosticService:
                 status=CheckStatus.FAIL,
                 message="No production artifacts found",
                 suggestion=(
-                    "Upload production metadata:\n"
-                    "  $ dbt docs generate --target prod\n"
-                    "  $ recce-cloud upload --type prod"
+                    "To upload production metadata:\n"
+                    "  1. Check out your main branch:\n"
+                    "     $ git checkout main\n"
+                    "  2. Generate and upload production artifacts:\n"
+                    "     $ dbt docs generate --target prod\n"
+                    "     $ recce-cloud upload --type prod"
                 ),
             )
 
@@ -288,9 +291,12 @@ class DiagnosticService:
                 status=CheckStatus.FAIL,
                 message="Production session exists but has no data",
                 suggestion=(
-                    "Upload production metadata to the existing session:\n"
-                    "  $ dbt docs generate --target prod\n"
-                    "  $ recce-cloud upload --type prod"
+                    "To upload production metadata:\n"
+                    "  1. Check out your main branch:\n"
+                    "     $ git checkout main\n"
+                    "  2. Generate and upload production artifacts:\n"
+                    "     $ dbt docs generate --target prod\n"
+                    "     $ recce-cloud upload --type prod"
                 ),
             )
 
@@ -313,9 +319,13 @@ class DiagnosticService:
                 status=CheckStatus.FAIL,
                 message="No dev session found",
                 suggestion=(
-                    "Create and upload a dev session:\n"
-                    "  $ dbt docs generate\n"
-                    "  $ recce-cloud upload --session-name my-dev-session"
+                    "To create and upload a dev session:\n"
+                    "  1. Check out a feature branch with your changes:\n"
+                    "     $ git checkout -b my-feature-branch\n"
+                    "     (make some changes to your dbt models)\n"
+                    "  2. Generate and upload dev artifacts:\n"
+                    "     $ dbt docs generate\n"
+                    "     $ recce-cloud upload --session-name my-feature-branch"
                 ),
             )
 
