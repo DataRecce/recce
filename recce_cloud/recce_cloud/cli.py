@@ -1117,6 +1117,316 @@ def delete(session_id, dry_run, force):
 
 @cloud_cli.command()
 @click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    help="Output in JSON format for scripting",
+)
+def doctor(output_json):
+    """
+    Check Recce Cloud setup and configuration.
+
+    Validates login status, project binding, and session availability.
+    Provides actionable suggestions when issues are found.
+
+    \b
+    Examples:
+      # Check setup status
+      recce-cloud doctor
+
+      # Machine-readable output
+      recce-cloud doctor --json
+    """
+    import json
+    from datetime import datetime, timezone
+
+    from rich.panel import Panel
+
+    from recce_cloud.api.client import RecceCloudClient
+    from recce_cloud.api.exceptions import RecceCloudException
+    from recce_cloud.auth.login import check_login_status
+    from recce_cloud.auth.profile import get_api_token
+    from recce_cloud.config.project_config import get_project_binding
+
+    console = Console()
+
+    # Track results for JSON output and exit code
+    results = {
+        "login": {"status": "fail", "message": None, "email": None},
+        "project_binding": {"status": "fail", "message": None, "org": None, "project": None},
+        "production_metadata": {"status": "fail", "message": None, "session_name": None, "uploaded_at": None},
+        "dev_session": {"status": "fail", "message": None, "session_name": None, "uploaded_at": None},
+    }
+
+    all_passed = True
+
+    # Helper to format relative time
+    def format_relative_time(iso_timestamp):
+        if not iso_timestamp:
+            return None
+        try:
+            # Parse ISO timestamp
+            if iso_timestamp.endswith("Z"):
+                dt = datetime.fromisoformat(iso_timestamp.replace("Z", "+00:00"))
+            else:
+                dt = datetime.fromisoformat(iso_timestamp)
+            now = datetime.now(timezone.utc)
+            diff = now - dt
+
+            seconds = diff.total_seconds()
+            if seconds < 60:
+                return "just now"
+            elif seconds < 3600:
+                mins = int(seconds / 60)
+                return f"{mins}m ago"
+            elif seconds < 86400:
+                hours = int(seconds / 3600)
+                return f"{hours}h ago"
+            else:
+                days = int(seconds / 86400)
+                return f"{days}d ago"
+        except (ValueError, TypeError):
+            return None
+
+    if not output_json:
+        # Display header
+        header = Panel(
+            "[bold]🩺 Recce Doctor[/bold]\n[dim]Checking your Recce Cloud setup...[/dim]",
+            expand=False,
+            padding=(0, 3),
+        )
+        console.print()
+        console.print(header)
+        console.print()
+        console.print("━" * 65)
+        console.print()
+
+    # ─────────────────────────────────────────────────────────────────
+    # 1. Login Status
+    # ─────────────────────────────────────────────────────────────────
+    if not output_json:
+        console.print("[bold]1. Login Status[/bold] ($ recce-cloud login)")
+
+    token = os.getenv("RECCE_API_TOKEN") or get_api_token()
+    if token:
+        is_logged_in, email = check_login_status()
+        if is_logged_in:
+            results["login"]["status"] = "pass"
+            results["login"]["email"] = email
+            if not output_json:
+                console.print(f"[green]✓[/green] Logged in as [cyan]{email or 'Unknown'}[/cyan]")
+        else:
+            all_passed = False
+            results["login"]["message"] = "Token invalid or expired"
+            if not output_json:
+                console.print("[red]✗[/red] Token invalid or expired")
+                console.print()
+                console.print("[dim]→ To login:[/dim]")
+                console.print("  $ recce-cloud login")
+    else:
+        all_passed = False
+        results["login"]["message"] = "Not logged in"
+        if not output_json:
+            console.print("[red]✗[/red] Not logged in")
+            console.print()
+            console.print("[dim]→ To login:[/dim]")
+            console.print("  $ recce-cloud login")
+
+    if not output_json:
+        console.print()
+
+    # ─────────────────────────────────────────────────────────────────
+    # 2. Project Binding
+    # ─────────────────────────────────────────────────────────────────
+    if not output_json:
+        console.print("[bold]2. Project Binding[/bold] ($ recce-cloud init)")
+
+    binding = get_project_binding()
+    org = None
+    project = None
+
+    if binding:
+        org = binding.get("org")
+        project = binding.get("project")
+        results["project_binding"]["status"] = "pass"
+        results["project_binding"]["org"] = org
+        results["project_binding"]["project"] = project
+        if not output_json:
+            console.print(f"[green]✓[/green] Bound to [cyan]{org}/{project}[/cyan]")
+    else:
+        # Check environment variables as fallback
+        env_org = os.environ.get("RECCE_ORG")
+        env_project = os.environ.get("RECCE_PROJECT")
+        if env_org and env_project:
+            org = env_org
+            project = env_project
+            results["project_binding"]["status"] = "pass"
+            results["project_binding"]["org"] = org
+            results["project_binding"]["project"] = project
+            if not output_json:
+                console.print(f"[green]✓[/green] Bound to [cyan]{org}/{project}[/cyan] (via env vars)")
+        else:
+            all_passed = False
+            results["project_binding"]["message"] = "No project binding found"
+            if not output_json:
+                console.print("[red]✗[/red] No project binding found")
+                console.print()
+                console.print("[dim]→ To bind this directory to a project:[/dim]")
+                console.print("  $ recce-cloud init")
+
+    if not output_json:
+        console.print()
+
+    # ─────────────────────────────────────────────────────────────────
+    # 3. Production Metadata
+    # ─────────────────────────────────────────────────────────────────
+    if not output_json:
+        console.print("[bold]3. Production Metadata[/bold]")
+
+    # Can only check sessions if we have both token and project binding
+    if results["login"]["status"] == "pass" and results["project_binding"]["status"] == "pass":
+        try:
+            client = RecceCloudClient(token)
+
+            # Get org and project IDs
+            org_info = client.get_organization(org)
+            if not org_info:
+                raise RecceCloudException(f"Organization '{org}' not found", 404)
+            org_id = org_info["id"]
+
+            project_info = client.get_project(org_id, project)
+            if not project_info:
+                raise RecceCloudException(f"Project '{project}' not found", 404)
+            project_id = project_info["id"]
+
+            # List sessions and find production
+            sessions = client.list_sessions(org_id, project_id)
+
+            prod_session = None
+            dev_sessions = []
+
+            for s in sessions:
+                if s.get("is_base"):
+                    prod_session = s
+                elif not s.get("pr_link"):  # dev = not base and no PR link
+                    dev_sessions.append(s)
+
+            # Check production metadata
+            if prod_session:
+                prod_name = prod_session.get("name") or "(unnamed)"
+                prod_uploaded = prod_session.get("updated_at") or prod_session.get("created_at")
+                relative_time = format_relative_time(prod_uploaded)
+
+                results["production_metadata"]["status"] = "pass"
+                results["production_metadata"]["session_name"] = prod_name
+                results["production_metadata"]["uploaded_at"] = prod_uploaded
+
+                if not output_json:
+                    time_str = f" (uploaded {relative_time})" if relative_time else ""
+                    console.print(f'[green]✓[/green] Found production session "[cyan]{prod_name}[/cyan]"{time_str}')
+            else:
+                all_passed = False
+                results["production_metadata"]["message"] = "No production artifacts found"
+                if not output_json:
+                    console.print("[red]✗[/red] No production artifacts found")
+                    console.print()
+                    console.print("[dim]→ To upload production metadata:[/dim]")
+                    console.print("  $ dbt docs generate --target prod")
+                    console.print("  $ recce-cloud upload --session-name prod")
+
+            if not output_json:
+                console.print()
+
+            # ─────────────────────────────────────────────────────────────────
+            # 4. Dev Session
+            # ─────────────────────────────────────────────────────────────────
+            if not output_json:
+                console.print("[bold]4. Dev Session[/bold]")
+
+            if dev_sessions:
+                # Sort by updated_at/created_at to get most recent
+                dev_sessions.sort(
+                    key=lambda x: x.get("updated_at") or x.get("created_at") or "",
+                    reverse=True,
+                )
+                latest_dev = dev_sessions[0]
+                dev_name = latest_dev.get("name") or "(unnamed)"
+                dev_uploaded = latest_dev.get("updated_at") or latest_dev.get("created_at")
+                relative_time = format_relative_time(dev_uploaded)
+
+                results["dev_session"]["status"] = "pass"
+                results["dev_session"]["session_name"] = dev_name
+                results["dev_session"]["uploaded_at"] = dev_uploaded
+
+                if not output_json:
+                    time_str = f" (uploaded {relative_time})" if relative_time else ""
+                    console.print(f'[green]✓[/green] Found dev session "[cyan]{dev_name}[/cyan]"{time_str}')
+            else:
+                all_passed = False
+                results["dev_session"]["message"] = "No dev session found"
+                if not output_json:
+                    console.print("[red]✗[/red] No dev session found")
+                    console.print()
+                    console.print("[dim]→ To create and upload a dev session:[/dim]")
+                    console.print("  $ dbt docs generate")
+                    console.print("  $ recce-cloud upload --session-name my-dev-session")
+
+        except RecceCloudException as e:
+            all_passed = False
+            results["production_metadata"]["message"] = str(e)
+            results["dev_session"]["message"] = str(e)
+            if not output_json:
+                console.print(f"[red]✗[/red] Failed to fetch sessions: {e}")
+                console.print()
+                console.print("[bold]4. Dev Session[/bold]")
+                console.print(f"[red]✗[/red] Failed to fetch sessions: {e}")
+        except Exception as e:
+            all_passed = False
+            results["production_metadata"]["message"] = str(e)
+            results["dev_session"]["message"] = str(e)
+            if not output_json:
+                console.print(f"[red]✗[/red] Unexpected error: {e}")
+                console.print()
+                console.print("[bold]4. Dev Session[/bold]")
+                console.print(f"[red]✗[/red] Unexpected error: {e}")
+    else:
+        # Cannot check sessions without login and project binding
+        results["production_metadata"]["message"] = "Cannot check - requires login and project binding"
+        results["dev_session"]["message"] = "Cannot check - requires login and project binding"
+        if not output_json:
+            console.print("[yellow]⚠[/yellow] Cannot check - requires login and project binding")
+            console.print()
+            console.print("[bold]4. Dev Session[/bold]")
+            console.print("[yellow]⚠[/yellow] Cannot check - requires login and project binding")
+
+    # ─────────────────────────────────────────────────────────────────
+    # Summary
+    # ─────────────────────────────────────────────────────────────────
+    if output_json:
+        results["all_passed"] = all_passed
+        console.print(json.dumps(results, indent=2, default=str))
+    else:
+        console.print()
+        console.print("━" * 65)
+        console.print()
+
+        if all_passed:
+            console.print("[green]✓ All checks passed![/green] Your Recce setup is ready.")
+            console.print()
+            console.print("Next step:")
+            console.print("  $ recce-cloud summarize --session-name <session_name>")
+        else:
+            passed_count = sum(1 for r in results.values() if isinstance(r, dict) and r.get("status") == "pass")
+            total_count = 4
+            console.print(
+                f"[yellow]⚠ {passed_count}/{total_count} checks passed.[/yellow] See above for remediation steps."
+            )
+
+    sys.exit(0 if all_passed else 1)
+
+
+@cloud_cli.command()
+@click.option(
     "--repo",
     type=str,
     help="Repository full name (owner/repo). Auto-detected from git remote if not provided.",
