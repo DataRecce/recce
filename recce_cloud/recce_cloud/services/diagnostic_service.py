@@ -261,10 +261,11 @@ class DiagnosticService:
             return error_result, error_result
 
         except Exception as e:
-            logger.exception("Unexpected error during session check: %s", e)
+            logger.debug("Unexpected error during session check: %s", e, exc_info=True)
             error_result = CheckResult(
                 status=CheckStatus.FAIL,
                 message=f"Unexpected error: {e}",
+                suggestion="Check your network connection and try again.",
             )
             return error_result, error_result
 

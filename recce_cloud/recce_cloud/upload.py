@@ -302,9 +302,10 @@ def upload_with_session_name(
         console.print(f"Reason: {e.reason}")
         sys.exit(2)
     except Exception as e:
-        logger.exception("Failed to resolve organization/project: %s", e)
+        logger.debug("Failed to resolve organization/project: %s", e, exc_info=True)
         console.print("[red]Error:[/red] Failed to resolve organization/project")
-        console.print(f"Reason: {e}")
+        console.print(f"  Reason: {e}")
+        console.print("  Check your authentication and network connection.")
         sys.exit(2)
 
     # 4. Look up session by name
@@ -316,9 +317,10 @@ def upload_with_session_name(
         console.print(f"Reason: {e.reason}")
         sys.exit(2)
     except Exception as e:
-        logger.exception("Failed to look up session: %s", e)
+        logger.debug("Failed to look up session: %s", e, exc_info=True)
         console.print("[red]Error:[/red] Failed to look up session")
-        console.print(f"Reason: {e}")
+        console.print(f"  Reason: {e}")
+        console.print("  Check your network connection and try again.")
         sys.exit(2)
 
     session_id = None

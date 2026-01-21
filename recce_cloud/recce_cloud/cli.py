@@ -365,8 +365,9 @@ def init(org, project, status, clear):
         console.print(f"[red]Error:[/red] Failed to fetch data from Recce Cloud: {e}")
         sys.exit(1)
     except Exception as e:
-        logger.exception("Unexpected error during init: %s", e)
-        console.print(f"[red]Error:[/red] {e}")
+        logger.debug("Unexpected error during init: %s", e, exc_info=True)
+        console.print(f"[red]Error:[/red] An unexpected error occurred: {e}")
+        console.print("  Try running 'recce-cloud login' again or check your network connection.")
         sys.exit(1)
 
 
@@ -441,8 +442,9 @@ def _get_production_session_id(console: Console, token: str) -> Optional[str]:
         console.print(f"[red]Error:[/red] Failed to fetch sessions: {e}")
         return None
     except Exception as e:
-        logger.exception("Unexpected error in _get_production_session_id: %s", e)
+        logger.debug("Unexpected error in _get_production_session_id: %s", e, exc_info=True)
         console.print(f"[red]Error:[/red] Unexpected error: {e}")
+        console.print("  Check your network connection and try again.")
         return None
 
 
@@ -676,7 +678,7 @@ def upload(target_path, session_id, session_name, skip_confirmation, cr, session
             skip_confirmation=skip_confirmation,
         )
     else:
-        # Platform-specific workflow: Use platform APIs to create session and upload
+        # GitHub Action or GitLab CI/CD workflow: Use platform APIs to create session and upload
         # This workflow MUST use CI job tokens (CI_JOB_TOKEN or GITHUB_TOKEN)
         if not ci_info or not ci_info.access_token:
             # If --type prod is specified outside CI, fetch the production session and upload to it
@@ -799,8 +801,9 @@ def list_sessions_cmd(session_type, output_json):
             sys.exit(2)
 
     except Exception as e:
-        logger.exception("Failed to initialize client for list_sessions: %s", e)
+        logger.debug("Failed to initialize client for list_sessions: %s", e, exc_info=True)
         console.print(f"[red]Error:[/red] Failed to initialize: {e}")
+        console.print("  Check your authentication and network connection.")
         sys.exit(2)
 
     # Helper to derive session type from fields:
