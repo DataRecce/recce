@@ -7,6 +7,7 @@ import logging
 import os
 import subprocess
 import sys
+from typing import Optional
 
 import click
 from rich.console import Console
@@ -15,6 +16,7 @@ from rich.logging import RichHandler
 from recce_cloud import __version__
 from recce_cloud.artifact import get_adapter_type, verify_artifacts_path
 from recce_cloud.ci_providers import CIDetector
+from recce_cloud.commands.diagnostics import doctor
 from recce_cloud.delete import (
     delete_existing_session,
     delete_with_platform_apis,
@@ -47,6 +49,10 @@ def cloud_cli():
     without the heavy dependencies of the full recce package.
     """
     pass
+
+
+# Register commands from command modules
+cloud_cli.add_command(doctor)
 
 
 @cloud_cli.command()
@@ -359,8 +365,87 @@ def init(org, project, status, clear):
         console.print(f"[red]Error:[/red] Failed to fetch data from Recce Cloud: {e}")
         sys.exit(1)
     except Exception as e:
-        console.print(f"[red]Error:[/red] {e}")
+        logger.debug("Unexpected error during init: %s", e, exc_info=True)
+        console.print(f"[red]Error:[/red] An unexpected error occurred: {e}")
+        console.print("  Try running 'recce-cloud login' again or check your network connection.")
         sys.exit(1)
+
+
+def _get_production_session_id(console: Console, token: str) -> Optional[str]:
+    """
+    Fetch the production session ID from Recce Cloud.
+
+    Returns the session ID if found, None otherwise (with error message printed).
+    """
+    from recce_cloud.api.client import RecceCloudClient
+    from recce_cloud.api.exceptions import RecceCloudException
+    from recce_cloud.config.project_config import get_project_binding
+
+    # Get project binding
+    binding = get_project_binding()
+    if not binding:
+        # Check environment variables as fallback
+        env_org = os.environ.get("RECCE_ORG")
+        env_project = os.environ.get("RECCE_PROJECT")
+        if env_org and env_project:
+            binding = {"org": env_org, "project": env_project}
+        else:
+            console.print("[red]Error:[/red] No project binding found")
+            console.print("Run 'recce-cloud init' to bind this directory to a project")
+            return None
+
+    org_slug = binding.get("org")
+    project_slug = binding.get("project")
+
+    try:
+        client = RecceCloudClient(token)
+
+        # Get org and project IDs
+        org_info = client.get_organization(org_slug)
+        if not org_info:
+            console.print(f"[red]Error:[/red] Organization '{org_slug}' not found")
+            return None
+        org_id = org_info.get("id")
+        if not org_id:
+            console.print(f"[red]Error:[/red] Organization '{org_slug}' response missing ID")
+            return None
+
+        project_info = client.get_project(org_id, project_slug)
+        if not project_info:
+            console.print(f"[red]Error:[/red] Project '{project_slug}' not found")
+            return None
+        project_id = project_info.get("id")
+        if not project_id:
+            console.print(f"[red]Error:[/red] Project '{project_slug}' response missing ID")
+            return None
+
+        # List sessions and find production session
+        sessions = client.list_sessions(org_id, project_id)
+        for session in sessions:
+            if session.get("is_base"):
+                session_id = session.get("id")
+                if not session_id:
+                    console.print("[red]Error:[/red] Production session found but has no ID")
+                    return None
+                session_name = session.get("name") or "(unnamed)"
+                session_id_display = session_id[:8] if len(session_id) >= 8 else session_id
+                console.print(
+                    f"[cyan]Info:[/cyan] Found production session '{session_name}' (ID: {session_id_display}...)"
+                )
+                return session_id
+
+        console.print("[red]Error:[/red] No production session found")
+        console.print("Create a production session first using 'recce-cloud upload --type prod' or via CI pipeline")
+        return None
+
+    except RecceCloudException as e:
+        console.print(f"[red]Error:[/red] Failed to fetch sessions: {e}")
+        return None
+    except Exception as e:
+        logger.debug("Unexpected error in _get_production_session_id: %s", e, exc_info=True)
+        console.print(f"[red]Error:[/red] Unexpected error: {e}")
+        console.print("  Check your network connection and try again.")
+        return None
 
 
 @cloud_cli.command()
@@ -593,22 +678,41 @@ def upload(target_path, session_id, session_name, skip_confirmation, cr, session
             skip_confirmation=skip_confirmation,
         )
     else:
-        # Platform-specific workflow: Use platform APIs to create session and upload
+        # GitHub Action or GitLab CI/CD workflow: Use platform APIs to create session and upload
         # This workflow MUST use CI job tokens (CI_JOB_TOKEN or GITHUB_TOKEN)
         if not ci_info or not ci_info.access_token:
-            console.print("[red]Error:[/red] Platform-specific upload requires CI environment")
-            console.print(
-                "Either run in GitHub Actions/GitLab CI or provide --session-id/--session-name for generic upload"
-            )
-            sys.exit(2)
+            # If --type prod is specified outside CI, fetch the production session and upload to it
+            if session_type == "prod":
+                from recce_cloud.auth.profile import get_api_token
 
-        token = ci_info.access_token
-        if ci_info.platform == "github-actions":
-            console.print("[cyan]Info:[/cyan] Using GITHUB_TOKEN for platform-specific authentication")
-        elif ci_info.platform == "gitlab-ci":
-            console.print("[cyan]Info:[/cyan] Using CI_JOB_TOKEN for platform-specific authentication")
+                token = os.getenv("RECCE_API_TOKEN") or get_api_token()
+                if not token:
+                    console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
+                    console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
+                    sys.exit(2)
 
-        upload_with_platform_apis(console, token, ci_info, manifest_path, catalog_path, adapter_type, target_path)
+                # Fetch the production session ID
+                prod_session_id = _get_production_session_id(console, token)
+                if not prod_session_id:
+                    sys.exit(2)
+
+                upload_to_existing_session(
+                    console, token, prod_session_id, manifest_path, catalog_path, adapter_type, target_path
+                )
+            else:
+                console.print("[red]Error:[/red] Platform-specific upload requires CI environment")
+                console.print(
+                    "Either run in GitHub Actions/GitLab CI or provide --session-id/--session-name for generic upload"
+                )
+                sys.exit(2)
+        else:
+            token = ci_info.access_token
+            if ci_info.platform == "github-actions":
+                console.print("[cyan]Info:[/cyan] Using GITHUB_TOKEN for platform-specific authentication")
+            elif ci_info.platform == "gitlab-ci":
+                console.print("[cyan]Info:[/cyan] Using CI_JOB_TOKEN for platform-specific authentication")
+
+            upload_with_platform_apis(console, token, ci_info, manifest_path, catalog_path, adapter_type, target_path)
 
 
 @cloud_cli.command(name="list")
@@ -682,16 +786,24 @@ def list_sessions_cmd(session_type, output_json):
         if not org_info:
             console.print(f"[red]Error:[/red] Organization '{org}' not found or you don't have access")
             sys.exit(2)
-        org_id = org_info["id"]
+        org_id = org_info.get("id")
+        if not org_id:
+            console.print(f"[red]Error:[/red] Organization '{org}' response missing ID")
+            sys.exit(2)
 
         project_info = client.get_project(org_id, project)
         if not project_info:
             console.print(f"[red]Error:[/red] Project '{project}' not found in organization '{org}'")
             sys.exit(2)
-        project_id = project_info["id"]
+        project_id = project_info.get("id")
+        if not project_id:
+            console.print(f"[red]Error:[/red] Project '{project}' response missing ID")
+            sys.exit(2)
 
     except Exception as e:
+        logger.debug("Failed to initialize client for list_sessions: %s", e, exc_info=True)
         console.print(f"[red]Error:[/red] Failed to initialize: {e}")
+        console.print("  Check your authentication and network connection.")
         sys.exit(2)
 
     # Helper to derive session type from fields:
