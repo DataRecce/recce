@@ -17,7 +17,6 @@ export default defineConfig({
     types: "src/types/index.ts",
     utils: "src/utils/index.ts",
     constants: "src/constants/index.ts",
-    adapters: "src/adapters/index.ts",
     components: "src/components/index.ts",
     "components-run": "src/components/run/index.ts",
     "lib/const": "src/lib/const.ts",
