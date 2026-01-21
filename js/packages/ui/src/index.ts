@@ -49,9 +49,6 @@ export type {
   LineageCanvasProps,
   LineageViewProps,
   LineageViewRef,
-  NavItem,
-  RecceLayoutProps,
-  RunsViewProps,
   SplitProps,
   SquareIconProps,
 } from "./components";
@@ -64,8 +61,6 @@ export {
   // Lineage
   LineageCanvas,
   LineageView,
-  RecceLayout,
-  RunsView,
   SquareIcon,
   VSplit,
 } from "./components";

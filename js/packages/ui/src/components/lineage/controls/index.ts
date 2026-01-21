@@ -5,8 +5,3 @@ export {
   ColumnLevelLineageControl,
   type ColumnLevelLineageControlProps,
 } from "./ColumnLevelLineageControl";
-export {
-  ControlButton,
-  LineageControls,
-  type LineageControlsProps,
-} from "./LineageControls";

@@ -13,7 +13,7 @@ import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { FiArrowRight, FiFrown } from "react-icons/fi";
+import { FiArrowRight } from "react-icons/fi";
 import { PiRepeat } from "react-icons/pi";
 import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
 import type { RowCount, RowCountDiff } from "../../api";
@@ -106,35 +106,6 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
 // =============================================================================
 // EXPORTED COMPONENTS
 // =============================================================================
-
-interface ModelRowCountProps {
-  rowCount?: RowCountDiff;
-}
-
-export function ModelRowCount({ rowCount }: ModelRowCountProps) {
-  if (!rowCount) {
-    return (
-      <Stack direction="row" alignItems="center" spacing={0.5}>
-        <Typography variant="body2" component="span">
-          Failed to load
-        </Typography>
-        <Box component="span" sx={{ color: "error.main", display: "flex" }}>
-          <FiFrown />
-        </Box>
-      </Stack>
-    );
-  }
-
-  const base = rowCount.base ?? "N/A";
-  const current = rowCount.curr ?? "N/A";
-  const label = `${base} -> ${current} rows`;
-
-  return (
-    <MuiTooltip arrow title={label}>
-      <_RowCountByRate rowCount={rowCount} />
-    </MuiTooltip>
-  );
-}
 
 export interface RowCountDiffTagProps {
   node: LineageGraphNode;
