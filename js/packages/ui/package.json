@@ -64,11 +64,6 @@
       "import": "./dist/constants.js",
       "default": "./dist/constants.js"
     },
-    "./adapters": {
-      "types": "./dist/adapters.d.ts",
-      "import": "./dist/adapters.js",
-      "default": "./dist/adapters.js"
-    },
     "./components": {
       "types": "./dist/components.d.ts",
       "import": "./dist/components.js",
