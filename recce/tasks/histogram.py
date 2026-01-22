@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from recce.core import default_context
 from recce.models import Check
 from recce.tasks import Task
-from recce.tasks.core import CheckValidator, TaskResultDiffer
+from recce.tasks.core import TaskResultDiffer, create_check_validator
 from recce.tasks.query import QueryMixin
 
 sql_datetime_types = [
@@ -424,10 +424,4 @@ class HistogramDiffTaskResultDiffer(TaskResultDiffer):
         return TaskResultDiffer.diff(result["base"], result["current"])
 
 
-class HistogramDiffCheckValidator(CheckValidator):
-
-    def validate_check(self, check: Check):
-        try:
-            HistogramDiffParams(**check.params)
-        except Exception as e:
-            raise ValueError(f"Invalid check: {str(e)}")
+HistogramDiffCheckValidator = create_check_validator(HistogramDiffParams)

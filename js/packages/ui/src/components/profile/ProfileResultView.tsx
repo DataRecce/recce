@@ -25,6 +25,10 @@ import {
   type ProfileDiffViewOptions,
   type Run,
 } from "../../api";
+import {
+  createColumnsRenderModeHandler,
+  createPinnedColumnsHandler,
+} from "../../utils";
 import { createResultView } from "../result/createResultView";
 import type { CreatedResultViewProps } from "../result/types";
 import { RunToolbar } from "../run/RunToolbar";
@@ -124,29 +128,15 @@ export const ProfileResultView = createResultView<
       ...viewOptions?.columnsRenderMode,
     };
 
-    const onColumnsRenderModeChanged = (
-      cols: Record<string, ColumnRenderMode>,
-    ) => {
-      const newRenderModes = {
-        ...(viewOptions?.columnsRenderMode ?? {}),
-        ...cols,
-      };
-      if (onViewOptionsChanged) {
-        onViewOptionsChanged({
-          ...viewOptions,
-          columnsRenderMode: newRenderModes,
-        });
-      }
-    };
+    const onColumnsRenderModeChanged = createColumnsRenderModeHandler(
+      viewOptions,
+      onViewOptionsChanged,
+    );
 
-    const handlePinnedColumnsChanged = (newPinnedColumns: string[]) => {
-      if (onViewOptionsChanged) {
-        onViewOptionsChanged({
-          ...viewOptions,
-          pinned_columns: newPinnedColumns,
-        });
-      }
-    };
+    const handlePinnedColumnsChanged = createPinnedColumnsHandler(
+      viewOptions,
+      onViewOptionsChanged,
+    );
 
     const gridData = createDataGrid(run, {
       pinnedColumns,
@@ -198,29 +188,15 @@ export const ProfileDiffResultView = createResultView<
       ...viewOptions?.columnsRenderMode,
     };
 
-    const onColumnsRenderModeChanged = (
-      cols: Record<string, ColumnRenderMode>,
-    ) => {
-      const newRenderModes = {
-        ...(viewOptions?.columnsRenderMode ?? {}),
-        ...cols,
-      };
-      if (onViewOptionsChanged) {
-        onViewOptionsChanged({
-          ...viewOptions,
-          columnsRenderMode: newRenderModes,
-        });
-      }
-    };
+    const onColumnsRenderModeChanged = createColumnsRenderModeHandler(
+      viewOptions,
+      onViewOptionsChanged,
+    );
 
-    const handlePinnedColumnsChanged = (newPinnedColumns: string[]) => {
-      if (onViewOptionsChanged) {
-        onViewOptionsChanged({
-          ...viewOptions,
-          pinned_columns: newPinnedColumns,
-        });
-      }
-    };
+    const handlePinnedColumnsChanged = createPinnedColumnsHandler(
+      viewOptions,
+      onViewOptionsChanged,
+    );
 
     const gridData = createDataGrid(run, {
       pinnedColumns,

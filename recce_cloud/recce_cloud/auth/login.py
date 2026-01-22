@@ -251,14 +251,10 @@ def check_login_status() -> Tuple[bool, Optional[str]]:
     """
     Check current login status.
 
-    Checks for authentication token in this order:
-    1. RECCE_API_TOKEN environment variable
-    2. Stored token from profile (via get_api_token)
-
     Returns:
         Tuple of (is_logged_in, user_email_or_none).
     """
-    token = os.getenv("RECCE_API_TOKEN") or get_api_token()
+    token = get_api_token()
     if not token:
         return False, None
 

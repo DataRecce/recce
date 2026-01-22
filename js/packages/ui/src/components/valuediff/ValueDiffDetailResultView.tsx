@@ -18,12 +18,15 @@
 
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
 import {
-  type ColumnRenderMode,
   isValueDiffDetailRun,
   type Run,
   type ValueDiffDetailViewOptions,
 } from "../../api";
-import { toValueDiffGridConfigured } from "../../utils";
+import {
+  createColumnsRenderModeHandler,
+  createPinnedColumnsHandler,
+  toValueDiffGridConfigured,
+} from "../../utils";
 import type { DataGridHandle } from "../data/ScreenshotDataGrid";
 import { createResultView } from "../result/createResultView";
 import type { CreatedResultViewProps, ResultViewData } from "../result/types";
@@ -114,29 +117,15 @@ export const ValueDiffDetailResultView = createResultView<
     const primaryKeys = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
 
     // Create callbacks for view option changes
-    const onColumnsRenderModeChanged = (
-      cols: Record<string, ColumnRenderMode>,
-    ) => {
-      const newRenderModes = {
-        ...(viewOptions?.columnsRenderMode ?? {}),
-        ...cols,
-      };
-      if (onViewOptionsChanged) {
-        onViewOptionsChanged({
-          ...viewOptions,
-          columnsRenderMode: newRenderModes,
-        });
-      }
-    };
+    const onColumnsRenderModeChanged = createColumnsRenderModeHandler(
+      viewOptions,
+      onViewOptionsChanged,
+    );
 
-    const handlePinnedColumnsChanged = (pinnedCols: string[]) => {
-      if (onViewOptionsChanged) {
-        onViewOptionsChanged({
-          ...viewOptions,
-          pinned_columns: pinnedCols,
-        });
-      }
-    };
+    const handlePinnedColumnsChanged = createPinnedColumnsHandler(
+      viewOptions,
+      onViewOptionsChanged,
+    );
 
     // Build grid data using toValueDiffGridConfigured
     const gridData = toValueDiffGridConfigured(run.result, primaryKeys, {

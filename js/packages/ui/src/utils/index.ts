@@ -146,3 +146,7 @@ export {
   keyToNumber,
 } from "./transforms";
 export { getSettingsUrl } from "./urls";
+export {
+  createColumnsRenderModeHandler,
+  createPinnedColumnsHandler,
+} from "./viewOptionsHandlers";

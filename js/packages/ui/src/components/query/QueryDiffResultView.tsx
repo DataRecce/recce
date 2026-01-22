@@ -21,12 +21,13 @@
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
 import type { Run } from "../../api";
 import {
-  type ColumnRenderMode,
   isQueryDiffRun,
   type QueryDiffViewOptions,
   type QueryPreviewChangeParams,
 } from "../../api";
 import {
+  createColumnsRenderModeHandler,
+  createPinnedColumnsHandler,
   toDataDiffGridConfigured,
   toValueDiffGridConfigured,
 } from "../../utils";
@@ -125,20 +126,10 @@ export const QueryDiffResultView = createResultView<
     const primaryKeys = !isJoinMode ? (viewOptions?.primary_keys ?? []) : [];
 
     // Create callbacks for view option changes
-    const onColumnsRenderModeChanged = (
-      cols: Record<string, ColumnRenderMode>,
-    ) => {
-      const newRenderModes = {
-        ...(viewOptions?.columnsRenderMode ?? {}),
-        ...cols,
-      };
-      if (onViewOptionsChanged) {
-        onViewOptionsChanged({
-          ...viewOptions,
-          columnsRenderMode: newRenderModes,
-        });
-      }
-    };
+    const onColumnsRenderModeChanged = createColumnsRenderModeHandler(
+      viewOptions,
+      onViewOptionsChanged,
+    );
 
     // Primary key handler only for non-JOIN mode
     const handlePrimaryKeyChanged = !isJoinMode
@@ -152,14 +143,10 @@ export const QueryDiffResultView = createResultView<
         }
       : undefined;
 
-    const handlePinnedColumnsChanged = (pinnedCols: string[]) => {
-      if (onViewOptionsChanged) {
-        onViewOptionsChanged({
-          ...viewOptions,
-          pinned_columns: pinnedCols,
-        });
-      }
-    };
+    const handlePinnedColumnsChanged = createPinnedColumnsHandler(
+      viewOptions,
+      onViewOptionsChanged,
+    );
 
     // Build grid data using appropriate grid generator based on mode
     let gridData: {

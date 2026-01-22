@@ -1,23 +1,34 @@
-import json
 import logging
-import os
 import typing
 from typing import IO, Dict
-
-import requests
 
 from recce import get_version
 from recce.event import get_user_id, is_anonymous_tracking
 from recce.pull_request import PullRequestInfo
 
+# Import from base module to avoid circular imports and re-export for backwards compatibility
+from recce.util.cloud.base import (
+    DOCKER_INTERNAL_URL_PREFIX,
+    LOCALHOST_URL_PREFIX,
+    RECCE_CLOUD_API_HOST,
+    RECCE_CLOUD_BASE_URL,
+    CloudBase,
+    RecceCloudException,
+)
+
 if typing.TYPE_CHECKING:
     from recce.util.cloud import ChecksCloud
 
-RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
-RECCE_CLOUD_BASE_URL = os.environ.get("RECCE_CLOUD_BASE_URL", RECCE_CLOUD_API_HOST)
-
-DOCKER_INTERNAL_URL_PREFIX = "http://host.docker.internal"
-LOCALHOST_URL_PREFIX = "http://localhost"
+# Re-export for backwards compatibility
+__all__ = [
+    "DOCKER_INTERNAL_URL_PREFIX",
+    "LOCALHOST_URL_PREFIX",
+    "RECCE_CLOUD_API_HOST",
+    "RECCE_CLOUD_BASE_URL",
+    "RecceCloudException",
+    "RecceCloud",
+    "PresignedUrlMethod",
+]
 
 logger = logging.getLogger("uvicorn")
 
@@ -27,27 +38,17 @@ class PresignedUrlMethod:
     DOWNLOAD = "download"
 
 
-class RecceCloudException(Exception):
-    def __init__(self, message: str, reason: str, status_code: int):
-        super().__init__(message)
-        self.status_code = status_code
+class RecceCloud(CloudBase):
+    """
+    Main client for Recce Cloud API operations.
 
-        try:
-            reason = json.loads(reason).get("detail", "")
-        except json.JSONDecodeError:
-            pass
-        self.reason = reason
+    Inherits common functionality from CloudBase and provides methods for
+    managing artifacts, sessions, organizations, projects, and other
+    Recce Cloud resources.
+    """
 
-
-class RecceCloud:
     def __init__(self, token: str):
-        if token is None:
-            raise ValueError("Token cannot be None.")
-        self.token = token
-        self.token_type = "github_token" if token.startswith(("ghp_", "gho_", "ghu_", "ghs_", "ghr_")) else "api_token"
-        self.base_url = f"{RECCE_CLOUD_API_HOST}/api/v1"
-        self.base_url_v2 = f"{RECCE_CLOUD_API_HOST}/api/v2"
-
+        super().__init__(token)
         # Initialize modular clients
         self._checks_client = None
 
@@ -68,13 +69,6 @@ class RecceCloud:
 
             self._checks_client = ChecksCloud(self.token)
         return self._checks_client
-
-    def _request(self, method, url, headers: Dict = None, **kwargs):
-        headers = {
-            **(headers or {}),
-            "Authorization": f"Bearer {self.token}",
-        }
-        return requests.request(method, url, headers=headers, **kwargs)
 
     def verify_token(self) -> bool:
         if self.token_type == "github_token":
@@ -106,19 +100,6 @@ class RecceCloud:
     ) -> str:
         response = self._fetch_presigned_url(method, repository, artifact_name, metadata, pr_id, branch)
         return response.get("presigned_url")
-
-    def _replace_localhost_with_docker_internal(self, url: str) -> str:
-        if url is None:
-            return None
-        if (
-            os.environ.get("RECCE_SHARE_INSTANCE_ENV") == "docker"
-            or os.environ.get("RECCE_TASK_INSTANCE_ENV") == "docker"
-            or os.environ.get("RECCE_INSTANCE_ENV") == "docker"
-        ):
-            # For local development, convert the presigned URL from localhost to host.docker.internal
-            if url.startswith(LOCALHOST_URL_PREFIX):
-                return url.replace(LOCALHOST_URL_PREFIX, DOCKER_INTERNAL_URL_PREFIX)
-        return url
 
     def get_presigned_url_by_share_id(
         self,

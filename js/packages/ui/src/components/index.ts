@@ -4,7 +4,7 @@
 // Re-exports all UI components from @datarecce/ui
 
 // App components
-export { EnvInfo, Main, MainLayout } from "./app";
+export { EnvInfo } from "./app";
 
 // Check components
 export type {

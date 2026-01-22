@@ -17,13 +17,12 @@
 import Button from "@mui/material/Button";
 import type { ForwardRefExoticComponent, RefAttributes } from "react";
 import type { Run } from "../../api";
+import { isQueryBaseRun, isQueryRun, type QueryViewOptions } from "../../api";
 import {
-  type ColumnRenderMode,
-  isQueryBaseRun,
-  isQueryRun,
-  type QueryViewOptions,
-} from "../../api";
-import { toDataGridConfigured } from "../../utils";
+  createColumnsRenderModeHandler,
+  createPinnedColumnsHandler,
+  toDataGridConfigured,
+} from "../../utils";
 import type { DataGridHandle } from "../data/ScreenshotDataGrid";
 import { createResultView } from "../result/createResultView";
 import type { CreatedResultViewProps, ResultViewData } from "../result/types";
@@ -89,29 +88,15 @@ export const QueryResultView = createResultView<
     const columnsRenderMode = viewOptions?.columnsRenderMode ?? {};
 
     // Create callbacks for view option changes
-    const onColumnsRenderModeChanged = (
-      cols: Record<string, ColumnRenderMode>,
-    ) => {
-      const newRenderModes = {
-        ...(viewOptions?.columnsRenderMode ?? {}),
-        ...cols,
-      };
-      if (onViewOptionsChanged) {
-        onViewOptionsChanged({
-          ...viewOptions,
-          columnsRenderMode: newRenderModes,
-        });
-      }
-    };
+    const onColumnsRenderModeChanged = createColumnsRenderModeHandler(
+      viewOptions,
+      onViewOptionsChanged,
+    );
 
-    const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
-      if (onViewOptionsChanged) {
-        onViewOptionsChanged({
-          ...viewOptions,
-          pinned_columns: pinnedColumns,
-        });
-      }
-    };
+    const handlePinnedColumnsChanged = createPinnedColumnsHandler(
+      viewOptions,
+      onViewOptionsChanged,
+    );
 
     // Build grid data using toDataGridConfigured
     if (!run.result) {

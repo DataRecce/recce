@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from recce.core import default_context
 from recce.models import Check
 from recce.tasks import Task
-from recce.tasks.core import CheckValidator, TaskResultDiffer
+from recce.tasks.core import TaskResultDiffer, create_check_validator
 from recce.tasks.query import QueryMixin
 
 
@@ -269,9 +269,4 @@ class RowCountDiffResultDiffer(TaskResultDiffer):
         return None
 
 
-class RowCountDiffCheckValidator(CheckValidator):
-    def validate_check(self, check: Check):
-        try:
-            RowCountDiffParams(**check.params)
-        except Exception as e:
-            raise ValueError(f"Invalid params: str{e}")
+RowCountDiffCheckValidator = create_check_validator(RowCountDiffParams)

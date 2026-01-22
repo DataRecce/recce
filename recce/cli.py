@@ -138,6 +138,21 @@ def create_state_loader_by_args(state_file=None, **kwargs):
     return state_loader
 
 
+def verify_state_loader_or_exit(state_loader, console):
+    """
+    Verify the state loader and exit with error if verification fails.
+
+    Args:
+        state_loader: The state loader instance to verify
+        console: Rich console for printing output
+    """
+    if not state_loader.verify():
+        error, hint = state_loader.error_and_hint
+        console.print(f"[[red]Error[/red]] {error}")
+        console.print(f"{hint}")
+        exit(1)
+
+
 def handle_debug_flag(**kwargs):
     if kwargs.get("debug"):
         import logging
@@ -596,11 +611,7 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
     if (tracker := get_startup_tracker()) and hasattr(state_loader, "catalog"):
         tracker.set_catalog_type(state_loader.catalog)
 
-    if not state_loader.verify():
-        error, hint = state_loader.error_and_hint
-        console.print(f"[[red]Error[/red]] {error}")
-        console.print(f"{hint}")
-        exit(1)
+    verify_state_loader_or_exit(state_loader, console)
 
     try:
         result, message = RecceContext.verify_required_artifacts(**kwargs)
@@ -754,11 +765,7 @@ def run(output, **kwargs):
     # Create state loader using shared function
     state_loader = create_state_loader_by_args(state_file, **kwargs)
 
-    if not state_loader.verify():
-        error, hint = state_loader.error_and_hint
-        console.print(f"[[red]Error[/red]] {error}")
-        console.print(f"{hint}")
-        exit(1)
+    verify_state_loader_or_exit(state_loader, console)
 
     result, message = RecceContext.verify_required_artifacts(**kwargs)
     if not result:
@@ -828,11 +835,8 @@ def summary(state_file, **kwargs):
         review_mode=True, cloud_mode=cloud_mode, state_file=state_file, cloud_options=cloud_options
     )
 
-    if not state_loader.verify():
-        error, hint = state_loader.error_and_hint
-        console.print(f"[[red]Error[/red]] {error}")
-        console.print(f"{hint}")
-        exit(1)
+    verify_state_loader_or_exit(state_loader, console)
+
     try:
         # Load context in review mode, won't need to check dbt_project.yml file.
         ctx = load_context(**kwargs, state_loader=state_loader, review=True)
@@ -998,11 +1002,7 @@ def upload(state_file, **kwargs):
         review_mode=False, cloud_mode=False, state_file=state_file, cloud_options=cloud_options
     )
 
-    if not state_loader.verify():
-        error, hint = state_loader.error_and_hint
-        console.print(f"[[red]Error[/red]] {error}")
-        console.print(f"{hint}")
-        exit(1)
+    verify_state_loader_or_exit(state_loader, console)
 
     # check if state exists in cloud
     state_manager = RecceCloudStateManager(cloud_options)
@@ -1611,11 +1611,7 @@ def share(state_file, **kwargs):
         review_mode=True, cloud_mode=False, state_file=state_file, cloud_options=cloud_options
     )
 
-    if not state_loader.verify():
-        error, hint = state_loader.error_and_hint
-        console.print(f"[[red]Error[/red]] {error}")
-        console.print(f"{hint}")
-        exit(1)
+    verify_state_loader_or_exit(state_loader, console)
 
     # check if state exists in cloud
     state_manager = RecceShareStateManager(auth_options)

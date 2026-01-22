@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
-from .core import CheckValidator, Task, TaskResultDiffer
+from .core import Task, TaskResultDiffer, create_check_validator
 from .dataframe import DataFrame
 from .utils import normalize_boolean_flag_columns, normalize_keys_to_columns
 from .valuediff import ValueDiffMixin
@@ -433,18 +433,6 @@ class QueryDiffResultDiffer(TaskResultDiffer):
             return dict(values_changed={})
 
 
-class QueryCheckValidator(CheckValidator):
-    def validate_check(self, check: Check):
-        try:
-            QueryParams(**check.params)
-        except Exception as e:
-            raise ValueError(f"Invalid check: {str(e)}")
+QueryCheckValidator = create_check_validator(QueryParams)
 
-
-class QueryDiffCheckValidator(CheckValidator):
-
-    def validate_check(self, check: Check):
-        try:
-            QueryDiffParams(**check.params)
-        except Exception as e:
-            raise ValueError(f"Invalid check: {str(e)}")
+QueryDiffCheckValidator = create_check_validator(QueryDiffParams)

@@ -1,6 +1,5 @@
-import time
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Tuple
 
 import sqlglot.expressions as exp
 from sqlglot import Dialect, parse_one
@@ -10,6 +9,7 @@ from sqlglot.optimizer.qualify import qualify
 
 from recce.exceptions import RecceException
 from recce.models.types import CllColumn, CllColumnDep
+from recce.util.base_perf_tracker import PerformanceTracker
 
 CllResult = Tuple[
     List[CllColumnDep],  # Model to column dependencies
@@ -18,31 +18,22 @@ CllResult = Tuple[
 
 
 @dataclass
-class CLLPerformanceTracking:
-    lineage_start = None
-    lineage_elapsed = None
-    column_lineage_start = None
-    column_lineage_elapsed = None
-
-    total_nodes = None
-    sqlglot_error_nodes = 0
-    other_error_nodes = 0
+class CLLPerformanceTracking(PerformanceTracker):
+    total_nodes: Optional[int] = None
+    sqlglot_error_nodes: int = 0
+    other_error_nodes: int = 0
 
     def start_lineage(self):
-        self.lineage_start = time.perf_counter_ns()
+        self._start_timer("lineage")
 
     def end_lineage(self):
-        if self.lineage_start is None:
-            return
-        self.lineage_elapsed = (time.perf_counter_ns() - self.lineage_start) / 1000000
+        self._end_timer("lineage")
 
     def start_column_lineage(self):
-        self.column_lineage_start = time.perf_counter_ns()
+        self._start_timer("column_lineage")
 
     def end_column_lineage(self):
-        if self.column_lineage_start is None:
-            return
-        self.column_lineage_elapsed = (time.perf_counter_ns() - self.column_lineage_start) / 1000000
+        self._end_timer("column_lineage")
 
     def set_total_nodes(self, total_nodes):
         self.total_nodes = total_nodes
@@ -53,21 +44,17 @@ class CLLPerformanceTracking:
     def increment_other_error_nodes(self):
         self.other_error_nodes += 1
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return {
-            "lineage_elapsed_ms": self.lineage_elapsed,
-            "column_lineage_elapsed_ms": self.column_lineage_elapsed,
+            "lineage_elapsed_ms": self._get_elapsed("lineage"),
+            "column_lineage_elapsed_ms": self._get_elapsed("column_lineage"),
             "total_nodes": self.total_nodes,
             "sqlglot_error_nodes": self.sqlglot_error_nodes,
             "other_error_nodes": self.other_error_nodes,
         }
 
     def reset(self):
-        self.lineage_start = None
-        self.lineage_elapsed = None
-        self.column_lineage_start = None
-        self.column_lineage_elapsed = None
-
+        self._reset_timers()
         self.total_nodes = None
         self.sqlglot_error_nodes = 0
         self.other_error_nodes = 0

@@ -1,6 +1,5 @@
-import time
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional
 
 import sqlglot.expressions as exp
 from sqlglot import Dialect, parse_one
@@ -9,33 +8,26 @@ from sqlglot.optimizer import Scope, traverse_scope
 from sqlglot.optimizer.qualify import qualify
 
 from recce.models.types import ChangeStatus, NodeChange
+from recce.util.base_perf_tracker import PerformanceTracker
 
 CHANGE_CATEGORY_UNKNOWN = NodeChange(category="unknown")
 CHANGE_CATEGORY_BREAKING = NodeChange(category="breaking")
 
 
 @dataclass
-class BreakingPerformanceTracking:
-    lineage_diff_start = None
-    lineage_diff_elapsed = None
-    modified_nodes = 0
-    sqlglot_error_nodes = 0
-    other_error_nodes = 0
-    checkpoints = {}
+class BreakingPerformanceTracking(PerformanceTracker):
+    modified_nodes: int = 0
+    sqlglot_error_nodes: int = 0
+    other_error_nodes: int = 0
 
     def start_lineage_diff(self):
-        self.lineage_diff_start = time.perf_counter_ns()
+        self._start_timer("lineage_diff")
 
     def record_checkpoint(self, label: str):
-        if self.lineage_diff_start is None:
-            return
-
-        self.checkpoints[label] = (time.perf_counter_ns() - self.lineage_diff_start) / 1000000
+        self._record_checkpoint(label, "lineage_diff")
 
     def end_lineage_diff(self):
-        if self.lineage_diff_start is None:
-            return
-        self.lineage_diff_elapsed = (time.perf_counter_ns() - self.lineage_diff_start) / 1000000
+        self._end_timer("lineage_diff")
 
     def increment_modified_nodes(self):
         self.modified_nodes += 1
@@ -46,22 +38,20 @@ class BreakingPerformanceTracking:
     def increment_other_error_nodes(self):
         self.other_error_nodes += 1
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         return {
-            "lineage_diff_elapsed_ms": self.lineage_diff_elapsed,
+            "lineage_diff_elapsed_ms": self._get_elapsed("lineage_diff"),
             "modified_nodes": self.modified_nodes,
             "sqlglot_error_nodes": self.sqlglot_error_nodes,
             "other_error_nodes": self.other_error_nodes,
-            "checkpoints": self.checkpoints,
+            "checkpoints": dict(self._checkpoints),
         }
 
     def reset(self):
-        self.lineage_diff_start = None
-        self.lineage_diff_elapsed = None
+        self._reset_timers()
         self.modified_nodes = 0
         self.sqlglot_error_nodes = 0
         self.other_error_nodes = 0
-        self.checkpoints = {}
 
 
 def _diff_select_scope(old_scope: Scope, new_scope: Scope, scope_changes_map: dict[Scope, NodeChange]) -> NodeChange:

@@ -132,3 +132,24 @@ class CheckValidator:
         Validate the check. This is supposed to be overridden by subclass. Throw ValueError if the check is invalid.
         """
         pass
+
+
+def create_check_validator(params_class):
+    """
+    Factory function to create a CheckValidator class for a given params class.
+
+    This eliminates boilerplate for validators that simply validate check.params
+    against a Pydantic model.
+
+    Usage:
+        HistogramDiffCheckValidator = create_check_validator(HistogramDiffParams)
+    """
+
+    class GeneratedCheckValidator(CheckValidator):
+        def validate_check(self, check: Check):
+            try:
+                params_class(**check.params)
+            except Exception as e:
+                raise ValueError(f"Invalid check: {str(e)}")
+
+    return GeneratedCheckValidator

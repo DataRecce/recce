@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
-from .core import CheckValidator, Task, TaskResultDiffer
+from .core import Task, TaskResultDiffer, create_check_validator
 from .dataframe import DataFrame
 
 PROFILE_COLUMN_JINJA_TEMPLATE = r"""
@@ -256,13 +256,7 @@ class ProfileDiffResultDiffer(TaskResultDiffer):
         return self.diff(result["base"], result["current"])
 
 
-class ProfileCheckValidator(CheckValidator):
-
-    def validate_check(self, check: Check):
-        try:
-            ProfileParams(**check.params)
-        except Exception as e:
-            raise ValueError(f"Invalid check: {str(e)}")
+ProfileCheckValidator = create_check_validator(ProfileParams)
 
 
 class ProfileTask(ProfileDiffTask):

@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from recce.core import default_context
 from recce.models import Check
 from recce.tasks import Task
-from recce.tasks.core import CheckValidator, TaskResultDiffer
+from recce.tasks.core import TaskResultDiffer, create_check_validator
 from recce.tasks.query import QueryMixin
 
 
@@ -163,10 +163,4 @@ class TopKDiffTaskResultDiffer(TaskResultDiffer):
         return TaskResultDiffer.diff(base, current)
 
 
-class TopKDiffCheckValidator(CheckValidator):
-
-    def validate_check(self, check: Check):
-        try:
-            TopKDiffParams(**check.params)
-        except Exception as e:
-            raise ValueError(f"Invalid check: {str(e)}")
+TopKDiffCheckValidator = create_check_validator(TopKDiffParams)

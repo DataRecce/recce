@@ -4,17 +4,30 @@ Base class for Recce Cloud API clients.
 This module provides the common functionality shared across all cloud API clients.
 """
 
+import json
 import os
 from typing import Dict, Optional
 
 import requests
 
-from recce.util.recce_cloud import (
-    DOCKER_INTERNAL_URL_PREFIX,
-    LOCALHOST_URL_PREFIX,
-    RECCE_CLOUD_API_HOST,
-    RecceCloudException,
-)
+# Cloud API configuration constants
+RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
+RECCE_CLOUD_BASE_URL = os.environ.get("RECCE_CLOUD_BASE_URL", RECCE_CLOUD_API_HOST)
+
+DOCKER_INTERNAL_URL_PREFIX = "http://host.docker.internal"
+LOCALHOST_URL_PREFIX = "http://localhost"
+
+
+class RecceCloudException(Exception):
+    def __init__(self, message: str, reason: str, status_code: int):
+        super().__init__(message)
+        self.status_code = status_code
+
+        try:
+            reason = json.loads(reason).get("detail", "")
+        except json.JSONDecodeError:
+            pass
+        self.reason = reason
 
 
 class CloudBase:
