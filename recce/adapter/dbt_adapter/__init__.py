@@ -437,7 +437,7 @@ class DbtAdapter(BaseAdapter):
             return columns
 
     def get_model(self, model_id: str, base=False):
-        manifest = self.curr_manifest if base is False else self.base_manifest
+        manifest = self.get_manifest(base)
         manifest_dict = manifest.to_dict()
 
         node = manifest_dict["nodes"].get(model_id)
@@ -537,7 +537,7 @@ class DbtAdapter(BaseAdapter):
         ]
 
     def is_python_model(self, node_id: str, base: Optional[bool] = False):
-        manifest = self.curr_manifest if base is False else self.base_manifest
+        manifest = self.get_manifest(base)
         model = manifest.nodes.get(node_id)
         if hasattr(model, "language"):
             return model.language == "python"
@@ -545,7 +545,7 @@ class DbtAdapter(BaseAdapter):
         return False
 
     def find_node_by_name(self, node_name, base=False) -> Optional[ManifestNode]:
-        manifest = self.curr_manifest if base is False else self.base_manifest
+        manifest = self.get_manifest(base)
 
         for key, node in manifest.nodes.items():
             if node.name == node_name:
@@ -582,7 +582,10 @@ class DbtAdapter(BaseAdapter):
             return None
 
     def get_manifest(self, base: bool):
-        return self.curr_manifest if base is False else self.base_manifest
+        return self.base_manifest if base else self.curr_manifest
+
+    def get_catalog(self, base: bool):
+        return self.base_catalog if base else self.curr_catalog
 
     def generate_sql(
         self,
@@ -643,7 +646,7 @@ class DbtAdapter(BaseAdapter):
         return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch, limit=limit)
 
     def build_parent_map(self, nodes: Dict, base: Optional[bool] = False) -> Dict[str, List[str]]:
-        manifest = self.curr_manifest if base is False else self.base_manifest
+        manifest = self.get_manifest(base)
         manifest_dict = manifest.to_dict()
 
         node_ids = nodes.keys()
@@ -656,15 +659,15 @@ class DbtAdapter(BaseAdapter):
         return parent_map
 
     def build_parent_list_per_node(self, node_id: str, base: Optional[bool] = False) -> List[str]:
-        manifest = self.curr_manifest if base is False else self.base_manifest
+        manifest = self.get_manifest(base)
         manifest_dict = manifest.to_dict()
 
         if node_id in manifest_dict["parent_map"]:
             return manifest_dict["parent_map"][node_id]
 
     def get_lineage(self, base: Optional[bool] = False):
-        manifest = self.curr_manifest if base is False else self.base_manifest
-        catalog = self.curr_catalog if base is False else self.base_catalog
+        manifest = self.get_manifest(base)
+        catalog = self.get_catalog(base)
         cache_key = hash((id(manifest), id(catalog)))
         return self.get_lineage_cached(base, cache_key)
 
@@ -685,8 +688,8 @@ class DbtAdapter(BaseAdapter):
             perf_tracker = LineagePerfTracker()
             perf_tracker.start_lineage()
 
-        manifest = self.curr_manifest if base is False else self.base_manifest
-        catalog = self.curr_catalog if base is False else self.base_catalog
+        manifest = self.get_manifest(base)
+        catalog = self.get_catalog(base)
 
         manifest_metadata = manifest.metadata if manifest is not None else None
         catalog_metadata = catalog.metadata if catalog is not None else None
@@ -1234,7 +1237,7 @@ class DbtAdapter(BaseAdapter):
             return cll_data
 
         manifest = as_manifest(self.get_manifest(base))
-        catalog = self.curr_catalog if base is False else self.base_catalog
+        catalog = self.get_catalog(base)
         resource_type = node.resource_type
         if resource_type not in {"model", "seed", "source", "snapshot"}:
             return _apply_all_columns(node, "unknown")
@@ -1353,8 +1356,8 @@ class DbtAdapter(BaseAdapter):
         return cll_data
 
     def get_cll_node(self, node_id: str, base: Optional[bool] = False) -> Tuple[Optional[CllNode], list[str]]:
-        manifest = self.curr_manifest if base is False else self.base_manifest
-        catalog = self.curr_catalog if base is False else self.base_catalog
+        manifest = self.get_manifest(base)
+        catalog = self.get_catalog(base)
         parent_list = []
         node = None
 

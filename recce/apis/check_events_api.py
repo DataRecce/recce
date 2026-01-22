@@ -6,7 +6,8 @@ proxying requests to Recce Cloud. This feature is only available for cloud users
 """
 
 import logging
-from typing import List, Optional
+from functools import wraps
+from typing import Callable, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
@@ -21,6 +22,42 @@ from recce.util.recce_cloud import RecceCloud, RecceCloudException
 logger = logging.getLogger("uvicorn")
 
 check_events_router = APIRouter(tags=["check_events"])
+
+
+# ============================================================================
+# Decorators
+# ============================================================================
+
+
+def handle_cloud_errors(action_name: str) -> Callable:
+    """
+    Decorator that wraps cloud API calls with standard error handling.
+
+    Converts RecceCloudException and RecceException to HTTPException with
+    appropriate status codes and logging.
+
+    Args:
+        action_name: Description of the action for logging (e.g., "list check events")
+
+    Returns:
+        Decorator function
+    """
+
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            try:
+                return await func(*args, **kwargs)
+            except RecceCloudException as e:
+                logger.error(f"Failed to {action_name}: {e}")
+                raise HTTPException(status_code=e.status_code, detail=str(e.reason))
+            except RecceException as e:
+                logger.error(f"Failed to {action_name}: {e}")
+                raise HTTPException(status_code=400, detail=str(e))
+
+        return wrapper
+
+    return decorator
 
 
 # ============================================================================
@@ -167,6 +204,7 @@ class UpdateCommentIn(BaseModel):
     status_code=200,
     response_model=List[CheckEventOut],
 )
+@handle_cloud_errors("list check events")
 async def list_check_events(check_id: UUID):
     """
     List all events for a check in chronological order.
@@ -185,19 +223,11 @@ async def list_check_events(check_id: UUID):
         401: No API token available
         404: Check not found
     """
-    try:
-        org_id, project_id, session_id = _get_session_info()
-        client = _get_events_client()
+    org_id, project_id, session_id = _get_session_info()
+    client = _get_events_client()
 
-        events = client.list_events(org_id, project_id, session_id, str(check_id))
-        return events
-
-    except RecceCloudException as e:
-        logger.error(f"Failed to list check events: {e}")
-        raise HTTPException(status_code=e.status_code, detail=str(e.reason))
-    except RecceException as e:
-        logger.error(f"Failed to list check events: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+    events = client.list_events(org_id, project_id, session_id, str(check_id))
+    return events
 
 
 @check_events_router.get(
@@ -205,6 +235,7 @@ async def list_check_events(check_id: UUID):
     status_code=200,
     response_model=CheckEventOut,
 )
+@handle_cloud_errors("get check event")
 async def get_check_event(check_id: UUID, event_id: UUID):
     """
     Get a specific event by ID.
@@ -221,19 +252,11 @@ async def get_check_event(check_id: UUID, event_id: UUID):
         401: No API token available
         404: Event not found
     """
-    try:
-        org_id, project_id, session_id = _get_session_info()
-        client = _get_events_client()
+    org_id, project_id, session_id = _get_session_info()
+    client = _get_events_client()
 
-        event = client.get_event(org_id, project_id, session_id, str(check_id), str(event_id))
-        return event
-
-    except RecceCloudException as e:
-        logger.error(f"Failed to get check event: {e}")
-        raise HTTPException(status_code=e.status_code, detail=str(e.reason))
-    except RecceException as e:
-        logger.error(f"Failed to get check event: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+    event = client.get_event(org_id, project_id, session_id, str(check_id), str(event_id))
+    return event
 
 
 @check_events_router.post(
@@ -241,6 +264,7 @@ async def get_check_event(check_id: UUID, event_id: UUID):
     status_code=201,
     response_model=CheckEventOut,
 )
+@handle_cloud_errors("create comment")
 async def create_comment(check_id: UUID, body: CreateCommentIn):
     """
     Create a new comment on a check.
@@ -260,19 +284,11 @@ async def create_comment(check_id: UUID, body: CreateCommentIn):
     if not body.content or not body.content.strip():
         raise HTTPException(status_code=400, detail="Comment content cannot be empty.")
 
-    try:
-        org_id, project_id, session_id = _get_session_info()
-        client = _get_events_client()
+    org_id, project_id, session_id = _get_session_info()
+    client = _get_events_client()
 
-        event = client.create_comment(org_id, project_id, session_id, str(check_id), body.content)
-        return event
-
-    except RecceCloudException as e:
-        logger.error(f"Failed to create comment: {e}")
-        raise HTTPException(status_code=e.status_code, detail=str(e.reason))
-    except RecceException as e:
-        logger.error(f"Failed to create comment: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+    event = client.create_comment(org_id, project_id, session_id, str(check_id), body.content)
+    return event
 
 
 @check_events_router.patch(
@@ -280,6 +296,7 @@ async def create_comment(check_id: UUID, body: CreateCommentIn):
     status_code=200,
     response_model=CheckEventOut,
 )
+@handle_cloud_errors("update comment")
 async def update_comment(check_id: UUID, event_id: UUID, body: UpdateCommentIn):
     """
     Update an existing comment.
@@ -303,25 +320,18 @@ async def update_comment(check_id: UUID, event_id: UUID, body: UpdateCommentIn):
     if not body.content or not body.content.strip():
         raise HTTPException(status_code=400, detail="Comment content cannot be empty.")
 
-    try:
-        org_id, project_id, session_id = _get_session_info()
-        client = _get_events_client()
+    org_id, project_id, session_id = _get_session_info()
+    client = _get_events_client()
 
-        event = client.update_comment(org_id, project_id, session_id, str(check_id), str(event_id), body.content)
-        return event
-
-    except RecceCloudException as e:
-        logger.error(f"Failed to update comment: {e}")
-        raise HTTPException(status_code=e.status_code, detail=str(e.reason))
-    except RecceException as e:
-        logger.error(f"Failed to update comment: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+    event = client.update_comment(org_id, project_id, session_id, str(check_id), str(event_id), body.content)
+    return event
 
 
 @check_events_router.delete(
     "/checks/{check_id}/events/{event_id}",
     status_code=204,
 )
+@handle_cloud_errors("delete comment")
 async def delete_comment(check_id: UUID, event_id: UUID):
     """
     Delete a comment (soft delete).
@@ -339,15 +349,7 @@ async def delete_comment(check_id: UUID, event_id: UUID):
         403: Not authorized to delete this comment
         404: Comment not found
     """
-    try:
-        org_id, project_id, session_id = _get_session_info()
-        client = _get_events_client()
+    org_id, project_id, session_id = _get_session_info()
+    client = _get_events_client()
 
-        client.delete_comment(org_id, project_id, session_id, str(check_id), str(event_id))
-
-    except RecceCloudException as e:
-        logger.error(f"Failed to delete comment: {e}")
-        raise HTTPException(status_code=e.status_code, detail=str(e.reason))
-    except RecceException as e:
-        logger.error(f"Failed to delete comment: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+    client.delete_comment(org_id, project_id, session_id, str(check_id), str(event_id))

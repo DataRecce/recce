@@ -28,6 +28,29 @@ from recce_cloud.download import (
 from recce_cloud.report import fetch_and_generate_report
 from recce_cloud.upload import upload_to_existing_session, upload_with_platform_apis
 
+
+def require_api_token(console) -> str:
+    """
+    Get the API token from environment or profile, exiting with error if not available.
+
+    Args:
+        console: Rich Console instance for error messages
+
+    Returns:
+        str: The API token
+
+    Exits:
+        Exits with code 2 if no token is available
+    """
+    from recce_cloud.auth.profile import get_api_token
+
+    token = os.getenv("RECCE_API_TOKEN") or get_api_token()
+    if not token:
+        console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
+        console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
+        sys.exit(2)
+    return token
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -646,26 +669,15 @@ def upload(target_path, session_id, session_name, skip_confirmation, cr, session
     if session_id:
         # Generic workflow: Upload to existing session using session ID
         # This workflow requires RECCE_API_TOKEN or logged-in profile
-        from recce_cloud.auth.profile import get_api_token
-
-        token = os.getenv("RECCE_API_TOKEN") or get_api_token()
-        if not token:
-            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
-            console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
-            sys.exit(2)
+        token = require_api_token(console)
 
         upload_to_existing_session(console, token, session_id, manifest_path, catalog_path, adapter_type, target_path)
     elif session_name:
         # Session name workflow: Look up session by name, create if not exists
         # This workflow requires RECCE_API_TOKEN or logged-in profile, plus org/project config
-        from recce_cloud.auth.profile import get_api_token
         from recce_cloud.upload import upload_with_session_name
 
-        token = os.getenv("RECCE_API_TOKEN") or get_api_token()
-        if not token:
-            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
-            console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
-            sys.exit(2)
+        token = require_api_token(console)
 
         upload_with_session_name(
             console,
@@ -753,17 +765,12 @@ def list_sessions_cmd(session_type, output_json):
     from rich.table import Table
 
     from recce_cloud.api.client import RecceCloudClient
-    from recce_cloud.auth.profile import get_api_token
     from recce_cloud.config.resolver import ConfigurationError, resolve_config
 
     console = Console()
 
     # 1. Get API token
-    token = os.getenv("RECCE_API_TOKEN") or get_api_token()
-    if not token:
-        console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
-        console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
-        sys.exit(2)
+    token = require_api_token(console)
 
     # 2. Resolve org/project configuration
     try:
@@ -1034,13 +1041,7 @@ def download(target_path, session_id, prod, dry_run, force):
     if session_id:
         # Generic workflow: Download from existing session using session ID
         # This workflow requires RECCE_API_TOKEN or logged-in profile
-        from recce_cloud.auth.profile import get_api_token
-
-        token = os.getenv("RECCE_API_TOKEN") or get_api_token()
-        if not token:
-            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
-            console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
-            sys.exit(2)
+        token = require_api_token(console)
 
         download_from_existing_session(console, token, session_id, target_path, force)
     else:
@@ -1201,13 +1202,7 @@ def delete(session_id, dry_run, force):
     if session_id:
         # Generic workflow: Delete from existing session using session ID
         # This workflow requires RECCE_API_TOKEN or logged-in profile
-        from recce_cloud.auth.profile import get_api_token
-
-        token = os.getenv("RECCE_API_TOKEN") or get_api_token()
-        if not token:
-            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
-            console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
-            sys.exit(2)
+        token = require_api_token(console)
 
         delete_existing_session(console, token, session_id)
     else:
@@ -1296,13 +1291,7 @@ def report(repo, since, until, base_branch, merged_only, output):
     console = Console()
 
     # Check for API token (env var or logged-in profile)
-    from recce_cloud.auth.profile import get_api_token
-
-    token = os.getenv("RECCE_API_TOKEN") or get_api_token()
-    if not token:
-        console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
-        console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
-        sys.exit(2)
+    token = require_api_token(console)
 
     # Auto-detect repo from git remote if not provided
     if not repo:

@@ -115,6 +115,27 @@ class TaskResultDiffer(ABC):
         return None
 
 
+class ConnectionManagedTask(Task):
+    """
+    A base class for tasks that manage database connections.
+
+    This class provides common connection management functionality including:
+    - Initializing self.connection = None
+    - cancel() method that closes the connection if it exists
+
+    Subclasses must also inherit from QueryMixin to get the close_connection method.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.connection = None
+
+    def cancel(self):
+        super().cancel()
+        if self.connection:
+            self.close_connection(self.connection)
+
+
 class CheckValidator:
     def __init__(self):
         pass

@@ -17,6 +17,31 @@ from recce_cloud.config.resolver import ConfigurationError, resolve_config
 logger = logging.getLogger(__name__)
 
 
+def _upload_artifact(console, url: str, file_path: str, artifact_name: str):
+    """
+    Upload a single artifact file to a presigned URL.
+
+    Args:
+        console: Rich console for output
+        url: Presigned URL to upload to
+        file_path: Local path to the file to upload
+        artifact_name: Human-readable name for error messages (e.g., "manifest.json")
+
+    Raises:
+        SystemExit: Exits with code 4 on upload failure
+    """
+    console.print(f'Uploading {artifact_name} from path "{file_path}"')
+    try:
+        with open(file_path, "rb") as f:
+            response = requests.put(url, data=f.read())
+        if response.status_code not in [200, 204]:
+            raise Exception(f"Upload failed with status {response.status_code}: {response.text}")
+    except Exception as e:
+        console.print(f"[red]Error:[/red] Failed to upload {artifact_name}")
+        console.print(f"Reason: {e}")
+        sys.exit(4)
+
+
 def upload_to_existing_session(
     console, token: str, session_id: str, manifest_path: str, catalog_path: str, adapter_type: str, target_path: str
 ):
@@ -71,29 +96,9 @@ def upload_to_existing_session(
         console.print(f"Reason: {e}")
         sys.exit(4)
 
-    # Upload manifest.json
-    console.print(f'Uploading manifest from path "{manifest_path}"')
-    try:
-        with open(manifest_path, "rb") as f:
-            response = requests.put(presigned_urls["manifest_url"], data=f.read())
-        if response.status_code not in [200, 204]:
-            raise Exception(f"Upload failed with status {response.status_code}: {response.text}")
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to upload manifest.json")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
-
-    # Upload catalog.json
-    console.print(f'Uploading catalog from path "{catalog_path}"')
-    try:
-        with open(catalog_path, "rb") as f:
-            response = requests.put(presigned_urls["catalog_url"], data=f.read())
-        if response.status_code not in [200, 204]:
-            raise Exception(f"Upload failed with status {response.status_code}: {response.text}")
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to upload catalog.json")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
+    # Upload manifest.json and catalog.json
+    _upload_artifact(console, presigned_urls["manifest_url"], manifest_path, "manifest.json")
+    _upload_artifact(console, presigned_urls["catalog_url"], catalog_path, "catalog.json")
 
     # Update session metadata
     try:
@@ -184,29 +189,9 @@ def upload_with_platform_apis(
         console.print(f"Reason: {e}")
         sys.exit(4)
 
-    # Upload manifest.json
-    console.print(f'Uploading manifest from path "{manifest_path}"')
-    try:
-        with open(manifest_path, "rb") as f:
-            response = requests.put(manifest_upload_url, data=f.read())
-        if response.status_code not in [200, 204]:
-            raise Exception(f"Upload failed with status {response.status_code}: {response.text}")
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to upload manifest.json")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
-
-    # Upload catalog.json
-    console.print(f'Uploading catalog from path "{catalog_path}"')
-    try:
-        with open(catalog_path, "rb") as f:
-            response = requests.put(catalog_upload_url, data=f.read())
-        if response.status_code not in [200, 204]:
-            raise Exception(f"Upload failed with status {response.status_code}: {response.text}")
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to upload catalog.json")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
+    # Upload manifest.json and catalog.json
+    _upload_artifact(console, manifest_upload_url, manifest_path, "manifest.json")
+    _upload_artifact(console, catalog_upload_url, catalog_path, "catalog.json")
 
     # Notify upload completion
     console.print("Notifying upload completion...")
@@ -375,29 +360,9 @@ def upload_with_session_name(
         console.print(f"Reason: {e}")
         sys.exit(4)
 
-    # Upload manifest.json
-    console.print(f'Uploading manifest from path "{manifest_path}"')
-    try:
-        with open(manifest_path, "rb") as f:
-            response = requests.put(presigned_urls["manifest_url"], data=f.read())
-        if response.status_code not in [200, 204]:
-            raise Exception(f"Upload failed with status {response.status_code}: {response.text}")
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to upload manifest.json")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
-
-    # Upload catalog.json
-    console.print(f'Uploading catalog from path "{catalog_path}"')
-    try:
-        with open(catalog_path, "rb") as f:
-            response = requests.put(presigned_urls["catalog_url"], data=f.read())
-        if response.status_code not in [200, 204]:
-            raise Exception(f"Upload failed with status {response.status_code}: {response.text}")
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to upload catalog.json")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
+    # Upload manifest.json and catalog.json
+    _upload_artifact(console, presigned_urls["manifest_url"], manifest_path, "manifest.json")
+    _upload_artifact(console, presigned_urls["catalog_url"], catalog_path, "catalog.json")
 
     # Update session metadata (if session already existed, update adapter_type)
     if existing_session:

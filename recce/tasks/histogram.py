@@ -8,8 +8,7 @@ from pydantic import BaseModel
 
 from recce.core import default_context
 from recce.models import Check
-from recce.tasks import Task
-from recce.tasks.core import CheckValidator, TaskResultDiffer
+from recce.tasks.core import CheckValidator, ConnectionManagedTask, TaskResultDiffer
 from recce.tasks.query import QueryMixin
 
 sql_datetime_types = [
@@ -91,8 +90,25 @@ def _is_histogram_supported(column_type):
     return True
 
 
-def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=50):
-    bin_size = math.ceil((max_value - min_value) / num_bins) or 1
+def generate_histogram_sql(node, column, min_value, max_value, num_bins=50, is_integer=False):
+    """Generate SQL for histogram binning.
+
+    Args:
+        node: The dbt node/model name
+        column: The column name to create histogram for
+        min_value: Minimum value in the column
+        max_value: Maximum value in the column
+        num_bins: Number of bins for the histogram (default 50)
+        is_integer: If True, use ceiling for bin_size calculation (for integer types).
+                   If False, use exact division (for numeric/float types).
+
+    Returns:
+        tuple: (sql_query, bin_size)
+    """
+    if is_integer:
+        bin_size = math.ceil((max_value - min_value) / num_bins) or 1
+    else:
+        bin_size = (max_value - min_value) / num_bins
 
     sql = f"""
     WITH value_ranges AS (
@@ -128,42 +144,6 @@ def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=
     return sql, bin_size
 
 
-def generate_histogram_sql_numeric(node, column, min_value, max_value, num_bins=50):
-    bin_size = (max_value - min_value) / num_bins
-    sql = f"""
-        WITH value_ranges AS (
-            SELECT
-                {min_value} as min_value,
-                {max_value} as max_value
-        ),
-        bin_parameters AS (
-            SELECT
-                min_value,
-                max_value,
-                {bin_size} AS bin_size
-            FROM value_ranges
-        ),
-        binned_values AS (
-            SELECT
-                {column} as column_value,
-                FLOOR(({column} - (SELECT min_value FROM bin_parameters)) / (SELECT bin_size FROM bin_parameters)) AS bin
-            FROM {{{{ ref("{node}") }}}},
-            bin_parameters
-        ),
-        bin_edges AS (
-            SELECT
-                bin,
-                COUNT(*) AS count
-            FROM binned_values, bin_parameters
-            GROUP BY bin
-            ORDER BY bin
-        )
-
-        SELECT bin, count FROM bin_edges
-        """
-    return sql, bin_size
-
-
 class HistogramDiffParams(BaseModel):
     model: str
     column_name: str
@@ -172,12 +152,11 @@ class HistogramDiffParams(BaseModel):
 
 
 def query_numeric_histogram(task, node, column, column_type, min_value, max_value, num_bins=50):
-    if column_type.upper() in sql_integer_types:
+    is_integer = column_type.upper() in sql_integer_types
+    if is_integer:
         if max_value - min_value < num_bins:
             num_bins = int(max_value - min_value + 1)
-        histogram_sql, bin_size = generate_histogram_sql_integer(node, column, min_value, max_value, num_bins)
-    else:
-        histogram_sql, bin_size = generate_histogram_sql_numeric(node, column, min_value, max_value, num_bins)
+    histogram_sql, bin_size = generate_histogram_sql(node, column, min_value, max_value, num_bins, is_integer=is_integer)
 
     base = None
     try:
@@ -334,11 +313,10 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
     return base_result, curr_result, bin_edges
 
 
-class HistogramDiffTask(Task, QueryMixin):
+class HistogramDiffTask(ConnectionManagedTask, QueryMixin):
     def __init__(self, params):
         super().__init__()
         self.params = HistogramDiffParams(**params)
-        self.connection = None
 
     def execute(self):
         from recce.adapter.dbt_adapter import DbtAdapter
@@ -412,11 +390,6 @@ class HistogramDiffTask(Task, QueryMixin):
             result["bin_edges"] = bin_edges
             result["labels"] = labels
         return result
-
-    def cancel(self):
-        super().cancel()
-        if self.connection:
-            self.close_connection(self.connection)
 
 
 class HistogramDiffTaskResultDiffer(TaskResultDiffer):

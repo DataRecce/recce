@@ -4,8 +4,7 @@ from pydantic import BaseModel
 
 from recce.core import default_context
 from recce.models import Check
-from recce.tasks import Task
-from recce.tasks.core import CheckValidator, TaskResultDiffer
+from recce.tasks.core import CheckValidator, ConnectionManagedTask, TaskResultDiffer
 from recce.tasks.query import QueryMixin
 
 
@@ -15,11 +14,10 @@ class TopKDiffParams(BaseModel):
     k: Optional[int] = 10
 
 
-class TopKDiffTask(Task, QueryMixin):
+class TopKDiffTask(ConnectionManagedTask, QueryMixin):
     def __init__(self, params):
         super().__init__()
         self.params = TopKDiffParams(**params)
-        self.connection = None
 
     def _query_row_count_diff(self, dbt_adapter, base_relation, curr_relation, column):
         """
@@ -148,11 +146,6 @@ class TopKDiffTask(Task, QueryMixin):
                 },
             }
             return result
-
-    def cancel(self):
-        super().cancel()
-        if self.connection:
-            self.close_connection(self.connection)
 
 
 class TopKDiffTaskResultDiffer(TaskResultDiffer):

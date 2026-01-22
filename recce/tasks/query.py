@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
-from .core import CheckValidator, Task, TaskResultDiffer
+from .core import CheckValidator, ConnectionManagedTask, Task, TaskResultDiffer
 from .dataframe import DataFrame
 from .utils import normalize_boolean_flag_columns, normalize_keys_to_columns
 from .valuediff import ValueDiffMixin
@@ -77,13 +77,12 @@ class QueryDiffParams(BaseModel):
     current_model: Optional[str] = None
 
 
-class QueryTask(Task, QueryMixin):
+class QueryTask(ConnectionManagedTask, QueryMixin):
     is_base = False
 
     def __init__(self, params: dict):
         super().__init__()
         self.params = QueryParams(**params)
-        self.connection = None
 
     def execute_dbt(self):
         from recce.adapter.dbt_adapter import DbtAdapter
@@ -118,11 +117,6 @@ class QueryTask(Task, QueryMixin):
         else:
             return self.execute_dbt()
 
-    def cancel(self):
-        super().cancel()
-        if self.connection:
-            self.close_connection(self.connection)
-
 
 class QueryBaseTask(QueryTask):
     is_base = True
@@ -134,11 +128,10 @@ class QueryDiffResult(BaseModel):
     diff: Optional[DataFrame] = None
 
 
-class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
+class QueryDiffTask(ConnectionManagedTask, QueryMixin, ValueDiffMixin):
     def __init__(self, params):
         super().__init__()
         self.params = QueryDiffParams(**params)
-        self.connection = None
         self.legacy_surrogate_key = True
 
     def _query_diff(
@@ -409,11 +402,6 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
             return self.execute_sqlmesh()
         else:
             return self.execute_dbt()
-
-    def cancel(self):
-        super().cancel()
-        if self.connection:
-            self.close_connection(self.connection)
 
 
 class QueryDiffResultDiffer(TaskResultDiffer):

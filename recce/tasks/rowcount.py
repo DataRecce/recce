@@ -4,8 +4,7 @@ from pydantic import BaseModel
 
 from recce.core import default_context
 from recce.models import Check
-from recce.tasks import Task
-from recce.tasks.core import CheckValidator, TaskResultDiffer
+from recce.tasks.core import CheckValidator, ConnectionManagedTask, Task, TaskResultDiffer
 from recce.tasks.query import QueryMixin
 
 
@@ -14,11 +13,10 @@ class RowCountParams(BaseModel):
     node_ids: Optional[list[str]] = None
 
 
-class RowCountTask(Task, QueryMixin):
+class RowCountTask(ConnectionManagedTask, QueryMixin):
     def __init__(self, params: dict):
         super().__init__()
         self.params = RowCountParams(**params) if params is not None else RowCountParams()
-        self.connection = None
 
     def _query_row_count(self, dbt_adapter, model_name, base=False):
         node = dbt_adapter.find_node_by_name(model_name, base=base)
@@ -87,11 +85,6 @@ class RowCountTask(Task, QueryMixin):
 
         return result
 
-    def cancel(self):
-        super().cancel()
-        if self.connection:
-            self.close_connection(self.connection)
-
 
 class RowCountDiffParams(BaseModel):
     node_names: Optional[list[str]] = None
@@ -102,11 +95,10 @@ class RowCountDiffParams(BaseModel):
     view_mode: Optional[Literal["all", "changed_models"]] = None
 
 
-class RowCountDiffTask(Task, QueryMixin):
+class RowCountDiffTask(ConnectionManagedTask, QueryMixin):
     def __init__(self, params: dict):
         super().__init__()
         self.params = RowCountDiffParams(**params) if params is not None else RowCountDiffParams()
-        self.connection = None
 
     def _query_row_count(self, dbt_adapter, model_name, base=False):
         node = dbt_adapter.find_node_by_name(model_name, base=base)
@@ -222,11 +214,6 @@ class RowCountDiffTask(Task, QueryMixin):
             return self.execute_dbt()
         else:
             return self.execute_sqlmesh()
-
-    def cancel(self):
-        super().cancel()
-        if self.connection:
-            self.close_connection(self.connection)
 
 
 class RowCountDiffResultDiffer(TaskResultDiffer):
