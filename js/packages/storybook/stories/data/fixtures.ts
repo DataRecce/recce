@@ -3,8 +3,6 @@ import type {
   ColDef,
   DataGridRow,
   HistogramDataset,
-  ProfileColumn,
-  ProfileRow,
   TopKDataset,
 } from "@datarecce/ui/primitives";
 
@@ -60,125 +58,6 @@ export const createUniformHistogram = (): HistogramDataset => ({
   counts: [50, 50, 50, 50, 50, 50, 50, 50, 50, 50],
   label: "Uniform Data",
 });
-
-// ============================================
-// Profile Table Fixtures
-// ============================================
-
-/**
- * Create profile column definition
- */
-export const createProfileColumn = (
-  overrides: Partial<ProfileColumn> = {},
-): ProfileColumn => ({
-  field: "column_name",
-  headerName: "Column",
-  width: 150,
-  isMetric: false,
-  ...overrides,
-});
-
-/**
- * Create profile row data
- */
-export const createProfileRow = (
-  overrides: Partial<ProfileRow> = {},
-): ProfileRow => ({
-  column: "sample_column",
-  dtype: "VARCHAR",
-  count: 1000,
-  nulls: 10,
-  distinct: 500,
-  ...overrides,
-});
-
-/**
- * Sample profile columns for diff view
- */
-export const sampleProfileColumns: ProfileColumn[] = [
-  { field: "column", headerName: "Column", width: 200, pinned: "left" },
-  { field: "dtype", headerName: "Type", width: 120 },
-  { field: "count_base", headerName: "Base Count", width: 120, isMetric: true },
-  {
-    field: "count_current",
-    headerName: "Current Count",
-    width: 120,
-    isMetric: true,
-  },
-  { field: "nulls_base", headerName: "Base Nulls", width: 120, isMetric: true },
-  {
-    field: "nulls_current",
-    headerName: "Current Nulls",
-    width: 120,
-    isMetric: true,
-  },
-  {
-    field: "distinct_base",
-    headerName: "Base Distinct",
-    width: 140,
-    isMetric: true,
-  },
-  {
-    field: "distinct_current",
-    headerName: "Current Distinct",
-    width: 140,
-    isMetric: true,
-  },
-];
-
-/**
- * Sample profile rows for diff view
- */
-export const sampleProfileRows: ProfileRow[] = [
-  {
-    __rowKey: "col1",
-    column: "user_id",
-    dtype: "INTEGER",
-    count_base: 1000,
-    count_current: 1050,
-    nulls_base: 0,
-    nulls_current: 0,
-    distinct_base: 1000,
-    distinct_current: 1050,
-    __status: "modified",
-  },
-  {
-    __rowKey: "col2",
-    column: "username",
-    dtype: "VARCHAR",
-    count_base: 1000,
-    count_current: 1050,
-    nulls_base: 5,
-    nulls_current: 8,
-    distinct_base: 995,
-    distinct_current: 1042,
-    __status: "modified",
-  },
-  {
-    __rowKey: "col3",
-    column: "email",
-    dtype: "VARCHAR",
-    count_base: 1000,
-    count_current: 1050,
-    nulls_base: 0,
-    nulls_current: 0,
-    distinct_base: 1000,
-    distinct_current: 1050,
-    __status: "unchanged",
-  },
-  {
-    __rowKey: "col4",
-    column: "created_at",
-    dtype: "TIMESTAMP",
-    count_base: 1000,
-    count_current: 1050,
-    nulls_base: 0,
-    nulls_current: 0,
-    distinct_base: 1000,
-    distinct_current: 1050,
-    __status: "unchanged",
-  },
-];
 
 // ============================================
 // Top-K Fixtures

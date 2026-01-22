@@ -269,6 +269,7 @@ function HistogramChartComponent({
         categoryPercentage: 1,
         barPercentage: 1,
         xAxisID: "x",
+        offset: false,
       };
     };
 
@@ -306,6 +307,7 @@ function HistogramChartComponent({
       responsive: true,
       maintainAspectRatio: false,
       animation: animate ? undefined : false,
+      grouped: false,
       plugins: {
         legend: {
           reverse: true,
@@ -356,7 +358,10 @@ function HistogramChartComponent({
                   month: "MMM yyyy",
                 },
               },
-              grid: { display: false },
+              grid: {
+                display: false,
+                drawOnChartArea: false,
+              },
               ticks: {
                 minRotation: 30,
                 maxRotation: 30,
@@ -367,14 +372,16 @@ function HistogramChartComponent({
           : {
               display: !hideAxis,
               type: "category",
-              grid: { display: false },
+              grid: {
+                display: false,
+                drawOnChartArea: false,
+              },
               ticks: {
                 callback(_val, index) {
                   return labels[index];
                 },
                 color: themeColors.textColor,
               },
-              stacked: true,
             },
         y: {
           display: !hideAxis,
