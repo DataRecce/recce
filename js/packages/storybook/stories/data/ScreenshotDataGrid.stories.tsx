@@ -1,9 +1,11 @@
 // packages/storybook/stories/data/ScreenshotDataGrid.stories.tsx
+
 import {
   EmptyRowsRenderer,
   ScreenshotDataGrid,
 } from "@datarecce/ui/primitives";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { CellClassParams } from "ag-grid-community";
 import { fn } from "storybook/test";
 import {
   createGridColumn,
@@ -12,6 +14,15 @@ import {
   gridRowsWithDiff,
   sampleGridColumns,
 } from "./fixtures";
+
+// Consistent style pattern used in production
+const STANDARD_GRID_STYLE = {
+  blockSize: "auto",
+  maxHeight: "100%",
+  overflow: "auto",
+  fontSize: "0.875rem",
+  borderWidth: 1,
+} as const;
 
 const meta: Meta<typeof ScreenshotDataGrid> = {
   title: "Visualizations/Data/ScreenshotDataGrid",
@@ -82,6 +93,7 @@ type Story = StoryObj<typeof ScreenshotDataGrid>;
 
 export const Default: Story = {
   args: {
+    style: STANDARD_GRID_STYLE,
     columnDefs: sampleGridColumns,
     rowData: generateGridRows(20),
   },
@@ -90,6 +102,7 @@ export const Default: Story = {
 export const LegacyAPI: Story = {
   name: "Legacy react-data-grid API",
   args: {
+    style: STANDARD_GRID_STYLE,
     columns: sampleGridColumns,
     rows: generateGridRows(20),
   },
@@ -106,17 +119,74 @@ export const LegacyAPI: Story = {
 export const WithDiffCells: Story = {
   name: "With Diff Cell Styling",
   args: {
-    columnDefs: sampleGridColumns,
-    rowData: gridRowsWithDiff.map((row) => ({
-      ...row,
-      created_at: new Date().toISOString(),
-    })),
+    style: STANDARD_GRID_STYLE,
+    columnDefs: [
+      // Primary key column with diff-header styling
+      createGridColumn({
+        field: "id",
+        headerName: "ID",
+        width: 80,
+        pinned: "left",
+        cellClass: (params: CellClassParams) => {
+          if (params.data?.__status) {
+            return `diff-header-${params.data.__status}`;
+          }
+          return undefined;
+        },
+      }),
+      // Regular columns with diff-cell styling
+      createGridColumn({
+        field: "name",
+        headerName: "Name",
+        width: 200,
+        cellClass: (params: CellClassParams) => {
+          if (params.data?.__status && params.data.__status !== "unchanged") {
+            return `diff-cell-${params.data.__status}`;
+          }
+          return undefined;
+        },
+      }),
+      createGridColumn({
+        field: "value",
+        headerName: "Value",
+        width: 120,
+        cellClass: (params: CellClassParams) => {
+          if (params.data?.__status && params.data.__status !== "unchanged") {
+            return `diff-cell-${params.data.__status}`;
+          }
+          return undefined;
+        },
+      }),
+      createGridColumn({
+        field: "status",
+        headerName: "Status",
+        width: 120,
+        cellClass: (params: CellClassParams) => {
+          if (params.data?.__status && params.data.__status !== "unchanged") {
+            return `diff-cell-${params.data.__status}`;
+          }
+          return undefined;
+        },
+      }),
+      createGridColumn({
+        field: "created_at",
+        headerName: "Created",
+        width: 180,
+        cellClass: (params: CellClassParams) => {
+          if (params.data?.__status && params.data.__status !== "unchanged") {
+            return `diff-cell-${params.data.__status}`;
+          }
+          return undefined;
+        },
+      }),
+    ],
+    rowData: gridRowsWithDiff,
   },
   parameters: {
     docs: {
       description: {
         story:
-          "Grid with diff cell styling: added (green), removed (red), modified (yellow).",
+          "Grid with diff cell styling: added (green background), removed (red background), modified (red background - currently shares styling with removed due to component bug). The ID column uses diff-header styling (bold colors), while data columns use diff-cell styling (lighter colors).",
       },
     },
   },
@@ -129,6 +199,7 @@ export const WithDiffCells: Story = {
 export const WithManyColumns: Story = {
   name: "Many Columns (15+)",
   args: {
+    style: STANDARD_GRID_STYLE,
     columnDefs: [
       createGridColumn({
         field: "id",
@@ -158,14 +229,19 @@ export const WithManyColumns: Story = {
 export const WithPinnedColumn: Story = {
   name: "With Pinned Column",
   args: {
+    style: STANDARD_GRID_STYLE,
     columnDefs: [
       createGridColumn({
         field: "id",
         headerName: "ID",
         width: 80,
+      }),
+      createGridColumn({
+        field: "name",
+        headerName: "Name",
+        width: 200,
         pinned: "left",
       }),
-      createGridColumn({ field: "name", headerName: "Name", width: 200 }),
       createGridColumn({ field: "value", headerName: "Value", width: 120 }),
       createGridColumn({ field: "status", headerName: "Status", width: 120 }),
       ...Array.from({ length: 10 }, (_, i) =>
@@ -183,6 +259,7 @@ export const WithPinnedColumn: Story = {
 export const CustomRowHeight: Story = {
   name: "Custom Row Height",
   args: {
+    style: STANDARD_GRID_STYLE,
     columnDefs: sampleGridColumns,
     rowData: generateGridRows(20),
     rowHeight: 48,
@@ -197,6 +274,7 @@ export const CustomRowHeight: Story = {
 export const EmptyState: Story = {
   name: "Empty State",
   args: {
+    style: STANDARD_GRID_STYLE,
     columnDefs: sampleGridColumns,
     rowData: [],
     renderers: {
@@ -208,6 +286,7 @@ export const EmptyState: Story = {
 export const EmptyStateCustom: Story = {
   name: "Empty State Custom",
   args: {
+    style: STANDARD_GRID_STYLE,
     columnDefs: sampleGridColumns,
     rowData: [],
     renderers: {
@@ -224,6 +303,7 @@ export const EmptyStateCustom: Story = {
 export const SingleRow: Story = {
   name: "Single Row",
   args: {
+    style: STANDARD_GRID_STYLE,
     columnDefs: sampleGridColumns,
     rowData: [createGridRow(0, { created_at: new Date().toISOString() })],
   },
@@ -232,6 +312,7 @@ export const SingleRow: Story = {
 export const ManyRows: Story = {
   name: "Many Rows (1000+)",
   args: {
+    style: STANDARD_GRID_STYLE,
     columnDefs: sampleGridColumns,
     rowData: generateGridRows(1000),
   },
@@ -248,6 +329,7 @@ export const ManyRows: Story = {
 export const DynamicRowKey: Story = {
   name: "Dynamic Row Keys",
   args: {
+    style: STANDARD_GRID_STYLE,
     columnDefs: sampleGridColumns,
     rowData: Array.from({ length: 20 }, (_, i) => ({
       __rowKey: `dynamic-${i}-${Math.random()}`,
@@ -270,6 +352,7 @@ export const DynamicRowKey: Story = {
 export const NoColumns: Story = {
   name: "No Columns",
   args: {
+    style: STANDARD_GRID_STYLE,
     columnDefs: [],
     rowData: generateGridRows(20),
   },
@@ -278,6 +361,7 @@ export const NoColumns: Story = {
 export const WideColumns: Story = {
   name: "Wide Columns",
   args: {
+    style: STANDARD_GRID_STYLE,
     columnDefs: [
       createGridColumn({ field: "id", headerName: "ID", width: 400 }),
       createGridColumn({ field: "name", headerName: "Name", width: 400 }),
