@@ -3,6 +3,7 @@
 Recce Cloud CLI - Lightweight command for managing Recce Cloud operations.
 """
 
+import json
 import logging
 import os
 import subprocess
@@ -749,8 +750,6 @@ def list_sessions_cmd(session_type, output_json):
       # Output as JSON
       recce-cloud list --json
     """
-    import json
-
     from rich.table import Table
 
     from recce_cloud.api.client import RecceCloudClient
@@ -1437,10 +1436,8 @@ def review(session_id, session_name, org, project, regenerate, timeout, json_out
     # Validate that at least one of session_id or session_name is provided
     if not session_id and not session_name:
         if json_output:
-            import json as json_module
-
             print(
-                json_module.dumps(
+                json.dumps(
                     {
                         "success": False,
                         "error": "Either --session-id or --session-name must be provided",
@@ -1465,10 +1462,8 @@ def review(session_id, session_name, org, project, regenerate, timeout, json_out
     token = os.getenv("RECCE_API_TOKEN") or get_api_token()
     if not token:
         if json_output:
-            import json as json_module
-
             print(
-                json_module.dumps(
+                json.dumps(
                     {
                         "success": False,
                         "error": "No RECCE_API_TOKEN provided and not logged in",
@@ -1489,10 +1484,8 @@ def review(session_id, session_name, org, project, regenerate, timeout, json_out
         project_id = config.project
     except ConfigurationError as e:
         if json_output:
-            import json as json_module
-
             print(
-                json_module.dumps(
+                json.dumps(
                     {
                         "success": False,
                         "error": str(e),

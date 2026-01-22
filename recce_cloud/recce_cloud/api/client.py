@@ -42,6 +42,24 @@ class RecceCloudClient:
         }
         return requests.request(method, url, headers=headers, **kwargs)
 
+    def _safe_get_error_detail(self, response, default: str) -> str:
+        """Safely extract error detail from response JSON.
+
+        Some error responses may not have a valid JSON body (e.g., HTML error pages
+        from proxies), so we need to handle JSONDecodeError gracefully.
+
+        Args:
+            response: The HTTP response object.
+            default: Default message to return if JSON parsing fails.
+
+        Returns:
+            The error detail string from the response, or the default message.
+        """
+        try:
+            return response.json().get("detail", default)
+        except (json.JSONDecodeError, ValueError):
+            return default
+
     def _replace_localhost_with_docker_internal(self, url: str) -> str:
         """Convert localhost URLs to docker internal URLs if running in Docker."""
         if url is None:
@@ -75,7 +93,7 @@ class RecceCloudClient:
         api_url = f"{self.base_url_v2}/sessions/{session_id}"
         response = self._request("GET", api_url)
         if response.status_code == 403:
-            return {"status": "error", "message": response.json().get("detail")}
+            return {"status": "error", "message": self._safe_get_error_detail(response, "Permission denied")}
         if response.status_code != 200:
             raise RecceCloudException(
                 reason=response.text,
@@ -181,7 +199,7 @@ class RecceCloudClient:
         data = {"adapter_type": adapter_type}
         response = self._request("PATCH", api_url, json=data)
         if response.status_code == 403:
-            return {"status": "error", "message": response.json().get("detail")}
+            return {"status": "error", "message": self._safe_get_error_detail(response, "Permission denied")}
         if response.status_code != 200:
             raise RecceCloudException(
                 reason=response.text,
@@ -211,7 +229,7 @@ class RecceCloudClient:
             return True
         if response.status_code == 403:
             raise RecceCloudException(
-                reason=response.json().get("detail", "Permission denied"),
+                reason=self._safe_get_error_detail(response, "Permission denied"),
                 status_code=response.status_code,
             )
         if response.status_code == 404:
@@ -247,7 +265,7 @@ class RecceCloudClient:
             return response.json()
         if response.status_code == 403:
             raise RecceCloudException(
-                reason=response.json().get("detail", "Permission denied"),
+                reason=self._safe_get_error_detail(response, "Permission denied"),
                 status_code=response.status_code,
             )
         if response.status_code == 404:
@@ -488,7 +506,7 @@ class RecceCloudClient:
             )
         if response.status_code == 403:
             raise RecceCloudException(
-                reason=response.json().get("detail", "Permission denied"),
+                reason=self._safe_get_error_detail(response, "Permission denied"),
                 status_code=response.status_code,
             )
         if response.status_code not in [200, 201]:
@@ -582,14 +600,13 @@ class RecceCloudClient:
                 status_code=response.status_code,
             )
         if response.status_code == 400:
-            error_detail = response.json().get("detail", "Bad request")
             raise RecceCloudException(
-                reason=error_detail,
+                reason=self._safe_get_error_detail(response, "Bad request"),
                 status_code=response.status_code,
             )
         if response.status_code == 403:
             raise RecceCloudException(
-                reason=response.json().get("detail", "Permission denied"),
+                reason=self._safe_get_error_detail(response, "Permission denied"),
                 status_code=response.status_code,
             )
         if response.status_code != 200:
@@ -634,13 +651,12 @@ class RecceCloudClient:
             )
         if response.status_code == 403:
             raise RecceCloudException(
-                reason=response.json().get("detail", "Permission denied"),
+                reason=self._safe_get_error_detail(response, "Permission denied"),
                 status_code=response.status_code,
             )
         if response.status_code == 400:
-            error_detail = response.json().get("detail", "Bad request")
             raise RecceCloudException(
-                reason=error_detail,
+                reason=self._safe_get_error_detail(response, "Bad request"),
                 status_code=response.status_code,
             )
         if response.status_code not in [200, 201, 202]:
@@ -680,7 +696,7 @@ class RecceCloudClient:
             return None
         if response.status_code == 403:
             raise RecceCloudException(
-                reason=response.json().get("detail", "Permission denied"),
+                reason=self._safe_get_error_detail(response, "Permission denied"),
                 status_code=response.status_code,
             )
         if response.status_code != 200:
@@ -718,7 +734,7 @@ class RecceCloudClient:
             return None
         if response.status_code == 403:
             raise RecceCloudException(
-                reason=response.json().get("detail", "Permission denied"),
+                reason=self._safe_get_error_detail(response, "Permission denied"),
                 status_code=response.status_code,
             )
         if response.status_code != 200:
@@ -757,7 +773,7 @@ class RecceCloudClient:
             )
         if response.status_code == 403:
             raise RecceCloudException(
-                reason=response.json().get("detail", "Permission denied"),
+                reason=self._safe_get_error_detail(response, "Permission denied"),
                 status_code=response.status_code,
             )
         if response.status_code != 200:

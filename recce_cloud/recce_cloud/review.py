@@ -21,13 +21,23 @@ RECCE_CLOUD_BASE_URL = os.environ.get("RECCE_CLOUD_BASE_URL", RECCE_CLOUD_API_HO
 
 
 class ReviewStatus(Enum):
-    """Status of the data review generation."""
+    """Status of the data review generation.
 
-    SUCCESS = "success"
-    ALREADY_EXISTS = "already_exists"
-    IN_PROGRESS = "in_progress"
-    FAILED = "failed"
-    TIMEOUT = "timeout"
+    These align with Recce Cloud UI/backend task statuses where applicable.
+    """
+
+    # Terminal states (align with backend RecceTaskStatus)
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+
+    # CLI-specific states
+    ALREADY_EXISTS = "ALREADY_EXISTS"
+    TIMEOUT = "TIMEOUT"
+
+    # In-progress states (align with backend RecceTaskStatus)
+    QUEUED = "QUEUED"
+    SCHEDULED = "SCHEDULED"
+    RUNNING = "RUNNING"
 
 
 @dataclass
@@ -251,32 +261,29 @@ def generate_data_review(
     session_name = session.get("name", session_id)
 
     # 1. Check if review already exists (skip if regenerating)
+    # Note: get_data_review() returns None for 404 (no review), so we don't need try-except for that case.
+    # Let other errors (403, 500) propagate - they indicate real problems that would also fail generation.
     if not regenerate:
-        try:
-            existing_review = client.get_data_review(org_id, project_id, session_id)
-            if existing_review and existing_review.get("summary"):
-                return ReviewResult(
-                    status=ReviewStatus.ALREADY_EXISTS,
-                    session_id=session_id,
-                    session_name=session_name,
-                    review_url=generate_review_url(org_id, project_id, session_id),
-                    summary=existing_review.get("summary"),
-                )
-        except RecceCloudException:
-            # No existing review, proceed with generation
-            pass
+        existing_review = client.get_data_review(org_id, project_id, session_id)
+        if existing_review and existing_review.get("summary"):
+            return ReviewResult(
+                status=ReviewStatus.ALREADY_EXISTS,
+                session_id=session_id,
+                session_name=session_name,
+                review_url=generate_review_url(org_id, project_id, session_id),
+                summary=existing_review.get("summary"),
+            )
 
     # 2. Check if a task is already running
-    try:
-        running_task = client.get_running_task(org_id, project_id, session_id)
-        if running_task:
-            task_id = running_task["task_id"]
-            if not json_output:
-                console.print(f"[yellow]Task already running:[/yellow] {task_id}")
-                console.print("Waiting for completion...")
-        else:
-            task_id = None
-    except RecceCloudException:
+    # Note: get_running_task() returns None for 404 (no running task), so we don't need try-except.
+    # Let other errors (403, 500) propagate - they indicate real problems.
+    running_task = client.get_running_task(org_id, project_id, session_id)
+    if running_task:
+        task_id = running_task["task_id"]
+        if not json_output:
+            console.print(f"[yellow]Task already running:[/yellow] {task_id}")
+            console.print("Waiting for completion...")
+    else:
         task_id = None
 
     # 3. Trigger new generation if no task running
@@ -319,6 +326,7 @@ def generate_data_review(
     # 4. Poll for completion
     def progress_callback(task_status):
         if not json_output:
+            # Display status as-is from backend (aligned with Recce Cloud UI)
             status = task_status.get("status", "unknown")
             console.print(f"  Status: [cyan]{status}[/cyan]")
 
@@ -339,7 +347,7 @@ def generate_data_review(
         try:
             review = client.get_data_review(org_id, project_id, session_id)
             return ReviewResult(
-                status=ReviewStatus.SUCCESS,
+                status=ReviewStatus.SUCCEEDED,
                 session_id=session_id,
                 session_name=session_name,
                 review_url=generate_review_url(org_id, project_id, session_id),
@@ -463,7 +471,7 @@ def run_review_command(
     # 4. Display results
     if json_output:
         output = {
-            "success": result.status in [ReviewStatus.SUCCESS, ReviewStatus.ALREADY_EXISTS],
+            "success": result.status in [ReviewStatus.SUCCEEDED, ReviewStatus.ALREADY_EXISTS],
             "status": result.status.value,
             "session_id": result.session_id,
             "session_name": result.session_name,
@@ -475,7 +483,7 @@ def run_review_command(
             output["error"] = result.error_message
         print(json.dumps(output))
     else:
-        if result.status == ReviewStatus.SUCCESS:
+        if result.status == ReviewStatus.SUCCEEDED:
             console.rule("Review Generated Successfully", style="green")
             console.print(f"[green]✓[/green] Data review generated for session '{result.session_name}'")
             console.print()
@@ -499,7 +507,7 @@ def run_review_command(
             console.print(f"[red]Error:[/red] {result.error_message}")
 
     # Exit with appropriate code
-    if result.status in [ReviewStatus.SUCCESS, ReviewStatus.ALREADY_EXISTS]:
+    if result.status in [ReviewStatus.SUCCEEDED, ReviewStatus.ALREADY_EXISTS]:
         sys.exit(0)
     elif result.status == ReviewStatus.TIMEOUT:
         sys.exit(0)  # Timeout is not a hard failure - task is still running
