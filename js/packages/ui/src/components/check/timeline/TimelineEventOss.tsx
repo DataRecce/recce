@@ -21,7 +21,6 @@ import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { type MouseEvent, useState } from "react";
 import {
@@ -35,8 +34,8 @@ import {
   PiTrashSimple,
 } from "react-icons/pi";
 import { type CheckEvent, getEventIconType } from "../../../api";
+import { useAvatar } from "../../../hooks/useAvatar";
 import { useIsDark } from "../../../hooks/useIsDark";
-import { fetchGitHubAvatar } from "../../../lib/api/user";
 import { MarkdownContent } from "../../../primitives";
 
 interface TimelineEventProps {
@@ -75,15 +74,7 @@ function EventIcon({ event }: { event: CheckEvent }) {
 
 function UserAvatar({ event }: { event: CheckEvent }) {
   const { actor } = event;
-  const userId = actor.user_id?.toString();
-
-  const { data: avatarUrl } = useQuery({
-    queryKey: ["github-avatar", userId],
-    queryFn: () => (userId ? fetchGitHubAvatar(userId) : Promise.resolve(null)),
-    enabled: !!userId,
-    retry: false,
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-  });
+  const { avatarUrl } = useAvatar({ userId: actor.user_id });
 
   const displayName = actor.fullname || actor.login || "User";
   const initials = displayName.charAt(0).toUpperCase();

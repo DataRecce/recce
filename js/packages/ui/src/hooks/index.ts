@@ -31,6 +31,11 @@ export {
   useImageDownloadModal,
 } from "./ScreenShot";
 export { type ApiConfigContextType, useApiConfig } from "./useApiConfig";
+export {
+  type UseAvatarOptions,
+  type UseAvatarResult,
+  useAvatar,
+} from "./useAvatar";
 export { useCheckEvents } from "./useCheckEvents";
 export { useClipBoardToast } from "./useClipBoardToast";
 export { useCountdownToast } from "./useCountdownToast";
