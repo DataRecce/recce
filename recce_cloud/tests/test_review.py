@@ -24,7 +24,7 @@ class TestReviewHelpers(unittest.TestCase):
 
         self.assertEqual(
             url,
-            "https://cloud.datarecce.io/my-org/my-project/sessions/session-123/review",
+            "https://cloud.datarecce.io/my-org/my-project/session-123/review",
         )
 
     def test_generate_review_url_with_special_chars(self):
