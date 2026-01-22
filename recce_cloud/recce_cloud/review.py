@@ -71,7 +71,7 @@ def generate_review_url(org_id: str, project_id: str, session_id: str) -> str:
         URL string to view the data review.
     """
     # Use the Recce Cloud web UI URL (respects RECCE_CLOUD_BASE_URL env var)
-    return f"{RECCE_CLOUD_BASE_URL}/{org_id}/{project_id}/sessions/{session_id}/review"
+    return f"{RECCE_CLOUD_BASE_URL}/{org_id}/{project_id}/{session_id}/review"
 
 
 def check_prerequisites(
