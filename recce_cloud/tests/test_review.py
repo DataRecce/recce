@@ -415,10 +415,10 @@ class TestGenerateDataReview(unittest.TestCase):
         """Test successful data review generation."""
         mock_client = MagicMock(spec=RecceCloudClient)
 
-        # No existing review
+        # No existing review (returns None for 404), then return review after generation
         mock_client.get_data_review.side_effect = [
-            RecceCloudException(reason="Not found", status_code=404),
-            {"session_id": "session-789", "summary": "# New Review"},
+            None,  # First call - no existing review
+            {"session_id": "session-789", "summary": "# New Review"},  # After generation
         ]
 
         # No running task
@@ -440,7 +440,7 @@ class TestGenerateDataReview(unittest.TestCase):
             json_output=True,
         )
 
-        self.assertEqual(result.status, ReviewStatus.SUCCESS)
+        self.assertEqual(result.status, ReviewStatus.SUCCEEDED)
         self.assertEqual(result.task_id, "task-123")
 
     @patch("recce_cloud.review.poll_task_status")
@@ -473,7 +473,7 @@ class TestGenerateDataReview(unittest.TestCase):
             json_output=True,
         )
 
-        self.assertEqual(result.status, ReviewStatus.SUCCESS)
+        self.assertEqual(result.status, ReviewStatus.SUCCEEDED)
 
         # Verify regenerate was passed to generate_data_review
         mock_client.generate_data_review.assert_called_once()
@@ -485,10 +485,10 @@ class TestGenerateDataReview(unittest.TestCase):
         """Test when a task is already running."""
         mock_client = MagicMock(spec=RecceCloudClient)
 
-        # No existing review
+        # No existing review (returns None for 404), then return review after generation
         mock_client.get_data_review.side_effect = [
-            RecceCloudException(reason="Not found", status_code=404),
-            {"session_id": "session-789", "summary": "# Review"},
+            None,  # First call - no existing review
+            {"session_id": "session-789", "summary": "# Review"},  # After generation
         ]
 
         # Task already running
@@ -510,7 +510,7 @@ class TestGenerateDataReview(unittest.TestCase):
             json_output=True,
         )
 
-        self.assertEqual(result.status, ReviewStatus.SUCCESS)
+        self.assertEqual(result.status, ReviewStatus.SUCCEEDED)
 
         # Verify generate_data_review was NOT called (used existing task)
         mock_client.generate_data_review.assert_not_called()
@@ -520,8 +520,8 @@ class TestGenerateDataReview(unittest.TestCase):
         """Test when review generation times out."""
         mock_client = MagicMock(spec=RecceCloudClient)
 
-        # No existing review
-        mock_client.get_data_review.side_effect = RecceCloudException(reason="Not found", status_code=404)
+        # No existing review (returns None for 404)
+        mock_client.get_data_review.return_value = None
 
         # No running task
         mock_client.get_running_task.return_value = None
@@ -555,8 +555,8 @@ class TestGenerateDataReview(unittest.TestCase):
         """Test when triggering review generation fails."""
         mock_client = MagicMock(spec=RecceCloudClient)
 
-        # No existing review
-        mock_client.get_data_review.side_effect = RecceCloudException(reason="Not found", status_code=404)
+        # No existing review (returns None for 404)
+        mock_client.get_data_review.return_value = None
 
         # No running task
         mock_client.get_running_task.return_value = None
@@ -583,9 +583,9 @@ class TestReviewResult(unittest.TestCase):
 
     def test_review_result_defaults(self):
         """Test ReviewResult with default values."""
-        result = ReviewResult(status=ReviewStatus.SUCCESS)
+        result = ReviewResult(status=ReviewStatus.SUCCEEDED)
 
-        self.assertEqual(result.status, ReviewStatus.SUCCESS)
+        self.assertEqual(result.status, ReviewStatus.SUCCEEDED)
         self.assertIsNone(result.session_id)
         self.assertIsNone(result.session_name)
         self.assertIsNone(result.review_url)
@@ -596,7 +596,7 @@ class TestReviewResult(unittest.TestCase):
     def test_review_result_all_fields(self):
         """Test ReviewResult with all fields populated."""
         result = ReviewResult(
-            status=ReviewStatus.SUCCESS,
+            status=ReviewStatus.SUCCEEDED,
             session_id="session-123",
             session_name="test-session",
             review_url="https://cloud.datarecce.io/org/project/sessions/session-123/review",
@@ -605,7 +605,7 @@ class TestReviewResult(unittest.TestCase):
             summary="# Review Summary",
         )
 
-        self.assertEqual(result.status, ReviewStatus.SUCCESS)
+        self.assertEqual(result.status, ReviewStatus.SUCCEEDED)
         self.assertEqual(result.session_id, "session-123")
         self.assertEqual(result.session_name, "test-session")
         self.assertIn("session-123", result.review_url)
@@ -617,12 +617,17 @@ class TestReviewStatus(unittest.TestCase):
     """Test the ReviewStatus enum."""
 
     def test_review_status_values(self):
-        """Test ReviewStatus enum values."""
-        self.assertEqual(ReviewStatus.SUCCESS.value, "success")
-        self.assertEqual(ReviewStatus.ALREADY_EXISTS.value, "already_exists")
-        self.assertEqual(ReviewStatus.IN_PROGRESS.value, "in_progress")
-        self.assertEqual(ReviewStatus.FAILED.value, "failed")
-        self.assertEqual(ReviewStatus.TIMEOUT.value, "timeout")
+        """Test ReviewStatus enum values align with Recce Cloud backend."""
+        # Terminal states
+        self.assertEqual(ReviewStatus.SUCCEEDED.value, "SUCCEEDED")
+        self.assertEqual(ReviewStatus.FAILED.value, "FAILED")
+        # CLI-specific states
+        self.assertEqual(ReviewStatus.ALREADY_EXISTS.value, "ALREADY_EXISTS")
+        self.assertEqual(ReviewStatus.TIMEOUT.value, "TIMEOUT")
+        # In-progress states
+        self.assertEqual(ReviewStatus.QUEUED.value, "QUEUED")
+        self.assertEqual(ReviewStatus.SCHEDULED.value, "SCHEDULED")
+        self.assertEqual(ReviewStatus.RUNNING.value, "RUNNING")
 
 
 if __name__ == "__main__":
