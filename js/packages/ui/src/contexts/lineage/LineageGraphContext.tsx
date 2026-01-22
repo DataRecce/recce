@@ -66,6 +66,7 @@ export interface LineageGraphProviderProps {
 const defaultContext: LineageGraphContextType = {
   isActionAvailable: () => true,
   isDemoSite: false,
+  isLoading: true, // Default to loading state for SSR hydration safety
 };
 
 const LineageGraphContext =
