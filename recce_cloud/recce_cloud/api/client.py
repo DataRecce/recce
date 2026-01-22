@@ -503,6 +503,271 @@ class RecceCloudClient:
             return result["session"]
         return result
 
+    def get_base_session(self, org_id: str, project_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get the base (production) session for a project.
+
+        Args:
+            org_id: Organization ID or slug.
+            project_id: Project ID or slug.
+
+        Returns:
+            Base session dictionary if found, None if no base session exists.
+
+        Raises:
+            RecceCloudException: If the API call fails.
+        """
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/base_session"
+        response = self._request("GET", api_url)
+
+        if response.status_code == 404:
+            # No base session exists for this project
+            return None
+        if response.status_code != 200:
+            raise RecceCloudException(
+                reason=response.text,
+                status_code=response.status_code,
+            )
+
+        data = response.json()
+        return data.get("session")
+
+    def check_prerequisites(
+        self,
+        org_id: str,
+        project_id: str,
+        session_id: str,
+    ) -> Dict[str, Any]:
+        """
+        Check prerequisites for data review generation.
+
+        This calls the backend API to verify:
+        1. Session exists and belongs to the project
+        2. Session has artifacts uploaded (adapter_type is set)
+        3. Base session exists for the project
+        4. Base session has artifacts uploaded
+
+        Args:
+            org_id: Organization ID or slug.
+            project_id: Project ID or slug.
+            session_id: Session ID to check.
+
+        Returns:
+            dict with:
+                - success: bool
+                - session_id: str
+                - session_name: str
+                - adapter_type: str or None
+                - has_base_session: bool
+                - base_session_has_artifacts: bool
+                - is_ready: bool
+                - reason: str or None (explains why not ready)
+
+        Raises:
+            RecceCloudException: If the API call fails.
+        """
+        api_url = (
+            f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/check-prerequisites"
+        )
+        response = self._request("GET", api_url)
+
+        if response.status_code == 404:
+            error_detail = "Session or project not found"
+            try:
+                error_detail = response.json().get("detail", error_detail)
+            except Exception:
+                pass
+            raise RecceCloudException(
+                reason=error_detail,
+                status_code=response.status_code,
+            )
+        if response.status_code == 400:
+            error_detail = response.json().get("detail", "Bad request")
+            raise RecceCloudException(
+                reason=error_detail,
+                status_code=response.status_code,
+            )
+        if response.status_code == 403:
+            raise RecceCloudException(
+                reason=response.json().get("detail", "Permission denied"),
+                status_code=response.status_code,
+            )
+        if response.status_code != 200:
+            raise RecceCloudException(
+                reason=response.text,
+                status_code=response.status_code,
+            )
+
+        return response.json()
+
+    def generate_data_review(
+        self,
+        org_id: str,
+        project_id: str,
+        session_id: str,
+        regenerate: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Trigger data review generation for a session.
+
+        Args:
+            org_id: Organization ID or slug.
+            project_id: Project ID or slug.
+            session_id: Session ID to generate review for.
+            regenerate: If True, regenerate even if a review already exists.
+
+        Returns:
+            dict with task_id if a new task was created, or empty if review already exists.
+
+        Raises:
+            RecceCloudException: If the API call fails.
+        """
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/recce_summary"
+        data = {"regenerate": regenerate}
+
+        response = self._request("POST", api_url, json=data)
+
+        if response.status_code == 404:
+            raise RecceCloudException(
+                reason="Session not found",
+                status_code=response.status_code,
+            )
+        if response.status_code == 403:
+            raise RecceCloudException(
+                reason=response.json().get("detail", "Permission denied"),
+                status_code=response.status_code,
+            )
+        if response.status_code == 400:
+            error_detail = response.json().get("detail", "Bad request")
+            raise RecceCloudException(
+                reason=error_detail,
+                status_code=response.status_code,
+            )
+        if response.status_code not in [200, 201, 202]:
+            raise RecceCloudException(
+                reason=response.text,
+                status_code=response.status_code,
+            )
+
+        return response.json()
+
+    def get_data_review(
+        self,
+        org_id: str,
+        project_id: str,
+        session_id: str,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get the existing data review for a session.
+
+        Args:
+            org_id: Organization ID or slug.
+            project_id: Project ID or slug.
+            session_id: Session ID to get review for.
+
+        Returns:
+            dict with session_id, session_name, summary (content), trace_id if found.
+            None if no review exists.
+
+        Raises:
+            RecceCloudException: If the API call fails.
+        """
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/recce_summary"
+        response = self._request("GET", api_url)
+
+        if response.status_code == 404:
+            # No review exists for this session
+            return None
+        if response.status_code == 403:
+            raise RecceCloudException(
+                reason=response.json().get("detail", "Permission denied"),
+                status_code=response.status_code,
+            )
+        if response.status_code != 200:
+            raise RecceCloudException(
+                reason=response.text,
+                status_code=response.status_code,
+            )
+
+        return response.json()
+
+    def get_running_task(
+        self,
+        org_id: str,
+        project_id: str,
+        session_id: str,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get the currently running task for a session.
+
+        Args:
+            org_id: Organization ID or slug.
+            project_id: Project ID or slug.
+            session_id: Session ID to check.
+
+        Returns:
+            dict with task_id and status if a task is running, None otherwise.
+
+        Raises:
+            RecceCloudException: If the API call fails.
+        """
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/running_task"
+        response = self._request("GET", api_url)
+
+        if response.status_code == 404:
+            return None
+        if response.status_code == 403:
+            raise RecceCloudException(
+                reason=response.json().get("detail", "Permission denied"),
+                status_code=response.status_code,
+            )
+        if response.status_code != 200:
+            raise RecceCloudException(
+                reason=response.text,
+                status_code=response.status_code,
+            )
+
+        data = response.json()
+        # Return None if no task is running
+        if data.get("task_id") is None:
+            return None
+        return data
+
+    def get_task_status(self, org_id: str, task_id: str) -> Dict[str, Any]:
+        """
+        Get the status of a task by ID.
+
+        Args:
+            org_id: Organization ID or slug.
+            task_id: Task ID to check.
+
+        Returns:
+            dict with id, command, status, created_at, started_at, finished_at, metadata.
+
+        Raises:
+            RecceCloudException: If the API call fails or task not found.
+        """
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/tasks/{task_id}/status"
+        response = self._request("GET", api_url)
+
+        if response.status_code == 404:
+            raise RecceCloudException(
+                reason="Task not found",
+                status_code=response.status_code,
+            )
+        if response.status_code == 403:
+            raise RecceCloudException(
+                reason=response.json().get("detail", "Permission denied"),
+                status_code=response.status_code,
+            )
+        if response.status_code != 200:
+            raise RecceCloudException(
+                reason=response.text,
+                status_code=response.status_code,
+            )
+
+        return response.json()
+
 
 class ReportClient:
     """Client for fetching reports from Recce Cloud API."""
