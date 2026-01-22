@@ -9,6 +9,37 @@ from recce.tasks.core import CheckValidator, TaskResultDiffer
 from recce.tasks.query import QueryMixin
 
 
+def query_row_count(dbt_adapter, model_name, base=False) -> Optional[int]:
+    """Query the row count of a model or snapshot.
+
+    Args:
+        dbt_adapter: The dbt adapter to use for queries
+        model_name: Name of the model to count rows for
+        base: If True, query the base environment; otherwise query current
+
+    Returns:
+        The row count, or None if the model doesn't exist or isn't countable
+    """
+    node = dbt_adapter.find_node_by_name(model_name, base=base)
+    if node is None:
+        return None
+
+    if node.resource_type != "model" and node.resource_type != "snapshot":
+        return None
+
+    if node.config and node.config.materialized not in ["table", "view", "incremental", "snapshot"]:
+        return None
+
+    relation = dbt_adapter.create_relation(model_name, base=base)
+    if relation is None:
+        return None
+
+    sql_template = r"select count(*) from {{ relation }}"
+    sql = dbt_adapter.generate_sql(sql_template, context=dict(relation=relation))
+    _, table = dbt_adapter.execute(sql, fetch=True)
+    return int(table[0][0]) if table[0][0] is not None else 0
+
+
 class RowCountParams(BaseModel):
     node_names: Optional[list[str]] = None
     node_ids: Optional[list[str]] = None
@@ -19,26 +50,6 @@ class RowCountTask(Task, QueryMixin):
         super().__init__()
         self.params = RowCountParams(**params) if params is not None else RowCountParams()
         self.connection = None
-
-    def _query_row_count(self, dbt_adapter, model_name, base=False):
-        node = dbt_adapter.find_node_by_name(model_name, base=base)
-        if node is None:
-            return None
-
-        if node.resource_type != "model" and node.resource_type != "snapshot":
-            return None
-
-        if node.config and node.config.materialized not in ["table", "view", "incremental", "snapshot"]:
-            return None
-
-        relation = dbt_adapter.create_relation(model_name, base=base)
-        if relation is None:
-            return None
-
-        sql_template = r"select count(*) from {{ relation }}"
-        sql = dbt_adapter.generate_sql(sql_template, context=dict(relation=relation))
-        _, table = dbt_adapter.execute(sql, fetch=True)
-        return int(table[0][0]) if table[0][0] is not None else 0
 
     def execute(self):
         result = {}
@@ -78,7 +89,7 @@ class RowCountTask(Task, QueryMixin):
             for node in query_candidates:
                 self.update_progress(message=f"Query: {node} [{completed}/{total}]", percentage=completed / total)
 
-                row_count = self._query_row_count(dbt_adapter, node, base=False)
+                row_count = query_row_count(dbt_adapter, node, base=False)
                 self.check_cancel()
                 result[node] = {
                     "curr": row_count,
@@ -107,26 +118,6 @@ class RowCountDiffTask(Task, QueryMixin):
         super().__init__()
         self.params = RowCountDiffParams(**params) if params is not None else RowCountDiffParams()
         self.connection = None
-
-    def _query_row_count(self, dbt_adapter, model_name, base=False):
-        node = dbt_adapter.find_node_by_name(model_name, base=base)
-        if node is None:
-            return None
-
-        if node.resource_type != "model" and node.resource_type != "snapshot":
-            return None
-
-        if node.config and node.config.materialized not in ["table", "view", "incremental", "snapshot"]:
-            return None
-
-        relation = dbt_adapter.create_relation(model_name, base=base)
-        if relation is None:
-            return None
-
-        sql_template = r"select count(*) from {{ relation }}"
-        sql = dbt_adapter.generate_sql(sql_template, context=dict(relation=relation))
-        _, table = dbt_adapter.execute(sql, fetch=True)
-        return int(table[0][0]) if table[0][0] is not None else 0
 
     def execute_dbt(self):
         result = {}
@@ -166,9 +157,9 @@ class RowCountDiffTask(Task, QueryMixin):
             for node in query_candidates:
                 self.update_progress(message=f"Diff: {node} [{completed}/{total}]", percentage=completed / total)
 
-                base_row_count = self._query_row_count(dbt_adapter, node, base=True)
+                base_row_count = query_row_count(dbt_adapter, node, base=True)
                 self.check_cancel()
-                curr_row_count = self._query_row_count(dbt_adapter, node, base=False)
+                curr_row_count = query_row_count(dbt_adapter, node, base=False)
                 self.check_cancel()
                 result[node] = {
                     "base": base_row_count,

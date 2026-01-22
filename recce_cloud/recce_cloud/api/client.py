@@ -21,11 +21,11 @@ DOCKER_INTERNAL_URL_PREFIX = "http://host.docker.internal"
 LOCALHOST_URL_PREFIX = "http://localhost"
 
 
-class RecceCloudClient:
+class BaseAPIClient:
     """
-    Lightweight Recce Cloud API client.
+    Base class for Recce Cloud API clients.
 
-    Supports authentication with Recce Cloud API token (starts with "rct-").
+    Provides shared authentication and request handling for all API clients.
     """
 
     def __init__(self, token: str):
@@ -40,7 +40,17 @@ class RecceCloudClient:
             **(headers or {}),
             "Authorization": f"Bearer {self.token}",
         }
+        # TODO: Consider adding timeout and exception wrapping here for all clients
+        # Currently only ReportClient has this behavior to preserve backwards compatibility
         return requests.request(method, url, headers=headers, **kwargs)
+
+
+class RecceCloudClient(BaseAPIClient):
+    """
+    Lightweight Recce Cloud API client.
+
+    Supports authentication with Recce Cloud API token (starts with "rct-").
+    """
 
     def _replace_localhost_with_docker_internal(self, url: str) -> str:
         """Convert localhost URLs to docker internal URLs if running in Docker."""
@@ -504,14 +514,8 @@ class RecceCloudClient:
         return result
 
 
-class ReportClient:
+class ReportClient(BaseAPIClient):
     """Client for fetching reports from Recce Cloud API."""
-
-    def __init__(self, token: str):
-        if token is None:
-            raise ValueError("Token cannot be None.")
-        self.token = token
-        self.base_url_v2 = f"{RECCE_CLOUD_API_HOST}/api/v2"
 
     def _request(self, method: str, url: str, headers: dict = None, **kwargs):
         """

@@ -1,7 +1,8 @@
 import asyncio
 import logging
-from typing import List, Optional
+from typing import List
 
+from recce.apis.utils import _get_ref_model
 from recce.core import default_context
 from recce.exceptions import RecceException
 from recce.models import Run, RunDAO, RunType
@@ -9,18 +10,6 @@ from recce.models.types import RunStatus
 
 running_tasks = {}
 logger = logging.getLogger("uvicorn")
-
-
-def _get_ref_model(sql_template: str) -> Optional[str]:
-    import re
-
-    pattern = r'\bref\(["\']?(\w+)["\']?\)\s*}}'
-    matches = re.findall(pattern, sql_template)
-    if len(matches) == 1:
-        ref = matches[0]
-        return ref
-
-    return None
 
 
 def generate_run_name(run):

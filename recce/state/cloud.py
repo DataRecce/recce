@@ -116,10 +116,14 @@ class CloudStateLoader(RecceStateLoader):
         else:
             raise RecceException(f"Unsupported catalog type: {self.catalog}")
 
-    def _load_state_from_github(self) -> Tuple[RecceState, str]:
-        """Load state from GitHub PR with etag checking."""
+    def _validate_pr_info(self):
+        """Validate that PR info is available and complete."""
         if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
             raise RecceException("Cannot get the pull request information from GitHub.")
+
+    def _load_state_from_github(self) -> Tuple[RecceState, str]:
+        """Load state from GitHub PR with etag checking."""
+        self._validate_pr_info()
 
         logger.debug("Fetching GitHub state from Recce Cloud...")
 
@@ -345,8 +349,7 @@ class CloudStateLoader(RecceStateLoader):
 
     def _export_state_to_github(self) -> Tuple[Union[str, None], str]:
         """Export state to GitHub PR with metadata and etag."""
-        if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
-            raise RecceException("Cannot get the pull request information from GitHub.")
+        self._validate_pr_info()
 
         # Generate metadata for GitHub only
         check_status = CheckDAO().status()
@@ -520,6 +523,11 @@ class RecceCloudStateManager:
     def error_and_hint(self) -> (Union[str, None], Union[str, None]):
         return self.error_message, self.hint_message
 
+    def _validate_pr_info(self):
+        """Validate that PR info is available and complete."""
+        if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
+            raise RecceException("Cannot get the pull request information from GitHub.")
+
     def _check_state_in_recce_cloud(self) -> bool:
         return RecceCloud(token=self.github_token).check_artifacts_exists(self.pr_info)
 
@@ -549,8 +557,7 @@ class RecceCloudStateManager:
         return "The state file is uploaded to Recce Cloud."
 
     def upload_state_to_cloud(self, state: RecceState) -> Union[str, None]:
-        if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
-            raise RecceException("Cannot get the pull request information from GitHub.")
+        self._validate_pr_info()
 
         checks = state.checks
 
@@ -596,8 +603,7 @@ class RecceCloudStateManager:
             f.write(decompressed_content)
 
     def download_state_from_cloud(self, filepath: str) -> Union[str, None]:
-        if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
-            raise RecceException("Cannot get the pull request information from GitHub.")
+        self._validate_pr_info()
 
         logger.debug("Download state file from Recce Cloud...")
         return self._download_state_from_recce_cloud(filepath)
