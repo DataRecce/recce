@@ -287,12 +287,15 @@ export function CheckDetailOss({
       setBaseSqlQuery(params.base_sql_template);
       setCustomQueries(true);
     } else {
+      setBaseSqlQuery(""); // Clear stale base SQL from previous checks
       setCustomQueries(false);
     }
 
-    // Set primary keys if available
+    // Set primary keys if available, otherwise clear stale primary keys
     if ("primary_keys" in params && params.primary_keys) {
       setPrimaryKeys(params.primary_keys);
+    } else {
+      setPrimaryKeys(undefined);
     }
 
     // Navigate to query page
