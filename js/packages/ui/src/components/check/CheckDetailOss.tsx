@@ -35,6 +35,7 @@ import { FaBookmark } from "react-icons/fa6";
 import { IoMdCodeWorking } from "react-icons/io";
 import { IoBookmarksOutline, IoClose } from "react-icons/io5";
 import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
+import { TbEdit } from "react-icons/tb";
 import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
 import {
   type QueryDiffParams,
@@ -62,6 +63,7 @@ import {
   useCopyToClipboardButton,
   useIsDark,
   useRecceCheckContext,
+  useRecceQueryContext,
   useRun,
 } from "../../hooks";
 import { trackCopyToClipboard } from "../../lib/api/track";
@@ -112,6 +114,8 @@ export function CheckDetailOss({
   const queryClient = useQueryClient();
   const router = useRouter();
   const { basePath } = useRouteConfig();
+  const { setSqlQuery, setBaseSqlQuery, setCustomQueries, setPrimaryKeys } =
+    useRecceQueryContext();
   const { successToast, failToast } = useClipBoardToast();
   const [submittedRunId, setSubmittedRunId] = useState<string>();
   const [progress] = useState<Run["progress"]>();
@@ -268,6 +272,40 @@ export function CheckDetailOss({
   const handleMenuClose = () => {
     setMenuAnchorEl(null);
   };
+
+  const handleOpenQuery = useCallback(() => {
+    if (!check) return;
+
+    const params = check.params as QueryParams | QueryDiffParams;
+    const sqlTemplate = params?.sql_template || "";
+
+    // Set current SQL
+    setSqlQuery(sqlTemplate);
+
+    // Handle query_diff with custom queries (dual mode)
+    if ("base_sql_template" in params && params.base_sql_template) {
+      setBaseSqlQuery(params.base_sql_template);
+      setCustomQueries(true);
+    } else {
+      setCustomQueries(false);
+    }
+
+    // Set primary keys if available
+    if ("primary_keys" in params && params.primary_keys) {
+      setPrimaryKeys(params.primary_keys);
+    }
+
+    // Navigate to query page
+    router.push(`${basePath}/query`);
+  }, [
+    check,
+    router,
+    basePath,
+    setSqlQuery,
+    setBaseSqlQuery,
+    setCustomQueries,
+    setPrimaryKeys,
+  ]);
 
   const [tabValue, setTabValue] = useState<TabValueList>("result");
   const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } =
@@ -594,6 +632,23 @@ export function CheckDetailOss({
                 </Tabs>
                 <Box sx={{ flexGrow: 1 }} />
                 <Stack direction="row" spacing={1} sx={{ mr: "10px" }}>
+                  {(check.type === "query" ||
+                    check.type === "query_base" ||
+                    check.type === "query_diff") && (
+                    <MuiTooltip title="Open in Query tab">
+                      <Button
+                        variant="outlined"
+                        color="neutral"
+                        size="small"
+                        onClick={handleOpenQuery}
+                        disabled={featureToggles.disableDatabaseQuery}
+                        startIcon={<TbEdit />}
+                        sx={{ textTransform: "none" }}
+                      >
+                        Open Query
+                      </Button>
+                    </MuiTooltip>
+                  )}
                   {RunResultView && (
                     <MuiTooltip title="Rerun">
                       <Button
