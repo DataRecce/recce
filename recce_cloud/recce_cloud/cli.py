@@ -51,6 +51,7 @@ def require_api_token(console) -> str:
         sys.exit(2)
     return token
 
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,

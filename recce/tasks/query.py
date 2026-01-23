@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
-from .core import CheckValidator, ConnectionManagedTask, Task, TaskResultDiffer
+from .core import CheckValidator, ConnectionManagedTask, TaskResultDiffer
 from .dataframe import DataFrame
 from .utils import normalize_boolean_flag_columns, normalize_keys_to_columns
 from .valuediff import ValueDiffMixin

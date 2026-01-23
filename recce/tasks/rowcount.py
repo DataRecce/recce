@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from recce.core import default_context
 from recce.models import Check
-from recce.tasks.core import CheckValidator, ConnectionManagedTask, Task, TaskResultDiffer
+from recce.tasks.core import CheckValidator, ConnectionManagedTask, TaskResultDiffer
 from recce.tasks.query import QueryMixin
 
 
