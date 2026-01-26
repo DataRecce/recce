@@ -87,26 +87,26 @@ def get_project_binding(project_dir: Optional[str] = None) -> Optional[Dict[str,
         project_dir: Project directory path. Defaults to current directory.
 
     Returns:
-        Dictionary with org, project, bound_at, bound_by fields,
+        Dictionary with org_id, project_id, bound_at, bound_by fields,
         or None if not bound.
     """
     config = load_config(project_dir)
     cloud_config = config.get("cloud", {})
 
-    if not cloud_config.get("org") or not cloud_config.get("project"):
+    if not cloud_config.get("org_id") or not cloud_config.get("project_id"):
         return None
 
     return {
-        "org": cloud_config.get("org"),
-        "project": cloud_config.get("project"),
+        "org_id": cloud_config.get("org_id"),
+        "project_id": cloud_config.get("project_id"),
         "bound_at": cloud_config.get("bound_at"),
         "bound_by": cloud_config.get("bound_by"),
     }
 
 
 def save_project_binding(
-    org: str,
-    project: str,
+    org_id: str,
+    project_id: str,
     bound_by: Optional[str] = None,
     project_dir: Optional[str] = None,
 ) -> None:
@@ -114,8 +114,8 @@ def save_project_binding(
     Save project binding to .recce/config.
 
     Args:
-        org: Organization name/slug.
-        project: Project name/slug.
+        org_id: Organization ID.
+        project_id: Project ID.
         bound_by: Email of user who created the binding.
         project_dir: Project directory path. Defaults to current directory.
     """
@@ -123,8 +123,8 @@ def save_project_binding(
 
     config["version"] = 1
     config["cloud"] = {
-        "org": org,
-        "project": project,
+        "org_id": org_id,
+        "project_id": project_id,
         "bound_at": datetime.now(timezone.utc).isoformat(),
     }
 

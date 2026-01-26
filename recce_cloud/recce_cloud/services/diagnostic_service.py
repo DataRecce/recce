@@ -172,18 +172,18 @@ class DiagnosticService:
         binding = get_project_binding()
 
         if binding:
-            self._org = binding.get("org")
-            self._project = binding.get("project")
+            self._org = binding.get("org_id")
+            self._project = binding.get("project_id")
             return CheckResult(
                 status=CheckStatus.PASS,
                 details={
-                    "org": self._org,
-                    "project": self._project,
+                    "org_id": self._org,
+                    "project_id": self._project,
                     "source": "config_file",
                 },
             )
 
-        # Check environment variables as fallback
+        # Check environment variables as fallback (accept both slugs and IDs)
         env_org = os.environ.get("RECCE_ORG")
         env_project = os.environ.get("RECCE_PROJECT")
 
@@ -193,8 +193,8 @@ class DiagnosticService:
             return CheckResult(
                 status=CheckStatus.PASS,
                 details={
-                    "org": self._org,
-                    "project": self._project,
+                    "org_id": self._org,
+                    "project_id": self._project,
                     "source": "env_vars",
                 },
             )

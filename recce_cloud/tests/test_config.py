@@ -45,8 +45,8 @@ class TestProjectConfig(unittest.TestCase):
         test_config = {
             "version": 1,
             "cloud": {
-                "org": "test-org",
-                "project": "test-project",
+                "org_id": "test-org-id",
+                "project_id": "test-project-id",
             },
         }
 
@@ -70,8 +70,8 @@ class TestProjectConfig(unittest.TestCase):
         )
 
         save_project_binding(
-            org="my-org",
-            project="my-project",
+            org_id="my-org-id",
+            project_id="my-project-id",
             bound_by="test@example.com",
             project_dir=self.temp_dir,
         )
@@ -79,8 +79,8 @@ class TestProjectConfig(unittest.TestCase):
         binding = get_project_binding(self.temp_dir)
 
         self.assertIsNotNone(binding)
-        self.assertEqual(binding["org"], "my-org")
-        self.assertEqual(binding["project"], "my-project")
+        self.assertEqual(binding["org_id"], "my-org-id")
+        self.assertEqual(binding["project_id"], "my-project-id")
         self.assertEqual(binding["bound_by"], "test@example.com")
         self.assertIsNotNone(binding["bound_at"])
 
@@ -94,8 +94,8 @@ class TestProjectConfig(unittest.TestCase):
 
         # First save a binding
         save_project_binding(
-            org="my-org",
-            project="my-project",
+            org_id="my-org-id",
+            project_id="my-project-id",
             project_dir=self.temp_dir,
         )
 
@@ -159,12 +159,12 @@ class TestConfigResolver(unittest.TestCase):
         from recce_cloud.config.resolver import resolve_config
 
         config = resolve_config(
-            cli_org="cli-org",
-            cli_project="cli-project",
+            cli_org="cli-org-id",
+            cli_project="cli-project-id",
         )
 
-        self.assertEqual(config.org, "cli-org")
-        self.assertEqual(config.project, "cli-project")
+        self.assertEqual(config.org_id, "cli-org-id")
+        self.assertEqual(config.project_id, "cli-project-id")
         self.assertEqual(config.source, "cli")
 
     def test_resolve_config_env_vars(self):
@@ -180,8 +180,8 @@ class TestConfigResolver(unittest.TestCase):
         ):
             config = resolve_config(project_dir=self.temp_dir)
 
-            self.assertEqual(config.org, "env-org")
-            self.assertEqual(config.project, "env-project")
+            self.assertEqual(config.org_id, "env-org")
+            self.assertEqual(config.project_id, "env-project")
             self.assertEqual(config.source, "env")
 
     def test_resolve_config_local_config(self):
@@ -190,8 +190,8 @@ class TestConfigResolver(unittest.TestCase):
         from recce_cloud.config.resolver import resolve_config
 
         save_project_binding(
-            org="config-org",
-            project="config-project",
+            org_id="config-org-id",
+            project_id="config-project-id",
             project_dir=self.temp_dir,
         )
 
@@ -199,8 +199,8 @@ class TestConfigResolver(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True):
             config = resolve_config(project_dir=self.temp_dir)
 
-            self.assertEqual(config.org, "config-org")
-            self.assertEqual(config.project, "config-project")
+            self.assertEqual(config.org_id, "config-org-id")
+            self.assertEqual(config.project_id, "config-project-id")
             self.assertEqual(config.source, "config")
 
     def test_resolve_config_error(self):
@@ -212,50 +212,50 @@ class TestConfigResolver(unittest.TestCase):
             with self.assertRaises(ConfigurationError):
                 resolve_config(project_dir=self.temp_dir)
 
-    def test_resolve_org_cli_priority(self):
-        """Test CLI org has priority over env and config."""
+    def test_resolve_org_id_cli_priority(self):
+        """Test CLI org_id has priority over env and config."""
         from recce_cloud.config.project_config import save_project_binding
-        from recce_cloud.config.resolver import resolve_org
+        from recce_cloud.config.resolver import resolve_org_id
 
         save_project_binding(
-            org="config-org",
-            project="config-project",
+            org_id="config-org-id",
+            project_id="config-project-id",
             project_dir=self.temp_dir,
         )
 
         with patch.dict(os.environ, {"RECCE_ORG": "env-org"}):
-            org = resolve_org(cli_org="cli-org", project_dir=self.temp_dir)
-            self.assertEqual(org, "cli-org")
+            org_id = resolve_org_id(cli_org="cli-org", project_dir=self.temp_dir)
+            self.assertEqual(org_id, "cli-org")
 
-    def test_resolve_project_env_priority(self):
+    def test_resolve_project_id_env_priority(self):
         """Test env project has priority over config."""
         from recce_cloud.config.project_config import save_project_binding
-        from recce_cloud.config.resolver import resolve_project
+        from recce_cloud.config.resolver import resolve_project_id
 
         save_project_binding(
-            org="config-org",
-            project="config-project",
+            org_id="config-org-id",
+            project_id="config-project-id",
             project_dir=self.temp_dir,
         )
 
         with patch.dict(os.environ, {"RECCE_PROJECT": "env-project"}):
-            project = resolve_project(project_dir=self.temp_dir)
-            self.assertEqual(project, "env-project")
+            project_id = resolve_project_id(project_dir=self.temp_dir)
+            self.assertEqual(project_id, "env-project")
 
-    def test_resolve_org_fallback_to_config(self):
-        """Test org resolution falls back to config."""
+    def test_resolve_org_id_fallback_to_config(self):
+        """Test org_id resolution falls back to config."""
         from recce_cloud.config.project_config import save_project_binding
-        from recce_cloud.config.resolver import resolve_org
+        from recce_cloud.config.resolver import resolve_org_id
 
         save_project_binding(
-            org="config-org",
-            project="config-project",
+            org_id="config-org-id",
+            project_id="config-project-id",
             project_dir=self.temp_dir,
         )
 
         with patch.dict(os.environ, {}, clear=True):
-            org = resolve_org(project_dir=self.temp_dir)
-            self.assertEqual(org, "config-org")
+            org_id = resolve_org_id(project_dir=self.temp_dir)
+            self.assertEqual(org_id, "config-org-id")
 
 
 if __name__ == "__main__":
