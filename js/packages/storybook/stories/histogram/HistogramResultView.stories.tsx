@@ -106,6 +106,28 @@ export const SkewedDistribution: Story = {
   },
 };
 
+export const DatetimeColumn: Story = {
+  name: "Datetime Column",
+  args: {
+    run: createHistogramDiffRun({
+      params: {
+        model: "events",
+        column_name: "event_time",
+        column_type: "datetime",
+      },
+      result: createHistogramDiffResult({
+        min: 1609459200000,
+        max: 1635724800000,
+        bin_edges: [
+          1609459200000, 1612137600000, 1614556800000, 1617235200000,
+          1619827200000, 1622505600000, 1625097600000, 1627776000000,
+          1630454400000, 1633046400000, 1635724800000,
+        ],
+      }),
+    }),
+  },
+};
+
 // ============================================
 // Edge Cases
 // ============================================
