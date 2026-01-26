@@ -57,11 +57,11 @@ class DiagnosticRenderer:
         check = results.project_binding
 
         if check.passed:
-            org = check.details.get("org")
-            project = check.details.get("project")
+            org_id = check.details.get("org_id")
+            project_id = check.details.get("project_id")
             source = check.details.get("source")
             source_label = " (via env vars)" if source == "env_vars" else ""
-            self.console.print(f"[green]✓[/green] Bound to [cyan]{org}/{project}[/cyan]{source_label}")
+            self.console.print(f"[green]✓[/green] Bound to [cyan]{org_id}/{project_id}[/cyan]{source_label}")
         else:
             self._render_failure(check)
 

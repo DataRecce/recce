@@ -19,8 +19,8 @@ from recce_cloud.config.project_config import get_project_binding
 class ResolvedConfig:
     """Resolved configuration with source information."""
 
-    org: str
-    project: str
+    org_id: str
+    project_id: str
     source: str  # "cli", "env", "config"
 
 
@@ -45,32 +45,32 @@ def resolve_config(
     4. Error if nothing found
 
     Args:
-        cli_org: Organization from CLI flag.
-        cli_project: Project from CLI flag.
+        cli_org: Organization ID from CLI flag.
+        cli_project: Project ID from CLI flag.
         project_dir: Project directory for local config lookup.
 
     Returns:
-        ResolvedConfig with org, project, and source.
+        ResolvedConfig with org_id, project_id, and source.
 
     Raises:
         ConfigurationError: If org/project cannot be resolved.
     """
     # Priority 1: CLI flags
     if cli_org and cli_project:
-        return ResolvedConfig(org=cli_org, project=cli_project, source="cli")
+        return ResolvedConfig(org_id=cli_org, project_id=cli_project, source="cli")
 
-    # Priority 2: Environment variables
+    # Priority 2: Environment variables (accept both slugs and IDs)
     env_org = os.environ.get("RECCE_ORG")
     env_project = os.environ.get("RECCE_PROJECT")
     if env_org and env_project:
-        return ResolvedConfig(org=env_org, project=env_project, source="env")
+        return ResolvedConfig(org_id=env_org, project_id=env_project, source="env")
 
     # Priority 3: Local config file
     binding = get_project_binding(project_dir)
     if binding:
         return ResolvedConfig(
-            org=binding["org"],
-            project=binding["project"],
+            org_id=binding["org_id"],
+            project_id=binding["project_id"],
             source="config",
         )
 
@@ -81,19 +81,19 @@ def resolve_config(
     )
 
 
-def resolve_org(
+def resolve_org_id(
     cli_org: Optional[str] = None,
     project_dir: Optional[str] = None,
 ) -> Optional[str]:
     """
-    Resolve organization from multiple sources.
+    Resolve organization ID from multiple sources.
 
     Args:
-        cli_org: Organization from CLI flag.
+        cli_org: Organization ID from CLI flag.
         project_dir: Project directory for local config lookup.
 
     Returns:
-        Organization name/slug, or None if not found.
+        Organization ID, or None if not found.
     """
     if cli_org:
         return cli_org
@@ -104,24 +104,24 @@ def resolve_org(
 
     binding = get_project_binding(project_dir)
     if binding:
-        return binding["org"]
+        return binding["org_id"]
 
     return None
 
 
-def resolve_project(
+def resolve_project_id(
     cli_project: Optional[str] = None,
     project_dir: Optional[str] = None,
 ) -> Optional[str]:
     """
-    Resolve project from multiple sources.
+    Resolve project ID or slug from multiple sources.
 
     Args:
-        cli_project: Project from CLI flag.
+        cli_project: Project ID or slug from CLI flag.
         project_dir: Project directory for local config lookup.
 
     Returns:
-        Project name/slug, or None if not found.
+        Project ID or slug, or None if not found.
     """
     if cli_project:
         return cli_project
@@ -132,6 +132,6 @@ def resolve_project(
 
     binding = get_project_binding(project_dir)
     if binding:
-        return binding["project"]
+        return binding["project_id"]
 
     return None

@@ -256,8 +256,8 @@ def upload_with_session_name(
     console.rule("Session Name Resolution", style="blue")
     try:
         config = resolve_config()
-        org = config.org
-        project = config.project
+        org = config.org_id
+        project = config.project_id
         console.print(f"[cyan]Organization:[/cyan] {org}")
         console.print(f"[cyan]Project:[/cyan] {project}")
         console.print(f"[cyan]Config Source:[/cyan] {config.source}")

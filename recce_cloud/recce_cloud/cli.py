@@ -220,7 +220,9 @@ def init(org, project, status, clear):
     if status:
         binding = get_project_binding()
         if binding:
-            console.print(f"[green]✓[/green] Bound to [cyan]{binding['org']}/{binding['project']}[/cyan]")
+            console.print(
+                f"[green]✓[/green] Bound to org_id=[cyan]{binding['org_id']}[/cyan], project_id=[cyan]{binding['project_id']}[/cyan]"
+            )
             if binding.get("bound_at"):
                 console.print(f"  Bound at: {binding['bound_at']}")
             if binding.get("bound_by"):
@@ -264,12 +266,14 @@ def init(org, project, status, clear):
                 console.print(f"[red]Error:[/red] Project '{project}' not found in organization '{org}'")
                 sys.exit(1)
 
-            # Use slug for storage (more stable than name)
-            org_slug = org_obj.get("slug", org)
-            project_slug = project_obj.get("slug", project)
+            # Store IDs (immutable) instead of slugs (can be renamed)
+            org_id = str(org_obj.get("id"))
+            project_id = str(project_obj.get("id"))
 
-            save_project_binding(org_slug, project_slug, user_email)
-            console.print(f"[green]✓[/green] Bound to [cyan]{org_slug}/{project_slug}[/cyan]")
+            save_project_binding(org_id, project_id, user_email)
+            console.print(
+                f"[green]✓[/green] Bound to org_id=[cyan]{org_id}[/cyan], project_id=[cyan]{project_id}[/cyan]"
+            )
             console.print(f"  Config saved to {get_config_path()}")
 
             # Offer to add to .gitignore
@@ -325,16 +329,17 @@ def init(org, project, status, clear):
             console.print("Please create a project at https://cloud.datarecce.io first")
             sys.exit(1)
 
-        # Build project choices: (name for config, display_name for UI)
+        # Build project choices: (project_id for config, display_name for UI)
         # Filter out archived projects
         project_choices = []
         for p in projects:
             # Skip archived projects (check status field and archived flags)
             if p.get("status") == "archived" or p.get("archived") or p.get("is_archived"):
                 continue
-            project_name = p.get("name") or p.get("slug") or str(p.get("id"))
+            project_id = str(p.get("id"))
+            project_name = p.get("name") or p.get("slug") or project_id
             display_name = p.get("display_name") or project_name
-            project_choices.append((project_name, display_name))
+            project_choices.append((project_id, display_name))
 
         if not project_choices:
             console.print(f"[yellow]No active projects found in {selected_org_display}[/yellow]")
@@ -348,12 +353,14 @@ def init(org, project, status, clear):
             console.print(f"  {i}. {display_name}")
 
         project_idx = click.prompt("Enter number", type=click.IntRange(1, len(project_choices)))
-        selected_project_name, selected_project_display = project_choices[project_idx - 1]
+        selected_project_id, selected_project_display = project_choices[project_idx - 1]
 
-        # Save binding (use names for config, not IDs)
-        save_project_binding(selected_org_name, selected_project_name, user_email)
+        # Save binding using IDs (immutable) instead of slugs (can be renamed)
+        save_project_binding(str(selected_org_id), selected_project_id, user_email)
         console.print()
-        console.print(f"[green]✓[/green] Bound to [cyan]{selected_org_name}/{selected_project_name}[/cyan]")
+        console.print(
+            f"[green]✓[/green] Bound to org_id=[cyan]{selected_org_id}[/cyan], project_id=[cyan]{selected_project_id}[/cyan]"
+        )
         console.print(f"  Config saved to {get_config_path()}")
 
         # Offer to add to .gitignore
@@ -383,43 +390,24 @@ def _get_production_session_id(console: Console, token: str) -> Optional[str]:
     from recce_cloud.api.exceptions import RecceCloudException
     from recce_cloud.config.project_config import get_project_binding
 
-    # Get project binding
+    # Get project binding (now stores IDs directly)
     binding = get_project_binding()
     if not binding:
-        # Check environment variables as fallback
+        # Check environment variables as fallback (accept both slugs and IDs)
         env_org = os.environ.get("RECCE_ORG")
         env_project = os.environ.get("RECCE_PROJECT")
         if env_org and env_project:
-            binding = {"org": env_org, "project": env_project}
+            binding = {"org_id": env_org, "project_id": env_project}
         else:
             console.print("[red]Error:[/red] No project binding found")
             console.print("Run 'recce-cloud init' to bind this directory to a project")
             return None
 
-    org_slug = binding.get("org")
-    project_slug = binding.get("project")
+    org_id = binding.get("org_id")
+    project_id = binding.get("project_id")
 
     try:
         client = RecceCloudClient(token)
-
-        # Get org and project IDs
-        org_info = client.get_organization(org_slug)
-        if not org_info:
-            console.print(f"[red]Error:[/red] Organization '{org_slug}' not found")
-            return None
-        org_id = org_info.get("id")
-        if not org_id:
-            console.print(f"[red]Error:[/red] Organization '{org_slug}' response missing ID")
-            return None
-
-        project_info = client.get_project(org_id, project_slug)
-        if not project_info:
-            console.print(f"[red]Error:[/red] Project '{project_slug}' not found")
-            return None
-        project_id = project_info.get("id")
-        if not project_id:
-            console.print(f"[red]Error:[/red] Project '{project_slug}' response missing ID")
-            return None
 
         # List sessions and find production session
         sessions = client.list_sessions(org_id, project_id)
@@ -768,8 +756,8 @@ def list_sessions_cmd(session_type, output_json):
     # 2. Resolve org/project configuration
     try:
         config = resolve_config()
-        org = config.org
-        project = config.project
+        org = config.org_id
+        project = config.project_id
     except ConfigurationError as e:
         console.print("[red]Error:[/red] Could not resolve org/project configuration")
         console.print(f"Reason: {e}")
@@ -1480,8 +1468,8 @@ def review(session_id, session_name, org, project, regenerate, timeout, json_out
 
     try:
         config = resolve_config(cli_org=org, cli_project=project)
-        org_id = config.org
-        project_id = config.project
+        org_id = config.org_id
+        project_id = config.project_id
     except ConfigurationError as e:
         if json_output:
             print(
