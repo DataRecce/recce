@@ -309,24 +309,24 @@ describe("LineageView - type guards", () => {
 // ============================================================================
 
 describe("LineageView - toReactFlow", () => {
-  it("converts lineage graph to ReactFlow format", () => {
+  it("converts lineage graph to ReactFlow format", async () => {
     const base = createMockLineageDataFromMetadata();
     const current = createMockLineageDataFromMetadata();
     const graph = buildLineageGraph(base, current);
 
-    const [nodes, edges, columnSetMap] = toReactFlow(graph);
+    const [nodes, edges, columnSetMap] = await toReactFlow(graph);
 
     expect(nodes).toHaveLength(3);
     expect(edges).toHaveLength(2);
     expect(Object.keys(columnSetMap)).toHaveLength(3);
   });
 
-  it("filters nodes based on selectedNodes option", () => {
+  it("filters nodes based on selectedNodes option", async () => {
     const base = createMockLineageDataFromMetadata();
     const current = createMockLineageDataFromMetadata();
     const graph = buildLineageGraph(base, current);
 
-    const [nodes, edges] = toReactFlow(graph, {
+    const [nodes, edges] = await toReactFlow(graph, {
       selectedNodes: ["model.test.node1"],
     });
 
@@ -335,12 +335,12 @@ describe("LineageView - toReactFlow", () => {
     expect(edges).toHaveLength(0); // No edges since only one node
   });
 
-  it("assigns positions to nodes via dagre layout", () => {
+  it("assigns positions to nodes via dagre layout", async () => {
     const base = createMockLineageDataFromMetadata();
     const current = createMockLineageDataFromMetadata();
     const graph = buildLineageGraph(base, current);
 
-    const [nodes] = toReactFlow(graph);
+    const [nodes] = await toReactFlow(graph);
 
     // All nodes should have positions set
     for (const node of nodes) {
