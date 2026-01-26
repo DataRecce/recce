@@ -159,12 +159,12 @@ class TestConfigResolver(unittest.TestCase):
         from recce_cloud.config.resolver import resolve_config
 
         config = resolve_config(
-            cli_org="cli-org-id",
-            cli_project="cli-project-id",
+            cli_org="123",
+            cli_project="456",
         )
 
-        self.assertEqual(config.org_id, "cli-org-id")
-        self.assertEqual(config.project_id, "cli-project-id")
+        self.assertEqual(config.org_id, "123")
+        self.assertEqual(config.project_id, "456")
         self.assertEqual(config.source, "cli")
 
     def test_resolve_config_env_vars(self):
@@ -174,14 +174,14 @@ class TestConfigResolver(unittest.TestCase):
         with patch.dict(
             os.environ,
             {
-                "RECCE_ORG": "env-org",
-                "RECCE_PROJECT": "env-project",
+                "RECCE_ORG": "789",
+                "RECCE_PROJECT": "101",
             },
         ):
             config = resolve_config(project_dir=self.temp_dir)
 
-            self.assertEqual(config.org_id, "env-org")
-            self.assertEqual(config.project_id, "env-project")
+            self.assertEqual(config.org_id, "789")
+            self.assertEqual(config.project_id, "101")
             self.assertEqual(config.source, "env")
 
     def test_resolve_config_local_config(self):
@@ -190,8 +190,8 @@ class TestConfigResolver(unittest.TestCase):
         from recce_cloud.config.resolver import resolve_config
 
         save_project_binding(
-            org_id="config-org-id",
-            project_id="config-project-id",
+            org_id="202",
+            project_id="303",
             project_dir=self.temp_dir,
         )
 
@@ -199,8 +199,8 @@ class TestConfigResolver(unittest.TestCase):
         with patch.dict(os.environ, {}, clear=True):
             config = resolve_config(project_dir=self.temp_dir)
 
-            self.assertEqual(config.org_id, "config-org-id")
-            self.assertEqual(config.project_id, "config-project-id")
+            self.assertEqual(config.org_id, "202")
+            self.assertEqual(config.project_id, "303")
             self.assertEqual(config.source, "config")
 
     def test_resolve_config_error(self):
