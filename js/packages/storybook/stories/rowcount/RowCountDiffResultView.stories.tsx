@@ -1,10 +1,7 @@
 // packages/storybook/stories/rowcount/RowCountDiffResultView.stories.tsx
 import { RowCountDiffResultView } from "@datarecce/ui/components";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import {
-  createRowCountDiffRun,
-  rowCountDiffWithChanges,
-} from "./fixtures";
+import { createRowCountDiffRun, rowCountDiffWithChanges } from "./fixtures";
 
 // ============================================
 // RowCountDiffResultView (Base vs Current)
