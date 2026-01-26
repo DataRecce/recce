@@ -23,6 +23,7 @@ export default defineConfig({
     "lib/result/ResultErrorFallback": "src/lib/result/ResultErrorFallback.tsx",
     "lib/api/track": "src/lib/api/track.ts",
     "lib/api/user": "src/lib/api/user.ts",
+    "lib/api/axiosClient": "src/lib/api/axiosClient.ts",
   },
   format: ["esm"],
   dts: true,
