@@ -58,20 +58,46 @@ DEFAULT_POLL_INTERVAL_SECONDS = 5
 DEFAULT_TIMEOUT_SECONDS = 300  # 5 minutes
 
 
-def generate_review_url(org_id: str, project_id: str, session_id: str) -> str:
+def generate_review_url(
+    org_id: str,
+    project_id: str,
+    session_id: str,
+    client: Optional[RecceCloudClient] = None,
+) -> str:
     """
     Generate the URL to view the data review.
 
     Args:
-        org_id: Organization ID or slug.
-        project_id: Project ID or slug.
+        org_id: Organization ID.
+        project_id: Project ID.
         session_id: Session ID.
+        client: Optional RecceCloudClient to fetch current slugs from API.
+                If provided, the URL will use current slugs (handles renames).
+                If not provided, falls back to using IDs directly.
 
     Returns:
         URL string to view the data review.
     """
+    # Default to using IDs
+    org_slug = org_id
+    project_slug = project_id
+
+    # If client provided, fetch current slugs from API
+    if client:
+        try:
+            org = client.get_organization(org_id)
+            if org:
+                org_slug = org.get("name") or org.get("slug") or org_id
+
+            project = client.get_project(org_id, project_id)
+            if project:
+                project_slug = project.get("name") or project.get("slug") or project_id
+        except Exception:
+            # If API call fails, fall back to using IDs
+            pass
+
     # Use the Recce Cloud web UI URL (respects RECCE_CLOUD_BASE_URL env var)
-    return f"{RECCE_CLOUD_BASE_URL}/{org_id}/{project_id}/{session_id}/review"
+    return f"{RECCE_CLOUD_BASE_URL}/{org_slug}/{project_slug}/{session_id}/review"
 
 
 def check_prerequisites(
@@ -270,7 +296,7 @@ def generate_data_review(
                 status=ReviewStatus.ALREADY_EXISTS,
                 session_id=session_id,
                 session_name=session_name,
-                review_url=generate_review_url(org_id, project_id, session_id),
+                review_url=generate_review_url(org_id, project_id, session_id, client),
                 summary=existing_review.get("summary"),
             )
 
@@ -304,7 +330,7 @@ def generate_data_review(
                         status=ReviewStatus.ALREADY_EXISTS,
                         session_id=session_id,
                         session_name=session_name,
-                        review_url=generate_review_url(org_id, project_id, session_id),
+                        review_url=generate_review_url(org_id, project_id, session_id, client),
                         summary=existing_review.get("summary"),
                     )
                 else:
@@ -350,7 +376,7 @@ def generate_data_review(
                 status=ReviewStatus.SUCCEEDED,
                 session_id=session_id,
                 session_name=session_name,
-                review_url=generate_review_url(org_id, project_id, session_id),
+                review_url=generate_review_url(org_id, project_id, session_id, client),
                 task_id=task_id,
                 summary=review.get("summary") if review else None,
             )
