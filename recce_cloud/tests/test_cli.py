@@ -977,7 +977,7 @@ class TestDoctor(unittest.TestCase):
                 with patch("recce_cloud.auth.login.check_login_status", return_value=(True, "test@example.com")):
                     with patch(
                         "recce_cloud.config.project_config.get_project_binding",
-                        return_value={"org": "myorg", "project": "myproject"},
+                        return_value={"org_id": "org-123", "project_id": "proj-456"},
                     ):
                         # Mock API calls
                         with patch("recce_cloud.api.client.RecceCloudClient.get_organization") as mock_get_org:
@@ -1011,7 +1011,7 @@ class TestDoctor(unittest.TestCase):
         self.assertIn("Recce Doctor", result.output)
         self.assertIn("Logged in as", result.output)
         self.assertIn("Bound to", result.output)
-        self.assertIn("myorg/myproject", result.output)
+        self.assertIn("org-123/proj-456", result.output)
         self.assertIn("Found production session", result.output)
         self.assertIn("prod", result.output)
         self.assertIn("Found dev session", result.output)
@@ -1096,7 +1096,7 @@ class TestDoctor(unittest.TestCase):
                 with patch("recce_cloud.auth.login.check_login_status", return_value=(True, "test@example.com")):
                     with patch(
                         "recce_cloud.config.project_config.get_project_binding",
-                        return_value={"org": "myorg", "project": "myproject"},
+                        return_value={"org_id": "org-123", "project_id": "proj-456"},
                     ):
                         # Mock API calls
                         with patch("recce_cloud.api.client.RecceCloudClient.get_organization") as mock_get_org:
@@ -1133,8 +1133,8 @@ class TestDoctor(unittest.TestCase):
         self.assertEqual(data["login"]["status"], "pass")
         self.assertEqual(data["login"]["email"], "test@example.com")
         self.assertEqual(data["project_binding"]["status"], "pass")
-        self.assertEqual(data["project_binding"]["org"], "myorg")
-        self.assertEqual(data["project_binding"]["project"], "myproject")
+        self.assertEqual(data["project_binding"]["org_id"], "org-123")
+        self.assertEqual(data["project_binding"]["project_id"], "proj-456")
         self.assertEqual(data["production_metadata"]["status"], "pass")
         self.assertEqual(data["production_metadata"]["session_name"], "prod")
         self.assertEqual(data["dev_session"]["status"], "pass")
