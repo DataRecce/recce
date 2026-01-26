@@ -101,6 +101,88 @@ git commit -s -m "docs: update AGENTS.md with git practices"
 git commit -s -m "refactor(dataGrid): extract shared utilities"
 ```
 
+## Development Workflow
+
+Before submitting any code changes, you MUST complete the appropriate workflow below. Pre-commit hooks are mandatory and must never be skipped.
+
+### Backend Changes (Python)
+
+When modifying Python code in `recce/` or `tests/`:
+
+```bash
+# 1. Format code (Black + isort)
+make format
+
+# 2. Run linting (flake8)
+make flake8
+
+# 3. Run tests
+make test
+# OR for more verbose output:
+pytest tests -v
+
+# 4. Commit (hooks will run automatically - NEVER skip them)
+git commit -s -m "type(scope): description"
+```
+
+### Frontend Changes (TypeScript/React)
+
+When modifying code in `js/`:
+
+```bash
+cd js
+
+# 1. Run linting and auto-fix (Biome)
+pnpm lint:fix
+
+# 2. Run type checking
+pnpm type:check
+
+# 3. Run tests
+pnpm test
+
+# 4. Commit (hooks will run automatically - NEVER skip them)
+git commit -s -m "type(scope): description"
+```
+
+### Pre-Commit Hook Requirements
+
+**CRITICAL: Never skip pre-commit hooks.** The following flags are FORBIDDEN:
+
+- ❌ `git commit --no-verify`
+- ❌ `git commit -n`
+- ❌ Any method that bypasses hooks
+
+Pre-commit hooks ensure code quality by running:
+- **Python**: Black formatting, isort import sorting, flake8 linting
+- **Frontend**: `pnpm lint:staged` (Biome) and `pnpm type:check`
+
+If a hook fails:
+1. Fix the reported issues
+2. Stage the fixes: `git add <fixed-files>`
+3. Commit again (do NOT use `--amend` if the original commit failed)
+
+### Full Stack Changes
+
+When changes span both backend and frontend:
+
+```bash
+# 1. Complete backend workflow
+make format && make flake8 && make test
+
+# 2. Complete frontend workflow
+cd js && pnpm lint:fix && pnpm type:check && pnpm test
+
+# 3. Build frontend to test integration
+pnpm run build
+
+# 4. Test with backend
+cd .. && recce server
+
+# 5. Commit all changes together
+git add -A && git commit -s -m "type(scope): description"
+```
+
 ## Code Organization Philosophy
 
 ### Separation of Concerns
