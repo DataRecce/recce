@@ -50,7 +50,7 @@ export function useCountdownToast(lifetimeExpiredAt: Date | undefined) {
       countdownToast.remove(countdownToastId);
       setCountdownToastId(null);
     }
-  }, [countdownToast, countdownToastId]);
+  }, [countdownToastId]);
 
   const updateToast = useCallback(() => {
     if (countdownToastId == null) return;
@@ -64,12 +64,7 @@ export function useCountdownToast(lifetimeExpiredAt: Date | undefined) {
     countdownToast.update(countdownToastId, {
       description: COUNTDOWN_CONFIG.MESSAGE(remainingSeconds),
     });
-  }, [
-    countdownToastId,
-    calculateRemainingSeconds,
-    countdownToast,
-    cleanupToast,
-  ]);
+  }, [countdownToastId, calculateRemainingSeconds, cleanupToast]);
 
   const showToast = useCallback(() => {
     if (!lifetimeExpiredAt) return;
@@ -91,13 +86,7 @@ export function useCountdownToast(lifetimeExpiredAt: Date | undefined) {
       updateToast,
       COUNTDOWN_CONFIG.UPDATE_INTERVAL,
     );
-  }, [
-    lifetimeExpiredAt,
-    countdownToast,
-    calculateRemainingSeconds,
-    updateToast,
-    cleanupToast,
-  ]);
+  }, [lifetimeExpiredAt, calculateRemainingSeconds, updateToast, cleanupToast]);
 
   // Calculate delay for showing toast
   const remainingSeconds = calculateRemainingSeconds();

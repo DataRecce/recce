@@ -99,7 +99,7 @@ import {
   useLineageViewContextMenu,
 } from "./LineageViewContextMenuOss";
 import { LineageLegend } from "./legend";
-import { layout, toReactFlow } from "./lineage";
+import { toReactFlow } from "./lineage";
 import { NodeViewOss as NodeView } from "./NodeViewOss";
 import SetupConnectionBanner from "./SetupConnectionBannerOss";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
@@ -384,11 +384,10 @@ export function PrivateLineageView(
         }
       }
 
-      const [nodes, edges, nodeColumnSetMap] = toReactFlow(lineageGraph, {
+      const [nodes, edges, nodeColumnSetMap] = await toReactFlow(lineageGraph, {
         selectedNodes: filteredNodeIds,
         cll: cll,
       });
-      layout(nodes, edges);
       setNodes(nodes);
       setEdges(edges);
       setNodeColumSetMap(nodeColumnSetMap);
@@ -610,7 +609,7 @@ export function PrivateLineageView(
       }
     }
 
-    const [newNodes, newEdges, newNodeColumnSetMap] = toReactFlow(
+    const [newNodes, newEdges, newNodeColumnSetMap] = await toReactFlow(
       lineageGraph,
       {
         selectedNodes,

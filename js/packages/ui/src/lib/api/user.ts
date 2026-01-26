@@ -19,7 +19,9 @@ export async function fetchUser(client: AxiosInstance = axios): Promise<User> {
     const response = await client.get<never, AxiosResponse<User>>("/api/users");
     return response.data;
   } catch (error) {
-    console.error("Error fetching user data:", error);
+    if (process.env.NODE_ENV !== "test") {
+      console.error("Error fetching user data:", error);
+    }
     throw error;
   }
 }
