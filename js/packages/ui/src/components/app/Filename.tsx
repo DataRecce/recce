@@ -12,7 +12,7 @@ import TextField from "@mui/material/TextField";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
-import { AxiosError } from "axios";
+import { isAxiosError } from "axios";
 import React, { useEffect, useRef, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { LuSave } from "react-icons/lu";
@@ -45,8 +45,8 @@ const useRecceToast = () => {
   const toastError = (message: string, error?: Error) => {
     let errorMessage = message;
     if (error != null) {
-      if (error instanceof AxiosError) {
-        errorMessage = `${message}. ${String((error as AxiosError<{ detail: string } | undefined, unknown>).response?.data?.detail)}`;
+      if (isAxiosError<{ detail?: string }>(error)) {
+        errorMessage = `${message}. ${String(error.response?.data?.detail)}`;
       } else {
         errorMessage = `${message}. ${error}`;
       }
@@ -166,7 +166,7 @@ export const Filename = () => {
         localStorage.setItem(LOCAL_STORAGE_KEYS.bypassSaveOverwrite, "true");
       }
     } catch (error: unknown) {
-      if (error instanceof AxiosError) {
+      if (isAxiosError(error)) {
         if (error.response?.status === 409) {
           setState((s) => ({
             ...s,
