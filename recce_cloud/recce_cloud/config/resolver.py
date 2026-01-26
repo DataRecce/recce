@@ -30,6 +30,26 @@ class ConfigurationError(Exception):
     pass
 
 
+def _validate_numeric_id(value: str, field_name: str, source: str) -> None:
+    """
+    Validate that a value is a numeric ID.
+
+    Args:
+        value: The value to validate.
+        field_name: Name of the field (for error messages).
+        source: Source of the value (for error messages).
+
+    Raises:
+        ConfigurationError: If the value is not a numeric ID.
+    """
+    if not value.isdigit():
+        raise ConfigurationError(
+            f"Invalid {field_name}: '{value}' (from {source}). "
+            f"The API requires numeric IDs, not slugs. "
+            f"Run 'recce-cloud init' to bind this directory to a project with proper IDs."
+        )
+
+
 def resolve_config(
     cli_org: Optional[str] = None,
     cli_project: Optional[str] = None,
@@ -57,20 +77,28 @@ def resolve_config(
     """
     # Priority 1: CLI flags
     if cli_org and cli_project:
+        _validate_numeric_id(cli_org, "org", "CLI flag --org")
+        _validate_numeric_id(cli_project, "project", "CLI flag --project")
         return ResolvedConfig(org_id=cli_org, project_id=cli_project, source="cli")
 
-    # Priority 2: Environment variables (accept both slugs and IDs)
+    # Priority 2: Environment variables
     env_org = os.environ.get("RECCE_ORG")
     env_project = os.environ.get("RECCE_PROJECT")
     if env_org and env_project:
+        _validate_numeric_id(env_org, "org", "environment variable RECCE_ORG")
+        _validate_numeric_id(env_project, "project", "environment variable RECCE_PROJECT")
         return ResolvedConfig(org_id=env_org, project_id=env_project, source="env")
 
     # Priority 3: Local config file
     binding = get_project_binding(project_dir)
     if binding:
+        org_id = binding["org_id"]
+        project_id = binding["project_id"]
+        _validate_numeric_id(org_id, "org_id", "config file")
+        _validate_numeric_id(project_id, "project_id", "config file")
         return ResolvedConfig(
-            org_id=binding["org_id"],
-            project_id=binding["project_id"],
+            org_id=org_id,
+            project_id=project_id,
             source="config",
         )
 
