@@ -472,14 +472,11 @@ export {
 // =============================================================================
 // RESULT VIEW PRIMITIVES
 // =============================================================================
+// NOTE: Result view factory canonical in @datarecce/ui/result
 
 /**
  * Result view factory primitives.
- *
- * @remarks
- * Exports: CreatedResultViewProps, createResultView, ResultViewConfig,
- * ResultViewData, ResultViewProps, ResultViewRef, ResultViewTransformOptions,
- * ScreenshotWrapperType.
+ * @deprecated Import from @datarecce/ui/result instead
  */
 export {
   type CreatedResultViewProps,

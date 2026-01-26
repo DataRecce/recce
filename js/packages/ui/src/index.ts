@@ -40,6 +40,7 @@ export {
 } from "./api";
 
 // Components - UI components for data validation interfaces
+// NOTE: LineageCanvasProps canonical in @datarecce/ui/types
 export type {
   // High-level views (Layer 3)
   ChecksViewProps,
@@ -66,6 +67,7 @@ export {
 } from "./components";
 
 // Result view factory and types
+// NOTE: canonical in @datarecce/ui/result
 export type {
   CreatedResultViewProps,
   ResultViewConfig,
@@ -82,17 +84,17 @@ export {
   DisableTooltipMessages,
 } from "./constants";
 // Contexts - React contexts for state management
+// NOTE: Context hooks canonical in @datarecce/ui/contexts
+// NOTE: Types canonical in @datarecce/ui/types
 export type {
   // LineageViewContext types
   ActionMode,
   ActionState,
   // Action context
   AxiosQueryParams,
-  // Lineage graph
+  // Lineage graph types (canonical: @datarecce/ui/types)
   EnvInfo,
-  // Idle timeout
   IdleTimeoutContextType,
-  // Instance info
   InstanceInfoType,
   LineageGraph,
   LineageGraphColumnNode,
@@ -103,7 +105,6 @@ export type {
   LineageGraphProviderProps,
   LineageViewContextType,
   NodeAction,
-  // Lineage utilities
   NodeColumnSetMap,
   RecceActionContextType,
   RecceActionOptions,
@@ -114,7 +115,7 @@ export type {
   SubmitRunTrackProps,
 } from "./contexts";
 export {
-  // Lineage graph utilities
+  // Lineage graph utilities (canonical: @datarecce/ui/contexts)
   buildLineageGraph,
   COLUMN_HEIGHT,
   // Instance info
@@ -186,6 +187,7 @@ export {
   useRun,
   useThemeColors,
 } from "./hooks";
+// NOTE: SchemaDiffRow canonical in @datarecce/ui/types
 export type {
   SchemaDataGridOptions,
   SchemaDataGridResult,
@@ -200,6 +202,7 @@ export {
   toSingleEnvDataGrid,
 } from "./lib";
 // Provider (main entry point) and Hooks - from providers module
+// NOTE: API hooks (`useApiClient`, `useApiConfig`, `useApiConfigOptional`) canonical in @datarecce/ui/contexts
 export type {
   Check,
   CheckContextType,
@@ -226,9 +229,12 @@ export {
   useRouting,
 } from "./providers";
 // Theme - colors palette and MUI theme with CSS Variables
+// NOTE: `colors` and `getChartThemeColors` canonical in @datarecce/ui/theme
 export type { Theme } from "./theme";
 export { colors, theme } from "./theme";
 // Utils - utility functions for data manipulation and formatting
+// NOTE: `deltaPercentageString`, `formatTimestamp`, `formatTimeToNow`, `isSchemaChanged`
+// canonical in @datarecce/ui/utils
 export {
   deltaPercentageString,
   extractSchemas,

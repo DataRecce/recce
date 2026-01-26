@@ -27,3 +27,7 @@ recce/data
 
 # Git worktrees for isolated development
 .worktrees/
+
+# Claude output files
+output/*
+!output/.gitkeep

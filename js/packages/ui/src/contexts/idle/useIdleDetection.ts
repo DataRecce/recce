@@ -7,7 +7,7 @@ import { sendKeepAlive } from "../../api/keepAlive";
 import { useApiConfigOptional } from "../../providers/contexts/ApiContext";
 
 import { useRecceInstanceInfo } from "../instance";
-import { useIdleTimeoutSafe } from "./IdleTimeoutContext";
+import { useIdleTimeoutSafe } from "./types";
 
 // Default axios client for use outside RecceProvider (OSS mode)
 const defaultApiClient = axios.create();
