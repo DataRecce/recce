@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  createContext,
   type ReactNode,
   useCallback,
   useContext,
@@ -14,33 +13,8 @@ import {
   setKeepAliveCallback,
 } from "../../api/keepAlive";
 import { useRecceInstanceInfo } from "../instance";
+import { IdleTimeoutContext, type IdleTimeoutContextType } from "./types";
 import { useIdleDetection } from "./useIdleDetection";
-
-/**
- * Context for sharing idle timeout state across components
- *
- * IMPORTANT: The countdown is based on the last SUCCESSFUL keep-alive API call,
- * NOT on user activity. This ensures the countdown accurately reflects the
- * server's idle timeout state.
- */
-export interface IdleTimeoutContextType {
-  /** Remaining seconds until timeout (null if idle timeout not enabled) */
-  remainingSeconds: number | null;
-  /** Idle timeout value from server in seconds (null if not configured) */
-  idleTimeout: number | null;
-  /** Whether idle timeout is enabled */
-  isEnabled: boolean;
-  /** Mark as disconnected - stops countdown and keep-alive */
-  setDisconnected: () => void;
-  /** Reset connection state - restarts countdown and keep-alive after successful reconnect */
-  resetConnection: () => void;
-  /** Whether the connection is disconnected */
-  isDisconnected: boolean;
-}
-
-const IdleTimeoutContext = createContext<IdleTimeoutContextType | undefined>(
-  undefined,
-);
 
 /**
  * Provider for idle timeout state
@@ -168,10 +142,6 @@ export function useIdleTimeout() {
   return context;
 }
 
-/**
- * Hook to access idle timeout context, returns null if outside provider
- * Used internally by useIdleDetection to avoid circular dependency
- */
-export function useIdleTimeoutSafe(): IdleTimeoutContextType | null {
-  return useContext(IdleTimeoutContext) ?? null;
-}
+// Re-export type and safe hook for backwards compatibility
+export type { IdleTimeoutContextType } from "./types";
+export { useIdleTimeoutSafe } from "./types";

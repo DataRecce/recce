@@ -11,13 +11,12 @@ export const ADVANCED_API_VERSION = "0.2.0";
 // =============================================================================
 // LINEAGE UTILITIES
 // =============================================================================
+// NOTE: Lineage types canonical in @datarecce/ui/types
+// NOTE: Lineage utilities canonical in @datarecce/ui/contexts
 
 /**
  * Lineage graph types for advanced consumers.
- *
- * @remarks
- * Exports: EnvInfo, LineageGraph, LineageGraphColumnNode, LineageGraphEdge,
- * LineageGraphNode, LineageGraphNodes.
+ * @deprecated Import from @datarecce/ui/types instead
  */
 export type {
   EnvInfo,
@@ -29,9 +28,7 @@ export type {
 } from "./contexts/lineage/types";
 /**
  * Lineage graph type guards.
- *
- * @remarks
- * Exports: isLineageGraphColumnNode, isLineageGraphNode.
+ * @deprecated Import from @datarecce/ui/contexts instead
  */
 export {
   isLineageGraphColumnNode,
@@ -39,11 +36,7 @@ export {
 } from "./contexts/lineage/types";
 /**
  * Graph building and layout utilities.
- *
- * @remarks
- * Exports: buildLineageGraph, COLUMN_HEIGHT, getNeighborSet, intersect,
- * layoutWithDagre, NodeColumnSetMap, selectDownstream, selectUpstream,
- * toReactFlowBasic, union.
+ * @deprecated Import from @datarecce/ui/contexts instead
  */
 export {
   buildLineageGraph,
@@ -76,12 +69,12 @@ export {
 // =============================================================================
 // CONTEXT HOOKS
 // =============================================================================
+// NOTE: Context hooks canonical in @datarecce/ui/contexts
+// NOTE: Context types canonical in @datarecce/ui/types
 
 /**
  * Recce action context hooks and types.
- *
- * @remarks
- * Exports: RecceActionContextType, useRecceActionContext.
+ * @deprecated Import from @datarecce/ui/contexts instead
  */
 export {
   type RecceActionContextType,
@@ -89,9 +82,7 @@ export {
 } from "./contexts/action";
 /**
  * Idle timeout context hooks and types.
- *
- * @remarks
- * Exports: IdleTimeoutContextType, useIdleTimeout.
+ * @deprecated Import from @datarecce/ui/contexts instead
  */
 export {
   type IdleTimeoutContextType,
@@ -99,9 +90,7 @@ export {
 } from "./contexts/idle";
 /**
  * Recce instance context hooks and types.
- *
- * @remarks
- * Exports: InstanceInfoType, useRecceInstanceContext, useRecceInstanceInfo.
+ * @deprecated Import from @datarecce/ui/contexts instead
  */
 export {
   type InstanceInfoType,
@@ -110,9 +99,7 @@ export {
 } from "./contexts/instance";
 /**
  * Lineage context hooks for direct access.
- *
- * @remarks
- * Exports: useLineageGraphContext, useRunsAggregated.
+ * @deprecated Import from @datarecce/ui/contexts instead
  */
 export {
   useLineageGraphContext,
@@ -133,9 +120,8 @@ export { useThemeColors } from "./hooks/useThemeColors";
 
 /**
  * Theme color palette exports.
- *
- * @remarks
- * Exports: ColorShade, colors, SemanticColorVariant.
+ * @deprecated Import from @datarecce/ui/theme instead
+ * @deprecated Types (ColorShade, SemanticColorVariant) canonical in @datarecce/ui/types
  */
 export {
   type ColorShade,
