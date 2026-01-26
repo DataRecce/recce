@@ -35,6 +35,34 @@ class TestReviewHelpers(unittest.TestCase):
         self.assertIn("project_with_underscore", url)
         self.assertIn("uuid-session", url)
 
+    def test_generate_review_url_with_client_fetches_slugs(self):
+        """Test URL generation uses slugs from API when client is provided."""
+        mock_client = MagicMock(spec=RecceCloudClient)
+        mock_client.get_organization.return_value = {"id": 1, "name": "my-org-slug"}
+        mock_client.get_project.return_value = {"id": 2, "name": "my-project-slug"}
+
+        url = generate_review_url("1", "2", "session-123", client=mock_client)
+
+        self.assertEqual(
+            url,
+            "https://cloud.datarecce.io/my-org-slug/my-project-slug/session-123/review",
+        )
+        mock_client.get_organization.assert_called_once_with("1")
+        mock_client.get_project.assert_called_once_with("1", "2")
+
+    def test_generate_review_url_falls_back_to_ids_on_api_error(self):
+        """Test URL generation falls back to IDs when API call fails."""
+        mock_client = MagicMock(spec=RecceCloudClient)
+        mock_client.get_organization.side_effect = Exception("API error")
+
+        url = generate_review_url("123", "456", "session-123", client=mock_client)
+
+        # Should fall back to using IDs
+        self.assertEqual(
+            url,
+            "https://cloud.datarecce.io/123/456/session-123/review",
+        )
+
 
 class TestCheckPrerequisites(unittest.TestCase):
     """Test the check_prerequisites function."""
