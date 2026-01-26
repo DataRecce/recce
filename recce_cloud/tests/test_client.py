@@ -693,69 +693,6 @@ class RecceCloudClientTests(unittest.TestCase):
     # Tests for data review methods
 
     @patch("recce_cloud.api.client.requests.request")
-    def test_get_base_session_success(self, mock_request):
-        """Test successful get_base_session call."""
-        client = RecceCloudClient(self.api_token)
-
-        # Mock successful response - note: API wraps session in "session" key
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "session": {
-                "id": "base-session-123",
-                "name": "production",
-                "adapter_type": "postgres",
-            }
-        }
-        mock_request.return_value = mock_response
-
-        result = client.get_base_session(self.org_id, self.project_id)
-
-        self.assertIsNotNone(result)
-        self.assertEqual(result["id"], "base-session-123")
-        self.assertEqual(result["name"], "production")
-
-        # Verify request was made correctly
-        mock_request.assert_called_once()
-        call_args = mock_request.call_args
-        self.assertEqual(call_args[0][0], "GET")
-        self.assertIn(self.org_id, call_args[0][1])
-        self.assertIn(self.project_id, call_args[0][1])
-        self.assertIn("base_session", call_args[0][1])
-
-    @patch("recce_cloud.api.client.requests.request")
-    def test_get_base_session_not_found(self, mock_request):
-        """Test get_base_session when no base session exists."""
-        client = RecceCloudClient(self.api_token)
-
-        # Mock 404 response
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_response.text = "Base session not found"
-        mock_request.return_value = mock_response
-
-        result = client.get_base_session(self.org_id, self.project_id)
-
-        # Should return None when base session doesn't exist
-        self.assertIsNone(result)
-
-    @patch("recce_cloud.api.client.requests.request")
-    def test_get_base_session_server_error(self, mock_request):
-        """Test get_base_session with server error."""
-        client = RecceCloudClient(self.api_token)
-
-        # Mock 500 response
-        mock_response = MagicMock()
-        mock_response.status_code = 500
-        mock_response.text = "Internal server error"
-        mock_request.return_value = mock_response
-
-        with self.assertRaises(RecceCloudException) as context:
-            client.get_base_session(self.org_id, self.project_id)
-
-        self.assertEqual(context.exception.status_code, 500)
-
-    @patch("recce_cloud.api.client.requests.request")
     def test_generate_data_review_success(self, mock_request):
         """Test successful generate_data_review call."""
         client = RecceCloudClient(self.api_token)
