@@ -2,7 +2,6 @@
 import { RowCountDiffResultView } from "@datarecce/ui/components";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
-  createRowCountDiffResult,
   createRowCountDiffRun,
   rowCountDiffWithChanges,
 } from "./fixtures";
