@@ -11,8 +11,28 @@ const meta: Meta<typeof HistogramDiffForm> = {
   parameters: {
     docs: {
       description: {
-        component:
-          "Form component for configuring histogram diff parameters. Allows users to select a numeric column for histogram comparison. Filters out string, boolean, and datetime columns.",
+        component: `Form component for configuring histogram diff parameters. Allows users to select a numeric column for histogram comparison. Filters out string, boolean, and datetime columns.
+
+## Usage
+
+\`\`\`tsx
+import { HistogramDiffForm } from '@datarecce/ui/components';
+
+const [params, setParams] = useState({
+  model: 'orders',
+  column_name: 'total_amount',
+  column_type: 'numeric'
+});
+const [isReady, setIsReady] = useState(false);
+
+<HistogramDiffForm
+  params={params}
+  onParamsChanged={(newParams) => setParams(newParams)}
+  setIsReadyToExecute={setIsReady}
+/>
+\`\`\`
+
+**Note:** This component requires a LineageGraphContext provider to fetch model columns via the \`useModelColumns\` hook.`,
       },
     },
     layout: "centered",

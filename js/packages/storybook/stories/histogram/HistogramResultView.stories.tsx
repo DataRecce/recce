@@ -9,8 +9,38 @@ const meta: Meta<typeof HistogramDiffResultView> = {
   parameters: {
     docs: {
       description: {
-        component:
-          "Result view for histogram diff comparison between base and current environments. Displays a chart comparing histogram distributions.",
+        component: `Result view for histogram diff comparison between base and current environments. Displays a chart comparing histogram distributions.
+
+## Usage
+
+\`\`\`tsx
+import { HistogramDiffResultView } from '@datarecce/ui/components';
+
+<HistogramDiffResultView
+  run={{
+    run_id: '1',
+    run_type: 'histogram_diff',
+    params: {
+      model: 'orders',
+      column_name: 'total_amount',
+      column_type: 'numeric'
+    },
+    result: {
+      min: 5,
+      max: 10100,
+      bin_edges: [5, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10100],
+      base: {
+        counts: [115, 86, 55, 73, 65, 34, 29, 28, 26, 40],
+        total: 551
+      },
+      current: {
+        counts: [181, 96, 57, 42, 52, 53, 82, 76, 80, 70],
+        total: 789
+      }
+    }
+  }}
+/>
+\`\`\``,
       },
     },
     layout: "fullscreen",

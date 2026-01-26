@@ -49,7 +49,11 @@ export type {
   RoutingContextValue,
 } from "./contexts/RoutingContext";
 export { useAppLocation, useRouting } from "./contexts/RoutingContext";
-export { useRecceTheme, useRecceThemeOptional } from "./contexts/ThemeContext";
+export {
+  ThemeProvider,
+  useRecceTheme,
+  useRecceThemeOptional,
+} from "./contexts/ThemeContext";
 
 // Main provider
 export { RecceProvider, type RecceProviderProps } from "./RecceProvider";

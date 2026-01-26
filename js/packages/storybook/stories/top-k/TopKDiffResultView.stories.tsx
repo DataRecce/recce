@@ -14,8 +14,41 @@ const meta: Meta<typeof TopKDiffResultView> = {
   parameters: {
     docs: {
       description: {
-        component:
-          "Result view for Top-K value distribution comparison. Displays horizontal bar charts comparing base vs current top-K values with an optional 'View More Items' toggle.",
+        component: `Result view for Top-K value distribution comparison. Displays horizontal bar charts comparing base vs current top-K values with an optional 'View More Items' toggle.
+
+## Usage
+
+\`\`\`tsx
+import { TopKDiffResultView } from '@datarecce/ui/components';
+
+const [viewOptions, setViewOptions] = useState({ show_all: false });
+
+<TopKDiffResultView
+  run={{
+    run_id: '1',
+    run_type: 'top_k_diff',
+    params: {
+      model: 'users',
+      column_name: 'status',
+      k: 10
+    },
+    result: {
+      base: {
+        values: ['active', 'inactive', 'pending'],
+        counts: [100, 80, 60],
+        valids: 240
+      },
+      current: {
+        values: ['active', 'inactive', 'pending'],
+        counts: [120, 85, 55],
+        valids: 260
+      }
+    }
+  }}
+  viewOptions={viewOptions}
+  onViewOptionsChanged={setViewOptions}
+/>
+\`\`\``,
       },
     },
     layout: "fullscreen",

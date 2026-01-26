@@ -1,10 +1,15 @@
 import CssBaseline from "@mui/material/CssBaseline";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
+import {
+  createTheme,
+  ThemeProvider as MuiThemeProvider,
+} from "@mui/material/styles";
 import type { Preview } from "@storybook/react-vite";
 import "chartjs-adapter-date-fns";
+import { useEffect } from "react";
 
-// Import styles from @datarecce/ui
+// Import styles and ThemeProvider from @datarecce/ui
 import "@datarecce/ui/styles";
+import { ThemeProvider as RecceThemeProvider } from "@datarecce/ui/providers";
 
 const lightTheme = createTheme({
   palette: {
@@ -46,12 +51,19 @@ const preview: Preview = {
   },
   decorators: [
     (Story, context) => {
-      const theme = context.globals.theme === "dark" ? darkTheme : lightTheme;
+      const isDark = context.globals.theme === "dark";
+      const muiTheme = isDark ? darkTheme : lightTheme;
+
+      // Manually manage .dark class on document element for useIsDark() hook
+      useEffect(() => {
+        document.documentElement.classList.toggle("dark", isDark);
+      }, [isDark]);
+
       return (
-        <ThemeProvider theme={theme}>
+        <MuiThemeProvider theme={muiTheme}>
           <CssBaseline />
           <Story />
-        </ThemeProvider>
+        </MuiThemeProvider>
       );
     },
   ],

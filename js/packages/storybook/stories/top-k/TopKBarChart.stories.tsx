@@ -14,8 +14,40 @@ const meta: Meta<typeof TopKBarChart> = {
   parameters: {
     docs: {
       description: {
-        component:
-          "Displays top-K value distributions with horizontal bar charts. Supports base/current comparison and handles special values (null, empty strings).",
+        component: `Displays top-K value distributions with horizontal bar charts. Supports base/current comparison and handles special values (null, empty strings).
+
+## Usage
+
+\`\`\`tsx
+import { TopKBarChart } from '@datarecce/ui/primitives';
+
+// Basic usage
+<TopKBarChart
+  currentData={{
+    values: ['apple', 'banana', 'orange'],
+    counts: [100, 80, 60],
+    valids: 240
+  }}
+  maxItems={10}
+/>
+
+// With comparison
+<TopKBarChart
+  baseData={{
+    values: ['apple', 'banana', 'orange'],
+    counts: [90, 85, 55],
+    valids: 230
+  }}
+  currentData={{
+    values: ['apple', 'banana', 'orange'],
+    counts: [100, 80, 60],
+    valids: 240
+  }}
+  showComparison={true}
+  maxItems={10}
+  title="Product Categories"
+/>
+\`\`\``,
       },
     },
     layout: "centered",
@@ -221,5 +253,59 @@ export const LongValueNames: Story = {
         story: "Tests tooltip and ellipsis handling for long value names.",
       },
     },
+  },
+};
+
+// ============================================
+// Theme Testing
+// ============================================
+
+export const LightTheme: Story = {
+  name: "Light Theme",
+  args: {
+    baseData: createTopKDataset({
+      values: ["apple", "banana", "orange", "grape", "melon"],
+      counts: [90, 85, 55, 45, 25],
+      valids: 300,
+    }),
+    currentData: createTopKDataset(),
+    showComparison: true,
+    maxItems: 10,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: "Top-K bar chart in light theme with comparison.",
+      },
+    },
+    backgrounds: { default: "light" },
+  },
+  globals: {
+    theme: "light",
+  },
+};
+
+export const DarkTheme: Story = {
+  name: "Dark Theme",
+  args: {
+    baseData: createTopKDataset({
+      values: ["apple", "banana", "orange", "grape", "melon"],
+      counts: [90, 85, 55, 45, 25],
+      valids: 300,
+    }),
+    currentData: createTopKDataset(),
+    showComparison: true,
+    maxItems: 10,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: "Top-K bar chart in dark theme with comparison.",
+      },
+    },
+    backgrounds: { default: "dark" },
+  },
+  globals: {
+    theme: "dark",
   },
 };

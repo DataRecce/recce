@@ -30,8 +30,49 @@ const meta: Meta<typeof ScreenshotDataGrid> = {
   parameters: {
     docs: {
       description: {
-        component:
-          "AG Grid wrapper with screenshot support, automatic theme switching, and backward compatibility with react-data-grid API. Provides default configurations for cell focus and hover behavior.",
+        component: `AG Grid wrapper with screenshot support, automatic theme switching, and backward compatibility with react-data-grid API. Provides default configurations for cell focus and hover behavior.
+
+## Usage
+
+\`\`\`tsx
+import { ScreenshotDataGrid } from '@datarecce/ui/primitives';
+
+// Basic usage with AG Grid API
+<ScreenshotDataGrid
+  style={{
+    blockSize: 'auto',
+    maxHeight: '100%',
+    overflow: 'auto',
+    fontSize: '0.875rem',
+    borderWidth: 1,
+  }}
+  columnDefs={[
+    { field: 'id', headerName: 'ID', width: 80 },
+    { field: 'name', headerName: 'Name', width: 200 },
+    { field: 'value', headerName: 'Value', width: 120 },
+  ]}
+  rowData={[
+    { id: 1, name: 'Item 1', value: 100 },
+    { id: 2, name: 'Item 2', value: 200 },
+  ]}
+/>
+
+// Legacy react-data-grid API (backward compatible)
+<ScreenshotDataGrid
+  columns={columns}
+  rows={rows}
+  rowHeight={35}
+/>
+
+// With diff styling
+<ScreenshotDataGrid
+  columnDefs={columns}
+  rowData={rows.map(row => ({
+    ...row,
+    __status: 'added' // 'added', 'removed', 'modified', 'unchanged'
+  }))}
+/>
+\`\`\``,
       },
     },
     layout: "fullscreen",
