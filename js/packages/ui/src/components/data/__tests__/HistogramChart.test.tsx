@@ -264,7 +264,7 @@ describe("HistogramChart", () => {
   });
 
   describe("data transformation", () => {
-    it("creates {x, y} objects for datetime type", () => {
+    it("creates [timestamp, count] tuples for datetime type", () => {
       const datetimeBinEdges = [
         1704067200000, 1704672000000, 1705276800000, 1705881600000,
         1706486400000, 1706745600000,
@@ -283,12 +283,10 @@ describe("HistogramChart", () => {
       const chart = getByTestId("mock-chart");
       const data = JSON.parse(chart.getAttribute("data-data") || "{}");
 
-      // For datetime, data should be objects with x and y properties
+      // For datetime, data should be arrays of [x, y] tuples
       const currentData = data.datasets[0].data;
-      expect(currentData[0]).toHaveProperty("x");
-      expect(currentData[0]).toHaveProperty("y");
-      expect(typeof currentData[0].x).toBe("number");
-      expect(typeof currentData[0].y).toBe("number");
+      expect(Array.isArray(currentData[0])).toBe(true);
+      expect(currentData[0]).toHaveLength(2);
     });
 
     it("uses plain count values for numeric type", () => {

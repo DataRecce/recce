@@ -256,7 +256,7 @@ function HistogramChartComponent({
     ) => {
       const counts = data.counts ?? [];
       const chartValues = isDatetime
-        ? counts.map((v, i) => ({ x: binEdges[i], y: v }))
+        ? counts.map((v, i) => [binEdges[i], v] as [number, number])
         : counts;
 
       return {
@@ -269,7 +269,6 @@ function HistogramChartComponent({
         categoryPercentage: 1,
         barPercentage: 1,
         xAxisID: "x",
-        offset: false,
       };
     };
 
@@ -307,7 +306,6 @@ function HistogramChartComponent({
       responsive: true,
       maintainAspectRatio: false,
       animation: animate ? undefined : false,
-      grouped: false,
       plugins: {
         legend: {
           reverse: true,
@@ -352,16 +350,9 @@ function HistogramChartComponent({
               type: "timeseries",
               min,
               max,
-              time: {
-                unit: "month",
-                displayFormats: {
-                  month: "MMM yyyy",
-                },
-              },
-              grid: {
-                display: false,
-                drawOnChartArea: false,
-              },
+              adapters: { date: {} },
+              time: { minUnit: "day" },
+              grid: { display: false },
               ticks: {
                 minRotation: 30,
                 maxRotation: 30,
@@ -372,16 +363,14 @@ function HistogramChartComponent({
           : {
               display: !hideAxis,
               type: "category",
-              grid: {
-                display: false,
-                drawOnChartArea: false,
-              },
+              grid: { display: false },
               ticks: {
                 callback(_val, index) {
                   return labels[index];
                 },
                 color: themeColors.textColor,
               },
+              stacked: true,
             },
         y: {
           display: !hideAxis,
