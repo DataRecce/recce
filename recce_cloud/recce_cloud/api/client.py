@@ -521,35 +521,6 @@ class RecceCloudClient:
             return result["session"]
         return result
 
-    def get_base_session(self, org_id: str, project_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Get the base (production) session for a project.
-
-        Args:
-            org_id: Organization ID or slug.
-            project_id: Project ID or slug.
-
-        Returns:
-            Base session dictionary if found, None if no base session exists.
-
-        Raises:
-            RecceCloudException: If the API call fails.
-        """
-        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/base_session"
-        response = self._request("GET", api_url)
-
-        if response.status_code == 404:
-            # No base session exists for this project
-            return None
-        if response.status_code != 200:
-            raise RecceCloudException(
-                reason=response.text,
-                status_code=response.status_code,
-            )
-
-        data = response.json()
-        return data.get("session")
-
     def check_prerequisites(
         self,
         org_id: str,
