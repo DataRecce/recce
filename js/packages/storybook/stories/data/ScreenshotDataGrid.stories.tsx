@@ -6,7 +6,6 @@ import {
 } from "@datarecce/ui/primitives";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { CellClassParams } from "ag-grid-community";
-import { fn } from "storybook/test";
 import {
   createGridColumn,
   createGridRow,
