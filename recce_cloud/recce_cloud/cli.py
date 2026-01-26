@@ -210,10 +210,10 @@ def init(org, project, status, clear):
     console = Console()
 
     # Check authentication first
-    token = get_api_token()
+    token = os.getenv("RECCE_API_TOKEN") or get_api_token()
     if not token:
-        console.print("[red]Error:[/red] Not logged in")
-        console.print("Run 'recce-cloud login' first")
+        console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
+        console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
         sys.exit(1)
 
     # Status check mode
