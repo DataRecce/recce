@@ -8,7 +8,7 @@
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "pnpm@10.28.1+sha512.7d7dbbca9e99447b7c3bf7a73286afaaf6be99251eb9498baefa7d406892f67b879adb3a1d7e687fc4ccc1a388c7175fbaae567a26ab44d1067b54fcb0d6a316",
+  "packageManager": "pnpm@10.28.2",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build && cp -R out/. ../recce/data/ && rm -rf out",
@@ -24,7 +24,7 @@
     "prepare": "cd .. && husky js/.husky"
   },
   "dependencies": {
-    "@amplitude/unified": "1.0.0-beta.31",
+    "@amplitude/unified": "1.0.0-beta.32",
     "@babel/helpers": "^7.28.6",
     "@babel/runtime": "^7.28.6",
     "@codemirror/lang-sql": "^6.10.0",
@@ -41,7 +41,7 @@
     "@jeromefitz/date-fns-tz": "3.0.0-canary.8",
     "@mui/material": "^7.3.7",
     "@mui/system": "^7.3.7",
-    "@next/third-parties": "16.1.4",
+    "@next/third-parties": "16.1.5",
     "@sentry/nextjs": "^10.36.0",
     "@sentry/react": "^10.36.0",
     "@tailwindcss/postcss": "^4.1.18",
@@ -64,11 +64,11 @@
     "import-in-the-middle": "^2.0.5",
     "js-cookie": "^3.0.5",
     "lodash": "^4.17.23",
-    "next": "16.1.4",
+    "next": "16.1.5",
     "next-themes": "^0.4.6",
-    "react": "19.2.3",
+    "react": "19.2.4",
     "react-chartjs-2": "^5.3.1",
-    "react-dom": "19.2.3",
+    "react-dom": "19.2.4",
     "react-icons": "^5.5.0",
     "react-markdown": "^10.1.0",
     "react-select": "^5.10.2",
@@ -82,8 +82,8 @@
     "yaml": "^2.8.2"
   },
   "devDependencies": {
-    "@amplitude/analytics-core": "^2.36.1",
-    "@biomejs/biome": "2.3.12",
+    "@amplitude/analytics-core": "^2.37.0",
+    "@biomejs/biome": "2.3.13",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
@@ -110,6 +110,8 @@
   },
   "pnpm": {
     "overrides": {
+      "react": "19.2.4",
+      "react-dom": "19.2.4",
       "brace-expansion@>=1.0.0 <=1.1.11": ">=1.1.12",
       "brace-expansion@>=2.0.0 <=2.0.1": ">=2.0.2",
       "js-yaml@<3.14.2": ">=3.14.2",
@@ -123,11 +125,8 @@
       "happy-dom": "^20.3.9"
     },
     "onlyBuiltDependencies": [
-      "@parcel/watcher",
-      "@sentry/cli",
       "@tailwindcss/oxide",
-      "sharp",
-      "esbuild",
+      "msw",
       "unrs-resolver"
     ]
   }

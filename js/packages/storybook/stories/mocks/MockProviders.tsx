@@ -1,16 +1,31 @@
 import { LineageGraphProvider } from "@datarecce/ui/contexts";
 import type { ReactNode } from "react";
 
-// Mock lineage graph with sample columns
+/**
+ * Mock lineage graph with sample columns for Storybook stories.
+ *
+ * This mock provides properly structured LineageGraphNode objects that
+ * work with the useModelColumns hook. Each node must have:
+ * - type: "lineageGraphNode" (required for React Flow)
+ * - position: { x, y } (required for React Flow)
+ * - data.name: model name (used by useModelColumns to find the node)
+ * - data.from: "both" | "base" | "current"
+ * - data.data.base/current.columns: column definitions
+ * - data.parents/children: edge relationships
+ */
 const mockLineageGraph = {
   nodes: {
     orders: {
       id: "orders",
+      type: "lineageGraphNode" as const,
+      position: { x: 0, y: 0 },
       data: {
         id: "orders",
-        unique_id: "model.orders",
         name: "orders",
-        resourceType: "model" as const,
+        from: "both" as const,
+        resourceType: "model",
+        parents: {},
+        children: {},
         data: {
           base: {
             id: "orders",
@@ -40,15 +55,18 @@ const mockLineageGraph = {
           },
         },
       },
-      position: { x: 0, y: 0 },
     },
     customers: {
       id: "customers",
+      type: "lineageGraphNode" as const,
+      position: { x: 0, y: 0 },
       data: {
         id: "customers",
-        unique_id: "model.customers",
         name: "customers",
-        resourceType: "model" as const,
+        from: "both" as const,
+        resourceType: "model",
+        parents: {},
+        children: {},
         data: {
           base: {
             id: "customers",
@@ -74,15 +92,18 @@ const mockLineageGraph = {
           },
         },
       },
-      position: { x: 0, y: 0 },
     },
     users: {
       id: "users",
+      type: "lineageGraphNode" as const,
+      position: { x: 0, y: 0 },
       data: {
         id: "users",
-        unique_id: "model.users",
         name: "users",
-        resourceType: "model" as const,
+        from: "both" as const,
+        resourceType: "model",
+        parents: {},
+        children: {},
         data: {
           base: {
             id: "users",
@@ -110,13 +131,18 @@ const mockLineageGraph = {
           },
         },
       },
-      position: { x: 0, y: 0 },
     },
   },
   edges: {},
-  modifiedSet: new Set(),
-  manifestMetadata: {},
-  catalogMetadata: {},
+  modifiedSet: [],
+  manifestMetadata: {
+    base: undefined,
+    current: undefined,
+  },
+  catalogMetadata: {
+    base: undefined,
+    current: undefined,
+  },
 };
 
 export function MockLineageProvider({ children }: { children: ReactNode }) {

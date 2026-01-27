@@ -10,6 +10,16 @@ import { useEffect } from "react";
 // Import styles from @datarecce/ui
 import "@datarecce/ui/styles";
 
+// Initialize MSW for API mocking
+import { worker } from "./mocks/browser";
+
+if (typeof window !== "undefined") {
+  worker.start({
+    onUnhandledRequest: "bypass", // Don't warn on unhandled requests
+    quiet: true, // Reduce console noise
+  });
+}
+
 const lightTheme = createTheme({
   palette: {
     mode: "light",

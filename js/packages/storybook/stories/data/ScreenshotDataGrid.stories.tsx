@@ -331,7 +331,13 @@ export const EmptyStateCustom: Story = {
     rowData: [],
     renderers: {
       noRowsFallback: (
-        <div style={{ textAlign: "center", padding: "40px", color: "#999" }}>
+        <div
+          style={{
+            textAlign: "center",
+            padding: "40px",
+            color: "var(--mui-palette-text-secondary)",
+          }}
+        >
           <h3>No Results Found</h3>
           <p>Try adjusting your filters or search criteria.</p>
         </div>

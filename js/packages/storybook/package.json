@@ -15,23 +15,29 @@
     "@datarecce/ui": "workspace:*"
   },
   "devDependencies": {
-    "@playwright/test": "^1.57.0",
-    "@storybook/addon-docs": "^10.1.11",
-    "@storybook/addon-vitest": "^10.1.11",
-    "@storybook/react": "^10.1.11",
-    "@storybook/react-vite": "^10.1.11",
+    "@playwright/test": "^1.58.0",
+    "@storybook/addon-docs": "^10.2.0",
+    "@storybook/addon-vitest": "^10.2.0",
+    "@storybook/react": "^10.2.0",
+    "@storybook/react-vite": "^10.2.0",
     "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.1",
+    "@testing-library/react": "^16.3.2",
     "@vitejs/plugin-react": "^5.1.2",
-    "@vitest/browser-playwright": "^4.0.17",
-    "@vitest/coverage-v8": "^4.0.17",
+    "@vitest/browser-playwright": "^4.0.18",
+    "@vitest/coverage-v8": "^4.0.18",
     "chartjs-adapter-date-fns": "^3.0.0",
-    "playwright": "^1.57.0",
-    "storybook": "^10.1.11",
-    "vitest": "^4.0.17"
+    "msw": "^2.12.7",
+    "playwright": "^1.58.0",
+    "storybook": "^10.2.0",
+    "vitest": "^4.0.18"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
     "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }

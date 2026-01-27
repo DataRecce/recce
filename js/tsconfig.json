@@ -30,6 +30,7 @@
   },
   "include": [
     "next-env.d.ts",
+    "mui-augmentations.d.ts",
     "**/*.ts",
     "**/*.tsx",
     "**/*.mts",
