@@ -71,6 +71,14 @@ These packages exist in multiple package.json files and MUST have overrides when
 
 ### Commits
 
+> **REQUIRED: All commits MUST use `--signoff` (or `-s`).** This is non-negotiable and absolutely required. Commits without sign-off will be rejected.
+
+```bash
+git commit -s -m "Your commit message"
+# OR
+git commit --signoff -m "Your commit message"
+```
+
 - Write clear, concise commit messages describing what changed and why
 - Include `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>` at the end
 
