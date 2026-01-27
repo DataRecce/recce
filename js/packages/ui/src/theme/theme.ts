@@ -218,7 +218,7 @@ const progressColorVariants = [
   ...createProgressColorVariant("iochmara", colors.iochmara),
 ];
 
-// Module augmentations are in ./mui.d.ts for global visibility
+// Module augmentations are in js/mui-augmentations.d.ts (included via tsconfig)
 
 /**
  * System font stack for optimal cross-platform rendering
