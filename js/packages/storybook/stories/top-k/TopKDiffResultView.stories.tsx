@@ -26,7 +26,8 @@ const [viewOptions, setViewOptions] = useState({ show_all: false });
 <TopKDiffResultView
   run={{
     run_id: '1',
-    run_type: 'top_k_diff',
+    type: 'top_k_diff',
+    run_at: '2024-01-01T00:00:00Z',
     params: {
       model: 'users',
       column_name: 'status',

@@ -7,9 +7,8 @@ import type { Preview } from "@storybook/react-vite";
 import "chartjs-adapter-date-fns";
 import { useEffect } from "react";
 
-// Import styles and ThemeProvider from @datarecce/ui
+// Import styles from @datarecce/ui
 import "@datarecce/ui/styles";
-import { ThemeProvider as RecceThemeProvider } from "@datarecce/ui/providers";
 
 const lightTheme = createTheme({
   palette: {
@@ -34,11 +33,13 @@ const preview: Preview = {
     },
     layout: "padded",
   },
+  initialGlobals: {
+    theme: "light",
+  },
   globalTypes: {
     theme: {
       name: "Theme",
       description: "Global theme for components",
-      defaultValue: "light",
       toolbar: {
         icon: "paintbrush",
         items: [

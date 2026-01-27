@@ -28,7 +28,8 @@ import { RowCountResultView } from '@datarecce/ui/components';
 <RowCountResultView
   run={{
     run_id: '1',
-    run_type: 'row_count',
+    type: 'row_count',
+    run_at: '2024-01-01T00:00:00Z',
     params: {},
     result: {
       'model.orders': { curr: 10000 },

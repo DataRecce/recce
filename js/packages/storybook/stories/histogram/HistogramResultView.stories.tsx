@@ -19,7 +19,8 @@ import { HistogramDiffResultView } from '@datarecce/ui/components';
 <HistogramDiffResultView
   run={{
     run_id: '1',
-    run_type: 'histogram_diff',
+    type: 'histogram_diff',
+    run_at: '2024-01-01T00:00:00Z',
     params: {
       model: 'orders',
       column_name: 'total_amount',
