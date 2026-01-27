@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Reminder: All commits require --signoff (-s) for DCO compliance
+# The commit-msg hook will enforce this, but here's a heads up!
+
 # Check if there are any staged TypeScript/JavaScript files in the js directory
 staged_js_files=$(git diff --cached --name-only | grep "^js/" | grep -E '\.(ts|tsx|js|jsx)$' || true)
 

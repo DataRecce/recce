@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# REQUIRED: All commits must be signed off (DCO requirement)
+# This hook checks for the "Signed-off-by:" line in the commit message
+
+commit_msg_file="$1"
+
+if ! grep -q "^Signed-off-by:" "$commit_msg_file"; then
+	echo ""
+	echo "ERROR: Commit rejected - missing sign-off!"
+	echo ""
+	echo "All commits to this repository MUST include a sign-off line."
+	echo "This is required for the Developer Certificate of Origin (DCO)."
+	echo ""
+	echo "Please use: git commit -s -m \"Your message\""
+	echo "        or: git commit --signoff -m \"Your message\""
+	echo ""
+	exit 1
+fi
