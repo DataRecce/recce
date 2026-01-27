@@ -11,8 +11,28 @@ const meta: Meta<typeof TopKDiffForm> = {
   parameters: {
     docs: {
       description: {
-        component:
-          "Form component for configuring Top-K diff parameters. Allows users to select a column for top-K value distribution analysis.",
+        component: `Form component for configuring Top-K diff parameters. Allows users to select a column for top-K value distribution analysis.
+
+## Usage
+
+\`\`\`tsx
+import { TopKDiffForm } from '@datarecce/ui/components';
+
+const [params, setParams] = useState({
+  model: 'users',
+  column_name: 'status',
+  k: 10
+});
+const [isReady, setIsReady] = useState(false);
+
+<TopKDiffForm
+  params={params}
+  onParamsChanged={(newParams) => setParams(newParams)}
+  setIsReadyToExecute={setIsReady}
+/>
+\`\`\`
+
+**Note:** This component requires a LineageGraphContext provider to fetch model columns via the \`useModelColumns\` hook.`,
       },
     },
     layout: "centered",

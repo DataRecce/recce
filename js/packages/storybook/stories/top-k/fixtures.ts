@@ -8,6 +8,19 @@ import type {
   TopKDiffRun,
 } from "@datarecce/ui/components";
 
+// Fixed date for deterministic test data
+const FIXED_RUN_DATE = "2024-01-15T10:30:00.000Z";
+
+// Counter for deterministic ID generation
+let topKDiffRunCounter = 0;
+
+/**
+ * Reset counters (useful for test isolation)
+ */
+export const resetTopKFixtureCounters = () => {
+  topKDiffRunCounter = 0;
+};
+
 /**
  * Create top-k diff params
  */
@@ -45,9 +58,9 @@ export const createTopKDiffResult = (
 export const createTopKDiffRun = (
   overrides: Partial<TopKDiffRun> = {},
 ): TopKDiffRun => ({
-  run_id: `run-${Math.random().toString(36).slice(2, 9)}`,
+  run_id: `run-topk-${String(++topKDiffRunCounter).padStart(3, "0")}`,
   type: "top_k_diff",
-  run_at: new Date().toISOString(),
+  run_at: FIXED_RUN_DATE,
   params: createTopKDiffParams(),
   result: createTopKDiffResult(),
   ...overrides,

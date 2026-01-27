@@ -4,6 +4,19 @@ import type {
 } from "@datarecce/ui/api";
 import type { HistogramDiffRun } from "@datarecce/ui/components";
 
+// Fixed date for deterministic test data
+const FIXED_RUN_DATE = "2024-01-15T10:30:00.000Z";
+
+// Counter for deterministic ID generation
+let histogramDiffRunCounter = 0;
+
+/**
+ * Reset counters (useful for test isolation)
+ */
+export const resetHistogramFixtureCounters = () => {
+  histogramDiffRunCounter = 0;
+};
+
 /**
  * Create histogram diff params
  */
@@ -42,11 +55,11 @@ export const createHistogramDiffResult = (
 export const createHistogramDiffRun = (
   overrides: Partial<HistogramDiffRun> = {},
 ): HistogramDiffRun => ({
-  run_id: `run-${Math.random().toString(36).slice(2, 9)}`,
+  run_id: `run-histogram-${String(++histogramDiffRunCounter).padStart(3, "0")}`,
   type: "histogram_diff",
   params: createHistogramDiffParams(),
   result: createHistogramDiffResult(),
-  run_at: new Date().toISOString(),
+  run_at: FIXED_RUN_DATE,
   ...overrides,
 });
 

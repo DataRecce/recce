@@ -44,6 +44,37 @@ changes with confidence by providing lineage visualization, data diffing, and co
 - ✅ **Keep OSS shell thin**: Route composition and OSS-only glue stay in `js/app`; shared UI and logic live in
   `@datarecce/ui`
 - ✅ **Use standard American English**: All repository communication and documentation must be written in standard American English.
+- ✅ **Use designated directories for temporary AI documentation**: Place working documents in appropriate gitignored directories (see AI Agent Documentation Guidelines below)
+
+## AI Agent Documentation Guidelines
+
+AI agents (Claude, GitHub Copilot, etc.) should use the following directory structure for temporary working documents:
+
+- **`docs/plans/`** - Implementation plans, design documents, and architectural proposals
+- **`docs/tasks/`** - Task lists, tracking documents, and work breakdown structures
+- **`docs/summaries/`** - Summary documents, status reports, and progress updates
+
+**Important Rules:**
+
+- ❌ **Do NOT commit these files**: All files in `docs/plans/`, `docs/tasks/`, and `docs/summaries/` are gitignored
+- ✅ **Use for working documents**: These directories are intended for temporary AI-generated documentation during development
+- ✅ **Keep them local**: These files help maintain context across sessions but should never be committed to the repository
+- ✅ **Clean up when done**: Remove obsolete planning documents after implementation is complete
+
+**Example Usage:**
+```bash
+# Implementation plans
+docs/plans/feature-new-check-type.md
+docs/plans/refactor-adapter-pattern.json
+
+# Task tracking
+docs/tasks/sprint-01-tasks.md
+docs/tasks/bug-fixes-queue.json
+
+# Summary reports
+docs/summaries/week-01-progress.md
+docs/summaries/performance-analysis.json
+```
 
 ## Git Development Practices
 

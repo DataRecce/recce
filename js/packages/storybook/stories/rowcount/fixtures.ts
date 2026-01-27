@@ -1,8 +1,20 @@
 // packages/storybook/stories/rowcount/fixtures.ts
-import type {
-  RowCountDiffRun,
-  RowCountRun,
-} from "@datarecce/ui/components/rowcount/RowCountResultView";
+import type { RowCountDiffRun, RowCountRun } from "@datarecce/ui/components";
+
+// Fixed date for deterministic test data
+const FIXED_RUN_DATE = "2024-01-15T10:30:00.000Z";
+
+// Counter for deterministic ID generation
+let rowCountRunCounter = 0;
+let rowCountDiffRunCounter = 0;
+
+/**
+ * Reset counters (useful for test isolation)
+ */
+export const resetRowCountFixtureCounters = () => {
+  rowCountRunCounter = 0;
+  rowCountDiffRunCounter = 0;
+};
 
 /**
  * Create row count result
@@ -37,9 +49,9 @@ export const createRowCountDiffResult = (
 export const createRowCountRun = (
   overrides: Partial<RowCountRun> = {},
 ): RowCountRun => ({
-  run_id: `run-${Math.random().toString(36).slice(2, 9)}`,
+  run_id: `run-rowcount-${String(++rowCountRunCounter).padStart(3, "0")}`,
   type: "row_count",
-  run_at: new Date().toISOString(),
+  run_at: FIXED_RUN_DATE,
   result: createRowCountResult(),
   ...overrides,
 });
@@ -50,20 +62,21 @@ export const createRowCountRun = (
 export const createRowCountDiffRun = (
   overrides: Partial<RowCountDiffRun> = {},
 ): RowCountDiffRun => ({
-  run_id: `run-${Math.random().toString(36).slice(2, 9)}`,
+  run_id: `run-rowcount-diff-${String(++rowCountDiffRunCounter).padStart(3, "0")}`,
   type: "row_count_diff",
-  run_at: new Date().toISOString(),
+  run_at: FIXED_RUN_DATE,
   result: createRowCountDiffResult(),
   ...overrides,
 });
 
 /**
  * Large row count result with many models
+ * Uses seeded values for deterministic output
  */
 export const largeRowCountResult = Object.fromEntries(
   Array.from({ length: 50 }, (_, i) => [
     `model.table_${i}`,
-    { curr: Math.floor(Math.random() * 1000000) },
+    { curr: ((i + 1) * 17389) % 1000000 }, // Deterministic pseudo-random values
   ]),
 );
 

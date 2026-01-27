@@ -17,6 +17,7 @@ build
 .DS_Store
 
 recce.yml
+STATUS.md
 
 # Ignore build artifacts from frontend
 recce/data
@@ -24,6 +25,10 @@ recce/data
 # ignore Claude logs and plans at any nesting
 **/docs/plans/**/*.md
 **/docs/plans/**/*.json
+**/docs/tasks/**/*.md
+**/docs/tasks/**/*.json
+**/docs/summaries/**/*.md
+**/docs/summaries/**/*.json
 
 # Git worktrees for isolated development
 .worktrees/

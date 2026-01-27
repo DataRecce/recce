@@ -18,8 +18,29 @@ const meta: Meta<typeof RowCountResultView> = {
   parameters: {
     docs: {
       description: {
-        component:
-          "Result view for single environment row counts. Displays a grid with model names and their row counts.",
+        component: `Result view for single environment row counts. Displays a grid with model names and their row counts.
+
+## Usage
+
+\`\`\`tsx
+import { RowCountResultView } from '@datarecce/ui/components';
+
+<RowCountResultView
+  run={{
+    run_id: '1',
+    type: 'row_count',
+    run_at: '2024-01-01T00:00:00Z',
+    params: {},
+    result: {
+      'model.orders': { curr: 10000 },
+      'model.customers': { curr: 5000 },
+      'model.products': { curr: 1200 }
+    }
+  }}
+/>
+\`\`\`
+
+**Note:** For row count comparisons (base vs current), use \`RowCountDiffResultView\` instead.`,
       },
     },
     layout: "fullscreen",
