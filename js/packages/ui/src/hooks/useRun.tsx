@@ -56,9 +56,13 @@ export const useRun = (runId?: string): UseRunResult => {
   useEffect(() => {
     if (!run) return;
 
+    // Normalize status to lowercase for case-insensitive comparison
+    // Backend may return "Running" (capitalized) or "running" (lowercase)
+    const normalizedStatus = run.status?.toLowerCase();
+
     // Check if run has completed (has result or error)
     const isComplete = !!(error || run.result || run.error);
-    const isStatusComplete = run.status && run.status !== "Running";
+    const isStatusComplete = normalizedStatus && normalizedStatus !== "running";
 
     if (isComplete || isStatusComplete) {
       // Only trigger state update once per completed run
@@ -66,7 +70,7 @@ export const useRun = (runId?: string): UseRunResult => {
         completedRunIdRef.current = run.run_id;
         setIsRunning(false);
       }
-    } else if (run.status === "Running") {
+    } else if (normalizedStatus === "running") {
       // Run is still in progress
       completedRunIdRef.current = null;
       setIsRunning(true);
