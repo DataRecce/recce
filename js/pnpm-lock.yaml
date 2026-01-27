@@ -18,6 +18,19 @@ overrides:
   '@testing-library/jest-dom': 6.9.1
   '@testing-library/react': 16.3.2
   happy-dom: ^20.3.9
+  '@emotion/styled': ^11.14.1
+  '@mui/material': ^7.3.7
+  '@mui/system': ^7.3.7
+  '@xyflow/react': ^12.10.0
+  axios: ^1.13.3
+  html-to-image: ^1.11.13
+  html2canvas-pro: ^1.6.6
+  lodash: ^4.17.23
+  next-themes: ^0.4.6
+  typescript: ^5.9.3
+  tailwindcss: ^4.1.18
+  postcss: ^8.5.6
+  '@tailwindcss/postcss': ^4.1.18
 
 importers:
 
@@ -338,22 +351,22 @@ importers:
         specifier: ^11.14.0
         version: 11.14.0(@types/react@19.2.9)(react@19.2.4)
       '@emotion/styled':
-        specifier: ^11.14.0
+        specifier: ^11.14.1
         version: 11.14.1(@emotion/react@11.14.0(@types/react@19.2.9)(react@19.2.4))(@types/react@19.2.9)(react@19.2.4)
       '@mui/material':
-        specifier: ^7.0.0
+        specifier: ^7.3.7
         version: 7.3.7(@emotion/react@11.14.0(@types/react@19.2.9)(react@19.2.4))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.9)(react@19.2.4))(@types/react@19.2.9)(react@19.2.4))(@types/react@19.2.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@mui/system':
-        specifier: ^7.0.0
+        specifier: ^7.3.7
         version: 7.3.7(@emotion/react@11.14.0(@types/react@19.2.9)(react@19.2.4))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.9)(react@19.2.4))(@types/react@19.2.9)(react@19.2.4))(@types/react@19.2.9)(react@19.2.4)
       '@tanstack/react-query':
         specifier: 5.90.20
         version: 5.90.20(react@19.2.4)
       '@xyflow/react':
-        specifier: ^12.0.0
+        specifier: ^12.10.0
         version: 12.10.0(@types/react@19.2.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       axios:
-        specifier: ^1.0.0
+        specifier: ^1.13.3
         version: 1.13.3
       date-fns:
         specifier: ^4.1.0
@@ -362,19 +375,19 @@ importers:
         specifier: ^2.0.5
         version: 2.0.5
       html-to-image:
-        specifier: ^1.11.11
+        specifier: ^1.11.13
         version: 1.11.13
       html2canvas-pro:
-        specifier: ^1.5.0
+        specifier: ^1.6.6
         version: 1.6.6
       js-cookie:
         specifier: ^3.0.5
         version: 3.0.5
       lodash:
-        specifier: ^4.17.21
+        specifier: ^4.17.23
         version: 4.17.23
       next-themes:
-        specifier: ^0.4.0
+        specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react:
         specifier: 19.2.4
@@ -396,13 +409,13 @@ importers:
         specifier: ^4.0.0
         version: 4.1.18
       '@tailwindcss/postcss':
-        specifier: ^4.0.0
+        specifier: ^4.1.18
         version: 4.1.18
       postcss:
-        specifier: ^8.5.0
+        specifier: ^8.5.6
         version: 8.5.6
       tailwindcss:
-        specifier: ^4.0.0
+        specifier: ^4.1.18
         version: 4.1.18
       tsdown:
         specifier: ^0.18.0
@@ -414,7 +427,7 @@ importers:
         specifier: ^4.9.0
         version: 4.9.0(typedoc@0.28.16(typescript@5.9.3))
       typescript:
-        specifier: ^5.9.0
+        specifier: ^5.9.3
         version: 5.9.3
 
 packages:
@@ -1246,7 +1259,7 @@ packages:
   '@joshwooding/vite-plugin-react-docgen-typescript@0.6.3':
     resolution: {integrity: sha512-9TGZuAX+liGkNKkwuo3FYJu7gHWT0vkBcf7GkOe7s7fmC19XwH/4u5u7sDIFrMooe558ORcmuBvBz7Ur5PlbHw==}
     peerDependencies:
-      typescript: '>= 4.3.x'
+      typescript: ^5.9.3
       vite: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
     peerDependenciesMeta:
       typescript:
@@ -1307,7 +1320,7 @@ packages:
     engines: {node: '>=14.0.0'}
     peerDependencies:
       '@emotion/react': ^11.5.0
-      '@emotion/styled': ^11.3.0
+      '@emotion/styled': ^11.14.1
       '@mui/material-pigment-css': ^7.3.7
       '@types/react': 19.2.9
       react: 19.2.4
@@ -1337,7 +1350,7 @@ packages:
     engines: {node: '>=14.0.0'}
     peerDependencies:
       '@emotion/react': ^11.4.1
-      '@emotion/styled': ^11.3.0
+      '@emotion/styled': ^11.14.1
       react: 19.2.4
     peerDependenciesMeta:
       '@emotion/react':
@@ -1350,7 +1363,7 @@ packages:
     engines: {node: '>=14.0.0'}
     peerDependencies:
       '@emotion/react': ^11.5.0
-      '@emotion/styled': ^11.3.0
+      '@emotion/styled': ^11.14.1
       '@types/react': 19.2.9
       react: 19.2.4
     peerDependenciesMeta:
@@ -2326,7 +2339,7 @@ packages:
       react: 19.2.4
       react-dom: 19.2.4
       storybook: ^10.2.0
-      typescript: '>= 4.9.x'
+      typescript: ^5.9.3
     peerDependenciesMeta:
       typescript:
         optional: true
@@ -4068,7 +4081,7 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
     peerDependencies:
-      typescript: '>= 4.8.x'
+      typescript: ^5.9.3
     peerDependenciesMeta:
       typescript:
         optional: true
@@ -4243,10 +4256,6 @@ packages:
     resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
     engines: {node: '>=14.19.0'}
 
-  postcss@8.4.31:
-    resolution: {integrity: sha512-PS08Iboia9mts/2ygV3eLpY5ghnUcfLV/EXTOW1E2qYxJKGGBUtNjN76FYHnMs36RmARn41bC0AZmn+rR0OVpQ==}
-    engines: {node: ^10 || ^12 || >=14}
-
   postcss@8.5.6:
     resolution: {integrity: sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg==}
     engines: {node: ^10 || ^12 || >=14}
@@ -4317,7 +4326,7 @@ packages:
   react-docgen-typescript@2.4.0:
     resolution: {integrity: sha512-ZtAp5XTO5HRzQctjPU0ybY0RRCQO19X/8fxn3w7y2VVTUbGHDKULPTL4ky3vB05euSgG5NpALhEhDPvQ56wvXg==}
     peerDependencies:
-      typescript: '>= 4.3.x'
+      typescript: ^5.9.3
 
   react-docgen@8.0.2:
     resolution: {integrity: sha512-+NRMYs2DyTP4/tqWz371Oo50JqmWltR1h2gcdgUMAWZJIAvrd0/SqlCfx7tpzpl/s36rzw6qH2MjoNrxtRNYhA==}
@@ -4460,7 +4469,7 @@ packages:
       '@ts-macro/tsc': ^0.3.6
       '@typescript/native-preview': '>=7.0.0-dev.20250601.1'
       rolldown: ^1.0.0-beta.57
-      typescript: ^5.0.0
+      typescript: ^5.9.3
       vue-tsc: ~3.2.0
     peerDependenciesMeta:
       '@ts-macro/tsc':
@@ -4785,7 +4794,7 @@ packages:
       '@arethetypeswrong/core': ^0.18.1
       '@vitejs/devtools': '*'
       publint: ^0.3.0
-      typescript: ^5.0.0
+      typescript: ^5.9.3
       unplugin-lightningcss: ^0.4.0
       unplugin-unused: ^0.5.0
     peerDependenciesMeta:
@@ -4824,7 +4833,7 @@ packages:
     engines: {node: '>= 18', pnpm: '>= 10'}
     hasBin: true
     peerDependencies:
-      typescript: 5.0.x || 5.1.x || 5.2.x || 5.3.x || 5.4.x || 5.5.x || 5.6.x || 5.7.x || 5.8.x || 5.9.x
+      typescript: ^5.9.3
 
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
@@ -9149,7 +9158,7 @@ snapshots:
       '@swc/helpers': 0.5.15
       baseline-browser-mapping: 2.9.18
       caniuse-lite: 1.0.30001764
-      postcss: 8.4.31
+      postcss: 8.5.6
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
       styled-jsx: 5.1.6(@babel/core@7.28.6)(react@19.2.4)
@@ -9283,12 +9292,6 @@ snapshots:
       fsevents: 2.3.2
 
   pngjs@7.0.0: {}
-
-  postcss@8.4.31:
-    dependencies:
-      nanoid: 3.3.11
-      picocolors: 1.1.1
-      source-map-js: 1.2.1
 
   postcss@8.5.6:
     dependencies:
