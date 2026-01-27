@@ -95,11 +95,15 @@ git checkout -b feature/my-new-feature
 
 ### Commit Requirements
 
+> **REQUIRED: All commits MUST use `--signoff` (or `-s`).** This is non-negotiable and absolutely required for all commits in this repository. Commits without sign-off will be rejected.
+
 **1. Sign-off (DCO):** Every commit MUST include a "Signed-off-by:" line per
 the [Developer Certificate of Origin](https://developercertificate.org/):
 
 ```bash
 git commit -s -m "Your commit message"
+# OR
+git commit --signoff -m "Your commit message"
 ```
 
 **2. Semantic/Conventional Commits:** Use structured commit messages:
