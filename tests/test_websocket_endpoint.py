@@ -204,5 +204,64 @@ class TestWebSocketEndpoint(unittest.TestCase):
                 self.assertEqual(ack2["user_login"], "user2")
 
 
+class TestCloudUserHeaderMiddleware(unittest.TestCase):
+    """Integration tests for cloud user context HTTP header middleware."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        app.state.last_activity = None
+
+    def tearDown(self):
+        """Clean up after tests."""
+        app.state.last_activity = None
+
+    def test_middleware_extracts_cloud_user_headers(self):
+        """Test that middleware extracts cloud user context from headers."""
+        from recce.websocket import (
+            CLOUD_USER_EMAIL_HEADER,
+            CLOUD_USER_ID_HEADER,
+            CLOUD_USER_LOGIN_HEADER,
+        )
+
+        client = TestClient(app)
+        headers = {
+            CLOUD_USER_ID_HEADER: "test-user-id",
+            CLOUD_USER_LOGIN_HEADER: "testuser",
+            CLOUD_USER_EMAIL_HEADER: "test@example.com",
+        }
+
+        # Make a request with cloud user headers
+        # Use /api/health as it's a simple endpoint that doesn't require state
+        response = client.get("/api/health", headers=headers)
+
+        # The middleware should have run (request succeeds)
+        self.assertEqual(response.status_code, 200)
+
+    def test_middleware_handles_missing_headers(self):
+        """Test that middleware handles requests without cloud user headers."""
+        client = TestClient(app)
+
+        # Make a request without cloud user headers
+        response = client.get("/api/health")
+
+        # Should still work
+        self.assertEqual(response.status_code, 200)
+
+    def test_middleware_handles_partial_headers(self):
+        """Test that middleware handles requests with only some headers."""
+        from recce.websocket import CLOUD_USER_ID_HEADER
+
+        client = TestClient(app)
+        headers = {
+            CLOUD_USER_ID_HEADER: "test-user-id",
+            # Missing CLOUD_USER_LOGIN_HEADER
+        }
+
+        response = client.get("/api/health", headers=headers)
+
+        # Should still work (context will be None but no error)
+        self.assertEqual(response.status_code, 200)
+
+
 if __name__ == "__main__":
     unittest.main()

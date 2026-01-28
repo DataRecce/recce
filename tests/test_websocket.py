@@ -8,7 +8,11 @@ from unittest.mock import MagicMock
 
 from recce.models.websocket import CloudUserContext, CloudUserContextMessage
 from recce.websocket import (
+    CLOUD_USER_EMAIL_HEADER,
+    CLOUD_USER_ID_HEADER,
+    CLOUD_USER_LOGIN_HEADER,
     WebSocketConnectionManager,
+    extract_cloud_user_from_headers,
     get_current_cloud_user,
     set_current_cloud_user,
 )
@@ -255,6 +259,71 @@ class TestCurrentUserContext(unittest.TestCase):
         # Clear context
         set_current_cloud_user(None)
         self.assertIsNone(get_current_cloud_user())
+
+
+class TestExtractCloudUserFromHeaders(unittest.TestCase):
+    """Tests for extract_cloud_user_from_headers function."""
+
+    def test_extract_with_all_headers(self):
+        """Test extracting user context with all headers present."""
+        headers = {
+            CLOUD_USER_ID_HEADER: "user-uuid-123",
+            CLOUD_USER_LOGIN_HEADER: "testuser",
+            CLOUD_USER_EMAIL_HEADER: "test@example.com",
+        }
+        context = extract_cloud_user_from_headers(headers)
+        self.assertIsNotNone(context)
+        self.assertEqual(context.user_id, "user-uuid-123")
+        self.assertEqual(context.user_login, "testuser")
+        self.assertEqual(context.user_email, "test@example.com")
+
+    def test_extract_without_email(self):
+        """Test extracting user context without optional email header."""
+        headers = {
+            CLOUD_USER_ID_HEADER: "user-uuid-123",
+            CLOUD_USER_LOGIN_HEADER: "testuser",
+        }
+        context = extract_cloud_user_from_headers(headers)
+        self.assertIsNotNone(context)
+        self.assertEqual(context.user_id, "user-uuid-123")
+        self.assertEqual(context.user_login, "testuser")
+        self.assertIsNone(context.user_email)
+
+    def test_extract_missing_user_id(self):
+        """Test that missing user_id returns None."""
+        headers = {
+            CLOUD_USER_LOGIN_HEADER: "testuser",
+            CLOUD_USER_EMAIL_HEADER: "test@example.com",
+        }
+        context = extract_cloud_user_from_headers(headers)
+        self.assertIsNone(context)
+
+    def test_extract_missing_user_login(self):
+        """Test that missing user_login returns None."""
+        headers = {
+            CLOUD_USER_ID_HEADER: "user-uuid-123",
+            CLOUD_USER_EMAIL_HEADER: "test@example.com",
+        }
+        context = extract_cloud_user_from_headers(headers)
+        self.assertIsNone(context)
+
+    def test_extract_empty_headers(self):
+        """Test that empty headers returns None."""
+        headers = {}
+        context = extract_cloud_user_from_headers(headers)
+        self.assertIsNone(context)
+
+    def test_extract_case_insensitive(self):
+        """Test that header extraction is case-insensitive."""
+        headers = {
+            "x-recce-user-id": "user-uuid-123",
+            "X-RECCE-USER-LOGIN": "testuser",
+            "X-Recce-User-Email": "test@example.com",
+        }
+        context = extract_cloud_user_from_headers(headers)
+        self.assertIsNotNone(context)
+        self.assertEqual(context.user_id, "user-uuid-123")
+        self.assertEqual(context.user_login, "testuser")
 
 
 if __name__ == "__main__":

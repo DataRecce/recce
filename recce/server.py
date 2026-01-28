@@ -51,7 +51,11 @@ from .models.websocket import CloudUserContextMessage
 from .run import load_preset_checks
 from .state import RecceShareStateManager, RecceStateLoader
 from .util.startup_perf import track_timing
-from .websocket import get_connection_manager
+from .websocket import (
+    extract_cloud_user_from_headers,
+    get_connection_manager,
+    set_current_cloud_user,
+)
 
 logger = logging.getLogger("uvicorn")
 
@@ -356,6 +360,36 @@ async def track_activity_for_idle_timeout(request: Request, call_next):
 
     response = await call_next(request)
     return response
+
+
+@app.middleware("http")
+async def extract_cloud_user_context(request: Request, call_next):
+    """
+    Extract cloud user context from HTTP headers sent by Recce Cloud proxy.
+
+    When Recce Cloud proxies HTTP requests to a shared instance, it can include
+    headers identifying the authenticated user. This middleware extracts those
+    headers and sets the user context for the duration of the request.
+
+    Headers:
+        X-Recce-User-Id: The user's UUID
+        X-Recce-User-Login: The user's login/username
+        X-Recce-User-Email: The user's email (optional)
+    """
+    # Extract user context from headers
+    cloud_user = extract_cloud_user_from_headers(dict(request.headers))
+
+    if cloud_user:
+        # Set the context for this request
+        set_current_cloud_user(cloud_user)
+
+    try:
+        response = await call_next(request)
+        return response
+    finally:
+        # Clear the context after the request completes
+        if cloud_user:
+            set_current_cloud_user(None)
 
 
 @app.middleware("http")

@@ -125,3 +125,42 @@ def set_current_cloud_user(context: Optional[CloudUserContext]) -> None:
         context: The user context or None to clear
     """
     _current_user_context.set(context)
+
+
+# HTTP header names for cloud user context
+CLOUD_USER_ID_HEADER = "X-Recce-User-Id"
+CLOUD_USER_LOGIN_HEADER = "X-Recce-User-Login"
+CLOUD_USER_EMAIL_HEADER = "X-Recce-User-Email"
+
+
+def extract_cloud_user_from_headers(headers: dict) -> Optional[CloudUserContext]:
+    """
+    Extract cloud user context from HTTP request headers.
+
+    This is used by middleware to set user context for HTTP requests
+    when Recce Cloud proxies requests with user identification headers.
+
+    Args:
+        headers: Dictionary of HTTP headers (case-insensitive keys)
+
+    Returns:
+        CloudUserContext if required headers are present, None otherwise
+    """
+    # Headers may be case-insensitive, so normalize to lowercase for lookup
+    normalized = {k.lower(): v for k, v in headers.items()}
+
+    user_id = normalized.get(CLOUD_USER_ID_HEADER.lower())
+    user_login = normalized.get(CLOUD_USER_LOGIN_HEADER.lower())
+    user_email = normalized.get(CLOUD_USER_EMAIL_HEADER.lower())
+
+    # Both user_id and user_login are required
+    if not user_id or not user_login:
+        return None
+
+    context = CloudUserContext(
+        user_id=user_id,
+        user_login=user_login,
+        user_email=user_email,
+    )
+    logger.debug(f"Extracted cloud user from headers: user_login={user_login}, user_id={user_id}")
+    return context
