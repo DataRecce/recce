@@ -47,9 +47,11 @@ from .event import get_recce_api_token, log_api_event, log_single_env_event
 from .exceptions import RecceException
 from .github import is_github_codespace
 from .models.types import CllData
+from .models.websocket import CloudUserContextMessage
 from .run import load_preset_checks
 from .state import RecceShareStateManager, RecceStateLoader
 from .util.startup_perf import track_timing
+from .websocket import get_connection_manager
 
 logger = logging.getLogger("uvicorn")
 
@@ -315,8 +317,6 @@ def dbt_env_updated_callback():
     payload = json.dumps(broadcast_command)
     asyncio.run(broadcast(payload))
 
-
-clients = set()
 
 origins = [
     "http://localhost:3000",
@@ -824,19 +824,102 @@ async def version():
 @app.websocket("/api/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    clients.add(websocket)
+    manager = get_connection_manager()
+    manager.connect(websocket)
     try:
         while True:
             data = await websocket.receive_text()
-            if data == "ping":
-                await websocket.send_text("pong")
+            await _handle_websocket_message(websocket, data, manager)
     except WebSocketDisconnect:
-        clients.remove(websocket)
+        manager.disconnect(websocket)
+
+
+async def _handle_websocket_message(websocket: WebSocket, data: str, manager) -> None:
+    """
+    Handle incoming WebSocket messages.
+
+    Supports:
+    - Plain text "ping" messages (backward compatibility)
+    - JSON messages with "type" field for routing
+    """
+    # Handle plain text ping for backward compatibility
+    if data == "ping":
+        await websocket.send_text("pong")
+        return
+
+    # Try to parse as JSON
+    try:
+        message = json.loads(data)
+    except json.JSONDecodeError:
+        logger.warning(f"Received non-JSON WebSocket message: {data[:100]}")
+        return
+
+    # Route based on message type
+    message_type = message.get("type")
+
+    if message_type == "cloud_user_context":
+        await _handle_cloud_user_context(websocket, message, manager)
+    elif message_type == "ping":
+        # JSON ping format
+        await websocket.send_text(json.dumps({"type": "pong"}))
+    else:
+        logger.debug(f"Unhandled WebSocket message type: {message_type}")
+
+
+async def _handle_cloud_user_context(websocket: WebSocket, message: dict, manager) -> None:
+    """
+    Handle cloud_user_context message from Recce Cloud.
+
+    This message is sent when Recce Cloud proxies a WebSocket connection
+    to identify the authenticated user.
+    """
+    try:
+        # Validate and parse the message
+        context_message = CloudUserContextMessage(**message)
+
+        # Check version compatibility
+        if context_message.version > 1:
+            logger.warning(
+                f"Received cloud_user_context with unsupported version: "
+                f"{context_message.version}. Some fields may be ignored."
+            )
+
+        # Store the user context
+        user_context = context_message.to_context()
+        manager.set_user_context(websocket, user_context)
+
+        # Send acknowledgment
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "cloud_user_context_ack",
+                    "status": "ok",
+                    "user_login": user_context.user_login,
+                }
+            )
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to process cloud_user_context message: {e}")
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "cloud_user_context_ack",
+                    "status": "error",
+                    "error": str(e),
+                }
+            )
+        )
 
 
 async def broadcast(data: str):
-    for client in clients:
-        await client.send_text(data)
+    """Broadcast a message to all connected WebSocket clients."""
+    manager = get_connection_manager()
+    for client in manager.clients:
+        try:
+            await client.send_text(data)
+        except Exception as e:
+            logger.debug(f"Failed to send to client: {e}")
 
 
 @app.post("/api/connect")
