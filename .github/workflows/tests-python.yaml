@@ -34,7 +34,7 @@ jobs:
         run: |
           uv venv
           uv sync --python 3.12
-          uv run make flake8
+          uv run flake8 ./recce ./tests
 
   test-dbt-versions:
     name: Test DBT Versions
