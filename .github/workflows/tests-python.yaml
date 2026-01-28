@@ -32,8 +32,7 @@ jobs:
 
       - name: Install dependencies and run flake8
         run: |
-          uv venv
-          uv sync --python 3.12
+          uv sync --all-extras --python 3.12
           uv run flake8 ./recce ./tests
 
   test-dbt-versions:
