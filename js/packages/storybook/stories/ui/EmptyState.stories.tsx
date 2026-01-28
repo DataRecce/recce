@@ -1,10 +1,6 @@
 import { EmptyState } from "@datarecce/ui/primitives";
-import {
-  FolderOpenIcon,
-  InboxIcon,
-  MagnifyingGlassIcon,
-} from "@heroicons/react/24/outline";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { TbFolderOpen, TbInbox, TbSearch } from "react-icons/tb";
 import { expect, fn, userEvent, within } from "storybook/test";
 
 const meta: Meta<typeof EmptyState> = {
@@ -103,7 +99,7 @@ export const WithIcon: Story = {
   args: {
     title: "No files found",
     description: "Upload files to see them here",
-    icon: <FolderOpenIcon />,
+    icon: <TbFolderOpen />,
   },
 };
 
@@ -116,7 +112,7 @@ export const WithPrimaryAction: Story = {
   args: {
     title: "No search results",
     description: "Try adjusting your search criteria or filters",
-    icon: <MagnifyingGlassIcon />,
+    icon: <TbSearch />,
     actionLabel: "Clear Filters",
     onAction: fn(),
   },
@@ -128,7 +124,7 @@ export const WithBothActions: Story = {
     title: "No checks configured",
     description:
       "Set up your first data validation check to start monitoring quality",
-    icon: <InboxIcon />,
+    icon: <TbInbox />,
     actionLabel: "Create Check",
     onAction: fn(),
     secondaryActionLabel: "View Examples",
@@ -156,7 +152,7 @@ export const LightTheme: Story = {
   args: {
     title: "No items",
     description: "Light theme is the default appearance",
-    icon: <InboxIcon />,
+    icon: <TbInbox />,
     theme: "light",
   },
 };
@@ -175,7 +171,7 @@ export const DarkTheme: Story = {
   args: {
     title: "No items",
     description: "Optimized colors for dark mode interfaces",
-    icon: <InboxIcon />,
+    icon: <TbInbox />,
     theme: "dark",
   },
 };
@@ -197,7 +193,7 @@ export const WithCustomContent: Story = {
   args: {
     title: "No connection configured",
     description: "Connect your database to start validating data",
-    icon: <InboxIcon />,
+    icon: <TbInbox />,
     actionLabel: "Setup Connection",
     onAction: fn(),
     children: (
@@ -250,7 +246,7 @@ export const NoChecksExample: Story = {
     title: "No checks yet",
     description:
       "Checks help you validate data quality and catch regressions. Create your first check to get started.",
-    icon: <InboxIcon />,
+    icon: <TbInbox />,
     actionLabel: "Create Check",
     onAction: fn(),
     secondaryActionLabel: "Browse Templates",
@@ -263,7 +259,7 @@ export const SearchNoResults: Story = {
   args: {
     title: "No results found",
     description: 'No checks match your search for "analytics"',
-    icon: <MagnifyingGlassIcon />,
+    icon: <TbSearch />,
     actionLabel: "Clear Search",
     onAction: fn(),
   },
@@ -274,7 +270,7 @@ export const EmptyFolder: Story = {
   args: {
     title: "This folder is empty",
     description: "Add files to this folder to see them here",
-    icon: <FolderOpenIcon />,
+    icon: <TbFolderOpen />,
     actionLabel: "Upload Files",
     onAction: fn(),
   },
