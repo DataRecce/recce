@@ -395,12 +395,43 @@ export {
 // =============================================================================
 
 /**
+ * Changed-only checkbox primitive for filtering diff results.
+ *
+ * @remarks
+ * Exports: ChangedOnlyCheckbox, ChangedOnlyCheckboxProps.
+ */
+export {
+  ChangedOnlyCheckbox,
+  type ChangedOnlyCheckboxProps,
+} from "./components/ui/ChangedOnlyCheckbox";
+/**
+ * Diff display mode switch primitive for toggling inline/side-by-side views.
+ *
+ * @remarks
+ * Exports: DiffDisplayMode, DiffDisplayModeSwitch, DiffDisplayModeSwitchProps.
+ */
+export {
+  type DiffDisplayMode,
+  DiffDisplayModeSwitch,
+  type DiffDisplayModeSwitchProps,
+} from "./components/ui/DiffDisplayModeSwitch";
+/**
  * Diff text primitives for inline diff visualization.
  *
  * @remarks
  * Exports: DiffText, DiffTextProps.
  */
 export { DiffText, type DiffTextProps } from "./components/ui/DiffText";
+/**
+ * Diff text with toast primitive - DiffText with copy notification feedback.
+ *
+ * @remarks
+ * Exports: DiffTextWithToast, DiffTextWithToastProps.
+ */
+export {
+  DiffTextWithToast,
+  type DiffTextWithToastProps,
+} from "./components/ui/DiffTextWithToast";
 /**
  * Dropdown values input primitives (multi-select with filtering).
  *
@@ -468,6 +499,29 @@ export {
   SplitPane,
   type SplitPaneProps,
 } from "./components/ui/SplitPane";
+/**
+ * Toast notification system primitives.
+ *
+ * @remarks
+ * Exports: Toaster, ToasterProvider, ToastOptions, toaster, useToaster.
+ */
+export {
+  Toaster,
+  ToasterProvider,
+  type ToastOptions,
+  toaster,
+  useToaster,
+} from "./components/ui/Toaster";
+/**
+ * Toggle switch primitive for boolean value inputs.
+ *
+ * @remarks
+ * Exports: ToggleSwitch, ToggleSwitchProps.
+ */
+export {
+  ToggleSwitch,
+  type ToggleSwitchProps,
+} from "./components/ui/ToggleSwitch";
 
 // =============================================================================
 // RESULT VIEW PRIMITIVES
