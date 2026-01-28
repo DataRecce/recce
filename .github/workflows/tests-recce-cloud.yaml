@@ -29,7 +29,7 @@ jobs:
 
       - name: Install recce-cloud package
         working-directory: recce_cloud
-        run: pip install -e .[dev]
+        run: uv pip install --system -e .[dev]
 
       - name: Run flake8
         run: flake8 recce_cloud/
