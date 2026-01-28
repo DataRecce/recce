@@ -71,6 +71,19 @@ These packages exist in multiple package.json files and MUST have overrides when
 
 When the user asks to "publish ui", "release ui package", or similar:
 
+### Phase 0: Load Correct Node Version
+
+The build tooling requires the Node version specified in `js/.nvmrc`. Use `nave` to run all subsequent commands:
+
+```bash
+# Read version from .nvmrc and use nave for all commands
+nave use $(cat js/.nvmrc) <command>
+```
+
+For example: `nave use $(cat js/.nvmrc) node --version`
+
+All commands in the following phases should be prefixed with `nave use $(cat js/.nvmrc)`.
+
 ### Phase 1: Version Check
 
 ```bash
