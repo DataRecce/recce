@@ -13,6 +13,10 @@ export {
 } from "./DiffDisplayModeSwitch";
 export { DiffText, type DiffTextProps } from "./DiffText";
 export {
+  DiffTextWithToast,
+  type DiffTextWithToastProps,
+} from "./DiffTextWithToast";
+export {
   DropdownValuesInput,
   type DropdownValuesInputProps,
   type DropdownValuesInputSize,
