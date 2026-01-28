@@ -1,6 +1,17 @@
 {
   "name": "@datarecce/ui",
   "version": "0.2.0",
+  "license": "Apache-2.0",
+  "author": "Recce Dev Team <dev@reccehq.com>",
+  "description": "Recce UI Components Library - Reusable React components for data validation and review",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DataRecce/recce.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -104,10 +115,6 @@
     "dist",
     "README.md"
   ],
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
-  },
   "sideEffects": [
     "*.css"
   ],
