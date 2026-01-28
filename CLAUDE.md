@@ -67,6 +67,86 @@ These packages exist in multiple package.json files and MUST have overrides when
 
 **From Storybook package:** @testing-library/jest-dom, @testing-library/react, @vitejs/plugin-react, vitest, @vitest/coverage-v8
 
+## Publishing @datarecce/ui to npm
+
+When the user asks to "publish ui", "release ui package", or similar:
+
+### Phase 1: Version Check
+
+```bash
+cd js/packages/ui
+
+# Get the published version from npm
+PUBLISHED_VERSION=$(npm view @datarecce/ui version 2>/dev/null || echo "0.0.0")
+
+# Get the local version from package.json
+LOCAL_VERSION=$(node -p "require('./package.json').version")
+
+echo "Published version: $PUBLISHED_VERSION"
+echo "Local version: $LOCAL_VERSION"
+```
+
+Compare versions using semver rules. **STOP with an error** if:
+- Local version equals published version
+- Local version is less than published version
+
+Only proceed if local version is strictly greater than published version.
+
+### Phase 2: Pre-publish Verification
+
+Run all checks from the `js` directory:
+
+```bash
+cd js
+pnpm install
+pnpm lint
+pnpm type:check
+pnpm test
+pnpm build
+```
+
+Then build the UI package specifically:
+
+```bash
+cd js/packages/ui
+pnpm build
+```
+
+**STOP if any step fails.** Do not publish a broken package.
+
+### Phase 3: Publish
+
+```bash
+cd js/packages/ui
+npm publish --access public
+```
+
+### Phase 4: Verify Publication
+
+```bash
+# Confirm the new version is live
+npm view @datarecce/ui version
+```
+
+### Version Bump Guidelines
+
+Before publishing, ensure the version in `js/packages/ui/package.json` has been bumped appropriately:
+
+- **Patch** (0.2.0 → 0.2.1): Bug fixes, documentation updates
+- **Minor** (0.2.0 → 0.3.0): New features, non-breaking changes
+- **Major** (0.2.0 → 1.0.0): Breaking API changes
+
+### Authentication
+
+Ensure you are logged into npm with publish permissions:
+
+```bash
+npm whoami
+# Should show a user with publish access to @datarecce scope
+```
+
+If not authenticated, run `npm login` first.
+
 ## Commit and PR Workflow
 
 ### Commits
