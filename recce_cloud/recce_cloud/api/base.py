@@ -74,7 +74,7 @@ class BaseRecceCloudClient(ABC):
         self,
         branch: str,
         adapter_type: str,
-        cr_number: Optional[int] = None,
+        pr_number: Optional[int] = None,
         commit_sha: Optional[str] = None,
         session_type: Optional[str] = None,
     ) -> Dict:
@@ -84,9 +84,9 @@ class BaseRecceCloudClient(ABC):
         Args:
             branch: Branch name
             adapter_type: DBT adapter type (e.g., 'postgres', 'snowflake', 'bigquery')
-            cr_number: Change request number (PR/MR number) for CR sessions
+            pr_number: Pull/Merge request number (PR/MR number) for PR sessions
             commit_sha: Commit SHA (GitLab requires this)
-            session_type: Session type ("cr", "prod", "dev") - determines if cr_number is used
+            session_type: Session type ("pr", "prod", "dev") - determines if pr_number is used
 
         Returns:
             Dictionary containing:
@@ -113,15 +113,15 @@ class BaseRecceCloudClient(ABC):
     @abstractmethod
     def get_session_download_urls(
         self,
-        cr_number: Optional[int] = None,
+        pr_number: Optional[int] = None,
         session_type: Optional[str] = None,
     ) -> Dict:
         """
         Get download URLs for artifacts from a session.
 
         Args:
-            cr_number: Change request number (PR/MR number) for CR sessions
-            session_type: Session type ("cr", "prod", "dev")
+            pr_number: Pull/Merge request number (PR/MR number) for PR sessions
+            session_type: Session type ("pr", "prod", "dev")
 
         Returns:
             Dictionary containing:
@@ -134,15 +134,15 @@ class BaseRecceCloudClient(ABC):
     @abstractmethod
     def delete_session(
         self,
-        cr_number: Optional[int] = None,
+        pr_number: Optional[int] = None,
         session_type: Optional[str] = None,
     ) -> Dict:
         """
         Delete a session.
 
         Args:
-            cr_number: Change request number (PR/MR number) for CR sessions
-            session_type: Session type ("cr", "prod") - "prod" deletes base session
+            pr_number: Pull/Merge request number (PR/MR number) for PR sessions
+            session_type: Session type ("pr", "prod") - "prod" deletes base session
 
         Returns:
             Dictionary containing:
