@@ -87,7 +87,7 @@ class TestUploadDryRun(unittest.TestCase):
         self.assertIn("Source Branch: feature/test-branch", result.output)
         self.assertIn("Base Branch: main", result.output)
         self.assertIn("Upload Workflow:", result.output)
-        self.assertIn("Auto-preate session and upload", result.output)
+        self.assertIn("Auto-create session and upload", result.output)
         self.assertIn("Platform-specific APIs will be used", result.output)
         self.assertIn("Files to upload:", result.output)
         self.assertIn("manifest.json:", result.output)
@@ -125,7 +125,7 @@ class TestUploadDryRun(unittest.TestCase):
         self.assertIn("Commit SHA: def456ab", result.output)
         self.assertIn("Source Branch: feature/new-models", result.output)
         self.assertIn("Base Branch: main", result.output)
-        self.assertIn("Auto-preate session and upload", result.output)
+        self.assertIn("Auto-create session and upload", result.output)
         self.assertIn("Platform-specific APIs will be used", result.output)
         self.assertIn("Adapter type: postgres", result.output)
 
@@ -184,7 +184,7 @@ class TestUploadDryRun(unittest.TestCase):
         self.assertIn("Upload Workflow:", result.output)
         self.assertIn("Upload to existing session", result.output)
         self.assertIn("Session ID: sess_abc123xyz", result.output)
-        self.assertNotIn("Auto-preate session", result.output)
+        self.assertNotIn("Auto-create session", result.output)
 
     def test_dry_run_github_main_branch(self):
         """Test dry-run with GitHub Actions main branch (no PR)."""
@@ -322,8 +322,8 @@ class TestUploadDryRun(unittest.TestCase):
         # Assertions
         self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
         self.assertIn("Dry run mode enabled", result.output)
-        self.assertIn("Auto-preate session and upload", result.output)
-        self.assertIn("Warning: Platform not supported for auto-session preation", result.output)
+        self.assertIn("Auto-create session and upload", result.output)
+        self.assertIn("Warning: Platform not supported for auto-session creation", result.output)
 
     def test_dry_run_missing_artifacts(self):
         """Test dry-run with missing dbt artifacts."""
