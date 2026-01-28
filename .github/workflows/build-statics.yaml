@@ -59,7 +59,8 @@ jobs:
         working-directory: ./js
         run: |
           pnpm install --frozen-lockfile
-          uv pip install --system pre-commit
+          uv venv
+          uv pip install pre-commit
 
 
       - name: Build Apps
