@@ -37,24 +37,24 @@ class GitHubActionsProvider(BaseCIProvider):
         Returns:
             CIInfo object with extracted information
         """
-        cr_number = self._extract_pr_number()
+        pr_number = self._extract_pr_number()
         commit_sha = self._extract_commit_sha()
         base_branch = self._extract_base_branch()
         source_branch = self._extract_source_branch()
         repository = os.getenv("GITHUB_REPOSITORY")
         access_token = os.getenv("GITHUB_TOKEN")
 
-        # Build CR URL (PR URL) if we have the necessary information
-        cr_url = None
-        if cr_number is not None and repository:
-            cr_url = f"https://github.com/{repository}/pull/{cr_number}"
+        # Build PR URL if we have the necessary information
+        pr_url = None
+        if pr_number is not None and repository:
+            pr_url = f"https://github.com/{repository}/pull/{pr_number}"
 
-        session_type = self.determine_session_type(cr_number, source_branch)
+        session_type = self.determine_session_type(pr_number, source_branch)
 
         return CIInfo(
             platform="github-actions",
-            cr_number=cr_number,
-            cr_url=cr_url,
+            pr_number=pr_number,
+            pr_url=pr_url,
             session_type=session_type,
             commit_sha=commit_sha,
             base_branch=base_branch,

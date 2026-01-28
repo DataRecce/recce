@@ -56,7 +56,7 @@ class CIDetector:
     def apply_overrides(
         cls,
         ci_info: CIInfo,
-        cr: Optional[int] = None,
+        pr: Optional[int] = None,
         session_type: Optional[str] = None,
     ) -> CIInfo:
         """
@@ -64,32 +64,32 @@ class CIDetector:
 
         Args:
             ci_info: Detected CI information
-            cr: Manual change request number override
+            pr: Manual pull/merge request number override
             session_type: Manual session type override
 
         Returns:
             CIInfo with overrides applied
         """
         # Log overrides
-        if cr is not None and cr != ci_info.cr_number:
-            logger.info(f"Using manual override: --cr {cr} (detected: {ci_info.cr_number})")
-            ci_info.cr_number = cr
-            # Rebuild CR URL if we have repository info
+        if pr is not None and pr != ci_info.pr_number:
+            logger.info(f"Using manual override: --pr {pr} (detected: {ci_info.pr_number})")
+            ci_info.pr_number = pr
+            # Rebuild PR URL if we have repository info
             if ci_info.repository:
                 if ci_info.platform == "github-actions":
-                    ci_info.cr_url = f"https://github.com/{ci_info.repository}/pull/{cr}"
+                    ci_info.pr_url = f"https://github.com/{ci_info.repository}/pull/{pr}"
                 elif ci_info.platform == "gitlab-ci":
                     server_url = os.getenv("CI_SERVER_URL", "https://gitlab.com")
-                    ci_info.cr_url = f"{server_url}/{ci_info.repository}/-/merge_requests/{cr}"
+                    ci_info.pr_url = f"{server_url}/{ci_info.repository}/-/merge_requests/{pr}"
 
         if session_type is not None and session_type != ci_info.session_type:
             logger.info(f"Using manual override: --type {session_type} (detected: {ci_info.session_type})")
             ci_info.session_type = session_type
 
-        # Re-determine session type if CR was overridden
-        if cr is not None:
+        # Re-determine session type if PR was overridden
+        if pr is not None:
             if session_type is None:  # Only if not manually overridden
-                ci_info.session_type = BaseCIProvider.determine_session_type(ci_info.cr_number, ci_info.source_branch)
+                ci_info.session_type = BaseCIProvider.determine_session_type(ci_info.pr_number, ci_info.source_branch)
 
         return ci_info
 
@@ -108,7 +108,7 @@ class CIDetector:
 
         return CIInfo(
             platform=None,
-            cr_number=None,
+            pr_number=None,
             session_type=session_type,
             commit_sha=commit_sha,
             base_branch="main",  # Default
@@ -124,15 +124,15 @@ class CIDetector:
         Args:
             ci_info: Detected CI information
         """
-        if ci_info.cr_number is not None:
+        if ci_info.pr_number is not None:
             if ci_info.platform == "github-actions":
-                logger.info(f"Detected PR number: {ci_info.cr_number}")
+                logger.info(f"Detected PR number: {ci_info.pr_number}")
             elif ci_info.platform == "gitlab-ci":
-                logger.info(f"Detected MR number: {ci_info.cr_number}")
+                logger.info(f"Detected MR number: {ci_info.pr_number}")
             else:
-                logger.info(f"Detected CR number: {ci_info.cr_number}")
+                logger.info(f"Detected PR number: {ci_info.pr_number}")
         else:
-            logger.info("No CR number detected")
+            logger.info("No PR number detected")
 
         if ci_info.commit_sha:
             logger.info(f"Detected commit SHA: {ci_info.commit_sha[:8]}...")

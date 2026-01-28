@@ -26,7 +26,7 @@ class GitHubRecceCloudClient(BaseRecceCloudClient):
         self,
         branch: str,
         adapter_type: str,
-        cr_number: Optional[int] = None,
+        pr_number: Optional[int] = None,
         commit_sha: Optional[str] = None,
         session_type: Optional[str] = None,
     ) -> Dict:
@@ -36,9 +36,9 @@ class GitHubRecceCloudClient(BaseRecceCloudClient):
         Args:
             branch: Branch name
             adapter_type: DBT adapter type
-            cr_number: PR number for pull request sessions (None for prod sessions)
+            pr_number: PR number for pull request sessions (None for prod sessions)
             commit_sha: Not used for GitHub (optional for compatibility)
-            session_type: Session type ("cr", "prod", "dev") - determines if pr_number is passed
+            session_type: Session type ("pr", "prod", "dev") - determines if pr_number is passed
 
         Returns:
             Dictionary containing session_id, manifest_upload_url, catalog_upload_url
@@ -50,10 +50,10 @@ class GitHubRecceCloudClient(BaseRecceCloudClient):
             "adapter_type": adapter_type,
         }
 
-        # Only include pr_number for "cr" type sessions
-        # For "prod" type, omit pr_number even if cr_number is detected
-        if session_type == "cr" and cr_number is not None:
-            payload["pr_number"] = cr_number
+        # Only include pr_number for "pr" type sessions
+        # For "prod" type, omit pr_number even if pr_number is detected
+        if session_type == "pr" and pr_number is not None:
+            payload["pr_number"] = pr_number
 
         return self._make_request("POST", url, json=payload)
 
@@ -78,15 +78,15 @@ class GitHubRecceCloudClient(BaseRecceCloudClient):
 
     def get_session_download_urls(
         self,
-        cr_number: Optional[int] = None,
+        pr_number: Optional[int] = None,
         session_type: Optional[str] = None,
     ) -> Dict:
         """
         Get download URLs for artifacts from a GitHub session.
 
         Args:
-            cr_number: PR number for pull request sessions
-            session_type: Session type ("cr", "prod", "dev")
+            pr_number: PR number for pull request sessions
+            session_type: Session type ("pr", "prod", "dev")
 
         Returns:
             Dictionary containing session_id, manifest_url, catalog_url
@@ -99,23 +99,23 @@ class GitHubRecceCloudClient(BaseRecceCloudClient):
         # For prod session, set base=true
         if session_type == "prod":
             params["base"] = "true"
-        # For CR session, include pr_number
-        elif session_type == "cr" and cr_number is not None:
-            params["pr_number"] = cr_number
+        # For PR session, include pr_number
+        elif session_type == "pr" and pr_number is not None:
+            params["pr_number"] = pr_number
 
         return self._make_request("GET", url, params=params)
 
     def delete_session(
         self,
-        cr_number: Optional[int] = None,
+        pr_number: Optional[int] = None,
         session_type: Optional[str] = None,
     ) -> Dict:
         """
         Delete a GitHub PR/base session.
 
         Args:
-            cr_number: PR number for pull request sessions
-            session_type: Session type ("cr", "prod") - "prod" deletes base session
+            pr_number: PR number for pull request sessions
+            session_type: Session type ("pr", "prod") - "prod" deletes base session
 
         Returns:
             Dictionary containing session_id of deleted session
@@ -128,8 +128,8 @@ class GitHubRecceCloudClient(BaseRecceCloudClient):
         # For prod session, set base=true
         if session_type == "prod":
             params["base"] = "true"
-        # For CR session, include pr_number
-        elif session_type == "cr" and cr_number is not None:
-            params["pr_number"] = cr_number
+        # For PR session, include pr_number
+        elif session_type == "pr" and pr_number is not None:
+            params["pr_number"] = pr_number
 
         return self._make_request("DELETE", url, params=params)

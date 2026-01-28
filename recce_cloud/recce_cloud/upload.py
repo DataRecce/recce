@@ -159,7 +159,7 @@ def upload_with_platform_apis(
         session_response = client.touch_recce_session(
             branch=ci_info.source_branch or ci_info.base_branch or "main",
             adapter_type=adapter_type,
-            cr_number=ci_info.cr_number,
+            pr_number=ci_info.pr_number,
             commit_sha=ci_info.commit_sha,
             session_type=ci_info.session_type,
         )
@@ -226,8 +226,8 @@ def upload_with_platform_apis(
     console.print(f'Uploaded dbt artifacts to Recce Cloud for session ID "{session_id}"')
     console.print(f'Artifacts from: "{os.path.abspath(target_path)}"')
 
-    if ci_info.cr_url:
-        console.print(f"Change request: {ci_info.cr_url}")
+    if ci_info.pr_url:
+        console.print(f"Pull request: {ci_info.pr_url}")
 
     sys.exit(0)
 

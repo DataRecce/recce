@@ -82,7 +82,7 @@ class TestUploadDryRun(unittest.TestCase):
         self.assertIn("Platform Information:", result.output)
         self.assertIn("Platform: github-actions", result.output)
         self.assertIn("Repository: DataRecce/recce", result.output)
-        self.assertIn("CR Number: 42", result.output)
+        self.assertIn("PR Number: 42", result.output)
         self.assertIn("Commit SHA: abc123de", result.output)
         self.assertIn("Source Branch: feature/test-branch", result.output)
         self.assertIn("Base Branch: main", result.output)
@@ -121,7 +121,7 @@ class TestUploadDryRun(unittest.TestCase):
         self.assertIn("Platform Information:", result.output)
         self.assertIn("Platform: gitlab-ci", result.output)
         self.assertIn("Repository: recce/jaffle-shop", result.output)
-        self.assertIn("CR Number: 5", result.output)
+        self.assertIn("PR Number: 5", result.output)
         self.assertIn("Commit SHA: def456ab", result.output)
         self.assertIn("Source Branch: feature/new-models", result.output)
         self.assertIn("Base Branch: main", result.output)
@@ -153,7 +153,7 @@ class TestUploadDryRun(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
         self.assertIn("Platform: gitlab-ci", result.output)
         self.assertIn("Repository: data-team/dbt-project", result.output)
-        self.assertIn("CR Number: 25", result.output)
+        self.assertIn("PR Number: 25", result.output)
         self.assertIn("Source Branch: develop", result.output)
         self.assertIn("Base Branch: production", result.output)
 
@@ -211,7 +211,7 @@ class TestUploadDryRun(unittest.TestCase):
         # Session type depends on git branch detection, could be prod or dev
         self.assertIn("Session Type:", result.output)
         # Should not have CR number
-        self.assertNotIn("CR Number:", result.output)
+        self.assertNotIn("PR Number:", result.output)
 
     def test_dry_run_gitlab_main_branch(self):
         """Test dry-run with GitLab CI main branch (no MR)."""
@@ -238,7 +238,7 @@ class TestUploadDryRun(unittest.TestCase):
         # Session type depends on git branch detection, could be prod or dev
         self.assertIn("Session Type:", result.output)
         # Should not have CR number
-        self.assertNotIn("CR Number:", result.output)
+        self.assertNotIn("PR Number:", result.output)
 
     def test_dry_run_with_manual_overrides(self):
         """Test dry-run with manual overrides."""
@@ -266,10 +266,10 @@ class TestUploadDryRun(unittest.TestCase):
                     "upload",
                     "--target-path",
                     self.temp_dir,
-                    "--cr",
+                    "--pr",
                     "100",
                     "--type",
-                    "cr",
+                    "pr",
                     "--dry-run",
                 ],
             )
@@ -277,8 +277,8 @@ class TestUploadDryRun(unittest.TestCase):
         # Assertions
         self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
         # Should show overridden CR number
-        self.assertIn("CR Number: 100", result.output)
-        self.assertIn("Session Type: cr", result.output)
+        self.assertIn("PR Number: 100", result.output)
+        self.assertIn("Session Type: pr", result.output)
 
     def test_dry_run_no_ci_environment(self):
         """Test dry-run without CI environment (local development)."""
@@ -418,7 +418,7 @@ class TestDownloadDryRun(unittest.TestCase):
         self.assertIn("Platform Information:", result.output)
         self.assertIn("Platform: github-actions", result.output)
         self.assertIn("Repository: DataRecce/recce", result.output)
-        self.assertIn("Session Type: cr", result.output)
+        self.assertIn("Session Type: pr", result.output)
         self.assertIn("PR Number: 42", result.output)
         self.assertIn("Download Workflow:", result.output)
         self.assertIn("Auto-detect and download PR/MR session", result.output)
@@ -460,7 +460,7 @@ class TestDownloadDryRun(unittest.TestCase):
         self.assertIn("Platform Information:", result.output)
         self.assertIn("Platform: gitlab-ci", result.output)
         self.assertIn("Repository: recce/jaffle-shop", result.output)
-        self.assertIn("Session Type: cr", result.output)
+        self.assertIn("Session Type: pr", result.output)
         self.assertIn("MR Number: 5", result.output)
         self.assertIn("Auto-detect and download PR/MR session", result.output)
         self.assertIn("Platform-specific APIs will be used", result.output)
@@ -504,7 +504,7 @@ class TestDownloadDryRun(unittest.TestCase):
 
         # Prod session should NOT show PR/CR number
         self.assertNotIn("PR Number:", result.output)
-        self.assertNotIn("CR Number:", result.output)
+        self.assertNotIn("PR Number:", result.output)
 
         # Download command should NOT show commit SHA or branches
         self.assertNotIn("Commit SHA:", result.output)
@@ -654,7 +654,7 @@ class TestDownloadDryRun(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
         self.assertIn("Platform: gitlab-ci", result.output)
         self.assertIn("Repository: data-team/dbt-project", result.output)
-        self.assertIn("Session Type: cr", result.output)
+        self.assertIn("Session Type: pr", result.output)
         self.assertIn("MR Number: 25", result.output)
 
         # Download command should NOT show commit SHA or branches (irrelevant for download)
@@ -668,7 +668,7 @@ class TestDownloadDryRun(unittest.TestCase):
         Without --prod flag, the session type is auto-detected as 'prod' because:
         1. No PR number (GITHUB_HEAD_REF is not set)
         2. Branch is 'main' (from git command fallback, mocked in test)
-        3. determine_session_type(cr_number=None, source_branch='main') returns 'prod'
+        3. determine_session_type(pr_number=None, source_branch='main') returns 'prod'
 
         This allows download to work without explicit --prod flag on main branch.
         """
@@ -702,7 +702,7 @@ class TestDownloadDryRun(unittest.TestCase):
 
         # Prod session should NOT show CR number or PR number
         self.assertNotIn("PR Number:", result.output)
-        self.assertNotIn("CR Number:", result.output)
+        self.assertNotIn("PR Number:", result.output)
 
         # Download command should NOT show commit SHA or branches (irrelevant for download)
         self.assertNotIn("Commit SHA:", result.output)
@@ -779,7 +779,7 @@ class TestDeleteDryRun(unittest.TestCase):
         self.assertIn("Platform Information:", result.output)
         self.assertIn("Platform: github-actions", result.output)
         self.assertIn("Repository: DataRecce/recce", result.output)
-        self.assertIn("Session Type: cr", result.output)
+        self.assertIn("Session Type: pr", result.output)
         self.assertIn("PR Number: 42", result.output)
         self.assertIn("Delete Workflow:", result.output)
         self.assertIn("Auto-detect and delete PR/MR session", result.output)
@@ -812,7 +812,7 @@ class TestDeleteDryRun(unittest.TestCase):
         self.assertIn("Platform Information:", result.output)
         self.assertIn("Platform: gitlab-ci", result.output)
         self.assertIn("Repository: recce/jaffle-shop", result.output)
-        self.assertIn("Session Type: cr", result.output)
+        self.assertIn("Session Type: pr", result.output)
         self.assertIn("MR Number: 5", result.output)
         self.assertIn("Auto-detect and delete PR/MR session", result.output)
         self.assertIn("Platform-specific APIs will be used", result.output)
@@ -885,7 +885,7 @@ class TestDeleteDryRun(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
         self.assertIn("Platform: gitlab-ci", result.output)
         self.assertIn("Repository: data-team/dbt-project", result.output)
-        self.assertIn("Session Type: cr", result.output)
+        self.assertIn("Session Type: pr", result.output)
         self.assertIn("MR Number: 25", result.output)
 
 

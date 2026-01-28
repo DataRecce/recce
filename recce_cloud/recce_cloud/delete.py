@@ -65,7 +65,7 @@ def delete_with_platform_apis(console, token: str, ci_info, prod: bool):
         sys.exit(2)
 
     # Determine session type
-    session_type = "prod" if prod else "cr"
+    session_type = "prod" if prod else "pr"
 
     # Delete session
     console.rule("Deleting session", style="blue")
@@ -73,14 +73,14 @@ def delete_with_platform_apis(console, token: str, ci_info, prod: bool):
     # Determine what to display based on session type
     if session_type == "prod":
         console.print("Deleting production/base session...")
-    elif session_type == "cr":
-        console.print(f"Deleting PR/MR session (CR #{ci_info.cr_number})...")
+    elif session_type == "pr":
+        console.print(f"Deleting PR/MR session (PR #{ci_info.pr_number})...")
     else:
         console.print("Deleting session...")
 
     try:
         delete_response = client.delete_session(
-            cr_number=ci_info.cr_number,
+            pr_number=ci_info.pr_number,
             session_type=session_type,
         )
 
@@ -105,7 +105,7 @@ def delete_with_platform_apis(console, token: str, ci_info, prod: bool):
     console.rule("Deleted Successfully", style="green")
     console.print(f'Deleted session ID "{session_id}" from Recce Cloud')
 
-    if ci_info.cr_url:
-        console.print(f"Change request: {ci_info.cr_url}")
+    if ci_info.pr_url:
+        console.print(f"Pull request: {ci_info.pr_url}")
 
     sys.exit(0)
