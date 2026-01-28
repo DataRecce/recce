@@ -464,14 +464,14 @@ def _get_production_session_id(console: Console, token: str) -> Optional[str]:
     help="Skip confirmation prompts (auto-create session if not found).",
 )
 @click.option(
-    "--cr",
+    "--pr",
     type=int,
-    help="Change request number (PR/MR) (overrides auto-detection)",
+    help="Pull/Merge request number (PR/MR) (overrides auto-detection)",
 )
 @click.option(
     "--type",
     "session_type",
-    type=click.Choice(["cr", "prod", "dev"]),
+    type=click.Choice(["pr", "prod", "dev"]),
     help="Session type (overrides auto-detection)",
 )
 @click.option(
@@ -479,7 +479,7 @@ def _get_production_session_id(console: Console, token: str) -> Optional[str]:
     is_flag=True,
     help="Show what would be uploaded without actually uploading",
 )
-def upload(target_path, session_id, session_name, skip_confirmation, cr, session_type, dry_run):
+def upload(target_path, session_id, session_name, skip_confirmation, pr, session_type, dry_run):
     """
     Upload dbt artifacts (manifest.json, catalog.json) to Recce Cloud.
 
@@ -515,7 +515,7 @@ def upload(target_path, session_id, session_name, skip_confirmation, cr, session
     console.rule("CI Environment Detection", style="blue")
     try:
         ci_info = CIDetector.detect()
-        ci_info = CIDetector.apply_overrides(ci_info, cr=cr, session_type=session_type)
+        ci_info = CIDetector.apply_overrides(ci_info, pr=pr, session_type=session_type)
 
         # Display detected CI information immediately
         if ci_info:
@@ -524,22 +524,22 @@ def upload(target_path, session_id, session_name, skip_confirmation, cr, session
                 info_table.append(f"[cyan]Platform:[/cyan] {ci_info.platform}")
 
             # Display CR number as PR or MR based on platform
-            if ci_info.cr_number is not None:
+            if ci_info.pr_number is not None:
                 if ci_info.platform == "github-actions":
-                    info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.cr_number}")
+                    info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.pr_number}")
                 elif ci_info.platform == "gitlab-ci":
-                    info_table.append(f"[cyan]MR Number:[/cyan] {ci_info.cr_number}")
+                    info_table.append(f"[cyan]MR Number:[/cyan] {ci_info.pr_number}")
                 else:
-                    info_table.append(f"[cyan]CR Number:[/cyan] {ci_info.cr_number}")
+                    info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.pr_number}")
 
-            # Display CR URL as PR URL or MR URL based on platform
-            if ci_info.cr_url:
+            # Display PR URL as PR URL or MR URL based on platform
+            if ci_info.pr_url:
                 if ci_info.platform == "github-actions":
-                    info_table.append(f"[cyan]PR URL:[/cyan] {ci_info.cr_url}")
+                    info_table.append(f"[cyan]PR URL:[/cyan] {ci_info.pr_url}")
                 elif ci_info.platform == "gitlab-ci":
-                    info_table.append(f"[cyan]MR URL:[/cyan] {ci_info.cr_url}")
+                    info_table.append(f"[cyan]MR URL:[/cyan] {ci_info.pr_url}")
                 else:
-                    info_table.append(f"[cyan]CR URL:[/cyan] {ci_info.cr_url}")
+                    info_table.append(f"[cyan]PR URL:[/cyan] {ci_info.pr_url}")
 
             if ci_info.session_type:
                 info_table.append(f"[cyan]Session Type:[/cyan] {ci_info.session_type}")
@@ -590,8 +590,8 @@ def upload(target_path, session_id, session_name, skip_confirmation, cr, session
             console.print(f"  • Platform: {ci_info.platform}")
             if ci_info.repository:
                 console.print(f"  • Repository: {ci_info.repository}")
-            if ci_info.cr_number is not None:
-                console.print(f"  • CR Number: {ci_info.cr_number}")
+            if ci_info.pr_number is not None:
+                console.print(f"  • PR Number: {ci_info.pr_number}")
             if ci_info.commit_sha:
                 console.print(f"  • Commit SHA: {ci_info.commit_sha[:8]}")
             if ci_info.source_branch:
@@ -709,8 +709,8 @@ def upload(target_path, session_id, session_name, skip_confirmation, cr, session
 @click.option(
     "--type",
     "session_type",
-    type=click.Choice(["cr", "prod", "dev"]),
-    help="Filter by session type (prod=base, cr=has PR link, dev=other)",
+    type=click.Choice(["pr", "prod", "dev"]),
+    help="Filter by session type (prod=base, pr=has PR link, dev=other)",
 )
 @click.option(
     "--json",
@@ -796,13 +796,13 @@ def list_sessions_cmd(session_type, output_json):
 
     # Helper to derive session type from fields:
     # - prod: is_base = True
-    # - cr: pr_link is not null
+    # - pr: pr_link is not null
     # - dev: everything else
     def get_session_type(s):
         if s.get("is_base"):
             return "prod"
         elif s.get("pr_link"):
-            return "cr"
+            return "pr"
         else:
             return "dev"
 
@@ -945,22 +945,22 @@ def download(target_path, session_id, prod, dry_run, force):
                 info_table.append(f"[cyan]Session Type:[/cyan] {ci_info.session_type}")
 
             # Only show CR number and URL for CR sessions (not for prod)
-            if ci_info.session_type == "cr" and ci_info.cr_number is not None:
+            if ci_info.session_type == "pr" and ci_info.pr_number is not None:
                 if ci_info.platform == "github-actions":
-                    info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.cr_number}")
+                    info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.pr_number}")
                 elif ci_info.platform == "gitlab-ci":
-                    info_table.append(f"[cyan]MR Number:[/cyan] {ci_info.cr_number}")
+                    info_table.append(f"[cyan]MR Number:[/cyan] {ci_info.pr_number}")
                 else:
-                    info_table.append(f"[cyan]CR Number:[/cyan] {ci_info.cr_number}")
+                    info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.pr_number}")
 
-            # Only show CR URL for CR sessions
-            if ci_info.session_type == "cr" and ci_info.cr_url:
+            # Only show PR URL for CR sessions
+            if ci_info.session_type == "pr" and ci_info.pr_url:
                 if ci_info.platform == "github-actions":
-                    info_table.append(f"[cyan]PR URL:[/cyan] {ci_info.cr_url}")
+                    info_table.append(f"[cyan]PR URL:[/cyan] {ci_info.pr_url}")
                 elif ci_info.platform == "gitlab-ci":
-                    info_table.append(f"[cyan]MR URL:[/cyan] {ci_info.cr_url}")
+                    info_table.append(f"[cyan]MR URL:[/cyan] {ci_info.pr_url}")
                 else:
-                    info_table.append(f"[cyan]CR URL:[/cyan] {ci_info.cr_url}")
+                    info_table.append(f"[cyan]PR URL:[/cyan] {ci_info.pr_url}")
 
             for line in info_table:
                 console.print(line)
@@ -985,8 +985,8 @@ def download(target_path, session_id, prod, dry_run, force):
                 console.print(f"  • Repository: {ci_info.repository}")
             if ci_info.session_type:
                 console.print(f"  • Session Type: {ci_info.session_type}")
-            if ci_info.session_type == "cr" and ci_info.cr_number is not None:
-                console.print(f"  • CR Number: {ci_info.cr_number}")
+            if ci_info.session_type == "pr" and ci_info.pr_number is not None:
+                console.print(f"  • PR Number: {ci_info.pr_number}")
             console.print()
 
         # Display download summary
@@ -1112,22 +1112,22 @@ def delete(session_id, dry_run, force):
                     info_table.append(f"[cyan]Session Type:[/cyan] {ci_info.session_type}")
 
                 # Only show CR number and URL for CR sessions (not for prod)
-                if ci_info.session_type == "cr" and ci_info.cr_number is not None:
+                if ci_info.session_type == "pr" and ci_info.pr_number is not None:
                     if ci_info.platform == "github-actions":
-                        info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.cr_number}")
+                        info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.pr_number}")
                     elif ci_info.platform == "gitlab-ci":
-                        info_table.append(f"[cyan]MR Number:[/cyan] {ci_info.cr_number}")
+                        info_table.append(f"[cyan]MR Number:[/cyan] {ci_info.pr_number}")
                     else:
-                        info_table.append(f"[cyan]CR Number:[/cyan] {ci_info.cr_number}")
+                        info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.pr_number}")
 
-                # Only show CR URL for CR sessions
-                if ci_info.session_type == "cr" and ci_info.cr_url:
+                # Only show PR URL for CR sessions
+                if ci_info.session_type == "pr" and ci_info.pr_url:
                     if ci_info.platform == "github-actions":
-                        info_table.append(f"[cyan]PR URL:[/cyan] {ci_info.cr_url}")
+                        info_table.append(f"[cyan]PR URL:[/cyan] {ci_info.pr_url}")
                     elif ci_info.platform == "gitlab-ci":
-                        info_table.append(f"[cyan]MR URL:[/cyan] {ci_info.cr_url}")
+                        info_table.append(f"[cyan]MR URL:[/cyan] {ci_info.pr_url}")
                     else:
-                        info_table.append(f"[cyan]CR URL:[/cyan] {ci_info.cr_url}")
+                        info_table.append(f"[cyan]PR URL:[/cyan] {ci_info.pr_url}")
 
             for line in info_table:
                 console.print(line)
@@ -1152,8 +1152,8 @@ def delete(session_id, dry_run, force):
                 console.print(f"  • Repository: {ci_info.repository}")
             if ci_info.session_type:
                 console.print(f"  • Session Type: {ci_info.session_type}")
-            if ci_info.session_type == "cr" and ci_info.cr_number is not None:
-                console.print(f"  • CR Number: {ci_info.cr_number}")
+            if ci_info.session_type == "pr" and ci_info.pr_number is not None:
+                console.print(f"  • PR Number: {ci_info.pr_number}")
             console.print()
 
         # Display delete summary

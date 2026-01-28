@@ -109,9 +109,9 @@ class TestGitHubActionsProvider:
                     ci_info = provider.extract_ci_info()
 
                     assert ci_info.platform == "github-actions"
-                    assert ci_info.cr_number == 456
-                    assert ci_info.cr_url == "https://github.com/owner/repo/pull/456"
-                    assert ci_info.session_type == "cr"
+                    assert ci_info.pr_number == 456
+                    assert ci_info.pr_url == "https://github.com/owner/repo/pull/456"
+                    assert ci_info.session_type == "pr"
                     assert ci_info.commit_sha == "abc123"
                     assert ci_info.base_branch == "main"
                     assert ci_info.source_branch == "feature"
@@ -133,7 +133,7 @@ class TestGitHubActionsProvider:
             ci_info = provider.extract_ci_info()
 
             assert ci_info.platform == "github-actions"
-            assert ci_info.cr_number is None
+            assert ci_info.pr_number is None
             assert ci_info.session_type == "prod"
             assert ci_info.source_branch == "main"
 
@@ -230,9 +230,9 @@ class TestGitLabCIProvider:
             ci_info = provider.extract_ci_info()
 
             assert ci_info.platform == "gitlab-ci"
-            assert ci_info.cr_number == 101
-            assert ci_info.cr_url == "https://gitlab.com/group/project/-/merge_requests/101"
-            assert ci_info.session_type == "cr"
+            assert ci_info.pr_number == 101
+            assert ci_info.pr_url == "https://gitlab.com/group/project/-/merge_requests/101"
+            assert ci_info.session_type == "pr"
             assert ci_info.commit_sha == "gitlab456"
             assert ci_info.base_branch == "main"
             assert ci_info.source_branch == "feature-x"
@@ -253,7 +253,7 @@ class TestGitLabCIProvider:
             provider = GitLabCIProvider()
             ci_info = provider.extract_ci_info()
 
-            assert ci_info.cr_url == "https://gitlab.mycompany.com/mycompany/myproject/-/merge_requests/42"
+            assert ci_info.pr_url == "https://gitlab.mycompany.com/mycompany/myproject/-/merge_requests/42"
 
     def test_extract_access_token(self):
         """Test CI_JOB_TOKEN detection."""
@@ -305,22 +305,22 @@ class TestCIDetector:
 
     def test_apply_overrides_cr_github(self):
         """Test applying CR override for GitHub Actions."""
-        ci_info = CIInfo(platform="github-actions", cr_number=100, session_type="cr", repository="owner/repo")
-        ci_info = CIDetector.apply_overrides(ci_info, cr=200)
+        ci_info = CIInfo(platform="github-actions", pr_number=100, session_type="pr", repository="owner/repo")
+        ci_info = CIDetector.apply_overrides(ci_info, pr=200)
 
-        assert ci_info.cr_number == 200
-        assert ci_info.cr_url == "https://github.com/owner/repo/pull/200"
-        assert ci_info.session_type == "cr"
+        assert ci_info.pr_number == 200
+        assert ci_info.pr_url == "https://github.com/owner/repo/pull/200"
+        assert ci_info.session_type == "pr"
 
     def test_apply_overrides_cr_gitlab(self):
         """Test applying CR override for GitLab CI."""
         with patch.dict(os.environ, {"CI_SERVER_URL": "https://gitlab.com"}):
-            ci_info = CIInfo(platform="gitlab-ci", cr_number=50, session_type="cr", repository="group/project")
-            ci_info = CIDetector.apply_overrides(ci_info, cr=75)
+            ci_info = CIInfo(platform="gitlab-ci", pr_number=50, session_type="pr", repository="group/project")
+            ci_info = CIDetector.apply_overrides(ci_info, pr=75)
 
-            assert ci_info.cr_number == 75
-            assert ci_info.cr_url == "https://gitlab.com/group/project/-/merge_requests/75"
-            assert ci_info.session_type == "cr"
+            assert ci_info.pr_number == 75
+            assert ci_info.pr_url == "https://gitlab.com/group/project/-/merge_requests/75"
+            assert ci_info.session_type == "pr"
 
     def test_apply_overrides_session_type(self):
         """Test applying session type override."""
@@ -331,11 +331,11 @@ class TestCIDetector:
 
     def test_apply_overrides_cr_redetermines_session_type(self):
         """Test that CR override re-determines session type."""
-        ci_info = CIInfo(cr_number=None, session_type="dev", source_branch="feature")
-        ci_info = CIDetector.apply_overrides(ci_info, cr=100)
+        ci_info = CIInfo(pr_number=None, session_type="dev", source_branch="feature")
+        ci_info = CIDetector.apply_overrides(ci_info, pr=100)
 
-        assert ci_info.cr_number == 100
-        assert ci_info.session_type == "cr"
+        assert ci_info.pr_number == 100
+        assert ci_info.session_type == "pr"
 
     def test_fallback_detection_with_git(self):
         """Test fallback detection using git commands."""

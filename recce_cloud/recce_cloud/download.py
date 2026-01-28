@@ -181,14 +181,14 @@ def download_with_platform_apis(console, token: str, ci_info, target_path: str, 
     # Determine what to display based on session type
     if ci_info.session_type == "prod":
         console.print("Looking for production/base session...")
-    elif ci_info.session_type == "cr":
-        console.print(f"Looking for PR/MR session (CR #{ci_info.cr_number})...")
+    elif ci_info.session_type == "pr":
+        console.print(f"Looking for PR/MR session (PR #{ci_info.pr_number})...")
     else:
         console.print("Looking for session...")
 
     try:
         download_response = client.get_session_download_urls(
-            cr_number=ci_info.cr_number,
+            pr_number=ci_info.pr_number,
             session_type=ci_info.session_type,
         )
 
@@ -224,7 +224,7 @@ def download_with_platform_apis(console, token: str, ci_info, target_path: str, 
     console.print(f'Downloaded dbt artifacts from Recce Cloud for session ID "{session_id}"')
     console.print(f'Artifacts saved to: "{os.path.abspath(target_path)}"')
 
-    if ci_info.cr_url:
-        console.print(f"Change request: {ci_info.cr_url}")
+    if ci_info.pr_url:
+        console.print(f"Pull request: {ci_info.pr_url}")
 
     sys.exit(0)

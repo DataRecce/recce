@@ -13,9 +13,9 @@ class CIInfo:
     """Information extracted from CI environment."""
 
     platform: Optional[str] = None  # "github-actions", "gitlab-ci", etc.
-    cr_number: Optional[int] = None  # Change request number (PR/MR)
-    cr_url: Optional[str] = None  # Change request URL (for session linking)
-    session_type: Optional[str] = None  # "cr", "prod", "dev"
+    pr_number: Optional[int] = None  # Pull/Merge request number (PR/MR)
+    pr_url: Optional[str] = None  # Pull/Merge request URL (for session linking)
+    session_type: Optional[str] = None  # "pr", "prod", "dev"
     commit_sha: Optional[str] = None  # Full commit SHA
     base_branch: Optional[str] = None  # Target/base branch
     source_branch: Optional[str] = None  # Source/head branch
@@ -64,19 +64,19 @@ class BaseCIProvider(ABC):
             return None
 
     @staticmethod
-    def determine_session_type(cr_number: Optional[int], source_branch: Optional[str]) -> str:
+    def determine_session_type(pr_number: Optional[int], source_branch: Optional[str]) -> str:
         """
         Determine session type based on context.
 
         Args:
-            cr_number: Change request number (PR/MR)
+            pr_number: Pull/Merge request number (PR/MR)
             source_branch: Source branch name
 
         Returns:
-            Session type: "cr", "prod", or "dev"
+            Session type: "pr", "prod", or "dev"
         """
-        if cr_number is not None:
-            return "cr"
+        if pr_number is not None:
+            return "pr"
         if source_branch in ["main", "master"]:
             return "prod"
         return "dev"

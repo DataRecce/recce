@@ -133,7 +133,7 @@ recce-cloud upload
 recce-cloud upload --target-path custom-target
 
 # With manual overrides
-recce-cloud upload --cr 123 --type cr
+recce-cloud upload --pr 123 --type pr
 ```
 
 **Requirements:**
@@ -329,8 +329,8 @@ Upload dbt artifacts to Recce Cloud session.
 | --------------- | ------- | -------- | --------------------------------------------- |
 | `--target-path` | path    | `target` | Path to dbt target directory                  |
 | `--session-id`  | string  | -        | Session ID for generic workflow (optional)    |
-| `--cr`          | integer | -        | Override PR/MR number                         |
-| `--type`        | choice  | -        | Override session type: `cr`, `prod`, `dev`    |
+| `--pr`          | integer | -        | Override PR/MR number                         |
+| `--type`        | choice  | -        | Override session type: `pr`, `prod`, `dev`    |
 | `--dry-run`     | flag    | false    | Show what would be uploaded without uploading |
 
 **Environment Variables:**
@@ -466,13 +466,13 @@ You can override auto-detected values:
 
 ```bash
 # Override PR/MR number
-recce-cloud upload --cr 456
+recce-cloud upload --pr 456
 
 # Override session type
 recce-cloud upload --type prod
 
 # Multiple overrides
-recce-cloud upload --cr 789 --type cr
+recce-cloud upload --pr 789 --type pr
 
 # Dry run - preview what would be uploaded
 recce-cloud upload --dry-run
