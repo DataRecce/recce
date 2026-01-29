@@ -17,6 +17,7 @@ from recce.event import get_recce_api_token
 from recce.exceptions import RecceException
 from recce.util.cloud.check_events import CheckEventsCloud
 from recce.util.recce_cloud import RecceCloud, RecceCloudException
+from recce.websocket import get_current_cloud_user
 
 logger = logging.getLogger("uvicorn")
 
@@ -264,7 +265,13 @@ async def create_comment(check_id: UUID, body: CreateCommentIn):
         org_id, project_id, session_id = _get_session_info()
         client = _get_events_client()
 
-        event = client.create_comment(org_id, project_id, session_id, str(check_id), body.content)
+        # Get cloud user context for attribution (shared instance scenario)
+        cloud_user = get_current_cloud_user()
+        acting_user_id = cloud_user.user_id if cloud_user else None
+
+        event = client.create_comment(
+            org_id, project_id, session_id, str(check_id), body.content, acting_user_id=acting_user_id
+        )
         return event
 
     except RecceCloudException as e:
@@ -307,7 +314,13 @@ async def update_comment(check_id: UUID, event_id: UUID, body: UpdateCommentIn):
         org_id, project_id, session_id = _get_session_info()
         client = _get_events_client()
 
-        event = client.update_comment(org_id, project_id, session_id, str(check_id), str(event_id), body.content)
+        # Get cloud user context for attribution (shared instance scenario)
+        cloud_user = get_current_cloud_user()
+        acting_user_id = cloud_user.user_id if cloud_user else None
+
+        event = client.update_comment(
+            org_id, project_id, session_id, str(check_id), str(event_id), body.content, acting_user_id=acting_user_id
+        )
         return event
 
     except RecceCloudException as e:

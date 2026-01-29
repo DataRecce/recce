@@ -5,7 +5,7 @@ This module provides methods for managing checks (validation operations) in Recc
 including CRUD operations for checks within sessions.
 """
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from recce.util.cloud.base import CloudBase
 
@@ -60,6 +60,7 @@ class ChecksCloud(CloudBase):
         project_id: str,
         session_id: str,
         check_data: Dict,
+        acting_user_id: Optional[str] = None,
     ) -> Dict:
         """
         Create a new check in a session.
@@ -69,6 +70,7 @@ class ChecksCloud(CloudBase):
             project_id: Project ID
             session_id: Session ID
             check_data: Check data to create (should include check type, params, etc.)
+            acting_user_id: Optional user ID to act on behalf of (for shared instances)
 
         Returns:
             Created check dictionary
@@ -86,7 +88,7 @@ class ChecksCloud(CloudBase):
             >>> print(f"Created check with ID: {check['id']}")
         """
         api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/checks"
-        response = self._request("POST", api_url, json=check_data)
+        response = self._request("POST", api_url, json=check_data, acting_user_id=acting_user_id)
 
         self._raise_for_status(
             response,
@@ -142,6 +144,7 @@ class ChecksCloud(CloudBase):
         session_id: str,
         check_id: str,
         check_data: Dict,
+        acting_user_id: Optional[str] = None,
     ) -> Dict:
         """
         Update an existing check.
@@ -152,6 +155,7 @@ class ChecksCloud(CloudBase):
             session_id: Session ID
             check_id: Check ID
             check_data: Updated check data (partial updates supported)
+            acting_user_id: Optional user ID to act on behalf of (for shared instances)
 
         Returns:
             Updated check dictionary
@@ -170,7 +174,7 @@ class ChecksCloud(CloudBase):
         api_url = (
             f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/checks/{check_id}"
         )
-        response = self._request("PATCH", api_url, json=check_data)
+        response = self._request("PATCH", api_url, json=check_data, acting_user_id=acting_user_id)
 
         self._raise_for_status(
             response,

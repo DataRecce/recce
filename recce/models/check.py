@@ -225,8 +225,16 @@ class CheckDAO:
                 org_id, project_id, session_id = self._get_session_info()
                 cloud_client = self._get_cloud_client()
 
+                # Get cloud user context for attribution (shared instance scenario)
+                from recce.websocket import get_current_cloud_user
+
+                cloud_user = get_current_cloud_user()
+                acting_user_id = str(cloud_user.user_id) if cloud_user else None
+
                 check_data = self._check_to_cloud_format(check)
-                cloud_check = cloud_client.create_check(org_id, project_id, session_id, check_data)
+                cloud_check = cloud_client.create_check(
+                    org_id, project_id, session_id, check_data, acting_user_id=acting_user_id
+                )
                 new_check = self._cloud_to_check(cloud_check)
 
                 logger.debug(f"Created check {new_check.check_id} in cloud")
@@ -288,9 +296,20 @@ class CheckDAO:
                 org_id, project_id, session_id = self._get_session_info()
                 cloud_client = self._get_cloud_client()
 
+                # Get cloud user context for attribution (shared instance scenario)
+                from recce.websocket import get_current_cloud_user
+
+                cloud_user = get_current_cloud_user()
+                acting_user_id = str(cloud_user.user_id) if cloud_user else None
+
                 # Directly send the patch object to the cloud API
                 cloud_data = cloud_client.update_check(
-                    org_id, project_id, session_id, str(check_id), patch.model_dump(exclude_unset=True)
+                    org_id,
+                    project_id,
+                    session_id,
+                    str(check_id),
+                    patch.model_dump(exclude_unset=True),
+                    acting_user_id=acting_user_id,
                 )
 
                 logger.debug(f"Updated check {check_id} in cloud")
