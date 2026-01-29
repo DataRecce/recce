@@ -379,9 +379,16 @@ async def extract_cloud_user_context(request: Request, call_next):
     # Extract user context from headers
     cloud_user = extract_cloud_user_from_headers(dict(request.headers))
 
+    # DEBUG: Log extraction for DRC-2643 investigation
     if cloud_user:
+        logger.info(
+            f"[DRC-2643] HTTP middleware: Extracted cloud_user - "
+            f"user_id={cloud_user.user_id}, user_login={cloud_user.user_login}"
+        )
         # Set the context for this request
         set_current_cloud_user(cloud_user)
+    else:
+        logger.info(f"[DRC-2643] HTTP middleware: NO cloud_user headers found in request to {request.url.path}")
 
     try:
         response = await call_next(request)
@@ -921,6 +928,12 @@ async def _handle_cloud_user_context(websocket: WebSocket, message: dict, manage
         # Store the user context
         user_context = context_message.to_context()
         manager.set_user_context(websocket, user_context)
+
+        # DEBUG: Log for DRC-2643 investigation
+        logger.info(
+            f"[DRC-2643] Instance WS: Received cloud_user_context - "
+            f"user_id={user_context.user_id}, user_login={user_context.user_login}"
+        )
 
         # Send acknowledgment
         await websocket.send_text(

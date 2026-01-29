@@ -269,6 +269,12 @@ async def create_comment(check_id: UUID, body: CreateCommentIn):
         cloud_user = get_current_cloud_user()
         acting_user_id = cloud_user.user_id if cloud_user else None
 
+        # DEBUG: Log for DRC-2643 investigation
+        logger.info(
+            f"[DRC-2643] Instance create_comment: cloud_user={'found' if cloud_user else 'None'}, "
+            f"acting_user_id={acting_user_id}, check_id={check_id}"
+        )
+
         event = client.create_comment(
             org_id, project_id, session_id, str(check_id), body.content, acting_user_id=acting_user_id
         )
