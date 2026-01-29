@@ -29,7 +29,7 @@ pip install recce-cloud
 ### Local Development
 
 ```bash
-# Login to Recce Cloud (opens browser for OAuth)
+# Login to Recce Cloud (opens browser for authentication)
 recce-cloud login
 
 # Initialize project binding (interactive)
@@ -148,8 +148,6 @@ The CLI supports multiple authentication methods (in priority order):
 
 1. Log in to [Recce Cloud](https://cloud.datarecce.io)
 2. Go to Settings → API Tokens
-3. Create a new token
-4. Add to CI/CD secrets as `RECCE_API_TOKEN`
 
 ## CI/CD Integration Examples
 
