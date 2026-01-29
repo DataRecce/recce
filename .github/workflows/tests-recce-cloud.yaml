@@ -30,7 +30,6 @@ jobs:
       - name: Install recce-cloud package and run tests
         working-directory: recce_cloud
         run: |
-          uv venv
-          uv pip install -e .[dev]
-          uv run flake8 ../recce_cloud/
+          uv sync --extra dev
+          uv run flake8 .
           uv run pytest tests/
