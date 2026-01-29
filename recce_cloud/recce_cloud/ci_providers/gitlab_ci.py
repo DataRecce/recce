@@ -50,7 +50,7 @@ class GitLabCIProvider(BaseCIProvider):
             server_url = os.getenv("CI_SERVER_URL", "https://gitlab.com")
             pr_url = f"{server_url}/{repository}/-/merge_requests/{pr_number}"
 
-        session_type = self.determine_session_type(pr_number, source_branch)
+        session_type = self.determine_session_type(pr_number, source_branch, base_branch)
 
         return CIInfo(
             platform="gitlab-ci",

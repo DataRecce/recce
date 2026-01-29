@@ -49,7 +49,7 @@ class GitHubActionsProvider(BaseCIProvider):
         if pr_number is not None and repository:
             pr_url = f"https://github.com/{repository}/pull/{pr_number}"
 
-        session_type = self.determine_session_type(pr_number, source_branch)
+        session_type = self.determine_session_type(pr_number, source_branch, base_branch)
 
         return CIInfo(
             platform="github-actions",

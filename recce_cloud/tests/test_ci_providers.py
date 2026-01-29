@@ -349,3 +349,104 @@ class TestCIDetector:
                 assert ci_info.source_branch == "feature-branch"
                 assert ci_info.base_branch == "main"
                 assert ci_info.session_type == "dev"
+
+    def test_apply_overrides_base_branch(self):
+        """Test applying base branch override."""
+        ci_info = CIInfo(base_branch="main", source_branch="main", session_type="prod")
+        ci_info = CIDetector.apply_overrides(ci_info, base_branch="stage")
+
+        assert ci_info.base_branch == "stage"
+
+    def test_apply_overrides_base_branch_with_custom_default(self):
+        """Test session type detection with custom default branch.
+
+        This is the scenario from the bug report where:
+        - Default branch is 'stage' (not 'main')
+        - Pushing to 'stage' should be treated as 'prod'
+        """
+        # Simulate GitHub Actions push to 'stage' branch
+        ci_info = CIInfo(
+            platform="github-actions",
+            pr_number=None,
+            base_branch="main",  # Default detection returns 'main'
+            source_branch="stage",  # Actually pushing to 'stage'
+            session_type="dev",  # Would be 'dev' without override
+        )
+        # User specifies --base-branch stage --type prod
+        ci_info = CIDetector.apply_overrides(ci_info, base_branch="stage", session_type="prod")
+
+        assert ci_info.base_branch == "stage"
+        assert ci_info.session_type == "prod"
+
+    def test_apply_overrides_session_type_preserves_manual(self):
+        """Test that manual session type override is preserved."""
+        ci_info = CIInfo(
+            pr_number=None,
+            base_branch="main",
+            source_branch="feature",
+            session_type="dev",
+        )
+        # Override both PR and session type
+        ci_info = CIDetector.apply_overrides(ci_info, pr=123, session_type="prod")
+
+        # Session type should be 'prod' (manually overridden), not 'pr'
+        assert ci_info.session_type == "prod"
+
+
+class TestDetermineSessionType:
+    """Tests for session type determination logic."""
+
+    def test_pr_number_returns_pr(self):
+        """Test that having a PR number returns 'pr' type."""
+        from recce_cloud.ci_providers.base import BaseCIProvider
+
+        assert BaseCIProvider.determine_session_type(123, "feature") == "pr"
+        assert BaseCIProvider.determine_session_type(1, "main") == "pr"
+
+    def test_main_branch_returns_prod(self):
+        """Test that 'main' source branch returns 'prod' type."""
+        from recce_cloud.ci_providers.base import BaseCIProvider
+
+        assert BaseCIProvider.determine_session_type(None, "main") == "prod"
+
+    def test_master_branch_returns_prod(self):
+        """Test that 'master' source branch returns 'prod' type."""
+        from recce_cloud.ci_providers.base import BaseCIProvider
+
+        assert BaseCIProvider.determine_session_type(None, "master") == "prod"
+
+    def test_feature_branch_returns_dev(self):
+        """Test that feature branches return 'dev' type."""
+        from recce_cloud.ci_providers.base import BaseCIProvider
+
+        assert BaseCIProvider.determine_session_type(None, "feature-xyz") == "dev"
+        assert BaseCIProvider.determine_session_type(None, "develop") == "dev"
+
+    def test_custom_base_branch_returns_prod(self):
+        """Test that custom base branch returns 'prod' type.
+
+        This is the key fix for repos with non-standard default branches.
+        """
+        from recce_cloud.ci_providers.base import BaseCIProvider
+
+        # When source_branch matches base_branch, it should be 'prod'
+        assert BaseCIProvider.determine_session_type(None, "stage", "stage") == "prod"
+        assert BaseCIProvider.determine_session_type(None, "develop", "develop") == "prod"
+        assert BaseCIProvider.determine_session_type(None, "production", "production") == "prod"
+
+    def test_custom_base_branch_feature_returns_dev(self):
+        """Test that feature branches with custom base still return 'dev'."""
+        from recce_cloud.ci_providers.base import BaseCIProvider
+
+        # Feature branches should still be 'dev' even with custom base
+        assert BaseCIProvider.determine_session_type(None, "feature", "stage") == "dev"
+        assert BaseCIProvider.determine_session_type(None, "hotfix", "develop") == "dev"
+
+    def test_standard_branches_still_work_with_base_branch(self):
+        """Test that main/master still work even if base_branch differs."""
+        from recce_cloud.ci_providers.base import BaseCIProvider
+
+        # 'main' should still be prod even if base_branch is something else
+        # This supports repos with multiple production-like branches
+        assert BaseCIProvider.determine_session_type(None, "main", "stage") == "prod"
+        assert BaseCIProvider.determine_session_type(None, "master", "develop") == "prod"

@@ -64,19 +64,28 @@ class BaseCIProvider(ABC):
             return None
 
     @staticmethod
-    def determine_session_type(pr_number: Optional[int], source_branch: Optional[str]) -> str:
+    def determine_session_type(
+        pr_number: Optional[int],
+        source_branch: Optional[str],
+        base_branch: Optional[str] = None,
+    ) -> str:
         """
         Determine session type based on context.
 
         Args:
             pr_number: Pull/Merge request number (PR/MR)
             source_branch: Source branch name
+            base_branch: Base/default branch name (if provided, used to detect prod)
 
         Returns:
             Session type: "pr", "prod", or "dev"
         """
         if pr_number is not None:
             return "pr"
+        # Check if source branch is the production/default branch
+        # First check against explicit base_branch, then common defaults
+        if base_branch and source_branch == base_branch:
+            return "prod"
         if source_branch in ["main", "master"]:
             return "prod"
         return "dev"

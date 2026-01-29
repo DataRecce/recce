@@ -479,7 +479,14 @@ def _get_production_session_id(console: Console, token: str) -> Optional[str]:
     is_flag=True,
     help="Show what would be uploaded without actually uploading",
 )
-def upload(target_path, session_id, session_name, skip_confirmation, pr, session_type, dry_run):
+@click.option(
+    "--base-branch",
+    type=str,
+    default=None,
+    help="Default/production branch name (overrides auto-detection). "
+    "Required for repos where the default branch is not 'main' or 'master'.",
+)
+def upload(target_path, session_id, session_name, skip_confirmation, pr, session_type, dry_run, base_branch):
     """
     Upload dbt artifacts (manifest.json, catalog.json) to Recce Cloud.
 
@@ -496,6 +503,9 @@ def upload(target_path, session_id, session_name, skip_confirmation, pr, session
 
       # Upload production metadata from main branch
       recce-cloud upload --type prod
+
+      # Upload production metadata when default branch is not 'main'
+      recce-cloud upload --type prod --base-branch stage
 
       # Upload to specific session by ID
       recce-cloud upload --session-id abc123
@@ -515,7 +525,7 @@ def upload(target_path, session_id, session_name, skip_confirmation, pr, session
     console.rule("CI Environment Detection", style="blue")
     try:
         ci_info = CIDetector.detect()
-        ci_info = CIDetector.apply_overrides(ci_info, pr=pr, session_type=session_type)
+        ci_info = CIDetector.apply_overrides(ci_info, pr=pr, session_type=session_type, base_branch=base_branch)
 
         # Display detected CI information immediately
         if ci_info:

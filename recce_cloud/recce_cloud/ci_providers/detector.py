@@ -58,6 +58,7 @@ class CIDetector:
         ci_info: CIInfo,
         pr: Optional[int] = None,
         session_type: Optional[str] = None,
+        base_branch: Optional[str] = None,
     ) -> CIInfo:
         """
         Apply manual overrides to detected CI information.
@@ -66,6 +67,7 @@ class CIDetector:
             ci_info: Detected CI information
             pr: Manual pull/merge request number override
             session_type: Manual session type override
+            base_branch: Manual base/default branch override (e.g., 'stage' instead of 'main')
 
         Returns:
             CIInfo with overrides applied
@@ -82,6 +84,10 @@ class CIDetector:
                     server_url = os.getenv("CI_SERVER_URL", "https://gitlab.com")
                     ci_info.pr_url = f"{server_url}/{ci_info.repository}/-/merge_requests/{pr}"
 
+        if base_branch is not None and base_branch != ci_info.base_branch:
+            logger.info(f"Using manual override: --base-branch {base_branch} (detected: {ci_info.base_branch})")
+            ci_info.base_branch = base_branch
+
         if session_type is not None and session_type != ci_info.session_type:
             logger.info(f"Using manual override: --type {session_type} (detected: {ci_info.session_type})")
             ci_info.session_type = session_type
@@ -89,7 +95,9 @@ class CIDetector:
         # Re-determine session type if PR was overridden
         if pr is not None:
             if session_type is None:  # Only if not manually overridden
-                ci_info.session_type = BaseCIProvider.determine_session_type(ci_info.pr_number, ci_info.source_branch)
+                ci_info.session_type = BaseCIProvider.determine_session_type(
+                    ci_info.pr_number, ci_info.source_branch, ci_info.base_branch
+                )
 
         return ci_info
 
@@ -104,14 +112,16 @@ class CIDetector:
         commit_sha = BaseCIProvider.run_git_command(["git", "rev-parse", "HEAD"])
         source_branch = BaseCIProvider.run_git_command(["git", "branch", "--show-current"])
 
-        session_type = BaseCIProvider.determine_session_type(None, source_branch)
+        # Note: base_branch defaults to "main" here, but can be overridden via --base-branch CLI option
+        default_base_branch = "main"
+        session_type = BaseCIProvider.determine_session_type(None, source_branch, default_base_branch)
 
         return CIInfo(
             platform=None,
             pr_number=None,
             session_type=session_type,
             commit_sha=commit_sha,
-            base_branch="main",  # Default
+            base_branch=default_base_branch,
             source_branch=source_branch,
             repository=None,
         )
