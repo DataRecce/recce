@@ -5,7 +5,7 @@ This module provides methods for managing check events (timeline/conversation) i
 including CRUD operations for comments and retrieving state change events.
 """
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from recce.util.cloud.base import CloudBase
 
@@ -94,7 +94,15 @@ class CheckEventsCloud(CloudBase):
         # Response is wrapped: {"event": {...}}
         return data.get("event", {})
 
-    def create_comment(self, org_id: str, project_id: str, session_id: str, check_id: str, content: str) -> Dict:
+    def create_comment(
+        self,
+        org_id: str,
+        project_id: str,
+        session_id: str,
+        check_id: str,
+        content: str,
+        acting_user_id: Optional[str] = None,
+    ) -> Dict:
         """
         Create a new comment on a check.
 
@@ -104,6 +112,7 @@ class CheckEventsCloud(CloudBase):
             session_id: Session ID
             check_id: Check ID
             content: Comment content (plain text or markdown)
+            acting_user_id: Optional user ID to attribute the comment to (for shared instances)
 
         Returns:
             Created event dictionary
@@ -119,7 +128,7 @@ class CheckEventsCloud(CloudBase):
             >>> print(f"Created comment with ID: {event['id']}")
         """
         api_url = self._build_events_url(org_id, project_id, session_id, check_id)
-        response = self._request("POST", api_url, json={"content": content})
+        response = self._request("POST", api_url, json={"content": content}, acting_user_id=acting_user_id)
 
         self._raise_for_status(
             response,
@@ -131,7 +140,14 @@ class CheckEventsCloud(CloudBase):
         return data.get("event", {})
 
     def update_comment(
-        self, org_id: str, project_id: str, session_id: str, check_id: str, event_id: str, content: str
+        self,
+        org_id: str,
+        project_id: str,
+        session_id: str,
+        check_id: str,
+        event_id: str,
+        content: str,
+        acting_user_id: Optional[str] = None,
     ) -> Dict:
         """
         Update an existing comment.
@@ -145,6 +161,7 @@ class CheckEventsCloud(CloudBase):
             check_id: Check ID
             event_id: Event ID of the comment to update
             content: New comment content
+            acting_user_id: Optional user ID performing the update (for shared instances)
 
         Returns:
             Updated event dictionary
@@ -153,7 +170,7 @@ class CheckEventsCloud(CloudBase):
             RecceCloudException: If the request fails or user is not authorized
         """
         api_url = f"{self._build_events_url(org_id, project_id, session_id, check_id)}/{event_id}"
-        response = self._request("PATCH", api_url, json={"content": content})
+        response = self._request("PATCH", api_url, json={"content": content}, acting_user_id=acting_user_id)
 
         self._raise_for_status(
             response,

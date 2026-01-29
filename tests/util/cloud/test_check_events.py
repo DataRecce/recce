@@ -174,7 +174,9 @@ class TestCheckEventsCloudCreateComment(unittest.TestCase):
 
         self.assertEqual(result["id"], "new-event-id")
         self.assertEqual(result["content"], "New comment")
-        mock_request.assert_called_once_with("POST", unittest.mock.ANY, json={"content": "New comment"})
+        mock_request.assert_called_once_with(
+            "POST", unittest.mock.ANY, json={"content": "New comment"}, acting_user_id=None
+        )
 
 
 class TestCheckEventsCloudUpdateComment(unittest.TestCase):
@@ -215,7 +217,9 @@ class TestCheckEventsCloudUpdateComment(unittest.TestCase):
 
         self.assertEqual(result["content"], "Updated content")
         self.assertTrue(result["is_edited"])
-        mock_request.assert_called_once_with("PATCH", unittest.mock.ANY, json={"content": "Updated content"})
+        mock_request.assert_called_once_with(
+            "PATCH", unittest.mock.ANY, json={"content": "Updated content"}, acting_user_id=None
+        )
 
 
 class TestCheckEventsCloudDeleteComment(unittest.TestCase):

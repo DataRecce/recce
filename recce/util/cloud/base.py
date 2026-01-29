@@ -49,7 +49,14 @@ class CloudBase:
         self.base_url = f"{RECCE_CLOUD_API_HOST}/api/v1"
         self.base_url_v2 = f"{RECCE_CLOUD_API_HOST}/api/v2"
 
-    def _request(self, method: str, url: str, headers: Optional[Dict] = None, **kwargs):
+    def _request(
+        self,
+        method: str,
+        url: str,
+        headers: Optional[Dict] = None,
+        acting_user_id: Optional[str] = None,
+        **kwargs,
+    ):
         """
         Make an authenticated HTTP request to Recce Cloud API.
 
@@ -57,6 +64,7 @@ class CloudBase:
             method: HTTP method (GET, POST, PATCH, DELETE, etc.)
             url: Full URL for the request
             headers: Optional additional headers
+            acting_user_id: Optional user ID to act on behalf of (for shared instances)
             **kwargs: Additional arguments passed to requests.request
 
         Returns:
@@ -66,6 +74,11 @@ class CloudBase:
             **(headers or {}),
             "Authorization": f"Bearer {self.token}",
         }
+
+        # Include acting user header for shared instance user attribution
+        if acting_user_id:
+            headers["X-Recce-Acting-User-Id"] = acting_user_id
+
         url = self._replace_localhost_with_docker_internal(url)
         return requests.request(method, url, headers=headers, **kwargs)
 

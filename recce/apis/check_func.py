@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from recce.apis.run_func import generate_run_name
 from recce.core import default_context
 from recce.models import Check, CheckDAO, RunDAO, RunType
+from recce.websocket import get_current_cloud_user
 
 
 def validate_schema_diff_check(params):
@@ -77,6 +78,11 @@ def create_check_from_run(
 
     _validate_check(run_type, run_params)
     name = check_name if check_name is not None else generate_run_name(run)
+
+    # Get cloud user context for attribution if available
+    cloud_user = get_current_cloud_user()
+    created_by = cloud_user.user_email if cloud_user else None
+
     check = Check(
         name=name,
         description=check_description,
@@ -85,6 +91,7 @@ def create_check_from_run(
         view_options=check_view_options,
         is_preset=is_preset,
         is_checked=is_checked,
+        created_by=created_by,
     )
     new_check = CheckDAO().create(check)
     run.check_id = new_check.check_id
@@ -96,6 +103,11 @@ def create_check_without_run(
     check_name, check_description, check_type, params, check_view_options, is_preset=False, is_checked=False
 ):
     name = check_name if check_name is not None else _generate_check_name(check_type, params, check_view_options)
+
+    # Get cloud user context for attribution if available
+    cloud_user = get_current_cloud_user()
+    created_by = cloud_user.user_email if cloud_user else None
+
     check = Check(
         name=name,
         description=check_description,
@@ -104,6 +116,7 @@ def create_check_without_run(
         view_options=check_view_options,
         is_preset=is_preset,
         is_checked=is_checked,
+        created_by=created_by,
     )
     new_check = CheckDAO().create(check)
     return new_check

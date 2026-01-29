@@ -30,11 +30,10 @@ jobs:
         with:
           version: "latest"
 
-      - name: Install dependencies
-        run: pip install -e .[dev,mcp]
-
-      - name: Run flake8
-        run: make flake8
+      - name: Install dependencies and run flake8
+        run: |
+          uv sync --all-extras --python 3.12
+          uv run flake8 ./recce ./tests
 
   test-dbt-versions:
     name: Test DBT Versions
@@ -44,6 +43,11 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
@@ -59,8 +63,10 @@ jobs:
             ${{ runner.os }}-tox-uv-${{ hashFiles('tox.ini', 'pyproject.toml') }}-
             ${{ runner.os }}-tox-uv-
 
-      - name: Install dependencies
-        run: pip install -e .[dev,mcp]
+      - name: Install tox and tox-uv
+        run: |
+          uv venv
+          uv pip install tox tox-uv
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -76,7 +82,9 @@ jobs:
         run: make build-frontend
 
       - name: Run tests
-        run: make test-tox
+        run: |
+          source .venv/bin/activate
+          make test-tox
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
@@ -91,6 +99,11 @@ jobs:
         python-version: [ "3.11", "3.12", "3.13" ]
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
@@ -119,8 +132,12 @@ jobs:
             ${{ runner.os }}-tox-uv-${{ hashFiles('tox.ini', 'pyproject.toml') }}-
             ${{ runner.os }}-tox-uv-
 
-      - name: Install dependencies
-        run: pip install -e .[dev,mcp]
+      - name: Install tox and tox-uv
+        run: |
+          uv venv
+          uv pip install tox tox-uv
 
       - name: Run test with specified Python version
-        run: tox -e ${{ matrix.python-version }}
+        run: |
+          source .venv/bin/activate
+          tox -e ${{ matrix.python-version }}

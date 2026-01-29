@@ -394,11 +394,13 @@ class TestGetCheckEventEndpoint(unittest.TestCase):
 class TestCreateCommentEndpoint(unittest.TestCase):
     """Tests for create_comment endpoint."""
 
+    @patch("recce.apis.check_events_api.get_current_cloud_user")
     @patch("recce.apis.check_events_api._get_events_client")
     @patch("recce.apis.check_events_api._get_session_info")
-    def test_create_comment_success(self, mock_session_info, mock_get_client):
+    def test_create_comment_success(self, mock_session_info, mock_get_client, mock_get_cloud_user):
         """Test successful comment creation."""
         mock_session_info.return_value = ("org-1", "proj-1", "sess-1")
+        mock_get_cloud_user.return_value = None
         mock_client = MagicMock()
         mock_client.create_comment.return_value = {
             "id": "new-evt",
@@ -412,7 +414,9 @@ class TestCreateCommentEndpoint(unittest.TestCase):
         result = run_async(create_comment(check_id, body))
 
         self.assertEqual(result["id"], "new-evt")
-        mock_client.create_comment.assert_called_once_with("org-1", "proj-1", "sess-1", str(check_id), "New comment")
+        mock_client.create_comment.assert_called_once_with(
+            "org-1", "proj-1", "sess-1", str(check_id), "New comment", acting_user_id=None
+        )
 
     def test_create_comment_empty_content(self):
         """Test create_comment rejects empty content."""
@@ -458,11 +462,13 @@ class TestCreateCommentEndpoint(unittest.TestCase):
 class TestUpdateCommentEndpoint(unittest.TestCase):
     """Tests for update_comment endpoint."""
 
+    @patch("recce.apis.check_events_api.get_current_cloud_user")
     @patch("recce.apis.check_events_api._get_events_client")
     @patch("recce.apis.check_events_api._get_session_info")
-    def test_update_comment_success(self, mock_session_info, mock_get_client):
+    def test_update_comment_success(self, mock_session_info, mock_get_client, mock_get_cloud_user):
         """Test successful comment update."""
         mock_session_info.return_value = ("org-1", "proj-1", "sess-1")
+        mock_get_cloud_user.return_value = None
         mock_client = MagicMock()
         mock_client.update_comment.return_value = {
             "id": "evt-1",
@@ -480,7 +486,7 @@ class TestUpdateCommentEndpoint(unittest.TestCase):
         self.assertEqual(result["content"], "Updated")
         self.assertTrue(result["is_edited"])
         mock_client.update_comment.assert_called_once_with(
-            "org-1", "proj-1", "sess-1", str(check_id), str(event_id), "Updated"
+            "org-1", "proj-1", "sess-1", str(check_id), str(event_id), "Updated", acting_user_id=None
         )
 
     def test_update_comment_empty_content(self):

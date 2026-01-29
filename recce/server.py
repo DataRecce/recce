@@ -47,9 +47,15 @@ from .event import get_recce_api_token, log_api_event, log_single_env_event
 from .exceptions import RecceException
 from .github import is_github_codespace
 from .models.types import CllData
+from .models.websocket import CloudUserContextMessage
 from .run import load_preset_checks
 from .state import RecceShareStateManager, RecceStateLoader
 from .util.startup_perf import track_timing
+from .websocket import (
+    extract_cloud_user_from_headers,
+    get_connection_manager,
+    set_current_cloud_user,
+)
 
 logger = logging.getLogger("uvicorn")
 
@@ -316,8 +322,6 @@ def dbt_env_updated_callback():
     asyncio.run(broadcast(payload))
 
 
-clients = set()
-
 origins = [
     "http://localhost:3000",
     "http://localhost:3001",
@@ -356,6 +360,36 @@ async def track_activity_for_idle_timeout(request: Request, call_next):
 
     response = await call_next(request)
     return response
+
+
+@app.middleware("http")
+async def extract_cloud_user_context(request: Request, call_next):
+    """
+    Extract cloud user context from HTTP headers sent by Recce Cloud proxy.
+
+    When Recce Cloud proxies HTTP requests to a shared instance, it can include
+    headers identifying the authenticated user. This middleware extracts those
+    headers and sets the user context for the duration of the request.
+
+    Headers:
+        X-Recce-User-Id: The user's UUID
+        X-Recce-User-Login: The user's login/username
+        X-Recce-User-Email: The user's email (optional)
+    """
+    # Extract user context from headers
+    cloud_user = extract_cloud_user_from_headers(dict(request.headers))
+
+    if cloud_user:
+        # Set the context for this request
+        set_current_cloud_user(cloud_user)
+
+    try:
+        response = await call_next(request)
+        return response
+    finally:
+        # Clear the context after the request completes
+        if cloud_user:
+            set_current_cloud_user(None)
 
 
 @app.middleware("http")
@@ -824,19 +858,102 @@ async def version():
 @app.websocket("/api/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    clients.add(websocket)
+    manager = get_connection_manager()
+    manager.connect(websocket)
     try:
         while True:
             data = await websocket.receive_text()
-            if data == "ping":
-                await websocket.send_text("pong")
+            await _handle_websocket_message(websocket, data, manager)
     except WebSocketDisconnect:
-        clients.remove(websocket)
+        manager.disconnect(websocket)
+
+
+async def _handle_websocket_message(websocket: WebSocket, data: str, manager) -> None:
+    """
+    Handle incoming WebSocket messages.
+
+    Supports:
+    - Plain text "ping" messages (backward compatibility)
+    - JSON messages with "type" field for routing
+    """
+    # Handle plain text ping for backward compatibility
+    if data == "ping":
+        await websocket.send_text("pong")
+        return
+
+    # Try to parse as JSON
+    try:
+        message = json.loads(data)
+    except json.JSONDecodeError:
+        logger.warning(f"Received non-JSON WebSocket message: {data[:100]}")
+        return
+
+    # Route based on message type
+    message_type = message.get("type")
+
+    if message_type == "cloud_user_context":
+        await _handle_cloud_user_context(websocket, message, manager)
+    elif message_type == "ping":
+        # JSON ping format
+        await websocket.send_text(json.dumps({"type": "pong"}))
+    else:
+        logger.debug(f"Unhandled WebSocket message type: {message_type}")
+
+
+async def _handle_cloud_user_context(websocket: WebSocket, message: dict, manager) -> None:
+    """
+    Handle cloud_user_context message from Recce Cloud.
+
+    This message is sent when Recce Cloud proxies a WebSocket connection
+    to identify the authenticated user.
+    """
+    try:
+        # Validate and parse the message
+        context_message = CloudUserContextMessage(**message)
+
+        # Check version compatibility
+        if context_message.version > 1:
+            logger.warning(
+                f"Received cloud_user_context with unsupported version: "
+                f"{context_message.version}. Some fields may be ignored."
+            )
+
+        # Store the user context
+        user_context = context_message.to_context()
+        manager.set_user_context(websocket, user_context)
+
+        # Send acknowledgment
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "cloud_user_context_ack",
+                    "status": "ok",
+                    "user_login": user_context.user_login,
+                }
+            )
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to process cloud_user_context message: {e}")
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "cloud_user_context_ack",
+                    "status": "error",
+                    "error": str(e),
+                }
+            )
+        )
 
 
 async def broadcast(data: str):
-    for client in clients:
-        await client.send_text(data)
+    """Broadcast a message to all connected WebSocket clients."""
+    manager = get_connection_manager()
+    for client in manager.clients:
+        try:
+            await client.send_text(data)
+        except Exception as e:
+            logger.debug(f"Failed to send to client: {e}")
 
 
 @app.post("/api/connect")

@@ -4,17 +4,17 @@
 default: help
 
 install-dev:
-	pip install -e .[dev,mcp]
+	uv pip install --system -e .[dev,mcp]
 	git config --unset-all core.hooksPath && pre-commit install
 
 install:
-	pip install .
+	uv pip install --system .
 
 install-cloud:
-	pip install -e ./recce_cloud
+	uv pip install --system -e ./recce_cloud
 
 install-cloud-dev:
-	pip install -e ./recce_cloud[dev]
+	uv pip install --system -e ./recce_cloud[dev]
 
 help:
 	@echo "Available commands:"
@@ -82,7 +82,7 @@ test-coverage: install-dev
 	@python3 -m pytest --cov=recce --cov-report=html --cov-report=term tests
 	@echo "Coverage report generated in htmlcov/index.html"
 
-test-tox: install-dev
+test-tox:
 	@echo "Running tests with Tox based on DBT versions..."
 	@tox run-parallel
 
