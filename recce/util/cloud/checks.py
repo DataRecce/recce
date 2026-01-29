@@ -87,12 +87,6 @@ class ChecksCloud(CloudBase):
             >>> check = client.create_check("org123", "proj456", "sess789", check_data)
             >>> print(f"Created check with ID: {check['id']}")
         """
-        import logging
-        logger = logging.getLogger("uvicorn")
-        logger.info(
-            f"[DRC-2643] ChecksCloud.create_check: acting_user_id={acting_user_id}, session={session_id}"
-        )
-
         api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/checks"
         response = self._request("POST", api_url, json=check_data, acting_user_id=acting_user_id)
 

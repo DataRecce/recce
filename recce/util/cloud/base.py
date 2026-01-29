@@ -78,14 +78,6 @@ class CloudBase:
         # Include acting user header for shared instance user attribution
         if acting_user_id:
             headers["X-Recce-Acting-User-Id"] = acting_user_id
-            # DEBUG: Log for DRC-2643 investigation
-            import logging
-            logger = logging.getLogger("uvicorn")
-            logger.info(f"[DRC-2643] CloudBase._request: Adding X-Recce-Acting-User-Id={acting_user_id} to {method} {url}")
-        else:
-            import logging
-            logger = logging.getLogger("uvicorn")
-            logger.info(f"[DRC-2643] CloudBase._request: NO X-Recce-Acting-User-Id (acting_user_id is None) for {method} {url}")
 
         url = self._replace_localhost_with_docker_internal(url)
         return requests.request(method, url, headers=headers, **kwargs)
