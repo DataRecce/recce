@@ -227,14 +227,9 @@ class CheckDAO:
 
                 # Get cloud user context for attribution (shared instance scenario)
                 from recce.websocket import get_current_cloud_user
+
                 cloud_user = get_current_cloud_user()
                 acting_user_id = str(cloud_user.user_id) if cloud_user else None
-
-                # DEBUG: Log for DRC-2643 investigation
-                logger.info(
-                    f"[DRC-2643] CheckDAO.create: cloud_user={'found' if cloud_user else 'None'}, "
-                    f"acting_user_id={acting_user_id}"
-                )
 
                 check_data = self._check_to_cloud_format(check)
                 cloud_check = cloud_client.create_check(
@@ -303,14 +298,18 @@ class CheckDAO:
 
                 # Get cloud user context for attribution (shared instance scenario)
                 from recce.websocket import get_current_cloud_user
+
                 cloud_user = get_current_cloud_user()
                 acting_user_id = str(cloud_user.user_id) if cloud_user else None
 
                 # Directly send the patch object to the cloud API
                 cloud_data = cloud_client.update_check(
-                    org_id, project_id, session_id, str(check_id),
+                    org_id,
+                    project_id,
+                    session_id,
+                    str(check_id),
                     patch.model_dump(exclude_unset=True),
-                    acting_user_id=acting_user_id
+                    acting_user_id=acting_user_id,
                 )
 
                 logger.debug(f"Updated check {check_id} in cloud")
