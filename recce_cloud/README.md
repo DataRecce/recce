@@ -20,8 +20,31 @@ catalog.json) to/from Recce Cloud without the full `recce` package dependencies.
 
 ## Installation
 
+### Quick Run (no install needed)
+
+Using [uv](https://github.com/astral-sh/uv), you can run `recce-cloud` directly
+without installation:
+
 ```bash
+# Run with uvx (creates temporary isolated environment)
+uvx recce-cloud upload --type prod
+uvx recce-cloud download --prod --target-path target-base
+
+# Short alias also available
+uvx --from recce-cloud rcc upload --type prod
+```
+
+### Permanent Install
+
+```bash
+# With uv (recommended)
+uv tool install recce-cloud
+
+# With pip
 pip install recce-cloud
+
+# With pipx
+pipx install recce-cloud
 ```
 
 ## Quick Start
