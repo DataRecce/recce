@@ -33,9 +33,14 @@ dev = [
 
 [project.scripts]
 recce-cloud = "recce_cloud.cli:cloud_cli"
+rcc = "recce_cloud.cli:cloud_cli"
 
 [project.urls]
-"Bug Tracker" = "https://github.com/InfuseAI/recce/issues"
+Homepage = "https://cloud.reccehq.com"
+Documentation = "https://docs.reccehq.com"
+Repository = "https://github.com/DataRecce/recce"
+"Bug Tracker" = "https://github.com/DataRecce/recce/issues"
+Changelog = "https://github.com/DataRecce/recce/releases"
 
 [build-system]
 requires = ["hatchling"]
@@ -59,4 +64,3 @@ include = [
     "recce_cloud/**/*.html",
     "recce_cloud/VERSION",
 ]
-

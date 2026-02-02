@@ -43,6 +43,7 @@ logging.getLogger("recce_cloud.ci_providers.detector").setLevel(logging.WARNING)
 
 
 @click.group()
+@click.version_option(version=__version__, prog_name="recce-cloud")
 def cloud_cli():
     """
     Recce Cloud CLI - Manage Recce Cloud sessions and state files.
