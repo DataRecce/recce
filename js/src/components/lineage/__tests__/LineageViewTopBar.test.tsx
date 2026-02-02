@@ -1057,7 +1057,7 @@ describe("LineageViewTopBar", () => {
       });
     });
 
-    it("disables Lineage Diff when single node is focused", async () => {
+    it("enables Lineage Diff when single node is focused", async () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({
           focusedNode: createMockNode("node1", "node1"),
@@ -1072,11 +1072,11 @@ describe("LineageViewTopBar", () => {
 
       await waitFor(() => {
         const lineageDiffItem = screen.getByText("Lineage Diff").closest("li");
-        expect(lineageDiffItem).toHaveAttribute("aria-disabled", "true");
+        expect(lineageDiffItem).not.toHaveAttribute("aria-disabled", "true");
       });
     });
 
-    it("disables Lineage Diff when only one node is selected", async () => {
+    it("enables Lineage Diff when only one node is selected", async () => {
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({
           selectedNodes: [createMockNode("node1", "node1")],
@@ -1090,7 +1090,7 @@ describe("LineageViewTopBar", () => {
 
       await waitFor(() => {
         const lineageDiffItem = screen.getByText("Lineage Diff").closest("li");
-        expect(lineageDiffItem).toHaveAttribute("aria-disabled", "true");
+        expect(lineageDiffItem).not.toHaveAttribute("aria-disabled", "true");
       });
     });
   });

@@ -946,15 +946,8 @@ export function PrivateLineageView(
       }
     },
     addLineageDiffCheck: async () => {
-      let check: Check | undefined = undefined;
-      if (selectMode === "selecting") {
-        check = await multiNodeAction.addLineageDiffCheck();
-        deselect();
-        trackMultiNodesAction({ type: "lineage_diff", selected: "multi" });
-      } else if (!focusedNode) {
-        check = await createLineageDiffCheck(viewOptions, apiClient);
-        trackMultiNodesAction({ type: "lineage_diff", selected: "none" });
-      }
+      const check = await createLineageDiffCheck(viewOptions, apiClient);
+      trackMultiNodesAction({ type: "lineage_diff", selected: "none" });
 
       if (check) {
         navToCheck(check);
