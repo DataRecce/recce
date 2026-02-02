@@ -156,7 +156,7 @@ function PrivateSingleEnvSchemaView(
           getRowClass={getRowClass}
           onCellClicked={handleCellClicked}
           onGridReady={handleGridReady}
-          rowSelection={{ mode: "singleRow" }}
+          rowSelection={{ mode: "singleRow", checkboxes: false }}
           containerClassName="no-track-pii-safe"
           rowClassName="no-track-pii-safe"
         />
@@ -326,7 +326,7 @@ export function PrivateSchemaView(
           getRowClass={getRowClass}
           onCellClicked={handleCellClicked}
           onGridReady={handleGridReady}
-          rowSelection={{ mode: "singleRow" }}
+          rowSelection={{ mode: "singleRow", checkboxes: false }}
           containerClassName="no-track-pii-safe"
           rowClassName="no-track-pii-safe"
         />
