@@ -1,0 +1,5 @@
+{
+  "name": "docs-sync",
+  "version": "1.0.0",
+  "description": "Automatically sync documentation when CLI code changes"
+}
