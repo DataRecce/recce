@@ -1,0 +1,10 @@
+{
+  "hooks": {
+    "NotificationShown": [
+      {
+        "matcher": "",
+        "command": ".claude/hooks/docs-sync-check.sh"
+      }
+    ]
+  }
+}
