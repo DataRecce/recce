@@ -946,8 +946,18 @@ export function PrivateLineageView(
       }
     },
     addLineageDiffCheck: async () => {
+      // create lineage diff check based on the current lineage view (ignoring focus/selection).
       const check = await createLineageDiffCheck(viewOptions, apiClient);
-      trackMultiNodesAction({ type: "lineage_diff", selected: "none" });
+      // the mode is tracked for analytics purposes.
+      let selectedMode: "multi" | "single" | "none";
+      if (selectMode === "selecting") {
+        selectedMode = "multi";
+      } else if (focusedNode) {
+        selectedMode = "single";
+      } else {
+        selectedMode = "none";
+      }
+      trackMultiNodesAction({ type: "lineage_diff", selected: selectedMode });
 
       if (check) {
         navToCheck(check);
