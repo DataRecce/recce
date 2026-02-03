@@ -72,7 +72,7 @@ Cloud features require:
 export RECCE_CLOUD_TOKEN=your_token
 
 # Verify connection works by listing organizations
-recce-cloud list-organizations
+recce cloud list-organizations
 ```
 
 ## API Rate Limits

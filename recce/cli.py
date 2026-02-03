@@ -1398,14 +1398,14 @@ def list_projects(**kwargs):
 
         # Using environment variable
         export RECCE_ORGANIZATION_ID=8
-        recce-cloud list-projects
+        recce cloud list-projects
 
         # Using command line argument
-        recce-cloud list-projects --organization 8
+        recce cloud list-projects --organization 8
 
         # Override environment variable
         export RECCE_ORGANIZATION_ID=8
-        recce-cloud list-projects --organization 10
+        recce cloud list-projects --organization 10
     """
     from rich.console import Console
     from rich.table import Table
@@ -1481,19 +1481,19 @@ def list_sessions(**kwargs):
         # Using environment variables
         export RECCE_ORGANIZATION_ID=8
         export RECCE_PROJECT_ID=7
-        recce-cloud list-sessions
+        recce cloud list-sessions
 
         # Using command line arguments
-        recce-cloud list-sessions --organization 8 --project 7
+        recce cloud list-sessions --organization 8 --project 7
 
         # Mixed usage (env + CLI override)
         export RECCE_ORGANIZATION_ID=8
-        recce-cloud list-sessions --project 7
+        recce cloud list-sessions --project 7
 
         # Override environment variables
         export RECCE_ORGANIZATION_ID=8
         export RECCE_PROJECT_ID=7
-        recce-cloud list-sessions --organization 10 --project 9
+        recce cloud list-sessions --organization 10 --project 9
     """
     from rich.console import Console
     from rich.table import Table
