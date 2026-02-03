@@ -177,9 +177,6 @@ importers:
       react-markdown:
         specifier: ^10.1.0
         version: 10.1.0(@types/react@19.2.9)(react@19.2.4)
-      react-select:
-        specifier: ^5.10.2
-        version: 5.10.2(@types/react@19.2.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       react-split:
         specifier: ^2.0.14
         version: 2.0.14(react@19.2.4)
@@ -1029,15 +1026,6 @@ packages:
     peerDependenciesMeta:
       '@exodus/crypto':
         optional: true
-
-  '@floating-ui/core@1.7.3':
-    resolution: {integrity: sha512-sGnvb5dmrJaKEZ+LDIpguvdX3bDlEllmv4/ClQ9awcmCZrlx5jQyyMWFM5kBI+EyNOCDDiKk8il0zeuX3Zlg/w==}
-
-  '@floating-ui/dom@1.7.4':
-    resolution: {integrity: sha512-OOchDgh4F2CchOX94cRVqhvy7b3AFb+/rQXyswmzmGakRfkMgoWVjfnLWkRirfLEfuD4ysVW16eXzwt3jHIzKA==}
-
-  '@floating-ui/utils@0.2.10':
-    resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
 
   '@fontsource/montserrat@5.2.8':
     resolution: {integrity: sha512-xTjLxSbSfCycDB0pwmNsfNvdfWPaDaRQ2LC6yt/ZI7SdvXG52zHnzNYC/09mzuAuWNJyShkteutfCoDgym56hQ==}
@@ -3942,9 +3930,6 @@ packages:
   mdurl@2.0.0:
     resolution: {integrity: sha512-Lf+9+2r+Tdp5wXDXC4PcIBjTDtq4UKjCPMQhKIuzpJNW0b96kVqSwW0bT7FhRSfmAiFYgP+SCRvdrDozfh0U5w==}
 
-  memoize-one@6.0.0:
-    resolution: {integrity: sha512-rkpe71W0N0c0Xz6QD0eJETuWAJGnJ9afsl1srmwPrI+yBCkge5EycXXbYRyvL29zZVUWQCY7InPRCv3GDXuZNw==}
-
   merge-stream@2.0.0:
     resolution: {integrity: sha512-abv/qOcuPfk3URPfDzmZU1LKmuw8kT+0nIHvKrKgFrwifol/doWcdA4ZqsWQ8ENrFKkd67Mfpo/LovbIUsbt3w==}
 
@@ -4372,12 +4357,6 @@ packages:
   react-refresh@0.18.0:
     resolution: {integrity: sha512-QgT5//D3jfjJb6Gsjxv0Slpj23ip+HtOpnNgnb2S5zU3CB26G/IDPGoy4RJB42wzFE46DRsstbW6tKHoKbhAxw==}
     engines: {node: '>=0.10.0'}
-
-  react-select@5.10.2:
-    resolution: {integrity: sha512-Z33nHdEFWq9tfnfVXaiM12rbJmk+QjFEztWLtmXqQhz6Al4UZZ9xc0wiatmGtUOCCnHN0WizL3tCMYRENX4rVQ==}
-    peerDependencies:
-      react: 19.2.4
-      react-dom: 19.2.4
 
   react-split@2.0.14:
     resolution: {integrity: sha512-bKWydgMgaKTg/2JGQnaJPg51T6dmumTWZppFgEbbY0Fbme0F5TuatAScCLaqommbGQQf/ZT1zaejuPDriscISA==}
@@ -4895,15 +4874,6 @@ packages:
     hasBin: true
     peerDependencies:
       browserslist: '>= 4.21.0'
-
-  use-isomorphic-layout-effect@1.2.1:
-    resolution: {integrity: sha512-tpZZ+EX0gaghDAiFR37hj5MgY6ZN55kLiPkJsKxBMZ6GZdOSPJXiOzPM984oPYZ5AnehYx5WQp1+ME8I/P/pRA==}
-    peerDependencies:
-      '@types/react': '*'
-      react: 19.2.4
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
 
   use-sync-external-store@1.6.0:
     resolution: {integrity: sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==}
@@ -5917,17 +5887,6 @@ snapshots:
 
   '@exodus/bytes@1.8.0':
     optional: true
-
-  '@floating-ui/core@1.7.3':
-    dependencies:
-      '@floating-ui/utils': 0.2.10
-
-  '@floating-ui/dom@1.7.4':
-    dependencies:
-      '@floating-ui/core': 1.7.3
-      '@floating-ui/utils': 0.2.10
-
-  '@floating-ui/utils@0.2.10': {}
 
   '@fontsource/montserrat@5.2.8': {}
 
@@ -8891,8 +8850,6 @@ snapshots:
 
   mdurl@2.0.0: {}
 
-  memoize-one@6.0.0: {}
-
   merge-stream@2.0.0: {}
 
   micromark-core-commonmark@2.0.3:
@@ -9411,23 +9368,6 @@ snapshots:
       redux: 5.0.1
 
   react-refresh@0.18.0: {}
-
-  react-select@5.10.2(@types/react@19.2.9)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
-    dependencies:
-      '@babel/runtime': 7.28.6
-      '@emotion/cache': 11.14.0
-      '@emotion/react': 11.14.0(@types/react@19.2.9)(react@19.2.4)
-      '@floating-ui/dom': 1.7.4
-      '@types/react-transition-group': 4.4.12(@types/react@19.2.9)
-      memoize-one: 6.0.0
-      prop-types: 15.8.1
-      react: 19.2.4
-      react-dom: 19.2.4(react@19.2.4)
-      react-transition-group: 4.4.5(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      use-isomorphic-layout-effect: 1.2.1(@types/react@19.2.9)(react@19.2.4)
-    transitivePeerDependencies:
-      - '@types/react'
-      - supports-color
 
   react-split@2.0.14(react@19.2.4):
     dependencies:
@@ -10043,12 +9983,6 @@ snapshots:
       browserslist: 4.28.1
       escalade: 3.2.0
       picocolors: 1.1.1
-
-  use-isomorphic-layout-effect@1.2.1(@types/react@19.2.9)(react@19.2.4):
-    dependencies:
-      react: 19.2.4
-    optionalDependencies:
-      '@types/react': 19.2.9
 
   use-sync-external-store@1.6.0(react@19.2.4):
     dependencies:

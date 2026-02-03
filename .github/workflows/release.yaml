@@ -90,6 +90,13 @@ jobs:
           ignore_missing: true
           version: ${{ steps.patch_version.outputs.release_version }}
 
+      - name: Upload version artifact for UI release
+        uses: actions/upload-artifact@v4
+        with:
+          name: recce-release-version
+          path: recce/VERSION
+          retention-days: 1
+
   build-recce-cloud:
     name: Build Recce Cloud Official Release
     runs-on: ubuntu-latest

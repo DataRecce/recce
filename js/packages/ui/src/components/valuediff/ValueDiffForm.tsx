@@ -12,25 +12,16 @@
  * Uses the useModelColumns hook from @datarecce/ui/hooks to fetch column metadata.
  */
 
+import Autocomplete from "@mui/material/Autocomplete";
 import Box from "@mui/material/Box";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import { useEffect, useMemo, useState } from "react";
-import ReactSelect, {
-  type CSSObjectWithLabel,
-  type MultiValue,
-} from "react-select";
-import { useIsDark, useModelColumns } from "../../hooks";
-import { colors } from "../../theme";
+import { useEffect, useState } from "react";
+import { useModelColumns } from "../../hooks";
 import type { RunFormProps } from "../run";
-
-interface ColumnOption {
-  label: string;
-  value: string;
-}
 
 export interface ValueDiffFormParams {
   model: string;
@@ -45,79 +36,12 @@ export function ValueDiffForm({
   onParamsChanged,
   setIsReadyToExecute,
 }: ValueDiffFormProp) {
-  const isDark = useIsDark();
   const [allColumns, setAllColumns] = useState<boolean>(
     !params.columns || params.columns.length === 0,
   );
 
   const model = params.model;
   const primaryKey = params.primary_key;
-
-  const selectStyles = useMemo(
-    () => ({
-      container: (base: CSSObjectWithLabel) => ({
-        ...base,
-        width: "100%",
-      }),
-      control: (base: CSSObjectWithLabel) => ({
-        ...base,
-        minHeight: "40px",
-        backgroundColor: isDark ? colors.neutral[700] : base.backgroundColor,
-        borderColor: isDark ? colors.neutral[600] : base.borderColor,
-      }),
-      menu: (base: CSSObjectWithLabel) => ({
-        ...base,
-        backgroundColor: isDark ? colors.neutral[700] : base.backgroundColor,
-      }),
-      option: (
-        base: CSSObjectWithLabel,
-        state: { isFocused: boolean; isSelected: boolean },
-      ) => ({
-        ...base,
-        backgroundColor: state.isSelected
-          ? isDark
-            ? colors.neutral[600]
-            : colors.iochmara[500]
-          : state.isFocused
-            ? isDark
-              ? colors.neutral[600]
-              : colors.iochmara[50]
-            : isDark
-              ? colors.neutral[700]
-              : base.backgroundColor,
-        color: isDark ? colors.neutral[200] : base.color,
-      }),
-      multiValue: (base: CSSObjectWithLabel) => ({
-        ...base,
-        backgroundColor: isDark ? colors.neutral[600] : base.backgroundColor,
-      }),
-      multiValueLabel: (base: CSSObjectWithLabel) => ({
-        ...base,
-        color: isDark ? colors.neutral[200] : base.color,
-      }),
-      multiValueRemove: (base: CSSObjectWithLabel) => ({
-        ...base,
-        color: isDark ? colors.neutral[400] : base.color,
-        "&:hover": {
-          backgroundColor: isDark ? colors.neutral[500] : colors.red[200],
-          color: isDark ? colors.neutral[200] : colors.red[600],
-        },
-      }),
-      input: (base: CSSObjectWithLabel) => ({
-        ...base,
-        color: isDark ? colors.neutral[200] : base.color,
-      }),
-      singleValue: (base: CSSObjectWithLabel) => ({
-        ...base,
-        color: isDark ? colors.neutral[200] : base.color,
-      }),
-      placeholder: (base: CSSObjectWithLabel) => ({
-        ...base,
-        color: isDark ? colors.neutral[400] : base.color,
-      }),
-    }),
-    [isDark],
-  );
 
   const {
     columns,
@@ -178,29 +102,29 @@ export function ValueDiffForm({
         <Typography variant="body2" sx={{ mb: 1 }}>
           Primary key
         </Typography>
-        <ReactSelect
-          placeholder="Select primary key"
-          className="no-track-pii-safe"
-          isMulti
-          closeMenuOnSelect={false}
-          options={columnNames.map((c) => ({ label: c, value: c }))}
-          value={(primaryKeys ?? [])
-            .filter((c): c is string => c !== undefined)
-            .map((c) => ({
-              label: c,
-              value: c,
-            }))}
-          onChange={(options: MultiValue<ColumnOption>) => {
-            const optionsArray = Array.isArray(options) ? options : [];
+        <Autocomplete
+          multiple
+          size="small"
+          disableCloseOnSelect
+          options={columnNames}
+          value={(primaryKeys ?? []).filter(
+            (c): c is string => c !== undefined,
+          )}
+          onChange={(_, newValue) => {
             onParamsChanged({
               ...params,
-              primary_key:
-                optionsArray.length == 1
-                  ? optionsArray[0].value
-                  : optionsArray.map((v) => v.value),
+              primary_key: newValue.length === 1 ? newValue[0] : newValue,
             });
           }}
-          styles={selectStyles}
+          renderInput={(inputProps) => (
+            <TextField
+              {...inputProps}
+              placeholder={
+                (primaryKeys ?? []).length === 0 ? "Select primary key" : ""
+              }
+              className="no-track-pii-safe"
+            />
+          )}
         />
       </Box>
       <Box>
@@ -225,31 +149,27 @@ export function ValueDiffForm({
           sx={{ mb: "10px" }}
         />
         {!allColumns && (
-          <ReactSelect
-            isMulti
-            className="no-track-pii-safe"
-            closeMenuOnSelect={false}
-            options={columnNames.map((c) => ({ label: c, value: c }))}
-            value={(params.columns ?? []).map((c) => ({
-              label: c,
-              value: c,
-            }))}
-            onChange={(newValue: MultiValue<ColumnOption>) => {
-              let cols: string[] | undefined;
-              const newCols = Array.isArray(newValue)
-                ? newValue.map((v) => v.value)
-                : [];
-              if (newCols.length === 0) {
-                cols = undefined;
-              } else {
-                cols = newCols;
-              }
+          <Autocomplete
+            multiple
+            size="small"
+            disableCloseOnSelect
+            options={columnNames}
+            value={params.columns ?? []}
+            onChange={(_, newValue) => {
               onParamsChanged({
                 ...params,
-                columns: cols,
+                columns: newValue.length === 0 ? undefined : newValue,
               });
             }}
-            styles={selectStyles}
+            renderInput={(inputProps) => (
+              <TextField
+                {...inputProps}
+                placeholder={
+                  (params.columns ?? []).length === 0 ? "Select columns" : ""
+                }
+                className="no-track-pii-safe"
+              />
+            )}
           />
         )}
       </Box>
