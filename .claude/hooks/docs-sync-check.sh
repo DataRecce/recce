@@ -1,6 +1,6 @@
 #!/bin/bash
 # Docs Sync Check Hook
-# Triggered by NotificationShown - checks if recce_cloud/ was modified
+# Triggered by Stop event - checks if recce_cloud/ was modified
 # and instructs Claude to spawn the docs-sync-scanner subagent.
 
 # Exit silently if RECCE_DOCS_PATH not configured

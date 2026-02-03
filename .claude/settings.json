@@ -1,8 +1,8 @@
 {
   "hooks": {
-    "NotificationShown": [
+    "Stop": [
       {
-        "matcher": "",
+        "type": "command",
         "command": ".claude/hooks/docs-sync-check.sh"
       }
     ]

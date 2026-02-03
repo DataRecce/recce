@@ -16,7 +16,7 @@ When a developer finishes work that modifies `recce_cloud/`, the system:
 ┌─────────────────────────────────────────────────────┐
 │  Claude Code session in recce repo                  │
 │                                                     │
-│  Task completes → NotificationShown fires           │
+│  Task completes → Stop fires           │
 │         │                                           │
 │         ▼                                           │
 │  Hook script (bash)                                 │
@@ -52,7 +52,7 @@ When a developer finishes work that modifies `recce_cloud/`, the system:
 
 **Location:** `.claude/hooks/docs-sync-check.sh`
 
-**Trigger:** `NotificationShown` event
+**Trigger:** `Stop` event
 
 **Logic:**
 - Exit silently if `RECCE_DOCS_PATH` is not set
@@ -125,6 +125,6 @@ recce/
 
 3. **Pre-approved git permissions** — The writer subagent has default git/gh permissions so it can create PRs without prompting.
 
-4. **NotificationShown hook** — Fires at task completion, catches final state of changes.
+4. **Stop hook** — Fires when Claude finishes responding, catches final state of changes.
 
 5. **Environment variable for docs path** — Simple, portable. Unset = feature disabled.
