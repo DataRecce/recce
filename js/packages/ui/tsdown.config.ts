@@ -82,9 +82,6 @@ export default defineConfig({
     // vfile and unified ecosystem packages
     /^vfile/,
     /^unified/,
-    // react-select has CJS code that causes "dynamic usage of require" error
-    "react-select",
-    /^react-select\//,
     // react-redux and its dependencies have CJS code
     "react-redux",
     /^react-redux\//,

@@ -586,6 +586,34 @@ const sharedThemeOptions: ThemeOptions = {
         },
       },
     },
+    // Autocomplete overrides
+    MuiAutocomplete: {
+      styleOverrides: {
+        paper: {
+          borderRadius: 6,
+          boxShadow:
+            "0 4px 6px -1px rgba(0, 0, 0, 0.15), 0 2px 4px -2px rgba(0, 0, 0, 0.1)",
+          // Use neutral[100] in light mode and neutral[700] in dark mode for contrast
+          backgroundColor: colors.neutral[200],
+          ".dark &": {
+            backgroundColor: colors.neutral[700],
+          },
+        },
+        listbox: {
+          padding: "4px 0",
+        },
+        option: {
+          fontSize: "0.875rem",
+          padding: "0.5rem 0.75rem",
+          '&[aria-selected="true"]': {
+            backgroundColor: "var(--mui-palette-action-selected)",
+          },
+          "&.Mui-focused": {
+            backgroundColor: "var(--mui-palette-action-hover)",
+          },
+        },
+      },
+    },
   },
 };
 
