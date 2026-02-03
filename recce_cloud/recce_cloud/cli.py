@@ -159,11 +159,11 @@ def logout():
 @cloud_cli.command()
 @click.option(
     "--org",
-    help="Organization name or slug to bind to",
+    help="Organization ID, name, or slug to bind to",
 )
 @click.option(
     "--project",
-    help="Project name or slug to bind to",
+    help="Project ID, name, or slug to bind to",
 )
 @click.option(
     "--status",
@@ -258,13 +258,15 @@ def init(org, project, status, clear):
             api = RecceCloudClient(token)
             org_obj = api.get_organization(org)
             if not org_obj:
-                console.print(f"[red]Error:[/red] Organization '{org}' not found")
+                console.print(f"[red]Error:[/red] Organization '{org}' not found or you don't have access")
                 sys.exit(1)
 
             # Use org ID for project lookup (API requires ID)
             project_obj = api.get_project(org_obj.get("id"), project)
             if not project_obj:
-                console.print(f"[red]Error:[/red] Project '{project}' not found in organization '{org}'")
+                console.print(
+                    f"[red]Error:[/red] Project '{project}' not found in organization '{org}' or you don't have access"
+                )
                 sys.exit(1)
 
             # Store IDs (immutable) instead of slugs (can be renamed)
@@ -277,13 +279,7 @@ def init(org, project, status, clear):
             )
             console.print(f"  Config saved to {get_config_path()}")
 
-            # Offer to add to .gitignore
-            if click.confirm("Add .recce/ to .gitignore?", default=True):
-                if add_to_gitignore():
-                    console.print("[green]✓[/green] Added .recce/ to .gitignore")
-                else:
-                    console.print("  .recce/ already in .gitignore")
-
+            # Skip gitignore prompt in explicit mode (scripted/CI usage)
             sys.exit(0)
 
         except RecceCloudException as e:
@@ -364,8 +360,8 @@ def init(org, project, status, clear):
         )
         console.print(f"  Config saved to {get_config_path()}")
 
-        # Offer to add to .gitignore
-        if click.confirm("Add .recce/ to .gitignore?", default=True):
+        # Offer to add to .gitignore (default: No, since .recce/config should typically be committed)
+        if click.confirm("Add .recce/ to .gitignore?", default=False):
             if add_to_gitignore():
                 console.print("[green]✓[/green] Added .recce/ to .gitignore")
             else:
