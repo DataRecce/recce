@@ -19,11 +19,16 @@ Recce is a monolithic client-server application where the Python backend serves 
 
 `BaseAdapter` interface allows support for different data platforms (dbt, SQLMesh). Core abstract methods:
 - `get_lineage()` - Return DAG structure
+- `select_nodes()` - Select/filter nodes from the DAG
 - `get_model()` - Retrieve model details
-- `get_node_by_name()` - Find node by unique ID
-- Platform-specific artifact parsing (manifest, catalog)
+- `get_node_name_by_id()` - Return node name given a unique ID
+- `support_tasks()` - Advertise which task types the adapter supports
+
+Helper methods with default implementations:
+- `get_node_by_name()` - Find node by name (searches both current and base manifests)
 
 DbtAdapter also provides:
+- `generate_sql()` - Compile SQL templates with Jinja context
 - `execute()` - Run SQL queries against warehouse
 
 Adapters are loaded dynamically based on CLI flags (`--sqlmesh`).

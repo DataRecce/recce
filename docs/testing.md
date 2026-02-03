@@ -72,7 +72,7 @@ cd js/packages/storybook
 pnpm storybook
 
 # Run interaction tests
-pnpm test:storybook
+pnpm test
 ```
 
 ### Visual Regression
