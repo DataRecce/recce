@@ -140,16 +140,24 @@ jobs:
           cd js/packages/ui
 
           if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
-            # Read version from artifact
-            python_version=$(cat ../../.version-artifact/VERSION)
+            # Read version from artifact using explicit workspace path
+            version_file="${GITHUB_WORKSPACE}/.version-artifact/VERSION"
+            if [[ ! -f "$version_file" ]]; then
+              echo "::error::Version artifact not found at $version_file"
+              exit 1
+            fi
+            python_version=$(cat "$version_file")
             echo "Python version from artifact: ${python_version}"
 
             # Convert Python version to npm semver
+            # Note: Alpha builds (e.g., 0.3.0.20260202a1) are filtered out earlier in the
+            # workflow_run path, but we keep the conversion logic for defensive programming
+            # and potential future use via manual dispatch.
             # Examples:
-            #   0.3.0.20260202      -> 0.3.0-nightly.20260202
-            #   0.3.0.20260202a1    -> 0.3.0-alpha.20260202.1
+            #   0.3.0.20260202       -> 0.3.0-nightly.20260202
             #   0.3.0.20260202-post1 -> 0.3.0-nightly.20260202.1
-            #   0.2.2               -> 0.2.2
+            #   0.3.0.20260202a1     -> 0.3.0-alpha.20260202.1 (filtered earlier, kept for safety)
+            #   0.2.2                -> 0.2.2
 
             if [[ "${{ steps.release_type.outputs.type }}" == "nightly" ]]; then
               # Handle nightly versions
@@ -172,6 +180,10 @@ jobs:
                 npm_version="${base}-nightly.${date}"
               else
                 echo "::error::Unable to parse nightly version: ${python_version}"
+                echo "::error::Expected formats:"
+                echo "::error::  - X.Y.Z.YYYYMMDD (e.g., 0.3.0.20260202)"
+                echo "::error::  - X.Y.Z.YYYYMMDD-postN (e.g., 0.3.0.20260202-post1)"
+                echo "::error::  - X.Y.Z.YYYYMMDDaN (e.g., 0.3.0.20260202a1)"
                 exit 1
               fi
               echo "npm_tag=nightly" >> $GITHUB_OUTPUT
@@ -191,11 +203,17 @@ jobs:
             if [[ "${{ steps.release_type.outputs.type }}" == "nightly" ]]; then
               # Add nightly suffix if not present
               if [[ ! "$npm_version" =~ -nightly ]]; then
-                today=$(date '+%Y%m%d')
+                today=$(date -u '+%Y%m%d')
                 npm_version="${npm_version}-nightly.${today}"
               fi
               echo "npm_tag=nightly" >> $GITHUB_OUTPUT
             else
+              # Validate official release version is plain semver (no pre-release tags)
+              if [[ ! "$npm_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                echo "::error::Official releases must use a plain semver version (e.g., 0.2.3) without pre-release or build tags."
+                echo "::error::Got: ${npm_version}"
+                exit 1
+              fi
               echo "npm_tag=latest" >> $GITHUB_OUTPUT
             fi
           fi
@@ -223,7 +241,23 @@ jobs:
               check_version="${base_version}.${post_num}"
             fi
 
-            existing_version=$(npm view @datarecce/ui@${check_version} version 2>/dev/null || echo "")
+            # Check if version exists, distinguishing between "not found" (E404) and actual errors
+            npm_view_status=0
+            npm_view_output=$(npm view @datarecce/ui@${check_version} version 2>&1) || npm_view_status=$?
+
+            if [[ $npm_view_status -eq 0 ]]; then
+              # Version exists
+              existing_version="$npm_view_output"
+            else
+              # Check if it's a 404 (version not found) or an actual error
+              if echo "$npm_view_output" | grep -q "E404\|npm error code E404\|is not in this registry"; then
+                existing_version=""
+              else
+                echo "::error::npm view failed for version ${check_version}:"
+                echo "$npm_view_output"
+                exit 1
+              fi
+            fi
 
             if [[ -z "$existing_version" ]]; then
               # Version doesn't exist, use it
