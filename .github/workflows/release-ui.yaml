@@ -1,0 +1,292 @@
+name: Release @datarecce/ui
+
+on:
+  # Triggered when nightly build completes
+  workflow_run:
+    workflows:
+      - "Recce Nightly Build"
+      - "Official Recce Release"
+    types:
+      - completed
+
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Select the type of release'
+        type: choice
+        required: true
+        options:
+          - Nightly
+          - Official
+      version:
+        description: 'Version to release (for Official only, e.g., 0.2.2). Leave empty to use package.json version.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write # Required for OIDC npm publishing with provenance
+
+jobs:
+  build-and-publish:
+    name: Build and Publish @datarecce/ui
+    runs-on: ubuntu-latest
+    # Only run if workflow_run succeeded or if manually triggered
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # For workflow_run, checkout the same ref that triggered the parent workflow
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24' # Node 24 includes npm 11+ with OIDC support
+          cache: 'pnpm'
+          cache-dependency-path: js/pnpm-lock.yaml
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Verify npm version
+        run: |
+          NPM_VERSION=$(npm --version)
+          echo "npm version: $NPM_VERSION"
+          # npm 11.5.1+ required for OIDC trusted publishing
+
+      - name: Install dependencies
+        run: |
+          cd js
+          pnpm install --frozen-lockfile
+
+      - name: Run lint and type check
+        run: |
+          cd js
+          pnpm lint
+          pnpm type:check
+
+      - name: Run tests
+        run: |
+          cd js
+          pnpm test
+
+      - name: Determine release type
+        id: release_type
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            workflow_name="${{ github.event.workflow_run.name }}"
+            if [[ "$workflow_name" == "Recce Nightly Build" ]]; then
+              echo "type=nightly" >> $GITHUB_OUTPUT
+            elif [[ "$workflow_name" == "Official Recce Release" ]]; then
+              echo "type=official" >> $GITHUB_OUTPUT
+            else
+              echo "type=nightly" >> $GITHUB_OUTPUT
+            fi
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ inputs.release_type }}" == "Official" ]]; then
+              echo "type=official" >> $GITHUB_OUTPUT
+            else
+              echo "type=nightly" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "type=nightly" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download version artifact (Nightly)
+        id: download_nightly
+        if: github.event_name == 'workflow_run' && steps.release_type.outputs.type == 'nightly'
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: recce-nightly-version
+          path: .version-artifact
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download version artifact (Official)
+        id: download_official
+        if: github.event_name == 'workflow_run' && steps.release_type.outputs.type == 'official'
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: recce-release-version
+          path: .version-artifact
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if artifact exists (skip alpha builds)
+        id: check_artifact
+        if: github.event_name == 'workflow_run'
+        run: |
+          if [[ ! -f ".version-artifact/VERSION" ]]; then
+            echo "::notice::No version artifact found. This is likely an alpha build - skipping npm release."
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Convert Python version to npm semver
+        id: convert_version
+        if: steps.check_artifact.outputs.skip != 'true'
+        run: |
+          cd js/packages/ui
+
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            # Read version from artifact
+            python_version=$(cat ../../.version-artifact/VERSION)
+            echo "Python version from artifact: ${python_version}"
+
+            # Convert Python version to npm semver
+            # Examples:
+            #   0.3.0.20260202      -> 0.3.0-nightly.20260202
+            #   0.3.0.20260202a1    -> 0.3.0-alpha.20260202.1
+            #   0.3.0.20260202-post1 -> 0.3.0-nightly.20260202.1
+            #   0.2.2               -> 0.2.2
+
+            if [[ "${{ steps.release_type.outputs.type }}" == "nightly" ]]; then
+              # Handle nightly versions
+              if [[ "$python_version" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\.([0-9]{8})a([0-9]+)$ ]]; then
+                # Alpha version: 0.3.0.20260202a1 -> 0.3.0-alpha.20260202.1
+                base="${BASH_REMATCH[1]}"
+                date="${BASH_REMATCH[2]}"
+                alpha_num="${BASH_REMATCH[3]}"
+                npm_version="${base}-alpha.${date}.${alpha_num}"
+              elif [[ "$python_version" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\.([0-9]{8})-post([0-9]+)$ ]]; then
+                # Post version: 0.3.0.20260202-post1 -> 0.3.0-nightly.20260202.1
+                base="${BASH_REMATCH[1]}"
+                date="${BASH_REMATCH[2]}"
+                post_num="${BASH_REMATCH[3]}"
+                npm_version="${base}-nightly.${date}.${post_num}"
+              elif [[ "$python_version" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\.([0-9]{8})$ ]]; then
+                # Regular nightly: 0.3.0.20260202 -> 0.3.0-nightly.20260202
+                base="${BASH_REMATCH[1]}"
+                date="${BASH_REMATCH[2]}"
+                npm_version="${base}-nightly.${date}"
+              else
+                echo "::error::Unable to parse nightly version: ${python_version}"
+                exit 1
+              fi
+              echo "npm_tag=nightly" >> $GITHUB_OUTPUT
+            else
+              # Official version: use as-is (should be semver like 0.2.2)
+              npm_version="${python_version}"
+              echo "npm_tag=latest" >> $GITHUB_OUTPUT
+            fi
+          else
+            # Manual dispatch - use input version or package.json
+            if [[ -n "${{ inputs.version }}" ]]; then
+              npm_version="${{ inputs.version }}"
+            else
+              npm_version=$(node -p "require('./package.json').version")
+            fi
+
+            if [[ "${{ steps.release_type.outputs.type }}" == "nightly" ]]; then
+              # Add nightly suffix if not present
+              if [[ ! "$npm_version" =~ -nightly ]]; then
+                today=$(date '+%Y%m%d')
+                npm_version="${npm_version}-nightly.${today}"
+              fi
+              echo "npm_tag=nightly" >> $GITHUB_OUTPUT
+            else
+              echo "npm_tag=latest" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+          echo "npm_version=${npm_version}" >> $GITHUB_OUTPUT
+          echo "Converted npm version: ${npm_version}"
+
+      - name: Validate and update package version
+        id: patch_version
+        if: steps.check_artifact.outputs.skip != 'true'
+        run: |
+          cd js/packages/ui
+
+          npm_version="${{ steps.convert_version.outputs.npm_version }}"
+          npm_tag="${{ steps.convert_version.outputs.npm_tag }}"
+
+          # Check if version already exists and auto-increment post build number
+          base_version="$npm_version"
+          post_num=0
+
+          while true; do
+            if [[ $post_num -eq 0 ]]; then
+              check_version="$base_version"
+            else
+              check_version="${base_version}.${post_num}"
+            fi
+
+            existing_version=$(npm view @datarecce/ui@${check_version} version 2>/dev/null || echo "")
+
+            if [[ -z "$existing_version" ]]; then
+              # Version doesn't exist, use it
+              npm_version="$check_version"
+              break
+            fi
+
+            echo "Version ${check_version} already exists on npm, trying next..."
+            post_num=$((post_num + 1))
+
+            # Safety limit to prevent infinite loop
+            if [[ $post_num -gt 100 ]]; then
+              echo "::error::Too many post build attempts (>100)"
+              exit 1
+            fi
+          done
+
+          if [[ $post_num -gt 0 ]]; then
+            echo "::notice::Auto-incremented to post build ${post_num}: ${npm_version}"
+          fi
+
+          # Update package.json with the new version
+          node -e "
+            const pkg = require('./package.json');
+            pkg.version = '${npm_version}';
+            require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+          echo "UI version: ${npm_version}"
+          echo "version=${npm_version}" >> $GITHUB_OUTPUT
+          echo "npm_tag=${npm_tag}" >> $GITHUB_OUTPUT
+
+      - name: Build UI Package
+        if: steps.check_artifact.outputs.skip != 'true'
+        run: |
+          cd js/packages/ui
+          pnpm build
+
+      # npm OIDC trusted publishing - no NPM_TOKEN required
+      # Provenance attestation is automatic with trusted publishing
+      - name: Publish to npm
+        if: steps.check_artifact.outputs.skip != 'true'
+        run: |
+          cd js/packages/ui
+          npm publish --tag ${{ steps.patch_version.outputs.npm_tag }} --access public
+
+      - name: Summary
+        if: steps.check_artifact.outputs.skip != 'true'
+        run: |
+          version="${{ steps.patch_version.outputs.version }}"
+          tag="${{ steps.patch_version.outputs.npm_tag }}"
+
+          echo "## @datarecce/ui Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** ${version}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag:** ${tag}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Type:** ${{ steps.release_type.outputs.type }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Install" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          if [[ "${tag}" == "nightly" ]]; then
+            echo "npm install @datarecce/ui@nightly" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "npm install @datarecce/ui@${version}" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

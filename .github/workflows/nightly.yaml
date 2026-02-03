@@ -132,6 +132,16 @@ jobs:
           ignore_missing: true
           version: ${{ steps.patch_version.outputs.nightly_version }}
 
+      # Only upload version artifact for regular nightly builds (not alpha)
+      # Alpha builds are for testing unmerged PRs and should not trigger npm release
+      - name: Upload version artifact for UI release
+        if: inputs.release_type != 'Alpha Release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: recce-nightly-version
+          path: recce/VERSION
+          retention-days: 1
+
   build-recce-cloud-nightly:
     name: Build Recce Cloud Nightly Release
     runs-on: ubuntu-latest
