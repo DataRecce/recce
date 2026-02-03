@@ -2,8 +2,13 @@
   "hooks": {
     "Stop": [
       {
-        "type": "command",
-        "command": ".claude/hooks/docs-sync-check.sh"
+        "matcher": {},
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/docs-sync-check.sh"
+          }
+        ]
       }
     ]
   },
