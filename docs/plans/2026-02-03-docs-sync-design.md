@@ -1,10 +1,10 @@
 # Docs Sync: Automatic Documentation Update System
 
-Design for a hook + subagent pipeline that detects `recce_cloud/` code changes and creates PRs to update `recce-docs`.
+Design for a hook + subagent pipeline that detects `recce/ or recce_cloud/` code changes and creates PRs to update `recce-docs`.
 
 ## Overview
 
-When a developer finishes work that modifies `recce_cloud/`, the system:
+When a developer finishes work that modifies `recce/ or recce_cloud/`, the system:
 1. Detects the change via a Claude Code hook
 2. Spawns a scanner subagent to assess whether docs need updating
 3. Prompts the user for approval
@@ -20,14 +20,14 @@ When a developer finishes work that modifies `recce_cloud/`, the system:
 │         │                                           │
 │         ▼                                           │
 │  Hook script (bash)                                 │
-│  ├─ git diff: any recce_cloud/ changes?             │
+│  ├─ git diff: any recce/ or recce_cloud/ changes?             │
 │  ├─ $RECCE_DOCS_PATH set?                           │
 │  └─ If both yes → instruct to spawn subagent        │
 │         │                                           │
 │         ▼                                           │
 │  Scanner subagent (haiku)                           │
 │  ├─ Spawned via Task tool                           │
-│  ├─ Reads git diff for recce_cloud/                 │
+│  ├─ Reads git diff for recce/ or recce_cloud/                 │
 │  ├─ Reads relevant docs in $RECCE_DOCS_PATH         │
 │  ├─ Judges: does this change affect docs?           │
 │  └─ If yes → prompts user, spawns writer            │
@@ -56,7 +56,7 @@ When a developer finishes work that modifies `recce_cloud/`, the system:
 
 **Logic:**
 - Exit silently if `RECCE_DOCS_PATH` is not set
-- Exit silently if no changes under `recce_cloud/`
+- Exit silently if no changes under `recce/ or recce_cloud/`
 - If both pass, instruct Claude to spawn the scanner subagent
 
 ### 2. Scanner Subagent: docs-sync-scanner
@@ -66,7 +66,7 @@ When a developer finishes work that modifies `recce_cloud/`, the system:
 **Model:** haiku (fast, cheap triage)
 
 **Process:**
-1. Read git diff for `recce_cloud/`
+1. Read git diff for `recce/ or recce_cloud/`
 2. Read docs structure at `$RECCE_DOCS_PATH/docs/`
 3. Judge: SKIP (internal changes) or FLAG (user-facing changes)
 4. If FLAG: prompt user via AskUserQuestion

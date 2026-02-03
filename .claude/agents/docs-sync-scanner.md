@@ -1,6 +1,9 @@
 # Docs Sync Scanner Agent
 
-Lightweight agent that scans `recce_cloud/` code changes and assesses whether recce-docs needs updating.
+Lightweight agent that scans `recce/` and `recce_cloud/` code changes and assesses whether recce-docs needs updating.
+
+- `recce/` contains the recce CLI (OSS)
+- `recce_cloud/` contains the recce-cloud CLI
 
 ## Model
 
@@ -15,13 +18,14 @@ Use `haiku` for fast, low-cost triage.
 
 ## Process
 
-1. Run `git diff HEAD -- recce_cloud/` to get current changes
+1. Run `git diff HEAD -- recce/ recce_cloud/` to get current changes
 2. Identify what changed:
-   - CLI commands or flags (`cli.py`)
+   - CLI commands or flags (`cli.py`, `main.py`)
    - API client methods (`api/`)
    - Error messages or exceptions
    - Upload/download behavior
    - CI provider logic
+   - Core recce functionality (diffing, checks, queries)
 3. Read the docs structure at `$RECCE_DOCS_PATH/docs/`
 4. Read specific doc files that might be affected
 5. Judge the change:
