@@ -593,9 +593,7 @@ export const LineageViewTopBar = ({
   );
   const actionsOpen = Boolean(actionsAnchorEl);
 
-  const isSingleSelect = !!focusedNode;
   const isMultiSelect = selectedNodes.length > 0;
-  const isNoSelect = !isSingleSelect && !isMultiSelect;
   const isFilterDisabled = isMultiSelect;
 
   const handleActionsClick = (event: MouseEvent<HTMLButtonElement>) => {
@@ -785,9 +783,6 @@ export const LineageViewTopBar = ({
                   Add to Checklist
                 </ListSubheader>
                 <MenuItem
-                  disabled={
-                    !(isNoSelect || (isMultiSelect && selectedNodes.length > 1))
-                  }
                   onClick={() => {
                     onAddLineageDiffCheck?.(viewOptions.view_mode);
                     handleActionsClose();
