@@ -20,9 +20,8 @@ js/
 │   │   │   └── styles/     # Shared styles
 │   │   └── dist/          # Built package outputs
 │   └── storybook/         # Component stories and visual tests
-│       ├── stories/        # Component stories
-│       ├── .storybook/     # Storybook configuration
-│       └── tests/          # Visual regression tests (Playwright)
+│       ├── stories/        # Component stories + visual tests (*.visual.ts)
+│       └── .storybook/     # Storybook configuration
 ├── biome.json             # Biome linter & formatter config
 ├── vitest.config.mts      # Vitest test configuration
 └── package.json

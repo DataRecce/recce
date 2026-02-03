@@ -7,7 +7,7 @@
 | Python Unit | pytest | `tests/` | `make test` |
 | Frontend Unit | Vitest + RTL | `js/src/` | `pnpm test` |
 | Component Stories | Storybook | `js/packages/storybook/` | `pnpm storybook` |
-| Visual Regression | Playwright | `js/packages/storybook/tests/` | `pnpm test:visual` |
+| Visual Regression | Playwright | `js/packages/storybook/stories/*.visual.ts` | `pnpm test:visual` |
 | Integration | pytest | `integration_tests/` | CI only |
 | Multi-Version | tox | - | `make test-tox` |
 
