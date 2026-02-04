@@ -55,8 +55,13 @@ export function ToggleSwitch({
           onChange(false);
         }}
         sx={{
-          color: !value ? "black" : "grey.400",
-          bgcolor: !value ? "white" : "grey.50",
+          color: !value ? "text.primary" : "text.disabled",
+          bgcolor: !value ? "background.paper" : "action.hover",
+          borderColor: "divider",
+          "&:hover": {
+            bgcolor: !value ? "background.paper" : "action.selected",
+            borderColor: "divider",
+          },
         }}
       >
         {textOff ?? "Off"}
@@ -66,8 +71,13 @@ export function ToggleSwitch({
           onChange(true);
         }}
         sx={{
-          color: value ? "black" : "grey.400",
-          bgcolor: value ? "white" : "grey.50",
+          color: value ? "text.primary" : "text.disabled",
+          bgcolor: value ? "background.paper" : "action.hover",
+          borderColor: "divider",
+          "&:hover": {
+            bgcolor: value ? "background.paper" : "action.selected",
+            borderColor: "divider",
+          },
         }}
       >
         {textOn ?? "On"}

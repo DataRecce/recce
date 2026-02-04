@@ -118,8 +118,8 @@ function SqlEditor({
           direction="row"
           sx={{
             bgcolor: isDark
-              ? alpha(colors.neutral[700], 0.5)
-              : alpha(colors.neutral[100], 0.5),
+              ? alpha(colors.neutral[600], 0.7)
+              : alpha(colors.neutral[200], 0.7),
             height: "40px",
             minHeight: "40px",
             fontSize: "14px",

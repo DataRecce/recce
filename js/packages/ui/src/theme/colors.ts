@@ -208,7 +208,7 @@ export const colors = {
   warning: {
     main: "#EAB308", // amber[500],
     light: "#FACC15", // amber[400],
-    dark: "#CA8A04", // amber[600],
+    dark: "#78350F", // amber[900] - darker for better contrast on light backgrounds
     contrastText: "#000000",
   },
 

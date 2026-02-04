@@ -5,6 +5,7 @@ import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import { type ReactNode, useState } from "react";
 import { PiCopy } from "react-icons/pi";
+import { useIsDark } from "../../hooks/useIsDark";
 import { colors } from "../../theme/colors";
 
 /**
@@ -72,10 +73,17 @@ export function DiffText({
   onCopy,
 }: DiffTextProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const isDark = useIsDark();
 
   // Get the color values from the theme colors
-  const textColor = colors[colorPalette][800];
-  const bgColor = colors[colorPalette][100];
+  // In dark mode, use lighter text (300) on darker bg (900)
+  // In light mode, use darker text (800) on lighter bg (100)
+  const textColor = isDark
+    ? colors[colorPalette][300]
+    : colors[colorPalette][800];
+  const bgColor = isDark
+    ? colors[colorPalette][900]
+    : colors[colorPalette][100];
 
   return (
     <Box
@@ -105,7 +113,7 @@ export function DiffText({
         sx={{
           overflow: "hidden",
           textOverflow: "ellipsis",
-          color: grayOut ? "gray" : "inherit",
+          color: grayOut ? "text.disabled" : "inherit",
         }}
       >
         {value}

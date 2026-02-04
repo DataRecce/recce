@@ -36,3 +36,6 @@ recce/data
 # Claude output files
 output/*
 !output/.gitkeep
+
+.env*
+!.env.example
