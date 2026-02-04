@@ -24,6 +24,7 @@ import type { ColumnLineageData } from "../../api";
  * @param options - Conversion options
  * @param options.selectedNodes - Optional filter for which nodes to include
  * @param options.cll - Column-level lineage data for adding column nodes
+ * @param options.existingPositions - Map of node IDs to their existing positions. If provided, nodes will preserve their positions and layout will be skipped if all nodes have positions.
  * @returns Tuple of [nodes, edges, nodeColumnSetMap] where nodeColumnSetMap tracks columns per node
  *
  * @example
@@ -39,11 +40,12 @@ export function toReactFlow(
   options?: {
     selectedNodes?: string[];
     cll?: ColumnLineageData;
+    existingPositions?: Map<string, { x: number; y: number }>;
   },
 ): [LineageGraphNodes[], LineageGraphEdge[], NodeColumnSetMap] {
   const nodes: LineageGraphNodes[] = [];
   const edges: LineageGraphEdge[] = [];
-  const { selectedNodes, cll } = options ?? {};
+  const { selectedNodes, cll, existingPositions } = options ?? {};
 
   const nodeColumnSetMap: NodeColumnSetMap = {};
 
@@ -166,9 +168,10 @@ export function toReactFlow(
       height += 20 + columnIndex * COLUMN_HEIGHT;
     }
 
+    const existingPosition = existingPositions?.get(node.id);
     nodes.unshift({
       id: node.id,
-      position: { x: 0, y: 0 },
+      position: existingPosition ?? { x: 0, y: 0 },
       width: 300,
       height: height,
       className: "no-track-pii-safe",
@@ -205,7 +208,15 @@ export function toReactFlow(
     } as LineageGraphEdge);
   }
 
-  layout(nodes, edges);
+  // Only run layout if any parent node is missing a position
+  const needsLayout = nodes.some(
+    (node) =>
+      node.type === "lineageGraphNode" && !existingPositions?.has(node.id),
+  );
+
+  if (needsLayout) {
+    layout(nodes, edges);
+  }
 
   return [nodes, edges, nodeColumnSetMap];
 }

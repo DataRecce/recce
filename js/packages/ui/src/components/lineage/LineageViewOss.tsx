@@ -256,6 +256,20 @@ export function PrivateLineageView(
   );
 
   /**
+   * Helper to extract node positions for preserving layout
+   */
+  const getNodePositions = useCallback(() => {
+    const positions = new Map<string, { x: number; y: number }>();
+    for (const node of nodes) {
+      // Only capture parent node positions, not column nodes
+      if (!node.parentId && node.position) {
+        positions.set(node.id, { x: node.position.x, y: node.position.y });
+      }
+    }
+    return positions;
+  }, [nodes]);
+
+  /**
    * Highlighted nodes: the nodes that are highlighted. The behavior of highlighting depends on the select mode
    *
    * - Default: nodes in the impact radius, or all nodes if the impact radius is not available
@@ -457,12 +471,16 @@ export function PrivateLineageView(
   ) => {
     const previousColumnLevelLineage = viewOptions.column_level_lineage;
 
+    // Detect when CLL is being turned OFF (previous exists but new one is undefined)
+    const isTurningCllOff = previousColumnLevelLineage && !columnLevelLineage;
+
     await handleViewOptionsChanged(
       {
         ...viewOptions,
         column_level_lineage: columnLevelLineage,
       },
       false,
+      isTurningCllOff, // preserve positions when turning CLL off
     );
 
     if (!previous) {
@@ -542,9 +560,10 @@ export function PrivateLineageView(
   const refreshLayout = async (options: {
     viewOptions?: LineageDiffViewOptions;
     fitView?: boolean;
+    preservePositions?: boolean;
   }) => {
     let { viewOptions: newViewOptions = viewOptions } = options;
-    const { fitView } = options;
+    const { fitView, preservePositions = false } = options;
 
     let selectedNodes: string[] | undefined = undefined;
 
@@ -609,11 +628,18 @@ export function PrivateLineageView(
       }
     }
 
+    // Capture positions if preservePositions is true
+    let existingPositions: Map<string, { x: number; y: number }> | undefined;
+    if (preservePositions) {
+      existingPositions = getNodePositions();
+    }
+
     const [newNodes, newEdges, newNodeColumnSetMap] = await toReactFlow(
       lineageGraph,
       {
         selectedNodes,
         cll,
+        existingPositions,
       },
     );
     setNodes(newNodes);
@@ -655,11 +681,13 @@ export function PrivateLineageView(
   const handleViewOptionsChanged = async (
     newViewOptions: LineageDiffViewOptions,
     fitView = true,
+    preservePositions = false,
   ) => {
     setViewOptions(newViewOptions);
     await refreshLayout({
       viewOptions: newViewOptions,
       fitView,
+      preservePositions,
     });
   };
 
