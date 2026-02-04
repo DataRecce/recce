@@ -14,6 +14,7 @@ import "@xyflow/react/dist/style.css";
 import Box from "@mui/material/Box";
 import { useCallback } from "react";
 
+import { LineageColumnNode } from "./columns";
 import { LineageEdge, type LineageEdgeData } from "./edges";
 import { LineageNode, type LineageNodeData } from "./nodes";
 
@@ -40,6 +41,7 @@ export interface LineageCanvasProps {
 
 const nodeTypes = {
   lineageNode: LineageNode,
+  lineageGraphColumnNode: LineageColumnNode,
 };
 
 const edgeTypes = {
