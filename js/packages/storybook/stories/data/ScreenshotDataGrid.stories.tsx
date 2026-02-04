@@ -226,7 +226,123 @@ export const WithDiffCells: Story = {
     docs: {
       description: {
         story:
-          "Grid with diff cell styling: added (green background), removed (red background), modified (red background - currently shares styling with removed due to component bug). The ID column uses diff-header styling (bold colors), while data columns use diff-cell styling (lighter colors).",
+          "Grid with diff cell styling: added (green background), removed (red background), modified (amber/yellow background). The ID column uses diff-header styling (bold colors), while data columns use diff-cell styling (lighter colors).",
+      },
+    },
+  },
+};
+
+export const DiffRowStatuses: Story = {
+  name: "Diff Row Status Variations",
+  args: {
+    style: STANDARD_GRID_STYLE,
+    columnDefs: [
+      createGridColumn({
+        field: "id",
+        headerName: "ID",
+        width: 80,
+        pinned: "left",
+        cellClass: (params: CellClassParams) => {
+          if (params.data?.__status) {
+            return `diff-header-${params.data.__status}`;
+          }
+          return undefined;
+        },
+      }),
+      createGridColumn({
+        field: "name",
+        headerName: "Name",
+        width: 200,
+        cellClass: (params: CellClassParams) => {
+          if (params.data?.__status && params.data.__status !== "unchanged") {
+            return `diff-cell-${params.data.__status}`;
+          }
+          return undefined;
+        },
+      }),
+      createGridColumn({
+        field: "value",
+        headerName: "Value",
+        width: 120,
+        cellClass: (params: CellClassParams) => {
+          if (params.data?.__status && params.data.__status !== "unchanged") {
+            return `diff-cell-${params.data.__status}`;
+          }
+          return undefined;
+        },
+      }),
+      createGridColumn({
+        field: "status",
+        headerName: "Status",
+        width: 120,
+        cellClass: (params: CellClassParams) => {
+          if (params.data?.__status && params.data.__status !== "unchanged") {
+            return `diff-cell-${params.data.__status}`;
+          }
+          return undefined;
+        },
+      }),
+      createGridColumn({
+        field: "created_at",
+        headerName: "Created",
+        width: 180,
+        cellClass: (params: CellClassParams) => {
+          if (params.data?.__status && params.data.__status !== "unchanged") {
+            return `diff-cell-${params.data.__status}`;
+          }
+          return undefined;
+        },
+      }),
+    ],
+    rowData: [
+      {
+        __rowKey: "1",
+        __status: "added",
+        created_at: "2026-01-22T01:36:30.581Z",
+        id: 1,
+        name: "Added Row",
+        status: "active",
+        value: 100,
+      },
+      {
+        __rowKey: "2",
+        __status: "removed",
+        created_at: "2026-01-22T01:36:30.581Z",
+        id: 2,
+        name: "Removed Row",
+        status: "inactive",
+        value: 200,
+      },
+      {
+        __rowKey: "3",
+        __status: "modified",
+        created_at: "2026-01-22T01:36:30.581Z",
+        id: 3,
+        name: "Modified Row",
+        status: "active",
+        value: 300,
+      },
+      {
+        __rowKey: "4",
+        __status: "unchanged",
+        created_at: "2026-01-22T01:36:30.581Z",
+        id: 4,
+        name: "Unchanged Row",
+        status: "inactive",
+        value: 400,
+      },
+    ],
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `Demonstrates all four diff row status variations:
+- **Added** (green): Row 1 - New rows that exist only in the current version
+- **Removed** (red): Row 2 - Rows that exist only in the base version
+- **Modified** (amber/yellow): Row 3 - Rows with changed values between versions
+- **Unchanged** (no styling): Row 4 - Rows that are identical in both versions
+
+The ID column uses \`diff-header-*\` classes for bold indicator colors, while data columns use \`diff-cell-*\` classes for lighter background colors.`,
       },
     },
   },

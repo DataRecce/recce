@@ -273,7 +273,7 @@ function _ScreenshotDataGrid<TData = DataGridRow>(
           color: "var(--mui-palette-text-primary)",
         },
         "& .diff-cell-modified": {
-          backgroundColor: isDark ? "#5c1f1f !important" : "#ffc5c5 !important",
+          backgroundColor: isDark ? "#713F12 !important" : "#FEF3C7 !important",
           color: "var(--mui-palette-text-primary)",
         },
         // Diff header styling
@@ -283,6 +283,10 @@ function _ScreenshotDataGrid<TData = DataGridRow>(
         },
         "& .diff-header-removed": {
           backgroundColor: "#f43f5e !important",
+          color: "white",
+        },
+        "& .diff-header-modified": {
+          backgroundColor: "#f59e0b !important",
           color: "white",
         },
         // Index column styling
