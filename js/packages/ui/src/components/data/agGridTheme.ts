@@ -28,6 +28,7 @@ export const dataGridThemeLight = themeQuartz.withParams({
   headerFontSize: 13,
   headerFontWeight: 700,
   cellHorizontalPadding: 8,
+  wrapperBorderRadius: 0,
 });
 
 /**
@@ -35,9 +36,9 @@ export const dataGridThemeLight = themeQuartz.withParams({
  */
 export const dataGridThemeDark = themeQuartz.withParams({
   backgroundColor: "#1e1e1e",
-  headerBackgroundColor: "#252526",
+  headerBackgroundColor: "#383838",
   rowHoverColor: "#1e1e1e",
-  borderColor: "#3c3c3c",
+  borderColor: "#4a4a4a",
   foregroundColor: "#e0e0e0",
   fontFamily: "monospace",
   fontSize: 13,
@@ -45,4 +46,5 @@ export const dataGridThemeDark = themeQuartz.withParams({
   headerFontSize: 13,
   headerFontWeight: 700,
   cellHorizontalPadding: 8,
+  wrapperBorderRadius: 0,
 });

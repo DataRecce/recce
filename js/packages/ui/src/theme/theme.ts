@@ -363,18 +363,30 @@ const sharedThemeOptions: ThemeOptions = {
         standardSuccess: {
           backgroundColor: "var(--mui-palette-success-light)",
           color: "var(--mui-palette-success-dark)",
+          "& .MuiAlert-icon": {
+            color: "var(--mui-palette-success-dark)",
+          },
         },
         standardWarning: {
           backgroundColor: "var(--mui-palette-warning-light)",
           color: "var(--mui-palette-warning-dark)",
+          "& .MuiAlert-icon": {
+            color: "var(--mui-palette-warning-dark)",
+          },
         },
         standardError: {
           backgroundColor: "var(--mui-palette-error-light)",
           color: "var(--mui-palette-error-dark)",
+          "& .MuiAlert-icon": {
+            color: "var(--mui-palette-error-dark)",
+          },
         },
         standardInfo: {
           backgroundColor: "var(--mui-palette-info-light)",
           color: "var(--mui-palette-info-dark)",
+          "& .MuiAlert-icon": {
+            color: "var(--mui-palette-info-dark)",
+          },
         },
       },
     },
@@ -701,9 +713,9 @@ export const theme = createTheme({
           contrastText: "#ffffff",
         },
         neutral: {
-          main: colors.neutral[500],
+          main: colors.neutral[600],
           light: colors.neutral[300],
-          dark: colors.neutral[600],
+          dark: colors.neutral[700],
           contrastText: "#ffffff",
         },
         grey: colors.neutral, // Color scale (50, 100, etc.) - MUI's built-in grey
@@ -787,10 +799,10 @@ export const theme = createTheme({
           contrastText: "#ffffff",
         },
         neutral: {
-          main: colors.neutral[500],
-          light: colors.neutral[400],
-          dark: colors.neutral[100],
-          contrastText: "#ffffff",
+          main: colors.neutral[400],
+          light: colors.neutral[300],
+          dark: colors.neutral[200],
+          contrastText: colors.neutral[900],
         },
         grey: colors.neutral, // Color scale (50, 100, etc.) - MUI's built-in grey
         success: {
