@@ -198,6 +198,8 @@ function DiffEditorComponent({
 
     if (sideBySide) {
       // Side-by-side merge view
+      // Note: revertControls is intentionally omitted to disable any
+      // revert/accept buttons - this is a read-only diff view
       const mergeView = new MergeView({
         a: {
           doc: original,
@@ -222,6 +224,8 @@ function DiffEditorComponent({
           original,
           highlightChanges: true,
           gutter: true,
+          // Disable accept/reject buttons - this is a read-only diff view
+          mergeControls: false,
         }),
       ];
 
