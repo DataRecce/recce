@@ -29,6 +29,11 @@ import {
   customer_idSelectedCLL,
   order_dateSelectedCLL,
 } from "./reflowReproducer";
+import {
+  createLargeReproducerLineageGraph,
+  orderIdSelectedCLL,
+  orderItemIdSelectedCLL,
+} from "./reflowReproducer2";
 
 /**
  * @file LineageCanvas.stories.tsx
@@ -707,4 +712,316 @@ When switching between column lineages, nodes should maintain their positions (o
     layout: "fullscreen",
   },
   render: () => <ColumnClickingReflowDemo />,
+};
+
+// =============================================================================
+// LARGE GRAPH COLUMN CLICKING REFLOW REPRODUCER (DRC-2623 #2)
+// =============================================================================
+
+// Available columns for the large graph reproducer
+const LARGE_GRAPH_AVAILABLE_COLUMNS = [
+  "ORDER_ID",
+  "ORDER_ITEM_ID",
+  "CUSTOMER_ID",
+  "PRODUCT_ID",
+];
+const LARGE_GRAPH_CLICKABLE_COLUMNS = ["ORDER_ID", "ORDER_ITEM_ID"];
+
+// Map column names to their CLL data from API responses
+const LARGE_GRAPH_CLL_DATA_MAP: Record<string, { current: unknown }> = {
+  ORDER_ID: { current: orderIdSelectedCLL.current },
+  ORDER_ITEM_ID: { current: orderItemIdSelectedCLL.current },
+};
+
+/**
+ * Interactive wrapper to demonstrate the column-clicking reflow bug with a larger graph.
+ *
+ * This reproduces an additional scenario for DRC-2623 with:
+ * - Full jaffle_shop project including metrics and semantic models
+ * - Larger, more complex graph structure
+ * - Tests position preservation with more nodes/edges
+ */
+function LargeGraphReflowDemo() {
+  const [selectedColumn, setSelectedColumn] = useState<string | null>(null);
+  const [previousColumn, setPreviousColumn] = useState<string | null>(null);
+  const lineageGraph = useMemo(() => createLargeReproducerLineageGraph(), []);
+
+  // Store positions to detect reflow
+  const positionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const [reflowDetected, setReflowDetected] = useState(false);
+  const [reflowCount, setReflowCount] = useState(0);
+
+  // Generate nodes/edges based on selected column
+  const { nodes, edges } = useMemo(() => {
+    // Get CLL data for selected column from actual API responses
+    const cllData = selectedColumn
+      ? LARGE_GRAPH_CLL_DATA_MAP[selectedColumn]
+      : undefined;
+
+    // Only preserve positions when switching BETWEEN columns (not on first selection)
+    const shouldPreservePositions =
+      previousColumn !== null && selectedColumn !== null;
+    const existingPositions =
+      shouldPreservePositions && positionsRef.current.size > 0
+        ? positionsRef.current
+        : undefined;
+
+    const [rawNodes, rawEdges] = toReactFlow(lineageGraph, {
+      // biome-ignore lint/suspicious/noExplicitAny: CLL data structure from API
+      cll: cllData as any,
+      existingPositions,
+    });
+
+    // Check for reflow by comparing positions (only when switching between columns)
+    let hasReflowed = false;
+    if (
+      previousColumn !== null &&
+      selectedColumn !== null &&
+      positionsRef.current.size > 0
+    ) {
+      for (const node of rawNodes) {
+        if (node.type === "lineageGraphNode") {
+          const oldPos = positionsRef.current.get(node.id);
+          if (oldPos) {
+            const dx = Math.abs(node.position.x - oldPos.x);
+            const dy = Math.abs(node.position.y - oldPos.y);
+            if (dx > 5 || dy > 5) {
+              hasReflowed = true;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Update positions reference
+    const newPositions = new Map<string, { x: number; y: number }>();
+    for (const node of rawNodes) {
+      if (node.type === "lineageGraphNode") {
+        newPositions.set(node.id, { ...node.position });
+      }
+    }
+    positionsRef.current = newPositions;
+
+    if (hasReflowed) {
+      setReflowDetected(true);
+      setReflowCount((c) => c + 1);
+    }
+
+    // Adapt nodes for LineageCanvas
+    const adaptedNodes = rawNodes.map((node: LineageGraphNodes) => {
+      if (node.type === "lineageGraphNode") {
+        const graphData = node.data as {
+          name: string;
+          resourceType?: string;
+          changeStatus?: string;
+          packageName?: string;
+        };
+        return {
+          ...node,
+          type: "lineageNode" as const,
+          data: {
+            label: graphData.name,
+            resourceType: graphData.resourceType,
+            changeStatus: graphData.changeStatus,
+            packageName: graphData.packageName,
+          },
+        };
+      }
+      return node;
+    });
+
+    const adaptedEdges = rawEdges.map((edge: LineageGraphEdge) => ({
+      ...edge,
+      type: edge.type === "lineageGraphEdge" ? "lineageEdge" : edge.type,
+    }));
+
+    return {
+      nodes: adaptedNodes as LineageCanvasProps["nodes"],
+      edges: adaptedEdges as LineageCanvasProps["edges"],
+    };
+  }, [selectedColumn, previousColumn, lineageGraph]);
+
+  const handleColumnClick = useCallback(
+    (columnName: string) => {
+      if (!LARGE_GRAPH_CLICKABLE_COLUMNS.includes(columnName)) return;
+      setPreviousColumn(selectedColumn);
+      setSelectedColumn(columnName);
+    },
+    [selectedColumn],
+  );
+
+  const handleClearSelection = useCallback(() => {
+    setPreviousColumn(selectedColumn);
+    setSelectedColumn(null);
+    setReflowDetected(false);
+  }, [selectedColumn]);
+
+  return (
+    <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+      {/* Header with status */}
+      <Box
+        sx={{
+          p: 2,
+          borderBottom: 1,
+          borderColor: "divider",
+          bgcolor: reflowDetected ? "error.light" : "background.paper",
+          display: "flex",
+          alignItems: "center",
+          gap: 2,
+        }}
+      >
+        <Typography variant="h6">
+          Large Graph Reflow Reproducer (DRC-2623 #2)
+        </Typography>
+        {reflowDetected && (
+          <Typography variant="body2" color="error.contrastText">
+            ⚠️ REFLOW DETECTED! Count: {reflowCount}
+          </Typography>
+        )}
+      </Box>
+
+      {/* Main content */}
+      <Box sx={{ flex: 1, display: "flex", minHeight: 0 }}>
+        {/* Lineage Canvas */}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <LineageCanvas
+            key={`column-${selectedColumn}`}
+            nodes={nodes}
+            edges={edges}
+            showMiniMap={true}
+            showControls={true}
+            showBackground={true}
+            height={600}
+            interactive={true}
+          />
+        </Box>
+
+        {/* Column Panel (simulates NodeView) */}
+        <Box
+          sx={{
+            width: 300,
+            borderLeft: 1,
+            borderColor: "divider",
+            bgcolor: "background.paper",
+            overflow: "auto",
+          }}
+        >
+          <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
+            <Typography variant="subtitle1" fontWeight="bold">
+              order_items
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Click columns to view their lineage
+            </Typography>
+          </Box>
+
+          {/* Column list */}
+          <Box sx={{ p: 1 }}>
+            <Box
+              sx={{ mb: 1, p: 1, bgcolor: "grey.100", borderRadius: 1 }}
+              onClick={handleClearSelection}
+              style={{ cursor: "pointer" }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                Clear selection
+              </Typography>
+            </Box>
+
+            {LARGE_GRAPH_AVAILABLE_COLUMNS.map((columnName, index) => {
+              const isClickable =
+                LARGE_GRAPH_CLICKABLE_COLUMNS.includes(columnName);
+              const isSelected = selectedColumn === columnName;
+
+              return (
+                <Box
+                  key={columnName}
+                  sx={{
+                    p: 1.5,
+                    mb: 0.5,
+                    borderRadius: 1,
+                    cursor: isClickable ? "pointer" : "not-allowed",
+                    opacity: isClickable ? 1 : 0.5,
+                    bgcolor: isSelected ? "primary.light" : "transparent",
+                    "&:hover": {
+                      bgcolor: isClickable
+                        ? isSelected
+                          ? "primary.light"
+                          : "action.hover"
+                        : "transparent",
+                    },
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                  onClick={() => handleColumnClick(columnName)}
+                >
+                  <Box>
+                    <Typography
+                      variant="body2"
+                      fontWeight={isSelected ? "bold" : "normal"}
+                    >
+                      {index + 1}. {columnName}
+                      {!isClickable && " (no CLL data)"}
+                    </Typography>
+                  </Box>
+                  <Typography variant="caption" color="text.secondary">
+                    TEXT
+                  </Typography>
+                </Box>
+              );
+            })}
+          </Box>
+
+          {/* Instructions */}
+          <Box sx={{ p: 2, borderTop: 1, borderColor: "divider" }}>
+            <Typography variant="body2" color="text.secondary">
+              <strong>How to reproduce:</strong>
+              <br />
+              1. Click on &quot;ORDER_ID&quot; column
+              <br />
+              2. Note the node positions
+              <br />
+              3. Click on &quot;ORDER_ITEM_ID&quot; column
+              <br />
+              4. ❌ BUG: Nodes jump to new positions
+              <br />
+              <br />
+              <strong>Expected:</strong> Nodes should stay in place when
+              switching columns
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+export const LargeGraphReflow: Story = {
+  name: "Large Graph Reflow (DRC-2623 #2)",
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Bug Reproducer for DRC-2623 - Large Graph Variant**
+
+This story reproduces the column-clicking reflow bug with a larger, more complex graph structure
+using the full jaffle_shop project including metrics and semantic models.
+
+**Steps to reproduce:**
+1. Click on the "ORDER_ID" column in the right panel (nodes will reflow to show CLL - this is expected)
+2. Observe the node positions
+3. Click on the "ORDER_ITEM_ID" column
+4. ❌ **Bug**: The nodes jump to completely different positions
+
+**Expected behavior:**
+When switching between column lineages, nodes should maintain their positions (only the column-level details change).
+
+**Note:** Only "ORDER_ID" and "ORDER_ITEM_ID" columns have actual CLL data from the API.
+        `,
+      },
+    },
+    layout: "fullscreen",
+  },
+  render: () => <LargeGraphReflowDemo />,
 };
