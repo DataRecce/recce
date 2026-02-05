@@ -198,8 +198,8 @@ function DiffEditorComponent({
 
     if (sideBySide) {
       // Side-by-side merge view
-      // Note: revertControls is intentionally omitted to disable any
-      // revert/accept buttons - this is a read-only diff view
+      // Note: revertControls is intentionally omitted - MergeView shows no
+      // buttons when undefined (unlike unifiedMergeView which defaults to true)
       const mergeView = new MergeView({
         a: {
           doc: original,
