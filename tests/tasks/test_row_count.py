@@ -1,6 +1,7 @@
 import pytest
 
 from recce.tasks import RowCountDiffTask
+from recce.tasks.rowcount import RowCountStatus
 
 
 def test_row_count(dbt_test_helper):
@@ -20,18 +21,27 @@ def test_row_count(dbt_test_helper):
     dbt_test_helper.create_model("customers", csv_data_base, csv_data_curr, unique_id="model.customers")
     task = RowCountDiffTask(dict(node_names=["customers"]))
     run_result = task.execute()
-    assert run_result["customers"]["base"] == 2
-    assert run_result["customers"]["curr"] == 3
 
+    # Verify new structured format
+    assert run_result["customers"]["base"]["count"] == 2
+    assert run_result["customers"]["base"]["status"] == RowCountStatus.OK
+    assert run_result["customers"]["curr"]["count"] == 3
+    assert run_result["customers"]["curr"]["status"] == RowCountStatus.OK
+
+    # Test non-existent model - should return not_in_manifest status
     task = RowCountDiffTask(dict(node_names=["customers_"]))
     run_result = task.execute()
-    assert run_result["customers_"]["base"] is None
-    assert run_result["customers_"]["curr"] is None
+    assert run_result["customers_"]["base"]["count"] is None
+    assert run_result["customers_"]["base"]["status"] == RowCountStatus.NOT_IN_MANIFEST
+    assert run_result["customers_"]["curr"]["count"] is None
+    assert run_result["customers_"]["curr"]["status"] == RowCountStatus.NOT_IN_MANIFEST
+    # Verify message is present for non-ok status
+    assert "message" in run_result["customers_"]["base"]
 
     task = RowCountDiffTask(dict(node_ids=["model.customers"]))
     run_result = task.execute()
-    assert run_result["customers"]["base"] == 2
-    assert run_result["customers"]["curr"] == 3
+    assert run_result["customers"]["base"]["count"] == 2
+    assert run_result["customers"]["curr"]["count"] == 3
 
 
 def test_row_count_with_selector(dbt_test_helper):
