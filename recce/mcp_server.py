@@ -159,7 +159,13 @@ class RecceMCPServer:
                         "properties": {
                             "select": {
                                 "type": "string",
-                                "description": "dbt selector syntax to filter models (optional)",
+                                "description": (
+                                    "dbt selector syntax to filter models. "
+                                    "Valid state selectors: state:new, state:old, state:modified, state:unmodified. "
+                                    "Use '+' suffix for downstream: state:modified+ "
+                                    "NOTE: 'state:added' is INVALID - use 'state:new'. "
+                                    "Example: '1+state:modified+' for modified models with 1 upstream"
+                                ),
                             },
                             "exclude": {
                                 "type": "string",
