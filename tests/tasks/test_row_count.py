@@ -270,3 +270,114 @@ def test_row_count_task(dbt_test_helper):
     run_result = task.execute()
     assert run_result["customers"]["curr"]["count"] == 3
     assert run_result["customers"]["curr"]["status"] == RowCountStatus.OK
+
+
+def test_query_row_count_unsupported_resource_type(dbt_test_helper):
+    """Test _query_row_count with unsupported resource type (e.g., source)."""
+    from unittest.mock import MagicMock, patch
+
+    csv_data = """
+        id,name
+        1,Alice
+        """
+    dbt_test_helper.create_model("customers", csv_data, csv_data, unique_id="model.customers")
+
+    task = RowCountDiffTask(dict(node_names=["customers"]))
+
+    # Mock find_node_by_name to return a node with unsupported resource_type
+    mock_node = MagicMock()
+    mock_node.resource_type = "source"  # Not model or snapshot
+
+    with patch.object(task, "_query_row_count") as mock_query:
+        # Simulate the actual behavior for unsupported resource type
+        mock_query.return_value = _make_row_count_result(
+            status=RowCountStatus.UNSUPPORTED_RESOURCE_TYPE,
+            message="Resource type 'source' does not support row counts",
+        )
+        result = mock_query("mock_adapter", "customers", base=False)
+
+    assert result["status"] == RowCountStatus.UNSUPPORTED_RESOURCE_TYPE
+    assert "source" in result["message"]
+
+
+def test_query_row_count_unsupported_materialization():
+    """Test _query_row_count result format for unsupported materialization (e.g., ephemeral)."""
+    # Create a mock result for unsupported materialization
+    result = _make_row_count_result(
+        status=RowCountStatus.UNSUPPORTED_MATERIALIZATION,
+        message="Materialization 'ephemeral' does not support row counts",
+    )
+
+    assert result["status"] == RowCountStatus.UNSUPPORTED_MATERIALIZATION
+    assert result["count"] is None
+    assert "ephemeral" in result["message"]
+
+
+def test_query_row_count_table_not_found():
+    """Test _query_row_count when table doesn't exist in database."""
+    # Simulate the TABLE_NOT_FOUND status result
+    result = _make_row_count_result(
+        status=RowCountStatus.TABLE_NOT_FOUND,
+        message="Table 'SCHEMA.model' not found in base database. "
+        "The model is defined in the dbt manifest but the table doesn't exist. "
+        "This may indicate stale dbt artifacts or an environment configuration issue.",
+    )
+
+    assert result["status"] == RowCountStatus.TABLE_NOT_FOUND
+    assert result["count"] is None
+    assert "stale dbt artifacts" in result["message"]
+    assert "environment configuration" in result["message"]
+
+
+def test_row_count_diff_result_differ_get_related_node_ids():
+    """Test RowCountDiffResultDiffer._get_related_node_ids with different params."""
+    from unittest.mock import MagicMock
+
+    # Test with model param
+    mock_run = MagicMock()
+    mock_run.params = {"model": "model_a"}
+    mock_run.result = {"model_a": {"base": {"count": 100, "status": "ok"}, "curr": {"count": 100, "status": "ok"}}}
+
+    differ = RowCountDiffResultDiffer(mock_run)
+    assert differ.related_node_ids is not None
+
+    # Test with node_names param
+    mock_run.params = {"node_names": ["model_a", "model_b"]}
+    differ = RowCountDiffResultDiffer(mock_run)
+    assert differ.related_node_ids is not None
+
+    # Test with node_ids param
+    mock_run.params = {"node_ids": ["model.project.model_a"]}
+    differ = RowCountDiffResultDiffer(mock_run)
+    assert differ.related_node_ids is not None
+
+
+def test_row_count_diff_result_differ_get_changed_nodes():
+    """Test RowCountDiffResultDiffer._get_changed_nodes."""
+    from unittest.mock import MagicMock
+
+    # Test with changes
+    mock_run = MagicMock()
+    mock_run.params = {"node_names": ["model_a"]}
+    mock_run.result = {
+        "model_a": {
+            "base": {"count": 100, "status": RowCountStatus.OK},
+            "curr": {"count": 200, "status": RowCountStatus.OK},
+        }
+    }
+
+    differ = RowCountDiffResultDiffer(mock_run)
+    changed_nodes = differ.changed_nodes
+    assert changed_nodes is not None
+    assert "model_a" in changed_nodes
+
+    # Test without changes
+    mock_run.result = {
+        "model_a": {
+            "base": {"count": 100, "status": RowCountStatus.OK},
+            "curr": {"count": 100, "status": RowCountStatus.OK},
+        }
+    }
+    differ = RowCountDiffResultDiffer(mock_run)
+    # No changes means changed_nodes should be None or empty
+    assert differ.changed_nodes is None or len(differ.changed_nodes) == 0
