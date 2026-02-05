@@ -1,3 +1,4 @@
+import logging
 from typing import List, Literal, Optional, Union
 
 from pydantic import BaseModel
@@ -7,6 +8,8 @@ from recce.models import Check
 from recce.tasks import Task
 from recce.tasks.core import CheckValidator, TaskResultDiffer
 from recce.tasks.query import QueryMixin
+
+logger = logging.getLogger(__name__)
 
 
 class RowCountParams(BaseModel):
@@ -37,8 +40,32 @@ class RowCountTask(Task, QueryMixin):
 
         sql_template = r"select count(*) from {{ relation }}"
         sql = dbt_adapter.generate_sql(sql_template, context=dict(relation=relation))
-        _, table = dbt_adapter.execute(sql, fetch=True)
-        return int(table[0][0]) if table[0][0] is not None else 0
+        
+        try:
+            _, table = dbt_adapter.execute(sql, fetch=True)
+            return int(table[0][0]) if table[0][0] is not None else 0
+        except Exception as e:
+            # Check if this is a database error indicating the table doesn't exist
+            error_msg = str(e)
+            # Common error codes/messages for missing tables across different databases
+            if any(indicator in error_msg.upper() for indicator in [
+                "DOES NOT EXIST",
+                "NOT AUTHORIZED",
+                "42S02",  # Snowflake/SQL Server error code for missing table
+                "42P01",  # PostgreSQL error code for missing table
+                "TABLE OR VIEW NOT FOUND",  # Oracle
+                "NOT FOUND",
+            ]):
+                env_name = "base" if base else "current"
+                logger.warning(
+                    f"Table '{relation}' not found in {env_name} environment database "
+                    f"for model '{model_name}', despite being defined in the dbt manifest. "
+                    f"Returning None for row count."
+                )
+                return None
+            else:
+                # Re-raise if it's not a "table doesn't exist" error
+                raise
 
     def execute(self):
         result = {}
@@ -125,8 +152,32 @@ class RowCountDiffTask(Task, QueryMixin):
 
         sql_template = r"select count(*) from {{ relation }}"
         sql = dbt_adapter.generate_sql(sql_template, context=dict(relation=relation))
-        _, table = dbt_adapter.execute(sql, fetch=True)
-        return int(table[0][0]) if table[0][0] is not None else 0
+        
+        try:
+            _, table = dbt_adapter.execute(sql, fetch=True)
+            return int(table[0][0]) if table[0][0] is not None else 0
+        except Exception as e:
+            # Check if this is a database error indicating the table doesn't exist
+            error_msg = str(e)
+            # Common error codes/messages for missing tables across different databases
+            if any(indicator in error_msg.upper() for indicator in [
+                "DOES NOT EXIST",
+                "NOT AUTHORIZED",
+                "42S02",  # Snowflake/SQL Server error code for missing table
+                "42P01",  # PostgreSQL error code for missing table
+                "TABLE OR VIEW NOT FOUND",  # Oracle
+                "NOT FOUND",
+            ]):
+                env_name = "base" if base else "current"
+                logger.warning(
+                    f"Table '{relation}' not found in {env_name} environment database "
+                    f"for model '{model_name}', despite being defined in the dbt manifest. "
+                    f"Returning None for row count."
+                )
+                return None
+            else:
+                # Re-raise if it's not a "table doesn't exist" error
+                raise
 
     def execute_dbt(self):
         result = {}
