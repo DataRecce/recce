@@ -9,7 +9,14 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import Switch from "@mui/material/Switch";
 import Typography from "@mui/material/Typography";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   createCllData,
   createCllLineageGraph,
@@ -17,6 +24,11 @@ import {
   largeGraph,
   simpleLinearLayout,
 } from "./fixtures";
+import {
+  createReflowLineageGraph,
+  customer_idSelectedCLL,
+  order_dateSelectedCLL,
+} from "./reflowReproducer";
 
 /**
  * @file LineageCanvas.stories.tsx
@@ -382,4 +394,317 @@ Use this story to verify that toggling Column-Level Lineage (CLL) does NOT cause
     layout: "fullscreen",
   },
   render: () => <CllToggleDemo />,
+};
+
+// =============================================================================
+// COLUMN CLICKING REFLOW REPRODUCER (DRC-2623)
+// =============================================================================
+
+// Available columns that have actual CLL data
+const AVAILABLE_COLUMNS = ["order_id", "customer_id", "order_date", "status"];
+const CLICKABLE_COLUMNS = ["customer_id", "order_date"];
+
+// Map column names to their CLL data from API responses
+const CLL_DATA_MAP: Record<string, { current: unknown }> = {
+  customer_id: { current: customer_idSelectedCLL },
+  order_date: { current: order_dateSelectedCLL },
+};
+
+/**
+ * Interactive wrapper to demonstrate the column-clicking reflow bug.
+ *
+ * This reproduces the exact scenario from DRC-2623:
+ * - Shows the lineage graph with a selected node (stg_orders)
+ * - Right panel shows the column list (like NodeView)
+ * - Clicking between columns should trigger CLL for that column
+ * - BUG: The graph reflows when switching between columns
+ */
+function ColumnClickingReflowDemo() {
+  const [selectedColumn, setSelectedColumn] = useState<string | null>(null);
+  const [previousColumn, setPreviousColumn] = useState<string | null>(null);
+  const lineageGraph = useMemo(() => createReflowLineageGraph(), []);
+
+  // Store positions to detect reflow
+  const positionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const [reflowDetected, setReflowDetected] = useState(false);
+  const [reflowCount, setReflowCount] = useState(0);
+
+  // Generate nodes/edges based on selected column
+  const { nodes, edges } = useMemo(() => {
+    // Get CLL data for selected column from actual API responses
+    const cllData = selectedColumn ? CLL_DATA_MAP[selectedColumn] : undefined;
+
+    // Only preserve positions when switching BETWEEN columns (not on first selection)
+    // This is the bug behavior we want to demonstrate:
+    // - First column selection: nodes should reflow to make room for columns
+    // - Switching columns: nodes should preserve positions (the bug is they don't)
+    const shouldPreservePositions =
+      previousColumn !== null && selectedColumn !== null;
+    const existingPositions =
+      shouldPreservePositions && positionsRef.current.size > 0
+        ? positionsRef.current
+        : undefined;
+
+    const [rawNodes, rawEdges] = toReactFlow(lineageGraph, {
+      // biome-ignore lint/suspicious/noExplicitAny: CLL data structure from API
+      cll: cllData as any,
+      existingPositions,
+    });
+
+    // Check for reflow by comparing positions (only when switching between columns)
+    let hasReflowed = false;
+    if (
+      previousColumn !== null &&
+      selectedColumn !== null &&
+      positionsRef.current.size > 0
+    ) {
+      for (const node of rawNodes) {
+        if (node.type === "lineageGraphNode") {
+          const oldPos = positionsRef.current.get(node.id);
+          if (oldPos) {
+            const dx = Math.abs(node.position.x - oldPos.x);
+            const dy = Math.abs(node.position.y - oldPos.y);
+            if (dx > 5 || dy > 5) {
+              hasReflowed = true;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Update positions reference
+    const newPositions = new Map<string, { x: number; y: number }>();
+    for (const node of rawNodes) {
+      if (node.type === "lineageGraphNode") {
+        newPositions.set(node.id, { ...node.position });
+      }
+    }
+    positionsRef.current = newPositions;
+
+    if (hasReflowed) {
+      setReflowDetected(true);
+      setReflowCount((c) => c + 1);
+    }
+
+    // Adapt nodes for LineageCanvas
+    const adaptedNodes = rawNodes.map((node: LineageGraphNodes) => {
+      if (node.type === "lineageGraphNode") {
+        const graphData = node.data as {
+          name: string;
+          resourceType?: string;
+          changeStatus?: string;
+          packageName?: string;
+        };
+        return {
+          ...node,
+          type: "lineageNode" as const,
+          data: {
+            label: graphData.name,
+            resourceType: graphData.resourceType,
+            changeStatus: graphData.changeStatus,
+            packageName: graphData.packageName,
+          },
+        };
+      }
+      return node;
+    });
+
+    const adaptedEdges = rawEdges.map((edge: LineageGraphEdge) => ({
+      ...edge,
+      type: edge.type === "lineageGraphEdge" ? "lineageEdge" : edge.type,
+    }));
+
+    return {
+      nodes: adaptedNodes as LineageCanvasProps["nodes"],
+      edges: adaptedEdges as LineageCanvasProps["edges"],
+    };
+  }, [selectedColumn, previousColumn, lineageGraph]);
+
+  const handleColumnClick = useCallback(
+    (columnName: string) => {
+      if (!CLICKABLE_COLUMNS.includes(columnName)) return;
+      setPreviousColumn(selectedColumn);
+      setSelectedColumn(columnName);
+    },
+    [selectedColumn],
+  );
+
+  const handleClearSelection = useCallback(() => {
+    setPreviousColumn(selectedColumn);
+    setSelectedColumn(null);
+    setReflowDetected(false);
+  }, [selectedColumn]);
+
+  return (
+    <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+      {/* Header with status */}
+      <Box
+        sx={{
+          p: 2,
+          borderBottom: 1,
+          borderColor: "divider",
+          bgcolor: reflowDetected ? "error.light" : "background.paper",
+          display: "flex",
+          alignItems: "center",
+          gap: 2,
+        }}
+      >
+        <Typography variant="h6">
+          Column Clicking Reflow Reproducer (DRC-2623)
+        </Typography>
+        {reflowDetected && (
+          <Typography variant="body2" color="error.contrastText">
+            ⚠️ REFLOW DETECTED! Count: {reflowCount}
+          </Typography>
+        )}
+      </Box>
+
+      {/* Main content */}
+      <Box sx={{ flex: 1, display: "flex", minHeight: 0 }}>
+        {/* Lineage Canvas */}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <LineageCanvas
+            key={`column-${selectedColumn}`}
+            nodes={nodes}
+            edges={edges}
+            showMiniMap={true}
+            showControls={true}
+            showBackground={true}
+            height={600}
+            interactive={true}
+          />
+        </Box>
+
+        {/* Column Panel (simulates NodeView) */}
+        <Box
+          sx={{
+            width: 300,
+            borderLeft: 1,
+            borderColor: "divider",
+            bgcolor: "background.paper",
+            overflow: "auto",
+          }}
+        >
+          <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
+            <Typography variant="subtitle1" fontWeight="bold">
+              stg_orders
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              Click columns to view their lineage
+            </Typography>
+          </Box>
+
+          {/* Column list */}
+          <Box sx={{ p: 1 }}>
+            <Box
+              sx={{ mb: 1, p: 1, bgcolor: "grey.100", borderRadius: 1 }}
+              onClick={handleClearSelection}
+              style={{ cursor: "pointer" }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                Clear selection
+              </Typography>
+            </Box>
+
+            {AVAILABLE_COLUMNS.map((columnName, index) => {
+              const isClickable = CLICKABLE_COLUMNS.includes(columnName);
+              const isSelected = selectedColumn === columnName;
+
+              return (
+                <Box
+                  key={columnName}
+                  sx={{
+                    p: 1.5,
+                    mb: 0.5,
+                    borderRadius: 1,
+                    cursor: isClickable ? "pointer" : "not-allowed",
+                    opacity: isClickable ? 1 : 0.5,
+                    bgcolor: isSelected ? "primary.light" : "transparent",
+                    "&:hover": {
+                      bgcolor: isClickable
+                        ? isSelected
+                          ? "primary.light"
+                          : "action.hover"
+                        : "transparent",
+                    },
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                  onClick={() => handleColumnClick(columnName)}
+                >
+                  <Box>
+                    <Typography
+                      variant="body2"
+                      fontWeight={isSelected ? "bold" : "normal"}
+                    >
+                      {index + 1}. {columnName}
+                      {!isClickable && " (no CLL data)"}
+                    </Typography>
+                  </Box>
+                  <Typography variant="caption" color="text.secondary">
+                    {columnName === "order_id"
+                      ? "BIGINT"
+                      : columnName === "customer_id"
+                        ? "BIGINT"
+                        : columnName === "order_date"
+                          ? "DATE"
+                          : "VARCHAR"}
+                  </Typography>
+                </Box>
+              );
+            })}
+          </Box>
+
+          {/* Instructions */}
+          <Box sx={{ p: 2, borderTop: 1, borderColor: "divider" }}>
+            <Typography variant="body2" color="text.secondary">
+              <strong>How to reproduce:</strong>
+              <br />
+              1. Click on &quot;customer_id&quot; column
+              <br />
+              2. Note the node positions
+              <br />
+              3. Click on &quot;order_date&quot; column
+              <br />
+              4. ❌ BUG: Nodes jump to new positions
+              <br />
+              <br />
+              <strong>Expected:</strong> Nodes should stay in place when
+              switching columns
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+export const ColumnClickingReflow: Story = {
+  name: "Column Clicking Reflow (DRC-2623)",
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Bug Reproducer for DRC-2623**
+
+This story reproduces the exact scenario where clicking between columns in the NodeView table causes the lineage graph to reflow unexpectedly.
+
+**Steps to reproduce:**
+1. Click on the "customer_id" column in the right panel (nodes will reflow to show CLL - this is expected)
+2. Observe the node positions
+3. Click on the "order_date" column
+4. ❌ **Bug**: The nodes jump to completely different positions
+
+**Expected behavior:**
+When switching between column lineages, nodes should maintain their positions (only the column-level details change).
+
+**Note:** Only "customer_id" and "order_date" columns have actual CLL data from the API.
+        `,
+      },
+    },
+    layout: "fullscreen",
+  },
+  render: () => <ColumnClickingReflowDemo />,
 };

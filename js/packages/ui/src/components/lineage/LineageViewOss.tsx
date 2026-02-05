@@ -471,8 +471,11 @@ export function PrivateLineageView(
   ) => {
     const previousColumnLevelLineage = viewOptions.column_level_lineage;
 
-    // Detect when CLL is being turned OFF (previous exists but new one is undefined)
-    const isTurningCllOff = previousColumnLevelLineage && !columnLevelLineage;
+    // Preserve positions when:
+    // 1. CLL is being turned OFF (previous exists but new one is undefined)
+    // 2. Switching between columns (both previous and new have CLL) - DRC-2623 fix
+    // This prevents jarring graph reflow when the user clicks between columns
+    const shouldPreservePositions = previousColumnLevelLineage !== undefined;
 
     await handleViewOptionsChanged(
       {
@@ -480,7 +483,7 @@ export function PrivateLineageView(
         column_level_lineage: columnLevelLineage,
       },
       false,
-      isTurningCllOff, // preserve positions when turning CLL off
+      shouldPreservePositions, // preserve positions when CLL was previously active
     );
 
     if (!previous) {
