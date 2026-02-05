@@ -240,11 +240,21 @@ class RecceMCPServer:
                                     },
                                     "select": {
                                         "type": "string",
-                                        "description": "dbt selector syntax to filter models (optional)",
+                                        "description": (
+                                            "dbt selector syntax to filter models. "
+                                            "Valid state selectors: state:new, state:old, state:modified, state:unmodified. "
+                                            "Sub-selectors: state:modified.body, .configs, .relation, .persisted_descriptions, .macros, .contract. "
+                                            "Use '+' suffix for downstream deps: state:modified+ "
+                                            "IMPORTANT: 'state:added' is INVALID - use 'state:new' instead. "
+                                            "Example: 'state:new,config.materialized:table' or 'state:modified+'"
+                                        ),
                                     },
                                     "exclude": {
                                         "type": "string",
-                                        "description": "dbt selector syntax to exclude models (optional)",
+                                        "description": (
+                                            "dbt selector syntax to exclude models. "
+                                            "Same syntax as select. Example: 'config.materialized:view'"
+                                        ),
                                     },
                                 },
                             },
