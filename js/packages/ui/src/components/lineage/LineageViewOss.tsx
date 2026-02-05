@@ -256,18 +256,30 @@ export function PrivateLineageView(
   );
 
   /**
-   * Helper to extract node positions for preserving layout
+   * Helper to extract node positions for preserving layout.
+   *
+   * IMPORTANT: We read positions from React Flow's internal store via getNodes()
+   * rather than from React state. This ensures we capture the actual rendered
+   * positions, which may differ from React state due to:
+   * - fitView adjustments
+   * - Node measuring/resizing
+   * - Internal React Flow position updates
+   *
+   * This fixes DRC-2623 where clicking between columns caused graph reflow
+   * because React state positions were stale relative to what React Flow rendered.
    */
   const getNodePositions = useCallback(() => {
     const positions = new Map<string, { x: number; y: number }>();
-    for (const node of nodes) {
+    // Get nodes directly from React Flow's internal store, not React state
+    const currentNodes = reactFlow.getNodes();
+    for (const node of currentNodes) {
       // Only capture parent node positions, not column nodes
       if (!node.parentId && node.position) {
         positions.set(node.id, { x: node.position.x, y: node.position.y });
       }
     }
     return positions;
-  }, [nodes]);
+  }, [reactFlow]);
 
   /**
    * Highlighted nodes: the nodes that are highlighted. The behavior of highlighting depends on the select mode
