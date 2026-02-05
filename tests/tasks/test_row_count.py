@@ -1,7 +1,12 @@
 import pytest
 
 from recce.tasks import RowCountDiffTask
-from recce.tasks.rowcount import RowCountStatus
+from recce.tasks.rowcount import (
+    RowCountDiffResultDiffer,
+    RowCountStatus,
+    RowCountTask,
+    _make_row_count_result,
+)
 
 
 def test_row_count(dbt_test_helper):
@@ -141,3 +146,127 @@ def test_validator():
                 "view_mode": "abc",
             }
         )
+
+
+def test_make_row_count_result():
+    """Test the _make_row_count_result helper function."""
+    # Test with count and default status
+    result = _make_row_count_result(count=100)
+    assert result["count"] == 100
+    assert result["status"] == RowCountStatus.OK
+    assert "message" not in result
+
+    # Test with count=None and custom status
+    result = _make_row_count_result(count=None, status=RowCountStatus.NOT_IN_MANIFEST)
+    assert result["count"] is None
+    assert result["status"] == RowCountStatus.NOT_IN_MANIFEST
+    assert "message" not in result
+
+    # Test with message
+    result = _make_row_count_result(
+        count=None,
+        status=RowCountStatus.TABLE_NOT_FOUND,
+        message="Table not found in database",
+    )
+    assert result["count"] is None
+    assert result["status"] == RowCountStatus.TABLE_NOT_FOUND
+    assert result["message"] == "Table not found in database"
+
+
+def test_row_count_status_values():
+    """Test that RowCountStatus has expected values."""
+    assert RowCountStatus.OK == "ok"
+    assert RowCountStatus.NOT_IN_MANIFEST == "not_in_manifest"
+    assert RowCountStatus.UNSUPPORTED_RESOURCE_TYPE == "unsupported_resource_type"
+    assert RowCountStatus.UNSUPPORTED_MATERIALIZATION == "unsupported_materialization"
+    assert RowCountStatus.TABLE_NOT_FOUND == "table_not_found"
+
+
+def test_row_count_diff_result_differ_new_format():
+    """Test RowCountDiffResultDiffer with new structured format."""
+    # Create a mock check and run
+    from unittest.mock import MagicMock
+
+    mock_run = MagicMock()
+    mock_run.params = {"node_names": ["model_a"]}
+    mock_run.result = {
+        "model_a": {
+            "base": {"count": 100, "status": RowCountStatus.OK},
+            "curr": {"count": 200, "status": RowCountStatus.OK},
+        }
+    }
+
+    differ = RowCountDiffResultDiffer(mock_run)
+    # The differ should extract counts correctly from structured format
+    assert differ.changes is not None  # There are changes (100 -> 200)
+
+
+def test_row_count_diff_result_differ_legacy_format():
+    """Test RowCountDiffResultDiffer backward compatibility with legacy format."""
+    from unittest.mock import MagicMock
+
+    mock_run = MagicMock()
+    mock_run.params = {"node_names": ["model_a"]}
+    # Legacy format: base/curr are integers directly, not dicts
+    mock_run.result = {
+        "model_a": {
+            "base": 100,
+            "curr": 200,
+        }
+    }
+
+    differ = RowCountDiffResultDiffer(mock_run)
+    # The differ should handle legacy format correctly
+    assert differ.changes is not None  # There are changes (100 -> 200)
+
+
+def test_row_count_diff_result_differ_with_none_counts():
+    """Test RowCountDiffResultDiffer handles None counts in new format."""
+    from unittest.mock import MagicMock
+
+    mock_run = MagicMock()
+    mock_run.params = {"node_names": ["model_a"]}
+    mock_run.result = {
+        "model_a": {
+            "base": {"count": None, "status": RowCountStatus.TABLE_NOT_FOUND},
+            "curr": {"count": 200, "status": RowCountStatus.OK},
+        }
+    }
+
+    differ = RowCountDiffResultDiffer(mock_run)
+    # Should handle None -> 200 as a change
+    assert differ.changes is not None
+
+
+def test_row_count_task(dbt_test_helper):
+    """Test RowCountTask (current environment only, no diff)."""
+    csv_data = """
+        customer_id,name,age
+        1,Alice,30
+        2,Bob,25
+        3,Charlie,35
+        """
+
+    dbt_test_helper.create_model("customers", csv_data, csv_data, unique_id="model.customers")
+
+    # Test with node_names
+    task = RowCountTask(dict(node_names=["customers"]))
+    run_result = task.execute()
+
+    # Verify structured format for current environment
+    assert "customers" in run_result
+    assert run_result["customers"]["curr"]["count"] == 3
+    assert run_result["customers"]["curr"]["status"] == RowCountStatus.OK
+
+    # Test with non-existent model
+    task = RowCountTask(dict(node_names=["nonexistent_model"]))
+    run_result = task.execute()
+    assert run_result["nonexistent_model"]["curr"]["count"] is None
+    assert run_result["nonexistent_model"]["curr"]["status"] == RowCountStatus.NOT_IN_MANIFEST
+    assert "message" in run_result["nonexistent_model"]["curr"]
+
+    # Test with node_ids
+    task = RowCountTask(dict(node_ids=["model.customers"]))
+    run_result = task.execute()
+    assert run_result["customers"]["curr"]["count"] == 3
+    assert run_result["customers"]["curr"]["status"] == RowCountStatus.OK
