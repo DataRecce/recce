@@ -402,7 +402,7 @@ Use this story to verify that toggling Column-Level Lineage (CLL) does NOT cause
 };
 
 // =============================================================================
-// COLUMN CLICKING REFLOW REPRODUCER (DRC-2623)
+// COLUMN CLICKING REFLOW
 // =============================================================================
 
 // Available columns that have actual CLL data
@@ -418,11 +418,9 @@ const CLL_DATA_MAP: Record<string, { current: unknown }> = {
 /**
  * Interactive wrapper to demonstrate the column-clicking reflow bug.
  *
- * This reproduces the exact scenario from DRC-2623:
  * - Shows the lineage graph with a selected node (stg_orders)
  * - Right panel shows the column list (like NodeView)
  * - Clicking between columns should trigger CLL for that column
- * - BUG: The graph reflows when switching between columns
  */
 function ColumnClickingReflowDemo() {
   const [selectedColumn, setSelectedColumn] = useState<string | null>(null);
@@ -555,9 +553,7 @@ function ColumnClickingReflowDemo() {
           gap: 2,
         }}
       >
-        <Typography variant="h6">
-          Column Clicking Reflow Reproducer (DRC-2623)
-        </Typography>
+        <Typography variant="h6">Column Clicking Reflow</Typography>
         {reflowDetected && (
           <Typography variant="body2" color="error.contrastText">
             ⚠️ REFLOW DETECTED! Count: {reflowCount}
@@ -687,23 +683,17 @@ function ColumnClickingReflowDemo() {
 }
 
 export const ColumnClickingReflow: Story = {
-  name: "Column Clicking Reflow (DRC-2623)",
+  name: "Column Clicking Reflow",
   parameters: {
     docs: {
       description: {
         story: `
-**Bug Reproducer for DRC-2623**
+This story created the scenario where clicking between columns in the NodeView table causes the lineage graph to reflow.
 
-This story reproduces the exact scenario where clicking between columns in the NodeView table causes the lineage graph to reflow unexpectedly.
-
-**Steps to reproduce:**
 1. Click on the "customer_id" column in the right panel (nodes will reflow to show CLL - this is expected)
 2. Observe the node positions
 3. Click on the "order_date" column
-4. ❌ **Bug**: The nodes jump to completely different positions
-
-**Expected behavior:**
-When switching between column lineages, nodes should maintain their positions (only the column-level details change).
+4. When switching between column lineages, nodes should maintain their positions (only the column-level details change).
 
 **Note:** Only "customer_id" and "order_date" columns have actual CLL data from the API.
         `,
@@ -715,7 +705,7 @@ When switching between column lineages, nodes should maintain their positions (o
 };
 
 // =============================================================================
-// LARGE GRAPH COLUMN CLICKING REFLOW REPRODUCER (DRC-2623 #2)
+// LARGE GRAPH COLUMN CLICKING REFLOW
 // =============================================================================
 
 // Available columns for the large graph reproducer
@@ -734,9 +724,8 @@ const LARGE_GRAPH_CLL_DATA_MAP: Record<string, { current: unknown }> = {
 };
 
 /**
- * Interactive wrapper to demonstrate the column-clicking reflow bug with a larger graph.
+ * Interactive wrapper to demonstrate column-clicking reflow with a larger graph.
  *
- * This reproduces an additional scenario for DRC-2623 with:
  * - Full jaffle_shop project including metrics and semantic models
  * - Larger, more complex graph structure
  * - Tests position preservation with more nodes/edges
@@ -871,9 +860,7 @@ function LargeGraphReflowDemo() {
           gap: 2,
         }}
       >
-        <Typography variant="h6">
-          Large Graph Reflow Reproducer (DRC-2623 #2)
-        </Typography>
+        <Typography variant="h6">Large Graph Reflow</Typography>
         {reflowDetected && (
           <Typography variant="body2" color="error.contrastText">
             ⚠️ REFLOW DETECTED! Count: {reflowCount}
@@ -998,24 +985,21 @@ function LargeGraphReflowDemo() {
 }
 
 export const LargeGraphReflow: Story = {
-  name: "Large Graph Reflow (DRC-2623 #2)",
+  name: "Large Graph Reflow",
   parameters: {
     docs: {
       description: {
         story: `
-**Bug Reproducer for DRC-2623 - Large Graph Variant**
+**Large Graph Variant**
 
-This story reproduces the column-clicking reflow bug with a larger, more complex graph structure
+This story shows the column-clicking reflow with a larger, more complex graph structure
 using the full jaffle_shop project including metrics and semantic models.
 
 **Steps to reproduce:**
 1. Click on the "ORDER_ID" column in the right panel (nodes will reflow to show CLL - this is expected)
 2. Observe the node positions
 3. Click on the "ORDER_ITEM_ID" column
-4. ❌ **Bug**: The nodes jump to completely different positions
-
-**Expected behavior:**
-When switching between column lineages, nodes should maintain their positions (only the column-level details change).
+4. When switching between column lineages, nodes should maintain their positions (only the column-level details change).
 
 **Note:** Only "ORDER_ID" and "ORDER_ITEM_ID" columns have actual CLL data from the API.
         `,
