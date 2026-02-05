@@ -39,6 +39,8 @@ const config: StorybookConfig = {
         __dirname,
         "../../ui/src/contexts/index.ts",
       ),
+      "@datarecce/ui/advanced": resolve(__dirname, "../../ui/src/advanced.ts"),
+      "@datarecce/ui/api": resolve(__dirname, "../../ui/src/api.ts"),
       "@datarecce/ui": resolve(__dirname, "../../ui/src/index.ts"),
       // Fix for html2canvas-pro strict exports in Vite 7.x
       "html2canvas-pro/dist/html2canvas-pro.esm.js": "html2canvas-pro",

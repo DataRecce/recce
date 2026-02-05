@@ -256,6 +256,32 @@ export function PrivateLineageView(
   );
 
   /**
+   * Helper to extract node positions for preserving layout.
+   *
+   * IMPORTANT: We read positions from React Flow's internal store via getNodes()
+   * rather than from React state. This ensures we capture the actual rendered
+   * positions, which may differ from React state due to:
+   * - fitView adjustments
+   * - Node measuring/resizing
+   * - Internal React Flow position updates
+   *
+   * This fixes DRC-2623 where clicking between columns caused graph reflow
+   * because React state positions were stale relative to what React Flow rendered.
+   */
+  const getNodePositions = useCallback(() => {
+    const positions = new Map<string, { x: number; y: number }>();
+    // Get nodes directly from React Flow's internal store, not React state
+    const currentNodes = reactFlow.getNodes();
+    for (const node of currentNodes) {
+      // Only capture parent node positions, not column nodes
+      if (!node.parentId && node.position) {
+        positions.set(node.id, { x: node.position.x, y: node.position.y });
+      }
+    }
+    return positions;
+  }, [reactFlow]);
+
+  /**
    * Highlighted nodes: the nodes that are highlighted. The behavior of highlighting depends on the select mode
    *
    * - Default: nodes in the impact radius, or all nodes if the impact radius is not available
@@ -457,12 +483,19 @@ export function PrivateLineageView(
   ) => {
     const previousColumnLevelLineage = viewOptions.column_level_lineage;
 
+    // Preserve positions when:
+    // 1. CLL is being turned OFF (previous exists but new one is undefined)
+    // 2. Switching between columns (both previous and new have CLL) - DRC-2623 fix
+    // This prevents jarring graph reflow when the user clicks between columns
+    const shouldPreservePositions = previousColumnLevelLineage !== undefined;
+
     await handleViewOptionsChanged(
       {
         ...viewOptions,
         column_level_lineage: columnLevelLineage,
       },
       false,
+      shouldPreservePositions, // preserve positions when CLL was previously active
     );
 
     if (!previous) {
@@ -542,9 +575,10 @@ export function PrivateLineageView(
   const refreshLayout = async (options: {
     viewOptions?: LineageDiffViewOptions;
     fitView?: boolean;
+    preservePositions?: boolean;
   }) => {
     let { viewOptions: newViewOptions = viewOptions } = options;
-    const { fitView } = options;
+    const { fitView, preservePositions = false } = options;
 
     let selectedNodes: string[] | undefined = undefined;
 
@@ -609,11 +643,18 @@ export function PrivateLineageView(
       }
     }
 
+    // Capture positions if preservePositions is true
+    let existingPositions: Map<string, { x: number; y: number }> | undefined;
+    if (preservePositions) {
+      existingPositions = getNodePositions();
+    }
+
     const [newNodes, newEdges, newNodeColumnSetMap] = await toReactFlow(
       lineageGraph,
       {
         selectedNodes,
         cll,
+        existingPositions,
       },
     );
     setNodes(newNodes);
@@ -655,11 +696,13 @@ export function PrivateLineageView(
   const handleViewOptionsChanged = async (
     newViewOptions: LineageDiffViewOptions,
     fitView = true,
+    preservePositions = false,
   ) => {
     setViewOptions(newViewOptions);
     await refreshLayout({
       viewOptions: newViewOptions,
       fitView,
+      preservePositions,
     });
   };
 
