@@ -28,7 +28,7 @@ dependencies = [
     "python-multipart",
     "GitPython",
     "PyGithub",
-    "sqlglot>=27.29.0,<28.0",
+    "sqlglot>=27.29.0,<29.0",
     "pytz",
     "packaging",
 ]
