@@ -4,6 +4,7 @@ import type { Check } from "../../api";
 import {
   type CllInput,
   type ColumnLineageData,
+  cacheKeys,
   createLineageDiffCheck,
   createSchemaDiffCheck,
   getCll,
@@ -53,7 +54,7 @@ import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Background,
   BackgroundVariant,
@@ -131,6 +132,7 @@ export function PrivateLineageView(
 ) {
   const { isDark } = useThemeColors();
   const { apiClient } = useApiConfig();
+  const queryClient = useQueryClient();
   const reactFlow = useReactFlow();
   const refResize = useRef<HTMLDivElement>(null);
   const {
@@ -1003,6 +1005,7 @@ export function PrivateLineageView(
       trackMultiNodesAction({ type: "lineage_diff", selected: selectedMode });
 
       if (check) {
+        await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
         navToCheck(check);
       }
     },
@@ -1037,6 +1040,7 @@ export function PrivateLineageView(
       }
 
       if (check) {
+        await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
         navToCheck(check);
       }
     },
