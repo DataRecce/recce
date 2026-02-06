@@ -1,4 +1,5 @@
 import logging
+from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel
@@ -13,8 +14,10 @@ logger = logging.getLogger(__name__)
 
 
 # Row count result status codes - these are exposed to MCP agents for interpretation
-class RowCountStatus:
+class RowCountStatus(str, Enum):
     """Status codes for row count results.
+
+    Using str, Enum maintains JSON serialization compatibility while adding type safety.
 
     These codes help agents understand why a row count might be unavailable:
     - ok: Successfully retrieved row count
@@ -34,7 +37,7 @@ class RowCountStatus:
 
 def _make_row_count_result(
     count: Optional[int] = None,
-    status: str = RowCountStatus.OK,
+    status: RowCountStatus = RowCountStatus.OK,
     message: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Create a structured row count result with status information.
@@ -53,10 +56,15 @@ def _make_row_count_result(
     return result
 
 
-def _query_row_count(dbt_adapter, model_name, base=False) -> Dict[str, Any]:
+def _query_row_count(dbt_adapter: Any, model_name: str, base: bool = False) -> Dict[str, Any]:
     """Query row count for a model with detailed status information.
 
     This is a shared helper function used by both RowCountTask and RowCountDiffTask.
+
+    Args:
+        dbt_adapter: The dbt adapter instance for database operations
+        model_name: Name of the model to query row count for
+        base: If True, query the base environment; otherwise query current
 
     Returns a structured result with count, status, and optional message
     to help agents understand why a count might be unavailable.
@@ -70,7 +78,7 @@ def _query_row_count(dbt_adapter, model_name, base=False) -> Dict[str, Any]:
             message=f"Model '{model_name}' not found in {env_name} manifest",
         )
 
-    if node.resource_type != "model" and node.resource_type != "snapshot":
+    if node.resource_type not in ("model", "snapshot"):
         return _make_row_count_result(
             status=RowCountStatus.UNSUPPORTED_RESOURCE_TYPE,
             message=f"Resource type '{node.resource_type}' does not support row counts",
@@ -100,6 +108,7 @@ def _query_row_count(dbt_adapter, model_name, base=False) -> Dict[str, Any]:
         # Check if this is a database error indicating the table doesn't exist
         error_msg = str(e)
         # Common error codes/messages for missing tables across different databases
+        # Be specific to avoid matching unrelated errors (e.g., "Column NOT FOUND")
         if any(
             indicator in error_msg.upper()
             for indicator in [
@@ -108,7 +117,9 @@ def _query_row_count(dbt_adapter, model_name, base=False) -> Dict[str, Any]:
                 "42S02",  # Snowflake/SQL Server error code for missing table
                 "42P01",  # PostgreSQL error code for missing table
                 "TABLE OR VIEW NOT FOUND",  # Oracle
-                "NOT FOUND",
+                "RELATION DOES NOT EXIST",  # PostgreSQL alternative
+                "OBJECT DOES NOT EXIST",  # Snowflake
+                "INVALID OBJECT NAME",  # SQL Server
             ]
         ):
             message = (
@@ -262,7 +273,7 @@ class RowCountDiffTask(Task, QueryMixin):
 
         query_candidates = []
 
-        for node_id in self.node_ids or []:
+        for node_id in self.params.node_ids or []:
             query_candidates.append(node_id)
         for node_name in self.params.node_names or []:
             query_candidates.append(node_name)
