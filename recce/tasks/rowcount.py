@@ -53,6 +53,79 @@ def _make_row_count_result(
     return result
 
 
+def _query_row_count(dbt_adapter, model_name, base=False) -> Dict[str, Any]:
+    """Query row count for a model with detailed status information.
+
+    This is a shared helper function used by both RowCountTask and RowCountDiffTask.
+
+    Returns a structured result with count, status, and optional message
+    to help agents understand why a count might be unavailable.
+    """
+    env_name = "base" if base else "current"
+
+    node = dbt_adapter.find_node_by_name(model_name, base=base)
+    if node is None:
+        return _make_row_count_result(
+            status=RowCountStatus.NOT_IN_MANIFEST,
+            message=f"Model '{model_name}' not found in {env_name} manifest",
+        )
+
+    if node.resource_type != "model" and node.resource_type != "snapshot":
+        return _make_row_count_result(
+            status=RowCountStatus.UNSUPPORTED_RESOURCE_TYPE,
+            message=f"Resource type '{node.resource_type}' does not support row counts",
+        )
+
+    if node.config and node.config.materialized not in ["table", "view", "incremental", "snapshot"]:
+        return _make_row_count_result(
+            status=RowCountStatus.UNSUPPORTED_MATERIALIZATION,
+            message=f"Materialization '{node.config.materialized}' does not support row counts",
+        )
+
+    relation = dbt_adapter.create_relation(model_name, base=base)
+    if relation is None:
+        return _make_row_count_result(
+            status=RowCountStatus.NOT_IN_MANIFEST,
+            message=f"Could not create relation for model '{model_name}'",
+        )
+
+    sql_template = r"select count(*) from {{ relation }}"
+    sql = dbt_adapter.generate_sql(sql_template, context=dict(relation=relation))
+
+    try:
+        _, table = dbt_adapter.execute(sql, fetch=True)
+        count = int(table[0][0]) if table[0][0] is not None else 0
+        return _make_row_count_result(count=count, status=RowCountStatus.OK)
+    except Exception as e:
+        # Check if this is a database error indicating the table doesn't exist
+        error_msg = str(e)
+        # Common error codes/messages for missing tables across different databases
+        if any(
+            indicator in error_msg.upper()
+            for indicator in [
+                "DOES NOT EXIST",
+                "NOT AUTHORIZED",
+                "42S02",  # Snowflake/SQL Server error code for missing table
+                "42P01",  # PostgreSQL error code for missing table
+                "TABLE OR VIEW NOT FOUND",  # Oracle
+                "NOT FOUND",
+            ]
+        ):
+            message = (
+                f"Table '{relation}' not found in {env_name} database. "
+                f"The model is defined in the dbt manifest but the table doesn't exist. "
+                f"This may indicate stale dbt artifacts or an environment configuration issue."
+            )
+            logger.warning(message)
+            return _make_row_count_result(
+                status=RowCountStatus.TABLE_NOT_FOUND,
+                message=message,
+            )
+        else:
+            # Re-raise if it's not a "table doesn't exist" error
+            raise
+
+
 class RowCountParams(BaseModel):
     node_names: Optional[list[str]] = None
     node_ids: Optional[list[str]] = None
@@ -65,69 +138,6 @@ class RowCountTask(Task, QueryMixin):
         super().__init__()
         self.params = RowCountParams(**params) if params is not None else RowCountParams()
         self.connection = None
-
-    def _query_row_count(self, dbt_adapter, model_name, base=False) -> Dict[str, Any]:
-        """Query row count for a model with detailed status information."""
-        env_name = "base" if base else "current"
-
-        node = dbt_adapter.find_node_by_name(model_name, base=base)
-        if node is None:
-            return _make_row_count_result(
-                status=RowCountStatus.NOT_IN_MANIFEST,
-                message=f"Model '{model_name}' not found in {env_name} manifest",
-            )
-
-        if node.resource_type != "model" and node.resource_type != "snapshot":
-            return _make_row_count_result(
-                status=RowCountStatus.UNSUPPORTED_RESOURCE_TYPE,
-                message=f"Resource type '{node.resource_type}' does not support row counts",
-            )
-
-        if node.config and node.config.materialized not in ["table", "view", "incremental", "snapshot"]:
-            return _make_row_count_result(
-                status=RowCountStatus.UNSUPPORTED_MATERIALIZATION,
-                message=f"Materialization '{node.config.materialized}' does not support row counts",
-            )
-
-        relation = dbt_adapter.create_relation(model_name, base=base)
-        if relation is None:
-            return _make_row_count_result(
-                status=RowCountStatus.NOT_IN_MANIFEST,
-                message=f"Could not create relation for model '{model_name}'",
-            )
-
-        sql_template = r"select count(*) from {{ relation }}"
-        sql = dbt_adapter.generate_sql(sql_template, context=dict(relation=relation))
-
-        try:
-            _, table = dbt_adapter.execute(sql, fetch=True)
-            count = int(table[0][0]) if table[0][0] is not None else 0
-            return _make_row_count_result(count=count, status=RowCountStatus.OK)
-        except Exception as e:
-            error_msg = str(e)
-            if any(
-                indicator in error_msg.upper()
-                for indicator in [
-                    "DOES NOT EXIST",
-                    "NOT AUTHORIZED",
-                    "42S02",
-                    "42P01",
-                    "TABLE OR VIEW NOT FOUND",
-                    "NOT FOUND",
-                ]
-            ):
-                message = (
-                    f"Table '{relation}' not found in {env_name} database. "
-                    f"The model is defined in the dbt manifest but the table doesn't exist. "
-                    f"This may indicate stale dbt artifacts or an environment configuration issue."
-                )
-                logger.warning(message)
-                return _make_row_count_result(
-                    status=RowCountStatus.TABLE_NOT_FOUND,
-                    message=message,
-                )
-            else:
-                raise
 
     def execute(self):
         result = {}
@@ -167,7 +177,7 @@ class RowCountTask(Task, QueryMixin):
             for node in query_candidates:
                 self.update_progress(message=f"Query: {node} [{completed}/{total}]", percentage=completed / total)
 
-                curr_result = self._query_row_count(dbt_adapter, node, base=False)
+                curr_result = _query_row_count(dbt_adapter, node, base=False)
                 self.check_cancel()
                 result[node] = {
                     "curr": curr_result,
@@ -196,76 +206,6 @@ class RowCountDiffTask(Task, QueryMixin):
         super().__init__()
         self.params = RowCountDiffParams(**params) if params is not None else RowCountDiffParams()
         self.connection = None
-
-    def _query_row_count(self, dbt_adapter, model_name, base=False) -> Dict[str, Any]:
-        """Query row count for a model with detailed status information.
-
-        Returns a structured result with count, status, and optional message
-        to help agents understand why a count might be unavailable.
-        """
-        env_name = "base" if base else "current"
-
-        node = dbt_adapter.find_node_by_name(model_name, base=base)
-        if node is None:
-            return _make_row_count_result(
-                status=RowCountStatus.NOT_IN_MANIFEST,
-                message=f"Model '{model_name}' not found in {env_name} manifest",
-            )
-
-        if node.resource_type != "model" and node.resource_type != "snapshot":
-            return _make_row_count_result(
-                status=RowCountStatus.UNSUPPORTED_RESOURCE_TYPE,
-                message=f"Resource type '{node.resource_type}' does not support row counts",
-            )
-
-        if node.config and node.config.materialized not in ["table", "view", "incremental", "snapshot"]:
-            return _make_row_count_result(
-                status=RowCountStatus.UNSUPPORTED_MATERIALIZATION,
-                message=f"Materialization '{node.config.materialized}' does not support row counts",
-            )
-
-        relation = dbt_adapter.create_relation(model_name, base=base)
-        if relation is None:
-            return _make_row_count_result(
-                status=RowCountStatus.NOT_IN_MANIFEST,
-                message=f"Could not create relation for model '{model_name}'",
-            )
-
-        sql_template = r"select count(*) from {{ relation }}"
-        sql = dbt_adapter.generate_sql(sql_template, context=dict(relation=relation))
-
-        try:
-            _, table = dbt_adapter.execute(sql, fetch=True)
-            count = int(table[0][0]) if table[0][0] is not None else 0
-            return _make_row_count_result(count=count, status=RowCountStatus.OK)
-        except Exception as e:
-            # Check if this is a database error indicating the table doesn't exist
-            error_msg = str(e)
-            # Common error codes/messages for missing tables across different databases
-            if any(
-                indicator in error_msg.upper()
-                for indicator in [
-                    "DOES NOT EXIST",
-                    "NOT AUTHORIZED",
-                    "42S02",  # Snowflake/SQL Server error code for missing table
-                    "42P01",  # PostgreSQL error code for missing table
-                    "TABLE OR VIEW NOT FOUND",  # Oracle
-                    "NOT FOUND",
-                ]
-            ):
-                message = (
-                    f"Table '{relation}' not found in {env_name} database. "
-                    f"The model is defined in the dbt manifest but the table doesn't exist. "
-                    f"This may indicate stale dbt artifacts or an environment configuration issue."
-                )
-                logger.warning(message)
-                return _make_row_count_result(
-                    status=RowCountStatus.TABLE_NOT_FOUND,
-                    message=message,
-                )
-            else:
-                # Re-raise if it's not a "table doesn't exist" error
-                raise
 
     def execute_dbt(self):
         result = {}
@@ -305,9 +245,9 @@ class RowCountDiffTask(Task, QueryMixin):
             for node in query_candidates:
                 self.update_progress(message=f"Diff: {node} [{completed}/{total}]", percentage=completed / total)
 
-                base_result = self._query_row_count(dbt_adapter, node, base=True)
+                base_result = _query_row_count(dbt_adapter, node, base=True)
                 self.check_cancel()
-                curr_result = self._query_row_count(dbt_adapter, node, base=False)
+                curr_result = _query_row_count(dbt_adapter, node, base=False)
                 self.check_cancel()
                 result[node] = {
                     "base": base_result,

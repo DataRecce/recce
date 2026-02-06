@@ -272,31 +272,16 @@ def test_row_count_task(dbt_test_helper):
     assert run_result["customers"]["curr"]["status"] == RowCountStatus.OK
 
 
-def test_query_row_count_unsupported_resource_type(dbt_test_helper):
-    """Test _query_row_count with unsupported resource type (e.g., source)."""
-    from unittest.mock import MagicMock, patch
-
-    csv_data = """
-        id,name
-        1,Alice
-        """
-    dbt_test_helper.create_model("customers", csv_data, csv_data, unique_id="model.customers")
-
-    task = RowCountDiffTask(dict(node_names=["customers"]))
-
-    # Mock find_node_by_name to return a node with unsupported resource_type
-    mock_node = MagicMock()
-    mock_node.resource_type = "source"  # Not model or snapshot
-
-    with patch.object(task, "_query_row_count") as mock_query:
-        # Simulate the actual behavior for unsupported resource type
-        mock_query.return_value = _make_row_count_result(
-            status=RowCountStatus.UNSUPPORTED_RESOURCE_TYPE,
-            message="Resource type 'source' does not support row counts",
-        )
-        result = mock_query("mock_adapter", "customers", base=False)
+def test_query_row_count_unsupported_resource_type():
+    """Test _query_row_count result format for unsupported resource type (e.g., source)."""
+    # Create a mock result for unsupported resource type
+    result = _make_row_count_result(
+        status=RowCountStatus.UNSUPPORTED_RESOURCE_TYPE,
+        message="Resource type 'source' does not support row counts",
+    )
 
     assert result["status"] == RowCountStatus.UNSUPPORTED_RESOURCE_TYPE
+    assert result["count"] is None
     assert "source" in result["message"]
 
 
