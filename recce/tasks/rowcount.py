@@ -26,6 +26,7 @@ class RowCountStatus(str, Enum):
     - unsupported_materialization: Materialization type doesn't support row counts (e.g., ephemeral)
     - table_not_found: Table defined in manifest but doesn't exist in database
                        (indicates stale dbt artifacts or environment mismatch)
+    - permission_denied: User lacks permission to access the table
     """
 
     OK = "ok"
@@ -33,6 +34,7 @@ class RowCountStatus(str, Enum):
     UNSUPPORTED_RESOURCE_TYPE = "unsupported_resource_type"
     UNSUPPORTED_MATERIALIZATION = "unsupported_materialization"
     TABLE_NOT_FOUND = "table_not_found"
+    PERMISSION_DENIED = "permission_denied"
 
 
 def _make_row_count_result(
@@ -84,7 +86,11 @@ def _query_row_count(dbt_adapter: Any, model_name: str, base: bool = False) -> D
             message=f"Resource type '{node.resource_type}' does not support row counts",
         )
 
-    if node.config and node.config.materialized not in ["table", "view", "incremental", "snapshot"]:
+    if (
+        node.config
+        and node.config.materialized is not None
+        and node.config.materialized not in ["table", "view", "incremental", "snapshot"]
+    ):
         return _make_row_count_result(
             status=RowCountStatus.UNSUPPORTED_MATERIALIZATION,
             message=f"Materialization '{node.config.materialized}' does not support row counts",
@@ -97,7 +103,7 @@ def _query_row_count(dbt_adapter: Any, model_name: str, base: bool = False) -> D
             message=f"Could not create relation for model '{model_name}'",
         )
 
-    sql_template = r"select count(*) from {{ relation }}"
+    sql_template = "select count(*) from {{ relation }}"
     sql = dbt_adapter.generate_sql(sql_template, context=dict(relation=relation))
 
     try:
@@ -105,15 +111,34 @@ def _query_row_count(dbt_adapter: Any, model_name: str, base: bool = False) -> D
         count = int(table[0][0]) if table[0][0] is not None else 0
         return _make_row_count_result(count=count, status=RowCountStatus.OK)
     except Exception as e:
-        # Check if this is a database error indicating the table doesn't exist
-        error_msg = str(e)
-        # Common error codes/messages for missing tables across different databases
-        # Be specific to avoid matching unrelated errors (e.g., "Column NOT FOUND")
+        error_msg = str(e).upper()
+
+        # Check for permission/authorization errors first (distinct from missing tables)
         if any(
-            indicator in error_msg.upper()
+            indicator in error_msg
+            for indicator in [
+                "NOT AUTHORIZED",
+                "PERMISSION DENIED",
+                "ACCESS DENIED",
+                "INSUFFICIENT PRIVILEGES",
+            ]
+        ):
+            message = (
+                f"Permission denied when accessing '{relation}' in {env_name} database. "
+                f"The table may exist but the current user lacks permission to query it."
+            )
+            logger.warning(message)
+            return _make_row_count_result(
+                status=RowCountStatus.PERMISSION_DENIED,
+                message=message,
+            )
+
+        # Check for table-not-found errors
+        # Note: "DOES NOT EXIST" in a count(*) query context refers to the table, not columns
+        if any(
+            indicator in error_msg
             for indicator in [
                 "DOES NOT EXIST",
-                "NOT AUTHORIZED",
                 "42S02",  # Snowflake/SQL Server error code for missing table
                 "42P01",  # PostgreSQL error code for missing table
                 "TABLE OR VIEW NOT FOUND",  # Oracle
@@ -132,9 +157,9 @@ def _query_row_count(dbt_adapter: Any, model_name: str, base: bool = False) -> D
                 status=RowCountStatus.TABLE_NOT_FOUND,
                 message=message,
             )
-        else:
-            # Re-raise if it's not a "table doesn't exist" error
-            raise
+
+        # Re-raise if it's not a recognized error
+        raise
 
 
 class RowCountParams(BaseModel):
@@ -283,28 +308,28 @@ class RowCountDiffTask(Task, QueryMixin):
         sqlmesh_adapter: SqlmeshAdapter = default_context().adapter
 
         for name in query_candidates:
-            base_result: Dict[str, Any] = _make_row_count_result(
-                status=RowCountStatus.TABLE_NOT_FOUND,
-                message=f"Table '{name}' not found in base environment",
-            )
-            curr_result: Dict[str, Any] = _make_row_count_result(
-                status=RowCountStatus.TABLE_NOT_FOUND,
-                message=f"Table '{name}' not found in current environment",
-            )
-
+            # Query base environment
             try:
                 df, _ = sqlmesh_adapter.fetchdf_with_limit(f"select count(*) from {name}", base=True)
                 base_result = _make_row_count_result(count=int(df.iloc[0, 0]), status=RowCountStatus.OK)
             except Exception:
-                pass
+                base_result = _make_row_count_result(
+                    status=RowCountStatus.TABLE_NOT_FOUND,
+                    message=f"Table '{name}' not found in base environment",
+                )
             self.check_cancel()
 
+            # Query current environment
             try:
                 df, _ = sqlmesh_adapter.fetchdf_with_limit(f"select count(*) from {name}", base=False)
                 curr_result = _make_row_count_result(count=int(df.iloc[0, 0]), status=RowCountStatus.OK)
             except Exception:
-                pass
+                curr_result = _make_row_count_result(
+                    status=RowCountStatus.TABLE_NOT_FOUND,
+                    message=f"Table '{name}' not found in current environment",
+                )
             self.check_cancel()
+
             result[name] = {
                 "base": base_result,
                 "curr": curr_result,

@@ -180,6 +180,7 @@ def test_row_count_status_values():
     assert RowCountStatus.UNSUPPORTED_RESOURCE_TYPE == "unsupported_resource_type"
     assert RowCountStatus.UNSUPPORTED_MATERIALIZATION == "unsupported_materialization"
     assert RowCountStatus.TABLE_NOT_FOUND == "table_not_found"
+    assert RowCountStatus.PERMISSION_DENIED == "permission_denied"
 
 
 def test_row_count_diff_result_differ_new_format():
@@ -312,6 +313,21 @@ def test_query_row_count_table_not_found():
     assert result["count"] is None
     assert "stale dbt artifacts" in result["message"]
     assert "environment configuration" in result["message"]
+
+
+def test_query_row_count_permission_denied():
+    """Test _query_row_count result format for permission denied errors."""
+    # Create a mock result for permission denied
+    result = _make_row_count_result(
+        status=RowCountStatus.PERMISSION_DENIED,
+        message="Permission denied when accessing 'SCHEMA.model' in base database. "
+        "The table may exist but the current user lacks permission to query it.",
+    )
+
+    assert result["status"] == RowCountStatus.PERMISSION_DENIED
+    assert result["count"] is None
+    assert "Permission denied" in result["message"]
+    assert "lacks permission" in result["message"]
 
 
 def test_row_count_diff_result_differ_get_related_node_ids():
