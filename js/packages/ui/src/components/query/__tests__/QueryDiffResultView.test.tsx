@@ -74,7 +74,7 @@ vi.mock("../../data/ScreenshotDataGrid", () => ({
 
 import { ThemeProvider } from "@mui/material/styles";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import type { QueryDiffViewOptions, Run } from "../../../api";
 import { theme as lightTheme } from "../../../theme";
@@ -98,8 +98,13 @@ function TestProviders({ children }: { children: React.ReactNode }) {
   );
 }
 
-function renderWithProviders(ui: React.ReactElement) {
-  return render(ui, { wrapper: TestProviders });
+async function renderWithProviders(ui: React.ReactElement) {
+  let result: ReturnType<typeof render>;
+  await act(async () => {
+    result = render(ui, { wrapper: TestProviders });
+  });
+  // @ts-expect-error result is assigned within act
+  return result;
 }
 
 // ============================================================================
@@ -237,20 +242,20 @@ describe("QueryDiffResultView", () => {
   // ==========================================================================
 
   describe("bifurcation", () => {
-    it("uses non-Join view when result has base/current but no diff", () => {
+    it("uses non-Join view when result has base/current but no diff", async () => {
       const run = createQueryDiffRun();
 
-      renderWithProviders(<QueryDiffResultView run={run} />);
+      await renderWithProviders(<QueryDiffResultView run={run} />);
 
       // Should call toDataDiffGridConfigured (non-JOIN mode)
       expect(mockToDataDiffGridConfigured).toHaveBeenCalled();
       expect(mockToValueDiffGridConfigured).not.toHaveBeenCalled();
     });
 
-    it("uses Join view when result.diff is not null", () => {
+    it("uses Join view when result.diff is not null", async () => {
       const run = createQueryDiffJoinRun();
 
-      renderWithProviders(<QueryDiffResultView run={run} />);
+      await renderWithProviders(<QueryDiffResultView run={run} />);
 
       // Should call toValueDiffGridConfigured (JOIN mode)
       expect(mockToValueDiffGridConfigured).toHaveBeenCalled();
@@ -263,10 +268,10 @@ describe("QueryDiffResultView", () => {
   // ==========================================================================
 
   describe("rendering", () => {
-    it("renders grid with data when valid query_diff run provided", () => {
+    it("renders grid with data when valid query_diff run provided", async () => {
       const run = createQueryDiffRun();
 
-      renderWithProviders(<QueryDiffResultView run={run} />);
+      await renderWithProviders(<QueryDiffResultView run={run} />);
 
       // Should render the mock grid component
       const grid = screen.getByTestId("screenshot-data-grid-mock");
@@ -279,14 +284,14 @@ describe("QueryDiffResultView", () => {
   // ==========================================================================
 
   describe("empty state", () => {
-    it('displays "No data" when gridData.columns.length === 0', () => {
+    it('displays "No data" when gridData.columns.length === 0', async () => {
       mockToDataDiffGridConfigured.mockReturnValue({
         columns: [],
         rows: [],
       });
       const run = createQueryDiffRun();
 
-      renderWithProviders(<QueryDiffResultView run={run} />);
+      await renderWithProviders(<QueryDiffResultView run={run} />);
 
       expect(screen.getByText("No data")).toBeInTheDocument();
     });
@@ -297,7 +302,7 @@ describe("QueryDiffResultView", () => {
   // ==========================================================================
 
   describe("type safety", () => {
-    it("throws error when wrong run type provided", () => {
+    it("throws error when wrong run type provided", async () => {
       const wrongRun = createWrongTypeRun();
 
       // Suppress console.error for expected throws
@@ -306,9 +311,9 @@ describe("QueryDiffResultView", () => {
         // biome-ignore lint/suspicious/noEmptyBlockStatements: intentionally suppress console output
         .mockImplementation(() => {});
 
-      expect(() => {
-        renderWithProviders(<QueryDiffResultView run={wrongRun} />);
-      }).toThrow("Run type must be query_diff");
+      await expect(
+        renderWithProviders(<QueryDiffResultView run={wrongRun} />),
+      ).rejects.toThrow("Run type must be query_diff");
 
       consoleSpy.mockRestore();
     });
@@ -319,20 +324,20 @@ describe("QueryDiffResultView", () => {
   // ==========================================================================
 
   describe("toolbar", () => {
-    it("renders RunToolbar with DiffDisplayModeSwitch", () => {
+    it("renders RunToolbar with DiffDisplayModeSwitch", async () => {
       const run = createQueryDiffRun();
 
-      renderWithProviders(<QueryDiffResultView run={run} />);
+      await renderWithProviders(<QueryDiffResultView run={run} />);
 
       // Should render the toggle buttons for display mode
       expect(screen.getByText("Inline")).toBeInTheDocument();
       expect(screen.getByText("Side by side")).toBeInTheDocument();
     });
 
-    it("renders RunToolbar with ChangedOnlyCheckbox", () => {
+    it("renders RunToolbar with ChangedOnlyCheckbox", async () => {
       const run = createQueryDiffRun();
 
-      renderWithProviders(<QueryDiffResultView run={run} />);
+      await renderWithProviders(<QueryDiffResultView run={run} />);
 
       // Should render the "Changed only" checkbox
       expect(screen.getByText("Changed only")).toBeInTheDocument();
@@ -344,13 +349,13 @@ describe("QueryDiffResultView", () => {
   // ==========================================================================
 
   describe("viewOptions", () => {
-    it("passes changed_only to grid generator", () => {
+    it("passes changed_only to grid generator", async () => {
       const run = createQueryDiffRun();
       const viewOptions: QueryDiffViewOptions = {
         changed_only: true,
       };
 
-      renderWithProviders(
+      await renderWithProviders(
         <QueryDiffResultView run={run} viewOptions={viewOptions} />,
       );
 
@@ -363,11 +368,11 @@ describe("QueryDiffResultView", () => {
       );
     });
 
-    it("calls onViewOptionsChanged when changed_only checkbox toggled", () => {
+    it("calls onViewOptionsChanged when changed_only checkbox toggled", async () => {
       const run = createQueryDiffRun();
       const onViewOptionsChanged = vi.fn();
 
-      renderWithProviders(
+      await renderWithProviders(
         <QueryDiffResultView
           run={run}
           onViewOptionsChanged={onViewOptionsChanged}
@@ -391,14 +396,14 @@ describe("QueryDiffResultView", () => {
   // ==========================================================================
 
   describe("warnings", () => {
-    it("shows limit warning when limit > 0 and more=true", () => {
+    it("shows limit warning when limit > 0 and more=true", async () => {
       const run = createQueryDiffRun();
       if (run.result?.current) {
         run.result.current.limit = 1000;
         run.result.current.more = true;
       }
 
-      renderWithProviders(<QueryDiffResultView run={run} />);
+      await renderWithProviders(<QueryDiffResultView run={run} />);
 
       expect(
         screen.getByText(
@@ -407,7 +412,7 @@ describe("QueryDiffResultView", () => {
       ).toBeInTheDocument();
     });
 
-    it("shows invalid primary key warning when invalidPKeyBase is true", () => {
+    it("shows invalid primary key warning when invalidPKeyBase is true", async () => {
       mockToDataDiffGridConfigured.mockReturnValue({
         columns: [{ field: "id", headerName: "id" }],
         rows: [{ id: 1 }],
@@ -419,7 +424,7 @@ describe("QueryDiffResultView", () => {
         primary_keys: ["id"],
       };
 
-      renderWithProviders(
+      await renderWithProviders(
         <QueryDiffResultView run={run} viewOptions={viewOptions} />,
       );
 
