@@ -159,7 +159,13 @@ class RecceMCPServer:
                         "properties": {
                             "select": {
                                 "type": "string",
-                                "description": "dbt selector syntax to filter models (optional)",
+                                "description": (
+                                    "dbt selector syntax to filter models. "
+                                    "Valid state selectors: state:new, state:old, state:modified, state:unmodified. "
+                                    "Use '+' suffix for downstream: state:modified+ "
+                                    "NOTE: 'state:added' is INVALID - use 'state:new'. "
+                                    "Example: '1+state:modified+' for modified models with 1 upstream"
+                                ),
                             },
                             "exclude": {
                                 "type": "string",
@@ -190,7 +196,11 @@ class RecceMCPServer:
                         "properties": {
                             "select": {
                                 "type": "string",
-                                "description": "dbt selector syntax to filter models (optional)",
+                                "description": (
+                                    "dbt selector syntax to filter models. "
+                                    "Valid state selectors: state:new, state:old, state:modified, state:unmodified. "
+                                    "NOTE: 'state:added' is INVALID - use 'state:new'."
+                                ),
                             },
                             "exclude": {
                                 "type": "string",
@@ -212,7 +222,19 @@ class RecceMCPServer:
                     [
                         Tool(
                             name="row_count_diff",
-                            description="Compare row counts between base and current environments for specified models.",
+                            description=(
+                                "Compare row counts between base and current environments for specified models. "
+                                "Returns structured results with status information for each model.\n\n"
+                                "Response format: {model_name: {base: {count, status, message?}, curr: {count, status, message?}}}\n\n"
+                                "Status codes:\n"
+                                "- 'ok': Row count retrieved successfully\n"
+                                "- 'not_in_manifest': Model not found in dbt manifest\n"
+                                "- 'unsupported_resource_type': Node is not a model/snapshot\n"
+                                "- 'unsupported_materialization': Materialization doesn't support row counts (e.g., ephemeral)\n"
+                                "- 'table_not_found': IMPORTANT - Table defined in manifest but doesn't exist in database. "
+                                "This indicates stale dbt artifacts or environment misconfiguration. "
+                                "Report this to users as it requires rebuilding dbt artifacts or checking environment setup."
+                            ),
                             inputSchema={
                                 "type": "object",
                                 "properties": {
@@ -228,11 +250,21 @@ class RecceMCPServer:
                                     },
                                     "select": {
                                         "type": "string",
-                                        "description": "dbt selector syntax to filter models (optional)",
+                                        "description": (
+                                            "dbt selector syntax to filter models. "
+                                            "Valid state selectors: state:new, state:old, state:modified, state:unmodified. "
+                                            "Sub-selectors: state:modified.body, .configs, .relation, .persisted_descriptions, .macros, .contract. "
+                                            "Use '+' suffix for downstream deps: state:modified+ "
+                                            "IMPORTANT: 'state:added' is INVALID - use 'state:new' instead. "
+                                            "Example: 'state:new,config.materialized:table' or 'state:modified+'"
+                                        ),
                                     },
                                     "exclude": {
                                         "type": "string",
-                                        "description": "dbt selector syntax to exclude models (optional)",
+                                        "description": (
+                                            "dbt selector syntax to exclude models. "
+                                            "Same syntax as select. Example: 'config.materialized:view'"
+                                        ),
                                     },
                                 },
                             },

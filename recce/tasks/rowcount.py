@@ -1,4 +1,6 @@
-from typing import List, Literal, Optional, Union
+import logging
+from enum import Enum
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel
 
@@ -8,6 +10,157 @@ from recce.tasks import Task
 from recce.tasks.core import CheckValidator, TaskResultDiffer
 from recce.tasks.query import QueryMixin
 
+logger = logging.getLogger(__name__)
+
+
+# Row count result status codes - these are exposed to MCP agents for interpretation
+class RowCountStatus(str, Enum):
+    """Status codes for row count results.
+
+    Using str, Enum maintains JSON serialization compatibility while adding type safety.
+
+    These codes help agents understand why a row count might be unavailable:
+    - ok: Successfully retrieved row count
+    - not_in_manifest: Model not found in dbt manifest
+    - unsupported_resource_type: Node is not a model or snapshot
+    - unsupported_materialization: Materialization type doesn't support row counts (e.g., ephemeral)
+    - table_not_found: Table defined in manifest but doesn't exist in database
+                       (indicates stale dbt artifacts or environment mismatch)
+    - permission_denied: User lacks permission to access the table
+    """
+
+    OK = "ok"
+    NOT_IN_MANIFEST = "not_in_manifest"
+    UNSUPPORTED_RESOURCE_TYPE = "unsupported_resource_type"
+    UNSUPPORTED_MATERIALIZATION = "unsupported_materialization"
+    TABLE_NOT_FOUND = "table_not_found"
+    PERMISSION_DENIED = "permission_denied"
+
+
+def _make_row_count_result(
+    count: Optional[int] = None,
+    status: RowCountStatus = RowCountStatus.OK,
+    message: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Create a structured row count result with status information.
+
+    Args:
+        count: The row count value, or None if unavailable
+        status: Status code indicating success or reason for failure
+        message: Optional human-readable message explaining the status
+
+    Returns:
+        Dict with 'count', 'status', and optionally 'message' keys
+    """
+    result: Dict[str, Any] = {"count": count, "status": status}
+    if message:
+        result["message"] = message
+    return result
+
+
+def _query_row_count(dbt_adapter: Any, model_name: str, base: bool = False) -> Dict[str, Any]:
+    """Query row count for a model with detailed status information.
+
+    This is a shared helper function used by both RowCountTask and RowCountDiffTask.
+
+    Args:
+        dbt_adapter: The dbt adapter instance for database operations
+        model_name: Name of the model to query row count for
+        base: If True, query the base environment; otherwise query current
+
+    Returns a structured result with count, status, and optional message
+    to help agents understand why a count might be unavailable.
+    """
+    env_name = "base" if base else "current"
+
+    node = dbt_adapter.find_node_by_name(model_name, base=base)
+    if node is None:
+        return _make_row_count_result(
+            status=RowCountStatus.NOT_IN_MANIFEST,
+            message=f"Model '{model_name}' not found in {env_name} manifest",
+        )
+
+    if node.resource_type not in ("model", "snapshot"):
+        return _make_row_count_result(
+            status=RowCountStatus.UNSUPPORTED_RESOURCE_TYPE,
+            message=f"Resource type '{node.resource_type}' does not support row counts",
+        )
+
+    if (
+        node.config
+        and node.config.materialized is not None
+        and node.config.materialized not in ["table", "view", "incremental", "snapshot"]
+    ):
+        return _make_row_count_result(
+            status=RowCountStatus.UNSUPPORTED_MATERIALIZATION,
+            message=f"Materialization '{node.config.materialized}' does not support row counts",
+        )
+
+    relation = dbt_adapter.create_relation(model_name, base=base)
+    if relation is None:
+        return _make_row_count_result(
+            status=RowCountStatus.NOT_IN_MANIFEST,
+            message=f"Could not create relation for model '{model_name}'",
+        )
+
+    sql_template = "select count(*) from {{ relation }}"
+    sql = dbt_adapter.generate_sql(sql_template, context=dict(relation=relation))
+
+    try:
+        _, table = dbt_adapter.execute(sql, fetch=True)
+        count = int(table[0][0]) if table[0][0] is not None else 0
+        return _make_row_count_result(count=count, status=RowCountStatus.OK)
+    except Exception as e:
+        error_msg = str(e).upper()
+
+        # Check for permission/authorization errors first (distinct from missing tables)
+        if any(
+            indicator in error_msg
+            for indicator in [
+                "NOT AUTHORIZED",
+                "PERMISSION DENIED",
+                "ACCESS DENIED",
+                "INSUFFICIENT PRIVILEGES",
+            ]
+        ):
+            message = (
+                f"Permission denied when accessing '{relation}' in {env_name} database. "
+                f"The table may exist but the current user lacks permission to query it."
+            )
+            logger.warning(message)
+            return _make_row_count_result(
+                status=RowCountStatus.PERMISSION_DENIED,
+                message=message,
+            )
+
+        # Check for table-not-found errors
+        # Note: "DOES NOT EXIST" in a count(*) query context refers to the table, not columns
+        if any(
+            indicator in error_msg
+            for indicator in [
+                "DOES NOT EXIST",
+                "42S02",  # Snowflake/SQL Server error code for missing table
+                "42P01",  # PostgreSQL error code for missing table
+                "TABLE OR VIEW NOT FOUND",  # Oracle
+                "RELATION DOES NOT EXIST",  # PostgreSQL alternative
+                "OBJECT DOES NOT EXIST",  # Snowflake
+                "INVALID OBJECT NAME",  # SQL Server
+            ]
+        ):
+            message = (
+                f"Table '{relation}' not found in {env_name} database. "
+                f"The model is defined in the dbt manifest but the table doesn't exist. "
+                f"This may indicate stale dbt artifacts or an environment configuration issue."
+            )
+            logger.warning(message)
+            return _make_row_count_result(
+                status=RowCountStatus.TABLE_NOT_FOUND,
+                message=message,
+            )
+
+        # Re-raise if it's not a recognized error
+        raise
+
 
 class RowCountParams(BaseModel):
     node_names: Optional[list[str]] = None
@@ -15,30 +168,12 @@ class RowCountParams(BaseModel):
 
 
 class RowCountTask(Task, QueryMixin):
+    """Task for querying row counts (current environment only)."""
+
     def __init__(self, params: dict):
         super().__init__()
         self.params = RowCountParams(**params) if params is not None else RowCountParams()
         self.connection = None
-
-    def _query_row_count(self, dbt_adapter, model_name, base=False):
-        node = dbt_adapter.find_node_by_name(model_name, base=base)
-        if node is None:
-            return None
-
-        if node.resource_type != "model" and node.resource_type != "snapshot":
-            return None
-
-        if node.config and node.config.materialized not in ["table", "view", "incremental", "snapshot"]:
-            return None
-
-        relation = dbt_adapter.create_relation(model_name, base=base)
-        if relation is None:
-            return None
-
-        sql_template = r"select count(*) from {{ relation }}"
-        sql = dbt_adapter.generate_sql(sql_template, context=dict(relation=relation))
-        _, table = dbt_adapter.execute(sql, fetch=True)
-        return int(table[0][0]) if table[0][0] is not None else 0
 
     def execute(self):
         result = {}
@@ -78,10 +213,10 @@ class RowCountTask(Task, QueryMixin):
             for node in query_candidates:
                 self.update_progress(message=f"Query: {node} [{completed}/{total}]", percentage=completed / total)
 
-                row_count = self._query_row_count(dbt_adapter, node, base=False)
+                curr_result = _query_row_count(dbt_adapter, node, base=False)
                 self.check_cancel()
                 result[node] = {
-                    "curr": row_count,
+                    "curr": curr_result,
                 }
                 completed += 1
 
@@ -107,26 +242,6 @@ class RowCountDiffTask(Task, QueryMixin):
         super().__init__()
         self.params = RowCountDiffParams(**params) if params is not None else RowCountDiffParams()
         self.connection = None
-
-    def _query_row_count(self, dbt_adapter, model_name, base=False):
-        node = dbt_adapter.find_node_by_name(model_name, base=base)
-        if node is None:
-            return None
-
-        if node.resource_type != "model" and node.resource_type != "snapshot":
-            return None
-
-        if node.config and node.config.materialized not in ["table", "view", "incremental", "snapshot"]:
-            return None
-
-        relation = dbt_adapter.create_relation(model_name, base=base)
-        if relation is None:
-            return None
-
-        sql_template = r"select count(*) from {{ relation }}"
-        sql = dbt_adapter.generate_sql(sql_template, context=dict(relation=relation))
-        _, table = dbt_adapter.execute(sql, fetch=True)
-        return int(table[0][0]) if table[0][0] is not None else 0
 
     def execute_dbt(self):
         result = {}
@@ -166,13 +281,13 @@ class RowCountDiffTask(Task, QueryMixin):
             for node in query_candidates:
                 self.update_progress(message=f"Diff: {node} [{completed}/{total}]", percentage=completed / total)
 
-                base_row_count = self._query_row_count(dbt_adapter, node, base=True)
+                base_result = _query_row_count(dbt_adapter, node, base=True)
                 self.check_cancel()
-                curr_row_count = self._query_row_count(dbt_adapter, node, base=False)
+                curr_result = _query_row_count(dbt_adapter, node, base=False)
                 self.check_cancel()
                 result[node] = {
-                    "base": base_row_count,
-                    "curr": curr_row_count,
+                    "base": base_result,
+                    "curr": curr_result,
                 }
                 completed += 1
 
@@ -183,7 +298,7 @@ class RowCountDiffTask(Task, QueryMixin):
 
         query_candidates = []
 
-        for node_id in self.node_ids or []:
+        for node_id in self.params.node_ids or []:
             query_candidates.append(node_id)
         for node_name in self.params.node_names or []:
             query_candidates.append(node_name)
@@ -193,25 +308,31 @@ class RowCountDiffTask(Task, QueryMixin):
         sqlmesh_adapter: SqlmeshAdapter = default_context().adapter
 
         for name in query_candidates:
-            base_row_count = None
-            curr_row_count = None
-
+            # Query base environment
             try:
                 df, _ = sqlmesh_adapter.fetchdf_with_limit(f"select count(*) from {name}", base=True)
-                base_row_count = int(df.iloc[0, 0])
+                base_result = _make_row_count_result(count=int(df.iloc[0, 0]), status=RowCountStatus.OK)
             except Exception:
-                pass
+                base_result = _make_row_count_result(
+                    status=RowCountStatus.TABLE_NOT_FOUND,
+                    message=f"Table '{name}' not found in base environment",
+                )
             self.check_cancel()
 
+            # Query current environment
             try:
                 df, _ = sqlmesh_adapter.fetchdf_with_limit(f"select count(*) from {name}", base=False)
-                curr_row_count = int(df.iloc[0, 0])
+                curr_result = _make_row_count_result(count=int(df.iloc[0, 0]), status=RowCountStatus.OK)
             except Exception:
-                pass
+                curr_result = _make_row_count_result(
+                    status=RowCountStatus.TABLE_NOT_FOUND,
+                    message=f"Table '{name}' not found in current environment",
+                )
             self.check_cancel()
+
             result[name] = {
-                "base": base_row_count,
-                "curr": curr_row_count,
+                "base": base_result,
+                "curr": curr_result,
             }
 
         return result
@@ -235,8 +356,20 @@ class RowCountDiffResultDiffer(TaskResultDiffer):
         current = {}
 
         for node, row_counts in result.items():
-            base[node] = row_counts["base"]
-            current[node] = row_counts["curr"]
+            # Handle both new structured format and legacy format for backward compatibility
+            base_data = row_counts["base"]
+            curr_data = row_counts["curr"]
+
+            # Extract count from structured result or use value directly (legacy)
+            if isinstance(base_data, dict):
+                base[node] = base_data.get("count")
+            else:
+                base[node] = base_data
+
+            if isinstance(curr_data, dict):
+                current[node] = curr_data.get("count")
+            else:
+                current[node] = curr_data
 
         return TaskResultDiffer.diff(base, current)
 
