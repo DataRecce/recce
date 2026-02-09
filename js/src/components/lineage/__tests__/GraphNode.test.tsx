@@ -534,6 +534,30 @@ describe("GraphNode", () => {
       // Impact radius icon should NOT be shown for added/removed nodes
     });
 
+    it("passes onShowImpactRadius when modified and change analysis available", () => {
+      mockUseLineageGraphContext.mockReturnValue(
+        createMockLineageGraphContext({ isActionAvailable: () => true }),
+      );
+      const props = createMockNodeProps({ changeStatus: "modified" });
+
+      render(<GraphNode {...props} />);
+
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.onShowImpactRadius).toBeDefined();
+    });
+
+    it("does not pass onShowImpactRadius when change analysis is unavailable", () => {
+      mockUseLineageGraphContext.mockReturnValue(
+        createMockLineageGraphContext({ isActionAvailable: () => false }),
+      );
+      const props = createMockNodeProps({ changeStatus: "modified" });
+
+      render(<GraphNode {...props} />);
+
+      const callProps = mockedLineageNode.mock.calls[0][0];
+      expect(callProps.onShowImpactRadius).toBeUndefined();
+    });
+
     it("hides resource type icon on hover", () => {
       const props = createMockNodeProps();
 

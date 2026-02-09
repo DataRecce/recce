@@ -13,14 +13,18 @@ import { theme } from "../../../theme";
 import { ColumnNameCell } from "../ColumnNameCell";
 import type { SchemaDiffRow } from "../SchemaDiff";
 
-// Mock dependencies
+// Mock dependencies with dynamic isActionAvailable and lineageViewContext
+const { mockIsActionAvailable, mockLineageViewContext } = vi.hoisted(() => ({
+  mockIsActionAvailable: vi.fn(() => true),
+  mockLineageViewContext: { current: undefined as unknown },
+}));
 vi.mock("../../../contexts", () => ({
   useRecceActionContext: () => ({ runAction: vi.fn() }),
   useRecceInstanceContext: () => ({
     featureToggles: { disableDatabaseQuery: false },
   }),
-  useLineageViewContext: () => undefined,
-  useLineageGraphContext: () => ({ isActionAvailable: () => true }),
+  useLineageViewContext: () => mockLineageViewContext.current,
+  useLineageGraphContext: () => ({ isActionAvailable: mockIsActionAvailable }),
 }));
 
 // ============================================================================
@@ -163,6 +167,50 @@ describe("ColumnNameCell", () => {
       // MUI CircularProgress renders with role="progressbar"
       const spinner = screen.getByRole("progressbar");
       expect(spinner).toBeInTheDocument();
+    });
+  });
+
+  describe("change analysis gating", () => {
+    // These tests need lineageViewContext to be truthy so the short-circuit
+    // evaluation in isCllDisabled reaches the isActionAvailable check.
+    const mockViewContext = { showColumnLevelLineage: vi.fn() };
+
+    test("tooltip is disabled when change analysis is unavailable", () => {
+      mockLineageViewContext.current = mockViewContext;
+      mockIsActionAvailable.mockReturnValue(false);
+
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow()}
+          showMenu={false}
+        />,
+      );
+
+      // When isActionAvailable returns false, isCllDisabled is true,
+      // causing the Tooltip's disableHoverListener to be true.
+      expect(mockIsActionAvailable).toHaveBeenCalledWith("change_analysis");
+      expect(screen.getByText("user_id")).toBeInTheDocument();
+
+      mockLineageViewContext.current = undefined;
+      mockIsActionAvailable.mockReturnValue(true);
+    });
+
+    test("tooltip is enabled when change analysis is available", () => {
+      mockLineageViewContext.current = mockViewContext;
+      mockIsActionAvailable.mockReturnValue(true);
+
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow()}
+          showMenu={false}
+        />,
+      );
+
+      expect(mockIsActionAvailable).toHaveBeenCalledWith("change_analysis");
+
+      mockLineageViewContext.current = undefined;
     });
   });
 });
