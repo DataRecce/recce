@@ -449,7 +449,7 @@ export const ModelNodeContextMenu = ({
     menuItems.push({
       label: "Show Impact Radius",
       itemIcon: <FaRegDotCircle />,
-      isDisabled: noCatalogCurrent,
+      isDisabled: noCatalogCurrent || !isActionAvailable("change_analysis"),
       action: () => {
         void showColumnLevelLineage?.({
           node_id: node.id,

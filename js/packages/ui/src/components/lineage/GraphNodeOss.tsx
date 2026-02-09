@@ -299,6 +299,7 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     cll,
     showColumnLevelLineage,
   } = useLineageViewContextSafe();
+  const { isActionAvailable } = useLineageGraphContext();
 
   // Computed state
   const changeCategory = cll?.current.nodes[id]
@@ -383,7 +384,9 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
       onSelect={handleSelect}
       onContextMenu={handleContextMenu}
       onShowImpactRadius={
-        changeStatus === "modified" ? handleShowImpactRadius : undefined
+        changeStatus === "modified" && isActionAvailable("change_analysis")
+          ? handleShowImpactRadius
+          : undefined
       }
     />
   );

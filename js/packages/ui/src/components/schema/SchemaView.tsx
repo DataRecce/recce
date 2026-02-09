@@ -51,7 +51,8 @@ function PrivateSingleEnvSchemaView(
     );
   }, [current, cllRunningMap, showMenu]);
 
-  const { lineageGraph } = useLineageGraphContext();
+  const { lineageGraph, isActionAvailable } = useLineageGraphContext();
+  const changeAnalysisAvailable = isActionAvailable("change_analysis");
   const noCatalogCurrent = !lineageGraph?.catalogMetadata.current;
   let catalogMissingMessage = undefined;
   if (noCatalogCurrent) {
@@ -67,6 +68,7 @@ function PrivateSingleEnvSchemaView(
   }
 
   const handleViewCll = async (columnName: string) => {
+    if (!changeAnalysisAvailable) return;
     trackColumnLevelLineage({ action: "view", source: "schema_column" });
     setCllRunningMap((prev) => new Map(prev).set(columnName, true));
     const modelId = current?.id;
@@ -107,7 +109,7 @@ function PrivateSingleEnvSchemaView(
   }, []);
 
   const getRowClass = (_params: RowClassParams<SchemaRow>) => {
-    if (lineageViewContext !== undefined) {
+    if (lineageViewContext !== undefined && changeAnalysisAvailable) {
       return "row-normal row-selectable";
     }
     return "row-normal";
@@ -188,7 +190,8 @@ export function PrivateSchemaView(
     );
   }, [base, current, cllRunningMap, showMenu]);
 
-  const { lineageGraph } = useLineageGraphContext();
+  const { lineageGraph, isActionAvailable } = useLineageGraphContext();
+  const changeAnalysisAvailable = isActionAvailable("change_analysis");
   const noCatalogBase = !lineageGraph?.catalogMetadata.base;
   const noCatalogCurrent = !lineageGraph?.catalogMetadata.current;
   let catalogMissingMessage = undefined;
@@ -218,6 +221,7 @@ export function PrivateSchemaView(
   }
 
   const handleViewCll = async (columnName: string) => {
+    if (!changeAnalysisAvailable) return;
     trackColumnLevelLineage({ action: "view", source: "schema_column" });
     setCllRunningMap((prev) => new Map(prev).set(columnName, true));
     const modelId = current?.id ?? base?.id;
@@ -272,7 +276,7 @@ export function PrivateSchemaView(
     } else {
       className = "row-normal";
     }
-    if (lineageViewContext !== undefined) {
+    if (lineageViewContext !== undefined && changeAnalysisAvailable) {
       className += " row-selectable";
     }
     return className;

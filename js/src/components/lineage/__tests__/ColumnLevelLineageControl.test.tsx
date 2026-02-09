@@ -136,6 +136,7 @@ describe("ColumnLevelLineageControl", () => {
     );
     mockUseLineageGraphContext.mockReturnValue({
       lineageGraph: createMockLineageGraph(),
+      isActionAvailable: () => true,
     });
     mockUseRecceServerFlag.mockReturnValue({
       data: { single_env_onboarding: false },
@@ -176,6 +177,7 @@ describe("ColumnLevelLineageControl", () => {
             base: undefined,
           },
         }),
+        isActionAvailable: () => true,
       });
 
       render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
@@ -219,6 +221,36 @@ describe("ColumnLevelLineageControl", () => {
 
       const button = screen.getByRole("button", { name: /Impact Radius/i });
       expect(button).not.toBeDisabled();
+    });
+
+    it("button is disabled when change analysis is unavailable", () => {
+      mockUseLineageGraphContext.mockReturnValue({
+        lineageGraph: createMockLineageGraph(),
+        isActionAvailable: () => false,
+      });
+
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
+
+      const button = screen.getByRole("button", { name: /Impact Radius/i });
+      expect(button).toBeDisabled();
+    });
+
+    it("does not invoke showColumnLevelLineage when change analysis is unavailable", () => {
+      const mockShowCll = vi.fn().mockResolvedValue(undefined);
+      mockUseLineageViewContextSafe.mockReturnValue(
+        createMockLineageViewContext({ showColumnLevelLineage: mockShowCll }),
+      );
+      mockUseLineageGraphContext.mockReturnValue({
+        lineageGraph: createMockLineageGraph(),
+        isActionAvailable: () => false,
+      });
+
+      render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
+
+      const button = screen.getByRole("button", { name: /Impact Radius/i });
+      fireEvent.click(button);
+
+      expect(mockShowCll).not.toHaveBeenCalled();
     });
   });
 
@@ -272,6 +304,7 @@ describe("ColumnLevelLineageControl", () => {
       );
       mockUseLineageGraphContext.mockReturnValue({
         lineageGraph: createMockLineageGraph(),
+        isActionAvailable: () => true,
       });
 
       render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
@@ -293,6 +326,7 @@ describe("ColumnLevelLineageControl", () => {
       );
       mockUseLineageGraphContext.mockReturnValue({
         lineageGraph: createMockLineageGraph(),
+        isActionAvailable: () => true,
       });
 
       render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
@@ -360,6 +394,7 @@ describe("ColumnLevelLineageControl", () => {
         lineageGraph: createMockLineageGraph({
           nodes: {}, // Empty nodes
         }),
+        isActionAvailable: () => true,
       });
 
       render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
@@ -630,6 +665,7 @@ describe("ColumnLevelLineageControl", () => {
     it("handles missing lineageGraph gracefully", () => {
       mockUseLineageGraphContext.mockReturnValue({
         lineageGraph: undefined,
+        isActionAvailable: () => true,
       });
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({
@@ -655,6 +691,7 @@ describe("ColumnLevelLineageControl", () => {
             base: undefined,
           },
         }),
+        isActionAvailable: () => true,
       });
 
       render(<ColumnLevelLineageControlOss action={createMockMutation()} />);

@@ -31,6 +31,7 @@ import { type MouseEvent, useState } from "react";
 import { VscKebabVertical } from "react-icons/vsc";
 import type { NodeData } from "../../api";
 import {
+  useLineageGraphContext,
   useLineageViewContext,
   useRecceActionContext,
   useRecceInstanceContext,
@@ -83,6 +84,7 @@ export function ColumnNameCell({
   showMenu = true,
 }: ColumnNameCellProps) {
   const lineageViewContext = useLineageViewContext();
+  const { isActionAvailable } = useLineageGraphContext();
   const { runAction } = useRecceActionContext();
   const { featureToggles } = useRecceInstanceContext();
   const { name, baseType, currentType, baseIndex, currentIndex } = row;
@@ -162,6 +164,7 @@ export function ColumnNameCell({
   const addedOrRemoved = !baseType || !currentType;
   const isCllDisabled =
     lineageViewContext === undefined ||
+    !isActionAvailable("change_analysis") ||
     (baseIndex !== undefined && currentIndex === undefined);
 
   return (

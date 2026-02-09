@@ -27,7 +27,9 @@ class SqlmeshAdapter(BaseAdapter):
     curr_env: Environment
 
     def support_tasks(self):
-        return {run_type.value: True for run_type in sqlmesh_supported_registry}
+        support_map = {run_type.value: True for run_type in sqlmesh_supported_registry}
+        support_map["change_analysis"] = False
+        return support_map
 
     def get_lineage(self, base: Optional[bool] = False):
         state_reader: StateReader = self.context.state_reader

@@ -77,6 +77,12 @@ export interface ColumnLevelLineageControlProps {
   singleEnvMode?: boolean;
 
   /**
+   * Whether change analysis (Impact Radius) is available.
+   * When false, the Impact Radius button is disabled with a tooltip.
+   */
+  changeAnalysisAvailable?: boolean;
+
+  /**
    * Callback to show column-level lineage.
    * Called with CLL parameters when Impact Radius button is clicked.
    */
@@ -195,6 +201,7 @@ export const ColumnLevelLineageControl = ({
   viewOptions,
   lineageGraph,
   singleEnvMode = false,
+  changeAnalysisAvailable = true,
   onShowCll,
   onResetCll,
   onCenterNode,
@@ -209,9 +216,11 @@ export const ColumnLevelLineageControl = ({
           <MuiTooltip
             enterDelay={50}
             title={
-              noCatalogCurrent
-                ? "Please provide catalog.json to enable Impact Radius"
-                : ""
+              !changeAnalysisAvailable
+                ? "Requires warehouse connection"
+                : noCatalogCurrent
+                  ? "Please provide catalog.json to enable Impact Radius"
+                  : ""
             }
             placement="top"
           >
@@ -225,7 +234,9 @@ export const ColumnLevelLineageControl = ({
                   display: "inline-flex",
                   bgcolor: "background.paper",
                 }}
-                disabled={!interactive || noCatalogCurrent}
+                disabled={
+                  !interactive || noCatalogCurrent || !changeAnalysisAvailable
+                }
                 startIcon={<FaRegDotCircle />}
                 onClick={() => {
                   void onShowCll({
