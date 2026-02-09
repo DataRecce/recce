@@ -70,8 +70,10 @@ class BaseAdapter(ABC):
     def support_tasks(self):
         """
         Get the adapter support tasks. Should be implemented by subclass.
-        The tasks support map is a dictionary that maps all the Recce tasks are supported by the adapter or not.
-        True means supported, False means not supported.
+        The support map is a dictionary that maps adapter capabilities to availability.
+        Keys include RunType task values (e.g. "query_diff", "profile_diff") and
+        capability flags (e.g. "change_analysis"). True means supported, False means
+        not supported. All adapters should explicitly declare all known capabilities.
         """
         raise NotImplementedError()
 
