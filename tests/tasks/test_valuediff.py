@@ -308,6 +308,37 @@ def test_value_diff_with_nulls(dbt_test_helper):
     assert len(run_result.data) >= 2
 
 
+def test_value_diff_skips_column_named_column_name(dbt_test_helper):
+    """Test that a column literally named 'column_name' is skipped without aborting.
+
+    The header-row guard (``if row[0].lower() == "column_name"``) should
+    ``continue`` past rows for that column while still processing the
+    remaining columns correctly.
+    """
+    csv_data_base = """
+        id,column_name,value
+        1,foo,100
+        2,bar,200
+        """
+
+    csv_data_curr = """
+        id,column_name,value
+        1,foo,100
+        2,bar,300
+        """
+
+    dbt_test_helper.create_model("tricky_col", csv_data_base, csv_data_curr)
+
+    params = {"model": "tricky_col", "primary_key": ["id"]}
+    task = ValueDiffTask(params)
+    run_result = task.execute()
+
+    # The 'value' column should still be processed (1 mismatch out of 2 rows)
+    assert run_result.summary.total == 2
+    assert run_result.summary.added == 0
+    assert run_result.summary.removed == 0
+
+
 # Note: Empty table tests (test_value_diff_empty_base, test_value_diff_empty_current)
 # are skipped because DuckDB cannot infer column types from empty CSVs (headers only),
 # causing type conversion errors during SQL execution.
