@@ -11,8 +11,9 @@ import { isLineageGraphNode } from "./types";
 
 /**
  * Height of a column node in pixels
+ * Must match COLUMN_NODE_HEIGHT in columns/LineageColumnNode.tsx
  */
-export const COLUMN_HEIGHT = 20;
+export const COLUMN_HEIGHT = 24;
 
 /**
  * Map of node IDs to their column sets

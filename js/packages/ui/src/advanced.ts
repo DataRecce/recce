@@ -66,6 +66,23 @@ export {
   type LineageCanvasProps,
 } from "./components/lineage/LineageCanvas";
 
+/**
+ * OSS-specific toReactFlow with Column-Level Lineage (CLL) support.
+ *
+ * Converts a LineageGraph to React Flow nodes and edges, including
+ * column nodes when CLL data is provided.
+ *
+ * @example
+ * ```tsx
+ * import { toReactFlow } from '@datarecce/ui/advanced';
+ *
+ * const [nodes, edges, columnSetMap] = toReactFlow(lineageGraph, {
+ *   cll: columnLineageData,
+ * });
+ * ```
+ */
+export { layout, toReactFlow } from "./components/lineage/lineage";
+
 // =============================================================================
 // CONTEXT HOOKS
 // =============================================================================

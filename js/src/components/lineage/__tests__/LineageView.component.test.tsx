@@ -210,6 +210,9 @@ vi.mock("@datarecce/ui", () => ({
 
 // Mock @datarecce/ui/api
 vi.mock("@datarecce/ui/api", () => ({
+  cacheKeys: {
+    checks: vi.fn(() => ["checks"]),
+  },
   getCll: vi.fn().mockResolvedValue(undefined),
   select: vi.fn().mockResolvedValue({ nodes: [] }),
   createLineageDiffCheck: vi.fn().mockResolvedValue({ check_id: "test-check" }),
@@ -431,6 +434,9 @@ vi.mock("@datarecce/ui/components/lineage/lineage", () => ({
 vi.mock("@tanstack/react-query", () => ({
   useMutation: vi.fn(() => ({
     mutateAsync: vi.fn().mockResolvedValue(undefined),
+  })),
+  useQueryClient: vi.fn(() => ({
+    invalidateQueries: vi.fn().mockResolvedValue(undefined),
   })),
 }));
 
