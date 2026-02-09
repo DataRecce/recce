@@ -192,6 +192,8 @@ class ValueDiffTask(Task, ValueDiffMixin):
                     curr_relation=dbt_adapter.create_relation(model, base=False),
                     primary_keys=primary_key if composite else [primary_key],
                     column_to_compare=column,
+                    a_relation_name="a",
+                    b_relation_name="b",
                 ),
             )
 
