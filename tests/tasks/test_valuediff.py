@@ -88,6 +88,13 @@ def test_value_diff_added_rows(dbt_test_helper):
 
     params = {"model": "customers_added", "primary_key": ["customer_id"]}
 
+    # ValueDiffTask summary should detect the added row
+    task = ValueDiffTask(params)
+    run_result = task.execute()
+    assert run_result.summary.total == 3
+    assert run_result.summary.added == 1
+    assert run_result.summary.removed == 0
+
     # ValueDiffDetailTask should show the added row
     task = ValueDiffDetailTask(params)
     run_result = task.execute()
@@ -122,6 +129,13 @@ def test_value_diff_removed_rows(dbt_test_helper):
     dbt_test_helper.create_model("customers_removed", csv_data_base, csv_data_curr)
 
     params = {"model": "customers_removed", "primary_key": ["customer_id"]}
+
+    # ValueDiffTask summary should detect the removed row
+    task = ValueDiffTask(params)
+    run_result = task.execute()
+    assert run_result.summary.total == 3
+    assert run_result.summary.added == 0
+    assert run_result.summary.removed == 1
 
     # ValueDiffDetailTask should show the removed row
     task = ValueDiffDetailTask(params)
