@@ -206,8 +206,8 @@ class ValueDiffTask(Task, ValueDiffMixin):
                 # ('EVENT_ID', 'perfect match', 158601510, Decimal('100.00'))
                 column_name, column_state, row_count, total_rate = row
                 if "column_name" == row[0].lower():
-                    # skip column names
-                    return
+                    # skip header row if database adapter returns column names as data
+                    continue
 
                 # sample data like this:
                 #     https://github.com/dbt-labs/dbt-audit-helper/blob/main/macros/compare_column_values.sql
@@ -232,10 +232,10 @@ class ValueDiffTask(Task, ValueDiffMixin):
                     "values do not match": "mismatched",
                 }
 
-                # Use the mapping to update counts
-                for state, action in state_mappings.items():
-                    if state in column_state:
-                        column_groups[column_name][action] += row_count
+                # Use exact matching to update counts
+                action = state_mappings.get(column_state)
+                if action:
+                    column_groups[column_name][action] += row_count
 
             # Cancel as early as possible
             self.check_cancel()
