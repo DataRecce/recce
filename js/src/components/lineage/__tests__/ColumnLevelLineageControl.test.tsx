@@ -136,6 +136,7 @@ describe("ColumnLevelLineageControl", () => {
     );
     mockUseLineageGraphContext.mockReturnValue({
       lineageGraph: createMockLineageGraph(),
+      isActionAvailable: () => true,
     });
     mockUseRecceServerFlag.mockReturnValue({
       data: { single_env_onboarding: false },
@@ -176,6 +177,7 @@ describe("ColumnLevelLineageControl", () => {
             base: undefined,
           },
         }),
+        isActionAvailable: () => true,
       });
 
       render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
@@ -272,6 +274,7 @@ describe("ColumnLevelLineageControl", () => {
       );
       mockUseLineageGraphContext.mockReturnValue({
         lineageGraph: createMockLineageGraph(),
+        isActionAvailable: () => true,
       });
 
       render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
@@ -293,6 +296,7 @@ describe("ColumnLevelLineageControl", () => {
       );
       mockUseLineageGraphContext.mockReturnValue({
         lineageGraph: createMockLineageGraph(),
+        isActionAvailable: () => true,
       });
 
       render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
@@ -360,6 +364,7 @@ describe("ColumnLevelLineageControl", () => {
         lineageGraph: createMockLineageGraph({
           nodes: {}, // Empty nodes
         }),
+        isActionAvailable: () => true,
       });
 
       render(<ColumnLevelLineageControlOss action={createMockMutation()} />);
@@ -630,6 +635,7 @@ describe("ColumnLevelLineageControl", () => {
     it("handles missing lineageGraph gracefully", () => {
       mockUseLineageGraphContext.mockReturnValue({
         lineageGraph: undefined,
+        isActionAvailable: () => true,
       });
       mockUseLineageViewContextSafe.mockReturnValue(
         createMockLineageViewContext({
@@ -655,6 +661,7 @@ describe("ColumnLevelLineageControl", () => {
             base: undefined,
           },
         }),
+        isActionAvailable: () => true,
       });
 
       render(<ColumnLevelLineageControlOss action={createMockMutation()} />);

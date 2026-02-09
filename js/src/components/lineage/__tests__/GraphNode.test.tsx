@@ -267,6 +267,7 @@ const createMockContext = (
 const createMockLineageGraphContext = (overrides = {}) => ({
   lineageGraph: { nodes: {} },
   runsAggregated: undefined,
+  isActionAvailable: () => true,
   ...overrides,
 });
 

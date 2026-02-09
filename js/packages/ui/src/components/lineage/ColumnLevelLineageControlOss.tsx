@@ -41,7 +41,7 @@ export const ColumnLevelLineageControlOss = ({
   } = useLineageViewContextSafe();
   const { data: flagData } = useRecceServerFlag();
   const singleEnv = flagData?.single_env_onboarding ?? false;
-  const { lineageGraph } = useLineageGraphContext();
+  const { lineageGraph, isActionAvailable } = useLineageGraphContext();
 
   return (
     <BaseColumnLevelLineageControl
@@ -50,6 +50,7 @@ export const ColumnLevelLineageControlOss = ({
       viewOptions={viewOptions}
       lineageGraph={lineageGraph}
       singleEnvMode={singleEnv}
+      changeAnalysisAvailable={isActionAvailable("change_analysis")}
       onShowCll={showColumnLevelLineage}
       onResetCll={() => resetColumnLevelLineage()}
       onCenterNode={centerNode}
