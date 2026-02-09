@@ -317,7 +317,7 @@ class DbtAdapter(BaseAdapter):
 
     def support_tasks(self):
         support_map = {run_type.value: True for run_type in dbt_supported_registry}
-
+        support_map["change_analysis"] = True
         return support_map
 
     @classmethod
