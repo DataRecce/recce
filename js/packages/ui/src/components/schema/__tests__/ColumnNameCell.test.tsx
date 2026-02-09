@@ -20,6 +20,7 @@ vi.mock("../../../contexts", () => ({
     featureToggles: { disableDatabaseQuery: false },
   }),
   useLineageViewContext: () => undefined,
+  useLineageGraphContext: () => ({ isActionAvailable: () => true }),
 }));
 
 // ============================================================================
