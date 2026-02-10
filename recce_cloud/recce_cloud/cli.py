@@ -665,34 +665,38 @@ def upload(target_path, session_id, session_name, skip_confirmation, pr, session
             skip_confirmation=skip_confirmation,
         )
     else:
-        # GitHub Action or GitLab CI/CD workflow: Use platform APIs to create session and upload
-        # This workflow MUST use CI job tokens (CI_JOB_TOKEN or GITHUB_TOKEN)
-        if not ci_info or not ci_info.access_token:
-            # If --type prod is specified outside CI, fetch the production session and upload to it
-            if session_type == "prod":
-                from recce_cloud.auth.profile import get_api_token
+        # Auto-detect workflow: Try RECCE_API_TOKEN first, then platform tokens
+        # Priority 1: RECCE_API_TOKEN + CI detected → generic client
+        from recce_cloud.auth.profile import get_api_token
 
-                token = os.getenv("RECCE_API_TOKEN") or get_api_token()
-                if not token:
-                    console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
-                    console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
-                    sys.exit(2)
+        recce_api_token = os.getenv("RECCE_API_TOKEN") or get_api_token()
 
-                # Fetch the production session ID
-                prod_session_id = _get_production_session_id(console, token)
-                if not prod_session_id:
-                    sys.exit(2)
+        if recce_api_token and ci_info and ci_info.platform:
+            from recce_cloud.api.recce_token import RecceTokenCloudClient
 
-                upload_to_existing_session(
-                    console, token, prod_session_id, manifest_path, catalog_path, adapter_type, target_path
-                )
+            # Map CI platform to provider name
+            if ci_info.platform == "github-actions":
+                provider = "github"
+            elif ci_info.platform == "gitlab-ci":
+                provider = "gitlab"
             else:
-                console.print("[red]Error:[/red] Platform-specific upload requires CI environment")
-                console.print(
-                    "Either run in GitHub Actions/GitLab CI or provide --session-id/--session-name for generic upload"
-                )
-                sys.exit(2)
-        else:
+                provider = ci_info.platform
+
+            console.print("[cyan]Info:[/cyan] Using RECCE_API_TOKEN for authentication")
+
+            client = RecceTokenCloudClient(
+                token=recce_api_token,
+                provider=provider,
+                repository=ci_info.repository,
+            )
+
+            upload_with_platform_apis(
+                console, recce_api_token, ci_info, manifest_path, catalog_path, adapter_type, target_path,
+                client=client,
+            )
+
+        # Priority 2: Platform token + CI detected → existing platform clients
+        elif ci_info and ci_info.access_token:
             token = ci_info.access_token
             if ci_info.platform == "github-actions":
                 console.print("[cyan]Info:[/cyan] Using GITHUB_TOKEN for platform-specific authentication")
@@ -700,6 +704,27 @@ def upload(target_path, session_id, session_name, skip_confirmation, pr, session
                 console.print("[cyan]Info:[/cyan] Using CI_JOB_TOKEN for platform-specific authentication")
 
             upload_with_platform_apis(console, token, ci_info, manifest_path, catalog_path, adapter_type, target_path)
+
+        # Fallback: --type prod outside CI (upload to production session by ID)
+        elif session_type == "prod" and recce_api_token:
+            # Fetch the production session ID
+            prod_session_id = _get_production_session_id(console, recce_api_token)
+            if not prod_session_id:
+                sys.exit(2)
+
+            upload_to_existing_session(
+                console, recce_api_token, prod_session_id, manifest_path, catalog_path, adapter_type, target_path
+            )
+
+        # Error with guidance
+        else:
+            console.print("[red]Error:[/red] No authentication method found for auto-upload")
+            console.print()
+            console.print("To fix this, try one of the following:")
+            console.print("  1. Set RECCE_API_TOKEN environment variable (works in any CI)")
+            console.print("  2. Run in GitHub Actions (GITHUB_TOKEN) or GitLab CI (CI_JOB_TOKEN)")
+            console.print("  3. Use --session-id or --session-name for explicit session targeting")
+            sys.exit(2)
 
 
 @cloud_cli.command(name="list")
