@@ -10,7 +10,7 @@ import { PiMoon, PiSun } from "react-icons/pi";
  * Display Mode Toggle - switches between light and dark themes
  *
  * Uses next-themes to persist the user's preference.
- * Default is light theme, with future support for system preference.
+ * Defaults to system preference; explicit user choice is stored in localStorage.
  */
 export const DisplayModeToggleOss = () => {
   const { setTheme, resolvedTheme } = useTheme();
