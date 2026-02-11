@@ -31,8 +31,8 @@ export default function Providers({ children, lineage }: ProvidersProps) {
   return (
     <NextThemesProvider
       attribute="class"
-      defaultTheme="light"
-      enableSystem={false}
+      defaultTheme="system"
+      enableSystem={true}
     >
       <MuiProvider enableCssBaseline>
         <QueryClientProvider client={reactQueryClient}>
