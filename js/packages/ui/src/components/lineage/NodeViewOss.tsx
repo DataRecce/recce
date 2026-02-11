@@ -12,10 +12,11 @@
  */
 
 import Typography from "@mui/material/Typography";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import type { LineageGraphNode } from "../..";
-import { createSchemaDiffCheck } from "../../api";
+import { cacheKeys, createSchemaDiffCheck } from "../../api";
 import {
   useLineageGraphContext,
   useRecceActionContext,
@@ -97,6 +98,7 @@ function OssNotificationComponent({ onClose }: { onClose: () => void }) {
  */
 export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { runAction } = useRecceActionContext();
   const { isActionAvailable, envInfo } = useLineageGraphContext();
   const { singleEnv: isSingleEnvOnboarding, featureToggles } =
@@ -255,6 +257,9 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
           { node_id: node.id },
           apiClient,
         );
+        await queryClient.invalidateQueries({
+          queryKey: cacheKeys.checks(),
+        });
         router.push(`${basePath}/checks/?id=${check.check_id}`);
       },
 
@@ -278,6 +283,7 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
       setPrimaryKeys,
       primaryKey,
       apiClient,
+      queryClient,
       router.push,
       basePath,
     ],
