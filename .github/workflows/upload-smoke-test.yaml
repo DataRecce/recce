@@ -1,0 +1,75 @@
+name: Upload Smoke Test (recce-cloud)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "recce_cloud/**"
+      - "integration_tests/recce_cloud/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "recce_cloud/**"
+      - "integration_tests/recce_cloud/**"
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  authorize:
+    runs-on: ubuntu-latest
+    outputs:
+      authorized: ${{ steps.check.outputs.authorized }}
+    steps:
+      - name: Check if PR author has write permission
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "authorized=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          PERMISSION=$(gh api repos/${{ github.repository }}/collaborators/${{ github.triggering_actor }}/permission --jq '.permission' 2>/dev/null || echo "none")
+          if [[ "$PERMISSION" == "write" || "$PERMISSION" == "admin" ]]; then
+            echo "authorized=true" >> $GITHUB_OUTPUT
+          else
+            echo "authorized=false" >> $GITHUB_OUTPUT
+            echo "::warning::Upload smoke test skipped — requires write permission."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  upload-smoke-test:
+    needs: authorize
+    if: needs.authorize.outputs.authorized == 'true'
+    concurrency:
+      group: upload-smoke-test
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        python-version: ["3.11"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install recce-cloud
+        run: |
+          uv venv
+          uv sync --no-dev --python ${{ matrix.python-version }}
+
+      - name: Run upload smoke test
+        run: |
+          source .venv/bin/activate
+          ./integration_tests/recce_cloud/smoke_test_upload.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.RECCE_CLOUD_TOKEN }}
+          SMOKE_TEST_GITHUB_REPO: ${{ secrets.SMOKE_TEST_GITHUB_REPO }}
+          SMOKE_TEST_API_TOKEN: ${{ secrets.SMOKE_TEST_API_TOKEN }}
