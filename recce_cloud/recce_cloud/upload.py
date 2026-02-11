@@ -129,29 +129,35 @@ def upload_to_existing_session(
 
 
 def upload_with_platform_apis(
-    console, token: str, ci_info, manifest_path: str, catalog_path: str, adapter_type: str, target_path: str
+    console, token: str, ci_info, manifest_path: str, catalog_path: str, adapter_type: str, target_path: str,
+    client=None,
 ):
     """
-    Upload artifacts using platform-specific APIs (GitHub Actions or GitLab CI).
+    Upload artifacts using touch-recce-session APIs.
 
     This workflow uses touch-recce-session to create a session automatically.
+    Accepts an optional pre-built client (e.g., RecceTokenCloudClient); if not
+    provided, creates a platform-specific client from the token and CI info.
     """
-    # Validate platform support
-    if ci_info.platform not in ["github-actions", "gitlab-ci"]:
-        console.print("[red]Error:[/red] Platform-specific upload requires GitHub Actions or GitLab CI environment")
-        console.print(f"Detected platform: {ci_info.platform or 'unknown'}")
-        console.print(
-            "Either run this command in a supported CI environment or provide --session-id for generic upload"
-        )
-        sys.exit(1)
+    if client is None:
+        # Validate platform support
+        if ci_info.platform not in ["github-actions", "gitlab-ci"]:
+            console.print(
+                "[red]Error:[/red] Platform-specific upload requires GitHub Actions or GitLab CI environment"
+            )
+            console.print(f"Detected platform: {ci_info.platform or 'unknown'}")
+            console.print(
+                "Either run this command in a supported CI environment or provide --session-id for generic upload"
+            )
+            sys.exit(1)
 
-    # Create platform-specific client
-    try:
-        client = create_platform_client(token, ci_info)
-    except ValueError as e:
-        console.print("[red]Error:[/red] Failed to create platform client")
-        console.print(f"Reason: {e}")
-        sys.exit(2)
+        # Create platform-specific client
+        try:
+            client = create_platform_client(token, ci_info)
+        except ValueError as e:
+            console.print("[red]Error:[/red] Failed to create platform client")
+            console.print(f"Reason: {e}")
+            sys.exit(2)
 
     # Touch session to create or get session ID
     console.rule("Creating/touching session", style="blue")
