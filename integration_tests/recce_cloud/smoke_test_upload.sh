@@ -11,8 +11,7 @@ set -euo pipefail
 #   4. RECCE_API_TOKEN Prod Upload (generic endpoint, --type prod)
 #
 # Required env vars:
-#   GITHUB_TOKEN           - PAT with repo scope for staging test repo
-#   SMOKE_TEST_GITHUB_REPO - Staging test repo (e.g., DataRecce/jaffle_shop_duckdb)
+#   GITHUB_TOKEN           - PAT with repo scope for the test repo
 #
 # Optional env vars:
 #   SMOKE_TEST_API_TOKEN   - RECCE_API_TOKEN for generic endpoint tests (tests 3-4)
@@ -23,6 +22,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FIXTURES_DIR="${SCRIPT_DIR}/fixtures/minimal-target"
+SMOKE_TEST_GITHUB_REPO="DataRecce/recce-smoke-test"
 TEST_BRANCH="smoke-test-upload-$(date +%s)"
 PASS_COUNT=0
 FAIL_COUNT=0
@@ -33,12 +33,10 @@ if [[ "${GITHUB_ACTIONS:-}" != "true" ]]; then
   exit 1
 fi
 
-for var in GITHUB_TOKEN SMOKE_TEST_GITHUB_REPO; do
-  if [[ -z "${!var:-}" ]]; then
-    echo "ERROR: $var is required"
-    exit 1
-  fi
-done
+if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+  echo "ERROR: GITHUB_TOKEN is required"
+  exit 1
+fi
 
 # ---- Recce Cloud config ----
 export RECCE_CLOUD_API_HOST="${RECCE_CLOUD_API_HOST:-https://cloud.datarecce.io}"

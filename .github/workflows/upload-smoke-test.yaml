@@ -71,5 +71,4 @@ jobs:
           ./integration_tests/recce_cloud/smoke_test_upload.sh
         env:
           GITHUB_TOKEN: ${{ secrets.RECCE_CLOUD_TOKEN }}
-          SMOKE_TEST_GITHUB_REPO: ${{ secrets.SMOKE_TEST_GITHUB_REPO }}
           SMOKE_TEST_API_TOKEN: ${{ secrets.SMOKE_TEST_API_TOKEN }}
