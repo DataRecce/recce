@@ -7,13 +7,15 @@
 export {
   type CSVData,
   type CSVExportOptions,
-  copyCSVToClipboard,
+  copyToClipboard,
   downloadCSV,
+  downloadTSV,
   extractCSVData,
   generateCSVFilename,
   generateTimestamp,
   supportsCSVExport,
   toCSV,
+  toTSV,
 } from "./csv";
 // Grid generators
 export type {

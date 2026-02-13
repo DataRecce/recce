@@ -41,6 +41,7 @@ import { IoClose } from "react-icons/io5";
 import {
   PiCaretDown,
   PiCheck,
+  PiClipboardText,
   PiDownloadSimple,
   PiImage,
   PiRepeat,
@@ -71,8 +72,12 @@ export interface CSVExportProps {
   canExportCSV: boolean;
   /** Copy data as CSV to clipboard */
   copyAsCSV: () => Promise<void>;
+  /** Copy data as TSV to clipboard (pastes into spreadsheets) */
+  copyAsTSV?: () => Promise<void>;
   /** Download data as CSV file */
   downloadAsCSV: () => void;
+  /** Download data as TSV file */
+  downloadAsTSV?: () => void;
 }
 
 /**
@@ -367,6 +372,18 @@ const DefaultExportMenu = memo(
           </MenuItem>
           <MenuItem
             onClick={async () => {
+              await csvExport?.copyAsTSV?.();
+              handleClose();
+            }}
+            disabled={disableExport || !csvExport?.canExportCSV}
+          >
+            <ListItemIcon>
+              <PiClipboardText />
+            </ListItemIcon>
+            <ListItemText>Copy as Text</ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={async () => {
               await csvExport?.copyAsCSV();
               handleClose();
             }}
@@ -388,6 +405,18 @@ const DefaultExportMenu = memo(
               <PiDownloadSimple />
             </ListItemIcon>
             <ListItemText>Download as CSV</ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              csvExport?.downloadAsTSV?.();
+              handleClose();
+            }}
+            disabled={disableExport || !csvExport?.canExportCSV}
+          >
+            <ListItemIcon>
+              <PiDownloadSimple />
+            </ListItemIcon>
+            <ListItemText>Download as TSV</ListItemText>
           </MenuItem>
         </Menu>
       </>
@@ -450,6 +479,18 @@ const DefaultShareMenu = memo(
           </MenuItem>
           <MenuItem
             onClick={async () => {
+              await csvExport?.copyAsTSV?.();
+              handleClose();
+            }}
+            disabled={disableExport || !csvExport?.canExportCSV}
+          >
+            <ListItemIcon>
+              <PiClipboardText />
+            </ListItemIcon>
+            <ListItemText>Copy as Text</ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={async () => {
               await csvExport?.copyAsCSV();
               handleClose();
             }}
@@ -471,6 +512,18 @@ const DefaultShareMenu = memo(
               <PiDownloadSimple />
             </ListItemIcon>
             <ListItemText>Download as CSV</ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              csvExport?.downloadAsTSV?.();
+              handleClose();
+            }}
+            disabled={disableExport || !csvExport?.canExportCSV}
+          >
+            <ListItemIcon>
+              <PiDownloadSimple />
+            </ListItemIcon>
+            <ListItemText>Download as TSV</ListItemText>
           </MenuItem>
           <Divider />
           {authed ? (
