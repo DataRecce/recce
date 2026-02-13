@@ -72,3 +72,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.RECCE_CLOUD_TOKEN }}
           SMOKE_TEST_API_TOKEN: ${{ secrets.SMOKE_TEST_API_TOKEN }}
+          SMOKE_TEST_ORG: ${{ secrets.SMOKE_TEST_ORG }}
+          SMOKE_TEST_PROJECT: ${{ secrets.SMOKE_TEST_PROJECT }}
