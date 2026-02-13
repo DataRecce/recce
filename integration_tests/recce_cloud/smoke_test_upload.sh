@@ -59,7 +59,7 @@ SYNTHETIC_EVENT=$(mktemp)
 cat > "$SYNTHETIC_EVENT" <<EOF
 {
   "pull_request": {
-    "number": 99999
+    "number": 1
   }
 }
 EOF
