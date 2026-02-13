@@ -7,12 +7,14 @@ import type { Run } from "../api";
 import { toaster } from "../components/ui/Toaster";
 import {
   type CSVExportOptions,
-  copyCSVToClipboard,
+  copyToClipboard,
   downloadCSV,
+  downloadTSV,
   extractCSVData,
   generateCSVFilename,
   supportsCSVExport,
   toCSV,
+  toTSV,
 } from "../utils";
 
 interface UseCSVExportOptions {
@@ -26,8 +28,12 @@ interface UseCSVExportResult {
   canExportCSV: boolean;
   /** Copy result data as CSV to clipboard */
   copyAsCSV: () => Promise<void>;
+  /** Copy result data as TSV to clipboard (pastes into spreadsheets) */
+  copyAsTSV: () => Promise<void>;
   /** Download result data as CSV file */
   downloadAsCSV: () => void;
+  /** Download result data as TSV file */
+  downloadAsTSV: () => void;
 }
 
 export function useCSVExport({
@@ -39,7 +45,7 @@ export function useCSVExport({
     return supportsCSVExport(run.type);
   }, [run?.type, run?.result]);
 
-  const getCSVContent = useCallback((): string | null => {
+  const getExtractedData = useCallback(() => {
     if (!run?.type || !run?.result) return null;
 
     // Extract display_mode from viewOptions if it exists (for query_diff)
@@ -57,11 +63,20 @@ export function useCSVExport({
       primaryKeys,
     };
 
-    const csvData = extractCSVData(run.type, run.result, exportOptions);
-    if (!csvData) return null;
-
-    return toCSV(csvData.columns, csvData.rows);
+    return extractCSVData(run.type, run.result, exportOptions);
   }, [run?.type, run?.result, run?.params, viewOptions]);
+
+  const getCSVContent = useCallback((): string | null => {
+    const data = getExtractedData();
+    if (!data) return null;
+    return toCSV(data.columns, data.rows);
+  }, [getExtractedData]);
+
+  const getTSVContent = useCallback((): string | null => {
+    const data = getExtractedData();
+    if (!data) return null;
+    return toTSV(data.columns, data.rows);
+  }, [getExtractedData]);
 
   const copyAsCSV = useCallback(async () => {
     const content = getCSVContent();
@@ -76,7 +91,7 @@ export function useCSVExport({
     }
 
     try {
-      await copyCSVToClipboard(content);
+      await copyToClipboard(content);
       toaster.create({
         title: "Copied to clipboard",
         description: "CSV data copied successfully",
@@ -129,9 +144,77 @@ export function useCSVExport({
     }
   }, [getCSVContent, run]);
 
+  const copyAsTSV = useCallback(async () => {
+    const content = getTSVContent();
+    if (!content) {
+      toaster.create({
+        title: "Export failed",
+        description: "Unable to extract data for export",
+        type: "error",
+        duration: 3000,
+      });
+      return;
+    }
+
+    try {
+      await copyToClipboard(content);
+      toaster.create({
+        title: "Copied to clipboard",
+        description: "Text data copied — paste into any spreadsheet",
+        type: "success",
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error("Failed to copy TSV to clipboard:", error);
+      toaster.create({
+        title: "Copy failed",
+        description: "Failed to copy to clipboard",
+        type: "error",
+        duration: 3000,
+      });
+    }
+  }, [getTSVContent]);
+
+  const downloadAsTSV = useCallback(() => {
+    const content = getTSVContent();
+    if (!content) {
+      toaster.create({
+        title: "Export failed",
+        description: "Unable to extract data for export",
+        type: "error",
+        duration: 3000,
+      });
+      return;
+    }
+
+    try {
+      const filename = generateCSVFilename(
+        run?.type ?? "",
+        run?.params as Record<string, unknown>,
+      ).replace(/\.csv$/, ".tsv");
+      downloadTSV(content, filename);
+      toaster.create({
+        title: "Downloaded",
+        description: filename,
+        type: "success",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error("Failed to download TSV file:", error);
+      toaster.create({
+        title: "Download failed",
+        description: "Failed to download TSV file",
+        type: "error",
+        duration: 3000,
+      });
+    }
+  }, [getTSVContent, run]);
+
   return {
     canExportCSV,
     copyAsCSV,
+    copyAsTSV,
     downloadAsCSV,
+    downloadAsTSV,
   };
 }

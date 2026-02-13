@@ -1,16 +1,16 @@
 /**
  * @file csv/index.ts
- * @description CSV export utilities
+ * @description CSV/TSV export utilities
  */
 
-export { copyCSVToClipboard, downloadCSV } from "./browser";
+export { copyToClipboard, downloadCSV, downloadTSV } from "./browser";
 export {
   type CSVData,
   type CSVExportOptions,
   extractCSVData,
   supportsCSVExport,
 } from "./extractors";
-export { toCSV } from "./format";
+export { toCSV, toTSV } from "./format";
 
 /**
  * Generate timestamp string for filenames
