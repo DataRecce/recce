@@ -10,7 +10,7 @@ export {
   extractCSVData,
   supportsCSVExport,
 } from "./extractors";
-export { toCSV } from "./format";
+export { toCSV, toTSV } from "./format";
 
 /**
  * Generate timestamp string for filenames
