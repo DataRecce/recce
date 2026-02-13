@@ -76,6 +76,8 @@ export interface CSVExportProps {
   copyAsTSV: () => Promise<void>;
   /** Download data as CSV file */
   downloadAsCSV: () => void;
+  /** Download data as TSV file */
+  downloadAsTSV: () => void;
 }
 
 /**
@@ -404,6 +406,18 @@ const DefaultExportMenu = memo(
             </ListItemIcon>
             <ListItemText>Download as CSV</ListItemText>
           </MenuItem>
+          <MenuItem
+            onClick={() => {
+              csvExport?.downloadAsTSV();
+              handleClose();
+            }}
+            disabled={disableExport || !csvExport?.canExportCSV}
+          >
+            <ListItemIcon>
+              <PiDownloadSimple />
+            </ListItemIcon>
+            <ListItemText>Download as TSV</ListItemText>
+          </MenuItem>
         </Menu>
       </>
     );
@@ -498,6 +512,18 @@ const DefaultShareMenu = memo(
               <PiDownloadSimple />
             </ListItemIcon>
             <ListItemText>Download as CSV</ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              csvExport?.downloadAsTSV();
+              handleClose();
+            }}
+            disabled={disableExport || !csvExport?.canExportCSV}
+          >
+            <ListItemIcon>
+              <PiDownloadSimple />
+            </ListItemIcon>
+            <ListItemText>Download as TSV</ListItemText>
           </MenuItem>
           <Divider />
           {authed ? (

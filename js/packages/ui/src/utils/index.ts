@@ -9,6 +9,7 @@ export {
   type CSVExportOptions,
   copyCSVToClipboard,
   downloadCSV,
+  downloadTSV,
   extractCSVData,
   generateCSVFilename,
   generateTimestamp,

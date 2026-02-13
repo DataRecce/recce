@@ -9,6 +9,7 @@ import {
   type CSVExportOptions,
   copyCSVToClipboard,
   downloadCSV,
+  downloadTSV,
   extractCSVData,
   generateCSVFilename,
   supportsCSVExport,
@@ -31,6 +32,8 @@ interface UseCSVExportResult {
   copyAsTSV: () => Promise<void>;
   /** Download result data as CSV file */
   downloadAsCSV: () => void;
+  /** Download result data as TSV file */
+  downloadAsTSV: () => void;
 }
 
 export function useCSVExport({
@@ -172,10 +175,46 @@ export function useCSVExport({
     }
   }, [getTSVContent]);
 
+  const downloadAsTSV = useCallback(() => {
+    const content = getTSVContent();
+    if (!content) {
+      toaster.create({
+        title: "Export failed",
+        description: "Unable to extract data for export",
+        type: "error",
+        duration: 3000,
+      });
+      return;
+    }
+
+    try {
+      const filename = generateCSVFilename(
+        run?.type ?? "",
+        run?.params as Record<string, unknown>,
+      ).replace(/\.csv$/, ".tsv");
+      downloadTSV(content, filename);
+      toaster.create({
+        title: "Downloaded",
+        description: filename,
+        type: "success",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error("Failed to download TSV file:", error);
+      toaster.create({
+        title: "Download failed",
+        description: "Failed to download TSV file",
+        type: "error",
+        duration: 3000,
+      });
+    }
+  }, [getTSVContent, run]);
+
   return {
     canExportCSV,
     copyAsCSV,
     copyAsTSV,
     downloadAsCSV,
+    downloadAsTSV,
   };
 }

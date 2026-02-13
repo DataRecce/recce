@@ -17,6 +17,18 @@ export function downloadCSV(content: string, filename: string): void {
 }
 
 /**
+ * Trigger browser download of TSV file
+ * @param content - TSV string content
+ * @param filename - Name for the downloaded file
+ */
+export function downloadTSV(content: string, filename: string): void {
+  const blob = new Blob([content], {
+    type: "text/tab-separated-values;charset=utf-8",
+  });
+  saveAs(blob, filename);
+}
+
+/**
  * Copy CSV content to clipboard
  * Requires a secure context (HTTPS or localhost)
  * @param content - CSV string content to copy
