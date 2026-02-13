@@ -1,5 +1,5 @@
 /**
- * Tests for CSV formatting utilities
+ * Tests for CSV and TSV formatting utilities
  */
 import { toCSV, toTSV } from "../format";
 

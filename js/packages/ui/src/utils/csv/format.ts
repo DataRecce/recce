@@ -62,10 +62,10 @@ function escapeTSVValue(value: unknown): string {
 }
 
 /**
- * Convert tabular data to TSV string for clipboard pasting into spreadsheets
+ * Convert tabular data to TSV string
  * @param columns - Column headers
  * @param rows - Row data (array of arrays)
- * @returns TSV string (no BOM - intended for clipboard, not file download)
+ * @returns TSV string (no BOM — plain text suitable for clipboard and file download)
  */
 export function toTSV(columns: string[], rows: unknown[][]): string {
   const headerRow = columns.map(escapeTSVValue).join("\t");

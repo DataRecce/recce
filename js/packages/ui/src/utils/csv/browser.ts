@@ -29,12 +29,12 @@ export function downloadTSV(content: string, filename: string): void {
 }
 
 /**
- * Copy CSV content to clipboard
+ * Copy text content to clipboard
  * Requires a secure context (HTTPS or localhost)
- * @param content - CSV string content to copy
+ * @param content - Text content to copy (CSV, TSV, or any string)
  * @throws Error if Clipboard API is not available
  */
-export async function copyCSVToClipboard(content: string): Promise<void> {
+export async function copyToClipboard(content: string): Promise<void> {
   if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
     throw new Error(
       "Clipboard API not available. Ensure you're using HTTPS or localhost.",

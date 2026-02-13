@@ -73,11 +73,11 @@ export interface CSVExportProps {
   /** Copy data as CSV to clipboard */
   copyAsCSV: () => Promise<void>;
   /** Copy data as TSV to clipboard (pastes into spreadsheets) */
-  copyAsTSV: () => Promise<void>;
+  copyAsTSV?: () => Promise<void>;
   /** Download data as CSV file */
   downloadAsCSV: () => void;
   /** Download data as TSV file */
-  downloadAsTSV: () => void;
+  downloadAsTSV?: () => void;
 }
 
 /**
@@ -372,7 +372,7 @@ const DefaultExportMenu = memo(
           </MenuItem>
           <MenuItem
             onClick={async () => {
-              await csvExport?.copyAsTSV();
+              await csvExport?.copyAsTSV?.();
               handleClose();
             }}
             disabled={disableExport || !csvExport?.canExportCSV}
@@ -408,7 +408,7 @@ const DefaultExportMenu = memo(
           </MenuItem>
           <MenuItem
             onClick={() => {
-              csvExport?.downloadAsTSV();
+              csvExport?.downloadAsTSV?.();
               handleClose();
             }}
             disabled={disableExport || !csvExport?.canExportCSV}
@@ -479,7 +479,7 @@ const DefaultShareMenu = memo(
           </MenuItem>
           <MenuItem
             onClick={async () => {
-              await csvExport?.copyAsTSV();
+              await csvExport?.copyAsTSV?.();
               handleClose();
             }}
             disabled={disableExport || !csvExport?.canExportCSV}
@@ -515,7 +515,7 @@ const DefaultShareMenu = memo(
           </MenuItem>
           <MenuItem
             onClick={() => {
-              csvExport?.downloadAsTSV();
+              csvExport?.downloadAsTSV?.();
               handleClose();
             }}
             disabled={disableExport || !csvExport?.canExportCSV}

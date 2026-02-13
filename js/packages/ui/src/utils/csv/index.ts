@@ -1,9 +1,9 @@
 /**
  * @file csv/index.ts
- * @description CSV export utilities
+ * @description CSV/TSV export utilities
  */
 
-export { copyCSVToClipboard, downloadCSV, downloadTSV } from "./browser";
+export { copyToClipboard, downloadCSV, downloadTSV } from "./browser";
 export {
   type CSVData,
   type CSVExportOptions,

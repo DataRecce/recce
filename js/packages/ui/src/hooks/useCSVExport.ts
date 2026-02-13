@@ -7,7 +7,7 @@ import type { Run } from "../api";
 import { toaster } from "../components/ui/Toaster";
 import {
   type CSVExportOptions,
-  copyCSVToClipboard,
+  copyToClipboard,
   downloadCSV,
   downloadTSV,
   extractCSVData,
@@ -91,7 +91,7 @@ export function useCSVExport({
     }
 
     try {
-      await copyCSVToClipboard(content);
+      await copyToClipboard(content);
       toaster.create({
         title: "Copied to clipboard",
         description: "CSV data copied successfully",
@@ -157,7 +157,7 @@ export function useCSVExport({
     }
 
     try {
-      await copyCSVToClipboard(content);
+      await copyToClipboard(content);
       toaster.create({
         title: "Copied to clipboard",
         description: "Text data copied — paste into any spreadsheet",

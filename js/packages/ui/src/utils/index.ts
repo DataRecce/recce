@@ -7,7 +7,7 @@
 export {
   type CSVData,
   type CSVExportOptions,
-  copyCSVToClipboard,
+  copyToClipboard,
   downloadCSV,
   downloadTSV,
   extractCSVData,
