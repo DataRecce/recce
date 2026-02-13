@@ -62,14 +62,11 @@ jobs:
 
       - name: Install recce-cloud
         working-directory: recce_cloud
-        run: |
-          uv venv
-          uv sync --no-dev --python ${{ matrix.python-version }}
+        run: uv sync --no-dev --python ${{ matrix.python-version }}
 
       - name: Run upload smoke test
-        run: |
-          source recce_cloud/.venv/bin/activate
-          ./integration_tests/recce_cloud/smoke_test_upload.sh
+        working-directory: recce_cloud
+        run: uv run ../integration_tests/recce_cloud/smoke_test_upload.sh
         env:
           GITHUB_TOKEN: ${{ secrets.RECCE_CLOUD_TOKEN }}
           SMOKE_TEST_API_TOKEN: ${{ secrets.SMOKE_TEST_API_TOKEN }}
