@@ -45,7 +45,7 @@ if [[ -z "${GITHUB_TOKEN:-}" ]]; then
 fi
 
 # ---- Recce Cloud config ----
-export RECCE_CLOUD_API_HOST="${RECCE_CLOUD_API_HOST:-https://cloud.datarecce.io}"
+export RECCE_CLOUD_API_HOST="${RECCE_CLOUD_API_HOST:-https://staging.cloud.datarecce.io}"
 
 # Disable anonymous tracking
 mkdir -p ~/.recce
