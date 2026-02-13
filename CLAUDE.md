@@ -54,6 +54,13 @@ When asked to "publish ui" or "release ui package":
 - Type, description, linked issues
 - Reviewer notes, user-facing changes
 
+## MCP Tool Response Contracts
+
+- MCP tool description = LLM agent contract. Description MUST match actual response format.
+- Prefer additive changes (`_meta` fields) over modifying existing field types in tool responses.
+- Row count consumers: frontend (int), `run.py` (int comparison), `summary.py` (int arithmetic), `RowCountDiffResultDiffer` (3-format compat), MCP agents (description-guided).
+- Format changes to MCP tool responses require both deterministic tests AND BQ/LLM eval to prove agent behavior unchanged.
+
 ## Individual Preferences
 
 - @~/.claude/recce.md
