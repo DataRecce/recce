@@ -3,7 +3,13 @@
  * @description CSV/TSV export utilities
  */
 
-export { copyToClipboard, downloadCSV, downloadTSV } from "./browser";
+export {
+  copyToClipboard,
+  downloadCSV,
+  downloadExcel,
+  downloadTSV,
+} from "./browser";
+export { toExcelBuffer } from "./excel";
 export {
   type CSVData,
   type CSVExportOptions,

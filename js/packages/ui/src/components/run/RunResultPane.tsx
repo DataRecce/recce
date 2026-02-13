@@ -78,6 +78,8 @@ export interface CSVExportProps {
   downloadAsCSV: () => void;
   /** Download data as TSV file */
   downloadAsTSV?: () => void;
+  /** Download data as Excel file */
+  downloadAsExcel?: () => void;
 }
 
 /**
@@ -418,6 +420,18 @@ const DefaultExportMenu = memo(
             </ListItemIcon>
             <ListItemText>Download as TSV</ListItemText>
           </MenuItem>
+          <MenuItem
+            onClick={() => {
+              csvExport?.downloadAsExcel?.();
+              handleClose();
+            }}
+            disabled={disableExport || !csvExport?.canExportCSV}
+          >
+            <ListItemIcon>
+              <PiDownloadSimple />
+            </ListItemIcon>
+            <ListItemText>Download as Excel</ListItemText>
+          </MenuItem>
         </Menu>
       </>
     );
@@ -524,6 +538,18 @@ const DefaultShareMenu = memo(
               <PiDownloadSimple />
             </ListItemIcon>
             <ListItemText>Download as TSV</ListItemText>
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              csvExport?.downloadAsExcel?.();
+              handleClose();
+            }}
+            disabled={disableExport || !csvExport?.canExportCSV}
+          >
+            <ListItemIcon>
+              <PiDownloadSimple />
+            </ListItemIcon>
+            <ListItemText>Download as Excel</ListItemText>
           </MenuItem>
           <Divider />
           {authed ? (

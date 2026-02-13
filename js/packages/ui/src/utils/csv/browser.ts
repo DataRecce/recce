@@ -29,6 +29,18 @@ export function downloadTSV(content: string, filename: string): void {
 }
 
 /**
+ * Trigger browser download of Excel file
+ * @param buffer - Excel ArrayBuffer content
+ * @param filename - Name for the downloaded file
+ */
+export function downloadExcel(buffer: ArrayBuffer, filename: string): void {
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+  saveAs(blob, filename);
+}
+
+/**
  * Copy text content to clipboard
  * Requires a secure context (HTTPS or localhost)
  * @param content - Text content to copy (CSV, TSV, or any string)

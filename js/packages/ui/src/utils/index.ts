@@ -9,12 +9,14 @@ export {
   type CSVExportOptions,
   copyToClipboard,
   downloadCSV,
+  downloadExcel,
   downloadTSV,
   extractCSVData,
   generateCSVFilename,
   generateTimestamp,
   supportsCSVExport,
   toCSV,
+  toExcelBuffer,
   toTSV,
 } from "./csv";
 // Grid generators
