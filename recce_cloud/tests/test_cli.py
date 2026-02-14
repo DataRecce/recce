@@ -1027,7 +1027,7 @@ class TestDoctor(unittest.TestCase):
                 with patch("recce_cloud.auth.login.check_login_status", return_value=(True, "test@example.com")):
                     with patch(
                         "recce_cloud.config.project_config.get_project_binding",
-                        return_value={"org": "myorg", "project": "myproject"},
+                        return_value={"org_id": "org-123", "project_id": "proj-456"},
                     ):
                         # Mock API calls
                         with patch("recce_cloud.api.client.RecceCloudClient.get_organization") as mock_get_org:
@@ -1056,7 +1056,7 @@ class TestDoctor(unittest.TestCase):
                 with patch("recce_cloud.auth.login.check_login_status", return_value=(True, "test@example.com")):
                     with patch(
                         "recce_cloud.config.project_config.get_project_binding",
-                        return_value={"org": "myorg", "project": "myproject"},
+                        return_value={"org_id": "org-123", "project_id": "proj-456"},
                     ):
                         # Mock API calls
                         with patch("recce_cloud.api.client.RecceCloudClient.get_organization") as mock_get_org:
