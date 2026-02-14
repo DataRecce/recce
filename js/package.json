@@ -52,7 +52,7 @@
     "@xyflow/react": "^12.10.0",
     "ag-grid-community": "^35.0.1",
     "ag-grid-react": "^35.0.1",
-    "axios": "^1.13.3",
+    "axios": "^1.13.5",
     "chart.js": "^4.5.1",
     "codemirror": "^6.0.2",
     "common-tags": "^1.8.2",
