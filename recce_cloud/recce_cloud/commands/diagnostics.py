@@ -12,6 +12,7 @@ import click
 from rich.console import Console
 from rich.panel import Panel
 
+from recce_cloud.event.track import TrackCommand
 from recce_cloud.services.diagnostic_service import (
     CheckStatus,
     DiagnosticResults,
@@ -135,7 +136,7 @@ class DiagnosticRenderer:
                 self.console.print(f"  {line}")
 
 
-@click.command()
+@click.command(cls=TrackCommand)
 @click.option(
     "--json",
     "output_json",

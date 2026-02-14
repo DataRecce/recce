@@ -30,6 +30,11 @@ from recce_cloud.report import fetch_and_generate_report
 from recce_cloud.review import run_review_command
 from recce_cloud.upload import upload_to_existing_session, upload_with_platform_apis
 
+from recce_cloud import event
+from recce_cloud.event.track import TrackCommand
+
+event.init()
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -60,13 +65,13 @@ def cloud_cli():
 cloud_cli.add_command(doctor)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackCommand)
 def version():
     """Show the version of recce-cloud."""
     click.echo(__version__)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackCommand)
 @click.option(
     "--token",
     default=None,
@@ -151,7 +156,7 @@ def login(token, status):
         sys.exit(1)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackCommand)
 def logout():
     """
     Remove stored Recce Cloud credentials.
@@ -168,7 +173,7 @@ def logout():
     console.print(f"  Credentials removed from {get_profile_path()}")
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackCommand)
 @click.option(
     "--org",
     help="Organization ID, name, or slug to bind to",
@@ -477,7 +482,7 @@ def _get_production_session_id(console: Console, token: str) -> Optional[str]:
         return None
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackCommand)
 @click.option(
     "--target-path",
     type=click.Path(exists=True),
@@ -837,7 +842,7 @@ def upload(
             sys.exit(2)
 
 
-@cloud_cli.command(name="list")
+@cloud_cli.command(name="list", cls=TrackCommand)
 @click.option(
     "--type",
     "session_type",
@@ -1003,7 +1008,7 @@ def list_sessions_cmd(session_type, output_json):
     sys.exit(0)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackCommand)
 @click.option(
     "--target-path",
     type=click.Path(),
@@ -1210,7 +1215,7 @@ def download(target_path, session_id, prod, dry_run, force):
         download_with_platform_apis(console, token, ci_info, target_path, force)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackCommand)
 @click.option(
     "--session-id",
     envvar="RECCE_SESSION_ID",
@@ -1401,7 +1406,7 @@ def delete(session_id, dry_run, force):
         delete_with_platform_apis(console, token, ci_info, prod=False)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackCommand)
 @click.option(
     "--repo",
     type=str,
@@ -1533,7 +1538,7 @@ def report(repo, since, until, base_branch, merged_only, output):
     sys.exit(exit_code)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackCommand)
 @click.option(
     "--session-id",
     envvar="RECCE_SESSION_ID",

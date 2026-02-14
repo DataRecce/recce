@@ -12,6 +12,7 @@ dependencies = [
     "pyyaml>=6.0",
     "requests>=2.28.1",
     "rich>=12.0.0",
+    "sentry-sdk>=1.14.0",
 ]
 
 classifiers = [
@@ -63,4 +64,5 @@ include = [
     "recce_cloud/**/*.py",
     "recce_cloud/**/*.html",
     "recce_cloud/VERSION",
+    "recce_cloud/event/SENTRY_DNS",
 ]
