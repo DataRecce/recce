@@ -341,6 +341,13 @@ class TestSubmitRunParamsPropagation:
             # Wait for the task to complete
             await asyncio.wrap_future(future)
 
+            # The update_run_result coroutine is scheduled via
+            # asyncio.run_coroutine_threadsafe from the executor thread.
+            # Its callback chain (call_soon_threadsafe → create Task →
+            # execute coroutine) spans multiple event loop iterations,
+            # so a brief sleep lets the loop fully process it.
+            await asyncio.sleep(0.1)
+
             # Verify params were normalized
             assert run.params["primary_key"] == ["CUSTOMER_ID"]
 
