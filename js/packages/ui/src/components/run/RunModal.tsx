@@ -138,7 +138,7 @@ const DefaultInfoIcon = ({ size = 16 }: { size?: string | number }) => (
  *   type="profile_diff"
  *   params={{ model: "my_model" }}
  *   RunForm={ProfileDiffForm}
- *   documentationUrl="https://docs.datarecce.io/features/lineage/#profile-diff"
+ *   documentationUrl="https://docs.reccehq.com/features/lineage/#profile-diff"
  * />
  * ```
  */

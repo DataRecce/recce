@@ -206,7 +206,7 @@ export const TopBarOss = () => {
           <LinkIcon
             sx={{ mr: 2 }}
             icon={FaQuestionCircle}
-            href="https://docs.datarecce.io"
+            href="https://docs.reccehq.com"
           />
         </>
       )}
