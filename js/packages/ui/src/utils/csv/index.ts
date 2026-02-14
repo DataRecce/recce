@@ -1,6 +1,6 @@
 /**
  * @file csv/index.ts
- * @description CSV/TSV export utilities
+ * @description CSV/TSV/Excel export utilities
  */
 
 export {

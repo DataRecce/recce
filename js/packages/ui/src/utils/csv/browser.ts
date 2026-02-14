@@ -1,5 +1,5 @@
 /**
- * Browser-specific CSV export utilities
+ * Browser-specific export utilities (CSV, TSV, Excel)
  *
  * These utilities depend on browser APIs (Clipboard, file-saver) and should
  * only be used in browser environments.
@@ -30,11 +30,11 @@ export function downloadTSV(content: string, filename: string): void {
 
 /**
  * Trigger browser download of Excel file
- * @param buffer - Excel ArrayBuffer content
+ * @param buffer - Excel file content
  * @param filename - Name for the downloaded file
  */
-export function downloadExcel(buffer: ArrayBuffer, filename: string): void {
-  const blob = new Blob([buffer], {
+export function downloadExcel(buffer: Uint8Array, filename: string): void {
+  const blob = new Blob([buffer as BlobPart], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
   saveAs(blob, filename);

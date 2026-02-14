@@ -24,15 +24,15 @@ function toExcelValue(value: unknown): string | number | boolean | null {
 }
 
 /**
- * Convert tabular data to an Excel (.xlsx) ArrayBuffer
+ * Convert tabular data to an Excel (.xlsx) buffer
  * @param columns - Column headers
  * @param rows - Row data (array of arrays)
- * @returns ArrayBuffer containing valid .xlsx file data
+ * @returns Uint8Array containing valid .xlsx file data
  */
 export function toExcelBuffer(
   columns: string[],
   rows: unknown[][],
-): ArrayBuffer {
+): Uint8Array {
   // Build array-of-arrays with header row first
   const aoa: (string | number | boolean | null)[][] = [
     columns,
@@ -43,10 +43,9 @@ export function toExcelBuffer(
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
 
-  const buffer = XLSX.write(workbook, {
+  // XLSX.write with { type: "array" } returns Uint8Array at runtime
+  return XLSX.write(workbook, {
     type: "array",
     bookType: "xlsx",
-  }) as ArrayBuffer;
-
-  return buffer;
+  }) as Uint8Array;
 }

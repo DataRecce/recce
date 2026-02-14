@@ -1,5 +1,5 @@
 /**
- * Hook for CSV export functionality
+ * Hook for data export functionality (CSV, TSV, Excel)
  */
 
 import { useCallback, useMemo } from "react";

@@ -420,18 +420,20 @@ const DefaultExportMenu = memo(
             </ListItemIcon>
             <ListItemText>Download as TSV</ListItemText>
           </MenuItem>
-          <MenuItem
-            onClick={() => {
-              csvExport?.downloadAsExcel?.();
-              handleClose();
-            }}
-            disabled={disableExport || !csvExport?.canExportCSV}
-          >
-            <ListItemIcon>
-              <PiDownloadSimple />
-            </ListItemIcon>
-            <ListItemText>Download as Excel</ListItemText>
-          </MenuItem>
+          {csvExport?.downloadAsExcel && (
+            <MenuItem
+              onClick={() => {
+                csvExport?.downloadAsExcel?.();
+                handleClose();
+              }}
+              disabled={disableExport || !csvExport?.canExportCSV}
+            >
+              <ListItemIcon>
+                <PiDownloadSimple />
+              </ListItemIcon>
+              <ListItemText>Download as Excel</ListItemText>
+            </MenuItem>
+          )}
         </Menu>
       </>
     );
@@ -539,18 +541,20 @@ const DefaultShareMenu = memo(
             </ListItemIcon>
             <ListItemText>Download as TSV</ListItemText>
           </MenuItem>
-          <MenuItem
-            onClick={() => {
-              csvExport?.downloadAsExcel?.();
-              handleClose();
-            }}
-            disabled={disableExport || !csvExport?.canExportCSV}
-          >
-            <ListItemIcon>
-              <PiDownloadSimple />
-            </ListItemIcon>
-            <ListItemText>Download as Excel</ListItemText>
-          </MenuItem>
+          {csvExport?.downloadAsExcel && (
+            <MenuItem
+              onClick={() => {
+                csvExport?.downloadAsExcel?.();
+                handleClose();
+              }}
+              disabled={disableExport || !csvExport?.canExportCSV}
+            >
+              <ListItemIcon>
+                <PiDownloadSimple />
+              </ListItemIcon>
+              <ListItemText>Download as Excel</ListItemText>
+            </MenuItem>
+          )}
           <Divider />
           {authed ? (
             <MenuItem

@@ -7,7 +7,7 @@ import { toExcelBuffer } from "../excel";
 /**
  * Helper to parse an Excel buffer back into columns and rows
  */
-function parseExcelBuffer(buffer: ArrayBuffer): {
+function parseExcelBuffer(buffer: Uint8Array): {
   columns: string[];
   rows: unknown[][];
 } {
