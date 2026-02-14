@@ -78,6 +78,7 @@
     "simplebar": "^6.3.3",
     "simplebar-react": "3.3.2",
     "usehooks-ts": "^3.1.1",
+    "write-excel-file": "^2.3.10",
     "yaml": "^2.8.2"
   },
   "devDependencies": {
@@ -102,6 +103,7 @@
     "globals": "^17.1.0",
     "husky": "^9.1.7",
     "postcss": "^8.5.6",
+    "read-excel-file": "^6.0.3",
     "rimraf": "^6.1.2",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",

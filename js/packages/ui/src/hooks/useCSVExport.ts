@@ -1,5 +1,5 @@
 /**
- * Hook for CSV export functionality
+ * Hook for data export functionality (CSV, TSV, Excel)
  */
 
 import { useCallback, useMemo } from "react";
@@ -9,11 +9,13 @@ import {
   type CSVExportOptions,
   copyToClipboard,
   downloadCSV,
+  downloadExcel,
   downloadTSV,
   extractCSVData,
   generateCSVFilename,
   supportsCSVExport,
   toCSV,
+  toExcelBlob,
   toTSV,
 } from "../utils";
 
@@ -34,6 +36,8 @@ interface UseCSVExportResult {
   downloadAsCSV: () => void;
   /** Download result data as TSV file */
   downloadAsTSV: () => void;
+  /** Download result data as Excel file */
+  downloadAsExcel: () => void;
 }
 
 export function useCSVExport({
@@ -210,11 +214,48 @@ export function useCSVExport({
     }
   }, [getTSVContent, run]);
 
+  const downloadAsExcel = useCallback(async () => {
+    const data = getExtractedData();
+    if (!data) {
+      toaster.create({
+        title: "Export failed",
+        description: "Unable to extract data for export",
+        type: "error",
+        duration: 3000,
+      });
+      return;
+    }
+
+    try {
+      const blob = await toExcelBlob(data.columns, data.rows);
+      const filename = generateCSVFilename(
+        run?.type ?? "",
+        run?.params as Record<string, unknown>,
+      ).replace(/\.csv$/, ".xlsx");
+      downloadExcel(blob, filename);
+      toaster.create({
+        title: "Downloaded",
+        description: filename,
+        type: "success",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error("Failed to download Excel file:", error);
+      toaster.create({
+        title: "Download failed",
+        description: "Failed to download Excel file",
+        type: "error",
+        duration: 3000,
+      });
+    }
+  }, [getExtractedData, run]);
+
   return {
     canExportCSV,
     copyAsCSV,
     copyAsTSV,
     downloadAsCSV,
+    downloadAsExcel,
     downloadAsTSV,
   };
 }
