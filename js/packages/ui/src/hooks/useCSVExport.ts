@@ -15,7 +15,7 @@ import {
   generateCSVFilename,
   supportsCSVExport,
   toCSV,
-  toExcelBuffer,
+  toExcelBlob,
   toTSV,
 } from "../utils";
 
@@ -214,7 +214,7 @@ export function useCSVExport({
     }
   }, [getTSVContent, run]);
 
-  const downloadAsExcel = useCallback(() => {
+  const downloadAsExcel = useCallback(async () => {
     const data = getExtractedData();
     if (!data) {
       toaster.create({
@@ -227,12 +227,12 @@ export function useCSVExport({
     }
 
     try {
-      const buffer = toExcelBuffer(data.columns, data.rows);
+      const blob = await toExcelBlob(data.columns, data.rows);
       const filename = generateCSVFilename(
         run?.type ?? "",
         run?.params as Record<string, unknown>,
       ).replace(/\.csv$/, ".xlsx");
-      downloadExcel(buffer, filename);
+      downloadExcel(blob, filename);
       toaster.create({
         title: "Downloaded",
         description: filename,

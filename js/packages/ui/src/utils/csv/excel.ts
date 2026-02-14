@@ -1,51 +1,48 @@
 /**
  * @file csv/excel.ts
- * @description Excel (.xlsx) formatting utilities
+ * @description Excel (.xlsx) formatting utilities using write-excel-file
  */
-import * as XLSX from "xlsx";
+import writeXlsxFile, { type Cell, type Row } from "write-excel-file";
 
 /**
- * Convert a cell value to an appropriate Excel value
+ * Convert a raw cell value to a write-excel-file Cell
  * - null/undefined → null (empty cell)
  * - objects/arrays → JSON string
- * - primitives → kept as-is (numbers stay numbers, strings stay strings)
+ * - primitives → kept as-is with explicit type
  */
-function toExcelValue(value: unknown): string | number | boolean | null {
+function toExcelCell(value: unknown): Cell {
   if (value === null || value === undefined) {
     return null;
   }
   if (typeof value === "object") {
-    return JSON.stringify(value);
+    return { value: JSON.stringify(value), type: String };
   }
-  if (typeof value === "number" || typeof value === "boolean") {
-    return value;
+  if (typeof value === "number") {
+    return { value, type: Number };
   }
-  return String(value);
+  if (typeof value === "boolean") {
+    return { value, type: Boolean };
+  }
+  return { value: String(value), type: String };
 }
 
 /**
- * Convert tabular data to an Excel (.xlsx) buffer
+ * Convert tabular data to an Excel (.xlsx) Blob
  * @param columns - Column headers
  * @param rows - Row data (array of arrays)
- * @returns Uint8Array containing valid .xlsx file data
+ * @returns Promise<Blob> containing valid .xlsx file data
  */
-export function toExcelBuffer(
+export function toExcelBlob(
   columns: string[],
   rows: unknown[][],
-): Uint8Array {
-  // Build array-of-arrays with header row first
-  const aoa: (string | number | boolean | null)[][] = [
-    columns,
-    ...rows.map((row) => row.map(toExcelValue)),
-  ];
+): Promise<Blob> {
+  const headerRow: Row = columns.map((col) => ({
+    value: col,
+    type: String,
+  }));
 
-  const worksheet = XLSX.utils.aoa_to_sheet(aoa);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
+  const dataRows: Row[] = rows.map((row) => row.map(toExcelCell));
 
-  // XLSX.write with { type: "array" } returns Uint8Array at runtime
-  return XLSX.write(workbook, {
-    type: "array",
-    bookType: "xlsx",
-  }) as Uint8Array;
+  // write-excel-file returns a Blob when no fileName is provided
+  return writeXlsxFile([headerRow, ...dataRows], {});
 }

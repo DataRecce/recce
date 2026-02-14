@@ -9,7 +9,7 @@ export {
   downloadExcel,
   downloadTSV,
 } from "./browser";
-export { toExcelBuffer } from "./excel";
+export { toExcelBlob } from "./excel";
 export {
   type CSVData,
   type CSVExportOptions,

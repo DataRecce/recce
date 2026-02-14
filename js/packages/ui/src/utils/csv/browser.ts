@@ -30,13 +30,10 @@ export function downloadTSV(content: string, filename: string): void {
 
 /**
  * Trigger browser download of Excel file
- * @param buffer - Excel file content
+ * @param blob - Excel Blob content
  * @param filename - Name for the downloaded file
  */
-export function downloadExcel(buffer: Uint8Array, filename: string): void {
-  const blob = new Blob([buffer as BlobPart], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
+export function downloadExcel(blob: Blob, filename: string): void {
   saveAs(blob, filename);
 }
 

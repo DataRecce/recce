@@ -16,7 +16,7 @@ export {
   generateTimestamp,
   supportsCSVExport,
   toCSV,
-  toExcelBuffer,
+  toExcelBlob,
   toTSV,
 } from "./csv";
 // Grid generators
