@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
-from .core import CheckValidator, Task, TaskResultDiffer
+from .core import CheckValidator, Task, TaskResultDiffer, WhereFilter, build_where_clause
 from .dataframe import DataFrame
 from .utils import normalize_boolean_flag_columns, normalize_keys_to_columns
 
@@ -14,6 +14,7 @@ class ValueDiffParams(BaseModel):
     model: str
     primary_key: Union[str, List[str]]
     columns: Optional[List[str]] = None
+    where_filter: Optional[WhereFilter] = None
 
 
 class ValueDiffResult(BaseModel):
@@ -140,10 +141,12 @@ class ValueDiffTask(Task, ValueDiffMixin):
 
         with a_query as (
             select {{ _pk }} as _pk, * from {{ base_relation }}
+            {% if where_clause %}WHERE {{ where_clause }}{% endif %}
         ),
 
         b_query as (
             select {{ _pk }} as _pk, * from {{ curr_relation }}
+            {% if where_clause %}WHERE {{ where_clause }}{% endif %}
         ),
 
         joined as (
@@ -182,6 +185,10 @@ class ValueDiffTask(Task, ValueDiffMixin):
         from aggregated
         """
 
+        where_clause = None
+        if self.params.where_filter:
+            where_clause = build_where_clause(self.params.where_filter)
+
         for column in columns:
             self.update_progress(message=f"Diff column: {column}", percentage=completed / len(columns))
 
@@ -194,6 +201,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
                     column_to_compare=column,
                     a_relation_name="a",
                     b_relation_name="b",
+                    where_clause=where_clause,
                 ),
             )
 
@@ -379,9 +387,11 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         sql_template = r"""
                        with a_query as (select {{ columns | join (',\n') }}
                        from {{ base_relation }}
+                       {% if where_clause %}WHERE {{ where_clause }}{% endif %}
                            ), b_query as (
                        select {{ columns | join (',\n') }}
                        from {{ curr_relation }}
+                       {% if where_clause %}WHERE {{ where_clause }}{% endif %}
                            ), a_intersect_b as (
                        select *
                        from a_query
@@ -425,6 +435,10 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
                            limit {{ limit }}
                        """
 
+        where_clause = None
+        if self.params.where_filter:
+            where_clause = build_where_clause(self.params.where_filter)
+
         sql = dbt_adapter.generate_sql(
             sql_template,
             context=dict(
@@ -433,6 +447,7 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
                 primary_keys=primary_key if composite else [primary_key],
                 columns=columns,
                 limit=1000,
+                where_clause=where_clause,
             ),
         )
 

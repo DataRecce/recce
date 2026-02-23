@@ -345,6 +345,61 @@ def test_value_diff_skips_column_named_column_name(dbt_test_helper):
 
 
 # =============================================================================
+# WHERE Filter Tests
+# =============================================================================
+
+
+def test_value_diff_with_where_filter(dbt_test_helper):
+    csv_data_base = """
+        customer_id,name,age
+        1,Alice,30
+        2,Bob,25
+        3,Charlie,35
+        """
+    csv_data_curr = """
+        customer_id,name,age
+        1,Alice,30
+        2,Bob,25
+        3,Charlie,40
+        """
+    dbt_test_helper.create_model("customers_where", csv_data_base, csv_data_curr)
+    params = {
+        "model": "customers_where",
+        "primary_key": ["customer_id"],
+        "where_filter": {"column": "customer_id", "operator": ">", "value": "1"},
+    }
+    task = ValueDiffTask(params)
+    run_result = task.execute()
+    assert run_result.summary.total == 2
+    assert run_result.summary.added == 0
+    assert run_result.summary.removed == 0
+
+
+def test_value_diff_detail_with_where_filter(dbt_test_helper):
+    csv_data_base = """
+        customer_id,name,age
+        1,Alice,30
+        2,Bob,25
+        3,Charlie,35
+        """
+    csv_data_curr = """
+        customer_id,name,age
+        1,Alice,99
+        2,Bob,25
+        3,Charlie,40
+        """
+    dbt_test_helper.create_model("customers_where_detail", csv_data_base, csv_data_curr)
+    params = {
+        "model": "customers_where_detail",
+        "primary_key": ["customer_id"],
+        "where_filter": {"column": "customer_id", "operator": ">=", "value": "3"},
+    }
+    task = ValueDiffDetailTask(params)
+    run_result = task.execute()
+    assert len(run_result.data) == 2
+
+
+# =============================================================================
 # Validator Tests
 # =============================================================================
 
