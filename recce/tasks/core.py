@@ -1,12 +1,38 @@
 from abc import ABC, abstractmethod
 from typing import List, Literal, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from recce.core import default_context
 from recce.exceptions import RecceCancelException
 from recce.models import Check, Run
 from recce.util.pydantic_model import pydantic_model_dump
+
+VALID_WHERE_OPERATORS = ("=", "!=", ">", "<", ">=", "<=", "is_null", "is_not_null")
+NULL_OPERATORS = ("is_null", "is_not_null")
+
+
+class WhereFilter(BaseModel):
+    column: str
+    operator: Literal["=", "!=", ">", "<", ">=", "<=", "is_null", "is_not_null"]
+    value: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_value_required(self):
+        if self.operator not in NULL_OPERATORS and self.value is None:
+            raise ValueError(f"value is required for operator '{self.operator}'")
+        return self
+
+
+def build_where_clause(where_filter: WhereFilter) -> str:
+    col = f'"{where_filter.column}"'
+    op = where_filter.operator
+    if op == "is_null":
+        return f"{col} IS NULL"
+    if op == "is_not_null":
+        return f"{col} IS NOT NULL"
+    escaped_value = where_filter.value.replace("'", "''")
+    return f"{col} {op} '{escaped_value}'"
 
 
 class Task(ABC):
