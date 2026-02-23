@@ -624,7 +624,7 @@ export function NodeView({
       sx={{
         height: "100%",
         display: "grid",
-        gridTemplateRows: "auto auto auto 1fr",
+        gridTemplateRows: "auto auto auto auto 1fr",
       }}
     >
       {/* Header row: name + close button */}
