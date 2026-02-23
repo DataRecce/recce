@@ -1,4 +1,5 @@
 import type { AxiosInstance } from "axios";
+import type { WhereFilter } from "./profile";
 import { type SubmitOptions, submitRun } from "./runs";
 import { type ColumnRenderMode, type DataFrame } from "./types";
 
@@ -10,6 +11,7 @@ export interface ValueDiffParams {
   model: string;
   primary_key: string | string[];
   columns?: string[];
+  where_filter?: WhereFilter;
 }
 
 export interface ValueDiffResult {

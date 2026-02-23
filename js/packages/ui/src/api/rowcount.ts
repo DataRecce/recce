@@ -1,4 +1,5 @@
 import type { AxiosInstance } from "axios";
+import type { WhereFilter } from "./profile";
 import { type SubmitOptions, submitRun } from "./runs";
 
 // ============================================================================
@@ -22,6 +23,7 @@ export type RowCountResult = Record<string, RowCount>;
 
 export interface RowCountDiffParams {
   node_names: string[];
+  where_filter?: WhereFilter;
 }
 
 export interface RowCountDiff {
