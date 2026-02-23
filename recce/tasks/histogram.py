@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from recce.core import default_context
 from recce.models import Check
 from recce.tasks import Task
-from recce.tasks.core import CheckValidator, TaskResultDiffer
+from recce.tasks.core import CheckValidator, TaskResultDiffer, WhereFilter, build_where_clause
 from recce.tasks.query import QueryMixin
 
 sql_datetime_types = [
@@ -91,8 +91,9 @@ def _is_histogram_supported(column_type):
     return True
 
 
-def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=50):
+def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=50, where_clause=""):
     bin_size = math.ceil((max_value - min_value) / num_bins) or 1
+    where_sql = f"WHERE {where_clause}" if where_clause else ""
 
     sql = f"""
     WITH value_ranges AS (
@@ -113,6 +114,7 @@ def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=
             FLOOR(({column} - (SELECT min_value FROM bin_parameters)) / (SELECT bin_size FROM bin_parameters)) AS bin
         FROM {{{{ ref("{node}") }}}},
         bin_parameters
+        {where_sql}
     ),
     bin_edges AS (
         SELECT
@@ -128,8 +130,9 @@ def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=
     return sql, bin_size
 
 
-def generate_histogram_sql_numeric(node, column, min_value, max_value, num_bins=50):
+def generate_histogram_sql_numeric(node, column, min_value, max_value, num_bins=50, where_clause=""):
     bin_size = (max_value - min_value) / num_bins
+    where_sql = f"WHERE {where_clause}" if where_clause else ""
     sql = f"""
         WITH value_ranges AS (
             SELECT
@@ -149,6 +152,7 @@ def generate_histogram_sql_numeric(node, column, min_value, max_value, num_bins=
                 FLOOR(({column} - (SELECT min_value FROM bin_parameters)) / (SELECT bin_size FROM bin_parameters)) AS bin
             FROM {{{{ ref("{node}") }}}},
             bin_parameters
+            {where_sql}
         ),
         bin_edges AS (
             SELECT
@@ -169,15 +173,16 @@ class HistogramDiffParams(BaseModel):
     column_name: str
     column_type: str
     num_bins: Optional[int] = 50
+    where_filter: Optional[WhereFilter] = None
 
 
-def query_numeric_histogram(task, node, column, column_type, min_value, max_value, num_bins=50):
+def query_numeric_histogram(task, node, column, column_type, min_value, max_value, num_bins=50, where_clause=""):
     if column_type.upper() in sql_integer_types:
         if max_value - min_value < num_bins:
             num_bins = int(max_value - min_value + 1)
-        histogram_sql, bin_size = generate_histogram_sql_integer(node, column, min_value, max_value, num_bins)
+        histogram_sql, bin_size = generate_histogram_sql_integer(node, column, min_value, max_value, num_bins, where_clause)
     else:
-        histogram_sql, bin_size = generate_histogram_sql_numeric(node, column, min_value, max_value, num_bins)
+        histogram_sql, bin_size = generate_histogram_sql_numeric(node, column, min_value, max_value, num_bins, where_clause)
 
     base = None
     try:
@@ -236,7 +241,8 @@ def query_numeric_histogram(task, node, column, column_type, min_value, max_valu
     return base_result, curr_result, bin_edges, labels
 
 
-def query_datetime_histogram(task, node, column, min_value, max_value):
+def query_datetime_histogram(task, node, column, min_value, max_value, where_clause=""):
+    extra_where = f"AND {where_clause}" if where_clause else ""
     days_delta = (max_value - min_value).days
     print(max_value, min_value, days_delta)
     # _type = None
@@ -256,7 +262,7 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
             {{{{ date_trunc("year", "{column}") }}}} as year,
             COUNT(*) AS counts
         FROM {{{{ ref("{node}") }}}}
-        WHERE {column} IS NOT NULL
+        WHERE {column} IS NOT NULL {extra_where}
         GROUP BY year
         ORDER BY year
         """
@@ -276,7 +282,7 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
             {{{{ date_trunc("month", "{column}") }}}} as month,
             COUNT(*) AS counts
         FROM {{{{ ref("{node}") }}}}
-        WHERE {column} IS NOT NULL
+        WHERE {column} IS NOT NULL {extra_where}
         GROUP BY month
         ORDER BY month
         """
@@ -295,7 +301,7 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
             {{{{ date_trunc("day", "{column}") }}}} as day,
             COUNT(*) AS counts
         FROM {{{{ ref("{node}") }}}}
-        WHERE {column} IS NOT NULL
+        WHERE {column} IS NOT NULL {extra_where}
         GROUP BY day
         ORDER BY day
         """
@@ -356,12 +362,19 @@ class HistogramDiffTask(Task, QueryMixin):
 
         with dbt_adapter.connection_named("query"):
             self.connection = dbt_adapter.get_thread_connection()
+
+            where_clause = ""
+            if self.params.where_filter:
+                where_clause = build_where_clause(self.params.where_filter)
+
+            where_sql = f"WHERE {where_clause}" if where_clause else ""
             min_max_sql = f"""
                 SELECT
                     MIN({column}) as min,
                     MAX({column}) as max,
                     COUNT({column}) as total
                 FROM {{{{ ref("{node}") }}}}
+                {where_sql}
                 """
             # Get the mix/max values from both the base and current environments
 
@@ -395,11 +408,11 @@ class HistogramDiffTask(Task, QueryMixin):
                 labels = []
             elif column_type.upper() in sql_datetime_types:
                 base_result, current_result, bin_edges = query_datetime_histogram(
-                    self, node, column, min_value, max_value
+                    self, node, column, min_value, max_value, where_clause
                 )
             else:
                 base_result, current_result, bin_edges, labels = query_numeric_histogram(
-                    self, node, column, column_type, min_value, max_value, num_bins
+                    self, node, column, column_type, min_value, max_value, num_bins, where_clause
                 )
             if base_result:
                 base_result["total"] = base_total

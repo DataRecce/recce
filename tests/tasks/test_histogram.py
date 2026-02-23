@@ -121,6 +121,36 @@ def test_validator():
         validate({})
 
 
+def test_histogram_diff_with_where_filter(dbt_test_helper):
+    csv_data_base = """
+        customer_id,age
+        1,20
+        2,30
+        3,40
+        4,50
+        5,60
+        """
+    csv_data_curr = """
+        customer_id,age
+        1,20
+        2,30
+        3,40
+        4,50
+        5,60
+        """
+    dbt_test_helper.create_model("customers_hist", csv_data_base, csv_data_curr)
+    params = {
+        "model": "customers_hist",
+        "column_name": "age",
+        "column_type": "integer",
+        "where_filter": {"column": "customer_id", "operator": ">=", "value": "3"},
+    }
+    task = HistogramDiffTask(params)
+    result = task.execute()
+    assert result["base"]["total"] == 3
+    assert result["current"]["total"] == 3
+
+
 def test_is_column_type_supported_by_histogram():
     assert _is_histogram_supported("varchar") is False
     assert _is_histogram_supported("varchar(16)") is False
