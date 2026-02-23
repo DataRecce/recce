@@ -395,3 +395,47 @@ def test_profile_column_jinja_template():
             sql = Template(PROFILE_COLUMN_JINJA_TEMPLATE).render(context)
             dialect = db_type if db_type != "sqlserver" else "tsql"
             parse_one(sql, read=dialect)
+
+
+def test_profile_diff_with_where_filter(dbt_test_helper):
+    csv_data_base = """
+        customer_id,name,age
+        1,Alice,30
+        2,Bob,25
+        3,Charlie,35
+        """
+    csv_data_curr = """
+        customer_id,name,age
+        1,Alice,30
+        2,Bob,25
+        3,Charlie,35
+        """
+    dbt_test_helper.create_model("customers_filtered", csv_data_base, csv_data_curr)
+    params = dict(
+        model="customers_filtered",
+        where_filter=dict(column="customer_id", operator=">", value="1"),
+    )
+    task = ProfileDiffTask(params)
+    run_result = task.execute()
+    # With filter customer_id > 1, only rows 2 and 3 should be profiled
+    # row_count in each column's profile should be 2
+    for row in run_result.current.data:
+        assert row[2] == 2
+
+
+def test_profile_with_where_filter(dbt_test_helper):
+    csv_data_curr = """
+        customer_id,name,age
+        1,Alice,30
+        2,Bob,25
+        3,Charlie,35
+        """
+    dbt_test_helper.create_model("customers_filtered_single", None, csv_data_curr)
+    params = dict(
+        model="customers_filtered_single",
+        where_filter=dict(column="customer_id", operator=">=", value="2"),
+    )
+    task = ProfileTask(params)
+    run_result = task.execute()
+    for row in run_result.current.data:
+        assert row[2] == 2

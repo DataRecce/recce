@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
-from .core import CheckValidator, Task, TaskResultDiffer
+from .core import CheckValidator, Task, TaskResultDiffer, WhereFilter, build_where_clause
 from .dataframe import DataFrame
 
 PROFILE_COLUMN_JINJA_TEMPLATE = r"""
@@ -135,12 +135,14 @@ select
     {{ agg_avg }} as avg,
     {{ agg_median }} as median
 from {{ relation }}
+{% if where_clause %}WHERE {{ where_clause }}{% endif %}
 """
 
 
 class ProfileParams(BaseModel):
     model: str
     columns: Optional[List[str]] = None
+    where_filter: Optional[WhereFilter] = None
 
 
 class ProfileDiffResult(BaseModel):
@@ -216,11 +218,21 @@ class ProfileDiffTask(Task):
         column_type = column.data_type.lower()
         db_type = dbt_adapter.adapter.type().lower()
 
+        where_clause = None
+        if self.params.where_filter:
+            where_clause = build_where_clause(self.params.where_filter)
+
         try:
             sql = dbt_adapter.generate_sql(
                 PROFILE_COLUMN_JINJA_TEMPLATE,
                 base=False,  # always false because we use the macro in current manifest
-                context=dict(relation=relation, column_name=column_name, column_type=column_type, db_type=db_type),
+                context=dict(
+                    relation=relation,
+                    column_name=column_name,
+                    column_type=column_type,
+                    db_type=db_type,
+                    where_clause=where_clause,
+                ),
             )
         except Exception as e:
             raise RecceException(f"Failed to generate SQL for profiling column: {column_name}") from e
