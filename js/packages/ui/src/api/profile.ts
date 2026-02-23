@@ -3,12 +3,23 @@ import { type SubmitOptions, submitRun } from "./runs";
 import { type ColumnRenderMode, type DataFrame } from "./types";
 
 // ============================================================================
+// Where Filter
+// ============================================================================
+
+export interface WhereFilter {
+  column: string;
+  operator: "=" | "!=" | ">" | "<" | ">=" | "<=" | "is_null" | "is_not_null";
+  value?: string;
+}
+
+// ============================================================================
 // Profile Diff Types
 // ============================================================================
 
 export interface ProfileDiffParams {
   model: string;
   columns?: string[];
+  where_filter?: WhereFilter;
 }
 
 export interface ProfileDiffResult {
@@ -42,6 +53,7 @@ export interface TopKDiffParams {
   model: string;
   column_name: string;
   k: number;
+  where_filter?: WhereFilter;
 }
 
 export interface TopKResult {
@@ -75,6 +87,7 @@ export interface HistogramDiffParams {
   model: string;
   column_name: string;
   column_type: string;
+  where_filter?: WhereFilter;
 }
 
 export interface HistogramResult {

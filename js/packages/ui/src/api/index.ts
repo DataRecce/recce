@@ -110,6 +110,7 @@ export type {
   TopKDiffResult,
   TopKResult,
   TopKViewOptions,
+  WhereFilter,
 } from "./profile";
 export { submitProfileDiff } from "./profile";
 // Row Count API
