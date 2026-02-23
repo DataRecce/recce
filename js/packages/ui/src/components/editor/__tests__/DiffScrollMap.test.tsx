@@ -16,7 +16,11 @@
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { DiffScrollMap, type ScrollMapMark } from "../DiffScrollMap";
+import {
+  chunksToMarks,
+  DiffScrollMap,
+  type ScrollMapMark,
+} from "../DiffScrollMap";
 
 // ============================================================================
 // Test Fixtures
@@ -254,5 +258,69 @@ describe("DiffScrollMap", () => {
       const mark = screen.getByRole("button");
       expect(() => fireEvent.click(mark)).not.toThrow();
     });
+  });
+});
+
+// ============================================================================
+// chunksToMarks Tests
+// ============================================================================
+
+describe("chunksToMarks", () => {
+  it("classifies added chunks (fromA === toA)", () => {
+    const marks = chunksToMarks(
+      [{ fromA: 0, toA: 0, fromB: 0, toB: 50 }],
+      100, // totalLinesB
+    );
+    expect(marks).toHaveLength(1);
+    expect(marks[0].type).toBe("added");
+  });
+
+  it("classifies deleted chunks (fromB === toB)", () => {
+    const marks = chunksToMarks([{ fromA: 0, toA: 50, fromB: 0, toB: 0 }], 100);
+    expect(marks).toHaveLength(1);
+    expect(marks[0].type).toBe("deleted");
+  });
+
+  it("classifies modified chunks (both sides non-empty)", () => {
+    const marks = chunksToMarks(
+      [{ fromA: 0, toA: 30, fromB: 0, toB: 40 }],
+      100,
+    );
+    expect(marks).toHaveLength(1);
+    expect(marks[0].type).toBe("modified");
+  });
+
+  it("computes topPercent and heightPercent from line positions", () => {
+    // Lines 20-30 out of 100 total lines
+    const marks = chunksToMarks(
+      [{ fromA: 0, toA: 10, fromB: 20, toB: 30 }],
+      100,
+    );
+    expect(marks[0].topPercent).toBe(20);
+    expect(marks[0].heightPercent).toBe(10);
+  });
+
+  it("handles multiple chunks", () => {
+    const marks = chunksToMarks(
+      [
+        { fromA: 0, toA: 0, fromB: 5, toB: 10 },
+        { fromA: 20, toA: 25, fromB: 50, toB: 55 },
+      ],
+      100,
+    );
+    expect(marks).toHaveLength(2);
+  });
+
+  it("returns empty array when no chunks", () => {
+    expect(chunksToMarks([], 100)).toEqual([]);
+  });
+
+  it("handles deleted chunks by placing mark at fromB position with min height", () => {
+    const marks = chunksToMarks(
+      [{ fromA: 10, toA: 20, fromB: 15, toB: 15 }],
+      100,
+    );
+    expect(marks[0].topPercent).toBe(15);
+    expect(marks[0].heightPercent).toBe(0.5);
   });
 });

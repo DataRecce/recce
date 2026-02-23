@@ -11,6 +11,41 @@ export interface ScrollMapMark {
   type: MarkType;
 }
 
+export interface ChunkLike {
+  fromA: number;
+  toA: number;
+  fromB: number;
+  toB: number;
+}
+
+export function chunksToMarks(
+  chunks: readonly ChunkLike[],
+  totalLinesB: number,
+): ScrollMapMark[] {
+  if (totalLinesB === 0) return [];
+
+  return chunks.map((chunk) => {
+    let type: MarkType;
+    if (chunk.fromA === chunk.toA) {
+      type = "added";
+    } else if (chunk.fromB === chunk.toB) {
+      type = "deleted";
+    } else {
+      type = "modified";
+    }
+
+    const startLine = chunk.fromB;
+    const endLine = chunk.toB;
+    const topPercent = (startLine / totalLinesB) * 100;
+    const heightPercent = Math.max(
+      ((endLine - startLine) / totalLinesB) * 100,
+      0.5,
+    );
+
+    return { topPercent, heightPercent, type };
+  });
+}
+
 interface DiffScrollMapProps {
   marks: ScrollMapMark[];
   isDark?: boolean;
