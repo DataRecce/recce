@@ -14,6 +14,7 @@ import {
 } from "chart.js";
 import { Fragment, memo, useMemo } from "react";
 import { Bar } from "react-chartjs-2";
+import { ChartLegend } from "./ChartLegend";
 import { getChartBarColors, getChartThemeColors } from "./HistogramChart";
 
 // Register Chart.js modules once
@@ -157,7 +158,7 @@ function prepareSummaryList(
 }
 
 /**
- * Square icon for legend
+ * Square icon for tooltips
  */
 function SquareIcon({ color }: { color: string }) {
   return (
@@ -348,6 +349,51 @@ export const TopKSummaryList = memo(TopKSummaryListComponent);
 TopKSummaryList.displayName = "TopKSummaryList";
 
 /**
+ * CSS-based horizontal bar with count label inside.
+ */
+function HorizontalBar({
+  count,
+  maxCount,
+  color,
+  label,
+}: {
+  count: number;
+  maxCount: number;
+  color: string;
+  label: string;
+}) {
+  const widthPercent = maxCount > 0 ? (count / maxCount) * 100 : 0;
+
+  return (
+    <Box
+      sx={{
+        position: "relative",
+        width: `${widthPercent}%`,
+        minWidth: count > 0 ? "40px" : 0,
+        height: 22,
+        bgcolor: color,
+        borderRadius: "3px",
+        display: "flex",
+        alignItems: "center",
+        px: 1,
+      }}
+    >
+      <Typography
+        sx={{
+          fontSize: "0.75rem",
+          fontWeight: 600,
+          color: "#fff",
+          lineHeight: 1,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {label}
+      </Typography>
+    </Box>
+  );
+}
+
+/**
  * TopKBarChart Component
  *
  * A pure presentation component for displaying top-k value distributions
@@ -401,61 +447,65 @@ function TopKBarChartComponent({
 
   const showBase = showComparison && baseData && baseItems.length > 0;
 
+  // Find max count across all items for consistent bar scaling
+  const maxCount = useMemo(() => {
+    let max = 0;
+    for (const item of currentItems) {
+      if (item.count > max) max = item.count;
+    }
+    if (showBase) {
+      for (const item of baseItems) {
+        if (item.count > max) max = item.count;
+      }
+    }
+    return max;
+  }, [currentItems, baseItems, showBase]);
+
   return (
     <Box className={className} sx={{ width: "100%", px: 2, py: 2 }}>
-      {/* Title and legend */}
-      {(title || showBase) && (
-        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-          {title && (
-            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-              {title}
-            </Typography>
-          )}
-          <Box sx={{ flex: 1 }} />
-          {showBase && (
-            <>
-              <Typography
-                component="span"
-                sx={{ fontSize: "0.875rem", p: 1, color: "text.secondary" }}
-              >
-                <SquareIcon color={barColors.base} /> Base
-              </Typography>
-              <Typography
-                component="span"
-                sx={{ fontSize: "0.875rem", p: 1, color: "text.secondary" }}
-              >
-                <SquareIcon color={barColors.current} /> Current
-              </Typography>
-            </>
-          )}
-        </Box>
+      {/* Title */}
+      {title && (
+        <Typography variant="subtitle1" sx={{ fontWeight: 500, mb: 1 }}>
+          {title}
+        </Typography>
+      )}
+
+      {/* Shared legend */}
+      {showBase && (
+        <ChartLegend
+          items={[
+            { color: barColors.base, label: "Base" },
+            { color: barColors.current, label: "Current" },
+          ]}
+        />
       )}
 
       {/* Items */}
-      {currentItems.map((current, index) => {
-        const base = showBase ? baseItems[index] : null;
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
+        {currentItems.map((current, index) => {
+          const base = showBase ? baseItems[index] : null;
 
-        // Skip empty "others" rows
-        if (
-          current.label === "(others)" &&
-          current.count === 0 &&
-          (!base || base.count === 0)
-        ) {
-          return null;
-        }
+          // Skip empty "others" rows
+          if (
+            current.label === "(others)" &&
+            current.count === 0 &&
+            (!base || base.count === 0)
+          ) {
+            return null;
+          }
 
-        return (
-          <Fragment key={current.label}>
+          return (
             <Tooltip
+              key={current.label}
               title={
                 showBase && base ? (
                   <Box>
-                    <Typography>
+                    <Typography variant="body2">
                       <SquareIcon color={barColors.current} />
                       Current: {current.count} (
                       {formatPercent(current.count / currentData.valids)})
                     </Typography>
-                    <Typography>
+                    <Typography variant="body2">
                       <SquareIcon color={barColors.base} />
                       Base: {base.count} (
                       {formatPercent(base.count / (baseData?.valids ?? 1))})
@@ -466,6 +516,7 @@ function TopKBarChartComponent({
                 )
               }
               arrow
+              placement="right"
             >
               <Box
                 sx={{
@@ -473,113 +524,54 @@ function TopKBarChartComponent({
                   alignItems: "center",
                   width: "100%",
                   "&:hover": { bgcolor: "action.hover" },
-                  px: 2,
+                  borderRadius: "4px",
                 }}
               >
                 <Typography
                   sx={{
                     width: "10em",
+                    flexShrink: 0,
                     fontSize: "0.875rem",
                     color: current.isSpecial ? "grey.400" : "inherit",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
+                    pr: 1.5,
                   }}
                 >
                   {current.label}
                 </Typography>
                 <Box
                   sx={{
+                    flex: 1,
                     display: "flex",
-                    width: "70%",
                     flexDirection: "column",
-                    gap: 0.5,
+                    gap: "2px",
                   }}
                 >
                   {/* Current bar */}
-                  <Box
-                    sx={{
-                      display: "flex",
-                      height: "1em",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Box sx={{ flex: 1, height: "100%" }}>
-                      <SingleBarChart
-                        count={current.count}
-                        total={currentData.valids}
-                        color={barColors.current}
-                        theme={theme}
-                        height={16}
-                      />
-                    </Box>
-                    <Typography
-                      sx={{
-                        ml: 2.5,
-                        mr: 1,
-                        fontSize: "0.875rem",
-                        width: "6em",
-                      }}
-                    >
-                      {formatAbbreviated(current.count)}
-                    </Typography>
-                    <Typography
-                      sx={{
-                        color: "grey.400",
-                        fontSize: "0.875rem",
-                        width: "4em",
-                      }}
-                    >
-                      {formatPercent(current.count / currentData.valids)}
-                    </Typography>
-                  </Box>
+                  <HorizontalBar
+                    count={current.count}
+                    maxCount={maxCount}
+                    color={barColors.current}
+                    label={formatAbbreviated(current.count)}
+                  />
 
                   {/* Base bar (if comparison mode) */}
                   {showBase && base && (
-                    <Box
-                      sx={{
-                        display: "flex",
-                        height: "1em",
-                        alignItems: "center",
-                      }}
-                    >
-                      <Box sx={{ flex: 1, height: "100%" }}>
-                        <SingleBarChart
-                          count={base.count}
-                          total={baseData?.valids ?? 1}
-                          color={barColors.base}
-                          theme={theme}
-                          height={16}
-                        />
-                      </Box>
-                      <Typography
-                        sx={{
-                          ml: 2.5,
-                          mr: 1,
-                          fontSize: "0.875rem",
-                          width: "6em",
-                        }}
-                      >
-                        {formatAbbreviated(base.count)}
-                      </Typography>
-                      <Typography
-                        sx={{
-                          color: "grey.400",
-                          fontSize: "0.875rem",
-                          width: "4em",
-                        }}
-                      >
-                        {formatPercent(base.count / (baseData?.valids ?? 1))}
-                      </Typography>
-                    </Box>
+                    <HorizontalBar
+                      count={base.count}
+                      maxCount={maxCount}
+                      color={barColors.base}
+                      label={formatAbbreviated(base.count)}
+                    />
                   )}
                 </Box>
               </Box>
             </Tooltip>
-            <Divider />
-          </Fragment>
-        );
-      })}
+          );
+        })}
+      </Box>
     </Box>
   );
 }

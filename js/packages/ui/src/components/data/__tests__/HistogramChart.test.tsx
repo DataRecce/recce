@@ -132,19 +132,18 @@ describe("HistogramChart", () => {
       const chart = getByTestId("mock-chart");
       const data = JSON.parse(chart.getAttribute("data-data") || "{}");
 
-      expect(data.labels).toBeDefined();
       expect(data.datasets).toBeDefined();
       expect(data.datasets).toHaveLength(2);
     });
 
-    it("generates correct bin labels", () => {
+    it("does not generate labels for linear scale (numeric type)", () => {
       const { getByTestId } = render(<HistogramChart {...defaultProps} />);
 
       const chart = getByTestId("mock-chart");
       const data = JSON.parse(chart.getAttribute("data-data") || "{}");
 
-      // Should have binEdges.length - 1 labels
-      expect(data.labels).toHaveLength(5);
+      // Linear scale doesn't use labels
+      expect(data.labels).toBeUndefined();
     });
 
     it("creates datasets with correct labels", () => {
@@ -237,7 +236,11 @@ describe("HistogramChart", () => {
       );
 
       const wrapper = container.firstChild as HTMLElement;
-      expect(wrapper.style.height).toBe("500px");
+      // Height is on the chart container div (second child, after the legend)
+      const chartDiv = wrapper.querySelector(
+        "[style*='height']",
+      ) as HTMLElement;
+      expect(chartDiv.style.height).toBe("500px");
     });
 
     it("accepts className prop", () => {
@@ -289,7 +292,7 @@ describe("HistogramChart", () => {
       expect(currentData[0]).toHaveLength(2);
     });
 
-    it("uses plain count values for numeric type", () => {
+    it("uses {x, y} objects for numeric type (linear scale)", () => {
       const { getByTestId } = render(
         <HistogramChart {...defaultProps} dataType="numeric" />,
       );
@@ -297,9 +300,13 @@ describe("HistogramChart", () => {
       const chart = getByTestId("mock-chart");
       const data = JSON.parse(chart.getAttribute("data-data") || "{}");
 
-      // For numeric, data should be plain numbers
+      // For numeric, data should be {x, y} objects with bin centers
       const currentData = data.datasets[0].data;
-      expect(typeof currentData[0]).toBe("number");
+      expect(currentData[0]).toHaveProperty("x");
+      expect(currentData[0]).toHaveProperty("y");
+      // First bin center: (0 + 20) / 2 = 10
+      expect(currentData[0].x).toBe(10);
+      expect(currentData[0].y).toBe(15);
     });
   });
 
