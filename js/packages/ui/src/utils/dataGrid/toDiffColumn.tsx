@@ -34,6 +34,8 @@ export interface RecceColumnContext {
 export interface DiffColumnConfig {
   /** Column name */
   name: string;
+  /** Display name for the header (defaults to name) */
+  displayName?: string;
   /** Column diff status: 'added', 'removed', 'modified', or empty */
   columnStatus: string;
   /** Column data type */
@@ -186,6 +188,7 @@ export function createCellClassCurrent(
 export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
   const {
     name,
+    displayName,
     columnStatus,
     columnType,
     columnRenderMode,
@@ -205,6 +208,7 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
   const headerComponent = () => (
     <DataFrameColumnGroupHeader
       name={name}
+      displayName={displayName}
       columnStatus={columnStatus}
       columnType={columnType}
       {...headerProps}
@@ -214,7 +218,7 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
   if (displayMode === "inline") {
     return {
       field: name,
-      headerName: name,
+      headerName: displayName ?? name,
       headerClass: headerCellClass,
       headerComponent,
       cellRenderer: inlineRenderCell,
@@ -227,7 +231,7 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
   const cellClassCurrent = createCellClassCurrent(name, columnStatus);
 
   return {
-    headerName: name,
+    headerName: displayName ?? name,
     headerClass: headerCellClass,
     headerGroupComponent: headerComponent,
     context: { columnType, columnRenderMode },

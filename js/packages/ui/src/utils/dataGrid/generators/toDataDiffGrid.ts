@@ -40,6 +40,9 @@ export interface QueryDataDiffGridOptions {
   baseTitle?: string;
   currentTitle?: string;
   displayMode?: "side_by_side" | "inline";
+  /** When false, primary key columns won't show the key icon in headers */
+  showPrimaryKeyIcons?: boolean;
+  formatHeaderName?: (name: string) => string;
 }
 
 /**
@@ -171,8 +174,9 @@ export function toDataDiffGrid(
     allowIndexFallback: true,
     baseTitle: options?.baseTitle,
     currentTitle: options?.currentTitle,
+    formatHeaderName: options?.formatHeaderName,
     headerProps: {
-      primaryKeys,
+      primaryKeys: options?.showPrimaryKeyIcons === false ? [] : primaryKeys,
       pinnedColumns,
       onPrimaryKeyChange: options?.onPrimaryKeyChange,
       onPinnedColumnsChange: options?.onPinnedColumnsChange,

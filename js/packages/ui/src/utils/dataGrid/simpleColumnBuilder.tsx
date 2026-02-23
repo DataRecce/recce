@@ -51,6 +51,7 @@ export interface BuildSimpleColumnDefinitionsConfig {
     onColumnsRenderModeChanged?: (
       cols: Record<string, ColumnRenderMode>,
     ) => void;
+    formatHeaderName?: (name: string) => string;
   };
 
   /**
@@ -114,13 +115,15 @@ function createPrimaryKeyColumn(
 ): SimpleColumnDefinition {
   const { key, name, columnType, columnRenderMode } = config;
   const { DataFrameColumnGroupHeader, defaultRenderCell } = renderComponents;
+  const displayName = headerProps.formatHeaderName?.(name);
 
   return {
     field: key,
-    headerName: name,
+    headerName: displayName ?? name,
     headerComponent: () => (
       <DataFrameColumnGroupHeader
         name={name}
+        displayName={displayName}
         columnStatus=""
         columnType={columnType}
         pinnedColumns={headerProps.pinnedColumns}
@@ -146,13 +149,15 @@ function createRegularColumn(
 ): SimpleColumnDefinition {
   const { key, name, columnType, columnRenderMode } = config;
   const { DataFrameColumnHeader, defaultRenderCell } = renderComponents;
+  const displayName = headerProps.formatHeaderName?.(name);
 
   return {
     field: key,
-    headerName: name,
+    headerName: displayName ?? name,
     headerComponent: () => (
       <DataFrameColumnHeader
         name={name}
+        displayName={displayName}
         columnType={columnType}
         pinnedColumns={headerProps.pinnedColumns}
         onPinnedColumnsChange={headerProps.onPinnedColumnsChange}

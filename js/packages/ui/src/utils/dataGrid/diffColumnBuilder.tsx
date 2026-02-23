@@ -71,6 +71,11 @@ export interface BuildDiffColumnDefinitionsConfig {
    * Render components for building the columns
    */
   renderComponents: DiffColumnRenderComponents;
+
+  /**
+   * Optional function to format column names for display
+   */
+  formatHeaderName?: (name: string) => string;
 }
 
 /**
@@ -119,16 +124,19 @@ function createPrimaryKeyColumn(
   config: ColumnConfig,
   headerProps: Partial<DataFrameColumnGroupHeaderProps>,
   renderComponents: DiffColumnRenderComponents,
+  formatHeaderName?: (name: string) => string,
 ): DiffColumnDefinition {
   const { key, name, columnType, columnStatus, columnRenderMode } = config;
   const { DataFrameColumnGroupHeader, defaultRenderCell } = renderComponents;
+  const displayName = formatHeaderName?.(name);
 
   return {
     field: key,
-    headerName: name,
+    headerName: displayName ?? name,
     headerComponent: () => (
       <DataFrameColumnGroupHeader
         name={name}
+        displayName={displayName}
         columnStatus={columnStatus ?? ""}
         columnType={columnType}
         {...headerProps}
@@ -158,11 +166,13 @@ function createDiffColumn(
   renderComponents: DiffColumnRenderComponents,
   baseTitle?: string,
   currentTitle?: string,
+  formatHeaderName?: (name: string) => string,
 ): DiffColumnDefinition {
   const { name, columnType, columnStatus, columnRenderMode } = config;
 
   return toDiffColumn({
     name,
+    displayName: formatHeaderName?.(name),
     columnStatus: columnStatus ?? "",
     columnType,
     columnRenderMode,
@@ -254,6 +264,7 @@ export function buildDiffColumnDefinitions(
     currentTitle,
     allowIndexFallback = false,
     renderComponents,
+    formatHeaderName,
   } = config;
 
   const columns: DiffColumnDefinition[] = [];
@@ -273,7 +284,12 @@ export function buildDiffColumnDefinitions(
     if (colConfig.isPrimaryKey) {
       // Primary key column - pinned with special cellClass
       columns.push(
-        createPrimaryKeyColumn(colConfig, headerProps, renderComponents),
+        createPrimaryKeyColumn(
+          colConfig,
+          headerProps,
+          renderComponents,
+          formatHeaderName,
+        ),
       );
     } else {
       // Regular diff column - uses toDiffColumn for inline/side_by_side
@@ -284,6 +300,7 @@ export function buildDiffColumnDefinitions(
         renderComponents,
         baseTitle,
         currentTitle,
+        formatHeaderName,
       );
 
       // Set pinned property - "left" for frozen columns, undefined to explicitly unpin

@@ -181,6 +181,13 @@ function determineDataKind(run: Run): RunResultData | null {
 }
 
 /**
+ * Replaces underscores with spaces for human-readable column headers
+ */
+function humanizeColumnName(name: string): string {
+  return name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
  * Extracts the primary key field name from profile data
  */
 function getProfilePrimaryKey(result: ProfileDiffResult): string {
@@ -275,25 +282,28 @@ export function createDataGrid(
       if (!dataKind.result.current) {
         return null;
       }
-      const primaryKey = getProfilePrimaryKey(dataKind.result);
+      const profileKey = getProfilePrimaryKey(dataKind.result);
       return toDataGrid(dataKind.result.current, {
-        primaryKeys: [primaryKey],
+        primaryKeys: [profileKey],
         pinnedColumns: options.pinnedColumns,
         onPinnedColumnsChange: options.onPinnedColumnsChange,
         columnsRenderMode: options.columnsRenderMode,
         onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
+        formatHeaderName: humanizeColumnName,
       });
     }
 
     case "profile_diff": {
-      const primaryKey = getProfilePrimaryKey(dataKind.result);
+      const profileKey = getProfilePrimaryKey(dataKind.result);
       return toDataDiffGrid(dataKind.result.base, dataKind.result.current, {
-        primaryKeys: [primaryKey],
+        primaryKeys: [profileKey],
+        showPrimaryKeyIcons: false,
         pinnedColumns: options.pinnedColumns,
         onPinnedColumnsChange: options.onPinnedColumnsChange,
         displayMode: options.displayMode,
         columnsRenderMode: options.columnsRenderMode,
         onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
+        formatHeaderName: humanizeColumnName,
       });
     }
 

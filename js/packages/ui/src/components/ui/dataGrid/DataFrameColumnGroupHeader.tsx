@@ -27,8 +27,10 @@ import { columnPrecisionSelectOptions } from "../../../utils/dataGrid/columnPrec
  * Props for the DataFrameColumnGroupHeader component
  */
 export interface DataFrameColumnGroupHeaderProps {
-  /** Column name to display */
+  /** Column name (used for identity: pinning, PK matching) */
   name: string;
+  /** Display name for the header (defaults to name if not provided) */
+  displayName?: string;
   /** Column diff status: 'added', 'removed', 'modified', or empty string */
   columnStatus: string;
   /** Column data type for determining available options */
@@ -86,6 +88,7 @@ export interface DataFrameColumnGroupHeaderProps {
  */
 export function DataFrameColumnGroupHeader({
   name,
+  displayName,
   columnStatus,
   columnType,
   primaryKeys = [],
@@ -172,7 +175,7 @@ export function DataFrameColumnGroupHeader({
           whiteSpace: "nowrap",
         }}
       >
-        {name}
+        {displayName ?? name}
       </Box>
 
       {/* Primary key toggle (only when onPrimaryKeyChange is provided) */}

@@ -35,6 +35,7 @@ export interface QueryDataGridOptions {
   onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
   columnsRenderMode?: Record<string, ColumnRenderMode>;
   onColumnsRenderModeChanged?: (col: Record<string, ColumnRenderMode>) => void;
+  formatHeaderName?: (name: string) => string;
 }
 
 /**
@@ -105,6 +106,7 @@ export function toDataGrid(
       pinnedColumns,
       onPinnedColumnsChange: options.onPinnedColumnsChange,
       onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
+      formatHeaderName: options.formatHeaderName,
     },
     allowIndexFallback: true,
     renderComponents: config.renderComponents,

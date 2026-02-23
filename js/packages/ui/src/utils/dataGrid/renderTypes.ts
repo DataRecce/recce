@@ -18,8 +18,10 @@ import type { ColumnRenderMode, ColumnType } from "../../api";
  * Props for the column group header component
  */
 export interface DataFrameColumnGroupHeaderProps {
-  /** Column name to display */
+  /** Column name (used for identity: pinning, PK matching) */
   name: string;
+  /** Display name for the header (defaults to name if not provided) */
+  displayName?: string;
   /** Column diff status: 'added', 'removed', 'modified', or empty string */
   columnStatus: string;
   /** Column data type for determining available options */
@@ -40,8 +42,10 @@ export interface DataFrameColumnGroupHeaderProps {
  * Props for the simple column header component
  */
 export interface DataFrameColumnHeaderProps {
-  /** Column name to display */
+  /** Column name (used for identity: pinning, PK matching) */
   name: string;
+  /** Display name for the header (defaults to name if not provided) */
+  displayName?: string;
   /** Column data type for determining available options */
   columnType: ColumnType;
   /** List of currently pinned column names */

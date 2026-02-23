@@ -21,8 +21,10 @@ import { columnPrecisionSelectOptions } from "../../../utils/dataGrid/columnPrec
  * Props for the DataFrameColumnHeader component
  */
 export interface DataFrameColumnHeaderProps {
-  /** Column name to display */
+  /** Column name (used for identity: pinning, PK matching) */
   name: string;
+  /** Display name for the header (defaults to name if not provided) */
+  displayName?: string;
   /** Column data type for determining available options */
   columnType: ColumnType;
   /** List of currently pinned column names */
@@ -53,6 +55,7 @@ export interface DataFrameColumnHeaderProps {
  */
 export function DataFrameColumnHeader({
   name,
+  displayName,
   pinnedColumns = [],
   onPinnedColumnsChange = () => {
     return void 0;
@@ -96,7 +99,7 @@ export function DataFrameColumnHeader({
       sx={{ display: "flex", alignItems: "center", width: "100%" }}
       className="grid-header"
     >
-      <Box sx={{ flex: 1 }}>{name}</Box>
+      <Box sx={{ flex: 1 }}>{displayName ?? name}</Box>
 
       <Box
         component={isPinned ? VscPinned : VscPin}
