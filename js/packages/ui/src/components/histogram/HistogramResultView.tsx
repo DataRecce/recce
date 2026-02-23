@@ -121,6 +121,7 @@ export const HistogramDiffResultView = createResultView<
               max={max}
               samples={base.total}
               binEdges={binEdges}
+              showResiduals
             />
           </Box>
           <Box sx={{ flex: 1 }} />

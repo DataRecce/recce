@@ -303,6 +303,92 @@ describe("HistogramChart", () => {
     });
   });
 
+  describe("residual chart", () => {
+    it("does not render residual chart when showResiduals is absent", () => {
+      const { getAllByTestId } = render(<HistogramChart {...defaultProps} />);
+
+      expect(getAllByTestId("mock-chart")).toHaveLength(1);
+    });
+
+    it("does not render residual chart when showResiduals is false", () => {
+      const { getAllByTestId } = render(
+        <HistogramChart {...defaultProps} showResiduals={false} />,
+      );
+
+      expect(getAllByTestId("mock-chart")).toHaveLength(1);
+    });
+
+    it("renders residual chart when showResiduals is true", () => {
+      const { getAllByTestId } = render(
+        <HistogramChart {...defaultProps} showResiduals={true} />,
+      );
+
+      expect(getAllByTestId("mock-chart")).toHaveLength(2);
+    });
+
+    it("computes correct residual values (current - base)", () => {
+      const { getAllByTestId } = render(
+        <HistogramChart {...defaultProps} showResiduals={true} />,
+      );
+
+      const charts = getAllByTestId("mock-chart");
+      const residualData = JSON.parse(
+        charts[1].getAttribute("data-data") || "{}",
+      );
+
+      // Residuals: [15-10, 25-20, 35-30, 45-40, 55-50] = [5, 5, 5, 5, 5]
+      // Symlog transformed: sign(5) * log10(1 + 5) = log10(6) ≈ 0.778
+      const expectedTransformed = Math.log10(6);
+      const dataset = residualData.datasets[0];
+      expect(dataset.data).toHaveLength(5);
+      for (const val of dataset.data) {
+        expect(val).toBeCloseTo(expectedTransformed, 3);
+      }
+    });
+
+    it("uses uniform bar color in light mode", () => {
+      const { getAllByTestId } = render(
+        <HistogramChart {...defaultProps} showResiduals={true} />,
+      );
+
+      const charts = getAllByTestId("mock-chart");
+      const residualData = JSON.parse(
+        charts[1].getAttribute("data-data") || "{}",
+      );
+
+      const dataset = residualData.datasets[0];
+      expect(dataset.backgroundColor).toBe("#8B95A5A5");
+    });
+
+    it("uses uniform bar color in dark mode", () => {
+      const { getAllByTestId } = render(
+        <HistogramChart {...defaultProps} showResiduals={true} theme="dark" />,
+      );
+
+      const charts = getAllByTestId("mock-chart");
+      const residualData = JSON.parse(
+        charts[1].getAttribute("data-data") || "{}",
+      );
+
+      const dataset = residualData.datasets[0];
+      expect(dataset.backgroundColor).toBe("#A0AEC0A5");
+    });
+
+    it("has single dataset labeled Difference", () => {
+      const { getAllByTestId } = render(
+        <HistogramChart {...defaultProps} showResiduals={true} />,
+      );
+
+      const charts = getAllByTestId("mock-chart");
+      const residualData = JSON.parse(
+        charts[1].getAttribute("data-data") || "{}",
+      );
+
+      expect(residualData.datasets).toHaveLength(1);
+      expect(residualData.datasets[0].label).toBe("Difference");
+    });
+  });
+
   describe("memoization", () => {
     it("has displayName set", () => {
       expect(HistogramChart.displayName).toBe("HistogramChart");

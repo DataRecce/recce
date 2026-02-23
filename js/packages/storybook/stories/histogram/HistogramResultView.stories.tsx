@@ -184,6 +184,67 @@ export const NoData: Story = {
   },
 };
 
+// ============================================
+// Similarity Comparison
+// ============================================
+
+export const IdenticalDistributions: Story = {
+  name: "Identical Distributions",
+  args: {
+    run: createHistogramDiffRun({
+      params: {
+        model: "customers",
+        column_name: "lifetime_value",
+        column_type: "numeric",
+      },
+      result: createHistogramDiffResult({
+        min: 0,
+        max: 5000,
+        bin_edges: [
+          0, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000,
+        ],
+        base: {
+          counts: [120, 340, 580, 720, 650, 430, 280, 150, 70, 30],
+          total: 3370,
+        },
+        current: {
+          counts: [120, 340, 580, 720, 650, 430, 280, 150, 70, 30],
+          total: 3370,
+        },
+      }),
+    }),
+  },
+};
+
+export const NearlyIdenticalDistributions: Story = {
+  name: "Nearly Identical Distributions",
+  args: {
+    run: createHistogramDiffRun({
+      params: {
+        model: "customers",
+        column_name: "lifetime_value",
+        column_type: "numeric",
+      },
+      result: createHistogramDiffResult({
+        min: 0,
+        max: 5000,
+        bin_edges: [
+          0, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000,
+        ],
+        base: {
+          counts: [120, 340, 580, 720, 650, 430, 280, 150, 70, 30],
+          total: 3370,
+        },
+        current: {
+          //        ^-- same     ^-- +8   ^-- same  ^-- -12  ^-- same
+          counts: [120, 348, 580, 708, 650, 430, 283, 150, 74, 30],
+          total: 3363,
+        },
+      }),
+    }),
+  },
+};
+
 export const LargeCounts: Story = {
   name: "Large Count Values",
   args: {

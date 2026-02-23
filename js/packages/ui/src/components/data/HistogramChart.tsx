@@ -59,6 +59,10 @@ const BASE_BAR_COLOR_DARK = "#FBD38D";
 const CURRENT_BAR_COLOR_DARK_WITH_ALPHA = `${CURRENT_BAR_COLOR_DARK}A5`;
 const BASE_BAR_COLOR_DARK_WITH_ALPHA = `${BASE_BAR_COLOR_DARK}A5`;
 
+// Residual chart colors
+const RESIDUAL_BAR_COLOR = "#8B95A5A5";
+const RESIDUAL_BAR_COLOR_DARK = "#A0AEC0A5";
+
 /**
  * Get theme-aware colors for charts
  */
@@ -133,6 +137,8 @@ export interface HistogramChartProps {
   height?: number;
   /** Optional CSS class */
   className?: string;
+  /** Show residual (difference) sub-chart below the main histogram */
+  showResiduals?: boolean;
 }
 
 /**
@@ -187,6 +193,21 @@ function formatPercentage(value: number): string {
 }
 
 /**
+ * Symmetric log transform: linear near zero, logarithmic for large values.
+ * symlog(v) = sign(v) * log10(1 + |v|)
+ */
+function symlog(v: number): number {
+  return Math.sign(v) * Math.log10(1 + Math.abs(v));
+}
+
+/**
+ * Inverse of symlog: recovers original value from transformed value.
+ */
+function symlogInverse(v: number): number {
+  return Math.sign(v) * (10 ** Math.abs(v) - 1);
+}
+
+/**
  * HistogramChart Component
  *
  * A pure presentation component for displaying histogram charts comparing
@@ -237,6 +258,7 @@ function HistogramChartComponent({
   theme = "light",
   height = 300,
   className,
+  showResiduals = false,
 }: HistogramChartProps) {
   const isDark = theme === "dark";
   const themeColors = getChartThemeColors(isDark);
@@ -404,9 +426,147 @@ function HistogramChartComponent({
     themeColors,
   ]);
 
+  // Compute residuals (current - base) per bin
+  const residuals = useMemo(() => {
+    if (!showResiduals) return null;
+    return currentData.counts.map((c, i) => c - (baseData.counts[i] ?? 0));
+  }, [showResiduals, currentData.counts, baseData.counts]);
+
+  // Build residual chart data with symlog-transformed values
+  const residualChartData = useMemo<ChartData<"bar"> | null>(() => {
+    if (!residuals) return null;
+    const transformed = residuals.map(symlog);
+    const barColor = isDark ? RESIDUAL_BAR_COLOR_DARK : RESIDUAL_BAR_COLOR;
+
+    return {
+      labels: binEdges.slice(0, -1).map((_, i) => formatBinRange(binEdges, i)),
+      datasets: [
+        {
+          label: "Difference",
+          data: transformed,
+          backgroundColor: barColor,
+          borderColor: barColor,
+          borderWidth: 0,
+          categoryPercentage: 1,
+          barPercentage: 1,
+        },
+      ],
+    };
+  }, [residuals, binEdges, isDark]);
+
+  // Build residual chart options
+  const residualOptions = useMemo<ChartOptions<"bar"> | null>(() => {
+    if (!residuals) return null;
+    const transformed = residuals.map(symlog);
+    const maxAbs = Math.max(...transformed.map(Math.abs), symlog(1));
+
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: animate ? undefined : false,
+      plugins: {
+        legend: { display: false },
+        title: {
+          display: true,
+          text: "Difference (Current \u2212 Base)",
+          font: { size: 12 },
+          color: themeColors.textColor,
+        },
+        tooltip: {
+          mode: "index" as const,
+          intersect: false,
+          backgroundColor: themeColors.tooltipBackgroundColor,
+          titleColor: themeColors.tooltipTextColor,
+          bodyColor: themeColors.tooltipTextColor,
+          borderColor: themeColors.borderColor,
+          borderWidth: 1,
+          callbacks: {
+            title(items) {
+              const { dataIndex } = items[0];
+              return formatBinRange(binEdges, dataIndex);
+            },
+            label(item) {
+              const diff = residuals[item.dataIndex];
+              const base = baseData.counts[item.dataIndex];
+              const sign = diff >= 0 ? "+" : "";
+              const pctChange =
+                base > 0
+                  ? ` (${sign}${((diff / base) * 100).toFixed(1)}%)`
+                  : "";
+              return `Difference: ${sign}${diff}${pctChange}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          display: false,
+          type: "category" as const,
+          grid: { display: false },
+        },
+        y: {
+          type: "linear" as const,
+          min: -maxAbs * 1.1,
+          max: maxAbs * 1.1,
+          border: { dash: [2, 2], color: themeColors.borderColor },
+          grid: {
+            color: (ctx) =>
+              ctx.tick.value === 0
+                ? themeColors.textColor
+                : themeColors.gridColor,
+            lineWidth: (ctx) => (ctx.tick.value === 0 ? 2 : 1),
+          },
+          ticks: {
+            autoSkip: false,
+            color: themeColors.textColor,
+            callback(val) {
+              const original = Math.round(symlogInverse(val as number));
+              if (original === 0) return "0";
+              const abs = Math.abs(original);
+              const prefix = original > 0 ? "+" : "\u2212";
+              if (abs >= 1e12) return `${prefix}${abs / 1e12}T`;
+              if (abs >= 1e9) return `${prefix}${abs / 1e9}B`;
+              if (abs >= 1e6) return `${prefix}${abs / 1e6}M`;
+              if (abs >= 1e3) return `${prefix}${abs / 1e3}K`;
+              return `${prefix}${abs}`;
+            },
+          },
+          afterBuildTicks(axis) {
+            const limit = maxAbs * 1.1;
+            // Find the largest power of 10 within the scale range
+            let v = 1;
+            while (symlog(v * 10) <= limit && v * 10 <= 1e15) {
+              v *= 10;
+            }
+            axis.ticks = [
+              { value: symlog(-v) },
+              { value: 0 },
+              { value: symlog(v) },
+            ];
+          },
+        },
+      },
+    };
+  }, [residuals, binEdges, baseData, animate, themeColors]);
+
+  // Height allocation
+  const mainHeight = showResiduals ? Math.round(height * 0.75) : height;
+  const residualHeight = Math.round(height * 0.25);
+
   return (
     <div className={className} style={{ height }}>
-      <Chart type="bar" options={chartOptions} data={chartData} />
+      <div style={{ height: mainHeight }}>
+        <Chart type="bar" options={chartOptions} data={chartData} />
+      </div>
+      {showResiduals && residualChartData && residualOptions && (
+        <div style={{ height: residualHeight }}>
+          <Chart
+            type="bar"
+            options={residualOptions}
+            data={residualChartData}
+          />
+        </div>
+      )}
     </div>
   );
 }
