@@ -756,10 +756,12 @@ def upload(
             )
             console.print()
             console.print("Options:")
-            console.print("  1. Open a PR/MR for this branch, then re-run")
+            console.print(
+                "  1. Use [bold]--pr <number>[/bold] if a PR/MR exists but wasn't auto-detected"
+            )
             console.print("  2. Use [bold]--type prod[/bold] for production uploads")
             console.print(
-                "  3. Use [bold]--session-id[/bold] or [bold]--session-name[/bold] for explicit targeting"
+                "  3. Use [bold]--session-name <name>[/bold] or [bold]--session-id <id>[/bold] for explicit targeting"
             )
             sys.exit(1)
 

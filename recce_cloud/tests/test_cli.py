@@ -417,7 +417,8 @@ class TestUploadBlocksDevSession(unittest.TestCase):
         self.assertEqual(result.exit_code, 1, f"Expected exit 1, got: {result.output}")
         self.assertIn("No pull request detected", result.output)
         self.assertIn("branch is not main/master", result.output)
-        self.assertIn("Open a PR/MR", result.output)
+        self.assertIn("--pr <number>", result.output)
+        self.assertIn("--session-name", result.output)
 
     def test_upload_allows_type_prod_on_feature_branch(self):
         """Test that --type prod bypasses the dev guard on feature branches."""
