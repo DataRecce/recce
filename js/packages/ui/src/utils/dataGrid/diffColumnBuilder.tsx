@@ -6,7 +6,11 @@
  * into actual column definitions with React components for headers.
  */
 
-import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
+import type {
+  ColDef,
+  ColGroupDef,
+  ICellRendererParams,
+} from "ag-grid-community";
 import type { RowObjectType } from "../../api";
 import type { ColumnConfig } from "./columnBuilders";
 import type {
@@ -108,11 +112,20 @@ function createIndexColumn(): DiffColumnDefinition {
 }
 
 /**
+ * Maps row status to a text icon prefix
+ */
+const STATUS_ICONS: Record<string, string> = {
+  added: "+",
+  removed: "−",
+  modified: "Δ",
+};
+
+/**
  * Creates a primary key column definition
  *
  * Primary key columns are:
  * - Pinned left (sticky left)
- * - Have a special cellClass based on row status
+ * - Prefixed with a status icon (+, −, Δ) when the row has a diff status
  * - Use defaultRenderCell (no base__/current__ prefixing)
  */
 function createPrimaryKeyColumn(
@@ -135,13 +148,24 @@ function createPrimaryKeyColumn(
       />
     ),
     pinned: "left",
-    cellClass: (params: CellClassParams<RowObjectType>) => {
-      if (params.data?.__status) {
-        return `diff-header-${params.data.__status}`;
+    cellRenderer: (params: ICellRendererParams<RowObjectType>) => {
+      const status = params.data?.__status;
+      const icon = status ? STATUS_ICONS[status] : undefined;
+      if (icon) {
+        return (
+          <span>
+            <span style={{ marginRight: 4, opacity: 1.0 }}>{icon}</span>
+            {defaultRenderCell(params)}
+          </span>
+        );
       }
-      return undefined;
+      return (
+        <span>
+          <span style={{ marginRight: 4, opacity: 1.0 }}>&nbsp;</span>
+          {defaultRenderCell(params)}
+        </span>
+      );
     },
-    cellRenderer: defaultRenderCell,
     context: { columnType, columnRenderMode },
   };
 }

@@ -14,8 +14,8 @@ import { colors } from "../../theme/colors";
 export interface DiffTextProps {
   /** The text value to display */
   value: string;
-  /** Color palette for the diff indicator */
-  colorPalette: "red" | "green";
+  /** Color palette for the diff indicator (orange=base/before, iochmara=current/after) */
+  colorPalette: "orange" | "iochmara";
   /** Whether to gray out the text (for null/missing values) */
   grayOut?: boolean;
   /** Hide the copy button */
@@ -33,25 +33,25 @@ export interface DiffTextProps {
 /**
  * DiffText Component
  *
- * Displays a text value with diff styling (red for removed, green for added).
+ * Displays a text value with diff styling (amber/orange for base, blue for current).
  * Includes an optional copy-to-clipboard button on hover.
  *
  * @example Basic usage
  * ```tsx
  * import { DiffText } from '@datarecce/ui';
  *
- * // Show a value that was added (green)
- * <DiffText value="new_value" colorPalette="green" />
+ * // Show a value that was added (blue)
+ * <DiffText value="new_value" colorPalette="iochmara" />
  *
- * // Show a value that was removed (red)
- * <DiffText value="old_value" colorPalette="red" />
+ * // Show a value that was removed (orange)
+ * <DiffText value="old_value" colorPalette="orange" />
  * ```
  *
  * @example With custom copy callback
  * ```tsx
  * <DiffText
  *   value="copy_me"
- *   colorPalette="green"
+ *   colorPalette="iochmara"
  *   onCopy={(value) => {
  *     navigator.clipboard.writeText(value);
  *     showToast(`${value} copied!`);
@@ -61,7 +61,7 @@ export interface DiffTextProps {
  *
  * @example Grayed out (null value)
  * ```tsx
- * <DiffText value="null" colorPalette="red" grayOut />
+ * <DiffText value="null" colorPalette="orange" grayOut />
  * ```
  */
 export function DiffText({
@@ -77,13 +77,14 @@ export function DiffText({
 
   // Get the color values from the theme colors
   // In dark mode, use lighter text (300) on darker bg (900)
-  // In light mode, use darker text (800) on lighter bg (100)
+  // In light mode, use darker text (800) on medium bg (200)
+  // The 200 shade closely matches the chart bar colors (Histogram/TopK)
   const textColor = isDark
     ? colors[colorPalette][300]
     : colors[colorPalette][800];
   const bgColor = isDark
     ? colors[colorPalette][900]
-    : colors[colorPalette][100];
+    : colors[colorPalette][200];
 
   return (
     <Box

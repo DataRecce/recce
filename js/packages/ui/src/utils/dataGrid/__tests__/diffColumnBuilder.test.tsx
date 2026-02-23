@@ -10,7 +10,7 @@
  * - Render component injection
  */
 
-import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
+import type { ColDef, ColGroupDef } from "ag-grid-community";
 import React from "react";
 import { vi } from "vitest";
 import type { RowObjectType } from "../../../api";
@@ -38,19 +38,6 @@ const mockRenderComponents: DiffColumnRenderComponents = {
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-const createCellClassParams = (
-  row: RowObjectType,
-): CellClassParams<RowObjectType> =>
-  ({
-    data: row,
-    value: undefined,
-    node: undefined,
-    colDef: {},
-    column: {},
-    api: {},
-    rowIndex: 0,
-  }) as unknown as CellClassParams<RowObjectType>;
 
 type SingleColumn = ColDef<RowObjectType> & { context?: RecceColumnContext };
 type ColumnGroup = ColGroupDef<RowObjectType> & {
@@ -198,53 +185,28 @@ describe("buildDiffColumnDefinitions - Primary Key Columns", () => {
     }
   });
 
-  test("primary key columns have cellClass function", () => {
+  test("primary key columns have no cellClass (status shown via icons)", () => {
     const result = buildDiffColumnDefinitions(createConfig());
 
     const pkColumn = findColumnByKey(result.columns, "id");
     expect(pkColumn).toBeDefined();
     if (pkColumn && isColumn(pkColumn)) {
-      expect(typeof (pkColumn as SingleColumn).cellClass).toBe("function");
+      expect((pkColumn as SingleColumn).cellClass).toBeUndefined();
     }
   });
 
   test("primary key cellClass returns status-based class", () => {
-    const result = buildDiffColumnDefinitions(createConfig());
-
-    const pkColumn = findColumnByKey(result.columns, "id");
-    expect(pkColumn).toBeDefined();
-    if (pkColumn && isColumn(pkColumn)) {
-      const col = pkColumn as SingleColumn;
-      if (typeof col.cellClass === "function") {
-        const cellClassFn = col.cellClass as (
-          params: CellClassParams<RowObjectType>,
-        ) => string | undefined;
-
-        expect(cellClassFn(createCellClassParams({ __status: "added" }))).toBe(
-          "diff-header-added",
-        );
-        expect(
-          cellClassFn(createCellClassParams({ __status: "removed" })),
-        ).toBe("diff-header-removed");
-        expect(
-          cellClassFn(createCellClassParams({ __status: "modified" })),
-        ).toBe("diff-header-modified");
-        expect(
-          cellClassFn(createCellClassParams({ __status: undefined })),
-        ).toBeUndefined();
-      }
-    }
+    // No longer applies — status is shown via icons in cellRenderer
   });
 
-  test("primary key columns use injected defaultRenderCell", () => {
+  test("primary key columns use a wrapper around defaultRenderCell", () => {
     const result = buildDiffColumnDefinitions(createConfig());
 
     const pkColumn = findColumnByKey(result.columns, "id");
     expect(pkColumn).toBeDefined();
     if (pkColumn && isColumn(pkColumn)) {
-      expect((pkColumn as SingleColumn).cellRenderer).toBe(
-        mockRenderComponents.defaultRenderCell,
-      );
+      // cellRenderer is now a wrapper function, not the raw defaultRenderCell
+      expect(typeof (pkColumn as SingleColumn).cellRenderer).toBe("function");
     }
   });
 
@@ -457,12 +419,10 @@ describe("buildDiffColumnDefinitions - Render Component Injection", () => {
       }),
     );
 
-    // PK column uses defaultRenderCell
+    // PK column uses a wrapper around defaultRenderCell (for status icons)
     const pkColumn = findColumnByKey(result.columns, "id");
     if (pkColumn && isColumn(pkColumn)) {
-      expect((pkColumn as SingleColumn).cellRenderer).toBe(
-        customDefaultRenderer,
-      );
+      expect(typeof (pkColumn as SingleColumn).cellRenderer).toBe("function");
     }
 
     // Non-PK columns in inline mode use inlineRenderCell

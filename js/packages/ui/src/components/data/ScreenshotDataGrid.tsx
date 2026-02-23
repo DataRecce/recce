@@ -263,32 +263,8 @@ function _ScreenshotDataGrid<TData = DataGridRow>(
         "& .ag-header-cell": {
           borderRight: "1px solid var(--ag-border-color)",
         },
-        // Diff cell styling - theme-aware colors
-        "& .diff-cell-added": {
-          backgroundColor: isDark ? "#1a4d1a !important" : "#cefece !important",
-          color: "var(--mui-palette-text-primary)",
-        },
-        "& .diff-cell-removed": {
-          backgroundColor: isDark ? "#5c1f1f !important" : "#ffc5c5 !important",
-          color: "var(--mui-palette-text-primary)",
-        },
-        "& .diff-cell-modified": {
-          backgroundColor: isDark ? "#713F12 !important" : "#FEF3C7 !important",
-          color: "var(--mui-palette-text-primary)",
-        },
-        // Diff header styling
-        "& .diff-header-added": {
-          backgroundColor: "#15803d !important",
-          color: "white",
-        },
-        "& .diff-header-removed": {
-          backgroundColor: "#f43f5e !important",
-          color: "white",
-        },
-        "& .diff-header-modified": {
-          backgroundColor: "#f59e0b !important",
-          color: "white",
-        },
+        // Diff cell styling (values indicated by blue/orange DiffText pills)
+        // Diff header styling (status indicated by icons, not colors)
         // Index column styling
         "& .index-column": {
           color: "var(--mui-palette-text-secondary)",

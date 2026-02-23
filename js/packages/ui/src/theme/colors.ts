@@ -88,6 +88,25 @@ export const colors = {
   },
 
   /**
+   * Orange color scale (Chakra-compatible)
+   * Used for base/before indicators in diff views
+   * Matches Histogram/TopK chart bar colors
+   */
+  orange: {
+    50: "#FFFAF0",
+    100: "#FEEBC8",
+    200: "#FBD38D",
+    300: "#F6AD55",
+    400: "#ED8936",
+    500: "#DD6B20",
+    600: "#C05621",
+    700: "#9C4221",
+    800: "#7B341E",
+    900: "#652B19",
+    950: "#3B1A0E",
+  },
+
+  /**
    * Amber color scale
    * Used for warnings
    */
@@ -232,7 +251,6 @@ export const colors = {
  * Maps common color names to their Recce palette equivalents
  */
 export const colorAliases: Record<string, keyof typeof colors> = {
-  orange: "amber",
   gray: "neutral",
 };
 

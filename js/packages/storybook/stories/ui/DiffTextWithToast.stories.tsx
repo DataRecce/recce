@@ -20,9 +20,10 @@ const meta: Meta<typeof DiffTextWithToast> = {
       control: "text",
     },
     colorPalette: {
-      description: 'Color palette for the diff indicator ("red" or "green")',
+      description:
+        'Color palette for the diff indicator ("orange" for base, "iochmara" for current)',
       control: "select",
-      options: ["red", "green"],
+      options: ["orange", "iochmara"],
     },
     grayOut: {
       description: "Whether to gray out the text (for null/missing values)",
@@ -46,8 +47,8 @@ type Story = StoryObj<typeof DiffTextWithToast>;
 // Basic Examples
 // ============================================
 
-export const Green: Story = {
-  name: "Green (Current)",
+export const Blue: Story = {
+  name: "Blue (Current)",
   parameters: {
     docs: {
       description: {
@@ -58,12 +59,12 @@ export const Green: Story = {
   },
   args: {
     value: "current_value",
-    colorPalette: "green",
+    colorPalette: "iochmara",
   },
 };
 
-export const Red: Story = {
-  name: "Red (Base)",
+export const Orange: Story = {
+  name: "Orange (Base)",
   parameters: {
     docs: {
       description: {
@@ -74,7 +75,7 @@ export const Red: Story = {
   },
   args: {
     value: "base_value",
-    colorPalette: "red",
+    colorPalette: "orange",
   },
 };
 
@@ -94,7 +95,7 @@ export const WithToastNotification: Story = {
   },
   args: {
     value: "copy_me_to_see_toast",
-    colorPalette: "green",
+    colorPalette: "iochmara",
   },
 };
 
@@ -114,9 +115,9 @@ export const InDiffComparison: Story = {
   },
   render: () => (
     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-      <DiffTextWithToast value="old_status" colorPalette="red" />
+      <DiffTextWithToast value="old_status" colorPalette="orange" />
       <span style={{ color: "#999" }}>→</span>
-      <DiffTextWithToast value="new_status" colorPalette="green" />
+      <DiffTextWithToast value="new_status" colorPalette="iochmara" />
     </div>
   ),
 };
@@ -150,9 +151,9 @@ export const MultipleValues: Story = {
             {row.label}:
           </div>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <DiffTextWithToast value={row.base} colorPalette="red" />
+            <DiffTextWithToast value={row.base} colorPalette="orange" />
             <span style={{ color: "#999" }}>→</span>
-            <DiffTextWithToast value={row.current} colorPalette="green" />
+            <DiffTextWithToast value={row.current} colorPalette="iochmara" />
           </div>
         </div>
       ))}
@@ -176,7 +177,7 @@ export const GrayedOut: Story = {
   },
   args: {
     value: "null",
-    colorPalette: "red",
+    colorPalette: "orange",
     grayOut: true,
   },
 };
@@ -185,7 +186,7 @@ export const NoCopyButton: Story = {
   name: "No Copy Button",
   args: {
     value: "no_copy",
-    colorPalette: "green",
+    colorPalette: "iochmara",
     noCopy: true,
   },
 };
@@ -198,7 +199,7 @@ export const SmallFont: Story = {
   name: "Small Font",
   args: {
     value: "small_text",
-    colorPalette: "green",
+    colorPalette: "iochmara",
     fontSize: "8pt",
   },
 };
@@ -207,7 +208,7 @@ export const LargeFont: Story = {
   name: "Large Font",
   args: {
     value: "large_text",
-    colorPalette: "green",
+    colorPalette: "iochmara",
     fontSize: "14pt",
   },
 };

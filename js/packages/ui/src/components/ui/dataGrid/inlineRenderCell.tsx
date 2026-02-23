@@ -181,7 +181,7 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
             >
               <DiffTextComp
                 value={formattedCurrent}
-                colorPalette="green"
+                colorPalette="iochmara"
                 grayOut={currentGrayOut}
               />
               <Typography
@@ -196,7 +196,7 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
       }
     }
 
-    // Values differ - render inline diff with base (red) and current (green)
+    // Values differ - render inline diff with base (orange) and current (blue)
     return (
       <Box
         sx={{
@@ -210,14 +210,14 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
         {hasBase && (
           <DiffTextComp
             value={baseValue}
-            colorPalette="red"
+            colorPalette="orange"
             grayOut={baseGrayOut}
           />
         )}
         {hasCurrent && (
           <DiffTextComp
             value={currentValue}
-            colorPalette="green"
+            colorPalette="iochmara"
             grayOut={currentGrayOut}
           />
         )}

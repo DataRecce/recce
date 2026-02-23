@@ -10,7 +10,7 @@ const meta: Meta<typeof DiffText> = {
     docs: {
       description: {
         component:
-          "Displays a text value with diff styling (red for removed/base, green for added/current). Includes an optional copy-to-clipboard button that appears on hover.",
+          "Displays a text value with diff styling (orange for base, blue for current). Includes an optional copy-to-clipboard button that appears on hover.",
       },
     },
     layout: "centered",
@@ -21,9 +21,10 @@ const meta: Meta<typeof DiffText> = {
       control: "text",
     },
     colorPalette: {
-      description: 'Color palette for the diff indicator ("red" or "green")',
+      description:
+        'Color palette for the diff indicator ("orange" for base, "iochmara" for current)',
       control: "select",
-      options: ["red", "green"],
+      options: ["orange", "iochmara"],
     },
     grayOut: {
       description: "Whether to gray out the text (for null/missing values)",
@@ -52,35 +53,35 @@ type Story = StoryObj<typeof DiffText>;
 // Color Variants
 // ============================================
 
-export const Green: Story = {
-  name: "Green (Added/Current)",
+export const Blue: Story = {
+  name: "Blue (Added/Current)",
   parameters: {
     docs: {
       description: {
         story:
-          "Green styling indicates an added value or the current state in a diff.",
+          "Blue styling indicates an added value or the current state in a diff.",
       },
     },
   },
   args: {
     value: "current_value",
-    colorPalette: "green",
+    colorPalette: "iochmara",
   },
 };
 
-export const Red: Story = {
-  name: "Red (Removed/Base)",
+export const Orange: Story = {
+  name: "Orange (Removed/Base)",
   parameters: {
     docs: {
       description: {
         story:
-          "Red styling indicates a removed value or the base state in a diff.",
+          "Orange styling indicates a removed value or the base state in a diff.",
       },
     },
   },
   args: {
     value: "base_value",
-    colorPalette: "red",
+    colorPalette: "orange",
   },
 };
 
@@ -100,7 +101,7 @@ export const WithCopyButton: Story = {
   },
   args: {
     value: "click_to_copy",
-    colorPalette: "green",
+    colorPalette: "iochmara",
     noCopy: false,
   },
 };
@@ -109,7 +110,7 @@ export const NoCopyButton: Story = {
   name: "No Copy Button",
   args: {
     value: "cannot_copy",
-    colorPalette: "green",
+    colorPalette: "iochmara",
     noCopy: true,
   },
 };
@@ -126,7 +127,7 @@ export const CustomCopyCallback: Story = {
   },
   args: {
     value: "custom_copy",
-    colorPalette: "green",
+    colorPalette: "iochmara",
     onCopy: fn((value) => {
       console.log(`Copied: ${value}`);
     }),
@@ -149,7 +150,7 @@ export const GrayedOut: Story = {
   },
   args: {
     value: "null",
-    colorPalette: "red",
+    colorPalette: "orange",
     grayOut: true,
   },
 };
@@ -158,7 +159,7 @@ export const GrayedOutCurrent: Story = {
   name: "Grayed Out Current",
   args: {
     value: "None",
-    colorPalette: "green",
+    colorPalette: "iochmara",
     grayOut: true,
   },
 };
@@ -171,7 +172,7 @@ export const SmallFont: Story = {
   name: "Small Font",
   args: {
     value: "small_text",
-    colorPalette: "green",
+    colorPalette: "iochmara",
     fontSize: "8pt",
   },
 };
@@ -180,7 +181,7 @@ export const MediumFont: Story = {
   name: "Medium Font",
   args: {
     value: "medium_text",
-    colorPalette: "green",
+    colorPalette: "iochmara",
     fontSize: "10pt",
   },
 };
@@ -189,7 +190,7 @@ export const LargeFont: Story = {
   name: "Large Font",
   args: {
     value: "large_text",
-    colorPalette: "green",
+    colorPalette: "iochmara",
     fontSize: "14pt",
   },
 };
@@ -202,7 +203,7 @@ export const ShortValue: Story = {
   name: "Short Value",
   args: {
     value: "OK",
-    colorPalette: "green",
+    colorPalette: "iochmara",
   },
 };
 
@@ -210,7 +211,7 @@ export const MediumValue: Story = {
   name: "Medium Value",
   args: {
     value: "customer_segment",
-    colorPalette: "green",
+    colorPalette: "iochmara",
   },
 };
 
@@ -226,7 +227,7 @@ export const LongValue: Story = {
   },
   args: {
     value: "very_long_column_name_that_will_be_truncated",
-    colorPalette: "red",
+    colorPalette: "orange",
   },
 };
 
@@ -238,7 +239,7 @@ export const CopyInteraction: Story = {
   name: "Copy Interaction Test",
   args: {
     value: "test_value",
-    colorPalette: "green",
+    colorPalette: "iochmara",
     onCopy: fn(),
   },
   play: async ({ canvasElement, args }) => {
@@ -288,9 +289,9 @@ export const DiffComparison: Story = {
           Column Type:
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <DiffText value="VARCHAR(50)" colorPalette="red" />
+          <DiffText value="VARCHAR(50)" colorPalette="orange" />
           <span style={{ color: "#999" }}>→</span>
-          <DiffText value="VARCHAR(100)" colorPalette="green" />
+          <DiffText value="VARCHAR(100)" colorPalette="iochmara" />
         </div>
       </div>
       <div>
@@ -305,9 +306,9 @@ export const DiffComparison: Story = {
           Default Value:
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <DiffText value="null" colorPalette="red" grayOut />
+          <DiffText value="null" colorPalette="orange" grayOut />
           <span style={{ color: "#999" }}>→</span>
-          <DiffText value="'active'" colorPalette="green" />
+          <DiffText value="'active'" colorPalette="iochmara" />
         </div>
       </div>
     </div>
@@ -326,8 +327,13 @@ export const InlineLabels: Story = {
   },
   render: () => (
     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-      <DiffText value="Base" colorPalette="red" fontSize="10pt" noCopy />
-      <DiffText value="Current" colorPalette="green" fontSize="10pt" noCopy />
+      <DiffText value="Base" colorPalette="orange" fontSize="10pt" noCopy />
+      <DiffText
+        value="Current"
+        colorPalette="iochmara"
+        fontSize="10pt"
+        noCopy
+      />
       <div
         style={{
           marginLeft: "8px",
@@ -381,19 +387,19 @@ export const DataGridCell: Story = {
           <tr style={{ borderBottom: "1px solid #f3f4f6" }}>
             <td style={{ padding: "8px", fontSize: "13px" }}>status</td>
             <td style={{ padding: "8px" }}>
-              <DiffText value="active" colorPalette="red" />
+              <DiffText value="active" colorPalette="orange" />
             </td>
             <td style={{ padding: "8px" }}>
-              <DiffText value="pending" colorPalette="green" />
+              <DiffText value="pending" colorPalette="iochmara" />
             </td>
           </tr>
           <tr>
             <td style={{ padding: "8px", fontSize: "13px" }}>count</td>
             <td style={{ padding: "8px" }}>
-              <DiffText value="42" colorPalette="red" />
+              <DiffText value="42" colorPalette="orange" />
             </td>
             <td style={{ padding: "8px" }}>
-              <DiffText value="45" colorPalette="green" />
+              <DiffText value="45" colorPalette="iochmara" />
             </td>
           </tr>
         </tbody>
