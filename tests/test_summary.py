@@ -124,6 +124,12 @@ class TestCalRowCountDeltaPercentage:
         assert "100.0%" in result
 
     @patch("recce.summary._get_node_row_count_diff")
+    def test_equal_counts_returns_none(self, mock_get_diff):
+        mock_get_diff.return_value = ({"some": "diff"}, {"base": 100, "curr": 100})
+        node = _make_node()
+        assert node._cal_row_count_delta_percentage() is None
+
+    @patch("recce.summary._get_node_row_count_diff")
     def test_no_diff_returns_none(self, mock_get_diff):
         mock_get_diff.return_value = (None, None)
         node = _make_node()

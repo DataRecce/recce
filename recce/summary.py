@@ -102,7 +102,7 @@ class Node:
                 return None
             base = int(base)
             current = int(current)
-            if current == 0:
+            if current == 0 or base == current:
                 return None
             if current > base:
                 p = (current - base) / current * 100
@@ -326,12 +326,14 @@ def _build_node_schema(lineage, node_id):
 def _get_node_row_count_diff(node_id, node_name):
     row_count_runs = RunDAO().list(type_filter=RunType.ROW_COUNT_DIFF)
     for run in row_count_runs:
+        if run.result is None:
+            continue
         node_ids = (run.params or {}).get("node_ids") or []
         if node_id in node_ids:
             result = run.result.get(node_name, {})
             diff = TaskResultDiffer.diff(result.get("base"), result.get("curr"))
             return diff, result
-        elif run.params.get("node_id") == node_id:
+        elif (run.params or {}).get("node_id") == node_id:
             result = run.result.get(node_name, {})
             diff = TaskResultDiffer.diff(result.get("base"), result.get("curr"))
             return diff, result
