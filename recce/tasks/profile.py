@@ -124,7 +124,7 @@ PROFILE_COLUMN_JINJA_TEMPLATE = r"""
 
 select
     '{{ column_name }}' as column_name,
-    nullif('{{ column_type }}', '') as data_type,
+    nullif('{{ column_type_display }}', '') as data_type,
     {{ agg_row_count }} as row_count,
     {{ agg_not_null_proportion }} as not_null_proportion,
     {{ agg_distinct_proportion }} as distinct_proportion,
@@ -213,14 +213,15 @@ class ProfileDiffTask(Task):
 
     def _profile_column(self, dbt_adapter, relation, column):
         column_name = column.name
-        column_type = column.data_type.lower()
+        column_type = column.dtype.lower()
+        column_type_display = column.dtype.upper()
         db_type = dbt_adapter.adapter.type().lower()
 
         try:
             sql = dbt_adapter.generate_sql(
                 PROFILE_COLUMN_JINJA_TEMPLATE,
                 base=False,  # always false because we use the macro in current manifest
-                context=dict(relation=relation, column_name=column_name, column_type=column_type, db_type=db_type),
+                context=dict(relation=relation, column_name=column_name, column_type=column_type, column_type_display=column_type_display, db_type=db_type),
             )
         except Exception as e:
             raise RecceException(f"Failed to generate SQL for profiling column: {column_name}") from e
