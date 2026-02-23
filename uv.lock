@@ -2891,7 +2891,7 @@ requires-dist = [
     { name = "rich", specifier = ">=12.0.0" },
     { name = "ruamel-yaml", specifier = ">=0.18.6" },
     { name = "sentry-sdk" },
-    { name = "sqlglot", specifier = ">=27.29.0,<28.0" },
+    { name = "sqlglot", specifier = ">=27.29.0,<29.0" },
     { name = "tox", marker = "extra == 'dev'" },
     { name = "tox-uv", marker = "extra == 'dev'" },
     { name = "twine", marker = "extra == 'dev'" },
