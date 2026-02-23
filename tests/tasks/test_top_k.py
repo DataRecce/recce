@@ -54,6 +54,36 @@ def test_top_k(dbt_test_helper):
     assert run_result["base"]["total"] == 4
 
 
+def test_top_k_diff_with_where_filter(dbt_test_helper):
+    csv_data_base = """
+        customer_id,category
+        1,A
+        2,B
+        3,A
+        4,B
+        5,C
+        """
+    csv_data_curr = """
+        customer_id,category
+        1,A
+        2,B
+        3,A
+        4,B
+        5,C
+        """
+    dbt_test_helper.create_model("customers_topk", csv_data_base, csv_data_curr)
+    params = {
+        "model": "customers_topk",
+        "column_name": "category",
+        "k": 10,
+        "where_filter": {"column": "customer_id", "operator": "<=", "value": "3"},
+    }
+    task = TopKDiffTask(params)
+    result = task.execute()
+    assert result["base"]["total"] == 3
+    assert result["current"]["total"] == 3
+
+
 def test_validator():
     def validate(params: dict = {}, view_options: dict = {}):
         TopKDiffCheckValidator().validate(

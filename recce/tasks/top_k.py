@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from recce.core import default_context
 from recce.models import Check
 from recce.tasks import Task
-from recce.tasks.core import CheckValidator, TaskResultDiffer
+from recce.tasks.core import CheckValidator, TaskResultDiffer, WhereFilter, build_where_clause
 from recce.tasks.query import QueryMixin
 
 
@@ -13,6 +13,7 @@ class TopKDiffParams(BaseModel):
     model: str
     column_name: str
     k: Optional[int] = 10
+    where_filter: Optional[WhereFilter] = None
 
 
 class TopKDiffTask(Task, QueryMixin):
@@ -28,10 +29,16 @@ class TopKDiffTask(Task, QueryMixin):
         :return: [base_total, base_valids, curr_total, curr_valids]
         """
 
+        where_clause = None
+        if self.params.where_filter:
+            where_clause = build_where_clause(self.params.where_filter)
+
         sql_template = r"""
         select count(*), count({{column}}) from {{ base_relation }}
+        {% if where_clause %}WHERE {{ where_clause }}{% endif %}
         UNION ALL
         select count(*), count({{column}}) from {{ curr_relation }}
+        {% if where_clause %}WHERE {{ where_clause }}{% endif %}
         """
         sql = dbt_adapter.generate_sql(
             sql_template,
@@ -39,6 +46,7 @@ class TopKDiffTask(Task, QueryMixin):
                 base_relation=base_relation,
                 curr_relation=curr_relation,
                 column=column,
+                where_clause=where_clause,
             ),
         )
         _, table = dbt_adapter.execute(sql, fetch=True)
@@ -48,6 +56,10 @@ class TopKDiffTask(Task, QueryMixin):
         return (int(v) if v is not None else 0 for v in result)
 
     def _query_top_k(self, dbt_adapter, base_relation, curr_relation, column, k):
+        where_clause = None
+        if self.params.where_filter:
+            where_clause = build_where_clause(self.params.where_filter)
+
         sql_template = r"""
         WITH
         BASE_CAT as (
@@ -55,8 +67,12 @@ class TopKDiffTask(Task, QueryMixin):
                 coalesce(cast({{column}} as {{ dbt.type_string() }}), '__null__') as category,
                 count(*) as c
             from {{base_relation}}
+            where 1=1
             {% if not include_null %}
-            where {{column}} is not null
+            and {{column}} is not null
+            {% endif %}
+            {% if where_clause %}
+            and {{ where_clause }}
             {% endif %}
             group by 1
         ),
@@ -65,8 +81,12 @@ class TopKDiffTask(Task, QueryMixin):
                 coalesce(cast({{column}} as {{ dbt.type_string() }}), '__null__') as category,
                 count(*) as c
             from {{curr_relation}}
+            where 1=1
             {% if not include_null %}
-            where {{column}} is not null
+            and {{column}} is not null
+            {% endif %}
+            {% if where_clause %}
+            and {{ where_clause }}
             {% endif %}
             group by 1
         )
@@ -88,6 +108,7 @@ class TopKDiffTask(Task, QueryMixin):
                 column=column,
                 k=k,
                 include_null=False,
+                where_clause=where_clause,
             ),
         )
         _, table = dbt_adapter.execute(sql, fetch=True)
