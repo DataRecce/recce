@@ -2,11 +2,21 @@
 
 import { sql } from "@codemirror/lang-sql";
 import { yaml } from "@codemirror/lang-yaml";
-import { MergeView, unifiedMergeView } from "@codemirror/merge";
+import {
+  type Chunk,
+  getChunks,
+  MergeView,
+  unifiedMergeView,
+} from "@codemirror/merge";
 import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import Box from "@mui/material/Box";
-import { memo, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
+import {
+  chunksToMarks,
+  DiffScrollMap,
+  type ScrollMapMark,
+} from "./DiffScrollMap";
 
 /**
  * Supported languages for the diff editor
@@ -105,6 +115,38 @@ function getThemeExtensions(isDark: boolean): Extension[] {
 }
 
 /**
+ * Convert character-position chunks from @codemirror/merge into
+ * line-based ScrollMapMark[] for the DiffScrollMap overlay.
+ *
+ * Chunk positions are character offsets; chunksToMarks expects line numbers.
+ * We convert fromB/toB to line numbers and preserve fromA/toA equality
+ * semantics so chunksToMarks can classify added vs deleted vs modified.
+ */
+function getLineMarks(
+  chunks: readonly Chunk[],
+  state: EditorState,
+): ScrollMapMark[] {
+  const doc = state.doc;
+  const lineChunks = chunks.map((c) => {
+    const fromBLine = doc.lineAt(Math.min(c.fromB, doc.length)).number;
+    const toBLine =
+      c.fromB === c.toB
+        ? fromBLine
+        : doc.lineAt(Math.min(Math.max(c.toB - 1, 0), doc.length)).number + 1;
+    return {
+      // fromA/toA left as character offsets -- only equality is checked
+      // by chunksToMarks (added: fromA===toA, deleted: fromB===toB).
+      // Converting would require the A-side document which isn't available here.
+      fromA: c.fromA,
+      toA: c.toA,
+      fromB: fromBLine,
+      toB: toBLine,
+    };
+  });
+  return chunksToMarks(lineChunks, doc.lines);
+}
+
+/**
  * DiffEditor Component
  *
  * A pure presentation component for displaying text diffs using CodeMirror's
@@ -153,10 +195,26 @@ function DiffEditorComponent({
 }: DiffEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<MergeView | EditorView | null>(null);
+  // Marks are computed once at view creation. For editable diffs with
+  // live mark updates, an EditorView.updateListener extension would be needed.
+  const [marks, setMarks] = useState<ScrollMapMark[]>([]);
 
   const isDark = theme === "dark";
 
+  const handleMarkClick = useCallback((topPercent: number) => {
+    const view = viewRef.current;
+    if (!view) return;
+    const editorView = view instanceof MergeView ? view.b : view;
+    const totalLines = editorView.state.doc.lines;
+    const targetLine = Math.max(1, Math.round((topPercent / 100) * totalLines));
+    const pos = editorView.state.doc.line(targetLine).from;
+    editorView.dispatch({
+      effects: EditorView.scrollIntoView(pos, { y: "start" }),
+    });
+  }, []);
+
   useEffect(() => {
+    setMarks([]); // Clear stale marks from previous render
     if (!containerRef.current) return;
 
     // Clear previous view
@@ -216,6 +274,12 @@ function DiffEditorComponent({
       });
 
       viewRef.current = mergeView;
+
+      // Read initial chunks and convert to scroll-map marks
+      const chunkResult = getChunks(mergeView.b.state);
+      if (chunkResult) {
+        setMarks(getLineMarks(chunkResult.chunks, mergeView.b.state));
+      }
     } else {
       // Unified diff view
       const unifiedExtensions = [
@@ -238,6 +302,12 @@ function DiffEditorComponent({
       });
 
       viewRef.current = view;
+
+      // Read initial chunks and convert to scroll-map marks
+      const chunkResult = getChunks(view.state);
+      if (chunkResult) {
+        setMarks(getLineMarks(chunkResult.chunks, view.state));
+      }
     }
 
     return () => {
@@ -272,6 +342,7 @@ function DiffEditorComponent({
         border: "1px solid",
         borderColor: isDark ? "grey.700" : "grey.300",
         borderRadius: 1,
+        position: "relative",
         "& .cm-editor": {
           height: "100%",
         },
@@ -286,7 +357,15 @@ function DiffEditorComponent({
           height: "100%",
         },
       }}
-    />
+    >
+      {marks.length > 0 && (
+        <DiffScrollMap
+          marks={marks}
+          isDark={isDark}
+          onMarkClick={handleMarkClick}
+        />
+      )}
+    </Box>
   );
 }
 
