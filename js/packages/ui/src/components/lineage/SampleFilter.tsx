@@ -77,6 +77,7 @@ export function SampleFilter({
 
   const handleClear = () => {
     setColumn(null);
+    setOperator(">=");
     setValue("");
     onFilterChange(undefined);
   };

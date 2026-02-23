@@ -3,6 +3,7 @@ from typing import List, Literal, Optional, Union
 from pydantic import BaseModel
 
 from recce.core import default_context
+from recce.exceptions import RecceException
 from recce.models import Check
 from recce.tasks import Task
 from recce.tasks.core import CheckValidator, TaskResultDiffer, WhereFilter, build_where_clause
@@ -189,6 +190,9 @@ class RowCountDiffTask(Task, QueryMixin):
         return result
 
     def execute_sqlmesh(self):
+        if self.params.where_filter:
+            raise RecceException("WHERE filter is not yet supported with the SQLMesh adapter")
+
         result = {}
 
         query_candidates = []

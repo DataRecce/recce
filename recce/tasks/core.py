@@ -1,21 +1,32 @@
 from abc import ABC, abstractmethod
 from typing import List, Literal, Optional, Union
 
-from pydantic import BaseModel, model_validator
+import re
+
+from pydantic import BaseModel, field_validator, model_validator
 
 from recce.core import default_context
 from recce.exceptions import RecceCancelException
 from recce.models import Check, Run
 from recce.util.pydantic_model import pydantic_model_dump
 
-VALID_WHERE_OPERATORS = ("=", "!=", ">", "<", ">=", "<=", "is_null", "is_not_null")
 NULL_OPERATORS = ("is_null", "is_not_null")
+
+# Column names must be valid SQL identifiers: alphanumeric, underscores, and dots (for qualified names)
+_COLUMN_NAME_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_.]*$")
 
 
 class WhereFilter(BaseModel):
     column: str
     operator: Literal["=", "!=", ">", "<", ">=", "<=", "is_null", "is_not_null"]
     value: Optional[str] = None
+
+    @field_validator("column")
+    @classmethod
+    def validate_column_name(cls, v):
+        if not _COLUMN_NAME_RE.match(v):
+            raise ValueError("column name must be a valid SQL identifier (letters, digits, underscores, dots)")
+        return v
 
     @model_validator(mode="after")
     def validate_value_required(self):

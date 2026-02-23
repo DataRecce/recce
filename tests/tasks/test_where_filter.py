@@ -41,3 +41,25 @@ class TestWhereFilter:
     def test_value_required_for_comparison_operators(self):
         with pytest.raises(ValueError):
             WhereFilter(column="x", operator=">")
+
+    def test_column_name_rejects_sql_injection(self):
+        with pytest.raises(ValueError):
+            WhereFilter(column='"; DROP TABLE users; --', operator="=", value="1")
+
+    def test_column_name_rejects_double_quotes(self):
+        with pytest.raises(ValueError):
+            WhereFilter(column='col"name', operator="=", value="1")
+
+    def test_column_name_rejects_semicolons(self):
+        with pytest.raises(ValueError):
+            WhereFilter(column="col;name", operator="=", value="1")
+
+    def test_column_name_allows_qualified_names(self):
+        wf = WhereFilter(column="schema.table.column", operator="=", value="1")
+        clause = build_where_clause(wf)
+        assert clause == '"schema.table.column" = \'1\''
+
+    def test_column_name_allows_underscores(self):
+        wf = WhereFilter(column="created_at", operator=">=", value="2024-01-01")
+        clause = build_where_clause(wf)
+        assert clause == '"created_at" >= \'2024-01-01\''
