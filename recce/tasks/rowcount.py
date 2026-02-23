@@ -5,13 +5,14 @@ from pydantic import BaseModel
 from recce.core import default_context
 from recce.models import Check
 from recce.tasks import Task
-from recce.tasks.core import CheckValidator, TaskResultDiffer
+from recce.tasks.core import CheckValidator, TaskResultDiffer, WhereFilter, build_where_clause
 from recce.tasks.query import QueryMixin
 
 
 class RowCountParams(BaseModel):
     node_names: Optional[list[str]] = None
     node_ids: Optional[list[str]] = None
+    where_filter: Optional[WhereFilter] = None
 
 
 class RowCountTask(Task, QueryMixin):
@@ -35,8 +36,12 @@ class RowCountTask(Task, QueryMixin):
         if relation is None:
             return None
 
-        sql_template = r"select count(*) from {{ relation }}"
-        sql = dbt_adapter.generate_sql(sql_template, context=dict(relation=relation))
+        where_clause = None
+        if self.params.where_filter:
+            where_clause = build_where_clause(self.params.where_filter)
+
+        sql_template = r"select count(*) from {{ relation }} {% if where_clause %}WHERE {{ where_clause }}{% endif %}"
+        sql = dbt_adapter.generate_sql(sql_template, context=dict(relation=relation, where_clause=where_clause))
         _, table = dbt_adapter.execute(sql, fetch=True)
         return int(table[0][0]) if table[0][0] is not None else 0
 
@@ -100,6 +105,7 @@ class RowCountDiffParams(BaseModel):
     exclude: Optional[str] = None
     packages: Optional[list[str]] = None
     view_mode: Optional[Literal["all", "changed_models"]] = None
+    where_filter: Optional[WhereFilter] = None
 
 
 class RowCountDiffTask(Task, QueryMixin):
@@ -123,8 +129,12 @@ class RowCountDiffTask(Task, QueryMixin):
         if relation is None:
             return None
 
-        sql_template = r"select count(*) from {{ relation }}"
-        sql = dbt_adapter.generate_sql(sql_template, context=dict(relation=relation))
+        where_clause = None
+        if self.params.where_filter:
+            where_clause = build_where_clause(self.params.where_filter)
+
+        sql_template = r"select count(*) from {{ relation }} {% if where_clause %}WHERE {{ where_clause }}{% endif %}"
+        sql = dbt_adapter.generate_sql(sql_template, context=dict(relation=relation, where_clause=where_clause))
         _, table = dbt_adapter.execute(sql, fetch=True)
         return int(table[0][0]) if table[0][0] is not None else 0
 

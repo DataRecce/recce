@@ -1,6 +1,7 @@
 import pytest
 
 from recce.tasks import RowCountDiffTask
+from recce.tasks.rowcount import RowCountTask
 
 
 def test_row_count(dbt_test_helper):
@@ -131,3 +132,45 @@ def test_validator():
                 "view_mode": "abc",
             }
         )
+
+
+def test_row_count_with_where_filter(dbt_test_helper):
+    csv_data_curr = """
+        customer_id,name,age
+        1,Alice,30
+        2,Bob,25
+        3,Charlie,35
+        """
+    dbt_test_helper.create_model("customers_rc", None, csv_data_curr)
+    params = {
+        "node_names": ["customers_rc"],
+        "where_filter": {"column": "customer_id", "operator": ">", "value": "1"},
+    }
+    task = RowCountTask(params)
+    result = task.execute()
+    assert result["customers_rc"]["curr"] == 2
+
+
+def test_row_count_diff_with_where_filter(dbt_test_helper):
+    csv_data_base = """
+        customer_id,name,age
+        1,Alice,30
+        2,Bob,25
+        3,Charlie,35
+        """
+    csv_data_curr = """
+        customer_id,name,age
+        1,Alice,30
+        2,Bob,25
+        3,Charlie,35
+        4,Dave,28
+        """
+    dbt_test_helper.create_model("customers_rcd", csv_data_base, csv_data_curr)
+    params = {
+        "node_names": ["customers_rcd"],
+        "where_filter": {"column": "customer_id", "operator": "<=", "value": "3"},
+    }
+    task = RowCountDiffTask(params)
+    result = task.execute()
+    assert result["customers_rcd"]["base"] == 3
+    assert result["customers_rcd"]["curr"] == 3
