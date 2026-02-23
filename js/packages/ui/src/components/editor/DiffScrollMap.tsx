@@ -39,7 +39,7 @@ export function chunksToMarks(
     const topPercent = (startLine / totalLinesB) * 100;
     const heightPercent = Math.max(
       ((endLine - startLine) / totalLinesB) * 100,
-      0.5,
+      MIN_MARK_HEIGHT_PERCENT,
     );
 
     return { topPercent, heightPercent, type };
@@ -64,6 +64,7 @@ const COLORS_DARK: Record<MarkType, string> = {
   modified: "#ffca28",
 };
 
+const MIN_MARK_HEIGHT_PERCENT = 0.5;
 const OPACITY_DEFAULT = 0.8;
 const OPACITY_HOVER = 1.0;
 
@@ -98,6 +99,7 @@ export function DiffScrollMap({
         width: "6px",
         height: "100%",
         zIndex: 1,
+        pointerEvents: "none",
       }}
     >
       {marks.map((mark, index) => (
@@ -118,6 +120,7 @@ export function DiffScrollMap({
             border: "none",
             padding: 0,
             cursor: "pointer",
+            pointerEvents: "auto",
             opacity: OPACITY_DEFAULT,
           }}
         />
