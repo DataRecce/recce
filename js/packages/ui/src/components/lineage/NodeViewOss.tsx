@@ -13,9 +13,10 @@
 
 import Typography from "@mui/material/Typography";
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { LineageGraphNode } from "../..";
 import { createSchemaDiffCheck } from "../../api";
+import type { WhereFilter } from "../../api/profile";
 import {
   useLineageGraphContext,
   useRecceActionContext,
@@ -45,6 +46,7 @@ import {
   type NodeViewActionCallbacks,
   type RunTypeIconMap,
 } from "./NodeView";
+import { SampleFilter } from "./SampleFilter";
 import { SandboxViewOss } from "./SandboxViewOss";
 import { ResourceTypeTag as ResourceTypeTagBase } from "./tags";
 
@@ -102,9 +104,22 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
   const { singleEnv: isSingleEnvOnboarding, featureToggles } =
     useRecceInstanceContext();
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
-  const { primaryKey } = useModelColumns(node.data.name);
+  const { primaryKey, columns } = useModelColumns(node.data.name);
   const { apiClient } = useApiConfig();
   const { basePath } = useRouteConfig();
+
+  const [whereFilter, setWhereFilter] = useState<WhereFilter | undefined>();
+
+  const SampleFilterWrapper = useCallback(
+    () => (
+      <SampleFilter
+        columns={columns}
+        filter={whereFilter}
+        onFilterChange={setWhereFilter}
+      />
+    ),
+    [columns, whereFilter],
+  );
 
   // Build run type icons map from OSS registry
   const runTypeIcons: RunTypeIconMap = useMemo(
@@ -136,8 +151,14 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
   }, [formattedColumns, node.data.name]);
 
   // Action callbacks for the base component
-  const actionCallbacks: NodeViewActionCallbacks = useMemo(
-    () => ({
+  const actionCallbacks: NodeViewActionCallbacks = useMemo(() => {
+    // Helper to merge where_filter into params
+    const withFilter = (params: Record<string, unknown>) => ({
+      ...params,
+      ...(whereFilter ? { where_filter: whereFilter } : {}),
+    });
+
+    return {
       onQueryClick: () => {
         if (envInfo?.adapterType === "dbt") {
           setSqlQuery(query);
@@ -153,11 +174,10 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
           source: EXPLORE_SOURCE.SCHEMA_ROW_COUNT_BUTTON,
           node_count: 1,
         });
-        runAction(
-          "row_count",
-          { node_names: [node.data.name] },
-          { showForm: false, showLast: false },
-        );
+        runAction("row_count", withFilter({ node_names: [node.data.name] }), {
+          showForm: false,
+          showLast: false,
+        });
       },
 
       onRowCountDiffClick: () => {
@@ -168,7 +188,7 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
         });
         runAction(
           "row_count_diff",
-          { node_names: [node.data.name] },
+          withFilter({ node_names: [node.data.name] }),
           { showForm: false, showLast: false },
         );
       },
@@ -179,11 +199,10 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
           source: EXPLORE_SOURCE.NODE_SIDEBAR_SINGLE_ENV,
           node_count: 1,
         });
-        runAction(
-          "profile",
-          { model: node.data.name },
-          { showForm: true, showLast: false },
-        );
+        runAction("profile", withFilter({ model: node.data.name }), {
+          showForm: true,
+          showLast: false,
+        });
       },
 
       onProfileDiffClick: () => {
@@ -192,11 +211,10 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
           source: EXPLORE_SOURCE.NODE_SIDEBAR_MULTI_ENV,
           node_count: 1,
         });
-        runAction(
-          "profile_diff",
-          { model: node.data.name },
-          { showForm: true, showLast: false },
-        );
+        runAction("profile_diff", withFilter({ model: node.data.name }), {
+          showForm: true,
+          showLast: false,
+        });
       },
 
       onQueryDiffClick: () => {
@@ -217,11 +235,10 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
           source: EXPLORE_SOURCE.NODE_SIDEBAR_MULTI_ENV,
           node_count: 1,
         });
-        runAction(
-          "value_diff",
-          { model: node.data.name },
-          { showForm: true, showLast: false },
-        );
+        runAction("value_diff", withFilter({ model: node.data.name }), {
+          showForm: true,
+          showLast: false,
+        });
       },
 
       onTopKDiffClick: () => {
@@ -232,7 +249,7 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
         });
         runAction(
           "top_k_diff",
-          { model: node.data.name, column_name: "", k: 50 },
+          withFilter({ model: node.data.name, column_name: "", k: 50 }),
           { showForm: true },
         );
       },
@@ -245,7 +262,11 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
         });
         runAction(
           "histogram_diff",
-          { model: node.data.name, column_name: "", column_type: "" },
+          withFilter({
+            model: node.data.name,
+            column_name: "",
+            column_type: "",
+          }),
           { showForm: true },
         );
       },
@@ -267,21 +288,21 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
           node: node.data.name,
         });
       },
-    }),
-    [
-      node,
-      query,
-      envInfo,
-      setSqlQuery,
-      runAction,
-      isActionAvailable,
-      setPrimaryKeys,
-      primaryKey,
-      apiClient,
-      router.push,
-      basePath,
-    ],
-  );
+    };
+  }, [
+    node,
+    query,
+    envInfo,
+    setSqlQuery,
+    runAction,
+    isActionAvailable,
+    setPrimaryKeys,
+    primaryKey,
+    apiClient,
+    router.push,
+    basePath,
+    whereFilter,
+  ]);
 
   return (
     <BaseNodeView
@@ -303,6 +324,8 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
       ConnectionPopoverWrapper={SetupConnectionPopover}
       // Sandbox dialog
       SandboxDialog={SandboxViewOss}
+      // Sample filter
+      SampleFilterComponent={SampleFilterWrapper}
       // Icons
       runTypeIcons={runTypeIcons}
       // Callbacks

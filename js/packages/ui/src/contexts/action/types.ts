@@ -7,7 +7,7 @@ import type { Dispatch, SetStateAction } from "react";
  */
 export type AxiosQueryParams = Record<
   string,
-  string | string[] | number | number[] | undefined
+  string | string[] | number | number[] | object | undefined
 >;
 
 /**

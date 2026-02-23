@@ -182,6 +182,9 @@ export interface NodeViewProps {
    */
   // biome-ignore lint/suspicious/noExplicitAny: DI pattern requires flexible component types
   SandboxDialog?: ComponentType<any>;
+  /** Sample filter component for WHERE clause filtering */
+  // biome-ignore lint/suspicious/noExplicitAny: DI pattern requires flexible component types
+  SampleFilterComponent?: ComponentType<any>;
 
   // =========================================================================
   // DEPENDENCY INJECTION: Icons
@@ -585,6 +588,7 @@ export function NodeView({
   NotificationComponent,
   ConnectionPopoverWrapper = DefaultConnectionWrapper,
   SandboxDialog,
+  SampleFilterComponent,
   // Injected icons
   runTypeIcons,
   // Injected callbacks
@@ -671,6 +675,11 @@ export function NodeView({
                 ))}
         </Stack>
       </Box>
+
+      {/* Sample filter */}
+      {isModelSeedOrSnapshot && SampleFilterComponent && (
+        <SampleFilterComponent />
+      )}
 
       {/* Action buttons row */}
       {isModelSeedOrSnapshot && (
