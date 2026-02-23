@@ -81,6 +81,63 @@ sql_not_supported_types_pattern = [
 ]
 
 
+def _nice_number(value, round_down=False):
+    """Heckbert algorithm: round to nearest {1, 2, 5} x 10^n."""
+    if value == 0:
+        return 0
+    exp = math.floor(math.log10(abs(value)))
+    frac = abs(value) / (10 ** exp)
+    if round_down:
+        if frac < 2:
+            nice = 1
+        elif frac < 5:
+            nice = 2
+        else:
+            nice = 5
+    else:
+        if frac <= 1:
+            nice = 1
+        elif frac <= 2:
+            nice = 2
+        elif frac <= 5:
+            nice = 5
+        else:
+            nice = 10
+    return nice * (10 ** exp)
+
+
+def _compute_nice_bin_edges(min_val, max_val, target_bins, is_integer):
+    """Compute nice round bin edges that cover [min_val, max_val].
+
+    Returns (nice_min, nice_max, bin_size, num_bins).
+    """
+    # Convert to float to avoid decimal.Decimal / float errors
+    min_val = float(min_val)
+    max_val = float(max_val)
+    data_range = max_val - min_val
+    if data_range == 0:
+        return min_val, max_val + 1, 1, 1
+
+    raw_bin_size = data_range / target_bins
+    bin_size = _nice_number(raw_bin_size)
+
+    if is_integer:
+        bin_size = max(int(bin_size), 1)
+
+    nice_min = math.floor(min_val / bin_size) * bin_size
+    # Snap to zero if it would add at most one empty leading bucket
+    if min_val >= 0 and nice_min > 0 and nice_min / bin_size <= 1:
+        nice_min = 0
+    nice_max = math.ceil(max_val / bin_size) * bin_size
+
+    if nice_max <= max_val:
+        nice_max += bin_size
+
+    num_bins = round((nice_max - nice_min) / bin_size)
+
+    return nice_min, nice_max, bin_size, num_bins
+
+
 def _is_histogram_supported(column_type):
     if column_type.upper() in sql_not_supported_types:
         return False
@@ -91,21 +148,12 @@ def _is_histogram_supported(column_type):
     return True
 
 
-def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=50):
-    bin_size = math.ceil((max_value - min_value) / num_bins) or 1
-
+def generate_histogram_sql_integer(node, column, min_value, bin_size):
     sql = f"""
-    WITH value_ranges AS (
+    WITH bin_parameters AS (
         SELECT
-            {min_value} as min_value,
-            {max_value} as max_value
-    ),
-    bin_parameters AS (
-        SELECT
-            min_value,
-            max_value,
+            {min_value} AS min_value,
             {bin_size} AS bin_size
-        FROM value_ranges
     ),
     binned_values AS (
         SELECT
@@ -125,23 +173,15 @@ def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=
 
     SELECT bin, count FROM bin_edges
     """
-    return sql, bin_size
+    return sql
 
 
-def generate_histogram_sql_numeric(node, column, min_value, max_value, num_bins=50):
-    bin_size = (max_value - min_value) / num_bins
+def generate_histogram_sql_numeric(node, column, min_value, bin_size):
     sql = f"""
-        WITH value_ranges AS (
+        WITH bin_parameters AS (
             SELECT
-                {min_value} as min_value,
-                {max_value} as max_value
-        ),
-        bin_parameters AS (
-            SELECT
-                min_value,
-                max_value,
+                {min_value} AS min_value,
                 {bin_size} AS bin_size
-            FROM value_ranges
         ),
         binned_values AS (
             SELECT
@@ -161,7 +201,7 @@ def generate_histogram_sql_numeric(node, column, min_value, max_value, num_bins=
 
         SELECT bin, count FROM bin_edges
         """
-    return sql, bin_size
+    return sql
 
 
 class HistogramDiffParams(BaseModel):
@@ -172,12 +212,22 @@ class HistogramDiffParams(BaseModel):
 
 
 def query_numeric_histogram(task, node, column, column_type, min_value, max_value, num_bins=50):
-    if column_type.upper() in sql_integer_types:
-        if max_value - min_value < num_bins:
-            num_bins = int(max_value - min_value + 1)
-        histogram_sql, bin_size = generate_histogram_sql_integer(node, column, min_value, max_value, num_bins)
+    is_integer = column_type.upper() in sql_integer_types
+
+    if is_integer and max_value - min_value < num_bins:
+        # Small integer range: one bin per integer value
+        num_bins = int(max_value - min_value + 1)
+        nice_min = int(min_value)
+        bin_size = 1
     else:
-        histogram_sql, bin_size = generate_histogram_sql_numeric(node, column, min_value, max_value, num_bins)
+        nice_min, _nice_max, bin_size, num_bins = _compute_nice_bin_edges(
+            min_value, max_value, num_bins, is_integer
+        )
+
+    if is_integer:
+        histogram_sql = generate_histogram_sql_integer(node, column, nice_min, bin_size)
+    else:
+        histogram_sql = generate_histogram_sql_numeric(node, column, nice_min, bin_size)
 
     base = None
     try:
@@ -201,7 +251,7 @@ def query_numeric_histogram(task, node, column, column_type, min_value, max_valu
     base_result = {}
     curr_result = {}
     for i in range(num_bins + 1):
-        val = int(min_value) + i * bin_size
+        val = nice_min + i * bin_size
         bin_edges[i] = val
         labels[i] = f"{val}-{val + bin_size}"
 

@@ -362,10 +362,13 @@ describe("TopKBarChart", () => {
         />,
       );
 
-      // Should have multiple bar charts (one for each item, doubled for comparison)
-      const charts = screen.getAllByTestId("mock-bar-chart");
-      // At least 2 charts per item (current + base)
-      expect(charts.length).toBeGreaterThanOrEqual(2);
+      // Should show both current and base count labels inside bars
+      // Current: 100, 80, 60, 40, 20; Base: 90, 70, 50, 30, 10
+      expect(screen.getByText("Base")).toBeInTheDocument();
+      expect(screen.getByText("Current")).toBeInTheDocument();
+      // Both base and current counts should appear (as abbreviated labels inside bars)
+      expect(screen.getAllByText("100").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("90").length).toBeGreaterThanOrEqual(1);
     });
 
     it("only renders current bars when comparison disabled", () => {
@@ -384,9 +387,11 @@ describe("TopKBarChart", () => {
         />,
       );
 
-      // Should only have charts for current data (3 items)
-      const charts = screen.getAllByTestId("mock-bar-chart");
-      expect(charts.length).toBe(3);
+      // Should show current count labels but not base legend
+      expect(screen.getByText("40")).toBeInTheDocument();
+      expect(screen.getByText("35")).toBeInTheDocument();
+      expect(screen.getByText("25")).toBeInTheDocument();
+      expect(screen.queryByText("Base")).not.toBeInTheDocument();
     });
 
     it("handles different lengths of base and current datasets", () => {

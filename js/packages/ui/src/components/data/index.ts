@@ -4,6 +4,12 @@
 
 // AG Grid theme
 export { dataGridThemeDark, dataGridThemeLight } from "./agGridTheme";
+// Chart legend
+export {
+  ChartLegend,
+  type ChartLegendItem,
+  type ChartLegendProps,
+} from "./ChartLegend";
 export {
   type ChartBarColors,
   type ChartThemeColors,

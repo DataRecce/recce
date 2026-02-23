@@ -14,6 +14,7 @@ import {
 } from "chart.js";
 import { memo, useMemo } from "react";
 import { Chart } from "react-chartjs-2";
+import { ChartLegend } from "./ChartLegend";
 
 // Register Chart.js modules once
 ChartJS.register(
@@ -141,6 +142,7 @@ export interface HistogramChartProps {
 function formatAbbreviatedNumber(input: number | string): string {
   if (typeof input !== "number") return String(input);
 
+  if (input === 0) return "0";
   const absValue = Math.abs(input);
   const trillion = 1e12;
   const billion = 1e9;
@@ -169,12 +171,29 @@ function formatAbbreviatedNumber(input: number | string): string {
 }
 
 /**
+ * Format number with commas (e.g., 4000 → "4,000")
+ */
+function formatFullNumber(input: number | string): string {
+  if (typeof input !== "number") return String(input);
+  if (!Number.isFinite(input)) return String(input);
+
+  if (Number.isInteger(input)) {
+    return input.toLocaleString("en-US");
+  }
+  // For decimals, keep up to 2 decimal places then add commas
+  return input.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
+/**
  * Format bin range display
  */
 function formatBinRange(binEdges: number[], index: number): string {
   const start = binEdges[index];
   const end = binEdges[index + 1];
-  return `${formatAbbreviatedNumber(start)} - ${formatAbbreviatedNumber(end)}`;
+  return `${formatFullNumber(start)} - ${formatFullNumber(end)}`;
 }
 
 /**
@@ -245,19 +264,24 @@ function HistogramChartComponent({
 
   // Build chart data
   const chartData = useMemo<ChartData<"bar">>(() => {
-    const labels = binEdges
-      .slice(0, -1)
-      .map((_, i) => formatBinRange(binEdges, i));
-
     const buildDataset = (
       data: HistogramDataset,
       label: string,
       color: string,
     ) => {
       const counts = data.counts ?? [];
-      const chartValues = isDatetime
-        ? counts.map((v, i) => [binEdges[i], v] as [number, number])
-        : counts;
+      let chartValues: (number | { x: number; y: number } | [number, number])[];
+      if (isDatetime) {
+        chartValues = counts.map(
+          (v, i) => [binEdges[i], v] as [number, number],
+        );
+      } else {
+        // Use {x: binCenter, y: count} for linear scale
+        chartValues = counts.map((v, i) => ({
+          x: (binEdges[i] + binEdges[i + 1]) / 2,
+          y: v,
+        }));
+      }
 
       return {
         label,
@@ -273,7 +297,6 @@ function HistogramChartComponent({
     };
 
     return {
-      labels,
       datasets: [
         buildDataset(
           currentData,
@@ -293,9 +316,6 @@ function HistogramChartComponent({
   const chartOptions = useMemo<ChartOptions<"bar">>(() => {
     const maxCount = Math.max(...currentData.counts, ...baseData.counts);
 
-    const labels = binEdges
-      .slice(0, -1)
-      .map((_, i) => formatBinRange(binEdges, i));
     const dataTypeLabel = isDatetime
       ? "Date Range"
       : dataType === "string"
@@ -305,13 +325,11 @@ function HistogramChartComponent({
     return {
       responsive: true,
       maintainAspectRatio: false,
+      grouped: false,
       animation: animate ? undefined : false,
       plugins: {
         legend: {
-          reverse: true,
-          labels: {
-            color: themeColors.textColor,
-          },
+          display: false,
         },
         title: {
           display: true,
@@ -362,15 +380,27 @@ function HistogramChartComponent({
             }
           : {
               display: !hideAxis,
-              type: "category",
+              type: "linear" as const,
+              min: binEdges[0],
+              max: binEdges[binEdges.length - 1],
               grid: { display: false },
-              ticks: {
-                callback(_val, index) {
-                  return labels[index];
-                },
-                color: themeColors.textColor,
+              afterBuildTicks(axis) {
+                const maxTicks = 15;
+                if (binEdges.length <= maxTicks) {
+                  axis.ticks = binEdges.map((v) => ({ value: v }));
+                } else {
+                  const step = (binEdges.length - 1) / (maxTicks - 1);
+                  axis.ticks = Array.from({ length: maxTicks }, (_, i) => ({
+                    value: binEdges[Math.round(i * step)],
+                  }));
+                }
               },
-              stacked: true,
+              ticks: {
+                color: themeColors.textColor,
+                callback(val) {
+                  return formatFullNumber(val as number);
+                },
+              },
             },
         y: {
           display: !hideAxis,
@@ -405,8 +435,16 @@ function HistogramChartComponent({
   ]);
 
   return (
-    <div className={className} style={{ height }}>
-      <Chart type="bar" options={chartOptions} data={chartData} />
+    <div className={className}>
+      <ChartLegend
+        items={[
+          { color: barColors.base, label: baseData.label ?? "Base" },
+          { color: barColors.current, label: currentData.label ?? "Current" },
+        ]}
+      />
+      <div style={{ height }}>
+        <Chart type="bar" options={chartOptions} data={chartData} />
+      </div>
     </div>
   );
 }
