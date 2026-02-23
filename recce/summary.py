@@ -96,13 +96,19 @@ class Node:
     def _cal_row_count_delta_percentage(self):
         row_count_diff, run_result = _get_node_row_count_diff(self.id, self.name)
         if row_count_diff:
-            base = run_result.get("base", 0)
-            current = run_result.get("curr", 0)
-            if int(current) > int(base):
-                p = (int(current) - int(base)) / int(current) * 100
+            base = run_result.get("base")
+            current = run_result.get("curr")
+            if base is None or current is None:
+                return None
+            base = int(base)
+            current = int(current)
+            if current == 0:
+                return None
+            if current > base:
+                p = (current - base) / current * 100
                 return f'🔼 +{round(p, 2) if p > 0.1 else "<0.1"}%'
             else:
-                p = (int(base) - int(current)) / int(current) * 100
+                p = (base - current) / current * 100
                 return f'🔽 -{round(p, 2) if p > 0.1 else "<0.1"}%'
         return None
 
