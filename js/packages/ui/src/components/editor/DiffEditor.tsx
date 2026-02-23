@@ -12,11 +12,7 @@ import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import Box from "@mui/material/Box";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import {
-  chunksToMarks,
-  DiffScrollMap,
-  type ScrollMapMark,
-} from "./DiffScrollMap";
+import { DiffScrollMap, type ScrollMapMark } from "./DiffScrollMap";
 
 /**
  * Supported languages for the diff editor
@@ -115,35 +111,42 @@ function getThemeExtensions(isDark: boolean): Extension[] {
 }
 
 /**
- * Convert character-position chunks from @codemirror/merge into
- * line-based ScrollMapMark[] for the DiffScrollMap overlay.
- *
- * Chunk positions are character offsets; chunksToMarks expects line numbers.
- * We convert fromB/toB to line numbers and preserve fromA/toA equality
- * semantics so chunksToMarks can classify added vs deleted vs modified.
+ * Compute scroll-map marks from diff chunks using the editor view's
+ * visual layout. This accounts for collapsed unchanged regions, ensuring
+ * marks align with the scrollbar regardless of fold state.
  */
-function getLineMarks(
+function computeVisualMarks(
   chunks: readonly Chunk[],
-  state: EditorState,
+  view: EditorView,
 ): ScrollMapMark[] {
-  const doc = state.doc;
-  const lineChunks = chunks.map((c) => {
-    const fromBLine = doc.lineAt(Math.min(c.fromB, doc.length)).number;
-    const toBLine =
+  const lastBlock = view.lineBlockAt(view.state.doc.length);
+  const totalHeight = lastBlock.bottom;
+  if (totalHeight === 0) return [];
+
+  return chunks.map((c) => {
+    let type: "added" | "deleted" | "modified";
+    if (c.fromA === c.toA) type = "added";
+    else if (c.fromB === c.toB) type = "deleted";
+    else type = "modified";
+
+    const fromBlock = view.lineBlockAt(
+      Math.min(c.fromB, view.state.doc.length),
+    );
+    const toBlock =
       c.fromB === c.toB
-        ? fromBLine
-        : doc.lineAt(Math.min(Math.max(c.toB - 1, 0), doc.length)).number + 1;
-    return {
-      // fromA/toA left as character offsets -- only equality is checked
-      // by chunksToMarks (added: fromA===toA, deleted: fromB===toB).
-      // Converting would require the A-side document which isn't available here.
-      fromA: c.fromA,
-      toA: c.toA,
-      fromB: fromBLine,
-      toB: toBLine,
-    };
+        ? fromBlock
+        : view.lineBlockAt(
+            Math.min(Math.max(c.toB - 1, 0), view.state.doc.length),
+          );
+
+    const topPercent = (fromBlock.top / totalHeight) * 100;
+    const heightPercent = Math.max(
+      ((toBlock.bottom - fromBlock.top) / totalHeight) * 100,
+      0.5,
+    );
+
+    return { topPercent, heightPercent, type };
   });
-  return chunksToMarks(lineChunks, doc.lines);
 }
 
 /**
@@ -195,8 +198,6 @@ function DiffEditorComponent({
 }: DiffEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<MergeView | EditorView | null>(null);
-  // Marks are computed once at view creation. For editable diffs with
-  // live mark updates, an EditorView.updateListener extension would be needed.
   const [marks, setMarks] = useState<ScrollMapMark[]>([]);
 
   const isDark = theme === "dark";
@@ -205,11 +206,11 @@ function DiffEditorComponent({
     const view = viewRef.current;
     if (!view) return;
     const editorView = view instanceof MergeView ? view.b : view;
-    const totalLines = editorView.state.doc.lines;
-    const targetLine = Math.max(1, Math.round((topPercent / 100) * totalLines));
-    const pos = editorView.state.doc.line(targetLine).from;
+    const lastBlock = editorView.lineBlockAt(editorView.state.doc.length);
+    const targetPx = (topPercent / 100) * lastBlock.bottom;
+    const block = editorView.lineBlockAtHeight(targetPx);
     editorView.dispatch({
-      effects: EditorView.scrollIntoView(pos, { y: "start" }),
+      effects: EditorView.scrollIntoView(block.from, { y: "start" }),
     });
   }, []);
 
@@ -254,6 +255,17 @@ function DiffEditorComponent({
       );
     }
 
+    // Recompute scroll-map marks when editor geometry changes
+    // (e.g. collapsed regions expand/collapse)
+    const marksListener = EditorView.updateListener.of((update) => {
+      if (update.geometryChanged) {
+        const chunkResult = getChunks(update.state);
+        if (chunkResult) {
+          setMarks(computeVisualMarks(chunkResult.chunks, update.view));
+        }
+      }
+    });
+
     if (sideBySide) {
       // Side-by-side merge view
       // Note: revertControls is intentionally omitted - MergeView shows no
@@ -265,31 +277,34 @@ function DiffEditorComponent({
         },
         b: {
           doc: modified,
-          extensions: [...extensions],
+          extensions: [...extensions, marksListener],
         },
         parent: containerRef.current,
         orientation: "a-b",
         highlightChanges: true,
         gutter: true,
+        collapseUnchanged: { margin: 3, minSize: 4 },
       });
 
       viewRef.current = mergeView;
 
-      // Read initial chunks and convert to scroll-map marks
+      // Compute initial marks (refined by marksListener on first geometry update)
       const chunkResult = getChunks(mergeView.b.state);
       if (chunkResult) {
-        setMarks(getLineMarks(chunkResult.chunks, mergeView.b.state));
+        setMarks(computeVisualMarks(chunkResult.chunks, mergeView.b));
       }
     } else {
       // Unified diff view
       const unifiedExtensions = [
         ...extensions,
+        marksListener,
         unifiedMergeView({
           original,
           highlightChanges: true,
           gutter: true,
           // Disable accept/reject buttons - this is a read-only diff view
           mergeControls: false,
+          collapseUnchanged: { margin: 3, minSize: 4 },
         }),
       ];
 
@@ -303,10 +318,10 @@ function DiffEditorComponent({
 
       viewRef.current = view;
 
-      // Read initial chunks and convert to scroll-map marks
+      // Compute initial marks (refined by marksListener on first geometry update)
       const chunkResult = getChunks(view.state);
       if (chunkResult) {
-        setMarks(getLineMarks(chunkResult.chunks, view.state));
+        setMarks(computeVisualMarks(chunkResult.chunks, view));
       }
     }
 
@@ -333,31 +348,37 @@ function DiffEditorComponent({
 
   return (
     <Box
-      ref={containerRef}
       className={className}
       sx={{
         height,
         width: "100%",
-        overflow: "auto",
+        position: "relative",
         border: "1px solid",
         borderColor: isDark ? "grey.700" : "grey.300",
         borderRadius: 1,
-        position: "relative",
-        "& .cm-editor": {
-          height: "100%",
-        },
-        "& .cm-scroller": {
-          overflow: "auto",
-        },
-        // Merge view layout
-        "& .cm-merge-view": {
-          height: "100%",
-        },
-        "& .cm-merge-view > div": {
-          height: "100%",
-        },
       }}
     >
+      <Box
+        ref={containerRef}
+        sx={{
+          height: "100%",
+          width: "100%",
+          overflow: "auto",
+          "& .cm-editor": {
+            height: "100%",
+          },
+          "& .cm-scroller": {
+            overflow: "auto",
+          },
+          // Merge view layout
+          "& .cm-merge-view": {
+            height: "100%",
+          },
+          "& .cm-merge-view > div": {
+            height: "100%",
+          },
+        }}
+      />
       {marks.length > 0 && (
         <DiffScrollMap
           marks={marks}
