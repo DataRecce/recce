@@ -47,12 +47,20 @@ When asked to "publish ui" or "release ui package":
 
 ## Commit and PR Workflow
 
-**Commits:** Always use `--signoff` and include `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>`
+**Commits:** Always use `--signoff` and include `Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>`
 
 **PRs:** Follow `.github/PULL_REQUEST_TEMPLATE.md`:
 - PR checklist (tests, DCO)
 - Type, description, linked issues
 - Reviewer notes, user-facing changes
+
+## MCP Tool Response Contracts
+
+- MCP tool description = LLM agent contract. Description MUST match actual response format.
+- Prefer additive changes (`_meta` fields) over modifying existing field types in tool responses.
+- Row count consumers: frontend (int), `run.py` (int comparison), `summary.py` (int arithmetic), `RowCountDiffResultDiffer` (3-format compat), MCP agents (description-guided).
+- `summary.py` row count gotcha: `base`/`curr` can be `None` (TABLE_NOT_FOUND, PERMISSION_DENIED). Guard with `is None` check before arithmetic — `dict.get(key, 0)` does NOT protect when key exists with `None` value.
+- Format changes to MCP tool responses require both deterministic tests AND BQ/LLM eval to prove agent behavior unchanged.
 
 ## Individual Preferences
 

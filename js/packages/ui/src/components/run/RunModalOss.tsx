@@ -63,11 +63,10 @@ export interface RunModalProps {
  */
 const getDocumentationUrl = (type: RunType): string | null => {
   const urlMap: Record<string, string> = {
-    value_diff: "https://docs.datarecce.io/features/lineage/#value-diff",
-    profile_diff: "https://docs.datarecce.io/features/lineage/#profile-diff",
-    histogram_diff:
-      "https://docs.datarecce.io/features/lineage/#histogram-diff",
-    top_k_diff: "https://docs.datarecce.io/features/lineage/#top-k-diff",
+    value_diff: "https://docs.reccehq.com/features/lineage/#value-diff",
+    profile_diff: "https://docs.reccehq.com/features/lineage/#profile-diff",
+    histogram_diff: "https://docs.reccehq.com/features/lineage/#histogram-diff",
+    top_k_diff: "https://docs.reccehq.com/features/lineage/#top-k-diff",
   };
   return urlMap[type] || null;
 };

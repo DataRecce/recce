@@ -45,7 +45,7 @@ export const RecceNotification = (
 export const LearnHowLink = () => {
   return (
     <MuiLink
-      href="https://docs.datarecce.io/get-started/#prepare-dbt-artifacts"
+      href="https://docs.reccehq.com/get-started/#prepare-dbt-artifacts"
       target="_blank"
       sx={{
         color: "primary.main",

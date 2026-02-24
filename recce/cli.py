@@ -623,7 +623,7 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
             "Recce will launch with limited features (no environment comparison).\n"
             "\n"
             "For full functionality, set up a base environment first.\n"
-            "Setup help: 'recce debug' or https://docs.datarecce.io/configure-diff/\n"
+            "Setup help: 'recce debug' or https://docs.reccehq.com/configure-diff/\n"
         )
 
         single_env_flag = kwargs.get("single_env", False)

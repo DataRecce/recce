@@ -510,7 +510,7 @@ def _get_production_session_id(console: Console, token: str) -> Optional[str]:
 @click.option(
     "--type",
     "session_type",
-    type=click.Choice(["pr", "prod", "dev"]),
+    type=click.Choice(["pr", "prod"]),
     help="Session type (overrides auto-detection)",
 )
 @click.option(
@@ -673,6 +673,11 @@ def upload(
                 console.print(
                     "  • [yellow]Warning: Platform not supported for auto-session creation[/yellow]"
                 )
+            # Warn if auto-detected "dev" would be blocked
+            if ci_info and ci_info.session_type == "dev" and session_type is None:
+                console.print(
+                    "  • [red]Blocked: feature branch with no PR/MR detected[/red]"
+                )
 
         console.print()
         console.print("[cyan]Files to upload:[/cyan]")
@@ -738,6 +743,28 @@ def upload(
         )
     else:
         # Auto-detect workflow: Try RECCE_API_TOKEN first, then platform tokens
+
+        # Block auto-detected "dev" sessions (feature branch push with no PR)
+        # session_type (the CLI param) is None when user didn't pass --type
+        if ci_info and ci_info.session_type == "dev" and session_type is None:
+            console.print(
+                "[red]Error:[/red] No pull request detected and branch is not main/master"
+            )
+            console.print()
+            console.print(
+                "This happens when CI runs on a branch push without an open PR/MR."
+            )
+            console.print()
+            console.print("Options:")
+            console.print(
+                "  1. Use [bold]--pr <number>[/bold] if a PR/MR exists but wasn't auto-detected"
+            )
+            console.print("  2. Use [bold]--type prod[/bold] for production uploads")
+            console.print(
+                "  3. Use [bold]--session-name <name>[/bold] or [bold]--session-id <id>[/bold] for explicit targeting"
+            )
+            sys.exit(1)
+
         # Priority 1: RECCE_API_TOKEN + CI detected → generic client
         from recce_cloud.auth.profile import get_api_token
 
