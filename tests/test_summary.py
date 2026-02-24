@@ -1,10 +1,12 @@
 import os
+from unittest.mock import patch
 
 import pytest
 
 from recce.adapter.dbt_adapter import DbtAdapter, DbtVersion, load_manifest
 from recce.core import RecceContext, set_default_context
 from recce.summary import (
+    Node,
     _build_lineage_graph,
     generate_mermaid_lineage_graph,
     generate_summary_metadata,
@@ -71,3 +73,64 @@ def test_generate_mermaid_lineage_graph():
     mermaid_content, is_empty_graph, is_partial_graph = generate_mermaid_lineage_graph(graph)
     assert is_empty_graph is False
     assert is_partial_graph is False
+
+
+def _make_node(node_id="model.test.my_model", name="my_model"):
+    """Helper to create a Node with minimal data."""
+    return Node(node_id, {"name": name, "resource_type": "model", "package_name": "test"})
+
+
+class TestCalRowCountDeltaPercentage:
+    """Tests for Node._cal_row_count_delta_percentage handling None and edge cases."""
+
+    @patch("recce.summary._get_node_row_count_diff")
+    def test_none_base_returns_none(self, mock_get_diff):
+        mock_get_diff.return_value = ({"some": "diff"}, {"base": None, "curr": 100})
+        node = _make_node()
+        assert node._cal_row_count_delta_percentage() is None
+
+    @patch("recce.summary._get_node_row_count_diff")
+    def test_none_curr_returns_none(self, mock_get_diff):
+        mock_get_diff.return_value = ({"some": "diff"}, {"base": 100, "curr": None})
+        node = _make_node()
+        assert node._cal_row_count_delta_percentage() is None
+
+    @patch("recce.summary._get_node_row_count_diff")
+    def test_both_none_returns_none(self, mock_get_diff):
+        mock_get_diff.return_value = ({"some": "diff"}, {"base": None, "curr": None})
+        node = _make_node()
+        assert node._cal_row_count_delta_percentage() is None
+
+    @patch("recce.summary._get_node_row_count_diff")
+    def test_zero_current_returns_none(self, mock_get_diff):
+        mock_get_diff.return_value = ({"some": "diff"}, {"base": 100, "curr": 0})
+        node = _make_node()
+        assert node._cal_row_count_delta_percentage() is None
+
+    @patch("recce.summary._get_node_row_count_diff")
+    def test_growth(self, mock_get_diff):
+        mock_get_diff.return_value = ({"some": "diff"}, {"base": 100, "curr": 200})
+        node = _make_node()
+        result = node._cal_row_count_delta_percentage()
+        assert "🔼" in result
+        assert "50.0%" in result
+
+    @patch("recce.summary._get_node_row_count_diff")
+    def test_shrinkage(self, mock_get_diff):
+        mock_get_diff.return_value = ({"some": "diff"}, {"base": 200, "curr": 100})
+        node = _make_node()
+        result = node._cal_row_count_delta_percentage()
+        assert "🔽" in result
+        assert "100.0%" in result
+
+    @patch("recce.summary._get_node_row_count_diff")
+    def test_equal_counts_returns_none(self, mock_get_diff):
+        mock_get_diff.return_value = ({"some": "diff"}, {"base": 100, "curr": 100})
+        node = _make_node()
+        assert node._cal_row_count_delta_percentage() is None
+
+    @patch("recce.summary._get_node_row_count_diff")
+    def test_no_diff_returns_none(self, mock_get_diff):
+        mock_get_diff.return_value = (None, None)
+        node = _make_node()
+        assert node._cal_row_count_delta_percentage() is None

@@ -20,7 +20,9 @@ class CIInfo:
     base_branch: Optional[str] = None  # Target/base branch
     source_branch: Optional[str] = None  # Source/head branch
     repository: Optional[str] = None  # Repository path (owner/repo or group/project)
-    access_token: Optional[str] = None  # CI-provided access token (GITHUB_TOKEN, CI_JOB_TOKEN)
+    access_token: Optional[str] = (
+        None  # CI-provided access token (GITHUB_TOKEN, CI_JOB_TOKEN)
+    )
 
 
 class BaseCIProvider(ABC):
@@ -58,15 +60,28 @@ class BaseCIProvider(ABC):
             Command output stripped of whitespace, or None if command fails
         """
         try:
-            result = subprocess.run(command, capture_output=True, text=True, check=True, timeout=5)
+            result = subprocess.run(
+                command, capture_output=True, text=True, check=True, timeout=5
+            )
             return result.stdout.strip()
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+        except (
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+            FileNotFoundError,
+        ):
             return None
 
     @staticmethod
-    def determine_session_type(pr_number: Optional[int], source_branch: Optional[str]) -> str:
+    def determine_session_type(
+        pr_number: Optional[int], source_branch: Optional[str]
+    ) -> str:
         """
         Determine session type based on context.
+
+        Note: "dev" is returned for classification purposes (e.g. list, doctor commands)
+        but is blocked from auto-creation in the upload command. Users must explicitly
+        target a session via --type, --session-id, or --session-name for non-PR,
+        non-main branch uploads.
 
         Args:
             pr_number: Pull/Merge request number (PR/MR)
