@@ -644,12 +644,15 @@ class DbtAdapter(BaseAdapter):
 
     def build_parent_map(self, nodes: Dict, base: Optional[bool] = False) -> Dict[str, List[str]]:
         manifest = self.curr_manifest if base is False else self.base_manifest
-        manifest_dict = manifest.to_dict()
+        
+        try:
+            parent_map_source = manifest.parent_map
+        except AttributeError:
+            parent_map_source = manifest.to_dict()["parent_map"]
 
-        node_ids = nodes.keys()
         parent_map = {}
-        for k, parents in manifest_dict["parent_map"].items():
-            if k not in node_ids:
+        for k, parents in parent_map_source.items():
+            if k not in nodes:
                 continue
             parent_map[k] = [parent for parent in parents if parent in node_ids]
 
