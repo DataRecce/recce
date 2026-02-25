@@ -1,7 +1,7 @@
 # Configuration file for recce
 from rich.console import Console
 
-from recce import yaml
+from recce import is_recce_cloud_instance, yaml
 from recce.exceptions import RecceConfigException
 from recce.util import SingletonMeta
 
@@ -26,9 +26,12 @@ class RecceConfig(metaclass=SingletonMeta):
                 self.config = config if config else {}
             self._verify_preset_checks()
         except FileNotFoundError:
-            console.print(f"[[orange3]NOTICE[/orange3]] Generate default Recce config file at '{self.config_file}'")
-            self.config = self.generate_template()
-            self.save()
+            if is_recce_cloud_instance():
+                self.config = {}
+            else:
+                console.print(f"[[orange3]NOTICE[/orange3]] Generate default Recce config file at '{self.config_file}'")
+                self.config = self.generate_template()
+                self.save()
 
     def _verify_preset_checks(self):
         from recce.tasks.core import CheckValidator
