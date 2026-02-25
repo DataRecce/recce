@@ -1,6 +1,6 @@
 {
   "name": "recce",
-  "version": "0.1.0",
+  "version": "1.37.0",
   "private": true,
   "workspaces": [
     "packages/*"
