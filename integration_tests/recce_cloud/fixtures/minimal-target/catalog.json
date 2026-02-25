@@ -1,0 +1,13 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/catalog/v1/catalog.json",
+    "dbt_version": "1.8.0",
+    "adapter_type": "duckdb",
+    "generated_at": "2026-01-01T00:00:00.000000Z",
+    "invocation_id": "00000000-0000-0000-0000-000000000000",
+    "env": {}
+  },
+  "nodes": {},
+  "sources": {},
+  "errors": null
+}

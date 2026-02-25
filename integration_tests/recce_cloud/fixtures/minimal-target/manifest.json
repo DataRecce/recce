@@ -1,0 +1,21 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v11/manifest.json",
+    "dbt_version": "1.8.0",
+    "adapter_type": "duckdb",
+    "generated_at": "2026-01-01T00:00:00.000000Z",
+    "invocation_id": "00000000-0000-0000-0000-000000000000",
+    "env": {}
+  },
+  "nodes": {},
+  "sources": {},
+  "macros": {},
+  "docs": {},
+  "exposures": {},
+  "metrics": {},
+  "groups": {},
+  "selectors": {},
+  "disabled": [],
+  "parent_map": {},
+  "child_map": {}
+}
