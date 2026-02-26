@@ -486,8 +486,11 @@ class DbtAdapter(BaseAdapter):
     @track_timing("artifact_load")
     def load_artifacts(self):
         """
-        Load the artifacts from the 'target' and 'target-base' directory
+        Load the artifacts from the 'target' and 'target-base' directory.
+        Artifacts are loaded in parallel using ThreadPoolExecutor.
         """
+        from concurrent.futures import ThreadPoolExecutor
+
         if self.runtime_config is None:
             raise Exception("Cannot find the dbt project configuration")
 
@@ -497,22 +500,28 @@ class DbtAdapter(BaseAdapter):
         self.target_path = os.path.join(project_root, target_path)
         self.base_path = os.path.join(project_root, target_base_path)
 
-        # load the artifacts
-        path = os.path.join(project_root, target_path, "manifest.json")
-        curr_manifest = load_manifest(path=path, timing_name="curr_manifest")
-        if curr_manifest is None:
-            raise FileNotFoundError(ENOENT, os.strerror(ENOENT), path)
-        path = os.path.join(project_root, target_base_path, "manifest.json")
-        base_manifest = load_manifest(path=path, timing_name="base_manifest")
-        if base_manifest is None:
-            raise FileNotFoundError(ENOENT, os.strerror(ENOENT), path)
+        # Prepare paths
+        curr_manifest_path = os.path.join(project_root, target_path, "manifest.json")
+        base_manifest_path = os.path.join(project_root, target_base_path, "manifest.json")
+        curr_catalog_path = os.path.join(project_root, target_path, "catalog.json")
+        base_catalog_path = os.path.join(project_root, target_base_path, "catalog.json")
 
-        curr_catalog = load_catalog(
-            path=os.path.join(project_root, target_path, "catalog.json"), timing_name="curr_catalog"
-        )
-        base_catalog = load_catalog(
-            path=os.path.join(project_root, target_base_path, "catalog.json"), timing_name="base_catalog"
-        )
+        # Load all 4 artifacts in parallel
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            curr_manifest_future = executor.submit(load_manifest, path=curr_manifest_path, timing_name="curr_manifest")
+            base_manifest_future = executor.submit(load_manifest, path=base_manifest_path, timing_name="base_manifest")
+            curr_catalog_future = executor.submit(load_catalog, path=curr_catalog_path, timing_name="curr_catalog")
+            base_catalog_future = executor.submit(load_catalog, path=base_catalog_path, timing_name="base_catalog")
+
+        # Collect results (raises if any future failed)
+        curr_manifest = curr_manifest_future.result()
+        if curr_manifest is None:
+            raise FileNotFoundError(ENOENT, os.strerror(ENOENT), curr_manifest_path)
+        base_manifest = base_manifest_future.result()
+        if base_manifest is None:
+            raise FileNotFoundError(ENOENT, os.strerror(ENOENT), base_manifest_path)
+        curr_catalog = curr_catalog_future.result()
+        base_catalog = base_catalog_future.result()
 
         # set the value if all the artifacts are loaded successfully
         self.curr_manifest = curr_manifest
@@ -530,9 +539,9 @@ class DbtAdapter(BaseAdapter):
 
         # set the file paths to watch
         self.artifacts_files = [
-            os.path.join(project_root, target_path, "manifest.json"),
+            curr_manifest_path,
             os.path.join(project_root, target_path, "catalog.json"),
-            os.path.join(project_root, target_base_path, "manifest.json"),
+            base_manifest_path,
             os.path.join(project_root, target_base_path, "catalog.json"),
         ]
 

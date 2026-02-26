@@ -22,7 +22,7 @@ from fastapi import (
     WebSocket,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ValidationError
 from pytz import utc
@@ -224,7 +224,12 @@ def teardown_preview(app_state: AppState, ctx: RecceContext):
 
 @track_timing("server_setup")
 def _do_lifespan_setup(app_state: AppState):
-    """Run server setup and return context for teardown."""
+    """Run server setup and return context for teardown.
+
+    Note: This function runs in a background thread. Do NOT call asyncio APIs
+    (create_task, get_running_loop, etc.) here — schedule them in the async
+    caller after this returns.
+    """
     if app_state.command == "server":
         ctx = setup_server(app_state)
     elif app_state.command == "read-only":
@@ -234,13 +239,6 @@ def _do_lifespan_setup(app_state: AppState):
         ctx = setup_preview(app_state)
     else:
         ctx = None
-
-    if app_state.lifetime is not None and app_state.lifetime > 0:
-        schedule_lifetime_termination(app_state)
-
-    if app_state.idle_timeout is not None and app_state.idle_timeout > 0:
-        logger.debug(f"[Idle Timeout] Scheduling idle timeout check with {app_state.idle_timeout} seconds")
-        schedule_idle_timeout_check(app_state)
 
     return ctx
 
@@ -258,27 +256,55 @@ async def lifespan(fastapi: FastAPI):
         logger.setLevel(logging.DEBUG)
         logger.debug("Debug mode enabled - logger set to DEBUG level")
 
-    ctx = _do_lifespan_setup(app_state)
+    # Set up readiness signaling for background loading
+    ready_event = asyncio.Event()
+    app_state.ready_event = ready_event
+    app_state.startup_error = None
+    app_state.startup_ctx = None
 
-    # Log startup performance metrics
-    if tracker := get_startup_tracker():
-        tracker.command = app_state.command
-        recce_ctx = default_context()
-        if recce_ctx and recce_ctx.adapter:
-            tracker.adapter_type = type(recce_ctx.adapter).__name__
-            if hasattr(recce_ctx.adapter, "curr_manifest") and recce_ctx.adapter.curr_manifest:
-                tracker.node_count = len(recce_ctx.adapter.curr_manifest.nodes)
-        log_performance("server_startup", tracker.to_dict())
-        clear_startup_tracker()
+    async def background_load():
+        try:
+            ctx = await asyncio.to_thread(_do_lifespan_setup, app_state)
+            app_state.startup_ctx = ctx
 
-    yield
+            # Schedule async timers on the event loop (must be in async context)
+            if app_state.lifetime is not None and app_state.lifetime > 0:
+                schedule_lifetime_termination(app_state)
+            if app_state.idle_timeout is not None and app_state.idle_timeout > 0:
+                logger.debug(f"[Idle Timeout] Scheduling idle timeout check with {app_state.idle_timeout} seconds")
+                schedule_idle_timeout_check(app_state)
 
-    if app_state.command == "server":
-        teardown_server(app_state, ctx)
-    elif app_state.command == "read-only":
-        teardown_ready_only(app_state)
-    elif app_state.command == "preview":
-        teardown_preview(app_state, ctx)
+            # Log startup performance metrics
+            if tracker := get_startup_tracker():
+                tracker.command = app_state.command
+                recce_ctx = default_context()
+                if recce_ctx and recce_ctx.adapter:
+                    tracker.adapter_type = type(recce_ctx.adapter).__name__
+                    if hasattr(recce_ctx.adapter, "curr_manifest") and recce_ctx.adapter.curr_manifest:
+                        tracker.node_count = len(recce_ctx.adapter.curr_manifest.nodes)
+                log_performance("server_startup", tracker.to_dict())
+                clear_startup_tracker()
+        except Exception as e:
+            logger.exception("Failed to load server context during startup")
+            app_state.startup_error = e
+        finally:
+            ready_event.set()
+
+    task = asyncio.create_task(background_load())
+
+    yield  # Server starts accepting connections immediately
+
+    # Wait for background loading to complete before teardown
+    await task
+
+    if not app_state.startup_error:
+        ctx = app_state.startup_ctx
+        if app_state.command == "server" and ctx:
+            teardown_server(app_state, ctx)
+        elif app_state.command == "read-only":
+            teardown_ready_only(app_state)
+        elif app_state.command == "preview" and ctx:
+            teardown_preview(app_state, ctx)
 
 
 app = FastAPI(lifespan=lifespan)
@@ -406,6 +432,30 @@ async def set_context_by_cookie(request: Request, call_next):
     if user_id_in_cookie is None or user_id_in_cookie != user_id:
         response.set_cookie(key="recce_user_id", value=user_id)
     return response
+
+
+@app.middleware("http")
+async def readiness_gate(request: Request, call_next):
+    """Block data API requests until server startup is complete.
+
+    /api/health passes through immediately so container orchestrators can
+    detect the process is alive. All other endpoints wait for the background
+    loading to finish. If loading failed, return 503.
+    """
+    if request.url.path == "/api/health":
+        return await call_next(request)
+
+    ready_event = getattr(request.app.state, "ready_event", None)
+    if ready_event is not None:
+        await ready_event.wait()
+
+        if getattr(request.app.state, "startup_error", None):
+            return JSONResponse(
+                {"error": "Server startup failed. Check server logs for details."},
+                status_code=503,
+            )
+
+    return await call_next(request)
 
 
 @app.middleware("http")

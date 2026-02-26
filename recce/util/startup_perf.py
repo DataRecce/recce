@@ -1,5 +1,6 @@
 import functools
 import os
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Dict, Optional
@@ -25,9 +26,13 @@ class StartupPerfTracker:
     node_count: Optional[int] = None
     command: Optional[str] = None  # server, read-only, preview
 
+    # Thread safety for parallel artifact loading
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+
     def record_timing(self, name: str, elapsed_ms: float):
         """Record timing for a named phase or artifact"""
-        self.timings[name] = elapsed_ms
+        with self._lock:
+            self.timings[name] = elapsed_ms
 
     def set_cloud_mode(self, cloud_mode: bool):
         self.cloud_mode = cloud_mode
@@ -37,7 +42,8 @@ class StartupPerfTracker:
 
     def set_artifact_size(self, name: str, size_bytes: int):
         """Set artifact size by name"""
-        self.artifact_sizes[name] = size_bytes
+        with self._lock:
+            self.artifact_sizes[name] = size_bytes
 
     def to_dict(self) -> Dict:
         return {

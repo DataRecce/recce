@@ -56,6 +56,8 @@ class TestLifespan:
             mock_setup.return_value = mock_ctx
 
             async with lifespan(app):
+                # Wait for background loading to complete before asserting
+                await setup_app_state.ready_event.wait()
                 mock_setup.assert_called_once_with(setup_app_state)
 
             if command == "read-only":
