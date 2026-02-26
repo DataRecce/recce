@@ -2,6 +2,7 @@
 import { ValueDiffDetailResultView } from "@datarecce/ui/components";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
+import { fullscreenDecorator } from "../decorators";
 import {
   createValueDiffDetailRun,
   valueDiffDetailNoChanges,
@@ -55,20 +56,10 @@ import { ValueDiffDetailResultView } from '@datarecce/ui/components';
       action: "viewOptionsChanged",
     },
   },
-  decorators: [
-    (Story) => (
-      <div
-        style={{
-          height: "100vh",
-          minHeight: "600px",
-          width: "100%",
-          padding: "20px",
-        }}
-      >
-        <Story />
-      </div>
-    ),
-  ],
+  args: {
+    onViewOptionsChanged: fn(),
+  },
+  decorators: [fullscreenDecorator],
 };
 
 export default meta;
@@ -77,7 +68,6 @@ type Story = StoryObj<typeof ValueDiffDetailResultView>;
 export const Default: Story = {
   args: {
     run: createValueDiffDetailRun(),
-    onViewOptionsChanged: fn(),
   },
 };
 
@@ -86,7 +76,6 @@ export const ChangedOnly: Story = {
   args: {
     run: createValueDiffDetailRun(),
     viewOptions: { changed_only: true },
-    onViewOptionsChanged: fn(),
   },
   parameters: {
     docs: {
@@ -103,7 +92,6 @@ export const SideBySide: Story = {
   args: {
     run: createValueDiffDetailRun(),
     viewOptions: { display_mode: "side_by_side" },
-    onViewOptionsChanged: fn(),
   },
   parameters: {
     docs: {
@@ -122,7 +110,6 @@ export const NoChanges: Story = {
       result: valueDiffDetailNoChanges,
     }),
     viewOptions: { changed_only: true },
-    onViewOptionsChanged: fn(),
   },
   parameters: {
     docs: {
@@ -140,7 +127,6 @@ export const Truncated: Story = {
     run: createValueDiffDetailRun({
       result: valueDiffDetailTruncated,
     }),
-    onViewOptionsChanged: fn(),
   },
   parameters: {
     docs: {
@@ -178,7 +164,6 @@ export const CompositePrimaryKey: Story = {
         ],
       },
     }),
-    onViewOptionsChanged: fn(),
   },
   parameters: {
     docs: {
@@ -195,6 +180,5 @@ export const NoData: Story = {
     run: createValueDiffDetailRun({
       result: undefined,
     }),
-    onViewOptionsChanged: fn(),
   },
 };

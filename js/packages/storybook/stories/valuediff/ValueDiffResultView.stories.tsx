@@ -1,6 +1,7 @@
 // packages/storybook/stories/valuediff/ValueDiffResultView.stories.tsx
 import { ValueDiffResultView } from "@datarecce/ui/components";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { fullscreenDecorator } from "../decorators";
 import {
   createValueDiffRun,
   valueDiffAllMatch,
@@ -48,20 +49,7 @@ Displays a summary header with total/common/added/removed row counts, followed b
       control: "object",
     },
   },
-  decorators: [
-    (Story) => (
-      <div
-        style={{
-          height: "100vh",
-          minHeight: "600px",
-          width: "100%",
-          padding: "20px",
-        }}
-      >
-        <Story />
-      </div>
-    ),
-  ],
+  decorators: [fullscreenDecorator],
 };
 
 export default meta;

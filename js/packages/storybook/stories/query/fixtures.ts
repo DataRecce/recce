@@ -4,28 +4,12 @@ import type {
   DataFrame,
   QueryDiffParams,
   QueryRunParams,
+  Run,
 } from "@datarecce/ui/api";
-import type {
-  QueryDiffResultViewProps,
-  QueryDiffViewOptions,
-  QueryResultViewProps,
-  QueryViewOptions,
-} from "@datarecce/ui/components";
+import type { QueryResultViewProps } from "@datarecce/ui/components";
 
 // Fixed date for deterministic test data
 const FIXED_RUN_DATE = "2024-01-15T10:30:00.000Z";
-
-// Counters for deterministic ID generation
-let queryRunCounter = 0;
-let queryDiffRunCounter = 0;
-
-/**
- * Reset counters (useful for test isolation)
- */
-export const resetQueryFixtureCounters = () => {
-  queryRunCounter = 0;
-  queryDiffRunCounter = 0;
-};
 
 // ============================================
 // DataFrame Factories
@@ -153,7 +137,7 @@ export const createQueryParams = (
 export const createQueryRun = (
   overrides: Partial<QueryResultViewProps["run"]> = {},
 ) => ({
-  run_id: `run-query-${String(++queryRunCounter).padStart(3, "0")}`,
+  run_id: "run-query-default",
   type: "query" as const,
   run_at: FIXED_RUN_DATE,
   params: createQueryParams(),
@@ -167,7 +151,7 @@ export const createQueryRun = (
 export const createQueryBaseRun = (
   overrides: Partial<QueryResultViewProps["run"]> = {},
 ) => ({
-  run_id: `run-querybase-${String(++queryRunCounter).padStart(3, "0")}`,
+  run_id: "run-querybase-default",
   type: "query_base" as const,
   run_at: FIXED_RUN_DATE,
   params: createQueryParams(),
@@ -178,6 +162,8 @@ export const createQueryBaseRun = (
 // ============================================
 // Query Diff Run Factories
 // ============================================
+
+type QueryDiffRun = Extract<Run, { type: "query_diff" }>;
 
 /**
  * Create query diff params
@@ -194,9 +180,9 @@ export const createQueryDiffParams = (
  * Create a query diff run (JOIN mode — server-side diff)
  */
 export const createQueryDiffRunJoin = (
-  overrides: Record<string, unknown> = {},
+  overrides: Partial<QueryDiffRun> = {},
 ) => ({
-  run_id: `run-querydiff-${String(++queryDiffRunCounter).padStart(3, "0")}`,
+  run_id: "run-querydiff-join-default",
   type: "query_diff" as const,
   run_at: FIXED_RUN_DATE,
   params: createQueryDiffParams(),
@@ -210,9 +196,9 @@ export const createQueryDiffRunJoin = (
  * Create a query diff run (non-JOIN mode — client-side diff)
  */
 export const createQueryDiffRunNonJoin = (
-  overrides: Record<string, unknown> = {},
+  overrides: Partial<QueryDiffRun> = {},
 ) => ({
-  run_id: `run-querydiff-${String(++queryDiffRunCounter).padStart(3, "0")}`,
+  run_id: "run-querydiff-nonjoin-default",
   type: "query_diff" as const,
   run_at: FIXED_RUN_DATE,
   params: createQueryDiffParams({ primary_keys: undefined }),

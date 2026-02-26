@@ -2,6 +2,7 @@
 import { QueryDiffResultView } from "@datarecce/ui/components";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
+import { fullscreenDecorator } from "../decorators";
 import {
   createDiffDataFrame,
   createQueryDiffRunJoin,
@@ -60,20 +61,10 @@ import { QueryDiffResultView } from '@datarecce/ui/components';
       action: "viewOptionsChanged",
     },
   },
-  decorators: [
-    (Story) => (
-      <div
-        style={{
-          height: "100vh",
-          minHeight: "600px",
-          width: "100%",
-          padding: "20px",
-        }}
-      >
-        <Story />
-      </div>
-    ),
-  ],
+  args: {
+    onViewOptionsChanged: fn(),
+  },
+  decorators: [fullscreenDecorator],
 };
 
 export default meta;
@@ -87,7 +78,6 @@ export const JoinMode: Story = {
   name: "JOIN Mode (Default)",
   args: {
     run: createQueryDiffRunJoin(),
-    onViewOptionsChanged: fn(),
   },
   parameters: {
     docs: {
@@ -104,7 +94,6 @@ export const JoinModeChangedOnly: Story = {
   args: {
     run: createQueryDiffRunJoin(),
     viewOptions: { changed_only: true },
-    onViewOptionsChanged: fn(),
   },
   parameters: {
     docs: {
@@ -121,7 +110,6 @@ export const JoinModeNoChanges: Story = {
   args: {
     run: queryDiffNoChanges,
     viewOptions: { changed_only: true },
-    onViewOptionsChanged: fn(),
   },
   parameters: {
     docs: {
@@ -138,7 +126,6 @@ export const JoinModeSideBySide: Story = {
   args: {
     run: createQueryDiffRunJoin(),
     viewOptions: { display_mode: "side_by_side" },
-    onViewOptionsChanged: fn(),
   },
   parameters: {
     docs: {
@@ -158,7 +145,6 @@ export const JoinModeTruncated: Story = {
         diff: createDiffDataFrame({ limit: 500, more: true }),
       },
     }),
-    onViewOptionsChanged: fn(),
   },
   parameters: {
     docs: {
@@ -178,7 +164,6 @@ export const NonJoinMode: Story = {
   name: "Non-JOIN Mode",
   args: {
     run: createQueryDiffRunNonJoin(),
-    onViewOptionsChanged: fn(),
   },
   parameters: {
     docs: {
@@ -200,6 +185,5 @@ export const NoData: Story = {
       params: { sql_template: "SELECT 1" },
       result: undefined,
     },
-    onViewOptionsChanged: fn(),
   },
 };

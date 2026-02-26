@@ -2,6 +2,7 @@
 import { QueryResultView } from "@datarecce/ui/components";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
+import { fullscreenDecorator } from "../decorators";
 import {
   createQueryBaseRun,
   createQueryRun,
@@ -60,20 +61,7 @@ import { QueryResultView } from '@datarecce/ui/components';
       action: "addToChecklist",
     },
   },
-  decorators: [
-    (Story) => (
-      <div
-        style={{
-          height: "100vh",
-          minHeight: "600px",
-          width: "100%",
-          padding: "20px",
-        }}
-      >
-        <Story />
-      </div>
-    ),
-  ],
+  decorators: [fullscreenDecorator],
 };
 
 export default meta;

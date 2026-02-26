@@ -84,6 +84,11 @@ import { CheckDetail } from '@datarecce/ui/components';
       action: "nameChanged",
     },
   },
+  args: {
+    onAction: fn(),
+    onDescriptionChange: fn(),
+    onNameChange: fn(),
+  },
   decorators: [
     (Story) => (
       <div
@@ -112,9 +117,6 @@ export const Default: Story = {
     tabs: createSampleTabs(),
     primaryActions: samplePrimaryActions,
     secondaryActions: sampleSecondaryActions,
-    onAction: fn(),
-    onDescriptionChange: fn(),
-    onNameChange: fn(),
   },
 };
 
@@ -128,9 +130,6 @@ export const Approved: Story = {
     tabs: createSampleTabs(),
     primaryActions: samplePrimaryActions,
     secondaryActions: sampleSecondaryActions,
-    onAction: fn(),
-    onDescriptionChange: fn(),
-    onNameChange: fn(),
   },
   parameters: {
     docs: {
@@ -152,9 +151,6 @@ export const WithSidebar: Story = {
     primaryActions: samplePrimaryActions,
     secondaryActions: sampleSecondaryActions,
     sidebarContent: sampleSidebarContent,
-    onAction: fn(),
-    onDescriptionChange: fn(),
-    onNameChange: fn(),
   },
   parameters: {
     docs: {
@@ -186,9 +182,6 @@ export const WithHeaderContent: Story = {
         Checks &gt; Revenue histogram check
       </div>
     ),
-    onAction: fn(),
-    onDescriptionChange: fn(),
-    onNameChange: fn(),
   },
   parameters: {
     docs: {
@@ -209,7 +202,6 @@ export const Disabled: Story = {
     disabled: true,
     tabs: createSampleTabs(),
     primaryActions: [{ type: "run" as const, label: "Run", disabled: true }],
-    onAction: fn(),
   },
   parameters: {
     docs: {
@@ -229,9 +221,6 @@ export const NoTabs: Story = {
     type: "simple",
     description: "A check with no tab content.",
     primaryActions: samplePrimaryActions,
-    onAction: fn(),
-    onDescriptionChange: fn(),
-    onNameChange: fn(),
   },
   parameters: {
     docs: {
@@ -252,9 +241,6 @@ export const NoDescription: Story = {
     tabs: createSampleTabs(),
     primaryActions: samplePrimaryActions,
     secondaryActions: sampleSecondaryActions,
-    onAction: fn(),
-    onDescriptionChange: fn(),
-    onNameChange: fn(),
   },
   parameters: {
     docs: {

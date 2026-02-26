@@ -65,6 +65,10 @@ import { CheckList } from '@datarecce/ui/components';
       control: "text",
     },
   },
+  args: {
+    onCheckSelect: fn(),
+    onApprovalChange: fn(),
+  },
   decorators: [
     (Story) => (
       <div
@@ -89,8 +93,6 @@ export const Default: Story = {
   args: {
     checks: sampleChecks,
     selectedId: "check-001",
-    onCheckSelect: fn(),
-    onApprovalChange: fn(),
   },
 };
 
@@ -99,8 +101,6 @@ export const WithTitle: Story = {
   args: {
     checks: sampleChecks,
     title: "Review Checklist",
-    onCheckSelect: fn(),
-    onApprovalChange: fn(),
   },
 };
 
@@ -109,8 +109,6 @@ export const ManyChecks: Story = {
   args: {
     checks: manyChecks,
     selectedId: "check-005",
-    onCheckSelect: fn(),
-    onApprovalChange: fn(),
   },
   parameters: {
     docs: {
@@ -127,7 +125,6 @@ export const ApprovalDisabled: Story = {
     checks: sampleChecks,
     disableApproval: true,
     disabledApprovalTooltip: "You need write access to approve checks",
-    onCheckSelect: fn(),
   },
   parameters: {
     docs: {

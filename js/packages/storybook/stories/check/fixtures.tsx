@@ -10,22 +10,13 @@ import type {
 // CheckCard Data Factories
 // ============================================
 
-let checkCounter = 0;
-
-/**
- * Reset counters (useful for test isolation)
- */
-export const resetCheckFixtureCounters = () => {
-  checkCounter = 0;
-};
-
 /**
  * Create a single check card data item
  */
 export const createCheckCardData = (
   overrides: Partial<CheckCardData> = {},
 ): CheckCardData => ({
-  id: `check-${String(++checkCounter).padStart(3, "0")}`,
+  id: "check-default",
   name: "Validate order totals",
   type: "query_diff",
   ...overrides,
@@ -124,6 +115,17 @@ export const sampleSecondaryActions: CheckAction[] = [
   { type: "delete", label: "Delete", destructive: true },
 ];
 
+const placeholderStyle = {
+  padding: "20px",
+  background: "var(--mui-palette-action-hover, #f5f5f5)",
+  borderRadius: "8px",
+  minHeight: "200px",
+} as const;
+
+const placeholderTextStyle = {
+  color: "var(--mui-palette-text-secondary, #666)",
+} as const;
+
 /**
  * Sample tabs for CheckDetail
  */
@@ -132,15 +134,8 @@ export const createSampleTabs = (): CheckDetailTab[] => [
     id: "result",
     label: "Result",
     content: (
-      <div
-        style={{
-          padding: "20px",
-          background: "var(--mui-palette-action-hover, #f5f5f5)",
-          borderRadius: "8px",
-          minHeight: "200px",
-        }}
-      >
-        <p style={{ color: "var(--mui-palette-text-secondary, #666)" }}>
+      <div style={placeholderStyle}>
+        <p style={placeholderTextStyle}>
           Result view would render here (e.g., QueryDiffResultView,
           RowCountDiffResultView)
         </p>
@@ -151,15 +146,7 @@ export const createSampleTabs = (): CheckDetailTab[] => [
     id: "query",
     label: "Query",
     content: (
-      <div
-        style={{
-          padding: "20px",
-          fontFamily: "monospace",
-          background: "var(--mui-palette-action-hover, #f5f5f5)",
-          borderRadius: "8px",
-          minHeight: "200px",
-        }}
-      >
+      <div style={{ ...placeholderStyle, fontFamily: "monospace" }}>
         <pre>{`SELECT *\nFROM {{ ref('orders') }}\nWHERE status = 'completed'\nLIMIT 100`}</pre>
       </div>
     ),
@@ -168,17 +155,8 @@ export const createSampleTabs = (): CheckDetailTab[] => [
     id: "lineage",
     label: "Lineage",
     content: (
-      <div
-        style={{
-          padding: "20px",
-          background: "var(--mui-palette-action-hover, #f5f5f5)",
-          borderRadius: "8px",
-          minHeight: "200px",
-        }}
-      >
-        <p style={{ color: "var(--mui-palette-text-secondary, #666)" }}>
-          Lineage diff view would render here
-        </p>
+      <div style={placeholderStyle}>
+        <p style={placeholderTextStyle}>Lineage diff view would render here</p>
       </div>
     ),
   },

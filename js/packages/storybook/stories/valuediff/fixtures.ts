@@ -14,17 +14,15 @@ import type {
 // Fixed date for deterministic test data
 const FIXED_RUN_DATE = "2024-01-15T10:30:00.000Z";
 
-// Counters for deterministic ID generation
-let valueDiffRunCounter = 0;
-let valueDiffDetailRunCounter = 0;
+// ============================================
+// Shared column definitions
+// ============================================
 
-/**
- * Reset counters (useful for test isolation)
- */
-export const resetValueDiffFixtureCounters = () => {
-  valueDiffRunCounter = 0;
-  valueDiffDetailRunCounter = 0;
-};
+const VALUE_DIFF_COLUMNS: DataFrame["columns"] = [
+  { key: "column_name", name: "column_name", type: "text" },
+  { key: "match", name: "match", type: "integer" },
+  { key: "match_percentage", name: "match_percentage", type: "number" },
+];
 
 // ============================================
 // ValueDiff (Summary) Factories
@@ -53,11 +51,7 @@ export const createValueDiffResult = (
     removed: 30,
   },
   data: {
-    columns: [
-      { key: "column_name", name: "column_name", type: "text" },
-      { key: "match", name: "match", type: "integer" },
-      { key: "match_percentage", name: "match_percentage", type: "number" },
-    ],
+    columns: VALUE_DIFF_COLUMNS,
     data: [
       ["customer_name", 910, 98.91],
       ["order_total", 880, 95.65],
@@ -75,7 +69,7 @@ export const createValueDiffResult = (
 export const createValueDiffRun = (
   overrides: Partial<ValueDiffRun> = {},
 ): ValueDiffRun => ({
-  run_id: `run-valuediff-${String(++valueDiffRunCounter).padStart(3, "0")}`,
+  run_id: "run-valuediff-default",
   type: "value_diff",
   run_at: FIXED_RUN_DATE,
   params: createValueDiffParams(),
@@ -89,11 +83,7 @@ export const createValueDiffRun = (
 export const valueDiffAllMatch: ValueDiffResult = {
   summary: { total: 500, added: 0, removed: 0 },
   data: {
-    columns: [
-      { key: "column_name", name: "column_name", type: "text" },
-      { key: "match", name: "match", type: "integer" },
-      { key: "match_percentage", name: "match_percentage", type: "number" },
-    ],
+    columns: VALUE_DIFF_COLUMNS,
     data: [
       ["id", 500, 100.0],
       ["name", 500, 100.0],
@@ -108,11 +98,7 @@ export const valueDiffAllMatch: ValueDiffResult = {
 export const valueDiffManyColumns: ValueDiffResult = {
   summary: { total: 2000, added: 100, removed: 50 },
   data: {
-    columns: [
-      { key: "column_name", name: "column_name", type: "text" },
-      { key: "match", name: "match", type: "integer" },
-      { key: "match_percentage", name: "match_percentage", type: "number" },
-    ],
+    columns: VALUE_DIFF_COLUMNS,
     data: Array.from({ length: 20 }, (_, i) => [
       `column_${i + 1}`,
       1850 - i * 25, // Deterministic decreasing match counts
@@ -173,7 +159,7 @@ export const createValueDiffDetailParams = (
 export const createValueDiffDetailRun = (
   overrides: Partial<ValueDiffDetailRun> = {},
 ): ValueDiffDetailRun => ({
-  run_id: `run-valuediff-detail-${String(++valueDiffDetailRunCounter).padStart(3, "0")}`,
+  run_id: "run-valuediff-detail-default",
   type: "value_diff_detail",
   run_at: FIXED_RUN_DATE,
   params: createValueDiffDetailParams(),
