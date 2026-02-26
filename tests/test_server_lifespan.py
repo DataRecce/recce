@@ -60,10 +60,7 @@ class TestLifespan:
                 await setup_app_state.ready_event.wait()
                 mock_setup.assert_called_once_with(setup_app_state)
 
-            if command == "read-only":
-                mock_teardown.assert_called_once_with(setup_app_state)
-            else:
-                mock_teardown.assert_called_once_with(setup_app_state, mock_ctx)
+            mock_teardown.assert_called_once_with(setup_app_state, mock_ctx)
 
     @pytest.mark.parametrize(
         "lifetime,idle_timeout,expect_lifetime,expect_idle",

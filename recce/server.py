@@ -201,11 +201,17 @@ def teardown_server(app_state: AppState, ctx: RecceContext):
         ctx.stop_monitor_base_env()
 
 
-def setup_ready_only(app_state: AppState):
-    pass
+def setup_ready_only(app_state: AppState) -> RecceContext:
+    from .core import set_default_context
+
+    kwargs = app_state.kwargs
+    state_loader = app_state.state_loader
+    ctx = RecceContext.load(**kwargs, state_loader=state_loader)
+    set_default_context(ctx)
+    return ctx
 
 
-def teardown_ready_only(app_state: AppState):
+def teardown_ready_only(app_state: AppState, ctx: RecceContext):
     pass
 
 
@@ -230,11 +236,21 @@ def _do_lifespan_setup(app_state: AppState):
     (create_task, get_running_loop, etc.) here — schedule them in the async
     caller after this returns.
     """
+    # Update onboarding state in background (non-fatal)
+    try:
+        api_token = app_state.auth_options.get("api_token") if app_state.auth_options else None
+        single_env = app_state.flag.get("single_env_onboarding", False) if app_state.flag else False
+        if api_token:
+            from recce.util.onboarding_state import update_onboarding_state
+
+            update_onboarding_state(api_token, single_env)
+    except Exception:
+        logger.debug("Failed to update onboarding state (non-fatal)", exc_info=True)
+
     if app_state.command == "server":
         ctx = setup_server(app_state)
     elif app_state.command == "read-only":
-        setup_ready_only(app_state)
-        ctx = None
+        ctx = setup_ready_only(app_state)
     elif app_state.command == "preview":
         ctx = setup_preview(app_state)
     else:
@@ -301,8 +317,8 @@ async def lifespan(fastapi: FastAPI):
         ctx = app_state.startup_ctx
         if app_state.command == "server" and ctx:
             teardown_server(app_state, ctx)
-        elif app_state.command == "read-only":
-            teardown_ready_only(app_state)
+        elif app_state.command == "read-only" and ctx:
+            teardown_ready_only(app_state, ctx)
         elif app_state.command == "preview" and ctx:
             teardown_preview(app_state, ctx)
 
@@ -471,7 +487,15 @@ async def disable_cache(request: Request, call_next):
 
 @app.get("/api/health")
 async def health_check(request: Request):
-    return {"status": "ok"}
+    ready_event = getattr(request.app.state, "ready_event", None)
+    is_ready = ready_event.is_set() if isinstance(ready_event, asyncio.Event) else True
+    startup_error = getattr(request.app.state, "startup_error", None)
+
+    return {
+        "status": "ok",
+        "ready": is_ready and not startup_error,
+        "error": str(startup_error) if startup_error else None,
+    }
 
 
 @app.post("/api/keep-alive")
