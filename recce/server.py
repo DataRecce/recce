@@ -446,7 +446,7 @@ async def readiness_gate(request: Request, call_next):
         return await call_next(request)
 
     ready_event = getattr(request.app.state, "ready_event", None)
-    if ready_event is not None:
+    if isinstance(ready_event, asyncio.Event):
         await ready_event.wait()
 
         if getattr(request.app.state, "startup_error", None):
