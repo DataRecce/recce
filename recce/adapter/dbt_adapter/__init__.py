@@ -513,15 +513,15 @@ class DbtAdapter(BaseAdapter):
             curr_catalog_future = executor.submit(load_catalog, path=curr_catalog_path, timing_name="curr_catalog")
             base_catalog_future = executor.submit(load_catalog, path=base_catalog_path, timing_name="base_catalog")
 
-        # Collect results (raises if any future failed)
-        curr_manifest = curr_manifest_future.result()
-        if curr_manifest is None:
-            raise FileNotFoundError(ENOENT, os.strerror(ENOENT), curr_manifest_path)
-        base_manifest = base_manifest_future.result()
-        if base_manifest is None:
-            raise FileNotFoundError(ENOENT, os.strerror(ENOENT), base_manifest_path)
-        curr_catalog = curr_catalog_future.result()
-        base_catalog = base_catalog_future.result()
+            # Collect results (raises if any future failed)
+            curr_manifest = curr_manifest_future.result()
+            if curr_manifest is None:
+                raise FileNotFoundError(ENOENT, os.strerror(ENOENT), curr_manifest_path)
+            base_manifest = base_manifest_future.result()
+            if base_manifest is None:
+                raise FileNotFoundError(ENOENT, os.strerror(ENOENT), base_manifest_path)
+            curr_catalog = curr_catalog_future.result()
+            base_catalog = base_catalog_future.result()
 
         # set the value if all the artifacts are loaded successfully
         self.curr_manifest = curr_manifest
@@ -540,9 +540,9 @@ class DbtAdapter(BaseAdapter):
         # set the file paths to watch
         self.artifacts_files = [
             curr_manifest_path,
-            os.path.join(project_root, target_path, "catalog.json"),
+            curr_catalog_path,
             base_manifest_path,
-            os.path.join(project_root, target_base_path, "catalog.json"),
+            base_catalog_path,
         ]
 
     def is_python_model(self, node_id: str, base: Optional[bool] = False):

@@ -254,6 +254,21 @@ class TestReadinessGate:
         del app.state.ready_event
         del app.state.startup_error
 
+    def test_data_endpoint_succeeds_after_ready(self):
+        """Data endpoint should succeed once ready_event is set with no error."""
+        ready_event = asyncio.Event()
+        ready_event.set()
+        app.state.ready_event = ready_event
+        app.state.startup_error = None
+
+        client = TestClient(app)
+        response = client.get("/api/version")
+        assert response.status_code == 200
+
+        # Cleanup
+        del app.state.ready_event
+        del app.state.startup_error
+
     def test_middleware_passthrough_without_ready_event(self):
         """Middleware should pass through when ready_event is not on app state (backward compat)."""
         # Ensure ready_event is NOT set on state (simulates tests without lifespan)
