@@ -76,14 +76,18 @@ export function getThemedPluginOptions(isDark: boolean) {
 // Bar color constants - Light mode
 export const CURRENT_BAR_COLOR = "#63B3ED";
 export const BASE_BAR_COLOR = "#F6AD55";
+export const OVERLAP_BAR_COLOR = "#9F7AEA";
 export const CURRENT_BAR_COLOR_WITH_ALPHA = `${CURRENT_BAR_COLOR}A5`;
 export const BASE_BAR_COLOR_WITH_ALPHA = `${BASE_BAR_COLOR}A5`;
+export const OVERLAP_BAR_COLOR_WITH_ALPHA = `${OVERLAP_BAR_COLOR}A5`;
 
 // Bar color constants - Dark mode (slightly brighter for better visibility)
 export const CURRENT_BAR_COLOR_DARK = "#90CDF4";
 export const BASE_BAR_COLOR_DARK = "#FBD38D";
+export const OVERLAP_BAR_COLOR_DARK = "#B794F4";
 export const CURRENT_BAR_COLOR_DARK_WITH_ALPHA = `${CURRENT_BAR_COLOR_DARK}A5`;
 export const BASE_BAR_COLOR_DARK_WITH_ALPHA = `${BASE_BAR_COLOR_DARK}A5`;
+export const OVERLAP_BAR_COLOR_DARK_WITH_ALPHA = `${OVERLAP_BAR_COLOR_DARK}A5`;
 
 // Info color
 export const INFO_VAL_COLOR = "#63B3ED";
@@ -98,12 +102,16 @@ export function getBarColors(isDark: boolean) {
   return {
     current: isDark ? CURRENT_BAR_COLOR_DARK : CURRENT_BAR_COLOR,
     base: isDark ? BASE_BAR_COLOR_DARK : BASE_BAR_COLOR,
+    overlap: isDark ? OVERLAP_BAR_COLOR_DARK : OVERLAP_BAR_COLOR,
     currentWithAlpha: isDark
       ? CURRENT_BAR_COLOR_DARK_WITH_ALPHA
       : CURRENT_BAR_COLOR_WITH_ALPHA,
     baseWithAlpha: isDark
       ? BASE_BAR_COLOR_DARK_WITH_ALPHA
       : BASE_BAR_COLOR_WITH_ALPHA,
+    overlapWithAlpha: isDark
+      ? OVERLAP_BAR_COLOR_DARK_WITH_ALPHA
+      : OVERLAP_BAR_COLOR_WITH_ALPHA,
     info: isDark ? INFO_VAL_COLOR_DARK : INFO_VAL_COLOR,
   };
 }

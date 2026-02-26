@@ -8,6 +8,7 @@ import {
   type ChartOptions,
   Legend,
   LinearScale,
+  type Plugin,
   TimeSeriesScale,
   Title,
   Tooltip,
@@ -43,21 +44,27 @@ export interface ChartThemeColors {
 export interface ChartBarColors {
   current: string;
   base: string;
+  overlap: string;
   currentWithAlpha: string;
   baseWithAlpha: string;
+  overlapWithAlpha: string;
 }
 
 // Light mode colors
 const CURRENT_BAR_COLOR = "#63B3ED";
 const BASE_BAR_COLOR = "#F6AD55";
+const OVERLAP_BAR_COLOR = "#9F7AEA";
 const CURRENT_BAR_COLOR_WITH_ALPHA = `${CURRENT_BAR_COLOR}A5`;
 const BASE_BAR_COLOR_WITH_ALPHA = `${BASE_BAR_COLOR}A5`;
+const OVERLAP_BAR_COLOR_WITH_ALPHA = `${OVERLAP_BAR_COLOR}A5`;
 
 // Dark mode colors
 const CURRENT_BAR_COLOR_DARK = "#90CDF4";
 const BASE_BAR_COLOR_DARK = "#FBD38D";
+const OVERLAP_BAR_COLOR_DARK = "#B794F4";
 const CURRENT_BAR_COLOR_DARK_WITH_ALPHA = `${CURRENT_BAR_COLOR_DARK}A5`;
 const BASE_BAR_COLOR_DARK_WITH_ALPHA = `${BASE_BAR_COLOR_DARK}A5`;
+const OVERLAP_BAR_COLOR_DARK_WITH_ALPHA = `${OVERLAP_BAR_COLOR_DARK}A5`;
 
 /**
  * Get theme-aware colors for charts
@@ -79,12 +86,16 @@ export function getChartBarColors(isDark: boolean): ChartBarColors {
   return {
     current: isDark ? CURRENT_BAR_COLOR_DARK : CURRENT_BAR_COLOR,
     base: isDark ? BASE_BAR_COLOR_DARK : BASE_BAR_COLOR,
+    overlap: isDark ? OVERLAP_BAR_COLOR_DARK : OVERLAP_BAR_COLOR,
     currentWithAlpha: isDark
       ? CURRENT_BAR_COLOR_DARK_WITH_ALPHA
       : CURRENT_BAR_COLOR_WITH_ALPHA,
     baseWithAlpha: isDark
       ? BASE_BAR_COLOR_DARK_WITH_ALPHA
       : BASE_BAR_COLOR_WITH_ALPHA,
+    overlapWithAlpha: isDark
+      ? OVERLAP_BAR_COLOR_DARK_WITH_ALPHA
+      : OVERLAP_BAR_COLOR_WITH_ALPHA,
   };
 }
 
@@ -308,9 +319,23 @@ function HistogramChartComponent({
       animation: animate ? undefined : false,
       plugins: {
         legend: {
-          reverse: true,
           labels: {
             color: themeColors.textColor,
+            generateLabels(chart) {
+              const defaultLabels =
+                ChartJS.defaults.plugins.legend.labels.generateLabels(chart);
+              // Default order is [Current, Base] from datasets — reverse to [Base, Current], then add Overlap
+              defaultLabels.reverse();
+              defaultLabels.push({
+                text: "Overlap",
+                fillStyle: barColors.overlapWithAlpha,
+                strokeStyle: barColors.overlapWithAlpha,
+                lineWidth: 0,
+                hidden: false,
+                index: defaultLabels.length,
+              });
+              return defaultLabels;
+            },
           },
         },
         title: {
@@ -402,11 +427,64 @@ function HistogramChartComponent({
     hideAxis,
     animate,
     themeColors,
+    barColors.overlapWithAlpha,
   ]);
+
+  // Plugin that paints the overlap region with a distinct color
+  const overlapPlugin = useMemo<Plugin<"bar">>(
+    () => ({
+      id: "histogramOverlap",
+      afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        const currentMeta = chart.getDatasetMeta(0);
+        const baseMeta = chart.getDatasetMeta(1);
+        if (!currentMeta?.data?.length || !baseMeta?.data?.length) return;
+
+        const len = Math.min(currentMeta.data.length, baseMeta.data.length);
+        ctx.save();
+        ctx.fillStyle = barColors.overlapWithAlpha;
+
+        for (let i = 0; i < len; i++) {
+          // BarElement exposes x, y, width, base at runtime via getProps()
+          const cur = currentMeta.data[i].getProps(
+            ["x", "y", "width", "base"],
+            true,
+          ) as { x: number; y: number; width: number; base: number };
+          const bas = baseMeta.data[i].getProps(
+            ["x", "y", "width", "base"],
+            true,
+          ) as { x: number; y: number; width: number; base: number };
+
+          // Both bars start from base (bottom) and extend up to y (top).
+          // Overlap region spans from bottom to the shorter bar's top.
+          const overlapTop = Math.max(cur.y, bas.y);
+          const overlapBottom = Math.min(cur.base, bas.base);
+          const overlapHeight = overlapBottom - overlapTop;
+
+          if (overlapHeight > 0) {
+            ctx.fillRect(
+              cur.x - cur.width / 2,
+              overlapTop,
+              cur.width,
+              overlapHeight,
+            );
+          }
+        }
+
+        ctx.restore();
+      },
+    }),
+    [barColors.overlapWithAlpha],
+  );
 
   return (
     <div className={className} style={{ height }}>
-      <Chart type="bar" options={chartOptions} data={chartData} />
+      <Chart
+        type="bar"
+        options={chartOptions}
+        data={chartData}
+        plugins={[overlapPlugin]}
+      />
     </div>
   );
 }

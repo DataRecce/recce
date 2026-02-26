@@ -30,6 +30,10 @@ export {
   getThemedScaleOptions,
   INFO_VAL_COLOR,
   INFO_VAL_COLOR_DARK,
+  OVERLAP_BAR_COLOR,
+  OVERLAP_BAR_COLOR_DARK,
+  OVERLAP_BAR_COLOR_DARK_WITH_ALPHA,
+  OVERLAP_BAR_COLOR_WITH_ALPHA,
 } from "./chartTheme";
 export {
   type ColorShade,
