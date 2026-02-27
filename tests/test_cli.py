@@ -26,12 +26,10 @@ class TestCommandServer(TestCase):
         self.runner = CliRunner()
         pass
 
-    @patch.object(RecceContext, "verify_required_artifacts")
     @patch("recce.cli.uvicorn.run")
-    def test_cmd_server(self, mock_run, mock_verify_required_artifacts):
+    def test_cmd_server(self, mock_run):
         from recce.server import app
 
-        mock_verify_required_artifacts.return_value = True, None
         self.runner.invoke(cli_command_server, ["--host", "unittest", "--port", 5566, "--single-env"])
         mock_run.assert_called_once_with(app, host="unittest", port=5566, lifespan="on")
 
@@ -41,24 +39,25 @@ class TestCommandServer(TestCase):
         result = self.runner.invoke(cli_command_server, ["--cloud"])
         assert result.exit_code == 1
 
+    @patch.dict("os.environ", {}, clear=False)
     @patch("recce.cli.uvicorn.run")
     def test_cmd_server_with_cloud_without_token(self, mock_run):
         # Should fail if no token is provided
+        # Clear GITHUB_TOKEN env var to ensure no token is available
+        import os
+
+        os.environ.pop("GITHUB_TOKEN", None)
         result = self.runner.invoke(cli_command_server, ["--cloud", "--password", "unittest"])
         assert result.exit_code == 1
 
-    @patch.object(RecceContext, "verify_required_artifacts")
     @patch("recce.util.recce_cloud.get_recce_cloud_onboarding_state")
     @patch("recce.cli.uvicorn.run")
     @patch("recce.cli.CloudStateLoader")
-    def test_cmd_server_with_cloud(
-        self, mock_state_loader_class, mock_run, mock_get_recce_cloud_onboarding_state, mock_verify_required_artifacts
-    ):
+    def test_cmd_server_with_cloud(self, mock_state_loader_class, mock_run, mock_get_recce_cloud_onboarding_state):
         mock_state_loader = MagicMock(spec=CloudStateLoader)
         mock_state_loader.verify.return_value = True
         mock_state_loader.review_mode = True
         mock_get_recce_cloud_onboarding_state.return_value = "completed"
-        mock_verify_required_artifacts.return_value = True, None
 
         mock_state_loader_class.return_value = mock_state_loader
         self.runner.invoke(
@@ -67,7 +66,6 @@ class TestCommandServer(TestCase):
         mock_state_loader_class.assert_called_once()
         mock_run.assert_called_once()
 
-    @patch.object(RecceContext, "verify_required_artifacts")
     @patch("recce.util.recce_cloud.get_recce_cloud_onboarding_state")
     @patch("recce.cli.uvicorn.run")
     @patch("recce.cli.CloudStateLoader")
@@ -78,14 +76,12 @@ class TestCommandServer(TestCase):
         mock_state_loader_class,
         mock_run,
         mock_get_recce_cloud_onboarding_state,
-        mock_verify_required_artifacts,
     ):
         """Test that --session-id automatically enables cloud and review mode"""
         mock_state_loader = MagicMock(spec=CloudStateLoader)
         mock_state_loader.verify.return_value = True
         mock_state_loader.review_mode = True
         mock_get_recce_cloud_onboarding_state.return_value = "completed"
-        mock_verify_required_artifacts.return_value = True, None
 
         mock_state_loader_class.return_value = mock_state_loader
 
@@ -104,7 +100,6 @@ class TestCommandServer(TestCase):
 
         mock_run.assert_called_once()
 
-    @patch.object(RecceContext, "verify_required_artifacts")
     @patch("recce.util.recce_cloud.get_recce_cloud_onboarding_state")
     @patch("recce.cli.uvicorn.run")
     @patch("recce.cli.CloudStateLoader")
@@ -115,14 +110,12 @@ class TestCommandServer(TestCase):
         mock_state_loader_class,
         mock_run,
         mock_get_recce_cloud_onboarding_state,
-        mock_verify_required_artifacts,
     ):
         """Test that --share-url automatically enables cloud and review mode"""
         mock_state_loader = MagicMock(spec=CloudStateLoader)
         mock_state_loader.verify.return_value = True
         mock_state_loader.review_mode = True
         mock_get_recce_cloud_onboarding_state.return_value = "completed"
-        mock_verify_required_artifacts.return_value = True, None
 
         mock_state_loader_class.return_value = mock_state_loader
 
@@ -143,12 +136,10 @@ class TestCommandServer(TestCase):
 
         mock_run.assert_called_once()
 
-    @patch.object(RecceContext, "verify_required_artifacts")
     @patch("os.path.isdir", side_effect=lambda path: True if path == "existed_folder" else False)
     @patch("recce.cli.uvicorn.run")
     @patch("recce.server.AppState")
-    def test_cmd_server_with_single_env(self, mock_app_state, mock_run, mock_isdir, mock_verify_required_artifacts):
-        mock_verify_required_artifacts.return_value = True, None
+    def test_cmd_server_with_single_env(self, mock_app_state, mock_run, mock_isdir):
         self.runner.invoke(
             cli_command_server,
             ["--single-env", "--target-path", "existed_folder", "--target-base-path", "non_existed_folder"],
@@ -163,21 +154,14 @@ class TestCommandServer(TestCase):
         assert "show_relaunch_hint" in app_state_flag
         assert app_state_flag["show_relaunch_hint"] is True
 
-        # The target_base_path should be set to the same as target_path
-        verify_required_artifacts_args = mock_verify_required_artifacts.call_args
-        assert (
-            verify_required_artifacts_args.kwargs["target_path"]
-            == verify_required_artifacts_args.kwargs["target_base_path"]
-        )
+        # The target_base_path should be set to target_path via kwargs
+        app_state_kwargs = app_state_call_args.kwargs["kwargs"]
+        assert app_state_kwargs["target_base_path"] == app_state_kwargs.get("target_path")
 
-    @patch.object(RecceContext, "verify_required_artifacts")
     @patch("os.path.isdir", side_effect=lambda path: True if path == "existed_folder" else False)
     @patch("recce.cli.uvicorn.run")
     @patch("recce.server.AppState")
-    def test_cmd_server_with_single_env_but_review_mode_enabled(
-        self, mock_app_state, mock_run, mock_isdir, mock_verify_required_artifacts
-    ):
-        mock_verify_required_artifacts.return_value = True, None
+    def test_cmd_server_with_single_env_but_review_mode_enabled(self, mock_app_state, mock_run, mock_isdir):
         self.runner.invoke(
             cli_command_server,
             [
@@ -195,6 +179,40 @@ class TestCommandServer(TestCase):
         app_state_flag = app_state_call_args.kwargs["flag"]
         assert "single_env_onboarding" in app_state_flag
         assert app_state_flag["single_env_onboarding"] is False
+
+    @patch("recce.cli.uvicorn.run")
+    @patch("recce.cli.CloudStateLoader")
+    @patch("recce.cli.prepare_api_token", return_value="test_api_token")
+    def test_cmd_server_verify_failure_exits(self, mock_prepare_api_token, mock_state_loader_class, mock_run):
+        """Test that state_loader.verify() failure causes exit(1)."""
+        mock_state_loader = MagicMock(spec=CloudStateLoader)
+        mock_state_loader.verify.return_value = False
+        mock_state_loader.error_and_hint = ("Invalid configuration", "Please check your settings")
+        mock_state_loader_class.return_value = mock_state_loader
+
+        result = self.runner.invoke(cli_command_server, ["--session-id", "test-session", "--single-env"])
+        assert result.exit_code == 1
+        mock_run.assert_not_called()
+
+    @patch("recce.cli.CloudStateLoader")
+    @patch("recce.cli.prepare_api_token", return_value="test_api_token")
+    def test_create_state_loader_does_not_call_load(self, mock_prepare_api_token, mock_state_loader_class):
+        """Verify create_state_loader no longer calls state_loader.load()."""
+        from recce.cli import create_state_loader
+
+        mock_state_loader = MagicMock(spec=CloudStateLoader)
+        mock_state_loader_class.return_value = mock_state_loader
+
+        result = create_state_loader(
+            review_mode=True,
+            cloud_mode=True,
+            state_file=None,
+            cloud_options={"session_id": "test"},
+        )
+
+        # create_state_loader should NOT call load() anymore
+        mock_state_loader.load.assert_not_called()
+        assert result is mock_state_loader
 
 
 class TestCommandRun(TestCase):

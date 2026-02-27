@@ -33,13 +33,12 @@ from recce.state import (
 from recce.summary import generate_markdown_summary
 from recce.util.api_token import prepare_api_token, show_invalid_api_token_message
 from recce.util.logger import CustomFormatter
-from recce.util.onboarding_state import update_onboarding_state
 from recce.util.recce_cloud import (
     RecceCloudException,
 )
 from recce.util.startup_perf import track_timing
 
-from .core import RecceContext, set_default_context
+from .core import RecceContext
 from .event.track import TrackCommand
 
 event.init()
@@ -56,14 +55,13 @@ def create_state_loader(review_mode, cloud_mode, state_file, cloud_options):
             if cloud_mode
             else FileStateLoader(review_mode=review_mode, state_file=state_file)
         )
-        state_loader.load()
         return state_loader
     except RecceCloudException as e:
-        console.print("[[red]Error[/red]] Failed to load recce state file")
+        console.print("[[red]Error[/red]] Failed to create recce state loader")
         console.print(f"Reason: {e.reason}")
         exit(1)
     except Exception as e:
-        console.print("[[red]Error[/red]] Failed to load recce state file")
+        console.print("[[red]Error[/red]] Failed to create recce state loader")
         console.print(f"Reason: {e}")
         exit(1)
 
@@ -585,9 +583,6 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
     elif server_mode == RecceServerMode.read_only:
         flag["read_only"] = True
 
-    # Onboarding State logic update here
-    update_onboarding_state(api_token, flag.get("single_env_onboarding"))
-
     # Create state loader using shared function
     from recce.util.startup_perf import get_startup_tracker
 
@@ -600,18 +595,6 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         error, hint = state_loader.error_and_hint
         console.print(f"[[red]Error[/red]] {error}")
         console.print(f"{hint}")
-        exit(1)
-
-    try:
-        result, message = RecceContext.verify_required_artifacts(**kwargs)
-    except Exception as e:
-        result = False
-        error_type = type(e).__name__
-        error_message = str(e)
-        message = f"{error_type}: {error_message}"
-    if not result:
-        console.rule("Notice", style="orange3")
-        console.print(f"[[red]Error[/red]] {message}")
         exit(1)
 
     if state_loader.review_mode:
@@ -665,9 +648,6 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         web_url=os.environ.get("RECCE_CLOUD_WEB_URL"),
     )
     app.state = state
-
-    if server_mode == RecceServerMode.read_only:
-        set_default_context(RecceContext.load(**kwargs, state_loader=state_loader))
 
     uvicorn.run(app, host=host, port=port, lifespan="on")
 
@@ -827,6 +807,7 @@ def summary(state_file, **kwargs):
     state_loader = create_state_loader(
         review_mode=True, cloud_mode=cloud_mode, state_file=state_file, cloud_options=cloud_options
     )
+    state_loader.load()
 
     if not state_loader.verify():
         error, hint = state_loader.error_and_hint
@@ -916,6 +897,7 @@ def purge(**kwargs):
         state_loader = create_state_loader(
             review_mode=False, cloud_mode=True, state_file=None, cloud_options=cloud_options
         )
+        state_loader.load()
     except Exception:
         console.print("[[yellow]Skip[/yellow]] Cannot access existing state file from cloud. Purge it directly.")
 
@@ -997,6 +979,7 @@ def upload(state_file, **kwargs):
     state_loader = create_state_loader(
         review_mode=False, cloud_mode=False, state_file=state_file, cloud_options=cloud_options
     )
+    state_loader.load()
 
     if not state_loader.verify():
         error, hint = state_loader.error_and_hint
@@ -1610,6 +1593,7 @@ def share(state_file, **kwargs):
     state_loader = create_state_loader(
         review_mode=True, cloud_mode=False, state_file=state_file, cloud_options=cloud_options
     )
+    state_loader.load()
 
     if not state_loader.verify():
         error, hint = state_loader.error_and_hint
