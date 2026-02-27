@@ -180,6 +180,40 @@ class TestCommandServer(TestCase):
         assert "single_env_onboarding" in app_state_flag
         assert app_state_flag["single_env_onboarding"] is False
 
+    @patch("recce.cli.uvicorn.run")
+    @patch("recce.cli.CloudStateLoader")
+    @patch("recce.cli.prepare_api_token", return_value="test_api_token")
+    def test_cmd_server_verify_failure_exits(self, mock_prepare_api_token, mock_state_loader_class, mock_run):
+        """Test that state_loader.verify() failure causes exit(1)."""
+        mock_state_loader = MagicMock(spec=CloudStateLoader)
+        mock_state_loader.verify.return_value = False
+        mock_state_loader.error_and_hint = ("Invalid configuration", "Please check your settings")
+        mock_state_loader_class.return_value = mock_state_loader
+
+        result = self.runner.invoke(cli_command_server, ["--session-id", "test-session", "--single-env"])
+        assert result.exit_code == 1
+        mock_run.assert_not_called()
+
+    @patch("recce.cli.CloudStateLoader")
+    @patch("recce.cli.prepare_api_token", return_value="test_api_token")
+    def test_create_state_loader_does_not_call_load(self, mock_prepare_api_token, mock_state_loader_class):
+        """Verify create_state_loader no longer calls state_loader.load()."""
+        from recce.cli import create_state_loader
+
+        mock_state_loader = MagicMock(spec=CloudStateLoader)
+        mock_state_loader_class.return_value = mock_state_loader
+
+        result = create_state_loader(
+            review_mode=True,
+            cloud_mode=True,
+            state_file=None,
+            cloud_options={"session_id": "test"},
+        )
+
+        # create_state_loader should NOT call load() anymore
+        mock_state_loader.load.assert_not_called()
+        assert result is mock_state_loader
+
 
 class TestCommandRun(TestCase):
     def setUp(self):

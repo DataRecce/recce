@@ -296,6 +296,20 @@ class TestReadinessGate:
         del app.state.ready_event
         del app.state.startup_error
 
+    def test_health_defaults_ready_true_without_ready_event(self):
+        """Health endpoint should return ready=True when no ready_event is set (backward compat)."""
+        # Ensure ready_event is NOT set on state (simulates tests without lifespan)
+        if hasattr(app.state, "ready_event"):
+            del app.state.ready_event
+
+        client = TestClient(app)
+        response = client.get("/api/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert data["ready"] is True
+        assert data["error"] is None
+
     def test_middleware_passthrough_without_ready_event(self):
         """Middleware should pass through when ready_event is not on app state (backward compat)."""
         # Ensure ready_event is NOT set on state (simulates tests without lifespan)

@@ -4,7 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from recce.server import AppState, app, lifespan
+from recce.core import RecceContext
+from recce.server import AppState, _do_lifespan_setup, app, lifespan
 
 
 @pytest.fixture
@@ -135,3 +136,105 @@ class TestLifespan:
 
         async with lifespan(app):
             pass  # Should not raise
+
+
+class TestDoLifespanSetup:
+    """Tests for _do_lifespan_setup onboarding state update logic."""
+
+    @patch("recce.server.setup_server")
+    @patch("recce.util.onboarding_state.update_onboarding_state")
+    def test_onboarding_state_called_with_api_token(self, mock_update, mock_setup):
+        """When api_token is present, update_onboarding_state should be called."""
+        app_state = AppState()
+        app_state.command = "server"
+        app_state.auth_options = {"api_token": "test_token"}
+        app_state.flag = {"single_env_onboarding": True}
+        app_state.kwargs = {}
+
+        _do_lifespan_setup(app_state)
+
+        mock_update.assert_called_once_with("test_token", True)
+        mock_setup.assert_called_once_with(app_state)
+
+    @patch("recce.server.setup_server")
+    @patch("recce.util.onboarding_state.update_onboarding_state")
+    def test_onboarding_state_not_called_without_api_token(self, mock_update, mock_setup):
+        """When api_token is None, update_onboarding_state should not be called."""
+        app_state = AppState()
+        app_state.command = "server"
+        app_state.auth_options = {"api_token": None}
+        app_state.flag = {}
+        app_state.kwargs = {}
+
+        _do_lifespan_setup(app_state)
+
+        mock_update.assert_not_called()
+        mock_setup.assert_called_once()
+
+    @patch("recce.server.setup_server")
+    @patch("recce.util.onboarding_state.update_onboarding_state")
+    def test_onboarding_state_not_called_without_auth_options(self, mock_update, mock_setup):
+        """When auth_options is None, update_onboarding_state should not be called."""
+        app_state = AppState()
+        app_state.command = "server"
+        app_state.auth_options = None
+        app_state.flag = None
+        app_state.kwargs = {}
+
+        _do_lifespan_setup(app_state)
+
+        mock_update.assert_not_called()
+        mock_setup.assert_called_once()
+
+    @patch("recce.server.setup_server")
+    @patch("recce.util.onboarding_state.update_onboarding_state", side_effect=Exception("API error"))
+    def test_onboarding_state_failure_is_nonfatal(self, mock_update, mock_setup):
+        """update_onboarding_state failure should be swallowed and not block setup."""
+        app_state = AppState()
+        app_state.command = "server"
+        app_state.auth_options = {"api_token": "test_token"}
+        app_state.flag = {}
+        app_state.kwargs = {}
+
+        # Should not raise
+        _do_lifespan_setup(app_state)
+
+        mock_update.assert_called_once()
+        # setup_server should still be called despite onboarding failure
+        mock_setup.assert_called_once_with(app_state)
+
+    @patch("recce.core.set_default_context")
+    @patch.object(RecceContext, "load")
+    def test_setup_ready_only_calls_load_and_set_context(self, mock_load, mock_set_ctx):
+        """setup_ready_only should call RecceContext.load() and set_default_context()."""
+        from recce.server import setup_ready_only
+
+        mock_ctx = MagicMock()
+        mock_load.return_value = mock_ctx
+
+        app_state = AppState()
+        app_state.kwargs = {"target_path": "/some/path"}
+        app_state.state_loader = MagicMock()
+
+        result = setup_ready_only(app_state)
+
+        mock_load.assert_called_once_with(target_path="/some/path", state_loader=app_state.state_loader)
+        mock_set_ctx.assert_called_once_with(mock_ctx)
+        assert result is mock_ctx
+
+    @patch("recce.server.setup_ready_only")
+    def test_do_lifespan_setup_read_only_mode(self, mock_setup_ro):
+        """_do_lifespan_setup should call setup_ready_only for read-only command."""
+        mock_ctx = MagicMock()
+        mock_setup_ro.return_value = mock_ctx
+
+        app_state = AppState()
+        app_state.command = "read-only"
+        app_state.auth_options = None
+        app_state.flag = None
+        app_state.kwargs = {}
+
+        result = _do_lifespan_setup(app_state)
+
+        mock_setup_ro.assert_called_once_with(app_state)
+        assert result is mock_ctx
