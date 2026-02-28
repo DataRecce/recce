@@ -13,112 +13,90 @@ from recce_cloud.api.client import RecceCloudClient
 from recce_cloud.api.exceptions import RecceCloudException
 from recce_cloud.api.factory import create_platform_client
 from recce_cloud.config.resolver import ConfigurationError, resolve_config
+from recce_cloud.constants import ExitCode
+from recce_cloud.error_handling import cloud_error_handler
 
 logger = logging.getLogger(__name__)
 
 
 def upload_to_existing_session(
-    console, token: str, session_id: str, manifest_path: str, catalog_path: str, adapter_type: str, target_path: str
+    console,
+    token: str,
+    session_id: str,
+    manifest_path: str,
+    catalog_path: str,
+    adapter_type: str,
+    target_path: str,
 ):
     """
     Upload artifacts to an existing Recce Cloud session using session ID.
 
     This is the generic workflow that requires a pre-existing session ID.
     """
-    try:
+    # Initialize client
+    with cloud_error_handler(
+        console, "initialize API client", exit_code=ExitCode.INIT_ERROR
+    ):
         client = RecceCloudClient(token)
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to initialize API client")
-        console.print(f"Reason: {e}")
-        sys.exit(2)
 
-    # Get session info (org_id, project_id)
+    # Get session info
     console.print(f'Uploading artifacts for session ID "{session_id}"')
-    try:
+    with cloud_error_handler(
+        console, "get session info", exit_code=ExitCode.INIT_ERROR
+    ):
         session = client.get_session(session_id)
-        if session.get("status") == "error":
-            console.print(f"[red]Error:[/red] {session.get('message')}")
-            sys.exit(2)
 
-        org_id = session.get("org_id")
-        if org_id is None:
-            console.print(f"[red]Error:[/red] Session ID {session_id} does not belong to any organization.")
-            sys.exit(2)
-
-        project_id = session.get("project_id")
-        if project_id is None:
-            console.print(f"[red]Error:[/red] Session ID {session_id} does not belong to any project.")
-            sys.exit(2)
-
-    except RecceCloudException as e:
-        console.print("[red]Error:[/red] Failed to get session info")
-        console.print(f"Reason: {e.reason}")
+    # Inline validation stays outside
+    if session.get("status") == "error":
+        console.print(f"[red]Error:[/red] {session.get('message')}")
         sys.exit(2)
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to get session info")
-        console.print(f"Reason: {e}")
+    org_id = session.get("org_id")
+    if org_id is None:
+        console.print(
+            f"[red]Error:[/red] Session ID {session_id} does not belong to any organization."
+        )
+        sys.exit(2)
+    project_id = session.get("project_id")
+    if project_id is None:
+        console.print(
+            f"[red]Error:[/red] Session ID {session_id} does not belong to any project."
+        )
         sys.exit(2)
 
     # Get presigned URLs
-    try:
-        presigned_urls = client.get_upload_urls_by_session_id(org_id, project_id, session_id)
-    except RecceCloudException as e:
-        console.print("[red]Error:[/red] Failed to get upload URLs")
-        console.print(f"Reason: {e.reason}")
-        sys.exit(4)
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to get upload URLs")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
+    with cloud_error_handler(console, "get upload URLs"):
+        presigned_urls = client.get_upload_urls_by_session_id(
+            org_id, project_id, session_id
+        )
 
-    # Upload manifest.json
+    # Upload manifest
     console.print(f'Uploading manifest from path "{manifest_path}"')
-    try:
+    with cloud_error_handler(console, "upload manifest.json"):
         with open(manifest_path, "rb") as f:
             response = requests.put(presigned_urls["manifest_url"], data=f.read())
         if response.status_code not in [200, 204]:
-            raise Exception(f"Upload failed with status {response.status_code}: {response.text}")
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to upload manifest.json")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
+            raise Exception(
+                f"Upload failed with status {response.status_code}: {response.text}"
+            )
 
-    # Upload catalog.json
+    # Upload catalog
     console.print(f'Uploading catalog from path "{catalog_path}"')
-    try:
+    with cloud_error_handler(console, "upload catalog.json"):
         with open(catalog_path, "rb") as f:
             response = requests.put(presigned_urls["catalog_url"], data=f.read())
         if response.status_code not in [200, 204]:
-            raise Exception(f"Upload failed with status {response.status_code}: {response.text}")
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to upload catalog.json")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
+            raise Exception(
+                f"Upload failed with status {response.status_code}: {response.text}"
+            )
 
     # Update session metadata
-    try:
+    with cloud_error_handler(console, "update session metadata"):
         client.update_session(org_id, project_id, session_id, adapter_type)
-    except RecceCloudException as e:
-        console.print("[red]Error:[/red] Failed to update session metadata")
-        console.print(f"Reason: {e.reason}")
-        sys.exit(4)
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to update session metadata")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
 
-    # Notify upload completion
+    # Notify upload completion (non-fatal)
     console.print("Notifying upload completion...")
-    try:
+    with cloud_error_handler(console, "notify upload completion", fatal=False):
         client.upload_completed(session_id)
-    except RecceCloudException as e:
-        console.print("[yellow]Warning:[/yellow] Failed to notify upload completion")
-        console.print(f"Reason: {e.reason}")
-        # Non-fatal, continue
-    except Exception as e:
-        console.print("[yellow]Warning:[/yellow] Failed to notify upload completion")
-        console.print(f"Reason: {e}")
-        # Non-fatal, continue
 
     # Success!
     console.rule("Uploaded Successfully", style="green")
@@ -129,7 +107,13 @@ def upload_to_existing_session(
 
 
 def upload_with_platform_apis(
-    console, token: str, ci_info, manifest_path: str, catalog_path: str, adapter_type: str, target_path: str,
+    console,
+    token: str,
+    ci_info,
+    manifest_path: str,
+    catalog_path: str,
+    adapter_type: str,
+    target_path: str,
     client=None,
 ):
     """
@@ -151,7 +135,7 @@ def upload_with_platform_apis(
             )
             sys.exit(1)
 
-        # Create platform-specific client
+        # Create platform-specific client (ValueError, not RecceCloudException)
         try:
             client = create_platform_client(token, ci_info)
         except ValueError as e:
@@ -161,7 +145,7 @@ def upload_with_platform_apis(
 
     # Touch session to create or get session ID
     console.rule("Creating/touching session", style="blue")
-    try:
+    with cloud_error_handler(console, "create/touch session"):
         session_response = client.touch_recce_session(
             branch=ci_info.source_branch or ci_info.base_branch or "main",
             adapter_type=adapter_type,
@@ -170,66 +154,49 @@ def upload_with_platform_apis(
             session_type=ci_info.session_type,
         )
 
-        session_id = session_response.get("session_id")
-        manifest_upload_url = session_response.get("manifest_upload_url")
-        catalog_upload_url = session_response.get("catalog_upload_url")
+    session_id = session_response.get("session_id")
+    manifest_upload_url = session_response.get("manifest_upload_url")
+    catalog_upload_url = session_response.get("catalog_upload_url")
 
-        if not session_id or not manifest_upload_url or not catalog_upload_url:
-            console.print("[red]Error:[/red] Incomplete response from touch-recce-session API")
-            console.print(f"Response: {session_response}")
-            sys.exit(4)
-
-        console.print(f"[green]Session ID:[/green] {session_id}")
-
-    except RecceCloudException as e:
-        console.print("[red]Error:[/red] Failed to create/touch session")
-        console.print(f"Reason: {e.reason}")
+    if not session_id or not manifest_upload_url or not catalog_upload_url:
+        console.print(
+            "[red]Error:[/red] Incomplete response from touch-recce-session API"
+        )
+        console.print(f"Response: {session_response}")
         sys.exit(4)
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to create/touch session")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
+
+    console.print(f"[green]Session ID:[/green] {session_id}")
 
     # Upload manifest.json
     console.print(f'Uploading manifest from path "{manifest_path}"')
-    try:
+    with cloud_error_handler(console, "upload manifest.json"):
         with open(manifest_path, "rb") as f:
             response = requests.put(manifest_upload_url, data=f.read())
         if response.status_code not in [200, 204]:
-            raise Exception(f"Upload failed with status {response.status_code}: {response.text}")
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to upload manifest.json")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
+            raise Exception(
+                f"Upload failed with status {response.status_code}: {response.text}"
+            )
 
     # Upload catalog.json
     console.print(f'Uploading catalog from path "{catalog_path}"')
-    try:
+    with cloud_error_handler(console, "upload catalog.json"):
         with open(catalog_path, "rb") as f:
             response = requests.put(catalog_upload_url, data=f.read())
         if response.status_code not in [200, 204]:
-            raise Exception(f"Upload failed with status {response.status_code}: {response.text}")
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to upload catalog.json")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
+            raise Exception(
+                f"Upload failed with status {response.status_code}: {response.text}"
+            )
 
-    # Notify upload completion
+    # Notify upload completion (non-fatal)
     console.print("Notifying upload completion...")
-    try:
+    with cloud_error_handler(console, "notify upload completion", fatal=False):
         client.upload_completed(session_id=session_id, commit_sha=ci_info.commit_sha)
-    except RecceCloudException as e:
-        console.print("[yellow]Warning:[/yellow] Failed to notify upload completion")
-        console.print(f"Reason: {e.reason}")
-        # Non-fatal, continue
-    except Exception as e:
-        console.print("[yellow]Warning:[/yellow] Failed to notify upload completion")
-        console.print(f"Reason: {e}")
-        # Non-fatal, continue
 
     # Success!
     console.rule("Uploaded Successfully", style="green")
-    console.print(f'Uploaded dbt artifacts to Recce Cloud for session ID "{session_id}"')
+    console.print(
+        f'Uploaded dbt artifacts to Recce Cloud for session ID "{session_id}"'
+    )
     console.print(f'Artifacts from: "{os.path.abspath(target_path)}"')
 
     if ci_info.pr_url:
@@ -258,7 +225,7 @@ def upload_with_session_name(
     - Local config file (.recce/config) via 'recce-cloud init'
     - Environment variables (RECCE_ORG, RECCE_PROJECT)
     """
-    # 1. Resolve org/project configuration
+    # 1. Resolve org/project configuration (ConfigurationError, not RecceCloudException)
     console.rule("Session Name Resolution", style="blue")
     try:
         config = resolve_config()
@@ -277,18 +244,19 @@ def upload_with_session_name(
         sys.exit(2)
 
     # 2. Initialize API client
-    try:
+    with cloud_error_handler(
+        console, "initialize API client", exit_code=ExitCode.INIT_ERROR
+    ):
         client = RecceCloudClient(token)
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to initialize API client")
-        console.print(f"Reason: {e}")
-        sys.exit(2)
 
     # 3. Resolve org/project IDs (they might be slugs/names in config)
+    # Keep manual try/except because of logger.debug and custom error messages
     try:
         org_info = client.get_organization(org)
         if not org_info:
-            console.print(f"[red]Error:[/red] Organization '{org}' not found or you don't have access")
+            console.print(
+                f"[red]Error:[/red] Organization '{org}' not found or you don't have access"
+            )
             sys.exit(2)
         org_id = org_info.get("id")
         if not org_id:
@@ -297,7 +265,9 @@ def upload_with_session_name(
 
         project_info = client.get_project(org_id, project)
         if not project_info:
-            console.print(f"[red]Error:[/red] Project '{project}' not found in organization '{org}'")
+            console.print(
+                f"[red]Error:[/red] Project '{project}' not found in organization '{org}'"
+            )
             sys.exit(2)
         project_id = project_info.get("id")
         if not project_id:
@@ -314,7 +284,7 @@ def upload_with_session_name(
         console.print("  Check your authentication and network connection.")
         sys.exit(2)
 
-    # 4. Look up session by name
+    # 4. Look up session by name (keep manual try/except for logger.debug)
     console.print(f'Looking up session "{session_name}"...')
     try:
         existing_session = client.get_session_by_name(org_id, project_id, session_name)
@@ -333,7 +303,9 @@ def upload_with_session_name(
     if existing_session:
         # Session found, use it
         session_id = existing_session.get("id")
-        console.print(f'[green]Found existing session:[/green] "{session_name}" (ID: {session_id})')
+        console.print(
+            f'[green]Found existing session:[/green] "{session_name}" (ID: {session_id})'
+        )
     else:
         # Session not found, prompt to create
         console.print(f'[yellow]Session "{session_name}" not found[/yellow]')
@@ -349,7 +321,7 @@ def upload_with_session_name(
                 sys.exit(0)
 
         # Create the session
-        try:
+        with cloud_error_handler(console, "create session"):
             new_session = client.create_session(
                 org_id=org_id,
                 project_id=project_id,
@@ -358,78 +330,46 @@ def upload_with_session_name(
                 session_type="manual",
             )
             session_id = new_session.get("id")
-            console.print(f'[green]Created new session:[/green] "{session_name}" (ID: {session_id})')
-        except RecceCloudException as e:
-            console.print("[red]Error:[/red] Failed to create session")
-            console.print(f"Reason: {e.reason}")
-            sys.exit(4)
-        except Exception as e:
-            console.print("[red]Error:[/red] Failed to create session")
-            console.print(f"Reason: {e}")
-            sys.exit(4)
+            console.print(
+                f'[green]Created new session:[/green] "{session_name}" (ID: {session_id})'
+            )
 
     # 5. Get presigned URLs and upload
     console.rule("Uploading Artifacts", style="blue")
-    try:
-        presigned_urls = client.get_upload_urls_by_session_id(org_id, project_id, session_id)
-    except RecceCloudException as e:
-        console.print("[red]Error:[/red] Failed to get upload URLs")
-        console.print(f"Reason: {e.reason}")
-        sys.exit(4)
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to get upload URLs")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
+    with cloud_error_handler(console, "get upload URLs"):
+        presigned_urls = client.get_upload_urls_by_session_id(
+            org_id, project_id, session_id
+        )
 
     # Upload manifest.json
     console.print(f'Uploading manifest from path "{manifest_path}"')
-    try:
+    with cloud_error_handler(console, "upload manifest.json"):
         with open(manifest_path, "rb") as f:
             response = requests.put(presigned_urls["manifest_url"], data=f.read())
         if response.status_code not in [200, 204]:
-            raise Exception(f"Upload failed with status {response.status_code}: {response.text}")
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to upload manifest.json")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
+            raise Exception(
+                f"Upload failed with status {response.status_code}: {response.text}"
+            )
 
     # Upload catalog.json
     console.print(f'Uploading catalog from path "{catalog_path}"')
-    try:
+    with cloud_error_handler(console, "upload catalog.json"):
         with open(catalog_path, "rb") as f:
             response = requests.put(presigned_urls["catalog_url"], data=f.read())
         if response.status_code not in [200, 204]:
-            raise Exception(f"Upload failed with status {response.status_code}: {response.text}")
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to upload catalog.json")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
+            raise Exception(
+                f"Upload failed with status {response.status_code}: {response.text}"
+            )
 
-    # Update session metadata (if session already existed, update adapter_type)
+    # Update session metadata (if session already existed, update adapter_type; non-fatal)
     if existing_session:
-        try:
+        with cloud_error_handler(console, "update session metadata", fatal=False):
             client.update_session(org_id, project_id, session_id, adapter_type)
-        except RecceCloudException as e:
-            console.print("[yellow]Warning:[/yellow] Failed to update session metadata")
-            console.print(f"Reason: {e.reason}")
-            # Non-fatal for existing sessions
-        except Exception as e:
-            console.print("[yellow]Warning:[/yellow] Failed to update session metadata")
-            console.print(f"Reason: {e}")
-            # Non-fatal for existing sessions
 
-    # Notify upload completion
+    # Notify upload completion (non-fatal)
     console.print("Notifying upload completion...")
-    try:
+    with cloud_error_handler(console, "notify upload completion", fatal=False):
         client.upload_completed(session_id)
-    except RecceCloudException as e:
-        console.print("[yellow]Warning:[/yellow] Failed to notify upload completion")
-        console.print(f"Reason: {e.reason}")
-        # Non-fatal, continue
-    except Exception as e:
-        console.print("[yellow]Warning:[/yellow] Failed to notify upload completion")
-        console.print(f"Reason: {e}")
-        # Non-fatal, continue
 
     # Success!
     console.rule("Uploaded Successfully", style="green")

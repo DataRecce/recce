@@ -7,6 +7,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional
 
+from recce_cloud.constants import SESSION_TYPE_DEV, SESSION_TYPE_PR, SESSION_TYPE_PROD
+
 
 @dataclass
 class CIInfo:
@@ -91,7 +93,7 @@ class BaseCIProvider(ABC):
             Session type: "pr", "prod", or "dev"
         """
         if pr_number is not None:
-            return "pr"
+            return SESSION_TYPE_PR
         if source_branch in ["main", "master"]:
-            return "prod"
-        return "dev"
+            return SESSION_TYPE_PROD
+        return SESSION_TYPE_DEV

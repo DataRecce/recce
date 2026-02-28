@@ -28,6 +28,7 @@ from recce_cloud.download import (
 )
 from recce_cloud.report import fetch_and_generate_report
 from recce_cloud.review import run_review_command
+from recce_cloud.constants import SESSION_TYPES, SESSION_TYPES_UPLOAD, get_base_url
 from recce_cloud.upload import upload_to_existing_session, upload_with_platform_apis
 
 # Configure logging
@@ -314,9 +315,7 @@ def init(org, project, status, clear):
 
         if not orgs:
             console.print("[yellow]No organizations found[/yellow]")
-            console.print(
-                "Please create an organization at https://cloud.datarecce.io first"
-            )
+            console.print(f"Please create an organization at {get_base_url()} first")
             sys.exit(1)
 
         # Build org choices: (id for API, name for config, display_name for UI)
@@ -347,7 +346,7 @@ def init(org, project, status, clear):
             console.print(
                 f"[yellow]No projects found in {selected_org_display}[/yellow]"
             )
-            console.print("Please create a project at https://cloud.datarecce.io first")
+            console.print(f"Please create a project at {get_base_url()} first")
             sys.exit(1)
 
         # Build project choices: (project_id for config, display_name for UI)
@@ -370,7 +369,7 @@ def init(org, project, status, clear):
             console.print(
                 f"[yellow]No active projects found in {selected_org_display}[/yellow]"
             )
-            console.print("Please create a project at https://cloud.datarecce.io first")
+            console.print(f"Please create a project at {get_base_url()} first")
             sys.exit(1)
 
         # Select project
@@ -510,7 +509,7 @@ def _get_production_session_id(console: Console, token: str) -> Optional[str]:
 @click.option(
     "--type",
     "session_type",
-    type=click.Choice(["pr", "prod"]),
+    type=click.Choice(SESSION_TYPES_UPLOAD),
     help="Session type (overrides auto-detection)",
 )
 @click.option(
@@ -868,7 +867,7 @@ def upload(
 @click.option(
     "--type",
     "session_type",
-    type=click.Choice(["pr", "prod", "dev"]),
+    type=click.Choice(SESSION_TYPES),
     help="Filter by session type (prod=base, pr=has PR link, dev=other)",
 )
 @click.option(
