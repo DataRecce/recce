@@ -13,9 +13,11 @@ import requests
 
 from recce_cloud.api.exceptions import RecceCloudException
 
-logger = logging.getLogger("recce")
+logger = logging.getLogger(__name__)
 
-RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
+RECCE_CLOUD_API_HOST = os.environ.get(
+    "RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io"
+)
 
 DOCKER_INTERNAL_URL_PREFIX = "http://host.docker.internal"
 LOCALHOST_URL_PREFIX = "http://localhost"
@@ -93,7 +95,10 @@ class RecceCloudClient:
         api_url = f"{self.base_url_v2}/sessions/{session_id}"
         response = self._request("GET", api_url)
         if response.status_code == 403:
-            return {"status": "error", "message": self._safe_get_error_detail(response, "Permission denied")}
+            return {
+                "status": "error",
+                "message": self._safe_get_error_detail(response, "Permission denied"),
+            }
         if response.status_code != 200:
             raise RecceCloudException(
                 reason=response.text,
@@ -107,7 +112,9 @@ class RecceCloudClient:
             )
         return data["session"]
 
-    def get_upload_urls_by_session_id(self, org_id: str, project_id: str, session_id: str) -> dict:
+    def get_upload_urls_by_session_id(
+        self, org_id: str, project_id: str, session_id: str
+    ) -> dict:
         """
         Get presigned S3 upload URLs for a session.
 
@@ -143,7 +150,9 @@ class RecceCloudClient:
             presigned_urls[key] = self._replace_localhost_with_docker_internal(url)
         return presigned_urls
 
-    def get_download_urls_by_session_id(self, org_id: str, project_id: str, session_id: str) -> dict:
+    def get_download_urls_by_session_id(
+        self, org_id: str, project_id: str, session_id: str
+    ) -> dict:
         """
         Get presigned S3 download URLs for a session.
 
@@ -179,7 +188,9 @@ class RecceCloudClient:
             presigned_urls[key] = self._replace_localhost_with_docker_internal(url)
         return presigned_urls
 
-    def update_session(self, org_id: str, project_id: str, session_id: str, adapter_type: str) -> dict:
+    def update_session(
+        self, org_id: str, project_id: str, session_id: str, adapter_type: str
+    ) -> dict:
         """
         Update session metadata with adapter type.
 
@@ -199,7 +210,10 @@ class RecceCloudClient:
         data = {"adapter_type": adapter_type}
         response = self._request("PATCH", api_url, json=data)
         if response.status_code == 403:
-            return {"status": "error", "message": self._safe_get_error_detail(response, "Permission denied")}
+            return {
+                "status": "error",
+                "message": self._safe_get_error_detail(response, "Permission denied"),
+            }
         if response.status_code != 200:
             raise RecceCloudException(
                 reason=response.text,
@@ -341,7 +355,11 @@ class RecceCloudClient:
         orgs = self.list_organizations()
         for org in orgs:
             # Compare as strings to handle both int and str IDs
-            if str(org.get("id")) == str(org_id) or org.get("slug") == org_id or org.get("name") == org_id:
+            if (
+                str(org.get("id")) == str(org_id)
+                or org.get("slug") == org_id
+                or org.get("name") == org_id
+            ):
                 return org
         return None
 
@@ -398,7 +416,9 @@ class RecceCloudClient:
         Raises:
             RecceCloudException: If the API call fails.
         """
-        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions"
+        api_url = (
+            f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions"
+        )
         params = {}
         if session_name:
             params["name"] = session_name
@@ -484,7 +504,9 @@ class RecceCloudClient:
         Raises:
             RecceCloudException: If the API call fails or session creation fails.
         """
-        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions"
+        api_url = (
+            f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions"
+        )
         data = {
             "name": session_name,
             "type": session_type,
@@ -555,9 +577,7 @@ class RecceCloudClient:
         Raises:
             RecceCloudException: If the API call fails.
         """
-        api_url = (
-            f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/check-prerequisites"
-        )
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/check-prerequisites"
         response = self._request("GET", api_url)
 
         if response.status_code == 404:
@@ -916,11 +936,21 @@ class ReportClient:
             prs_with_recce_summary=summary_data.get("prs_with_recce_summary", 0),
             recce_adoption_rate=summary_data.get("recce_adoption_rate", 0.0),
             summary_generation_rate=summary_data.get("summary_generation_rate", 0.0),
-            total_commits_before_pr_open=summary_data.get("total_commits_before_pr_open", 0),
-            total_commits_after_pr_open=summary_data.get("total_commits_after_pr_open", 0),
-            total_commits_after_summary=summary_data.get("total_commits_after_summary", 0),
-            avg_commits_before_pr_open=summary_data.get("avg_commits_before_pr_open", 0.0),
-            avg_commits_after_pr_open=summary_data.get("avg_commits_after_pr_open", 0.0),
+            total_commits_before_pr_open=summary_data.get(
+                "total_commits_before_pr_open", 0
+            ),
+            total_commits_after_pr_open=summary_data.get(
+                "total_commits_after_pr_open", 0
+            ),
+            total_commits_after_summary=summary_data.get(
+                "total_commits_after_summary", 0
+            ),
+            avg_commits_before_pr_open=summary_data.get(
+                "avg_commits_before_pr_open", 0.0
+            ),
+            avg_commits_after_pr_open=summary_data.get(
+                "avg_commits_after_pr_open", 0.0
+            ),
             avg_commits_after_summary=summary_data.get("avg_commits_after_summary"),
             avg_time_to_merge=summary_data.get("avg_time_to_merge"),
         )

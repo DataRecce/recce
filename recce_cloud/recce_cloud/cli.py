@@ -63,7 +63,8 @@ cloud_cli.add_command(doctor)
 @cloud_cli.command()
 def version():
     """Show the version of recce-cloud."""
-    click.echo(__version__)
+    console = Console()
+    console.print(__version__)
 
 
 @cloud_cli.command()

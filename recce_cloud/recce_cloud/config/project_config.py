@@ -119,6 +119,12 @@ def save_project_binding(
         bound_by: Email of user who created the binding.
         project_dir: Project directory path. Defaults to current directory.
     """
+    # Validate IDs before writing to disk
+    if not str(org_id).isdigit():
+        raise ValueError(f"Invalid org_id: '{org_id}' (expected numeric ID)")
+    if not str(project_id).isdigit():
+        raise ValueError(f"Invalid project_id: '{project_id}' (expected numeric ID)")
+
     config = load_config(project_dir)
 
     config["version"] = 1
