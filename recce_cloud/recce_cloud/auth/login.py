@@ -37,10 +37,12 @@ from recce_cloud.auth.profile import (
 )
 
 # Cloud API configuration
-RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
+RECCE_CLOUD_API_HOST = os.environ.get(
+    "RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io"
+)
 RECCE_CLOUD_BASE_URL = os.environ.get("RECCE_CLOUD_BASE_URL", RECCE_CLOUD_API_HOST)
 
-console = Console()
+console = Console(stderr=True)
 
 
 def generate_key_pair() -> Tuple[RSAPrivateKey, RSAPublicKey]:

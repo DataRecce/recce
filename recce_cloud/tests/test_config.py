@@ -70,8 +70,8 @@ class TestProjectConfig(unittest.TestCase):
         )
 
         save_project_binding(
-            org_id="my-org-id",
-            project_id="my-project-id",
+            org_id="100",
+            project_id="200",
             bound_by="test@example.com",
             project_dir=self.temp_dir,
         )
@@ -79,8 +79,8 @@ class TestProjectConfig(unittest.TestCase):
         binding = get_project_binding(self.temp_dir)
 
         self.assertIsNotNone(binding)
-        self.assertEqual(binding["org_id"], "my-org-id")
-        self.assertEqual(binding["project_id"], "my-project-id")
+        self.assertEqual(binding["org_id"], "100")
+        self.assertEqual(binding["project_id"], "200")
         self.assertEqual(binding["bound_by"], "test@example.com")
         self.assertIsNotNone(binding["bound_at"])
 
@@ -94,8 +94,8 @@ class TestProjectConfig(unittest.TestCase):
 
         # First save a binding
         save_project_binding(
-            org_id="my-org-id",
-            project_id="my-project-id",
+            org_id="100",
+            project_id="200",
             project_dir=self.temp_dir,
         )
 
@@ -218,14 +218,14 @@ class TestConfigResolver(unittest.TestCase):
         from recce_cloud.config.resolver import resolve_org_id
 
         save_project_binding(
-            org_id="config-org-id",
-            project_id="config-project-id",
+            org_id="300",
+            project_id="400",
             project_dir=self.temp_dir,
         )
 
-        with patch.dict(os.environ, {"RECCE_ORG": "env-org"}):
-            org_id = resolve_org_id(cli_org="cli-org", project_dir=self.temp_dir)
-            self.assertEqual(org_id, "cli-org")
+        with patch.dict(os.environ, {"RECCE_ORG": "500"}):
+            org_id = resolve_org_id(cli_org="600", project_dir=self.temp_dir)
+            self.assertEqual(org_id, "600")
 
     def test_resolve_project_id_env_priority(self):
         """Test env project has priority over config."""
@@ -233,14 +233,14 @@ class TestConfigResolver(unittest.TestCase):
         from recce_cloud.config.resolver import resolve_project_id
 
         save_project_binding(
-            org_id="config-org-id",
-            project_id="config-project-id",
+            org_id="300",
+            project_id="400",
             project_dir=self.temp_dir,
         )
 
-        with patch.dict(os.environ, {"RECCE_PROJECT": "env-project"}):
+        with patch.dict(os.environ, {"RECCE_PROJECT": "500"}):
             project_id = resolve_project_id(project_dir=self.temp_dir)
-            self.assertEqual(project_id, "env-project")
+            self.assertEqual(project_id, "500")
 
     def test_resolve_org_id_fallback_to_config(self):
         """Test org_id resolution falls back to config."""
@@ -248,14 +248,14 @@ class TestConfigResolver(unittest.TestCase):
         from recce_cloud.config.resolver import resolve_org_id
 
         save_project_binding(
-            org_id="config-org-id",
-            project_id="config-project-id",
+            org_id="300",
+            project_id="400",
             project_dir=self.temp_dir,
         )
 
         with patch.dict(os.environ, {}, clear=True):
             org_id = resolve_org_id(project_dir=self.temp_dir)
-            self.assertEqual(org_id, "config-org-id")
+            self.assertEqual(org_id, "300")
 
 
 if __name__ == "__main__":
