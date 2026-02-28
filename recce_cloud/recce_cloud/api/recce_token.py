@@ -80,7 +80,9 @@ class RecceTokenCloudClient(BaseRecceCloudClient):
 
         return self._make_request("POST", url, json=payload)
 
-    def upload_completed(self, session_id: str, commit_sha: Optional[str] = None) -> Dict:
+    def upload_completed(
+        self, session_id: str, commit_sha: Optional[str] = None
+    ) -> Dict:
         """
         Notify Recce Cloud that upload is complete.
 

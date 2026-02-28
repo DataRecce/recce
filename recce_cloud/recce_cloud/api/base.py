@@ -2,13 +2,13 @@
 Base API client for Recce Cloud.
 """
 
-import os
 from abc import ABC, abstractmethod
 from typing import Dict, Optional
 
 import requests
 
 from recce_cloud.api.exceptions import RecceCloudException
+from recce_cloud.constants import get_api_host
 
 
 class BaseRecceCloudClient(ABC):
@@ -23,7 +23,7 @@ class BaseRecceCloudClient(ABC):
             api_host: Recce Cloud API host (defaults to RECCE_CLOUD_API_HOST or https://cloud.datarecce.io)
         """
         self.token = token
-        self.api_host = api_host or os.getenv("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
+        self.api_host = api_host or get_api_host()
 
     def _make_request(self, method: str, url: str, **kwargs) -> Dict:
         """
@@ -65,7 +65,10 @@ class BaseRecceCloudClient(ABC):
                     reason = error_detail.get("message", str(e))
                 except Exception:
                     reason = e.response.text or str(e)
-            raise RecceCloudException(reason=reason, status_code=e.response.status_code if e.response else None)
+            raise RecceCloudException(
+                reason=reason,
+                status_code=e.response.status_code if e.response else None,
+            )
         except requests.exceptions.RequestException as e:
             raise RecceCloudException(reason=str(e))
 
@@ -97,7 +100,9 @@ class BaseRecceCloudClient(ABC):
         pass
 
     @abstractmethod
-    def upload_completed(self, session_id: str, commit_sha: Optional[str] = None) -> Dict:
+    def upload_completed(
+        self, session_id: str, commit_sha: Optional[str] = None
+    ) -> Dict:
         """
         Notify Recce Cloud that upload is complete.
 

@@ -41,7 +41,9 @@ class CIDetector:
         for provider_class in cls.PROVIDERS:
             provider = provider_class()
             if provider.can_handle():
-                logger.info(f"CI Platform: {provider_class.__name__.replace('Provider', '')}")
+                logger.info(
+                    f"CI Platform: {provider_class.__name__.replace('Provider', '')}"
+                )
                 ci_info = provider.extract_ci_info()
                 cls._log_detected_values(ci_info)
                 return ci_info
@@ -72,24 +74,34 @@ class CIDetector:
         """
         # Log overrides
         if pr is not None and pr != ci_info.pr_number:
-            logger.info(f"Using manual override: --pr {pr} (detected: {ci_info.pr_number})")
+            logger.info(
+                f"Using manual override: --pr {pr} (detected: {ci_info.pr_number})"
+            )
             ci_info.pr_number = pr
             # Rebuild PR URL if we have repository info
             if ci_info.repository:
                 if ci_info.platform == "github-actions":
-                    ci_info.pr_url = f"https://github.com/{ci_info.repository}/pull/{pr}"
+                    ci_info.pr_url = (
+                        f"https://github.com/{ci_info.repository}/pull/{pr}"
+                    )
                 elif ci_info.platform == "gitlab-ci":
                     server_url = os.getenv("CI_SERVER_URL", "https://gitlab.com")
-                    ci_info.pr_url = f"{server_url}/{ci_info.repository}/-/merge_requests/{pr}"
+                    ci_info.pr_url = (
+                        f"{server_url}/{ci_info.repository}/-/merge_requests/{pr}"
+                    )
 
         if session_type is not None and session_type != ci_info.session_type:
-            logger.info(f"Using manual override: --type {session_type} (detected: {ci_info.session_type})")
+            logger.info(
+                f"Using manual override: --type {session_type} (detected: {ci_info.session_type})"
+            )
             ci_info.session_type = session_type
 
         # Re-determine session type if PR was overridden
         if pr is not None:
             if session_type is None:  # Only if not manually overridden
-                ci_info.session_type = BaseCIProvider.determine_session_type(ci_info.pr_number, ci_info.source_branch)
+                ci_info.session_type = BaseCIProvider.determine_session_type(
+                    ci_info.pr_number, ci_info.source_branch
+                )
 
         return ci_info
 
@@ -102,7 +114,9 @@ class CIDetector:
             CIInfo with basic git information
         """
         commit_sha = BaseCIProvider.run_git_command(["git", "rev-parse", "HEAD"])
-        source_branch = BaseCIProvider.run_git_command(["git", "branch", "--show-current"])
+        source_branch = BaseCIProvider.run_git_command(
+            ["git", "branch", "--show-current"]
+        )
 
         session_type = BaseCIProvider.determine_session_type(None, source_branch)
 

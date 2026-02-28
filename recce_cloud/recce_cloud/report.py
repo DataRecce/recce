@@ -123,13 +123,17 @@ def format_report_as_csv(report: PRMetricsReport) -> str:
                 pr.time_to_merge if pr.time_to_merge is not None else "",
                 pr.commits_before_pr_open,
                 pr.commits_after_pr_open,
-                pr.commits_after_summary if pr.commits_after_summary is not None else "",
+                pr.commits_after_summary
+                if pr.commits_after_summary is not None
+                else "",
                 pr.commits_fetch_failed,
                 pr.has_recce_session,
                 pr.recce_session_url or "",
                 pr.recce_checks_count if pr.recce_checks_count is not None else "",
                 check_types,
-                pr.recce_summary_generated if pr.recce_summary_generated is not None else "",
+                pr.recce_summary_generated
+                if pr.recce_summary_generated is not None
+                else "",
                 pr.recce_summary_at or "",
             ]
         )
@@ -147,19 +151,29 @@ def display_report_summary(console: Console, report: PRMetricsReport):
     """
     console.print()
     console.print(f"[bold]Repository:[/bold] {report.repo}")
-    console.print(f"[bold]Date Range:[/bold] {report.date_range_since} to {report.date_range_until}")
+    console.print(
+        f"[bold]Date Range:[/bold] {report.date_range_since} to {report.date_range_until}"
+    )
 
     if not report.pull_requests:
-        console.print("[yellow]No pull requests found in the specified date range.[/yellow]")
+        console.print(
+            "[yellow]No pull requests found in the specified date range.[/yellow]"
+        )
         return
 
     # Use API-provided summary statistics
     summary = report.summary
 
     console.print()
-    console.print("[bold cyan]═══════════════════════════════════════════════════════════[/bold cyan]")
-    console.print("[bold cyan]                    SUMMARY STATISTICS                      [/bold cyan]")
-    console.print("[bold cyan]═══════════════════════════════════════════════════════════[/bold cyan]")
+    console.print(
+        "[bold cyan]═══════════════════════════════════════════════════════════[/bold cyan]"
+    )
+    console.print(
+        "[bold cyan]                    SUMMARY STATISTICS                      [/bold cyan]"
+    )
+    console.print(
+        "[bold cyan]═══════════════════════════════════════════════════════════[/bold cyan]"
+    )
     console.print()
 
     # Overview section
@@ -191,12 +205,16 @@ def display_report_summary(console: Console, report: PRMetricsReport):
     )
 
     console.print()
-    console.print("[bold cyan]═══════════════════════════════════════════════════════════[/bold cyan]")
+    console.print(
+        "[bold cyan]═══════════════════════════════════════════════════════════[/bold cyan]"
+    )
     console.print()
 
     # Display PRs in a readable list format
     if len(report.pull_requests) > 0:
-        console.print(f"[bold white]Pull Requests ({len(report.pull_requests)} total)[/bold white]")
+        console.print(
+            f"[bold white]Pull Requests ({len(report.pull_requests)} total)[/bold white]"
+        )
         console.print()
 
         for pr in report.pull_requests[:10]:
@@ -212,11 +230,17 @@ def display_report_summary(console: Console, report: PRMetricsReport):
                 state_display = f"[dim]{state}[/dim]"
 
             # Session and summary indicators
-            session_icon = "[green]✓[/green]" if pr.has_recce_session else "[dim]✗[/dim]"
+            session_icon = (
+                "[green]✓[/green]" if pr.has_recce_session else "[dim]✗[/dim]"
+            )
             summary_icon = (
                 "[green]✓[/green]"
                 if pr.recce_summary_generated
-                else ("[dim]✗[/dim]" if pr.recce_summary_generated is False else "[dim]-[/dim]")
+                else (
+                    "[dim]✗[/dim]"
+                    if pr.recce_summary_generated is False
+                    else "[dim]-[/dim]"
+                )
             )
 
             # Time to merge display
@@ -230,7 +254,9 @@ def display_report_summary(console: Console, report: PRMetricsReport):
                 f"      {state_display} by {pr.pr_author or 'unknown'}{time_display} | "
                 f"Commits: {pr.commits_before_pr_open} before, {pr.commits_after_pr_open} after PR open"
             )
-            console.print(f"      Recce: session {session_icon}  summary {summary_icon}")
+            console.print(
+                f"      Recce: session {session_icon}  summary {summary_icon}"
+            )
             if pr.pr_url:
                 console.print(f"      [dim]{pr.pr_url}[/dim]")
             console.print()

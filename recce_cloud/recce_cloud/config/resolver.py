@@ -86,7 +86,9 @@ def resolve_config(
     env_project = os.environ.get("RECCE_PROJECT")
     if env_org and env_project:
         _validate_numeric_id(env_org, "org", "environment variable RECCE_ORG")
-        _validate_numeric_id(env_project, "project", "environment variable RECCE_PROJECT")
+        _validate_numeric_id(
+            env_project, "project", "environment variable RECCE_PROJECT"
+        )
         return ResolvedConfig(org_id=env_org, project_id=env_project, source="env")
 
     # Priority 3: Local config file

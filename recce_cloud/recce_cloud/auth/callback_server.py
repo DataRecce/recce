@@ -20,7 +20,9 @@ class CallbackResult:
         self.error: Optional[str] = None
 
 
-def make_callback_handler(result: CallbackResult, on_success_html: str, on_error_html: str):
+def make_callback_handler(
+    result: CallbackResult, on_success_html: str, on_error_html: str
+):
     """
     Create a one-time HTTP request handler.
 

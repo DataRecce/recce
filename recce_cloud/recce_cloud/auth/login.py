@@ -35,10 +35,7 @@ from recce_cloud.auth.profile import (
     get_profile_path,
     update_api_token,
 )
-
-# Cloud API configuration
-RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
-RECCE_CLOUD_BASE_URL = os.environ.get("RECCE_CLOUD_BASE_URL", RECCE_CLOUD_API_HOST)
+from recce_cloud.constants import get_api_host, get_base_url
 
 console = Console()
 
@@ -100,7 +97,9 @@ def prepare_connection_url(public_key: RSAPublicKey) -> Tuple[str, int]:
     )
     public_key_pem_str = base64.b64encode(public_key_pem_bytes).decode("utf-8")
     callback_port = random.randint(10000, 15000)
-    connect_url = f"{RECCE_CLOUD_BASE_URL}/connect?_key={public_key_pem_str}&_port={callback_port}"
+    connect_url = (
+        f"{get_base_url()}/connect?_key={public_key_pem_str}&_port={callback_port}"
+    )
     return connect_url, callback_port
 
 
@@ -114,7 +113,7 @@ def verify_token(token: str) -> bool:
     Returns:
         True if token is valid, False otherwise.
     """
-    api_url = f"{RECCE_CLOUD_API_HOST}/api/v1/verify-token"
+    api_url = f"{get_api_host()}/api/v1/verify-token"
     try:
         response = requests.get(
             api_url,
@@ -136,7 +135,7 @@ def get_user_info(token: str) -> Optional[dict]:
     Returns:
         User info dict with email, name, etc., or None if failed.
     """
-    api_url = f"{RECCE_CLOUD_API_HOST}/api/v1/users"
+    api_url = f"{get_api_host()}/api/v1/users"
     try:
         response = requests.get(
             api_url,
