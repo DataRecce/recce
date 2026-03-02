@@ -298,11 +298,11 @@ async def lifespan(fastapi: FastAPI):
                     if hasattr(recce_ctx.adapter, "curr_manifest") and recce_ctx.adapter.curr_manifest:
                         tracker.node_count = len(recce_ctx.adapter.curr_manifest.nodes)
                 log_performance("server_startup", tracker.to_dict())
-                clear_startup_tracker()
         except Exception as e:
             logger.exception("Failed to load server context during startup")
             app_state.startup_error = e
         finally:
+            clear_startup_tracker()
             ready_event.set()
 
     task = asyncio.create_task(background_load())
@@ -451,18 +451,28 @@ async def set_context_by_cookie(request: Request, call_next):
 
 @app.middleware("http")
 async def readiness_gate(request: Request, call_next):
-    """Block data API requests until server startup is complete.
+    """Block API requests until server startup is complete.
 
-    /api/health passes through immediately so container orchestrators can
-    detect the process is alive. All other endpoints wait for the background
-    loading to finish. If loading failed, return 503.
+    /api/health and non-API routes (SPA, static assets) pass through
+    immediately so container orchestrators can detect the process is alive
+    and the frontend can load while the backend initializes.
+    All other /api/* endpoints wait for the background loading to finish.
+    If loading failed, return 503.
     """
-    if request.url.path == "/api/health":
+    path = request.url.path
+    if path == "/api/health" or not path.startswith("/api/"):
         return await call_next(request)
 
     ready_event = getattr(request.app.state, "ready_event", None)
     if isinstance(ready_event, asyncio.Event):
-        await ready_event.wait()
+        startup_timeout = float(os.environ.get("RECCE_STARTUP_TIMEOUT", "300"))
+        try:
+            await asyncio.wait_for(ready_event.wait(), timeout=startup_timeout)
+        except asyncio.TimeoutError:
+            return JSONResponse(
+                {"error": f"Server startup did not complete within {startup_timeout:.0f}s."},
+                status_code=503,
+            )
 
         if getattr(request.app.state, "startup_error", None):
             return JSONResponse(
@@ -489,11 +499,14 @@ async def health_check(request: Request):
     ready_event = getattr(request.app.state, "ready_event", None)
     is_ready = ready_event.is_set() if isinstance(ready_event, asyncio.Event) else True
     startup_error = getattr(request.app.state, "startup_error", None)
+    # Only expose the exception type to avoid leaking internal details
+    # (file paths, config values). Full details are in the server logs.
+    error = type(startup_error).__name__ if startup_error else None
 
     return {
         "status": "ok",
         "ready": is_ready and not startup_error,
-        "error": str(startup_error) if startup_error else None,
+        "error": error,
     }
 
 

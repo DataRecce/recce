@@ -238,7 +238,7 @@ class TestReadinessGate:
         assert data["error"] is None
 
     def test_health_returns_200_after_startup_error(self, readiness_state):
-        """Health endpoint should return 200 with ready=false and error when startup failed."""
+        """Health endpoint should return 200 with ready=false and error type when startup failed."""
         self._set_readiness(ready=True, error=RuntimeError("dbt project not found"))
 
         client = TestClient(app)
@@ -247,7 +247,8 @@ class TestReadinessGate:
         data = response.json()
         assert data["status"] == "ok"
         assert data["ready"] is False
-        assert "dbt project not found" in data["error"]
+        # Only the exception type is exposed, not the full message
+        assert data["error"] == "RuntimeError"
 
     def test_health_returns_ready_true_when_loaded(self, readiness_state):
         """Health endpoint should return ready=true when server is fully loaded."""
