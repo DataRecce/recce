@@ -202,12 +202,11 @@ def teardown_server(app_state: AppState, ctx: RecceContext):
 
 
 def setup_ready_only(app_state: AppState) -> RecceContext:
-    from .core import set_default_context
+    from .core import load_context
 
     kwargs = app_state.kwargs
     state_loader = app_state.state_loader
-    ctx = RecceContext.load(**kwargs, state_loader=state_loader)
-    set_default_context(ctx)
+    ctx = load_context(**kwargs, state_loader=state_loader)
     return ctx
 
 

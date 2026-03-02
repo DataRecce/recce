@@ -208,12 +208,26 @@ def test_nonexistent_route_returns_404():
 class TestReadinessGate:
     """Tests for the readiness gate middleware that enables fast server startup."""
 
-    def test_health_returns_200_before_ready(self):
-        """Health endpoint should return 200 with ready=false when ready_event is not set."""
+    @pytest.fixture
+    def readiness_state(self):
+        """Set up and tear down ready_event/startup_error on app.state."""
+        yield
+        # Cleanup — remove readiness attributes if they were set
+        for attr in ("ready_event", "startup_error"):
+            if hasattr(app.state, attr):
+                delattr(app.state, attr)
+
+    def _set_readiness(self, ready: bool, error: Exception = None):
+        """Helper to configure readiness state for tests."""
         ready_event = asyncio.Event()
-        # Do NOT set ready_event — simulates server still loading
+        if ready:
+            ready_event.set()
         app.state.ready_event = ready_event
-        app.state.startup_error = None
+        app.state.startup_error = error
+
+    def test_health_returns_200_before_ready(self, readiness_state):
+        """Health endpoint should return 200 with ready=false when ready_event is not set."""
+        self._set_readiness(ready=False)
 
         client = TestClient(app)
         response = client.get("/api/health")
@@ -223,16 +237,9 @@ class TestReadinessGate:
         assert data["ready"] is False
         assert data["error"] is None
 
-        # Cleanup
-        del app.state.ready_event
-        del app.state.startup_error
-
-    def test_health_returns_200_after_startup_error(self):
+    def test_health_returns_200_after_startup_error(self, readiness_state):
         """Health endpoint should return 200 with ready=false and error when startup failed."""
-        ready_event = asyncio.Event()
-        ready_event.set()
-        app.state.ready_event = ready_event
-        app.state.startup_error = RuntimeError("dbt project not found")
+        self._set_readiness(ready=True, error=RuntimeError("dbt project not found"))
 
         client = TestClient(app)
         response = client.get("/api/health")
@@ -242,16 +249,9 @@ class TestReadinessGate:
         assert data["ready"] is False
         assert "dbt project not found" in data["error"]
 
-        # Cleanup
-        del app.state.ready_event
-        del app.state.startup_error
-
-    def test_health_returns_ready_true_when_loaded(self):
+    def test_health_returns_ready_true_when_loaded(self, readiness_state):
         """Health endpoint should return ready=true when server is fully loaded."""
-        ready_event = asyncio.Event()
-        ready_event.set()
-        app.state.ready_event = ready_event
-        app.state.startup_error = None
+        self._set_readiness(ready=True)
 
         client = TestClient(app)
         response = client.get("/api/health")
@@ -261,44 +261,25 @@ class TestReadinessGate:
         assert data["ready"] is True
         assert data["error"] is None
 
-        # Cleanup
-        del app.state.ready_event
-        del app.state.startup_error
-
-    def test_data_endpoint_returns_503_on_startup_error(self):
+    def test_data_endpoint_returns_503_on_startup_error(self, readiness_state):
         """Data endpoints should return 503 when startup failed."""
-        ready_event = asyncio.Event()
-        ready_event.set()
-        app.state.ready_event = ready_event
-        app.state.startup_error = RuntimeError("dbt project not found")
+        self._set_readiness(ready=True, error=RuntimeError("dbt project not found"))
 
         client = TestClient(app)
         response = client.get("/api/version")
         assert response.status_code == 503
         assert "startup failed" in response.json()["error"].lower()
 
-        # Cleanup
-        del app.state.ready_event
-        del app.state.startup_error
-
-    def test_data_endpoint_succeeds_after_ready(self):
+    def test_data_endpoint_succeeds_after_ready(self, readiness_state):
         """Data endpoint should succeed once ready_event is set with no error."""
-        ready_event = asyncio.Event()
-        ready_event.set()
-        app.state.ready_event = ready_event
-        app.state.startup_error = None
+        self._set_readiness(ready=True)
 
         client = TestClient(app)
         response = client.get("/api/version")
         assert response.status_code == 200
 
-        # Cleanup
-        del app.state.ready_event
-        del app.state.startup_error
-
     def test_health_defaults_ready_true_without_ready_event(self):
         """Health endpoint should return ready=True when no ready_event is set (backward compat)."""
-        # Ensure ready_event is NOT set on state (simulates tests without lifespan)
         if hasattr(app.state, "ready_event"):
             del app.state.ready_event
 
@@ -312,7 +293,6 @@ class TestReadinessGate:
 
     def test_middleware_passthrough_without_ready_event(self):
         """Middleware should pass through when ready_event is not on app state (backward compat)."""
-        # Ensure ready_event is NOT set on state (simulates tests without lifespan)
         if hasattr(app.state, "ready_event"):
             del app.state.ready_event
 

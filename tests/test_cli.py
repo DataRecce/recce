@@ -195,8 +195,7 @@ class TestCommandServer(TestCase):
         mock_run.assert_not_called()
 
     @patch("recce.cli.CloudStateLoader")
-    @patch("recce.cli.prepare_api_token", return_value="test_api_token")
-    def test_create_state_loader_does_not_call_load(self, mock_prepare_api_token, mock_state_loader_class):
+    def test_create_state_loader_does_not_call_load(self, mock_state_loader_class):
         """Verify create_state_loader no longer calls state_loader.load()."""
         from recce.cli import create_state_loader
 
