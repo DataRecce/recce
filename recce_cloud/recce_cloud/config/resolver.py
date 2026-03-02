@@ -164,14 +164,14 @@ def resolve_project_id(
     project_dir: Optional[str] = None,
 ) -> Optional[str]:
     """
-    Resolve project ID or slug from multiple sources.
+    Resolve project ID from multiple sources.
 
     Args:
-        cli_project: Project ID or slug from CLI flag.
+        cli_project: Project ID from CLI flag (numeric).
         project_dir: Project directory for local config lookup.
 
     Returns:
-        Project ID or slug, or None if not found.
+        Project ID (numeric string), or None if not found.
     """
     if cli_project:
         if not cli_project.isdigit():
