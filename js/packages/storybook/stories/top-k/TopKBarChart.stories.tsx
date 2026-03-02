@@ -257,6 +257,67 @@ export const LongValueNames: Story = {
 };
 
 // ============================================
+// Normalization
+// ============================================
+
+export const AbsoluteScaling: Story = {
+  name: "Absolute Scaling (10x Volume Growth)",
+  args: {
+    baseData: {
+      values: ["apple", "banana", "orange", "grape", "melon"],
+      counts: [100, 80, 60, 40, 20],
+      valids: 300,
+    },
+    currentData: {
+      values: ["apple", "banana", "orange", "grape", "melon"],
+      counts: [1000, 800, 600, 400, 200],
+      valids: 3000,
+    },
+    showComparison: true,
+    maxItems: 10,
+    title: "Absolute Scaling — 10x Volume Growth",
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `Bars are scaled by absolute max count across both datasets. Even though
+base and current have identical *distributions* (same proportions), the base bars
+are visibly shorter because they represent 10x fewer rows. This makes volume
+changes immediately obvious — a percentage-based chart would show identical bars.`,
+      },
+    },
+  },
+};
+
+export const ShiftedDistribution: Story = {
+  name: "Shifted Distribution (Same Volume)",
+  args: {
+    baseData: {
+      values: ["apple", "banana", "orange", "grape", "melon"],
+      counts: [500, 400, 300, 200, 100],
+      valids: 1500,
+    },
+    currentData: {
+      values: ["apple", "banana", "orange", "grape", "melon"],
+      counts: [200, 200, 500, 300, 300],
+      valids: 1500,
+    },
+    showComparison: true,
+    maxItems: 10,
+    title: "Shifted Distribution — Same Total Volume",
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: `Both datasets have the same total (1500 valids), but the distribution
+shifted. With absolute scaling, equal totals mean the bars are directly
+comparable — you can see exactly which categories grew and which shrank.`,
+      },
+    },
+  },
+};
+
+// ============================================
 // Theme Testing
 // ============================================
 
