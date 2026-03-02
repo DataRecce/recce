@@ -12,15 +12,27 @@ from typing import Any, Dict, List, Optional
 import requests
 
 from recce_cloud.api.exceptions import RecceCloudException
+from recce_cloud.constants import (
+    DOCKER_INTERNAL_URL_PREFIX,
+    LOCALHOST_URL_PREFIX,
+    get_api_host,
+)
 
 logger = logging.getLogger(__name__)
 
-RECCE_CLOUD_API_HOST = os.environ.get(
-    "RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io"
-)
 
-DOCKER_INTERNAL_URL_PREFIX = "http://host.docker.internal"
-LOCALHOST_URL_PREFIX = "http://localhost"
+def replace_localhost_with_docker_internal(url: str) -> str:
+    """Convert localhost URLs to docker internal URLs if running in Docker."""
+    if url is None:
+        return None
+    if (
+        os.environ.get("RECCE_SHARE_INSTANCE_ENV") == "docker"
+        or os.environ.get("RECCE_TASK_INSTANCE_ENV") == "docker"
+        or os.environ.get("RECCE_INSTANCE_ENV") == "docker"
+    ):
+        if url.startswith(LOCALHOST_URL_PREFIX):
+            return url.replace(LOCALHOST_URL_PREFIX, DOCKER_INTERNAL_URL_PREFIX)
+    return url
 
 
 class RecceCloudClient:
@@ -30,11 +42,11 @@ class RecceCloudClient:
     Supports authentication with Recce Cloud API token (starts with "rct-").
     """
 
-    def __init__(self, token: str):
+    def __init__(self, token: str, api_host: Optional[str] = None):
         if token is None:
             raise ValueError("Token cannot be None.")
         self.token = token
-        self.base_url_v2 = f"{RECCE_CLOUD_API_HOST}/api/v2"
+        self.base_url_v2 = f"{api_host or get_api_host()}/api/v2"
 
     def _request(self, method: str, url: str, headers: dict = None, **kwargs):
         """Make authenticated HTTP request to Recce Cloud API."""
@@ -61,20 +73,6 @@ class RecceCloudClient:
             return response.json().get("detail", default)
         except (json.JSONDecodeError, ValueError):
             return default
-
-    def _replace_localhost_with_docker_internal(self, url: str) -> str:
-        """Convert localhost URLs to docker internal URLs if running in Docker."""
-        if url is None:
-            return None
-        if (
-            os.environ.get("RECCE_SHARE_INSTANCE_ENV") == "docker"
-            or os.environ.get("RECCE_TASK_INSTANCE_ENV") == "docker"
-            or os.environ.get("RECCE_INSTANCE_ENV") == "docker"
-        ):
-            # For local development, convert the presigned URL from localhost to host.docker.internal
-            if url.startswith(LOCALHOST_URL_PREFIX):
-                return url.replace(LOCALHOST_URL_PREFIX, DOCKER_INTERNAL_URL_PREFIX)
-        return url
 
     def get_session(self, session_id: str) -> dict:
         """
@@ -147,7 +145,7 @@ class RecceCloudClient:
 
         presigned_urls = data["presigned_urls"]
         for key, url in presigned_urls.items():
-            presigned_urls[key] = self._replace_localhost_with_docker_internal(url)
+            presigned_urls[key] = replace_localhost_with_docker_internal(url)
         return presigned_urls
 
     def get_download_urls_by_session_id(
@@ -185,7 +183,7 @@ class RecceCloudClient:
 
         presigned_urls = data["presigned_urls"]
         for key, url in presigned_urls.items():
-            presigned_urls[key] = self._replace_localhost_with_docker_internal(url)
+            presigned_urls[key] = replace_localhost_with_docker_internal(url)
         return presigned_urls
 
     def update_session(
@@ -779,11 +777,11 @@ class RecceCloudClient:
 class ReportClient:
     """Client for fetching reports from Recce Cloud API."""
 
-    def __init__(self, token: str):
+    def __init__(self, token: str, api_host: Optional[str] = None):
         if token is None:
             raise ValueError("Token cannot be None.")
         self.token = token
-        self.base_url_v2 = f"{RECCE_CLOUD_API_HOST}/api/v2"
+        self.base_url_v2 = f"{api_host or get_api_host()}/api/v2"
 
     def _request(self, method: str, url: str, headers: dict = None, **kwargs):
         """

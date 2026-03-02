@@ -64,7 +64,7 @@ function PrivateSingleEnvSchemaView(
   let schemaMissingMessage = undefined;
   if (noSchemaCurrent) {
     schemaMissingMessage =
-      "catalog.json is outdated. Update catalog.json to get schema information.";
+      "Node schema not found in catalog.json. Please regenerate your catalog.json to update.";
   }
 
   const handleViewCll = async (columnName: string) => {
@@ -211,13 +211,13 @@ export function PrivateSchemaView(
   let schemaMissingMessage = undefined;
   if (noSchemaBase && noSchemaCurrent) {
     schemaMissingMessage =
-      "catalog.json is outdated on both environments. Update catalog.json to get schema information.";
+      "Node schema not found in catalog.json on both environments. Please regenerate your catalog.json to update.";
   } else if (noSchemaCurrent) {
     schemaMissingMessage =
-      "catalog.json is outdated on current environment. Update catalog.json to get schema information.";
+      "Node schema not found in catalog.json on current environment. Please regenerate your catalog.json to update.";
   } else if (noSchemaBase) {
     schemaMissingMessage =
-      "catalog.json is outdated on base environment. Update catalog.json to get schema information.";
+      "Node schema not found in catalog.json on base environment. Please regenerate your catalog.json to update.";
   }
 
   const handleViewCll = async (columnName: string) => {
