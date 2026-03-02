@@ -742,7 +742,7 @@ export function NodeView({
                     <Box
                       component="span"
                       sx={{
-                        color: "info.main",
+                        color: "amber.main",
                         fontSize: "0.5rem",
                         lineHeight: 1,
                       }}
@@ -764,7 +764,7 @@ export function NodeView({
                     <Box
                       component="span"
                       sx={{
-                        color: "info.main",
+                        color: "amber.main",
                         fontSize: "0.5rem",
                         lineHeight: 1,
                       }}
