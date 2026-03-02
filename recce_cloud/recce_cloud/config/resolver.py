@@ -8,11 +8,14 @@ Resolves org/project configuration from multiple sources with priority:
 4. Error (no configuration found)
 """
 
+import logging
 import os
 from dataclasses import dataclass
 from typing import Optional
 
 from recce_cloud.config.project_config import get_project_binding
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -126,15 +129,32 @@ def resolve_org_id(
         Organization ID, or None if not found.
     """
     if cli_org:
+        if not cli_org.isdigit():
+            logger.warning(
+                "Invalid org ID '%s' from CLI flag (expected numeric ID)", cli_org
+            )
+            return None
         return cli_org
 
     env_org = os.environ.get("RECCE_ORG")
     if env_org:
+        if not env_org.isdigit():
+            logger.warning(
+                "Invalid org ID '%s' from RECCE_ORG env var (expected numeric ID)",
+                env_org,
+            )
+            return None
         return env_org
 
     binding = get_project_binding(project_dir)
     if binding:
-        return binding["org_id"]
+        org_id = binding["org_id"]
+        if not str(org_id).isdigit():
+            logger.warning(
+                "Invalid org_id '%s' in config file (expected numeric ID)", org_id
+            )
+            return None
+        return org_id
 
     return None
 
@@ -144,24 +164,43 @@ def resolve_project_id(
     project_dir: Optional[str] = None,
 ) -> Optional[str]:
     """
-    Resolve project ID or slug from multiple sources.
+    Resolve project ID from multiple sources.
 
     Args:
-        cli_project: Project ID or slug from CLI flag.
+        cli_project: Project ID from CLI flag (numeric).
         project_dir: Project directory for local config lookup.
 
     Returns:
-        Project ID or slug, or None if not found.
+        Project ID (numeric string), or None if not found.
     """
     if cli_project:
+        if not cli_project.isdigit():
+            logger.warning(
+                "Invalid project ID '%s' from CLI flag (expected numeric ID)",
+                cli_project,
+            )
+            return None
         return cli_project
 
     env_project = os.environ.get("RECCE_PROJECT")
     if env_project:
+        if not env_project.isdigit():
+            logger.warning(
+                "Invalid project ID '%s' from RECCE_PROJECT env var (expected numeric ID)",
+                env_project,
+            )
+            return None
         return env_project
 
     binding = get_project_binding(project_dir)
     if binding:
-        return binding["project_id"]
+        project_id = binding["project_id"]
+        if not str(project_id).isdigit():
+            logger.warning(
+                "Invalid project_id '%s' in config file (expected numeric ID)",
+                project_id,
+            )
+            return None
+        return project_id
 
     return None

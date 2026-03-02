@@ -37,7 +37,7 @@ from recce_cloud.auth.profile import (
 )
 from recce_cloud.constants import get_api_host, get_base_url
 
-console = Console()
+console = Console(stderr=True)
 
 
 def generate_key_pair() -> Tuple[RSAPrivateKey, RSAPublicKey]:

@@ -18,7 +18,7 @@ from recce_cloud.constants import (
     get_api_host,
 )
 
-logger = logging.getLogger("recce")
+logger = logging.getLogger(__name__)
 
 
 def replace_localhost_with_docker_internal(url: str) -> str:
