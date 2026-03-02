@@ -404,16 +404,17 @@ function TopKBarChartComponent({
       );
   }, [currentItems, baseItems, showBase]);
 
-  const xMax = showBase
-    ? Math.max(currentData.valids, baseData?.valids ?? 0)
-    : currentData.valids;
-
+  // Normalize counts to proportions so bars represent distribution, not absolute volume.
+  // This ensures identical distributions produce identical bar lengths regardless of scale.
   const chartData = useMemo<ChartData<"bar">>(() => {
     const labels = displayItems.map(({ current }) => current.label);
+    const currentTotal = currentData.valids || 1;
+    const baseTotal = baseData?.valids || 1;
+
     const datasets: ChartData<"bar">["datasets"] = [
       {
         label: "Current",
-        data: displayItems.map(({ current }) => current.count),
+        data: displayItems.map(({ current }) => current.count / currentTotal),
         backgroundColor: barColors.current,
         hoverBackgroundColor: barColors.current,
         borderWidth: 0,
@@ -426,7 +427,7 @@ function TopKBarChartComponent({
     if (showBase) {
       datasets.push({
         label: "Base",
-        data: displayItems.map(({ base }) => base?.count ?? 0),
+        data: displayItems.map(({ base }) => (base?.count ?? 0) / baseTotal),
         backgroundColor: barColors.base,
         hoverBackgroundColor: barColors.base,
         borderWidth: 0,
@@ -437,7 +438,7 @@ function TopKBarChartComponent({
     }
 
     return { labels, datasets };
-  }, [displayItems, barColors, showBase]);
+  }, [displayItems, barColors, showBase, currentData.valids, baseData?.valids]);
 
   const chartOptions = useMemo<ChartOptions<"bar">>(
     () => ({
@@ -448,7 +449,6 @@ function TopKBarChartComponent({
       scales: {
         x: {
           display: false,
-          max: xMax,
           grid: { display: false },
         },
         y: {
@@ -494,7 +494,7 @@ function TopKBarChartComponent({
       },
       animation: false,
     }),
-    [displayItems, xMax, themeColors, showBase, baseData, currentData],
+    [displayItems, themeColors, showBase, baseData, currentData],
   );
 
   const secondaryTextColor = isDark ? "#9ca3af" : "#6b7280";
@@ -521,12 +521,13 @@ function TopKBarChartComponent({
               y: number;
               base: number;
             };
-            const count = (dataset.data[i] as number) ?? 0;
-            if (count === 0) continue;
+            const proportion = (dataset.data[i] as number) ?? 0;
+            if (proportion === 0) continue;
+            const count = Math.round(proportion * total);
 
             const barWidth = el.x - el.base;
             const countText = formatAbbreviated(count);
-            const pctText = formatPercent(count / total);
+            const pctText = formatPercent(proportion);
             const countWidth = ctx.measureText(countText).width;
             const fitsInside = countWidth + 2 * pad < barWidth;
 
