@@ -5,8 +5,9 @@ Delete helper functions for recce-cloud CLI.
 import sys
 
 from recce_cloud.api.client import RecceCloudClient
-from recce_cloud.api.exceptions import RecceCloudException
 from recce_cloud.api.factory import create_platform_client
+from recce_cloud.constants import SESSION_TYPE_PR, SESSION_TYPE_PROD, ExitCode
+from recce_cloud.error_handling import cloud_error_handler
 
 
 def delete_existing_session(console, token: str, session_id: str):
@@ -15,25 +16,16 @@ def delete_existing_session(console, token: str, session_id: str):
 
     This is the generic workflow that requires a pre-existing session ID.
     """
-    try:
+    # Initialize client
+    with cloud_error_handler(
+        console, "initialize API client", exit_code=ExitCode.INIT_ERROR
+    ):
         client = RecceCloudClient(token)
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to initialize API client")
-        console.print(f"Reason: {e}")
-        sys.exit(2)
 
     # Delete the session
     console.print(f'Deleting session ID "{session_id}"')
-    try:
+    with cloud_error_handler(console, "delete session"):
         client.delete_session(session_id)
-    except RecceCloudException as e:
-        console.print("[red]Error:[/red] Failed to delete session")
-        console.print(f"Reason: {e.reason}")
-        sys.exit(4)
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to delete session")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
 
     # Success!
     console.rule("Deleted Successfully", style="green")
@@ -49,14 +41,16 @@ def delete_with_platform_apis(console, token: str, ci_info, prod: bool):
     """
     # Validate platform support
     if ci_info.platform not in ["github-actions", "gitlab-ci"]:
-        console.print("[red]Error:[/red] Platform-specific delete requires GitHub Actions or GitLab CI environment")
+        console.print(
+            "[red]Error:[/red] Platform-specific delete requires GitHub Actions or GitLab CI environment"
+        )
         console.print(f"Detected platform: {ci_info.platform or 'unknown'}")
         console.print(
             "Either run this command in a supported CI environment or provide --session-id for generic delete"
         )
         sys.exit(1)
 
-    # Create platform-specific client
+    # Create platform-specific client (ValueError, not RecceCloudException)
     try:
         client = create_platform_client(token, ci_info)
     except ValueError as e:
@@ -65,41 +59,32 @@ def delete_with_platform_apis(console, token: str, ci_info, prod: bool):
         sys.exit(2)
 
     # Determine session type
-    session_type = "prod" if prod else "pr"
+    session_type = SESSION_TYPE_PROD if prod else SESSION_TYPE_PR
 
     # Delete session
     console.rule("Deleting session", style="blue")
 
     # Determine what to display based on session type
-    if session_type == "prod":
+    if session_type == SESSION_TYPE_PROD:
         console.print("Deleting production/base session...")
-    elif session_type == "pr":
+    elif session_type == SESSION_TYPE_PR:
         console.print(f"Deleting PR/MR session (PR #{ci_info.pr_number})...")
     else:
         console.print("Deleting session...")
 
-    try:
+    with cloud_error_handler(console, "delete session"):
         delete_response = client.delete_session(
             pr_number=ci_info.pr_number,
             session_type=session_type,
         )
 
-        session_id = delete_response.get("session_id")
-        if not session_id:
-            console.print("[red]Error:[/red] Incomplete response from delete session API")
-            console.print(f"Response: {delete_response}")
-            sys.exit(4)
-
-        console.print(f"[green]Deleted Session ID:[/green] {session_id}")
-
-    except RecceCloudException as e:
-        console.print("[red]Error:[/red] Failed to delete session")
-        console.print(f"Reason: {e.reason}")
+    session_id = delete_response.get("session_id")
+    if not session_id:
+        console.print("[red]Error:[/red] Incomplete response from delete session API")
+        console.print(f"Response: {delete_response}")
         sys.exit(4)
-    except Exception as e:
-        console.print("[red]Error:[/red] Failed to delete session")
-        console.print(f"Reason: {e}")
-        sys.exit(4)
+
+    console.print(f"[green]Deleted Session ID:[/green] {session_id}")
 
     # Success!
     console.rule("Deleted Successfully", style="green")

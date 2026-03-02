@@ -5,7 +5,6 @@ Handles the business logic for generating and retrieving data reviews.
 """
 
 import json
-import os
 import sys
 import time
 from dataclasses import dataclass
@@ -14,10 +13,7 @@ from typing import Any, Dict, Optional
 
 from recce_cloud.api.client import RecceCloudClient
 from recce_cloud.api.exceptions import RecceCloudException
-
-# Cloud UI configuration - use same defaults as auth/login.py
-RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
-RECCE_CLOUD_BASE_URL = os.environ.get("RECCE_CLOUD_BASE_URL", RECCE_CLOUD_API_HOST)
+from recce_cloud.constants import get_base_url
 
 
 class ReviewStatus(Enum):
@@ -97,7 +93,7 @@ def generate_review_url(
             pass
 
     # Use the Recce Cloud web UI URL (respects RECCE_CLOUD_BASE_URL env var)
-    return f"{RECCE_CLOUD_BASE_URL}/{org_slug}/{project_slug}/{session_id}/review"
+    return f"{get_base_url()}/{org_slug}/{project_slug}/{session_id}/review"
 
 
 def check_prerequisites(
@@ -319,7 +315,9 @@ def generate_data_review(
             console.print(f"[cyan]{action} data review...[/cyan]")
 
         try:
-            response = client.generate_data_review(org_id, project_id, session_id, regenerate=regenerate)
+            response = client.generate_data_review(
+                org_id, project_id, session_id, regenerate=regenerate
+            )
             task_id = response.get("task_id")
 
             if not task_id:
@@ -330,7 +328,9 @@ def generate_data_review(
                         status=ReviewStatus.ALREADY_EXISTS,
                         session_id=session_id,
                         session_name=session_name,
-                        review_url=generate_review_url(org_id, project_id, session_id, client),
+                        review_url=generate_review_url(
+                            org_id, project_id, session_id, client
+                        ),
                         summary=existing_review.get("summary"),
                     )
                 else:
@@ -442,7 +442,11 @@ def run_review_command(
         client = RecceCloudClient(token)
     except Exception as e:
         if json_output:
-            print(json.dumps({"success": False, "error": f"Failed to initialize client: {e}"}))
+            print(
+                json.dumps(
+                    {"success": False, "error": f"Failed to initialize client: {e}"}
+                )
+            )
         else:
             console.print("[red]Error:[/red] Failed to initialize API client")
             console.print(f"Reason: {e}")
@@ -452,7 +456,9 @@ def run_review_command(
     if not json_output:
         console.rule("Checking Prerequisites", style="blue")
 
-    prereq = check_prerequisites(client, org_id, project_id, session_name=session_name, session_id=session_id)
+    prereq = check_prerequisites(
+        client, org_id, project_id, session_name=session_name, session_id=session_id
+    )
 
     if not prereq["success"]:
         if json_output:
@@ -497,7 +503,8 @@ def run_review_command(
     # 4. Display results
     if json_output:
         output = {
-            "success": result.status in [ReviewStatus.SUCCEEDED, ReviewStatus.ALREADY_EXISTS],
+            "success": result.status
+            in [ReviewStatus.SUCCEEDED, ReviewStatus.ALREADY_EXISTS],
             "status": result.status.value,
             "session_id": result.session_id,
             "session_name": result.session_name,
@@ -511,21 +518,29 @@ def run_review_command(
     else:
         if result.status == ReviewStatus.SUCCEEDED:
             console.rule("Review Generated Successfully", style="green")
-            console.print(f"[green]✓[/green] Data review generated for session '{result.session_name}'")
+            console.print(
+                f"[green]✓[/green] Data review generated for session '{result.session_name}'"
+            )
             console.print()
             console.print(f"[cyan]View review at:[/cyan] {result.review_url}")
         elif result.status == ReviewStatus.ALREADY_EXISTS:
             console.rule("Review Already Exists", style="green")
-            console.print(f"[green]✓[/green] Data review already exists for session '{result.session_name}'")
+            console.print(
+                f"[green]✓[/green] Data review already exists for session '{result.session_name}'"
+            )
             console.print()
             console.print(f"[cyan]View review at:[/cyan] {result.review_url}")
             console.print()
             console.print("[dim]Tip: Use --regenerate to create a new review[/dim]")
         elif result.status == ReviewStatus.TIMEOUT:
             console.rule("Review Generation Timeout", style="yellow")
-            console.print("[yellow]Warning:[/yellow] Review generation is still in progress")
+            console.print(
+                "[yellow]Warning:[/yellow] Review generation is still in progress"
+            )
             console.print(f"Task ID: {result.task_id}")
-            console.print("The review will be available shortly. Check the web UI for status.")
+            console.print(
+                "The review will be available shortly. Check the web UI for status."
+            )
             console.print()
             console.print(f"[cyan]Check status at:[/cyan] {result.review_url}")
         else:

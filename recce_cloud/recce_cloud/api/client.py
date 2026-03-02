@@ -12,13 +12,27 @@ from typing import Any, Dict, List, Optional
 import requests
 
 from recce_cloud.api.exceptions import RecceCloudException
+from recce_cloud.constants import (
+    DOCKER_INTERNAL_URL_PREFIX,
+    LOCALHOST_URL_PREFIX,
+    get_api_host,
+)
 
 logger = logging.getLogger("recce")
 
-RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
 
-DOCKER_INTERNAL_URL_PREFIX = "http://host.docker.internal"
-LOCALHOST_URL_PREFIX = "http://localhost"
+def replace_localhost_with_docker_internal(url: str) -> str:
+    """Convert localhost URLs to docker internal URLs if running in Docker."""
+    if url is None:
+        return None
+    if (
+        os.environ.get("RECCE_SHARE_INSTANCE_ENV") == "docker"
+        or os.environ.get("RECCE_TASK_INSTANCE_ENV") == "docker"
+        or os.environ.get("RECCE_INSTANCE_ENV") == "docker"
+    ):
+        if url.startswith(LOCALHOST_URL_PREFIX):
+            return url.replace(LOCALHOST_URL_PREFIX, DOCKER_INTERNAL_URL_PREFIX)
+    return url
 
 
 class RecceCloudClient:
@@ -28,11 +42,11 @@ class RecceCloudClient:
     Supports authentication with Recce Cloud API token (starts with "rct-").
     """
 
-    def __init__(self, token: str):
+    def __init__(self, token: str, api_host: Optional[str] = None):
         if token is None:
             raise ValueError("Token cannot be None.")
         self.token = token
-        self.base_url_v2 = f"{RECCE_CLOUD_API_HOST}/api/v2"
+        self.base_url_v2 = f"{api_host or get_api_host()}/api/v2"
 
     def _request(self, method: str, url: str, headers: dict = None, **kwargs):
         """Make authenticated HTTP request to Recce Cloud API."""
@@ -60,20 +74,6 @@ class RecceCloudClient:
         except (json.JSONDecodeError, ValueError):
             return default
 
-    def _replace_localhost_with_docker_internal(self, url: str) -> str:
-        """Convert localhost URLs to docker internal URLs if running in Docker."""
-        if url is None:
-            return None
-        if (
-            os.environ.get("RECCE_SHARE_INSTANCE_ENV") == "docker"
-            or os.environ.get("RECCE_TASK_INSTANCE_ENV") == "docker"
-            or os.environ.get("RECCE_INSTANCE_ENV") == "docker"
-        ):
-            # For local development, convert the presigned URL from localhost to host.docker.internal
-            if url.startswith(LOCALHOST_URL_PREFIX):
-                return url.replace(LOCALHOST_URL_PREFIX, DOCKER_INTERNAL_URL_PREFIX)
-        return url
-
     def get_session(self, session_id: str) -> dict:
         """
         Get session information from Recce Cloud.
@@ -93,7 +93,10 @@ class RecceCloudClient:
         api_url = f"{self.base_url_v2}/sessions/{session_id}"
         response = self._request("GET", api_url)
         if response.status_code == 403:
-            return {"status": "error", "message": self._safe_get_error_detail(response, "Permission denied")}
+            return {
+                "status": "error",
+                "message": self._safe_get_error_detail(response, "Permission denied"),
+            }
         if response.status_code != 200:
             raise RecceCloudException(
                 reason=response.text,
@@ -107,7 +110,9 @@ class RecceCloudClient:
             )
         return data["session"]
 
-    def get_upload_urls_by_session_id(self, org_id: str, project_id: str, session_id: str) -> dict:
+    def get_upload_urls_by_session_id(
+        self, org_id: str, project_id: str, session_id: str
+    ) -> dict:
         """
         Get presigned S3 upload URLs for a session.
 
@@ -140,10 +145,12 @@ class RecceCloudClient:
 
         presigned_urls = data["presigned_urls"]
         for key, url in presigned_urls.items():
-            presigned_urls[key] = self._replace_localhost_with_docker_internal(url)
+            presigned_urls[key] = replace_localhost_with_docker_internal(url)
         return presigned_urls
 
-    def get_download_urls_by_session_id(self, org_id: str, project_id: str, session_id: str) -> dict:
+    def get_download_urls_by_session_id(
+        self, org_id: str, project_id: str, session_id: str
+    ) -> dict:
         """
         Get presigned S3 download URLs for a session.
 
@@ -176,10 +183,12 @@ class RecceCloudClient:
 
         presigned_urls = data["presigned_urls"]
         for key, url in presigned_urls.items():
-            presigned_urls[key] = self._replace_localhost_with_docker_internal(url)
+            presigned_urls[key] = replace_localhost_with_docker_internal(url)
         return presigned_urls
 
-    def update_session(self, org_id: str, project_id: str, session_id: str, adapter_type: str) -> dict:
+    def update_session(
+        self, org_id: str, project_id: str, session_id: str, adapter_type: str
+    ) -> dict:
         """
         Update session metadata with adapter type.
 
@@ -199,7 +208,10 @@ class RecceCloudClient:
         data = {"adapter_type": adapter_type}
         response = self._request("PATCH", api_url, json=data)
         if response.status_code == 403:
-            return {"status": "error", "message": self._safe_get_error_detail(response, "Permission denied")}
+            return {
+                "status": "error",
+                "message": self._safe_get_error_detail(response, "Permission denied"),
+            }
         if response.status_code != 200:
             raise RecceCloudException(
                 reason=response.text,
@@ -341,7 +353,11 @@ class RecceCloudClient:
         orgs = self.list_organizations()
         for org in orgs:
             # Compare as strings to handle both int and str IDs
-            if str(org.get("id")) == str(org_id) or org.get("slug") == org_id or org.get("name") == org_id:
+            if (
+                str(org.get("id")) == str(org_id)
+                or org.get("slug") == org_id
+                or org.get("name") == org_id
+            ):
                 return org
         return None
 
@@ -398,7 +414,9 @@ class RecceCloudClient:
         Raises:
             RecceCloudException: If the API call fails.
         """
-        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions"
+        api_url = (
+            f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions"
+        )
         params = {}
         if session_name:
             params["name"] = session_name
@@ -484,7 +502,9 @@ class RecceCloudClient:
         Raises:
             RecceCloudException: If the API call fails or session creation fails.
         """
-        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions"
+        api_url = (
+            f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions"
+        )
         data = {
             "name": session_name,
             "type": session_type,
@@ -555,9 +575,7 @@ class RecceCloudClient:
         Raises:
             RecceCloudException: If the API call fails.
         """
-        api_url = (
-            f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/check-prerequisites"
-        )
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/check-prerequisites"
         response = self._request("GET", api_url)
 
         if response.status_code == 404:
@@ -759,11 +777,11 @@ class RecceCloudClient:
 class ReportClient:
     """Client for fetching reports from Recce Cloud API."""
 
-    def __init__(self, token: str):
+    def __init__(self, token: str, api_host: Optional[str] = None):
         if token is None:
             raise ValueError("Token cannot be None.")
         self.token = token
-        self.base_url_v2 = f"{RECCE_CLOUD_API_HOST}/api/v2"
+        self.base_url_v2 = f"{api_host or get_api_host()}/api/v2"
 
     def _request(self, method: str, url: str, headers: dict = None, **kwargs):
         """
@@ -916,11 +934,21 @@ class ReportClient:
             prs_with_recce_summary=summary_data.get("prs_with_recce_summary", 0),
             recce_adoption_rate=summary_data.get("recce_adoption_rate", 0.0),
             summary_generation_rate=summary_data.get("summary_generation_rate", 0.0),
-            total_commits_before_pr_open=summary_data.get("total_commits_before_pr_open", 0),
-            total_commits_after_pr_open=summary_data.get("total_commits_after_pr_open", 0),
-            total_commits_after_summary=summary_data.get("total_commits_after_summary", 0),
-            avg_commits_before_pr_open=summary_data.get("avg_commits_before_pr_open", 0.0),
-            avg_commits_after_pr_open=summary_data.get("avg_commits_after_pr_open", 0.0),
+            total_commits_before_pr_open=summary_data.get(
+                "total_commits_before_pr_open", 0
+            ),
+            total_commits_after_pr_open=summary_data.get(
+                "total_commits_after_pr_open", 0
+            ),
+            total_commits_after_summary=summary_data.get(
+                "total_commits_after_summary", 0
+            ),
+            avg_commits_before_pr_open=summary_data.get(
+                "avg_commits_before_pr_open", 0.0
+            ),
+            avg_commits_after_pr_open=summary_data.get(
+                "avg_commits_after_pr_open", 0.0
+            ),
             avg_commits_after_summary=summary_data.get("avg_commits_after_summary"),
             avg_time_to_merge=summary_data.get("avg_time_to_merge"),
         )
