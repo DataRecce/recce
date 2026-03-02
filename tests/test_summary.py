@@ -6,6 +6,7 @@ import pytest
 from recce.adapter.dbt_adapter import DbtAdapter, DbtVersion, load_manifest
 from recce.core import RecceContext, set_default_context
 from recce.summary import (
+    MERMAID_NODE_SHAPES,
     Node,
     _build_lineage_graph,
     generate_mermaid_lineage_graph,
@@ -75,9 +76,59 @@ def test_generate_mermaid_lineage_graph():
     assert is_partial_graph is False
 
 
-def _make_node(node_id="model.test.my_model", name="my_model"):
+def _make_node(node_id="model.test.my_model", name="my_model", resource_type="model"):
     """Helper to create a Node with minimal data."""
-    return Node(node_id, {"name": name, "resource_type": "model", "package_name": "test"})
+    return Node(node_id, {"name": name, "resource_type": resource_type, "package_name": "test"})
+
+
+class TestGetShapeBrackets:
+    def test_default_returns_rectangle(self):
+        node = _make_node()
+        assert node._get_shape_brackets({}) == MERMAID_NODE_SHAPES["rectangle"]
+
+    def test_known_shape_name(self):
+        node = _make_node(resource_type="source")
+        assert node._get_shape_brackets({"source": "cylinder"}) == MERMAID_NODE_SHAPES["cylinder"]
+
+    def test_unknown_shape_falls_back_to_rectangle(self):
+        node = _make_node()
+        assert node._get_shape_brackets({"model": "nonexistent_shape"}) == MERMAID_NODE_SHAPES["rectangle"]
+
+    def test_unmatched_resource_type_uses_rectangle(self):
+        node = _make_node(resource_type="model")
+        assert node._get_shape_brackets({"source": "cylinder"}) == MERMAID_NODE_SHAPES["rectangle"]
+
+
+class TestGetNodeStr:
+    def test_default_shape_is_rectangle(self):
+        node = _make_node()
+        result = node.get_node_str()
+        open_b, _ = MERMAID_NODE_SHAPES["rectangle"]
+        assert result.startswith(f"{node.id}{open_b}{node.name}")
+
+    def test_cylinder_shape_for_source(self):
+        node = _make_node(node_id="source.test.my_source", name="my_source", resource_type="source")
+        result = node.get_node_str(node_shapes={"source": "cylinder"})
+        open_b, _ = MERMAID_NODE_SHAPES["cylinder"]
+        assert result.startswith(f"{node.id}{open_b}{node.name}")
+
+    def test_model_unaffected_by_source_shape(self):
+        node = _make_node()
+        result = node.get_node_str(node_shapes={"source": "cylinder"})
+        open_b, _ = MERMAID_NODE_SHAPES["rectangle"]
+        assert result.startswith(f"{node.id}{open_b}{node.name}")
+
+    def test_none_node_shapes_uses_rectangle(self):
+        node = _make_node()
+        result = node.get_node_str(node_shapes=None)
+        open_b, _ = MERMAID_NODE_SHAPES["rectangle"]
+        assert result.startswith(f"{node.id}{open_b}{node.name}")
+
+    def test_all_supported_shapes(self):
+        for shape_name, (open_b, _) in MERMAID_NODE_SHAPES.items():
+            node = _make_node()
+            result = node.get_node_str(node_shapes={"model": shape_name})
+            assert result.startswith(f"{node.id}{open_b}{node.name}")
 
 
 class TestCalRowCountDeltaPercentage:
