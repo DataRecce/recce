@@ -10,14 +10,17 @@ import {
   type ChartData,
   Chart as ChartJS,
   type ChartOptions,
+  Tooltip as ChartTooltip,
+  Legend,
   LinearScale,
+  type Plugin,
 } from "chart.js";
 import { Fragment, memo, useMemo } from "react";
 import { Bar } from "react-chartjs-2";
 import { getChartBarColors, getChartThemeColors } from "./HistogramChart";
 
 // Register Chart.js modules once
-ChartJS.register(CategoryScale, BarElement, LinearScale);
+ChartJS.register(CategoryScale, BarElement, LinearScale, Legend, ChartTooltip);
 
 /**
  * Single Top-K value item
@@ -154,24 +157,6 @@ function prepareSummaryList(
   }
 
   return items;
-}
-
-/**
- * Square icon for legend
- */
-function SquareIcon({ color }: { color: string }) {
-  return (
-    <Box
-      sx={{
-        display: "inline-block",
-        width: "10px",
-        height: "10px",
-        bgcolor: color,
-        mr: 1,
-        borderRadius: "4px",
-      }}
-    />
-  );
 }
 
 /**
@@ -388,6 +373,7 @@ function TopKBarChartComponent({
 }: TopKBarChartProps) {
   const isDark = theme === "dark";
   const barColors = getChartBarColors(isDark);
+  const themeColors = getChartThemeColors(isDark);
 
   const currentItems = useMemo(
     () => prepareSummaryList(currentData, maxItems),
@@ -401,185 +387,189 @@ function TopKBarChartComponent({
 
   const showBase = showComparison && baseData && baseItems.length > 0;
 
-  return (
-    <Box className={className} sx={{ width: "100%", px: 2, py: 2 }}>
-      {/* Title and legend */}
-      {(title || showBase) && (
-        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-          {title && (
-            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-              {title}
-            </Typography>
-          )}
-          <Box sx={{ flex: 1 }} />
-          {showBase && (
-            <>
-              <Typography
-                component="span"
-                sx={{ fontSize: "0.875rem", p: 1, color: "text.secondary" }}
-              >
-                <SquareIcon color={barColors.base} /> Base
-              </Typography>
-              <Typography
-                component="span"
-                sx={{ fontSize: "0.875rem", p: 1, color: "text.secondary" }}
-              >
-                <SquareIcon color={barColors.current} /> Current
-              </Typography>
-            </>
-          )}
-        </Box>
-      )}
+  // Build display items, filtering empty "(others)" rows
+  const displayItems = useMemo(() => {
+    return currentItems
+      .map((current, index) => ({
+        current,
+        base: showBase ? (baseItems[index] ?? null) : null,
+      }))
+      .filter(
+        ({ current, base }) =>
+          !(
+            current.label === "(others)" &&
+            current.count === 0 &&
+            (!base || base.count === 0)
+          ),
+      );
+  }, [currentItems, baseItems, showBase]);
 
-      {/* Items */}
-      {currentItems.map((current, index) => {
-        const base = showBase ? baseItems[index] : null;
+  const xMax = showBase
+    ? Math.max(currentData.valids, baseData?.valids ?? 0)
+    : currentData.valids;
 
-        // Skip empty "others" rows
-        if (
-          current.label === "(others)" &&
-          current.count === 0 &&
-          (!base || base.count === 0)
-        ) {
-          return null;
+  const chartData = useMemo<ChartData<"bar">>(() => {
+    const labels = displayItems.map(({ current }) => current.label);
+    const datasets: ChartData<"bar">["datasets"] = [
+      {
+        label: "Current",
+        data: displayItems.map(({ current }) => current.count),
+        backgroundColor: barColors.current,
+        hoverBackgroundColor: barColors.current,
+        borderWidth: 0,
+        borderRadius: 3,
+        barPercentage: showBase ? 0.9 : 1,
+        categoryPercentage: showBase ? 0.75 : 0.6,
+      },
+    ];
+
+    if (showBase) {
+      datasets.push({
+        label: "Base",
+        data: displayItems.map(({ base }) => base?.count ?? 0),
+        backgroundColor: barColors.base,
+        hoverBackgroundColor: barColors.base,
+        borderWidth: 0,
+        borderRadius: 3,
+        barPercentage: 0.9,
+        categoryPercentage: 0.75,
+      });
+    }
+
+    return { labels, datasets };
+  }, [displayItems, barColors, showBase]);
+
+  const chartOptions = useMemo<ChartOptions<"bar">>(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: "y" as const,
+      layout: { padding: { right: 80 } },
+      scales: {
+        x: {
+          display: false,
+          max: xMax,
+          grid: { display: false },
+        },
+        y: {
+          grid: { display: false },
+          ticks: {
+            padding: 8,
+            color: ((ctx: { index: number }) => {
+              const item = displayItems[ctx.index];
+              return item?.current.isSpecial
+                ? "#9ca3af"
+                : themeColors.textColor;
+            }) as unknown as string,
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          display: !!showBase,
+          position: "top" as const,
+          align: "center" as const,
+          reverse: true,
+          labels: {
+            boxWidth: 32,
+            boxHeight: 12,
+            borderRadius: 3,
+            useBorderRadius: true,
+            color: themeColors.textColor,
+          },
+        },
+        tooltip: {
+          mode: "index" as const,
+          callbacks: {
+            label: (context) => {
+              const count = context.parsed.x ?? 0;
+              const isBase = context.dataset.label === "Base";
+              const total = isBase
+                ? (baseData?.valids ?? 1)
+                : currentData.valids;
+              return `${context.dataset.label}: ${formatAbbreviated(count)} (${formatPercent(count / total)})`;
+            },
+          },
+        },
+      },
+      animation: false,
+    }),
+    [displayItems, xMax, themeColors, showBase, baseData, currentData],
+  );
+
+  const secondaryTextColor = isDark ? "#9ca3af" : "#6b7280";
+
+  const barLabelsPlugin = useMemo<Plugin<"bar">>(
+    () => ({
+      id: "barLabels",
+      afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        ctx.save();
+        ctx.font = "11px system-ui, sans-serif";
+        ctx.textBaseline = "middle";
+        const pad = 4;
+
+        for (let dsIndex = 0; dsIndex < chart.data.datasets.length; dsIndex++) {
+          const dataset = chart.data.datasets[dsIndex];
+          const isBase = dataset.label === "Base";
+          const total = isBase ? (baseData?.valids ?? 1) : currentData.valids;
+          const meta = chart.getDatasetMeta(dsIndex);
+
+          for (let i = 0; i < meta.data.length; i++) {
+            const el = meta.data[i] as unknown as {
+              x: number;
+              y: number;
+              base: number;
+            };
+            const count = (dataset.data[i] as number) ?? 0;
+            if (count === 0) continue;
+
+            const barWidth = el.x - el.base;
+            const countText = formatAbbreviated(count);
+            const pctText = formatPercent(count / total);
+            const countWidth = ctx.measureText(countText).width;
+            const fitsInside = countWidth + 2 * pad < barWidth;
+
+            if (fitsInside) {
+              ctx.fillStyle = "#1f2937";
+              ctx.textAlign = "left";
+              ctx.fillText(countText, el.base + pad, el.y);
+              ctx.fillStyle = secondaryTextColor;
+              ctx.textAlign = "left";
+              ctx.fillText(pctText, el.x + pad, el.y);
+            } else {
+              ctx.fillStyle = themeColors.textColor;
+              ctx.textAlign = "left";
+              ctx.fillText(countText, el.x + pad, el.y);
+              ctx.fillStyle = secondaryTextColor;
+              ctx.fillText(pctText, el.x + pad + countWidth + pad, el.y);
+            }
+          }
         }
 
-        return (
-          <Fragment key={current.label}>
-            <Tooltip
-              title={
-                showBase && base ? (
-                  <Box>
-                    <Typography>
-                      <SquareIcon color={barColors.current} />
-                      Current: {current.count} (
-                      {formatPercent(current.count / currentData.valids)})
-                    </Typography>
-                    <Typography>
-                      <SquareIcon color={barColors.base} />
-                      Base: {base.count} (
-                      {formatPercent(base.count / (baseData?.valids ?? 1))})
-                    </Typography>
-                  </Box>
-                ) : (
-                  `${current.count} (${formatPercent(current.count / currentData.valids)})`
-                )
-              }
-              arrow
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  width: "100%",
-                  "&:hover": { bgcolor: "action.hover" },
-                  px: 2,
-                }}
-              >
-                <Typography
-                  sx={{
-                    width: "10em",
-                    fontSize: "0.875rem",
-                    color: current.isSpecial ? "grey.400" : "inherit",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {current.label}
-                </Typography>
-                <Box
-                  sx={{
-                    display: "flex",
-                    width: "70%",
-                    flexDirection: "column",
-                    gap: 0.5,
-                  }}
-                >
-                  {/* Current bar */}
-                  <Box
-                    sx={{
-                      display: "flex",
-                      height: "1em",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Box sx={{ flex: 1, height: "100%" }}>
-                      <SingleBarChart
-                        count={current.count}
-                        total={currentData.valids}
-                        color={barColors.current}
-                        theme={theme}
-                        height={16}
-                      />
-                    </Box>
-                    <Typography
-                      sx={{
-                        ml: 2.5,
-                        mr: 1,
-                        fontSize: "0.875rem",
-                        width: "6em",
-                      }}
-                    >
-                      {formatAbbreviated(current.count)}
-                    </Typography>
-                    <Typography
-                      sx={{
-                        color: "grey.400",
-                        fontSize: "0.875rem",
-                        width: "4em",
-                      }}
-                    >
-                      {formatPercent(current.count / currentData.valids)}
-                    </Typography>
-                  </Box>
+        ctx.restore();
+      },
+    }),
+    [baseData, currentData, themeColors, secondaryTextColor],
+  );
 
-                  {/* Base bar (if comparison mode) */}
-                  {showBase && base && (
-                    <Box
-                      sx={{
-                        display: "flex",
-                        height: "1em",
-                        alignItems: "center",
-                      }}
-                    >
-                      <Box sx={{ flex: 1, height: "100%" }}>
-                        <SingleBarChart
-                          count={base.count}
-                          total={baseData?.valids ?? 1}
-                          color={barColors.base}
-                          theme={theme}
-                          height={16}
-                        />
-                      </Box>
-                      <Typography
-                        sx={{
-                          ml: 2.5,
-                          mr: 1,
-                          fontSize: "0.875rem",
-                          width: "6em",
-                        }}
-                      >
-                        {formatAbbreviated(base.count)}
-                      </Typography>
-                      <Typography
-                        sx={{
-                          color: "grey.400",
-                          fontSize: "0.875rem",
-                          width: "4em",
-                        }}
-                      >
-                        {formatPercent(base.count / (baseData?.valids ?? 1))}
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-              </Box>
-            </Tooltip>
-            <Divider />
-          </Fragment>
-        );
-      })}
+  const chartHeight =
+    displayItems.length * (showBase ? 46 : 32) + (showBase ? 30 : 0);
+
+  return (
+    <Box className={className} sx={{ width: "100%", px: 2, py: 2 }}>
+      {title && (
+        <Typography variant="subtitle1" sx={{ fontWeight: 500, mb: 1 }}>
+          {title}
+        </Typography>
+      )}
+      <div style={{ height: Math.max(chartHeight, 50) }}>
+        <Bar
+          data={chartData}
+          options={chartOptions}
+          plugins={[barLabelsPlugin]}
+        />
+      </div>
     </Box>
   );
 }
