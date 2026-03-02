@@ -1,3 +1,4 @@
+import asyncio
 import os
 from datetime import datetime, timezone
 
@@ -36,7 +37,9 @@ def test_health():
     client = TestClient(app)
     response = client.get("/api/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    data = response.json()
+    assert data["status"] == "ok"
+    assert "ready" in data
 
 
 def test_stateless(dbt_test_helper):
@@ -200,3 +203,100 @@ def test_nonexistent_route_returns_404():
     assert response.status_code == 404
     assert response.headers["content-type"] == "text/html; charset=utf-8"
     assert b"<!DOCTYPE html>" in response.content
+
+
+class TestReadinessGate:
+    """Tests for the readiness gate middleware that enables fast server startup."""
+
+    @pytest.fixture
+    def readiness_state(self):
+        """Set up and tear down ready_event/startup_error on app.state."""
+        yield
+        # Cleanup — remove readiness attributes if they were set
+        for attr in ("ready_event", "startup_error"):
+            if hasattr(app.state, attr):
+                delattr(app.state, attr)
+
+    def _set_readiness(self, ready: bool, error: Exception = None):
+        """Helper to configure readiness state for tests."""
+        ready_event = asyncio.Event()
+        if ready:
+            ready_event.set()
+        app.state.ready_event = ready_event
+        app.state.startup_error = error
+
+    def test_health_returns_200_before_ready(self, readiness_state):
+        """Health endpoint should return 200 with ready=false when ready_event is not set."""
+        self._set_readiness(ready=False)
+
+        client = TestClient(app)
+        response = client.get("/api/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert data["ready"] is False
+        assert data["error"] is None
+
+    def test_health_returns_200_after_startup_error(self, readiness_state):
+        """Health endpoint should return 200 with ready=false and error type when startup failed."""
+        self._set_readiness(ready=True, error=RuntimeError("dbt project not found"))
+
+        client = TestClient(app)
+        response = client.get("/api/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert data["ready"] is False
+        # Only the exception type is exposed, not the full message
+        assert data["error"] == "RuntimeError"
+
+    def test_health_returns_ready_true_when_loaded(self, readiness_state):
+        """Health endpoint should return ready=true when server is fully loaded."""
+        self._set_readiness(ready=True)
+
+        client = TestClient(app)
+        response = client.get("/api/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert data["ready"] is True
+        assert data["error"] is None
+
+    def test_data_endpoint_returns_503_on_startup_error(self, readiness_state):
+        """Data endpoints should return 503 when startup failed."""
+        self._set_readiness(ready=True, error=RuntimeError("dbt project not found"))
+
+        client = TestClient(app)
+        response = client.get("/api/version")
+        assert response.status_code == 503
+        assert "startup failed" in response.json()["error"].lower()
+
+    def test_data_endpoint_succeeds_after_ready(self, readiness_state):
+        """Data endpoint should succeed once ready_event is set with no error."""
+        self._set_readiness(ready=True)
+
+        client = TestClient(app)
+        response = client.get("/api/version")
+        assert response.status_code == 200
+
+    def test_health_defaults_ready_true_without_ready_event(self):
+        """Health endpoint should return ready=True when no ready_event is set (backward compat)."""
+        if hasattr(app.state, "ready_event"):
+            del app.state.ready_event
+
+        client = TestClient(app)
+        response = client.get("/api/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "ok"
+        assert data["ready"] is True
+        assert data["error"] is None
+
+    def test_middleware_passthrough_without_ready_event(self):
+        """Middleware should pass through when ready_event is not on app state (backward compat)."""
+        if hasattr(app.state, "ready_event"):
+            del app.state.ready_event
+
+        client = TestClient(app)
+        response = client.get("/api/health")
+        assert response.status_code == 200
