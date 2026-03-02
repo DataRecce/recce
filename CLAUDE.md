@@ -62,15 +62,6 @@ When asked to "publish ui" or "release ui package":
 - `summary.py` row count gotcha: `base`/`curr` can be `None` (TABLE_NOT_FOUND, PERMISSION_DENIED). Guard with `is None` check before arithmetic — `dict.get(key, 0)` does NOT protect when key exists with `None` value.
 - Format changes to MCP tool responses require both deterministic tests AND BQ/LLM eval to prove agent behavior unchanged.
 
-## Storybook
-
-- **Never assume an existing Storybook instance is yours.** Always start your own and track it as a background task.
-- Run as a background task, then read the output to find the port Storybook picked:
-  ```bash
-  cd js/packages/storybook && pnpm dlx storybook dev --no-open
-  ```
-  Storybook auto-increments the port if 6006 is taken. Read the task output to find the actual URL.
-
 ## Individual Preferences
 
 - @~/.claude/recce.md
