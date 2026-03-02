@@ -96,14 +96,13 @@ export interface TopKSummaryListProps {
 }
 
 /**
- * Format number as abbreviated (K, M, B, T)
+ * Format count with commas; abbreviate only >= 1M (bar labels have limited space)
  */
-function formatAbbreviated(value: number): string {
+function formatCount(value: number): string {
   if (value >= 1e12) return `${(value / 1e12).toFixed(1)}T`;
   if (value >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
   if (value >= 1e6) return `${(value / 1e6).toFixed(1)}M`;
-  if (value >= 1e3) return `${(value / 1e3).toFixed(1)}K`;
-  return String(value);
+  return value.toLocaleString("en-US");
 }
 
 /**
@@ -325,7 +324,7 @@ function TopKSummaryListComponent({
                   whiteSpace: "nowrap",
                 }}
               >
-                {formatAbbreviated(item.count)}
+                {formatCount(item.count)}
               </Typography>
             </Tooltip>
             <Typography
@@ -349,45 +348,73 @@ export const TopKSummaryList = memo(TopKSummaryListComponent);
 TopKSummaryList.displayName = "TopKSummaryList";
 
 /**
- * CSS-based horizontal bar with count label inside.
+ * CSS-based horizontal bar with count label and percentage.
+ * Label renders inside the bar when it's wide enough, outside otherwise.
  */
 function HorizontalBar({
   count,
-  maxCount,
+  total,
   color,
   label,
 }: {
   count: number;
-  maxCount: number;
+  total: number;
   color: string;
   label: string;
 }) {
-  const widthPercent = maxCount > 0 ? (count / maxCount) * 100 : 0;
+  const widthPercent = total > 0 ? (count / total) * 100 : 0;
+  const labelFits = widthPercent >= 8;
 
   return (
-    <Box
-      sx={{
-        position: "relative",
-        width: `${widthPercent}%`,
-        minWidth: count > 0 ? "40px" : 0,
-        height: 22,
-        bgcolor: color,
-        borderRadius: "3px",
-        display: "flex",
-        alignItems: "center",
-        px: 1,
-      }}
-    >
+    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+      <Box
+        sx={{
+          width: `${widthPercent}%`,
+          minWidth: count > 0 ? 2 : 0,
+          height: 22,
+          bgcolor: color,
+          borderRadius: "3px",
+          display: "flex",
+          alignItems: "center",
+          px: labelFits ? 1 : 0,
+          flexShrink: 0,
+          overflow: "hidden",
+        }}
+      >
+        {labelFits && (
+          <Typography
+            sx={{
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              color: "#fff",
+              lineHeight: 1,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {label}
+          </Typography>
+        )}
+      </Box>
+      {!labelFits && (
+        <Typography
+          sx={{
+            fontSize: "0.75rem",
+            fontWeight: 600,
+            lineHeight: 1,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {label}
+        </Typography>
+      )}
       <Typography
         sx={{
           fontSize: "0.75rem",
-          fontWeight: 600,
-          color: "#fff",
-          lineHeight: 1,
+          color: "grey.500",
           whiteSpace: "nowrap",
         }}
       >
-        {label}
+        {formatPercent(total > 0 ? count / total : 0)}
       </Typography>
     </Box>
   );
@@ -446,20 +473,6 @@ function TopKBarChartComponent({
   );
 
   const showBase = showComparison && baseData && baseItems.length > 0;
-
-  // Find max count across all items for consistent bar scaling
-  const maxCount = useMemo(() => {
-    let max = 0;
-    for (const item of currentItems) {
-      if (item.count > max) max = item.count;
-    }
-    if (showBase) {
-      for (const item of baseItems) {
-        if (item.count > max) max = item.count;
-      }
-    }
-    return max;
-  }, [currentItems, baseItems, showBase]);
 
   return (
     <Box className={className} sx={{ width: "100%", px: 2, py: 2 }}>
@@ -552,18 +565,18 @@ function TopKBarChartComponent({
                   {/* Current bar */}
                   <HorizontalBar
                     count={current.count}
-                    maxCount={maxCount}
+                    total={currentData.valids}
                     color={barColors.current}
-                    label={formatAbbreviated(current.count)}
+                    label={formatCount(current.count)}
                   />
 
                   {/* Base bar (if comparison mode) */}
                   {showBase && base && (
                     <HorizontalBar
                       count={base.count}
-                      maxCount={maxCount}
+                      total={baseData?.valids ?? 1}
                       color={barColors.base}
-                      label={formatAbbreviated(base.count)}
+                      label={formatCount(base.count)}
                     />
                   )}
                 </Box>

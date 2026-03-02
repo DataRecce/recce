@@ -257,11 +257,11 @@ export const LongValueNames: Story = {
 };
 
 // ============================================
-// Normalization
+// Percentage Scaling
 // ============================================
 
-export const AbsoluteScaling: Story = {
-  name: "Absolute Scaling (10x Volume Growth)",
+export const VolumeGrowthSameDistribution: Story = {
+  name: "10x Volume Growth, Same Distribution",
   args: {
     baseData: {
       values: ["apple", "banana", "orange", "grape", "melon"],
@@ -275,22 +275,24 @@ export const AbsoluteScaling: Story = {
     },
     showComparison: true,
     maxItems: 10,
-    title: "Absolute Scaling — 10x Volume Growth",
+    title: "10x Volume Growth — Same Distribution",
   },
   parameters: {
     docs: {
       description: {
-        story: `Bars are scaled by absolute max count across both datasets. Even though
-base and current have identical *distributions* (same proportions), the base bars
-are visibly shorter because they represent 10x fewer rows. This makes volume
-changes immediately obvious — a percentage-based chart would show identical bars.`,
+        story: `Bars are scaled by percentage of each dataset's total. Both datasets have
+identical distributions (33/27/20/13/7%), so the base and current bars are
+the same length — the 10x volume difference is visible in the count labels
+(100 vs 1,000) but doesn't distort the visual comparison. This is the key
+advantage of percentage scaling: distribution changes are what matter in
+top-K analysis, not absolute volume.`,
       },
     },
   },
 };
 
-export const ShiftedDistribution: Story = {
-  name: "Shifted Distribution (Same Volume)",
+export const DistributionShift: Story = {
+  name: "Distribution Shift (Same Volume)",
   args: {
     baseData: {
       values: ["apple", "banana", "orange", "grape", "melon"],
@@ -304,14 +306,37 @@ export const ShiftedDistribution: Story = {
     },
     showComparison: true,
     maxItems: 10,
-    title: "Shifted Distribution — Same Total Volume",
+    title: "Distribution Shift — Same Total Volume",
   },
   parameters: {
     docs: {
       description: {
-        story: `Both datasets have the same total (1500 valids), but the distribution
-shifted. With absolute scaling, equal totals mean the bars are directly
-comparable — you can see exactly which categories grew and which shrank.`,
+        story: `Both datasets have the same total (1,500 valids) but the distribution
+shifted — apple and banana shrank while orange, grape, and melon grew.
+Percentage scaling makes this immediately visible: bar lengths directly
+represent share-of-total, so you can see exactly which categories gained
+or lost share.`,
+      },
+    },
+  },
+};
+
+export const TinyBar: Story = {
+  name: "Tiny Bar (~1.7%)",
+  args: {
+    currentData: {
+      values: ["apple", "banana", "orange", "grape", "melon"],
+      counts: [150, 100, 40, 5, 5],
+      valids: 300,
+    },
+    maxItems: 10,
+    title: "Tiny Bar Edge Case",
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Shows how very small percentages render — melon at 5/300 (~1.7%) still gets a visible bar thanks to the 40px minimum width.",
       },
     },
   },
