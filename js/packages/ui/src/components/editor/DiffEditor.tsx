@@ -213,6 +213,7 @@ function DiffEditorComponent({
         orientation: "a-b",
         highlightChanges: true,
         gutter: true,
+        collapseUnchanged: { margin: 3, minSize: 4 },
       });
 
       viewRef.current = mergeView;
@@ -226,6 +227,7 @@ function DiffEditorComponent({
           gutter: true,
           // Disable accept/reject buttons - this is a read-only diff view
           mergeControls: false,
+          collapseUnchanged: { margin: 3, minSize: 4 },
         }),
       ];
 
