@@ -21,7 +21,11 @@ import { Bar } from "react-chartjs-2";
 import { getChartBarColors, getChartThemeColors } from "./HistogramChart";
 
 /** Rendered bar geometry — Chart.js plugin API types this as Element but bar datasets provide these fields at runtime */
-type RenderedBarGeometry = { x: number; y: number; base: number };
+interface RenderedBarGeometry {
+  x: number;
+  y: number;
+  base: number;
+}
 
 // Register Chart.js modules once
 ChartJS.register(CategoryScale, BarElement, LinearScale, Legend, ChartTooltip);
@@ -519,7 +523,9 @@ function TopKBarChartComponent({
           const meta = chart.getDatasetMeta(dsIndex);
 
           for (let i = 0; i < meta.data.length; i++) {
-            const { x, y, base } = meta.data[i] as unknown as RenderedBarGeometry;
+            const { x, y, base } = meta.data[
+              i
+            ] as unknown as RenderedBarGeometry;
             const proportion = (dataset.data[i] as number) ?? 0;
             if (proportion === 0) continue;
             const count = Math.round(proportion * total);

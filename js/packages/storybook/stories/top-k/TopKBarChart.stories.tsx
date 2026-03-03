@@ -181,9 +181,7 @@ export const WithSpecialValues: Story = {
     baseData: topKWithSpecialValues,
     currentData: {
       ...topKWithSpecialValues,
-      counts: topKWithSpecialValues.counts.map((c) =>
-        Math.round(c * 0.9),
-      ),
+      counts: topKWithSpecialValues.counts.map((c) => Math.round(c * 0.9)),
     },
     showComparison: true,
     maxItems: 10,
