@@ -28,6 +28,17 @@ REMOVE_COLOR = "#ff067e"
 
 MAX_MERMAID_TEXT_SIZE = 50000  # source: https://mermaid.js.org/config/schema-docs/config.html#maxtextsize
 
+# Mermaid node shape definitions: shape_name -> (open_bracket, close_bracket)
+# See https://mermaid.js.org/syntax/flowchart.html#node-shapes
+MERMAID_NODE_SHAPES: Dict[str, tuple] = {
+    "rectangle": ('["', '"]'),
+    "cylinder": ('[("', '")]'),
+    "double_rectangle": ('[["', '"]]'),
+    "circle": ('(("', '"))'),
+    "asymmetric": ('>"', '"]'),
+    "stadium": ('(["', '"])'),
+}
+
 
 def _warn(msg):
     # print to stderr
@@ -143,7 +154,12 @@ class Node:
                     changes.append(str(check.type).replace("_", " ").title())
         return changes
 
-    def get_node_str(self, checks=None):
+    def _get_shape_brackets(self, node_shapes: Dict[str, str]) -> tuple:
+        """Return (open_bracket, close_bracket) for this node's resource_type."""
+        shape_name = node_shapes.get(self.resource_type, "rectangle")
+        return MERMAID_NODE_SHAPES.get(shape_name, MERMAID_NODE_SHAPES["rectangle"])
+
+    def get_node_str(self, checks=None, node_shapes: Optional[Dict[str, str]] = None):
         is_changed = False
         style = None
 
@@ -161,13 +177,14 @@ class Node:
                 if check.node_ids and self.id in check.node_ids:
                     is_changed = True
 
-        content_output = f'{self.id}["{self.name}'
+        open_bracket, close_bracket = self._get_shape_brackets(node_shapes or {})
+        content_output = f"{self.id}{open_bracket}{self.name}"
         if is_changed:
             content_output += "\n\n[What's Changed]\n"
             changes = self._what_changed(checks)
             content_output += ", ".join(changes)
 
-        content_output += '"]\n'
+        content_output += f"{close_bracket}\n"
         if style:
             content_output += f"{style}\n"
         return content_output
@@ -448,7 +465,7 @@ def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], D
     }
 
 
-def generate_mermaid_lineage_graph(graph: LineageGraph):
+def generate_mermaid_lineage_graph(graph: LineageGraph, node_shapes: Optional[Dict[str, str]] = None):
     content = up_to_level_content = "graph LR\n"
     is_not_modified = False
     # Only show the modified nodes and there children
@@ -470,7 +487,7 @@ def generate_mermaid_lineage_graph(graph: LineageGraph):
 
             display_nodes.add(node_id)
             node = graph.nodes[node_id]
-            content += node.get_node_str(graph.checks)
+            content += node.get_node_str(graph.checks, node_shapes)
             for child_id in node.children:
                 queue.append(child_id)
                 edge_id = f"{node_id}-->{child_id}"
@@ -487,11 +504,15 @@ def generate_mermaid_lineage_graph(graph: LineageGraph):
 
 
 def generate_markdown_summary(ctx: RecceContext, summary_format: str = "markdown"):
+    from recce.config import RecceConfig
+
     lineage_diff = ctx.get_lineage_diff()
     summary_metadata = generate_summary_metadata(lineage_diff.base, lineage_diff.current)
     graph = _build_lineage_graph(lineage_diff.base, lineage_diff.current)
     graph.checks, check_statistics = generate_check_summary(lineage_diff.base, lineage_diff.current)
-    mermaid_content, is_empty_graph, is_partial_graph = generate_mermaid_lineage_graph(graph)
+    summary_config = RecceConfig().get("summary") or {}
+    node_shapes = summary_config.get("node_shapes") or {}
+    mermaid_content, is_empty_graph, is_partial_graph = generate_mermaid_lineage_graph(graph, node_shapes)
     check_content = generate_check_content(graph, check_statistics)
 
     if summary_format == "mermaid":
