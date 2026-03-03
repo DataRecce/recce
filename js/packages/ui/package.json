@@ -165,7 +165,7 @@
     "react-syntax-highlighter": "^16.1.0",
     "remark-gfm": "^4.0.0",
     "usehooks-ts": "^3.1.1",
-    "write-excel-file": "^2.3.0",
+    "write-excel-file": "^3.0.5",
     "yaml": "^2.8.0"
   },
   "devDependencies": {
