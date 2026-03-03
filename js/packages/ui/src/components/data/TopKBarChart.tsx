@@ -14,10 +14,14 @@ import {
   Legend,
   LinearScale,
   type Plugin,
+  type ScriptableScaleContext,
 } from "chart.js";
 import { Fragment, memo, useMemo } from "react";
 import { Bar } from "react-chartjs-2";
 import { getChartBarColors, getChartThemeColors } from "./HistogramChart";
+
+/** Rendered bar geometry — Chart.js plugin API types this as Element but bar datasets provide these fields at runtime */
+type RenderedBarGeometry = { x: number; y: number; base: number };
 
 // Register Chart.js modules once
 ChartJS.register(CategoryScale, BarElement, LinearScale, Legend, ChartTooltip);
@@ -387,6 +391,9 @@ function TopKBarChartComponent({
 
   const showBase = showComparison && baseData && baseItems.length > 0;
 
+  const currentTotal = currentData.valids || 1;
+  const baseTotal = baseData?.valids || 1;
+
   // Build display items, filtering empty "(others)" rows
   const displayItems = useMemo(() => {
     return currentItems
@@ -408,8 +415,6 @@ function TopKBarChartComponent({
   // This ensures identical distributions produce identical bar lengths regardless of scale.
   const chartData = useMemo<ChartData<"bar">>(() => {
     const labels = displayItems.map(({ current }) => current.label);
-    const currentTotal = currentData.valids || 1;
-    const baseTotal = baseData?.valids || 1;
 
     const datasets: ChartData<"bar">["datasets"] = [
       {
@@ -438,7 +443,7 @@ function TopKBarChartComponent({
     }
 
     return { labels, datasets };
-  }, [displayItems, barColors, showBase, currentData.valids, baseData?.valids]);
+  }, [displayItems, barColors, showBase, currentTotal, baseTotal]);
 
   const chartOptions = useMemo<ChartOptions<"bar">>(
     () => ({
@@ -455,12 +460,12 @@ function TopKBarChartComponent({
           grid: { display: false },
           ticks: {
             padding: 8,
-            color: ((ctx: { index: number }) => {
+            color: (ctx: ScriptableScaleContext) => {
               const item = displayItems[ctx.index];
               return item?.current.isSpecial
                 ? "#9ca3af"
                 : themeColors.textColor;
-            }) as unknown as string,
+            },
           },
         },
       },
@@ -482,19 +487,18 @@ function TopKBarChartComponent({
           mode: "index" as const,
           callbacks: {
             label: (context) => {
-              const count = context.parsed.x ?? 0;
-              const isBase = context.dataset.label === "Base";
-              const total = isBase
-                ? (baseData?.valids ?? 1)
-                : currentData.valids;
-              return `${context.dataset.label}: ${formatAbbreviated(count)} (${formatPercent(count / total)})`;
+              const proportion = context.parsed.x ?? 0;
+              const total =
+                context.dataset.label === "Base" ? baseTotal : currentTotal;
+              const count = Math.round(proportion * total);
+              return `${context.dataset.label}: ${formatAbbreviated(count)} (${formatPercent(proportion)})`;
             },
           },
         },
       },
       animation: false,
     }),
-    [displayItems, themeColors, showBase, baseData, currentData],
+    [displayItems, themeColors, showBase, baseTotal, currentTotal],
   );
 
   const secondaryTextColor = isDark ? "#9ca3af" : "#6b7280";
@@ -511,39 +515,34 @@ function TopKBarChartComponent({
 
         for (let dsIndex = 0; dsIndex < chart.data.datasets.length; dsIndex++) {
           const dataset = chart.data.datasets[dsIndex];
-          const isBase = dataset.label === "Base";
-          const total = isBase ? (baseData?.valids ?? 1) : currentData.valids;
+          const total = dataset.label === "Base" ? baseTotal : currentTotal;
           const meta = chart.getDatasetMeta(dsIndex);
 
           for (let i = 0; i < meta.data.length; i++) {
-            const el = meta.data[i] as unknown as {
-              x: number;
-              y: number;
-              base: number;
-            };
+            const { x, y, base } = meta.data[i] as unknown as RenderedBarGeometry;
             const proportion = (dataset.data[i] as number) ?? 0;
             if (proportion === 0) continue;
             const count = Math.round(proportion * total);
 
-            const barWidth = el.x - el.base;
+            const barWidth = x - base;
             const countText = formatAbbreviated(count);
             const pctText = formatPercent(proportion);
             const countWidth = ctx.measureText(countText).width;
             const fitsInside = countWidth + 2 * pad < barWidth;
 
             if (fitsInside) {
-              ctx.fillStyle = "#1f2937";
+              ctx.fillStyle = themeColors.barLabelColor;
               ctx.textAlign = "left";
-              ctx.fillText(countText, el.base + pad, el.y);
+              ctx.fillText(countText, base + pad, y);
               ctx.fillStyle = secondaryTextColor;
               ctx.textAlign = "left";
-              ctx.fillText(pctText, el.x + pad, el.y);
+              ctx.fillText(pctText, x + pad, y);
             } else {
               ctx.fillStyle = themeColors.textColor;
               ctx.textAlign = "left";
-              ctx.fillText(countText, el.x + pad, el.y);
+              ctx.fillText(countText, x + pad, y);
               ctx.fillStyle = secondaryTextColor;
-              ctx.fillText(pctText, el.x + pad + countWidth + pad, el.y);
+              ctx.fillText(pctText, x + pad + countWidth + pad, y);
             }
           }
         }
@@ -551,7 +550,7 @@ function TopKBarChartComponent({
         ctx.restore();
       },
     }),
-    [baseData, currentData, themeColors, secondaryTextColor],
+    [baseTotal, currentTotal, themeColors, secondaryTextColor],
   );
 
   const chartHeight =

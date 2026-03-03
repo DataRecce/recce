@@ -118,7 +118,7 @@ export const VolumeGrowth: Story = {
     docs: {
       description: {
         story:
-          "Volume increased 10x but distribution is unchanged. Base bars are much shorter than current.",
+          "Volume increased 10x but distribution is unchanged. Bars are equal length because the chart normalizes to proportions.",
       },
     },
   },
@@ -182,7 +182,7 @@ export const WithSpecialValues: Story = {
     currentData: {
       ...topKWithSpecialValues,
       counts: topKWithSpecialValues.counts.map((c) =>
-        Math.round(c * (0.8 + Math.random() * 0.4)),
+        Math.round(c * 0.9),
       ),
     },
     showComparison: true,
