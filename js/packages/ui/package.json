@@ -175,7 +175,7 @@
     "read-excel-file": "^6.0.0",
     "tailwindcss": "^4.0.0",
     "typedoc": "^0.28.12",
-    "typedoc-plugin-markdown": "^4.9.0",
+    "typedoc-plugin-markdown": "^4.10.0",
     "tsdown": "^0.18.0",
     "typescript": "^5.9.0"
   },
