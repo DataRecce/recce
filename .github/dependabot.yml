@@ -42,6 +42,11 @@ updates:
       - "javascript"
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # Pinned: breaking layout changes in v2
+      - dependency-name: "@dagrejs/dagre"
+      # Pinned: breaking API changes in v2
+      - dependency-name: "html2canvas-pro"
     groups:
       # Group related frontend dependencies
       testing-libraries:

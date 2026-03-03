@@ -94,7 +94,7 @@ function RunToolbarComponent({
         }}
       >
         {warnings?.map((warning, index) => (
-          <Box key={`warning-${index}-${warning.slice(0, 20)}`}>
+          <Box key={warning}>
             <PiWarning
               color={isDark ? colors.amber[400] : colors.amber[600]}
               style={{ verticalAlign: "middle", marginRight: 4 }}
