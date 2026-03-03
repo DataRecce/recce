@@ -557,7 +557,7 @@ function DiffActionButtons({
  *
  * @example
  * ```tsx
- * import { NodeView } from '@datarecce/ui/components/lineage';
+ * import { NodeView } from '@datarecce/ui/advanced';
  *
  * <NodeView
  *   node={selectedNode}
