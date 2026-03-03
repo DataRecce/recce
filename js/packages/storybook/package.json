@@ -27,7 +27,7 @@
     "@vitest/coverage-v8": "^4.0.18",
     "chartjs-adapter-date-fns": "^3.0.0",
     "msw": "^2.12.7",
-    "playwright": "^1.58.0",
+    "playwright": "^1.58.2",
     "storybook": "^10.2.10",
     "vitest": "^4.0.18"
   },
