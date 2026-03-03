@@ -1,0 +1,216 @@
+/**
+ * @file ColumnNameCell.test.tsx
+ * @description Tests for the ColumnNameCell component
+ */
+
+import CssBaseline from "@mui/material/CssBaseline";
+import { ThemeProvider } from "@mui/material/styles";
+import { render, screen } from "@testing-library/react";
+import React from "react";
+import { vi } from "vitest";
+import type { NodeData } from "../../../api";
+import { theme } from "../../../theme";
+import { ColumnNameCell } from "../ColumnNameCell";
+import type { SchemaDiffRow } from "../types";
+
+// Mock dependencies with dynamic isActionAvailable and lineageViewContext
+const { mockIsActionAvailable, mockLineageViewContext } = vi.hoisted(() => ({
+  mockIsActionAvailable: vi.fn(() => true),
+  mockLineageViewContext: { current: undefined as unknown },
+}));
+vi.mock("../../../contexts", () => ({
+  useRecceActionContext: () => ({ runAction: vi.fn() }),
+  useRecceInstanceContext: () => ({
+    featureToggles: { disableDatabaseQuery: false },
+  }),
+  useLineageViewContext: () => mockLineageViewContext.current,
+  useLineageGraphContext: () => ({ isActionAvailable: mockIsActionAvailable }),
+}));
+
+// ============================================================================
+// Test Utilities
+// ============================================================================
+
+const createMockModel = (resourceType = "model"): NodeData =>
+  ({
+    id: "model.test.users",
+    name: "users",
+    resource_type: resourceType,
+    columns: {},
+  }) as NodeData;
+
+const createMockRow = (
+  overrides: Partial<SchemaDiffRow> = {},
+): SchemaDiffRow => ({
+  name: "user_id",
+  baseIndex: 1,
+  currentIndex: 1,
+  baseType: "INT",
+  currentType: "INT",
+  __status: undefined,
+  ...overrides,
+});
+
+/**
+ * Wrapper component that provides MUI theme context
+ */
+function TestWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      {children}
+    </ThemeProvider>
+  );
+}
+
+/**
+ * Custom render function with MUI provider
+ */
+function renderWithMui(ui: React.ReactElement) {
+  return render(ui, { wrapper: TestWrapper });
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+describe("ColumnNameCell", () => {
+  describe("showMenu prop", () => {
+    test("renders menu button when showMenu is true (default)", () => {
+      renderWithMui(
+        <ColumnNameCell model={createMockModel()} row={createMockRow()} />,
+      );
+
+      // The kebab menu button should be present
+      const menuButton = screen.getByRole("button");
+      expect(menuButton).toBeInTheDocument();
+    });
+
+    test("renders menu button when showMenu is explicitly true", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow()}
+          showMenu={true}
+        />,
+      );
+
+      const menuButton = screen.getByRole("button");
+      expect(menuButton).toBeInTheDocument();
+    });
+
+    test("does not render menu button when showMenu is false", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow()}
+          showMenu={false}
+        />,
+      );
+
+      // The kebab menu button should not be present
+      const menuButton = screen.queryByRole("button");
+      expect(menuButton).not.toBeInTheDocument();
+    });
+
+    test("does not render menu for source resource type regardless of showMenu", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel("source")}
+          row={createMockRow()}
+          showMenu={true}
+        />,
+      );
+
+      const menuButton = screen.queryByRole("button");
+      expect(menuButton).not.toBeInTheDocument();
+    });
+
+    test("does not render menu when singleEnv is true regardless of showMenu", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow()}
+          singleEnv={true}
+          showMenu={true}
+        />,
+      );
+
+      const menuButton = screen.queryByRole("button");
+      expect(menuButton).not.toBeInTheDocument();
+    });
+  });
+
+  describe("column name display", () => {
+    test("renders column name", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow({ name: "email_address" })}
+          showMenu={false}
+        />,
+      );
+
+      expect(screen.getByText("email_address")).toBeInTheDocument();
+    });
+
+    test("renders spinner when cllRunning is true", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow()}
+          cllRunning={true}
+          showMenu={false}
+        />,
+      );
+
+      // MUI CircularProgress renders with role="progressbar"
+      const spinner = screen.getByRole("progressbar");
+      expect(spinner).toBeInTheDocument();
+    });
+  });
+
+  describe("change analysis gating", () => {
+    // These tests need lineageViewContext to be truthy so the short-circuit
+    // evaluation in isCllDisabled reaches the isActionAvailable check.
+    const mockViewContext = { showColumnLevelLineage: vi.fn() };
+
+    test("tooltip is disabled when change analysis is unavailable", () => {
+      mockLineageViewContext.current = mockViewContext;
+      mockIsActionAvailable.mockReturnValue(false);
+
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow()}
+          showMenu={false}
+        />,
+      );
+
+      // When isActionAvailable returns false, isCllDisabled is true,
+      // causing the Tooltip's disableHoverListener to be true.
+      expect(mockIsActionAvailable).toHaveBeenCalledWith("change_analysis");
+      expect(screen.getByText("user_id")).toBeInTheDocument();
+
+      mockLineageViewContext.current = undefined;
+      mockIsActionAvailable.mockReturnValue(true);
+    });
+
+    test("tooltip is enabled when change analysis is available", () => {
+      mockLineageViewContext.current = mockViewContext;
+      mockIsActionAvailable.mockReturnValue(true);
+
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow()}
+          showMenu={false}
+        />,
+      );
+
+      expect(mockIsActionAvailable).toHaveBeenCalledWith("change_analysis");
+
+      mockLineageViewContext.current = undefined;
+    });
+  });
+});

@@ -22,7 +22,7 @@ class GitRepoInfo(BaseModel):
     branch: Optional[str] = None
 
     @staticmethod
-    def from_current_repositroy():
+    def from_current_repository() -> Optional["GitRepoInfo"]:
         branch = current_branch()
         if branch is None:
             return None
@@ -64,6 +64,7 @@ class RecceState(BaseModel):
         dict_data = json.loads(json_content)
         state = RecceState(**dict_data)
         metadata = state.metadata
+
         if metadata:
             if metadata.schema_version is None:
                 pass

@@ -1,0 +1,99 @@
+"""
+Base CI provider interface.
+"""
+
+import subprocess
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Optional
+
+from recce_cloud.constants import SESSION_TYPE_DEV, SESSION_TYPE_PR, SESSION_TYPE_PROD
+
+
+@dataclass
+class CIInfo:
+    """Information extracted from CI environment."""
+
+    platform: Optional[str] = None  # "github-actions", "gitlab-ci", etc.
+    pr_number: Optional[int] = None  # Pull/Merge request number (PR/MR)
+    pr_url: Optional[str] = None  # Pull/Merge request URL (for session linking)
+    session_type: Optional[str] = None  # "pr", "prod", "dev"
+    commit_sha: Optional[str] = None  # Full commit SHA
+    base_branch: Optional[str] = None  # Target/base branch
+    source_branch: Optional[str] = None  # Source/head branch
+    repository: Optional[str] = None  # Repository path (owner/repo or group/project)
+    access_token: Optional[str] = (
+        None  # CI-provided access token (GITHUB_TOKEN, CI_JOB_TOKEN)
+    )
+
+
+class BaseCIProvider(ABC):
+    """Abstract base class for CI provider detection and info extraction."""
+
+    @abstractmethod
+    def can_handle(self) -> bool:
+        """
+        Check if this provider can handle the current environment.
+
+        Returns:
+            True if the provider's CI platform is detected
+        """
+        pass
+
+    @abstractmethod
+    def extract_ci_info(self) -> CIInfo:
+        """
+        Extract CI information from environment variables.
+
+        Returns:
+            CIInfo object with extracted information
+        """
+        pass
+
+    @staticmethod
+    def run_git_command(command: list[str]) -> Optional[str]:
+        """
+        Run a git command and return output.
+
+        Args:
+            command: Git command as list (e.g., ['git', 'rev-parse', 'HEAD'])
+
+        Returns:
+            Command output stripped of whitespace, or None if command fails
+        """
+        try:
+            result = subprocess.run(
+                command, capture_output=True, text=True, check=True, timeout=5
+            )
+            return result.stdout.strip()
+        except (
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+            FileNotFoundError,
+        ):
+            return None
+
+    @staticmethod
+    def determine_session_type(
+        pr_number: Optional[int], source_branch: Optional[str]
+    ) -> str:
+        """
+        Determine session type based on context.
+
+        Note: "dev" is returned for classification purposes (e.g. list, doctor commands)
+        but is blocked from auto-creation in the upload command. Users must explicitly
+        target a session via --type, --session-id, or --session-name for non-PR,
+        non-main branch uploads.
+
+        Args:
+            pr_number: Pull/Merge request number (PR/MR)
+            source_branch: Source branch name
+
+        Returns:
+            Session type: "pr", "prod", or "dev"
+        """
+        if pr_number is not None:
+            return SESSION_TYPE_PR
+        if source_branch in ["main", "master"]:
+            return SESSION_TYPE_PROD
+        return SESSION_TYPE_DEV

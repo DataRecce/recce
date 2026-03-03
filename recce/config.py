@@ -1,13 +1,13 @@
 # Configuration file for recce
 from rich.console import Console
 
-from recce import yaml
+from recce import is_recce_cloud_instance, yaml
 from recce.exceptions import RecceConfigException
 from recce.util import SingletonMeta
 
 RECCE_CONFIG_FILE = "recce.yml"
 RECCE_PRESET_CHECK_COMMENT = """Preset Checks
-Please see https://docs.datarecce.io/features/preset-checks/
+Please see https://docs.reccehq.com/features/preset-checks/
 """
 RECCE_ERROR_LOG_FILE = "recce_error.log"
 console = Console()
@@ -21,14 +21,17 @@ class RecceConfig(metaclass=SingletonMeta):
 
     def load(self):
         try:
-            with open(self.config_file, "r") as f:
+            with open(self.config_file, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
                 self.config = config if config else {}
             self._verify_preset_checks()
         except FileNotFoundError:
-            console.print(f"[[orange3]NOTICE[/orange3]] Generate default Recce config file at '{self.config_file}'")
-            self.config = self.generate_template()
-            self.save()
+            if is_recce_cloud_instance():
+                self.config = {}
+            else:
+                console.print(f"[[orange3]NOTICE[/orange3]] Generate default Recce config file at '{self.config_file}'")
+                self.config = self.generate_template()
+                self.save()
 
     def _verify_preset_checks(self):
         from recce.tasks.core import CheckValidator
@@ -117,7 +120,7 @@ class RecceConfig(metaclass=SingletonMeta):
         self.config[key] = value
 
     def save(self):
-        with open(RECCE_CONFIG_FILE, "w") as f:
+        with open(RECCE_CONFIG_FILE, "w", encoding="utf-8") as f:
             yaml.dump(self.config, f)
 
     def __str__(self):

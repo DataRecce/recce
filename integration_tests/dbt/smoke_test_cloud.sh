@@ -66,5 +66,6 @@ function check_server_status() {
 echo "Starting the server (cloud and review mode)..."
 recce server --cloud --review &
 check_server_status
+recce cloud purge --force
 
 export GITHUB_EVENT_PATH="$HOLD_GITHUB_EVENT_PATH"

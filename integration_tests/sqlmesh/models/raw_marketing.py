@@ -4,9 +4,8 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
-from helper import iter_dates  # type: ignore
+from helper import iter_dates  # noqa
 from sqlglot import exp
-
 from sqlmesh import ExecutionContext, model
 from sqlmesh.core.model import FullKind
 
@@ -55,9 +54,7 @@ def execute(
     )
     df = df_new.merge(df_existing, on="customer_id", how="left", suffixes=(None, "_old"))
     df["updated_at"] = pd.to_datetime(
-        np.where(  # type: ignore
-            df["status_old"] != df["status"], execution_time, df["updated_at_old"]
-        ),
+        np.where(df["status_old"] != df["status"], execution_time, df["updated_at_old"]),  # type: ignore
         errors="coerce",
         utc=True,
     )

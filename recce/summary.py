@@ -28,6 +28,17 @@ REMOVE_COLOR = "#ff067e"
 
 MAX_MERMAID_TEXT_SIZE = 50000  # source: https://mermaid.js.org/config/schema-docs/config.html#maxtextsize
 
+# Mermaid node shape definitions: shape_name -> (open_bracket, close_bracket)
+# See https://mermaid.js.org/syntax/flowchart.html#node-shapes
+MERMAID_NODE_SHAPES: Dict[str, tuple] = {
+    "rectangle": ('["', '"]'),
+    "cylinder": ('[("', '")]'),
+    "double_rectangle": ('[["', '"]]'),
+    "circle": ('(("', '"))'),
+    "asymmetric": ('>"', '"]'),
+    "stadium": ('(["', '"])'),
+}
+
 
 def _warn(msg):
     # print to stderr
@@ -96,13 +107,19 @@ class Node:
     def _cal_row_count_delta_percentage(self):
         row_count_diff, run_result = _get_node_row_count_diff(self.id, self.name)
         if row_count_diff:
-            base = run_result.get("base", 0)
-            current = run_result.get("curr", 0)
-            if int(current) > int(base):
-                p = (int(current) - int(base)) / int(current) * 100
+            base = run_result.get("base")
+            current = run_result.get("curr")
+            if base is None or current is None:
+                return None
+            base = int(base)
+            current = int(current)
+            if current == 0 or base == current:
+                return None
+            if current > base:
+                p = (current - base) / current * 100
                 return f'🔼 +{round(p, 2) if p > 0.1 else "<0.1"}%'
             else:
-                p = (int(base) - int(current)) / int(current) * 100
+                p = (base - current) / current * 100
                 return f'🔽 -{round(p, 2) if p > 0.1 else "<0.1"}%'
         return None
 
@@ -137,7 +154,12 @@ class Node:
                     changes.append(str(check.type).replace("_", " ").title())
         return changes
 
-    def get_node_str(self, checks=None):
+    def _get_shape_brackets(self, node_shapes: Dict[str, str]) -> tuple:
+        """Return (open_bracket, close_bracket) for this node's resource_type."""
+        shape_name = node_shapes.get(self.resource_type, "rectangle")
+        return MERMAID_NODE_SHAPES.get(shape_name, MERMAID_NODE_SHAPES["rectangle"])
+
+    def get_node_str(self, checks=None, node_shapes: Optional[Dict[str, str]] = None):
         is_changed = False
         style = None
 
@@ -155,13 +177,14 @@ class Node:
                 if check.node_ids and self.id in check.node_ids:
                     is_changed = True
 
-        content_output = f'{self.id}["{self.name}'
+        open_bracket, close_bracket = self._get_shape_brackets(node_shapes or {})
+        content_output = f"{self.id}{open_bracket}{self.name}"
         if is_changed:
             content_output += "\n\n[What's Changed]\n"
             changes = self._what_changed(checks)
             content_output += ", ".join(changes)
 
-        content_output += '"]\n'
+        content_output += f"{close_bracket}\n"
         if style:
             content_output += f"{style}\n"
         return content_output
@@ -271,11 +294,24 @@ class LineageGraph:
 def _build_lineage_graph(base, current) -> LineageGraph:
     graph = LineageGraph()
 
+    # Get the current package name to filter nodes (from the current manifest metadata)
+    package_name = None
+    manifest_metadata = current.get("manifest_metadata")
+    if manifest_metadata and hasattr(manifest_metadata, "project_name"):
+        # The default package name is the project name
+        package_name = manifest_metadata.project_name
+
     # Init Graph nodes with base & current nodes
     for node_id, node_data in base.get("nodes", {}).items():
+        # Skip nodes that are not from the current package
+        if package_name and node_data.get("package_name") != package_name:
+            continue
         graph.create_node(node_id, node_data, "base")
 
     for node_id, node_data in current.get("nodes", {}).items():
+        # Skip nodes that are not from the current package
+        if package_name and node_data.get("package_name") != package_name:
+            continue
         if node_id not in graph.nodes:
             node = Node(node_id, node_data, "current")
             graph.nodes[node_id] = node
@@ -286,9 +322,15 @@ def _build_lineage_graph(base, current) -> LineageGraph:
     # Build edges
     for child_id, parents in base.get("parent_map", {}).items():
         for parent_id in parents:
+            if child_id not in graph.nodes or parent_id not in graph.nodes:
+                continue
+
             graph.create_edge(parent_id, child_id, "base")
     for child_id, parents in current.get("parent_map", {}).items():
         for parent_id in parents:
+            if child_id not in graph.nodes or parent_id not in graph.nodes:
+                continue
+
             graph.create_edge(parent_id, child_id, "current")
 
     return graph
@@ -301,11 +343,14 @@ def _build_node_schema(lineage, node_id):
 def _get_node_row_count_diff(node_id, node_name):
     row_count_runs = RunDAO().list(type_filter=RunType.ROW_COUNT_DIFF)
     for run in row_count_runs:
-        if node_id in run.params.get("node_ids", []):
+        if run.result is None:
+            continue
+        node_ids = (run.params or {}).get("node_ids") or []
+        if node_id in node_ids:
             result = run.result.get(node_name, {})
             diff = TaskResultDiffer.diff(result.get("base"), result.get("curr"))
             return diff, result
-        elif run.params.get("node_id") == node_id:
+        elif (run.params or {}).get("node_id") == node_id:
             result = run.result.get(node_name, {})
             diff = TaskResultDiffer.diff(result.get("base"), result.get("curr"))
             return diff, result
@@ -420,7 +465,7 @@ def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], D
     }
 
 
-def generate_mermaid_lineage_graph(graph: LineageGraph):
+def generate_mermaid_lineage_graph(graph: LineageGraph, node_shapes: Optional[Dict[str, str]] = None):
     content = up_to_level_content = "graph LR\n"
     is_not_modified = False
     # Only show the modified nodes and there children
@@ -442,7 +487,7 @@ def generate_mermaid_lineage_graph(graph: LineageGraph):
 
             display_nodes.add(node_id)
             node = graph.nodes[node_id]
-            content += node.get_node_str(graph.checks)
+            content += node.get_node_str(graph.checks, node_shapes)
             for child_id in node.children:
                 queue.append(child_id)
                 edge_id = f"{node_id}-->{child_id}"
@@ -459,11 +504,15 @@ def generate_mermaid_lineage_graph(graph: LineageGraph):
 
 
 def generate_markdown_summary(ctx: RecceContext, summary_format: str = "markdown"):
+    from recce.config import RecceConfig
+
     lineage_diff = ctx.get_lineage_diff()
     summary_metadata = generate_summary_metadata(lineage_diff.base, lineage_diff.current)
     graph = _build_lineage_graph(lineage_diff.base, lineage_diff.current)
     graph.checks, check_statistics = generate_check_summary(lineage_diff.base, lineage_diff.current)
-    mermaid_content, is_empty_graph, is_partial_graph = generate_mermaid_lineage_graph(graph)
+    summary_config = RecceConfig().get("summary") or {}
+    node_shapes = summary_config.get("node_shapes") or {}
+    mermaid_content, is_empty_graph, is_partial_graph = generate_mermaid_lineage_graph(graph, node_shapes)
     check_content = generate_check_content(graph, check_statistics)
 
     if summary_format == "mermaid":
@@ -491,9 +540,11 @@ No changed module was detected.
         if check_content:
             content += check_content
 
-        if ctx.state_loader.cloud_mode:
+        if ctx.state_loader.cloud_mode and ctx.state_loader.pr_info is not None:
             pr_info = ctx.state_loader.pr_info
-            content += f"\nSee PR page: {RECCE_CLOUD_HOST}/{pr_info.repository}/pulls/{pr_info.id}\n"
+            if pr_info.repository is not None and pr_info.id is not None:
+                # the classic route will be deprecated soon
+                content += f"\nSee PR page: {RECCE_CLOUD_HOST}/classic/{pr_info.repository}/pulls/{pr_info.id}\n"
 
         return content
 

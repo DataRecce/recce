@@ -12,6 +12,9 @@ def test_dbt_adapter_support_tasks(dbt_test_helper):
         assert task in support_tasks
         assert support_tasks[task] is True
 
+    assert "change_analysis" in support_tasks
+    assert support_tasks["change_analysis"] is True
+
 
 def test_dbt_adapter_support_tasks_without_required_dbt_package(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter

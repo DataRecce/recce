@@ -5,6 +5,8 @@ from typing import Dict, List, Literal, Optional, Set
 
 from pydantic import UUID4, BaseModel, Field
 
+from recce.util.pydantic_model import pydantic_model_dump
+
 
 class RunType(Enum):
     SIMPLE = "simple"
@@ -32,12 +34,10 @@ class RunProgress(BaseModel):
 
 
 class RunStatus(Enum):
-    FINISHED = "finished"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
-    RUNNING = "running"
-    # This is a special status only in v0.36.0. Replaced by FINISHED. To be removed in the future.
-    SUCCESSFUL = "successful"
+    FINISHED = "Finished"
+    FAILED = "Failed"
+    CANCELLED = "Cancelled"
+    RUNNING = "Running"
 
 
 class Run(BaseModel):
@@ -52,6 +52,51 @@ class Run(BaseModel):
     run_id: UUID4 = Field(default_factory=uuid.uuid4)
     run_at: str = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
 
+    def __init__(self, **data):
+        # Normalize status for backward compatibility (lowercase -> capitalized)
+        if "status" in data and data["status"] is not None:
+            status = data["status"]
+            if isinstance(status, str) and status not in [s.value for s in RunStatus]:
+                status_map = {
+                    "finished": "Finished",
+                    "failed": "Failed",
+                    "cancelled": "Cancelled",
+                    "running": "Running",
+                }
+                data["status"] = status_map.get(status, status)
+
+        type = data.get("type")
+
+        if "result" in data and data["result"] is not None:
+            result = data.get("result")
+
+            if type in [RunType.QUERY.value, RunType.QUERY_BASE.value]:
+                from recce.tasks.query import QueryResult
+
+                data["result"] = pydantic_model_dump(QueryResult(**result))
+            elif type == RunType.QUERY_DIFF.value:
+                from recce.tasks.query import QueryDiffResult
+
+                data["result"] = pydantic_model_dump(QueryDiffResult(**result))
+            elif type == RunType.PROFILE.value:
+                from recce.tasks.profile import ProfileResult
+
+                data["result"] = pydantic_model_dump(ProfileResult(**result))
+            elif type == RunType.PROFILE_DIFF.value:
+                from recce.tasks.profile import ProfileDiffResult
+
+                data["result"] = pydantic_model_dump(ProfileDiffResult(**result))
+            elif type == RunType.VALUE_DIFF.value:
+                from recce.tasks.valuediff import ValueDiffResult
+
+                data["result"] = pydantic_model_dump(ValueDiffResult(**result))
+            elif type == RunType.VALUE_DIFF_DETAIL.value:
+                from recce.tasks.valuediff import ValueDiffDetailResult
+
+                data["result"] = pydantic_model_dump(ValueDiffDetailResult(**result))
+
+        super().__init__(**data)
+
 
 class Check(BaseModel):
     name: str
@@ -60,8 +105,11 @@ class Check(BaseModel):
     params: Optional[dict] = {}
     view_options: Optional[dict] = {}
     check_id: UUID4 = Field(default_factory=uuid.uuid4)
+    session_id: Optional[UUID4] = Field(default=None)
     is_checked: bool = False
     is_preset: bool = False
+    created_by: Optional[str] = None
+    updated_by: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0))
 

@@ -1,25 +1,43 @@
-.PHONY: help format lint check test clean install dev-install
+.PHONY: help format lint check test clean install dev-install install-cloud install-cloud-dev build build-cloud build-all clean-build deps-check-python deps-check-frontend deps-check
 
 # Default target executed when no arguments are given to make.
 default: help
 
 install-dev:
-	pip install -e .[dev]
-	pre-commit install
+	uv pip install --system -e .[dev,mcp]
+	git config --unset-all core.hooksPath && pre-commit install
 
 install:
-	pip install .
+	uv pip install --system .
+
+install-cloud:
+	uv pip install --system -e ./recce_cloud
+
+install-cloud-dev:
+	uv pip install --system -e ./recce_cloud[dev]
 
 help:
 	@echo "Available commands:"
-	@echo "  make help         - Show this help message"
-	@echo "  make format       - Format code with Black and isort"
-	@echo "  make flake8       - Run flake8 linting"
-	@echo "  make mypy         - Run type checking with mypy"
-	@echo "  make check        - Run all code quality checks without modifying files"
-	@echo "  make install      - Install requirements"
-	@echo "  make install-dev  - Install dev requirements"
-	@echo "  make dev          - Run the frontend in dev mode"
+	@echo "  make help              - Show this help message"
+	@echo "  make format            - Format code with Black and isort"
+	@echo "  make format-cloud      - Format recce-cloud code"
+	@echo "  make flake8            - Run flake8 linting"
+	@echo "  make flake8-cloud      - Run flake8 on recce-cloud"
+	@echo "  make mypy              - Run type checking with mypy"
+	@echo "  make check             - Run all code quality checks without modifying files"
+	@echo "  make check-cloud       - Run code quality checks on recce-cloud"
+	@echo "  make install           - Install recce package"
+	@echo "  make install-dev       - Install recce with dev requirements"
+	@echo "  make install-cloud     - Install recce-cloud package"
+	@echo "  make install-cloud-dev - Install recce-cloud in dev mode"
+	@echo "  make dev               - Run the frontend in dev mode"
+	@echo "  make build             - Build recce package"
+	@echo "  make build-cloud       - Build recce-cloud package"
+	@echo "  make build-all         - Build both packages"
+	@echo "  make clean-build       - Clean build artifacts"
+	@echo "  make deps-check-python - Check Python deps for updates (requires: dependabot, Docker)"
+	@echo "  make deps-check-frontend - Check frontend deps for updates (requires: dependabot, Docker)"
+	@echo "  make deps-check        - Check all deps for updates"
 
 format:
 	@echo "Formatting with Black..."
@@ -27,9 +45,19 @@ format:
 	@echo "Sorting imports with isort..."
 	isort ./recce ./tests
 
+format-cloud:
+	@echo "Formatting recce-cloud with Black..."
+	black ./recce_cloud
+	@echo "Sorting imports with isort..."
+	isort ./recce_cloud
+
 flake8:
 	@echo "Linting with flake8..."
 	flake8 ./recce ./tests
+
+flake8-cloud:
+	@echo "Linting recce-cloud with flake8..."
+	flake8 ./recce_cloud
 
 # Run all code quality checks without modifying files
 check:
@@ -40,6 +68,14 @@ check:
 	@echo "Checking code style with flake8..."
 	flake8 ./recce ./tests
 
+check-cloud:
+	@echo "Checking recce-cloud code formatting with Black..."
+	black --check ./recce_cloud
+	@echo "Checking recce-cloud import order with isort..."
+	isort --check ./recce_cloud
+	@echo "Checking recce-cloud code style with flake8..."
+	flake8 ./recce_cloud
+
 test: install-dev
 	@echo "Running tests..."
 	@python3 -m pytest tests
@@ -49,7 +85,7 @@ test-coverage: install-dev
 	@python3 -m pytest --cov=recce --cov-report=html --cov-report=term tests
 	@echo "Coverage report generated in htmlcov/index.html"
 
-test-tox: install-dev
+test-tox:
 	@echo "Running tests with Tox based on DBT versions..."
 	@tox run-parallel
 
@@ -64,3 +100,44 @@ install-frontend-requires:
 
 dev: install-frontend-requires
 	@cd js && pnpm dev
+
+# Build targets (packaging - using uv)
+clean-build:
+	@echo "Cleaning build artifacts..."
+	@rm -rf build/ dist/ *.egg-info recce_cloud.egg-info
+	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	@find . -type f -name '*.pyc' -delete
+
+build-frontend:
+	@echo "Building frontend static files..."
+	@cd js && pnpm install --frozen-lockfile && pnpm build
+
+build: clean-build build-frontend
+	@echo "Building recce package..."
+	uv build
+
+build-cloud: clean-build
+	@echo "Building recce-cloud package..."
+	uv build --package recce-cloud
+
+build-all: clean-build build-frontend
+	@echo "Building both packages..."
+	uv build
+	uv build --package recce-cloud
+	@echo "Build complete!"
+	@echo "Packages in dist/:"
+	@ls -lh dist/
+
+# Dependency update checks using Dependabot CLI
+# Prerequisites: brew install dependabot, Docker running
+# Optional: LOCAL_GITHUB_ACCESS_TOKEN env var for private packages
+deps-check-python:
+	@echo "Checking Python dependency updates (requires Docker)..."
+	dependabot update pip DataRecce/recce --local . -d / -o deps-python.yml
+
+deps-check-frontend:
+	@echo "Checking frontend dependency updates (requires Docker)..."
+	dependabot update npm_and_yarn DataRecce/recce --local . -d /js -o deps-frontend.yml
+
+deps-check: deps-check-python deps-check-frontend
+	@echo "Dependency check complete. Results in deps-python.yml and deps-frontend.yml"

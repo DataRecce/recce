@@ -1,0 +1,137 @@
+"""
+GitHub-specific API client for Recce Cloud.
+"""
+
+from typing import Dict, Optional
+
+from recce_cloud.api.base import BaseRecceCloudClient
+
+
+class GitHubRecceCloudClient(BaseRecceCloudClient):
+    """GitHub Actions-specific implementation of Recce Cloud API client."""
+
+    def __init__(self, token: str, repository: str, api_host: Optional[str] = None):
+        """
+        Initialize GitHub API client.
+
+        Args:
+            token: GitHub token (GITHUB_TOKEN or RECCE_API_TOKEN)
+            repository: Repository in format "owner/repo"
+            api_host: Recce Cloud API host
+        """
+        super().__init__(token, api_host)
+        self.repository = repository
+
+    def touch_recce_session(
+        self,
+        branch: str,
+        adapter_type: str,
+        pr_number: Optional[int] = None,
+        commit_sha: Optional[str] = None,
+        session_type: Optional[str] = None,
+    ) -> Dict:
+        """
+        Create or touch a Recce session for GitHub Actions.
+
+        Args:
+            branch: Branch name
+            adapter_type: DBT adapter type
+            pr_number: PR number for pull request sessions (None for prod sessions)
+            commit_sha: Not used for GitHub (optional for compatibility)
+            session_type: Session type ("pr", "prod", "dev") - determines if pr_number is passed
+
+        Returns:
+            Dictionary containing session_id, manifest_upload_url, catalog_upload_url
+        """
+        url = f"{self.api_host}/api/v2/github/{self.repository}/touch-recce-session"
+
+        payload = {
+            "branch": branch,
+            "adapter_type": adapter_type,
+        }
+
+        # Only include pr_number for "pr" type sessions
+        # For "prod" type, omit pr_number even if pr_number is detected
+        if session_type == "pr" and pr_number is not None:
+            payload["pr_number"] = pr_number
+
+        return self._make_request("POST", url, json=payload)
+
+    def upload_completed(
+        self, session_id: str, commit_sha: Optional[str] = None
+    ) -> Dict:
+        """
+        Notify Recce Cloud that upload is complete for GitHub.
+
+        Args:
+            session_id: Session ID from touch_recce_session
+            commit_sha: Not used for GitHub (optional for compatibility)
+
+        Returns:
+            Empty dictionary or acknowledgement
+        """
+        url = f"{self.api_host}/api/v2/github/{self.repository}/upload-completed"
+
+        payload = {
+            "session_id": session_id,
+        }
+
+        return self._make_request("POST", url, json=payload)
+
+    def get_session_download_urls(
+        self,
+        pr_number: Optional[int] = None,
+        session_type: Optional[str] = None,
+    ) -> Dict:
+        """
+        Get download URLs for artifacts from a GitHub session.
+
+        Args:
+            pr_number: PR number for pull request sessions
+            session_type: Session type ("pr", "prod", "dev")
+
+        Returns:
+            Dictionary containing session_id, manifest_url, catalog_url
+        """
+        url = f"{self.api_host}/api/v2/github/{self.repository}/session-download-url"
+
+        # Build query parameters
+        params = {}
+
+        # For prod session, set base=true
+        if session_type == "prod":
+            params["base"] = "true"
+        # For PR session, include pr_number
+        elif session_type == "pr" and pr_number is not None:
+            params["pr_number"] = pr_number
+
+        return self._make_request("GET", url, params=params)
+
+    def delete_session(
+        self,
+        pr_number: Optional[int] = None,
+        session_type: Optional[str] = None,
+    ) -> Dict:
+        """
+        Delete a GitHub PR/base session.
+
+        Args:
+            pr_number: PR number for pull request sessions
+            session_type: Session type ("pr", "prod") - "prod" deletes base session
+
+        Returns:
+            Dictionary containing session_id of deleted session
+        """
+        url = f"{self.api_host}/api/v2/github/{self.repository}/session"
+
+        # Build query parameters
+        params = {}
+
+        # For prod session, set base=true
+        if session_type == "prod":
+            params["base"] = "true"
+        # For PR session, include pr_number
+        elif session_type == "pr" and pr_number is not None:
+            params["pr_number"] = pr_number
+
+        return self._make_request("DELETE", url, params=params)

@@ -19,10 +19,33 @@ class DataFrameColumnType(Enum):
     TIMEDELTA = "timedelta"
     UNKNOWN = "unknown"
 
+    @classmethod
+    def from_string(cls, type_str: str) -> "DataFrameColumnType":
+        """Convert string to DataFrameColumnType enum.
+
+        Args:
+            type_str: String representation of the type (e.g., "integer", "text")
+
+        Returns:
+            DataFrameColumnType enum value
+        """
+        type_str = type_str.lower().strip()
+        try:
+            return cls(type_str)
+        except ValueError:
+            return cls.UNKNOWN
+
 
 class DataFrameColumn(BaseModel):
+    key: t.Optional[str] = None
     name: str
     type: DataFrameColumnType
+
+    def __init__(self, **data):
+        """Initialize DataFrameColumn, auto-setting key=name if key is missing."""
+        if "key" not in data or data["key"] is None:
+            data["key"] = data.get("name")
+        super().__init__(**data)
 
 
 class DataFrame(BaseModel):
@@ -64,7 +87,7 @@ class DataFrame(BaseModel):
                 col_type = DataFrameColumnType.INTEGER
             else:
                 col_type = DataFrameColumnType.UNKNOWN
-            columns.append(DataFrameColumn(name=col_name, type=col_type))
+            columns.append(DataFrameColumn(key=col_name, name=col_name, type=col_type))
 
         def _row_values(row):
             # If the value is Decimal, check if it's finite. If not, convert it to float(xxx) (GitHub issue #476)
@@ -101,6 +124,45 @@ class DataFrame(BaseModel):
 
         df = DataFrame(
             columns=columns,
+            data=data,
+            limit=limit,
+            more=more,
+        )
+        return df
+
+    @staticmethod
+    def from_data(
+        columns: t.Dict[str, str],
+        data: t.List[tuple],
+        limit: t.Optional[int] = None,
+        more: t.Optional[bool] = None,
+    ):
+        """Create a DataFrame from columns and data directly.
+
+        Args:
+            columns: Dict defining the schema where keys are column names and values are type strings.
+                     Type strings can be: "number", "integer", "text", "boolean", "date", "datetime", "timedelta"
+            data: List of rows (each row is a list/tuple/sequence of values)
+            limit: Optional limit on the number of rows returned
+            more: Optional flag indicating whether there are more rows to fetch
+
+        Returns:
+            DataFrame instance
+
+        Examples:
+            # Using simple dict format
+            columns = {"idx": "integer", "name": "text", "impacted": "boolean"}
+            data = [[0, "model_a", True], [1, "model_b", False]]
+            df = DataFrame.from_data(columns, data)
+        """
+        # Convert dict columns to DataFrameColumn objects
+        processed_columns = []
+        for key, type_str in columns.items():
+            col_type = DataFrameColumnType.from_string(type_str)
+            processed_columns.append(DataFrameColumn(key=key, name=key, type=col_type))
+
+        df = DataFrame(
+            columns=processed_columns,
             data=data,
             limit=limit,
             more=more,

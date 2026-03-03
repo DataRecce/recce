@@ -1,4 +1,4 @@
-import { getNeighborSet } from "./graph";
+import { getNeighborSet } from "@datarecce/ui";
 
 test("Neighbor set", () => {
   /*
@@ -15,9 +15,17 @@ test("Neighbor set", () => {
 
   const getNeighbors = (id: string) => dag[id];
 
-  expect(getNeighborSet(["A", "B", "D"], getNeighbors)).toEqual(new Set(["A", "B", "C", "D", "E"]));
+  expect(getNeighborSet(["A", "B", "D"], getNeighbors)).toEqual(
+    new Set(["A", "B", "C", "D", "E"]),
+  );
   expect(getNeighborSet(["B"], getNeighbors)).toEqual(new Set(["B", "D", "E"]));
-  expect(getNeighborSet(["B", "C"], getNeighbors)).toEqual(new Set(["B", "C", "D", "E"]));
-  expect(getNeighborSet(["A"], getNeighbors, 1)).toEqual(new Set(["A", "B", "C"]));
-  expect(getNeighborSet(["B", "D"], getNeighbors, 1)).toEqual(new Set(["B", "D", "E"]));
+  expect(getNeighborSet(["B", "C"], getNeighbors)).toEqual(
+    new Set(["B", "C", "D", "E"]),
+  );
+  expect(getNeighborSet(["A"], getNeighbors, 1)).toEqual(
+    new Set(["A", "B", "C"]),
+  );
+  expect(getNeighborSet(["B", "D"], getNeighbors, 1)).toEqual(
+    new Set(["B", "D", "E"]),
+  );
 });

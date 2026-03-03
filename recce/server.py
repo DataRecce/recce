@@ -22,7 +22,7 @@ from fastapi import (
     WebSocket,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ValidationError
 from pytz import utc
@@ -30,8 +30,9 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.websockets import WebSocketDisconnect
 
-from . import __latest_version__, __version__, event
+from . import __latest_version__, __version__, event, is_recce_cloud_instance
 from .apis.check_api import check_router
+from .apis.check_events_api import check_events_router
 from .apis.run_api import run_router
 from .config import RecceConfig
 from .connect_to_cloud import (
@@ -46,10 +47,21 @@ from .event import get_recce_api_token, log_api_event, log_single_env_event
 from .exceptions import RecceException
 from .github import is_github_codespace
 from .models.types import CllData
+from .models.websocket import CloudUserContextMessage
 from .run import load_preset_checks
 from .state import RecceShareStateManager, RecceStateLoader
+from .util.startup_perf import track_timing
+from .websocket import (
+    extract_cloud_user_from_headers,
+    get_connection_manager,
+    set_current_cloud_user,
+)
 
 logger = logging.getLogger("uvicorn")
+
+# Idle timeout check interval bounds (in seconds)
+MAX_CHECK_INTERVAL = 30
+MIN_CHECK_INTERVAL = 1
 
 
 class RecceServerMode(str, Enum):
@@ -74,7 +86,11 @@ class AppState:
     auth_options: Optional[dict] = None
     lifetime: Optional[int] = None
     lifetime_expired_at: Optional[datetime] = None
+    idle_timeout: Optional[int] = None
+    last_activity: Optional[dict] = None
     share_url: Optional[str] = None
+    organization_name: Optional[str] = None
+    web_url: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
 
@@ -82,13 +98,63 @@ class AppState:
 def schedule_lifetime_termination(app_state):
     def terminating_server():
         pid = os.getpid()
-        logger.info(f"Terminating server process [{pid}] manually")
+        logger.info(f"Terminating server process [{pid}] manually due to lifetime expiration")
         os.kill(pid, signal.SIGINT)
 
     # Terminate the server process after the specified lifetime
     logger.info(f"[Configuration] The lifetime of the server is {app_state.lifetime} seconds")
     app.state.lifetime_expired_at = datetime.now(utc) + timedelta(seconds=app_state.lifetime)
     asyncio.get_running_loop().call_later(app_state.lifetime, terminating_server)
+
+
+def schedule_idle_timeout_check(app_state):
+    """
+    Schedule periodic checks for idle timeout.
+    If the server has been idle for longer than idle_timeout, terminate it.
+    """
+    # Track last activity time in app_state
+    app_state.last_activity = {"time": datetime.now(utc)}
+
+    def terminating_server_idle():
+        pid = os.getpid()
+        logger.info(f"Terminating server process [{pid}] manually due to idle timeout")
+        os.kill(pid, signal.SIGINT)
+
+    async def check_idle_timeout():
+        """Periodically check if the server has been idle for too long"""
+        # Use smaller check interval if idle_timeout is very short
+        # Check at least every MAX_CHECK_INTERVAL seconds, but also check when idle_timeout is approaching
+        check_interval = min(MAX_CHECK_INTERVAL, max(MIN_CHECK_INTERVAL, app_state.idle_timeout // 3))
+
+        logger.debug(f"[Idle Timeout] Starting idle timeout checker with {check_interval}s check interval")
+
+        while True:
+            await asyncio.sleep(check_interval)
+
+            idle_seconds = (datetime.now(utc) - app_state.last_activity["time"]).total_seconds()
+            remaining_seconds = app_state.idle_timeout - idle_seconds
+
+            # Always log the countdown for debugging
+            if remaining_seconds > 0:
+                logger.debug(
+                    f"[Idle Timeout] Server idle for {idle_seconds:.1f}s / {app_state.idle_timeout}s "
+                    f"(remaining: {remaining_seconds:.1f}s)"
+                )
+
+            if idle_seconds >= app_state.idle_timeout:
+                logger.info(
+                    f"[Idle Timeout] Threshold reached! Server has been idle for {idle_seconds:.0f} seconds "
+                    f"(threshold: {app_state.idle_timeout} seconds)"
+                )
+                terminating_server_idle()
+                break
+
+    # Start the idle timeout check task
+    logger.info(f"[Configuration] The idle timeout of the server is {app_state.idle_timeout} seconds")
+
+    # Create task using asyncio.create_task which works in async context
+    task = asyncio.create_task(check_idle_timeout())
+    logger.debug(f"[Idle Timeout] Background task created: {task}")
 
 
 def setup_server(app_state: AppState) -> RecceContext:
@@ -135,11 +201,16 @@ def teardown_server(app_state: AppState, ctx: RecceContext):
         ctx.stop_monitor_base_env()
 
 
-def setup_ready_only(app_state: AppState):
-    pass
+def setup_ready_only(app_state: AppState) -> RecceContext:
+    from .core import load_context
+
+    kwargs = app_state.kwargs
+    state_loader = app_state.state_loader
+    ctx = load_context(**kwargs, state_loader=state_loader)
+    return ctx
 
 
-def teardown_ready_only(app_state: AppState):
+def teardown_ready_only(app_state: AppState, ctx: RecceContext):
     pass
 
 
@@ -156,29 +227,99 @@ def teardown_preview(app_state: AppState, ctx: RecceContext):
     pass
 
 
-@asynccontextmanager
-async def lifespan(fastapi: FastAPI):
-    ctx = None
-    app_state: AppState = app.state
+@track_timing("server_setup")
+def _do_lifespan_setup(app_state: AppState):
+    """Run server setup and return context for teardown.
+
+    Note: This function runs in a background thread. Do NOT call asyncio APIs
+    (create_task, get_running_loop, etc.) here — schedule them in the async
+    caller after this returns.
+    """
+    # Update onboarding state in background (non-fatal)
+    try:
+        api_token = app_state.auth_options.get("api_token") if app_state.auth_options else None
+        single_env = app_state.flag.get("single_env_onboarding", False) if app_state.flag else False
+        if api_token:
+            from recce.util.onboarding_state import update_onboarding_state
+
+            update_onboarding_state(api_token, single_env)
+    except Exception:
+        logger.debug("Failed to update onboarding state (non-fatal)", exc_info=True)
 
     if app_state.command == "server":
         ctx = setup_server(app_state)
     elif app_state.command == "read-only":
-        setup_ready_only(app_state)
+        ctx = setup_ready_only(app_state)
     elif app_state.command == "preview":
         ctx = setup_preview(app_state)
+    else:
+        ctx = None
 
-    if app_state.lifetime is not None and app_state.lifetime > 0:
-        schedule_lifetime_termination(app_state)
+    return ctx
 
-    yield
 
-    if app_state.command == "server":
-        teardown_server(app_state, ctx)
-    elif app_state.command == "read_only":
-        teardown_ready_only(app_state)
-    elif app_state.command == "preview":
-        teardown_preview(app_state, ctx)
+@asynccontextmanager
+async def lifespan(fastapi: FastAPI):
+    from recce.core import default_context
+    from recce.event import log_performance
+    from recce.util.startup_perf import clear_startup_tracker, get_startup_tracker
+
+    app_state: AppState = app.state
+
+    # Ensure logger is at DEBUG level if debug mode is enabled
+    if app_state.kwargs and app_state.kwargs.get("debug"):
+        logger.setLevel(logging.DEBUG)
+        logger.debug("Debug mode enabled - logger set to DEBUG level")
+
+    # Set up readiness signaling for background loading
+    ready_event = asyncio.Event()
+    app_state.ready_event = ready_event
+    app_state.startup_error = None
+    app_state.startup_ctx = None
+
+    async def background_load():
+        try:
+            ctx = await asyncio.to_thread(_do_lifespan_setup, app_state)
+            app_state.startup_ctx = ctx
+
+            # Schedule async timers on the event loop (must be in async context)
+            if app_state.lifetime is not None and app_state.lifetime > 0:
+                schedule_lifetime_termination(app_state)
+            if app_state.idle_timeout is not None and app_state.idle_timeout > 0:
+                logger.debug(f"[Idle Timeout] Scheduling idle timeout check with {app_state.idle_timeout} seconds")
+                schedule_idle_timeout_check(app_state)
+
+            # Log startup performance metrics
+            if tracker := get_startup_tracker():
+                tracker.command = app_state.command
+                recce_ctx = default_context()
+                if recce_ctx and recce_ctx.adapter:
+                    tracker.adapter_type = type(recce_ctx.adapter).__name__
+                    if hasattr(recce_ctx.adapter, "curr_manifest") and recce_ctx.adapter.curr_manifest:
+                        tracker.node_count = len(recce_ctx.adapter.curr_manifest.nodes)
+                log_performance("server_startup", tracker.to_dict())
+        except Exception as e:
+            logger.exception("Failed to load server context during startup")
+            app_state.startup_error = e
+        finally:
+            clear_startup_tracker()
+            ready_event.set()
+
+    task = asyncio.create_task(background_load())
+
+    yield  # Server starts accepting connections immediately
+
+    # Wait for background loading to complete before teardown
+    await task
+
+    if not app_state.startup_error:
+        ctx = app_state.startup_ctx
+        if app_state.command == "server" and ctx:
+            teardown_server(app_state, ctx)
+        elif app_state.command == "read-only" and ctx:
+            teardown_ready_only(app_state, ctx)
+        elif app_state.command == "preview" and ctx:
+            teardown_preview(app_state, ctx)
 
 
 app = FastAPI(lifespan=lifespan)
@@ -186,7 +327,7 @@ app = FastAPI(lifespan=lifespan)
 
 def verify_json_file(file_path: str) -> bool:
     try:
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             json.load(f)
     except Exception:
         return False
@@ -222,8 +363,6 @@ def dbt_env_updated_callback():
     asyncio.run(broadcast(payload))
 
 
-clients = set()
-
 origins = [
     "http://localhost:3000",
     "http://localhost:3001",
@@ -244,6 +383,57 @@ app.add_middleware(
 
 
 @app.middleware("http")
+async def track_activity_for_idle_timeout(request: Request, call_next):
+    """Track activity time for idle timeout check"""
+    # Exclude paths that should not reset idle timer
+    # Health checks and monitoring endpoints don't count as user activity
+    excluded_paths = ["/api/health", "/api/ws"]
+
+    # Update last activity time BEFORE processing request if idle timeout is enabled
+    # This ensures long-running requests don't get terminated mid-execution
+    app_state: AppState = app.state
+    if app_state.last_activity is not None:
+        if request.url.path not in excluded_paths:
+            app_state.last_activity["time"] = datetime.now(utc)
+            logger.debug(f"[Idle Timeout] ✓ Activity detected: {request.method} {request.url.path} - Timer reset")
+        else:
+            logger.debug(f"[Idle Timeout] Excluded path (no timer reset): {request.method} {request.url.path}")
+
+    response = await call_next(request)
+    return response
+
+
+@app.middleware("http")
+async def extract_cloud_user_context(request: Request, call_next):
+    """
+    Extract cloud user context from HTTP headers sent by Recce Cloud proxy.
+
+    When Recce Cloud proxies HTTP requests to a shared instance, it can include
+    headers identifying the authenticated user. This middleware extracts those
+    headers and sets the user context for the duration of the request.
+
+    Headers:
+        X-Recce-User-Id: The user's UUID
+        X-Recce-User-Login: The user's login/username
+        X-Recce-User-Email: The user's email (optional)
+    """
+    # Extract user context from headers
+    cloud_user = extract_cloud_user_from_headers(dict(request.headers))
+
+    if cloud_user:
+        # Set the context for this request
+        set_current_cloud_user(cloud_user)
+
+    try:
+        response = await call_next(request)
+        return response
+    finally:
+        # Clear the context after the request completes
+        if cloud_user:
+            set_current_cloud_user(None)
+
+
+@app.middleware("http")
 async def set_context_by_cookie(request: Request, call_next):
     response = await call_next(request)
 
@@ -260,6 +450,40 @@ async def set_context_by_cookie(request: Request, call_next):
 
 
 @app.middleware("http")
+async def readiness_gate(request: Request, call_next):
+    """Block API requests until server startup is complete.
+
+    /api/health and non-API routes (SPA, static assets) pass through
+    immediately so container orchestrators can detect the process is alive
+    and the frontend can load while the backend initializes.
+    All other /api/* endpoints wait for the background loading to finish.
+    If loading failed, return 503.
+    """
+    path = request.url.path
+    if path == "/api/health" or not path.startswith("/api/"):
+        return await call_next(request)
+
+    ready_event = getattr(request.app.state, "ready_event", None)
+    if isinstance(ready_event, asyncio.Event):
+        startup_timeout = float(os.environ.get("RECCE_STARTUP_TIMEOUT", "300"))
+        try:
+            await asyncio.wait_for(ready_event.wait(), timeout=startup_timeout)
+        except asyncio.TimeoutError:
+            return JSONResponse(
+                {"error": f"Server startup did not complete within {startup_timeout:.0f}s."},
+                status_code=503,
+            )
+
+        if getattr(request.app.state, "startup_error", None):
+            return JSONResponse(
+                {"error": "Server startup failed. Check server logs for details."},
+                status_code=503,
+            )
+
+    return await call_next(request)
+
+
+@app.middleware("http")
 async def disable_cache(request: Request, call_next):
     response = await call_next(request)
 
@@ -272,7 +496,29 @@ async def disable_cache(request: Request, call_next):
 
 @app.get("/api/health")
 async def health_check(request: Request):
-    return {"status": "ok"}
+    ready_event = getattr(request.app.state, "ready_event", None)
+    is_ready = ready_event.is_set() if isinstance(ready_event, asyncio.Event) else True
+    startup_error = getattr(request.app.state, "startup_error", None)
+    # Only expose the exception type to avoid leaking internal details
+    # (file paths, config values). Full details are in the server logs.
+    error = type(startup_error).__name__ if startup_error else None
+
+    return {
+        "status": "ok",
+        "ready": is_ready and not startup_error,
+        "error": error,
+    }
+
+
+@app.post("/api/keep-alive")
+async def keep_alive():
+    """Endpoint to keep the session alive and reset idle timeout"""
+    app_state: AppState = app.state
+    if app_state.last_activity is not None:
+        app_state.last_activity["time"] = datetime.now(utc)
+        logger.debug("[Idle Timeout] Keep-alive request received - Timer reset")
+        return {"status": "ok", "idle_timeout_enabled": True}
+    return {"status": "ok", "idle_timeout_enabled": False}
 
 
 class RecceInstanceInfoOut(BaseModel):
@@ -281,8 +527,13 @@ class RecceInstanceInfoOut(BaseModel):
     preview: bool
     single_env: bool
     authed: bool
+    cloud_instance: bool
     lifetime_expired_at: Optional[datetime] = None
+    idle_timeout: Optional[int] = None
     share_url: Optional[str] = None
+    session_id: Optional[str] = None
+    organization_name: Optional[str] = None
+    web_url: Optional[str] = None
 
 
 @app.get("/api/instance-info", response_model=RecceInstanceInfoOut, response_model_exclude_none=True)
@@ -300,8 +551,13 @@ async def recce_instance_info():
         "preview": flag.get("preview", False),
         "single_env": single_env,
         "authed": True if api_token else False,
+        "cloud_instance": is_recce_cloud_instance(),
         "lifetime_expired_at": app_state.lifetime_expired_at,  # UTC timezone
+        "idle_timeout": app_state.idle_timeout,
         "share_url": app_state.share_url,
+        "session_id": app_state.state_loader.session_id if app_state.state_loader else None,
+        "organization_name": app_state.organization_name,
+        "web_url": app_state.web_url,
         # TODO: Add more instance info which won't change during the instance lifecycle
         # review_mode
         # cloud_mode
@@ -688,19 +944,102 @@ async def version():
 @app.websocket("/api/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    clients.add(websocket)
+    manager = get_connection_manager()
+    manager.connect(websocket)
     try:
         while True:
             data = await websocket.receive_text()
-            if data == "ping":
-                await websocket.send_text("pong")
+            await _handle_websocket_message(websocket, data, manager)
     except WebSocketDisconnect:
-        clients.remove(websocket)
+        manager.disconnect(websocket)
+
+
+async def _handle_websocket_message(websocket: WebSocket, data: str, manager) -> None:
+    """
+    Handle incoming WebSocket messages.
+
+    Supports:
+    - Plain text "ping" messages (backward compatibility)
+    - JSON messages with "type" field for routing
+    """
+    # Handle plain text ping for backward compatibility
+    if data == "ping":
+        await websocket.send_text("pong")
+        return
+
+    # Try to parse as JSON
+    try:
+        message = json.loads(data)
+    except json.JSONDecodeError:
+        logger.warning(f"Received non-JSON WebSocket message: {data[:100]}")
+        return
+
+    # Route based on message type
+    message_type = message.get("type")
+
+    if message_type == "cloud_user_context":
+        await _handle_cloud_user_context(websocket, message, manager)
+    elif message_type == "ping":
+        # JSON ping format
+        await websocket.send_text(json.dumps({"type": "pong"}))
+    else:
+        logger.debug(f"Unhandled WebSocket message type: {message_type}")
+
+
+async def _handle_cloud_user_context(websocket: WebSocket, message: dict, manager) -> None:
+    """
+    Handle cloud_user_context message from Recce Cloud.
+
+    This message is sent when Recce Cloud proxies a WebSocket connection
+    to identify the authenticated user.
+    """
+    try:
+        # Validate and parse the message
+        context_message = CloudUserContextMessage(**message)
+
+        # Check version compatibility
+        if context_message.version > 1:
+            logger.warning(
+                f"Received cloud_user_context with unsupported version: "
+                f"{context_message.version}. Some fields may be ignored."
+            )
+
+        # Store the user context
+        user_context = context_message.to_context()
+        manager.set_user_context(websocket, user_context)
+
+        # Send acknowledgment
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "cloud_user_context_ack",
+                    "status": "ok",
+                    "user_login": user_context.user_login,
+                }
+            )
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to process cloud_user_context message: {e}")
+        await websocket.send_text(
+            json.dumps(
+                {
+                    "type": "cloud_user_context_ack",
+                    "status": "error",
+                    "error": str(e),
+                }
+            )
+        )
 
 
 async def broadcast(data: str):
-    for client in clients:
-        await client.send_text(data)
+    """Broadcast a message to all connected WebSocket clients."""
+    manager = get_connection_manager()
+    for client in manager.clients:
+        try:
+            await client.send_text(data)
+        except Exception as e:
+            logger.debug(f"Failed to send to client: {e}")
 
 
 @app.post("/api/connect")
@@ -733,7 +1072,9 @@ async def get_user_info():
 
 api_prefix = "/api"
 app.include_router(check_router, prefix=api_prefix)
+app.include_router(check_events_router, prefix=api_prefix)
 app.include_router(run_router, prefix=api_prefix)
 
 static_folder_path = Path(__file__).parent / "data"
+
 app.mount("/", StaticFiles(directory=static_folder_path, html=True), name="static")

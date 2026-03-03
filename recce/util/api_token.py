@@ -19,7 +19,8 @@ def show_invalid_api_token_message():
     console.print("[[red]Error[/red]] Invalid Recce Cloud API token.")
     console.print("Please associate with your Recce Cloud account by the following command 'recce connect-to-cloud'.")
     console.print(
-        "For more information, please visit: https://docs.reccehq.com/recce-cloud/share-recce-session-securely/#configure-recce-cloud-association-manually")
+        "For more information, please visit: https://docs.reccehq.com/recce-cloud/share-recce-session-securely/#configure-recce-cloud-association-manually"
+    )
 
 
 def prepare_api_token(
@@ -32,7 +33,13 @@ def prepare_api_token(
     # Verify the API token for Recce Cloud Share Link
     api_token = get_recce_api_token()
     new_api_token = kwargs.get("api_token")
-    if api_token != new_api_token and new_api_token is not None:
+    if new_api_token is not None and new_api_token.startswith("rct-"):
+        # Task Token
+        valid = RecceCloud(new_api_token).verify_token()
+        if not valid:
+            raise RecceConfigException("Invalid Recce Cloud Task token")
+        api_token = new_api_token
+    elif api_token != new_api_token and new_api_token is not None:
         # Handle the API token provided by option `--api-token`
         valid = RecceCloud(new_api_token).verify_token()
         if not valid:

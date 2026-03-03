@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 import uuid
 from contextlib import contextmanager
 from copy import deepcopy
@@ -32,6 +33,7 @@ from recce.util.lineage import (
     find_upstream,
 )
 from recce.util.perf_tracking import LineagePerfTracker
+from recce.util.startup_perf import track_timing
 
 from ...tasks.profile import ProfileTask
 from ...util.breaking import BreakingPerformanceTracking, parse_change_category
@@ -110,6 +112,7 @@ from dbt.config.runtime import RuntimeConfig  # noqa: E402
 from dbt.contracts.graph.manifest import (  # noqa: E402
     MacroManifest,
     Manifest,
+    ManifestMetadata,
     WritableManifest,
 )
 from dbt.contracts.graph.nodes import ManifestNode  # noqa: E402
@@ -209,9 +212,12 @@ def as_manifest(m: WritableManifest) -> Manifest:
         new_data = {k: v for k, v in data.items() if k in all_fields}
         return Manifest(**new_data)
     else:
-        return Manifest.from_writable_manifest(m)
+        result = Manifest.from_writable_manifest(m)
+        result.metadata = ManifestMetadata(**m.metadata.__dict__)
+        return result
 
 
+@track_timing(record_size=True)
 def load_manifest(path: str = None, data: dict = None):
     if path is not None:
         if not os.path.isfile(path):
@@ -221,6 +227,7 @@ def load_manifest(path: str = None, data: dict = None):
         return WritableManifest.upgrade_schema_version(data)
 
 
+@track_timing(record_size=True)
 def load_catalog(path: str = None, data: dict = None):
     if path is not None:
         if not os.path.isfile(path):
@@ -279,7 +286,10 @@ class DbtArgs:
     target_path: Optional[str] = (None,)
     project_only_flags: Optional[Dict[str, Any]] = None
     which: Optional[str] = None
-    state_modified_compare_more_unrendered_values: Optional[bool] = True  # new flag added since dbt v1.9
+    # Behavior flags - need to be present on args object for set_from_args
+    state_modified_compare_more_unrendered_values: Optional[bool] = True  # dbt v1.9
+    require_unique_project_resource_names: Optional[bool] = False  # dbt v1.11
+    require_ref_searches_node_package_before_root: Optional[bool] = False  # dbt v1.11
 
 
 @dataclass
@@ -307,7 +317,7 @@ class DbtAdapter(BaseAdapter):
 
     def support_tasks(self):
         support_map = {run_type.value: True for run_type in dbt_supported_registry}
-
+        support_map["change_analysis"] = True
         return support_map
 
     @classmethod
@@ -408,7 +418,7 @@ class DbtAdapter(BaseAdapter):
 
         if self.adapter.connections.TYPE == "databricks":
             # reference: get_columns_in_relation (dbt/adapters/databricks/impl.py)
-            from dbt.adapters.databricks import DatabricksColumn
+            from dbt.adapters.databricks.column import DatabricksColumn
 
             rows = columns
             columns = []
@@ -473,10 +483,14 @@ class DbtAdapter(BaseAdapter):
 
         return result
 
+    @track_timing("artifact_load")
     def load_artifacts(self):
         """
-        Load the artifacts from the 'target' and 'target-base' directory
+        Load the artifacts from the 'target' and 'target-base' directory.
+        Artifacts are loaded in parallel using ThreadPoolExecutor.
         """
+        from concurrent.futures import ThreadPoolExecutor
+
         if self.runtime_config is None:
             raise Exception("Cannot find the dbt project configuration")
 
@@ -486,18 +500,28 @@ class DbtAdapter(BaseAdapter):
         self.target_path = os.path.join(project_root, target_path)
         self.base_path = os.path.join(project_root, target_base_path)
 
-        # load the artifacts
-        path = os.path.join(project_root, target_path, "manifest.json")
-        curr_manifest = load_manifest(path=path)
-        if curr_manifest is None:
-            raise FileNotFoundError(ENOENT, os.strerror(ENOENT), path)
-        path = os.path.join(project_root, target_base_path, "manifest.json")
-        base_manifest = load_manifest(path=path)
-        if base_manifest is None:
-            raise FileNotFoundError(ENOENT, os.strerror(ENOENT), path)
+        # Prepare paths
+        curr_manifest_path = os.path.join(project_root, target_path, "manifest.json")
+        base_manifest_path = os.path.join(project_root, target_base_path, "manifest.json")
+        curr_catalog_path = os.path.join(project_root, target_path, "catalog.json")
+        base_catalog_path = os.path.join(project_root, target_base_path, "catalog.json")
 
-        curr_catalog = load_catalog(path=os.path.join(project_root, target_path, "catalog.json"))
-        base_catalog = load_catalog(path=os.path.join(project_root, target_base_path, "catalog.json"))
+        # Load all 4 artifacts in parallel
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            curr_manifest_future = executor.submit(load_manifest, path=curr_manifest_path, timing_name="curr_manifest")
+            base_manifest_future = executor.submit(load_manifest, path=base_manifest_path, timing_name="base_manifest")
+            curr_catalog_future = executor.submit(load_catalog, path=curr_catalog_path, timing_name="curr_catalog")
+            base_catalog_future = executor.submit(load_catalog, path=base_catalog_path, timing_name="base_catalog")
+
+            # Collect results (raises if any future failed)
+            curr_manifest = curr_manifest_future.result()
+            if curr_manifest is None:
+                raise FileNotFoundError(ENOENT, os.strerror(ENOENT), curr_manifest_path)
+            base_manifest = base_manifest_future.result()
+            if base_manifest is None:
+                raise FileNotFoundError(ENOENT, os.strerror(ENOENT), base_manifest_path)
+            curr_catalog = curr_catalog_future.result()
+            base_catalog = base_catalog_future.result()
 
         # set the value if all the artifacts are loaded successfully
         self.curr_manifest = curr_manifest
@@ -515,10 +539,10 @@ class DbtAdapter(BaseAdapter):
 
         # set the file paths to watch
         self.artifacts_files = [
-            os.path.join(project_root, target_path, "manifest.json"),
-            os.path.join(project_root, target_path, "catalog.json"),
-            os.path.join(project_root, target_base_path, "manifest.json"),
-            os.path.join(project_root, target_base_path, "catalog.json"),
+            curr_manifest_path,
+            curr_catalog_path,
+            base_manifest_path,
+            base_catalog_path,
         ]
 
     def is_python_model(self, node_id: str, base: Optional[bool] = False):
@@ -600,7 +624,15 @@ class DbtAdapter(BaseAdapter):
             return node.compiled_code
         else:
             from dbt.clients import jinja
-            from dbt.context.providers import generate_runtime_model_context
+            from dbt.context.providers import (
+                generate_runtime_macro_context,
+                generate_runtime_model_context,
+            )
+
+            # Set up macro resolver for dbt >= 1.8
+            macro_manifest = MacroManifest(manifest.macros)
+            self.adapter.set_macro_resolver(macro_manifest)
+            self.adapter.set_macro_context_generator(generate_runtime_macro_context)
 
             jinja_ctx = generate_runtime_model_context(node, self.runtime_config, manifest)
             jinja_ctx.update(context)
@@ -740,6 +772,7 @@ class DbtAdapter(BaseAdapter):
             nodes[unique_id] = {
                 "id": source["unique_id"],
                 "name": source["name"],
+                "source_name": source["source_name"],
                 "resource_type": source["resource_type"],
                 "package_name": source["package_name"],
                 "config": source["config"],
@@ -795,10 +828,15 @@ class DbtAdapter(BaseAdapter):
 
     @lru_cache(maxsize=1)
     def _get_lineage_diff_cached(self, cache_key) -> LineageDiff:
+        start_time = time.perf_counter_ns()
+
         base = self.get_lineage(base=True)
         current = self.get_lineage(base=False)
 
+        select_start = time.perf_counter_ns()
         modified_nodes = self.select_nodes(select="state:modified")
+        select_elapsed_ms = (time.perf_counter_ns() - select_start) / 1_000_000
+
         diff = {}
         for node_id in modified_nodes:
             base_node = base.get("nodes", {}).get(node_id)
@@ -809,6 +847,16 @@ class DbtAdapter(BaseAdapter):
                 diff[node_id] = NodeDiff(change_status="removed")
             elif curr_node:
                 diff[node_id] = NodeDiff(change_status="added")
+
+        total_elapsed_ms = (time.perf_counter_ns() - start_time) / 1_000_000
+        log_performance(
+            "lineage diff",
+            {
+                "total_elapsed_ms": total_elapsed_ms,
+                "select_modified_elapsed_ms": select_elapsed_ms,
+                "modified_nodes": len(modified_nodes),
+            },
+        )
 
         return LineageDiff(
             base=base,
@@ -1518,6 +1566,15 @@ class DbtAdapter(BaseAdapter):
 
         specs = [_parse_difference(select_list, exclude_list)]
 
+        # If packages is not provided, use the project name from manifest metadata as default
+        if packages is None:
+            if (
+                self.manifest.metadata
+                and hasattr(self.manifest.metadata, "project_name")
+                and self.manifest.metadata.project_name
+            ):
+                packages = [self.manifest.metadata.project_name]
+
         if packages is not None:
             package_spec = SelectionUnion([_parse_difference([f"package:{p}"], None) for p in packages])
             specs.append(package_spec)
@@ -1594,7 +1651,7 @@ class DbtAdapter(BaseAdapter):
             if not os.path.isfile(path):
                 return None
 
-            with open(path, "r") as f:
+            with open(path, "r", encoding="utf-8") as f:
                 json_content = f.read()
                 return json.loads(json_content)
 

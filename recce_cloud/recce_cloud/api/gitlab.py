@@ -1,0 +1,148 @@
+"""
+GitLab-specific API client for Recce Cloud.
+"""
+
+from typing import Dict, Optional
+
+from recce_cloud.api.base import BaseRecceCloudClient
+
+
+class GitLabRecceCloudClient(BaseRecceCloudClient):
+    """GitLab CI-specific implementation of Recce Cloud API client."""
+
+    def __init__(
+        self,
+        token: str,
+        project_path: str,
+        repository_url: str,
+        api_host: Optional[str] = None,
+    ):
+        """
+        Initialize GitLab API client.
+
+        Args:
+            token: GitLab token (CI_JOB_TOKEN or RECCE_API_TOKEN)
+            project_path: Project path in format "group/project"
+            repository_url: Full repository URL (e.g., https://gitlab.com/group/project)
+            api_host: Recce Cloud API host
+        """
+        super().__init__(token, api_host)
+        self.project_path = project_path
+        self.repository_url = repository_url
+
+    def touch_recce_session(
+        self,
+        branch: str,
+        adapter_type: str,
+        pr_number: Optional[int] = None,
+        commit_sha: Optional[str] = None,
+        session_type: Optional[str] = None,
+    ) -> Dict:
+        """
+        Create or touch a Recce session for GitLab CI.
+
+        Args:
+            branch: Branch name
+            adapter_type: DBT adapter type
+            pr_number: MR IID for merge request sessions (None for prod sessions)
+            commit_sha: Commit SHA (required for GitLab)
+            session_type: Session type ("pr", "prod", "dev") - determines if mr_iid is passed
+
+        Returns:
+            Dictionary containing session_id, manifest_upload_url, catalog_upload_url
+        """
+        url = f"{self.api_host}/api/v2/gitlab/{self.project_path}/touch-recce-session"
+
+        payload = {
+            "branch": branch,
+            "adapter_type": adapter_type,
+            "commit_sha": commit_sha,
+            "repository_url": self.repository_url,
+        }
+
+        # Only include mr_iid for "pr" type sessions
+        # For "prod" type, omit mr_iid even if pr_number is detected
+        if session_type == "pr" and pr_number is not None:
+            payload["mr_iid"] = pr_number
+
+        return self._make_request("POST", url, json=payload)
+
+    def upload_completed(
+        self, session_id: str, commit_sha: Optional[str] = None
+    ) -> Dict:
+        """
+        Notify Recce Cloud that upload is complete for GitLab.
+
+        Args:
+            session_id: Session ID from touch_recce_session
+            commit_sha: Commit SHA (required for GitLab)
+
+        Returns:
+            Empty dictionary or acknowledgement
+        """
+        url = f"{self.api_host}/api/v2/gitlab/{self.project_path}/upload-completed"
+
+        payload = {
+            "session_id": session_id,
+            "commit_sha": commit_sha,
+        }
+
+        return self._make_request("POST", url, json=payload)
+
+    def get_session_download_urls(
+        self,
+        pr_number: Optional[int] = None,
+        session_type: Optional[str] = None,
+    ) -> Dict:
+        """
+        Get download URLs for artifacts from a GitLab session.
+
+        Args:
+            pr_number: MR IID for merge request sessions
+            session_type: Session type ("pr", "prod", "dev")
+
+        Returns:
+            Dictionary containing session_id, manifest_url, catalog_url
+        """
+        url = f"{self.api_host}/api/v2/gitlab/{self.project_path}/session-download-url"
+
+        # Build query parameters
+        params = {}
+
+        # For prod session, set base=true
+        if session_type == "prod":
+            params["base"] = "true"
+        # For PR session, include mr_iid
+        elif session_type == "pr" and pr_number is not None:
+            params["mr_iid"] = pr_number
+
+        return self._make_request("GET", url, params=params)
+
+    def delete_session(
+        self,
+        pr_number: Optional[int] = None,
+        session_type: Optional[str] = None,
+    ) -> Dict:
+        """
+        Delete a GitLab MR/base session.
+
+        Args:
+            pr_number: MR IID for merge request sessions
+            session_type: Session type ("pr", "prod") - "prod" deletes base session
+
+        Returns:
+            Dictionary containing session_id of deleted session
+        """
+        url = f"{self.api_host}/api/v2/gitlab/{self.project_path}/session"
+
+        # Build query parameters
+        params = {}
+
+        # For prod session, set base=true
+        if session_type == "prod":
+            params["base"] = "true"
+        # For PR session, include mr_iid
+        elif session_type == "pr" and pr_number is not None:
+            params["mr_iid"] = pr_number
+
+        return self._make_request("DELETE", url, params=params)

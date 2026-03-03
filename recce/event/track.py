@@ -141,6 +141,16 @@ class TrackCommand(Command):
             if recce_context is not None:
                 if recce_context.adapter_type == "dbt":
                     props["adapter_type"] = "DBT"
+                    # Add dbt warehouse type only for dbt adapter
+                    try:
+                        from recce.adapter.dbt_adapter import DbtAdapter
+
+                        dbt_adapter: DbtAdapter = recce_context.adapter
+                        warehouse_type = dbt_adapter.adapter.type()
+                        props["warehouse_type"] = warehouse_type
+                    except Exception:
+                        # If we can't get the warehouse type, skip it
+                        pass
                 elif recce_context.adapter_type == "sqlmesh":
                     props["adapter_type"] = "SQLMesh"
 

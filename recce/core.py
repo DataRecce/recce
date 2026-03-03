@@ -126,7 +126,7 @@ class RecceContext:
             state.git = self.state_loader.state.git
             state.pull_request = self.state_loader.state.pull_request
         else:
-            git = GitRepoInfo.from_current_repositroy()
+            git = GitRepoInfo.from_current_repository()
             if git:
                 state.git = git
             if self.state_loader.pr_info:
@@ -145,7 +145,7 @@ class RecceContext:
         state.runs = self.runs
         state.checks = self.checks
         state.artifacts = self.adapter.export_artifacts()
-        git = GitRepoInfo.from_current_repositroy()
+        git = GitRepoInfo.from_current_repository()
         if git:
             state.git = git
         pr = PullRequestInfo(url=os.getenv("RECCE_PR_URL"))

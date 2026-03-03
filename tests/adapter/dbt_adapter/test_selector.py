@@ -184,8 +184,11 @@ def test_select_with_pacakage_mode_include_exclude(dbt_test_helper):
     node_ids = adapter.select_nodes(packages=["other_package"])
     assert len(node_ids) == 1
 
-    node_ids = adapter.select_nodes(view_mode="changed_models")
+    node_ids = adapter.select_nodes()
     assert len(node_ids) == 4
+
+    node_ids = adapter.select_nodes(view_mode="changed_models")
+    assert len(node_ids) == 3
 
     node_ids = adapter.select_nodes(view_mode="changed_models", packages=["other_package"])
     assert len(node_ids) == 1

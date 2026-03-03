@@ -12,18 +12,18 @@ jobs:
   smoke-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
         with:
-          python-version: 3.11
-          cache: "pip" # caching pip dependencies
-          cache-dependency-path: setup.py
-      - run: |
-          python -m pip install --upgrade pip
-          pip install sqlmesh
-          pip install .
+          version: "latest"
+
+      - name: Install Recce and SQLMesh
+        run: |
+          uv sync --no-dev --python 3.11
+          uv pip install sqlmesh
+
       - name: Run sqlmesh
         run: |
           ./integration_tests/sqlmesh/prep_env.sh
