@@ -100,7 +100,7 @@
     "@vitest/coverage-v8": "^4.0.18",
     "baseline-browser-mapping": "^2.9.18",
     "fast-check": "^4.5.3",
-    "globals": "^17.1.0",
+    "globals": "^17.4.0",
     "husky": "^9.1.7",
     "postcss": "^8.5.8",
     "read-excel-file": "^6.0.3",
