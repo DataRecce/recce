@@ -8,7 +8,7 @@
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "pnpm@10.28.2+sha512.41872f037ad22f7348e3b1debbaf7e867cfd448f2726d9cf74c08f19507c31d2c8e7a11525b983febc2df640b5438dee6023ebb1f84ed43cc2d654d2bc326264",
+  "packageManager": "pnpm@10.30.3+sha512.c961d1e0a2d8e354ecaa5166b822516668b7f44cb5bd95122d590dd81922f606f5473b6d23ec4a5be05e7fcd18e8488d47d978bbe981872f1145d06e9a740017",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build && cp -R out/. ../recce/data/ && rm -rf out",
@@ -52,7 +52,7 @@
     "@xyflow/react": "^12.10.0",
     "ag-grid-community": "^35.0.1",
     "ag-grid-react": "^35.0.1",
-    "axios": "^1.13.3",
+    "axios": "^1.13.5",
     "chart.js": "^4.5.1",
     "codemirror": "^6.0.2",
     "common-tags": "^1.8.2",
@@ -128,7 +128,7 @@
       "@mui/material": "^7.3.7",
       "@mui/system": "^7.3.7",
       "@xyflow/react": "^12.10.0",
-      "axios": "^1.13.3",
+      "axios": "^1.13.5",
       "html-to-image": "1.11.11",
       "html2canvas-pro": "^1.6.6",
       "lodash": "^4.17.23",
@@ -136,7 +136,8 @@
       "typescript": "^5.9.3",
       "tailwindcss": "^4.1.18",
       "postcss": "^8.5.6",
-      "@tailwindcss/postcss": "^4.1.18"
+      "@tailwindcss/postcss": "^4.1.18",
+      "ajv": "^8.18.0"
     },
     "onlyBuiltDependencies": [
       "@tailwindcss/oxide",

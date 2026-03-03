@@ -16,10 +16,10 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.0",
-    "@storybook/addon-docs": "^10.2.0",
-    "@storybook/addon-vitest": "^10.2.0",
-    "@storybook/react": "^10.2.0",
-    "@storybook/react-vite": "^10.2.0",
+    "@storybook/addon-docs": "^10.2.10",
+    "@storybook/addon-vitest": "^10.2.10",
+    "@storybook/react": "^10.2.10",
+    "@storybook/react-vite": "^10.2.10",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@vitejs/plugin-react": "^5.1.2",
@@ -28,7 +28,7 @@
     "chartjs-adapter-date-fns": "^3.0.0",
     "msw": "^2.12.7",
     "playwright": "^1.58.0",
-    "storybook": "^10.2.0",
+    "storybook": "^10.2.10",
     "vitest": "^4.0.18"
   },
   "peerDependencies": {
