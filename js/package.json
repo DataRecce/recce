@@ -102,7 +102,7 @@
     "fast-check": "^4.5.3",
     "globals": "^17.1.0",
     "husky": "^9.1.7",
-    "postcss": "^8.5.6",
+    "postcss": "^8.5.8",
     "read-excel-file": "^6.0.3",
     "rimraf": "^6.1.2",
     "tailwindcss": "^4.1.18",
