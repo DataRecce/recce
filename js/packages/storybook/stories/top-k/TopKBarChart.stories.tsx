@@ -1,11 +1,7 @@
 // packages/storybook/stories/top-k/TopKBarChart.stories.tsx
 import { TopKBarChart } from "@datarecce/ui/primitives";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import {
-  createTopKDataset,
-  sampleTopKDataset,
-  topKWithSpecialValues,
-} from "../data/fixtures";
+import { createTopKDataset, topKWithSpecialValues } from "../data/fixtures";
 
 const meta: Meta<typeof TopKBarChart> = {
   title: "Visualizations/Top-K/TopKBarChart",
@@ -14,24 +10,13 @@ const meta: Meta<typeof TopKBarChart> = {
   parameters: {
     docs: {
       description: {
-        component: `Displays top-K value distributions with horizontal bar charts. Supports base/current comparison and handles special values (null, empty strings).
+        component: `Displays top-K value distributions with horizontal bar charts. Primarily used for base/current comparison in data validation workflows.
 
 ## Usage
 
 \`\`\`tsx
 import { TopKBarChart } from '@datarecce/ui/primitives';
 
-// Basic usage
-<TopKBarChart
-  currentData={{
-    values: ['apple', 'banana', 'orange'],
-    counts: [100, 80, 60],
-    valids: 240
-  }}
-  maxItems={10}
-/>
-
-// With comparison
 <TopKBarChart
   baseData={{
     values: ['apple', 'banana', 'orange'],
@@ -45,7 +30,6 @@ import { TopKBarChart } from '@datarecce/ui/primitives';
   }}
   showComparison={true}
   maxItems={10}
-  title="Product Categories"
 />
 \`\`\``,
       },
@@ -90,22 +74,15 @@ export default meta;
 type Story = StoryObj<typeof TopKBarChart>;
 
 // ============================================
-// Primary Use Cases
+// Comparison (primary use case)
 // ============================================
 
 export const Default: Story = {
-  args: {
-    currentData: createTopKDataset(),
-    maxItems: 10,
-  },
-};
-
-export const WithComparison: Story = {
-  name: "With Base Comparison",
+  name: "Comparison",
   args: {
     baseData: createTopKDataset({
       values: ["apple", "banana", "orange", "grape", "melon"],
-      counts: [90, 85, 55, 45, 25],
+      counts: [90, 85, 55, 0, 25],
       valids: 300,
     }),
     currentData: createTopKDataset(),
@@ -116,180 +93,117 @@ export const WithComparison: Story = {
     docs: {
       description: {
         story:
-          "Shows base vs current comparison with dual horizontal bars for each value.",
+          "Default comparison view — the primary way TopKBarChart is used.",
       },
     },
   },
 };
 
-export const WithTitle: Story = {
-  name: "With Title",
+export const VolumeGrowth: Story = {
+  name: "10x Volume Growth",
   args: {
-    currentData: createTopKDataset(),
-    title: "Top Product Categories",
-    maxItems: 10,
-  },
-};
-
-export const ManyValues: Story = {
-  name: "Many Values (12 items)",
-  args: {
-    currentData: sampleTopKDataset,
-    maxItems: 12,
-  },
-};
-
-// ============================================
-// Special Values
-// ============================================
-
-export const WithNullValues: Story = {
-  name: "With Null Values",
-  args: {
-    currentData: topKWithSpecialValues,
+    baseData: createTopKDataset({
+      counts: [100, 80, 60, 40, 20],
+      valids: 300,
+    }),
+    currentData: createTopKDataset({
+      counts: [1000, 800, 600, 400, 200],
+      valids: 3000,
+    }),
+    showComparison: true,
+    title: "10x Volume Growth — Same Distribution",
     maxItems: 10,
   },
   parameters: {
     docs: {
       description: {
         story:
-          "Handles special values like null (shown as '(null)') and empty strings (shown as '(empty)').",
+          "Volume increased 10x but distribution is unchanged. Bars are equal length because the chart normalizes to proportions.",
       },
     },
   },
 };
 
-export const WithOthers: Story = {
-  name: "With Others Row",
+export const DistributionShift: Story = {
+  name: "Distribution Shift",
   args: {
-    currentData: sampleTopKDataset,
-    maxItems: 5,
+    baseData: createTopKDataset({
+      counts: [200, 150, 80, 40, 30],
+      valids: 500,
+    }),
+    currentData: createTopKDataset({
+      counts: [50, 60, 180, 120, 90],
+      valids: 500,
+    }),
+    showComparison: true,
+    title: "Distribution Shift — Same Volume",
+    maxItems: 10,
   },
   parameters: {
     docs: {
       description: {
         story:
-          "When maxItems is less than total values, remaining values are grouped as '(others)'.",
+          "Total volume unchanged but distribution shifted from top values to bottom values.",
       },
     },
-  },
-};
-
-// ============================================
-// Edge Cases
-// ============================================
-
-export const EmptyDataset: Story = {
-  name: "Empty Dataset",
-  args: {
-    currentData: { values: [], counts: [], valids: 0 },
-    maxItems: 10,
-  },
-};
-
-export const SingleValue: Story = {
-  name: "Single Value",
-  args: {
-    currentData: {
-      values: ["single_value"],
-      counts: [1000],
-      valids: 1000,
-    },
-    maxItems: 10,
   },
 };
 
 export const LargeCounts: Story = {
-  name: "Large Count Values",
+  name: "Large Counts",
   args: {
+    baseData: {
+      values: ["value_a", "value_b", "value_c", "value_d", "value_e"],
+      counts: [12000000, 7200000, 3800000, 1500000, 600000],
+      valids: 25100000,
+    },
     currentData: {
       values: ["value_a", "value_b", "value_c", "value_d", "value_e"],
       counts: [15000000, 8500000, 4200000, 1800000, 750000],
       valids: 30250000,
     },
+    showComparison: true,
     maxItems: 10,
   },
   parameters: {
     docs: {
       description: {
         story:
-          "Top-K chart with large count values using abbreviated number formatting (K, M, B).",
+          "Abbreviated number formatting (K, M, B) with comparison. Tests label fitting inside wide vs narrow bars.",
       },
     },
   },
 };
 
-export const AllSameCount: Story = {
-  name: "All Same Count",
+export const WithSpecialValues: Story = {
+  name: "Special Values (null, empty)",
   args: {
+    baseData: topKWithSpecialValues,
     currentData: {
-      values: ["value_1", "value_2", "value_3", "value_4", "value_5"],
-      counts: [100, 100, 100, 100, 100],
-      valids: 500,
+      ...topKWithSpecialValues,
+      counts: topKWithSpecialValues.counts.map((c) => Math.round(c * 0.9)),
     },
-    maxItems: 10,
-  },
-};
-
-export const LongValueNames: Story = {
-  name: "Long Value Names",
-  args: {
-    currentData: {
-      values: [
-        "very_long_value_name_that_needs_to_be_truncated_in_the_display",
-        "another_extremely_long_value_name_for_testing_ellipsis",
-        "short",
-        "medium_length_value",
-        "y",
-      ],
-      counts: [100, 80, 60, 40, 20],
-      valids: 300,
-    },
-    maxItems: 10,
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "Tests tooltip and ellipsis handling for long value names.",
-      },
-    },
-  },
-};
-
-// ============================================
-// Theme Testing
-// ============================================
-
-export const LightTheme: Story = {
-  name: "Light Theme",
-  args: {
-    baseData: createTopKDataset({
-      values: ["apple", "banana", "orange", "grape", "melon"],
-      counts: [90, 85, 55, 45, 25],
-      valids: 300,
-    }),
-    currentData: createTopKDataset(),
     showComparison: true,
     maxItems: 10,
   },
   parameters: {
     docs: {
       description: {
-        story: "Top-K bar chart in light theme with comparison.",
+        story:
+          "Handles null (shown as '(null)') and empty strings (shown as '(empty)') in comparison mode.",
       },
     },
-    backgrounds: { default: "light" },
-  },
-  globals: {
-    theme: "light",
   },
 };
+
+// ============================================
+// Theme
+// ============================================
 
 export const DarkTheme: Story = {
   name: "Dark Theme",
   args: {
     baseData: createTopKDataset({
-      values: ["apple", "banana", "orange", "grape", "melon"],
       counts: [90, 85, 55, 45, 25],
       valids: 300,
     }),
@@ -300,12 +214,32 @@ export const DarkTheme: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Top-K bar chart in dark theme with comparison.",
+        story:
+          "Comparison in dark theme — verifies label contrast on dark background.",
       },
     },
     backgrounds: { default: "dark" },
   },
   globals: {
     theme: "dark",
+  },
+};
+
+// ============================================
+// Single Dataset (fallback)
+// ============================================
+
+export const SingleDataset: Story = {
+  name: "Single Dataset (no comparison)",
+  args: {
+    currentData: createTopKDataset(),
+    maxItems: 10,
+  },
+  parameters: {
+    docs: {
+      description: {
+        story: "Fallback view when only current data is available.",
+      },
+    },
   },
 };

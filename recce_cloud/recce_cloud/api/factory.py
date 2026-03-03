@@ -37,9 +37,13 @@ def create_platform_client(
     if ci_info.platform == "github-actions":
         repository = ci_info.repository or os.getenv("GITHUB_REPOSITORY")
         if not repository:
-            raise ValueError("GitHub repository information is required but not detected")
+            raise ValueError(
+                "GitHub repository information is required but not detected"
+            )
 
-        return GitHubRecceCloudClient(token=token, repository=repository, api_host=api_host)
+        return GitHubRecceCloudClient(
+            token=token, repository=repository, api_host=api_host
+        )
 
     elif ci_info.platform == "gitlab-ci":
         project_path = ci_info.repository or os.getenv("CI_PROJECT_PATH")
@@ -59,5 +63,6 @@ def create_platform_client(
 
     else:
         raise ValueError(
-            f"Unsupported platform: {ci_info.platform}. " "Only GitHub Actions and GitLab CI are supported."
+            f"Unsupported platform: {ci_info.platform}. "
+            "Only GitHub Actions and GitLab CI are supported."
         )

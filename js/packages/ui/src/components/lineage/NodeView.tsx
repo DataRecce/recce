@@ -16,7 +16,9 @@ import {
 } from "react";
 import { IoClose } from "react-icons/io5";
 
+import type { NodeColumnData } from "../../api/info";
 import { DisableTooltipMessages } from "../../constants";
+import { isSchemaChanged } from "../../utils/schemaDiff";
 import type { NodeSqlViewProps } from "./NodeSqlView";
 
 // =============================================================================
@@ -38,12 +40,12 @@ export interface NodeViewNodeData {
       base?: {
         raw_code?: string;
         name?: string;
-        columns?: Record<string, unknown>;
+        columns?: Record<string, NodeColumnData | undefined>;
       };
       current?: {
         raw_code?: string;
         name?: string;
-        columns?: Record<string, unknown>;
+        columns?: Record<string, NodeColumnData | undefined>;
       };
     };
   };
@@ -555,7 +557,7 @@ function DiffActionButtons({
  *
  * @example
  * ```tsx
- * import { NodeView } from '@datarecce/ui/components/lineage';
+ * import { NodeView } from '@datarecce/ui/advanced';
  *
  * <NodeView
  *   node={selectedNode}
@@ -600,6 +602,15 @@ export function NodeView({
   const [isSandboxOpen, setIsSandboxOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(true);
   const [tabValue, setTabValue] = useState(0);
+
+  const { base, current } = node.data.data;
+  const hasSchemaChanges =
+    !isSingleEnv && isSchemaChanged(base?.columns, current?.columns) === true;
+  const hasCodeChanges =
+    !isSingleEnv &&
+    base?.raw_code != null &&
+    current?.raw_code != null &&
+    base.raw_code !== current.raw_code;
 
   const isModelSeedOrSnapshot =
     node.data.resourceType === "model" ||
@@ -720,8 +731,50 @@ export function NodeView({
             onChange={(_, newValue) => setTabValue(newValue)}
             sx={{ borderBottom: 1, borderColor: "divider" }}
           >
-            <Tab label="Columns" />
-            <Tab label="Code" />
+            <Tab
+              label={
+                <Box
+                  component="span"
+                  sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
+                >
+                  Columns
+                  {hasSchemaChanges && (
+                    <Box
+                      component="span"
+                      sx={{
+                        color: "amber.main",
+                        fontSize: "0.5rem",
+                        lineHeight: 1,
+                      }}
+                    >
+                      ●
+                    </Box>
+                  )}
+                </Box>
+              }
+            />
+            <Tab
+              label={
+                <Box
+                  component="span"
+                  sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
+                >
+                  Code
+                  {hasCodeChanges && (
+                    <Box
+                      component="span"
+                      sx={{
+                        color: "amber.main",
+                        fontSize: "0.5rem",
+                        lineHeight: 1,
+                      }}
+                    >
+                      ●
+                    </Box>
+                  )}
+                </Box>
+              }
+            />
           </Tabs>
 
           {/* Tab panels */}

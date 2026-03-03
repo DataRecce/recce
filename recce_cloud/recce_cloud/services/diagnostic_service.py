@@ -71,7 +71,12 @@ class DiagnosticResults:
     def passed_count(self) -> int:
         return sum(
             1
-            for check in [self.login, self.project_binding, self.production_metadata, self.dev_session]
+            for check in [
+                self.login,
+                self.project_binding,
+                self.production_metadata,
+                self.dev_session,
+            ]
             if check.passed
         )
 
@@ -224,14 +229,18 @@ class DiagnosticService:
                 raise RecceCloudException(f"Organization '{self._org}' not found", 404)
             org_id = org_info.get("id")
             if not org_id:
-                raise RecceCloudException(f"Organization '{self._org}' response missing ID", 500)
+                raise RecceCloudException(
+                    f"Organization '{self._org}' response missing ID", 500
+                )
 
             project_info = client.get_project(org_id, self._project)
             if not project_info:
                 raise RecceCloudException(f"Project '{self._project}' not found", 404)
             project_id = project_info.get("id")
             if not project_id:
-                raise RecceCloudException(f"Project '{self._project}' response missing ID", 500)
+                raise RecceCloudException(
+                    f"Project '{self._project}' response missing ID", 500
+                )
 
             # List sessions
             sessions = client.list_sessions(org_id, project_id)

@@ -83,6 +83,15 @@ export {
  */
 export { layout, toReactFlow } from "./components/lineage/lineage";
 
+/**
+ * Node detail panel with Columns and Code tabs.
+ */
+export {
+  NodeView,
+  type NodeViewNodeData,
+  type NodeViewProps,
+} from "./components/lineage/NodeView";
+
 // =============================================================================
 // CONTEXT HOOKS
 // =============================================================================

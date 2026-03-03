@@ -10,7 +10,13 @@ from recce_cloud.api.base import BaseRecceCloudClient
 class GitLabRecceCloudClient(BaseRecceCloudClient):
     """GitLab CI-specific implementation of Recce Cloud API client."""
 
-    def __init__(self, token: str, project_path: str, repository_url: str, api_host: Optional[str] = None):
+    def __init__(
+        self,
+        token: str,
+        project_path: str,
+        repository_url: str,
+        api_host: Optional[str] = None,
+    ):
         """
         Initialize GitLab API client.
 
@@ -61,7 +67,9 @@ class GitLabRecceCloudClient(BaseRecceCloudClient):
 
         return self._make_request("POST", url, json=payload)
 
-    def upload_completed(self, session_id: str, commit_sha: Optional[str] = None) -> Dict:
+    def upload_completed(
+        self, session_id: str, commit_sha: Optional[str] = None
+    ) -> Dict:
         """
         Notify Recce Cloud that upload is complete for GitLab.
 

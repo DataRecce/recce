@@ -76,28 +76,6 @@ export const createTopKDataset = (
 });
 
 /**
- * Sample Top-K dataset with more values
- */
-export const sampleTopKDataset: TopKDataset = {
-  values: [
-    "active",
-    "pending",
-    "completed",
-    "cancelled",
-    "failed",
-    "processing",
-    "queued",
-    "archived",
-    "deleted",
-    "suspended",
-    "other1",
-    "other2",
-  ],
-  counts: [1200, 800, 600, 400, 200, 150, 100, 80, 50, 30, 20, 10],
-  valids: 3640,
-};
-
-/**
  * Sample Top-K dataset with special values (null, empty)
  */
 export const topKWithSpecialValues: TopKDataset = {
