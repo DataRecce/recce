@@ -61,7 +61,7 @@
     "happy-dom": "^20.8.3",
     "html-to-image": "1.11.13",
     "html2canvas-pro": "1.6.6",
-    "import-in-the-middle": "^2.0.5",
+    "import-in-the-middle": "^3.0.0",
     "js-cookie": "^3.0.5",
     "lodash": "^4.17.23",
     "next": "16.1.6",
@@ -78,7 +78,7 @@
     "simplebar": "^6.3.3",
     "simplebar-react": "3.3.2",
     "usehooks-ts": "^3.1.1",
-    "write-excel-file": "^2.3.10",
+    "write-excel-file": "^3.0.5",
     "yaml": "^2.8.2"
   },
   "devDependencies": {
