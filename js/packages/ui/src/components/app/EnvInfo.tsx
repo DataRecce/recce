@@ -168,7 +168,7 @@ export function EnvInfo() {
               fontSize: "0.875rem",
             }}
           >
-            <Box sx={{ display: "flex", gap: 0.5 }}>
+            <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5 }}>
               <Typography
                 component="span"
                 noWrap
@@ -176,10 +176,12 @@ export function EnvInfo() {
                 className="no-track-pii-safe"
               >
                 {Array.from(baseSchemas).join(", ")}
-              </Typography>{" "}
-              ({baseRelativeTime})
+              </Typography>
+              <Typography component="span" noWrap>
+                ({baseRelativeTime})
+              </Typography>
             </Box>
-            <Box sx={{ display: "flex", gap: 0.5 }}>
+            <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.5 }}>
               <Typography
                 component="span"
                 noWrap
@@ -187,8 +189,10 @@ export function EnvInfo() {
                 className="no-track-pii-safe"
               >
                 {Array.from(currentSchemas).join(", ")}
-              </Typography>{" "}
-              ({currentRelativeTime})
+              </Typography>
+              <Typography component="span" noWrap>
+                ({currentRelativeTime})
+              </Typography>
             </Box>
           </Stack>
           <IconButton size="small" aria-label="Environment Info">
