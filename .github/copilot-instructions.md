@@ -56,6 +56,15 @@ make test-tox                    # ~5-10 minutes
 make test-tox-python-versions    # ~10-15 minutes
 ```
 
+**Dependency Checking (local Dependabot):**
+
+```bash
+# Prerequisites: brew install dependabot, Docker running
+make deps-check-python     # Python deps → deps-python.yml
+make deps-check-frontend   # JS/Node deps → deps-frontend.yml
+make deps-check            # Both ecosystems
+```
+
 **Common Errors & Fixes:**
 
 - `ImportError` after adding dependencies: Run `pip install -e .[dev]` again
@@ -164,6 +173,9 @@ cd integration_tests/dbt && ./smoke_test.sh
 
 # Integration test (SQLMesh)
 cd integration_tests/sqlmesh && ./prep_env.sh && ./test_server.sh
+
+# Dependency update check (mirrors GitHub Dependabot)
+make deps-check
 ```
 
 ## Project Layout
@@ -310,6 +322,11 @@ recce run                  # Execute checks from recce.yml
 
 # Cloud CLI
 recce-cloud upload         # Upload artifacts to Recce Cloud
+
+# Dependency checks (Dependabot CLI)
+make deps-check-python           # Python deps (Docker required)
+make deps-check-frontend         # JS deps (Docker required)
+make deps-check                  # All deps (Docker required)
 ```
 
 ## CRITICAL: Trust These Instructions

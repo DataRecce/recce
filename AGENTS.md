@@ -46,6 +46,9 @@ Recce is a data validation and review tool for dbt projects. It helps data teams
 | **Frontend Lint** | `cd js && pnpm lint:fix` |
 | **Frontend Test** | `cd js && pnpm test` |
 | **Type Check** | `cd js && pnpm type:check` |
+| **Deps Check (Python)** | `make deps-check-python` |
+| **Deps Check (Frontend)** | `make deps-check-frontend` |
+| **Deps Check (All)** | `make deps-check` |
 
 ---
 
