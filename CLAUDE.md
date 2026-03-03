@@ -28,6 +28,9 @@ Use gitignored directories for temporary working documents:
 
 When asked to "update deps" or "check for updates":
 
+**Prerequisites:** `brew install dependabot` + Docker running
+
+0. **Scan:** `make deps-check` (runs Dependabot locally, outputs `deps-python.yml` and `deps-frontend.yml`)
 1. **Audit:** `cd js && pnpm audit && pnpm outdated`
 2. **Present:** Group by SECURITY/MAJOR/MINOR with numbered list
 3. **Apply:** Update root `js/package.json`; add `pnpm.overrides` for shared packages

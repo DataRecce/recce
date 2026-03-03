@@ -16,6 +16,9 @@ build
 .noai
 .DS_Store
 
+# Dependabot CLI output
+deps-*.yml
+
 recce.yml
 STATUS.md
 

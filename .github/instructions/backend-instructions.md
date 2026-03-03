@@ -373,6 +373,27 @@ make test-tox
 cd integration_tests/dbt && ./smoke_test.sh
 ```
 
+## Local Dependency Checking with Dependabot CLI
+
+**Prerequisites:**
+- `brew install dependabot` (official CLI tool)
+- Docker running (Dependabot uses containers for analysis)
+- Optional: `LOCAL_GITHUB_ACCESS_TOKEN` env var for private packages
+
+**Check Python dependencies for updates:**
+```bash
+make deps-check-python
+# Runs: dependabot update pip DataRecce/recce --local . -d / -o deps-python.yml
+# Output: deps-python.yml (gitignored)
+```
+
+**Check all dependencies:**
+```bash
+make deps-check
+# Runs both Python and frontend checks
+# Output: deps-python.yml, deps-frontend.yml
+```
+
 ## Key Patterns & Conventions
 
 **Singleton Pattern:**
@@ -470,6 +491,10 @@ recce debug                   # Diagnose setup
 recce run                     # Execute checks
 recce version                 # Show version
 recce-cloud upload            # Upload artifacts
+
+# Dependency checks
+make deps-check-python           # Check Python deps (Docker required)
+make deps-check                  # Check all deps (Docker required)
 ```
 
 ## Working with Adapters
