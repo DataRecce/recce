@@ -2,7 +2,7 @@
  * @file csv/excel.ts
  * @description Excel (.xlsx) formatting utilities using write-excel-file
  */
-import writeXlsxFile, { type Cell, type Row } from "write-excel-file";
+import writeXlsxFile, { type Cell, type Row } from "write-excel-file/universal";
 
 /**
  * Convert a raw cell value to a write-excel-file Cell
