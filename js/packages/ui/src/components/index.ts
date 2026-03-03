@@ -139,10 +139,6 @@ export {
 export type { ColumnNameCellProps } from "./schema";
 export {
   ColumnNameCell,
-  mergeSchemaColumns,
-  SchemaDiff,
-  type SchemaDiffHandle,
-  type SchemaDiffProps,
   type SchemaDiffRow,
   type SchemaDiffStatus,
   SchemaView,

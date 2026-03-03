@@ -11,7 +11,7 @@ import { vi } from "vitest";
 import type { NodeData } from "../../../api";
 import { theme } from "../../../theme";
 import { ColumnNameCell } from "../ColumnNameCell";
-import type { SchemaDiffRow } from "../SchemaDiff";
+import type { SchemaDiffRow } from "../types";
 
 // Mock dependencies with dynamic isActionAvailable and lineageViewContext
 const { mockIsActionAvailable, mockLineageViewContext } = vi.hoisted(() => ({

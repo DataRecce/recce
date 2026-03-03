@@ -345,20 +345,15 @@ export {
 // =============================================================================
 
 /**
- * Schema diff primitives for base vs current comparison.
+ * Schema diff types for base vs current comparison.
  *
  * @remarks
- * Exports: mergeSchemaColumns, SchemaDiff, SchemaDiffHandle, SchemaDiffProps,
- * SchemaDiffRow, SchemaDiffStatus.
+ * Exports: SchemaDiffRow, SchemaDiffStatus.
  */
-export {
-  mergeSchemaColumns,
-  SchemaDiff,
-  type SchemaDiffHandle,
-  type SchemaDiffProps,
-  type SchemaDiffRow,
-  type SchemaDiffStatus,
-} from "./components/schema/SchemaDiff";
+export type {
+  SchemaDiffRow,
+  SchemaDiffStatus,
+} from "./components/schema/types";
 
 // =============================================================================
 // EDITOR PRIMITIVES
