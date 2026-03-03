@@ -1,0 +1,61 @@
+# Dependabot configuration for automated dependency updates and security alerts
+# See: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # Group Python dev dependencies together
+      dev-dependencies:
+        patterns:
+          - "pytest*"
+          - "black"
+          - "isort"
+          - "flake8"
+          - "mypy"
+          - "tox*"
+          - "pre-commit"
+        update-types:
+          - "minor"
+          - "patch"
+
+  # JavaScript/Node dependencies
+  # Note: This project uses pnpm, but Dependabot uses "npm" ecosystem
+  # which automatically detects and reads pnpm-lock.yaml
+  - package-ecosystem: "npm"
+    directory: "/js"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "javascript"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # Group related frontend dependencies
+      testing-libraries:
+        patterns:
+          - "@testing-library/*"
+          - "vitest"
+        update-types:
+          - "minor"
+          - "patch"
+      dev-tools:
+        patterns:
+          - "@biomejs/*"
+          - "typescript"
+          - "eslint*"
+        update-types:
+          - "minor"
+          - "patch"
