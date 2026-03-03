@@ -29,8 +29,10 @@ updates:
           - "minor"
           - "patch"
 
-  # JavaScript/Node dependencies (pnpm-managed)
-  - package-ecosystem: "pnpm"
+  # JavaScript/Node dependencies
+  # Note: This project uses pnpm, but Dependabot uses "npm" ecosystem
+  # which automatically detects and reads pnpm-lock.yaml
+  - package-ecosystem: "npm"
     directory: "/js"
     schedule:
       interval: "weekly"
