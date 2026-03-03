@@ -40,7 +40,7 @@
     "@hello-pangea/dnd": "^18.0.1",
     "@jeromefitz/date-fns-tz": "3.0.0-canary.8",
     "@mui/material": "^7.3.7",
-    "@mui/system": "^7.3.7",
+    "@mui/system": "^7.3.8",
     "@next/third-parties": "16.1.6",
     "@sentry/nextjs": "^10.41.0",
     "@sentry/react": "^10.41.0",
