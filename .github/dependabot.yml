@@ -29,8 +29,8 @@ updates:
           - "minor"
           - "patch"
 
-  # JavaScript/Node dependencies
-  - package-ecosystem: "npm"
+  # JavaScript/Node dependencies (pnpm-managed)
+  - package-ecosystem: "pnpm"
     directory: "/js"
     schedule:
       interval: "weekly"
