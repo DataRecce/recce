@@ -273,7 +273,6 @@
         "**/ScreenshotDataGrid.tsx",
         "**/LineageViewOss.tsx",
         "**/createResultView.tsx",
-        "**/SchemaDiff.tsx",
         "**/SchemaView.tsx"
       ],
       "linter": {

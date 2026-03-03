@@ -37,7 +37,7 @@ import {
   useRecceInstanceContext,
 } from "../../contexts";
 import { supportsHistogramDiff } from "../histogram";
-import type { SchemaDiffRow } from "./SchemaDiff";
+import type { SchemaDiffRow } from "./types";
 
 // ============================================================================
 // Types
