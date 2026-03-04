@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import time
@@ -20,6 +21,12 @@ from recce.core import default_context
 from recce.models import CheckDAO
 from recce.models.types import RunType
 from recce.summary import generate_markdown_summary
+from recce.tasks.rowcount import (
+    PERMISSION_DENIED_INDICATORS,
+    TABLE_NOT_FOUND_INDICATORS,
+)
+
+logger = logging.getLogger(__name__)
 
 
 def check_github_ci_env(**kwargs):
@@ -92,9 +99,12 @@ def schema_diff_should_be_approved(check_params: dict) -> bool:
         # If the diff is empty, then the check should be approved
         if bool(diff) is False:
             return True
-    except Exception:
-        # If there is any error, then the check should not be approved
-        pass
+    except Exception as e:
+        error_msg = str(e).upper()
+        if any(ind in error_msg for ind in TABLE_NOT_FOUND_INDICATORS + PERMISSION_DENIED_INDICATORS):
+            logger.warning(f"schema_diff approval check skipped (expected): {e}")
+        else:
+            logger.error(f"schema_diff approval check failed (unexpected): {e}", exc_info=True)
 
     return False
 

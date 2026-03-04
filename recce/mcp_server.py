@@ -24,9 +24,21 @@ from recce.server import RecceServerMode
 from recce.tasks.dataframe import DataFrame
 from recce.tasks.profile import ProfileDiffTask
 from recce.tasks.query import QueryDiffTask, QueryTask
-from recce.tasks.rowcount import RowCountDiffTask
+from recce.tasks.rowcount import (
+    PERMISSION_DENIED_INDICATORS,
+    SYNTAX_ERROR_INDICATORS,
+    TABLE_NOT_FOUND_INDICATORS,
+    RowCountDiffTask,
+)
 
 logger = logging.getLogger(__name__)
+
+try:
+    import sentry_sdk
+    from sentry_sdk import metrics as sentry_metrics
+except ImportError:
+    sentry_sdk = None
+    sentry_metrics = None
 
 SINGLE_ENV_WARNING = (
     "Base environment not configured \u2014 comparisons show no changes. "
@@ -130,6 +142,25 @@ class RecceMCPServer:
         self.server = Server("recce")
         self.mcp_logger = MCPLogger(debug=debug, log_file=log_file)
         self._setup_handlers()
+
+    @staticmethod
+    def _classify_db_error(error_msg: str) -> Optional[str]:
+        """Classify a database error message into a known category.
+
+        Checks permission_denied first, then table_not_found, then syntax_error
+        (first match wins). Returns the category string or None.
+        """
+        upper_msg = error_msg.upper()
+        for indicator in PERMISSION_DENIED_INDICATORS:
+            if indicator in upper_msg:
+                return "permission_denied"
+        for indicator in TABLE_NOT_FOUND_INDICATORS:
+            if indicator in upper_msg:
+                return "table_not_found"
+        for indicator in SYNTAX_ERROR_INDICATORS:
+            if indicator in upper_msg:
+                return "syntax_error"
+        return None
 
     def _maybe_add_warning(self, result: Dict[str, Any]) -> Dict[str, Any]:
         """Add _warning to diff results when in single-env mode."""
@@ -464,345 +495,320 @@ class RecceMCPServer:
                 return [TextContent(type="text", text=response_json)]
             except Exception as e:
                 duration_ms = (time.perf_counter() - start_time) * 1000
-                self.mcp_logger.log_tool_call(name, arguments, {}, duration_ms, error=str(e))
-                logger.error(f"[MCP] Error executing tool {name} ({duration_ms:.2f}ms): {str(e)}")
-                logger.exception("[MCP] Full traceback:")
-                error_response = json.dumps({"error": str(e)}, indent=2)
-                return [TextContent(type="text", text=error_response)]
+                error_msg = str(e)
+                self.mcp_logger.log_tool_call(name, arguments, {}, duration_ms, error=error_msg)
+
+                classification = self._classify_db_error(error_msg)
+                if classification:
+                    logger.warning(
+                        f"[MCP] Expected {classification} error in tool {name} ({duration_ms:.2f}ms): {error_msg}"
+                    )
+                    if sentry_metrics:
+                        sentry_metrics.count(
+                            "mcp.expected_error",
+                            1,
+                            attributes={"tool": name, "error_type": classification},
+                        )
+                else:
+                    logger.error(f"[MCP] Error executing tool {name} ({duration_ms:.2f}ms): {error_msg}")
+                    logger.exception("[MCP] Full traceback:")
+
+                # Re-raise so MCP SDK sets isError=True in the protocol response
+                raise
 
     async def _tool_lineage_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get lineage diff between base and current"""
-        try:
-            # Extract filter arguments
-            select = arguments.get("select")
-            exclude = arguments.get("exclude")
-            packages = arguments.get("packages")
-            view_mode = arguments.get("view_mode", "changed_models")
+        # Extract filter arguments
+        select = arguments.get("select")
+        exclude = arguments.get("exclude")
+        packages = arguments.get("packages")
+        view_mode = arguments.get("view_mode", "changed_models")
 
-            # Get lineage diff from adapter (returns a Pydantic LineageDiff model)
-            lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
+        # Get lineage diff from adapter (returns a Pydantic LineageDiff model)
+        lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
 
-            # Apply node selection filtering if arguments provided
+        # Apply node selection filtering if arguments provided
+        selected_node_ids = self.context.adapter.select_nodes(
+            select=select,
+            exclude=exclude,
+            packages=packages,
+            view_mode=view_mode,
+        )
+        impacted_node_ids = self.context.adapter.select_nodes(
+            select="state:modified+",
+        )
+
+        # Get diff information for change_status
+        diff_info = lineage_diff.get("diff", {})
+
+        # Extract parent_map and simplified nodes from both base and current
+        parent_map = {}
+        nodes = {}
+
+        # Merge parent_map and nodes: base first, then current overrides
+        for env_key in ["base", "current"]:
+            if env_key not in lineage_diff:
+                continue
+
+            env_data = lineage_diff[env_key]
+
+            # Merge parent_map (filtering by selected nodes)
+            if "parent_map" in env_data:
+                for node_id, parents in env_data["parent_map"].items():
+                    if node_id in selected_node_ids:
+                        parent_map[node_id] = parents
+
+            # Merge nodes (filtering by selected nodes)
+            if "nodes" in env_data:
+                for node_id, node_info in env_data["nodes"].items():
+                    if node_id in selected_node_ids:
+                        nodes[node_id] = {
+                            "name": node_info.get("name"),
+                            "resource_type": node_info.get("resource_type"),
+                        }
+
+                        materialized = node_info.get("config", {}).get("materialized")
+                        if materialized is not None:
+                            nodes[node_id]["materialized"] = materialized
+
+        # Create id to idx mapping
+        id_to_idx = {node_id: idx for idx, node_id in enumerate(nodes.keys())}
+
+        # Prepare node data for DataFrame
+        nodes_data = [
+            (
+                id_to_idx[node_id],
+                node_id,
+                node_info.get("name"),
+                node_info.get("resource_type"),
+                node_info.get("materialized"),
+                diff_info.get(node_id, {}).get("change_status"),
+                node_id in impacted_node_ids,
+            )
+            for node_id, node_info in nodes.items()
+        ]
+
+        # Create nodes DataFrame using from_data with simple dict format
+        nodes_df = DataFrame.from_data(
+            columns={
+                "idx": "integer",
+                "id": "text",
+                "name": "text",
+                "resource_type": "text",
+                "materialized": "text",
+                "change_status": "text",
+                "impacted": "boolean",
+            },
+            data=nodes_data,
+        )
+
+        # Build edges from parent_map
+        edges_data = []
+        for node_id, parents in parent_map.items():
+            if node_id in id_to_idx:
+                for parent_id in parents:
+                    if parent_id in id_to_idx:
+                        edges_data.append((id_to_idx[parent_id], id_to_idx[node_id]))
+
+        # Create edges DataFrame
+        edges_df = DataFrame.from_data(
+            columns={
+                "from": "integer",
+                "to": "integer",
+            },
+            data=edges_data,
+        )
+
+        # Build simplified result
+        result = {"nodes": nodes_df.model_dump(mode="json"), "edges": edges_df.model_dump(mode="json")}
+
+        return result
+
+    async def _tool_schema_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Get schema diff (column changes) between base and current"""
+        # Extract filter arguments
+        select = arguments.get("select")
+        exclude = arguments.get("exclude")
+        packages = arguments.get("packages")
+
+        # Get lineage diff from adapter
+        lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
+
+        # Get all nodes from current environment
+        current_nodes = {}
+        if "current" in lineage_diff and "nodes" in lineage_diff["current"]:
+            current_nodes = lineage_diff["current"]["nodes"]
+
+        # Filter to only nodes that exist in both base and current (exclude added nodes)
+        base_nodes = lineage_diff.get("base", {}).get("nodes", {})
+        nodes_to_compare = set(current_nodes.keys()) & set(base_nodes.keys())
+
+        # Apply filtering if arguments provided
+        if select or exclude or packages:
             selected_node_ids = self.context.adapter.select_nodes(
                 select=select,
                 exclude=exclude,
                 packages=packages,
-                view_mode=view_mode,
             )
-            impacted_node_ids = self.context.adapter.select_nodes(
-                select="state:modified+",
-            )
+            nodes_to_compare = nodes_to_compare & selected_node_ids
 
-            # Get diff information for change_status
-            diff_info = lineage_diff.get("diff", {})
+        # Build schema changes
+        schema_changes = []
 
-            # Extract parent_map and simplified nodes from both base and current
-            parent_map = {}
-            nodes = {}
+        for node_id in nodes_to_compare:
+            base_node = base_nodes.get(node_id, {})
+            current_node = current_nodes.get(node_id, {})
 
-            # Merge parent_map and nodes: base first, then current overrides
-            for env_key in ["base", "current"]:
-                if env_key not in lineage_diff:
-                    continue
+            base_columns = base_node.get("columns", {})
+            current_columns = current_node.get("columns", {})
 
-                env_data = lineage_diff[env_key]
+            # Get column names in base and current
+            base_col_names = set(base_columns.keys())
+            current_col_names = set(current_columns.keys())
 
-                # Merge parent_map (filtering by selected nodes)
-                if "parent_map" in env_data:
-                    for node_id, parents in env_data["parent_map"].items():
-                        if node_id in selected_node_ids:
-                            parent_map[node_id] = parents
+            # Find added columns (in current but not in base)
+            for col_name in current_col_names - base_col_names:
+                schema_changes.append((node_id, col_name, "added"))
 
-                # Merge nodes (filtering by selected nodes)
-                if "nodes" in env_data:
-                    for node_id, node_info in env_data["nodes"].items():
-                        if node_id in selected_node_ids:
-                            nodes[node_id] = {
-                                "name": node_info.get("name"),
-                                "resource_type": node_info.get("resource_type"),
-                            }
+            # Find removed columns (in base but not in current)
+            for col_name in base_col_names - current_col_names:
+                schema_changes.append((node_id, col_name, "removed"))
 
-                            materialized = node_info.get("config", {}).get("materialized")
-                            if materialized is not None:
-                                nodes[node_id]["materialized"] = materialized
+            # Find modified columns (in both but with different types)
+            for col_name in base_col_names & current_col_names:
+                base_col_type = base_columns[col_name].get("type")
+                current_col_type = current_columns[col_name].get("type")
+                if base_col_type != current_col_type:
+                    schema_changes.append((node_id, col_name, "modified"))
 
-            # Create id to idx mapping
-            id_to_idx = {node_id: idx for idx, node_id in enumerate(nodes.keys())}
+        # Check if there are more than 100 rows
+        limit = 100
+        has_more = len(schema_changes) > limit
+        limited_schema_changes = schema_changes[:limit]
 
-            # Prepare node data for DataFrame
-            nodes_data = [
-                (
-                    id_to_idx[node_id],
-                    node_id,
-                    node_info.get("name"),
-                    node_info.get("resource_type"),
-                    node_info.get("materialized"),
-                    diff_info.get(node_id, {}).get("change_status"),
-                    node_id in impacted_node_ids,
-                )
-                for node_id, node_info in nodes.items()
-            ]
-
-            # Create nodes DataFrame using from_data with simple dict format
-            nodes_df = DataFrame.from_data(
-                columns={
-                    "idx": "integer",
-                    "id": "text",
-                    "name": "text",
-                    "resource_type": "text",
-                    "materialized": "text",
-                    "change_status": "text",
-                    "impacted": "boolean",
-                },
-                data=nodes_data,
-            )
-
-            # Build edges from parent_map
-            edges_data = []
-            for node_id, parents in parent_map.items():
-                if node_id in id_to_idx:
-                    for parent_id in parents:
-                        if parent_id in id_to_idx:
-                            edges_data.append((id_to_idx[parent_id], id_to_idx[node_id]))
-
-            # Create edges DataFrame
-            edges_df = DataFrame.from_data(
-                columns={
-                    "from": "integer",
-                    "to": "integer",
-                },
-                data=edges_data,
-            )
-
-            # Build simplified result
-            result = {"nodes": nodes_df.model_dump(mode="json"), "edges": edges_df.model_dump(mode="json")}
-
-            return result
-
-        except Exception:
-            logger.exception("Error getting lineage diff")
-            raise
-
-    async def _tool_schema_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """Get schema diff (column changes) between base and current"""
-        try:
-            # Extract filter arguments
-            select = arguments.get("select")
-            exclude = arguments.get("exclude")
-            packages = arguments.get("packages")
-
-            # Get lineage diff from adapter
-            lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
-
-            # Get all nodes from current environment
-            current_nodes = {}
-            if "current" in lineage_diff and "nodes" in lineage_diff["current"]:
-                current_nodes = lineage_diff["current"]["nodes"]
-
-            # Filter to only nodes that exist in both base and current (exclude added nodes)
-            base_nodes = lineage_diff.get("base", {}).get("nodes", {})
-            nodes_to_compare = set(current_nodes.keys()) & set(base_nodes.keys())
-
-            # Apply filtering if arguments provided
-            if select or exclude or packages:
-                selected_node_ids = self.context.adapter.select_nodes(
-                    select=select,
-                    exclude=exclude,
-                    packages=packages,
-                )
-                nodes_to_compare = nodes_to_compare & selected_node_ids
-
-            # Build schema changes
-            schema_changes = []
-
-            for node_id in nodes_to_compare:
-                base_node = base_nodes.get(node_id, {})
-                current_node = current_nodes.get(node_id, {})
-
-                base_columns = base_node.get("columns", {})
-                current_columns = current_node.get("columns", {})
-
-                # Get column names in base and current
-                base_col_names = set(base_columns.keys())
-                current_col_names = set(current_columns.keys())
-
-                # Find added columns (in current but not in base)
-                for col_name in current_col_names - base_col_names:
-                    schema_changes.append((node_id, col_name, "added"))
-
-                # Find removed columns (in base but not in current)
-                for col_name in base_col_names - current_col_names:
-                    schema_changes.append((node_id, col_name, "removed"))
-
-                # Find modified columns (in both but with different types)
-                for col_name in base_col_names & current_col_names:
-                    base_col_type = base_columns[col_name].get("type")
-                    current_col_type = current_columns[col_name].get("type")
-                    if base_col_type != current_col_type:
-                        schema_changes.append((node_id, col_name, "modified"))
-
-            # Check if there are more than 100 rows
-            limit = 100
-            has_more = len(schema_changes) > limit
-            limited_schema_changes = schema_changes[:limit]
-
-            # Convert schema changes to dataframe format using DataFrame.from_data()
-            diff_df = DataFrame.from_data(
-                columns={
-                    "node_id": "text",
-                    "column": "text",
-                    "change_status": "text",
-                },
-                data=limited_schema_changes,
-                limit=limit,
-                more=has_more,
-            )
-            return diff_df.model_dump(mode="json")
-
-        except Exception:
-            logger.exception("Error getting schema diff")
-            raise
+        # Convert schema changes to dataframe format using DataFrame.from_data()
+        diff_df = DataFrame.from_data(
+            columns={
+                "node_id": "text",
+                "column": "text",
+                "change_status": "text",
+            },
+            data=limited_schema_changes,
+            limit=limit,
+            more=has_more,
+        )
+        return diff_df.model_dump(mode="json")
 
     async def _tool_row_count_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute row count diff task"""
-        try:
-            task = RowCountDiffTask(params=arguments)
+        task = RowCountDiffTask(params=arguments)
 
-            # Execute task synchronously (it's already sync)
-            result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+        # Execute task synchronously (it's already sync)
+        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
 
-            return self._maybe_add_warning(result)
-        except Exception:
-            logger.exception("Error executing row count diff")
-            raise
+        return self._maybe_add_warning(result)
 
     async def _tool_query(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a query"""
-        try:
-            sql_template = arguments.get("sql_template")
-            is_base = arguments.get("base", False)
+        sql_template = arguments.get("sql_template")
+        is_base = arguments.get("base", False)
 
-            params = {"sql_template": sql_template}
-            task = QueryTask(params=params)
-            task.is_base = is_base
+        params = {"sql_template": sql_template}
+        task = QueryTask(params=params)
+        task.is_base = is_base
 
-            # Execute task
-            result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+        # Execute task
+        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
 
-            # Convert to dict if it's a model
-            if hasattr(result, "model_dump"):
-                return result.model_dump(mode="json")
-            return result
-        except Exception:
-            logger.exception("Error executing query")
-            raise
+        # Convert to dict if it's a model
+        if hasattr(result, "model_dump"):
+            return result.model_dump(mode="json")
+        return result
 
     async def _tool_query_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute query diff task"""
-        try:
-            task = QueryDiffTask(params=arguments)
+        task = QueryDiffTask(params=arguments)
 
-            # Execute task
-            result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+        # Execute task
+        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
 
-            # Convert to dict if it's a model
-            if hasattr(result, "model_dump"):
-                result = result.model_dump(mode="json")
-            return self._maybe_add_warning(result)
-        except Exception:
-            logger.exception("Error executing query diff")
-            raise
+        # Convert to dict if it's a model
+        if hasattr(result, "model_dump"):
+            result = result.model_dump(mode="json")
+        return self._maybe_add_warning(result)
 
     async def _tool_profile_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute profile diff task"""
-        try:
-            task = ProfileDiffTask(params=arguments)
+        task = ProfileDiffTask(params=arguments)
 
-            # Execute task
-            result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+        # Execute task
+        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
 
-            # Convert to dict if it's a model
-            if hasattr(result, "model_dump"):
-                result = result.model_dump(mode="json")
-            return self._maybe_add_warning(result)
-        except Exception:
-            logger.exception("Error executing profile diff")
-            raise
+        # Convert to dict if it's a model
+        if hasattr(result, "model_dump"):
+            result = result.model_dump(mode="json")
+        return self._maybe_add_warning(result)
 
     async def _tool_list_checks(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """List all checks in the current session"""
-        try:
-            from recce.models import CheckDAO
+        from recce.models import CheckDAO
 
-            # Get all checks
-            checks_dao = CheckDAO()
-            checks = checks_dao.list()
+        # Get all checks
+        checks_dao = CheckDAO()
+        checks = checks_dao.list()
 
-            # Build checks list with relevant metadata
-            checks_list = []
-            for check in checks:
-                checks_list.append(
-                    {
-                        "check_id": str(check.check_id),
-                        "name": check.name,
-                        "type": check.type.value,
-                        "description": check.description or "",
-                        "params": check.params or {},
-                        "is_checked": check.is_checked,
-                        "is_preset": check.is_preset,
-                    }
-                )
+        # Build checks list with relevant metadata
+        checks_list = []
+        for check in checks:
+            checks_list.append(
+                {
+                    "check_id": str(check.check_id),
+                    "name": check.name,
+                    "type": check.type.value,
+                    "description": check.description or "",
+                    "params": check.params or {},
+                    "is_checked": check.is_checked,
+                    "is_preset": check.is_preset,
+                }
+            )
 
-            # Get statistics
-            stats = checks_dao.status()
+        # Get statistics
+        stats = checks_dao.status()
 
-            result = {
-                "checks": checks_list,
-                "total": stats["total"],
-                "approved": stats["approved"],
-            }
+        result = {
+            "checks": checks_list,
+            "total": stats["total"],
+            "approved": stats["approved"],
+        }
 
-            return result
-        except Exception:
-            logger.exception("Error listing checks")
-            raise
+        return result
 
     async def _tool_run_check(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Run a single check by ID"""
+        from recce.apis.run_func import submit_run
+        from recce.models import CheckDAO
+        from recce.models.types import RunType
+
+        check_id = arguments.get("check_id")
+        if not check_id:
+            raise ValueError("check_id is required")
+
+        check = CheckDAO().find_check_by_id(check_id)
+        if not check:
+            raise ValueError(f"Check with ID {check_id} not found")
+
+        if check.type == RunType.LINEAGE_DIFF:
+            return await self._tool_lineage_diff(check.params or {})
+
+        if check.type == RunType.SCHEMA_DIFF:
+            return await self._tool_schema_diff(check.params or {})
+
         try:
-            from recce.apis.run_func import submit_run
-            from recce.models import CheckDAO
-            from recce.models.types import RunType
-
-            check_id = arguments.get("check_id")
-            if not check_id:
-                raise ValueError("check_id is required")
-
-            # Get the check from database
-            check = CheckDAO().find_check_by_id(check_id)
-            if not check:
-                raise ValueError(f"Check with ID {check_id} not found")
-
-            # For lineage_diff and schema_diff, call the corresponding diff tools
-            if check.type == RunType.LINEAGE_DIFF:
-                return await self._tool_lineage_diff(check.params or {})
-
-            if check.type == RunType.SCHEMA_DIFF:
-                return await self._tool_schema_diff(check.params or {})
-
-            try:
-                # Submit and execute the run for other check types
-                run, future = submit_run(check.type, params=check.params or {}, check_id=check_id)
-                run.result = await future
-
-                # Return run object in JSON format (same as run_check_handler in check_api.py)
-                return run.model_dump(mode="json")
-            except RecceException as e:
-                raise ValueError(str(e))
-
-        except Exception:
-            logger.exception("Error running check")
-            raise
+            run, future = submit_run(check.type, params=check.params or {}, check_id=check_id)
+            run.result = await future
+            return run.model_dump(mode="json")
+        except RecceException as e:
+            raise ValueError(str(e))
 
     async def run(self):
         """Run the MCP server in stdio mode"""
