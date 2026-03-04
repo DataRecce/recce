@@ -28,6 +28,11 @@ from recce.tasks.rowcount import RowCountDiffTask
 
 logger = logging.getLogger(__name__)
 
+SINGLE_ENV_WARNING = (
+    "Base environment not configured \u2014 comparisons show no changes. "
+    "Run `dbt docs generate --target-path target-base` to enable diffing."
+)
+
 
 def _truncate_strings(obj: Any, max_length: int = 200) -> Any:
     """Recursively truncate strings longer than max_length in nested dicts and lists"""
@@ -116,13 +121,21 @@ class RecceMCPServer:
         debug: bool = False,
         log_file: str = "logs/recce-mcp.json",
         state_loader=None,
+        single_env: bool = False,
     ):
         self.context = context
         self.state_loader = state_loader
         self.mode = mode or RecceServerMode.server
+        self.single_env = single_env
         self.server = Server("recce")
         self.mcp_logger = MCPLogger(debug=debug, log_file=log_file)
         self._setup_handlers()
+
+    def _maybe_add_warning(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Add _warning to diff results when in single-env mode."""
+        if self.single_env:
+            return {**result, "_warning": SINGLE_ENV_WARNING}
+        return result
 
     def _setup_handlers(self):
         """Register all tool handlers"""
@@ -238,6 +251,12 @@ class RecceMCPServer:
                                 "This indicates stale dbt artifacts or environment misconfiguration. "
                                 "Report this to users as it requires rebuilding dbt artifacts or checking environment setup.\n"
                                 "- 'permission_denied': User lacks permission to access the table"
+                            )
+                            + (
+                                "\n\nNote: When base environment is not configured, this tool compares "
+                                "the current environment against itself (no changes expected)."
+                                if self.single_env
+                                else ""
                             ),
                             inputSchema={
                                 "type": "object",
@@ -295,8 +314,16 @@ class RecceMCPServer:
                         ),
                         Tool(
                             name="query_diff",
-                            description="Execute SQL queries on both base and current environments and compare results. "
-                            "Supports primary keys for row-level comparison.",
+                            description=(
+                                "Execute SQL queries on both base and current environments and compare results. "
+                                "Supports primary keys for row-level comparison."
+                            )
+                            + (
+                                "\n\nNote: When base environment is not configured, this tool compares "
+                                "the current environment against itself (no changes expected)."
+                                if self.single_env
+                                else ""
+                            ),
                             inputSchema={
                                 "type": "object",
                                 "properties": {
@@ -319,8 +346,16 @@ class RecceMCPServer:
                         ),
                         Tool(
                             name="profile_diff",
-                            description="Generate and compare statistical profiles (min, max, avg, distinct count, etc.) "
-                            "for columns in a model between base and current environments.",
+                            description=(
+                                "Generate and compare statistical profiles (min, max, avg, distinct count, etc.) "
+                                "for columns in a model between base and current environments."
+                            )
+                            + (
+                                "\n\nNote: When base environment is not configured, this tool compares "
+                                "the current environment against itself (no changes expected)."
+                                if self.single_env
+                                else ""
+                            ),
                             inputSchema={
                                 "type": "object",
                                 "properties": {
@@ -636,7 +671,7 @@ class RecceMCPServer:
             # Execute task synchronously (it's already sync)
             result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
 
-            return result
+            return self._maybe_add_warning(result)
         except Exception:
             logger.exception("Error executing row count diff")
             raise
@@ -672,8 +707,8 @@ class RecceMCPServer:
 
             # Convert to dict if it's a model
             if hasattr(result, "model_dump"):
-                return result.model_dump(mode="json")
-            return result
+                result = result.model_dump(mode="json")
+            return self._maybe_add_warning(result)
         except Exception:
             logger.exception("Error executing query diff")
             raise
@@ -688,8 +723,8 @@ class RecceMCPServer:
 
             # Convert to dict if it's a model
             if hasattr(result, "model_dump"):
-                return result.model_dump(mode="json")
-            return result
+                result = result.model_dump(mode="json")
+            return self._maybe_add_warning(result)
         except Exception:
             logger.exception("Error executing profile diff")
             raise
@@ -890,6 +925,9 @@ async def run_mcp_server(
                Optionally includes 'debug' flag for enabling MCP logging
     """
     state_loader = kwargs.get("state_loader", None)
+    # Extract single_env flag before load_context (not a dbt kwarg)
+    single_env = kwargs.pop("single_env", False)
+
     # Setup logging
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
@@ -910,7 +948,7 @@ async def run_mcp_server(
     debug = kwargs.get("debug", False)
 
     # Create MCP server with state_loader for graceful shutdown
-    server = RecceMCPServer(context, mode=mode, debug=debug, state_loader=state_loader)
+    server = RecceMCPServer(context, mode=mode, debug=debug, state_loader=state_loader, single_env=single_env)
 
     # Run in either stdio or SSE mode
     if sse:
