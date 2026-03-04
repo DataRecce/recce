@@ -753,3 +753,188 @@ class TestCallToolHandler:
             result = await self._invoke_call_tool(server, "lineage_diff")
 
         assert result.root.isError is True
+
+
+class TestLineageDiffEdgeCases:
+    """Test edge cases in _tool_lineage_diff"""
+
+    @pytest.mark.asyncio
+    async def test_lineage_diff_missing_base_env(self, mcp_server):
+        """When lineage_diff has no 'base' key, the loop should skip it (line 549)."""
+        server, mock_context = mcp_server
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            # Only "current", no "base"
+            "current": {
+                "nodes": {
+                    "model.project.model_a": {
+                        "name": "model_a",
+                        "resource_type": "model",
+                        "config": {"materialized": "table"},
+                    },
+                },
+                "parent_map": {"model.project.model_a": []},
+            },
+            "diff": {},
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+        mock_context.adapter.select_nodes.return_value = {"model.project.model_a"}
+
+        result = await server._tool_lineage_diff({})
+
+        assert "nodes" in result
+        assert len(result["nodes"]["data"]) == 1
+
+
+class TestSchemaDiffEdgeCases:
+    """Test edge cases in _tool_schema_diff for removed and modified columns."""
+
+    @pytest.mark.asyncio
+    async def test_schema_diff_removed_column(self, mcp_server):
+        """Column in base but not in current should be reported as 'removed' (line 673)."""
+        server, mock_context = mcp_server
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {
+                "nodes": {
+                    "model.project.model_a": {
+                        "name": "model_a",
+                        "columns": {
+                            "id": {"name": "id", "type": "integer"},
+                            "legacy_col": {"name": "legacy_col", "type": "text"},
+                        },
+                    },
+                },
+            },
+            "current": {
+                "nodes": {
+                    "model.project.model_a": {
+                        "name": "model_a",
+                        "columns": {
+                            "id": {"name": "id", "type": "integer"},
+                        },
+                    },
+                },
+            },
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+
+        result = await server._tool_schema_diff({})
+
+        changes = result["data"]
+        assert len(changes) == 1
+        # data tuple: (node_id, column, change_status)
+        assert changes[0][1] == "legacy_col"
+        assert changes[0][2] == "removed"
+
+    @pytest.mark.asyncio
+    async def test_schema_diff_modified_column_type(self, mcp_server):
+        """Column with different type should be reported as 'modified' (line 680)."""
+        server, mock_context = mcp_server
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {
+                "nodes": {
+                    "model.project.model_a": {
+                        "name": "model_a",
+                        "columns": {
+                            "id": {"name": "id", "type": "integer"},
+                            "amount": {"name": "amount", "type": "integer"},
+                        },
+                    },
+                },
+            },
+            "current": {
+                "nodes": {
+                    "model.project.model_a": {
+                        "name": "model_a",
+                        "columns": {
+                            "id": {"name": "id", "type": "integer"},
+                            "amount": {"name": "amount", "type": "float"},
+                        },
+                    },
+                },
+            },
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+
+        result = await server._tool_schema_diff({})
+
+        changes = result["data"]
+        assert len(changes) == 1
+        assert changes[0][1] == "amount"
+        assert changes[0][2] == "modified"
+
+
+class TestRunCheckEdgeCases:
+    """Test edge cases in _tool_run_check."""
+
+    @pytest.mark.asyncio
+    async def test_run_check_missing_check_id(self, mcp_server):
+        """run_check without check_id should raise ValueError (line 792)."""
+        server, _ = mcp_server
+        with pytest.raises(ValueError, match="check_id is required"):
+            await server._tool_run_check({})
+
+    @pytest.mark.asyncio
+    async def test_run_check_recce_exception(self, mcp_server):
+        """RecceException from submit_run should be wrapped in ValueError (lines 808-809)."""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.exceptions import RecceException
+        from recce.models.types import RunType
+
+        check_id = uuid4()
+        mock_check = MagicMock()
+        mock_check.check_id = check_id
+        mock_check.type = RunType.ROW_COUNT_DIFF
+        mock_check.params = {"node_names": ["model_a"]}
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.find_check_by_id.return_value = mock_check
+
+        with patch("recce.models.CheckDAO", return_value=mock_check_dao):
+            with patch("recce.apis.run_func.submit_run", side_effect=RecceException("Task execution failed")):
+                with pytest.raises(ValueError, match="Task execution failed"):
+                    await server._tool_run_check({"check_id": str(check_id)})
+
+
+class TestQueryRowCountDbtErrors:
+    """Test _query_row_count error classification in the dbt path (lines 141, 154)."""
+
+    @staticmethod
+    def _make_mock_adapter(execute_side_effect=None):
+        """Create a mock dbt adapter that passes through to execute()."""
+        adapter = MagicMock()
+        node = MagicMock()
+        node.resource_type = "model"
+        node.config.materialized = "table"
+        adapter.find_node_by_name.return_value = node
+        adapter.create_relation.return_value = "test_schema.test_model"
+        adapter.generate_sql.return_value = "SELECT count(*) FROM test_schema.test_model"
+        if execute_side_effect:
+            adapter.execute.side_effect = execute_side_effect
+        return adapter
+
+    def test_permission_denied_error(self):
+        """PERMISSION_DENIED error returns permission_denied status (line 141)."""
+        from recce.tasks.rowcount import RowCountStatus, _query_row_count
+
+        adapter = self._make_mock_adapter(
+            execute_side_effect=Exception("SQL access control error: Insufficient privileges to operate on table")
+        )
+        result = _query_row_count(adapter, "test_model")
+        assert result["status"] == RowCountStatus.PERMISSION_DENIED
+        assert result["count"] is None
+        assert "Permission denied" in result["message"]
+
+    def test_table_not_found_error(self):
+        """TABLE_NOT_FOUND error returns table_not_found status (line 154)."""
+        from recce.tasks.rowcount import RowCountStatus, _query_row_count
+
+        adapter = self._make_mock_adapter(execute_side_effect=Exception("Object 'ANALYTICS.ORDERS' does not exist"))
+        result = _query_row_count(adapter, "test_model")
+        assert result["status"] == RowCountStatus.TABLE_NOT_FOUND
+        assert result["count"] is None
+        assert "not found" in result["message"]

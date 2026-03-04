@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from sentry_sdk import metrics as sentry_metrics
-except ImportError:
+except ImportError:  # pragma: no cover
     sentry_metrics = None
 
 SINGLE_ENV_WARNING = (
