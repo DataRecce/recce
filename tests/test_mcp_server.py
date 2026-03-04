@@ -464,6 +464,36 @@ class TestRunMCPServer:
 
     @pytest.mark.asyncio
     @patch("recce.mcp_server.load_context")
+    @patch.object(RecceMCPServer, "run")
+    async def test_run_mcp_server_passes_single_env(self, mock_run, mock_load_context):
+        """Test that run_mcp_server pops single_env from kwargs and passes it to constructor"""
+        mock_context = MagicMock(spec=RecceContext)
+        mock_load_context.return_value = mock_context
+        mock_run.return_value = None
+
+        init_kwargs = {}
+
+        def capture_init(self_arg, *args, **kw):
+            init_kwargs.update(kw)
+            self_arg.context = mock_context
+            self_arg.state_loader = kw.get("state_loader")
+            self_arg.mode = RecceServerMode.server
+            self_arg.single_env = kw.get("single_env", False)
+            self_arg.server = MagicMock()
+            self_arg.mcp_logger = MagicMock()
+
+        with patch.object(RecceMCPServer, "__init__", side_effect=capture_init):
+            await run_mcp_server(project_dir="/test/path", single_env=True)
+
+        # Verify single_env was passed to constructor
+        assert init_kwargs.get("single_env") is True
+
+        # Verify single_env was NOT passed to load_context (it should be popped)
+        load_context_kwargs = mock_load_context.call_args[1]
+        assert "single_env" not in load_context_kwargs
+
+    @pytest.mark.asyncio
+    @patch("recce.mcp_server.load_context")
     async def test_run_mcp_server_context_error(self, mock_load_context):
         """Test run_mcp_server handles context loading errors"""
         # Make load_context raise an exception
@@ -503,3 +533,103 @@ class TestMCPServerModes:
         assert server.mode == RecceServerMode.preview
         # Verify it's not server mode
         assert server.mode != RecceServerMode.server
+
+
+@pytest.fixture
+def mcp_server_single_env():
+    """Fixture for single-env mode MCP server"""
+    mock_context = MagicMock(spec=RecceContext)
+    return RecceMCPServer(mock_context, single_env=True), mock_context
+
+
+class TestMCPServerSingleEnv:
+    """Test cases for single-env onboarding mode"""
+
+    def test_single_env_flag_stored(self):
+        mock_context = MagicMock(spec=RecceContext)
+        server = RecceMCPServer(mock_context, single_env=True)
+        assert server.single_env is True
+
+    def test_single_env_flag_default_false(self):
+        mock_context = MagicMock(spec=RecceContext)
+        server = RecceMCPServer(mock_context)
+        assert server.single_env is False
+
+    @pytest.mark.asyncio
+    async def test_row_count_diff_has_warning_in_single_env(self, mcp_server_single_env):
+        server, _ = mcp_server_single_env
+        mock_result = {"model_a": {"base": 100, "curr": 100}}
+        with patch.object(RowCountDiffTask, "execute", return_value=mock_result):
+            result = await server._tool_row_count_diff({"node_names": ["model_a"]})
+        assert "_warning" in result
+        assert "target-path target-base" in result["_warning"]
+
+    @pytest.mark.asyncio
+    async def test_row_count_diff_no_warning_in_normal_mode(self, mcp_server):
+        server, _ = mcp_server
+        mock_result = {"model_a": {"base": 100, "curr": 105}}
+        with patch.object(RowCountDiffTask, "execute", return_value=mock_result):
+            result = await server._tool_row_count_diff({"node_names": ["model_a"]})
+        assert "_warning" not in result
+
+    @pytest.mark.asyncio
+    async def test_query_diff_has_warning_in_single_env(self, mcp_server_single_env):
+        server, _ = mcp_server_single_env
+        mock_result = MagicMock()
+        mock_result.model_dump.return_value = {"diff": {"added": [], "removed": [], "modified": []}}
+        with patch.object(QueryDiffTask, "execute", return_value=mock_result):
+            result = await server._tool_query_diff({"sql_template": "SELECT 1"})
+        assert "_warning" in result
+
+    @pytest.mark.asyncio
+    async def test_profile_diff_has_warning_in_single_env(self, mcp_server_single_env):
+        server, _ = mcp_server_single_env
+        mock_result = MagicMock()
+        mock_result.model_dump.return_value = {"columns": {}}
+        with patch.object(ProfileDiffTask, "execute", return_value=mock_result):
+            result = await server._tool_profile_diff({"model": "my_model"})
+        assert "_warning" in result
+
+    @pytest.mark.asyncio
+    async def test_query_no_warning_in_single_env(self, mcp_server_single_env):
+        """query (single-env) is NOT a diff tool, should have no warning"""
+        server, _ = mcp_server_single_env
+        mock_result = MagicMock()
+        mock_result.model_dump.return_value = {"columns": ["id"], "data": [[1]]}
+        with patch.object(QueryTask, "execute", return_value=mock_result):
+            result = await server._tool_query({"sql_template": "SELECT 1"})
+        assert "_warning" not in result
+
+    @pytest.mark.asyncio
+    async def test_diff_tool_descriptions_have_single_env_note(self, mcp_server_single_env):
+        """Diff tool descriptions should include single-env note when in single-env mode"""
+        from mcp.types import ListToolsRequest
+
+        server, _ = mcp_server_single_env
+        handler = server.server.request_handlers[ListToolsRequest]
+        result = await handler(ListToolsRequest(method="tools/list"))
+        tools = result.root.tools
+
+        diff_tool_names = {"row_count_diff", "query_diff", "profile_diff"}
+        note_text = "base environment is not configured"
+
+        for tool in tools:
+            if tool.name in diff_tool_names:
+                assert note_text in tool.description, f"Tool '{tool.name}' description should contain single-env note"
+
+    @pytest.mark.asyncio
+    async def test_diff_tool_descriptions_no_note_in_normal_mode(self, mcp_server):
+        """Diff tool descriptions should NOT include single-env note in normal mode"""
+        from mcp.types import ListToolsRequest
+
+        server, _ = mcp_server
+        handler = server.server.request_handlers[ListToolsRequest]
+        result = await handler(ListToolsRequest(method="tools/list"))
+        tools = result.root.tools
+
+        note_text = "base environment is not configured"
+
+        for tool in tools:
+            assert (
+                note_text not in tool.description
+            ), f"Tool '{tool.name}' should not have single-env note in normal mode"
