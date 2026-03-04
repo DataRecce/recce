@@ -1,8 +1,12 @@
+import importlib.util
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
+import pytest
 from click.testing import CliRunner
 
+from recce.cli import mcp_server as cli_command_mcp_server
 from recce.cli import run as cli_command_run
 from recce.cli import server as cli_command_server
 from recce.cli import snapshot as cli_command_snapshot
@@ -251,3 +255,65 @@ class TestCommandUploadSession(TestCase):
         mock_upload_artifacts_to_session.assert_called_once_with(
             "target", session_id="unittest_session", token="unittest_token", debug=False
         )
+
+
+@pytest.mark.skipif(
+    not importlib.util.find_spec("mcp"),
+    reason="mcp package not installed",
+)
+class TestCommandMCPServer(TestCase):
+    """Tests for the mcp-server CLI command's single-env detection logic."""
+
+    def setUp(self):
+        self.runner = CliRunner()
+
+    @patch("asyncio.run")
+    @patch("recce.mcp_server.run_mcp_server", new_callable=MagicMock)
+    @patch("recce.cli.RecceConfig")
+    @patch("recce.cli.prepare_api_token", return_value=None)
+    def test_cmd_mcp_server_single_env_when_base_missing(
+        self, mock_prepare_api_token, mock_recce_config, mock_run_mcp_server, mock_asyncio_run
+    ):
+        """When target-base/ directory doesn't exist, single_env mode is activated."""
+        with patch.object(Path, "is_dir", return_value=False):
+            result = self.runner.invoke(
+                cli_command_mcp_server,
+                ["--target-path", "target", "--target-base-path", "target-base"],
+            )
+
+        assert result.exit_code == 0
+
+        # run_mcp_server should receive single_env=True and target_base_path=target_path
+        mock_run_mcp_server.assert_called_once()
+        call_kwargs = mock_run_mcp_server.call_args.kwargs
+        assert call_kwargs["single_env"] is True
+        assert call_kwargs["target_base_path"] == "target"
+
+        # Console should show guidance messages
+        assert "Base artifacts not found" in result.output
+        assert "single-environment mode" in result.output
+        assert "dbt docs generate" in result.output
+
+    @patch("asyncio.run")
+    @patch("recce.mcp_server.run_mcp_server", new_callable=MagicMock)
+    @patch("recce.cli.RecceConfig")
+    @patch("recce.cli.prepare_api_token", return_value=None)
+    def test_cmd_mcp_server_no_single_env_when_base_exists(
+        self, mock_prepare_api_token, mock_recce_config, mock_run_mcp_server, mock_asyncio_run
+    ):
+        """When target-base/ directory exists, single_env mode is NOT activated."""
+        with patch.object(Path, "is_dir", return_value=True):
+            result = self.runner.invoke(
+                cli_command_mcp_server,
+                ["--target-path", "target", "--target-base-path", "target-base"],
+            )
+
+        assert result.exit_code == 0
+
+        mock_run_mcp_server.assert_called_once()
+        call_kwargs = mock_run_mcp_server.call_args.kwargs
+        assert call_kwargs.get("single_env", False) is False
+        assert call_kwargs["target_base_path"] == "target-base"
+
+        # No single-env guidance in output
+        assert "Base artifacts not found" not in result.output
