@@ -185,3 +185,42 @@ class TestCalRowCountDeltaPercentage:
         mock_get_diff.return_value = (None, None)
         node = _make_node()
         assert node._cal_row_count_delta_percentage() is None
+
+    @patch("recce.summary._get_node_row_count_diff")
+    def test_returns_na_when_base_table_not_found(self, mock_get_diff):
+        """When base is None due to table_not_found, return 'N/A' indicator."""
+        mock_get_diff.return_value = (
+            {"some": "diff"},
+            {"base": None, "curr": 100, "base_meta": {"status": "table_not_found"}, "curr_meta": {"status": "ok"}},
+        )
+        node = _make_node()
+        result = node._cal_row_count_delta_percentage()
+        assert result == "N/A"
+
+    @patch("recce.summary._get_node_row_count_diff")
+    def test_returns_na_when_curr_permission_denied(self, mock_get_diff):
+        """When curr is None due to permission_denied, return 'N/A' indicator."""
+        mock_get_diff.return_value = (
+            {"some": "diff"},
+            {"base": 100, "curr": None, "base_meta": {"status": "ok"}, "curr_meta": {"status": "permission_denied"}},
+        )
+        node = _make_node()
+        result = node._cal_row_count_delta_percentage()
+        assert result == "N/A"
+
+    @patch("recce.summary._get_node_row_count_diff")
+    def test_none_without_meta_still_returns_none(self, mock_get_diff):
+        """When base/curr is None but no meta status, return None (backward compat)."""
+        mock_get_diff.return_value = ({"some": "diff"}, {"base": None, "curr": 100})
+        node = _make_node()
+        assert node._cal_row_count_delta_percentage() is None
+
+    @patch("recce.summary._get_node_row_count_diff")
+    def test_non_dict_meta_returns_none_gracefully(self, mock_get_diff):
+        """When meta is not a dict (e.g., a string), function should return None, not crash."""
+        mock_get_diff.return_value = (
+            {"some": "diff"},
+            {"base": None, "curr": 100, "base_meta": "unexpected_string", "curr_meta": {"status": "ok"}},
+        )
+        node = _make_node()
+        assert node._cal_row_count_delta_percentage() is None
