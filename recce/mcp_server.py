@@ -34,10 +34,8 @@ from recce.tasks.rowcount import (
 logger = logging.getLogger(__name__)
 
 try:
-    import sentry_sdk
     from sentry_sdk import metrics as sentry_metrics
 except ImportError:
-    sentry_sdk = None
     sentry_metrics = None
 
 SINGLE_ENV_WARNING = (
