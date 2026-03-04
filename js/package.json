@@ -24,7 +24,7 @@
     "prepare": "cd .. && husky js/.husky"
   },
   "dependencies": {
-    "@amplitude/unified": "1.0.0-beta.32",
+    "@amplitude/unified": "1.0.0-beta.40",
     "@babel/helpers": "^7.28.6",
     "@babel/runtime": "^7.28.6",
     "@codemirror/lang-sql": "^6.10.0",
