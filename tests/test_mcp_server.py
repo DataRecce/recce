@@ -6,6 +6,8 @@ import pytest
 # Skip all tests in this module if mcp is not available
 pytest.importorskip("mcp")
 
+from mcp.types import CallToolRequest, CallToolRequestParams  # noqa: E402
+
 from recce.core import RecceContext  # noqa: E402
 from recce.mcp_server import RecceMCPServer, run_mcp_server  # noqa: E402
 from recce.models.types import LineageDiff  # noqa: E402
@@ -684,3 +686,70 @@ class TestErrorClassification:
 
         with pytest.raises(Exception, match="Connection refused"):
             await server._tool_lineage_diff({})
+
+
+class TestCallToolHandler:
+    """Test the call_tool handler's error classification, logging, and metrics."""
+
+    @staticmethod
+    async def _invoke_call_tool(server, tool_name, arguments=None):
+        """Invoke the registered call_tool handler directly via MCP Server internals."""
+        handler = server.server.request_handlers[CallToolRequest]
+        req = CallToolRequest(
+            method="tools/call",
+            params=CallToolRequestParams(name=tool_name, arguments=arguments or {}),
+        )
+        return await handler(req)
+
+    @pytest.mark.asyncio
+    async def test_classified_error_logs_warning(self, mcp_server, caplog):
+        """Classified DB errors should log warning (not error) through call_tool handler."""
+        import logging
+
+        server, mock_context = mcp_server
+        mock_context.get_lineage_diff.side_effect = Exception("Object 'MY_TABLE' does not exist")
+
+        with caplog.at_level(logging.WARNING, logger="recce.mcp_server"):
+            result = await self._invoke_call_tool(server, "lineage_diff")
+
+        assert result.root.isError is True
+        assert "Expected table_not_found error" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_unclassified_error_logs_error(self, mcp_server, caplog):
+        """Unclassified errors should log error through call_tool handler."""
+        import logging
+
+        server, mock_context = mcp_server
+        mock_context.get_lineage_diff.side_effect = Exception("Connection refused")
+
+        with caplog.at_level(logging.ERROR, logger="recce.mcp_server"):
+            result = await self._invoke_call_tool(server, "lineage_diff")
+
+        assert result.root.isError is True
+        assert "Error executing tool lineage_diff" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_classified_error_emits_sentry_metric(self, mcp_server):
+        """Classified errors should emit sentry_metrics.count when sentry_sdk is available."""
+        server, mock_context = mcp_server
+        mock_context.get_lineage_diff.side_effect = Exception("Object 'MY_TABLE' does not exist")
+
+        with patch("recce.mcp_server.sentry_metrics") as mock_metrics:
+            await self._invoke_call_tool(server, "lineage_diff")
+            mock_metrics.count.assert_called_once_with(
+                "mcp.expected_error",
+                1,
+                attributes={"tool": "lineage_diff", "error_type": "table_not_found"},
+            )
+
+    @pytest.mark.asyncio
+    async def test_classified_error_skips_metric_when_sentry_unavailable(self, mcp_server):
+        """When sentry_metrics is None, no metric is emitted (no crash)."""
+        server, mock_context = mcp_server
+        mock_context.get_lineage_diff.side_effect = Exception("Object 'MY_TABLE' does not exist")
+
+        with patch("recce.mcp_server.sentry_metrics", None):
+            result = await self._invoke_call_tool(server, "lineage_diff")
+
+        assert result.root.isError is True
