@@ -23,6 +23,7 @@ jobs:
   # First job: Check if the PR author has write permission
   # This job runs in the privileged context but doesn't checkout untrusted code
   authorize:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     outputs:
       authorized: ${{ steps.check.outputs.authorized }}
