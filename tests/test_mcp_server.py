@@ -633,3 +633,54 @@ class TestMCPServerSingleEnv:
             assert (
                 note_text not in tool.description
             ), f"Tool '{tool.name}' should not have single-env note in normal mode"
+
+
+class TestErrorClassification:
+    """Test the _classify_db_error method and call_tool error handling"""
+
+    def test_classify_table_not_found(self, mcp_server):
+        server, _ = mcp_server
+        assert server._classify_db_error("Object 'MY_TABLE' does not exist") == "table_not_found"
+        assert server._classify_db_error("42S02: table not found") == "table_not_found"
+        assert server._classify_db_error("42P01: relation does not exist") == "table_not_found"
+        assert server._classify_db_error("Catalog Error: table foo not found") == "table_not_found"
+
+    def test_classify_permission_denied(self, mcp_server):
+        server, _ = mcp_server
+        assert server._classify_db_error("SQL access control error: Insufficient privileges") == "permission_denied"
+        assert server._classify_db_error("Permission denied for table users") == "permission_denied"
+        assert server._classify_db_error("Not authorized to access object") == "permission_denied"
+
+    def test_classify_syntax_error(self, mcp_server):
+        server, _ = mcp_server
+        assert server._classify_db_error("SQL compilation error: syntax error") == "syntax_error"
+        assert server._classify_db_error("Parser Error: blah blah") == "syntax_error"
+
+    def test_classify_permission_denied_takes_priority(self, mcp_server):
+        """When error matches both permission_denied and table_not_found, permission_denied wins."""
+        server, _ = mcp_server
+        # "access denied" (permission) + "does not exist" (table_not_found) in same message
+        assert server._classify_db_error("Access denied: object does not exist") == "permission_denied"
+
+    def test_classify_unknown_error(self, mcp_server):
+        server, _ = mcp_server
+        assert server._classify_db_error("Connection refused") is None
+        assert server._classify_db_error("Internal server error") is None
+
+    @pytest.mark.asyncio
+    async def test_classified_error_propagates(self, mcp_server):
+        """Classified DB errors should still raise (SDK sets isError=True)"""
+        server, mock_context = mcp_server
+        mock_context.get_lineage_diff.side_effect = Exception("Object 'MY_TABLE' does not exist")
+
+        with pytest.raises(Exception, match="does not exist"):
+            await server._tool_lineage_diff({})
+
+    @pytest.mark.asyncio
+    async def test_unclassified_error_still_raises(self, mcp_server):
+        """Unclassified errors should propagate (SDK sets isError=True)"""
+        server, mock_context = mcp_server
+        mock_context.get_lineage_diff.side_effect = Exception("Connection refused")
+
+        with pytest.raises(Exception, match="Connection refused"):
+            await server._tool_lineage_diff({})
