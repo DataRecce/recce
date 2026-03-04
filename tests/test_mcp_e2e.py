@@ -9,6 +9,7 @@ Two layers:
 
 import json
 from contextlib import asynccontextmanager
+from typing import Union
 from unittest.mock import patch
 
 import anyio
@@ -33,10 +34,10 @@ async def create_mcp_client(mcp_server: RecceMCPServer):
     - client_to_server: client writes -> server reads
     - server_to_client: server writes -> client reads
     """
-    client_to_server_send, client_to_server_recv = anyio.create_memory_object_stream[SessionMessage | Exception](
+    client_to_server_send, client_to_server_recv = anyio.create_memory_object_stream[Union[SessionMessage, Exception]](
         max_buffer_size=0
     )
-    server_to_client_send, server_to_client_recv = anyio.create_memory_object_stream[SessionMessage | Exception](
+    server_to_client_send, server_to_client_recv = anyio.create_memory_object_stream[Union[SessionMessage, Exception]](
         max_buffer_size=0
     )
 
