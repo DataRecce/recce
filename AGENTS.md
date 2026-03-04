@@ -49,6 +49,7 @@ Recce is a data validation and review tool for dbt projects. It helps data teams
 | **Deps Check (Python)** | `make deps-check-python` |
 | **Deps Check (Frontend)** | `make deps-check-frontend` |
 | **Deps Check (All)** | `make deps-check` |
+| **Coverage (targeted)** | `python -m pytest tests/test_foo.py --cov=recce.module --cov-report=term-missing` |
 
 ---
 
@@ -64,6 +65,7 @@ Recce is a data validation and review tool for dbt projects. It helps data teams
 | `js/packages/storybook/` | Component stories and visual tests |
 | `tests/` | Python unit tests |
 | `integration_tests/` | dbt/SQLMesh integration tests |
+| `.claude/skills/` | Project-level Claude Code skills |
 
 ## Where to Add Code
 
