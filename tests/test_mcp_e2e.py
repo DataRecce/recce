@@ -393,8 +393,6 @@ class TestSingleEnvModeE2E:
         server, helper = mcp_e2e_single_env
         schema = helper.curr_schema
         result = await server._tool_query_diff({"sql_template": f"SELECT * FROM {schema}.customers"})
-        if hasattr(result, "model_dump"):
-            result = result.model_dump(mode="json")
         assert "_warning" in result
 
     @pytest.mark.asyncio
@@ -403,8 +401,6 @@ class TestSingleEnvModeE2E:
         server, helper = mcp_e2e_single_env
         schema = helper.curr_schema
         result = await server._tool_query({"sql_template": f"SELECT count(*) FROM {schema}.customers"})
-        if hasattr(result, "model_dump"):
-            result = result.model_dump(mode="json")
         assert "_warning" not in result
 
 
