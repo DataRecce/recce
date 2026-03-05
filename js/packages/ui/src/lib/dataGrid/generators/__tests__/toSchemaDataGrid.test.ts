@@ -810,6 +810,35 @@ describe("toSingleEnvDataGrid - Cell Classes", () => {
       expect(indexCol.cellClass).toBe("schema-column schema-column-index");
     });
 
+    test("does not set definitionChanged on reordered columns", () => {
+      const base = createColumns({ id: "INT", name: "VARCHAR", age: "INT" });
+      const current = createColumns({ id: "INT", age: "INT", name: "VARCHAR" });
+      const schemaDiff = mergeColumns(base, current);
+
+      const { rows } = toSchemaDataGrid(schemaDiff, {
+        columnChanges: { name: "modified" },
+      });
+
+      const nameRow = rows.find((r) => r.name === "name");
+
+      // Reordered columns should NOT get definitionChanged even if server says "modified"
+      expect(nameRow?.reordered).toBe(true);
+      expect(nameRow?.definitionChanged).toBeUndefined();
+    });
+
+    test("sets definitionChanged on non-reordered modified columns", () => {
+      const columns = createColumns({ id: "INT", name: "VARCHAR" });
+      const schemaDiff = mergeColumns(columns, columns);
+
+      const { rows } = toSchemaDataGrid(schemaDiff, {
+        columnChanges: { name: "modified" },
+      });
+
+      const nameRow = rows.find((r) => r.name === "name");
+      expect(nameRow?.reordered).toBe(false);
+      expect(nameRow?.definitionChanged).toBe(true);
+    });
+
     test("handles schema with single column", () => {
       const schemaDiff = mergeColumns(
         createColumns({ id: "INT" }),

@@ -180,7 +180,8 @@ export function toSchemaDataGrid(
         changeStatus === "modified" &&
         !isAdded &&
         !isRemoved &&
-        !isTypeChanged
+        !isTypeChanged &&
+        !row.reordered
       ) {
         row.definitionChanged = true;
       }
