@@ -26,11 +26,6 @@ vi.mock("@datarecce/ui/api", () => ({
   },
 }));
 
-// Mock react-icons
-vi.mock("react-icons/io5", () => ({
-  IoClose: () => <span data-testid="close-icon">X</span>,
-}));
-
 // ============================================================================
 // Imports
 // ============================================================================
@@ -56,13 +51,8 @@ describe("LineageViewNotification", () => {
   };
 
   // Helper to get close button with proper assertion
-  const getCloseButton = (): HTMLButtonElement => {
-    const closeIcon = screen.getByTestId("close-icon");
-    const button = closeIcon.closest("button");
-    if (!button) {
-      throw new Error("Close button not found");
-    }
-    return button;
+  const getCloseButton = (): HTMLElement => {
+    return screen.getByRole("button");
   };
 
   beforeEach(() => {
@@ -158,15 +148,14 @@ describe("LineageViewNotification", () => {
     it("displays close button", () => {
       render(<LineageViewNotification notification="Test" type="info" />);
 
-      expect(screen.getByTestId("close-icon")).toBeInTheDocument();
+      expect(screen.getByRole("button")).toBeInTheDocument();
     });
 
     it("renders close button as IconButton", () => {
       render(<LineageViewNotification notification="Test" type="info" />);
 
       // The close icon should be inside a clickable button
-      const closeIcon = screen.getByTestId("close-icon");
-      const button = closeIcon.closest("button");
+      const button = screen.getByRole("button");
       expect(button).toBeInTheDocument();
     });
   });
@@ -366,7 +355,7 @@ describe("LineageViewNotification", () => {
       render(<LineageViewNotification notification="" type="info" />);
 
       // Empty string should still render the container
-      const closeButton = screen.getByTestId("close-icon");
+      const closeButton = screen.getByRole("button");
       expect(closeButton).toBeInTheDocument();
     });
 
