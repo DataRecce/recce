@@ -177,12 +177,12 @@ describe("renderTypeCell", () => {
 
       const { container } = render(<>{renderTypeCell(params)}</>);
 
-      const removedBadge = container.querySelector(".type-badge-removed");
-      expect(removedBadge).toBeInTheDocument();
-      expect(removedBadge).toHaveTextContent("VARCHAR");
+      const oldType = container.querySelector(".schema-type-old");
+      expect(oldType).toBeInTheDocument();
+      expect(oldType).toHaveTextContent("VARCHAR");
     });
 
-    test("renders added badge with correct class", () => {
+    test("renders new type with correct class", () => {
       const params = createTypeCellParams({
         baseIndex: 1,
         currentIndex: 1,
@@ -192,9 +192,9 @@ describe("renderTypeCell", () => {
 
       const { container } = render(<>{renderTypeCell(params)}</>);
 
-      const addedBadge = container.querySelector(".type-badge-added");
-      expect(addedBadge).toBeInTheDocument();
-      expect(addedBadge).toHaveTextContent("TEXT");
+      const newType = container.querySelector(".schema-type-new");
+      expect(newType).toBeInTheDocument();
+      expect(newType).toHaveTextContent("TEXT");
     });
 
     test("renders badges with title for accessibility", () => {
@@ -239,7 +239,9 @@ describe("renderTypeCell", () => {
 
       const { container } = render(<>{renderTypeCell(params)}</>);
 
-      expect(container.querySelector(".type-badge")).not.toBeInTheDocument();
+      expect(
+        container.querySelector(".schema-type-old"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -267,7 +269,9 @@ describe("renderTypeCell", () => {
 
       const { container } = render(<>{renderTypeCell(params)}</>);
 
-      expect(container.querySelector(".type-badge")).not.toBeInTheDocument();
+      expect(
+        container.querySelector(".schema-type-old"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -295,7 +299,9 @@ describe("renderTypeCell", () => {
 
       const { container } = render(<>{renderTypeCell(params)}</>);
 
-      expect(container.querySelector(".type-badge")).not.toBeInTheDocument();
+      expect(
+        container.querySelector(".schema-type-old"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -324,16 +330,15 @@ describe("renderTypeCell", () => {
 
       const { container } = render(<>{renderTypeCell(params)}</>);
 
-      // Empty string vs non-empty should show type change with badges
+      // Empty string vs non-empty should show type change with old/new styling
       expect(screen.getByText("VARCHAR")).toBeInTheDocument();
-      expect(container.querySelector(".type-badge")).toBeInTheDocument();
+      expect(container.querySelector(".schema-type-old")).toBeInTheDocument();
 
-      // Verify both badge types are present when baseType differs from currentType
-      const removedBadge = container.querySelector(".type-badge-removed");
-      const addedBadge = container.querySelector(".type-badge-added");
-      expect(removedBadge).toBeInTheDocument();
-      expect(addedBadge).toBeInTheDocument();
-      expect(addedBadge).toHaveTextContent("VARCHAR");
+      const oldType = container.querySelector(".schema-type-old");
+      const newType = container.querySelector(".schema-type-new");
+      expect(oldType).toBeInTheDocument();
+      expect(newType).toBeInTheDocument();
+      expect(newType).toHaveTextContent("VARCHAR");
     });
 
     test("returns null when data is undefined", () => {

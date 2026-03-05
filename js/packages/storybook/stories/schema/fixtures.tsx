@@ -1,11 +1,7 @@
-import type {
-  CellClassParams,
-  ColDef,
-  RowClassParams,
-} from "ag-grid-community";
+import type { ColDef, RowClassParams } from "ag-grid-community";
 import type React from "react";
 
-// Import schema CSS for row-added/row-removed/row-normal classes + type badges
+// Import schema CSS for row-added/row-removed/row-changed/row-normal classes
 import "../../../ui/src/components/schema/style.css";
 
 // ============================================================================
@@ -39,33 +35,56 @@ export function createRow(
 }
 
 // ============================================================================
-// Column defs — mirrors toSchemaDataGrid output (Index, Name, Type)
+// Helpers — determine row change status
 // ============================================================================
 
-function getIndexCellClass(params: CellClassParams): string {
-  const row = params.data as SchemaDiffRow | undefined;
-  if (
-    row?.baseIndex !== undefined &&
-    row?.currentIndex !== undefined &&
-    row?.reordered === true
-  ) {
-    return "column-index-reordered schema-column schema-column-index";
-  }
-  return "schema-column schema-column-index";
+function isRowAdded(row: SchemaDiffRow): boolean {
+  return row.baseIndex === undefined && row.currentIndex !== undefined;
 }
+
+function isRowRemoved(row: SchemaDiffRow): boolean {
+  return row.baseIndex !== undefined && row.currentIndex === undefined;
+}
+
+function isRowChanged(row: SchemaDiffRow): boolean {
+  if (isRowAdded(row) || isRowRemoved(row)) return false;
+  return (
+    row.baseType !== row.currentType ||
+    row.reordered === true ||
+    row.definitionChanged === true
+  );
+}
+
+// ============================================================================
+// Column defs — mirrors toSchemaDataGrid output (Index, Name, Type)
+// ============================================================================
 
 export const schemaColumns: ColDef[] = [
   {
     field: "index",
-    headerName: "",
+    headerName: "#",
     resizable: true,
-    minWidth: 35,
-    width: 35,
-    cellClass: getIndexCellClass,
-    // Merged index: show currentIndex normally, baseIndex for removed rows
+    minWidth: 50,
+    width: 50,
+    cellClass: "schema-column schema-column-index",
     cellRenderer: (params: { data: SchemaDiffRow }) => {
       const row = params.data;
       if (!row) return null;
+
+      if (
+        row.reordered &&
+        row.baseIndex !== undefined &&
+        row.currentIndex !== undefined &&
+        row.baseIndex !== row.currentIndex
+      ) {
+        return (
+          <span>
+            <span className="schema-index-old">{row.baseIndex}</span>
+            <span className="schema-index-new">{row.currentIndex}</span>
+          </span>
+        );
+      }
+
       const isRemoved = row.currentIndex === undefined;
       const value = isRemoved
         ? (row.baseIndex ?? "-")
@@ -78,14 +97,45 @@ export const schemaColumns: ColDef[] = [
     headerName: "Name",
     resizable: true,
     cellClass: "schema-column",
+    cellRenderer: (params: { data: SchemaDiffRow }) => {
+      const row = params.data;
+      if (!row) return null;
+
+      let badge: React.ReactNode = null;
+      if (isRowChanged(row)) {
+        badge = (
+          <span className="schema-change-badge schema-change-badge-changed">
+            ~
+          </span>
+        );
+      } else if (isRowAdded(row)) {
+        badge = (
+          <span className="schema-change-badge schema-change-badge-added">
+            +
+          </span>
+        );
+      } else if (isRowRemoved(row)) {
+        badge = (
+          <span className="schema-change-badge schema-change-badge-removed">
+            -
+          </span>
+        );
+      }
+
+      return (
+        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          {badge}
+          <span>{row.name}</span>
+        </span>
+      );
+    },
   },
   {
     field: "type",
     headerName: "Type",
     resizable: true,
     minWidth: 300,
-    cellClass: "schema-column",
-    // Merged type: show badges when type changed, plain text otherwise
+    cellClass: "schema-column schema-column-type",
     cellRenderer: (params: { data: SchemaDiffRow }) => {
       const row = params.data;
       if (!row) return null;
@@ -97,14 +147,12 @@ export const schemaColumns: ColDef[] = [
       if (isTypeChanged) {
         return (
           <span>
-            <span
-              className="type-badge type-badge-removed"
-              title={`Base type: ${baseType}`}
-            >
+            <span className="schema-type-old" title={`Base type: ${baseType}`}>
               {baseType}
             </span>
+            {" \u2192 "}
             <span
-              className="type-badge type-badge-added"
+              className="schema-type-new"
               title={`Current type: ${currentType}`}
             >
               {currentType}
@@ -125,8 +173,9 @@ export function getRowClass(params: RowClassParams): string {
   const row = params.data as SchemaDiffRow | undefined;
   if (!row) return "row-normal";
 
-  if (row.baseIndex === undefined) return "row-added";
-  if (row.currentIndex === undefined) return "row-removed";
+  if (isRowAdded(row)) return "row-added";
+  if (isRowRemoved(row)) return "row-removed";
+  if (isRowChanged(row)) return "row-changed";
   return "row-normal";
 }
 
@@ -173,7 +222,7 @@ export const unchangedRows: SchemaDiffRow[] = [
  *   Base:    [id, user_id, status, amount, created_at, updated_at, notes]
  *   Current: [id, status, user_id, total_amount, created_at, updated_at, region]
  *
- * Changes: user_id moved (reordered), status type widened, amount→total_amount
+ * Changes: user_id moved (reordered), status type widened, amount->total_amount
  *          (removed+added), notes removed, region added.
  */
 export const mixedDiffRows: SchemaDiffRow[] = [
@@ -227,7 +276,7 @@ export const mixedDiffRows: SchemaDiffRow[] = [
  * Mix of definition-changed and normal columns.
  *
  * Scenario: same column names and types, but some SQL definitions changed.
- * e.g. `revenue` was `price * quantity` → `price * quantity * (1 - discount)`
+ * e.g. `revenue` was `price * quantity` -> `price * quantity * (1 - discount)`
  */
 export const definitionChangedRows: SchemaDiffRow[] = [
   createRow({
@@ -273,63 +322,14 @@ export const definitionChangedRows: SchemaDiffRow[] = [
     currentIndex: 6,
     baseType: "VARCHAR(50)",
     currentType: "VARCHAR(100)",
-  }), // type change (not definitionChanged — already visually indicated)
+  }), // type change
   createRow({
     name: "region",
     currentIndex: 7,
     currentType: "VARCHAR(20)",
   }), // added
+  createRow({ name: "legacy_code", baseIndex: 7, baseType: "VARCHAR(10)" }), // removed
 ];
-
-/** Name column renderer that shows ~ badge for definitionChanged rows */
-export function renderNameWithDefinitionBadge(params: {
-  data: SchemaDiffRow;
-}): React.ReactNode {
-  const row = params.data;
-  if (!row) return null;
-  return (
-    <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-      {row.definitionChanged && (
-        <button
-          type="button"
-          title="Column definition changed — click to view code"
-          onClick={(e) => {
-            e.stopPropagation();
-            console.log("View code clicked for:", row.name);
-          }}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "0.65rem",
-            fontWeight: 700,
-            lineHeight: 1,
-            width: 16,
-            height: 16,
-            borderRadius: 4,
-            backgroundColor: "rgba(255, 173, 21, 0.2)",
-            color: "rgb(180, 120, 0)",
-            flexShrink: 0,
-            border: "none",
-            padding: 0,
-            cursor: "pointer",
-          }}
-        >
-          ~
-        </button>
-      )}
-      <span>{row.name}</span>
-    </span>
-  );
-}
-
-/** Schema columns with definition-changed badge in name column */
-export const schemaColumnsWithDefinitionBadge: ColDef[] = schemaColumns.map(
-  (col) =>
-    col.field === "name"
-      ? { ...col, cellRenderer: renderNameWithDefinitionBadge }
-      : col,
-);
 
 /** Wide schema (stress test) */
 export function generateWideSchema(count: number): SchemaDiffRow[] {

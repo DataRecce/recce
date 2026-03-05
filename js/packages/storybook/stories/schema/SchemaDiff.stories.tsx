@@ -1,12 +1,12 @@
 import { ScreenshotDataGrid } from "@datarecce/ui/primitives";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { SchemaLegend } from "../../../ui/src/components/schema/SchemaView";
 import {
   definitionChangedRows,
   generateWideSchema,
   getRowClass,
   mixedDiffRows,
   schemaColumns,
-  schemaColumnsWithDefinitionBadge,
   unchangedRows,
 } from "./fixtures";
 
@@ -39,6 +39,7 @@ const meta: Meta<typeof ScreenshotDataGrid> = {
             padding: isDocsView ? "0" : "20px",
           }}
         >
+          <SchemaLegend />
           <Story />
         </div>
       );
@@ -80,7 +81,7 @@ export const DefinitionChanged: Story = {
   name: "Definition Changed (SQL expression changed)",
   args: {
     style: GRID_STYLE,
-    columns: schemaColumnsWithDefinitionBadge,
+    columns: schemaColumns,
     rows: definitionChangedRows,
     rowHeight: 35,
     getRowClass,

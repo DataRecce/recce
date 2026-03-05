@@ -87,8 +87,13 @@ export function ColumnNameCell({
   const { isActionAvailable } = useLineageGraphContext();
   const { runAction } = useRecceActionContext();
   const { featureToggles } = useRecceInstanceContext();
-  const { name, baseType, currentType, baseIndex, currentIndex } = row;
+  const { name, baseType, currentType, baseIndex, currentIndex, reordered } =
+    row;
   const columnType = currentType ?? baseType;
+  const isAdded = baseIndex === undefined && currentIndex !== undefined;
+  const isRemoved = baseIndex !== undefined && currentIndex === undefined;
+  const isChanged =
+    !isAdded && !isRemoved && (baseType !== currentType || reordered === true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
 
@@ -174,6 +179,21 @@ export function ColumnNameCell({
       disableHoverListener={isCllDisabled}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: "3px" }}>
+        {isChanged && (
+          <span className="schema-change-badge schema-change-badge-changed">
+            ~
+          </span>
+        )}
+        {isAdded && (
+          <span className="schema-change-badge schema-change-badge-added">
+            +
+          </span>
+        )}
+        {isRemoved && (
+          <span className="schema-change-badge schema-change-badge-removed">
+            -
+          </span>
+        )}
         <Box
           sx={{
             overflow: "hidden",

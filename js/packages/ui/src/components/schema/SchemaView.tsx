@@ -1,5 +1,6 @@
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import "./style.css";
 import type {
   CellClickedEvent,
   GridApi,
@@ -27,6 +28,38 @@ import {
   ScreenshotDataGrid,
 } from "../../primitives";
 import { createDataGridFromData } from "../ui/dataGrid";
+
+export function SchemaLegend() {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        gap: 2,
+        px: 1,
+        py: 0.5,
+        fontSize: "0.75rem",
+        color: "text.secondary",
+      }}
+    >
+      <span>
+        <span className="schema-change-badge schema-change-badge-added">+</span>{" "}
+        added
+      </span>
+      <span>
+        <span className="schema-change-badge schema-change-badge-removed">
+          -
+        </span>{" "}
+        removed
+      </span>
+      <span>
+        <span className="schema-change-badge schema-change-badge-changed">
+          ~
+        </span>{" "}
+        changed
+      </span>
+    </Box>
+  );
+}
 
 interface SchemaViewProps {
   base?: NodeData;
@@ -268,11 +301,13 @@ export function PrivateSchemaView(
     const row = params.data;
     if (!row) return "row-normal";
 
-    let className;
+    let className: string;
     if (row.baseIndex === undefined) {
       className = "row-added";
     } else if (row.currentIndex === undefined) {
       return "row-removed"; // removed column isn't selectable
+    } else if (row.baseType !== row.currentType || row.reordered === true) {
+      className = "row-changed";
     } else {
       className = "row-normal";
     }
@@ -311,6 +346,7 @@ export function PrivateSchemaView(
         <></>
       )}
 
+      <SchemaLegend />
       {rows.length > 0 && (
         <ScreenshotDataGrid
           style={{

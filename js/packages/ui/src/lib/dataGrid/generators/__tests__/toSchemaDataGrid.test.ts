@@ -422,7 +422,7 @@ describe("toSchemaDataGrid - Cell Classes", () => {
     expect(reorderedRow).toBeDefined();
     if (reorderedRow) {
       const result = cellClassFn(createCellClassParams(reorderedRow));
-      expect(result).toContain("column-index-reordered");
+      expect(result).toContain("schema-column-index");
     }
   });
 
@@ -468,14 +468,10 @@ describe("toSchemaDataGrid - Cell Classes", () => {
       createColumns({ id: "INT" }),
     );
 
-    const { columns, rows } = toSchemaDataGrid(schemaDiff);
+    const { columns } = toSchemaDataGrid(schemaDiff);
 
     const typeCol = getColumn(columns, 2);
-    const cellClassFn = typeCol.cellClass as (
-      params: CellClassParams<RowObjectType>,
-    ) => string;
-
-    expect(cellClassFn(createCellClassParams(rows[0]))).toBe("schema-column");
+    expect(typeCol.cellClass).toBe("schema-column schema-column-type");
   });
 });
 

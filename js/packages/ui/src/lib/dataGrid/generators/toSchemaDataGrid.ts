@@ -110,16 +110,8 @@ export function mergeColumns(
 // ============================================================================
 
 function getColumnIndexCellClass(
-  params: CellClassParams<SchemaDiffRow>,
+  _params: CellClassParams<SchemaDiffRow>,
 ): string {
-  const row = params.data;
-  if (
-    row?.baseIndex !== undefined &&
-    row?.currentIndex !== undefined &&
-    row?.reordered === true
-  ) {
-    return "column-index-reordered schema-column schema-column-index";
-  }
   return "schema-column schema-column-index";
 }
 
@@ -165,7 +157,7 @@ export function toSchemaDataGrid(
       headerName: "Type",
       resizable: true,
       cellRenderer: renderTypeCell,
-      cellClass: getColumnNameCellClass,
+      cellClass: "schema-column schema-column-type",
     },
   ];
 
