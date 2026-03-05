@@ -723,7 +723,9 @@ export function PrivateLineageView(
     }
     if (
       !runResultType ||
-      ["query_diff", "query", "row_count"].includes(runResultType)
+      ["query_diff", "query", "row_count", "row_count_diff"].includes(
+        runResultType,
+      )
     ) {
       // Skip the following logic if the run result type is not related to a node
       return;
