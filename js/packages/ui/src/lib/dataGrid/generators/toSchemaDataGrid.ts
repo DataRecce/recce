@@ -7,7 +7,7 @@
  */
 
 import "../../../components/schema/style.css";
-import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
+import type { ColDef, ColGroupDef } from "ag-grid-community";
 import {
   type NodeColumnData,
   type NodeData,
@@ -109,12 +109,6 @@ export function mergeColumns(
 // Cell Class Functions
 // ============================================================================
 
-function getColumnIndexCellClass(
-  _params: CellClassParams<SchemaDiffRow>,
-): string {
-  return "schema-column schema-column-index";
-}
-
 function getColumnNameCellClass(): string {
   return "schema-column";
 }
@@ -141,7 +135,7 @@ export function toSchemaDataGrid(
       minWidth: 35,
       width: 35,
       cellRenderer: renderIndexCell,
-      cellClass: getColumnIndexCellClass,
+      cellClass: "schema-column schema-column-index",
     },
     {
       field: "name",

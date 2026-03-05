@@ -392,7 +392,7 @@ describe("toSchemaDataGrid - Options", () => {
 // ============================================================================
 
 describe("toSchemaDataGrid - Cell Classes", () => {
-  test("index column has cellClass function", () => {
+  test("index column has cellClass string", () => {
     const schemaDiff = mergeColumns(
       createColumns({ id: "INT" }),
       createColumns({ id: "INT" }),
@@ -402,46 +402,7 @@ describe("toSchemaDataGrid - Cell Classes", () => {
 
     const indexCol = getColumn(columns, 0);
 
-    expect(typeof indexCol.cellClass).toBe("function");
-  });
-
-  test("index cellClass returns reordered class when reordered", () => {
-    const schemaDiff = mergeColumns(
-      createColumns({ id: "INT", name: "VARCHAR" }),
-      createColumns({ name: "VARCHAR", id: "INT" }),
-    );
-
-    const { columns, rows } = toSchemaDataGrid(schemaDiff);
-
-    const indexCol = getColumn(columns, 0);
-    const cellClassFn = indexCol.cellClass as (
-      params: CellClassParams<RowObjectType>,
-    ) => string;
-
-    const reorderedRow = rows.find((r) => r.reordered === true);
-    expect(reorderedRow).toBeDefined();
-    if (reorderedRow) {
-      const result = cellClassFn(createCellClassParams(reorderedRow));
-      expect(result).toContain("schema-column-index");
-    }
-  });
-
-  test("index cellClass returns normal class when not reordered", () => {
-    const schemaDiff = mergeColumns(
-      createColumns({ id: "INT" }),
-      createColumns({ id: "INT" }),
-    );
-
-    const { columns, rows } = toSchemaDataGrid(schemaDiff);
-
-    const indexCol = getColumn(columns, 0);
-    const cellClassFn = indexCol.cellClass as (
-      params: CellClassParams<RowObjectType>,
-    ) => string;
-
-    const result = cellClassFn(createCellClassParams(rows[0]));
-    expect(result).toBe("schema-column schema-column-index");
-    expect(result).not.toContain("reordered");
+    expect(indexCol.cellClass).toBe("schema-column schema-column-index");
   });
 
   test("name column has schema-column cellClass", () => {
@@ -840,32 +801,13 @@ describe("toSingleEnvDataGrid - Cell Classes", () => {
       expect(rows).toHaveLength(0);
     });
 
-    test("cell class handles row with only baseIndex (removed column)", () => {
+    test("index column cellClass is a static string for all row types", () => {
       const schemaDiff = mergeColumns(createColumns({ legacy: "INT" }), {});
 
-      const { columns, rows } = toSchemaDataGrid(schemaDiff);
+      const { columns } = toSchemaDataGrid(schemaDiff);
       const indexCol = getColumn(columns, 0);
-      const cellClassFn = indexCol.cellClass as (
-        params: CellClassParams<RowObjectType>,
-      ) => string;
 
-      // Row has baseIndex but no currentIndex
-      const result = cellClassFn(createCellClassParams(rows[0]));
-      expect(result).toBe("schema-column schema-column-index");
-    });
-
-    test("cell class handles row with only currentIndex (added column)", () => {
-      const schemaDiff = mergeColumns({}, createColumns({ new_col: "INT" }));
-
-      const { columns, rows } = toSchemaDataGrid(schemaDiff);
-      const indexCol = getColumn(columns, 0);
-      const cellClassFn = indexCol.cellClass as (
-        params: CellClassParams<RowObjectType>,
-      ) => string;
-
-      // Row has currentIndex but no baseIndex
-      const result = cellClassFn(createCellClassParams(rows[0]));
-      expect(result).toBe("schema-column schema-column-index");
+      expect(indexCol.cellClass).toBe("schema-column schema-column-index");
     });
 
     test("handles schema with single column", () => {

@@ -22,6 +22,12 @@
   --schema-color-changed-active: rgb(255 233 170);
   --schema-color-changed-accent: rgb(255 173 21);
   --schema-color-muted: rgba(0, 0, 0, 0.45);
+  --schema-badge-changed-bg: rgba(255, 173, 21, 0.25);
+  --schema-badge-changed-fg: rgb(160, 100, 0);
+  --schema-badge-added-bg: rgba(46, 160, 67, 0.2);
+  --schema-badge-added-fg: rgb(22, 110, 40);
+  --schema-badge-removed-bg: rgba(248, 81, 73, 0.2);
+  --schema-badge-removed-fg: rgb(180, 40, 35);
 }
 
 /* Dark mode */
@@ -42,6 +48,12 @@
   --schema-color-changed-active: rgb(90 78 38);
   --schema-color-changed-accent: rgb(255 173 21);
   --schema-color-muted: rgba(255, 255, 255, 0.5);
+  --schema-badge-changed-bg: rgba(255, 173, 21, 0.2);
+  --schema-badge-changed-fg: rgb(255, 200, 80);
+  --schema-badge-added-bg: rgba(46, 160, 67, 0.2);
+  --schema-badge-added-fg: rgb(80, 200, 100);
+  --schema-badge-removed-bg: rgba(248, 81, 73, 0.2);
+  --schema-badge-removed-fg: rgb(255, 120, 115);
 }
 
 /* Row backgrounds must be applied to cells because rows use display:contents */
@@ -144,18 +156,18 @@
 }
 
 .schema-change-badge-changed {
-  background-color: rgba(255, 173, 21, 0.25);
-  color: rgb(160, 100, 0);
+  background-color: var(--schema-badge-changed-bg);
+  color: var(--schema-badge-changed-fg);
 }
 
 .schema-change-badge-added {
-  background-color: rgba(46, 160, 67, 0.2);
-  color: rgb(22, 110, 40);
+  background-color: var(--schema-badge-added-bg);
+  color: var(--schema-badge-added-fg);
 }
 
 .schema-change-badge-removed {
-  background-color: rgba(248, 81, 73, 0.2);
-  color: rgb(180, 40, 35);
+  background-color: var(--schema-badge-removed-bg);
+  color: var(--schema-badge-removed-fg);
 }
 
 /* Type change styling for merged type column */
