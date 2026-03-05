@@ -185,7 +185,7 @@ export function RecceActionAdapter({ children }: RecceActionAdapterProps) {
 
           // Navigate to lineage base only if we're on a lineage subpath
           // (e.g., /lineage/node/test → /lineage). Skip when already on base
-          // to avoid unnecessary re-renders that reset zoom and node focus (DRC-2779).
+          // to avoid unnecessary re-renders that reset zoom and node focus.
           const lineagePath = `${basePath}/lineage`;
           if (
             pathname.startsWith(`${lineagePath}/`) &&

@@ -267,7 +267,7 @@ export function PrivateLineageView(
    * - Node measuring/resizing
    * - Internal React Flow position updates
    *
-   * This fixes DRC-2623 where clicking between columns caused graph reflow
+   * This fixes where clicking between columns caused graph reflow
    * because React state positions were stale relative to what React Flow rendered.
    */
   const getNodePositions = useCallback(() => {
@@ -487,7 +487,7 @@ export function PrivateLineageView(
 
     // Preserve positions when:
     // 1. CLL is being turned OFF (previous exists but new one is undefined)
-    // 2. Switching between columns (both previous and new have CLL) - DRC-2623 fix
+    // 2. Switching between columns (both previous and new have CLL)
     // This prevents jarring graph reflow when the user clicks between columns
     const shouldPreservePositions = previousColumnLevelLineage !== undefined;
 
