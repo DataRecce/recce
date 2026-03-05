@@ -313,6 +313,7 @@ export function PrivateSchemaView(
       row.reordered ||
       row.definitionChanged
     ) {
+      // Any change (structural or definition-only) gets the changed row background
       className = "row-changed";
     } else {
       className = "row-normal";

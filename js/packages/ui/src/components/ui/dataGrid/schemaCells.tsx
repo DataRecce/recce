@@ -107,10 +107,6 @@ export function renderIndexCell(
   return <span>{value}</span>;
 }
 
-// Memoized version for performance optimization
-export const MemoizedRenderIndexCell = React.memo(renderIndexCell);
-MemoizedRenderIndexCell.displayName = "MemoizedRenderIndexCell";
-
 /**
  * Renders the merged type column with strikethrough/bold for type changes.
  * - Type changed: strikethrough old → bold new
@@ -151,7 +147,3 @@ export function renderTypeCell(
   // For added rows, show currentType; for removed rows, show baseType
   return <span>{isRemoved ? baseType : currentType}</span>;
 }
-
-// Memoized version for performance optimization
-export const MemoizedRenderTypeCell = React.memo(renderTypeCell);
-MemoizedRenderTypeCell.displayName = "MemoizedRenderTypeCell";

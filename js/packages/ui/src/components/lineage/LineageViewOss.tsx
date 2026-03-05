@@ -146,7 +146,7 @@ export function PrivateLineageView(
 
   const {
     lineageGraph,
-    retchLineageGraph,
+    refetchLineageGraph,
     isLoading,
     error,
     refetchRunsAggregated,
@@ -173,6 +173,26 @@ export function PrivateLineageView(
     mutationFn: (input: CllInput) => getCll(input, apiClient),
   });
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
+
+  // After change analysis CLL, the server populates per-column change data.
+  // Refetch lineage so the schema view can show "definition changed" badges.
+  // Uses a Set to avoid infinite refetch loops (CLL → invalidate → lineageGraph changes → CLL → …)
+  const refetchLineageAfterChangeAnalysis = useCallback(
+    (cllInput: CllInput) => {
+      const nodeId = cllInput.node_id;
+      if (
+        cllInput.change_analysis &&
+        nodeId &&
+        !changeAnalysisRefetched.current.has(nodeId)
+      ) {
+        changeAnalysisRefetched.current.add(nodeId);
+        void queryClient.invalidateQueries({
+          queryKey: cacheKeys.lineage(),
+        });
+      }
+    },
+    [queryClient],
+  );
 
   const findNodeByName = useCallback(
     (name: string) => {
@@ -401,17 +421,7 @@ export function PrivateLineageView(
           cll = await actionGetCll.mutateAsync(
             viewOptions.column_level_lineage,
           );
-          const cllNodeId = viewOptions.column_level_lineage.node_id;
-          if (
-            viewOptions.column_level_lineage.change_analysis &&
-            cllNodeId &&
-            !changeAnalysisRefetched.current.has(cllNodeId)
-          ) {
-            changeAnalysisRefetched.current.add(cllNodeId);
-            void queryClient.invalidateQueries({
-              queryKey: cacheKeys.lineage(),
-            });
-          }
+          refetchLineageAfterChangeAnalysis(viewOptions.column_level_lineage);
         } catch (e) {
           if (e instanceof AxiosError) {
             const e2 = e as AxiosError<{ detail?: string }>;
@@ -645,19 +655,7 @@ export function PrivateLineageView(
         cll = await actionGetCll.mutateAsync(
           newViewOptions.column_level_lineage,
         );
-        // After change analysis CLL, the server populates per-column change data.
-        // Refetch lineage so the schema view can show "definition changed" badges.
-        const cllNodeId = newViewOptions.column_level_lineage.node_id;
-        if (
-          newViewOptions.column_level_lineage.change_analysis &&
-          cllNodeId &&
-          !changeAnalysisRefetched.current.has(cllNodeId)
-        ) {
-          changeAnalysisRefetched.current.add(cllNodeId);
-          void queryClient.invalidateQueries({
-            queryKey: cacheKeys.lineage(),
-          });
-        }
+        refetchLineageAfterChangeAnalysis(newViewOptions.column_level_lineage);
       } catch (e) {
         if (e instanceof AxiosError) {
           const e2 = e as AxiosError<{ detail?: string }>;
@@ -1088,7 +1086,7 @@ export function PrivateLineageView(
   }
 
   if (error) {
-    return <LineageViewError error={error} onRetry={retchLineageGraph} />;
+    return <LineageViewError error={error} onRetry={refetchLineageGraph} />;
   }
 
   if (!lineageGraph || nodes == initialNodes) {

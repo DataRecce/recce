@@ -99,7 +99,7 @@ export function ColumnNameCell({
   const columnType = currentType ?? baseType;
   const isAdded = baseIndex === undefined && currentIndex !== undefined;
   const isRemoved = baseIndex !== undefined && currentIndex === undefined;
-  const isChanged =
+  const hasStructuralChange =
     !isAdded && !isRemoved && (baseType !== currentType || reordered === true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
@@ -186,7 +186,7 @@ export function ColumnNameCell({
       disableHoverListener={isCllDisabled}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: "3px" }}>
-        {isChanged && (
+        {hasStructuralChange && (
           <span className="schema-change-badge schema-change-badge-changed">
             ~
           </span>
@@ -202,14 +202,9 @@ export function ColumnNameCell({
           </span>
         )}
         {definitionChanged && (
-          <Tooltip title="Column definition changed" placement="top">
-            <span
-              className="schema-change-badge schema-change-badge-changed"
-              onMouseOver={(e: React.MouseEvent) => e.stopPropagation()}
-            >
-              ~
-            </span>
-          </Tooltip>
+          <span className="schema-change-badge schema-change-badge-changed">
+            ~
+          </span>
         )}
         <Box
           sx={{

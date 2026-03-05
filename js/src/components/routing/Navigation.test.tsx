@@ -29,7 +29,7 @@ import { vi } from "vitest";
 // Mock the context providers and their values
 const mockLineageGraphContext = {
   lineageGraph: null,
-  retchLineageGraph: vi.fn(),
+  refetchLineageGraph: vi.fn(),
   envInfo: null,
   reviewMode: false,
   cloudMode: false,
