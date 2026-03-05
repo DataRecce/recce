@@ -24,6 +24,8 @@ export interface SchemaDiffRow {
   currentType?: string;
   /** Data type in base environment */
   baseType?: string;
+  /** True when the column's SQL definition changed but name/type stayed the same */
+  definitionChanged?: boolean;
   /** Row status */
   __status?: SchemaDiffStatus;
   /** Row key */

@@ -32,6 +32,8 @@ export interface SchemaDiffRow extends RowObjectType {
   baseIndex?: number;
   currentType?: string;
   baseType?: string;
+  /** True when the column's SQL definition changed but name/type stayed the same */
+  definitionChanged?: boolean;
 }
 
 export interface SchemaRow extends RowObjectType {
@@ -49,6 +51,10 @@ export interface SchemaDataGridOptions {
   cllRunningMap?: Map<string, boolean>;
   /** Whether to show the column action menu (default: true) */
   showMenu?: boolean;
+  /** Per-column change status from breaking change analysis */
+  columnChanges?: Record<string, "added" | "removed" | "modified"> | null;
+  /** Callback to switch to the code view (wired to definition-changed badge) */
+  onViewCode?: () => void;
 }
 
 export interface SchemaDataGridResult {
@@ -125,7 +131,7 @@ export function toSchemaDataGrid(
   schemaDiff: SchemaDiff,
   options: SchemaDataGridOptions = {},
 ): SchemaDataGridResult {
-  const { node, cllRunningMap, showMenu } = options;
+  const { node, cllRunningMap, showMenu, columnChanges, onViewCode } = options;
 
   const columns: ColDef<SchemaDiffRow>[] = [
     {
@@ -142,7 +148,12 @@ export function toSchemaDataGrid(
       headerName: "Name",
       resizable: true,
       cellRenderer: node
-        ? createSchemaColumnNameRenderer(node, cllRunningMap, showMenu)
+        ? createSchemaColumnNameRenderer(
+            node,
+            cllRunningMap,
+            showMenu,
+            onViewCode,
+          )
         : undefined,
       cellClass: getColumnNameCellClass,
     },
@@ -156,6 +167,26 @@ export function toSchemaDataGrid(
   ];
 
   const rows = Object.values(schemaDiff);
+
+  // Mark columns whose SQL definition changed but have no other visible change
+  if (columnChanges) {
+    for (const row of rows) {
+      const isAdded = row.baseIndex === undefined;
+      const isRemoved = row.currentIndex === undefined;
+      const isTypeChanged =
+        !isAdded && !isRemoved && row.baseType !== row.currentType;
+      const changeStatus = columnChanges[row.name];
+
+      if (
+        changeStatus === "modified" &&
+        !isAdded &&
+        !isRemoved &&
+        !isTypeChanged
+      ) {
+        row.definitionChanged = true;
+      }
+    }
+  }
 
   return { columns, rows };
 }

@@ -57,6 +57,8 @@ export interface ColumnNameCellProps {
   cllRunning?: boolean;
   /** Whether to show the context menu (defaults to true) */
   showMenu?: boolean;
+  /** Callback to switch to the code view (makes the ~ badge a button) */
+  onViewCode?: () => void;
 }
 
 // ============================================================================
@@ -82,12 +84,13 @@ export function ColumnNameCell({
   singleEnv,
   cllRunning,
   showMenu = true,
+  onViewCode,
 }: ColumnNameCellProps) {
   const lineageViewContext = useLineageViewContext();
   const { isActionAvailable } = useLineageGraphContext();
   const { runAction } = useRecceActionContext();
   const { featureToggles } = useRecceInstanceContext();
-  const { name, baseType, currentType, baseIndex, currentIndex, reordered } =
+  const { name, baseType, currentType, baseIndex, currentIndex, reordered, definitionChanged } =
     row;
   const columnType = currentType ?? baseType;
   const isAdded = baseIndex === undefined && currentIndex !== undefined;
@@ -193,6 +196,47 @@ export function ColumnNameCell({
           <span className="schema-change-badge schema-change-badge-removed">
             -
           </span>
+        )}
+        {definitionChanged && (
+          <Tooltip
+            title={
+              onViewCode
+                ? "Column definition changed — click to view code"
+                : "Column definition changed"
+            }
+            placement="top"
+          >
+            <Box
+              component={onViewCode ? "button" : "span"}
+              onMouseOver={(e: React.MouseEvent) => e.stopPropagation()}
+              onClick={
+                onViewCode
+                  ? (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      onViewCode();
+                    }
+                  : undefined
+              }
+              className="schema-change-badge schema-change-badge-changed"
+              sx={{
+                cursor: onViewCode ? "pointer" : "default",
+                border: "none",
+                padding: 0,
+                "&:hover": onViewCode
+                  ? {
+                      backgroundColor: "rgb(255 173 21 / 0.4)",
+                    }
+                  : {},
+                ".dark &:hover": onViewCode
+                  ? {
+                      backgroundColor: "rgb(255 173 21 / 0.45)",
+                    }
+                  : {},
+              }}
+            >
+              ~
+            </Box>
+          </Tooltip>
         )}
         <Box
           sx={{

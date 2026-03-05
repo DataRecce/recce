@@ -166,6 +166,9 @@ export function PrivateLineageView(
   const cllHistory = useRef<(CllInput | undefined)[]>([]).current;
 
   const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
+  // Track nodes whose change analysis has triggered a lineage refetch,
+  // to avoid infinite refetch loops (CLL → invalidate → lineageGraph changes → CLL → …)
+  const changeAnalysisRefetched = useRef(new Set<string>());
   const actionGetCll = useMutation({
     mutationFn: (input: CllInput) => getCll(input, apiClient),
   });
@@ -398,6 +401,17 @@ export function PrivateLineageView(
           cll = await actionGetCll.mutateAsync(
             viewOptions.column_level_lineage,
           );
+          const cllNodeId = viewOptions.column_level_lineage.node_id;
+          if (
+            viewOptions.column_level_lineage.change_analysis &&
+            cllNodeId &&
+            !changeAnalysisRefetched.current.has(cllNodeId)
+          ) {
+            changeAnalysisRefetched.current.add(cllNodeId);
+            void queryClient.invalidateQueries({
+              queryKey: cacheKeys.lineage(),
+            });
+          }
         } catch (e) {
           if (e instanceof AxiosError) {
             const e2 = e as AxiosError<{ detail?: string }>;
@@ -631,6 +645,19 @@ export function PrivateLineageView(
         cll = await actionGetCll.mutateAsync(
           newViewOptions.column_level_lineage,
         );
+        // After change analysis CLL, the server populates per-column change data.
+        // Refetch lineage so the schema view can show "definition changed" badges.
+        const cllNodeId = newViewOptions.column_level_lineage.node_id;
+        if (
+          newViewOptions.column_level_lineage.change_analysis &&
+          cllNodeId &&
+          !changeAnalysisRefetched.current.has(cllNodeId)
+        ) {
+          changeAnalysisRefetched.current.add(cllNodeId);
+          void queryClient.invalidateQueries({
+            queryKey: cacheKeys.lineage(),
+          });
+        }
       } catch (e) {
         if (e instanceof AxiosError) {
           const e2 = e as AxiosError<{ detail?: string }>;

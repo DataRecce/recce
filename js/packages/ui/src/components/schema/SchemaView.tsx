@@ -66,6 +66,10 @@ interface SchemaViewProps {
   current?: NodeData;
   enableScreenshot?: boolean;
   showMenu?: boolean;
+  /** Per-column change status from breaking change analysis */
+  columnChanges?: Record<string, "added" | "removed" | "modified"> | null;
+  /** Callback to switch to the code view (wired to definition-changed badge) */
+  onViewCode?: () => void;
 }
 
 function PrivateSingleEnvSchemaView(
@@ -201,7 +205,13 @@ function PrivateSingleEnvSchemaView(
 }
 
 export function PrivateSchemaView(
-  { base, current, showMenu = true }: SchemaViewProps,
+  {
+    base,
+    current,
+    showMenu = true,
+    columnChanges,
+    onViewCode,
+  }: SchemaViewProps,
   ref: Ref<DataGridHandle>,
 ) {
   const lineageViewContext = useLineageViewContext();
@@ -219,9 +229,9 @@ export function PrivateSchemaView(
 
     return createDataGridFromData(
       { type: "schema_diff", base: base?.columns, current: current?.columns },
-      { node, cllRunningMap, showMenu },
+      { node, cllRunningMap, showMenu, columnChanges, onViewCode },
     );
-  }, [base, current, cllRunningMap, showMenu]);
+  }, [base, current, cllRunningMap, showMenu, columnChanges, onViewCode]);
 
   const { lineageGraph, isActionAvailable } = useLineageGraphContext();
   const changeAnalysisAvailable = isActionAvailable("change_analysis");

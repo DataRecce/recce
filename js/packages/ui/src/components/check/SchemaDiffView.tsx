@@ -253,6 +253,7 @@ export function PrivateSchemaDiffView(
         <SchemaView
           base={node.data.data.base}
           current={node.data.data.current}
+          columnChanges={node.data.change?.columns}
           enableScreenshot={true}
           showMenu={false}
           ref={ref}
