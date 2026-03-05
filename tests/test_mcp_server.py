@@ -557,6 +557,20 @@ class TestMCPServerSingleEnv:
         server = RecceMCPServer(mock_context)
         assert server.single_env is False
 
+    def test_instructions_set_in_single_env(self):
+        """Server instructions should inform agent about single-env mode"""
+        mock_context = MagicMock(spec=RecceContext)
+        server = RecceMCPServer(mock_context, single_env=True)
+        assert server.server.instructions is not None
+        assert "single-environment mode" in server.server.instructions
+        assert "target-base" in server.server.instructions
+
+    def test_instructions_none_in_normal_mode(self):
+        """Server instructions should be None in normal mode"""
+        mock_context = MagicMock(spec=RecceContext)
+        server = RecceMCPServer(mock_context)
+        assert server.server.instructions is None
+
     @pytest.mark.asyncio
     async def test_row_count_diff_has_warning_in_single_env(self, mcp_server_single_env):
         server, _ = mcp_server_single_env

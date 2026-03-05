@@ -137,9 +137,22 @@ class RecceMCPServer:
         self.state_loader = state_loader
         self.mode = mode or RecceServerMode.server
         self.single_env = single_env
-        self.server = Server("recce")
+        self.server = Server("recce", instructions=self._build_instructions())
         self.mcp_logger = MCPLogger(debug=debug, log_file=log_file)
         self._setup_handlers()
+
+    def _build_instructions(self) -> Optional[str]:
+        """Build MCP server instructions sent during initialize handshake."""
+        if not self.single_env:
+            return None
+        return (
+            "IMPORTANT: This Recce server is running in single-environment mode. "
+            "Base environment (target-base/) is not configured, so all diff tools "
+            "(row_count_diff, query_diff, profile_diff) compare the current environment "
+            "against itself and will show no changes. "
+            "To enable meaningful diffs, the user needs to run: "
+            "dbt docs generate --target-path target-base"
+        )
 
     @staticmethod
     def _classify_db_error(error_msg: str) -> Optional[str]:
