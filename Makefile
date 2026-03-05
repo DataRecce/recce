@@ -141,14 +141,3 @@ deps-check-frontend:
 
 deps-check: deps-check-python deps-check-frontend
 	@echo "Dependency check complete. Results in deps-python.yml and deps-frontend.yml"
-
-JAFFLE_SHOP_DIR := /Users/kent/Project/recce/jaffle_shop_golden
-
-mcp:
-	@dotenv -f $(JAFFLE_SHOP_DIR)/.env run python -m recce.cli mcp-server --sse \
-	--project-dir $(JAFFLE_SHOP_DIR) \
-	--profiles-dir $(JAFFLE_SHOP_DIR) \
-	--target-path $(JAFFLE_SHOP_DIR)/target \
-	--target-base-path $(JAFFLE_SHOP_DIR)/target-base \
-	--config $(JAFFLE_SHOP_DIR)/recce.yml \
-	--port 8000
