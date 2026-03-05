@@ -794,7 +794,6 @@ export function NodeView({
                         base={node.data.data.base}
                         current={node.data.data.current}
                         columnChanges={node.data.change?.columns}
-                        onViewCode={() => setTabValue(1)}
                       />
                     )}
               </Box>

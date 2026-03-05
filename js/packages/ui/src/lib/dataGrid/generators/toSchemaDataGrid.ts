@@ -53,8 +53,6 @@ export interface SchemaDataGridOptions {
   showMenu?: boolean;
   /** Per-column change status from breaking change analysis */
   columnChanges?: Record<string, "added" | "removed" | "modified"> | null;
-  /** Callback to switch to the code view (wired to definition-changed badge) */
-  onViewCode?: () => void;
 }
 
 export interface SchemaDataGridResult {
@@ -131,7 +129,7 @@ export function toSchemaDataGrid(
   schemaDiff: SchemaDiff,
   options: SchemaDataGridOptions = {},
 ): SchemaDataGridResult {
-  const { node, cllRunningMap, showMenu, columnChanges, onViewCode } = options;
+  const { node, cllRunningMap, showMenu, columnChanges } = options;
 
   const columns: ColDef<SchemaDiffRow>[] = [
     {
@@ -148,12 +146,7 @@ export function toSchemaDataGrid(
       headerName: "Name",
       resizable: true,
       cellRenderer: node
-        ? createSchemaColumnNameRenderer(
-            node,
-            cllRunningMap,
-            showMenu,
-            onViewCode,
-          )
+        ? createSchemaColumnNameRenderer(node, cllRunningMap, showMenu)
         : undefined,
       cellClass: getColumnNameCellClass,
     },
