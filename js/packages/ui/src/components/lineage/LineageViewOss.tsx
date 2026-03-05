@@ -179,13 +179,11 @@ export function PrivateLineageView(
   // Uses a Set to avoid infinite refetch loops (CLL → invalidate → lineageGraph changes → CLL → …)
   const refetchLineageAfterChangeAnalysis = useCallback(
     (cllInput: CllInput) => {
-      const nodeId = cllInput.node_id;
-      if (
-        cllInput.change_analysis &&
-        nodeId &&
-        !changeAnalysisRefetched.current.has(nodeId)
-      ) {
-        changeAnalysisRefetched.current.add(nodeId);
+      if (!cllInput.change_analysis) return;
+
+      const dedupeKey = cllInput.node_id ?? "__impact_radius__";
+      if (!changeAnalysisRefetched.current.has(dedupeKey)) {
+        changeAnalysisRefetched.current.add(dedupeKey);
         void queryClient.invalidateQueries({
           queryKey: cacheKeys.lineage(),
         });
@@ -529,7 +527,8 @@ export function PrivateLineageView(
     }
     if (columnLevelLineage?.node_id) {
       setFocusedNodeId(columnLevelLineage.node_id);
-    } else {
+    } else if (!columnLevelLineage) {
+      // Only clear focus when CLL is turned off, not for Impact Radius
       setFocusedNodeId(undefined);
     }
   };

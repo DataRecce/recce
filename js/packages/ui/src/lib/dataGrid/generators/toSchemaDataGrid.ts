@@ -149,6 +149,12 @@ export function toSchemaDataGrid(
         ? createSchemaColumnNameRenderer(node, cllRunningMap, showMenu)
         : undefined,
       cellClass: getColumnNameCellClass,
+      // Include definitionChanged in the value so ag-grid re-renders the cell
+      // when the badge state changes (e.g., after Impact Radius completes)
+      valueGetter: (params) => {
+        const row = params.data;
+        return row ? `${row.name}|${row.definitionChanged ?? false}` : "";
+      },
     },
     {
       field: "type",
