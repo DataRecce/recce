@@ -82,6 +82,26 @@ function getMatchedCellClass(
 }
 
 // ============================================================================
+// Comparators
+// ============================================================================
+
+/**
+ * Custom comparator for the Matched % column that handles null/undefined values.
+ * Null values are sorted last regardless of sort direction.
+ */
+function matchedPercentComparator(
+  a: number | null | undefined,
+  b: number | null | undefined,
+): number {
+  const aNull = a == null;
+  const bNull = b == null;
+  if (aNull && bNull) return 0;
+  if (aNull) return 1;
+  if (bNull) return -1;
+  return a - b;
+}
+
+// ============================================================================
 // Column Definitions
 // ============================================================================
 
@@ -113,6 +133,7 @@ function createColumnDefinitions(
       headerName: "",
       width: 30,
       maxWidth: 30,
+      sortable: false,
       cellRenderer: createPrimaryKeyIndicatorRenderer(primaryKeys),
     },
     // Column name column with context menu
@@ -130,11 +151,13 @@ function createColumnDefinitions(
       resizable: true,
       cellClass: getMatchedCellClass,
     },
-    // Matched percentage column
+    // Matched percentage column (default sort ascending — mismatches first)
     {
       field: COLUMN_KEYS.MATCHED_PERCENT,
       headerName: "Matched %",
       resizable: true,
+      sort: "asc",
+      comparator: matchedPercentComparator,
       cellRenderer: renderMatchedPercentCell,
       cellClass: getMatchedCellClass,
     },
