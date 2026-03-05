@@ -1,6 +1,6 @@
+import { SchemaLegend } from "@datarecce/ui/components";
 import { ScreenshotDataGrid } from "@datarecce/ui/primitives";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { SchemaLegend } from "../../../ui/src/components/schema/SchemaView";
 import {
   definitionChangedRows,
   generateWideSchema,

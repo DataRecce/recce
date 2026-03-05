@@ -1,8 +1,7 @@
 import type { ColDef, RowClassParams } from "ag-grid-community";
 import type React from "react";
 
-// Import schema CSS for row-added/row-removed/row-changed/row-normal classes
-import "../../../ui/src/components/schema/style.css";
+// Schema CSS is loaded via SchemaLegend (imported in SchemaDiff.stories.tsx from @datarecce/ui/components)
 
 // ============================================================================
 // Row Type (matches the app's SchemaDiffRow from toSchemaDataGrid.ts)

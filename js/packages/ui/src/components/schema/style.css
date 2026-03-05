@@ -21,13 +21,13 @@
   --schema-color-changed-hover: rgb(255 241 200);
   --schema-color-changed-active: rgb(255 233 170);
   --schema-color-changed-accent: rgb(255 173 21);
-  --schema-color-muted: rgba(0, 0, 0, 0.45);
-  --schema-badge-changed-bg: rgba(255, 173, 21, 0.25);
-  --schema-badge-changed-fg: rgb(160, 100, 0);
-  --schema-badge-added-bg: rgba(46, 160, 67, 0.2);
-  --schema-badge-added-fg: rgb(22, 110, 40);
-  --schema-badge-removed-bg: rgba(248, 81, 73, 0.2);
-  --schema-badge-removed-fg: rgb(180, 40, 35);
+  --schema-color-muted: rgb(0 0 0 / 0.45);
+  --schema-badge-changed-bg: rgb(255 173 21 / 0.25);
+  --schema-badge-changed-fg: rgb(160 100 0);
+  --schema-badge-added-bg: rgb(46 160 67 / 0.2);
+  --schema-badge-added-fg: rgb(22 110 40);
+  --schema-badge-removed-bg: rgb(248 81 73 / 0.2);
+  --schema-badge-removed-fg: rgb(180 40 35);
 }
 
 /* Dark mode */
@@ -47,13 +47,13 @@
   --schema-color-changed-hover: rgb(75 65 33);
   --schema-color-changed-active: rgb(90 78 38);
   --schema-color-changed-accent: rgb(255 173 21);
-  --schema-color-muted: rgba(255, 255, 255, 0.5);
-  --schema-badge-changed-bg: rgba(255, 173, 21, 0.2);
-  --schema-badge-changed-fg: rgb(255, 200, 80);
-  --schema-badge-added-bg: rgba(46, 160, 67, 0.2);
-  --schema-badge-added-fg: rgb(80, 200, 100);
-  --schema-badge-removed-bg: rgba(248, 81, 73, 0.2);
-  --schema-badge-removed-fg: rgb(255, 120, 115);
+  --schema-color-muted: rgb(255 255 255 / 0.5);
+  --schema-badge-changed-bg: rgb(255 173 21 / 0.2);
+  --schema-badge-changed-fg: rgb(255 200 80);
+  --schema-badge-added-bg: rgb(46 160 67 / 0.2);
+  --schema-badge-added-fg: rgb(80 200 100);
+  --schema-badge-removed-bg: rgb(248 81 73 / 0.2);
+  --schema-badge-removed-fg: rgb(255 120 115);
 }
 
 /* Row backgrounds must be applied to cells because rows use display:contents */
