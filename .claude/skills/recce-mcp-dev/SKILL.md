@@ -21,14 +21,54 @@ Entry point `run_mcp_server()` pops `single_env` before passing kwargs to `load_
 
 **Single-env** — `_maybe_add_warning()` adds `_warning` to diff results. Descriptions get conditional note.
 
-## Testing
+## Testing (Three Layers)
 
-| Layer | File | How |
-|-------|------|-----|
-| Unit | `tests/test_mcp_server.py` | Mock `RecceContext`, call `_tool_*` directly |
-| Handler | same | `server.server.request_handlers[CallToolRequest]` |
-| E2E | `tests/test_mcp_e2e.py` | `DbtTestHelper` + DuckDB, direct + anyio streams |
-| Errors | `tests/test_mcp_server.py` | Mock `dbt_adapter.execute()` with indicator strings |
+| Layer | File | Data Source | Runs In | Purpose |
+|-------|------|-------------|---------|---------|
+| Unit | `tests/test_mcp_server.py` | Mock `RecceContext` | CI (`pytest`) | Logic correctness — tool handlers, error classification, response format |
+| Integration | `tests/test_mcp_e2e.py` | `DbtTestHelper` + DuckDB (fixed data) | CI (`pytest`) | MCP protocol works end-to-end via anyio memory streams |
+| Smoke (E2E) | `/recce-mcp-e2e` skill | User's real dbt project + real database | Manual | All 8 tools return valid results against real data |
+
+Each new MCP feature or behavior change should be covered at all three layers.
+
+## Test Coverage Gap Analysis
+
+After completing a round of MCP changes (see E2E Gate below for definition), proactively scan for missing test coverage across the three layers before asking about E2E verification.
+
+**How to check:**
+1. Identify what changed — new tool handler? new error path? new response field?
+2. For each change, verify coverage exists at each layer:
+   - **Unit**: Does `tests/test_mcp_server.py` have a test case for the new behavior? (happy path + error path)
+   - **Integration**: Does `tests/test_mcp_e2e.py` exercise the new tool/feature via MCP protocol?
+   - **Smoke**: Will `/recce-mcp-e2e` template cover the new tool? (If a new tool was added, the template may need updating)
+
+**If gaps are found**, report them to the user before the E2E gate prompt:
+
+> Test coverage gaps found:
+> - Unit: missing test for `_tool_foo` error path when table not found
+> - Integration: `test_mcp_e2e.py` does not exercise `foo` tool
+> - Smoke: `/recce-mcp-e2e` template does not include `foo` tool
+>
+> Want to fill these gaps before running E2E?
+
+**Do NOT scan** after: test-only changes, comment/doc edits, import reordering.
+
+## E2E Verification Gate
+
+After each meaningful round of MCP changes, you MUST ask the user:
+
+> MCP changes complete for this round. Run `/recce-mcp-e2e` to verify?
+
+If the user says yes, invoke `/recce-mcp-e2e`. If a dbt project path was used earlier in this session, reuse it automatically; otherwise ask.
+
+**What counts as "a round":**
+- A tool handler added or modified + its unit tests pass
+- Error classification logic changed + tests pass
+- Single-env or response format changed + tests pass
+
+**Do NOT ask** after: test-only changes, comment/doc edits, import reordering.
+
+**This is separate from `tests/test_mcp_e2e.py`** — that file tests with DbtTestHelper + DuckDB in CI. `/recce-mcp-e2e` verifies all 8 tools against a real dbt project with a real database.
 
 ## Pitfalls
 
