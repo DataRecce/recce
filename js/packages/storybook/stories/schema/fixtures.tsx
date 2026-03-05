@@ -83,6 +83,7 @@ export const schemaColumns: ColDef[] = [
     field: "type",
     headerName: "Type",
     resizable: true,
+    minWidth: 300,
     cellClass: "schema-column",
     // Merged type: show badges when type changed, plain text otherwise
     cellRenderer: (params: { data: SchemaDiffRow }) => {
