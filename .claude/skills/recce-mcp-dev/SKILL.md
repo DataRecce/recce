@@ -13,7 +13,7 @@ Entry point `run_mcp_server()` pops `single_env` before passing kwargs to `load_
 
 ## Key Patterns
 
-**Error classification** — Shared indicators in `recce/tasks/rowcount.py`: `PERMISSION_DENIED` > `TABLE_NOT_FOUND` > `SYNTAX_ERROR` (priority). Classified → `logger.warning()` + `sentry_metrics.count()`. Unclassified → `logger.error()` + traceback.
+**Error classification** — Shared indicator lists defined in `recce/tasks/rowcount.py`. Priority order (`PERMISSION_DENIED` > `TABLE_NOT_FOUND` > `SYNTAX_ERROR`) enforced by `_classify_db_error()` in `mcp_server.py` and `_query_row_count()` in `rowcount.py`. Classified → `logger.warning()` + `sentry_metrics.count()` (when sentry_sdk available). Unclassified → `logger.error()` + traceback.
 
 **MCP SDK quirk** — Handler must **raise** for SDK to set `isError=True`.
 

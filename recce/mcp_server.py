@@ -714,7 +714,7 @@ class RecceMCPServer:
         """Execute row count diff task"""
         task = RowCountDiffTask(params=arguments)
 
-        # Execute task synchronously (it's already sync)
+        # Offload sync task to thread pool to avoid blocking the event loop
         result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
 
         return self._maybe_add_warning(result)
@@ -819,7 +819,7 @@ class RecceMCPServer:
             run.result = await future
             return run.model_dump(mode="json")
         except RecceException as e:
-            raise ValueError(str(e))
+            raise ValueError(str(e)) from e
 
     async def run(self):
         """Run the MCP server in stdio mode"""

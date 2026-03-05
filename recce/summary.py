@@ -115,6 +115,7 @@ class Node:
                 curr_meta = run_result.get("curr_meta", {})
                 base_status = base_meta.get("status") if isinstance(base_meta, dict) else None
                 curr_status = curr_meta.get("status") if isinstance(curr_meta, dict) else None
+                # Must match non-OK values in RowCountStatus (recce/tasks/rowcount.py)
                 unavailable_statuses = {
                     "table_not_found",
                     "permission_denied",

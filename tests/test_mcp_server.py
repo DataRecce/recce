@@ -659,7 +659,7 @@ class TestErrorClassification:
         assert server._classify_db_error("Object 'MY_TABLE' does not exist") == "table_not_found"
         assert server._classify_db_error("42S02: table not found") == "table_not_found"
         assert server._classify_db_error("42P01: relation does not exist") == "table_not_found"
-        assert server._classify_db_error("Catalog Error: table foo not found") == "table_not_found"
+        assert server._classify_db_error("Catalog Error: Table with name foo does not exist!") == "table_not_found"
 
     def test_classify_permission_denied(self, mcp_server):
         server, _ = mcp_server

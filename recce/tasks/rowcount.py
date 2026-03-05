@@ -47,7 +47,6 @@ TABLE_NOT_FOUND_INDICATORS = [
     "RELATION DOES NOT EXIST",  # PostgreSQL alternative
     "OBJECT DOES NOT EXIST",  # Snowflake
     "INVALID OBJECT NAME",  # SQL Server
-    "CATALOG ERROR",  # DuckDB
 ]
 PERMISSION_DENIED_INDICATORS = [
     "NOT AUTHORIZED",
@@ -315,7 +314,8 @@ class RowCountDiffTask(Task, QueryMixin):
     def _classify_sqlmesh_error(self, error: Exception, name: str, env_name: str):
         """Classify sqlmesh query error, mirroring dbt path patterns.
 
-        Returns (count, meta) tuple.
+        Returns (None, meta_dict) tuple for recognized errors (permission_denied,
+        table_not_found). Raises the original exception for unclassified errors.
         """
         error_msg = str(error).upper()
 
