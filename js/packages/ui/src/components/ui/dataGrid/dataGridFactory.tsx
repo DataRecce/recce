@@ -204,7 +204,7 @@ function profileColumnNameRenderer(params: ICellRendererParams<RowObjectType>) {
         sx={{
           display: "flex",
           alignItems: "center",
-          gap: "4px",
+          gap: "6px",
           overflow: "hidden",
         }}
       >
@@ -250,7 +250,7 @@ function profileDiffColumnNameRenderer(
         sx={{
           display: "flex",
           alignItems: "center",
-          gap: "4px",
+          gap: "6px",
           overflow: "hidden",
         }}
       >

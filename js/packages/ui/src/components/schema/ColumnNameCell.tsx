@@ -266,6 +266,7 @@ export function ColumnNameCell({
               display: "inline-flex",
               alignItems: "center",
               gap: "2px",
+              ml: "4px",
             }}
           >
             {baseType && (
@@ -285,7 +286,9 @@ export function ColumnNameCell({
           </Box>
         ) : (
           columnType && (
-            <DataTypeIcon type={columnType} size={16} disableTooltip />
+            <Box component="span" sx={{ ml: "4px" }}>
+              <DataTypeIcon type={columnType} size={16} disableTooltip />
+            </Box>
           )
         )}
         <Box sx={{ flex: 1 }} />
