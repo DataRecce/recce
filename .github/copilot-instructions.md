@@ -23,7 +23,7 @@ tools and a web UI for comparing data environments, performing diffs, and collab
 # Always run these together - pre-commit hooks are required
 make install-dev
 # OR
-pip install -e .[dev]
+uv pip install --system -e .[dev,mcp]
 pre-commit install
 ```
 
@@ -67,7 +67,7 @@ make deps-check            # Both ecosystems
 
 **Common Errors & Fixes:**
 
-- `ImportError` after adding dependencies: Run `pip install -e .[dev]` again
+- `ImportError` after adding dependencies: Run `make install-dev` again
 - `flake8` failures: Run `make format` first, then check `.flake8` config
 - Test failures: Check if dbt artifacts exist in `integration_tests/dbt/target` and `integration_tests/dbt/target-base`
 
@@ -157,7 +157,7 @@ pnpm type:check    # TypeScript compiler
 
 ```bash
 # Python style check
-pip install flake8 && make flake8
+make flake8
 
 # Python tests (single version)
 make test
@@ -182,8 +182,8 @@ make deps-check
 
 ### Root Files
 
-- `setup.py` - Main package (recce), installs `recce` command
-- `setup_cloud.py` - Cloud CLI (recce-cloud), installs `recce-cloud` command
+- `pyproject.toml` - Main package config (recce), managed by uv + hatchling
+- `uv.lock` - Python dependency lockfile (uv workspace)
 - `Makefile` - All build/test commands
 - `tox.ini` - Multi-version testing (dbt 1.6-1.9)
 - `pyproject.toml` - Black/isort config (line-length: 120)

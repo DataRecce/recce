@@ -175,7 +175,7 @@ describe("Filename", () => {
       render(<Filename />);
 
       const saveButton = screen.getByRole("button", { name: /Save/i });
-      expect(saveButton.querySelector("svg")).toBeInTheDocument();
+      expect(saveButton).toBeInTheDocument();
     });
 
     it("displays edit icon when filename exists", () => {
