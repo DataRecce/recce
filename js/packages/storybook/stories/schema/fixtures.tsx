@@ -1,3 +1,4 @@
+import { DataTypeIcon } from "@datarecce/ui";
 import type { SchemaDiffRow } from "@datarecce/ui/components";
 import type { ColDef, RowClassParams } from "ag-grid-community";
 import type React from "react";
@@ -130,21 +131,25 @@ export const schemaColumns: ColDef[] = [
 
       if (isTypeChanged) {
         return (
-          <span>
-            <span className="schema-type-old" title={`Base type: ${baseType}`}>
-              {baseType}
-            </span>
+          <span
+            style={{ display: "inline-flex", alignItems: "center", gap: 2 }}
+          >
+            {baseType && (
+              <span className="schema-type-old">
+                <DataTypeIcon type={String(baseType)} size={20} />
+              </span>
+            )}
             {" \u2192 "}
-            <span
-              className="schema-type-new"
-              title={`Current type: ${currentType}`}
-            >
-              {currentType}
-            </span>
+            {currentType && (
+              <span className="schema-type-new">
+                <DataTypeIcon type={String(currentType)} size={20} />
+              </span>
+            )}
           </span>
         );
       }
-      return <span>{isRemoved ? baseType : currentType}</span>;
+      const type = isRemoved ? baseType : currentType;
+      return type ? <DataTypeIcon type={String(type)} size={20} /> : <span />;
     },
   },
 ];
