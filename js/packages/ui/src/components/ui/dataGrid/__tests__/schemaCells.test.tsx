@@ -4,8 +4,7 @@
  *
  * Tests cover:
  * - renderIndexCell rendering logic for normal/added/removed rows
- * - renderTypeCell rendering logic and type change badges
- * - Accessibility attributes for type badges
+ * - renderTypeCell rendering logic with DataTypeIcon
  * - Null data handling
  */
 
@@ -28,6 +27,14 @@ vi.mock("../../../schema/ColumnNameCell", () => ({
 }));
 
 vi.mock("../../../../api/info", () => ({}));
+
+vi.mock("../../DataTypeIcon", () => ({
+  DataTypeIcon: ({ type, size }: { type: string; size?: number }) => (
+    <span data-testid="data-type-icon" data-type={type} data-size={size}>
+      <svg />
+    </span>
+  ),
+}));
 
 // Import after mocks
 import { renderIndexCell, renderTypeCell } from "../schemaCells";
@@ -147,7 +154,7 @@ describe("renderIndexCell", () => {
 
 describe("renderTypeCell", () => {
   describe("type changed scenarios", () => {
-    test("renders both badges when type changed", () => {
+    test("renders both DataTypeIcons when type changed", () => {
       const params = createTypeCellParams({
         baseIndex: 1,
         currentIndex: 1,
@@ -157,11 +164,13 @@ describe("renderTypeCell", () => {
 
       render(<>{renderTypeCell(params)}</>);
 
-      expect(screen.getByText("INTEGER")).toBeInTheDocument();
-      expect(screen.getByText("BIGINT")).toBeInTheDocument();
+      const icons = screen.getAllByTestId("data-type-icon");
+      expect(icons).toHaveLength(2);
+      expect(icons[0]).toHaveAttribute("data-type", "INTEGER");
+      expect(icons[1]).toHaveAttribute("data-type", "BIGINT");
     });
 
-    test("renders removed badge with correct class", () => {
+    test("renders old type with correct class containing DataTypeIcon", () => {
       const params = createTypeCellParams({
         baseIndex: 1,
         currentIndex: 1,
@@ -173,10 +182,10 @@ describe("renderTypeCell", () => {
 
       const oldType = container.querySelector(".schema-type-old");
       expect(oldType).toBeInTheDocument();
-      expect(oldType).toHaveTextContent("VARCHAR");
+      expect(oldType?.querySelector("svg")).toBeInTheDocument();
     });
 
-    test("renders new type with correct class", () => {
+    test("renders new type with correct class containing DataTypeIcon", () => {
       const params = createTypeCellParams({
         baseIndex: 1,
         currentIndex: 1,
@@ -188,10 +197,10 @@ describe("renderTypeCell", () => {
 
       const newType = container.querySelector(".schema-type-new");
       expect(newType).toBeInTheDocument();
-      expect(newType).toHaveTextContent("TEXT");
+      expect(newType?.querySelector("svg")).toBeInTheDocument();
     });
 
-    test("renders badges with title for accessibility", () => {
+    test("DataTypeIcon receives correct type props in badges", () => {
       const params = createTypeCellParams({
         baseIndex: 1,
         currentIndex: 1,
@@ -201,16 +210,14 @@ describe("renderTypeCell", () => {
 
       render(<>{renderTypeCell(params)}</>);
 
-      const integerBadge = screen.getByTitle("Base type: INTEGER");
-      const bigintBadge = screen.getByTitle("Current type: BIGINT");
-
-      expect(integerBadge).toBeInTheDocument();
-      expect(bigintBadge).toBeInTheDocument();
+      const icons = screen.getAllByTestId("data-type-icon");
+      expect(icons[0]).toHaveAttribute("data-type", "INTEGER");
+      expect(icons[1]).toHaveAttribute("data-type", "BIGINT");
     });
   });
 
   describe("added row scenarios", () => {
-    test("renders currentType for added rows", () => {
+    test("renders DataTypeIcon with currentType for added rows", () => {
       const params = createTypeCellParams({
         baseIndex: undefined,
         currentIndex: 3,
@@ -220,10 +227,11 @@ describe("renderTypeCell", () => {
 
       render(<>{renderTypeCell(params)}</>);
 
-      expect(screen.getByText("VARCHAR")).toBeInTheDocument();
+      const icon = screen.getByTestId("data-type-icon");
+      expect(icon).toHaveAttribute("data-type", "VARCHAR");
     });
 
-    test("does not render badges for added rows", () => {
+    test("does not render type-change classes for added rows", () => {
       const params = createTypeCellParams({
         baseIndex: undefined,
         currentIndex: 3,
@@ -240,7 +248,7 @@ describe("renderTypeCell", () => {
   });
 
   describe("removed row scenarios", () => {
-    test("renders baseType for removed rows", () => {
+    test("renders DataTypeIcon with baseType for removed rows", () => {
       const params = createTypeCellParams({
         baseIndex: 2,
         currentIndex: undefined,
@@ -250,10 +258,11 @@ describe("renderTypeCell", () => {
 
       render(<>{renderTypeCell(params)}</>);
 
-      expect(screen.getByText("DATE")).toBeInTheDocument();
+      const icon = screen.getByTestId("data-type-icon");
+      expect(icon).toHaveAttribute("data-type", "DATE");
     });
 
-    test("does not render badges for removed rows", () => {
+    test("does not render type-change classes for removed rows", () => {
       const params = createTypeCellParams({
         baseIndex: 2,
         currentIndex: undefined,
@@ -270,7 +279,7 @@ describe("renderTypeCell", () => {
   });
 
   describe("no change scenarios", () => {
-    test("renders currentType when types are the same", () => {
+    test("renders DataTypeIcon when types are the same", () => {
       const params = createTypeCellParams({
         baseIndex: 1,
         currentIndex: 1,
@@ -280,10 +289,11 @@ describe("renderTypeCell", () => {
 
       render(<>{renderTypeCell(params)}</>);
 
-      expect(screen.getByText("BIGINT")).toBeInTheDocument();
+      const icon = screen.getByTestId("data-type-icon");
+      expect(icon).toHaveAttribute("data-type", "BIGINT");
     });
 
-    test("does not render badges when types are the same", () => {
+    test("does not render type-change classes when types are the same", () => {
       const params = createTypeCellParams({
         baseIndex: 1,
         currentIndex: 1,
@@ -324,15 +334,15 @@ describe("renderTypeCell", () => {
 
       const { container } = render(<>{renderTypeCell(params)}</>);
 
-      // Empty string vs non-empty should show type change with old/new styling
-      expect(screen.getByText("VARCHAR")).toBeInTheDocument();
-      expect(container.querySelector(".schema-type-old")).toBeInTheDocument();
+      // Empty baseType is falsy, so old type span is not rendered
+      expect(
+        container.querySelector(".schema-type-old"),
+      ).not.toBeInTheDocument();
 
-      const oldType = container.querySelector(".schema-type-old");
+      // New type should contain a DataTypeIcon
       const newType = container.querySelector(".schema-type-new");
-      expect(oldType).toBeInTheDocument();
       expect(newType).toBeInTheDocument();
-      expect(newType).toHaveTextContent("VARCHAR");
+      expect(newType?.querySelector("svg")).toBeInTheDocument();
     });
 
     test("returns null when data is undefined", () => {

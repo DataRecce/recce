@@ -10,6 +10,7 @@ import React from "react";
 import type { NodeData, RowObjectType } from "../../../api";
 import type { SchemaDiffRow, SchemaRow } from "../../schema";
 import { ColumnNameCell } from "../../schema/ColumnNameCell";
+import { DataTypeIcon } from "../DataTypeIcon";
 
 // ============================================================================
 // Render Functions for toSchemaDataGrid.ts
@@ -122,21 +123,23 @@ export function renderTypeCell(
 
   if (isTypeChanged) {
     return (
-      <span>
-        <span className="schema-type-old" title={`Base type: ${baseType}`}>
-          {baseType}
-        </span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+        {baseType && (
+          <span className="schema-type-old">
+            <DataTypeIcon type={String(baseType)} size={20} />
+          </span>
+        )}
         {" → "}
-        <span
-          className="schema-type-new"
-          title={`Current type: ${currentType}`}
-        >
-          {currentType}
-        </span>
+        {currentType && (
+          <span className="schema-type-new">
+            <DataTypeIcon type={String(currentType)} size={20} />
+          </span>
+        )}
       </span>
     );
   }
 
   // For added rows, show currentType; for removed rows, show baseType
-  return <span>{isRemoved ? baseType : currentType}</span>;
+  const type = isRemoved ? baseType : currentType;
+  return type ? <DataTypeIcon type={String(type)} size={20} /> : <span />;
 }
