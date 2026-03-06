@@ -12,7 +12,11 @@
  * - toValueDataGrid for value_diff summary (column match statistics)
  */
 
-import type { ColDef, ColGroupDef } from "ag-grid-community";
+import type {
+  ColDef,
+  ColGroupDef,
+  ICellRendererParams,
+} from "ag-grid-community";
 import type { QueryDiffResult } from "../../../api/adhocQuery";
 import type { NodeData } from "../../../api/info";
 import type { ProfileDiffResult } from "../../../api/profile";
@@ -50,6 +54,7 @@ import {
   toRowCountDiffDataGrid,
   toValueDiffGridConfigured as toValueDiffGrid,
 } from "../../../utils/dataGrid";
+import { DataTypeIcon } from "../DataTypeIcon";
 import { toValueDataGrid } from "./generators/toValueDataGrid";
 
 // ============================================================================
@@ -181,6 +186,66 @@ function determineDataKind(run: Run): RunResultData | null {
 }
 
 /**
+ * Cell renderer that displays a DataTypeIcon for data_type values
+ */
+function dataTypeIconCellRenderer(params: ICellRendererParams<RowObjectType>) {
+  const value = params.value;
+  if (!value) return null;
+  return <DataTypeIcon type={String(value)} size={20} />;
+}
+
+/**
+ * Checks if a column field name represents a data_type column
+ * Matches "data_type", "base__data_type", and "current__data_type"
+ */
+function isDataTypeField(field: string | undefined): boolean {
+  if (!field) return false;
+  const lower = field.toLowerCase();
+  return (
+    lower === "data_type" ||
+    lower === "base__data_type" ||
+    lower === "current__data_type"
+  );
+}
+
+/**
+ * Post-processes grid columns to inject DataTypeIcon renderer for data_type columns.
+ * Handles both flat ColDef columns and ColGroupDef columns with children.
+ */
+function injectDataTypeIconRenderer(result: DataGridResult): DataGridResult {
+  const columns = result.columns.map((col) => {
+    // ColGroupDef with children (side-by-side diff mode)
+    if ("children" in col && col.children) {
+      const hasDataTypeChild = col.children.some((child) =>
+        isDataTypeField((child as ColDef<RowObjectType>).field),
+      );
+      if (hasDataTypeChild) {
+        return {
+          ...col,
+          children: col.children.map((child) => {
+            const childCol = child as ColDef<RowObjectType>;
+            if (isDataTypeField(childCol.field)) {
+              return { ...childCol, cellRenderer: dataTypeIconCellRenderer };
+            }
+            return child;
+          }),
+        };
+      }
+      return col;
+    }
+
+    // Flat ColDef
+    const colDef = col as ColDef<RowObjectType>;
+    if (isDataTypeField(colDef.field)) {
+      return { ...colDef, cellRenderer: dataTypeIconCellRenderer };
+    }
+    return col;
+  });
+
+  return { ...result, columns };
+}
+
+/**
  * Extracts the primary key field name from profile data
  */
 function getProfilePrimaryKey(result: ProfileDiffResult): string {
@@ -276,25 +341,31 @@ export function createDataGrid(
         return null;
       }
       const primaryKey = getProfilePrimaryKey(dataKind.result);
-      return toDataGrid(dataKind.result.current, {
+      const profileResult = toDataGrid(dataKind.result.current, {
         primaryKeys: [primaryKey],
         pinnedColumns: options.pinnedColumns,
         onPinnedColumnsChange: options.onPinnedColumnsChange,
         columnsRenderMode: options.columnsRenderMode,
         onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
       });
+      return injectDataTypeIconRenderer(profileResult);
     }
 
     case "profile_diff": {
       const primaryKey = getProfilePrimaryKey(dataKind.result);
-      return toDataDiffGrid(dataKind.result.base, dataKind.result.current, {
-        primaryKeys: [primaryKey],
-        pinnedColumns: options.pinnedColumns,
-        onPinnedColumnsChange: options.onPinnedColumnsChange,
-        displayMode: options.displayMode,
-        columnsRenderMode: options.columnsRenderMode,
-        onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
-      });
+      const profileDiffResult = toDataDiffGrid(
+        dataKind.result.base,
+        dataKind.result.current,
+        {
+          primaryKeys: [primaryKey],
+          pinnedColumns: options.pinnedColumns,
+          onPinnedColumnsChange: options.onPinnedColumnsChange,
+          displayMode: options.displayMode,
+          columnsRenderMode: options.columnsRenderMode,
+          onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
+        },
+      );
+      return injectDataTypeIconRenderer(profileDiffResult);
     }
 
     case "row_count":
