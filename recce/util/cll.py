@@ -73,47 +73,6 @@ class CLLPerformanceTracking:
         self.other_error_nodes = 0
 
 
-def _cll_column(proj, table_alias_map) -> CllColumn:
-    # given an expression, return the columns depends on
-    # [{node: table, column: column}, ...]
-    type = "source"
-    depends_on: List[CllColumnDep] = []
-
-    # instance of Column
-    if isinstance(proj, exp.Alias):
-        # 'select a as b'
-        # 'select CURRENT_TIMESTAMP() as create_at'
-        root = proj.this
-
-    for expression in root.walk(bfs=False):
-        if isinstance(expression, exp.Column):
-            column = expression
-            alias = column.table
-
-            if alias is None:
-                table = next(iter(table_alias_map.values()))
-            else:
-                table = table_alias_map.get(alias, alias)
-            depends_on.append(CllColumnDep(node=table, column=column.name))
-            if type == "source":
-                type = "passthrough"
-        elif isinstance(expression, (exp.Paren, exp.Identifier)):
-            pass
-        else:
-            type = "derived"
-
-    depends_on = _dedeup_depends_on(depends_on)
-
-    if len(depends_on) == 0:
-        type = "source"
-
-    if isinstance(proj, exp.Alias):
-        alias = proj
-        if type == "passthrough" and depends_on[0].column != alias.alias_or_name:
-            type = "renamed"
-
-    return CllColumn(type=type, depends_on=depends_on)
-
 
 def _dedeup_depends_on(depends_on: List[CllColumnDep]) -> List[CllColumnDep]:
     # deduplicate the depends_on list

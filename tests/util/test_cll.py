@@ -724,7 +724,8 @@ class ColumnLevelLineageTest(unittest.TestCase):
         }
         result = cll(sql, schema=schema)
         # All columns should trace back to stg_categories, not to the CTE alias.
-        # UNION ALL marks all columns as "derived" since they merge two branches.
+        # UNION ALL marks columns as "derived" when they have deps in both branches.
+        # Exception: depth has no column deps (literal 0), so stays "source".
         assert_column(result, "category_id", "derived", [("stg_categories", "category_id")])
         assert_column(result, "category_name", "derived", [("stg_categories", "category_name")])
         assert_column(result, "parent_category_id", "derived", [("stg_categories", "parent_category_id")])
