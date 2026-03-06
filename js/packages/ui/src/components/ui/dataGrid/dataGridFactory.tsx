@@ -12,6 +12,7 @@
  * - toValueDataGrid for value_diff summary (column match statistics)
  */
 
+import Box from "@mui/material/Box";
 import type {
   ColDef,
   ColGroupDef,
@@ -186,7 +187,9 @@ function determineDataKind(run: Run): RunResultData | null {
 }
 
 /**
- * Cell renderer that displays a DataTypeIcon for data_type values
+ * Cell renderer that displays a DataTypeIcon for data_type values.
+ * Used for simple (non-diff) columns and side-by-side diff children
+ * where params.value resolves directly to the data type string.
  */
 function dataTypeIconCellRenderer(params: ICellRendererParams<RowObjectType>) {
   const value = params.value;
@@ -195,8 +198,62 @@ function dataTypeIconCellRenderer(params: ICellRendererParams<RowObjectType>) {
 }
 
 /**
- * Checks if a column field name represents a data_type column
- * Matches "data_type", "base__data_type", and "current__data_type"
+ * Cell renderer for inline diff mode data_type columns.
+ * In inline diff mode, the column field is "data_type" but the row data
+ * stores values under "base__data_type" and "current__data_type" prefixed keys.
+ * This renderer reads from both prefixed keys and renders DataTypeIcon(s).
+ */
+function dataTypeIconInlineDiffCellRenderer(
+  params: ICellRendererParams<RowObjectType>,
+) {
+  if (!params.data) return null;
+
+  const columnKey = (params.colDef as ColDef<RowObjectType>)?.field ?? "";
+  const row = params.data;
+  const baseKey = `base__${columnKey}`.toLowerCase();
+  const currentKey = `current__${columnKey}`.toLowerCase();
+
+  const baseValue = row[baseKey];
+  const currentValue = row[currentKey];
+
+  const hasBase = Object.hasOwn(row, baseKey);
+  const hasCurrent = Object.hasOwn(row, currentKey);
+
+  if (!hasBase && !hasCurrent) return null;
+
+  // Values are the same — render a single icon
+  if (baseValue === currentValue) {
+    return <DataTypeIcon type={String(currentValue)} size={20} />;
+  }
+
+  // Values differ — render both icons with diff styling
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        gap: "5px",
+        alignItems: "center",
+        height: "100%",
+      }}
+    >
+      {hasBase && baseValue && (
+        <Box
+          component="span"
+          sx={{ textDecoration: "line-through", opacity: 0.6 }}
+        >
+          <DataTypeIcon type={String(baseValue)} size={20} />
+        </Box>
+      )}
+      {hasCurrent && currentValue && (
+        <DataTypeIcon type={String(currentValue)} size={20} />
+      )}
+    </Box>
+  );
+}
+
+/**
+ * Checks if a column field name represents a data_type column.
+ * Matches "data_type", "base__data_type", and "current__data_type".
  */
 function isDataTypeField(field: string | undefined): boolean {
   if (!field) return false;
@@ -210,7 +267,12 @@ function isDataTypeField(field: string | undefined): boolean {
 
 /**
  * Post-processes grid columns to inject DataTypeIcon renderer for data_type columns.
- * Handles both flat ColDef columns and ColGroupDef columns with children.
+ * Handles:
+ * - Flat ColDef with field "data_type" (inline diff mode or simple profile)
+ * - ColGroupDef with children (side-by-side diff mode)
+ *
+ * For inline diff mode, uses a special renderer that reads from base__/current__ prefixed keys.
+ * For side-by-side mode, uses the simple renderer since each child column resolves directly.
  */
 function injectDataTypeIconRenderer(result: DataGridResult): DataGridResult {
   const columns = result.columns.map((col) => {
@@ -237,7 +299,19 @@ function injectDataTypeIconRenderer(result: DataGridResult): DataGridResult {
     // Flat ColDef
     const colDef = col as ColDef<RowObjectType>;
     if (isDataTypeField(colDef.field)) {
-      return { ...colDef, cellRenderer: dataTypeIconCellRenderer };
+      // Check if this is an inline diff column (field is "data_type" but data
+      // lives under base__/current__ prefixed keys) or a simple column
+      // (field is "data_type" and data lives directly under that key).
+      // Inline diff columns have an inlineRenderCell as their cellRenderer,
+      // which we detect by checking if a cellRenderer already exists.
+      // Simple profile columns use DataFrameColumnHeader (no cellRenderer set by default).
+      const isInlineDiff = colDef.field === "data_type" && colDef.cellRenderer;
+      return {
+        ...colDef,
+        cellRenderer: isInlineDiff
+          ? dataTypeIconInlineDiffCellRenderer
+          : dataTypeIconCellRenderer,
+      };
     }
     return col;
   });
