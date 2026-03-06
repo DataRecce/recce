@@ -11,7 +11,6 @@
 
 import { render, screen } from "@testing-library/react";
 import type { ICellRendererParams } from "ag-grid-community";
-import React from "react";
 import { vi } from "vitest";
 import type { RowObjectType } from "../../../../api";
 
@@ -31,12 +30,7 @@ vi.mock("../../../schema/ColumnNameCell", () => ({
 vi.mock("../../../../api/info", () => ({}));
 
 // Import after mocks
-import {
-  MemoizedRenderIndexCell,
-  MemoizedRenderTypeCell,
-  renderIndexCell,
-  renderTypeCell,
-} from "../schemaCells";
+import { renderIndexCell, renderTypeCell } from "../schemaCells";
 
 // ============================================================================
 // Test Helpers
@@ -403,56 +397,6 @@ describe("renderTypeCell", () => {
 
       // Performance assertion: function execution should be very fast
       expect(avgTime).toBeLessThan(1);
-    });
-
-    test("MemoizedRenderIndexCell is properly memoized", () => {
-      const params = createIndexCellParams({
-        baseIndex: 1,
-        currentIndex: 2,
-      });
-
-      // First render
-      const { rerender } = render(
-        React.createElement(MemoizedRenderIndexCell, params),
-      );
-      expect(screen.getByText("2")).toBeInTheDocument();
-
-      // Re-render with same props (should not cause actual re-render due to memo)
-      rerender(React.createElement(MemoizedRenderIndexCell, params));
-      expect(screen.getByText("2")).toBeInTheDocument();
-
-      // Verify the component is memoized
-      expect(MemoizedRenderIndexCell).toHaveProperty(
-        "$$typeof",
-        Symbol.for("react.memo"),
-      );
-    });
-
-    test("MemoizedRenderTypeCell is properly memoized", () => {
-      const params = createTypeCellParams({
-        baseIndex: 1,
-        currentIndex: 1,
-        baseType: "INTEGER",
-        currentType: "BIGINT",
-      });
-
-      // First render
-      const { rerender } = render(
-        React.createElement(MemoizedRenderTypeCell, params),
-      );
-      expect(screen.getByText("INTEGER")).toBeInTheDocument();
-      expect(screen.getByText("BIGINT")).toBeInTheDocument();
-
-      // Re-render with same props (should not cause actual re-render due to memo)
-      rerender(React.createElement(MemoizedRenderTypeCell, params));
-      expect(screen.getByText("INTEGER")).toBeInTheDocument();
-      expect(screen.getByText("BIGINT")).toBeInTheDocument();
-
-      // Verify the component is memoized
-      expect(MemoizedRenderTypeCell).toHaveProperty(
-        "$$typeof",
-        Symbol.for("react.memo"),
-      );
     });
   });
 });

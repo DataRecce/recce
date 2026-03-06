@@ -57,6 +57,8 @@ export interface ColumnNameCellProps {
   cllRunning?: boolean;
   /** Whether to show the context menu (defaults to true) */
   showMenu?: boolean;
+  /** Callback when user clicks a definition-changed badge to view SQL diff */
+  onViewCode?: () => void;
 }
 
 // ============================================================================
@@ -82,17 +84,25 @@ export function ColumnNameCell({
   singleEnv,
   cllRunning,
   showMenu = true,
+  onViewCode,
 }: ColumnNameCellProps) {
   const lineageViewContext = useLineageViewContext();
   const { isActionAvailable } = useLineageGraphContext();
   const { runAction } = useRecceActionContext();
   const { featureToggles } = useRecceInstanceContext();
-  const { name, baseType, currentType, baseIndex, currentIndex, reordered } =
-    row;
+  const {
+    name,
+    baseType,
+    currentType,
+    baseIndex,
+    currentIndex,
+    reordered,
+    definitionChanged,
+  } = row;
   const columnType = currentType ?? baseType;
   const isAdded = baseIndex === undefined && currentIndex !== undefined;
   const isRemoved = baseIndex !== undefined && currentIndex === undefined;
-  const isChanged =
+  const hasStructuralChange =
     !isAdded && !isRemoved && (baseType !== currentType || reordered === true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
@@ -179,7 +189,7 @@ export function ColumnNameCell({
       disableHoverListener={isCllDisabled}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: "3px" }}>
-        {isChanged && (
+        {hasStructuralChange && (
           <span className="schema-change-badge schema-change-badge-changed">
             ~
           </span>
@@ -193,6 +203,30 @@ export function ColumnNameCell({
           <span className="schema-change-badge schema-change-badge-removed">
             -
           </span>
+        )}
+        {definitionChanged && (
+          <Tooltip
+            title="Definition changed — click to view code"
+            placement="top"
+            onMouseOver={(e) => e.stopPropagation()}
+          >
+            {onViewCode ? (
+              <button
+                type="button"
+                className="schema-change-badge schema-change-badge-changed schema-change-badge-clickable"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewCode();
+                }}
+              >
+                ~
+              </button>
+            ) : (
+              <span className="schema-change-badge schema-change-badge-changed">
+                ~
+              </span>
+            )}
+          </Tooltip>
         )}
         <Box
           sx={{

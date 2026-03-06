@@ -141,7 +141,7 @@ export function LineageGraphProvider({
       isLoading,
       error,
       supportTasks,
-      retchLineageGraph: onRefetchLineageGraph,
+      refetchLineageGraph: onRefetchLineageGraph,
       isActionAvailable,
       runsAggregated,
       refetchRunsAggregated: onRefetchRunsAggregated,

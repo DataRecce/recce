@@ -48,6 +48,10 @@ export interface NodeViewNodeData {
         columns?: Record<string, NodeColumnData | undefined>;
       };
     };
+    change?: {
+      category: string;
+      columns: Record<string, "added" | "removed" | "modified"> | null;
+    };
   };
 }
 
@@ -789,6 +793,8 @@ export function NodeView({
                       <SchemaView
                         base={node.data.data.base}
                         current={node.data.data.current}
+                        columnChanges={node.data.change?.columns}
+                        onViewCode={() => setTabValue(1)}
                       />
                     )}
               </Box>

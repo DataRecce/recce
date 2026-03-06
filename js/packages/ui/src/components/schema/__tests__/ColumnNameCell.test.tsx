@@ -6,6 +6,7 @@
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 import { vi } from "vitest";
 import type { NodeData } from "../../../api";
@@ -211,6 +212,127 @@ describe("ColumnNameCell", () => {
       expect(mockIsActionAvailable).toHaveBeenCalledWith("change_analysis");
 
       mockLineageViewContext.current = undefined;
+    });
+  });
+
+  describe("definitionChanged badge", () => {
+    const definitionChangedRow = createMockRow({ definitionChanged: true });
+
+    test("renders ~ badge when definitionChanged is true", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={definitionChangedRow}
+          showMenu={false}
+        />,
+      );
+
+      const badges = screen.getAllByText("~");
+      expect(badges.length).toBeGreaterThanOrEqual(1);
+      const badge = badges[0];
+      expect(badge).toHaveClass("schema-change-badge-changed");
+    });
+
+    test("does not render ~ badge when definitionChanged is falsy", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow()}
+          showMenu={false}
+        />,
+      );
+
+      expect(screen.queryByText("~")).not.toBeInTheDocument();
+    });
+
+    test("renders as button when onViewCode is provided", () => {
+      const onViewCode = vi.fn();
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={definitionChangedRow}
+          showMenu={false}
+          onViewCode={onViewCode}
+        />,
+      );
+
+      const badge = screen.getByText("~");
+      expect(badge.tagName).toBe("BUTTON");
+      expect(badge).toHaveClass("schema-change-badge-clickable");
+    });
+
+    test("renders as span when onViewCode is not provided", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={definitionChangedRow}
+          showMenu={false}
+        />,
+      );
+
+      const badge = screen.getByText("~");
+      expect(badge.tagName).toBe("SPAN");
+      expect(badge).not.toHaveClass("schema-change-badge-clickable");
+    });
+
+    test("calls onViewCode when button badge is clicked", async () => {
+      const user = userEvent.setup();
+      const onViewCode = vi.fn();
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={definitionChangedRow}
+          showMenu={false}
+          onViewCode={onViewCode}
+        />,
+      );
+
+      const badge = screen.getByText("~");
+      await user.click(badge);
+      expect(onViewCode).toHaveBeenCalledTimes(1);
+    });
+
+    test("badge has tooltip with definition changed text", async () => {
+      const user = userEvent.setup();
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={definitionChangedRow}
+          showMenu={false}
+        />,
+      );
+
+      const badge = screen.getByText("~");
+      await user.hover(badge);
+      const tooltip = await screen.findByRole("tooltip");
+      expect(tooltip).toHaveTextContent(
+        "Definition changed — click to view code",
+      );
+    });
+
+    test("does not render definitionChanged badge when hasStructuralChange", () => {
+      // definitionChanged and structural changes are mutually exclusive
+      // in practice, but if both were set, both badges would render.
+      // This test verifies that a normal type-changed row doesn't get
+      // the definitionChanged badge.
+      const typeChangedRow = createMockRow({
+        baseType: "INT",
+        currentType: "VARCHAR",
+      });
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={typeChangedRow}
+          showMenu={false}
+        />,
+      );
+
+      // The ~ badge for structural change should render, but
+      // definitionChanged is not set so there should be exactly one
+      const badges = screen.getAllByText("~");
+      expect(badges).toHaveLength(1);
+      // It should be the structural change badge (span, not button)
+      expect(badges[0].tagName).toBe("SPAN");
     });
   });
 });

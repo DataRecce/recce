@@ -46,8 +46,6 @@ export {
 export {
   createSchemaColumnNameRenderer,
   createSingleEnvColumnNameRenderer,
-  MemoizedRenderIndexCell,
-  MemoizedRenderTypeCell,
   renderIndexCell,
   renderTypeCell,
 } from "./schemaCells";

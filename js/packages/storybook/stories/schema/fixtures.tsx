@@ -1,24 +1,8 @@
+import type { SchemaDiffRow } from "@datarecce/ui/components";
 import type { ColDef, RowClassParams } from "ag-grid-community";
 import type React from "react";
 
 // Schema CSS is loaded via SchemaLegend (imported in SchemaDiff.stories.tsx from @datarecce/ui/components)
-
-// ============================================================================
-// Row Type (matches the app's SchemaDiffRow from toSchemaDataGrid.ts)
-// ============================================================================
-
-export interface SchemaDiffRow {
-  name: string;
-  reordered?: boolean;
-  currentIndex?: number;
-  baseIndex?: number;
-  currentType?: string;
-  baseType?: string;
-  definitionChanged?: boolean;
-  __status?: string;
-  __rowKey?: string;
-  [key: string]: unknown;
-}
 
 // ============================================================================
 // Row factory
@@ -28,6 +12,7 @@ export function createRow(
   overrides: Partial<SchemaDiffRow> & { name: string },
 ): SchemaDiffRow {
   return {
+    __status: undefined,
     __rowKey: overrides.name,
     ...overrides,
   };
@@ -238,6 +223,7 @@ export const mixedDiffRows: SchemaDiffRow[] = [
     currentIndex: 2,
     baseType: "VARCHAR(50)",
     currentType: "VARCHAR(100)",
+    reordered: true,
   }),
   createRow({
     name: "user_id",
