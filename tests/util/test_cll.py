@@ -688,6 +688,91 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert_model(result, [("table1", "b")])
         assert_column(result, "a", "passthrough", [("table1", "a")])
 
+    def test_recursive_cte(self):
+        sql = """
+        with recursive category_tree as (
+            select
+                category_id,
+                category_name,
+                parent_category_id,
+                category_name as root_category,
+                category_name as full_path,
+                0 as depth
+            from stg_categories
+            where parent_category_id is null
+
+            union all
+
+            select
+                c.category_id,
+                c.category_name,
+                c.parent_category_id,
+                ct.root_category,
+                ct.full_path || ' > ' || c.category_name as full_path,
+                ct.depth + 1 as depth
+            from stg_categories c
+            inner join category_tree ct on c.parent_category_id = ct.category_id
+        )
+        select * from category_tree
+        """
+        schema = {
+            "stg_categories": {
+                "category_id": "int",
+                "category_name": "varchar",
+                "parent_category_id": "int",
+            }
+        }
+        result = cll(sql, schema=schema)
+        # All columns should trace back to stg_categories, not to the CTE alias.
+        # UNION ALL marks all columns as "derived" since they merge two branches.
+        assert_column(result, "category_id", "derived", [("stg_categories", "category_id")])
+        assert_column(result, "category_name", "derived", [("stg_categories", "category_name")])
+        assert_column(result, "parent_category_id", "derived", [("stg_categories", "parent_category_id")])
+        assert_column(result, "root_category", "derived", [("stg_categories", "category_name")])
+        assert_column(result, "full_path", "derived", [("stg_categories", "category_name")])
+        # depth: base case is `0` (source literal), recursive case is `ct.depth + 1`
+        # which resolves through the base case to no upstream deps.
+        # _cll_set_scope keeps "source" when no column deps exist.
+        assert_column(result, "depth", "source", [])
+
+    def test_recursive_cte_m2c_propagation(self):
+        """Model-to-column deps from the base case's WHERE clause should propagate
+        through the recursive branch to the outer query."""
+        sql = """
+        with recursive nums as (
+            select id, val from t1 where active = true
+            union all
+            select n.id, n.val from t1 n inner join nums on n.parent_id = nums.id
+        )
+        select * from nums
+        """
+        schema = {
+            "t1": {"id": "int", "val": "int", "active": "bool", "parent_id": "int"},
+        }
+        result = cll(sql, schema=schema)
+        m2c, _ = result
+        m2c_set = {(d.node, d.column) for d in m2c}
+        # The base case WHERE active = true should appear in model deps
+        assert ("t1", "active") in m2c_set
+        # The join condition parent_id = nums.id should appear
+        assert ("t1", "parent_id") in m2c_set
+
+    def test_unresolvable_column_does_not_crash_entire_model(self):
+        """When one column can't be resolved (e.g. correlated scalar subquery),
+        only that column should degrade — other columns should still trace correctly."""
+        sql = """
+        select
+            id,
+            name,
+            (select count(*) from t2 where t2.fk = t1.id) as child_count
+        from t1
+        """
+        result = cll(sql, schema={"t1": {"id": "int", "name": "varchar"}, "t2": {"fk": "int"}})
+        # Resolvable columns still trace correctly
+        assert_column(result, "id", "passthrough", [("t1", "id")])
+        assert_column(result, "name", "passthrough", [("t1", "name")])
+        # child_count degrades but doesn't crash the whole model
+
     def test_where_in_subquery(self):
         sql = """
         select a from table1 where user_id in (

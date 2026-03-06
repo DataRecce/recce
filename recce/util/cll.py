@@ -94,7 +94,7 @@ def _cll_column(proj, table_alias_map) -> CllColumn:
                 table = next(iter(table_alias_map.values()))
             else:
                 table = table_alias_map.get(alias, alias)
-            depends_on.append(CllColumnDep(table, column.name))
+            depends_on.append(CllColumnDep(node=table, column=column.name))
             if type == "source":
                 type = "passthrough"
         elif isinstance(expression, (exp.Paren, exp.Identifier)):
@@ -150,6 +150,22 @@ def _cll_set_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> CllRe
     return m2c, c2c_map
 
 
+def _resolve_scope_cll(source: Scope, scope_cll_map: dict[Scope, CllResult]) -> Optional[CllResult]:
+    """Look up CLL results for a scope, falling back to expression identity matching.
+
+    For recursive CTEs, sqlglot creates a stub Scope for the self-referential
+    CTE that isn't yielded by traverse_scope. This fallback matches the stub
+    to the real processed scope by comparing expression objects.
+    """
+    result = scope_cll_map.get(source)
+    if result is None:
+        for processed_scope, r in scope_cll_map.items():
+            if processed_scope.expression is source.expression:
+                result = r
+                break
+    return result
+
+
 def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> CllResult:
     assert scope.expression.key == "select"
 
@@ -166,7 +182,7 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
         table_name = ref_column.table if ref_column.table != "" else next(iter(table_alias_map.values()))
         source = scope.sources.get(table_name, None)  # transformation_type: exp.Table | Scope
         if isinstance(source, Scope):
-            ref_cll_result = scope_cll_map.get(source)
+            ref_cll_result = _resolve_scope_cll(source, scope_cll_map)
             if ref_cll_result is None:
                 return None
             _, sub_c2c_map = ref_cll_result
@@ -213,7 +229,7 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                         if transformation_type == "source":
                             transformation_type = "passthrough"
                 else:
-                    column_depends_on.append(CllColumnDep(expression.table, expression.name))
+                    column_depends_on.append(CllColumnDep(node=expression.table, column=expression.name))
                     if transformation_type == "source":
                         transformation_type = "passthrough"
 
@@ -300,7 +316,9 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                     m2c.extend(selected_column_dependency(ref_column).depends_on)
 
     for source in scope.sources.values():
-        scope_cll_result = scope_cll_map.get(source)
+        if not isinstance(source, Scope):
+            continue
+        scope_cll_result = _resolve_scope_cll(source, scope_cll_map)
         if scope_cll_result is None:
             continue
         sub_m2c, _ = scope_cll_result
