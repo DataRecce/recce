@@ -172,6 +172,7 @@ export interface ContextMenuViewOptions {
   selectMode?: "selecting" | "action_result" | undefined;
   cll?: unknown;
   showColumnLevelLineage?: (params: CllInput) => Promise<void>;
+  setChangeAnalysisMode?: (active: boolean) => void;
   selectParentNodes?: (nodeId: string, degree?: number) => void;
   selectChildNodes?: (nodeId: string, degree?: number) => void;
   getNodeColumnSet?: (nodeId: string) => Set<string>;
@@ -423,6 +424,7 @@ export const ModelNodeContextMenu = ({
     selectMode,
     cll,
     showColumnLevelLineage,
+    setChangeAnalysisMode,
     selectParentNodes,
     selectChildNodes,
     getNodeColumnSet,
@@ -451,6 +453,7 @@ export const ModelNodeContextMenu = ({
       itemIcon: <FaRegDotCircle />,
       isDisabled: noCatalogCurrent || !isActionAvailable("change_analysis"),
       action: () => {
+        setChangeAnalysisMode?.(true);
         void showColumnLevelLineage?.({
           node_id: node.id,
           change_analysis: true,

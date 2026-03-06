@@ -166,6 +166,7 @@ export function PrivateLineageView(
   const cllHistory = useRef<(CllInput | undefined)[]>([]).current;
 
   const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
+  const [changeAnalysisMode, setChangeAnalysisMode] = useState(false);
   // Track nodes whose change analysis has triggered a lineage refetch,
   // to avoid infinite refetch loops (CLL → invalidate → lineageGraph changes → CLL → …)
   const changeAnalysisRefetched = useRef(new Set<string>());
@@ -449,7 +450,7 @@ export function PrivateLineageView(
       trackLineageRender(
         nodes,
         viewOptions.view_mode ?? "changed_models",
-        viewOptions.column_level_lineage?.change_analysis ?? false,
+        changeAnalysisMode,
         !!viewOptions.column_level_lineage?.column,
         !!focusedNodeId || !!run,
       );
@@ -506,6 +507,11 @@ export function PrivateLineageView(
     previous = false,
   ) => {
     const previousColumnLevelLineage = viewOptions.column_level_lineage;
+
+    // Clear change analysis mode when CLL is turned off entirely
+    if (!columnLevelLineage) {
+      setChangeAnalysisMode(false);
+    }
 
     // Preserve positions when:
     // 1. CLL is being turned OFF (previous exists but new one is undefined)
@@ -650,11 +656,13 @@ export function PrivateLineageView(
 
     let cll: ColumnLineageData | undefined;
     if (newViewOptions.column_level_lineage) {
+      const cllApiInput: CllInput = {
+        ...newViewOptions.column_level_lineage,
+        change_analysis: changeAnalysisMode,
+      };
       try {
-        cll = await actionGetCll.mutateAsync(
-          newViewOptions.column_level_lineage,
-        );
-        refetchLineageAfterChangeAnalysis(newViewOptions.column_level_lineage);
+        cll = await actionGetCll.mutateAsync(cllApiInput);
+        refetchLineageAfterChangeAnalysis(cllApiInput);
       } catch (e) {
         if (e instanceof AxiosError) {
           const e2 = e as AxiosError<{ detail?: string }>;
@@ -692,7 +700,7 @@ export function PrivateLineageView(
     trackLineageRender(
       newNodes,
       newViewOptions.view_mode ?? "changed_models",
-      newViewOptions.column_level_lineage?.change_analysis ?? false,
+      changeAnalysisMode,
       !!newViewOptions.column_level_lineage?.column,
       !!focusedNodeId || !!run,
     );
@@ -921,25 +929,21 @@ export function PrivateLineageView(
       }
     },
     isNodeShowingChangeAnalysis: (nodeId: string) => {
-      if (!lineageGraph) {
+      if (!lineageGraph || !changeAnalysisMode) {
         return false;
       }
 
       const node =
         nodeId in lineageGraph.nodes ? lineageGraph.nodes[nodeId] : undefined;
 
-      if (viewOptions.column_level_lineage?.change_analysis) {
-        const cll = viewOptions.column_level_lineage;
-
-        if (cll.node_id && !cll.column) {
-          return cll.node_id === nodeId && !!node?.data.changeStatus;
-        } else {
-          return !!node?.data.changeStatus;
-        }
+      const cll = viewOptions.column_level_lineage;
+      if (cll?.node_id && !cll.column) {
+        return cll.node_id === nodeId && !!node?.data.changeStatus;
       }
-
-      return false;
+      return !!node?.data.changeStatus;
     },
+    changeAnalysisMode,
+    setChangeAnalysisMode,
     getNodeAction: (nodeId: string) => {
       return multiNodeAction.actionState.actions[nodeId];
     },
