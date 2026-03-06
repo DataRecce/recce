@@ -151,7 +151,7 @@ export interface LineageGraphContextType {
   /** Supported task types from server */
   supportTasks?: Record<string, boolean>;
   /** Refetch the lineage graph data */
-  retchLineageGraph?: () => void;
+  refetchLineageGraph?: () => void;
   /** Check if an action is available */
   isActionAvailable: (actionName: string) => boolean;
   /** Pre-aggregated run results by model */

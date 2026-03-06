@@ -1,7 +1,7 @@
 /**
  * Tests for Excel formatting utilities (write-excel-file)
  */
-import readXlsxFile from "read-excel-file";
+import readXlsxFile from "read-excel-file/browser";
 import { toExcelBlob } from "../excel";
 
 /**
