@@ -274,7 +274,7 @@ function TestConsumer() {
         {String(context.runsAggregated !== undefined)}
       </span>
       <span data-testid="has-refetch">
-        {String(typeof context.retchLineageGraph === "function")}
+        {String(typeof context.refetchLineageGraph === "function")}
       </span>
       <span data-testid="action-available">
         {String(context.isActionAvailable("test_action"))}
@@ -625,7 +625,7 @@ describe("LineageGraphAdapter", () => {
   });
 
   describe("refetch functionality", () => {
-    it("provides retchLineageGraph function", async () => {
+    it("provides refetchLineageGraph function", async () => {
       mockGetServerInfo.mockResolvedValue(createServerInfoResult());
       mockAggregateRuns.mockResolvedValue({});
 

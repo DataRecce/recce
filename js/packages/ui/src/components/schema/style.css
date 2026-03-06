@@ -6,39 +6,60 @@
 /* Light mode (default) */
 :root,
 .light {
-  --schema-color-added: rgb(204 255 216);
-  --schema-color-added-hover: rgb(193 246 205);
-  --schema-color-added-active: rgb(166 242 184);
-  --schema-color-removed: rgb(255 215 213);
-  --schema-color-removed-hover: rgb(246 195 193);
-  --schema-color-removed-active: rgb(242 170 166);
+  --schema-color-added: rgb(222 248 227);
+  --schema-color-added-hover: rgb(210 242 216);
+  --schema-color-added-active: rgb(193 235 200);
+  --schema-color-added-accent: rgb(46 160 67);
+  --schema-color-removed: rgb(252 225 224);
+  --schema-color-removed-hover: rgb(248 213 211);
+  --schema-color-removed-active: rgb(244 196 193);
+  --schema-color-removed-accent: rgb(248 81 73);
   --schema-color-normal: #ffffff;
   --schema-color-normal-hover: rgb(241 241 241);
   --schema-color-normal-active: rgb(230 230 230);
-  --schema-color-reordered: rgb(255 173 21);
-  --schema-color-reordered-hover: rgb(249 164 6);
-  --schema-color-reordered-active: rgb(224 147 6);
+  --schema-color-changed: rgb(255 247 222);
+  --schema-color-changed-hover: rgb(255 241 200);
+  --schema-color-changed-active: rgb(255 233 170);
+  --schema-color-changed-accent: rgb(255 173 21);
+  --schema-color-muted: rgb(0 0 0 / 0.45);
+  --schema-badge-changed-bg: rgb(255 173 21 / 0.25);
+  --schema-badge-changed-fg: rgb(160 100 0);
+  --schema-badge-added-bg: rgb(46 160 67 / 0.2);
+  --schema-badge-added-fg: rgb(22 110 40);
+  --schema-badge-removed-bg: rgb(248 81 73 / 0.2);
+  --schema-badge-removed-fg: rgb(180 40 35);
 }
 
 /* Dark mode */
 .dark {
-  --schema-color-added: rgb(26 77 26);
-  --schema-color-added-hover: rgb(34 97 34);
-  --schema-color-added-active: rgb(42 117 42);
-  --schema-color-removed: rgb(92 31 31);
-  --schema-color-removed-hover: rgb(112 41 41);
-  --schema-color-removed-active: rgb(132 51 51);
+  --schema-color-added: rgb(30 58 30);
+  --schema-color-added-hover: rgb(38 73 38);
+  --schema-color-added-active: rgb(46 88 46);
+  --schema-color-added-accent: rgb(46 160 67);
+  --schema-color-removed: rgb(68 35 35);
+  --schema-color-removed-hover: rgb(85 44 44);
+  --schema-color-removed-active: rgb(102 53 53);
+  --schema-color-removed-accent: rgb(248 81 73);
   --schema-color-normal: #262626;
   --schema-color-normal-hover: rgb(64 64 64);
   --schema-color-normal-active: rgb(82 82 82);
-  --schema-color-reordered: rgb(180 83 9);
-  --schema-color-reordered-hover: rgb(146 64 14);
-  --schema-color-reordered-active: rgb(120 53 15);
+  --schema-color-changed: rgb(60 52 28);
+  --schema-color-changed-hover: rgb(75 65 33);
+  --schema-color-changed-active: rgb(90 78 38);
+  --schema-color-changed-accent: rgb(255 173 21);
+  --schema-color-muted: rgb(255 255 255 / 0.5);
+  --schema-badge-changed-bg: rgb(255 173 21 / 0.2);
+  --schema-badge-changed-fg: rgb(255 200 80);
+  --schema-badge-added-bg: rgb(46 160 67 / 0.2);
+  --schema-badge-added-fg: rgb(80 200 100);
+  --schema-badge-removed-bg: rgb(248 81 73 / 0.2);
+  --schema-badge-removed-fg: rgb(255 120 115);
 }
 
 /* Row backgrounds must be applied to cells because rows use display:contents */
 .row-added {
   background-color: var(--schema-color-added);
+  box-shadow: inset 3px 0 0 var(--schema-color-added-accent);
 }
 
 .row-added:hover,
@@ -54,6 +75,7 @@
 
 .row-removed {
   background-color: var(--schema-color-removed);
+  box-shadow: inset 3px 0 0 var(--schema-color-removed-accent);
 }
 
 .row-removed:hover,
@@ -82,6 +104,22 @@
   background-color: var(--schema-color-normal-active);
 }
 
+.row-changed {
+  background-color: var(--schema-color-changed);
+  box-shadow: inset 3px 0 0 var(--schema-color-changed-accent);
+}
+
+.row-changed:hover,
+.row-changed[aria-selected="true"],
+.row-changed.ag-row-selected {
+  background-color: var(--schema-color-changed-hover);
+}
+
+.row-changed[aria-selected="true"]:hover,
+.row-changed.ag-row-selected:hover {
+  background-color: var(--schema-color-changed-active);
+}
+
 .row-selectable {
   cursor: pointer;
 }
@@ -96,39 +134,71 @@
 .schema-column-index {
   text-align: right;
   filter: brightness(0.95);
+  color: var(--schema-color-muted);
 }
 
-/* for reorder-index and type-change column */
+.schema-column-type {
+  color: var(--schema-color-muted);
+}
 
-/* Type change badges for merged type column */
-.type-badge {
-  display: inline-block;
-  padding: 2px 6px;
+/* Change indicator badges (~/+/-) in the Name column */
+.schema-change-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  width: 16px;
+  height: 16px;
   border-radius: 4px;
-  font-size: 0.75rem;
-  line-height: 1.2;
+  flex-shrink: 0;
 }
 
-.type-badge-removed {
-  background-color: var(--schema-color-removed);
+.schema-change-badge-clickable {
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+}
+
+.schema-change-badge-clickable:hover {
+  filter: brightness(0.85);
+}
+
+.schema-change-badge-changed {
+  background-color: var(--schema-badge-changed-bg);
+  color: var(--schema-badge-changed-fg);
+}
+
+.schema-change-badge-added {
+  background-color: var(--schema-badge-added-bg);
+  color: var(--schema-badge-added-fg);
+}
+
+.schema-change-badge-removed {
+  background-color: var(--schema-badge-removed-bg);
+  color: var(--schema-badge-removed-fg);
+}
+
+/* Type change styling for merged type column */
+.schema-type-old {
+  text-decoration: line-through;
+  opacity: 0.6;
   margin-right: 4px;
 }
 
-.type-badge-added {
-  background-color: var(--schema-color-added);
+.schema-type-new {
+  font-weight: 700;
 }
 
-.column-index-reordered {
-  background-color: var(--schema-color-reordered);
+/* Index change styling for reordered columns */
+.schema-index-old {
+  text-decoration: line-through;
+  opacity: 0.6;
+  margin-right: 2px;
 }
 
-.row-normal:hover .column-index-reordered,
-.row-normal[aria-selected="true"] .column-index-reordered,
-.row-normal.ag-row-selected .column-index-reordered {
-  background-color: var(--schema-color-reordered-hover);
-}
-
-.row-normal[aria-selected="true"]:hover .column-index-reordered,
-.row-normal.ag-row-selected:hover .column-index-reordered {
-  background-color: var(--schema-color-reordered-active);
+.schema-index-new {
+  font-weight: 700;
 }
