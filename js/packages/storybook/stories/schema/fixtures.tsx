@@ -1,5 +1,6 @@
-import { DataTypeIcon } from "@datarecce/ui";
+import { buildColumnTooltip, DataTypeIcon } from "@datarecce/ui";
 import type { SchemaDiffRow } from "@datarecce/ui/components";
+import Tooltip from "@mui/material/Tooltip";
 import type { ColDef, RowClassParams } from "ag-grid-community";
 import type React from "react";
 
@@ -92,6 +93,23 @@ export const schemaColumns: ColDef[] = [
       const isTypeChanged = !isAdded && !isRemoved && baseType !== currentType;
       const columnType = currentType ?? baseType;
 
+      const columnStatus = isAdded
+        ? "added"
+        : isRemoved
+          ? "removed"
+          : isTypeChanged
+            ? "type_changed"
+            : row.definitionChanged
+              ? "definition_changed"
+              : "unchanged";
+
+      const tooltipTitle = buildColumnTooltip({
+        name: row.name,
+        status: columnStatus,
+        baseType,
+        currentType,
+      });
+
       let badge: React.ReactNode = null;
       if (isRowChanged(row)) {
         badge = (
@@ -114,27 +132,51 @@ export const schemaColumns: ColDef[] = [
       }
 
       return (
-        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          {badge}
-          <span>{row.name}</span>
-          {isTypeChanged ? (
-            <span
-              style={{ display: "inline-flex", alignItems: "center", gap: 2 }}
-            >
-              {baseType && (
-                <span style={{ textDecoration: "line-through", opacity: 0.6 }}>
-                  <DataTypeIcon type={String(baseType)} size={16} />
+        <Tooltip title={tooltipTitle} placement="top">
+          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {badge}
+            <span>{row.name}</span>
+            <span style={{ marginLeft: 4 }}>
+              {isTypeChanged ? (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 2,
+                  }}
+                >
+                  {baseType && (
+                    <span
+                      style={{ textDecoration: "line-through", opacity: 0.6 }}
+                    >
+                      <DataTypeIcon
+                        type={String(baseType)}
+                        size={16}
+                        disableTooltip
+                      />
+                    </span>
+                  )}
+                  <span style={{ fontSize: "0.7em", opacity: 0.5 }}>→</span>
+                  {currentType && (
+                    <DataTypeIcon
+                      type={String(currentType)}
+                      size={16}
+                      disableTooltip
+                    />
+                  )}
                 </span>
-              )}
-              <span style={{ fontSize: "0.7em", opacity: 0.5 }}>→</span>
-              {currentType && (
-                <DataTypeIcon type={String(currentType)} size={16} />
+              ) : (
+                columnType && (
+                  <DataTypeIcon
+                    type={String(columnType)}
+                    size={16}
+                    disableTooltip
+                  />
+                )
               )}
             </span>
-          ) : (
-            columnType && <DataTypeIcon type={String(columnType)} size={16} />
-          )}
-        </span>
+          </span>
+        </Tooltip>
       );
     },
   },

@@ -45,6 +45,7 @@ export type {
   // High-level views (Layer 3)
   ChecksViewProps,
   // Data type icons
+  ColumnTooltipInput,
   DataTypeIconProps,
   // UI primitives
   DiffTextProps,
@@ -57,9 +58,10 @@ export type {
   TypeCategory,
 } from "./components";
 export {
+  // Data type icons
+  buildColumnTooltip,
   // High-level views (Layer 3)
   ChecksView,
-  // Data type icons
   classifyType,
   DataTypeIcon,
   // UI primitives
