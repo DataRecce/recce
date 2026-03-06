@@ -146,7 +146,7 @@ export function PrivateLineageView(
 
   const {
     lineageGraph,
-    retchLineageGraph,
+    refetchLineageGraph,
     isLoading,
     error,
     refetchRunsAggregated,
@@ -166,10 +166,31 @@ export function PrivateLineageView(
   const cllHistory = useRef<(CllInput | undefined)[]>([]).current;
 
   const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
+  // Track nodes whose change analysis has triggered a lineage refetch,
+  // to avoid infinite refetch loops (CLL → invalidate → lineageGraph changes → CLL → …)
+  const changeAnalysisRefetched = useRef(new Set<string>());
   const actionGetCll = useMutation({
     mutationFn: (input: CllInput) => getCll(input, apiClient),
   });
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
+
+  // After change analysis CLL, the server populates per-column change data.
+  // Refetch lineage so the schema view can show "definition changed" badges.
+  // Uses a Set to avoid infinite refetch loops (CLL → invalidate → lineageGraph changes → CLL → …)
+  const refetchLineageAfterChangeAnalysis = useCallback(
+    (cllInput: CllInput) => {
+      if (!cllInput.change_analysis) return;
+
+      const dedupeKey = cllInput.node_id ?? "__impact_radius__";
+      if (!changeAnalysisRefetched.current.has(dedupeKey)) {
+        changeAnalysisRefetched.current.add(dedupeKey);
+        void queryClient.invalidateQueries({
+          queryKey: cacheKeys.lineage(),
+        });
+      }
+    },
+    [queryClient],
+  );
 
   const findNodeByName = useCallback(
     (name: string) => {
@@ -398,6 +419,7 @@ export function PrivateLineageView(
           cll = await actionGetCll.mutateAsync(
             viewOptions.column_level_lineage,
           );
+          refetchLineageAfterChangeAnalysis(viewOptions.column_level_lineage);
         } catch (e) {
           if (e instanceof AxiosError) {
             const e2 = e as AxiosError<{ detail?: string }>;
@@ -505,7 +527,8 @@ export function PrivateLineageView(
     }
     if (columnLevelLineage?.node_id) {
       setFocusedNodeId(columnLevelLineage.node_id);
-    } else {
+    } else if (!columnLevelLineage) {
+      // Only clear focus when CLL is turned off, not for Impact Radius
       setFocusedNodeId(undefined);
     }
   };
@@ -631,6 +654,7 @@ export function PrivateLineageView(
         cll = await actionGetCll.mutateAsync(
           newViewOptions.column_level_lineage,
         );
+        refetchLineageAfterChangeAnalysis(newViewOptions.column_level_lineage);
       } catch (e) {
         if (e instanceof AxiosError) {
           const e2 = e as AxiosError<{ detail?: string }>;
@@ -1061,7 +1085,7 @@ export function PrivateLineageView(
   }
 
   if (error) {
-    return <LineageViewError error={error} onRetry={retchLineageGraph} />;
+    return <LineageViewError error={error} onRetry={refetchLineageGraph} />;
   }
 
   if (!lineageGraph || nodes == initialNodes) {

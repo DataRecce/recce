@@ -124,7 +124,7 @@ function TestConsumer() {
         {context.envInfo?.adapterType ?? "none"}
       </span>
       <span data-testid="has-refetch">
-        {String(context.retchLineageGraph !== undefined)}
+        {String(context.refetchLineageGraph !== undefined)}
       </span>
       <span data-testid="has-runs-aggregated">
         {String(context.runsAggregated !== undefined)}
@@ -389,7 +389,7 @@ describe("LineageGraphContext (@datarecce/ui)", () => {
   });
 
   describe("callback props", () => {
-    it("exposes onRefetchLineageGraph callback via retchLineageGraph", () => {
+    it("exposes onRefetchLineageGraph callback via refetchLineageGraph", () => {
       const mockRefetch = vi.fn();
       render(
         <LineageGraphProvider

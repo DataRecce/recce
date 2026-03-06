@@ -1,5 +1,6 @@
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import "./style.css";
 import type {
   CellClickedEvent,
   GridApi,
@@ -28,11 +29,47 @@ import {
 } from "../../primitives";
 import { createDataGridFromData } from "../ui/dataGrid";
 
+export function SchemaLegend() {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        gap: 2,
+        px: 1,
+        py: 0.5,
+        fontSize: "0.75rem",
+        color: "text.secondary",
+      }}
+    >
+      <span>
+        <span className="schema-change-badge schema-change-badge-added">+</span>{" "}
+        added
+      </span>
+      <span>
+        <span className="schema-change-badge schema-change-badge-removed">
+          -
+        </span>{" "}
+        removed
+      </span>
+      <span>
+        <span className="schema-change-badge schema-change-badge-changed">
+          ~
+        </span>{" "}
+        changed
+      </span>
+    </Box>
+  );
+}
+
 interface SchemaViewProps {
   base?: NodeData;
   current?: NodeData;
   enableScreenshot?: boolean;
   showMenu?: boolean;
+  /** Per-column change status from breaking change analysis */
+  columnChanges?: Record<string, "added" | "removed" | "modified"> | null;
+  /** Callback when user clicks a definition-changed badge to view SQL diff */
+  onViewCode?: () => void;
 }
 
 function PrivateSingleEnvSchemaView(
@@ -168,7 +205,13 @@ function PrivateSingleEnvSchemaView(
 }
 
 export function PrivateSchemaView(
-  { base, current, showMenu = true }: SchemaViewProps,
+  {
+    base,
+    current,
+    showMenu = true,
+    columnChanges,
+    onViewCode,
+  }: SchemaViewProps,
   ref: Ref<DataGridHandle>,
 ) {
   const lineageViewContext = useLineageViewContext();
@@ -186,9 +229,9 @@ export function PrivateSchemaView(
 
     return createDataGridFromData(
       { type: "schema_diff", base: base?.columns, current: current?.columns },
-      { node, cllRunningMap, showMenu },
+      { node, cllRunningMap, showMenu, columnChanges, onViewCode },
     );
-  }, [base, current, cllRunningMap, showMenu]);
+  }, [base, current, cllRunningMap, showMenu, columnChanges, onViewCode]);
 
   const { lineageGraph, isActionAvailable } = useLineageGraphContext();
   const changeAnalysisAvailable = isActionAvailable("change_analysis");
@@ -268,11 +311,18 @@ export function PrivateSchemaView(
     const row = params.data;
     if (!row) return "row-normal";
 
-    let className;
+    let className: string;
     if (row.baseIndex === undefined) {
       className = "row-added";
     } else if (row.currentIndex === undefined) {
       return "row-removed"; // removed column isn't selectable
+    } else if (
+      row.baseType !== row.currentType ||
+      row.reordered === true ||
+      row.definitionChanged === true
+    ) {
+      // Any change (structural or definition-only) gets the changed row background
+      className = "row-changed";
     } else {
       className = "row-normal";
     }
@@ -311,6 +361,7 @@ export function PrivateSchemaView(
         <></>
       )}
 
+      <SchemaLegend />
       {rows.length > 0 && (
         <ScreenshotDataGrid
           style={{

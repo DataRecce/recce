@@ -65,6 +65,11 @@ When asked to "publish ui" or "release ui package":
 - `summary.py` row count gotcha: `base`/`curr` can be `None` (TABLE_NOT_FOUND, PERMISSION_DENIED). Guard with `is None` check before arithmetic — `dict.get(key, 0)` does NOT protect when key exists with `None` value.
 - Format changes to MCP tool responses require both deterministic tests AND BQ/LLM eval to prove agent behavior unchanged.
 
+## Frontend Style Conventions
+
+- **Storybook imports:** Never import from `ui/src` internal paths (e.g., `../../../ui/src/...`). Always use `@datarecce/ui/components` or other `@datarecce/ui` package exports. This keeps the package boundary intact.
+- **CSS color format:** Use space-separated `rgb()` syntax: `rgb(255 173 21)`, `rgb(0 0 0 / 0.45)`. Do not use comma-separated legacy format (`rgba(0, 0, 0, 0.45)`).
+
 ## Individual Preferences
 
 - @~/.claude/recce.md
