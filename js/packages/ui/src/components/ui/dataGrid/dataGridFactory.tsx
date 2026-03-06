@@ -302,10 +302,11 @@ function injectDataTypeIconRenderer(result: DataGridResult): DataGridResult {
       // Check if this is an inline diff column (field is "data_type" but data
       // lives under base__/current__ prefixed keys) or a simple column
       // (field is "data_type" and data lives directly under that key).
-      // Inline diff columns have an inlineRenderCell as their cellRenderer,
-      // which we detect by checking if a cellRenderer already exists.
-      // Simple profile columns use DataFrameColumnHeader (no cellRenderer set by default).
-      const isInlineDiff = colDef.field === "data_type" && colDef.cellRenderer;
+      // Detect by checking if the row data actually has base__data_type keys.
+      const isInlineDiff =
+        colDef.field === "data_type" &&
+        result.rows.length > 0 &&
+        Object.hasOwn(result.rows[0], "base__data_type");
       return {
         ...colDef,
         cellRenderer: isInlineDiff
