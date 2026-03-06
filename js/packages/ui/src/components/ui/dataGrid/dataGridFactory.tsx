@@ -206,6 +206,7 @@ function profileColumnNameRenderer(params: ICellRendererParams<RowObjectType>) {
           alignItems: "center",
           gap: "6px",
           overflow: "hidden",
+          height: "100%",
         }}
       >
         <Box
@@ -217,7 +218,7 @@ function profileColumnNameRenderer(params: ICellRendererParams<RowObjectType>) {
         >
           {name}
         </Box>
-        {dataType && <DataTypeIcon type={dataType} size={16} disableTooltip />}
+        {dataType && <DataTypeIcon type={dataType} size={20} disableTooltip />}
       </Box>
     </Tooltip>
   );
@@ -252,6 +253,7 @@ function profileDiffColumnNameRenderer(
           alignItems: "center",
           gap: "6px",
           overflow: "hidden",
+          height: "100%",
         }}
       >
         <Box
@@ -276,16 +278,16 @@ function profileDiffColumnNameRenderer(
               component="span"
               sx={{ textDecoration: "line-through", opacity: 0.6 }}
             >
-              <DataTypeIcon type={baseType} size={16} disableTooltip />
+              <DataTypeIcon type={baseType} size={20} disableTooltip />
             </Box>
             <Box component="span" sx={{ fontSize: "0.7em", opacity: 0.5 }}>
               →
             </Box>
-            <DataTypeIcon type={currentType} size={16} disableTooltip />
+            <DataTypeIcon type={currentType} size={20} disableTooltip />
           </Box>
         ) : (
           displayType && (
-            <DataTypeIcon type={displayType} size={16} disableTooltip />
+            <DataTypeIcon type={displayType} size={20} disableTooltip />
           )
         )}
       </Box>
