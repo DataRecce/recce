@@ -79,7 +79,6 @@ export function renderIndexCell(
 
   const { baseIndex, currentIndex, reordered } = row;
   const isRemoved = currentIndex === undefined;
-  const isAdded = baseIndex === undefined;
 
   if (
     reordered &&
@@ -95,15 +94,7 @@ export function renderIndexCell(
     );
   }
 
-  const value = isRemoved
-    ? baseIndex !== undefined
-      ? baseIndex
-      : "-"
-    : isAdded
-      ? currentIndex !== undefined
-        ? currentIndex
-        : "-"
-      : (currentIndex ?? "-");
+  const value = isRemoved ? (baseIndex ?? "-") : (currentIndex ?? "-");
   return <span>{value}</span>;
 }
 

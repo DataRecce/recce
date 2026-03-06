@@ -106,14 +106,6 @@ export function mergeColumns(
 }
 
 // ============================================================================
-// Cell Class Functions
-// ============================================================================
-
-function getColumnNameCellClass(): string {
-  return "schema-column";
-}
-
-// ============================================================================
 // Main Generator Functions
 // ============================================================================
 
@@ -144,7 +136,7 @@ export function toSchemaDataGrid(
       cellRenderer: node
         ? createSchemaColumnNameRenderer(node, cllRunningMap, showMenu)
         : undefined,
-      cellClass: getColumnNameCellClass,
+      cellClass: "schema-column",
     },
     {
       field: "type",
