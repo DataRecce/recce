@@ -57,8 +57,9 @@ function TextIcon({
     <BoxedSvg size={size} style={style} className={className}>
       <text
         x={VB_W / 2}
-        y={13.5}
+        y={VB_H / 2}
         textAnchor="middle"
+        dominantBaseline="central"
         fontSize={10.5}
         fontFamily="monospace"
         fontWeight={500}
