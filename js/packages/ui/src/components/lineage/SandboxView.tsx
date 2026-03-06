@@ -484,7 +484,7 @@ export function SandboxView({
         </IconButton>
       </Box>
       <DialogContent sx={{ p: 0 }}>
-        {/* Constant props to avoid react-split destroy/recreate — see DRC-2788 */}
+        {/* Constant props to avoid react-split destroy/recreate */}
         <VSplit
           sizes={isRunResultOpen ? [50, 50] : [100, 0]}
           minSize={0}

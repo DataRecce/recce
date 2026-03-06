@@ -127,7 +127,7 @@ export function Main({
   // Keep gutterSize and minSize constant to avoid react-split's destroy/recreate
   // path (triggered when these props change). Only changing `sizes` uses the
   // simpler `setSizes()` code path, which avoids DOM measurement race conditions
-  // that can cause the result pane to appear at the top of the page. (DRC-2788)
+  // that can cause the result pane to appear at the top of the page.
   return (
     <HSplit
       sizes={_isHistoryOpen ? [20, 80] : [0, 100]}
