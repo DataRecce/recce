@@ -23,7 +23,11 @@
   cursor: col-resize;
 }
 
-/* Hide gutter when a split pane is collapsed (DRC-2788) */
-.split-gutter-hidden .gutter {
+/* Hide gutter when a split pane is collapsed (DRC-2788).
+   Use child combinator (>) to avoid hiding gutters in nested split panes.
+   Note: split.js still subtracts gutterSize in calc(); the ~2.5px shortfall
+   when collapsed is imperceptible and is an acceptable trade-off vs the
+   destroy/recreate race condition. */
+.split-gutter-hidden > div > .gutter {
   display: none;
 }
