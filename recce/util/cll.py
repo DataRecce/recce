@@ -73,7 +73,6 @@ class CLLPerformanceTracking:
         self.other_error_nodes = 0
 
 
-
 def _dedeup_depends_on(depends_on: List[CllColumnDep]) -> List[CllColumnDep]:
     # deduplicate the depends_on list
     dedup_set = set()
