@@ -771,7 +771,8 @@ class ColumnLevelLineageTest(unittest.TestCase):
         # Resolvable columns still trace correctly
         assert_column(result, "id", "passthrough", [("t1", "id")])
         assert_column(result, "name", "passthrough", [("t1", "name")])
-        # child_count degrades but doesn't crash the whole model
+        # child_count resolves correctly — correlated subquery doesn't crash the model
+        assert_column(result, "child_count", "derived", [("t2", "fk"), ("t1", "id")])
 
     def test_where_in_subquery(self):
         sql = """
