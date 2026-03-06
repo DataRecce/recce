@@ -41,7 +41,7 @@ function isRowChanged(row: SchemaDiffRow): boolean {
 }
 
 // ============================================================================
-// Column defs — mirrors toSchemaDataGrid output (Index, Name, Type)
+// Column defs — mirrors toSchemaDataGrid output (Index, Name with inline DataTypeIcon)
 // ============================================================================
 
 export const schemaColumns: ColDef[] = [
@@ -86,6 +86,12 @@ export const schemaColumns: ColDef[] = [
       const row = params.data;
       if (!row) return null;
 
+      const { baseType, currentType } = row;
+      const isAdded = isRowAdded(row);
+      const isRemoved = isRowRemoved(row);
+      const isTypeChanged = !isAdded && !isRemoved && baseType !== currentType;
+      const columnType = currentType ?? baseType;
+
       let badge: React.ReactNode = null;
       if (isRowChanged(row)) {
         badge = (
@@ -93,13 +99,13 @@ export const schemaColumns: ColDef[] = [
             ~
           </span>
         );
-      } else if (isRowAdded(row)) {
+      } else if (isAdded) {
         badge = (
           <span className="schema-change-badge schema-change-badge-added">
             +
           </span>
         );
-      } else if (isRowRemoved(row)) {
+      } else if (isRemoved) {
         badge = (
           <span className="schema-change-badge schema-change-badge-removed">
             -
@@ -111,45 +117,25 @@ export const schemaColumns: ColDef[] = [
         <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
           {badge}
           <span>{row.name}</span>
+          {isTypeChanged ? (
+            <span
+              style={{ display: "inline-flex", alignItems: "center", gap: 2 }}
+            >
+              {baseType && (
+                <span style={{ textDecoration: "line-through", opacity: 0.6 }}>
+                  <DataTypeIcon type={String(baseType)} size={16} />
+                </span>
+              )}
+              <span style={{ fontSize: "0.7em", opacity: 0.5 }}>→</span>
+              {currentType && (
+                <DataTypeIcon type={String(currentType)} size={16} />
+              )}
+            </span>
+          ) : (
+            columnType && <DataTypeIcon type={String(columnType)} size={16} />
+          )}
         </span>
       );
-    },
-  },
-  {
-    field: "type",
-    headerName: "Type",
-    resizable: true,
-    minWidth: 300,
-    cellClass: "schema-column schema-column-type",
-    cellRenderer: (params: { data: SchemaDiffRow }) => {
-      const row = params.data;
-      if (!row) return null;
-      const { baseType, currentType, baseIndex, currentIndex } = row;
-      const isAdded = baseIndex === undefined;
-      const isRemoved = currentIndex === undefined;
-      const isTypeChanged = !isAdded && !isRemoved && baseType !== currentType;
-
-      if (isTypeChanged) {
-        return (
-          <span
-            style={{ display: "inline-flex", alignItems: "center", gap: 2 }}
-          >
-            {baseType && (
-              <span className="schema-type-old">
-                <DataTypeIcon type={String(baseType)} size={20} />
-              </span>
-            )}
-            {" \u2192 "}
-            {currentType && (
-              <span className="schema-type-new">
-                <DataTypeIcon type={String(currentType)} size={20} />
-              </span>
-            )}
-          </span>
-        );
-      }
-      const type = isRemoved ? baseType : currentType;
-      return type ? <DataTypeIcon type={String(type)} size={20} /> : <span />;
     },
   },
 ];
