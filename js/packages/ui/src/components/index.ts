@@ -141,6 +141,7 @@ export {
   ColumnNameCell,
   type SchemaDiffRow,
   type SchemaDiffStatus,
+  SchemaLegend,
   SchemaView,
   SingleEnvSchemaView,
 } from "./schema";

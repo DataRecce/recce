@@ -7,7 +7,7 @@
  */
 
 import "../../../components/schema/style.css";
-import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
+import type { ColDef, ColGroupDef } from "ag-grid-community";
 import {
   type NodeColumnData,
   type NodeData,
@@ -106,28 +106,6 @@ export function mergeColumns(
 }
 
 // ============================================================================
-// Cell Class Functions
-// ============================================================================
-
-function getColumnIndexCellClass(
-  params: CellClassParams<SchemaDiffRow>,
-): string {
-  const row = params.data;
-  if (
-    row?.baseIndex !== undefined &&
-    row?.currentIndex !== undefined &&
-    row?.reordered === true
-  ) {
-    return "column-index-reordered schema-column schema-column-index";
-  }
-  return "schema-column schema-column-index";
-}
-
-function getColumnNameCellClass(): string {
-  return "schema-column";
-}
-
-// ============================================================================
 // Main Generator Functions
 // ============================================================================
 
@@ -149,7 +127,7 @@ export function toSchemaDataGrid(
       minWidth: 35,
       width: 35,
       cellRenderer: renderIndexCell,
-      cellClass: getColumnIndexCellClass,
+      cellClass: "schema-column schema-column-index",
     },
     {
       field: "name",
@@ -158,14 +136,14 @@ export function toSchemaDataGrid(
       cellRenderer: node
         ? createSchemaColumnNameRenderer(node, cllRunningMap, showMenu)
         : undefined,
-      cellClass: getColumnNameCellClass,
+      cellClass: "schema-column",
     },
     {
       field: "type",
       headerName: "Type",
       resizable: true,
       cellRenderer: renderTypeCell,
-      cellClass: getColumnNameCellClass,
+      cellClass: "schema-column schema-column-type",
     },
   ];
 
