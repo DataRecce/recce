@@ -1102,10 +1102,14 @@ export function PrivateLineageView(
   }
   return (
     <LineageViewContext.Provider value={contextValue}>
+      {/* Constant props to avoid react-split destroy/recreate.
+           minSize={0} (was 400) lets users drag the panel smaller; the default
+           snapOffset (30px) prevents it from reaching 0px in practice. */}
       <HSplit
         sizes={focusedNode ? [70, 30] : [100, 0]}
-        minSize={focusedNode ? 400 : 0}
-        gutterSize={focusedNode ? 5 : 0}
+        minSize={0}
+        gutterSize={5}
+        className={focusedNode ? undefined : "split-gutter-hidden"}
         style={{ height: "100%", width: "100%" }}
       >
         <Stack

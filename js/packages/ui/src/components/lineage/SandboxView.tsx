@@ -484,10 +484,12 @@ export function SandboxView({
         </IconButton>
       </Box>
       <DialogContent sx={{ p: 0 }}>
+        {/* Constant props to avoid react-split destroy/recreate */}
         <VSplit
           sizes={isRunResultOpen ? [50, 50] : [100, 0]}
-          minSize={isRunResultOpen ? 100 : 0}
-          gutterSize={isRunResultOpen ? 5 : 0}
+          minSize={0}
+          gutterSize={5}
+          className={isRunResultOpen ? undefined : "split-gutter-hidden"}
           style={{
             flex: "1",
             contain: "size",
