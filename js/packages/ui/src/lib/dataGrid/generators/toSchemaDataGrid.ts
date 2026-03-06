@@ -110,14 +110,6 @@ export function mergeColumns(
 }
 
 // ============================================================================
-// Cell Class Functions
-// ============================================================================
-
-function getColumnNameCellClass(): string {
-  return "schema-column";
-}
-
-// ============================================================================
 // Main Generator Functions
 // ============================================================================
 
@@ -148,7 +140,7 @@ export function toSchemaDataGrid(
       cellRenderer: node
         ? createSchemaColumnNameRenderer(node, cllRunningMap, showMenu)
         : undefined,
-      cellClass: getColumnNameCellClass,
+      cellClass: "schema-column",
       // Include definitionChanged in the value so ag-grid re-renders the cell
       // when the badge state changes (e.g., after Impact Radius completes)
       valueGetter: (params) => {
