@@ -53,6 +53,8 @@ export interface SchemaDataGridOptions {
   showMenu?: boolean;
   /** Per-column change status from breaking change analysis */
   columnChanges?: Record<string, "added" | "removed" | "modified"> | null;
+  /** Callback when user clicks a definition-changed badge to view SQL diff */
+  onViewCode?: () => void;
 }
 
 export interface SchemaDataGridResult {
@@ -121,7 +123,7 @@ export function toSchemaDataGrid(
   schemaDiff: SchemaDiff,
   options: SchemaDataGridOptions = {},
 ): SchemaDataGridResult {
-  const { node, cllRunningMap, showMenu, columnChanges } = options;
+  const { node, cllRunningMap, showMenu, columnChanges, onViewCode } = options;
 
   const columns: ColDef<SchemaDiffRow>[] = [
     {
@@ -138,7 +140,12 @@ export function toSchemaDataGrid(
       headerName: "Name",
       resizable: true,
       cellRenderer: node
-        ? createSchemaColumnNameRenderer(node, cllRunningMap, showMenu)
+        ? createSchemaColumnNameRenderer(
+            node,
+            cllRunningMap,
+            showMenu,
+            onViewCode,
+          )
         : undefined,
       cellClass: "schema-column",
       // Include definitionChanged in the value so ag-grid re-renders the cell

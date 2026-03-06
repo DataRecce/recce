@@ -68,6 +68,8 @@ interface SchemaViewProps {
   showMenu?: boolean;
   /** Per-column change status from breaking change analysis */
   columnChanges?: Record<string, "added" | "removed" | "modified"> | null;
+  /** Callback when user clicks a definition-changed badge to view SQL diff */
+  onViewCode?: () => void;
 }
 
 function PrivateSingleEnvSchemaView(
@@ -203,7 +205,13 @@ function PrivateSingleEnvSchemaView(
 }
 
 export function PrivateSchemaView(
-  { base, current, showMenu = true, columnChanges }: SchemaViewProps,
+  {
+    base,
+    current,
+    showMenu = true,
+    columnChanges,
+    onViewCode,
+  }: SchemaViewProps,
   ref: Ref<DataGridHandle>,
 ) {
   const lineageViewContext = useLineageViewContext();
@@ -221,9 +229,9 @@ export function PrivateSchemaView(
 
     return createDataGridFromData(
       { type: "schema_diff", base: base?.columns, current: current?.columns },
-      { node, cllRunningMap, showMenu, columnChanges },
+      { node, cllRunningMap, showMenu, columnChanges, onViewCode },
     );
-  }, [base, current, cllRunningMap, showMenu, columnChanges]);
+  }, [base, current, cllRunningMap, showMenu, columnChanges, onViewCode]);
 
   const { lineageGraph, isActionAvailable } = useLineageGraphContext();
   const changeAnalysisAvailable = isActionAvailable("change_analysis");
@@ -310,8 +318,8 @@ export function PrivateSchemaView(
       return "row-removed"; // removed column isn't selectable
     } else if (
       row.baseType !== row.currentType ||
-      row.reordered ||
-      row.definitionChanged
+      row.reordered === true ||
+      row.definitionChanged === true
     ) {
       // Any change (structural or definition-only) gets the changed row background
       className = "row-changed";

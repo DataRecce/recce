@@ -22,6 +22,7 @@ export function createSchemaColumnNameRenderer(
   node: NodeData,
   cllRunningMap?: Map<string, boolean>,
   showMenu?: boolean,
+  onViewCode?: () => void,
 ): (params: ICellRendererParams<SchemaDiffRow>) => React.ReactNode {
   return (params) => {
     const row = params.data;
@@ -32,6 +33,7 @@ export function createSchemaColumnNameRenderer(
         row={row}
         cllRunning={cllRunningMap?.get(row.name) ?? false}
         showMenu={showMenu}
+        onViewCode={onViewCode}
       />
     );
   };

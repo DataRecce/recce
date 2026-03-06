@@ -57,6 +57,8 @@ export interface ColumnNameCellProps {
   cllRunning?: boolean;
   /** Whether to show the context menu (defaults to true) */
   showMenu?: boolean;
+  /** Callback when user clicks a definition-changed badge to view SQL diff */
+  onViewCode?: () => void;
 }
 
 // ============================================================================
@@ -82,6 +84,7 @@ export function ColumnNameCell({
   singleEnv,
   cllRunning,
   showMenu = true,
+  onViewCode,
 }: ColumnNameCellProps) {
   const lineageViewContext = useLineageViewContext();
   const { isActionAvailable } = useLineageGraphContext();
@@ -202,9 +205,28 @@ export function ColumnNameCell({
           </span>
         )}
         {definitionChanged && (
-          <span className="schema-change-badge schema-change-badge-changed">
-            ~
-          </span>
+          <Tooltip
+            title="Definition changed — click to view code"
+            placement="top"
+            onMouseOver={(e) => e.stopPropagation()}
+          >
+            {onViewCode ? (
+              <button
+                type="button"
+                className="schema-change-badge schema-change-badge-changed schema-change-badge-clickable"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewCode();
+                }}
+              >
+                ~
+              </button>
+            ) : (
+              <span className="schema-change-badge schema-change-badge-changed">
+                ~
+              </span>
+            )}
+          </Tooltip>
         )}
         <Box
           sx={{
