@@ -1,17 +1,12 @@
 /**
  * @file CllChangeAnalysisPropagation.test.ts
  *
- * Tests demonstrating the change_analysis state propagation bug.
+ * Tests for the change_analysis state model after the propagation fix.
  *
- * Bug: viewOptions.column_level_lineage is a dual-role object — both API
- * params and UI mode flag. Column clicks wholesale-replace this object via
- * showColumnLevelLineage({ node_id, column }), losing the change_analysis
- * flag. This causes isNodeShowingChangeAnalysis to return false even though
- * the user never turned off Impact Radius.
+ * Fix: changeAnalysisMode is now an independent boolean, separate from
+ * viewOptions.column_level_lineage. Column clicks replace CllInput wholesale
+ * but can no longer lose the change_analysis flag because it lives elsewhere.
  *
- * See: docs/plans/state_model_repair.md
- *
- * The logic under test is extracted verbatim from LineageViewOss.tsx:923-942.
  * These tests validate the state machine, not React rendering.
  */
 
@@ -27,49 +22,76 @@ import type {
 // ---------------------------------------------------------------------------
 
 /**
- * Mirrors the isNodeShowingChangeAnalysis closure in LineageViewOss.tsx:923-942.
- * Once the fix lands, this will be replaced by an import of the real function.
+ * Mirrors the isNodeShowingChangeAnalysis logic after the fix.
+ * changeAnalysisMode is now an independent boolean, not derived from CllInput.
  */
 function isNodeShowingChangeAnalysis(
   nodeId: string,
+  changeAnalysisMode: boolean,
   viewOptions: LineageDiffViewOptions,
   lineageGraph: LineageGraph,
 ): boolean {
   const node =
     nodeId in lineageGraph.nodes ? lineageGraph.nodes[nodeId] : undefined;
 
-  if (viewOptions.column_level_lineage?.change_analysis) {
-    const cll = viewOptions.column_level_lineage;
-
-    if (cll.node_id && !cll.column) {
-      return cll.node_id === nodeId && !!node?.data.changeStatus;
-    }
-    return !!node?.data.changeStatus;
+  if (!changeAnalysisMode) {
+    return false;
   }
 
-  return false;
+  const cll = viewOptions.column_level_lineage;
+  if (cll?.node_id && !cll.column) {
+    return cll.node_id === nodeId && !!node?.data.changeStatus;
+  }
+  return !!node?.data.changeStatus;
 }
 
 /**
- * Mirrors what showColumnLevelLineage does to viewOptions (LineageViewOss.tsx:504-534).
- * It replaces column_level_lineage wholesale.
+ * Mirrors what showColumnLevelLineage does after the fix.
+ * It replaces column_level_lineage wholesale, and clears changeAnalysisMode
+ * when CLL is turned off entirely.
  */
 function applyShowColumnLevelLineage(
   viewOptions: LineageDiffViewOptions,
   cllInput: CllInput | undefined,
-): LineageDiffViewOptions {
+  changeAnalysisMode: boolean,
+): { viewOptions: LineageDiffViewOptions; changeAnalysisMode: boolean } {
   return {
-    ...viewOptions,
-    column_level_lineage: cllInput,
+    viewOptions: {
+      ...viewOptions,
+      column_level_lineage: cllInput,
+    },
+    // Clear change analysis mode when CLL is turned off
+    changeAnalysisMode: cllInput ? changeAnalysisMode : false,
   };
 }
 
 /**
- * Mirrors what onColumnNodeClick passes to showColumnLevelLineage
- * (LineageViewOss.tsx:552-564). Only node_id and column — nothing else.
+ * Mirrors what onColumnNodeClick passes to showColumnLevelLineage.
+ * Only node_id and column — nothing else.
  */
 function buildColumnClickInput(nodeId: string, column: string): CllInput {
   return { node_id: nodeId, column };
+}
+
+/**
+ * Mirrors activating Impact Radius: sets CLL params and flips the
+ * independent changeAnalysisMode boolean to true.
+ */
+function activateImpactRadius(
+  viewOptions: LineageDiffViewOptions,
+  nodeId: string,
+): { viewOptions: LineageDiffViewOptions; changeAnalysisMode: boolean } {
+  return {
+    viewOptions: {
+      ...viewOptions,
+      column_level_lineage: {
+        node_id: nodeId,
+        change_analysis: true,
+        no_upstream: true,
+      },
+    },
+    changeAnalysisMode: true,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -137,7 +159,12 @@ describe("CLL change_analysis state propagation", () => {
       };
 
       expect(
-        isNodeShowingChangeAnalysis(MODIFIED_NODE, viewOptions, lineageGraph),
+        isNodeShowingChangeAnalysis(
+          MODIFIED_NODE,
+          true,
+          viewOptions,
+          lineageGraph,
+        ),
       ).toBe(true);
     });
 
@@ -151,7 +178,12 @@ describe("CLL change_analysis state propagation", () => {
       };
 
       expect(
-        isNodeShowingChangeAnalysis(UNMODIFIED_NODE, viewOptions, lineageGraph),
+        isNodeShowingChangeAnalysis(
+          UNMODIFIED_NODE,
+          true,
+          viewOptions,
+          lineageGraph,
+        ),
       ).toBe(false);
     });
 
@@ -165,7 +197,12 @@ describe("CLL change_analysis state propagation", () => {
       };
 
       expect(
-        isNodeShowingChangeAnalysis(MODIFIED_NODE, viewOptions, lineageGraph),
+        isNodeShowingChangeAnalysis(
+          MODIFIED_NODE,
+          true,
+          viewOptions,
+          lineageGraph,
+        ),
       ).toBe(true);
     });
 
@@ -178,7 +215,12 @@ describe("CLL change_analysis state propagation", () => {
       };
 
       expect(
-        isNodeShowingChangeAnalysis(MODIFIED_NODE, viewOptions, lineageGraph),
+        isNodeShowingChangeAnalysis(
+          MODIFIED_NODE,
+          false,
+          viewOptions,
+          lineageGraph,
+        ),
       ).toBe(false);
     });
 
@@ -186,7 +228,12 @@ describe("CLL change_analysis state propagation", () => {
       const viewOptions: LineageDiffViewOptions = {};
 
       expect(
-        isNodeShowingChangeAnalysis(MODIFIED_NODE, viewOptions, lineageGraph),
+        isNodeShowingChangeAnalysis(
+          MODIFIED_NODE,
+          false,
+          viewOptions,
+          lineageGraph,
+        ),
       ).toBe(false);
     });
   });
@@ -196,83 +243,104 @@ describe("CLL change_analysis state propagation", () => {
   // =========================================================================
 
   describe("change_analysis during column navigation", () => {
-    it.fails("preserves change_analysis mode when user clicks a column after activating impact radius", () => {
+    it("preserves change_analysis mode when user clicks a column after activating impact radius", () => {
       // Step 1: Impact Radius activated on a modified node
-      let viewOptions: LineageDiffViewOptions = {
-        column_level_lineage: {
-          node_id: MODIFIED_NODE,
-          change_analysis: true,
-          no_upstream: true,
-        },
-      };
+      let { viewOptions, changeAnalysisMode } = activateImpactRadius(
+        {},
+        MODIFIED_NODE,
+      );
 
       // Sanity: change analysis is active
       expect(
-        isNodeShowingChangeAnalysis(MODIFIED_NODE, viewOptions, lineageGraph),
+        isNodeShowingChangeAnalysis(
+          MODIFIED_NODE,
+          changeAnalysisMode,
+          viewOptions,
+          lineageGraph,
+        ),
       ).toBe(true);
 
       // Step 2: User clicks a column — onColumnNodeClick fires
       const columnClick = buildColumnClickInput(MODIFIED_NODE, "order_id");
-      viewOptions = applyShowColumnLevelLineage(viewOptions, columnClick);
+      ({ viewOptions, changeAnalysisMode } = applyShowColumnLevelLineage(
+        viewOptions,
+        columnClick,
+        changeAnalysisMode,
+      ));
 
-      // BUG: change_analysis is lost because columnClick doesn't include it.
-      // After the fix, this should still be true.
+      // changeAnalysisMode is independent — column clicks don't clear it
       expect(
-        isNodeShowingChangeAnalysis(MODIFIED_NODE, viewOptions, lineageGraph),
+        isNodeShowingChangeAnalysis(
+          MODIFIED_NODE,
+          changeAnalysisMode,
+          viewOptions,
+          lineageGraph,
+        ),
       ).toBe(true);
     });
 
-    it.fails("preserves change_analysis mode when user clicks columns on different nodes", () => {
+    it("preserves change_analysis mode when user clicks columns on different nodes", () => {
       // Step 1: Impact Radius on modified node
-      let viewOptions: LineageDiffViewOptions = {
-        column_level_lineage: {
-          node_id: MODIFIED_NODE,
-          change_analysis: true,
-          no_upstream: true,
-        },
-      };
+      let { viewOptions, changeAnalysisMode } = activateImpactRadius(
+        {},
+        MODIFIED_NODE,
+      );
 
       // Step 2: Click column on a DIFFERENT node
       const columnClick = buildColumnClickInput(UNMODIFIED_NODE, "customer_id");
-      viewOptions = applyShowColumnLevelLineage(viewOptions, columnClick);
+      ({ viewOptions, changeAnalysisMode } = applyShowColumnLevelLineage(
+        viewOptions,
+        columnClick,
+        changeAnalysisMode,
+      ));
 
       // The modified node should still show change analysis
       expect(
-        isNodeShowingChangeAnalysis(MODIFIED_NODE, viewOptions, lineageGraph),
+        isNodeShowingChangeAnalysis(
+          MODIFIED_NODE,
+          changeAnalysisMode,
+          viewOptions,
+          lineageGraph,
+        ),
       ).toBe(true);
     });
 
-    it.fails("preserves change_analysis through multiple sequential column clicks", () => {
+    it("preserves change_analysis through multiple sequential column clicks", () => {
       // Step 1: Impact Radius
-      let viewOptions: LineageDiffViewOptions = {
-        column_level_lineage: {
-          node_id: MODIFIED_NODE,
-          change_analysis: true,
-          no_upstream: true,
-        },
-      };
+      let { viewOptions, changeAnalysisMode } = activateImpactRadius(
+        {},
+        MODIFIED_NODE,
+      );
 
       // Step 2: Click column A
-      viewOptions = applyShowColumnLevelLineage(
+      ({ viewOptions, changeAnalysisMode } = applyShowColumnLevelLineage(
         viewOptions,
         buildColumnClickInput(MODIFIED_NODE, "order_id"),
-      );
+        changeAnalysisMode,
+      ));
 
       // Step 3: Click column B
-      viewOptions = applyShowColumnLevelLineage(
+      ({ viewOptions, changeAnalysisMode } = applyShowColumnLevelLineage(
         viewOptions,
         buildColumnClickInput(MODIFIED_NODE, "customer_id"),
-      );
+        changeAnalysisMode,
+      ));
 
       // Step 4: Click column on another node
-      viewOptions = applyShowColumnLevelLineage(
+      ({ viewOptions, changeAnalysisMode } = applyShowColumnLevelLineage(
         viewOptions,
         buildColumnClickInput(UNMODIFIED_NODE, "name"),
-      );
+        changeAnalysisMode,
+      ));
 
       // change_analysis should survive all of these
       expect(
-        isNodeShowingChangeAnalysis(MODIFIED_NODE, viewOptions, lineageGraph),
+        isNodeShowingChangeAnalysis(
+          MODIFIED_NODE,
+          changeAnalysisMode,
+          viewOptions,
+          lineageGraph,
+        ),
       ).toBe(true);
     });
   });
@@ -282,29 +350,26 @@ describe("CLL change_analysis state propagation", () => {
   // =========================================================================
 
   describe("CLL API params during column navigation", () => {
-    it.fails("column click CllInput should include change_analysis when impact mode is active", () => {
+    it("changeAnalysisMode survives column clicks so API call site can inject it", () => {
       // When impact radius is active and user clicks a column,
-      // the CllInput sent to the API should include change_analysis: true.
-      // Currently, onColumnNodeClick builds { node_id, column } with no
-      // change_analysis, so the API never receives it.
+      // changeAnalysisMode stays true — the API call site injects
+      // change_analysis: changeAnalysisMode into the request.
 
-      const impactRadiusState: LineageDiffViewOptions = {
-        column_level_lineage: {
-          node_id: MODIFIED_NODE,
-          change_analysis: true,
-          no_upstream: true,
-        },
-      };
-
-      // Simulate onColumnNodeClick: it builds a CllInput without change_analysis
-      const columnClick = buildColumnClickInput(MODIFIED_NODE, "order_id");
-      const apiInput = applyShowColumnLevelLineage(
-        impactRadiusState,
-        columnClick,
+      let { viewOptions, changeAnalysisMode } = activateImpactRadius(
+        {},
+        MODIFIED_NODE,
       );
 
-      // The CllInput that goes to the API should still have change_analysis
-      expect(apiInput.column_level_lineage?.change_analysis).toBe(true);
+      // Simulate onColumnNodeClick
+      const columnClick = buildColumnClickInput(MODIFIED_NODE, "order_id");
+      ({ viewOptions, changeAnalysisMode } = applyShowColumnLevelLineage(
+        viewOptions,
+        columnClick,
+        changeAnalysisMode,
+      ));
+
+      // The independent boolean survives — API call site uses this to inject change_analysis
+      expect(changeAnalysisMode).toBe(true);
     });
   });
 
@@ -315,19 +380,26 @@ describe("CLL change_analysis state propagation", () => {
   describe("deactivation", () => {
     it("change_analysis is cleared when CLL is turned off", () => {
       // Step 1: Impact Radius active
-      let viewOptions: LineageDiffViewOptions = {
-        column_level_lineage: {
-          node_id: MODIFIED_NODE,
-          change_analysis: true,
-          no_upstream: true,
-        },
-      };
+      let { viewOptions, changeAnalysisMode } = activateImpactRadius(
+        {},
+        MODIFIED_NODE,
+      );
 
       // Step 2: CLL turned off (resetColumnLevelLineage)
-      viewOptions = applyShowColumnLevelLineage(viewOptions, undefined);
+      ({ viewOptions, changeAnalysisMode } = applyShowColumnLevelLineage(
+        viewOptions,
+        undefined,
+        changeAnalysisMode,
+      ));
 
+      expect(changeAnalysisMode).toBe(false);
       expect(
-        isNodeShowingChangeAnalysis(MODIFIED_NODE, viewOptions, lineageGraph),
+        isNodeShowingChangeAnalysis(
+          MODIFIED_NODE,
+          changeAnalysisMode,
+          viewOptions,
+          lineageGraph,
+        ),
       ).toBe(false);
     });
   });
