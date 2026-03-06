@@ -18,6 +18,8 @@ import {
 
 export { classifyType };
 export type { TypeCategory };
+export type { ColumnTooltipInput } from "./tooltipText";
+export { buildColumnTooltip } from "./tooltipText";
 
 const ICON_MAP: Record<
   TypeCategory,

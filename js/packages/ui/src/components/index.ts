@@ -170,6 +170,7 @@ export { TopKDiffForm, TopKDiffResultView } from "./top-k";
 // UI primitives
 export type {
   ChangedOnlyCheckboxProps,
+  ColumnTooltipInput,
   DataTypeIconProps,
   DiffDisplayMode,
   DiffDisplayModeSwitchProps,
@@ -180,6 +181,7 @@ export type {
   TypeCategory,
 } from "./ui";
 export {
+  buildColumnTooltip,
   ChangedOnlyCheckbox,
   classifyType,
   DataTypeIcon,

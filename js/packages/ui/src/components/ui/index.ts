@@ -7,6 +7,8 @@ export {
   type ChangedOnlyCheckboxProps,
 } from "./ChangedOnlyCheckbox";
 export {
+  buildColumnTooltip,
+  type ColumnTooltipInput,
   classifyType,
   DataTypeIcon,
   type DataTypeIconProps,
