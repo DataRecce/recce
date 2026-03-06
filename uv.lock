@@ -791,7 +791,7 @@ resolution-markers = [
 ]
 dependencies = [
     { name = "agate", marker = "python_full_version < '3.10'" },
-    { name = "dbt-common", version = "1.34.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "dbt-common", version = "1.34.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "dbt-protos", marker = "python_full_version < '3.10'" },
     { name = "mashumaro", extra = ["msgpack"], marker = "python_full_version < '3.10'" },
     { name = "protobuf", marker = "python_full_version < '3.10'" },
@@ -814,7 +814,7 @@ resolution-markers = [
 ]
 dependencies = [
     { name = "agate", marker = "python_full_version >= '3.10'" },
-    { name = "dbt-common", version = "1.36.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "dbt-common", version = "1.37.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "dbt-protos", marker = "python_full_version >= '3.10'" },
     { name = "mashumaro", extra = ["msgpack"], marker = "python_full_version >= '3.10'" },
     { name = "protobuf", marker = "python_full_version >= '3.10'" },
@@ -828,7 +828,7 @@ wheels = [
 
 [[package]]
 name = "dbt-common"
-version = "1.34.0"
+version = "1.34.2"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version < '3.10'",
@@ -848,14 +848,14 @@ dependencies = [
     { name = "requests", marker = "python_full_version < '3.10'" },
     { name = "typing-extensions", marker = "python_full_version < '3.10'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3e/15/96e10614590dcea8c7764f52a7db90f924371a5a1de0d80ee1d42c536a51/dbt_common-1.34.0.tar.gz", hash = "sha256:b0bef16e2f67b3788cd26b867498cbcf9ec790a6e3b9e3f04dbb2849eac158c6", size = 85193, upload-time = "2025-10-28T15:01:09.557Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/eb/86debdf5a41b3fc1a121fd06baaa229466cf00c8c973773e41e38ec6ed80/dbt_common-1.34.2.tar.gz", hash = "sha256:0c8a27f2005f5b44c0d786d2c9825103c4dbeca8e5815739654cc4ea6367e242", size = 85605, upload-time = "2026-03-03T01:28:13.945Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ac/88/b0db9e62ca943a835e70f18309f8b481af0d2966e7cb223a85d0cb620c03/dbt_common-1.34.0-py3-none-any.whl", hash = "sha256:f7cdabf0f4a7bd63e319f3cd5e1b8cbff8439464a3955fca53d08a27a45b6a34", size = 87128, upload-time = "2025-10-28T15:01:08.132Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/49/19d607f59d7c520de1ded3cc748496286d9ffefde4cf6ed9cb12760fefb6/dbt_common-1.34.2-py3-none-any.whl", hash = "sha256:e0d0d2412710e103e829a0d134359f37e9a14685955910de8344258b8110848c", size = 87459, upload-time = "2026-03-03T01:28:12.345Z" },
 ]
 
 [[package]]
 name = "dbt-common"
-version = "1.36.0"
+version = "1.37.3"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -877,9 +877,9 @@ dependencies = [
     { name = "requests", marker = "python_full_version >= '3.10'" },
     { name = "typing-extensions", marker = "python_full_version >= '3.10'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ed/03/8b60230ac75c1dd6992a9c362d3eea2c70f46a3846ac851ec71e6edddbb1/dbt_common-1.36.0.tar.gz", hash = "sha256:ada7b7f4c0f7fff6388f83805ea79319f34269317f1e80f81c6aabde97ecdd08", size = 85757, upload-time = "2025-11-06T17:36:12.227Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/12/3a/c95078b7ebb87795551f73fd58e5ddbcf7f75b478e9b50ab72fe2939baf0/dbt_common-1.37.3.tar.gz", hash = "sha256:f99304cf93f549c09d302eb61d9b280748bbe24e2245e214189ea08b41196ec3", size = 86217, upload-time = "2026-03-02T17:26:34.027Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/10/55/5ffaecc4ce1fad34082228939b6924a23f6a446c3dfb75241f58a9ee5507/dbt_common-1.36.0-py3-none-any.whl", hash = "sha256:6c41cd3219bedeb61400f840f95dad7a419f2c30479752f8ae3e6c56e9ff06e2", size = 87407, upload-time = "2025-11-06T17:36:10.153Z" },
+    { url = "https://files.pythonhosted.org/packages/3b/7e/629351d21ffa1b51a893334faf8c497f0c34f4da3cece9b24d7a5af29d90/dbt_common-1.37.3-py3-none-any.whl", hash = "sha256:e11b81903107d9f254d0ec7ac14b2bcf6d531e46456cbc7881fdbfeb9bbd8eec", size = 87733, upload-time = "2026-03-02T17:26:31.248Z" },
 ]
 
 [[package]]
@@ -893,8 +893,8 @@ dependencies = [
     { name = "daff" },
     { name = "dbt-adapters", version = "1.17.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "dbt-adapters", version = "1.19.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "dbt-common", version = "1.34.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "dbt-common", version = "1.36.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "dbt-common", version = "1.34.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "dbt-common", version = "1.37.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "dbt-extractor" },
     { name = "dbt-protos" },
     { name = "dbt-semantic-interfaces" },
@@ -927,8 +927,8 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "dbt-adapters", version = "1.17.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "dbt-adapters", version = "1.19.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "dbt-common", version = "1.34.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "dbt-common", version = "1.36.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "dbt-common", version = "1.34.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "dbt-common", version = "1.37.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "dbt-core" },
     { name = "duckdb" },
 ]
@@ -962,14 +962,14 @@ wheels = [
 
 [[package]]
 name = "dbt-protos"
-version = "1.0.382"
+version = "1.0.431"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "protobuf" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4a/8f/294b89d5df1f3f8318363e9fcb162282bf2f20f56e0a41257fe7e75c2ef7/dbt_protos-1.0.382.tar.gz", hash = "sha256:3ad6a7f5ac626757265ecbf37904742a56c36868d881cc8717ac951b66617348", size = 105689, upload-time = "2025-10-06T16:31:33.013Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/29/67/777aa1c4af897773adb944c2db8d5c2073dd3ae114fa233b5559e900a550/dbt_protos-1.0.431.tar.gz", hash = "sha256:8fd3f52f2cb5532874eab93470fec3d9ace74e1ee342eaaf13b24867c042d0ce", size = 123577, upload-time = "2026-02-06T21:54:29.81Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/6b/e374dcb10ab208f2c7a5d3642ad9c9d7880674a98630495858fc004c0063/dbt_protos-1.0.382-py3-none-any.whl", hash = "sha256:f2345522f9f6ee9c14e576ab2aac010d7fa777c82919134fd7ef347a886331bb", size = 147232, upload-time = "2025-10-06T16:31:31.279Z" },
+    { url = "https://files.pythonhosted.org/packages/ac/56/8db9a3330af4462860fd5e38e8c1759ef9f1701f0c2111c9694c5c2e544c/dbt_protos-1.0.431-py3-none-any.whl", hash = "sha256:5ee60f11f2cae5faaf0e5f8420f7872ab48ae978ccd74fdba60d0f3ab8fd1d26", size = 178455, upload-time = "2026-02-06T21:54:28.189Z" },
 ]
 
 [[package]]
@@ -2933,7 +2933,7 @@ requires-dist = [
     { name = "pydantic" },
     { name = "pygithub" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=4.6" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23,<1.0" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23,<2.0" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "pytest-flake8", marker = "extra == 'dev'" },
     { name = "pytest-mypy", marker = "extra == 'dev'" },
@@ -2944,7 +2944,7 @@ requires-dist = [
     { name = "rich", specifier = ">=12.0.0" },
     { name = "ruamel-yaml", specifier = ">=0.18.6" },
     { name = "sentry-sdk" },
-    { name = "sqlglot", specifier = ">=27.29.0,<29.0" },
+    { name = "sqlglot", specifier = ">=27.29.0,<30.0" },
     { name = "tox", marker = "extra == 'dev'" },
     { name = "tox-uv", marker = "extra == 'dev'" },
     { name = "twine", marker = "extra == 'dev'" },

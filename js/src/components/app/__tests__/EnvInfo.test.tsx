@@ -43,21 +43,6 @@ vi.mock("@datarecce/ui/lib/api/track", () => ({
   trackExploreAction: vi.fn(),
 }));
 
-// Mock react-icons
-vi.mock("react-icons/io5", () => ({
-  IoClose: () => <span data-testid="close-icon">X</span>,
-}));
-
-vi.mock("react-icons/lu", () => ({
-  LuExternalLink: () => <span data-testid="external-link-icon">↗</span>,
-  LuChartBarBig: () => <span data-testid="chart-icon">Chart</span>,
-  LuSave: () => <span data-testid="save-icon">Save</span>,
-}));
-
-vi.mock("react-icons/pi", () => ({
-  PiInfo: () => <span data-testid="info-icon">i</span>,
-}));
-
 // ============================================================================
 // Imports
 // ============================================================================
@@ -197,7 +182,9 @@ describe("EnvInfo", () => {
     it("renders environment info button", () => {
       render(<EnvInfo />);
 
-      expect(screen.getByTestId("info-icon")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Environment Info/i }),
+      ).toBeInTheDocument();
     });
 
     it("displays schema names for base and current", () => {
@@ -247,12 +234,11 @@ describe("EnvInfo", () => {
       // Verify dialog is open
       expect(screen.getByText("Environment Information")).toBeInTheDocument();
 
-      // Close dialog
-      const closeButton = screen
-        .getAllByTestId("close-icon")[0]
-        .closest("button");
-      if (closeButton) {
-        fireEvent.click(closeButton);
+      // Close dialog via the icon button in the dialog title
+      const dialogTitle = document.querySelector(".MuiDialogTitle-root");
+      const dialogTitleCloseButton = dialogTitle?.querySelector("button");
+      if (dialogTitleCloseButton) {
+        fireEvent.click(dialogTitleCloseButton);
       }
 
       // Wait for MUI transition to complete (default is ~225ms)
@@ -648,7 +634,9 @@ describe("EnvInfo", () => {
 
       render(<EnvInfo />);
 
-      expect(screen.getByTestId("info-icon")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Environment Info/i }),
+      ).toBeInTheDocument();
     });
 
     it("handles empty schemas", () => {
@@ -661,7 +649,9 @@ describe("EnvInfo", () => {
       render(<EnvInfo />);
 
       // Should render without crashing
-      expect(screen.getByTestId("info-icon")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Environment Info/i }),
+      ).toBeInTheDocument();
     });
 
     it("handles null dbt info", () => {
