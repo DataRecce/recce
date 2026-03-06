@@ -40,7 +40,7 @@ const ICON_MAP: Record<
   unknown: UnknownIcon,
 };
 
-interface DataTypeIconProps {
+export interface DataTypeIconProps {
   type: string;
   size?: number;
   style?: CSSProperties;
