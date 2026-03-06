@@ -45,6 +45,7 @@ export interface DataTypeIconProps {
   size?: number;
   style?: CSSProperties;
   className?: string;
+  disableTooltip?: boolean;
 }
 
 export function DataTypeIcon({
@@ -52,18 +53,27 @@ export function DataTypeIcon({
   size = 24,
   style,
   className,
+  disableTooltip,
 }: DataTypeIconProps) {
   const category = classifyType(type);
   const IconComponent = ICON_MAP[category];
 
+  const icon = (
+    <span
+      data-testid="data-type-icon"
+      style={{ display: "inline-flex", alignItems: "center", lineHeight: 0 }}
+    >
+      <IconComponent size={size} style={style} className={className} />
+    </span>
+  );
+
+  if (disableTooltip) {
+    return icon;
+  }
+
   return (
     <Tooltip title={type} placement="top" arrow>
-      <span
-        data-testid="data-type-icon"
-        style={{ display: "inline-flex", alignItems: "center", lineHeight: 0 }}
-      >
-        <IconComponent size={size} style={style} className={className} />
-      </span>
+      {icon}
     </Tooltip>
   );
 }

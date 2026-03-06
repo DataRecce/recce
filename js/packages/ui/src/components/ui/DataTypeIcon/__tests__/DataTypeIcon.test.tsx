@@ -39,4 +39,14 @@ describe("DataTypeIcon", () => {
     const { container } = render(<DataTypeIcon type="" />);
     expect(container.querySelector("svg")).toBeInTheDocument();
   });
+
+  test("suppresses tooltip when disableTooltip is true", async () => {
+    const { container } = render(
+      <DataTypeIcon type="VARCHAR(256)" disableTooltip />,
+    );
+    expect(container.querySelector("svg")).toBeInTheDocument();
+    const icon = screen.getByTestId("data-type-icon");
+    await userEvent.hover(icon);
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
 });
