@@ -137,10 +137,6 @@
   color: var(--schema-color-muted);
 }
 
-.schema-column-type {
-  color: var(--schema-color-muted);
-}
-
 /* Change indicator badges (~/+/-) in the Name column */
 .schema-change-badge {
   display: inline-flex;
@@ -179,17 +175,6 @@
 .schema-change-badge-removed {
   background-color: var(--schema-badge-removed-bg);
   color: var(--schema-badge-removed-fg);
-}
-
-/* Type change styling for merged type column */
-.schema-type-old {
-  text-decoration: line-through;
-  opacity: 0.6;
-  margin-right: 4px;
-}
-
-.schema-type-new {
-  font-weight: 700;
 }
 
 /* Index change styling for reordered columns */

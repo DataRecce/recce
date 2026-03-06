@@ -10,7 +10,6 @@ import React from "react";
 import type { NodeData, RowObjectType } from "../../../api";
 import type { SchemaDiffRow, SchemaRow } from "../../schema";
 import { ColumnNameCell } from "../../schema/ColumnNameCell";
-import { DataTypeIcon } from "../DataTypeIcon";
 
 // ============================================================================
 // Render Functions for toSchemaDataGrid.ts
@@ -99,47 +98,4 @@ export function renderIndexCell(
 
   const value = isRemoved ? (baseIndex ?? "-") : (currentIndex ?? "-");
   return <span>{value}</span>;
-}
-
-/**
- * Renders the merged type column with strikethrough/bold for type changes.
- * - Type changed: strikethrough old → bold new
- * - Added row: shows currentType
- * - Removed row: shows baseType
- * - No change: shows currentType (same as baseType)
- */
-export function renderTypeCell(
-  params: ICellRendererParams<RowObjectType>,
-): React.ReactNode {
-  if (!params.data) {
-    return null;
-  }
-  const row = params.data;
-
-  const { baseType, currentType, baseIndex, currentIndex } = row;
-  const isAdded = baseIndex === undefined;
-  const isRemoved = currentIndex === undefined;
-  const isTypeChanged = !isAdded && !isRemoved && baseType !== currentType;
-
-  if (isTypeChanged) {
-    return (
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
-        {baseType && (
-          <span className="schema-type-old">
-            <DataTypeIcon type={String(baseType)} size={20} />
-          </span>
-        )}
-        {" → "}
-        {currentType && (
-          <span className="schema-type-new">
-            <DataTypeIcon type={String(currentType)} size={20} />
-          </span>
-        )}
-      </span>
-    );
-  }
-
-  // For added rows, show currentType; for removed rows, show baseType
-  const type = isRemoved ? baseType : currentType;
-  return type ? <DataTypeIcon type={String(type)} size={20} /> : <span />;
 }
