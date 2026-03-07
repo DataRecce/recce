@@ -1,5 +1,6 @@
 import { DataTypeIcon } from "@datarecce/ui";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import React from "react";
 
 const meta: Meta<typeof DataTypeIcon> = {
   title: "UI/DataTypeIcon",
@@ -71,11 +72,11 @@ export const AllCategories: Story = {
       <strong>Category</strong>
       <strong>Type String</strong>
       {allCategories.map(({ label, type }) => (
-        <>
-          <DataTypeIcon key={type} type={type} />
+        <React.Fragment key={type}>
+          <DataTypeIcon type={type} />
           <span>{label}</span>
-          <code style={{ color: "#6b7280" }}>{type}</code>
-        </>
+          <code style={{ color: "var(--schema-color-muted)" }}>{type}</code>
+        </React.Fragment>
       ))}
     </div>
   ),
@@ -134,33 +135,6 @@ export const SmallSize: Story = {
     },
   },
   args: { type: "VARCHAR", size: 16 },
-};
-
-// ============================================
-// Diff Context
-// ============================================
-
-export const DiffContext: Story = {
-  name: "Diff Context",
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Shows how icons inherit color for diff scenarios: red for removed type, green for added type.",
-      },
-    },
-  },
-  render: () => (
-    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-      <span style={{ color: "#ef4444" }}>
-        <DataTypeIcon type="INTEGER" size={20} />
-      </span>
-      <span>→</span>
-      <span style={{ color: "#22c55e" }}>
-        <DataTypeIcon type="BIGINT" size={20} />
-      </span>
-    </div>
-  ),
 };
 
 // ============================================
@@ -225,10 +199,10 @@ export const RealWorldTypes: Story = {
             }}
           >
             {types.map((t) => (
-              <>
-                <DataTypeIcon key={t} type={t} />
-                <code style={{ color: "#6b7280" }}>{t}</code>
-              </>
+              <React.Fragment key={t}>
+                <DataTypeIcon type={t} />
+                <code style={{ color: "var(--schema-color-muted)" }}>{t}</code>
+              </React.Fragment>
             ))}
           </div>
         </div>
