@@ -167,6 +167,8 @@ export function PrivateLineageView(
 
   const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
   const [changeAnalysisMode, setChangeAnalysisMode] = useState(false);
+  const changeAnalysisModeRef = useRef(false);
+  changeAnalysisModeRef.current = changeAnalysisMode;
   // Track nodes whose change analysis has triggered a lineage refetch,
   // to avoid infinite refetch loops (CLL → invalidate → lineageGraph changes → CLL → …)
   const changeAnalysisRefetched = useRef(new Set<string>());
@@ -416,11 +418,15 @@ export function PrivateLineageView(
 
       let cll: ColumnLineageData | undefined;
       if (viewOptions.column_level_lineage) {
+        const cllApiInput: CllInput = {
+          ...viewOptions.column_level_lineage,
+          change_analysis:
+            viewOptions.column_level_lineage.change_analysis ??
+            changeAnalysisModeRef.current,
+        };
         try {
-          cll = await actionGetCll.mutateAsync(
-            viewOptions.column_level_lineage,
-          );
-          refetchLineageAfterChangeAnalysis(viewOptions.column_level_lineage);
+          cll = await actionGetCll.mutateAsync(cllApiInput);
+          refetchLineageAfterChangeAnalysis(cllApiInput);
         } catch (e) {
           if (e instanceof AxiosError) {
             const e2 = e as AxiosError<{ detail?: string }>;
@@ -450,7 +456,7 @@ export function PrivateLineageView(
       trackLineageRender(
         nodes,
         viewOptions.view_mode ?? "changed_models",
-        changeAnalysisMode,
+        changeAnalysisModeRef.current,
         !!viewOptions.column_level_lineage?.column,
         !!focusedNodeId || !!run,
       );
@@ -460,6 +466,7 @@ export function PrivateLineageView(
     // Intentionally only run when lineageGraph changes (initial load/refetch).
     // viewOptions changes are handled separately by handleViewOptionsChanged.
     // Other dependencies (setNodes, setEdges, actionGetCll) are stable.
+    // changeAnalysisModeRef is a ref to avoid stale closure issues.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineageGraph]);
 
