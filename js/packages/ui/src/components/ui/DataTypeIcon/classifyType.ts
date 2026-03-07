@@ -123,8 +123,9 @@ export function classifyType(rawType: string): TypeCategory {
     return "boolean";
   }
 
-  // Strip parenthesized parameters
-  const base = trimmed.replace(/\s*\(.*\)$/, "");
+  // Strip parenthesized parameters (indexOf avoids regex backtracking)
+  const parenIdx = trimmed.indexOf("(");
+  const base = parenIdx === -1 ? trimmed : trimmed.slice(0, parenIdx).trimEnd();
 
   return CATEGORY_MAP[base] ?? "unknown";
 }
