@@ -658,7 +658,9 @@ export function PrivateLineageView(
     if (newViewOptions.column_level_lineage) {
       const cllApiInput: CllInput = {
         ...newViewOptions.column_level_lineage,
-        change_analysis: changeAnalysisMode,
+        change_analysis:
+          newViewOptions.column_level_lineage.change_analysis ??
+          changeAnalysisMode,
       };
       try {
         cll = await actionGetCll.mutateAsync(cllApiInput);
