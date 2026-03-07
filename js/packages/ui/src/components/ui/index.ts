@@ -7,6 +7,14 @@ export {
   type ChangedOnlyCheckboxProps,
 } from "./ChangedOnlyCheckbox";
 export {
+  buildColumnTooltip,
+  type ColumnTooltipInput,
+  classifyType,
+  DataTypeIcon,
+  type DataTypeIconProps,
+  type TypeCategory,
+} from "./DataTypeIcon";
+export {
   type DiffDisplayMode,
   DiffDisplayModeSwitch,
   type DiffDisplayModeSwitchProps,

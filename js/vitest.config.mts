@@ -102,7 +102,7 @@ export default defineConfig({
         ),
       "@datarecce/ui/components/ui/dataGrid/dataGridFactory": path.resolve(
         __dirname,
-        "./packages/ui/src/components/ui/dataGrid/dataGridFactory.ts",
+        "./packages/ui/src/components/ui/dataGrid/dataGridFactory.tsx",
       ),
       "@datarecce/ui/components/ui/dataGrid/defaultRenderCell": path.resolve(
         __dirname,
