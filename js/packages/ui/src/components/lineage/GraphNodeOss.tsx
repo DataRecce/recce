@@ -298,6 +298,7 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     viewOptions,
     cll,
     showColumnLevelLineage,
+    setChangeAnalysisMode,
   } = useLineageViewContextSafe();
   const { isActionAvailable } = useLineageGraphContext();
 
@@ -346,6 +347,7 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
   };
 
   const handleShowImpactRadius = (nodeId: string) => {
+    setChangeAnalysisMode(true);
     void showColumnLevelLineage({
       node_id: nodeId,
       change_analysis: true,
