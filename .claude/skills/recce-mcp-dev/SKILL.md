@@ -19,7 +19,7 @@ Entry point `run_mcp_server()` pops `single_env` before passing kwargs to `load_
 
 **Response contracts** — See CLAUDE.md. Additive `_meta` only. `summary.py`: guard with `is None`, not `dict.get(key, 0)`.
 
-**Single-env** — `_maybe_add_warning()` adds `_warning` to diff results. Descriptions get conditional note.
+**Single-env** — `_maybe_add_single_env_warning()` adds `_warning` to diff results. Descriptions get conditional note.
 
 ## Testing (Three Layers)
 

@@ -124,7 +124,9 @@ class Node:
                     "unsupported_materialization",
                 }
                 if (base_status in unavailable_statuses) or (curr_status in unavailable_statuses):
-                    return "N/A"
+                    # Show which status caused unavailability
+                    reason = base_status if base_status in unavailable_statuses else curr_status
+                    return f"N/A ({reason})"
                 return None
             base = int(base)
             current = int(current)
