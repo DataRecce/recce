@@ -173,7 +173,7 @@ class RecceMCPServer:
                 return "syntax_error"
         return None
 
-    def _maybe_add_warning(self, result: Dict[str, Any]) -> Dict[str, Any]:
+    def _maybe_add_single_env_warning(self, result: Dict[str, Any]) -> Dict[str, Any]:
         """Add _warning to diff results when in single-env mode."""
         if self.single_env:
             return {**result, "_warning": SINGLE_ENV_WARNING}
@@ -717,7 +717,7 @@ class RecceMCPServer:
         # Offload sync task to thread pool to avoid blocking the event loop
         result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
 
-        return self._maybe_add_warning(result)
+        return self._maybe_add_single_env_warning(result)
 
     async def _tool_query(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a query"""
@@ -746,7 +746,7 @@ class RecceMCPServer:
         # Convert to dict if it's a model
         if hasattr(result, "model_dump"):
             result = result.model_dump(mode="json")
-        return self._maybe_add_warning(result)
+        return self._maybe_add_single_env_warning(result)
 
     async def _tool_profile_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute profile diff task"""
@@ -758,7 +758,7 @@ class RecceMCPServer:
         # Convert to dict if it's a model
         if hasattr(result, "model_dump"):
             result = result.model_dump(mode="json")
-        return self._maybe_add_warning(result)
+        return self._maybe_add_single_env_warning(result)
 
     async def _tool_list_checks(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """List all checks in the current session"""
