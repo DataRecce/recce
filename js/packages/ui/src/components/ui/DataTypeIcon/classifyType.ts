@@ -73,6 +73,7 @@ const CATEGORY_MAP: Record<string, TypeCategory> = {
   TIMESTAMP_TZ: "datetime",
   TIMESTAMPTZ: "datetime",
   "TIMESTAMP WITH TIME ZONE": "datetime",
+  "TIMESTAMP WITHOUT TIME ZONE": "datetime",
   "TIMESTAMP WITH LOCAL TIME ZONE": "datetime",
   DATETIME2: "datetime",
   SMALLDATETIME: "datetime",
@@ -81,6 +82,8 @@ const CATEGORY_MAP: Record<string, TypeCategory> = {
   // time
   TIME: "time",
   TIMETZ: "time",
+  "TIME WITH TIME ZONE": "time",
+  "TIME WITHOUT TIME ZONE": "time",
 
   // binary
   BINARY: "binary",

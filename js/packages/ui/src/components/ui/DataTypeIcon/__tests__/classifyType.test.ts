@@ -102,6 +102,7 @@ describe("classifyType", () => {
       "TIMESTAMP_TZ",
       "TIMESTAMPTZ",
       "TIMESTAMP WITH TIME ZONE",
+      "TIMESTAMP WITHOUT TIME ZONE",
       "TIMESTAMP WITH LOCAL TIME ZONE",
       "DATETIME2",
       "SMALLDATETIME",
@@ -112,7 +113,12 @@ describe("classifyType", () => {
   });
 
   describe("time types", () => {
-    it.each(["TIME", "TIMETZ"])("classifies %s as time", (type) => {
+    it.each([
+      "TIME",
+      "TIMETZ",
+      "TIME WITH TIME ZONE",
+      "TIME WITHOUT TIME ZONE",
+    ])("classifies %s as time", (type) => {
       expect(classifyType(type)).toBe("time");
     });
   });
