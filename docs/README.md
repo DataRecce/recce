@@ -1,1 +1,1 @@
-Please check the [Recce documentation](https://datarecce.io/docs/)
+Please check the [Recce documentation](https://docs.reccehq.com/)

@@ -140,8 +140,7 @@ export function SandboxViewOss({ isOpen, onClose, current }: SandboxViewProps) {
   const { guideToast: prepareEnvToast, closeGuideToast } = useGuideToast({
     guideId: LOCAL_STORAGE_KEYS.prepareEnvGuideID,
     description: "Want to compare data changes with production data?",
-    externalLink:
-      "https://docs.datarecce.io/get-started/#prepare-dbt-artifacts",
+    externalLink: "https://docs.reccehq.com/get-started/#prepare-dbt-artifacts",
     externalLinkText: "Learn how.",
     onExternalLinkClick: () => {
       trackSingleEnvironment({

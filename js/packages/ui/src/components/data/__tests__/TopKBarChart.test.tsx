@@ -217,19 +217,27 @@ describe("TopKBarChart", () => {
   // TopKBarChart Tests
   // ==========================================================================
 
+  /** Helper to extract chart data from the mock Bar component */
+  function getChartData() {
+    const chart = screen.getByTestId("mock-bar-chart");
+    return JSON.parse(chart.getAttribute("data-data") || "{}");
+  }
+
   describe("TopKBarChart", () => {
     it("renders without crashing", () => {
       render(<TopKBarChart currentData={mockDataset} />);
 
-      expect(screen.getByText("apple")).toBeInTheDocument();
+      const data = getChartData();
+      expect(data.labels).toContain("apple");
     });
 
-    it("renders all current items", () => {
+    it("renders all current items as chart labels", () => {
       render(<TopKBarChart currentData={mockDataset} />);
 
-      expect(screen.getByText("apple")).toBeInTheDocument();
-      expect(screen.getByText("banana")).toBeInTheDocument();
-      expect(screen.getByText("cherry")).toBeInTheDocument();
+      const data = getChartData();
+      expect(data.labels).toContain("apple");
+      expect(data.labels).toContain("banana");
+      expect(data.labels).toContain("cherry");
     });
 
     it("shows title when provided", () => {
@@ -238,7 +246,7 @@ describe("TopKBarChart", () => {
       expect(screen.getByText("Test Title")).toBeInTheDocument();
     });
 
-    it("shows legend when showComparison=true and baseData provided", () => {
+    it("includes both datasets when showComparison=true and baseData provided", () => {
       render(
         <TopKBarChart
           currentData={mockDataset}
@@ -247,11 +255,14 @@ describe("TopKBarChart", () => {
         />,
       );
 
-      expect(screen.getByText("Base")).toBeInTheDocument();
-      expect(screen.getByText("Current")).toBeInTheDocument();
+      const data = getChartData();
+      expect(data.datasets).toHaveLength(2);
+      const labels = data.datasets.map((d: { label: string }) => d.label);
+      expect(labels).toContain("Base");
+      expect(labels).toContain("Current");
     });
 
-    it("does not show legend when showComparison=false", () => {
+    it("includes only current dataset when showComparison=false", () => {
       render(
         <TopKBarChart
           currentData={mockDataset}
@@ -260,17 +271,19 @@ describe("TopKBarChart", () => {
         />,
       );
 
-      expect(screen.queryByText("Base")).not.toBeInTheDocument();
-      expect(screen.queryByText("Current")).not.toBeInTheDocument();
+      const data = getChartData();
+      expect(data.datasets).toHaveLength(1);
+      expect(data.datasets[0].label).toBe("Current");
     });
 
     it("respects maxItems prop", () => {
       render(<TopKBarChart currentData={mockDataset} maxItems={3} />);
 
-      expect(screen.getByText("apple")).toBeInTheDocument();
-      expect(screen.getByText("banana")).toBeInTheDocument();
-      expect(screen.getByText("cherry")).toBeInTheDocument();
-      expect(screen.queryByText("date")).not.toBeInTheDocument();
+      const data = getChartData();
+      expect(data.labels).toContain("apple");
+      expect(data.labels).toContain("banana");
+      expect(data.labels).toContain("cherry");
+      expect(data.labels).not.toContain("date");
     });
 
     it("handles null values as (null)", () => {
@@ -282,7 +295,8 @@ describe("TopKBarChart", () => {
 
       render(<TopKBarChart currentData={dataWithNull} />);
 
-      expect(screen.getByText("(null)")).toBeInTheDocument();
+      const data = getChartData();
+      expect(data.labels).toContain("(null)");
     });
 
     it("handles empty string values as (empty)", () => {
@@ -294,7 +308,8 @@ describe("TopKBarChart", () => {
 
       render(<TopKBarChart currentData={dataWithEmpty} />);
 
-      expect(screen.getByText("(empty)")).toBeInTheDocument();
+      const data = getChartData();
+      expect(data.labels).toContain("(empty)");
     });
 
     it("skips empty (others) row when both base and current have 0 count", () => {
@@ -312,8 +327,8 @@ describe("TopKBarChart", () => {
         />,
       );
 
-      // No (others) should appear when remaining is 0
-      expect(screen.queryByText("(others)")).not.toBeInTheDocument();
+      const data = getChartData();
+      expect(data.labels).not.toContain("(others)");
     });
 
     it("shows (others) when there is remaining count in current", () => {
@@ -325,13 +340,14 @@ describe("TopKBarChart", () => {
 
       render(<TopKBarChart currentData={dataWithRemaining} />);
 
-      expect(screen.getByText("(others)")).toBeInTheDocument();
+      const data = getChartData();
+      expect(data.labels).toContain("(others)");
     });
 
     it("accepts theme prop", () => {
       render(<TopKBarChart currentData={mockDataset} theme="dark" />);
 
-      expect(screen.getByText("apple")).toBeInTheDocument();
+      expect(screen.getByTestId("mock-bar-chart")).toBeInTheDocument();
     });
 
     it("accepts className prop", () => {
@@ -353,7 +369,7 @@ describe("TopKBarChart", () => {
   // ==========================================================================
 
   describe("comparison mode", () => {
-    it("renders both base and current bars when comparison enabled", () => {
+    it("renders a single chart with two datasets when comparison enabled", () => {
       render(
         <TopKBarChart
           currentData={mockDataset}
@@ -362,14 +378,16 @@ describe("TopKBarChart", () => {
         />,
       );
 
-      // Should have multiple bar charts (one for each item, doubled for comparison)
       const charts = screen.getAllByTestId("mock-bar-chart");
-      // At least 2 charts per item (current + base)
-      expect(charts.length).toBeGreaterThanOrEqual(2);
+      expect(charts).toHaveLength(1);
+
+      const data = getChartData();
+      expect(data.datasets).toHaveLength(2);
+      expect(data.datasets[0].label).toBe("Current");
+      expect(data.datasets[1].label).toBe("Base");
     });
 
-    it("only renders current bars when comparison disabled", () => {
-      // Use dataset where counts sum to valids (no "others" row)
+    it("renders a single chart with one dataset when comparison disabled", () => {
       const exactData: TopKDataset = {
         values: ["a", "b", "c"],
         counts: [40, 35, 25],
@@ -384,9 +402,11 @@ describe("TopKBarChart", () => {
         />,
       );
 
-      // Should only have charts for current data (3 items)
       const charts = screen.getAllByTestId("mock-bar-chart");
-      expect(charts.length).toBe(3);
+      expect(charts).toHaveLength(1);
+
+      const data = getChartData();
+      expect(data.datasets).toHaveLength(1);
     });
 
     it("handles different lengths of base and current datasets", () => {
@@ -410,11 +430,11 @@ describe("TopKBarChart", () => {
         />,
       );
 
-      // Should render all current items
-      expect(screen.getByText("a")).toBeInTheDocument();
-      expect(screen.getByText("b")).toBeInTheDocument();
-      expect(screen.getByText("c")).toBeInTheDocument();
-      expect(screen.getByText("d")).toBeInTheDocument();
+      const data = getChartData();
+      expect(data.labels).toContain("a");
+      expect(data.labels).toContain("b");
+      expect(data.labels).toContain("c");
+      expect(data.labels).toContain("d");
     });
   });
 
@@ -499,10 +519,10 @@ describe("TopKBarChart", () => {
         />,
       );
 
-      // Should render current data without error
-      expect(screen.getByText("apple")).toBeInTheDocument();
-      // Should not show base legend without baseData
-      expect(screen.queryByText("Base")).not.toBeInTheDocument();
+      const data = getChartData();
+      expect(data.labels).toContain("apple");
+      // Only current dataset when baseData is undefined
+      expect(data.datasets).toHaveLength(1);
     });
   });
 

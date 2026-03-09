@@ -101,12 +101,16 @@ def schema_diff_should_be_approved(check_params: dict) -> bool:
 
 def run_should_be_approved(run):
     if run.type == RunType.ROW_COUNT_DIFF:
-        # If the run has an error, then the check should not be approved
         if run.error is not None:
             return False
-        # If the row count are exactly the same, then the check should be approved
+        if run.result is None:
+            return False
         for column, row_count_result in run.result.items():
-            if row_count_result["base"] != row_count_result["curr"]:
+            base = row_count_result.get("base")
+            curr = row_count_result.get("curr")
+            if base is None or curr is None:
+                return False
+            if base != curr:
                 return False
         return True
     return False

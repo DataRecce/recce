@@ -94,12 +94,12 @@ describe("LineageColumnNode", () => {
       expect(screen.getByText("user_email")).toBeInTheDocument();
     });
 
-    it("renders column type when provided", () => {
+    it("renders column type icon when provided", () => {
       const props = createMockColumnNodeProps({}, { type: "VARCHAR" });
 
       render(<LineageColumnNode {...props} />);
 
-      expect(screen.getByText("VARCHAR")).toBeInTheDocument();
+      expect(screen.getByTestId("data-type-icon")).toBeInTheDocument();
     });
 
     it("does not render type when not provided", () => {
@@ -497,15 +497,15 @@ describe("LineageColumnNode", () => {
       const { container } = render(<LineageColumnNode {...props} />);
       const element = container.firstChild as HTMLElement;
 
-      // Initially shows column type
-      expect(screen.getByText("INTEGER")).toBeInTheDocument();
+      // Initially shows column type icon
+      expect(screen.getByTestId("data-type-icon")).toBeInTheDocument();
 
       // Hover to show kebab menu
       fireEvent.mouseEnter(element);
 
-      // Now shows kebab menu instead of type
+      // Now shows kebab menu instead of type icon
       expect(screen.getByTestId("column-kebab-menu")).toBeInTheDocument();
-      expect(screen.queryByText("INTEGER")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("data-type-icon")).not.toBeInTheDocument();
     });
 
     it("calls onContextMenu when kebab menu is clicked", () => {
@@ -559,8 +559,8 @@ describe("LineageColumnNode", () => {
       fireEvent.mouseEnter(element);
       fireEvent.mouseLeave(element);
 
-      // Should show type again
-      expect(screen.getByText("INTEGER")).toBeInTheDocument();
+      // Should show type icon again
+      expect(screen.getByTestId("data-type-icon")).toBeInTheDocument();
       expect(screen.queryByTestId("column-kebab-menu")).not.toBeInTheDocument();
     });
 
@@ -572,8 +572,8 @@ describe("LineageColumnNode", () => {
 
       fireEvent.mouseEnter(element);
 
-      // Should still show type, no kebab menu
-      expect(screen.getByText("INTEGER")).toBeInTheDocument();
+      // Should still show type icon, no kebab menu
+      expect(screen.getByTestId("data-type-icon")).toBeInTheDocument();
       expect(screen.queryByTestId("column-kebab-menu")).not.toBeInTheDocument();
     });
   });
@@ -608,7 +608,7 @@ describe("LineageColumnNode", () => {
       render(<LineageColumnNode {...props} />);
 
       expect(screen.getByText("created_at")).toBeInTheDocument();
-      expect(screen.getByText("TIMESTAMP")).toBeInTheDocument();
+      expect(screen.getByTestId("data-type-icon")).toBeInTheDocument();
       expect(screen.getByText("+")).toBeInTheDocument(); // added indicator
       expect(screen.getByTestId("handle-target")).toBeInTheDocument();
       expect(screen.getByTestId("handle-source")).toBeInTheDocument();
@@ -628,7 +628,7 @@ describe("LineageColumnNode", () => {
       render(<LineageColumnNode {...props} />);
 
       expect(screen.getByText("user_id")).toBeInTheDocument();
-      expect(screen.getByText("INTEGER")).toBeInTheDocument();
+      expect(screen.getByTestId("data-type-icon")).toBeInTheDocument();
       expect(screen.getByText("D")).toBeInTheDocument(); // derived indicator
     });
 

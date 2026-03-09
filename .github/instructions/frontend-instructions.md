@@ -236,6 +236,24 @@ pnpm lint
 pnpm run build
 ```
 
+## Local Dependency Checking with Dependabot CLI
+
+**Prerequisites:**
+- `brew install dependabot` (official CLI tool)
+- Docker running (Dependabot uses containers for analysis)
+
+**Check frontend dependencies for updates:**
+```bash
+make deps-check-frontend
+# Runs: dependabot update npm_and_yarn DataRecce/recce --local . -d /js -o deps-frontend.yml
+# Output: deps-frontend.yml (gitignored)
+```
+
+**Check all dependencies (Python + frontend):**
+```bash
+make deps-check
+```
+
 ## Common Errors & Fixes
 
 **Error: Changes not appearing in browser**
@@ -314,6 +332,10 @@ cd .. && recce server
 
 # Clean build artifacts
 cd js && pnpm run clean
+
+# Dependency checks
+make deps-check-frontend         # Check JS deps (Docker required)
+make deps-check                  # Check all deps (Docker required)
 ```
 
 **Trust these instructions.** The frontend build process has specific requirements that differ from typical React apps because the output must integrate with the Python package. Only search for additional information if these instructions are incomplete or incorrect.

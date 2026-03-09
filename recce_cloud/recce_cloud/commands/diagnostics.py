@@ -61,7 +61,9 @@ class DiagnosticRenderer:
             project_id = check.details.get("project_id")
             source = check.details.get("source")
             source_label = " (via env vars)" if source == "env_vars" else ""
-            self.console.print(f"[green]✓[/green] Bound to [cyan]{org_id}/{project_id}[/cyan]{source_label}")
+            self.console.print(
+                f"[green]✓[/green] Bound to [cyan]{org_id}/{project_id}[/cyan]{source_label}"
+            )
         else:
             self._render_failure(check)
 
@@ -78,7 +80,9 @@ class DiagnosticRenderer:
             session_name = check.details.get("session_name", "(unnamed)")
             relative_time = check.details.get("relative_time")
             time_str = f" (uploaded {relative_time})" if relative_time else ""
-            self.console.print(f'[green]✓[/green] Found production session "[cyan]{session_name}[/cyan]"{time_str}')
+            self.console.print(
+                f'[green]✓[/green] Found production session "[cyan]{session_name}[/cyan]"{time_str}'
+            )
         else:
             self._render_failure(check)
 
@@ -95,7 +99,9 @@ class DiagnosticRenderer:
             session_name = check.details.get("session_name", "(unnamed)")
             relative_time = check.details.get("relative_time")
             time_str = f" (uploaded {relative_time})" if relative_time else ""
-            self.console.print(f'[green]✓[/green] Found dev session "[cyan]{session_name}[/cyan]"{time_str}')
+            self.console.print(
+                f'[green]✓[/green] Found dev session "[cyan]{session_name}[/cyan]"{time_str}'
+            )
         else:
             self._render_failure(check)
 
@@ -106,7 +112,9 @@ class DiagnosticRenderer:
         self.console.print()
 
         if results.all_passed:
-            self.console.print("[green]✓ All checks passed![/green] Your Recce setup is ready.")
+            self.console.print(
+                "[green]✓ All checks passed![/green] Your Recce setup is ready."
+            )
             self.console.print()
             self.console.print("Next step:")
             self.console.print("  $ recce-cloud review --session-name <session_name>")

@@ -36,7 +36,7 @@ export const createTopKDiffParams = (
 /**
  * Create top-k diff result
  */
-export const createTopKDiffResult = (
+const createTopKDiffResult = (
   overrides: Partial<TopKDiffResult> = {},
 ): TopKDiffResult => ({
   base: {

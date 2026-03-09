@@ -1,4 +1,4 @@
-.PHONY: help format lint check test clean install dev-install install-cloud install-cloud-dev build build-cloud build-all clean-build
+.PHONY: help format lint check test clean install dev-install install-cloud install-cloud-dev build build-cloud build-all clean-build deps-check-python deps-check-frontend deps-check
 
 # Default target executed when no arguments are given to make.
 default: help
@@ -35,6 +35,9 @@ help:
 	@echo "  make build-cloud       - Build recce-cloud package"
 	@echo "  make build-all         - Build both packages"
 	@echo "  make clean-build       - Clean build artifacts"
+	@echo "  make deps-check-python - Check Python deps for updates (requires: dependabot, Docker)"
+	@echo "  make deps-check-frontend - Check frontend deps for updates (requires: dependabot, Docker)"
+	@echo "  make deps-check        - Check all deps for updates"
 
 format:
 	@echo "Formatting with Black..."
@@ -124,3 +127,17 @@ build-all: clean-build build-frontend
 	@echo "Build complete!"
 	@echo "Packages in dist/:"
 	@ls -lh dist/
+
+# Dependency update checks using Dependabot CLI
+# Prerequisites: brew install dependabot, Docker running
+# Optional: LOCAL_GITHUB_ACCESS_TOKEN env var for private packages
+deps-check-python:
+	@echo "Checking Python dependency updates (requires Docker)..."
+	dependabot update pip DataRecce/recce --local . -d / -o deps-python.yml
+
+deps-check-frontend:
+	@echo "Checking frontend dependency updates (requires Docker)..."
+	dependabot update npm_and_yarn DataRecce/recce --local . -d /js -o deps-frontend.yml
+
+deps-check: deps-check-python deps-check-frontend
+	@echo "Dependency check complete. Results in deps-python.yml and deps-frontend.yml"

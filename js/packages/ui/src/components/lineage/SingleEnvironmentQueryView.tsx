@@ -20,7 +20,7 @@ import { RiMindMap, RiTerminalBoxLine } from "react-icons/ri";
 export interface BaseEnvironmentSetupGuideProps {
   /**
    * URL to navigate to when "Start Now" button is clicked.
-   * @default "https://docs.datarecce.io/get-started/#prepare-dbt-artifacts"
+   * @default "https://docs.reccehq.com/get-started/#prepare-dbt-artifacts"
    */
   docsUrl?: string;
   /**
@@ -37,7 +37,7 @@ export interface BaseEnvironmentSetupGuideProps {
 export interface BaseEnvironmentSetupNotificationProps {
   /**
    * URL for the documentation link.
-   * @default "https://docs.datarecce.io/configure-diff/"
+   * @default "https://docs.reccehq.com/configure-diff/"
    */
   docsUrl?: string;
 }
@@ -62,7 +62,7 @@ export interface BaseEnvironmentSetupNotificationProps {
  *
  * // Custom docs URL for different consumer
  * <BaseEnvironmentSetupGuide
- *   docsUrl="https://cloud.datarecce.io/docs/setup"
+ *   docsUrl="https://cloud.reccehq.com/docs/setup"
  * />
  *
  * // Custom click handler
@@ -72,7 +72,7 @@ export interface BaseEnvironmentSetupNotificationProps {
  * ```
  */
 export function BaseEnvironmentSetupGuide({
-  docsUrl = "https://docs.datarecce.io/get-started/#prepare-dbt-artifacts",
+  docsUrl = "https://docs.reccehq.com/get-started/#prepare-dbt-artifacts",
   onStartClick,
 }: BaseEnvironmentSetupGuideProps = {}) {
   const handleStartClick = () => {
@@ -187,12 +187,12 @@ export function BaseEnvironmentSetupGuide({
  *
  * // Custom docs URL for different consumer
  * <BaseEnvironmentSetupNotification
- *   docsUrl="https://cloud.datarecce.io/docs/configure"
+ *   docsUrl="https://cloud.reccehq.com/docs/configure"
  * />
  * ```
  */
 export function BaseEnvironmentSetupNotification({
-  docsUrl = "https://docs.datarecce.io/configure-diff/",
+  docsUrl = "https://docs.reccehq.com/configure-diff/",
 }: BaseEnvironmentSetupNotificationProps = {}) {
   return (
     <Stack direction="row" spacing="10px" alignItems="flex-start">

@@ -108,11 +108,9 @@ export type {
 // =============================================================================
 
 export type {
-  SchemaDiffHandle,
-  SchemaDiffProps,
   SchemaDiffRow,
   SchemaDiffStatus,
-} from "../components/schema/SchemaDiff";
+} from "../components/schema/types";
 
 // =============================================================================
 // EDITOR TYPES

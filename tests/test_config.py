@@ -1,4 +1,4 @@
-import os.path
+import os
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -35,6 +35,16 @@ class RecceConfigTestCase(TestCase):
         self.assertIsNotNone(default_config.config)
         self.assertIsInstance(preset_checks, list)
         self.assertEqual(len(preset_checks), 2)
+
+    @patch("recce.config.RecceConfig.save")
+    @patch.dict(os.environ, {"RECCE_CLOUD_INSTANCE": "true"})
+    def test_recce_config_not_found_cloud_instance(self, mock_save):
+        """Cloud instances rely on session state, not recce.yml. Skip config file generation."""
+        config = RecceConfig("NOT_EXISTING_FILE")
+        # Should not generate or save the config file
+        mock_save.assert_not_called()
+        # Should use empty config (no preset checks)
+        self.assertEqual(config.config, {})
 
     @patch("recce.yaml.safe_load")
     def test_recce_config_null_checks(self, mock_yaml_safe_load):

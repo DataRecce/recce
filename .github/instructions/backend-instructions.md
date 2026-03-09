@@ -48,26 +48,26 @@ python3 --version
 This repository contains TWO separate Python packages:
 
 ### 1. Main Package (recce)
-**Installation:** `setup.py`
+**Config:** `pyproject.toml` (hatchling build, uv workspace)
 **Command:** `recce`
 **Dependencies:** 20+ (FastAPI, dbt parsing, etc.)
 **Purpose:** Full dbt/SQLMesh validation tool with web UI
 
 ### 2. Cloud CLI (recce-cloud)
-**Installation:** `setup_cloud.py`
+**Config:** `recce_cloud/pyproject.toml`
 **Command:** `recce-cloud`
 **Dependencies:** 3 only (click, requests, rich)
 **Purpose:** Lightweight CI/CD artifact upload tool
 
-**CRITICAL: These are separate packages with separate installations:**
+**CRITICAL: These are separate packages managed via uv workspace:**
 ```bash
 # Main package
-pip install -e .[dev]        # Development
-pip install .                # Production
+make install-dev                        # Development (uv + pre-commit)
+uv pip install --system .               # Production
 
 # Cloud CLI
-python setup_cloud.py develop    # Development
-python setup_cloud.py install    # Production
+uv pip install --system -e ./recce_cloud        # Development
+uv pip install --system ./recce_cloud           # Production
 ```
 
 ## Development Setup
@@ -76,7 +76,7 @@ python setup_cloud.py install    # Production
 ```bash
 make install-dev
 # This does:
-# 1. pip install -e .[dev] - Installs package in editable mode with dev dependencies
+# 1. uv pip install --system -e .[dev,mcp] - Installs package in editable mode with dev dependencies
 # 2. pre-commit install - Sets up git hooks for Black, isort, flake8
 ```
 
@@ -203,7 +203,7 @@ make test-tox-python-versions
 
 **Error: "ModuleNotFoundError" after adding dependency**
 - **Cause:** Forgot to reinstall package
-- **Fix:** `pip install -e .[dev]` or `make install-dev`
+- **Fix:** `make install-dev` or `make install-dev`
 
 **Error: "flake8 errors" on commit**
 - **Cause:** Forgot to format code first
@@ -227,7 +227,7 @@ make test-tox-python-versions
 
 **Error: "No module named 'recce'" when running tests**
 - **Cause:** Package not installed in editable mode
-- **Fix:** `pip install -e .[dev]`
+- **Fix:** `make install-dev`
 
 ## Architecture - Key Modules
 
@@ -361,7 +361,7 @@ cd integration_tests/sqlmesh
 **Replicate CI locally:**
 ```bash
 # Style check
-pip install flake8 && make flake8
+make flake8
 
 # Basic tests
 make test
@@ -371,6 +371,27 @@ make test-tox
 
 # Integration test
 cd integration_tests/dbt && ./smoke_test.sh
+```
+
+## Local Dependency Checking with Dependabot CLI
+
+**Prerequisites:**
+- `brew install dependabot` (official CLI tool)
+- Docker running (Dependabot uses containers for analysis)
+- Optional: `LOCAL_GITHUB_ACCESS_TOKEN` env var for private packages
+
+**Check Python dependencies for updates:**
+```bash
+make deps-check-python
+# Runs: dependabot update pip DataRecce/recce --local . -d / -o deps-python.yml
+# Output: deps-python.yml (gitignored)
+```
+
+**Check all dependencies:**
+```bash
+make deps-check
+# Runs both Python and frontend checks
+# Output: deps-python.yml, deps-frontend.yml
 ```
 
 ## Key Patterns & Conventions
@@ -470,6 +491,10 @@ recce debug                   # Diagnose setup
 recce run                     # Execute checks
 recce version                 # Show version
 recce-cloud upload            # Upload artifacts
+
+# Dependency checks
+make deps-check-python           # Check Python deps (Docker required)
+make deps-check                  # Check all deps (Docker required)
 ```
 
 ## Working with Adapters
@@ -528,7 +553,7 @@ recce-cloud upload            # Upload artifacts
 
 **Tests failing:**
 - Run with `-v` flag: `pytest tests/test_x.py -v`
-- Check test dependencies installed: `pip install -e .[dev]`
+- Check test dependencies installed: `make install-dev`
 - Try fresh install: `pip uninstall recce && make install-dev`
 
 **Import errors:**

@@ -40,6 +40,7 @@ function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
           <SchemaView
             base={node.data.data.base}
             current={node.data.data.current}
+            columnChanges={node.data.change?.columns}
           />
         </Box>
       </CardContent>
