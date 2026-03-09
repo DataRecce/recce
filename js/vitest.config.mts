@@ -363,6 +363,10 @@ export default defineConfig({
             "html-url-attributes",
             // React icons is ESM-only
             "react-icons",
+            // Excel packages use subpath-only exports (no root export),
+            // causing intermittent resolveDeepImport failures in Vite optimizer
+            "write-excel-file",
+            "read-excel-file",
           ],
         },
       },
