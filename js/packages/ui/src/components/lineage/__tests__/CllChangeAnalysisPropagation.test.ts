@@ -74,6 +74,21 @@ function buildColumnClickInput(nodeId: string, column: string): CllInput {
 }
 
 /**
+ * Mirrors the refreshLayout clearing behavior: when CLL is cleared by any
+ * path (reselect, selectParentNodes, selectChildNodes), changeAnalysisMode
+ * is also cleared.
+ */
+function applyRefreshLayoutCllClearing(
+  viewOptions: LineageDiffViewOptions,
+  changeAnalysisMode: boolean,
+): { viewOptions: LineageDiffViewOptions; changeAnalysisMode: boolean } {
+  if (!viewOptions.column_level_lineage) {
+    return { viewOptions, changeAnalysisMode: false };
+  }
+  return { viewOptions, changeAnalysisMode };
+}
+
+/**
  * Mirrors activating Impact Radius: sets CLL params and flips the
  * independent changeAnalysisMode boolean to true.
  */
@@ -401,6 +416,48 @@ describe("CLL change_analysis state propagation", () => {
           lineageGraph,
         ),
       ).toBe(false);
+    });
+
+    it("change_analysis is cleared when CLL is cleared by reselect path", () => {
+      // Step 1: Impact Radius active
+      let { viewOptions, changeAnalysisMode } = activateImpactRadius(
+        {},
+        MODIFIED_NODE,
+      );
+
+      // Step 2: Reselect clears CLL (e.g. view mode change)
+      viewOptions = { ...viewOptions, column_level_lineage: undefined };
+      ({ viewOptions, changeAnalysisMode } = applyRefreshLayoutCllClearing(
+        viewOptions,
+        changeAnalysisMode,
+      ));
+
+      expect(changeAnalysisMode).toBe(false);
+      expect(
+        isNodeShowingChangeAnalysis(
+          MODIFIED_NODE,
+          changeAnalysisMode,
+          viewOptions,
+          lineageGraph,
+        ),
+      ).toBe(false);
+    });
+
+    it("change_analysis is cleared when selectParentNodes clears CLL", () => {
+      // Step 1: Impact Radius active
+      let { viewOptions, changeAnalysisMode } = activateImpactRadius(
+        {},
+        MODIFIED_NODE,
+      );
+
+      // Step 2: selectParentNodes calls handleViewOptionsChanged with CLL undefined
+      viewOptions = { ...viewOptions, column_level_lineage: undefined };
+      ({ viewOptions, changeAnalysisMode } = applyRefreshLayoutCllClearing(
+        viewOptions,
+        changeAnalysisMode,
+      ));
+
+      expect(changeAnalysisMode).toBe(false);
     });
   });
 });

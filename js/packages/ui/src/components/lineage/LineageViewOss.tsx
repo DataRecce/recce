@@ -684,6 +684,10 @@ export function PrivateLineageView(
           return;
         }
       }
+    } else {
+      // Clear change analysis mode when CLL is cleared by any path
+      // (reselect, selectParentNodes, selectChildNodes, etc.)
+      setChangeAnalysisMode(false);
     }
 
     // Capture positions if preservePositions is true
