@@ -7,7 +7,7 @@
  */
 
 import "../../../components/schema/style.css";
-import type { CellClassParams, ColDef, ColGroupDef } from "ag-grid-community";
+import type { ColDef, ColGroupDef } from "ag-grid-community";
 import {
   type NodeColumnData,
   type NodeData,
@@ -17,7 +17,6 @@ import {
   createSchemaColumnNameRenderer,
   createSingleEnvColumnNameRenderer,
   renderIndexCell,
-  renderTypeCell,
 } from "../../../components/ui/dataGrid/schemaCells";
 import { mergeKeysWithStatus } from "../../../utils";
 
@@ -32,6 +31,8 @@ export interface SchemaDiffRow extends RowObjectType {
   baseIndex?: number;
   currentType?: string;
   baseType?: string;
+  /** True when the column's SQL definition changed but name/type stayed the same */
+  definitionChanged?: boolean;
 }
 
 export interface SchemaRow extends RowObjectType {
@@ -49,6 +50,10 @@ export interface SchemaDataGridOptions {
   cllRunningMap?: Map<string, boolean>;
   /** Whether to show the column action menu (default: true) */
   showMenu?: boolean;
+  /** Per-column change status from breaking change analysis */
+  columnChanges?: Record<string, "added" | "removed" | "modified"> | null;
+  /** Callback when user clicks a definition-changed badge to view SQL diff */
+  onViewCode?: () => void;
 }
 
 export interface SchemaDataGridResult {
@@ -106,40 +111,18 @@ export function mergeColumns(
 }
 
 // ============================================================================
-// Cell Class Functions
-// ============================================================================
-
-function getColumnIndexCellClass(
-  params: CellClassParams<SchemaDiffRow>,
-): string {
-  const row = params.data;
-  if (
-    row?.baseIndex !== undefined &&
-    row?.currentIndex !== undefined &&
-    row?.reordered === true
-  ) {
-    return "column-index-reordered schema-column schema-column-index";
-  }
-  return "schema-column schema-column-index";
-}
-
-function getColumnNameCellClass(): string {
-  return "schema-column";
-}
-
-// ============================================================================
 // Main Generator Functions
 // ============================================================================
 
 /**
  * Generates grid configuration for schema diff view
- * Uses merged columns: Index (merged base/current), Name, Type (merged with badges)
+ * Uses merged columns: Index (merged base/current), Name (with inline DataTypeIcon)
  */
 export function toSchemaDataGrid(
   schemaDiff: SchemaDiff,
   options: SchemaDataGridOptions = {},
 ): SchemaDataGridResult {
-  const { node, cllRunningMap, showMenu } = options;
+  const { node, cllRunningMap, showMenu, columnChanges, onViewCode } = options;
 
   const columns: ColDef<SchemaDiffRow>[] = [
     {
@@ -149,27 +132,52 @@ export function toSchemaDataGrid(
       minWidth: 35,
       width: 35,
       cellRenderer: renderIndexCell,
-      cellClass: getColumnIndexCellClass,
+      cellClass: "schema-column schema-column-index",
     },
     {
       field: "name",
       headerName: "Name",
       resizable: true,
       cellRenderer: node
-        ? createSchemaColumnNameRenderer(node, cllRunningMap, showMenu)
+        ? createSchemaColumnNameRenderer(
+            node,
+            cllRunningMap,
+            showMenu,
+            onViewCode,
+          )
         : undefined,
-      cellClass: getColumnNameCellClass,
-    },
-    {
-      field: "type",
-      headerName: "Type",
-      resizable: true,
-      cellRenderer: renderTypeCell,
-      cellClass: getColumnNameCellClass,
+      cellClass: "schema-column",
+      // Include definitionChanged in the value so ag-grid re-renders the cell
+      // when the badge state changes (e.g., after Impact Radius completes)
+      valueGetter: (params) => {
+        const row = params.data;
+        return row ? `${row.name}|${row.definitionChanged ?? false}` : "";
+      },
     },
   ];
 
   const rows = Object.values(schemaDiff);
+
+  // Mark columns whose SQL definition changed but have no other visible change
+  if (columnChanges) {
+    for (const row of rows) {
+      const isAdded = row.baseIndex === undefined;
+      const isRemoved = row.currentIndex === undefined;
+      const isTypeChanged =
+        !isAdded && !isRemoved && row.baseType !== row.currentType;
+      const changeStatus = columnChanges[row.name];
+
+      if (
+        changeStatus === "modified" &&
+        !isAdded &&
+        !isRemoved &&
+        !isTypeChanged &&
+        !row.reordered
+      ) {
+        row.definitionChanged = true;
+      }
+    }
+  }
 
   return { columns, rows };
 }
@@ -210,12 +218,6 @@ export function toSingleEnvDataGrid(
       cellRenderer: node
         ? createSingleEnvColumnNameRenderer(node, cllRunningMap, showMenu)
         : undefined,
-      cellClass: "schema-column",
-    },
-    {
-      field: "type",
-      headerName: "Type",
-      resizable: true,
       cellClass: "schema-column",
     },
   ];

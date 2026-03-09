@@ -123,8 +123,8 @@ git commit -s -m "feat(check): add timeline component"
 
 | Layer | Stack |
 |-------|-------|
-| Backend | Python 3.9-3.13, FastAPI, Click, Pydantic, dbt adapters |
-| Frontend | Node.js 20+, Next.js 16, React 19, TypeScript 5.9, MUI 7, Biome 2.3, Tailwind 4 |
+| Backend | Python 3.9-3.13, FastAPI, Click, Pydantic, dbt adapters, uv (package manager) |
+| Frontend | Node.js 20+, Next.js 16, React 19, TypeScript 5.9, MUI 7, Biome 2.4, Tailwind 4 |
 | Testing | pytest, Vitest, React Testing Library, Playwright |
 
 ---
@@ -134,7 +134,7 @@ git commit -s -m "feat(check): add timeline component"
 | Problem | Fix |
 |---------|-----|
 | Frontend changes not appearing | `cd js && pnpm run build` then restart `recce server` |
-| Python import errors | `pip install -e .[dev]` |
+| Python import errors | `make install-dev` (uses uv) |
 | Biome lint failures | `pnpm lint:fix` |
 | Type errors | `pnpm type:check` for details |
 | dbt artifact issues | Check `integration_tests/dbt/target` |

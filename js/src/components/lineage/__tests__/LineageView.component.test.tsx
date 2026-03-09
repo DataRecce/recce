@@ -114,12 +114,12 @@ vi.mock("@xyflow/react", () => ({
 }));
 
 // Mock @datarecce/ui contexts
-const mockRetchLineageGraph = vi.fn();
+const mockRefetchLineageGraph = vi.fn();
 const mockRefetchRunsAggregated = vi.fn();
 
 const mockLineageGraphContext = {
   lineageGraph: undefined as LineageGraph | undefined,
-  retchLineageGraph: mockRetchLineageGraph,
+  refetchLineageGraph: mockRefetchLineageGraph,
   isLoading: false,
   error: undefined as string | undefined,
   refetchRunsAggregated: mockRefetchRunsAggregated,
@@ -764,7 +764,7 @@ describe("LineageView Component", () => {
       expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
     });
 
-    it("calls retchLineageGraph when retry button is clicked", () => {
+    it("calls refetchLineageGraph when retry button is clicked", () => {
       mockLineageGraphContext.error = "Network error";
 
       render(
@@ -776,7 +776,7 @@ describe("LineageView Component", () => {
       const retryButton = screen.getByRole("button", { name: "Retry" });
       fireEvent.click(retryButton);
 
-      expect(mockRetchLineageGraph).toHaveBeenCalledTimes(1);
+      expect(mockRefetchLineageGraph).toHaveBeenCalledTimes(1);
     });
 
     it("does not render ReactFlow when error", () => {

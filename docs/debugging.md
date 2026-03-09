@@ -22,7 +22,7 @@ Checks dbt artifacts and database connections.
 
 | Problem | Diagnosis | Fix |
 |---------|-----------|-----|
-| Import errors | Missing or wrong package | `pip install -e .[dev]` |
+| Import errors | Missing or wrong package | `make install-dev` (uses uv) |
 | Adapter not found | Wrong CLI flags | Check `--sqlmesh` flag |
 | State not persisting | FileStateLoader path | Check `recce_state.json` location |
 | SQL execution fails | Adapter connection | Run `recce debug` |

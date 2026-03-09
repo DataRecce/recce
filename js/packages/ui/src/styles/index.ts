@@ -9,6 +9,7 @@
 // Import CSS files for side effects (styling)
 import "./globals.css";
 import "./components.css";
+import "../components/schema/style.css";
 
 // Export empty object to satisfy module resolution
 export {};

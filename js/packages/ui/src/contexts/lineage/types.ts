@@ -151,7 +151,7 @@ export interface LineageGraphContextType {
   /** Supported task types from server */
   supportTasks?: Record<string, boolean>;
   /** Refetch the lineage graph data */
-  retchLineageGraph?: () => void;
+  refetchLineageGraph?: () => void;
   /** Check if an action is available */
   isActionAvailable: (actionName: string) => boolean;
   /** Pre-aggregated run results by model */
@@ -257,6 +257,10 @@ export interface LineageViewContextType {
   getNodeColumnSet: (nodeId: string) => Set<string>;
   /** Check if a node is showing change analysis */
   isNodeShowingChangeAnalysis: (nodeId: string) => boolean;
+  /** Whether impact radius (change analysis) mode is active */
+  changeAnalysisMode: boolean;
+  /** Set change analysis mode on/off */
+  setChangeAnalysisMode: (active: boolean) => void;
 
   // Actions
   /** Run row count on selected nodes */

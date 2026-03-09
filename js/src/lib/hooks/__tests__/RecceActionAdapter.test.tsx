@@ -887,6 +887,60 @@ describe("RecceActionAdapter", () => {
       expect(mockPush).toHaveBeenCalledWith("/lineage");
     });
 
+    /**
+     * REGRESSION TEST (DRC-2779): Do not navigate when already on lineage base path
+     *
+     * When a row_count or row_count_diff action is triggered from the NodeView
+     * (showForm: false), the adapter should NOT call router.push when already
+     * on the lineage base path. Unnecessary navigation causes:
+     * 1. Node deselection (focusedNodeId lost)
+     * 2. Zoom reset (fitView triggered by resize observer)
+     * 3. NodeView panel closing
+     *
+     * Navigation should ONLY happen when on a lineage subpath (e.g., /lineage/node/test).
+     */
+    it("does not navigate when already on lineage base path", async () => {
+      const mockPush = vi.fn();
+      mockUsePathname.mockReturnValue("/lineage");
+      mockUseRouter.mockReturnValue(createMockRouter({ push: mockPush }));
+
+      mockFindByRunType.mockReturnValue({
+        title: "Row Count",
+        icon: () => null,
+        RunResultView: () => <div>Result</div>,
+        RunForm: undefined, // No form = direct submission (like row_count)
+      });
+      mockSubmitRun.mockResolvedValue({ run_id: "row-count-run-123" });
+
+      const queryClient = createTestQueryClient();
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <RecceActionAdapter>
+            <TestConsumer />
+          </RecceActionAdapter>
+        </QueryClientProvider>,
+      );
+
+      act(() => {
+        screen.getByTestId("run-action-btn").click();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("run-id")).toHaveTextContent(
+          "row-count-run-123",
+        );
+      });
+
+      // State should be set correctly
+      expect(screen.getByTestId("is-run-result-open")).toHaveTextContent(
+        "true",
+      );
+
+      // CRITICAL: Should NOT navigate when already on /lineage base path
+      expect(mockPush).not.toHaveBeenCalled();
+    });
+
     it("does not navigate when not on lineage path", async () => {
       const mockPush = vi.fn();
       mockUsePathname.mockReturnValue("/checks");

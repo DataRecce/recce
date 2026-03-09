@@ -36,6 +36,7 @@ jobs:
           uv run flake8 ./recce ./tests
 
   test-dbt-versions:
+    if: github.actor != 'dependabot[bot]'
     name: Test DBT Versions
     runs-on: ubuntu-latest
     permissions:
@@ -92,6 +93,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   test-python-versions:
+    if: github.actor != 'dependabot[bot]'
     name: Test Python Versions
     runs-on: ubuntu-latest
     strategy:

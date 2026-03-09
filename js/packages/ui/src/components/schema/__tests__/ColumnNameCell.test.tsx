@@ -6,12 +6,24 @@
 import CssBaseline from "@mui/material/CssBaseline";
 import { ThemeProvider } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 import { vi } from "vitest";
 import type { NodeData } from "../../../api";
 import { theme } from "../../../theme";
 import { ColumnNameCell } from "../ColumnNameCell";
 import type { SchemaDiffRow } from "../types";
+
+// Mock DataTypeIcon and buildColumnTooltip
+vi.mock("../../ui/DataTypeIcon", () => ({
+  DataTypeIcon: ({ type, size }: { type: string; size?: number }) => (
+    <span data-testid="data-type-icon" data-type={type} data-size={size} />
+  ),
+  buildColumnTooltip: vi.fn(
+    ({ name, currentType }: { name: string; currentType?: string }) =>
+      `${name} ${currentType ?? ""}`,
+  ),
+}));
 
 // Mock dependencies with dynamic isActionAvailable and lineageViewContext
 const { mockIsActionAvailable, mockLineageViewContext } = vi.hoisted(() => ({
@@ -211,6 +223,199 @@ describe("ColumnNameCell", () => {
       expect(mockIsActionAvailable).toHaveBeenCalledWith("change_analysis");
 
       mockLineageViewContext.current = undefined;
+    });
+  });
+
+  describe("definitionChanged badge", () => {
+    const definitionChangedRow = createMockRow({ definitionChanged: true });
+
+    test("renders ~ badge when definitionChanged is true", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={definitionChangedRow}
+          showMenu={false}
+        />,
+      );
+
+      const badges = screen.getAllByText("~");
+      expect(badges.length).toBeGreaterThanOrEqual(1);
+      const badge = badges[0];
+      expect(badge).toHaveClass("schema-change-badge-changed");
+    });
+
+    test("does not render ~ badge when definitionChanged is falsy", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow()}
+          showMenu={false}
+        />,
+      );
+
+      expect(screen.queryByText("~")).not.toBeInTheDocument();
+    });
+
+    test("renders as button when onViewCode is provided", () => {
+      const onViewCode = vi.fn();
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={definitionChangedRow}
+          showMenu={false}
+          onViewCode={onViewCode}
+        />,
+      );
+
+      const badge = screen.getByText("~");
+      expect(badge.tagName).toBe("BUTTON");
+      expect(badge).toHaveClass("schema-change-badge-clickable");
+    });
+
+    test("renders as span when onViewCode is not provided", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={definitionChangedRow}
+          showMenu={false}
+        />,
+      );
+
+      const badge = screen.getByText("~");
+      expect(badge.tagName).toBe("SPAN");
+      expect(badge).not.toHaveClass("schema-change-badge-clickable");
+    });
+
+    test("calls onViewCode when button badge is clicked", async () => {
+      const user = userEvent.setup();
+      const onViewCode = vi.fn();
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={definitionChangedRow}
+          showMenu={false}
+          onViewCode={onViewCode}
+        />,
+      );
+
+      const badge = screen.getByText("~");
+      await user.click(badge);
+      expect(onViewCode).toHaveBeenCalledTimes(1);
+    });
+
+    test("badge has tooltip with definition changed text", async () => {
+      const user = userEvent.setup();
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={definitionChangedRow}
+          showMenu={false}
+        />,
+      );
+
+      const badge = screen.getByText("~");
+      await user.hover(badge);
+      const tooltip = await screen.findByRole("tooltip");
+      expect(tooltip).toHaveTextContent(
+        "Definition changed — click to view code",
+      );
+    });
+
+    test("does not render definitionChanged badge when hasStructuralChange", () => {
+      // definitionChanged and structural changes are mutually exclusive
+      // in practice, but if both were set, both badges would render.
+      // This test verifies that a normal type-changed row doesn't get
+      // the definitionChanged badge.
+      const typeChangedRow = createMockRow({
+        baseType: "INT",
+        currentType: "VARCHAR",
+      });
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={typeChangedRow}
+          showMenu={false}
+        />,
+      );
+
+      // The ~ badge for structural change should render, but
+      // definitionChanged is not set so there should be exactly one
+      const badges = screen.getAllByText("~");
+      expect(badges).toHaveLength(1);
+      // It should be the structural change badge (span, not button)
+      expect(badges[0].tagName).toBe("SPAN");
+    });
+  });
+
+  describe("DataTypeIcon rendering", () => {
+    test("renders DataTypeIcon for unchanged column", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow({ baseType: "INT", currentType: "INT" })}
+          showMenu={false}
+        />,
+      );
+
+      const icons = screen.getAllByTestId("data-type-icon");
+      expect(icons).toHaveLength(1);
+      expect(icons[0]).toHaveAttribute("data-type", "INT");
+    });
+
+    test("renders both DataTypeIcons when type changed", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow({
+            baseType: "INT",
+            currentType: "VARCHAR(50)",
+          })}
+          showMenu={false}
+        />,
+      );
+
+      const icons = screen.getAllByTestId("data-type-icon");
+      expect(icons).toHaveLength(2);
+      expect(icons[0]).toHaveAttribute("data-type", "INT");
+      expect(icons[1]).toHaveAttribute("data-type", "VARCHAR(50)");
+    });
+
+    test("renders DataTypeIcon for added column", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow({
+            baseIndex: undefined,
+            currentIndex: 1,
+            baseType: undefined,
+            currentType: "VARCHAR(50)",
+          })}
+          showMenu={false}
+        />,
+      );
+
+      const icons = screen.getAllByTestId("data-type-icon");
+      expect(icons).toHaveLength(1);
+      expect(icons[0]).toHaveAttribute("data-type", "VARCHAR(50)");
+    });
+
+    test("renders DataTypeIcon for removed column", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow({
+            baseIndex: 1,
+            currentIndex: undefined,
+            baseType: "INT",
+            currentType: undefined,
+          })}
+          showMenu={false}
+        />,
+      );
+
+      const icons = screen.getAllByTestId("data-type-icon");
+      expect(icons).toHaveLength(1);
+      expect(icons[0]).toHaveAttribute("data-type", "INT");
     });
   });
 });

@@ -97,6 +97,11 @@ export interface ColumnLevelLineageControlProps {
    * Callback to center the view on a specific node.
    */
   onCenterNode: (nodeId: string) => void;
+
+  /**
+   * Callback to set change analysis mode on/off.
+   */
+  setChangeAnalysisMode?: (active: boolean) => void;
 }
 
 /**
@@ -205,6 +210,7 @@ export const ColumnLevelLineageControl = ({
   onShowCll,
   onResetCll,
   onCenterNode,
+  setChangeAnalysisMode,
 }: ColumnLevelLineageControlProps) => {
   const cllInput = viewOptions.column_level_lineage;
   const noCatalogCurrent = !lineageGraph?.catalogMetadata.current;
@@ -239,6 +245,7 @@ export const ColumnLevelLineageControl = ({
                 }
                 startIcon={<FaRegDotCircle />}
                 onClick={() => {
+                  setChangeAnalysisMode?.(true);
                   void onShowCll({
                     no_upstream: true,
                     change_analysis: true,

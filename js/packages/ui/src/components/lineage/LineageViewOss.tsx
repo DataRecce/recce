@@ -146,7 +146,7 @@ export function PrivateLineageView(
 
   const {
     lineageGraph,
-    retchLineageGraph,
+    refetchLineageGraph,
     isLoading,
     error,
     refetchRunsAggregated,
@@ -166,10 +166,34 @@ export function PrivateLineageView(
   const cllHistory = useRef<(CllInput | undefined)[]>([]).current;
 
   const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
+  const [changeAnalysisMode, setChangeAnalysisMode] = useState(false);
+  const changeAnalysisModeRef = useRef(false);
+  changeAnalysisModeRef.current = changeAnalysisMode;
+  // Track nodes whose change analysis has triggered a lineage refetch,
+  // to avoid infinite refetch loops (CLL → invalidate → lineageGraph changes → CLL → …)
+  const changeAnalysisRefetched = useRef(new Set<string>());
   const actionGetCll = useMutation({
     mutationFn: (input: CllInput) => getCll(input, apiClient),
   });
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
+
+  // After change analysis CLL, the server populates per-column change data.
+  // Refetch lineage so the schema view can show "definition changed" badges.
+  // Uses a Set to avoid infinite refetch loops (CLL → invalidate → lineageGraph changes → CLL → …)
+  const refetchLineageAfterChangeAnalysis = useCallback(
+    (cllInput: CllInput) => {
+      if (!cllInput.change_analysis) return;
+
+      const dedupeKey = cllInput.node_id ?? "__impact_radius__";
+      if (!changeAnalysisRefetched.current.has(dedupeKey)) {
+        changeAnalysisRefetched.current.add(dedupeKey);
+        void queryClient.invalidateQueries({
+          queryKey: cacheKeys.lineage(),
+        });
+      }
+    },
+    [queryClient],
+  );
 
   const findNodeByName = useCallback(
     (name: string) => {
@@ -267,7 +291,7 @@ export function PrivateLineageView(
    * - Node measuring/resizing
    * - Internal React Flow position updates
    *
-   * This fixes DRC-2623 where clicking between columns caused graph reflow
+   * This fixes where clicking between columns caused graph reflow
    * because React state positions were stale relative to what React Flow rendered.
    */
   const getNodePositions = useCallback(() => {
@@ -394,10 +418,15 @@ export function PrivateLineageView(
 
       let cll: ColumnLineageData | undefined;
       if (viewOptions.column_level_lineage) {
+        const cllApiInput: CllInput = {
+          ...viewOptions.column_level_lineage,
+          change_analysis:
+            viewOptions.column_level_lineage.change_analysis ??
+            changeAnalysisModeRef.current,
+        };
         try {
-          cll = await actionGetCll.mutateAsync(
-            viewOptions.column_level_lineage,
-          );
+          cll = await actionGetCll.mutateAsync(cllApiInput);
+          refetchLineageAfterChangeAnalysis(cllApiInput);
         } catch (e) {
           if (e instanceof AxiosError) {
             const e2 = e as AxiosError<{ detail?: string }>;
@@ -427,7 +456,7 @@ export function PrivateLineageView(
       trackLineageRender(
         nodes,
         viewOptions.view_mode ?? "changed_models",
-        viewOptions.column_level_lineage?.change_analysis ?? false,
+        changeAnalysisModeRef.current,
         !!viewOptions.column_level_lineage?.column,
         !!focusedNodeId || !!run,
       );
@@ -437,6 +466,7 @@ export function PrivateLineageView(
     // Intentionally only run when lineageGraph changes (initial load/refetch).
     // viewOptions changes are handled separately by handleViewOptionsChanged.
     // Other dependencies (setNodes, setEdges, actionGetCll) are stable.
+    // changeAnalysisModeRef is a ref to avoid stale closure issues.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineageGraph]);
 
@@ -485,9 +515,14 @@ export function PrivateLineageView(
   ) => {
     const previousColumnLevelLineage = viewOptions.column_level_lineage;
 
+    // Clear change analysis mode when CLL is turned off entirely
+    if (!columnLevelLineage) {
+      setChangeAnalysisMode(false);
+    }
+
     // Preserve positions when:
     // 1. CLL is being turned OFF (previous exists but new one is undefined)
-    // 2. Switching between columns (both previous and new have CLL) - DRC-2623 fix
+    // 2. Switching between columns (both previous and new have CLL)
     // This prevents jarring graph reflow when the user clicks between columns
     const shouldPreservePositions = previousColumnLevelLineage !== undefined;
 
@@ -505,7 +540,8 @@ export function PrivateLineageView(
     }
     if (columnLevelLineage?.node_id) {
       setFocusedNodeId(columnLevelLineage.node_id);
-    } else {
+    } else if (!columnLevelLineage) {
+      // Only clear focus when CLL is turned off, not for Impact Radius
       setFocusedNodeId(undefined);
     }
   };
@@ -627,10 +663,15 @@ export function PrivateLineageView(
 
     let cll: ColumnLineageData | undefined;
     if (newViewOptions.column_level_lineage) {
+      const cllApiInput: CllInput = {
+        ...newViewOptions.column_level_lineage,
+        change_analysis:
+          newViewOptions.column_level_lineage.change_analysis ??
+          changeAnalysisMode,
+      };
       try {
-        cll = await actionGetCll.mutateAsync(
-          newViewOptions.column_level_lineage,
-        );
+        cll = await actionGetCll.mutateAsync(cllApiInput);
+        refetchLineageAfterChangeAnalysis(cllApiInput);
       } catch (e) {
         if (e instanceof AxiosError) {
           const e2 = e as AxiosError<{ detail?: string }>;
@@ -643,6 +684,10 @@ export function PrivateLineageView(
           return;
         }
       }
+    } else {
+      // Clear change analysis mode when CLL is cleared by any path
+      // (reselect, selectParentNodes, selectChildNodes, etc.)
+      setChangeAnalysisMode(false);
     }
 
     // Capture positions if preservePositions is true
@@ -668,7 +713,7 @@ export function PrivateLineageView(
     trackLineageRender(
       newNodes,
       newViewOptions.view_mode ?? "changed_models",
-      newViewOptions.column_level_lineage?.change_analysis ?? false,
+      changeAnalysisMode,
       !!newViewOptions.column_level_lineage?.column,
       !!focusedNodeId || !!run,
     );
@@ -723,7 +768,9 @@ export function PrivateLineageView(
     }
     if (
       !runResultType ||
-      ["query_diff", "query", "row_count"].includes(runResultType)
+      ["query_diff", "query", "row_count", "row_count_diff"].includes(
+        runResultType,
+      )
     ) {
       // Skip the following logic if the run result type is not related to a node
       return;
@@ -895,25 +942,21 @@ export function PrivateLineageView(
       }
     },
     isNodeShowingChangeAnalysis: (nodeId: string) => {
-      if (!lineageGraph) {
+      if (!lineageGraph || !changeAnalysisMode) {
         return false;
       }
 
       const node =
         nodeId in lineageGraph.nodes ? lineageGraph.nodes[nodeId] : undefined;
 
-      if (viewOptions.column_level_lineage?.change_analysis) {
-        const cll = viewOptions.column_level_lineage;
-
-        if (cll.node_id && !cll.column) {
-          return cll.node_id === nodeId && !!node?.data.changeStatus;
-        } else {
-          return !!node?.data.changeStatus;
-        }
+      const cll = viewOptions.column_level_lineage;
+      if (cll?.node_id && !cll.column) {
+        return cll.node_id === nodeId && !!node?.data.changeStatus;
       }
-
-      return false;
+      return !!node?.data.changeStatus;
     },
+    changeAnalysisMode,
+    setChangeAnalysisMode,
     getNodeAction: (nodeId: string) => {
       return multiNodeAction.actionState.actions[nodeId];
     },
@@ -1059,7 +1102,7 @@ export function PrivateLineageView(
   }
 
   if (error) {
-    return <LineageViewError error={error} onRetry={retchLineageGraph} />;
+    return <LineageViewError error={error} onRetry={refetchLineageGraph} />;
   }
 
   if (!lineageGraph || nodes == initialNodes) {
@@ -1076,10 +1119,14 @@ export function PrivateLineageView(
   }
   return (
     <LineageViewContext.Provider value={contextValue}>
+      {/* Constant props to avoid react-split destroy/recreate.
+           minSize={0} (was 400) lets users drag the panel smaller; the default
+           snapOffset (30px) prevents it from reaching 0px in practice. */}
       <HSplit
         sizes={focusedNode ? [70, 30] : [100, 0]}
-        minSize={focusedNode ? 400 : 0}
-        gutterSize={focusedNode ? 5 : 0}
+        minSize={0}
+        gutterSize={5}
+        className={focusedNode ? undefined : "split-gutter-hidden"}
         style={{ height: "100%", width: "100%" }}
       >
         <Stack
