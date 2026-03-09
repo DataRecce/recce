@@ -17,7 +17,7 @@ Entry point `run_mcp_server()` pops `single_env` before passing kwargs to `load_
 
 **MCP SDK quirk** — Handler must **raise** for SDK to set `isError=True`.
 
-**Response contracts** — See CLAUDE.md. Additive `_meta` only. `summary.py`: guard with `is None`, not `dict.get(key, 0)`.
+**Response contracts** — See CLAUDE.md. Additive `_meta` only. `summary.py`: guard with `is None`, not `dict.get(key, 0)`. N/A display includes reason: `"N/A (table_not_found)"`.
 
 **Single-env** — `_maybe_add_single_env_warning()` adds `_warning` to diff results. Descriptions get conditional note.
 
