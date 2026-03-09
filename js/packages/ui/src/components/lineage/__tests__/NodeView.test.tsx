@@ -7,25 +7,8 @@
  * row is conditionally absent.
  */
 
-// ============================================================================
-// Mocks - MUST be set up before imports
-// ============================================================================
-
-import { vi } from "vitest";
-
-vi.mock("../../../contexts/lineage", () => ({
-  useLineageGraphContext: () => ({
-    lineageGraph: undefined,
-    isActionAvailable: () => false,
-  }),
-  useLineageViewContext: () => undefined,
-}));
-
-// ============================================================================
-// Imports
-// ============================================================================
-
 import { render, screen } from "@testing-library/react";
+import { vi } from "vitest";
 import type { NodeColumnData } from "../../../api";
 import type { NodeViewNodeData } from "../NodeView";
 import { NodeView } from "../NodeView";
