@@ -37,7 +37,6 @@ vi.mock("../../../../components/ui/dataGrid/schemaCells", () => ({
   createSchemaColumnNameRenderer: vi.fn(() => vi.fn()),
   createSingleEnvColumnNameRenderer: vi.fn(() => vi.fn()),
   renderIndexCell: vi.fn(),
-  renderTypeCell: vi.fn(),
 }));
 
 // ============================================================================
@@ -237,7 +236,7 @@ describe("mergeColumns", () => {
 // ============================================================================
 
 describe("toSchemaDataGrid - Column Structure", () => {
-  test("creates correct column structure with 3 merged columns", () => {
+  test("creates correct column structure with 2 merged columns", () => {
     const schemaDiff = mergeColumns(
       createColumns({ id: "INT" }),
       createColumns({ id: "INT" }),
@@ -245,10 +244,9 @@ describe("toSchemaDataGrid - Column Structure", () => {
 
     const { columns } = toSchemaDataGrid(schemaDiff);
 
-    expect(columns).toHaveLength(3);
+    expect(columns).toHaveLength(2);
     expect(getColumn(columns, 0).field).toBe("index");
     expect(getColumn(columns, 1).field).toBe("name");
-    expect(getColumn(columns, 2).field).toBe("type");
   });
 
   test("index column has correct sizing", () => {
@@ -359,7 +357,7 @@ describe("toSchemaDataGrid - Options", () => {
     // Should not throw
     const { columns } = toSchemaDataGrid(schemaDiff, { node, cllRunningMap });
 
-    expect(columns).toHaveLength(3);
+    expect(columns).toHaveLength(2);
   });
 });
 
@@ -392,18 +390,6 @@ describe("toSchemaDataGrid - Cell Classes", () => {
     const nameCol = getColumn(columns, 1);
     expect(nameCol.cellClass).toBe("schema-column");
   });
-
-  test("type column has schema-column cellClass", () => {
-    const schemaDiff = mergeColumns(
-      createColumns({ id: "INT" }),
-      createColumns({ id: "INT" }),
-    );
-
-    const { columns } = toSchemaDataGrid(schemaDiff);
-
-    const typeCol = getColumn(columns, 2);
-    expect(typeCol.cellClass).toBe("schema-column schema-column-type");
-  });
 });
 
 // ============================================================================
@@ -416,10 +402,9 @@ describe("toSingleEnvDataGrid - Column Structure", () => {
 
     const { columns: gridColumns } = toSingleEnvDataGrid(columns);
 
-    expect(gridColumns).toHaveLength(3);
+    expect(gridColumns).toHaveLength(2);
     expect(getColumn(gridColumns, 0).field).toBe("index");
     expect(getColumn(gridColumns, 1).field).toBe("name");
-    expect(getColumn(gridColumns, 2).field).toBe("type");
   });
 
   test("index column has correct sizing", () => {
@@ -545,7 +530,7 @@ describe("toSingleEnvDataGrid - Options", () => {
       cllRunningMap,
     });
 
-    expect(gridColumns).toHaveLength(3);
+    expect(gridColumns).toHaveLength(2);
   });
 });
 
@@ -570,15 +555,6 @@ describe("toSingleEnvDataGrid - Cell Classes", () => {
 
     const nameCol = getColumn(gridColumns, 1);
     expect(nameCol.cellClass).toBe("schema-column");
-  });
-
-  test("type column has schema-column cellClass", () => {
-    const columns = createColumns({ id: "INT" });
-
-    const { columns: gridColumns } = toSingleEnvDataGrid(columns);
-
-    const typeCol = getColumn(gridColumns, 2);
-    expect(typeCol.cellClass).toBe("schema-column");
   });
 
   // ============================================================================
@@ -767,7 +743,7 @@ describe("toSingleEnvDataGrid - Cell Classes", () => {
 
       const { columns, rows } = toSchemaDataGrid(schemaDiff);
 
-      expect(columns).toHaveLength(3);
+      expect(columns).toHaveLength(2);
       expect(rows).toHaveLength(0);
     });
 

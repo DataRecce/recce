@@ -44,6 +44,9 @@ export {
 export type {
   // High-level views (Layer 3)
   ChecksViewProps,
+  // Data type icons
+  ColumnTooltipInput,
+  DataTypeIconProps,
   // UI primitives
   DiffTextProps,
   // Lineage
@@ -52,10 +55,15 @@ export type {
   LineageViewRef,
   SplitProps,
   SquareIconProps,
+  TypeCategory,
 } from "./components";
 export {
+  // Data type icons
+  buildColumnTooltip,
   // High-level views (Layer 3)
   ChecksView,
+  classifyType,
+  DataTypeIcon,
   // UI primitives
   DiffText,
   HSplit,

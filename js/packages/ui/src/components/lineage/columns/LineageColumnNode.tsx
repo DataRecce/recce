@@ -5,6 +5,7 @@ import Chip from "@mui/material/Chip";
 import { Handle, Position } from "@xyflow/react";
 import type { MouseEvent } from "react";
 import { memo, useState } from "react";
+import { DataTypeIcon } from "../../ui/DataTypeIcon";
 
 /**
  * Transformation type for column-level lineage
@@ -360,15 +361,11 @@ function LineageColumnNodeComponent({
           </Box>
         ) : (
           type && (
-            <Box
-              sx={{
-                color: "text.secondary",
-                fontSize: "10px",
-                flexShrink: 0,
-              }}
-            >
-              {type}
-            </Box>
+            <DataTypeIcon
+              type={type}
+              size={16}
+              style={{ flexShrink: 0, opacity: 0.7 }}
+            />
           )
         )}
       </Box>

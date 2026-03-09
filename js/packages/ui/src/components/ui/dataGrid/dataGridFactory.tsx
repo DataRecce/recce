@@ -12,7 +12,13 @@
  * - toValueDataGrid for value_diff summary (column match statistics)
  */
 
-import type { ColDef, ColGroupDef } from "ag-grid-community";
+import Box from "@mui/material/Box";
+import Tooltip from "@mui/material/Tooltip";
+import type {
+  ColDef,
+  ColGroupDef,
+  ICellRendererParams,
+} from "ag-grid-community";
 import type { QueryDiffResult } from "../../../api/adhocQuery";
 import type { NodeData } from "../../../api/info";
 import type { ProfileDiffResult } from "../../../api/profile";
@@ -50,6 +56,7 @@ import {
   toRowCountDiffDataGrid,
   toValueDiffGridConfigured as toValueDiffGrid,
 } from "../../../utils/dataGrid";
+import { buildColumnTooltip, DataTypeIcon } from "../DataTypeIcon";
 import { toValueDataGrid } from "./generators/toValueDataGrid";
 
 // ============================================================================
@@ -181,6 +188,185 @@ function determineDataKind(run: Run): RunResultData | null {
 }
 
 /**
+ * Cell renderer for column_name in single profile and side-by-side diff children.
+ * Shows the column name + DataTypeIcon inline.
+ */
+function profileColumnNameRenderer(params: ICellRendererParams<RowObjectType>) {
+  const row = params.data;
+  if (!row) return null;
+  const name = params.value ? String(params.value) : "";
+  const dataType = row.data_type ? String(row.data_type) : undefined;
+  const tooltipText = buildColumnTooltip({ name, currentType: dataType });
+
+  return (
+    <Tooltip title={tooltipText} placement="top">
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          overflow: "hidden",
+          height: "100%",
+        }}
+      >
+        <Box
+          sx={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {name}
+        </Box>
+        {dataType && <DataTypeIcon type={dataType} size={20} disableTooltip />}
+      </Box>
+    </Tooltip>
+  );
+}
+
+/**
+ * Cell renderer for column_name in inline diff mode.
+ * Reads base/current data types from prefixed keys and renders DataTypeIcon(s).
+ */
+function profileDiffColumnNameRenderer(
+  params: ICellRendererParams<RowObjectType>,
+) {
+  const row = params.data;
+  if (!row) return null;
+  const name = params.value ? String(params.value) : "";
+  const baseType = row.base__data_type
+    ? String(row.base__data_type)
+    : undefined;
+  const currentType = row.current__data_type
+    ? String(row.current__data_type)
+    : undefined;
+  const isTypeChanged =
+    baseType != null && currentType != null && baseType !== currentType;
+  const displayType = currentType ?? baseType;
+  const tooltipText = buildColumnTooltip({ name, baseType, currentType });
+
+  return (
+    <Tooltip title={tooltipText} placement="top">
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          overflow: "hidden",
+          height: "100%",
+        }}
+      >
+        <Box
+          sx={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {name}
+        </Box>
+        {isTypeChanged ? (
+          <Box
+            component="span"
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "2px",
+            }}
+          >
+            <Box
+              component="span"
+              sx={{ textDecoration: "line-through", opacity: 0.6 }}
+            >
+              <DataTypeIcon type={baseType} size={20} disableTooltip />
+            </Box>
+            <Box component="span" sx={{ fontSize: "0.7em", opacity: 0.5 }}>
+              →
+            </Box>
+            <DataTypeIcon type={currentType} size={20} disableTooltip />
+          </Box>
+        ) : (
+          displayType && (
+            <DataTypeIcon type={displayType} size={20} disableTooltip />
+          )
+        )}
+      </Box>
+    </Tooltip>
+  );
+}
+
+/**
+ * Checks if a column field name represents a data_type column.
+ * Matches "data_type", "base__data_type", and "current__data_type".
+ */
+function isDataTypeField(field: string | undefined): boolean {
+  if (!field) return false;
+  const lower = field.toLowerCase();
+  return (
+    lower === "data_type" ||
+    lower === "base__data_type" ||
+    lower === "current__data_type"
+  );
+}
+
+/**
+ * Post-processes profile grid columns to:
+ * 1. Remove data_type columns (flat and side-by-side children)
+ * 2. Inject a custom cell renderer on column_name that shows name + DataTypeIcon inline
+ */
+function injectProfileColumnNameRenderer(
+  result: DataGridResult,
+): DataGridResult {
+  const isInlineDiff =
+    result.rows.length > 0 && Object.hasOwn(result.rows[0], "base__data_type");
+
+  const columns = result.columns
+    .filter((col) => {
+      // Remove data_type columns from ColGroupDef children (side-by-side mode)
+      if ("children" in col && col.children) {
+        const filtered = col.children.filter(
+          (child) => !isDataTypeField((child as ColDef<RowObjectType>).field),
+        );
+        if (filtered.length === 0) return false;
+        (col as ColGroupDef<RowObjectType>).children = filtered;
+        return true;
+      }
+      // Remove flat data_type columns
+      return !isDataTypeField((col as ColDef<RowObjectType>).field);
+    })
+    .map((col) => {
+      // Inject renderer on column_name columns
+      if ("children" in col && col.children) {
+        return {
+          ...col,
+          children: col.children.map((child) => {
+            const childCol = child as ColDef<RowObjectType>;
+            if (childCol.field?.toLowerCase() === "column_name") {
+              return {
+                ...childCol,
+                cellRenderer: profileColumnNameRenderer,
+              };
+            }
+            return child;
+          }),
+        };
+      }
+      const colDef = col as ColDef<RowObjectType>;
+      if (colDef.field?.toLowerCase() === "column_name") {
+        return {
+          ...colDef,
+          cellRenderer: isInlineDiff
+            ? profileDiffColumnNameRenderer
+            : profileColumnNameRenderer,
+        };
+      }
+      return col;
+    });
+
+  return { ...result, columns };
+}
+
+/**
  * Extracts the primary key field name from profile data
  */
 function getProfilePrimaryKey(result: ProfileDiffResult): string {
@@ -276,25 +462,31 @@ export function createDataGrid(
         return null;
       }
       const primaryKey = getProfilePrimaryKey(dataKind.result);
-      return toDataGrid(dataKind.result.current, {
+      const profileResult = toDataGrid(dataKind.result.current, {
         primaryKeys: [primaryKey],
         pinnedColumns: options.pinnedColumns,
         onPinnedColumnsChange: options.onPinnedColumnsChange,
         columnsRenderMode: options.columnsRenderMode,
         onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
       });
+      return injectProfileColumnNameRenderer(profileResult);
     }
 
     case "profile_diff": {
       const primaryKey = getProfilePrimaryKey(dataKind.result);
-      return toDataDiffGrid(dataKind.result.base, dataKind.result.current, {
-        primaryKeys: [primaryKey],
-        pinnedColumns: options.pinnedColumns,
-        onPinnedColumnsChange: options.onPinnedColumnsChange,
-        displayMode: options.displayMode,
-        columnsRenderMode: options.columnsRenderMode,
-        onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
-      });
+      const profileDiffResult = toDataDiffGrid(
+        dataKind.result.base,
+        dataKind.result.current,
+        {
+          primaryKeys: [primaryKey],
+          pinnedColumns: options.pinnedColumns,
+          onPinnedColumnsChange: options.onPinnedColumnsChange,
+          displayMode: options.displayMode,
+          columnsRenderMode: options.columnsRenderMode,
+          onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
+        },
+      );
+      return injectProfileColumnNameRenderer(profileDiffResult);
     }
 
     case "row_count":
