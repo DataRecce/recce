@@ -17,7 +17,6 @@ import {
   createSchemaColumnNameRenderer,
   createSingleEnvColumnNameRenderer,
   renderIndexCell,
-  renderTypeCell,
 } from "../../../components/ui/dataGrid/schemaCells";
 import { mergeKeysWithStatus } from "../../../utils";
 
@@ -117,7 +116,7 @@ export function mergeColumns(
 
 /**
  * Generates grid configuration for schema diff view
- * Uses merged columns: Index (merged base/current), Name, Type (merged with badges)
+ * Uses merged columns: Index (merged base/current), Name (with inline DataTypeIcon)
  */
 export function toSchemaDataGrid(
   schemaDiff: SchemaDiff,
@@ -154,13 +153,6 @@ export function toSchemaDataGrid(
         const row = params.data;
         return row ? `${row.name}|${row.definitionChanged ?? false}` : "";
       },
-    },
-    {
-      field: "type",
-      headerName: "Type",
-      resizable: true,
-      cellRenderer: renderTypeCell,
-      cellClass: "schema-column schema-column-type",
     },
   ];
 
@@ -226,12 +218,6 @@ export function toSingleEnvDataGrid(
       cellRenderer: node
         ? createSingleEnvColumnNameRenderer(node, cllRunningMap, showMenu)
         : undefined,
-      cellClass: "schema-column",
-    },
-    {
-      field: "type",
-      headerName: "Type",
-      resizable: true,
       cellClass: "schema-column",
     },
   ];

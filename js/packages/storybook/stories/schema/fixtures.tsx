@@ -1,4 +1,6 @@
+import { buildColumnTooltip, DataTypeIcon } from "@datarecce/ui";
 import type { SchemaDiffRow } from "@datarecce/ui/components";
+import Tooltip from "@mui/material/Tooltip";
 import type { ColDef, RowClassParams } from "ag-grid-community";
 import type React from "react";
 
@@ -40,7 +42,7 @@ function isRowChanged(row: SchemaDiffRow): boolean {
 }
 
 // ============================================================================
-// Column defs — mirrors toSchemaDataGrid output (Index, Name, Type)
+// Column defs — mirrors toSchemaDataGrid output (Index, Name with inline DataTypeIcon)
 // ============================================================================
 
 export const schemaColumns: ColDef[] = [
@@ -85,6 +87,29 @@ export const schemaColumns: ColDef[] = [
       const row = params.data;
       if (!row) return null;
 
+      const { baseType, currentType } = row;
+      const isAdded = isRowAdded(row);
+      const isRemoved = isRowRemoved(row);
+      const isTypeChanged = !isAdded && !isRemoved && baseType !== currentType;
+      const columnType = currentType ?? baseType;
+
+      const columnStatus = isAdded
+        ? "added"
+        : isRemoved
+          ? "removed"
+          : isTypeChanged
+            ? "type_changed"
+            : row.definitionChanged
+              ? "definition_changed"
+              : "unchanged";
+
+      const tooltipTitle = buildColumnTooltip({
+        name: row.name,
+        status: columnStatus,
+        baseType,
+        currentType,
+      });
+
       let badge: React.ReactNode = null;
       if (isRowChanged(row)) {
         badge = (
@@ -92,13 +117,13 @@ export const schemaColumns: ColDef[] = [
             ~
           </span>
         );
-      } else if (isRowAdded(row)) {
+      } else if (isAdded) {
         badge = (
           <span className="schema-change-badge schema-change-badge-added">
             +
           </span>
         );
-      } else if (isRowRemoved(row)) {
+      } else if (isRemoved) {
         badge = (
           <span className="schema-change-badge schema-change-badge-removed">
             -
@@ -107,44 +132,52 @@ export const schemaColumns: ColDef[] = [
       }
 
       return (
-        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          {badge}
-          <span>{row.name}</span>
-        </span>
-      );
-    },
-  },
-  {
-    field: "type",
-    headerName: "Type",
-    resizable: true,
-    minWidth: 300,
-    cellClass: "schema-column schema-column-type",
-    cellRenderer: (params: { data: SchemaDiffRow }) => {
-      const row = params.data;
-      if (!row) return null;
-      const { baseType, currentType, baseIndex, currentIndex } = row;
-      const isAdded = baseIndex === undefined;
-      const isRemoved = currentIndex === undefined;
-      const isTypeChanged = !isAdded && !isRemoved && baseType !== currentType;
-
-      if (isTypeChanged) {
-        return (
-          <span>
-            <span className="schema-type-old" title={`Base type: ${baseType}`}>
-              {baseType}
-            </span>
-            {" \u2192 "}
-            <span
-              className="schema-type-new"
-              title={`Current type: ${currentType}`}
-            >
-              {currentType}
+        <Tooltip title={tooltipTitle} placement="top">
+          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {badge}
+            <span>{row.name}</span>
+            <span style={{ marginLeft: 4 }}>
+              {isTypeChanged ? (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 2,
+                  }}
+                >
+                  {baseType && (
+                    <span
+                      style={{ textDecoration: "line-through", opacity: 0.6 }}
+                    >
+                      <DataTypeIcon
+                        type={String(baseType)}
+                        size={16}
+                        disableTooltip
+                      />
+                    </span>
+                  )}
+                  <span style={{ fontSize: "0.7em", opacity: 0.5 }}>→</span>
+                  {currentType && (
+                    <DataTypeIcon
+                      type={String(currentType)}
+                      size={16}
+                      disableTooltip
+                    />
+                  )}
+                </span>
+              ) : (
+                columnType && (
+                  <DataTypeIcon
+                    type={String(columnType)}
+                    size={16}
+                    disableTooltip
+                  />
+                )
+              )}
             </span>
           </span>
-        );
-      }
-      return <span>{isRemoved ? baseType : currentType}</span>;
+        </Tooltip>
+      );
     },
   },
 ];

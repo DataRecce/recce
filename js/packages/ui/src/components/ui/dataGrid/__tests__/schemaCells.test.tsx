@@ -4,8 +4,7 @@
  *
  * Tests cover:
  * - renderIndexCell rendering logic for normal/added/removed rows
- * - renderTypeCell rendering logic and type change badges
- * - Accessibility attributes for type badges
+ * - (renderTypeCell removed — type now shown inline in ColumnNameCell)
  * - Null data handling
  */
 
@@ -30,7 +29,7 @@ vi.mock("../../../schema/ColumnNameCell", () => ({
 vi.mock("../../../../api/info", () => ({}));
 
 // Import after mocks
-import { renderIndexCell, renderTypeCell } from "../schemaCells";
+import { renderIndexCell } from "../schemaCells";
 
 // ============================================================================
 // Test Helpers
@@ -44,28 +43,6 @@ function createIndexCellParams(
     name?: string;
     currentIndex?: number;
     baseIndex?: number;
-  } | null,
-): ICellRendererParams<RowObjectType> {
-  return {
-    data: data
-      ? {
-          name: "test_column",
-          ...data,
-        }
-      : undefined,
-  } as ICellRendererParams<RowObjectType>;
-}
-
-/**
- * Creates a mock ICellRendererParams object for testing renderTypeCell
- */
-function createTypeCellParams(
-  data: {
-    name?: string;
-    currentIndex?: number;
-    baseIndex?: number;
-    currentType?: string;
-    baseType?: string;
   } | null,
 ): ICellRendererParams<RowObjectType> {
   return {
@@ -142,261 +119,32 @@ describe("renderIndexCell", () => {
 });
 
 // ============================================================================
-// renderTypeCell Tests
+// Performance Tests
 // ============================================================================
 
-describe("renderTypeCell", () => {
-  describe("type changed scenarios", () => {
-    test("renders both badges when type changed", () => {
-      const params = createTypeCellParams({
-        baseIndex: 1,
-        currentIndex: 1,
-        baseType: "INTEGER",
-        currentType: "BIGINT",
-      });
+describe("performance benchmarks", () => {
+  const ITERATIONS = 1000;
 
-      render(<>{renderTypeCell(params)}</>);
+  test("renderIndexCell function execution performance", () => {
+    const testData = Array.from({ length: ITERATIONS }, (_, i) =>
+      createIndexCellParams({
+        baseIndex: i,
+        currentIndex: i + 1,
+      }),
+    );
 
-      expect(screen.getByText("INTEGER")).toBeInTheDocument();
-      expect(screen.getByText("BIGINT")).toBeInTheDocument();
+    const startTime = performance.now();
+
+    // Measure only function execution time, not DOM rendering
+    testData.forEach((params) => {
+      renderIndexCell(params);
     });
 
-    test("renders removed badge with correct class", () => {
-      const params = createTypeCellParams({
-        baseIndex: 1,
-        currentIndex: 1,
-        baseType: "VARCHAR",
-        currentType: "TEXT",
-      });
+    const endTime = performance.now();
+    const totalTime = endTime - startTime;
+    const avgTime = totalTime / ITERATIONS;
 
-      const { container } = render(<>{renderTypeCell(params)}</>);
-
-      const oldType = container.querySelector(".schema-type-old");
-      expect(oldType).toBeInTheDocument();
-      expect(oldType).toHaveTextContent("VARCHAR");
-    });
-
-    test("renders new type with correct class", () => {
-      const params = createTypeCellParams({
-        baseIndex: 1,
-        currentIndex: 1,
-        baseType: "VARCHAR",
-        currentType: "TEXT",
-      });
-
-      const { container } = render(<>{renderTypeCell(params)}</>);
-
-      const newType = container.querySelector(".schema-type-new");
-      expect(newType).toBeInTheDocument();
-      expect(newType).toHaveTextContent("TEXT");
-    });
-
-    test("renders badges with title for accessibility", () => {
-      const params = createTypeCellParams({
-        baseIndex: 1,
-        currentIndex: 1,
-        baseType: "INTEGER",
-        currentType: "BIGINT",
-      });
-
-      render(<>{renderTypeCell(params)}</>);
-
-      const integerBadge = screen.getByTitle("Base type: INTEGER");
-      const bigintBadge = screen.getByTitle("Current type: BIGINT");
-
-      expect(integerBadge).toBeInTheDocument();
-      expect(bigintBadge).toBeInTheDocument();
-    });
-  });
-
-  describe("added row scenarios", () => {
-    test("renders currentType for added rows", () => {
-      const params = createTypeCellParams({
-        baseIndex: undefined,
-        currentIndex: 3,
-        baseType: undefined,
-        currentType: "VARCHAR",
-      });
-
-      render(<>{renderTypeCell(params)}</>);
-
-      expect(screen.getByText("VARCHAR")).toBeInTheDocument();
-    });
-
-    test("does not render badges for added rows", () => {
-      const params = createTypeCellParams({
-        baseIndex: undefined,
-        currentIndex: 3,
-        baseType: undefined,
-        currentType: "VARCHAR",
-      });
-
-      const { container } = render(<>{renderTypeCell(params)}</>);
-
-      expect(
-        container.querySelector(".schema-type-old"),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  describe("removed row scenarios", () => {
-    test("renders baseType for removed rows", () => {
-      const params = createTypeCellParams({
-        baseIndex: 2,
-        currentIndex: undefined,
-        baseType: "DATE",
-        currentType: undefined,
-      });
-
-      render(<>{renderTypeCell(params)}</>);
-
-      expect(screen.getByText("DATE")).toBeInTheDocument();
-    });
-
-    test("does not render badges for removed rows", () => {
-      const params = createTypeCellParams({
-        baseIndex: 2,
-        currentIndex: undefined,
-        baseType: "DATE",
-        currentType: undefined,
-      });
-
-      const { container } = render(<>{renderTypeCell(params)}</>);
-
-      expect(
-        container.querySelector(".schema-type-old"),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  describe("no change scenarios", () => {
-    test("renders currentType when types are the same", () => {
-      const params = createTypeCellParams({
-        baseIndex: 1,
-        currentIndex: 1,
-        baseType: "BIGINT",
-        currentType: "BIGINT",
-      });
-
-      render(<>{renderTypeCell(params)}</>);
-
-      expect(screen.getByText("BIGINT")).toBeInTheDocument();
-    });
-
-    test("does not render badges when types are the same", () => {
-      const params = createTypeCellParams({
-        baseIndex: 1,
-        currentIndex: 1,
-        baseType: "BIGINT",
-        currentType: "BIGINT",
-      });
-
-      const { container } = render(<>{renderTypeCell(params)}</>);
-
-      expect(
-        container.querySelector(".schema-type-old"),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  describe("edge cases", () => {
-    test("handles undefined baseType and currentType", () => {
-      const params = createTypeCellParams({
-        baseIndex: 1,
-        currentIndex: 1,
-        baseType: undefined,
-        currentType: undefined,
-      });
-
-      const { container } = render(<>{renderTypeCell(params)}</>);
-
-      // Should render without crashing
-      expect(container.querySelector("span")).toBeInTheDocument();
-    });
-
-    test("handles empty string types", () => {
-      const params = createTypeCellParams({
-        baseIndex: 1,
-        currentIndex: 1,
-        baseType: "",
-        currentType: "VARCHAR",
-      });
-
-      const { container } = render(<>{renderTypeCell(params)}</>);
-
-      // Empty string vs non-empty should show type change with old/new styling
-      expect(screen.getByText("VARCHAR")).toBeInTheDocument();
-      expect(container.querySelector(".schema-type-old")).toBeInTheDocument();
-
-      const oldType = container.querySelector(".schema-type-old");
-      const newType = container.querySelector(".schema-type-new");
-      expect(oldType).toBeInTheDocument();
-      expect(newType).toBeInTheDocument();
-      expect(newType).toHaveTextContent("VARCHAR");
-    });
-
-    test("returns null when data is undefined", () => {
-      const params = createTypeCellParams(null);
-
-      const { container } = render(<>{renderTypeCell(params)}</>);
-      expect(container).toBeEmptyDOMElement();
-    });
-  });
-
-  // ============================================================================
-  // Performance Tests
-  // ============================================================================
-
-  describe("performance benchmarks", () => {
-    const ITERATIONS = 1000;
-
-    test("renderIndexCell function execution performance", () => {
-      const testData = Array.from({ length: ITERATIONS }, (_, i) =>
-        createIndexCellParams({
-          baseIndex: i,
-          currentIndex: i + 1,
-        }),
-      );
-
-      const startTime = performance.now();
-
-      // Measure only function execution time, not DOM rendering
-      testData.forEach((params) => {
-        renderIndexCell(params);
-      });
-
-      const endTime = performance.now();
-      const totalTime = endTime - startTime;
-      const avgTime = totalTime / ITERATIONS;
-
-      // Performance assertion: function execution should be very fast
-      expect(avgTime).toBeLessThan(1);
-    });
-
-    test("renderTypeCell function execution performance", () => {
-      const testData = Array.from({ length: ITERATIONS }, (_, i) =>
-        createTypeCellParams({
-          baseIndex: i,
-          currentIndex: i,
-          baseType: i % 2 === 0 ? "INTEGER" : "VARCHAR",
-          currentType:
-            i % 3 === 0 ? "BIGINT" : i % 2 === 0 ? "INTEGER" : "VARCHAR",
-        }),
-      );
-
-      const startTime = performance.now();
-
-      // Measure only function execution time, not DOM rendering
-      testData.forEach((params) => {
-        renderTypeCell(params);
-      });
-
-      const endTime = performance.now();
-      const totalTime = endTime - startTime;
-      const avgTime = totalTime / ITERATIONS;
-
-      // Performance assertion: function execution should be very fast
-      expect(avgTime).toBeLessThan(1);
-    });
+    // Performance assertion: function execution should be very fast
+    expect(avgTime).toBeLessThan(1);
   });
 });

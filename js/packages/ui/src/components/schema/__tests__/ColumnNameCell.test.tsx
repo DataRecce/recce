@@ -14,6 +14,17 @@ import { theme } from "../../../theme";
 import { ColumnNameCell } from "../ColumnNameCell";
 import type { SchemaDiffRow } from "../types";
 
+// Mock DataTypeIcon and buildColumnTooltip
+vi.mock("../../ui/DataTypeIcon", () => ({
+  DataTypeIcon: ({ type, size }: { type: string; size?: number }) => (
+    <span data-testid="data-type-icon" data-type={type} data-size={size} />
+  ),
+  buildColumnTooltip: vi.fn(
+    ({ name, currentType }: { name: string; currentType?: string }) =>
+      `${name} ${currentType ?? ""}`,
+  ),
+}));
+
 // Mock dependencies with dynamic isActionAvailable and lineageViewContext
 const { mockIsActionAvailable, mockLineageViewContext } = vi.hoisted(() => ({
   mockIsActionAvailable: vi.fn(() => true),
@@ -333,6 +344,78 @@ describe("ColumnNameCell", () => {
       expect(badges).toHaveLength(1);
       // It should be the structural change badge (span, not button)
       expect(badges[0].tagName).toBe("SPAN");
+    });
+  });
+
+  describe("DataTypeIcon rendering", () => {
+    test("renders DataTypeIcon for unchanged column", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow({ baseType: "INT", currentType: "INT" })}
+          showMenu={false}
+        />,
+      );
+
+      const icons = screen.getAllByTestId("data-type-icon");
+      expect(icons).toHaveLength(1);
+      expect(icons[0]).toHaveAttribute("data-type", "INT");
+    });
+
+    test("renders both DataTypeIcons when type changed", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow({
+            baseType: "INT",
+            currentType: "VARCHAR(50)",
+          })}
+          showMenu={false}
+        />,
+      );
+
+      const icons = screen.getAllByTestId("data-type-icon");
+      expect(icons).toHaveLength(2);
+      expect(icons[0]).toHaveAttribute("data-type", "INT");
+      expect(icons[1]).toHaveAttribute("data-type", "VARCHAR(50)");
+    });
+
+    test("renders DataTypeIcon for added column", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow({
+            baseIndex: undefined,
+            currentIndex: 1,
+            baseType: undefined,
+            currentType: "VARCHAR(50)",
+          })}
+          showMenu={false}
+        />,
+      );
+
+      const icons = screen.getAllByTestId("data-type-icon");
+      expect(icons).toHaveLength(1);
+      expect(icons[0]).toHaveAttribute("data-type", "VARCHAR(50)");
+    });
+
+    test("renders DataTypeIcon for removed column", () => {
+      renderWithMui(
+        <ColumnNameCell
+          model={createMockModel()}
+          row={createMockRow({
+            baseIndex: 1,
+            currentIndex: undefined,
+            baseType: "INT",
+            currentType: undefined,
+          })}
+          showMenu={false}
+        />,
+      );
+
+      const icons = screen.getAllByTestId("data-type-icon");
+      expect(icons).toHaveLength(1);
+      expect(icons[0]).toHaveAttribute("data-type", "INT");
     });
   });
 });
