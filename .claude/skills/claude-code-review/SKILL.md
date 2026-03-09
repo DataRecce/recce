@@ -74,9 +74,12 @@ If `IS_DRAFT` is `true`, inform the user and stop. Do not review draft PRs.
 Look for an existing comment from `claude[bot]` on the PR:
 
 ```bash
+MARKER="<!-- claude-code-review -->"
 COMMENT_ID=$(gh api repos/{owner}/{repo}/issues/{pr_number}/comments \
-  --jq '[.[] | select(.user.login == "claude[bot]")] | first | .id // empty')
+  --jq '[.[] | select(.user.login == "claude[bot]" and (.body // "" | contains("<!-- claude-code-review -->")))] | first | .id // empty')
 ```
+
+Include `<!-- claude-code-review -->` as a hidden marker at the top of every review comment so the lookup targets only code review comments, not other bot comments.
 
 If found, read the prior review to understand what was previously flagged. New commits may address those findings.
 
@@ -175,7 +178,7 @@ REVIEW_EOF
 ```bash
 # If prior comment exists:
 gh api repos/{owner}/{repo}/issues/comments/{comment_id} \
-  -X PATCH -f body="$(cat /tmp/review_body.md)"
+  -X PATCH -f body=@/tmp/review_body.md
 
 # If no prior comment:
 gh pr comment {pr_number} --body-file /tmp/review_body.md
@@ -195,7 +198,7 @@ gh pr review {pr_number} --request-changes \
 
 ## Known False Positives — Do NOT Flag
 
-- **React 19 APIs:** This project may use React 19.x. The `<Activity>` component (`import { Activity } from "react"`) is a stable React 19 API. Do NOT flag `<Activity mode="visible">` or `<Activity mode="hidden">` as unknown components. Same for `useActionState`, `useFormStatus`, `use()`, etc.
+- **React 19 APIs:** This project uses React 19.x. Do NOT flag stable React 19 APIs (e.g., `useActionState`, `useFormStatus`, `use()`, `<Activity>`) as unknown or experimental if they are used consistently in the codebase.
 - **Project conventions:** Respect patterns established in AGENTS.md and CLAUDE.md. If the codebase consistently uses a pattern, don't flag it.
 
 ## Iron Rules
