@@ -30,8 +30,13 @@ describe("DataTypeIcon", () => {
     expect(c2.querySelector("svg")).toBeInTheDocument();
   });
 
-  test("handles unknown types gracefully", () => {
+  test("renders geography types", () => {
     const { container } = render(<DataTypeIcon type="GEOGRAPHY" />);
+    expect(container.querySelector("svg")).toBeInTheDocument();
+  });
+
+  test("handles unknown types gracefully", () => {
+    const { container } = render(<DataTypeIcon type="XYZTYPE" />);
     expect(container.querySelector("svg")).toBeInTheDocument();
   });
 

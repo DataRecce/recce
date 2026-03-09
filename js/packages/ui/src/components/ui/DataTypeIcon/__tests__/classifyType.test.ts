@@ -151,17 +151,34 @@ describe("classifyType", () => {
     });
   });
 
+  describe("geography types", () => {
+    it.each([
+      "GEOGRAPHY",
+      "GEOMETRY",
+      "POINT",
+      "LINESTRING",
+      "POLYGON",
+      "MULTIPOINT",
+      "MULTILINESTRING",
+      "MULTIPOLYGON",
+      "GEOMETRYCOLLECTION",
+      "SDO_GEOMETRY",
+    ])("classifies %s as geography", (type) => {
+      expect(classifyType(type)).toBe("geography");
+    });
+  });
+
   describe("unknown types", () => {
     it("classifies empty string as unknown", () => {
       expect(classifyType("")).toBe("unknown");
     });
 
     it("classifies unrecognized type as unknown", () => {
-      expect(classifyType("GEOMETRY")).toBe("unknown");
+      expect(classifyType("FOOBAR")).toBe("unknown");
     });
 
     it("classifies random string as unknown", () => {
-      expect(classifyType("FOOBAR")).toBe("unknown");
+      expect(classifyType("XYZTYPE")).toBe("unknown");
     });
   });
 

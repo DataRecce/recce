@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { useId } from "react";
 
 interface IconProps {
   size?: number;
@@ -87,16 +88,93 @@ export function BooleanIcon(props: IconProps) {
   return <TextIcon text="T/F" {...props} />;
 }
 
-export function BinaryIcon(props: IconProps) {
-  return <TextIcon text="01" {...props} />;
+/**
+ * Two-tone split icon — left half filled with "0", right half with "1"
+ */
+export function BinaryIcon({ size, style, className }: IconProps) {
+  const maskId = useId();
+  const x = BOX_INSET;
+  const y = BOX_INSET;
+  const h = VB_H - BOX_INSET * 2;
+  const mid = VB_W / 2;
+
+  return (
+    <BoxedSvg size={size} style={style} className={className}>
+      <mask id={maskId}>
+        <rect x={x} y={y} width={mid - x} height={h} fill="white" />
+        <text
+          x={mid / 2}
+          y={VB_H / 2}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize={10}
+          fontFamily="monospace"
+          fontWeight={700}
+          fill="black"
+        >
+          0
+        </text>
+      </mask>
+      <path
+        d={`M${mid} ${y} H${x + BOX_RX} Q${x} ${y} ${x} ${y + BOX_RX} V${y + h - BOX_RX} Q${x} ${y + h} ${x + BOX_RX} ${y + h} H${mid} Z`}
+        fill="currentColor"
+        mask={`url(#${maskId})`}
+      />
+      <text
+        x={mid + (VB_W - mid) / 2}
+        y={VB_H / 2}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={10}
+        fontFamily="monospace"
+        fontWeight={700}
+        fill="currentColor"
+      >
+        1
+      </text>
+    </BoxedSvg>
+  );
 }
 
 export function JsonIcon(props: IconProps) {
   return <TextIcon text="{ }" {...props} />;
 }
 
-export function ArrayIcon(props: IconProps) {
-  return <TextIcon text="[,]" {...props} />;
+/**
+ * Square brackets with "1,2" text — for ARRAY/LIST types
+ */
+export function ArrayIcon({ size, style, className }: IconProps) {
+  return (
+    <BoxedSvg size={size} style={style} className={className}>
+      <g
+        stroke="currentColor"
+        fill="none"
+        strokeWidth={1.2}
+        strokeLinecap="round"
+      >
+        {/* Left bracket */}
+        <line x1={6} y1={5} x2={4} y2={5} />
+        <line x1={4} y1={5} x2={4} y2={13} />
+        <line x1={4} y1={13} x2={6} y2={13} />
+        {/* Right bracket */}
+        <line x1={24} y1={5} x2={26} y2={5} />
+        <line x1={26} y1={5} x2={26} y2={13} />
+        <line x1={26} y1={13} x2={24} y2={13} />
+      </g>
+      <text
+        x={VB_W / 2}
+        y={VB_H / 2}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={9}
+        fontFamily="monospace"
+        fontWeight={500}
+        fill="currentColor"
+      >
+        1,2
+      </text>
+    </BoxedSvg>
+  );
 }
 
 export function UnknownIcon(props: IconProps) {
@@ -174,6 +252,29 @@ export function TimeIcon({ size, style, className }: IconProps) {
         <circle cx={5} cy={5.5} r={5} />
         <line x1={5} y1={3} x2={5} y2={5.5} />
         <line x1={5} y1={5.5} x2={7} y2={6.8} />
+      </g>
+    </BoxedSvg>
+  );
+}
+
+/**
+ * Map pin (teardrop) icon inside box — for GEOGRAPHY/GEOMETRY types
+ */
+export function GeographyIcon({ size, style, className }: IconProps) {
+  return (
+    <BoxedSvg size={size} style={style} className={className}>
+      <g
+        stroke="currentColor"
+        fill="none"
+        strokeWidth={1}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path
+          d="M15 14.5 C15 14.5 10.5 11 10.5 8 A4.5 4.5 0 0 1 19.5 8 C19.5 11 15 14.5 15 14.5 Z"
+          strokeWidth={1.2}
+        />
+        <circle cx={15} cy={8} r={1.5} fill="currentColor" stroke="none" />
       </g>
     </BoxedSvg>
   );

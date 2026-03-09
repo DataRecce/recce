@@ -8,6 +8,7 @@ import {
   BooleanIcon,
   DateIcon,
   DatetimeIcon,
+  GeographyIcon,
   IntegerIcon,
   JsonIcon,
   NumberIcon,
@@ -39,6 +40,7 @@ const ICON_MAP: Record<
   binary: BinaryIcon,
   json: JsonIcon,
   array: ArrayIcon,
+  geography: GeographyIcon,
   unknown: UnknownIcon,
 };
 

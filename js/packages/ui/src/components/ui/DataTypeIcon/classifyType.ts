@@ -9,6 +9,7 @@ export type TypeCategory =
   | "binary"
   | "json"
   | "array"
+  | "geography"
   | "unknown";
 
 const CATEGORY_MAP: Record<string, TypeCategory> = {
@@ -102,6 +103,18 @@ const CATEGORY_MAP: Record<string, TypeCategory> = {
   // array
   ARRAY: "array",
   LIST: "array",
+
+  // geography
+  GEOGRAPHY: "geography",
+  GEOMETRY: "geography",
+  POINT: "geography",
+  LINESTRING: "geography",
+  POLYGON: "geography",
+  MULTIPOINT: "geography",
+  MULTILINESTRING: "geography",
+  MULTIPOLYGON: "geography",
+  GEOMETRYCOLLECTION: "geography",
+  SDO_GEOMETRY: "geography",
 };
 
 /**

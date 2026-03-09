@@ -45,7 +45,8 @@ const allCategories: Array<{ label: string; type: string }> = [
   { label: "Binary", type: "BINARY" },
   { label: "JSON", type: "JSON" },
   { label: "Array", type: "ARRAY" },
-  { label: "Unknown", type: "GEOGRAPHY" },
+  { label: "Geography", type: "GEOGRAPHY" },
+  { label: "Unknown", type: "XYZTYPE" },
 ];
 
 export const AllCategories: Story = {
@@ -53,7 +54,7 @@ export const AllCategories: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Overview of all 11 type categories with example type strings.",
+        story: "Overview of all 12 type categories with example type strings.",
       },
     },
   },
@@ -117,8 +118,12 @@ export const Time: Story = {
   args: { type: "TIME" },
 };
 
-export const Unknown: Story = {
+export const Geography: Story = {
   args: { type: "GEOGRAPHY" },
+};
+
+export const Unknown: Story = {
+  args: { type: "XYZTYPE" },
 };
 
 // ============================================
