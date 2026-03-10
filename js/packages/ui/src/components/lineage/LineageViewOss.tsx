@@ -168,6 +168,8 @@ export function PrivateLineageView(
 
   const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
   const [changeAnalysisMode, setChangeAnalysisMode] = useState(false);
+  // Ref mirror of changeAnalysisMode for reading inside useLayoutEffect
+  // without adding it as a dependency (avoids re-running layout on toggle).
   const changeAnalysisModeRef = useRef(false);
   changeAnalysisModeRef.current = changeAnalysisMode;
   const actionGetCll = useMutation({
