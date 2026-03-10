@@ -123,8 +123,9 @@ If the issue has relations (blocking, blocked-by, related), fetch those issues b
 If the issue has a `gitBranchName`, check its state:
 
 ```bash
+git fetch origin
 git branch -a | grep "<branch-name>"
-git log main..<branch-name> --oneline  # If branch exists: what's already done?
+git log origin/main..origin/<branch-name> --oneline  # If branch exists: what's already done?
 ```
 
 If the branch already has commits, read through them to understand work-in-progress.
@@ -265,7 +266,7 @@ Based on classification and user confirmation, invoke the appropriate skill chai
 
 ```
 1. Use Agent tool (subagent_type: Explore) for deep codebase analysis
-2. Summarize findings in docs/summaries/<date>-<issue-id>-findings.md
+2. Summarize findings in docs/plans/<date>-<issue-id>-findings.md
 3. Post findings back to the Linear issue as a comment (with user permission)
 ```
 
@@ -280,10 +281,10 @@ Before starting any implementation work:
 BRANCH="<gitBranchName from Linear>"
 git fetch origin
 
-# If branch exists remotely
-git checkout "$BRANCH"
+# If branch exists remotely, create local tracking branch
+git checkout -t "origin/$BRANCH"
 
-# If branch doesn't exist, create from main
+# If branch doesn't exist remotely, create from main
 git checkout main && git pull
 git checkout -b "$BRANCH"
 ```
