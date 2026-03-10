@@ -1,6 +1,6 @@
 "use client";
 
-import type { Check } from "../../api";
+import type { Check, ServerInfoResult } from "../../api";
 import {
   type CllInput,
   type ColumnLineageData,
@@ -102,6 +102,7 @@ import {
 import { LineageLegend } from "./legend";
 import { toReactFlow } from "./lineage";
 import { NodeViewOss as NodeView } from "./NodeViewOss";
+import { patchLineageDiffFromCll } from "./patchLineageDiffFromCll";
 import SetupConnectionBanner from "./SetupConnectionBannerOss";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
 import {
@@ -167,33 +168,23 @@ export function PrivateLineageView(
 
   const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
   const [changeAnalysisMode, setChangeAnalysisMode] = useState(false);
+  // Ref mirror of changeAnalysisMode for reading inside useLayoutEffect
+  // without adding it as a dependency (avoids re-running layout on toggle).
   const changeAnalysisModeRef = useRef(false);
   changeAnalysisModeRef.current = changeAnalysisMode;
-  // Track nodes whose change analysis has triggered a lineage refetch,
-  // to avoid infinite refetch loops (CLL → invalidate → lineageGraph changes → CLL → …)
-  const changeAnalysisRefetched = useRef(new Set<string>());
   const actionGetCll = useMutation({
     mutationFn: (input: CllInput) => getCll(input, apiClient),
   });
+  // Guard against useLayoutEffect re-entry after cache patching.
+  // When setQueryData patches lineage.diff, queryServerInfo.data changes,
+  // lineageGraph recomputes via useMemo, and the effect re-fires. This ref
+  // tells the effect to reuse the previous CLL result instead of re-calling
+  // the API and re-patching (which would loop infinitely).
+  const cllCachePatchRef = useRef<{
+    pending: boolean;
+    cllData?: ColumnLineageData;
+  }>({ pending: false });
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
-
-  // After change analysis CLL, the server populates per-column change data.
-  // Refetch lineage so the schema view can show "definition changed" badges.
-  // Uses a Set to avoid infinite refetch loops (CLL → invalidate → lineageGraph changes → CLL → …)
-  const refetchLineageAfterChangeAnalysis = useCallback(
-    (cllInput: CllInput) => {
-      if (!cllInput.change_analysis) return;
-
-      const dedupeKey = cllInput.node_id ?? "__impact_radius__";
-      if (!changeAnalysisRefetched.current.has(dedupeKey)) {
-        changeAnalysisRefetched.current.add(dedupeKey);
-        void queryClient.invalidateQueries({
-          queryKey: cacheKeys.lineage(),
-        });
-      }
-    },
-    [queryClient],
-  );
 
   const findNodeByName = useCallback(
     (name: string) => {
@@ -418,27 +409,58 @@ export function PrivateLineageView(
 
       let cll: ColumnLineageData | undefined;
       if (viewOptions.column_level_lineage) {
-        const cllApiInput: CllInput = {
-          ...viewOptions.column_level_lineage,
-          change_analysis:
-            viewOptions.column_level_lineage.change_analysis ??
-            changeAnalysisModeRef.current,
-        };
-        try {
-          cll = await actionGetCll.mutateAsync(cllApiInput);
-          refetchLineageAfterChangeAnalysis(cllApiInput);
-        } catch (e) {
-          if (e instanceof AxiosError) {
-            const e2 = e as AxiosError<{ detail?: string }>;
-            toaster.create({
-              title: "Column Level Lineage error",
-              description: e2.response?.data.detail ?? e.message,
-              type: "error",
-              closable: true,
-            });
-            return;
+        if (cllCachePatchRef.current.pending) {
+          // Effect re-fired because our setQueryData updated lineageGraph.
+          // Reuse the previous CLL result; skip the API call and re-patch.
+          cll = cllCachePatchRef.current.cllData;
+          cllCachePatchRef.current = { pending: false };
+        } else {
+          const cllApiInput: CllInput = {
+            ...viewOptions.column_level_lineage,
+            change_analysis:
+              viewOptions.column_level_lineage.change_analysis ??
+              changeAnalysisModeRef.current,
+          };
+          try {
+            cll = await actionGetCll.mutateAsync(cllApiInput);
+            // Patch the lineage diff cache with change data from CLL
+            const cllResult = cll;
+            if (cllApiInput.change_analysis && cllResult) {
+              cllCachePatchRef.current = { pending: true, cllData: cllResult };
+              queryClient.setQueryData(
+                cacheKeys.lineage(),
+                (old: ServerInfoResult | undefined) => {
+                  if (!old) return old;
+                  return {
+                    ...old,
+                    lineage: {
+                      ...old.lineage,
+                      diff: patchLineageDiffFromCll(
+                        old.lineage.diff,
+                        cllResult,
+                      ),
+                    },
+                  };
+                },
+              );
+            }
+          } catch (e) {
+            if (e instanceof AxiosError) {
+              const e2 = e as AxiosError<{ detail?: string }>;
+              toaster.create({
+                title: "Column Level Lineage error",
+                description: e2.response?.data.detail ?? e.message,
+                type: "error",
+                closable: true,
+              });
+              return;
+            }
           }
         }
+      } else {
+        // CLL disabled — clear any pending guard so stale data isn't reused
+        // if CLL is re-enabled after a toggle-off.
+        cllCachePatchRef.current = { pending: false };
       }
 
       const [nodes, edges, nodeColumnSetMap] = await toReactFlow(lineageGraph, {
@@ -450,9 +472,11 @@ export function PrivateLineageView(
       setNodeColumSetMap(nodeColumnSetMap);
       setCll(cll);
 
-      // TODO : code smell: vioates DRY. This really shouldn't hit both here and below
-
       // Track lineage view render
+      // Note: this call is intentionally duplicated in refreshLayout. The two
+      // sites read changeAnalysisMode differently (ref here vs. state there)
+      // due to the useLayoutEffect closure, so they can't share a helper
+      // without reintroducing stale-closure risks.
       trackLineageRender(
         nodes,
         viewOptions.view_mode ?? "changed_models",
@@ -671,7 +695,26 @@ export function PrivateLineageView(
       };
       try {
         cll = await actionGetCll.mutateAsync(cllApiInput);
-        refetchLineageAfterChangeAnalysis(cllApiInput);
+        // Patch the lineage diff cache with change data from CLL.
+        // Also set the guard ref so the useLayoutEffect that re-fires
+        // (due to lineageGraph recomputing) skips the redundant CLL call.
+        const cllResult = cll;
+        if (cllApiInput.change_analysis && cllResult) {
+          cllCachePatchRef.current = { pending: true, cllData: cllResult };
+          queryClient.setQueryData(
+            cacheKeys.lineage(),
+            (old: ServerInfoResult | undefined) => {
+              if (!old) return old;
+              return {
+                ...old,
+                lineage: {
+                  ...old.lineage,
+                  diff: patchLineageDiffFromCll(old.lineage.diff, cllResult),
+                },
+              };
+            },
+          );
+        }
       } catch (e) {
         if (e instanceof AxiosError) {
           const e2 = e as AxiosError<{ detail?: string }>;
