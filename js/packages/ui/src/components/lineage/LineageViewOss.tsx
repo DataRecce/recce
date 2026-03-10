@@ -1,6 +1,6 @@
 "use client";
 
-import type { Check } from "../../api";
+import type { Check, ServerInfoResult } from "../../api";
 import {
   type CllInput,
   type ColumnLineageData,
@@ -102,6 +102,7 @@ import {
 import { LineageLegend } from "./legend";
 import { toReactFlow } from "./lineage";
 import { NodeViewOss as NodeView } from "./NodeViewOss";
+import { patchLineageDiffFromCll } from "./patchLineageDiffFromCll";
 import SetupConnectionBanner from "./SetupConnectionBannerOss";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
 import {
@@ -671,7 +672,23 @@ export function PrivateLineageView(
       };
       try {
         cll = await actionGetCll.mutateAsync(cllApiInput);
-        refetchLineageAfterChangeAnalysis(cllApiInput);
+        // Patch the lineage diff cache with change data from CLL
+        const cllResult = cll;
+        if (cllApiInput.change_analysis && cllResult) {
+          queryClient.setQueryData(
+            cacheKeys.lineage(),
+            (old: ServerInfoResult | undefined) => {
+              if (!old) return old;
+              return {
+                ...old,
+                lineage: {
+                  ...old.lineage,
+                  diff: patchLineageDiffFromCll(old.lineage.diff, cllResult),
+                },
+              };
+            },
+          );
+        }
       } catch (e) {
         if (e instanceof AxiosError) {
           const e2 = e as AxiosError<{ detail?: string }>;
