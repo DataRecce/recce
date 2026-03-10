@@ -457,6 +457,10 @@ export function PrivateLineageView(
             }
           }
         }
+      } else {
+        // CLL disabled — clear any pending guard so stale data isn't reused
+        // if CLL is re-enabled after a toggle-off.
+        cllCachePatchRef.current = { pending: false };
       }
 
       const [nodes, edges, nodeColumnSetMap] = await toReactFlow(lineageGraph, {
