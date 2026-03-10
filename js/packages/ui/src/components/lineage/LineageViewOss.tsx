@@ -170,31 +170,10 @@ export function PrivateLineageView(
   const [changeAnalysisMode, setChangeAnalysisMode] = useState(false);
   const changeAnalysisModeRef = useRef(false);
   changeAnalysisModeRef.current = changeAnalysisMode;
-  // Track nodes whose change analysis has triggered a lineage refetch,
-  // to avoid infinite refetch loops (CLL → invalidate → lineageGraph changes → CLL → …)
-  const changeAnalysisRefetched = useRef(new Set<string>());
   const actionGetCll = useMutation({
     mutationFn: (input: CllInput) => getCll(input, apiClient),
   });
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
-
-  // After change analysis CLL, the server populates per-column change data.
-  // Refetch lineage so the schema view can show "definition changed" badges.
-  // Uses a Set to avoid infinite refetch loops (CLL → invalidate → lineageGraph changes → CLL → …)
-  const refetchLineageAfterChangeAnalysis = useCallback(
-    (cllInput: CllInput) => {
-      if (!cllInput.change_analysis) return;
-
-      const dedupeKey = cllInput.node_id ?? "__impact_radius__";
-      if (!changeAnalysisRefetched.current.has(dedupeKey)) {
-        changeAnalysisRefetched.current.add(dedupeKey);
-        void queryClient.invalidateQueries({
-          queryKey: cacheKeys.lineage(),
-        });
-      }
-    },
-    [queryClient],
-  );
 
   const findNodeByName = useCallback(
     (name: string) => {
@@ -427,7 +406,23 @@ export function PrivateLineageView(
         };
         try {
           cll = await actionGetCll.mutateAsync(cllApiInput);
-          refetchLineageAfterChangeAnalysis(cllApiInput);
+          // Patch the lineage diff cache with change data from CLL
+          const cllResult = cll;
+          if (cllApiInput.change_analysis && cllResult) {
+            queryClient.setQueryData(
+              cacheKeys.lineage(),
+              (old: ServerInfoResult | undefined) => {
+                if (!old) return old;
+                return {
+                  ...old,
+                  lineage: {
+                    ...old.lineage,
+                    diff: patchLineageDiffFromCll(old.lineage.diff, cllResult),
+                  },
+                };
+              },
+            );
+          }
         } catch (e) {
           if (e instanceof AxiosError) {
             const e2 = e as AxiosError<{ detail?: string }>;
