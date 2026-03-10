@@ -175,6 +175,15 @@ export function PrivateLineageView(
   const actionGetCll = useMutation({
     mutationFn: (input: CllInput) => getCll(input, apiClient),
   });
+  // Guard against useLayoutEffect re-entry after cache patching.
+  // When setQueryData patches lineage.diff, queryServerInfo.data changes,
+  // lineageGraph recomputes via useMemo, and the effect re-fires. This ref
+  // tells the effect to reuse the previous CLL result instead of re-calling
+  // the API and re-patching (which would loop infinitely).
+  const cllCachePatchRef = useRef<{
+    pending: boolean;
+    cllData?: ColumnLineageData;
+  }>({ pending: false });
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
 
   const findNodeByName = useCallback(
@@ -400,41 +409,52 @@ export function PrivateLineageView(
 
       let cll: ColumnLineageData | undefined;
       if (viewOptions.column_level_lineage) {
-        const cllApiInput: CllInput = {
-          ...viewOptions.column_level_lineage,
-          change_analysis:
-            viewOptions.column_level_lineage.change_analysis ??
-            changeAnalysisModeRef.current,
-        };
-        try {
-          cll = await actionGetCll.mutateAsync(cllApiInput);
-          // Patch the lineage diff cache with change data from CLL
-          const cllResult = cll;
-          if (cllApiInput.change_analysis && cllResult) {
-            queryClient.setQueryData(
-              cacheKeys.lineage(),
-              (old: ServerInfoResult | undefined) => {
-                if (!old) return old;
-                return {
-                  ...old,
-                  lineage: {
-                    ...old.lineage,
-                    diff: patchLineageDiffFromCll(old.lineage.diff, cllResult),
-                  },
-                };
-              },
-            );
-          }
-        } catch (e) {
-          if (e instanceof AxiosError) {
-            const e2 = e as AxiosError<{ detail?: string }>;
-            toaster.create({
-              title: "Column Level Lineage error",
-              description: e2.response?.data.detail ?? e.message,
-              type: "error",
-              closable: true,
-            });
-            return;
+        if (cllCachePatchRef.current.pending) {
+          // Effect re-fired because our setQueryData updated lineageGraph.
+          // Reuse the previous CLL result; skip the API call and re-patch.
+          cll = cllCachePatchRef.current.cllData;
+          cllCachePatchRef.current = { pending: false };
+        } else {
+          const cllApiInput: CllInput = {
+            ...viewOptions.column_level_lineage,
+            change_analysis:
+              viewOptions.column_level_lineage.change_analysis ??
+              changeAnalysisModeRef.current,
+          };
+          try {
+            cll = await actionGetCll.mutateAsync(cllApiInput);
+            // Patch the lineage diff cache with change data from CLL
+            const cllResult = cll;
+            if (cllApiInput.change_analysis && cllResult) {
+              cllCachePatchRef.current = { pending: true, cllData: cllResult };
+              queryClient.setQueryData(
+                cacheKeys.lineage(),
+                (old: ServerInfoResult | undefined) => {
+                  if (!old) return old;
+                  return {
+                    ...old,
+                    lineage: {
+                      ...old.lineage,
+                      diff: patchLineageDiffFromCll(
+                        old.lineage.diff,
+                        cllResult,
+                      ),
+                    },
+                  };
+                },
+              );
+            }
+          } catch (e) {
+            if (e instanceof AxiosError) {
+              const e2 = e as AxiosError<{ detail?: string }>;
+              toaster.create({
+                title: "Column Level Lineage error",
+                description: e2.response?.data.detail ?? e.message,
+                type: "error",
+                closable: true,
+              });
+              return;
+            }
           }
         }
       }
@@ -671,9 +691,12 @@ export function PrivateLineageView(
       };
       try {
         cll = await actionGetCll.mutateAsync(cllApiInput);
-        // Patch the lineage diff cache with change data from CLL
+        // Patch the lineage diff cache with change data from CLL.
+        // Also set the guard ref so the useLayoutEffect that re-fires
+        // (due to lineageGraph recomputing) skips the redundant CLL call.
         const cllResult = cll;
         if (cllApiInput.change_analysis && cllResult) {
+          cllCachePatchRef.current = { pending: true, cllData: cllResult };
           queryClient.setQueryData(
             cacheKeys.lineage(),
             (old: ServerInfoResult | undefined) => {

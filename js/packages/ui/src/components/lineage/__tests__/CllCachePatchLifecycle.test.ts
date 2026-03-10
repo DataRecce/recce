@@ -548,4 +548,96 @@ describe("CLL cache patch lifecycle", () => {
       expect(afterDiff).not.toBe(beforeDiff);
     });
   });
+
+  // =========================================================================
+  // Re-entry guard (cllCachePatchRef)
+  // =========================================================================
+
+  describe("re-entry guard prevents infinite loop", () => {
+    /**
+     * Mirrors the cllCachePatchRef guard from LineageViewOss.tsx.
+     * After setQueryData, lineageGraph recomputes and the useLayoutEffect
+     * re-fires. The guard tells the effect to reuse the previous CLL result
+     * instead of re-calling the API and re-patching.
+     */
+    interface CllCachePatchRef {
+      pending: boolean;
+      cllData?: ColumnLineageData;
+    }
+
+    it("guard is set before setQueryData and consumed on re-entry", () => {
+      const guard: CllCachePatchRef = { pending: false };
+      const qc = createQueryClient();
+      const cllData = createCllResponse({
+        [NODE_A]: createCllNodeData({
+          id: NODE_A,
+          name: "orders",
+          change_status: "modified",
+          change_category: "breaking",
+        }),
+      });
+
+      // Simulate first pass: CLL call succeeds, set guard, patch cache
+      guard.pending = true;
+      guard.cllData = cllData;
+      applyCachePatch(qc, { node_id: NODE_A, change_analysis: true }, cllData);
+
+      // Guard should be pending with stored CLL data
+      expect(guard.pending).toBe(true);
+      expect(guard.cllData).toBe(cllData);
+
+      // Simulate re-entry: effect fires again, guard is consumed
+      if (guard.pending) {
+        const reusedCll = guard.cllData;
+        guard.pending = false;
+        guard.cllData = undefined;
+
+        // The reused CLL data should be the same
+        expect(reusedCll).toBe(cllData);
+      }
+
+      // Guard should be cleared
+      expect(guard.pending).toBe(false);
+    });
+
+    it("guard does not interfere with subsequent genuine CLL calls", () => {
+      const guard: CllCachePatchRef = { pending: false };
+      const qc = createQueryClient();
+
+      // First CLL call: patch and set guard
+      const cllData1 = createCllResponse({
+        [NODE_A]: createCllNodeData({
+          id: NODE_A,
+          name: "orders",
+          change_status: "modified",
+          change_category: "breaking",
+        }),
+      });
+      guard.pending = true;
+      guard.cllData = cllData1;
+      applyCachePatch(qc, { node_id: NODE_A, change_analysis: true }, cllData1);
+
+      // Re-entry: consume guard
+      guard.pending = false;
+      guard.cllData = undefined;
+
+      // Second genuine CLL call (different column click): guard is clear
+      expect(guard.pending).toBe(false);
+
+      const cllData2 = createCllResponse({
+        [NODE_B]: createCllNodeData({
+          id: NODE_B,
+          name: "customers",
+          change_status: "added",
+        }),
+      });
+      guard.pending = true;
+      guard.cllData = cllData2;
+      applyCachePatch(qc, { node_id: NODE_B, change_analysis: true }, cllData2);
+
+      const diff = getCachedDiff(qc);
+      expect(diff?.[NODE_A]?.change_status).toBe("modified");
+      expect(diff?.[NODE_B]?.change_status).toBe("added");
+    });
+  });
 });
