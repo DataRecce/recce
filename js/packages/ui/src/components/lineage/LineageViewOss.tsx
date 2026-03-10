@@ -448,9 +448,11 @@ export function PrivateLineageView(
       setNodeColumSetMap(nodeColumnSetMap);
       setCll(cll);
 
-      // TODO : code smell: vioates DRY. This really shouldn't hit both here and below
-
       // Track lineage view render
+      // Note: this call is intentionally duplicated in refreshLayout. The two
+      // sites read changeAnalysisMode differently (ref here vs. state there)
+      // due to the useLayoutEffect closure, so they can't share a helper
+      // without reintroducing stale-closure risks.
       trackLineageRender(
         nodes,
         viewOptions.view_mode ?? "changed_models",
