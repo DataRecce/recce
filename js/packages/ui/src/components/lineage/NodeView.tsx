@@ -634,8 +634,8 @@ export function NodeView({
     <Box
       sx={{
         height: "100%",
-        display: "grid",
-        gridTemplateRows: "auto auto auto 1fr",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       {/* Header row: name + close button */}
@@ -713,7 +713,13 @@ export function NodeView({
       {/* Content area: tabs for columns and code */}
       {withColumns && (
         <Box
-          sx={{ overflow: "auto", display: "flex", flexDirection: "column" }}
+          sx={{
+            overflow: "auto",
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+            minHeight: 0,
+          }}
         >
           {/* Notification for single env mode */}
           {isSingleEnv && isNotificationOpen && NotificationComponent && (

@@ -110,6 +110,23 @@ class Node:
             base = run_result.get("base")
             current = run_result.get("curr")
             if base is None or current is None:
+                # Check if unavailability is due to table_not_found or permission_denied
+                base_meta = run_result.get("base_meta", {})
+                curr_meta = run_result.get("curr_meta", {})
+                base_status = base_meta.get("status") if isinstance(base_meta, dict) else None
+                curr_status = curr_meta.get("status") if isinstance(curr_meta, dict) else None
+                # Must match non-OK values in RowCountStatus (recce/tasks/rowcount.py)
+                unavailable_statuses = {
+                    "table_not_found",
+                    "permission_denied",
+                    "not_in_manifest",
+                    "unsupported_resource_type",
+                    "unsupported_materialization",
+                }
+                if (base_status in unavailable_statuses) or (curr_status in unavailable_statuses):
+                    # Show which status caused unavailability
+                    reason = base_status if base_status in unavailable_statuses else curr_status
+                    return f"N/A ({reason})"
                 return None
             base = int(base)
             current = int(current)

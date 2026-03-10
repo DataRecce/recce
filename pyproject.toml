@@ -20,7 +20,7 @@ dependencies = [
     "pydantic",
     "jinja2",
     "rich>=12.0.0",
-    "sentry-sdk",
+    "sentry-sdk>=2.44.0",
     "watchdog",
     "websockets",
     "py-markdown-table",
