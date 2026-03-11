@@ -37,6 +37,29 @@ class RowCountStatus(str, Enum):
     PERMISSION_DENIED = "permission_denied"
 
 
+# Shared error indicator patterns for DB error classification.
+# Used by dbt path, sqlmesh path, and MCP server central handler.
+TABLE_NOT_FOUND_INDICATORS = [
+    "DOES NOT EXIST",
+    "42S02",  # Snowflake/SQL Server error code for missing table
+    "42P01",  # PostgreSQL error code for missing table
+    "TABLE OR VIEW NOT FOUND",  # Oracle
+    "RELATION DOES NOT EXIST",  # PostgreSQL alternative
+    "OBJECT DOES NOT EXIST",  # Snowflake
+    "INVALID OBJECT NAME",  # SQL Server
+]
+PERMISSION_DENIED_INDICATORS = [
+    "NOT AUTHORIZED",
+    "PERMISSION DENIED",
+    "ACCESS DENIED",
+    "INSUFFICIENT PRIVILEGES",
+]
+SYNTAX_ERROR_INDICATORS = [
+    "SYNTAX ERROR",
+    "PARSER ERROR",
+]
+
+
 def _make_row_count_result(
     count: Optional[int] = None,
     status: RowCountStatus = RowCountStatus.OK,
@@ -114,15 +137,7 @@ def _query_row_count(dbt_adapter: Any, model_name: str, base: bool = False) -> D
         error_msg = str(e).upper()
 
         # Check for permission/authorization errors first (distinct from missing tables)
-        if any(
-            indicator in error_msg
-            for indicator in [
-                "NOT AUTHORIZED",
-                "PERMISSION DENIED",
-                "ACCESS DENIED",
-                "INSUFFICIENT PRIVILEGES",
-            ]
-        ):
+        if any(indicator in error_msg for indicator in PERMISSION_DENIED_INDICATORS):
             message = (
                 f"Permission denied when accessing '{relation}' in {env_name} database. "
                 f"The table may exist but the current user lacks permission to query it."
@@ -135,18 +150,7 @@ def _query_row_count(dbt_adapter: Any, model_name: str, base: bool = False) -> D
 
         # Check for table-not-found errors
         # Note: "DOES NOT EXIST" in a count(*) query context refers to the table, not columns
-        if any(
-            indicator in error_msg
-            for indicator in [
-                "DOES NOT EXIST",
-                "42S02",  # Snowflake/SQL Server error code for missing table
-                "42P01",  # PostgreSQL error code for missing table
-                "TABLE OR VIEW NOT FOUND",  # Oracle
-                "RELATION DOES NOT EXIST",  # PostgreSQL alternative
-                "OBJECT DOES NOT EXIST",  # Snowflake
-                "INVALID OBJECT NAME",  # SQL Server
-            ]
-        ):
+        if any(indicator in error_msg for indicator in TABLE_NOT_FOUND_INDICATORS):
             message = (
                 f"Table '{relation}' not found in {env_name} database. "
                 f"The model is defined in the dbt manifest but the table doesn't exist. "
@@ -307,6 +311,31 @@ class RowCountDiffTask(Task, QueryMixin):
 
         return result
 
+    def _classify_sqlmesh_error(self, error: Exception, name: str, env_name: str):
+        """Classify sqlmesh query error, mirroring dbt path patterns.
+
+        Returns (None, meta_dict) tuple for recognized errors (permission_denied,
+        table_not_found). Raises the original exception for unclassified errors.
+        """
+        error_msg = str(error).upper()
+
+        # Permission errors
+        if any(indicator in error_msg for indicator in PERMISSION_DENIED_INDICATORS):
+            return None, {
+                "status": RowCountStatus.PERMISSION_DENIED,
+                "message": f"Permission denied for '{name}' in {env_name} environment",
+            }
+
+        # Table not found errors
+        if any(indicator in error_msg for indicator in TABLE_NOT_FOUND_INDICATORS):
+            return None, {
+                "status": RowCountStatus.TABLE_NOT_FOUND,
+                "message": f"Table '{name}' not found in {env_name} environment",
+            }
+
+        # Unknown error — re-raise
+        raise error
+
     def execute_sqlmesh(self):
         result = {}
 
@@ -317,31 +346,23 @@ class RowCountDiffTask(Task, QueryMixin):
         for node_name in self.params.node_names or []:
             query_candidates.append(node_name)
 
-        from recce.adapter.sqlmesh_adapter import SqlmeshAdapter
-
-        sqlmesh_adapter: SqlmeshAdapter = default_context().adapter
+        sqlmesh_adapter = default_context().adapter
 
         for name in query_candidates:
             # Query base environment
             try:
                 df, _ = sqlmesh_adapter.fetchdf_with_limit(f"select count(*) from {name}", base=True)
                 base_count, base_meta = int(df.iloc[0, 0]), {"status": RowCountStatus.OK}
-            except Exception:
-                base_count, base_meta = None, {
-                    "status": RowCountStatus.TABLE_NOT_FOUND,
-                    "message": f"Table '{name}' not found in base environment",
-                }
+            except Exception as e:
+                base_count, base_meta = self._classify_sqlmesh_error(e, name, "base")
             self.check_cancel()
 
             # Query current environment
             try:
                 df, _ = sqlmesh_adapter.fetchdf_with_limit(f"select count(*) from {name}", base=False)
                 curr_count, curr_meta = int(df.iloc[0, 0]), {"status": RowCountStatus.OK}
-            except Exception:
-                curr_count, curr_meta = None, {
-                    "status": RowCountStatus.TABLE_NOT_FOUND,
-                    "message": f"Table '{name}' not found in current environment",
-                }
+            except Exception as e:
+                curr_count, curr_meta = self._classify_sqlmesh_error(e, name, "current")
             self.check_cancel()
 
             result[name] = {

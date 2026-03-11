@@ -129,6 +129,7 @@ export const ModelNodeContextMenu = ({
     selectMode,
     cll,
     showColumnLevelLineage,
+    setChangeAnalysisMode,
   } = useLineageViewContextSafe();
   const { featureToggles } = useRecceInstanceContext();
   const { isActionAvailable, lineageGraph } = useLineageGraphContext();
@@ -149,6 +150,7 @@ export const ModelNodeContextMenu = ({
         selectMode,
         cll,
         showColumnLevelLineage,
+        setChangeAnalysisMode,
         selectParentNodes,
         selectChildNodes,
         getNodeColumnSet,
@@ -221,6 +223,7 @@ export const LineageViewContextMenu = ({
     selectMode,
     cll,
     showColumnLevelLineage,
+    setChangeAnalysisMode,
   } = useLineageViewContextSafe();
   const { featureToggles } = useRecceInstanceContext();
   const { isActionAvailable, lineageGraph } = useLineageGraphContext();
@@ -249,6 +252,7 @@ export const LineageViewContextMenu = ({
         selectMode,
         cll,
         showColumnLevelLineage,
+        setChangeAnalysisMode,
         selectParentNodes,
         selectChildNodes,
         getNodeColumnSet,
