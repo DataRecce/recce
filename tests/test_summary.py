@@ -324,6 +324,6 @@ class TestBuildLineageGraphWithDiff:
         curr_lineage = dbt_adapter.get_lineage()
         base_lineage = dbt_adapter.get_lineage(base=True)
 
-        graph_no_diff = _build_lineage_graph(curr_lineage, base_lineage)
-        graph_with_none = _build_lineage_graph(curr_lineage, base_lineage, None)
+        graph_no_diff = _build_lineage_graph(base_lineage, curr_lineage)
+        graph_with_none = _build_lineage_graph(base_lineage, curr_lineage, None)
         assert graph_no_diff.modified_set == graph_with_none.modified_set
