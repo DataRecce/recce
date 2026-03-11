@@ -1092,6 +1092,153 @@ class TestCallToolHandler:
 
         assert result.root.isError is True
 
+    @pytest.mark.asyncio
+    async def test_existing_tools_dispatch_via_call_tool(self, mcp_server):
+        """Pre-existing tools dispatch correctly through the call_tool handler."""
+        server, mock_context = mcp_server
+
+        # schema_diff
+        mock_lineage_diff = MagicMock()
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": {}, "parent_map": {}},
+            "current": {"nodes": {}, "parent_map": {}},
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+        r = await self._invoke_call_tool(server, "schema_diff", {})
+        assert r.root.isError is not True
+
+        # row_count_diff
+        with patch.object(RowCountDiffTask, "execute", return_value={"m": {"base": 1, "curr": 1}}):
+            r = await self._invoke_call_tool(server, "row_count_diff", {"node_names": ["m"]})
+        assert r.root.isError is not True
+
+        # query
+        mock_qr = MagicMock()
+        mock_qr.model_dump.return_value = {"columns": ["c"], "data": [[1]]}
+        with patch.object(QueryTask, "execute", return_value=mock_qr):
+            r = await self._invoke_call_tool(server, "query", {"sql_template": "SELECT 1"})
+        assert r.root.isError is not True
+
+        # query_diff
+        mock_qdr = MagicMock()
+        mock_qdr.model_dump.return_value = {"diff": {"added": [], "removed": [], "modified": []}}
+        with patch.object(QueryDiffTask, "execute", return_value=mock_qdr):
+            r = await self._invoke_call_tool(server, "query_diff", {"sql_template": "SELECT 1"})
+        assert r.root.isError is not True
+
+        # profile_diff
+        mock_pdr = MagicMock()
+        mock_pdr.model_dump.return_value = {"columns": {}}
+        with patch.object(ProfileDiffTask, "execute", return_value=mock_pdr):
+            r = await self._invoke_call_tool(server, "profile_diff", {"model": "m"})
+        assert r.root.isError is not True
+
+        # list_checks
+        mock_check_dao = MagicMock()
+        mock_check_dao.list.return_value = []
+        mock_check_dao.status.return_value = {"total": 0, "approved": 0}
+        with patch("recce.models.CheckDAO", return_value=mock_check_dao):
+            r = await self._invoke_call_tool(server, "list_checks", {})
+        assert r.root.isError is not True
+
+        # run_check (successful dispatch via lineage_diff path)
+        from uuid import uuid4
+
+        from recce.models.types import LineageDiff, RunType
+
+        check_id = uuid4()
+        mock_check = MagicMock()
+        mock_check.check_id = check_id
+        mock_check.type = RunType.LINEAGE_DIFF
+        mock_check.params = {}
+
+        mock_ld = MagicMock(spec=LineageDiff)
+        mock_ld.model_dump.return_value = {
+            "base": {"nodes": {}, "parent_map": {}},
+            "current": {"nodes": {}, "parent_map": {}},
+            "diff": {},
+        }
+        mock_context.get_lineage_diff.return_value = mock_ld
+        mock_context.adapter.select_nodes.return_value = set()
+
+        mock_check_dao2 = MagicMock()
+        mock_check_dao2.find_check_by_id.return_value = mock_check
+        with patch("recce.models.CheckDAO", return_value=mock_check_dao2):
+            r = await self._invoke_call_tool(server, "run_check", {"check_id": str(check_id)})
+        assert r.root.isError is not True
+
+        # unknown tool
+        r = await self._invoke_call_tool(server, "nonexistent_tool", {})
+        assert r.root.isError is True
+
+    @pytest.mark.asyncio
+    async def test_large_response_truncates_log(self, mcp_server):
+        """Large tool responses are truncated in debug log (line 754)."""
+        server, mock_context = mcp_server
+        # Return a large result that serializes to >1000 chars
+        large_result = {"data": "x" * 2000}
+        with patch.object(RowCountDiffTask, "execute", return_value=large_result):
+            r = await self._invoke_call_tool(server, "row_count_diff", {"node_names": ["m"]})
+        assert r.root.isError is not True
+
+    @pytest.mark.asyncio
+    async def test_new_tools_dispatch_via_call_tool(self, mcp_server):
+        """New tools dispatch correctly through the call_tool handler."""
+        server, mock_context = mcp_server
+
+        # value_diff
+        mock_vd = MagicMock()
+        mock_vd.model_dump.return_value = {"summary": {}, "data": {}}
+        with patch.object(ValueDiffTask, "execute", return_value=mock_vd):
+            r = await self._invoke_call_tool(server, "value_diff", {"model": "m", "primary_key": "id"})
+        assert r.root.isError is not True
+
+        # value_diff_detail
+        mock_vdd = MagicMock()
+        mock_vdd.model_dump.return_value = {"columns": [], "data": []}
+        with patch.object(ValueDiffDetailTask, "execute", return_value=mock_vdd):
+            r = await self._invoke_call_tool(server, "value_diff_detail", {"model": "m", "primary_key": "id"})
+        assert r.root.isError is not True
+
+        # top_k_diff
+        with patch.object(TopKDiffTask, "execute", return_value={"base": {}, "current": {}}):
+            r = await self._invoke_call_tool(server, "top_k_diff", {"model": "m", "column_name": "c"})
+        assert r.root.isError is not True
+
+        # histogram_diff
+        mock_context.build_name_to_unique_id_index.return_value = {"m": "model.p.m"}
+        mock_context.get_model.return_value = {"columns": {"c": {"name": "c", "type": "INTEGER"}}}
+        with patch.object(HistogramDiffTask, "execute", return_value={"base": {}, "current": {}}):
+            r = await self._invoke_call_tool(server, "histogram_diff", {"model": "m", "column_name": "c"})
+        assert r.root.isError is not True
+
+        # get_model
+        mock_context.get_model.side_effect = [{"columns": {}}, {"columns": {}}]
+        r = await self._invoke_call_tool(server, "get_model", {"model_id": "model.p.m"})
+        assert r.root.isError is not True
+
+        # get_cll
+        mock_context.adapter_type = "dbt"
+        mock_cll = MagicMock()
+        mock_cll.model_dump.return_value = {"nodes": {}, "columns": {}, "parent_map": {}, "child_map": {}}
+        mock_context.adapter.get_cll.return_value = mock_cll
+        r = await self._invoke_call_tool(server, "get_cll", {})
+        assert r.root.isError is not True
+
+        # get_server_info
+        mock_context.adapter_type = "dbt"
+        mock_context.review_mode = False
+        mock_context.support_tasks.return_value = {}
+        mock_context.state_loader = None
+        r = await self._invoke_call_tool(server, "get_server_info", {})
+        assert r.root.isError is not True
+
+        # select_nodes
+        mock_context.adapter_type = "dbt"
+        mock_context.adapter.select_nodes.return_value = {"model.p.m"}
+        r = await self._invoke_call_tool(server, "select_nodes", {})
+        assert r.root.isError is not True
+
 
 class TestLineageDiffEdgeCases:
     """Test edge cases in _tool_lineage_diff"""
