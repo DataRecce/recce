@@ -1040,6 +1040,10 @@ class RecceMCPServer:
         """Execute histogram diff task with auto-detected column type"""
         model = arguments.get("model")
         column_name = arguments.get("column_name")
+        if not model:
+            raise ValueError("model is required")
+        if not column_name:
+            raise ValueError("column_name is required")
 
         # Auto-detect column_type from model metadata
         name_to_id = self.context.build_name_to_unique_id_index()
