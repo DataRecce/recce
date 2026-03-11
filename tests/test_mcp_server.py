@@ -615,6 +615,89 @@ class TestRecceMCPServer:
             await server._tool_select_nodes({})
 
     @pytest.mark.asyncio
+    async def test_tool_top_k_diff_with_model_dump(self, mcp_server):
+        """Test top_k_diff when task returns a Pydantic model (has model_dump)"""
+        server, _ = mcp_server
+        mock_result = MagicMock()
+        mock_result.model_dump.return_value = {"base": {"values": ["a"]}, "current": {"values": ["a"]}}
+
+        with patch.object(TopKDiffTask, "execute", return_value=mock_result):
+            result = await server._tool_top_k_diff({"model": "m", "column_name": "c"})
+
+        assert "base" in result
+        mock_result.model_dump.assert_called_once_with(mode="json")
+
+    @pytest.mark.asyncio
+    async def test_tool_histogram_diff_with_model_dump(self, mcp_server):
+        """Test histogram_diff when task returns a Pydantic model (has model_dump)"""
+        server, mock_context = mcp_server
+        mock_context.build_name_to_unique_id_index.return_value = {"m": "model.p.m"}
+        mock_context.get_model.return_value = {"columns": {"c": {"name": "c", "type": "INTEGER"}}}
+
+        mock_result = MagicMock()
+        mock_result.model_dump.return_value = {"base": {"counts": [1]}, "current": {"counts": [2]}}
+
+        with patch.object(HistogramDiffTask, "execute", return_value=mock_result):
+            result = await server._tool_histogram_diff({"model": "m", "column_name": "c"})
+
+        assert "base" in result
+        mock_result.model_dump.assert_called_once_with(mode="json")
+
+    @pytest.mark.asyncio
+    async def test_tool_histogram_diff_case_insensitive_column(self, mcp_server):
+        """Test histogram_diff resolves column name case-insensitively"""
+        server, mock_context = mcp_server
+        mock_context.build_name_to_unique_id_index.return_value = {"m": "model.p.m"}
+        # Column stored as uppercase in catalog
+        mock_context.get_model.return_value = {"columns": {"AGE": {"name": "AGE", "type": "INTEGER"}}}
+
+        mock_result = {"base": {}, "current": {}}
+        with patch.object(HistogramDiffTask, "execute", return_value=mock_result):
+            result = await server._tool_histogram_diff({"model": "m", "column_name": "age"})
+
+        assert "base" in result
+
+    @pytest.mark.asyncio
+    async def test_tool_get_server_info_with_state_loader(self, mcp_server):
+        """Test get_server_info includes git and PR info when state_loader is available"""
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "dbt"
+        mock_context.review_mode = False
+        mock_context.support_tasks.return_value = {"row_count_diff": True}
+
+        mock_git = MagicMock()
+        mock_git.model_dump.return_value = {"branch": "feature/test"}
+        mock_pr = MagicMock()
+        mock_pr.model_dump.return_value = {"url": "https://github.com/org/repo/pull/1"}
+
+        mock_state = MagicMock()
+        mock_state.git = mock_git
+        mock_state.pull_request = mock_pr
+        mock_context.export_state.return_value = mock_state
+        mock_context.state_loader = MagicMock()  # non-None to trigger the branch
+
+        result = await server._tool_get_server_info({})
+
+        assert result["git"] == {"branch": "feature/test"}
+        assert result["pull_request"] == {"url": "https://github.com/org/repo/pull/1"}
+
+    @pytest.mark.asyncio
+    async def test_tool_get_server_info_state_loader_error(self, mcp_server):
+        """Test get_server_info handles export_state errors gracefully"""
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "dbt"
+        mock_context.review_mode = False
+        mock_context.support_tasks.return_value = {}
+        mock_context.state_loader = MagicMock()
+        mock_context.export_state.side_effect = Exception("git error")
+
+        result = await server._tool_get_server_info({})
+
+        # Should still return basic info without git/PR
+        assert result["adapter_type"] == "dbt"
+        assert "git" not in result
+
+    @pytest.mark.asyncio
     async def test_error_handling(self, mcp_server):
         """Test error handling in tool execution"""
         server, mock_context = mcp_server
@@ -721,6 +804,17 @@ class TestMCPServerModes:
         assert server.mode == RecceServerMode.preview
         # Verify it's not server mode
         assert server.mode != RecceServerMode.server
+
+    @pytest.mark.asyncio
+    async def test_non_server_mode_blocks_new_diff_tools(self):
+        """Test that preview mode blocks new diff tools but allows metadata tools"""
+        mock_context = MagicMock(spec=RecceContext)
+        server = RecceMCPServer(mock_context, mode=RecceServerMode.preview)
+
+        blocked_tools = ["value_diff", "value_diff_detail", "top_k_diff", "histogram_diff"]
+        for tool_name in blocked_tools:
+            result = await TestCallToolHandler._invoke_call_tool(server, tool_name, {})
+            assert result.root.isError is True
 
 
 @pytest.fixture
