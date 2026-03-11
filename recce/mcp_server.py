@@ -22,6 +22,7 @@ from recce.core import RecceContext, load_context
 from recce.exceptions import RecceException
 from recce.server import RecceServerMode
 from recce.tasks.dataframe import DataFrame
+from recce.tasks.histogram import HistogramDiffTask
 from recce.tasks.profile import ProfileDiffTask
 from recce.tasks.query import QueryDiffTask, QueryTask
 from recce.tasks.rowcount import (
@@ -30,6 +31,8 @@ from recce.tasks.rowcount import (
     TABLE_NOT_FOUND_INDICATORS,
     RowCountDiffTask,
 )
+from recce.tasks.top_k import TopKDiffTask
+from recce.tasks.valuediff import ValueDiffDetailTask, ValueDiffTask
 
 logger = logging.getLogger(__name__)
 
@@ -271,6 +274,97 @@ class RecceMCPServer:
                 )
             )
 
+            tools.append(
+                Tool(
+                    name="get_model",
+                    description="Get column details for a model from both base and current environments. "
+                    "Returns column names, types, and constraints. Useful for understanding model schema "
+                    "before running diff tools.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "model_id": {
+                                "type": "string",
+                                "description": "The unique ID of the model (e.g., 'model.project.model_name')",
+                            },
+                        },
+                        "required": ["model_id"],
+                    },
+                )
+            )
+            tools.append(
+                Tool(
+                    name="get_cll",
+                    description="Get column-level lineage data. Traces which downstream columns are affected "
+                    "by column changes. Only available with dbt adapter.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "node_id": {
+                                "type": "string",
+                                "description": "Node unique ID to get column lineage for (optional)",
+                            },
+                            "column": {
+                                "type": "string",
+                                "description": "Column name to trace lineage for (optional)",
+                            },
+                            "change_analysis": {
+                                "type": "boolean",
+                                "description": "Whether to include change analysis (default: false)",
+                                "default": False,
+                            },
+                        },
+                    },
+                )
+            )
+            tools.append(
+                Tool(
+                    name="get_server_info",
+                    description="Get server context information including adapter type, git branch, "
+                    "supported tasks, and review mode status. Useful for diagnostics and "
+                    "understanding which diff tools are available.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {},
+                    },
+                )
+            )
+            tools.append(
+                Tool(
+                    name="select_nodes",
+                    description="Resolve dbt selector expressions to a list of node unique IDs. "
+                    "Use this to plan which models to investigate before running expensive diff operations. "
+                    "Only available with dbt adapter.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "select": {
+                                "type": "string",
+                                "description": (
+                                    "dbt selector syntax to filter models. "
+                                    "Valid state selectors: state:new, state:old, state:modified, state:unmodified. "
+                                    "NOTE: 'state:added' is INVALID - use 'state:new'."
+                                ),
+                            },
+                            "exclude": {
+                                "type": "string",
+                                "description": "dbt selector syntax to exclude models (optional)",
+                            },
+                            "packages": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "List of packages to filter (optional)",
+                            },
+                            "view_mode": {
+                                "type": "string",
+                                "enum": ["all", "changed_models"],
+                                "description": "View mode: 'all' for all models, 'changed_models' for only changed models (optional)",
+                            },
+                        },
+                    },
+                )
+            )
+
             # Diff tools only available in server mode, not in preview or read-only mode
             if self.mode == RecceServerMode.server:
                 tools.extend(
@@ -415,6 +509,143 @@ class RecceMCPServer:
                             },
                         ),
                         Tool(
+                            name="value_diff",
+                            description=(
+                                "Compare row-level values between base and current environments using primary key join. "
+                                "Returns per-column match rates showing data quality impact. "
+                                "Use this to understand which columns changed and how many rows are affected."
+                            )
+                            + (
+                                "\n\nNote: When base environment is not configured, this tool compares "
+                                "the current environment against itself (no changes expected)."
+                                if self.single_env
+                                else ""
+                            ),
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "model": {
+                                        "type": "string",
+                                        "description": "Model name to compare",
+                                    },
+                                    "primary_key": {
+                                        "oneOf": [
+                                            {"type": "string"},
+                                            {"type": "array", "items": {"type": "string"}},
+                                        ],
+                                        "description": "Primary key column(s) for joining base and current",
+                                    },
+                                    "columns": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                        "description": "Columns to compare (optional, compares all if not specified)",
+                                    },
+                                },
+                                "required": ["model", "primary_key"],
+                            },
+                        ),
+                        Tool(
+                            name="value_diff_detail",
+                            description=(
+                                "Get detailed row-level diff showing actual changed, added, and removed values. "
+                                "Use after value_diff flags mismatches to see the actual data differences."
+                            )
+                            + (
+                                "\n\nNote: When base environment is not configured, this tool compares "
+                                "the current environment against itself (no changes expected)."
+                                if self.single_env
+                                else ""
+                            ),
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "model": {
+                                        "type": "string",
+                                        "description": "Model name to compare",
+                                    },
+                                    "primary_key": {
+                                        "oneOf": [
+                                            {"type": "string"},
+                                            {"type": "array", "items": {"type": "string"}},
+                                        ],
+                                        "description": "Primary key column(s) for joining base and current",
+                                    },
+                                    "columns": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                        "description": "Columns to compare (optional, compares all if not specified)",
+                                    },
+                                },
+                                "required": ["model", "primary_key"],
+                            },
+                        ),
+                        Tool(
+                            name="top_k_diff",
+                            description=(
+                                "Compare top-K categorical values between base and current environments. "
+                                "Detects distribution shifts in categorical columns (e.g., new status values, "
+                                "disappeared categories)."
+                            )
+                            + (
+                                "\n\nNote: When base environment is not configured, this tool compares "
+                                "the current environment against itself (no changes expected)."
+                                if self.single_env
+                                else ""
+                            ),
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "model": {
+                                        "type": "string",
+                                        "description": "Model name to compare",
+                                    },
+                                    "column_name": {
+                                        "type": "string",
+                                        "description": "Column name to get top-K values for",
+                                    },
+                                    "k": {
+                                        "type": "integer",
+                                        "description": "Number of top values to return (default: 10)",
+                                        "default": 10,
+                                    },
+                                },
+                                "required": ["model", "column_name"],
+                            },
+                        ),
+                        Tool(
+                            name="histogram_diff",
+                            description=(
+                                "Compare numeric or datetime column distributions between base and current environments. "
+                                "Returns histogram bin counts for both environments. Column type is auto-detected "
+                                "from the model catalog."
+                            )
+                            + (
+                                "\n\nNote: When base environment is not configured, this tool compares "
+                                "the current environment against itself (no changes expected)."
+                                if self.single_env
+                                else ""
+                            ),
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "model": {
+                                        "type": "string",
+                                        "description": "Model name to compare",
+                                    },
+                                    "column_name": {
+                                        "type": "string",
+                                        "description": "Column name to generate histogram for",
+                                    },
+                                    "num_bins": {
+                                        "type": "integer",
+                                        "description": "Number of histogram bins (default: 50)",
+                                        "default": 50,
+                                    },
+                                },
+                                "required": ["model", "column_name"],
+                            },
+                        ),
+                        Tool(
                             name="list_checks",
                             description="List all checks in the current session. Returns check metadata including check IDs, names, types, parameters, and approval status.",
                             inputSchema={
@@ -463,13 +694,18 @@ class RecceMCPServer:
                     "query",
                     "query_diff",
                     "profile_diff",
+                    "value_diff",
+                    "value_diff_detail",
+                    "top_k_diff",
+                    "histogram_diff",
                     "list_checks",
                     "run_check",
                 }
                 if self.mode != RecceServerMode.server and name in blocked_tools_in_non_server:
                     raise ValueError(
                         f"Tool '{name}' is not available in {self.mode.value} mode. "
-                        "Only 'lineage_diff' and 'schema_diff' are available in this mode."
+                        "Only 'lineage_diff', 'schema_diff', 'get_model', 'get_cll', "
+                        "'get_server_info', and 'select_nodes' are available in this mode."
                     )
 
                 if name == "lineage_diff":
@@ -484,6 +720,22 @@ class RecceMCPServer:
                     result = await self._tool_query_diff(arguments)
                 elif name == "profile_diff":
                     result = await self._tool_profile_diff(arguments)
+                elif name == "value_diff":
+                    result = await self._tool_value_diff(arguments)
+                elif name == "value_diff_detail":
+                    result = await self._tool_value_diff_detail(arguments)
+                elif name == "top_k_diff":
+                    result = await self._tool_top_k_diff(arguments)
+                elif name == "histogram_diff":
+                    result = await self._tool_histogram_diff(arguments)
+                elif name == "get_model":
+                    result = await self._tool_get_model(arguments)
+                elif name == "get_cll":
+                    result = await self._tool_get_cll(arguments)
+                elif name == "get_server_info":
+                    result = await self._tool_get_server_info(arguments)
+                elif name == "select_nodes":
+                    result = await self._tool_select_nodes(arguments)
                 elif name == "list_checks":
                     result = await self._tool_list_checks(arguments)
                 elif name == "run_check":
@@ -759,6 +1011,119 @@ class RecceMCPServer:
         if hasattr(result, "model_dump"):
             result = result.model_dump(mode="json")
         return self._maybe_add_single_env_warning(result)
+
+    async def _tool_value_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute value diff task"""
+        task = ValueDiffTask(params=arguments)
+        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+        if hasattr(result, "model_dump"):
+            result = result.model_dump(mode="json")
+        return self._maybe_add_single_env_warning(result)
+
+    async def _tool_value_diff_detail(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute value diff detail task"""
+        task = ValueDiffDetailTask(params=arguments)
+        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+        if hasattr(result, "model_dump"):
+            result = result.model_dump(mode="json")
+        return self._maybe_add_single_env_warning(result)
+
+    async def _tool_top_k_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute top-K diff task"""
+        task = TopKDiffTask(params=arguments)
+        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+        if hasattr(result, "model_dump"):
+            result = result.model_dump(mode="json")
+        return self._maybe_add_single_env_warning(result)
+
+    async def _tool_histogram_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute histogram diff task with auto-detected column type"""
+        model = arguments.get("model")
+        column_name = arguments.get("column_name")
+
+        # Auto-detect column_type from model metadata
+        name_to_id = self.context.build_name_to_unique_id_index()
+        model_id = name_to_id.get(model, model)
+        model_info = self.context.get_model(model_id, base=False)
+        columns = model_info.get("columns", {}) if model_info else {}
+
+        # Try exact match, then case-insensitive
+        col_info = columns.get(column_name)
+        if not col_info:
+            col_info = columns.get(column_name.upper())
+        if not col_info:
+            col_info = columns.get(column_name.lower())
+        if not col_info or not col_info.get("type"):
+            raise ValueError(f"Cannot determine column type for '{column_name}' in model '{model}'")
+
+        params = {**arguments, "column_type": col_info["type"]}
+        task = HistogramDiffTask(params=params)
+        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+        if hasattr(result, "model_dump"):
+            result = result.model_dump(mode="json")
+        return self._maybe_add_single_env_warning(result)
+
+    async def _tool_get_model(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Get model column details from both environments"""
+        model_id = arguments.get("model_id")
+        if not model_id:
+            raise ValueError("model_id is required")
+        return {
+            "model": {
+                "base": self.context.get_model(model_id, base=True),
+                "current": self.context.get_model(model_id, base=False),
+            }
+        }
+
+    async def _tool_get_cll(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Get column-level lineage data"""
+        if self.context.adapter_type != "dbt":
+            raise ValueError("Column-level lineage is only available with dbt adapter")
+        from recce.adapter.dbt_adapter import DbtAdapter
+
+        dbt_adapter: DbtAdapter = self.context.adapter
+        cll = dbt_adapter.get_cll(
+            node_id=arguments.get("node_id"),
+            column=arguments.get("column"),
+            change_analysis=arguments.get("change_analysis", False),
+        )
+        return cll.model_dump(mode="json")
+
+    async def _tool_get_server_info(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Get server context information"""
+        context = self.context
+        result = {
+            "adapter_type": context.adapter_type,
+            "review_mode": context.review_mode,
+            "support_tasks": context.support_tasks(),
+        }
+
+        # Add git and pull_request info if state_loader is available
+        if context.state_loader:
+            try:
+                state = context.export_state()
+                if state.git:
+                    result["git"] = state.git.model_dump(mode="json")
+                if state.pull_request:
+                    result["pull_request"] = state.pull_request.model_dump(mode="json")
+            except Exception:
+                pass  # Git/PR info is best-effort
+
+        return result
+
+    async def _tool_select_nodes(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Resolve dbt selector to node IDs"""
+        if self.context.adapter_type != "dbt":
+            raise ValueError("select_nodes is only available with dbt adapter")
+        nodes = self.context.adapter.select_nodes(
+            select=arguments.get("select"),
+            exclude=arguments.get("exclude"),
+            packages=arguments.get("packages"),
+            view_mode=arguments.get("view_mode"),
+        )
+        # Filter out test nodes
+        nodes = [n for n in nodes if not n.startswith("test.")]
+        return {"nodes": sorted(nodes)}
 
     async def _tool_list_checks(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """List all checks in the current session"""
