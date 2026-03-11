@@ -506,6 +506,20 @@ class TestRecceMCPServer:
         mock_context.get_model.assert_called_once_with("model.project.my_model", base=False)
 
     @pytest.mark.asyncio
+    async def test_tool_histogram_diff_missing_model(self, mcp_server):
+        """Test histogram_diff raises when model is missing"""
+        server, _ = mcp_server
+        with pytest.raises(ValueError, match="model is required"):
+            await server._tool_histogram_diff({"column_name": "age"})
+
+    @pytest.mark.asyncio
+    async def test_tool_histogram_diff_missing_column_name(self, mcp_server):
+        """Test histogram_diff raises when column_name is missing"""
+        server, _ = mcp_server
+        with pytest.raises(ValueError, match="column_name is required"):
+            await server._tool_histogram_diff({"model": "my_model"})
+
+    @pytest.mark.asyncio
     async def test_tool_histogram_diff_unknown_column(self, mcp_server):
         """Test histogram_diff raises when column type cannot be determined"""
         server, mock_context = mcp_server
@@ -1173,7 +1187,7 @@ class TestCallToolHandler:
 
     @pytest.mark.asyncio
     async def test_large_response_truncates_log(self, mcp_server):
-        """Large tool responses are truncated in debug log (line 754)."""
+        """Large tool responses are truncated in the debug log."""
         server, mock_context = mcp_server
         # Return a large result that serializes to >1000 chars
         large_result = {"data": "x" * 2000}
