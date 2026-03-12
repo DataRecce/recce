@@ -374,10 +374,41 @@ class RowCountDiffTask(Task, QueryMixin):
 
         return result
 
+    def execute_bauplan(self):
+        result = {}
+        query_candidates = []
+        for node_id in self.params.node_ids or []:
+            query_candidates.append(node_id)
+        for node_name in self.params.node_names or []:
+            query_candidates.append(node_name)
+
+        adapter = default_context().adapter
+
+        for name in query_candidates:
+            try:
+                df, _ = adapter.fetchdf_with_limit(f"select count(*) from {name}", base=True)
+                base_count = int(df.iloc[0, 0])
+            except Exception:
+                base_count = None
+            self.check_cancel()
+
+            try:
+                df, _ = adapter.fetchdf_with_limit(f"select count(*) from {name}", base=False)
+                curr_count = int(df.iloc[0, 0])
+            except Exception:
+                curr_count = None
+            self.check_cancel()
+
+            result[name] = {"base": base_count, "curr": curr_count}
+
+        return result
+
     def execute(self):
         context = default_context()
         if context.adapter_type == "dbt":
             return self.execute_dbt()
+        elif context.adapter_type == "bauplan":
+            return self.execute_bauplan()
         else:
             return self.execute_sqlmesh()
 

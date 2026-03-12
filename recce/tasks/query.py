@@ -110,11 +110,20 @@ class QueryTask(Task, QueryMixin):
         df, more = sqlmesh_adapter.fetchdf_with_limit(sql, base=self.is_base, limit=limit)
         return DataFrame.from_pandas(df, limit=limit, more=more)
 
+    def execute_bauplan(self):
+        adapter = default_context().adapter
+        sql = self.params.get("sql_template")
+        limit = QUERY_LIMIT
+        df, more = adapter.fetchdf_with_limit(sql, base=self.is_base, limit=limit)
+        return DataFrame.from_pandas(df, limit=limit, more=more)
+
     def execute(self):
         context = default_context()
 
         if context.adapter_type == "sqlmesh":
             return self.execute_sqlmesh()
+        elif context.adapter_type == "bauplan":
+            return self.execute_bauplan()
         else:
             return self.execute_dbt()
 
@@ -402,11 +411,29 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         else:
             return self._sqlmesh_query_diff(sql, base_sql=base_sql)
 
+    def _bauplan_query_diff(self, sql, base_sql=None):
+        adapter = default_context().adapter
+        limit = QUERY_LIMIT
+        base, base_more = adapter.fetchdf_with_limit(base_sql or sql, base=True, limit=limit)
+        curr, curr_more = adapter.fetchdf_with_limit(sql, base=False, limit=limit)
+        return QueryDiffResult(
+            base=DataFrame.from_pandas(base, limit=limit, more=base_more),
+            current=DataFrame.from_pandas(curr, limit=limit, more=curr_more),
+        )
+
+    def execute_bauplan(self):
+        sql = self.params.sql_template
+        base_sql = self.params.base_sql_template
+        # Note: primary_keys join not supported yet for bauplan
+        return self._bauplan_query_diff(sql, base_sql=base_sql)
+
     def execute(self):
         context = default_context()
 
         if context.adapter_type == "sqlmesh":
             return self.execute_sqlmesh()
+        elif context.adapter_type == "bauplan":
+            return self.execute_bauplan()
         else:
             return self.execute_dbt()
 
