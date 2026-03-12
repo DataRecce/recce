@@ -15,6 +15,7 @@ import { LuExternalLink } from "react-icons/lu";
 import { useRecceInstanceContext } from "../../contexts";
 import { useApiConfig } from "../../hooks";
 import { connectToCloud } from "../../lib/api/connectToCloud";
+import { PUBLIC_CLOUD_WEB_URL } from "../../lib/const";
 
 type AuthState = "authenticating" | "pending" | "canceled" | "ignored";
 
@@ -114,7 +115,7 @@ export default function AuthModal({
                   color: "primary.main",
                   "&:focus": { outline: "none" },
                 }}
-                href="https://cloud.reccehq.com/connect-to-cloud"
+                href={`${PUBLIC_CLOUD_WEB_URL}/connect-to-cloud`}
                 target="_blank"
               >
                 here <LuExternalLink style={{ display: "inline" }} />

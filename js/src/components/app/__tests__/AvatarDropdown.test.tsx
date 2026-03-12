@@ -55,6 +55,7 @@ vi.mock("@datarecce/ui/lib/const", () => ({
 
 import { AvatarDropdown } from "@datarecce/ui/components/app";
 import { useApiConfig } from "@datarecce/ui/hooks";
+import { PUBLIC_CLOUD_WEB_URL } from "@datarecce/ui/lib/const";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 
@@ -457,7 +458,7 @@ describe("AvatarDropdown", () => {
       fireEvent.click(recceCloudItem);
 
       expect(windowOpenSpy).toHaveBeenCalledWith(
-        "https://cloud.reccehq.com/",
+        PUBLIC_CLOUD_WEB_URL,
         "_blank",
       );
     });

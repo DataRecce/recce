@@ -1,4 +1,3 @@
-import os
 import sys
 from typing import Dict, List, Optional, Set, Type, Union
 from uuid import UUID
@@ -19,8 +18,7 @@ from recce.tasks.valuediff import (
     ValueDiffDetailTaskResultDiffer,
     ValueDiffTaskResultDiffer,
 )
-
-RECCE_CLOUD_HOST = os.environ.get("RECCE_CLOUD_HOST", "https://cloud.reccehq.com")
+from recce.util.recce_cloud import RECCE_CLOUD_API_HOST as RECCE_CLOUD_HOST
 
 ADD_COLOR = "#1dce00"
 MODIFIED_COLOR = "#ffa502"
