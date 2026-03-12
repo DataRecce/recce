@@ -45,9 +45,13 @@ vi.mock("@datarecce/ui/hooks", () => ({
 }));
 
 // Mock constants
-vi.mock("@datarecce/ui/lib/const", () => ({
-  RECCE_SUPPORT_CALENDAR_URL: "https://cal.com/team/recce/chat",
-}));
+vi.mock("@datarecce/ui/lib/const", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    RECCE_SUPPORT_CALENDAR_URL: "https://cal.com/team/recce/chat",
+  };
+});
 
 // ============================================================================
 // Imports
