@@ -1764,6 +1764,28 @@ def mcp_server(state_file, sse, host, port, **kwargs):
         mode where diff tools compare the current environment against
         itself (no changes expected).
 
+    \b
+    Available tools (16):
+      Metadata & navigation:
+        lineage_diff       Lineage diff between base and current environments
+        schema_diff        Schema diff (column changes) for changed models
+        get_model          Get column details for a model
+        get_cll            Get column-level lineage data
+        get_server_info    Get server context and diagnostics
+        select_nodes       Resolve dbt selector to node IDs
+      Data diff (require warehouse connection):
+        row_count_diff     Compare row counts between environments
+        query              Execute a SQL query on current environment
+        query_diff         Execute and compare SQL on both environments
+        profile_diff       Compare statistical profiles for columns
+        value_diff         Compare row-level values using primary key
+        value_diff_detail  Get detailed row-level changed values
+        top_k_diff         Compare top-K categorical value distributions
+        histogram_diff     Compare numeric/datetime column distributions
+      Check management:
+        list_checks        List all checks in the current session
+        run_check          Run a single check by ID
+
     Examples:\n
 
     \b
