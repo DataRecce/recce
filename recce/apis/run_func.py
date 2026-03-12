@@ -81,6 +81,12 @@ def create_task(run_type: RunType, params: dict):
         )
 
         registry = sqlmesh_registry
+    elif context is not None and context.adapter_type == "bauplan":
+        from recce.adapter.bauplan_adapter import (
+            bauplan_supported_registry as bauplan_registry,
+        )
+
+        registry = bauplan_registry
     else:
         from recce.adapter.dbt_adapter import dbt_supported_registry as dbt_registry
 

@@ -185,6 +185,12 @@ sqlmesh_related_options = [
     click.option("--sqlmesh-config", is_flag=False, help="SQLMesh config name to use", hidden=True),
 ]
 
+bauplan_related_options = [
+    click.option("--bauplan", is_flag=True, help="Use Bauplan adapter", hidden=True),
+    click.option("--bauplan-refs", default=None, help="Bauplan branch refs 'BASE:CURRENT'", hidden=True),
+    click.option("--bauplan-lineage", default=None, help="Path to bauplan_lineage.json", hidden=True),
+]
+
 recce_options = [
     click.option(
         "--config",
@@ -489,6 +495,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @click.option("--single-env", is_flag=True, help="Launch in single environment mode directly.")
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
+@add_options(bauplan_related_options)
 @add_options(recce_options)
 @add_options(recce_dbt_artifact_dir_options)
 @add_options(recce_cloud_options)
@@ -682,6 +689,7 @@ DEFAULT_RECCE_STATE_FILE = "recce_state.json"
 )
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
+@add_options(bauplan_related_options)
 @add_options(recce_options)
 @add_options(recce_dbt_artifact_dir_options)
 @add_options(recce_cloud_options)
@@ -1738,6 +1746,7 @@ def read_only(ctx, state_file=None, **kwargs):
 @click.option("--port", default=8000, type=int, help="Port to bind to in SSE mode (default: 8000)")
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
+@add_options(bauplan_related_options)
 @add_options(recce_options)
 @add_options(recce_dbt_artifact_dir_options)
 @add_options(recce_cloud_options)

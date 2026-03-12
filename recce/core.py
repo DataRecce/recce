@@ -46,6 +46,11 @@ class RecceContext:
 
             context.adapter_type = "sqlmesh"
             context.adapter = SqlmeshAdapter.load(**kwargs)
+        elif kwargs.get("bauplan", False):
+            from recce.adapter.bauplan_adapter import BauplanAdapter
+
+            context.adapter_type = "bauplan"
+            context.adapter = BauplanAdapter.load(**kwargs)
         else:
             from recce.adapter.dbt_adapter import DbtAdapter
 
@@ -279,6 +284,8 @@ class RecceContext:
     @staticmethod
     def verify_required_artifacts(**kwargs) -> Tuple[bool, Optional[str]]:
         if kwargs.get("sqlmesh", False):
+            pass
+        elif kwargs.get("bauplan", False):
             pass
         else:
             from recce.adapter.dbt_adapter import DbtAdapter
