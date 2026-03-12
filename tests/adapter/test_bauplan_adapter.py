@@ -3,7 +3,7 @@
 import json
 import sys
 import tempfile
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pandas as pd
 
@@ -19,11 +19,11 @@ def _mock_bauplan_module():
 
 def test_bauplan_adapter_load_parses_refs():
     lineage = {"nodes": {}, "sources": {}, "parent_map": {}}
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(lineage, f)
         lineage_path = f.name
 
-    mock_bauplan = _mock_bauplan_module()
+    _mock_bauplan_module()
     try:
         adapter = BauplanAdapter.load(
             bauplan_refs="main:user.dev",
@@ -57,15 +57,13 @@ def test_bauplan_adapter_get_lineage():
                 "columns": {"user_id": {"type": "int64"}},
             }
         },
-        "parent_map": {
-            "model.proj.stg_users": ["source.proj.raw_users"]
-        },
+        "parent_map": {"model.proj.stg_users": ["source.proj.raw_users"]},
     }
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(lineage, f)
         lineage_path = f.name
 
-    mock_bauplan = _mock_bauplan_module()
+    _mock_bauplan_module()
     try:
         adapter = BauplanAdapter.load(
             bauplan_refs="main:user.dev",
@@ -188,3 +186,73 @@ def test_bauplan_adapter_support_tasks():
     assert support["query_diff"] is True
     assert support["row_count_diff"] is True
     assert support["change_analysis"] is False
+
+
+def test_bauplan_adapter_row_count_diff():
+    """Test row count queries through both branches."""
+    mock_client = MagicMock()
+
+    def mock_query(query, ref):
+        result = MagicMock()
+        if ref == "main":
+            result.to_pandas.return_value = pd.DataFrame({"count": [100]})
+        else:
+            result.to_pandas.return_value = pd.DataFrame({"count": [70]})
+        return result
+
+    mock_client.query.side_effect = mock_query
+
+    adapter = BauplanAdapter(
+        client=mock_client,
+        base_ref="main",
+        curr_ref="user.dev",
+        lineage_data={
+            "nodes": {"model.proj.stg_users": {"name": "stg_users", "resource_type": "model", "columns": {}}},
+            "sources": {},
+            "parent_map": {},
+        },
+    )
+
+    df_base, _ = adapter.fetchdf_with_limit("SELECT COUNT(*) as count FROM stg_users", base=True)
+    df_curr, _ = adapter.fetchdf_with_limit("SELECT COUNT(*) as count FROM stg_users", base=False)
+
+    assert int(df_base.iloc[0]["count"]) == 100
+    assert int(df_curr.iloc[0]["count"]) == 70
+
+
+def test_bauplan_adapter_load_missing_refs():
+    """Test that load raises when --bauplan-refs is missing."""
+    import pytest
+
+    with pytest.raises(Exception, match="--bauplan-refs"):
+        BauplanAdapter.load()
+
+
+def test_bauplan_adapter_load_invalid_refs_format():
+    """Test that load raises when refs format is wrong."""
+    import pytest
+
+    with pytest.raises(Exception, match="BASE:CURRENT"):
+        BauplanAdapter.load(bauplan_refs="just_one_ref")
+
+
+def test_bauplan_adapter_fetchdf_no_limit():
+    """Test fetchdf_with_limit without limit parameter."""
+    mock_client = MagicMock()
+    mock_result = MagicMock()
+    mock_result.to_pandas.return_value = pd.DataFrame({"id": [1, 2, 3]})
+    mock_client.query.return_value = mock_result
+
+    adapter = BauplanAdapter(
+        client=mock_client,
+        base_ref="main",
+        curr_ref="user.dev",
+        lineage_data={},
+    )
+
+    df, more = adapter.fetchdf_with_limit("SELECT * FROM t", base=False)
+    assert len(df) == 3
+    assert not more
+    # Should NOT wrap in LIMIT subquery
+    call_kwargs = mock_client.query.call_args
+    assert "LIMIT" not in call_kwargs.kwargs["query"]

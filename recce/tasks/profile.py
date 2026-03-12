@@ -218,34 +218,42 @@ class ProfileDiffTask(Task):
     def _bauplan_profile_column_sql(self, table_name, column_name, column_type):
         """Generate profile SQL for a single column (DuckDB dialect)."""
         col = f'"{column_name}"'
-        is_numeric = any(t in column_type.lower() for t in ['int', 'float', 'numeric', 'double', 'decimal', 'number', 'bigint'])
-        is_datetime = any(t in column_type.lower() for t in ['date', 'timestamp', 'time'])
+        is_numeric = any(
+            t in column_type.lower() for t in ["int", "float", "numeric", "double", "decimal", "number", "bigint"]
+        )
+        is_datetime = any(t in column_type.lower() for t in ["date", "timestamp", "time"])
 
         parts = [
             f"'{column_name}' as column_name",
             f"'{column_type}' as column_type",
-            f"count(*) as row_count",
+            "count(*) as row_count",
             f"sum(case when {col} is null then 1 else 0 end) as null_count",
             f"count(distinct {col}) as distinct_count",
         ]
         if is_numeric:
-            parts.extend([
-                f"min({col}) as min",
-                f"max({col}) as max",
-                f"avg(cast({col} as double)) as avg",
-            ])
+            parts.extend(
+                [
+                    f"min({col}) as min",
+                    f"max({col}) as max",
+                    f"avg(cast({col} as double)) as avg",
+                ]
+            )
         elif is_datetime:
-            parts.extend([
-                f"cast(min({col}) as varchar) as min",
-                f"cast(max({col}) as varchar) as max",
-                f"null as avg",
-            ])
+            parts.extend(
+                [
+                    f"cast(min({col}) as varchar) as min",
+                    f"cast(max({col}) as varchar) as max",
+                    "null as avg",
+                ]
+            )
         else:
-            parts.extend([
-                f"null as min",
-                f"null as max",
-                f"null as avg",
-            ])
+            parts.extend(
+                [
+                    "null as min",
+                    "null as max",
+                    "null as avg",
+                ]
+            )
 
         return f"SELECT {', '.join(parts)} FROM {table_name}"
 

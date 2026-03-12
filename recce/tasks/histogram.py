@@ -502,7 +502,10 @@ class HistogramDiffTask(Task, QueryMixin):
         labels[-1] = f"[{bin_edges[-2]:.2f}, {bin_edges[-1]:.2f}]"
 
         result["base"] = {"counts": fill_counts(df_base_hist, num_bins), "total": int(total_base) if total_base else 0}
-        result["current"] = {"counts": fill_counts(df_curr_hist, num_bins), "total": int(total_curr) if total_curr else 0}
+        result["current"] = {
+            "counts": fill_counts(df_curr_hist, num_bins),
+            "total": int(total_curr) if total_curr else 0,
+        }
         result["min"] = min_value
         result["max"] = max_value
         result["bin_edges"] = bin_edges

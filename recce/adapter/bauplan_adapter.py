@@ -5,8 +5,6 @@ import typing as t
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Set, Type
 
-import pandas as pd
-
 from recce.adapter.base import BaseAdapter
 from recce.models import RunType
 from recce.tasks import QueryDiffTask, QueryTask, RowCountDiffTask, Task
@@ -46,6 +44,7 @@ class BauplanAdapter(BaseAdapter):
                 lineage_data = json.load(f)
 
         import bauplan
+
         client = bauplan.Client()
 
         return cls(
@@ -126,9 +125,7 @@ class BauplanAdapter(BaseAdapter):
         nodes = self.lineage_data.get("nodes", {})
         return set(nodes.keys())
 
-    def fetchdf_with_limit(
-        self, sql: str, base: Optional[bool] = None, limit: Optional[int] = None
-    ) -> tuple:
+    def fetchdf_with_limit(self, sql: str, base: Optional[bool] = None, limit: Optional[int] = None) -> tuple:
         ref = self.base_ref if base else self.curr_ref
         if limit:
             limited_sql = f"SELECT * FROM ({sql}) AS q LIMIT {limit + 1}"
