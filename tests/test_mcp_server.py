@@ -553,6 +553,15 @@ class TestRecceMCPServer:
             await server._tool_get_model({})
 
     @pytest.mark.asyncio
+    async def test_tool_get_model_not_found(self, mcp_server):
+        """Test get_model raises when model not found in either environment"""
+        server, mock_context = mcp_server
+        mock_context.get_model.return_value = {}
+
+        with pytest.raises(ValueError, match="not found in either environment"):
+            await server._tool_get_model({"model_id": "model.project.nonexistent"})
+
+    @pytest.mark.asyncio
     async def test_tool_get_cll(self, mcp_server):
         """Test the get_cll tool"""
         server, mock_context = mcp_server
