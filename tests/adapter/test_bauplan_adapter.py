@@ -6,6 +6,7 @@ import tempfile
 from unittest.mock import MagicMock
 
 import pandas as pd
+import pytest
 
 from recce.adapter.bauplan_adapter import BauplanAdapter
 
@@ -222,16 +223,12 @@ def test_bauplan_adapter_row_count_diff():
 
 def test_bauplan_adapter_load_missing_refs():
     """Test that load raises when --bauplan-refs is missing."""
-    import pytest
-
     with pytest.raises(Exception, match="--bauplan-refs"):
         BauplanAdapter.load()
 
 
 def test_bauplan_adapter_load_invalid_refs_format():
     """Test that load raises when refs format is wrong."""
-    import pytest
-
     with pytest.raises(Exception, match="BASE:CURRENT"):
         BauplanAdapter.load(bauplan_refs="just_one_ref")
 
