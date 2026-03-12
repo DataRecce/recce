@@ -133,7 +133,7 @@ export default function AvatarDropdown() {
         <Divider />
         <MenuItem
           onClick={() => {
-            window.open("https://cloud.datarecce.io/", "_blank");
+            window.open("https://cloud.reccehq.com/", "_blank");
             handleClose();
           }}
         >

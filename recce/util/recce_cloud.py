@@ -13,7 +13,7 @@ from recce.pull_request import PullRequestInfo
 if typing.TYPE_CHECKING:
     from recce.util.cloud import ChecksCloud
 
-RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
+RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.reccehq.com")
 RECCE_CLOUD_BASE_URL = os.environ.get("RECCE_CLOUD_BASE_URL", RECCE_CLOUD_API_HOST)
 
 DOCKER_INTERNAL_URL_PREFIX = "http://host.docker.internal"

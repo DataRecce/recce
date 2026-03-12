@@ -50,9 +50,7 @@ export const TopBarOss = () => {
   const { url: prURL, id: prID } = envInfo?.pullRequest ?? {};
   const demoPrId = prURL ? prURL.split("/").pop() : null;
   const brandLink =
-    cloudMode || authed
-      ? "https://cloud.datarecce.io/"
-      : "https://reccehq.com/";
+    cloudMode || authed ? "https://cloud.reccehq.com/" : "https://reccehq.com/";
   const [showModal, setShowModal] = useState(false);
 
   return (

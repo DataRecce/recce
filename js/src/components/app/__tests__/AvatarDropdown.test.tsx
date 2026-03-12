@@ -457,7 +457,7 @@ describe("AvatarDropdown", () => {
       fireEvent.click(recceCloudItem);
 
       expect(windowOpenSpy).toHaveBeenCalledWith(
-        "https://cloud.datarecce.io/",
+        "https://cloud.reccehq.com/",
         "_blank",
       );
     });

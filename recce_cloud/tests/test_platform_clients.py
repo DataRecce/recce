@@ -24,8 +24,8 @@ class TestGitHubRecceCloudClient:
         assert client.repository == "owner/repo"
         parsed = urlparse(client.api_host)
         # Accept main domain or subdomains:
-        assert parsed.hostname == "cloud.datarecce.io" or (
-            parsed.hostname and parsed.hostname.endswith(".cloud.datarecce.io")
+        assert parsed.hostname == "cloud.reccehq.com" or (
+            parsed.hostname and parsed.hostname.endswith(".cloud.reccehq.com")
         )
 
     def test_touch_recce_session_pr(self):

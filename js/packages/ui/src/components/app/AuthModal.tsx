@@ -114,7 +114,7 @@ export default function AuthModal({
                   color: "primary.main",
                   "&:focus": { outline: "none" },
                 }}
-                href="https://cloud.datarecce.io/connect-to-cloud"
+                href="https://cloud.reccehq.com/connect-to-cloud"
                 target="_blank"
               >
                 here <LuExternalLink style={{ display: "inline" }} />

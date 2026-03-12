@@ -20,7 +20,7 @@ from recce.tasks.valuediff import (
     ValueDiffTaskResultDiffer,
 )
 
-RECCE_CLOUD_HOST = os.environ.get("RECCE_CLOUD_HOST", "https://cloud.datarecce.io")
+RECCE_CLOUD_HOST = os.environ.get("RECCE_CLOUD_HOST", "https://cloud.reccehq.com")
 
 ADD_COLOR = "#1dce00"
 MODIFIED_COLOR = "#ffa502"
