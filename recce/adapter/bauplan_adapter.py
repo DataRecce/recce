@@ -10,11 +10,15 @@ import pandas as pd
 from recce.adapter.base import BaseAdapter
 from recce.models import RunType
 from recce.tasks import QueryDiffTask, QueryTask, RowCountDiffTask, Task
+from recce.tasks.histogram import HistogramDiffTask
+from recce.tasks.profile import ProfileDiffTask
 
 bauplan_supported_registry: Dict[RunType, Type[Task]] = {
     RunType.QUERY: QueryTask,
     RunType.QUERY_DIFF: QueryDiffTask,
     RunType.ROW_COUNT_DIFF: RowCountDiffTask,
+    RunType.PROFILE_DIFF: ProfileDiffTask,
+    RunType.HISTOGRAM_DIFF: HistogramDiffTask,
 }
 
 

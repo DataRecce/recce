@@ -160,11 +160,15 @@ class ProfileDiffTask(Task):
         self.connection = None
 
     def execute(self):
+        context = default_context()
+        if context.adapter_type == "bauplan":
+            return self.execute_bauplan()
+
         import agate
 
         from recce.adapter.dbt_adapter import DbtAdapter, merge_tables
 
-        dbt_adapter: DbtAdapter = default_context().adapter
+        dbt_adapter: DbtAdapter = context.adapter
 
         model: str = self.params.model
         selected_columns: List[str] = self.params.columns
@@ -210,6 +214,85 @@ class ProfileDiffTask(Task):
                 current.columns = base.columns
 
             return ProfileDiffResult(base=base, current=current)
+
+    def _bauplan_profile_column_sql(self, table_name, column_name, column_type):
+        """Generate profile SQL for a single column (DuckDB dialect)."""
+        col = f'"{column_name}"'
+        is_numeric = any(t in column_type.lower() for t in ['int', 'float', 'numeric', 'double', 'decimal', 'number', 'bigint'])
+        is_datetime = any(t in column_type.lower() for t in ['date', 'timestamp', 'time'])
+
+        parts = [
+            f"'{column_name}' as column_name",
+            f"'{column_type}' as column_type",
+            f"count(*) as row_count",
+            f"sum(case when {col} is null then 1 else 0 end) as null_count",
+            f"count(distinct {col}) as distinct_count",
+        ]
+        if is_numeric:
+            parts.extend([
+                f"min({col}) as min",
+                f"max({col}) as max",
+                f"avg(cast({col} as double)) as avg",
+            ])
+        elif is_datetime:
+            parts.extend([
+                f"cast(min({col}) as varchar) as min",
+                f"cast(max({col}) as varchar) as max",
+                f"null as avg",
+            ])
+        else:
+            parts.extend([
+                f"null as min",
+                f"null as max",
+                f"null as avg",
+            ])
+
+        return f"SELECT {', '.join(parts)} FROM {table_name}"
+
+    def execute_bauplan(self):
+        import pandas as pd
+
+        adapter = default_context().adapter
+        model_id = self.params.model
+        selected_columns = self.params.columns
+
+        # Get model info to find columns
+        model = adapter.get_model(model_id)
+        if model is None:
+            node_name = model_id
+            columns_info = {}
+        else:
+            columns_info = model.get("columns", {})
+            node_name = adapter.get_node_name_by_id(model_id) or model_id
+
+        if selected_columns:
+            columns_info = {k: v for k, v in columns_info.items() if k in selected_columns}
+
+        # Profile base
+        base_dfs = []
+        for col_name, col_info in columns_info.items():
+            col_type = col_info.get("type", "string")
+            sql = self._bauplan_profile_column_sql(node_name, col_name, col_type)
+            df, _ = adapter.fetchdf_with_limit(sql, base=True)
+            base_dfs.append(df)
+            self.check_cancel()
+
+        # Profile current
+        curr_dfs = []
+        for col_name, col_info in columns_info.items():
+            col_type = col_info.get("type", "string")
+            sql = self._bauplan_profile_column_sql(node_name, col_name, col_type)
+            df, _ = adapter.fetchdf_with_limit(sql, base=False)
+            curr_dfs.append(df)
+            self.check_cancel()
+
+        base_df = pd.concat(base_dfs, ignore_index=True) if base_dfs else pd.DataFrame()
+        curr_df = pd.concat(curr_dfs, ignore_index=True) if curr_dfs else pd.DataFrame()
+
+        return ProfileDiffResult(
+            base=DataFrame.from_pandas(base_df),
+            current=DataFrame.from_pandas(curr_df),
+        )
 
     def _profile_column(self, dbt_adapter, relation, column):
         column_name = column.name
@@ -267,11 +350,15 @@ class ProfileCheckValidator(CheckValidator):
 
 class ProfileTask(ProfileDiffTask):
     def execute(self):
+        context = default_context()
+        if context.adapter_type == "bauplan":
+            return self.execute_bauplan_current()
+
         import agate
 
         from recce.adapter.dbt_adapter import DbtAdapter, merge_tables
 
-        dbt_adapter: DbtAdapter = default_context().adapter
+        dbt_adapter: DbtAdapter = context.adapter
 
         model: str = self.params.model
         selected_columns: List[str] = self.params.columns
@@ -296,3 +383,33 @@ class ProfileTask(ProfileDiffTask):
                 self.check_cancel()
             current = DataFrame.from_agate(merge_tables(tables))
             return ProfileResult(current=current)
+
+    def execute_bauplan_current(self):
+        import pandas as pd
+
+        adapter = default_context().adapter
+        model_id = self.params.model
+        selected_columns = self.params.columns
+
+        model = adapter.get_model(model_id)
+        if model is None:
+            node_name = model_id
+            columns_info = {}
+        else:
+            columns_info = model.get("columns", {})
+            node_name = adapter.get_node_name_by_id(model_id) or model_id
+
+        if selected_columns:
+            columns_info = {k: v for k, v in columns_info.items() if k in selected_columns}
+
+        curr_dfs = []
+        for col_name, col_info in columns_info.items():
+            col_type = col_info.get("type", "string")
+            sql = self._bauplan_profile_column_sql(node_name, col_name, col_type)
+            df, _ = adapter.fetchdf_with_limit(sql, base=False)
+            curr_dfs.append(df)
+            self.check_cancel()
+
+        curr_df = pd.concat(curr_dfs, ignore_index=True) if curr_dfs else pd.DataFrame()
+
+        return ProfileResult(current=DataFrame.from_pandas(curr_df))

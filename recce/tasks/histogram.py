@@ -341,11 +341,15 @@ class HistogramDiffTask(Task, QueryMixin):
         self.connection = None
 
     def execute(self):
+        context = default_context()
+        if context.adapter_type == "bauplan":
+            return self.execute_bauplan()
+
         from recce.adapter.dbt_adapter import DbtAdapter
 
         result = {}
 
-        dbt_adapter: DbtAdapter = default_context().adapter
+        dbt_adapter: DbtAdapter = context.adapter
         node = self.params.model
         column = self.params.column_name
         num_bins = self.params.num_bins or 50
@@ -411,6 +415,99 @@ class HistogramDiffTask(Task, QueryMixin):
             result["max"] = max_value
             result["bin_edges"] = bin_edges
             result["labels"] = labels
+        return result
+
+    def execute_bauplan(self):
+        adapter = default_context().adapter
+        node = self.params.model
+        column = self.params.column_name
+        num_bins = self.params.num_bins or 50
+        column_type = self.params.column_type
+        node_name = adapter.get_node_name_by_id(node) or node
+
+        if _is_histogram_supported(column_type) is False:
+            raise ValueError(f"Column type {column_type} is not supported for histogram analysis")
+
+        result = {}
+
+        # Get min/max from both branches
+        min_max_sql = f"SELECT MIN({column}) as min, MAX({column}) as max, COUNT({column}) as total FROM {node_name}"
+        df_base, _ = adapter.fetchdf_with_limit(min_max_sql, base=True)
+        df_curr, _ = adapter.fetchdf_with_limit(min_max_sql, base=False)
+
+        min_base, max_base, total_base = df_base.iloc[0]["min"], df_base.iloc[0]["max"], df_base.iloc[0]["total"]
+        min_curr, max_curr, total_curr = df_curr.iloc[0]["min"], df_curr.iloc[0]["max"], df_curr.iloc[0]["total"]
+
+        def safe_min(a, b):
+            if a is None:
+                return b
+            if b is None:
+                return a
+            return min(a, b)
+
+        def safe_max(a, b):
+            if a is None:
+                return b
+            if b is None:
+                return a
+            return max(a, b)
+
+        min_value = safe_min(min_base, min_curr)
+        max_value = safe_max(max_base, max_curr)
+
+        if min_value is None or max_value is None or min_value == max_value:
+            result["base"] = {"counts": [], "total": total_base}
+            result["current"] = {"counts": [], "total": total_curr}
+            result["min"] = min_value
+            result["max"] = max_value
+            result["bin_edges"] = []
+            result["labels"] = []
+            return result
+
+        # Generate histogram buckets
+        bin_width = (max_value - min_value) / num_bins
+        bin_edges = [min_value + i * bin_width for i in range(num_bins + 1)]
+
+        # Build histogram SQL using CASE WHEN for bucket assignment
+        cases = []
+        for i in range(num_bins):
+            low = bin_edges[i]
+            high = bin_edges[i + 1]
+            if i == num_bins - 1:
+                cases.append(f"WHEN {column} >= {low} AND {column} <= {high} THEN {i}")
+            else:
+                cases.append(f"WHEN {column} >= {low} AND {column} < {high} THEN {i}")
+
+        histogram_sql = f"""
+            SELECT CASE {' '.join(cases)} END as bucket, COUNT(*) as cnt
+            FROM {node_name}
+            WHERE {column} IS NOT NULL
+            GROUP BY bucket
+            ORDER BY bucket
+        """
+
+        df_base_hist, _ = adapter.fetchdf_with_limit(histogram_sql, base=True)
+        df_curr_hist, _ = adapter.fetchdf_with_limit(histogram_sql, base=False)
+
+        # Fill counts array
+        def fill_counts(df, num_bins):
+            counts = [0] * num_bins
+            for _, row in df.iterrows():
+                bucket = row["bucket"]
+                if bucket is not None and 0 <= int(bucket) < num_bins:
+                    counts[int(bucket)] = int(row["cnt"])
+            return counts
+
+        labels = [f"[{bin_edges[i]:.2f}, {bin_edges[i + 1]:.2f})" for i in range(num_bins)]
+        labels[-1] = f"[{bin_edges[-2]:.2f}, {bin_edges[-1]:.2f}]"
+
+        result["base"] = {"counts": fill_counts(df_base_hist, num_bins), "total": int(total_base) if total_base else 0}
+        result["current"] = {"counts": fill_counts(df_curr_hist, num_bins), "total": int(total_curr) if total_curr else 0}
+        result["min"] = min_value
+        result["max"] = max_value
+        result["bin_edges"] = bin_edges
+        result["labels"] = labels
+
         return result
 
     def cancel(self):
