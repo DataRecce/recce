@@ -12,9 +12,12 @@ from recce.core import RecceContext  # noqa: E402
 from recce.mcp_server import RecceMCPServer, run_mcp_server  # noqa: E402
 from recce.models.types import LineageDiff  # noqa: E402
 from recce.server import RecceServerMode  # noqa: E402
+from recce.tasks.histogram import HistogramDiffTask  # noqa: E402
 from recce.tasks.profile import ProfileDiffTask  # noqa: E402
 from recce.tasks.query import QueryDiffTask, QueryTask  # noqa: E402
 from recce.tasks.rowcount import RowCountDiffTask  # noqa: E402
+from recce.tasks.top_k import TopKDiffTask  # noqa: E402
+from recce.tasks.valuediff import ValueDiffDetailTask, ValueDiffTask  # noqa: E402
 
 
 @pytest.fixture
@@ -429,6 +432,295 @@ class TestRecceMCPServer:
         assert "more" in result
 
     @pytest.mark.asyncio
+    async def test_tool_value_diff(self, mcp_server):
+        """Test the value_diff tool"""
+        server, _ = mcp_server
+        mock_result = MagicMock()
+        mock_result.model_dump.return_value = {
+            "summary": {"total": 100, "added": 5, "removed": 2},
+            "data": {"columns": ["column", "matched", "matched_p"], "data": [["id", 93, 93.0]]},
+        }
+
+        with patch.object(ValueDiffTask, "execute", return_value=mock_result):
+            result = await server._tool_value_diff({"model": "my_model", "primary_key": "id"})
+
+        assert "summary" in result
+        assert "data" in result
+        mock_result.model_dump.assert_called_once_with(mode="json")
+
+    @pytest.mark.asyncio
+    async def test_tool_value_diff_detail(self, mcp_server):
+        """Test the value_diff_detail tool"""
+        server, _ = mcp_server
+        mock_result = MagicMock()
+        mock_result.model_dump.return_value = {
+            "columns": ["id", "name__base", "name__curr"],
+            "data": [[1, "Alice", "Alicia"]],
+        }
+
+        with patch.object(ValueDiffDetailTask, "execute", return_value=mock_result):
+            result = await server._tool_value_diff_detail({"model": "my_model", "primary_key": "id"})
+
+        assert "columns" in result
+        assert "data" in result
+        mock_result.model_dump.assert_called_once_with(mode="json")
+
+    @pytest.mark.asyncio
+    async def test_tool_top_k_diff(self, mcp_server):
+        """Test the top_k_diff tool"""
+        server, _ = mcp_server
+        mock_result = {
+            "base": {"values": ["a", "b"], "counts": [10, 5], "valids": 15, "total": 15},
+            "current": {"values": ["a", "b", "c"], "counts": [10, 5, 3], "valids": 18, "total": 18},
+        }
+
+        with patch.object(TopKDiffTask, "execute", return_value=mock_result):
+            result = await server._tool_top_k_diff({"model": "my_model", "column_name": "status"})
+
+        assert "base" in result
+        assert "current" in result
+
+    @pytest.mark.asyncio
+    async def test_tool_histogram_diff(self, mcp_server):
+        """Test the histogram_diff tool with auto-detected column type"""
+        server, mock_context = mcp_server
+        mock_context.build_name_to_unique_id_index.return_value = {"my_model": "model.project.my_model"}
+        mock_context.get_model.return_value = {
+            "columns": {"age": {"name": "age", "type": "INTEGER"}},
+        }
+
+        mock_result = {
+            "base": {"counts": [5, 10], "total": 15},
+            "current": {"counts": [5, 12], "total": 17},
+            "min": 0,
+            "max": 100,
+            "bin_edges": [0, 50, 100],
+            "labels": ["0-50", "50-100"],
+        }
+
+        with patch.object(HistogramDiffTask, "execute", return_value=mock_result):
+            result = await server._tool_histogram_diff({"model": "my_model", "column_name": "age"})
+
+        assert "base" in result
+        assert "current" in result
+        mock_context.get_model.assert_called_once_with("model.project.my_model", base=False)
+
+    @pytest.mark.asyncio
+    async def test_tool_histogram_diff_missing_model(self, mcp_server):
+        """Test histogram_diff raises when model is missing"""
+        server, _ = mcp_server
+        with pytest.raises(ValueError, match="model is required"):
+            await server._tool_histogram_diff({"column_name": "age"})
+
+    @pytest.mark.asyncio
+    async def test_tool_histogram_diff_missing_column_name(self, mcp_server):
+        """Test histogram_diff raises when column_name is missing"""
+        server, _ = mcp_server
+        with pytest.raises(ValueError, match="column_name is required"):
+            await server._tool_histogram_diff({"model": "my_model"})
+
+    @pytest.mark.asyncio
+    async def test_tool_histogram_diff_unknown_column(self, mcp_server):
+        """Test histogram_diff raises when column type cannot be determined"""
+        server, mock_context = mcp_server
+        mock_context.build_name_to_unique_id_index.return_value = {}
+        mock_context.get_model.return_value = {"columns": {}}
+
+        with pytest.raises(ValueError, match="Cannot determine column type"):
+            await server._tool_histogram_diff({"model": "my_model", "column_name": "unknown"})
+
+    @pytest.mark.asyncio
+    async def test_tool_get_model(self, mcp_server):
+        """Test the get_model tool"""
+        server, mock_context = mcp_server
+        mock_context.get_model.side_effect = [
+            {"columns": {"id": {"name": "id", "type": "integer"}}},
+            {"columns": {"id": {"name": "id", "type": "integer"}, "age": {"name": "age", "type": "integer"}}},
+        ]
+
+        result = await server._tool_get_model({"model_id": "model.project.my_model"})
+
+        assert "model" in result
+        assert "base" in result["model"]
+        assert "current" in result["model"]
+        assert mock_context.get_model.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_tool_get_model_missing_id(self, mcp_server):
+        """Test get_model raises when model_id is missing"""
+        server, _ = mcp_server
+        with pytest.raises(ValueError, match="model_id is required"):
+            await server._tool_get_model({})
+
+    @pytest.mark.asyncio
+    async def test_tool_get_model_not_found(self, mcp_server):
+        """Test get_model raises when model not found in either environment"""
+        server, mock_context = mcp_server
+        mock_context.get_model.return_value = {}
+
+        with pytest.raises(ValueError, match="not found in either environment"):
+            await server._tool_get_model({"model_id": "model.project.nonexistent"})
+
+    @pytest.mark.asyncio
+    async def test_tool_get_cll(self, mcp_server):
+        """Test the get_cll tool"""
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "dbt"
+
+        mock_cll = MagicMock()
+        mock_cll.model_dump.return_value = {
+            "nodes": {"model.project.a": {"name": "a"}},
+            "columns": {},
+            "parent_map": {},
+            "child_map": {},
+        }
+        mock_context.adapter.get_cll.return_value = mock_cll
+
+        result = await server._tool_get_cll({"node_id": "model.project.a"})
+
+        assert "nodes" in result
+        mock_context.adapter.get_cll.assert_called_once_with(
+            node_id="model.project.a",
+            column=None,
+            change_analysis=False,
+        )
+
+    @pytest.mark.asyncio
+    async def test_tool_get_cll_non_dbt(self, mcp_server):
+        """Test get_cll raises for non-dbt adapter"""
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "sqlmesh"
+
+        with pytest.raises(ValueError, match="only available with dbt"):
+            await server._tool_get_cll({})
+
+    @pytest.mark.asyncio
+    async def test_tool_get_server_info(self, mcp_server):
+        """Test the get_server_info tool"""
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "dbt"
+        mock_context.review_mode = False
+        mock_context.support_tasks.return_value = {"row_count_diff": True, "query_diff": True}
+        mock_context.state_loader = None
+
+        result = await server._tool_get_server_info({})
+
+        assert result["adapter_type"] == "dbt"
+        assert result["review_mode"] is False
+        assert result["support_tasks"] == {"row_count_diff": True, "query_diff": True}
+
+    @pytest.mark.asyncio
+    async def test_tool_select_nodes(self, mcp_server):
+        """Test the select_nodes tool"""
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "dbt"
+        mock_context.adapter.select_nodes.return_value = {
+            "model.project.model_a",
+            "model.project.model_b",
+            "test.project.test_a",
+        }
+
+        result = await server._tool_select_nodes({"select": "state:modified"})
+
+        assert "nodes" in result
+        # Test nodes should be filtered out
+        assert "test.project.test_a" not in result["nodes"]
+        assert "model.project.model_a" in result["nodes"]
+        assert result["nodes"] == sorted(result["nodes"])
+
+    @pytest.mark.asyncio
+    async def test_tool_select_nodes_non_dbt(self, mcp_server):
+        """Test select_nodes raises for non-dbt adapter"""
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "sqlmesh"
+
+        with pytest.raises(ValueError, match="only available with dbt"):
+            await server._tool_select_nodes({})
+
+    @pytest.mark.asyncio
+    async def test_tool_top_k_diff_with_model_dump(self, mcp_server):
+        """Test top_k_diff when task returns a Pydantic model (has model_dump)"""
+        server, _ = mcp_server
+        mock_result = MagicMock()
+        mock_result.model_dump.return_value = {"base": {"values": ["a"]}, "current": {"values": ["a"]}}
+
+        with patch.object(TopKDiffTask, "execute", return_value=mock_result):
+            result = await server._tool_top_k_diff({"model": "m", "column_name": "c"})
+
+        assert "base" in result
+        mock_result.model_dump.assert_called_once_with(mode="json")
+
+    @pytest.mark.asyncio
+    async def test_tool_histogram_diff_with_model_dump(self, mcp_server):
+        """Test histogram_diff when task returns a Pydantic model (has model_dump)"""
+        server, mock_context = mcp_server
+        mock_context.build_name_to_unique_id_index.return_value = {"m": "model.p.m"}
+        mock_context.get_model.return_value = {"columns": {"c": {"name": "c", "type": "INTEGER"}}}
+
+        mock_result = MagicMock()
+        mock_result.model_dump.return_value = {"base": {"counts": [1]}, "current": {"counts": [2]}}
+
+        with patch.object(HistogramDiffTask, "execute", return_value=mock_result):
+            result = await server._tool_histogram_diff({"model": "m", "column_name": "c"})
+
+        assert "base" in result
+        mock_result.model_dump.assert_called_once_with(mode="json")
+
+    @pytest.mark.asyncio
+    async def test_tool_histogram_diff_case_insensitive_column(self, mcp_server):
+        """Test histogram_diff resolves column name case-insensitively"""
+        server, mock_context = mcp_server
+        mock_context.build_name_to_unique_id_index.return_value = {"m": "model.p.m"}
+        # Column stored as uppercase in catalog
+        mock_context.get_model.return_value = {"columns": {"AGE": {"name": "AGE", "type": "INTEGER"}}}
+
+        mock_result = {"base": {}, "current": {}}
+        with patch.object(HistogramDiffTask, "execute", return_value=mock_result):
+            result = await server._tool_histogram_diff({"model": "m", "column_name": "age"})
+
+        assert "base" in result
+
+    @pytest.mark.asyncio
+    async def test_tool_get_server_info_with_state_loader(self, mcp_server):
+        """Test get_server_info includes git and PR info when state_loader is available"""
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "dbt"
+        mock_context.review_mode = False
+        mock_context.support_tasks.return_value = {"row_count_diff": True}
+
+        mock_git = MagicMock()
+        mock_git.model_dump.return_value = {"branch": "feature/test"}
+        mock_pr = MagicMock()
+        mock_pr.model_dump.return_value = {"url": "https://github.com/org/repo/pull/1"}
+
+        mock_state = MagicMock()
+        mock_state.git = mock_git
+        mock_state.pull_request = mock_pr
+        mock_context.export_state.return_value = mock_state
+        mock_context.state_loader = MagicMock()  # non-None to trigger the branch
+
+        result = await server._tool_get_server_info({})
+
+        assert result["git"] == {"branch": "feature/test"}
+        assert result["pull_request"] == {"url": "https://github.com/org/repo/pull/1"}
+
+    @pytest.mark.asyncio
+    async def test_tool_get_server_info_state_loader_error(self, mcp_server):
+        """Test get_server_info handles export_state errors gracefully"""
+        server, mock_context = mcp_server
+        mock_context.adapter_type = "dbt"
+        mock_context.review_mode = False
+        mock_context.support_tasks.return_value = {}
+        mock_context.state_loader = MagicMock()
+        mock_context.export_state.side_effect = Exception("git error")
+
+        result = await server._tool_get_server_info({})
+
+        # Should still return basic info without git/PR
+        assert result["adapter_type"] == "dbt"
+        assert "git" not in result
+
+    @pytest.mark.asyncio
     async def test_error_handling(self, mcp_server):
         """Test error handling in tool execution"""
         server, mock_context = mcp_server
@@ -536,6 +828,17 @@ class TestMCPServerModes:
         # Verify it's not server mode
         assert server.mode != RecceServerMode.server
 
+    @pytest.mark.asyncio
+    async def test_non_server_mode_blocks_new_diff_tools(self):
+        """Test that preview mode blocks new diff tools but allows metadata tools"""
+        mock_context = MagicMock(spec=RecceContext)
+        server = RecceMCPServer(mock_context, mode=RecceServerMode.preview)
+
+        blocked_tools = ["value_diff", "value_diff_detail", "top_k_diff", "histogram_diff"]
+        for tool_name in blocked_tools:
+            result = await TestCallToolHandler._invoke_call_tool(server, tool_name, {})
+            assert result.root.isError is True
+
 
 @pytest.fixture
 def mcp_server_single_env():
@@ -607,6 +910,42 @@ class TestMCPServerSingleEnv:
         assert "_warning" in result
 
     @pytest.mark.asyncio
+    async def test_value_diff_has_warning_in_single_env(self, mcp_server_single_env):
+        server, _ = mcp_server_single_env
+        mock_result = MagicMock()
+        mock_result.model_dump.return_value = {"summary": {"total": 10, "added": 0, "removed": 0}, "data": {}}
+        with patch.object(ValueDiffTask, "execute", return_value=mock_result):
+            result = await server._tool_value_diff({"model": "m", "primary_key": "id"})
+        assert "_warning" in result
+
+    @pytest.mark.asyncio
+    async def test_value_diff_detail_has_warning_in_single_env(self, mcp_server_single_env):
+        server, _ = mcp_server_single_env
+        mock_result = MagicMock()
+        mock_result.model_dump.return_value = {"columns": [], "data": []}
+        with patch.object(ValueDiffDetailTask, "execute", return_value=mock_result):
+            result = await server._tool_value_diff_detail({"model": "m", "primary_key": "id"})
+        assert "_warning" in result
+
+    @pytest.mark.asyncio
+    async def test_top_k_diff_has_warning_in_single_env(self, mcp_server_single_env):
+        server, _ = mcp_server_single_env
+        mock_result = {"base": {}, "current": {}}
+        with patch.object(TopKDiffTask, "execute", return_value=mock_result):
+            result = await server._tool_top_k_diff({"model": "m", "column_name": "c"})
+        assert "_warning" in result
+
+    @pytest.mark.asyncio
+    async def test_histogram_diff_has_warning_in_single_env(self, mcp_server_single_env):
+        server, mock_context = mcp_server_single_env
+        mock_context.build_name_to_unique_id_index.return_value = {"m": "model.p.m"}
+        mock_context.get_model.return_value = {"columns": {"c": {"name": "c", "type": "INTEGER"}}}
+        mock_result = {"base": {}, "current": {}}
+        with patch.object(HistogramDiffTask, "execute", return_value=mock_result):
+            result = await server._tool_histogram_diff({"model": "m", "column_name": "c"})
+        assert "_warning" in result
+
+    @pytest.mark.asyncio
     async def test_query_no_warning_in_single_env(self, mcp_server_single_env):
         """query (single-env) is NOT a diff tool, should have no warning"""
         server, _ = mcp_server_single_env
@@ -626,7 +965,15 @@ class TestMCPServerSingleEnv:
         result = await handler(ListToolsRequest(method="tools/list"))
         tools = result.root.tools
 
-        diff_tool_names = {"row_count_diff", "query_diff", "profile_diff"}
+        diff_tool_names = {
+            "row_count_diff",
+            "query_diff",
+            "profile_diff",
+            "value_diff",
+            "value_diff_detail",
+            "top_k_diff",
+            "histogram_diff",
+        }
         note_text = "base environment is not configured"
 
         for tool in tools:
@@ -767,6 +1114,153 @@ class TestCallToolHandler:
             result = await self._invoke_call_tool(server, "lineage_diff")
 
         assert result.root.isError is True
+
+    @pytest.mark.asyncio
+    async def test_existing_tools_dispatch_via_call_tool(self, mcp_server):
+        """Pre-existing tools dispatch correctly through the call_tool handler."""
+        server, mock_context = mcp_server
+
+        # schema_diff
+        mock_lineage_diff = MagicMock()
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": {}, "parent_map": {}},
+            "current": {"nodes": {}, "parent_map": {}},
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+        r = await self._invoke_call_tool(server, "schema_diff", {})
+        assert r.root.isError is not True
+
+        # row_count_diff
+        with patch.object(RowCountDiffTask, "execute", return_value={"m": {"base": 1, "curr": 1}}):
+            r = await self._invoke_call_tool(server, "row_count_diff", {"node_names": ["m"]})
+        assert r.root.isError is not True
+
+        # query
+        mock_qr = MagicMock()
+        mock_qr.model_dump.return_value = {"columns": ["c"], "data": [[1]]}
+        with patch.object(QueryTask, "execute", return_value=mock_qr):
+            r = await self._invoke_call_tool(server, "query", {"sql_template": "SELECT 1"})
+        assert r.root.isError is not True
+
+        # query_diff
+        mock_qdr = MagicMock()
+        mock_qdr.model_dump.return_value = {"diff": {"added": [], "removed": [], "modified": []}}
+        with patch.object(QueryDiffTask, "execute", return_value=mock_qdr):
+            r = await self._invoke_call_tool(server, "query_diff", {"sql_template": "SELECT 1"})
+        assert r.root.isError is not True
+
+        # profile_diff
+        mock_pdr = MagicMock()
+        mock_pdr.model_dump.return_value = {"columns": {}}
+        with patch.object(ProfileDiffTask, "execute", return_value=mock_pdr):
+            r = await self._invoke_call_tool(server, "profile_diff", {"model": "m"})
+        assert r.root.isError is not True
+
+        # list_checks
+        mock_check_dao = MagicMock()
+        mock_check_dao.list.return_value = []
+        mock_check_dao.status.return_value = {"total": 0, "approved": 0}
+        with patch("recce.models.CheckDAO", return_value=mock_check_dao):
+            r = await self._invoke_call_tool(server, "list_checks", {})
+        assert r.root.isError is not True
+
+        # run_check (successful dispatch via lineage_diff path)
+        from uuid import uuid4
+
+        from recce.models.types import LineageDiff, RunType
+
+        check_id = uuid4()
+        mock_check = MagicMock()
+        mock_check.check_id = check_id
+        mock_check.type = RunType.LINEAGE_DIFF
+        mock_check.params = {}
+
+        mock_ld = MagicMock(spec=LineageDiff)
+        mock_ld.model_dump.return_value = {
+            "base": {"nodes": {}, "parent_map": {}},
+            "current": {"nodes": {}, "parent_map": {}},
+            "diff": {},
+        }
+        mock_context.get_lineage_diff.return_value = mock_ld
+        mock_context.adapter.select_nodes.return_value = set()
+
+        mock_check_dao2 = MagicMock()
+        mock_check_dao2.find_check_by_id.return_value = mock_check
+        with patch("recce.models.CheckDAO", return_value=mock_check_dao2):
+            r = await self._invoke_call_tool(server, "run_check", {"check_id": str(check_id)})
+        assert r.root.isError is not True
+
+        # unknown tool
+        r = await self._invoke_call_tool(server, "nonexistent_tool", {})
+        assert r.root.isError is True
+
+    @pytest.mark.asyncio
+    async def test_large_response_truncates_log(self, mcp_server):
+        """Large tool responses are truncated in the debug log."""
+        server, mock_context = mcp_server
+        # Return a large result that serializes to >1000 chars
+        large_result = {"data": "x" * 2000}
+        with patch.object(RowCountDiffTask, "execute", return_value=large_result):
+            r = await self._invoke_call_tool(server, "row_count_diff", {"node_names": ["m"]})
+        assert r.root.isError is not True
+
+    @pytest.mark.asyncio
+    async def test_new_tools_dispatch_via_call_tool(self, mcp_server):
+        """New tools dispatch correctly through the call_tool handler."""
+        server, mock_context = mcp_server
+
+        # value_diff
+        mock_vd = MagicMock()
+        mock_vd.model_dump.return_value = {"summary": {}, "data": {}}
+        with patch.object(ValueDiffTask, "execute", return_value=mock_vd):
+            r = await self._invoke_call_tool(server, "value_diff", {"model": "m", "primary_key": "id"})
+        assert r.root.isError is not True
+
+        # value_diff_detail
+        mock_vdd = MagicMock()
+        mock_vdd.model_dump.return_value = {"columns": [], "data": []}
+        with patch.object(ValueDiffDetailTask, "execute", return_value=mock_vdd):
+            r = await self._invoke_call_tool(server, "value_diff_detail", {"model": "m", "primary_key": "id"})
+        assert r.root.isError is not True
+
+        # top_k_diff
+        with patch.object(TopKDiffTask, "execute", return_value={"base": {}, "current": {}}):
+            r = await self._invoke_call_tool(server, "top_k_diff", {"model": "m", "column_name": "c"})
+        assert r.root.isError is not True
+
+        # histogram_diff
+        mock_context.build_name_to_unique_id_index.return_value = {"m": "model.p.m"}
+        mock_context.get_model.return_value = {"columns": {"c": {"name": "c", "type": "INTEGER"}}}
+        with patch.object(HistogramDiffTask, "execute", return_value={"base": {}, "current": {}}):
+            r = await self._invoke_call_tool(server, "histogram_diff", {"model": "m", "column_name": "c"})
+        assert r.root.isError is not True
+
+        # get_model
+        mock_context.get_model.side_effect = [{"columns": {}}, {"columns": {}}]
+        r = await self._invoke_call_tool(server, "get_model", {"model_id": "model.p.m"})
+        assert r.root.isError is not True
+
+        # get_cll
+        mock_context.adapter_type = "dbt"
+        mock_cll = MagicMock()
+        mock_cll.model_dump.return_value = {"nodes": {}, "columns": {}, "parent_map": {}, "child_map": {}}
+        mock_context.adapter.get_cll.return_value = mock_cll
+        r = await self._invoke_call_tool(server, "get_cll", {})
+        assert r.root.isError is not True
+
+        # get_server_info
+        mock_context.adapter_type = "dbt"
+        mock_context.review_mode = False
+        mock_context.support_tasks.return_value = {}
+        mock_context.state_loader = None
+        r = await self._invoke_call_tool(server, "get_server_info", {})
+        assert r.root.isError is not True
+
+        # select_nodes
+        mock_context.adapter_type = "dbt"
+        mock_context.adapter.select_nodes.return_value = {"model.p.m"}
+        r = await self._invoke_call_tool(server, "select_nodes", {})
+        assert r.root.isError is not True
 
 
 class TestLineageDiffEdgeCases:
