@@ -151,7 +151,7 @@ class RecceMCPServer:
         return (
             "IMPORTANT: This Recce server is running in single-environment mode. "
             "Base environment (target-base/) is not configured, so all diff tools "
-            "(row_count_diff, query_diff, profile_diff) compare the current environment "
+            "(row_count_diff, query_diff, profile_diff, value_diff, value_diff_detail, top_k_diff, histogram_diff) compare the current environment "
             "against itself and will show no changes. "
             "To enable meaningful diffs, the user needs to run: "
             "dbt docs generate --target-path target-base"
@@ -1072,12 +1072,14 @@ class RecceMCPServer:
         model_id = arguments.get("model_id")
         if not model_id:
             raise ValueError("model_id is required")
-        return {
-            "model": {
-                "base": self.context.get_model(model_id, base=True),
-                "current": self.context.get_model(model_id, base=False),
-            }
-        }
+        base = self.context.get_model(model_id, base=True)
+        current = self.context.get_model(model_id, base=False)
+        if not base and not current:
+            raise ValueError(
+                f"Model '{model_id}' not found in either environment. "
+                "Use the full unique ID (e.g., 'model.project.model_name')."
+            )
+        return {"model": {"base": base, "current": current}}
 
     async def _tool_get_cll(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get column-level lineage data"""
@@ -1110,8 +1112,8 @@ class RecceMCPServer:
                     result["git"] = state.git.model_dump(mode="json")
                 if state.pull_request:
                     result["pull_request"] = state.pull_request.model_dump(mode="json")
-            except Exception:
-                pass  # Git/PR info is best-effort
+            except Exception as e:
+                logger.warning(f"[MCP] Failed to load git/PR info: {e}")
 
         return result
 
