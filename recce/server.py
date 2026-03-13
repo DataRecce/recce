@@ -626,6 +626,15 @@ async def get_info():
                 "current_env": sqlmesh_adapter.curr_env.name,
             }
 
+        if context.adapter_type == "bauplan":
+            from recce.adapter.bauplan_adapter import BauplanAdapter
+
+            bauplan_adapter: BauplanAdapter = context.adapter
+            info["bauplan"] = {
+                "base_ref": bauplan_adapter.base_ref,
+                "current_ref": bauplan_adapter.curr_ref,
+            }
+
         return info
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
