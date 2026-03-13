@@ -268,22 +268,22 @@ def test_column_level_lineage(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     result = adapter.get_cll("model.model2", "c")
-    assert_cll_contain_nodes(result, [])
+    assert_cll_contain_nodes(result, ["model.model1", "model.model2", "model.model3"])
     assert_cll_contain_columns(result, [("model.model1", "c"), ("model.model2", "c"), ("model.model3", "c")])
     assert_column(result, "model.model2", "c", transformation_type="passthrough", parents=[("model.model1", "c")])
 
     result = adapter.get_cll("model.model2", "y")
-    assert_cll_contain_nodes(result, ["model.model3"])
+    assert_cll_contain_nodes(result, ["model.model2", "model.model3", "model.model4"])
     assert_cll_contain_columns(result, [("model.model2", "y"), ("model.model4", "y")])
     assert_column(result, "model.model2", "y", transformation_type="source", parents=[])
 
     result = adapter.get_cll("model.model3", "c")
-    assert_cll_contain_nodes(result, [])
+    assert_cll_contain_nodes(result, ["model.model1", "model.model2", "model.model3"])
     assert_cll_contain_columns(result, [("model.model1", "c"), ("model.model2", "c"), ("model.model3", "c")])
     assert_column(result, "model.model2", "c", transformation_type="passthrough", parents=[("model.model1", "c")])
 
     result = adapter.get_cll("model.model2", "c", no_upstream=True, no_downstream=True)
-    assert_cll_contain_nodes(result, [])
+    assert_cll_contain_nodes(result, ["model.model2"])
     assert_cll_contain_columns(result, [("model.model2", "c")])
     assert_column(result, "model.model2", "c", transformation_type="passthrough", parents=[])
 
@@ -655,8 +655,12 @@ def test_impact_radius_by_node_with_cll(dbt_test_helper):
     result = adapter.get_cll(node_id="model.model2", change_analysis=True, no_upstream=True)
     assert_model(result, "model.model2", parents=[], change_category="partial_breaking", impacted=False)
     assert_model(result, "model.model3", parents=[("model.model2", "y")], impacted=True)
+    # DRC-2961: model4 was previously dropped because its model ID wasn't in
+    # result_node_ids (only its column ID model.model4_y was). Now it's kept
+    # because it has surviving columns.
+    assert_model(result, "model.model4", parents=[], impacted=True)
     assert_column(result, "model.model2", "y", transformation_type="source", parents=[], change_status="modified")
-    assert_cll_contain_nodes(result, ["model.model2", "model.model3"])
+    assert_cll_contain_nodes(result, ["model.model2", "model.model3", "model.model4"])
     assert_cll_contain_columns(result, [("model.model2", "y"), ("model.model4", "y")])
 
     result = adapter.get_cll(node_id="model.model1", change_analysis=True, no_upstream=True)
@@ -664,6 +668,69 @@ def test_impact_radius_by_node_with_cll(dbt_test_helper):
     assert_cll_contain_columns(result, [("model.model1", "d")])
     assert_model(result, "model.model1", parents=[], change_category="non_breaking", impacted=False)
     assert_column(result, "model.model1", "d", transformation_type="source", parents=[], change_status="added")
+
+
+def test_cll_downstream_model_not_dropped_when_columns_survive(dbt_test_helper):
+    """
+    Repro for DRC-2961: get_cll() drops model nodes whose columns survive.
+
+    Setup: model_a (modified column 'price') → model_b (passthrough 'price')
+    model_a has partial_breaking change (column modified, not structurally breaking).
+
+    Bug: find_downstream() returns column IDs (model_a_price, model_b_price)
+    but the node filter checks model IDs. model_b's model ID is never in
+    result_node_ids, so it gets dropped from nodes while its column remains
+    in the columns dict. The impacted flag is also wrong — it checks
+    node.id in result_node_ids (a model ID against column IDs).
+
+    Correct behavior: if a column for model X survives filtering, model X
+    must also survive in nodes. And impacted should be True if any of the
+    model's columns are in result_node_ids.
+    """
+    # model_a: modified column (partial_breaking)
+    dbt_test_helper.create_model(
+        "model_a",
+        unique_id="model.model_a",
+        curr_sql="select 100 as price",
+        base_sql="select 200 as price",
+        curr_columns={"price": "int"},
+        base_columns={"price": "int"},
+    )
+    # model_b: passthrough of price from model_a (no changes)
+    dbt_test_helper.create_model(
+        "model_b",
+        unique_id="model.model_b",
+        curr_sql='select price from {{ ref("model_a") }}',
+        base_sql='select price from {{ ref("model_a") }}',
+        curr_columns={"price": "int"},
+        base_columns={"price": "int"},
+        depends_on=["model.model_a"],
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    result = adapter.get_cll(node_id="model.model_a", change_analysis=True, no_upstream=True)
+
+    # model_a's column 'price' is modified → it's an anchor
+    # find_downstream traces model_a_price → model_b_price
+    # So model_b_price is in result_node_ids
+
+    # BUG: model_b is dropped from nodes because its model ID isn't in result_node_ids
+    # CORRECT: model_b must be in nodes because its column 'price' survived
+    assert_model(result, "model.model_a", parents=[], change_category="partial_breaking", impacted=False)
+    assert_model(result, "model.model_b", parents=[], impacted=True)
+    assert_column(result, "model.model_a", "price", transformation_type="source", parents=[], change_status="modified")
+    assert_column(result, "model.model_b", "price", transformation_type="passthrough", parents=[("model.model_a", "price")])
+
+    # Both models must be in nodes
+    assert_cll_contain_nodes(result, ["model.model_a", "model.model_b"])
+    assert_cll_contain_columns(result, [("model.model_a", "price"), ("model.model_b", "price")])
+
+    # Invariant: every column's parent model exists in nodes
+    for col_id, col in result.columns.items():
+        assert col.table_id in result.nodes, (
+            f"Column {col_id} references model {col.table_id} which is missing from nodes"
+        )
 
 
 def test_impact_radius_by_node_with_cll_2(dbt_test_helper):
