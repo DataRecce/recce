@@ -115,7 +115,7 @@ export default function AuthModal({
                   color: "primary.main",
                   "&:focus": { outline: "none" },
                 }}
-                href={`${PUBLIC_CLOUD_WEB_URL}/connect-to-cloud`}
+                href={new URL("/connect-to-cloud", PUBLIC_CLOUD_WEB_URL).href}
                 target="_blank"
               >
                 here <LuExternalLink style={{ display: "inline" }} />
