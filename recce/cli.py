@@ -569,7 +569,8 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
     }
 
     # Check Single Environment Onboarding Mode if not in cloud mode and not in review mode
-    if not is_cloud and not is_review:
+    # Skip for non-dbt adapters (bauplan, sqlmesh) which don't use dbt artifacts
+    if not is_cloud and not is_review and not kwargs.get("bauplan") and not kwargs.get("sqlmesh"):
         project_dir_path = Path(kwargs.get("project_dir") or "./")
         target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
         if not target_base_path.is_dir():
@@ -1828,7 +1829,8 @@ def mcp_server(state_file, sse, host, port, **kwargs):
     # When target-base/ doesn't exist, fall back to single-env mode:
     # set target_base_path = target_path so both envs load the same artifacts,
     # making all diffs show no changes. The MCP server adds _warning to responses.
-    if not is_cloud:
+    # Skip for non-dbt adapters (bauplan, sqlmesh) which don't use dbt artifacts
+    if not is_cloud and not kwargs.get("bauplan") and not kwargs.get("sqlmesh"):
         project_dir_path = Path(kwargs.get("project_dir") or "./")
         target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
         if not target_base_path.is_dir():

@@ -435,8 +435,18 @@ class HistogramDiffTask(Task, QueryMixin):
         df_base, _ = adapter.fetchdf_with_limit(min_max_sql, base=True)
         df_curr, _ = adapter.fetchdf_with_limit(min_max_sql, base=False)
 
-        min_base, max_base, total_base = df_base.iloc[0]["min"], df_base.iloc[0]["max"], df_base.iloc[0]["total"]
-        min_curr, max_curr, total_curr = df_curr.iloc[0]["min"], df_curr.iloc[0]["max"], df_curr.iloc[0]["total"]
+        def _to_python(val):
+            """Convert numpy/pandas types to native Python for JSON serialization."""
+            if val is None or (hasattr(val, "item") is False and val != val):
+                return None
+            return val.item() if hasattr(val, "item") else val
+
+        min_base = _to_python(df_base.iloc[0]["min"])
+        max_base = _to_python(df_base.iloc[0]["max"])
+        total_base = _to_python(df_base.iloc[0]["total"])
+        min_curr = _to_python(df_curr.iloc[0]["min"])
+        max_curr = _to_python(df_curr.iloc[0]["max"])
+        total_curr = _to_python(df_curr.iloc[0]["total"])
 
         def safe_min(a, b):
             if a is None:
@@ -506,9 +516,9 @@ class HistogramDiffTask(Task, QueryMixin):
             "counts": fill_counts(df_curr_hist, num_bins),
             "total": int(total_curr) if total_curr else 0,
         }
-        result["min"] = min_value
-        result["max"] = max_value
-        result["bin_edges"] = bin_edges
+        result["min"] = float(min_value) if min_value is not None else None
+        result["max"] = float(max_value) if max_value is not None else None
+        result["bin_edges"] = [float(e) for e in bin_edges]
         result["labels"] = labels
 
         return result
