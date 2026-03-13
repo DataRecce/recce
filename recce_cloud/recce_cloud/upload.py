@@ -382,3 +382,70 @@ def upload_with_session_name(
     console.print(f"[cyan]Artifacts from:[/cyan] {os.path.abspath(target_path)}")
 
     sys.exit(0)
+
+
+def upload_isolated_base(
+    console,
+    client,
+    org_id: str,
+    project_id: str,
+    session_id: str,
+    manifest_path: str,
+    catalog_path: str,
+    target_path: str,
+):
+    """
+    Upload isolated base artifacts to an existing session.
+
+    Gets presigned URLs for the isolated base subpath, uploads manifest + catalog,
+    then notifies the server to set has_isolated_base=True.
+
+    Args:
+        console: Rich console for output
+        client: RecceCloudClient instance
+        org_id: Organization ID
+        project_id: Project ID
+        session_id: Session ID
+        manifest_path: Path to manifest.json
+        catalog_path: Path to catalog.json
+        target_path: Original target path (for display)
+    """
+    console.rule("Uploading Isolated Base Artifacts", style="blue")
+
+    # Get isolated base upload URLs
+    with cloud_error_handler(console, "get isolated base upload URLs"):
+        presigned_urls = client.get_isolated_base_upload_urls(
+            org_id, project_id, session_id
+        )
+
+    # Upload manifest
+    console.print(f'Uploading base manifest from path "{manifest_path}"')
+    with cloud_error_handler(console, "upload base manifest.json"):
+        with open(manifest_path, "rb") as f:
+            response = requests.put(presigned_urls["manifest_url"], data=f.read())
+        if response.status_code not in [200, 204]:
+            raise Exception(
+                f"Upload failed with status {response.status_code}: {response.text}"
+            )
+
+    # Upload catalog
+    console.print(f'Uploading base catalog from path "{catalog_path}"')
+    with cloud_error_handler(console, "upload base catalog.json"):
+        with open(catalog_path, "rb") as f:
+            response = requests.put(presigned_urls["catalog_url"], data=f.read())
+        if response.status_code not in [200, 204]:
+            raise Exception(
+                f"Upload failed with status {response.status_code}: {response.text}"
+            )
+
+    # Notify completion (sets has_isolated_base=True)
+    console.print("Notifying isolated base upload completion...")
+    with cloud_error_handler(console, "notify isolated base upload completion"):
+        client.isolated_base_upload_completed(org_id, project_id, session_id)
+
+    # Success
+    console.rule("Isolated Base Uploaded Successfully", style="green")
+    console.print(
+        f'Uploaded isolated base artifacts to session "{session_id}" from "{os.path.abspath(target_path)}"'
+    )
+    sys.exit(0)
