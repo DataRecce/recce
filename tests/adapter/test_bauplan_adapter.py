@@ -408,6 +408,72 @@ def test_bauplan_adapter_support_tasks_includes_change_analysis():
     assert support["change_analysis"] is True
 
 
+def test_bauplan_adapter_top_k_diff():
+    """Test top-k diff via execute_bauplan on TopKDiffTask."""
+    from unittest.mock import patch
+
+    from recce.tasks.top_k import TopKDiffTask
+
+    mock_client = MagicMock()
+
+    def mock_query(query, ref):
+        result = MagicMock()
+        if "group by" in query.lower():
+            # Top-k category query (both branches get the same SQL)
+            if ref == "main":
+                result.to_pandas.return_value = pd.DataFrame(
+                    {"category": ["active", "passive", "bot"], "c": [50, 30, 15]}
+                )
+            else:
+                result.to_pandas.return_value = pd.DataFrame(
+                    {"category": ["active", "passive", "bot"], "c": [60, 35, 20]}
+                )
+        else:
+            # Row count + valids query
+            if ref == "main":
+                result.to_pandas.return_value = pd.DataFrame({"total": [100], "valids": [95]})
+            else:
+                result.to_pandas.return_value = pd.DataFrame({"total": [120], "valids": [110]})
+        return result
+
+    mock_client.query.side_effect = mock_query
+
+    lineage = {
+        "nodes": {
+            "model.proj.segments": {
+                "name": "segments",
+                "resource_type": "model",
+                "columns": {"segment": {"type": "string"}},
+            }
+        },
+        "sources": {},
+        "parent_map": {},
+    }
+    adapter = BauplanAdapter(
+        client=mock_client,
+        base_ref="main",
+        curr_ref="dev",
+        base_lineage=lineage,
+        curr_lineage=lineage,
+    )
+
+    mock_context = MagicMock()
+    mock_context.adapter = adapter
+    mock_context.adapter_type = "bauplan"
+
+    with patch("recce.tasks.top_k.default_context", return_value=mock_context):
+        task = TopKDiffTask({"model": "segments", "column_name": "segment", "k": 3})
+        result = task.execute()
+
+    assert "base" in result
+    assert "current" in result
+    assert result["base"]["values"] == ["active", "passive", "bot"]
+    assert result["base"]["counts"] == [50, 30, 15]
+    assert result["current"]["counts"] == [60, 35, 20]
+    assert result["base"]["total"] == 100
+    assert result["current"]["total"] == 120
+
+
 def test_bauplan_adapter_fetchdf_no_limit():
     """Test fetchdf_with_limit without limit parameter."""
     mock_client = MagicMock()

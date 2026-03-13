@@ -104,10 +104,15 @@ class TopKDiffTask(Task, QueryMixin):
         return categories, base_counts, curr_counts
 
     def execute(self):
+        context = default_context()
+        if context.adapter_type == "bauplan":
+            return self.execute_bauplan()
+        elif context.adapter_type == "sqlmesh":
+            return self.execute_bauplan()
 
         from recce.adapter.dbt_adapter import DbtAdapter
 
-        dbt_adapter: DbtAdapter = default_context().adapter
+        dbt_adapter: DbtAdapter = context.adapter
 
         with dbt_adapter.connection_named("query"):
             self.connection = dbt_adapter.get_thread_connection()
@@ -148,6 +153,68 @@ class TopKDiffTask(Task, QueryMixin):
                 },
             }
             return result
+
+    def execute_bauplan(self):
+        adapter = default_context().adapter
+        model = self.params.model
+        column = self.params.column_name
+        k = self.params.k or 10
+
+        # Per-branch category count query
+        cat_sql = f"""
+        select
+            coalesce(cast({column} as varchar), '__null__') as category,
+            count(*) as c
+        from {model}
+        where {column} is not null
+        group by 1
+        order by c desc
+        limit {k}
+        """
+
+        base_df, _ = adapter.fetchdf_with_limit(cat_sql, base=True)
+        curr_df, _ = adapter.fetchdf_with_limit(cat_sql, base=False)
+
+        self.check_cancel()
+
+        # Merge base and current category counts
+        import pandas as pd
+
+        base_df = base_df.rename(columns={"c": "base_count"})
+        curr_df = curr_df.rename(columns={"c": "curr_count"})
+        merged = pd.merge(curr_df, base_df, on="category", how="outer").fillna(0)
+        merged = merged.sort_values("curr_count", ascending=False).head(k)
+
+        categories = [row if row != "__null__" else None for row in merged["category"].tolist()]
+        base_counts = [int(v) for v in merged["base_count"].tolist()]
+        curr_counts = [int(v) for v in merged["curr_count"].tolist()]
+
+        self.check_cancel()
+
+        # Row count and valid count queries
+        count_sql = f"select count(*) as total, count({column}) as valids from {model}"
+        base_count_df, _ = adapter.fetchdf_with_limit(count_sql, base=True)
+        curr_count_df, _ = adapter.fetchdf_with_limit(count_sql, base=False)
+
+        base_total = int(base_count_df.iloc[0]["total"])
+        base_valids = int(base_count_df.iloc[0]["valids"])
+        curr_total = int(curr_count_df.iloc[0]["total"])
+        curr_valids = int(curr_count_df.iloc[0]["valids"])
+
+        return {
+            "base": {
+                "values": categories,
+                "counts": base_counts,
+                "valids": base_valids,
+                "total": base_total,
+            },
+            "current": {
+                "values": categories,
+                "counts": curr_counts,
+                "valids": curr_valids,
+                "total": curr_total,
+            },
+        }
 
     def cancel(self):
         super().cancel()

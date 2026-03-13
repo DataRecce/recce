@@ -11,6 +11,7 @@ from recce.models.types import CllColumn, CllColumnDep, CllData, CllNode
 from recce.tasks import QueryDiffTask, QueryTask, RowCountDiffTask, Task
 from recce.tasks.histogram import HistogramDiffTask
 from recce.tasks.profile import ProfileDiffTask
+from recce.tasks.top_k import TopKDiffTask
 from recce.util.lineage import build_column_key
 
 bauplan_supported_registry: Dict[RunType, Type[Task]] = {
@@ -19,6 +20,7 @@ bauplan_supported_registry: Dict[RunType, Type[Task]] = {
     RunType.ROW_COUNT_DIFF: RowCountDiffTask,
     RunType.PROFILE_DIFF: ProfileDiffTask,
     RunType.HISTOGRAM_DIFF: HistogramDiffTask,
+    RunType.TOP_K_DIFF: TopKDiffTask,
 }
 
 
