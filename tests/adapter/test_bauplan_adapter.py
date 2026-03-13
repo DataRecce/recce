@@ -474,6 +474,66 @@ def test_bauplan_adapter_top_k_diff():
     assert result["current"]["total"] == 120
 
 
+def test_bauplan_adapter_select_nodes_all_includes_sources():
+    """Test that select_nodes with view_mode='all' includes source nodes."""
+    base_lineage = {
+        "nodes": {"model.proj.a": {"name": "a"}, "model.proj.b": {"name": "b"}},
+        "sources": {"source.proj.raw": {"name": "raw"}},
+        "parent_map": {"model.proj.a": ["source.proj.raw"]},
+    }
+    adapter = BauplanAdapter(
+        client=MagicMock(),
+        base_ref="main",
+        curr_ref="dev",
+        base_lineage=base_lineage,
+        curr_lineage=base_lineage,
+    )
+    nodes = adapter.select_nodes(view_mode="all")
+    assert "source.proj.raw" in nodes
+    assert "model.proj.a" in nodes
+    assert "model.proj.b" in nodes
+
+
+def test_bauplan_adapter_select_nodes_changed_models_includes_parents():
+    """Test that select_nodes with view_mode='changed_models' includes upstream parents."""
+    base_lineage = {
+        "nodes": {
+            "model.proj.a": {"name": "a", "checksum": "old"},
+            "model.proj.b": {"name": "b", "checksum": "same"},
+        },
+        "sources": {"source.proj.raw": {"name": "raw"}},
+        "parent_map": {
+            "model.proj.a": ["source.proj.raw"],
+            "model.proj.b": ["model.proj.a"],
+        },
+    }
+    curr_lineage = {
+        "nodes": {
+            "model.proj.a": {"name": "a", "checksum": "new"},
+            "model.proj.b": {"name": "b", "checksum": "same"},
+        },
+        "sources": {"source.proj.raw": {"name": "raw"}},
+        "parent_map": {
+            "model.proj.a": ["source.proj.raw"],
+            "model.proj.b": ["model.proj.a"],
+        },
+    }
+    adapter = BauplanAdapter(
+        client=MagicMock(),
+        base_ref="main",
+        curr_ref="dev",
+        base_lineage=base_lineage,
+        curr_lineage=curr_lineage,
+    )
+    nodes = adapter.select_nodes(view_mode="changed_models")
+    # model.proj.a is modified (checksum differs)
+    assert "model.proj.a" in nodes
+    # source.proj.raw is upstream parent of modified node
+    assert "source.proj.raw" in nodes
+    # model.proj.b is NOT modified (same checksum) and not a parent of modified
+    assert "model.proj.b" not in nodes
+
+
 def test_bauplan_adapter_fetchdf_no_limit():
     """Test fetchdf_with_limit without limit parameter."""
     mock_client = MagicMock()

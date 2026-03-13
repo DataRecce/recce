@@ -158,10 +158,23 @@ class BauplanAdapter(BaseAdapter):
         packages=None,
         view_mode=None,
     ) -> Set[str]:
-        # Include nodes from both branches
-        base_nodes = self._get_lineage_section(base=True).get("nodes", {})
-        curr_nodes = self._get_lineage_section(base=False).get("nodes", {})
-        return set(base_nodes.keys()) | set(curr_nodes.keys())
+        if view_mode == "changed_models":
+            # +state:modified semantics: modified nodes + their upstream parents
+            lineage_diff = self.get_lineage_diff()
+            modified = set(lineage_diff.diff.keys())
+            parent_map = self.curr_lineage.get("parent_map", {})
+            from recce.util.lineage import find_upstream
+
+            upstream = find_upstream(modified, parent_map)
+            return modified | upstream
+
+        # "all" or default: return all nodes and sources from both branches
+        result = set()
+        for base in [True, False]:
+            section = self._get_lineage_section(base)
+            result.update(section.get("nodes", {}).keys())
+            result.update(section.get("sources", {}).keys())
+        return result
 
     def get_cll(
         self,
