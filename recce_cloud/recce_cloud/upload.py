@@ -115,6 +115,7 @@ def upload_with_platform_apis(
     adapter_type: str,
     target_path: str,
     client=None,
+    isolated_base: bool = False,
 ):
     """
     Upload artifacts using touch-recce-session APIs.
@@ -167,6 +168,39 @@ def upload_with_platform_apis(
 
     console.print(f"[green]Session ID:[/green] {session_id}")
 
+    if isolated_base:
+        # For isolated base, we need org_id/project_id from the session
+        # The platform touch endpoint doesn't return these, so we look up the session
+        from recce_cloud.auth.profile import get_api_token
+
+        # Use RECCE_API_TOKEN or profile token for the RecceCloudClient
+        api_token = os.getenv("RECCE_API_TOKEN") or get_api_token()
+        if not api_token:
+            console.print(
+                "[red]Error:[/red] --isolated-base with platform APIs requires RECCE_API_TOKEN or 'recce-cloud login'"
+            )
+            console.print(
+                "The isolated base endpoint needs org/project context not available from platform tokens alone."
+            )
+            sys.exit(2)
+
+        rcc_client = RecceCloudClient(api_token)
+        with cloud_error_handler(console, "get session info"):
+            session = rcc_client.get_session(session_id)
+        org_id = session.get("org_id")
+        project_id = session.get("project_id")
+        if not org_id or not project_id:
+            console.print(
+                "[red]Error:[/red] Could not resolve org/project for session"
+            )
+            sys.exit(2)
+
+        upload_isolated_base(
+            console, rcc_client, org_id, project_id, session_id,
+            manifest_path, catalog_path, target_path,
+        )
+        return  # upload_isolated_base calls sys.exit(0)
+
     # Upload manifest.json
     console.print(f'Uploading manifest from path "{manifest_path}"')
     with cloud_error_handler(console, "upload manifest.json"):
@@ -214,6 +248,7 @@ def upload_with_session_name(
     adapter_type: str,
     target_path: str,
     skip_confirmation: bool = False,
+    isolated_base: bool = False,
 ):
     """
     Upload artifacts to a session identified by name.
@@ -334,16 +369,100 @@ def upload_with_session_name(
                 f'[green]Created new session:[/green] "{session_name}" (ID: {session_id})'
             )
 
-    # 5. Get presigned URLs and upload
-    console.rule("Uploading Artifacts", style="blue")
-    with cloud_error_handler(console, "get upload URLs"):
-        presigned_urls = client.get_upload_urls_by_session_id(
+    # 5. Upload artifacts
+    if isolated_base:
+        upload_isolated_base(
+            console, client, org_id, project_id, session_id,
+            manifest_path, catalog_path, target_path,
+        )
+    else:
+        # Get presigned URLs and upload (existing flow)
+        console.rule("Uploading Artifacts", style="blue")
+        with cloud_error_handler(console, "get upload URLs"):
+            presigned_urls = client.get_upload_urls_by_session_id(
+                org_id, project_id, session_id
+            )
+
+        # Upload manifest.json
+        console.print(f'Uploading manifest from path "{manifest_path}"')
+        with cloud_error_handler(console, "upload manifest.json"):
+            with open(manifest_path, "rb") as f:
+                response = requests.put(presigned_urls["manifest_url"], data=f.read())
+            if response.status_code not in [200, 204]:
+                raise Exception(
+                    f"Upload failed with status {response.status_code}: {response.text}"
+                )
+
+        # Upload catalog.json
+        console.print(f'Uploading catalog from path "{catalog_path}"')
+        with cloud_error_handler(console, "upload catalog.json"):
+            with open(catalog_path, "rb") as f:
+                response = requests.put(presigned_urls["catalog_url"], data=f.read())
+            if response.status_code not in [200, 204]:
+                raise Exception(
+                    f"Upload failed with status {response.status_code}: {response.text}"
+                )
+
+        # Update session metadata (if session already existed, update adapter_type; non-fatal)
+        if existing_session:
+            with cloud_error_handler(console, "update session metadata", fatal=False):
+                client.update_session(org_id, project_id, session_id, adapter_type)
+
+        # Notify upload completion (non-fatal)
+        console.print("Notifying upload completion...")
+        with cloud_error_handler(console, "notify upload completion", fatal=False):
+            client.upload_completed(session_id)
+
+        # Success!
+        console.rule("Uploaded Successfully", style="green")
+        console.print("Uploaded dbt artifacts to Recce Cloud")
+        console.print()
+        console.print(f"[cyan]Session Name:[/cyan] {session_name}")
+        console.print(f"[cyan]Session ID:[/cyan] {session_id}")
+        console.print(f"[cyan]Organization:[/cyan] {org}")
+        console.print(f"[cyan]Project:[/cyan] {project}")
+        console.print(f"[cyan]Artifacts from:[/cyan] {os.path.abspath(target_path)}")
+
+        sys.exit(0)
+
+
+def upload_isolated_base(
+    console,
+    client,
+    org_id: str,
+    project_id: str,
+    session_id: str,
+    manifest_path: str,
+    catalog_path: str,
+    target_path: str,
+):
+    """
+    Upload isolated base artifacts to an existing session.
+
+    Gets presigned URLs for the isolated base subpath, uploads manifest + catalog,
+    then notifies the server to set has_isolated_base=True.
+
+    Args:
+        console: Rich console for output
+        client: RecceCloudClient instance
+        org_id: Organization ID
+        project_id: Project ID
+        session_id: Session ID
+        manifest_path: Path to manifest.json
+        catalog_path: Path to catalog.json
+        target_path: Original target path (for display)
+    """
+    console.rule("Uploading Isolated Base Artifacts", style="blue")
+
+    # Get isolated base upload URLs
+    with cloud_error_handler(console, "get isolated base upload URLs"):
+        presigned_urls = client.get_isolated_base_upload_urls(
             org_id, project_id, session_id
         )
 
-    # Upload manifest.json
-    console.print(f'Uploading manifest from path "{manifest_path}"')
-    with cloud_error_handler(console, "upload manifest.json"):
+    # Upload manifest
+    console.print(f'Uploading base manifest from path "{manifest_path}"')
+    with cloud_error_handler(console, "upload base manifest.json"):
         with open(manifest_path, "rb") as f:
             response = requests.put(presigned_urls["manifest_url"], data=f.read())
         if response.status_code not in [200, 204]:
@@ -351,9 +470,9 @@ def upload_with_session_name(
                 f"Upload failed with status {response.status_code}: {response.text}"
             )
 
-    # Upload catalog.json
-    console.print(f'Uploading catalog from path "{catalog_path}"')
-    with cloud_error_handler(console, "upload catalog.json"):
+    # Upload catalog
+    console.print(f'Uploading base catalog from path "{catalog_path}"')
+    with cloud_error_handler(console, "upload base catalog.json"):
         with open(catalog_path, "rb") as f:
             response = requests.put(presigned_urls["catalog_url"], data=f.read())
         if response.status_code not in [200, 204]:
@@ -361,24 +480,14 @@ def upload_with_session_name(
                 f"Upload failed with status {response.status_code}: {response.text}"
             )
 
-    # Update session metadata (if session already existed, update adapter_type; non-fatal)
-    if existing_session:
-        with cloud_error_handler(console, "update session metadata", fatal=False):
-            client.update_session(org_id, project_id, session_id, adapter_type)
+    # Notify completion (sets has_isolated_base=True)
+    console.print("Notifying isolated base upload completion...")
+    with cloud_error_handler(console, "notify isolated base upload completion"):
+        client.isolated_base_upload_completed(org_id, project_id, session_id)
 
-    # Notify upload completion (non-fatal)
-    console.print("Notifying upload completion...")
-    with cloud_error_handler(console, "notify upload completion", fatal=False):
-        client.upload_completed(session_id)
-
-    # Success!
-    console.rule("Uploaded Successfully", style="green")
-    console.print("Uploaded dbt artifacts to Recce Cloud")
-    console.print()
-    console.print(f"[cyan]Session Name:[/cyan] {session_name}")
-    console.print(f"[cyan]Session ID:[/cyan] {session_id}")
-    console.print(f"[cyan]Organization:[/cyan] {org}")
-    console.print(f"[cyan]Project:[/cyan] {project}")
-    console.print(f"[cyan]Artifacts from:[/cyan] {os.path.abspath(target_path)}")
-
+    # Success
+    console.rule("Isolated Base Uploaded Successfully", style="green")
+    console.print(
+        f'Uploaded isolated base artifacts to session "{session_id}" from "{os.path.abspath(target_path)}"'
+    )
     sys.exit(0)
