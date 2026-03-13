@@ -1195,7 +1195,14 @@ class DbtAdapter(BaseAdapter):
 
         # Filter the nodes and columns based on the anchor nodes
         if not no_filter:
-            nodes = {k: v for k, v in nodes.items() if k in result_node_ids or k in extra_node_ids}
+            # Keep models whose columns survive filtering (DRC-2961)
+            nodes = {
+                k: v
+                for k, v in nodes.items()
+                if k in result_node_ids
+                or k in extra_node_ids
+                or any(col.id in result_node_ids or col.id in extra_node_ids for col in v.columns.values())
+            }
             columns = {k: v for k, v in columns.items() if k in result_node_ids or k in extra_node_ids}
 
             for node in nodes.values():
@@ -1204,7 +1211,10 @@ class DbtAdapter(BaseAdapter):
                 }
 
                 if change_analysis:
-                    node.impacted = node.id in result_node_ids
+                    node.impacted = node.id in result_node_ids or any(
+                        col.id in result_node_ids and col.id not in anchor_node_ids
+                        for col in node.columns.values()
+                    )
 
             parent_map, child_map = filter_dependency_maps(parent_map, child_map, result_node_ids)
 
