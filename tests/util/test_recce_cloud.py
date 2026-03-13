@@ -227,5 +227,72 @@ class TestRecceCloudListingMethods(unittest.TestCase):
         self.assertEqual(result, [])
 
 
+class TestRecceCloudBaseSessionDownloadUrls(unittest.TestCase):
+    """Test cases for get_base_session_download_urls with optional session_id."""
+
+    def setUp(self):
+        self.token = "test-api-token"
+        self.cloud = RecceCloud(self.token)
+
+    @patch("recce.util.recce_cloud.RecceCloud._request")
+    def test_get_base_session_download_urls_without_session_id(self, mock_request):
+        """Without session_id, URL has no query params."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "presigned_urls": {
+                "manifest_url": "http://manifest.url",
+                "catalog_url": "http://catalog.url",
+            }
+        }
+        mock_request.return_value = mock_response
+
+        result = self.cloud.get_base_session_download_urls("org1", "proj1")
+
+        expected_url = f"{self.cloud.base_url_v2}/organizations/org1/projects/proj1/base-session/download-url"
+        mock_request.assert_called_once_with("GET", expected_url)
+        self.assertIn("manifest_url", result)
+        self.assertIn("catalog_url", result)
+
+    @patch("recce.util.recce_cloud.RecceCloud._request")
+    def test_get_base_session_download_urls_with_session_id(self, mock_request):
+        """With session_id, URL includes ?session_id= query param."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "presigned_urls": {
+                "manifest_url": "http://manifest.url",
+                "catalog_url": "http://catalog.url",
+            }
+        }
+        mock_request.return_value = mock_response
+
+        result = self.cloud.get_base_session_download_urls("org1", "proj1", session_id="abc-123")
+
+        expected_url = (
+            f"{self.cloud.base_url_v2}/organizations/org1/projects/proj1/base-session/download-url?session_id=abc-123"
+        )
+        mock_request.assert_called_once_with("GET", expected_url)
+        self.assertIn("manifest_url", result)
+
+    @patch("recce.util.recce_cloud.RecceCloud._request")
+    def test_get_base_session_download_urls_with_session_id_none(self, mock_request):
+        """Explicit session_id=None behaves same as no session_id."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "presigned_urls": {
+                "manifest_url": "http://manifest.url",
+                "catalog_url": "http://catalog.url",
+            }
+        }
+        mock_request.return_value = mock_response
+
+        self.cloud.get_base_session_download_urls("org1", "proj1", session_id=None)
+
+        expected_url = f"{self.cloud.base_url_v2}/organizations/org1/projects/proj1/base-session/download-url"
+        mock_request.assert_called_once_with("GET", expected_url)
+
+
 if __name__ == "__main__":
     unittest.main()
