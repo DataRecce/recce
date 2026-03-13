@@ -395,6 +395,84 @@ def test_bauplan_adapter_get_cll_change_analysis():
     assert new_col.change_status == "added"
 
 
+def test_bauplan_adapter_get_cll_column_filters_to_lineage_chain():
+    """When column is specified, only columns in the dependency chain should be included."""
+    lineage = {
+        "nodes": {
+            "model.proj.features": {
+                "name": "features",
+                "resource_type": "model",
+                "package_name": "proj",
+                "checksum": "abc",
+                "columns": {
+                    "user_id": {
+                        "transformation_type": "passthrough",
+                        "depends_on": [{"node": "source.proj.raw", "column": "user_id"}],
+                        "type": "int64",
+                    },
+                    "score": {
+                        "transformation_type": "derived",
+                        "depends_on": [
+                            {"node": "source.proj.raw", "column": "likes"},
+                            {"node": "source.proj.raw", "column": "comments"},
+                        ],
+                        "type": "float64",
+                    },
+                },
+            }
+        },
+        "sources": {
+            "source.proj.raw": {
+                "name": "raw",
+                "resource_type": "source",
+                "package_name": "proj",
+                "columns": {
+                    "user_id": {"type": "int64"},
+                    "likes": {"type": "int64"},
+                    "comments": {"type": "int64"},
+                    "created_at": {"type": "timestamp"},
+                    "country": {"type": "string"},
+                },
+            }
+        },
+        "parent_map": {"model.proj.features": ["source.proj.raw"]},
+    }
+
+    adapter = BauplanAdapter(
+        client=MagicMock(),
+        base_ref="main",
+        curr_ref="dev",
+        base_lineage=lineage,
+        curr_lineage=lineage,
+    )
+
+    # Request CLL for a specific column: features.user_id
+    cll = adapter.get_cll(node_id="model.proj.features", column="user_id")
+
+    # Should include the target column
+    assert "model.proj.features_user_id" in cll.columns
+
+    # Should include the source column it depends on
+    assert "source.proj.raw_user_id" in cll.columns
+
+    # Should NOT include unrelated source columns
+    assert "source.proj.raw_likes" not in cll.columns
+    assert "source.proj.raw_comments" not in cll.columns
+    assert "source.proj.raw_created_at" not in cll.columns
+    assert "source.proj.raw_country" not in cll.columns
+
+    # Should NOT include unrelated model columns
+    assert "model.proj.features_score" not in cll.columns
+
+    # Nodes should still be present (for rendering the graph)
+    assert "model.proj.features" in cll.nodes
+    assert "source.proj.raw" in cll.nodes
+
+    # But the source node should only have the relevant column
+    assert "user_id" in cll.nodes["source.proj.raw"].columns
+    assert "likes" not in cll.nodes["source.proj.raw"].columns
+
+
 def test_bauplan_adapter_support_tasks_includes_change_analysis():
     """Test that change_analysis is now True in support_tasks."""
     adapter = BauplanAdapter(

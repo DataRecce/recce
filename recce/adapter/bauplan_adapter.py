@@ -266,6 +266,16 @@ class BauplanAdapter(BaseAdapter):
             for parent_id in parents:
                 cll_child_map.setdefault(parent_id, set()).add(child_id)
 
+        # Filter to dependency chain when a specific column is requested
+        if column and node_id:
+            root_col_id = build_column_key(node_id, column)
+            reachable = self._walk_column_chain(root_col_id, cll_parent_map, cll_child_map)
+            cll_columns = {k: v for k, v in cll_columns.items() if k in reachable}
+            cll_parent_map = {k: v for k, v in cll_parent_map.items() if k in reachable or k in cll_nodes}
+            cll_child_map = {k: v for k, v in cll_child_map.items() if k in reachable or k in cll_nodes}
+            for nid, cll_node in cll_nodes.items():
+                cll_node.columns = {name: col for name, col in cll_node.columns.items() if col.id in reachable}
+
         # Change analysis: annotate nodes/columns with change status
         if change_analysis:
             lineage_diff = self.get_lineage_diff()
@@ -316,6 +326,26 @@ class BauplanAdapter(BaseAdapter):
             for parent in parents:
                 child_map.setdefault(parent, []).append(child)
         return child_map
+
+    @staticmethod
+    def _walk_column_chain(
+        root: str,
+        parent_map: Dict[str, Set[str]],
+        child_map: Dict[str, Set[str]],
+    ) -> Set[str]:
+        """Walk upstream and downstream from a column to find all reachable columns."""
+        reachable: Set[str] = set()
+        queue = [root]
+        while queue:
+            col = queue.pop()
+            if col in reachable:
+                continue
+            reachable.add(col)
+            for parent in parent_map.get(col, set()):
+                queue.append(parent)
+            for child in child_map.get(col, set()):
+                queue.append(child)
+        return reachable
 
     def fetchdf_with_limit(self, sql: str, base: Optional[bool] = None, limit: Optional[int] = None) -> tuple:
         ref = self.base_ref if base else self.curr_ref
