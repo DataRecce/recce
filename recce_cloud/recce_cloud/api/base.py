@@ -100,7 +100,9 @@ class BaseRecceCloudClient(ABC):
         pass
 
     @abstractmethod
-    def upload_completed(self, session_id: str, commit_sha: Optional[str] = None) -> Dict:
+    def upload_completed(
+        self, session_id: str, commit_sha: Optional[str] = None
+    ) -> Dict:
         """
         Notify Recce Cloud that upload is complete.
 
