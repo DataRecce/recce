@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
 # Reminder: All commits require --signoff (-s) for DCO compliance
 # The commit-msg hook will enforce this, but here's a heads up!
 
@@ -11,9 +13,8 @@ if [ -n "$STAGED_JS_FILES" ]; then
 	echo "TypeScript/JavaScript files changed, running lint..."
 	# Convert js/path/to/file.ts to path/to/file.ts (relative to js/)
 	RELATIVE_FILES=$(echo "$STAGED_JS_FILES" | sed 's|^js/||')
-	cd js
+	cd "$REPO_ROOT/js"
 	echo "$RELATIVE_FILES" | xargs pnpm exec biome check --diagnostic-level=error
-	cd ..
 else
 	echo "No TypeScript/JavaScript files changed, skipping lint."
 fi
