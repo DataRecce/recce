@@ -646,10 +646,11 @@ class CllOutput(BaseModel):
 
 @app.post("/api/cll", response_model=CllOutput)
 async def column_level_lineage_by_node(cll_input: CllIn):
-    from recce.adapter.dbt_adapter import DbtAdapter
+    adapter = default_context().adapter
+    if not hasattr(adapter, "get_cll"):
+        raise HTTPException(status_code=400, detail="Column-level lineage is not supported by this adapter")
 
-    dbt_adapter: DbtAdapter = default_context().adapter
-    cll = dbt_adapter.get_cll(
+    cll = adapter.get_cll(
         node_id=cll_input.node_id,
         column=cll_input.column,
         change_analysis=cll_input.change_analysis,

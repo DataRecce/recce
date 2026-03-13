@@ -196,7 +196,7 @@ def test_bauplan_adapter_support_tasks():
     assert support["query"] is True
     assert support["query_diff"] is True
     assert support["row_count_diff"] is True
-    assert support["change_analysis"] is False
+    assert support["change_analysis"] is True
 
 
 def test_bauplan_adapter_row_count_diff():
@@ -243,6 +243,169 @@ def test_bauplan_adapter_load_invalid_refs_format():
     """Test that load raises when refs format is wrong."""
     with pytest.raises(Exception, match="BASE:CURRENT"):
         BauplanAdapter.load(bauplan_refs="just_one_ref")
+
+
+def test_bauplan_adapter_get_cll_basic():
+    """Test column-level lineage for a single node."""
+    lineage = {
+        "nodes": {
+            "model.proj.features": {
+                "name": "features",
+                "resource_type": "model",
+                "package_name": "proj",
+                "checksum": "abc",
+                "columns": {
+                    "user_id": {
+                        "transformation_type": "passthrough",
+                        "depends_on": [{"node": "source.proj.raw", "column": "user_id"}],
+                        "type": "int64",
+                    },
+                    "score": {
+                        "transformation_type": "derived",
+                        "depends_on": [
+                            {"node": "source.proj.raw", "column": "likes"},
+                            {"node": "source.proj.raw", "column": "comments"},
+                        ],
+                        "type": "float64",
+                    },
+                },
+            }
+        },
+        "sources": {
+            "source.proj.raw": {
+                "name": "raw",
+                "resource_type": "source",
+                "columns": {
+                    "user_id": {"type": "int64"},
+                    "likes": {"type": "int64"},
+                    "comments": {"type": "int64"},
+                },
+            }
+        },
+        "parent_map": {"model.proj.features": ["source.proj.raw"]},
+    }
+
+    adapter = BauplanAdapter(
+        client=MagicMock(),
+        base_ref="main",
+        curr_ref="dev",
+        base_lineage=lineage,
+        curr_lineage=lineage,
+    )
+
+    cll = adapter.get_cll(node_id="model.proj.features")
+
+    # Should have both nodes
+    assert "model.proj.features" in cll.nodes
+    assert "source.proj.raw" in cll.nodes
+
+    # Should have columns with correct IDs
+    assert "model.proj.features_user_id" in cll.columns
+    assert "model.proj.features_score" in cll.columns
+    assert "source.proj.raw_user_id" in cll.columns
+
+    # Check column dependencies in parent_map
+    features_user_id_parents = cll.parent_map.get("model.proj.features_user_id", set())
+    assert "source.proj.raw_user_id" in features_user_id_parents
+
+    features_score_parents = cll.parent_map.get("model.proj.features_score", set())
+    assert "source.proj.raw_likes" in features_score_parents
+    assert "source.proj.raw_comments" in features_score_parents
+
+    # Check transformation types
+    assert cll.columns["model.proj.features_user_id"].transformation_type == "passthrough"
+    assert cll.columns["model.proj.features_score"].transformation_type == "derived"
+    assert cll.columns["source.proj.raw_user_id"].transformation_type == "source"
+
+
+def test_bauplan_adapter_get_cll_change_analysis():
+    """Test column-level lineage with change analysis detecting modifications."""
+    base_lineage = {
+        "nodes": {
+            "model.proj.features": {
+                "name": "features",
+                "resource_type": "model",
+                "package_name": "proj",
+                "checksum": "old_checksum",
+                "columns": {
+                    "user_id": {
+                        "transformation_type": "passthrough",
+                        "depends_on": [{"node": "source.proj.raw", "column": "user_id"}],
+                        "type": "int64",
+                    },
+                },
+            }
+        },
+        "sources": {
+            "source.proj.raw": {
+                "name": "raw",
+                "resource_type": "source",
+                "columns": {"user_id": {"type": "int64"}},
+            }
+        },
+        "parent_map": {"model.proj.features": ["source.proj.raw"]},
+    }
+    curr_lineage = {
+        "nodes": {
+            "model.proj.features": {
+                "name": "features",
+                "resource_type": "model",
+                "package_name": "proj",
+                "checksum": "new_checksum",
+                "columns": {
+                    "user_id": {
+                        "transformation_type": "passthrough",
+                        "depends_on": [{"node": "source.proj.raw", "column": "user_id"}],
+                        "type": "int64",
+                    },
+                    "new_col": {
+                        "transformation_type": "derived",
+                        "depends_on": [{"node": "source.proj.raw", "column": "user_id"}],
+                        "type": "string",
+                    },
+                },
+            }
+        },
+        "sources": {
+            "source.proj.raw": {
+                "name": "raw",
+                "resource_type": "source",
+                "columns": {"user_id": {"type": "int64"}},
+            }
+        },
+        "parent_map": {"model.proj.features": ["source.proj.raw"]},
+    }
+
+    adapter = BauplanAdapter(
+        client=MagicMock(),
+        base_ref="main",
+        curr_ref="dev",
+        base_lineage=base_lineage,
+        curr_lineage=curr_lineage,
+    )
+
+    cll = adapter.get_cll(change_analysis=True)
+
+    # Node should be marked as modified
+    features_node = cll.nodes["model.proj.features"]
+    assert features_node.change_status == "modified"
+
+    # new_col should be marked as added
+    new_col = cll.columns["model.proj.features_new_col"]
+    assert new_col.change_status == "added"
+
+
+def test_bauplan_adapter_support_tasks_includes_change_analysis():
+    """Test that change_analysis is now True in support_tasks."""
+    adapter = BauplanAdapter(
+        client=MagicMock(),
+        base_ref="main",
+        curr_ref="dev",
+        base_lineage={},
+        curr_lineage={},
+    )
+    support = adapter.support_tasks()
+    assert support["change_analysis"] is True
 
 
 def test_bauplan_adapter_fetchdf_no_limit():
