@@ -1,4 +1,3 @@
-import os
 import sys
 from typing import Dict, List, Optional, Set, Type, Union
 from uuid import UUID
@@ -19,12 +18,7 @@ from recce.tasks.valuediff import (
     ValueDiffDetailTaskResultDiffer,
     ValueDiffTaskResultDiffer,
 )
-from recce.util.recce_cloud import RECCE_CLOUD_BASE_URL
-
-# Preserve backward compatibility: RECCE_CLOUD_HOST env var was the original
-# way to configure the web URL in summary output. Fall back to RECCE_CLOUD_BASE_URL
-# (which itself falls back to RECCE_CLOUD_API_HOST → default).
-RECCE_CLOUD_HOST = os.environ.get("RECCE_CLOUD_HOST", RECCE_CLOUD_BASE_URL)
+from recce.util.recce_cloud import RECCE_CLOUD_BASE_URL as RECCE_CLOUD_HOST
 
 ADD_COLOR = "#1dce00"
 MODIFIED_COLOR = "#ffa502"
