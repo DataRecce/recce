@@ -597,6 +597,71 @@ class RecceCloudClientTests(unittest.TestCase):
         self.assertEqual(context.exception.status_code, 500)
 
     @patch("recce_cloud.api.client.requests.request")
+    def test_isolated_base_upload_completed_success(self, mock_request):
+        """Test successful isolated_base_upload_completed call."""
+        client = RecceCloudClient(self.api_token)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = b'{"success": true}'
+        mock_response.json.return_value = {"success": True}
+        mock_request.return_value = mock_response
+
+        result = client.isolated_base_upload_completed(self.org_id, self.project_id, self.session_id)
+
+        self.assertTrue(result.get("success"))
+
+        mock_request.assert_called_once()
+        call_args = mock_request.call_args
+        self.assertEqual(call_args[0][0], "POST")
+        self.assertIn("isolated-base/upload-completed", call_args[0][1])
+        self.assertIn(self.session_id, call_args[0][1])
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_isolated_base_upload_completed_204(self, mock_request):
+        """Test isolated_base_upload_completed with 204 No Content."""
+        client = RecceCloudClient(self.api_token)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 204
+        mock_response.content = b""
+        mock_request.return_value = mock_response
+
+        result = client.isolated_base_upload_completed(self.org_id, self.project_id, self.session_id)
+
+        self.assertEqual(result, {})
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_isolated_base_upload_completed_not_found(self, mock_request):
+        """Test isolated_base_upload_completed with 404."""
+        client = RecceCloudClient(self.api_token)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_response.text = "Session not found"
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as context:
+            client.isolated_base_upload_completed(self.org_id, self.project_id, self.session_id)
+
+        self.assertEqual(context.exception.status_code, 404)
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_isolated_base_upload_completed_forbidden(self, mock_request):
+        """Test isolated_base_upload_completed with 403."""
+        client = RecceCloudClient(self.api_token)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 403
+        mock_response.json.return_value = {"detail": "Permission denied"}
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as context:
+            client.isolated_base_upload_completed(self.org_id, self.project_id, self.session_id)
+
+        self.assertEqual(context.exception.status_code, 403)
+
+    @patch("recce_cloud.api.client.requests.request")
     def test_list_sessions_success(self, mock_request):
         """Test successful list_sessions call."""
         client = RecceCloudClient(self.api_token)
