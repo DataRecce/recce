@@ -35,7 +35,8 @@ def test_bauplan_adapter_load_parses_refs():
 
     assert adapter.base_ref == "main"
     assert adapter.curr_ref == "user.dev"
-    assert adapter.lineage_data == lineage
+    assert adapter.base_lineage == lineage
+    assert adapter.curr_lineage == lineage
 
 
 def test_bauplan_adapter_get_lineage():
@@ -90,7 +91,8 @@ def test_bauplan_adapter_fetchdf_with_limit():
         client=mock_client,
         base_ref="main",
         curr_ref="user.dev",
-        lineage_data={},
+        base_lineage={},
+        curr_lineage={},
     )
 
     df, more = adapter.fetchdf_with_limit("SELECT * FROM t", base=True, limit=10)
@@ -111,7 +113,8 @@ def test_bauplan_adapter_fetchdf_with_limit_truncates():
         client=mock_client,
         base_ref="main",
         curr_ref="user.dev",
-        lineage_data={},
+        base_lineage={},
+        curr_lineage={},
     )
 
     df, more = adapter.fetchdf_with_limit("SELECT * FROM t", base=False, limit=3)
@@ -122,19 +125,21 @@ def test_bauplan_adapter_fetchdf_with_limit_truncates():
 
 
 def test_bauplan_adapter_get_model():
+    lineage = {
+        "nodes": {
+            "model.proj.users": {
+                "name": "users",
+                "columns": {"id": {"type": "int64"}, "name": {"type": "string"}},
+            }
+        },
+        "sources": {},
+    }
     adapter = BauplanAdapter(
         client=MagicMock(),
         base_ref="main",
         curr_ref="dev",
-        lineage_data={
-            "nodes": {
-                "model.proj.users": {
-                    "name": "users",
-                    "columns": {"id": {"type": "int64"}, "name": {"type": "string"}},
-                }
-            },
-            "sources": {},
-        },
+        base_lineage=lineage,
+        curr_lineage=lineage,
     )
     model = adapter.get_model("model.proj.users")
     assert model is not None
@@ -145,31 +150,35 @@ def test_bauplan_adapter_get_model():
 
 
 def test_bauplan_adapter_get_node_name_by_id():
+    lineage = {
+        "nodes": {"model.proj.users": {"name": "users"}},
+        "sources": {},
+    }
     adapter = BauplanAdapter(
         client=MagicMock(),
         base_ref="main",
         curr_ref="dev",
-        lineage_data={
-            "nodes": {"model.proj.users": {"name": "users"}},
-            "sources": {},
-        },
+        base_lineage=lineage,
+        curr_lineage=lineage,
     )
     assert adapter.get_node_name_by_id("model.proj.users") == "users"
     assert adapter.get_node_name_by_id("nonexistent") is None
 
 
 def test_bauplan_adapter_select_nodes():
+    lineage = {
+        "nodes": {
+            "model.proj.users": {"name": "users"},
+            "model.proj.orders": {"name": "orders"},
+        },
+        "sources": {},
+    }
     adapter = BauplanAdapter(
         client=MagicMock(),
         base_ref="main",
         curr_ref="dev",
-        lineage_data={
-            "nodes": {
-                "model.proj.users": {"name": "users"},
-                "model.proj.orders": {"name": "orders"},
-            },
-            "sources": {},
-        },
+        base_lineage=lineage,
+        curr_lineage=lineage,
     )
     nodes = adapter.select_nodes()
     assert nodes == {"model.proj.users", "model.proj.orders"}
@@ -180,7 +189,8 @@ def test_bauplan_adapter_support_tasks():
         client=MagicMock(),
         base_ref="main",
         curr_ref="dev",
-        lineage_data={},
+        base_lineage={},
+        curr_lineage={},
     )
     support = adapter.support_tasks()
     assert support["query"] is True
@@ -203,15 +213,17 @@ def test_bauplan_adapter_row_count_diff():
 
     mock_client.query.side_effect = mock_query
 
+    lineage = {
+        "nodes": {"model.proj.stg_users": {"name": "stg_users", "resource_type": "model", "columns": {}}},
+        "sources": {},
+        "parent_map": {},
+    }
     adapter = BauplanAdapter(
         client=mock_client,
         base_ref="main",
         curr_ref="user.dev",
-        lineage_data={
-            "nodes": {"model.proj.stg_users": {"name": "stg_users", "resource_type": "model", "columns": {}}},
-            "sources": {},
-            "parent_map": {},
-        },
+        base_lineage=lineage,
+        curr_lineage=lineage,
     )
 
     df_base, _ = adapter.fetchdf_with_limit("SELECT COUNT(*) as count FROM stg_users", base=True)
@@ -244,7 +256,8 @@ def test_bauplan_adapter_fetchdf_no_limit():
         client=mock_client,
         base_ref="main",
         curr_ref="user.dev",
-        lineage_data={},
+        base_lineage={},
+        curr_lineage={},
     )
 
     df, more = adapter.fetchdf_with_limit("SELECT * FROM t", base=False)

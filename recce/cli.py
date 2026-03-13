@@ -188,7 +188,9 @@ sqlmesh_related_options = [
 bauplan_related_options = [
     click.option("--bauplan", is_flag=True, help="Use Bauplan adapter", hidden=True),
     click.option("--bauplan-refs", default=None, help="Bauplan branch refs 'BASE:CURRENT'", hidden=True),
-    click.option("--bauplan-lineage", default=None, help="Path to bauplan_lineage.json", hidden=True),
+    click.option("--bauplan-lineage", default=None, help="Path to single lineage JSON (with base/current keys)", hidden=True),
+    click.option("--bauplan-base-lineage", default=None, help="Path to base branch lineage JSON", hidden=True),
+    click.option("--bauplan-curr-lineage", default=None, help="Path to current branch lineage JSON", hidden=True),
 ]
 
 recce_options = [

@@ -1,0 +1,2968 @@
+{
+  "base": {
+    "nodes": {
+      "model.bauplan.city_bike_nyc": {
+        "name": "city_bike_nyc",
+        "resource_type": "model",
+        "checksum": "1294636828869834082",
+        "columns": {
+          "station_id": {
+            "type": "string"
+          },
+          "num_bikes_available": {
+            "type": "int"
+          },
+          "num_ebikes_available": {
+            "type": "string"
+          },
+          "num_bikes_disabled": {
+            "type": "string"
+          },
+          "num_docks_available": {
+            "type": "int"
+          },
+          "num_docks_disabled": {
+            "type": "string"
+          },
+          "is_installed": {
+            "type": "string"
+          },
+          "is_renting": {
+            "type": "string"
+          },
+          "is_returning": {
+            "type": "string"
+          },
+          "station_status_last_reported": {
+            "type": "int"
+          },
+          "station_name": {
+            "type": "string"
+          },
+          "lat": {
+            "type": "string"
+          },
+          "lon": {
+            "type": "string"
+          },
+          "region_id": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "string"
+          },
+          "has_kiosk": {
+            "type": "string"
+          },
+          "station_information_last_updated": {
+            "type": "string"
+          },
+          "missing_station_information": {
+            "type": "boolean"
+          }
+        }
+      },
+      "model.bauplan.ecommerce_sessions": {
+        "name": "ecommerce_sessions",
+        "resource_type": "model",
+        "checksum": "5024769785154253471",
+        "columns": {
+          "event_time": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "product_id": {
+            "type": "long"
+          },
+          "category_id": {
+            "type": "long"
+          },
+          "category_code": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "price": {
+            "type": "double"
+          },
+          "user_id": {
+            "type": "long"
+          },
+          "user_session": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.ecommerce_users": {
+        "name": "ecommerce_users",
+        "resource_type": "model",
+        "checksum": "865295415338913544",
+        "columns": {
+          "user_id": {
+            "type": "long"
+          },
+          "category_of_interest": {
+            "type": "string"
+          },
+          "customer_segment": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.green_taxi_feb2023": {
+        "name": "green_taxi_feb2023",
+        "resource_type": "model",
+        "checksum": "5097774400330638856",
+        "columns": {
+          "VendorID": {
+            "type": "int"
+          },
+          "lpep_pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "lpep_dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "store_and_fwd_flag": {
+            "type": "string"
+          },
+          "RatecodeID": {
+            "type": "long"
+          },
+          "PULocationID": {
+            "type": "int"
+          },
+          "DOLocationID": {
+            "type": "int"
+          },
+          "passenger_count": {
+            "type": "long"
+          },
+          "trip_distance": {
+            "type": "double"
+          },
+          "fare_amount": {
+            "type": "double"
+          },
+          "extra": {
+            "type": "double"
+          },
+          "mta_tax": {
+            "type": "double"
+          },
+          "tip_amount": {
+            "type": "double"
+          },
+          "tolls_amount": {
+            "type": "double"
+          },
+          "ehail_fee": {
+            "type": "double"
+          },
+          "improvement_surcharge": {
+            "type": "double"
+          },
+          "total_amount": {
+            "type": "double"
+          },
+          "payment_type": {
+            "type": "long"
+          },
+          "trip_type": {
+            "type": "long"
+          },
+          "congestion_surcharge": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.green_taxi_trips": {
+        "name": "green_taxi_trips",
+        "resource_type": "model",
+        "checksum": "2488107935577510242",
+        "columns": {
+          "VendorID": {
+            "type": "int"
+          },
+          "lpep_pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "lpep_dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "store_and_fwd_flag": {
+            "type": "string"
+          },
+          "RatecodeID": {
+            "type": "long"
+          },
+          "PULocationID": {
+            "type": "int"
+          },
+          "DOLocationID": {
+            "type": "int"
+          },
+          "passenger_count": {
+            "type": "long"
+          },
+          "trip_distance": {
+            "type": "double"
+          },
+          "fare_amount": {
+            "type": "double"
+          },
+          "extra": {
+            "type": "double"
+          },
+          "mta_tax": {
+            "type": "double"
+          },
+          "tip_amount": {
+            "type": "double"
+          },
+          "tolls_amount": {
+            "type": "double"
+          },
+          "ehail_fee": {
+            "type": "double"
+          },
+          "improvement_surcharge": {
+            "type": "double"
+          },
+          "total_amount": {
+            "type": "double"
+          },
+          "payment_type": {
+            "type": "long"
+          },
+          "trip_type": {
+            "type": "long"
+          },
+          "congestion_surcharge": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.instagram_engagement_data": {
+        "name": "instagram_engagement_data",
+        "resource_type": "model",
+        "checksum": "9119678467522068162",
+        "columns": {
+          "user_id": {
+            "type": "long"
+          },
+          "app_name": {
+            "type": "string"
+          },
+          "age": {
+            "type": "long"
+          },
+          "gender": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "urban_rural": {
+            "type": "string"
+          },
+          "income_level": {
+            "type": "string"
+          },
+          "employment_status": {
+            "type": "string"
+          },
+          "education_level": {
+            "type": "string"
+          },
+          "relationship_status": {
+            "type": "string"
+          },
+          "has_children": {
+            "type": "string"
+          },
+          "exercise_hours_per_week": {
+            "type": "double"
+          },
+          "sleep_hours_per_night": {
+            "type": "double"
+          },
+          "diet_quality": {
+            "type": "string"
+          },
+          "smoking": {
+            "type": "string"
+          },
+          "alcohol_frequency": {
+            "type": "string"
+          },
+          "perceived_stress_score": {
+            "type": "long"
+          },
+          "self_reported_happiness": {
+            "type": "long"
+          },
+          "body_mass_index": {
+            "type": "double"
+          },
+          "blood_pressure_systolic": {
+            "type": "long"
+          },
+          "blood_pressure_diastolic": {
+            "type": "long"
+          },
+          "daily_steps_count": {
+            "type": "long"
+          },
+          "weekly_work_hours": {
+            "type": "double"
+          },
+          "hobbies_count": {
+            "type": "long"
+          },
+          "social_events_per_month": {
+            "type": "long"
+          },
+          "books_read_per_year": {
+            "type": "long"
+          },
+          "volunteer_hours_per_month": {
+            "type": "double"
+          },
+          "travel_frequency_per_year": {
+            "type": "long"
+          },
+          "daily_active_minutes_instagram": {
+            "type": "double"
+          },
+          "sessions_per_day": {
+            "type": "long"
+          },
+          "posts_created_per_week": {
+            "type": "long"
+          },
+          "reels_watched_per_day": {
+            "type": "long"
+          },
+          "stories_viewed_per_day": {
+            "type": "long"
+          },
+          "likes_given_per_day": {
+            "type": "long"
+          },
+          "comments_written_per_day": {
+            "type": "long"
+          },
+          "dms_sent_per_week": {
+            "type": "long"
+          },
+          "dms_received_per_week": {
+            "type": "long"
+          },
+          "ads_viewed_per_day": {
+            "type": "long"
+          },
+          "ads_clicked_per_day": {
+            "type": "long"
+          },
+          "time_on_feed_per_day": {
+            "type": "long"
+          },
+          "time_on_explore_per_day": {
+            "type": "long"
+          },
+          "time_on_messages_per_day": {
+            "type": "long"
+          },
+          "time_on_reels_per_day": {
+            "type": "long"
+          },
+          "followers_count": {
+            "type": "long"
+          },
+          "following_count": {
+            "type": "long"
+          },
+          "uses_premium_features": {
+            "type": "string"
+          },
+          "notification_response_rate": {
+            "type": "double"
+          },
+          "account_creation_year": {
+            "type": "long"
+          },
+          "last_login_date": {
+            "type": "date"
+          },
+          "average_session_length_minutes": {
+            "type": "double"
+          },
+          "content_type_preference": {
+            "type": "string"
+          },
+          "preferred_content_theme": {
+            "type": "string"
+          },
+          "privacy_setting_level": {
+            "type": "string"
+          },
+          "two_factor_auth_enabled": {
+            "type": "string"
+          },
+          "biometric_login_used": {
+            "type": "string"
+          },
+          "linked_accounts_count": {
+            "type": "long"
+          },
+          "subscription_status": {
+            "type": "string"
+          },
+          "user_engagement_score": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.iot_kaggle": {
+        "name": "iot_kaggle",
+        "resource_type": "model",
+        "checksum": "967190352604524648",
+        "columns": {
+          "ts": {
+            "type": "double"
+          },
+          "device": {
+            "type": "string"
+          },
+          "co": {
+            "type": "double"
+          },
+          "humidity": {
+            "type": "double"
+          },
+          "light": {
+            "type": "boolean"
+          },
+          "lpg": {
+            "type": "double"
+          },
+          "motion": {
+            "type": "boolean"
+          },
+          "smoke": {
+            "type": "double"
+          },
+          "temp": {
+            "type": "double"
+          },
+          "anomaly": {
+            "type": "long"
+          }
+        }
+      },
+      "model.bauplan.my_taxxxi_zones": {
+        "name": "my_taxxxi_zones",
+        "resource_type": "model",
+        "checksum": "8989778138512801269",
+        "columns": {
+          "run_id": {
+            "type": "long"
+          },
+          "time_ns": {
+            "type": "long"
+          }
+        }
+      },
+      "model.bauplan.normalized_taxi_trips": {
+        "name": "normalized_taxi_trips",
+        "resource_type": "model",
+        "checksum": "2473928080663849238",
+        "columns": {
+          "DOLocationID": {
+            "type": "long"
+          },
+          "PULocationID": {
+            "type": "long"
+          },
+          "base_passenger_fare": {
+            "type": "double"
+          },
+          "dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "sales_tax": {
+            "type": "double"
+          },
+          "tips": {
+            "type": "double"
+          },
+          "tolls": {
+            "type": "double"
+          },
+          "trip_miles": {
+            "type": "double"
+          },
+          "trip_time": {
+            "type": "long"
+          },
+          "Borough": {
+            "type": "string"
+          },
+          "Zone": {
+            "type": "string"
+          },
+          "service_zone": {
+            "type": "string"
+          },
+          "log_trip_miles": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.one_big_qa_table": {
+        "name": "one_big_qa_table",
+        "resource_type": "model",
+        "checksum": "8214334856599502737",
+        "columns": {
+          "question_id": {
+            "type": "long"
+          },
+          "question_text": {
+            "type": "string"
+          },
+          "answer_text": {
+            "type": "binary"
+          },
+          "tags": {
+            "type": "list<string>"
+          }
+        }
+      },
+      "model.bauplan.one_big_qa_table_with_embeddings": {
+        "name": "one_big_qa_table_with_embeddings",
+        "resource_type": "model",
+        "checksum": "7585694469813405412",
+        "columns": {
+          "question_id": {
+            "type": "long"
+          },
+          "question_text": {
+            "type": "string"
+          },
+          "answer_text": {
+            "type": "binary"
+          },
+          "tags": {
+            "type": "list<string>"
+          },
+          "embeddings": {
+            "type": "list<double>"
+          },
+          "two_d_vectors": {
+            "type": "list<double>"
+          }
+        }
+      },
+      "model.bauplan.parent_1": {
+        "name": "parent_1",
+        "resource_type": "model",
+        "checksum": "9164784015466934337",
+        "columns": {
+          "hvfhs_license_num": {
+            "type": "string"
+          },
+          "dispatching_base_num": {
+            "type": "string"
+          },
+          "originating_base_num": {
+            "type": "string"
+          },
+          "request_datetime": {
+            "type": "timestamptz"
+          },
+          "on_scene_datetime": {
+            "type": "timestamptz"
+          },
+          "pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "PULocationID": {
+            "type": "long"
+          },
+          "DOLocationID": {
+            "type": "long"
+          },
+          "trip_miles": {
+            "type": "double"
+          },
+          "trip_time": {
+            "type": "long"
+          },
+          "base_passenger_fare": {
+            "type": "double"
+          },
+          "tolls": {
+            "type": "double"
+          },
+          "bcf": {
+            "type": "double"
+          },
+          "sales_tax": {
+            "type": "double"
+          },
+          "congestion_surcharge": {
+            "type": "double"
+          },
+          "airport_fee": {
+            "type": "int"
+          },
+          "tips": {
+            "type": "double"
+          },
+          "driver_pay": {
+            "type": "double"
+          },
+          "shared_request_flag": {
+            "type": "string"
+          },
+          "shared_match_flag": {
+            "type": "string"
+          },
+          "access_a_ride_flag": {
+            "type": "string"
+          },
+          "wav_request_flag": {
+            "type": "string"
+          },
+          "wav_match_flag": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.signal": {
+        "name": "signal",
+        "resource_type": "model",
+        "checksum": "14123068047906261",
+        "columns": {
+          "time": {
+            "type": "long"
+          },
+          "dateTime": {
+            "type": "timestamptz"
+          },
+          "sensors": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "readId": {
+            "type": "long"
+          }
+        }
+      },
+      "model.bauplan.signal_summary": {
+        "name": "signal_summary",
+        "resource_type": "model",
+        "checksum": "3612476911296494459",
+        "columns": {
+          "hour": {
+            "type": "timestamp"
+          },
+          "signal": {
+            "type": "string"
+          },
+          "reading_count": {
+            "type": "int"
+          },
+          "avg_value": {
+            "type": "double"
+          },
+          "min_value": {
+            "type": "double"
+          },
+          "max_value": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.spotify_playlists": {
+        "name": "spotify_playlists",
+        "resource_type": "model",
+        "checksum": "8161266291104209839",
+        "columns": {
+          "playlist_name": {
+            "type": "string"
+          },
+          "playlist_id": {
+            "type": "long"
+          },
+          "num_followers": {
+            "type": "long"
+          },
+          "modified_at": {
+            "type": "long"
+          },
+          "num_tracks": {
+            "type": "long"
+          },
+          "num_albums": {
+            "type": "long"
+          },
+          "pos": {
+            "type": "long"
+          },
+          "artist_name": {
+            "type": "string"
+          },
+          "track_uri": {
+            "type": "string"
+          },
+          "artist_uri": {
+            "type": "string"
+          },
+          "track_name": {
+            "type": "string"
+          },
+          "album_uri": {
+            "type": "string"
+          },
+          "duration_ms": {
+            "type": "long"
+          },
+          "album_name": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.stack_overflow_answers": {
+        "name": "stack_overflow_answers",
+        "resource_type": "model",
+        "checksum": "3120827288539517680",
+        "columns": {
+          "id": {
+            "type": "long"
+          },
+          "owneruserid": {
+            "type": "long"
+          },
+          "creationdate": {
+            "type": "timestamptz"
+          },
+          "parentid": {
+            "type": "long"
+          },
+          "score": {
+            "type": "long"
+          },
+          "body": {
+            "type": "binary"
+          }
+        }
+      },
+      "model.bauplan.stack_overflow_questions": {
+        "name": "stack_overflow_questions",
+        "resource_type": "model",
+        "checksum": "8084591060978189719",
+        "columns": {
+          "id": {
+            "type": "long"
+          },
+          "owneruserid": {
+            "type": "long"
+          },
+          "creationdate": {
+            "type": "timestamptz"
+          },
+          "closeddate": {
+            "type": "timestamptz"
+          },
+          "score": {
+            "type": "long"
+          },
+          "title": {
+            "type": "binary"
+          },
+          "body": {
+            "type": "binary"
+          }
+        }
+      },
+      "model.bauplan.stack_overflow_tags": {
+        "name": "stack_overflow_tags",
+        "resource_type": "model",
+        "checksum": "6172177726766233480",
+        "columns": {
+          "id": {
+            "type": "long"
+          },
+          "tag": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.stats_by_taxi_zones": {
+        "name": "stats_by_taxi_zones",
+        "resource_type": "model",
+        "checksum": "1169876868880096218",
+        "columns": {
+          "Zone": {
+            "type": "string"
+          },
+          "log_trip_miles": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.streaming_data": {
+        "name": "streaming_data",
+        "resource_type": "model",
+        "checksum": "8076403264095018078",
+        "columns": {
+          "created_at": {
+            "type": "timestamptz"
+          },
+          "created_date": {
+            "type": "timestamptz"
+          },
+          "show_description": {
+            "type": "string"
+          },
+          "show_duration_seconds": {
+            "type": "long"
+          },
+          "show_genre": {
+            "type": "string"
+          },
+          "show_id": {
+            "type": "long"
+          },
+          "show_name": {
+            "type": "string"
+          },
+          "show_rating": {
+            "type": "string"
+          },
+          "show_type": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "long"
+          },
+          "user_watch_duration_seconds": {
+            "type": "long"
+          }
+        }
+      },
+      "model.bauplan.table_with_duplicates": {
+        "name": "table_with_duplicates",
+        "resource_type": "model",
+        "checksum": "6797090881360816161",
+        "columns": {
+          "id": {
+            "type": "long"
+          },
+          "col1": {
+            "type": "string"
+          },
+          "col2": {
+            "type": "long"
+          },
+          "event_timestamp": {
+            "type": "timestamptz"
+          }
+        }
+      },
+      "model.bauplan.taxi_fhvhv": {
+        "name": "taxi_fhvhv",
+        "resource_type": "model",
+        "checksum": "7697303806864353930",
+        "columns": {
+          "hvfhs_license_num": {
+            "type": "string"
+          },
+          "dispatching_base_num": {
+            "type": "string"
+          },
+          "originating_base_num": {
+            "type": "string"
+          },
+          "request_datetime": {
+            "type": "timestamptz"
+          },
+          "on_scene_datetime": {
+            "type": "timestamptz"
+          },
+          "pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "PULocationID": {
+            "type": "long"
+          },
+          "DOLocationID": {
+            "type": "long"
+          },
+          "trip_miles": {
+            "type": "double"
+          },
+          "trip_time": {
+            "type": "long"
+          },
+          "base_passenger_fare": {
+            "type": "double"
+          },
+          "tolls": {
+            "type": "double"
+          },
+          "bcf": {
+            "type": "double"
+          },
+          "sales_tax": {
+            "type": "double"
+          },
+          "congestion_surcharge": {
+            "type": "double"
+          },
+          "airport_fee": {
+            "type": "int"
+          },
+          "tips": {
+            "type": "double"
+          },
+          "driver_pay": {
+            "type": "double"
+          },
+          "shared_request_flag": {
+            "type": "string"
+          },
+          "shared_match_flag": {
+            "type": "string"
+          },
+          "access_a_ride_flag": {
+            "type": "string"
+          },
+          "wav_request_flag": {
+            "type": "string"
+          },
+          "wav_match_flag": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.taxi_metadata": {
+        "name": "taxi_metadata",
+        "resource_type": "model",
+        "checksum": "1279280363450890130",
+        "columns": {
+          "LocationID": {
+            "type": "long"
+          },
+          "Borough": {
+            "type": "string"
+          },
+          "Zone": {
+            "type": "string"
+          },
+          "service_zone": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.taxi_projections": {
+        "name": "taxi_projections",
+        "resource_type": "model",
+        "checksum": "1685229508884140529",
+        "columns": {
+          "pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "PULocationID": {
+            "type": "long"
+          },
+          "DOLocationID": {
+            "type": "long"
+          },
+          "trip_miles": {
+            "type": "double"
+          },
+          "trip_time": {
+            "type": "long"
+          }
+        }
+      },
+      "model.bauplan.taxi_training_dataset": {
+        "name": "taxi_training_dataset",
+        "resource_type": "model",
+        "checksum": "305442376346317532",
+        "columns": {
+          "log_trip_miles": {
+            "type": "double"
+          },
+          "base_passenger_fare": {
+            "type": "double"
+          },
+          "trip_time": {
+            "type": "double"
+          },
+          "tips": {
+            "type": "double"
+          },
+          "pickup_datetime": {
+            "type": "timestamp"
+          }
+        }
+      },
+      "model.bauplan.taxi_trips_2021": {
+        "name": "taxi_trips_2021",
+        "resource_type": "model",
+        "checksum": "8328986580343286093",
+        "columns": {
+          "hvfhs_license_num": {
+            "type": "string"
+          },
+          "dispatching_base_num": {
+            "type": "string"
+          },
+          "originating_base_num": {
+            "type": "string"
+          },
+          "request_datetime": {
+            "type": "timestamptz"
+          },
+          "on_scene_datetime": {
+            "type": "timestamptz"
+          },
+          "pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "PULocationID": {
+            "type": "long"
+          },
+          "DOLocationID": {
+            "type": "long"
+          },
+          "trip_miles": {
+            "type": "double"
+          },
+          "trip_time": {
+            "type": "long"
+          },
+          "base_passenger_fare": {
+            "type": "double"
+          },
+          "tolls": {
+            "type": "double"
+          },
+          "bcf": {
+            "type": "double"
+          },
+          "sales_tax": {
+            "type": "double"
+          },
+          "congestion_surcharge": {
+            "type": "double"
+          },
+          "airport_fee": {
+            "type": "int"
+          },
+          "tips": {
+            "type": "double"
+          },
+          "driver_pay": {
+            "type": "double"
+          },
+          "shared_request_flag": {
+            "type": "string"
+          },
+          "shared_match_flag": {
+            "type": "string"
+          },
+          "access_a_ride_flag": {
+            "type": "string"
+          },
+          "wav_request_flag": {
+            "type": "string"
+          },
+          "wav_match_flag": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.taxi_zones": {
+        "name": "taxi_zones",
+        "resource_type": "model",
+        "checksum": "5773286482689847078",
+        "columns": {
+          "LocationID": {
+            "type": "long"
+          },
+          "Borough": {
+            "type": "string"
+          },
+          "Zone": {
+            "type": "string"
+          },
+          "service_zone": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.telemetry_bronze": {
+        "name": "telemetry_bronze",
+        "resource_type": "model",
+        "checksum": "8603481639038181041",
+        "columns": {
+          "time": {
+            "type": "long"
+          },
+          "dateTime": {
+            "type": "timestamptz"
+          },
+          "sensors": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "readId": {
+            "type": "long"
+          }
+        }
+      },
+      "model.bauplan.titanic": {
+        "name": "titanic",
+        "resource_type": "model",
+        "checksum": "7753576999342978860",
+        "columns": {
+          "PassengerId": {
+            "type": "long"
+          },
+          "Survived": {
+            "type": "long"
+          },
+          "Pclass": {
+            "type": "long"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "Sex": {
+            "type": "string"
+          },
+          "Age": {
+            "type": "double"
+          },
+          "SibSp": {
+            "type": "long"
+          },
+          "Parch": {
+            "type": "long"
+          },
+          "Ticket": {
+            "type": "string"
+          },
+          "Fare": {
+            "type": "double"
+          },
+          "Cabin": {
+            "type": "string"
+          },
+          "Embarked": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.titanic_survival_by_age": {
+        "name": "titanic_survival_by_age",
+        "resource_type": "model",
+        "checksum": "946060065461160739",
+        "columns": {
+          "age_bin": {
+            "type": "string"
+          },
+          "total": {
+            "type": "int"
+          },
+          "survived": {
+            "type": "long"
+          },
+          "perished": {
+            "type": "long"
+          },
+          "survival_pct": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.top_pickup_locations_demo": {
+        "name": "top_pickup_locations_demo",
+        "resource_type": "model",
+        "checksum": "1983040152465744411",
+        "columns": {
+          "PULocationID": {
+            "type": "long"
+          },
+          "Borough": {
+            "type": "string"
+          },
+          "Zone": {
+            "type": "string"
+          },
+          "number_of_trips": {
+            "type": "long"
+          },
+          "avg_trip_distance": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.track_vectors_with_metadata": {
+        "name": "track_vectors_with_metadata",
+        "resource_type": "model",
+        "checksum": "3931879737117687011",
+        "columns": {
+          "_id": {
+            "type": "string"
+          },
+          "embeddings": {
+            "type": "list<double>"
+          },
+          "two_d_vectors": {
+            "type": "list<double>"
+          },
+          "popularity": {
+            "type": "long"
+          },
+          "track_name": {
+            "type": "string"
+          },
+          "artist_name": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.transactional_ingested_table": {
+        "name": "transactional_ingested_table",
+        "resource_type": "model",
+        "checksum": "7951579856824373017",
+        "columns": {
+          "VendorID": {
+            "type": "long"
+          },
+          "tpep_pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "tpep_dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "passenger_count": {
+            "type": "double"
+          },
+          "trip_distance": {
+            "type": "double"
+          },
+          "RatecodeID": {
+            "type": "double"
+          },
+          "store_and_fwd_flag": {
+            "type": "string"
+          },
+          "PULocationID": {
+            "type": "long"
+          },
+          "DOLocationID": {
+            "type": "long"
+          },
+          "payment_type": {
+            "type": "long"
+          },
+          "fare_amount": {
+            "type": "double"
+          },
+          "extra": {
+            "type": "double"
+          },
+          "mta_tax": {
+            "type": "double"
+          },
+          "tip_amount": {
+            "type": "double"
+          },
+          "tolls_amount": {
+            "type": "double"
+          },
+          "improvement_surcharge": {
+            "type": "double"
+          },
+          "total_amount": {
+            "type": "double"
+          },
+          "congestion_surcharge": {
+            "type": "double"
+          },
+          "airport_fee": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.user_engagement_segments": {
+        "name": "user_engagement_segments",
+        "resource_type": "model",
+        "checksum": "5641516603245794766",
+        "columns": {
+          "age": {
+            "type": "long"
+          },
+          "composite_engagement_score": {
+            "type": "double"
+          },
+          "country": {
+            "type": "string"
+          },
+          "daily_active_minutes_instagram": {
+            "type": "double"
+          },
+          "followers_count": {
+            "type": "long"
+          },
+          "following_count": {
+            "type": "long"
+          },
+          "gender": {
+            "type": "string"
+          },
+          "income_level": {
+            "type": "string"
+          },
+          "sessions_per_day": {
+            "type": "long"
+          },
+          "user_engagement_score": {
+            "type": "double"
+          },
+          "user_id": {
+            "type": "long"
+          },
+          "engagement_segment": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.valid_taxi_trips": {
+        "name": "valid_taxi_trips",
+        "resource_type": "model",
+        "checksum": "6073484092796473908",
+        "columns": {
+          "PULocationID": {
+            "type": "long"
+          },
+          "pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "trip_miles": {
+            "type": "double"
+          },
+          "Borough": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.yellow_tripdata_2021_01": {
+        "name": "yellow_tripdata_2021_01",
+        "resource_type": "model",
+        "checksum": "2921186642290742976",
+        "columns": {
+          "VendorID": {
+            "type": "long"
+          },
+          "tpep_pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "tpep_dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "passenger_count": {
+            "type": "double"
+          },
+          "trip_distance": {
+            "type": "double"
+          },
+          "RatecodeID": {
+            "type": "double"
+          },
+          "store_and_fwd_flag": {
+            "type": "string"
+          },
+          "PULocationID": {
+            "type": "long"
+          },
+          "DOLocationID": {
+            "type": "long"
+          },
+          "payment_type": {
+            "type": "long"
+          },
+          "fare_amount": {
+            "type": "double"
+          },
+          "extra": {
+            "type": "double"
+          },
+          "mta_tax": {
+            "type": "double"
+          },
+          "tip_amount": {
+            "type": "double"
+          },
+          "tolls_amount": {
+            "type": "double"
+          },
+          "improvement_surcharge": {
+            "type": "double"
+          },
+          "total_amount": {
+            "type": "double"
+          },
+          "congestion_surcharge": {
+            "type": "double"
+          },
+          "airport_fee": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.zone_avg_waiting_times": {
+        "name": "zone_avg_waiting_times",
+        "resource_type": "model",
+        "checksum": "5090973251929189160",
+        "columns": {
+          "Borough": {
+            "type": "string"
+          },
+          "Zone": {
+            "type": "string"
+          },
+          "avg_waiting_time": {
+            "type": "double"
+          }
+        }
+      }
+    },
+    "sources": {},
+    "parent_map": {}
+  },
+  "current": {
+    "nodes": {
+      "model.bauplan.city_bike_nyc": {
+        "name": "city_bike_nyc",
+        "resource_type": "model",
+        "checksum": "1294636828869834082",
+        "columns": {
+          "station_id": {
+            "type": "string"
+          },
+          "num_bikes_available": {
+            "type": "int"
+          },
+          "num_ebikes_available": {
+            "type": "string"
+          },
+          "num_bikes_disabled": {
+            "type": "string"
+          },
+          "num_docks_available": {
+            "type": "int"
+          },
+          "num_docks_disabled": {
+            "type": "string"
+          },
+          "is_installed": {
+            "type": "string"
+          },
+          "is_renting": {
+            "type": "string"
+          },
+          "is_returning": {
+            "type": "string"
+          },
+          "station_status_last_reported": {
+            "type": "int"
+          },
+          "station_name": {
+            "type": "string"
+          },
+          "lat": {
+            "type": "string"
+          },
+          "lon": {
+            "type": "string"
+          },
+          "region_id": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "string"
+          },
+          "has_kiosk": {
+            "type": "string"
+          },
+          "station_information_last_updated": {
+            "type": "string"
+          },
+          "missing_station_information": {
+            "type": "boolean"
+          }
+        }
+      },
+      "model.bauplan.ecommerce_sessions": {
+        "name": "ecommerce_sessions",
+        "resource_type": "model",
+        "checksum": "5024769785154253471",
+        "columns": {
+          "event_time": {
+            "type": "string"
+          },
+          "event_type": {
+            "type": "string"
+          },
+          "product_id": {
+            "type": "long"
+          },
+          "category_id": {
+            "type": "long"
+          },
+          "category_code": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "price": {
+            "type": "double"
+          },
+          "user_id": {
+            "type": "long"
+          },
+          "user_session": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.ecommerce_users": {
+        "name": "ecommerce_users",
+        "resource_type": "model",
+        "checksum": "865295415338913544",
+        "columns": {
+          "user_id": {
+            "type": "long"
+          },
+          "category_of_interest": {
+            "type": "string"
+          },
+          "customer_segment": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.green_taxi_feb2023": {
+        "name": "green_taxi_feb2023",
+        "resource_type": "model",
+        "checksum": "5097774400330638856",
+        "columns": {
+          "VendorID": {
+            "type": "int"
+          },
+          "lpep_pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "lpep_dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "store_and_fwd_flag": {
+            "type": "string"
+          },
+          "RatecodeID": {
+            "type": "long"
+          },
+          "PULocationID": {
+            "type": "int"
+          },
+          "DOLocationID": {
+            "type": "int"
+          },
+          "passenger_count": {
+            "type": "long"
+          },
+          "trip_distance": {
+            "type": "double"
+          },
+          "fare_amount": {
+            "type": "double"
+          },
+          "extra": {
+            "type": "double"
+          },
+          "mta_tax": {
+            "type": "double"
+          },
+          "tip_amount": {
+            "type": "double"
+          },
+          "tolls_amount": {
+            "type": "double"
+          },
+          "ehail_fee": {
+            "type": "double"
+          },
+          "improvement_surcharge": {
+            "type": "double"
+          },
+          "total_amount": {
+            "type": "double"
+          },
+          "payment_type": {
+            "type": "long"
+          },
+          "trip_type": {
+            "type": "long"
+          },
+          "congestion_surcharge": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.green_taxi_trips": {
+        "name": "green_taxi_trips",
+        "resource_type": "model",
+        "checksum": "2488107935577510242",
+        "columns": {
+          "VendorID": {
+            "type": "int"
+          },
+          "lpep_pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "lpep_dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "store_and_fwd_flag": {
+            "type": "string"
+          },
+          "RatecodeID": {
+            "type": "long"
+          },
+          "PULocationID": {
+            "type": "int"
+          },
+          "DOLocationID": {
+            "type": "int"
+          },
+          "passenger_count": {
+            "type": "long"
+          },
+          "trip_distance": {
+            "type": "double"
+          },
+          "fare_amount": {
+            "type": "double"
+          },
+          "extra": {
+            "type": "double"
+          },
+          "mta_tax": {
+            "type": "double"
+          },
+          "tip_amount": {
+            "type": "double"
+          },
+          "tolls_amount": {
+            "type": "double"
+          },
+          "ehail_fee": {
+            "type": "double"
+          },
+          "improvement_surcharge": {
+            "type": "double"
+          },
+          "total_amount": {
+            "type": "double"
+          },
+          "payment_type": {
+            "type": "long"
+          },
+          "trip_type": {
+            "type": "long"
+          },
+          "congestion_surcharge": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.instagram_engagement_data": {
+        "name": "instagram_engagement_data",
+        "resource_type": "model",
+        "checksum": "9119678467522068162",
+        "columns": {
+          "user_id": {
+            "type": "long"
+          },
+          "app_name": {
+            "type": "string"
+          },
+          "age": {
+            "type": "long"
+          },
+          "gender": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "urban_rural": {
+            "type": "string"
+          },
+          "income_level": {
+            "type": "string"
+          },
+          "employment_status": {
+            "type": "string"
+          },
+          "education_level": {
+            "type": "string"
+          },
+          "relationship_status": {
+            "type": "string"
+          },
+          "has_children": {
+            "type": "string"
+          },
+          "exercise_hours_per_week": {
+            "type": "double"
+          },
+          "sleep_hours_per_night": {
+            "type": "double"
+          },
+          "diet_quality": {
+            "type": "string"
+          },
+          "smoking": {
+            "type": "string"
+          },
+          "alcohol_frequency": {
+            "type": "string"
+          },
+          "perceived_stress_score": {
+            "type": "long"
+          },
+          "self_reported_happiness": {
+            "type": "long"
+          },
+          "body_mass_index": {
+            "type": "double"
+          },
+          "blood_pressure_systolic": {
+            "type": "long"
+          },
+          "blood_pressure_diastolic": {
+            "type": "long"
+          },
+          "daily_steps_count": {
+            "type": "long"
+          },
+          "weekly_work_hours": {
+            "type": "double"
+          },
+          "hobbies_count": {
+            "type": "long"
+          },
+          "social_events_per_month": {
+            "type": "long"
+          },
+          "books_read_per_year": {
+            "type": "long"
+          },
+          "volunteer_hours_per_month": {
+            "type": "double"
+          },
+          "travel_frequency_per_year": {
+            "type": "long"
+          },
+          "daily_active_minutes_instagram": {
+            "type": "double"
+          },
+          "sessions_per_day": {
+            "type": "long"
+          },
+          "posts_created_per_week": {
+            "type": "long"
+          },
+          "reels_watched_per_day": {
+            "type": "long"
+          },
+          "stories_viewed_per_day": {
+            "type": "long"
+          },
+          "likes_given_per_day": {
+            "type": "long"
+          },
+          "comments_written_per_day": {
+            "type": "long"
+          },
+          "dms_sent_per_week": {
+            "type": "long"
+          },
+          "dms_received_per_week": {
+            "type": "long"
+          },
+          "ads_viewed_per_day": {
+            "type": "long"
+          },
+          "ads_clicked_per_day": {
+            "type": "long"
+          },
+          "time_on_feed_per_day": {
+            "type": "long"
+          },
+          "time_on_explore_per_day": {
+            "type": "long"
+          },
+          "time_on_messages_per_day": {
+            "type": "long"
+          },
+          "time_on_reels_per_day": {
+            "type": "long"
+          },
+          "followers_count": {
+            "type": "long"
+          },
+          "following_count": {
+            "type": "long"
+          },
+          "uses_premium_features": {
+            "type": "string"
+          },
+          "notification_response_rate": {
+            "type": "double"
+          },
+          "account_creation_year": {
+            "type": "long"
+          },
+          "last_login_date": {
+            "type": "date"
+          },
+          "average_session_length_minutes": {
+            "type": "double"
+          },
+          "content_type_preference": {
+            "type": "string"
+          },
+          "preferred_content_theme": {
+            "type": "string"
+          },
+          "privacy_setting_level": {
+            "type": "string"
+          },
+          "two_factor_auth_enabled": {
+            "type": "string"
+          },
+          "biometric_login_used": {
+            "type": "string"
+          },
+          "linked_accounts_count": {
+            "type": "long"
+          },
+          "subscription_status": {
+            "type": "string"
+          },
+          "user_engagement_score": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.iot_kaggle": {
+        "name": "iot_kaggle",
+        "resource_type": "model",
+        "checksum": "967190352604524648",
+        "columns": {
+          "ts": {
+            "type": "double"
+          },
+          "device": {
+            "type": "string"
+          },
+          "co": {
+            "type": "double"
+          },
+          "humidity": {
+            "type": "double"
+          },
+          "light": {
+            "type": "boolean"
+          },
+          "lpg": {
+            "type": "double"
+          },
+          "motion": {
+            "type": "boolean"
+          },
+          "smoke": {
+            "type": "double"
+          },
+          "temp": {
+            "type": "double"
+          },
+          "anomaly": {
+            "type": "long"
+          }
+        }
+      },
+      "model.bauplan.my_taxxxi_zones": {
+        "name": "my_taxxxi_zones",
+        "resource_type": "model",
+        "checksum": "8989778138512801269",
+        "columns": {
+          "run_id": {
+            "type": "long"
+          },
+          "time_ns": {
+            "type": "long"
+          }
+        }
+      },
+      "model.bauplan.normalized_taxi_trips": {
+        "name": "normalized_taxi_trips",
+        "resource_type": "model",
+        "checksum": "2473928080663849238",
+        "columns": {
+          "DOLocationID": {
+            "type": "long"
+          },
+          "PULocationID": {
+            "type": "long"
+          },
+          "base_passenger_fare": {
+            "type": "double"
+          },
+          "dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "sales_tax": {
+            "type": "double"
+          },
+          "tips": {
+            "type": "double"
+          },
+          "tolls": {
+            "type": "double"
+          },
+          "trip_miles": {
+            "type": "double"
+          },
+          "trip_time": {
+            "type": "long"
+          },
+          "Borough": {
+            "type": "string"
+          },
+          "Zone": {
+            "type": "string"
+          },
+          "service_zone": {
+            "type": "string"
+          },
+          "log_trip_miles": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.one_big_qa_table": {
+        "name": "one_big_qa_table",
+        "resource_type": "model",
+        "checksum": "8214334856599502737",
+        "columns": {
+          "question_id": {
+            "type": "long"
+          },
+          "question_text": {
+            "type": "string"
+          },
+          "answer_text": {
+            "type": "binary"
+          },
+          "tags": {
+            "type": "list<string>"
+          }
+        }
+      },
+      "model.bauplan.one_big_qa_table_with_embeddings": {
+        "name": "one_big_qa_table_with_embeddings",
+        "resource_type": "model",
+        "checksum": "7585694469813405412",
+        "columns": {
+          "question_id": {
+            "type": "long"
+          },
+          "question_text": {
+            "type": "string"
+          },
+          "answer_text": {
+            "type": "binary"
+          },
+          "tags": {
+            "type": "list<string>"
+          },
+          "embeddings": {
+            "type": "list<double>"
+          },
+          "two_d_vectors": {
+            "type": "list<double>"
+          }
+        }
+      },
+      "model.bauplan.parent_1": {
+        "name": "parent_1",
+        "resource_type": "model",
+        "checksum": "9164784015466934337",
+        "columns": {
+          "hvfhs_license_num": {
+            "type": "string"
+          },
+          "dispatching_base_num": {
+            "type": "string"
+          },
+          "originating_base_num": {
+            "type": "string"
+          },
+          "request_datetime": {
+            "type": "timestamptz"
+          },
+          "on_scene_datetime": {
+            "type": "timestamptz"
+          },
+          "pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "PULocationID": {
+            "type": "long"
+          },
+          "DOLocationID": {
+            "type": "long"
+          },
+          "trip_miles": {
+            "type": "double"
+          },
+          "trip_time": {
+            "type": "long"
+          },
+          "base_passenger_fare": {
+            "type": "double"
+          },
+          "tolls": {
+            "type": "double"
+          },
+          "bcf": {
+            "type": "double"
+          },
+          "sales_tax": {
+            "type": "double"
+          },
+          "congestion_surcharge": {
+            "type": "double"
+          },
+          "airport_fee": {
+            "type": "int"
+          },
+          "tips": {
+            "type": "double"
+          },
+          "driver_pay": {
+            "type": "double"
+          },
+          "shared_request_flag": {
+            "type": "string"
+          },
+          "shared_match_flag": {
+            "type": "string"
+          },
+          "access_a_ride_flag": {
+            "type": "string"
+          },
+          "wav_request_flag": {
+            "type": "string"
+          },
+          "wav_match_flag": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.signal": {
+        "name": "signal",
+        "resource_type": "model",
+        "checksum": "14123068047906261",
+        "columns": {
+          "time": {
+            "type": "long"
+          },
+          "dateTime": {
+            "type": "timestamptz"
+          },
+          "sensors": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "readId": {
+            "type": "long"
+          }
+        }
+      },
+      "model.bauplan.signal_summary": {
+        "name": "signal_summary",
+        "resource_type": "model",
+        "checksum": "3612476911296494459",
+        "columns": {
+          "hour": {
+            "type": "timestamp"
+          },
+          "signal": {
+            "type": "string"
+          },
+          "reading_count": {
+            "type": "int"
+          },
+          "avg_value": {
+            "type": "double"
+          },
+          "min_value": {
+            "type": "double"
+          },
+          "max_value": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.spotify_playlists": {
+        "name": "spotify_playlists",
+        "resource_type": "model",
+        "checksum": "8161266291104209839",
+        "columns": {
+          "playlist_name": {
+            "type": "string"
+          },
+          "playlist_id": {
+            "type": "long"
+          },
+          "num_followers": {
+            "type": "long"
+          },
+          "modified_at": {
+            "type": "long"
+          },
+          "num_tracks": {
+            "type": "long"
+          },
+          "num_albums": {
+            "type": "long"
+          },
+          "pos": {
+            "type": "long"
+          },
+          "artist_name": {
+            "type": "string"
+          },
+          "track_uri": {
+            "type": "string"
+          },
+          "artist_uri": {
+            "type": "string"
+          },
+          "track_name": {
+            "type": "string"
+          },
+          "album_uri": {
+            "type": "string"
+          },
+          "duration_ms": {
+            "type": "long"
+          },
+          "album_name": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.stack_overflow_answers": {
+        "name": "stack_overflow_answers",
+        "resource_type": "model",
+        "checksum": "3120827288539517680",
+        "columns": {
+          "id": {
+            "type": "long"
+          },
+          "owneruserid": {
+            "type": "long"
+          },
+          "creationdate": {
+            "type": "timestamptz"
+          },
+          "parentid": {
+            "type": "long"
+          },
+          "score": {
+            "type": "long"
+          },
+          "body": {
+            "type": "binary"
+          }
+        }
+      },
+      "model.bauplan.stack_overflow_questions": {
+        "name": "stack_overflow_questions",
+        "resource_type": "model",
+        "checksum": "8084591060978189719",
+        "columns": {
+          "id": {
+            "type": "long"
+          },
+          "owneruserid": {
+            "type": "long"
+          },
+          "creationdate": {
+            "type": "timestamptz"
+          },
+          "closeddate": {
+            "type": "timestamptz"
+          },
+          "score": {
+            "type": "long"
+          },
+          "title": {
+            "type": "binary"
+          },
+          "body": {
+            "type": "binary"
+          }
+        }
+      },
+      "model.bauplan.stack_overflow_tags": {
+        "name": "stack_overflow_tags",
+        "resource_type": "model",
+        "checksum": "6172177726766233480",
+        "columns": {
+          "id": {
+            "type": "long"
+          },
+          "tag": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.stats_by_taxi_zones": {
+        "name": "stats_by_taxi_zones",
+        "resource_type": "model",
+        "checksum": "1169876868880096218",
+        "columns": {
+          "Zone": {
+            "type": "string"
+          },
+          "log_trip_miles": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.streaming_data": {
+        "name": "streaming_data",
+        "resource_type": "model",
+        "checksum": "8076403264095018078",
+        "columns": {
+          "created_at": {
+            "type": "timestamptz"
+          },
+          "created_date": {
+            "type": "timestamptz"
+          },
+          "show_description": {
+            "type": "string"
+          },
+          "show_duration_seconds": {
+            "type": "long"
+          },
+          "show_genre": {
+            "type": "string"
+          },
+          "show_id": {
+            "type": "long"
+          },
+          "show_name": {
+            "type": "string"
+          },
+          "show_rating": {
+            "type": "string"
+          },
+          "show_type": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "long"
+          },
+          "user_watch_duration_seconds": {
+            "type": "long"
+          }
+        }
+      },
+      "model.bauplan.table_with_duplicates": {
+        "name": "table_with_duplicates",
+        "resource_type": "model",
+        "checksum": "6797090881360816161",
+        "columns": {
+          "id": {
+            "type": "long"
+          },
+          "col1": {
+            "type": "string"
+          },
+          "col2": {
+            "type": "long"
+          },
+          "event_timestamp": {
+            "type": "timestamptz"
+          }
+        }
+      },
+      "model.bauplan.taxi_fhvhv": {
+        "name": "taxi_fhvhv",
+        "resource_type": "model",
+        "checksum": "7697303806864353930",
+        "columns": {
+          "hvfhs_license_num": {
+            "type": "string"
+          },
+          "dispatching_base_num": {
+            "type": "string"
+          },
+          "originating_base_num": {
+            "type": "string"
+          },
+          "request_datetime": {
+            "type": "timestamptz"
+          },
+          "on_scene_datetime": {
+            "type": "timestamptz"
+          },
+          "pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "PULocationID": {
+            "type": "long"
+          },
+          "DOLocationID": {
+            "type": "long"
+          },
+          "trip_miles": {
+            "type": "double"
+          },
+          "trip_time": {
+            "type": "long"
+          },
+          "base_passenger_fare": {
+            "type": "double"
+          },
+          "tolls": {
+            "type": "double"
+          },
+          "bcf": {
+            "type": "double"
+          },
+          "sales_tax": {
+            "type": "double"
+          },
+          "congestion_surcharge": {
+            "type": "double"
+          },
+          "airport_fee": {
+            "type": "int"
+          },
+          "tips": {
+            "type": "double"
+          },
+          "driver_pay": {
+            "type": "double"
+          },
+          "shared_request_flag": {
+            "type": "string"
+          },
+          "shared_match_flag": {
+            "type": "string"
+          },
+          "access_a_ride_flag": {
+            "type": "string"
+          },
+          "wav_request_flag": {
+            "type": "string"
+          },
+          "wav_match_flag": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.taxi_metadata": {
+        "name": "taxi_metadata",
+        "resource_type": "model",
+        "checksum": "1279280363450890130",
+        "columns": {
+          "LocationID": {
+            "type": "long"
+          },
+          "Borough": {
+            "type": "string"
+          },
+          "Zone": {
+            "type": "string"
+          },
+          "service_zone": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.taxi_projections": {
+        "name": "taxi_projections",
+        "resource_type": "model",
+        "checksum": "1685229508884140529",
+        "columns": {
+          "pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "PULocationID": {
+            "type": "long"
+          },
+          "DOLocationID": {
+            "type": "long"
+          },
+          "trip_miles": {
+            "type": "double"
+          },
+          "trip_time": {
+            "type": "long"
+          }
+        }
+      },
+      "model.bauplan.taxi_training_dataset": {
+        "name": "taxi_training_dataset",
+        "resource_type": "model",
+        "checksum": "305442376346317532",
+        "columns": {
+          "log_trip_miles": {
+            "type": "double"
+          },
+          "base_passenger_fare": {
+            "type": "double"
+          },
+          "trip_time": {
+            "type": "double"
+          },
+          "tips": {
+            "type": "double"
+          },
+          "pickup_datetime": {
+            "type": "timestamp"
+          }
+        }
+      },
+      "model.bauplan.taxi_trips_2021": {
+        "name": "taxi_trips_2021",
+        "resource_type": "model",
+        "checksum": "8328986580343286093",
+        "columns": {
+          "hvfhs_license_num": {
+            "type": "string"
+          },
+          "dispatching_base_num": {
+            "type": "string"
+          },
+          "originating_base_num": {
+            "type": "string"
+          },
+          "request_datetime": {
+            "type": "timestamptz"
+          },
+          "on_scene_datetime": {
+            "type": "timestamptz"
+          },
+          "pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "PULocationID": {
+            "type": "long"
+          },
+          "DOLocationID": {
+            "type": "long"
+          },
+          "trip_miles": {
+            "type": "double"
+          },
+          "trip_time": {
+            "type": "long"
+          },
+          "base_passenger_fare": {
+            "type": "double"
+          },
+          "tolls": {
+            "type": "double"
+          },
+          "bcf": {
+            "type": "double"
+          },
+          "sales_tax": {
+            "type": "double"
+          },
+          "congestion_surcharge": {
+            "type": "double"
+          },
+          "airport_fee": {
+            "type": "int"
+          },
+          "tips": {
+            "type": "double"
+          },
+          "driver_pay": {
+            "type": "double"
+          },
+          "shared_request_flag": {
+            "type": "string"
+          },
+          "shared_match_flag": {
+            "type": "string"
+          },
+          "access_a_ride_flag": {
+            "type": "string"
+          },
+          "wav_request_flag": {
+            "type": "string"
+          },
+          "wav_match_flag": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.taxi_zones": {
+        "name": "taxi_zones",
+        "resource_type": "model",
+        "checksum": "5773286482689847078",
+        "columns": {
+          "LocationID": {
+            "type": "long"
+          },
+          "Borough": {
+            "type": "string"
+          },
+          "Zone": {
+            "type": "string"
+          },
+          "service_zone": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.telemetry_bronze": {
+        "name": "telemetry_bronze",
+        "resource_type": "model",
+        "checksum": "8603481639038181041",
+        "columns": {
+          "time": {
+            "type": "long"
+          },
+          "dateTime": {
+            "type": "timestamptz"
+          },
+          "sensors": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          },
+          "readId": {
+            "type": "long"
+          }
+        }
+      },
+      "model.bauplan.titanic": {
+        "name": "titanic",
+        "resource_type": "model",
+        "checksum": "7753576999342978860",
+        "columns": {
+          "PassengerId": {
+            "type": "long"
+          },
+          "Survived": {
+            "type": "long"
+          },
+          "Pclass": {
+            "type": "long"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "Sex": {
+            "type": "string"
+          },
+          "Age": {
+            "type": "double"
+          },
+          "SibSp": {
+            "type": "long"
+          },
+          "Parch": {
+            "type": "long"
+          },
+          "Ticket": {
+            "type": "string"
+          },
+          "Fare": {
+            "type": "double"
+          },
+          "Cabin": {
+            "type": "string"
+          },
+          "Embarked": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.titanic_survival_by_age": {
+        "name": "titanic_survival_by_age",
+        "resource_type": "model",
+        "checksum": "946060065461160739",
+        "columns": {
+          "age_bin": {
+            "type": "string"
+          },
+          "total": {
+            "type": "int"
+          },
+          "survived": {
+            "type": "long"
+          },
+          "perished": {
+            "type": "long"
+          },
+          "survival_pct": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.top_pickup_locations_demo": {
+        "name": "top_pickup_locations_demo",
+        "resource_type": "model",
+        "checksum": "1983040152465744411",
+        "columns": {
+          "PULocationID": {
+            "type": "long"
+          },
+          "Borough": {
+            "type": "string"
+          },
+          "Zone": {
+            "type": "string"
+          },
+          "number_of_trips": {
+            "type": "long"
+          },
+          "avg_trip_distance": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.track_vectors_with_metadata": {
+        "name": "track_vectors_with_metadata",
+        "resource_type": "model",
+        "checksum": "3931879737117687011",
+        "columns": {
+          "_id": {
+            "type": "string"
+          },
+          "embeddings": {
+            "type": "list<double>"
+          },
+          "two_d_vectors": {
+            "type": "list<double>"
+          },
+          "popularity": {
+            "type": "long"
+          },
+          "track_name": {
+            "type": "string"
+          },
+          "artist_name": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.transactional_ingested_table": {
+        "name": "transactional_ingested_table",
+        "resource_type": "model",
+        "checksum": "7951579856824373017",
+        "columns": {
+          "VendorID": {
+            "type": "long"
+          },
+          "tpep_pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "tpep_dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "passenger_count": {
+            "type": "double"
+          },
+          "trip_distance": {
+            "type": "double"
+          },
+          "RatecodeID": {
+            "type": "double"
+          },
+          "store_and_fwd_flag": {
+            "type": "string"
+          },
+          "PULocationID": {
+            "type": "long"
+          },
+          "DOLocationID": {
+            "type": "long"
+          },
+          "payment_type": {
+            "type": "long"
+          },
+          "fare_amount": {
+            "type": "double"
+          },
+          "extra": {
+            "type": "double"
+          },
+          "mta_tax": {
+            "type": "double"
+          },
+          "tip_amount": {
+            "type": "double"
+          },
+          "tolls_amount": {
+            "type": "double"
+          },
+          "improvement_surcharge": {
+            "type": "double"
+          },
+          "total_amount": {
+            "type": "double"
+          },
+          "congestion_surcharge": {
+            "type": "double"
+          },
+          "airport_fee": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.user_engagement_segments": {
+        "name": "user_engagement_segments",
+        "resource_type": "model",
+        "checksum": "1674002091396606003",
+        "columns": {
+          "age": {
+            "type": "long"
+          },
+          "composite_engagement_score": {
+            "type": "double"
+          },
+          "country": {
+            "type": "string"
+          },
+          "daily_active_minutes_instagram": {
+            "type": "double"
+          },
+          "followers_count": {
+            "type": "long"
+          },
+          "following_count": {
+            "type": "long"
+          },
+          "gender": {
+            "type": "string"
+          },
+          "income_level": {
+            "type": "string"
+          },
+          "sessions_per_day": {
+            "type": "long"
+          },
+          "user_engagement_score": {
+            "type": "double"
+          },
+          "user_id": {
+            "type": "long"
+          },
+          "engagement_segment": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.valid_taxi_trips": {
+        "name": "valid_taxi_trips",
+        "resource_type": "model",
+        "checksum": "6073484092796473908",
+        "columns": {
+          "PULocationID": {
+            "type": "long"
+          },
+          "pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "trip_miles": {
+            "type": "double"
+          },
+          "Borough": {
+            "type": "string"
+          }
+        }
+      },
+      "model.bauplan.yellow_tripdata_2021_01": {
+        "name": "yellow_tripdata_2021_01",
+        "resource_type": "model",
+        "checksum": "2921186642290742976",
+        "columns": {
+          "VendorID": {
+            "type": "long"
+          },
+          "tpep_pickup_datetime": {
+            "type": "timestamptz"
+          },
+          "tpep_dropoff_datetime": {
+            "type": "timestamptz"
+          },
+          "passenger_count": {
+            "type": "double"
+          },
+          "trip_distance": {
+            "type": "double"
+          },
+          "RatecodeID": {
+            "type": "double"
+          },
+          "store_and_fwd_flag": {
+            "type": "string"
+          },
+          "PULocationID": {
+            "type": "long"
+          },
+          "DOLocationID": {
+            "type": "long"
+          },
+          "payment_type": {
+            "type": "long"
+          },
+          "fare_amount": {
+            "type": "double"
+          },
+          "extra": {
+            "type": "double"
+          },
+          "mta_tax": {
+            "type": "double"
+          },
+          "tip_amount": {
+            "type": "double"
+          },
+          "tolls_amount": {
+            "type": "double"
+          },
+          "improvement_surcharge": {
+            "type": "double"
+          },
+          "total_amount": {
+            "type": "double"
+          },
+          "congestion_surcharge": {
+            "type": "double"
+          },
+          "airport_fee": {
+            "type": "double"
+          }
+        }
+      },
+      "model.bauplan.zone_avg_waiting_times": {
+        "name": "zone_avg_waiting_times",
+        "resource_type": "model",
+        "checksum": "5090973251929189160",
+        "columns": {
+          "Borough": {
+            "type": "string"
+          },
+          "Zone": {
+            "type": "string"
+          },
+          "avg_waiting_time": {
+            "type": "double"
+          }
+        }
+      }
+    },
+    "sources": {},
+    "parent_map": {}
+  }
+}

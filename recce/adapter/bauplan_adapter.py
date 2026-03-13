@@ -25,7 +25,8 @@ class BauplanAdapter(BaseAdapter):
     client: t.Any  # bauplan.Client instance
     base_ref: str
     curr_ref: str
-    lineage_data: dict = field(default_factory=dict)
+    base_lineage: dict = field(default_factory=dict)
+    curr_lineage: dict = field(default_factory=dict)
 
     @classmethod
     def load(cls, **kwargs):
@@ -37,11 +38,31 @@ class BauplanAdapter(BaseAdapter):
         if len(refs) != 2:
             raise Exception('bauplan_refs must be in the format "BASE:CURRENT"')
 
-        lineage_path = kwargs.get("bauplan_lineage")
-        lineage_data = {}
-        if lineage_path:
-            with open(lineage_path) as f:
-                lineage_data = json.load(f)
+        base_lineage = {}
+        curr_lineage = {}
+
+        # Two separate files take precedence
+        base_path = kwargs.get("bauplan_base_lineage")
+        curr_path = kwargs.get("bauplan_curr_lineage")
+        if base_path:
+            with open(base_path) as f:
+                base_lineage = json.load(f)
+        if curr_path:
+            with open(curr_path) as f:
+                curr_lineage = json.load(f)
+
+        # Fallback: single file with optional "base"/"current" keys
+        if not base_path and not curr_path:
+            lineage_path = kwargs.get("bauplan_lineage")
+            if lineage_path:
+                with open(lineage_path) as f:
+                    data = json.load(f)
+                if "base" in data or "current" in data:
+                    base_lineage = data.get("base", {})
+                    curr_lineage = data.get("current", {})
+                else:
+                    base_lineage = data
+                    curr_lineage = data
 
         import bauplan
 
@@ -51,7 +72,8 @@ class BauplanAdapter(BaseAdapter):
             client=client,
             base_ref=refs[0],
             curr_ref=refs[1],
-            lineage_data=lineage_data,
+            base_lineage=base_lineage,
+            curr_lineage=curr_lineage,
         )
 
     def support_tasks(self):
@@ -94,11 +116,7 @@ class BauplanAdapter(BaseAdapter):
 
     def _get_lineage_section(self, base=False):
         """Get the lineage section for the given branch."""
-        if base and "base" in self.lineage_data:
-            return self.lineage_data["base"]
-        elif not base and "current" in self.lineage_data:
-            return self.lineage_data["current"]
-        return self.lineage_data
+        return self.base_lineage if base else self.curr_lineage
 
     def _get_all_nodes(self, base=False):
         section = self._get_lineage_section(base)
