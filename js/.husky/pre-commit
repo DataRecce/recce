@@ -1,18 +1,19 @@
 #!/bin/bash
+set -e
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
 
 # Reminder: All commits require --signoff (-s) for DCO compliance
 # The commit-msg hook will enforce this, but here's a heads up!
 
 # Check if there are any staged TypeScript/JavaScript files in the js directory
-staged_js_files=$(git diff --cached --name-only | grep "^js/" | grep -E '\.(ts|tsx|js|jsx)$' || true)
+STAGED_JS_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep "^js/" | grep -E '\.(ts|tsx|js|jsx|mjs)$' || true)
 
-if [ -n "$staged_js_files" ]; then
-	echo "TypeScript/JavaScript files changed, running lint and type check..."
-	# Convert js/path/to/file.ts to path/to/file.ts (relative to js/)
-	relative_files=$(echo "$staged_js_files" | sed 's|^js/||')
-	(cd js && pnpm exec biome check --diagnostic-level=error $relative_files && pnpm type:check && pnpm exec vitest run --passWithNoTests)
+if [ -n "$STAGED_JS_FILES" ]; then
+	echo "TypeScript/JavaScript files changed, running lint..."
+	(cd "$REPO_ROOT/js" && pnpm lint:staged)
 else
-	echo "No TypeScript/JavaScript files changed, skipping lint and type check."
+	echo "No TypeScript/JavaScript files changed, skipping lint."
 fi
 
 # start templated
