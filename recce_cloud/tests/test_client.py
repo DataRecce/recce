@@ -541,6 +541,62 @@ class RecceCloudClientTests(unittest.TestCase):
         self.assertEqual(context.exception.status_code, 500)
 
     @patch("recce_cloud.api.client.requests.request")
+    def test_get_isolated_base_upload_urls_success(self, mock_request):
+        """Test successful get_isolated_base_upload_urls call."""
+        client = RecceCloudClient(self.api_token)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "presigned_urls": {
+                "manifest_url": "https://s3.amazonaws.com/bucket/base/manifest.json?token=abc",
+                "catalog_url": "https://s3.amazonaws.com/bucket/base/catalog.json?token=def",
+            }
+        }
+        mock_request.return_value = mock_response
+
+        result = client.get_isolated_base_upload_urls(self.org_id, self.project_id, self.session_id)
+
+        self.assertIn("manifest_url", result)
+        self.assertIn("catalog_url", result)
+
+        mock_request.assert_called_once()
+        call_args = mock_request.call_args
+        self.assertEqual(call_args[0][0], "GET")
+        self.assertIn("isolated-base/upload-url", call_args[0][1])
+        self.assertIn(self.session_id, call_args[0][1])
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_get_isolated_base_upload_urls_no_presigned_urls(self, mock_request):
+        """Test get_isolated_base_upload_urls with null presigned URLs."""
+        client = RecceCloudClient(self.api_token)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"presigned_urls": None}
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as context:
+            client.get_isolated_base_upload_urls(self.org_id, self.project_id, self.session_id)
+
+        self.assertEqual(context.exception.status_code, 404)
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_get_isolated_base_upload_urls_failure(self, mock_request):
+        """Test get_isolated_base_upload_urls with API failure."""
+        client = RecceCloudClient(self.api_token)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal server error"
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as context:
+            client.get_isolated_base_upload_urls(self.org_id, self.project_id, self.session_id)
+
+        self.assertEqual(context.exception.status_code, 500)
+
+    @patch("recce_cloud.api.client.requests.request")
     def test_list_sessions_success(self, mock_request):
         """Test successful list_sessions call."""
         client = RecceCloudClient(self.api_token)

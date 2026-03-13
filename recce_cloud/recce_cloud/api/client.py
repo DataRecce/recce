@@ -148,6 +148,44 @@ class RecceCloudClient:
             presigned_urls[key] = replace_localhost_with_docker_internal(url)
         return presigned_urls
 
+    def get_isolated_base_upload_urls(
+        self, org_id: str, project_id: str, session_id: str
+    ) -> dict:
+        """
+        Get presigned S3 upload URLs for isolated base artifacts.
+
+        Args:
+            org_id: Organization ID
+            project_id: Project ID
+            session_id: Session ID
+
+        Returns:
+            dict with keys:
+                - manifest_url: Presigned URL for uploading base manifest.json
+                - catalog_url: Presigned URL for uploading base catalog.json
+
+        Raises:
+            RecceCloudException: If the request fails
+        """
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/isolated-base/upload-url"
+        response = self._request("GET", api_url)
+        if response.status_code != 200:
+            raise RecceCloudException(
+                reason=response.text,
+                status_code=response.status_code,
+            )
+        data = response.json()
+        if data.get("presigned_urls") is None:
+            raise RecceCloudException(
+                reason="No presigned URLs returned from the server.",
+                status_code=404,
+            )
+
+        presigned_urls = data["presigned_urls"]
+        for key, url in presigned_urls.items():
+            presigned_urls[key] = replace_localhost_with_docker_internal(url)
+        return presigned_urls
+
     def get_download_urls_by_session_id(
         self, org_id: str, project_id: str, session_id: str
     ) -> dict:
