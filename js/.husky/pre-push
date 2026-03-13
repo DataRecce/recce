@@ -5,7 +5,8 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 
 # Determine which commits are being pushed by comparing local ref to remote ref.
 # This reads the standard pre-push stdin format: <local ref> <local sha> <remote ref> <remote sha>
-MERGE_BASE=""
+BASE_SHA=""
+LOCAL_SHA=""
 while read -r LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
 	if [ "$LOCAL_SHA" = "0000000000000000000000000000000000000000" ]; then
 		# Deleting a branch, nothing to check
@@ -13,23 +14,23 @@ while read -r LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
 	fi
 	if [ "$REMOTE_SHA" = "0000000000000000000000000000000000000000" ]; then
 		# New branch — compare against main (with fallbacks for shallow clones and forks)
-		MERGE_BASE=$(git merge-base HEAD main 2>/dev/null \
-			|| git merge-base HEAD origin/main 2>/dev/null \
+		BASE_SHA=$(git merge-base "$LOCAL_SHA" main 2>/dev/null \
+			|| git merge-base "$LOCAL_SHA" origin/main 2>/dev/null \
 			|| git rev-parse main 2>/dev/null \
 			|| echo "")
 	else
-		MERGE_BASE="$REMOTE_SHA"
+		BASE_SHA="$REMOTE_SHA"
 	fi
 	break  # Process first pushable ref only
 done
 
-if [ -z "$MERGE_BASE" ]; then
+if [ -z "$BASE_SHA" ]; then
 	echo "No commits to push, skipping pre-push checks."
 	exit 0
 fi
 
 # Check if any TypeScript/JavaScript source files were changed in the commits being pushed
-PUSHED_JS_FILES=$(git diff --name-only --diff-filter=ACM "$MERGE_BASE"..HEAD | grep -E "^js/.*\.(ts|tsx|js|jsx|mjs)$" || true)
+PUSHED_JS_FILES=$(git diff --name-only --diff-filter=ACM "$BASE_SHA".."$LOCAL_SHA" | grep -E "^js/.*\.(ts|tsx|js|jsx|mjs)$" || true)
 
 if [ -n "$PUSHED_JS_FILES" ]; then
 	RELATIVE_FILES=$(echo "$PUSHED_JS_FILES" | sed 's|^js/||')

@@ -11,9 +11,7 @@ STAGED_JS_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep "^js/" 
 
 if [ -n "$STAGED_JS_FILES" ]; then
 	echo "TypeScript/JavaScript files changed, running lint..."
-	# Convert js/path/to/file.ts to path/to/file.ts (relative to js/)
-	RELATIVE_FILES=$(echo "$STAGED_JS_FILES" | sed 's|^js/||')
-	(cd "$REPO_ROOT/js" && echo "$RELATIVE_FILES" | xargs pnpm exec biome check --diagnostic-level=error)
+	(cd "$REPO_ROOT/js" && pnpm lint:staged)
 else
 	echo "No TypeScript/JavaScript files changed, skipping lint."
 fi
