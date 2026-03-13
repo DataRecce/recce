@@ -1761,5 +1761,82 @@ class TestDiagnosticServiceAPIErrors(unittest.TestCase):
         self.assertIn("missing ID", prod_result.message)
 
 
+class TestUploadIsolatedBaseFlag(unittest.TestCase):
+    """Test --isolated-base flag on upload command."""
+
+    def setUp(self):
+        self.runner = CliRunner()
+        self.temp_dir = tempfile.mkdtemp()
+
+        manifest_path = Path(self.temp_dir) / "manifest.json"
+        catalog_path = Path(self.temp_dir) / "catalog.json"
+
+        import json
+
+        with open(manifest_path, "w") as f:
+            json.dump({"metadata": {"adapter_type": "postgres"}, "nodes": {}}, f)
+        with open(catalog_path, "w") as f:
+            json.dump({"nodes": {}}, f)
+
+    def tearDown(self):
+        import shutil
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    def test_dry_run_shows_isolated_base(self):
+        """Test --dry-run with --isolated-base shows isolated base info."""
+        env = {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_REPOSITORY": "DataRecce/recce",
+            "GITHUB_EVENT_NAME": "pull_request",
+            "GITHUB_SHA": "abc123def456",
+            "GITHUB_HEAD_REF": "feature/test",
+            "GITHUB_BASE_REF": "main",
+            "RECCE_API_TOKEN": "test_token",
+        }
+
+        event_file = Path(self.temp_dir) / "github_event.json"
+        import json
+        with open(event_file, "w") as f:
+            json.dump({"pull_request": {"number": 42}}, f)
+        env["GITHUB_EVENT_PATH"] = str(event_file)
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                ["upload", "--target-path", self.temp_dir, "--dry-run", "--isolated-base"],
+            )
+
+        self.assertEqual(result.exit_code, 0, f"Failed: {result.output}")
+        self.assertIn("Isolated base", result.output)
+
+    def test_dry_run_without_isolated_base_no_mention(self):
+        """Test --dry-run without --isolated-base does not mention isolated base."""
+        env = {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_REPOSITORY": "DataRecce/recce",
+            "GITHUB_EVENT_NAME": "pull_request",
+            "GITHUB_SHA": "abc123def456",
+            "GITHUB_HEAD_REF": "feature/test",
+            "GITHUB_BASE_REF": "main",
+            "RECCE_API_TOKEN": "test_token",
+        }
+
+        event_file = Path(self.temp_dir) / "github_event.json"
+        import json
+        with open(event_file, "w") as f:
+            json.dump({"pull_request": {"number": 42}}, f)
+        env["GITHUB_EVENT_PATH"] = str(event_file)
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                ["upload", "--target-path", self.temp_dir, "--dry-run"],
+            )
+
+        self.assertEqual(result.exit_code, 0, f"Failed: {result.output}")
+        self.assertNotIn("Isolated base", result.output)
+
+
 if __name__ == "__main__":
     unittest.main()

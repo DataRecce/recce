@@ -518,8 +518,13 @@ def _get_production_session_id(console: Console, token: str) -> Optional[str]:
     is_flag=True,
     help="Show what would be uploaded without actually uploading",
 )
+@click.option(
+    "--isolated-base",
+    is_flag=True,
+    help="Upload isolated base artifacts instead of current artifacts.",
+)
 def upload(
-    target_path, session_id, session_name, skip_confirmation, pr, session_type, dry_run
+    target_path, session_id, session_name, skip_confirmation, pr, session_type, dry_run, isolated_base
 ):
     """
     Upload dbt artifacts (manifest.json, catalog.json) to Recce Cloud.
@@ -684,6 +689,10 @@ def upload(
         console.print(f"  • manifest.json: {os.path.abspath(manifest_path)}")
         console.print(f"  • catalog.json: {os.path.abspath(catalog_path)}")
         console.print(f"  • Adapter type: {adapter_type}")
+
+        if isolated_base:
+            console.print()
+            console.print("[cyan]Isolated base:[/cyan] Yes (uploading base artifacts)")
 
         console.print()
         console.print("[green]✓[/green] Dry run completed successfully")
