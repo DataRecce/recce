@@ -1,0 +1,68 @@
+{
+  "base": {
+    "nodes": {
+      "model.demo.instagram_engagement_data": {
+        "name": "instagram_engagement_data",
+        "resource_type": "model",
+        "checksum": "v1-base",
+        "columns": {
+          "ads_clicked_per_day": {"type": "int64"},
+          "time_on_feed_per_day": {"type": "int64"},
+          "time_on_explore_per_day": {"type": "int64"},
+          "time_on_messages_per_day": {"type": "int64"},
+          "time_on_reels_per_day": {"type": "int64"},
+          "followers_count": {"type": "int64"},
+          "following_count": {"type": "int64"},
+          "uses_premium_features": {"type": "string"},
+          "notification_response_rate": {"type": "float64"},
+          "account_creation_year": {"type": "int64"},
+          "last_login_date": {"type": "string"},
+          "average_session_length_minutes": {"type": "float64"},
+          "content_type_preference": {"type": "string"},
+          "preferred_content_theme": {"type": "string"},
+          "privacy_setting_level": {"type": "string"},
+          "two_factor_auth_enabled": {"type": "string"},
+          "biometric_login_used": {"type": "string"},
+          "linked_accounts_count": {"type": "int64"},
+          "subscription_status": {"type": "string"},
+          "user_engagement_score": {"type": "float64"}
+        }
+      }
+    },
+    "sources": {},
+    "parent_map": {}
+  },
+  "current": {
+    "nodes": {
+      "model.demo.instagram_engagement_data": {
+        "name": "instagram_engagement_data",
+        "resource_type": "model",
+        "checksum": "v2-add-bot-segment",
+        "columns": {
+          "ads_clicked_per_day": {"type": "int64"},
+          "time_on_feed_per_day": {"type": "int64"},
+          "time_on_explore_per_day": {"type": "int64"},
+          "time_on_messages_per_day": {"type": "int64"},
+          "time_on_reels_per_day": {"type": "int64"},
+          "followers_count": {"type": "int64"},
+          "following_count": {"type": "int64"},
+          "uses_premium_features": {"type": "string"},
+          "notification_response_rate": {"type": "float64"},
+          "account_creation_year": {"type": "int64"},
+          "last_login_date": {"type": "string"},
+          "average_session_length_minutes": {"type": "float64"},
+          "content_type_preference": {"type": "string"},
+          "preferred_content_theme": {"type": "string"},
+          "privacy_setting_level": {"type": "string"},
+          "two_factor_auth_enabled": {"type": "string"},
+          "biometric_login_used": {"type": "string"},
+          "linked_accounts_count": {"type": "int64"},
+          "subscription_status": {"type": "string"},
+          "user_engagement_score": {"type": "float64"}
+        }
+      }
+    },
+    "sources": {},
+    "parent_map": {}
+  }
+}

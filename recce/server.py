@@ -676,8 +676,8 @@ class SelectNodesOutput(BaseModel):
 async def select_nodes(input: SelectNodesInput):
     context = default_context()
 
-    if context.adapter_type != "dbt":
-        raise HTTPException(status_code=400, detail="Only dbt adapter is supported")
+    if context.adapter_type not in ("dbt", "bauplan", "sqlmesh"):
+        raise HTTPException(status_code=400, detail="Unsupported adapter type")
 
     try:
         nodes = context.adapter.select_nodes(

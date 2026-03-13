@@ -59,13 +59,13 @@ class BauplanAdapter(BaseAdapter):
         support_map["change_analysis"] = False
         return support_map
 
-    def get_lineage(self, base: Optional[bool] = False):
+    def _build_lineage(self, lineage_section: dict):
         nodes = {}
-        parent_map = self.lineage_data.get("parent_map", {})
+        parent_map = lineage_section.get("parent_map", {})
 
         all_nodes = {
-            **self.lineage_data.get("sources", {}),
-            **self.lineage_data.get("nodes", {}),
+            **lineage_section.get("sources", {}),
+            **lineage_section.get("nodes", {}),
         }
         for node_id, node_data in all_nodes.items():
             columns = {}
@@ -89,11 +89,26 @@ class BauplanAdapter(BaseAdapter):
             catalog_metadata={},
         )
 
-    def get_model(self, model_id: str, base=False):
-        all_nodes = {
-            **self.lineage_data.get("sources", {}),
-            **self.lineage_data.get("nodes", {}),
+    def get_lineage(self, base: Optional[bool] = False):
+        return self._build_lineage(self._get_lineage_section(base))
+
+    def _get_lineage_section(self, base=False):
+        """Get the lineage section for the given branch."""
+        if base and "base" in self.lineage_data:
+            return self.lineage_data["base"]
+        elif not base and "current" in self.lineage_data:
+            return self.lineage_data["current"]
+        return self.lineage_data
+
+    def _get_all_nodes(self, base=False):
+        section = self._get_lineage_section(base)
+        return {
+            **section.get("sources", {}),
+            **section.get("nodes", {}),
         }
+
+    def get_model(self, model_id: str, base=False):
+        all_nodes = self._get_all_nodes(base)
         node = all_nodes.get(model_id)
         if node is None:
             return None
@@ -106,14 +121,13 @@ class BauplanAdapter(BaseAdapter):
         return {"columns": columns}
 
     def get_node_name_by_id(self, unique_id):
-        all_nodes = {
-            **self.lineage_data.get("sources", {}),
-            **self.lineage_data.get("nodes", {}),
-        }
-        node = all_nodes.get(unique_id)
-        if node is None:
-            return None
-        return node.get("name", unique_id)
+        # Search current first, then base
+        for base in [False, True]:
+            all_nodes = self._get_all_nodes(base)
+            node = all_nodes.get(unique_id)
+            if node is not None:
+                return node.get("name", unique_id)
+        return None
 
     def select_nodes(
         self,
@@ -122,8 +136,10 @@ class BauplanAdapter(BaseAdapter):
         packages=None,
         view_mode=None,
     ) -> Set[str]:
-        nodes = self.lineage_data.get("nodes", {})
-        return set(nodes.keys())
+        # Include nodes from both branches
+        base_nodes = self._get_lineage_section(base=True).get("nodes", {})
+        curr_nodes = self._get_lineage_section(base=False).get("nodes", {})
+        return set(base_nodes.keys()) | set(curr_nodes.keys())
 
     def fetchdf_with_limit(self, sql: str, base: Optional[bool] = None, limit: Optional[int] = None) -> tuple:
         ref = self.base_ref if base else self.curr_ref
