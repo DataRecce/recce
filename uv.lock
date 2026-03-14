@@ -2943,7 +2943,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.28.1" },
     { name = "rich", specifier = ">=12.0.0" },
     { name = "ruamel-yaml", specifier = ">=0.18.6" },
-    { name = "sentry-sdk" },
+    { name = "sentry-sdk", specifier = ">=2.44.0" },
     { name = "sqlglot", specifier = ">=27.29.0,<30.0" },
     { name = "tox", marker = "extra == 'dev'" },
     { name = "tox-uv", marker = "extra == 'dev'" },
