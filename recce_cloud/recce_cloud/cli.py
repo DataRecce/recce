@@ -715,36 +715,16 @@ def upload(
             )
             sys.exit(2)
 
-        if isolated_base:
-            from recce_cloud.api.client import RecceCloudClient
-            from recce_cloud.upload import upload_isolated_base
-
-            client = RecceCloudClient(token)
-            session = client.get_session(session_id)
-            if session.get("status") == "error":
-                console.print(f"[red]Error:[/red] {session.get('message')}")
-                sys.exit(2)
-            org_id = session.get("org_id")
-            project_id = session.get("project_id")
-            if not org_id or not project_id:
-                console.print(
-                    "[red]Error:[/red] Could not resolve org/project for session"
-                )
-                sys.exit(2)
-            upload_isolated_base(
-                console, client, org_id, project_id, session_id,
-                manifest_path, catalog_path, target_path,
-            )
-        else:
-            upload_to_existing_session(
-                console,
-                token,
-                session_id,
-                manifest_path,
-                catalog_path,
-                adapter_type,
-                target_path,
-            )
+        upload_to_existing_session(
+            console,
+            token,
+            session_id,
+            manifest_path,
+            catalog_path,
+            adapter_type,
+            target_path,
+            isolated_base=isolated_base,
+        )
     elif session_name:
         # Session name workflow: Look up session by name, create if not exists
         # This workflow requires RECCE_API_TOKEN or logged-in profile, plus org/project config
@@ -869,22 +849,13 @@ def upload(
                 sys.exit(2)
 
             if isolated_base:
-                from recce_cloud.api.client import RecceCloudClient
-                from recce_cloud.upload import upload_isolated_base
-
-                client = RecceCloudClient(recce_api_token)
-                session = client.get_session(prod_session_id)
-                org_id = session.get("org_id")
-                project_id = session.get("project_id")
-                if not org_id or not project_id:
-                    console.print(
-                        "[red]Error:[/red] Could not resolve org/project for session"
-                    )
-                    sys.exit(2)
-                upload_isolated_base(
-                    console, client, org_id, project_id, prod_session_id,
-                    manifest_path, catalog_path, target_path,
+                console.print(
+                    "[red]Error:[/red] --isolated-base cannot be used with --type prod."
                 )
+                console.print(
+                    "Production sessions use the shared project base. Isolated base is for PR and dev sessions only."
+                )
+                sys.exit(2)
             else:
                 upload_to_existing_session(
                     console,

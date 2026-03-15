@@ -223,6 +223,64 @@ class TestRecceTokenCloudClient:
             assert payload["session_id"] == "test_session_id"
             assert payload["commit_sha"] == "abc123"
 
+    def test_init_token_only(self):
+        """Test client initialization with only token (for isolated base endpoints)."""
+        client = RecceTokenCloudClient(token="rct-test-token")
+        assert client.token == "rct-test-token"
+        assert client.provider is None
+        assert client.repository is None
+
+    def test_isolated_base_upload_completed(self):
+        """Test isolated_base_upload_completed calls correct endpoint."""
+        client = RecceTokenCloudClient(token="rct-test-token")
+
+        with patch.object(client, "_make_request") as mock_request:
+            mock_request.return_value = {}
+
+            client.isolated_base_upload_completed(session_id="test_session_id")
+
+            mock_request.assert_called_once()
+            call_args = mock_request.call_args
+            assert call_args[0][0] == "POST"
+            assert "/api/v2/isolated-base/upload-completed" in call_args[0][1]
+            assert call_args[1]["json"]["session_id"] == "test_session_id"
+
+    def test_get_isolated_base_upload_urls(self):
+        """Test get_isolated_base_upload_urls calls correct endpoint and returns URLs."""
+        client = RecceTokenCloudClient(token="rct-test-token")
+
+        with patch.object(client, "_make_request") as mock_request:
+            mock_request.return_value = {
+                "success": True,
+                "presigned_urls": {
+                    "manifest_url": "https://s3.aws.com/base/manifest.json?signed",
+                    "catalog_url": "https://s3.aws.com/base/catalog.json?signed",
+                },
+            }
+
+            result = client.get_isolated_base_upload_urls(session_id="test_session_id")
+
+            mock_request.assert_called_once()
+            call_args = mock_request.call_args
+            assert call_args[0][0] == "POST"
+            assert "/api/v2/isolated-base/upload-url" in call_args[0][1]
+            assert call_args[1]["json"]["session_id"] == "test_session_id"
+
+            assert "manifest_url" in result
+            assert "catalog_url" in result
+
+    def test_get_isolated_base_upload_urls_no_presigned_urls(self):
+        """Test get_isolated_base_upload_urls raises when no presigned URLs returned."""
+        from recce_cloud.api.exceptions import RecceCloudException
+
+        client = RecceTokenCloudClient(token="rct-test-token")
+
+        with patch.object(client, "_make_request") as mock_request:
+            mock_request.return_value = {"success": True, "presigned_urls": None}
+
+            with pytest.raises(RecceCloudException):
+                client.get_isolated_base_upload_urls(session_id="test_session_id")
+
     def test_get_session_download_urls_not_implemented(self):
         """Test that download is not implemented for generic client."""
         client = RecceTokenCloudClient(

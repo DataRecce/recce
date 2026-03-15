@@ -9,6 +9,7 @@ import sys
 import click
 import requests
 
+from recce_cloud.api import RecceTokenCloudClient
 from recce_cloud.api.client import RecceCloudClient
 from recce_cloud.api.exceptions import RecceCloudException
 from recce_cloud.api.factory import create_platform_client
@@ -27,6 +28,7 @@ def upload_to_existing_session(
     catalog_path: str,
     adapter_type: str,
     target_path: str,
+    isolated_base: bool = False,
 ):
     """
     Upload artifacts to an existing Recce Cloud session using session ID.
@@ -62,6 +64,13 @@ def upload_to_existing_session(
             f"[red]Error:[/red] Session ID {session_id} does not belong to any project."
         )
         sys.exit(2)
+
+    if isolated_base:
+        upload_isolated_base(
+            console, token, session_id,
+            manifest_path, catalog_path, target_path,
+        )
+        return  # upload_isolated_base calls sys.exit(0)
 
     # Get presigned URLs
     with cloud_error_handler(console, "get upload URLs"):
@@ -169,35 +178,22 @@ def upload_with_platform_apis(
     console.print(f"[green]Session ID:[/green] {session_id}")
 
     if isolated_base:
-        # For isolated base, we need org_id/project_id from the session
-        # The platform touch endpoint doesn't return these, so we look up the session
-        from recce_cloud.auth.profile import get_api_token
-
-        # Use RECCE_API_TOKEN or profile token for the RecceCloudClient
-        api_token = os.getenv("RECCE_API_TOKEN") or get_api_token()
-        if not api_token:
+        if not isinstance(client, RecceTokenCloudClient):
             console.print(
-                "[red]Error:[/red] --isolated-base with platform APIs requires RECCE_API_TOKEN or 'recce-cloud login'"
+                "[red]Error:[/red] --isolated-base requires RECCE_API_TOKEN authentication."
             )
             console.print(
-                "The isolated base endpoint needs org/project context not available from platform tokens alone."
+                "Platform-specific tokens (GITHUB_TOKEN, CI_JOB_TOKEN) are not supported for isolated base upload."
             )
-            sys.exit(2)
-
-        rcc_client = RecceCloudClient(api_token)
-        with cloud_error_handler(console, "get session info"):
-            session = rcc_client.get_session(session_id)
-        org_id = session.get("org_id")
-        project_id = session.get("project_id")
-        if not org_id or not project_id:
             console.print(
-                "[red]Error:[/red] Could not resolve org/project for session"
+                "Set the RECCE_API_TOKEN environment variable or run 'recce-cloud login' first."
             )
             sys.exit(2)
 
         upload_isolated_base(
-            console, rcc_client, org_id, project_id, session_id,
+            console, token, session_id,
             manifest_path, catalog_path, target_path,
+            client=client,
         )
         return  # upload_isolated_base calls sys.exit(0)
 
@@ -372,7 +368,7 @@ def upload_with_session_name(
     # 5. Upload artifacts
     if isolated_base:
         upload_isolated_base(
-            console, client, org_id, project_id, session_id,
+            console, token, session_id,
             manifest_path, catalog_path, target_path,
         )
     else:
@@ -428,13 +424,12 @@ def upload_with_session_name(
 
 def upload_isolated_base(
     console,
-    client,
-    org_id: str,
-    project_id: str,
+    token: str,
     session_id: str,
     manifest_path: str,
     catalog_path: str,
     target_path: str,
+    client=None,
 ):
     """
     Upload isolated base artifacts to an existing session.
@@ -442,23 +437,45 @@ def upload_isolated_base(
     Gets presigned URLs for the isolated base subpath, uploads manifest + catalog,
     then notifies the server to set has_isolated_base=True.
 
+    Accepts an optional pre-built client (e.g., RecceTokenCloudClient); if not
+    provided, creates a RecceCloudClient and resolves org/project from the session.
+
     Args:
         console: Rich console for output
-        client: RecceCloudClient instance
-        org_id: Organization ID
-        project_id: Project ID
+        token: RECCE_API_TOKEN or login profile token
         session_id: Session ID
         manifest_path: Path to manifest.json
         catalog_path: Path to catalog.json
         target_path: Original target path (for display)
+        client: Optional RecceTokenCloudClient instance. If not provided,
+            a RecceCloudClient is created internally.
     """
+    if client is None:
+        with cloud_error_handler(
+            console, "initialize API client", exit_code=ExitCode.INIT_ERROR
+        ):
+            client = RecceCloudClient(token)
+
     console.rule("Uploading Isolated Base Artifacts", style="blue")
 
     # Get isolated base upload URLs
     with cloud_error_handler(console, "get isolated base upload URLs"):
-        presigned_urls = client.get_isolated_base_upload_urls(
-            org_id, project_id, session_id
-        )
+        if isinstance(client, RecceTokenCloudClient):
+            presigned_urls = client.get_isolated_base_upload_urls(session_id)
+        else:
+            # RecceCloudClient needs org_id/project_id — resolve from session
+            with cloud_error_handler(console, "get session info"):
+                session = client.get_session(session_id)
+            org_id = session.get("org_id")
+            project_id = session.get("project_id")
+            if not org_id or not project_id:
+                console.print(
+                    "[red]Error:[/red] Could not resolve org/project for session"
+                )
+                sys.exit(2)
+            presigned_urls = client.get_isolated_base_upload_urls(
+                org_id, project_id, session_id
+            )
 
     # Upload manifest
     console.print(f'Uploading base manifest from path "{manifest_path}"')
@@ -480,10 +497,13 @@ def upload_isolated_base(
                 f"Upload failed with status {response.status_code}: {response.text}"
             )
 
-    # Notify completion (sets has_isolated_base=True)
+    # Notify upload completion (non-fatal)
     console.print("Notifying isolated base upload completion...")
     with cloud_error_handler(console, "notify isolated base upload completion"):
-        client.isolated_base_upload_completed(org_id, project_id, session_id)
+        if isinstance(client, RecceTokenCloudClient):
+            client.isolated_base_upload_completed(session_id)
+        else:
+            client.isolated_base_upload_completed(org_id, project_id, session_id)
 
     # Success
     console.rule("Isolated Base Uploaded Successfully", style="green")
