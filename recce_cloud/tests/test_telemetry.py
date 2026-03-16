@@ -3,7 +3,6 @@
 import hashlib
 from unittest.mock import MagicMock, patch
 
-import pytest
 from click.testing import CliRunner
 
 from recce_cloud.telemetry import (
