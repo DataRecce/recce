@@ -29,6 +29,7 @@ from recce_cloud.download import (
 from recce_cloud.report import fetch_and_generate_report
 from recce_cloud.review import run_review_command
 from recce_cloud.constants import SESSION_TYPES, SESSION_TYPES_UPLOAD, get_base_url
+from recce_cloud.telemetry import TrackedCommand, track
 from recce_cloud.upload import upload_to_existing_session, upload_with_platform_apis
 
 # Configure logging
@@ -61,14 +62,14 @@ def cloud_cli():
 cloud_cli.add_command(doctor)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 def version():
     """Show the version of recce-cloud."""
     console = Console()
     console.print(__version__)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 @click.option(
     "--token",
     default=None,
@@ -138,12 +139,14 @@ def login(token, status):
     # Direct token authentication mode
     if token:
         if login_with_token(token):
+            track("cli_login_completed", {"method": "token"})
             sys.exit(0)
         else:
             sys.exit(1)
 
     # Browser OAuth flow
     if login_with_browser():
+        track("cli_login_completed", {"method": "browser"})
         sys.exit(0)
     else:
         console.print()
@@ -153,7 +156,7 @@ def login(token, status):
         sys.exit(1)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 def logout():
     """
     Remove stored Recce Cloud credentials.
@@ -170,7 +173,7 @@ def logout():
     console.print(f"  Credentials removed from {get_profile_path()}")
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 @click.option(
     "--org",
     help="Organization ID, name, or slug to bind to",
@@ -477,7 +480,7 @@ def _get_production_session_id(console: Console, token: str) -> Optional[str]:
         return None
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 @click.option(
     "--target-path",
     type=click.Path(exists=True),
@@ -551,6 +554,14 @@ def upload(
       recce-cloud upload --target-path custom-target
     """
     console = Console()
+
+    # Track upload-specific properties
+    track("cli_upload_started", {
+        "has_session_id": session_id is not None,
+        "has_session_name": session_name is not None,
+        "session_type": session_type,
+        "dry_run": dry_run,
+    })
 
     # 1. Auto-detect CI environment information
     console.rule("CI Environment Detection", style="blue")
@@ -864,7 +875,7 @@ def upload(
             sys.exit(2)
 
 
-@cloud_cli.command(name="list")
+@cloud_cli.command(name="list", cls=TrackedCommand)
 @click.option(
     "--type",
     "session_type",
@@ -1030,7 +1041,7 @@ def list_sessions_cmd(session_type, output_json):
     sys.exit(0)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 @click.option(
     "--target-path",
     type=click.Path(),
@@ -1087,6 +1098,13 @@ def download(target_path, session_id, prod, dry_run, force):
       recce-cloud download --force
     """
     console = Console()
+
+    # Track download-specific properties
+    track("cli_download_started", {
+        "has_session_id": session_id is not None,
+        "prod": prod,
+        "dry_run": dry_run,
+    })
 
     # Validate flag combinations
     if session_id and prod:
@@ -1237,7 +1255,7 @@ def download(target_path, session_id, prod, dry_run, force):
         download_with_platform_apis(console, token, ci_info, target_path, force)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 @click.option(
     "--session-id",
     envvar="RECCE_SESSION_ID",
@@ -1428,7 +1446,7 @@ def delete(session_id, dry_run, force):
         delete_with_platform_apis(console, token, ci_info, prod=False)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 @click.option(
     "--repo",
     type=str,
@@ -1560,7 +1578,7 @@ def report(repo, since, until, base_branch, merged_only, output):
     sys.exit(exit_code)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 @click.option(
     "--session-id",
     envvar="RECCE_SESSION_ID",
@@ -1638,6 +1656,14 @@ def review(session_id, session_name, org, project, regenerate, timeout, json_out
       recce-cloud review --session-name my-session --timeout 600
     """
     console = Console()
+
+    # Track review-specific properties
+    track("cli_review_started", {
+        "has_session_id": session_id is not None,
+        "has_session_name": session_name is not None,
+        "regenerate": regenerate,
+        "json_output": json_output,
+    })
 
     # Validate that at least one of session_id or session_name is provided
     if not session_id and not session_name:
