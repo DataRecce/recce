@@ -45,14 +45,22 @@ class TestGetDistinctId:
 
 
 class TestGetCommonProperties:
+    @patch("recce_cloud.auth.profile.load_profile", return_value={"user_id": "test-uid"})
     @patch("recce_cloud.ci_providers.CIDetector.detect", return_value=None)
     @patch("recce_cloud.__version__", "1.2.3")
-    def test_includes_version_and_platform(self, mock_ci):
+    def test_includes_version_and_platform(self, mock_ci, mock_profile):
         props = get_common_properties()
         assert props["recce_cloud_version"] == "1.2.3"
         assert "python_version" in props
         assert "os_platform" in props
         assert props["is_ci"] is False
+
+    @patch("recce_cloud.auth.profile.load_profile", return_value={"user_id": "my-uid"})
+    @patch("recce_cloud.ci_providers.CIDetector.detect", return_value=None)
+    @patch("recce_cloud.__version__", "1.2.3")
+    def test_includes_user_id_as_property(self, mock_ci, mock_profile):
+        props = get_common_properties()
+        assert props["user_id"] == "my-uid"
 
     @patch("recce_cloud.ci_providers.CIDetector.detect")
     @patch("recce_cloud.__version__", "1.2.3")
@@ -83,8 +91,24 @@ class TestTrack:
         mock_client.capture.assert_called_once_with(
             distinct_id="user123",
             event="test_event",
-            properties={"v": "1", "extra": "data"},
+            properties={
+                "v": "1",
+                "extra": "data",
+                "$process_person_profile": False,
+            },
         )
+
+    @patch("recce_cloud.telemetry.get_common_properties", return_value={"v": "1"})
+    @patch("recce_cloud.telemetry.get_distinct_id", return_value="user123")
+    @patch("recce_cloud.telemetry._get_client")
+    def test_disables_person_profile_processing(self, mock_get_client, mock_id, mock_props):
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        track("test_event")
+
+        call_props = mock_client.capture.call_args[1]["properties"]
+        assert call_props["$process_person_profile"] is False
 
     @patch("recce_cloud.telemetry.get_common_properties", return_value={})
     @patch("recce_cloud.telemetry.get_distinct_id", return_value="user123")

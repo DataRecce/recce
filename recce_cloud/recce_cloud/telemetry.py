@@ -69,6 +69,7 @@ def _get_client():
             host=POSTHOG_HOST,
             flush_at=10,
             flush_interval=5.0,
+            disable_geoip=True,
         )
         atexit.register(shutdown)
         return _client
@@ -101,6 +102,7 @@ def get_common_properties():
     from recce_cloud import __version__
 
     props = {
+        "user_id": get_distinct_id(),
         "recce_cloud_version": __version__,
         "python_version": "{}.{}".format(
             sys.version_info.major, sys.version_info.minor
@@ -133,6 +135,9 @@ def track(event, properties=None):
         all_props = get_common_properties()
         if properties:
             all_props.update(properties)
+        # Disable PostHog person profile processing — we manage
+        # identity ourselves via the user_id event property.
+        all_props["$process_person_profile"] = False
         client.capture(
             distinct_id=get_distinct_id(),
             event=event,
@@ -142,26 +147,16 @@ def track(event, properties=None):
         logger.debug("PostHog track error: %s", e)
 
 
-def identify_user(email):
-    # type: (str) -> None
-    """Alias email to user_id for cross-system stitching with cloud-infra."""
-    client = _get_client()
-    if client is None:
-        return
-    try:
-        from recce_cloud import __version__
+def get_user_id_property():
+    # type: () -> str
+    """Get user_id for inclusion as an event property.
 
-        uid = get_distinct_id()
-        client.alias(previous_id=email, distinct_id=uid)
-        client.set(
-            uid,
-            {
-                "email": email,
-                "recce_cloud_version": __version__,
-            },
-        )
-    except Exception as e:
-        logger.debug("PostHog identify error: %s", e)
+    We manage identity ourselves — user_id is included as a regular
+    event property rather than relying on PostHog's person merging
+    (alias/identify). Cross-system analysis uses this property to
+    join CLI events with server-side events.
+    """
+    return get_distinct_id()
 
 
 def shutdown():
