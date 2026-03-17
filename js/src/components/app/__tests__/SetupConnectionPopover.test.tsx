@@ -21,7 +21,7 @@ import { vi } from "vitest";
 
 // Mock constants
 vi.mock("@datarecce/ui/lib/const", async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
     RECCE_SUPPORT_CALENDAR_URL: "https://cal.com/team/recce/chat",
