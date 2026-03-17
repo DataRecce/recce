@@ -1,5 +1,6 @@
 import asyncio
 import os
+import sys
 from pathlib import Path
 from typing import List
 
@@ -291,8 +292,6 @@ def _execute_sql(context, sql_template, base=False):
 @click.pass_context
 def cli(ctx, **kwargs):
     """Recce: Data validation toolkit for comprehensive PR review"""
-    import sys
-
     from rich.console import Console
 
     from recce import __is_recce_outdated__, __latest_version__

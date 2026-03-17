@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import signal
+import sys
 import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -539,8 +540,6 @@ class RecceInstanceInfoOut(BaseModel):
 
 @app.get("/api/instance-info", response_model=RecceInstanceInfoOut, response_model_exclude_none=True)
 async def recce_instance_info():
-    import sys
-
     app_state: AppState = app.state
     flag = app_state.flag
     read_only = flag.get("read_only", False)
