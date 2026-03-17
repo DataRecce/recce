@@ -1,6 +1,7 @@
 """Tests for PostHog telemetry module."""
 
 import hashlib
+import os
 from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
@@ -120,6 +121,38 @@ class TestTrack:
 
         # Should not raise
         track("test_event")
+
+
+class TestEnvironmentDetection:
+    @patch("recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io")
+    def test_prod_host_datarecce(self, mock_host):
+        from recce_cloud.telemetry import _is_prod_environment
+        assert _is_prod_environment() is True
+
+    @patch("recce_cloud.constants.get_api_host", return_value="https://cloud.reccehq.com")
+    def test_prod_host_reccehq(self, mock_host):
+        from recce_cloud.telemetry import _is_prod_environment
+        assert _is_prod_environment() is True
+
+    @patch("recce_cloud.constants.get_api_host", return_value="https://staging.datarecce.io")
+    def test_staging_host(self, mock_host):
+        from recce_cloud.telemetry import _is_prod_environment
+        assert _is_prod_environment() is False
+
+    @patch("recce_cloud.constants.get_api_host", return_value="http://localhost:9527")
+    def test_localhost_is_not_prod(self, mock_host):
+        from recce_cloud.telemetry import _is_prod_environment
+        assert _is_prod_environment() is False
+
+    @patch("recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io/")
+    def test_trailing_slash_stripped(self, mock_host):
+        from recce_cloud.telemetry import _is_prod_environment
+        assert _is_prod_environment() is True
+
+    @patch.dict(os.environ, {"RECCE_POSTHOG_API_KEY": "explicit-key"})
+    def test_env_var_overrides_bundled_key(self):
+        from recce_cloud.telemetry import _get_api_key
+        assert _get_api_key() == "explicit-key"
 
 
 class TestShouldTrack:

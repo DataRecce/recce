@@ -24,14 +24,42 @@ _initialized = False
 # Same host as recce-cloud-infra
 POSTHOG_HOST = "https://us.i.posthog.com"
 
-# Bundled write-only project API key (safe to distribute).
+# Bundled write-only project API keys (safe to distribute).
+# The CLI selects the key at runtime based on which Recce Cloud API
+# host it targets (RECCE_CLOUD_API_HOST env var).
 # Override with RECCE_POSTHOG_API_KEY env var for testing.
-_BUNDLED_API_KEY = ""  # TODO: fill with actual PostHog project API key
+_BUNDLED_KEY_PROD = ""  # TODO: fill with prod PostHog project API key
+_BUNDLED_KEY_STAGING = ""  # TODO: fill with staging PostHog project API key
+
+# Production API hosts — anything else is treated as staging/dev.
+_PROD_HOSTS = {
+    "https://cloud.datarecce.io",
+    "https://cloud.reccehq.com",
+}
+
+
+def _is_prod_environment():
+    # type: () -> bool
+    """Determine if the CLI is targeting the production Recce Cloud."""
+    from recce_cloud.constants import get_api_host
+
+    return get_api_host().rstrip("/") in _PROD_HOSTS
 
 
 def _get_api_key():
     # type: () -> Optional[str]
-    return os.environ.get("RECCE_POSTHOG_API_KEY") or _BUNDLED_API_KEY or None
+    """Get the PostHog API key for the current environment.
+
+    Priority:
+    1. RECCE_POSTHOG_API_KEY env var (explicit override)
+    2. Bundled key matching the target Recce Cloud environment
+    """
+    env_key = os.environ.get("RECCE_POSTHOG_API_KEY")
+    if env_key:
+        return env_key
+    if _is_prod_environment():
+        return _BUNDLED_KEY_PROD or None
+    return _BUNDLED_KEY_STAGING or None
 
 
 def _should_track():
@@ -101,6 +129,8 @@ def get_common_properties():
     """Properties included with every event."""
     from recce_cloud import __version__
 
+    from recce_cloud.constants import get_api_host
+
     props = {
         "user_id": get_distinct_id(),
         "recce_cloud_version": __version__,
@@ -108,6 +138,8 @@ def get_common_properties():
             sys.version_info.major, sys.version_info.minor
         ),
         "os_platform": sys.platform,
+        "cloud_environment": "production" if _is_prod_environment() else "staging",
+        "cloud_api_host": get_api_host(),
     }  # type: Dict[str, Any]
 
     try:
