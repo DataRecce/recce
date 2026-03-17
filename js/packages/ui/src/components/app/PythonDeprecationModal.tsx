@@ -15,7 +15,9 @@ const SESSION_KEY = "recce-python-deprecation-dismissed";
 export function PythonDeprecationModal() {
   const { pythonVersion } = useRecceInstanceContext();
   const [dismissed, setDismissed] = useState(
-    () => sessionStorage.getItem(SESSION_KEY) === "true",
+    () =>
+      typeof window !== "undefined" &&
+      sessionStorage.getItem(SESSION_KEY) === "true",
   );
 
   const shouldShow =
