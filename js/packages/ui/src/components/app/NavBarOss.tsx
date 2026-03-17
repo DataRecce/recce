@@ -19,6 +19,7 @@ import { useApiConfig } from "../../hooks/useApiConfig";
 import { trackNavigation } from "../../lib/api/track";
 import { EnvInfo } from "./EnvInfo";
 import { Filename } from "./Filename";
+import { PythonDeprecationModal } from "./PythonDeprecationModal";
 import { StateExporter } from "./StateExporter";
 import { TopLevelShare } from "./StateSharing";
 import { StateSynchronizer } from "./StateSynchronizer";
@@ -228,6 +229,7 @@ export const NavBarOss = () => {
           </Box>
         )}
       </Box>
+      <PythonDeprecationModal />
     </Box>
   );
 };
