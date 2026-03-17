@@ -505,7 +505,7 @@ function TopKBarChartComponent({
     [displayItems, themeColors, showBase, baseTotal, currentTotal],
   );
 
-  const secondaryTextColor = isDark ? "#d1d5db" : "#6b7280";
+  const secondaryTextColor = isDark ? "#e5e7eb" : "#6b7280";
 
   const barLabelsPlugin = useMemo<Plugin<"bar">>(
     () => ({
