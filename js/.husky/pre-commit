@@ -2,6 +2,7 @@
 set -e
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
+export GIT_WORK_TREE="$REPO_ROOT"
 
 # Reminder: All commits require --signoff (-s) for DCO compliance
 # The commit-msg hook will enforce this, but here's a heads up!
@@ -11,7 +12,7 @@ STAGED_JS_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep "^js/" 
 
 if [ -n "$STAGED_JS_FILES" ]; then
 	echo "TypeScript/JavaScript files changed, running lint..."
-	(cd "$REPO_ROOT/js" && GIT_WORK_TREE="$REPO_ROOT" pnpm lint:staged)
+	(cd "$REPO_ROOT/js" && pnpm lint:staged)
 else
 	echo "No TypeScript/JavaScript files changed, skipping lint."
 fi

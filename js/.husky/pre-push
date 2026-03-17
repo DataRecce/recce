@@ -2,6 +2,7 @@
 set -e
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
+export GIT_WORK_TREE="$REPO_ROOT"
 
 # Determine which commits are being pushed by comparing local ref to remote ref.
 # This reads the standard pre-push stdin format: <local ref> <local sha> <remote ref> <remote sha>
