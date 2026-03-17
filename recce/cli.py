@@ -291,6 +291,8 @@ def _execute_sql(context, sql_template, base=False):
 @click.pass_context
 def cli(ctx, **kwargs):
     """Recce: Data validation toolkit for comprehensive PR review"""
+    import sys
+
     from rich.console import Console
 
     from recce import __is_recce_outdated__, __latest_version__
@@ -301,6 +303,13 @@ def cli(ctx, **kwargs):
             f"[[yellow]Update Available[/yellow]] A new version of Recce {__latest_version__} is available.",
         )
         error_console.print("Please update using the command: 'pip install --upgrade recce'.", end="\n\n")
+
+    if sys.version_info < (3, 10):
+        warn_console = Console(stderr=True, style="bold")
+        warn_console.print(
+            "[[yellow]Deprecation Warning[/yellow]] Python 3.9 support will be removed in a future release of Recce.",
+        )
+        warn_console.print("Please upgrade to Python 3.10 or later.", end="\n\n")
 
 
 @cli.command(cls=TrackCommand)

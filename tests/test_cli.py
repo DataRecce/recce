@@ -317,3 +317,23 @@ class TestCommandMCPServer(TestCase):
 
         # No single-env guidance in output
         assert "Base artifacts not found" not in result.output
+
+
+def test_cli_shows_python39_deprecation_warning():
+    """CLI should show deprecation warning when running on Python 3.9."""
+    runner = CliRunner()
+    from recce.cli import cli
+
+    with patch("sys.version_info", (3, 9, 18, "final", 0)):
+        result = runner.invoke(cli, ["version"])
+        assert "Deprecation Warning" in result.output
+
+
+def test_cli_no_warning_on_python310():
+    """CLI should NOT show deprecation warning when running on Python 3.10+."""
+    runner = CliRunner()
+    from recce.cli import cli
+
+    with patch("sys.version_info", (3, 10, 0, "final", 0)):
+        result = runner.invoke(cli, ["version"])
+        assert "Deprecation Warning" not in result.output
