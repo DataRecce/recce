@@ -505,59 +505,55 @@ function TopKBarChartComponent({
     [displayItems, themeColors, showBase, baseTotal, currentTotal],
   );
 
-  const secondaryTextColor = isDark ? "#e5e7eb" : "#6b7280";
+  const barLabelsPlugin: Plugin<"bar"> = {
+    id: "barLabels",
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      ctx.save();
+      ctx.font = "11px system-ui, sans-serif";
+      ctx.textBaseline = "middle";
+      const pad = 4;
 
-  const barLabelsPlugin = useMemo<Plugin<"bar">>(
-    () => ({
-      id: "barLabels",
-      afterDatasetsDraw(chart) {
-        const { ctx } = chart;
-        ctx.save();
-        ctx.font = "11px system-ui, sans-serif";
-        ctx.textBaseline = "middle";
-        const pad = 4;
+      // Read colors directly — no stale closure dependency
+      const colors = getChartThemeColors(isDark);
 
-        for (let dsIndex = 0; dsIndex < chart.data.datasets.length; dsIndex++) {
-          const dataset = chart.data.datasets[dsIndex];
-          const total = dataset.label === "Base" ? baseTotal : currentTotal;
-          const meta = chart.getDatasetMeta(dsIndex);
+      for (let dsIndex = 0; dsIndex < chart.data.datasets.length; dsIndex++) {
+        const dataset = chart.data.datasets[dsIndex];
+        const total = dataset.label === "Base" ? baseTotal : currentTotal;
+        const meta = chart.getDatasetMeta(dsIndex);
 
-          for (let i = 0; i < meta.data.length; i++) {
-            const { x, y, base } = meta.data[
-              i
-            ] as unknown as RenderedBarGeometry;
-            const proportion = (dataset.data[i] as number) ?? 0;
-            if (proportion === 0) continue;
-            const count = Math.round(proportion * total);
+        for (let i = 0; i < meta.data.length; i++) {
+          const { x, y, base } = meta.data[i] as unknown as RenderedBarGeometry;
+          const proportion = (dataset.data[i] as number) ?? 0;
+          if (proportion === 0) continue;
+          const count = Math.round(proportion * total);
 
-            const barWidth = x - base;
-            const countText = formatAbbreviated(count);
-            const pctText = formatPercent(proportion);
-            const countWidth = ctx.measureText(countText).width;
-            const fitsInside = countWidth + 2 * pad < barWidth;
+          const barWidth = x - base;
+          const countText = formatAbbreviated(count);
+          const pctText = formatPercent(proportion);
+          const countWidth = ctx.measureText(countText).width;
+          const fitsInside = countWidth + 2 * pad < barWidth;
 
-            if (fitsInside) {
-              ctx.fillStyle = themeColors.barLabelColor;
-              ctx.textAlign = "left";
-              ctx.fillText(countText, base + pad, y);
-              ctx.fillStyle = secondaryTextColor;
-              ctx.textAlign = "left";
-              ctx.fillText(pctText, x + pad, y);
-            } else {
-              ctx.fillStyle = themeColors.textColor;
-              ctx.textAlign = "left";
-              ctx.fillText(countText, x + pad, y);
-              ctx.fillStyle = secondaryTextColor;
-              ctx.fillText(pctText, x + pad + countWidth + pad, y);
-            }
+          if (fitsInside) {
+            ctx.fillStyle = colors.barLabelColor;
+            ctx.textAlign = "left";
+            ctx.fillText(countText, base + pad, y);
+            ctx.fillStyle = colors.secondaryTextColor;
+            ctx.textAlign = "left";
+            ctx.fillText(pctText, x + pad, y);
+          } else {
+            ctx.fillStyle = colors.textColor;
+            ctx.textAlign = "left";
+            ctx.fillText(countText, x + pad, y);
+            ctx.fillStyle = colors.secondaryTextColor;
+            ctx.fillText(pctText, x + pad + countWidth + pad, y);
           }
         }
+      }
 
-        ctx.restore();
-      },
-    }),
-    [baseTotal, currentTotal, themeColors, secondaryTextColor],
-  );
+      ctx.restore();
+    },
+  };
 
   const chartHeight =
     displayItems.length * (showBase ? 46 : 32) + (showBase ? 30 : 0);
