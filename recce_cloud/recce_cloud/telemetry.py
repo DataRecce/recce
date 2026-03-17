@@ -24,13 +24,6 @@ _initialized = False
 # Same host as recce-cloud-infra
 POSTHOG_HOST = "https://us.i.posthog.com"
 
-# Bundled write-only project API keys (safe to distribute).
-# The CLI selects the key at runtime based on which Recce Cloud API
-# host it targets (RECCE_CLOUD_API_HOST env var).
-# Override with RECCE_POSTHOG_API_KEY env var for testing.
-_BUNDLED_KEY_PROD = ""  # TODO: fill with prod PostHog project API key
-_BUNDLED_KEY_STAGING = ""  # TODO: fill with staging PostHog project API key
-
 # Production API hosts — anything else is treated as staging/dev.
 _PROD_HOSTS = {
     "https://cloud.datarecce.io",
@@ -48,18 +41,16 @@ def _is_prod_environment():
 
 def _get_api_key():
     # type: () -> Optional[str]
-    """Get the PostHog API key for the current environment.
+    """Get the PostHog API key from environment variables.
 
-    Priority:
-    1. RECCE_POSTHOG_API_KEY env var (explicit override)
-    2. Bundled key matching the target Recce Cloud environment
+    Keys are configured via env vars — nothing is bundled in the package.
+    The CLI selects the key based on which Recce Cloud API host it targets:
+    - RECCE_POSTHOG_API_KEY: prod (when targeting cloud.datarecce.io)
+    - RECCE_POSTHOG_API_KEY_STAGING: staging (everything else)
     """
-    env_key = os.environ.get("RECCE_POSTHOG_API_KEY")
-    if env_key:
-        return env_key
     if _is_prod_environment():
-        return _BUNDLED_KEY_PROD or None
-    return _BUNDLED_KEY_STAGING or None
+        return os.environ.get("RECCE_POSTHOG_API_KEY") or None
+    return os.environ.get("RECCE_POSTHOG_API_KEY_STAGING") or None
 
 
 def _should_track():

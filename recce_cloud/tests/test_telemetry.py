@@ -149,10 +149,23 @@ class TestEnvironmentDetection:
         from recce_cloud.telemetry import _is_prod_environment
         assert _is_prod_environment() is True
 
-    @patch.dict(os.environ, {"RECCE_POSTHOG_API_KEY": "explicit-key"})
-    def test_env_var_overrides_bundled_key(self):
+    @patch.dict(os.environ, {"RECCE_POSTHOG_API_KEY": "prod-key"})
+    @patch("recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io")
+    def test_prod_env_uses_prod_key(self, mock_host):
         from recce_cloud.telemetry import _get_api_key
-        assert _get_api_key() == "explicit-key"
+        assert _get_api_key() == "prod-key"
+
+    @patch.dict(os.environ, {"RECCE_POSTHOG_API_KEY_STAGING": "staging-key"})
+    @patch("recce_cloud.constants.get_api_host", return_value="https://staging.datarecce.io")
+    def test_staging_env_uses_staging_key(self, mock_host):
+        from recce_cloud.telemetry import _get_api_key
+        assert _get_api_key() == "staging-key"
+
+    @patch.dict(os.environ, {}, clear=True)
+    @patch("recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io")
+    def test_no_env_var_returns_none(self, mock_host):
+        from recce_cloud.telemetry import _get_api_key
+        assert _get_api_key() is None
 
 
 class TestShouldTrack:
