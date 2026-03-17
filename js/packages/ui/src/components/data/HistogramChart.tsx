@@ -37,6 +37,8 @@ export interface ChartThemeColors {
   tooltipTextColor: string;
   /** Text color for labels drawn inside bars (must contrast with pastel bar fills) */
   barLabelColor: string;
+  /** Subdued text color for secondary labels like percentages */
+  secondaryTextColor: string;
 }
 
 /**
@@ -72,6 +74,7 @@ export function getChartThemeColors(isDark: boolean): ChartThemeColors {
     tooltipBackgroundColor: isDark ? "#1f2937" : "#ffffff",
     tooltipTextColor: isDark ? "#e5e7eb" : "#111827",
     barLabelColor: isDark ? "#ffffff" : "#1f2937",
+    secondaryTextColor: isDark ? "#e5e7eb" : "#6b7280",
   };
 }
 
