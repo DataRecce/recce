@@ -85,7 +85,7 @@ export const HistogramDiffResultView = createResultView<
     }
     return null;
   },
-  transformData: (run): ResultViewData | null => {
+  transformData: (run, { isDark }): ResultViewData | null => {
     const params = run.params as HistogramDiffParams;
     const base = run.result?.base;
     const current = run.result?.current;
@@ -121,6 +121,7 @@ export const HistogramDiffResultView = createResultView<
               max={max}
               samples={base.total}
               binEdges={binEdges}
+              theme={isDark ? "dark" : "light"}
             />
           </Box>
           <Box sx={{ flex: 1 }} />

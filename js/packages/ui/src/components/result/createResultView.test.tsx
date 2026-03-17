@@ -535,6 +535,7 @@ describe("createResultView", () => {
       expect(transformSpy).toHaveBeenCalledWith(run, {
         viewOptions: undefined,
         onViewOptionsChanged: undefined,
+        isDark: false,
       });
     });
 
@@ -579,6 +580,7 @@ describe("createResultView", () => {
       expect(transformSpy).toHaveBeenCalledWith(run, {
         viewOptions,
         onViewOptionsChanged: undefined,
+        isDark: false,
       });
     });
   });
@@ -1495,6 +1497,7 @@ describe("createResultView", () => {
         viewOptions: undefined,
         onViewOptionsChanged: undefined,
         onAddToChecklist: mockOnAddToChecklist,
+        isDark: false,
       });
     });
 

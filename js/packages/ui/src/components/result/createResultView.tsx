@@ -181,8 +181,9 @@ export function createResultView<
           viewOptions,
           onViewOptionsChanged,
           onAddToChecklist,
+          isDark,
         }),
-      [run, viewOptions, onViewOptionsChanged, onAddToChecklist],
+      [run, viewOptions, onViewOptionsChanged, onAddToChecklist, isDark],
     );
 
     // Check conditional empty state
