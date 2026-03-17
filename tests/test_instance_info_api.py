@@ -1,4 +1,3 @@
-import asyncio
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -22,12 +21,6 @@ def mock_app_state():
     state.state_loader.session_id = "test-session"
     state.organization_name = None
     state.web_url = None
-    # Pre-set the ready_event so the readiness_gate middleware passes through
-    ready_event = asyncio.Event()
-    ready_event.set()
-    state.ready_event = ready_event
-    state.startup_error = None
-    state.startup_ctx = None
     return state
 
 
