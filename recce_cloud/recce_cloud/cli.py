@@ -574,6 +574,7 @@ def upload(
         "has_session_name": session_name is not None,
         "session_type": session_type,
         "dry_run": dry_run,
+        "session_base": session_base,
     })
 
     # 1. Auto-detect CI environment information
