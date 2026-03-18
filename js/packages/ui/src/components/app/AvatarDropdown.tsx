@@ -13,7 +13,10 @@ import { FaCloud, FaUser } from "react-icons/fa";
 import { cacheKeys } from "../../api";
 import { useApiConfig } from "../../hooks";
 import { fetchGitHubAvatar, fetchUser } from "../../lib/api/user";
-import { RECCE_SUPPORT_CALENDAR_URL } from "../../lib/const";
+import {
+  PUBLIC_CLOUD_WEB_URL,
+  RECCE_SUPPORT_CALENDAR_URL,
+} from "../../lib/const";
 
 export default function AvatarDropdown() {
   const { apiClient } = useApiConfig();
@@ -133,7 +136,7 @@ export default function AvatarDropdown() {
         <Divider />
         <MenuItem
           onClick={() => {
-            window.open("https://cloud.datarecce.io/", "_blank");
+            window.open(PUBLIC_CLOUD_WEB_URL, "_blank");
             handleClose();
           }}
         >
