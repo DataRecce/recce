@@ -456,7 +456,9 @@ def upload_session_base(
 
     # Notify upload completion (non-fatal)
     console.print("Notifying session base upload completion...")
-    with cloud_error_handler(console, "notify session base upload completion"):
+    with cloud_error_handler(
+        console, "notify session base upload completion", fatal=False
+    ):
         if isinstance(client, RecceTokenCloudClient):
             client.isolated_base_upload_completed(session_id)
         else:
