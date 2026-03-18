@@ -25,8 +25,8 @@ class TestRecceTokenCloudClient:
         assert client.repository == "owner/repo"
         assert client.project_dir is None
         parsed = urlparse(client.api_host)
-        assert parsed.hostname == "cloud.datarecce.io" or (
-            parsed.hostname and parsed.hostname.endswith(".cloud.datarecce.io")
+        assert parsed.hostname == "cloud.reccehq.com" or (
+            parsed.hostname and parsed.hostname.endswith(".cloud.reccehq.com")
         )
 
     def test_init_with_project_dir(self):

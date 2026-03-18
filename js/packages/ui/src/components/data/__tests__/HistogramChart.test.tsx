@@ -67,6 +67,8 @@ describe("HistogramChart", () => {
       expect(colors.borderColor).toBe("#9ca3af");
       expect(colors.tooltipBackgroundColor).toBe("#ffffff");
       expect(colors.tooltipTextColor).toBe("#111827");
+      expect(colors.barLabelColor).toBe("#1f2937");
+      expect(colors.secondaryTextColor).toBe("#6b7280");
     });
 
     it("returns dark theme colors when isDark is true", () => {
@@ -77,6 +79,8 @@ describe("HistogramChart", () => {
       expect(colors.borderColor).toBe("#6b7280");
       expect(colors.tooltipBackgroundColor).toBe("#1f2937");
       expect(colors.tooltipTextColor).toBe("#e5e7eb");
+      expect(colors.barLabelColor).toBe("#ffffff");
+      expect(colors.secondaryTextColor).toBe("#e5e7eb");
     });
 
     it("returns all required color properties", () => {
