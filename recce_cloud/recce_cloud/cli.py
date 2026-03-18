@@ -30,7 +30,11 @@ from recce_cloud.download import (
 from recce_cloud.report import fetch_and_generate_report
 from recce_cloud.review import run_review_command
 from recce_cloud.telemetry import TrackedCommand, track
-from recce_cloud.upload import upload_to_existing_session, upload_with_platform_apis
+from recce_cloud.upload import (
+    UploadError,
+    upload_to_existing_session,
+    upload_with_platform_apis,
+)
 
 # Configure logging
 logging.basicConfig(
@@ -729,6 +733,40 @@ def upload(
 
     # 5. Choose upload workflow based on provided options
     # Priority: --session-id > --session-name > platform-specific auto-detection
+    try:
+        _run_upload_workflow(
+            console,
+            session_id,
+            session_name,
+            skip_confirmation,
+            session_type,
+            session_base,
+            ci_info,
+            manifest_path,
+            catalog_path,
+            adapter_type,
+            target_path,
+        )
+    except UploadError as e:
+        sys.exit(e.exit_code)
+
+    sys.exit(0)
+
+
+def _run_upload_workflow(
+    console,
+    session_id,
+    session_name,
+    skip_confirmation,
+    session_type,
+    session_base,
+    ci_info,
+    manifest_path,
+    catalog_path,
+    adapter_type,
+    target_path,
+):
+    """Execute the upload workflow. Raises UploadError on failure, returns normally on success."""
     if session_id:
         # Generic workflow: Upload to existing session using session ID
         # This workflow requires RECCE_API_TOKEN or logged-in profile
@@ -742,7 +780,7 @@ def upload(
             console.print(
                 "Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first"
             )
-            sys.exit(2)
+            raise UploadError("No RECCE_API_TOKEN provided and not logged in")
 
         upload_to_existing_session(
             console,
@@ -768,7 +806,7 @@ def upload(
             console.print(
                 "Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first"
             )
-            sys.exit(2)
+            raise UploadError("No RECCE_API_TOKEN provided and not logged in")
 
         upload_with_session_name(
             console,
@@ -803,7 +841,7 @@ def upload(
             console.print(
                 "  3. Use [bold]--session-name <name>[/bold] or [bold]--session-id <id>[/bold] for explicit targeting"
             )
-            sys.exit(1)
+            raise UploadError("No pull request detected", exit_code=1)
 
         # Priority 1: RECCE_API_TOKEN + CI detected → generic client
         from recce_cloud.auth.profile import get_api_token
@@ -825,7 +863,7 @@ def upload(
                 console.print(
                     "RECCE_API_TOKEN is supported on GitHub Actions and GitLab CI."
                 )
-                sys.exit(2)
+                raise UploadError(f"Unsupported CI platform: {ci_info.platform}")
 
             console.print("[cyan]Info:[/cyan] Using RECCE_API_TOKEN for authentication")
 
@@ -875,17 +913,26 @@ def upload(
             # Fetch the production session ID
             prod_session_id = _get_production_session_id(console, recce_api_token)
             if not prod_session_id:
-                sys.exit(2)
+                raise UploadError("No production session found")
 
-            upload_to_existing_session(
-                console,
-                recce_api_token,
-                prod_session_id,
-                manifest_path,
-                catalog_path,
-                adapter_type,
-                target_path,
-            )
+            if session_base:
+                console.print(
+                    "[red]Error:[/red] --session-base cannot be used with --type prod."
+                )
+                console.print(
+                    "Production sessions use the shared project base. Session base is for PR and dev sessions only."
+                )
+                raise UploadError("--session-base cannot be used with --type prod")
+            else:
+                upload_to_existing_session(
+                    console,
+                    recce_api_token,
+                    prod_session_id,
+                    manifest_path,
+                    catalog_path,
+                    adapter_type,
+                    target_path,
+                )
 
         # Error with guidance
         else:
@@ -903,7 +950,7 @@ def upload(
             console.print(
                 "  3. Use --session-id or --session-name for explicit session targeting"
             )
-            sys.exit(2)
+            raise UploadError("No authentication method found")
 
 
 @cloud_cli.command(name="list", cls=TrackedCommand)
