@@ -4,7 +4,6 @@ Upload helper functions for recce-cloud CLI.
 
 import logging
 import os
-import sys
 
 import click
 import requests
@@ -18,6 +17,14 @@ from recce_cloud.constants import ExitCode
 from recce_cloud.error_handling import cloud_error_handler
 
 logger = logging.getLogger(__name__)
+
+
+class UploadError(Exception):
+    """Raised when an upload operation fails with a specific exit code."""
+
+    def __init__(self, message: str, exit_code: int = 2):
+        super().__init__(message)
+        self.exit_code = exit_code
 
 
 def _put_artifact(console, label: str, file_path: str, upload_url: str):
@@ -63,19 +70,21 @@ def upload_to_existing_session(
     # Inline validation stays outside
     if session.get("status") == "error":
         console.print(f"[red]Error:[/red] {session.get('message')}")
-        sys.exit(2)
+        raise UploadError(session.get("message", "Session error"))
     org_id = session.get("org_id")
     if org_id is None:
         console.print(
             f"[red]Error:[/red] Session ID {session_id} does not belong to any organization."
         )
-        sys.exit(2)
+        raise UploadError(
+            f"Session ID {session_id} does not belong to any organization"
+        )
     project_id = session.get("project_id")
     if project_id is None:
         console.print(
             f"[red]Error:[/red] Session ID {session_id} does not belong to any project."
         )
-        sys.exit(2)
+        raise UploadError(f"Session ID {session_id} does not belong to any project")
 
     if session_base:
         upload_session_base(
@@ -86,7 +95,7 @@ def upload_to_existing_session(
             catalog_path,
             target_path,
         )
-        return  # upload_session_base calls sys.exit(0)
+        return
 
     # Get presigned URLs
     with cloud_error_handler(console, "get upload URLs"):
@@ -111,7 +120,6 @@ def upload_to_existing_session(
     console.print(
         f'Uploaded dbt artifacts to Recce Cloud for session ID "{session_id}" from "{os.path.abspath(target_path)}"'
     )
-    sys.exit(0)
 
 
 def upload_with_platform_apis(
@@ -142,7 +150,7 @@ def upload_with_platform_apis(
             console.print(
                 "Either run this command in a supported CI environment or provide --session-id for generic upload"
             )
-            sys.exit(1)
+            raise UploadError("Unsupported CI platform", exit_code=1)
 
         # Create platform-specific client (ValueError, not RecceCloudException)
         try:
@@ -150,7 +158,7 @@ def upload_with_platform_apis(
         except ValueError as e:
             console.print("[red]Error:[/red] Failed to create platform client")
             console.print(f"Reason: {e}")
-            sys.exit(2)
+            raise UploadError(f"Failed to create platform client: {e}")
 
     # Touch session to create or get session ID
     console.rule("Creating/touching session", style="blue")
@@ -172,7 +180,9 @@ def upload_with_platform_apis(
             "[red]Error:[/red] Incomplete response from touch-recce-session API"
         )
         console.print(f"Response: {session_response}")
-        sys.exit(4)
+        raise UploadError(
+            "Incomplete response from touch-recce-session API", exit_code=4
+        )
 
     console.print(f"[green]Session ID:[/green] {session_id}")
 
@@ -187,7 +197,7 @@ def upload_with_platform_apis(
             console.print(
                 "Set the RECCE_API_TOKEN environment variable or run 'recce-cloud login' first."
             )
-            sys.exit(2)
+            raise UploadError("--session-base requires RECCE_API_TOKEN authentication")
 
         upload_session_base(
             console,
@@ -198,7 +208,7 @@ def upload_with_platform_apis(
             target_path,
             client=client,
         )
-        return  # upload_session_base calls sys.exit(0)
+        return
 
     _put_artifact(console, "manifest", manifest_path, manifest_upload_url)
     _put_artifact(console, "catalog", catalog_path, catalog_upload_url)
@@ -217,8 +227,6 @@ def upload_with_platform_apis(
 
     if ci_info.pr_url:
         console.print(f"Pull request: {ci_info.pr_url}")
-
-    sys.exit(0)
 
 
 def upload_with_session_name(
@@ -258,7 +266,7 @@ def upload_with_session_name(
         console.print("To use --session-name, you need to either:")
         console.print("  1. Run 'recce-cloud init' to bind this directory to a project")
         console.print("  2. Set RECCE_ORG and RECCE_PROJECT environment variables")
-        sys.exit(2)
+        raise UploadError("Could not resolve org/project configuration")
 
     # 2. Initialize API client
     with cloud_error_handler(
@@ -274,32 +282,34 @@ def upload_with_session_name(
             console.print(
                 f"[red]Error:[/red] Organization '{org}' not found or you don't have access"
             )
-            sys.exit(2)
+            raise UploadError(f"Organization '{org}' not found")
         org_id = org_info.get("id")
         if not org_id:
             console.print(f"[red]Error:[/red] Organization '{org}' response missing ID")
-            sys.exit(2)
+            raise UploadError(f"Organization '{org}' response missing ID")
 
         project_info = client.get_project(org_id, project)
         if not project_info:
             console.print(
                 f"[red]Error:[/red] Project '{project}' not found in organization '{org}'"
             )
-            sys.exit(2)
+            raise UploadError(f"Project '{project}' not found in organization '{org}'")
         project_id = project_info.get("id")
         if not project_id:
             console.print(f"[red]Error:[/red] Project '{project}' response missing ID")
-            sys.exit(2)
+            raise UploadError(f"Project '{project}' response missing ID")
+    except UploadError:
+        raise
     except RecceCloudException as e:
         console.print("[red]Error:[/red] Failed to resolve organization/project")
         console.print(f"Reason: {e.reason}")
-        sys.exit(2)
+        raise UploadError("Failed to resolve organization/project")
     except Exception as e:
         logger.debug("Failed to resolve organization/project: %s", e, exc_info=True)
         console.print("[red]Error:[/red] Failed to resolve organization/project")
         console.print(f"  Reason: {e}")
         console.print("  Check your authentication and network connection.")
-        sys.exit(2)
+        raise UploadError(f"Failed to resolve organization/project: {e}")
 
     # 4. Look up session by name (keep manual try/except for logger.debug)
     console.print(f'Looking up session "{session_name}"...')
@@ -308,13 +318,13 @@ def upload_with_session_name(
     except RecceCloudException as e:
         console.print("[red]Error:[/red] Failed to look up session")
         console.print(f"Reason: {e.reason}")
-        sys.exit(2)
+        raise UploadError("Failed to look up session")
     except Exception as e:
         logger.debug("Failed to look up session: %s", e, exc_info=True)
         console.print("[red]Error:[/red] Failed to look up session")
         console.print(f"  Reason: {e}")
         console.print("  Check your network connection and try again.")
-        sys.exit(2)
+        raise UploadError(f"Failed to look up session: {e}")
 
     session_id = None
     if existing_session:
@@ -335,7 +345,7 @@ def upload_with_session_name(
             console.print()
             if not click.confirm(f'Create new session "{session_name}"?', default=True):
                 console.print("[yellow]Upload cancelled[/yellow]")
-                sys.exit(0)
+                return
 
         # Create the session
         with cloud_error_handler(console, "create session"):
@@ -394,8 +404,6 @@ def upload_with_session_name(
         console.print(f"[cyan]Project:[/cyan] {project}")
         console.print(f"[cyan]Artifacts from:[/cyan] {os.path.abspath(target_path)}")
 
-        sys.exit(0)
-
 
 def upload_session_base(
     console,
@@ -444,8 +452,10 @@ def upload_session_base(
         org_id = session.get("org_id")
         project_id = session.get("project_id")
         if not org_id or not project_id:
-            console.print("[red]Error:[/red] Could not resolve org/project for session")
-            sys.exit(2)
+            console.print(
+                "[red]Error:[/red] Could not resolve org/project for session"
+            )
+            raise UploadError("Could not resolve org/project for session")
         with cloud_error_handler(console, "get session base upload URLs"):
             presigned_urls = client.get_isolated_base_upload_urls(
                 org_id, project_id, session_id
@@ -469,4 +479,3 @@ def upload_session_base(
     console.print(
         f'Uploaded session base artifacts to session "{session_id}" from "{os.path.abspath(target_path)}"'
     )
-    sys.exit(0)
