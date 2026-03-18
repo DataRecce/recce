@@ -323,7 +323,9 @@ class TestUploadDryRun(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
         self.assertIn("Dry run mode enabled", result.output)
         self.assertIn("Auto-create session and upload", result.output)
-        self.assertIn("Warning: Platform not supported for auto-session creation", result.output)
+        self.assertIn(
+            "Warning: Platform not supported for auto-session creation", result.output
+        )
 
     def test_dry_run_missing_artifacts(self):
         """Test dry-run with missing dbt artifacts."""
@@ -430,19 +432,27 @@ class TestUploadBlocksDevSession(unittest.TestCase):
         }
 
         with patch.dict(os.environ, env, clear=True):
-            with patch("recce_cloud.config.project_config.get_project_binding") as mock_binding:
+            with patch(
+                "recce_cloud.config.project_config.get_project_binding"
+            ) as mock_binding:
                 mock_binding.return_value = {
                     "org": "test-org",
                     "project": "test-project",
                 }
-                with patch("recce_cloud.api.client.RecceCloudClient.get_organization") as mock_org:
+                with patch(
+                    "recce_cloud.api.client.RecceCloudClient.get_organization"
+                ) as mock_org:
                     mock_org.return_value = {"id": "org-123", "slug": "test-org"}
-                    with patch("recce_cloud.api.client.RecceCloudClient.get_project") as mock_proj:
+                    with patch(
+                        "recce_cloud.api.client.RecceCloudClient.get_project"
+                    ) as mock_proj:
                         mock_proj.return_value = {
                             "id": "proj-456",
                             "slug": "test-project",
                         }
-                        with patch("recce_cloud.api.client.RecceCloudClient.list_sessions") as mock_sessions:
+                        with patch(
+                            "recce_cloud.api.client.RecceCloudClient.list_sessions"
+                        ) as mock_sessions:
                             mock_sessions.return_value = []  # No production session found
                             result = self.runner.invoke(
                                 cloud_cli,
@@ -475,7 +485,9 @@ class TestUploadBlocksDevSession(unittest.TestCase):
                 ["upload", "--target-path", self.temp_dir, "--dry-run"],
             )
 
-        self.assertEqual(result.exit_code, 0, f"Dry run should succeed: {result.output}")
+        self.assertEqual(
+            result.exit_code, 0, f"Dry run should succeed: {result.output}"
+        )
         self.assertIn("Blocked", result.output)
         self.assertIn("feature branch with no PR/MR detected", result.output)
 
@@ -698,7 +710,9 @@ class TestDownloadDryRun(unittest.TestCase):
 
         # Assertions
         self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
-        self.assertIn("Warning: Target path exists (use --force to overwrite)", result.output)
+        self.assertIn(
+            "Warning: Target path exists (use --force to overwrite)", result.output
+        )
 
     def test_dry_run_session_id_with_prod_warning(self):
         """Test dry-run shows warning when both --session-id and --prod are provided."""
@@ -744,7 +758,9 @@ class TestDownloadDryRun(unittest.TestCase):
         # Assertions
         self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
         self.assertIn("Dry run mode enabled", result.output)
-        self.assertIn("Warning: Platform not supported for auto-session discovery", result.output)
+        self.assertIn(
+            "Warning: Platform not supported for auto-session discovery", result.output
+        )
 
     def test_dry_run_gitlab_ci_self_hosted(self):
         """Test dry-run with self-hosted GitLab instance."""
@@ -804,7 +820,9 @@ class TestDownloadDryRun(unittest.TestCase):
         # Mock git command to return "main" branch
         # This simulates the fallback when GITHUB_REF_NAME is not available
         with patch.dict(os.environ, env, clear=True):
-            with patch("recce_cloud.ci_providers.base.BaseCIProvider.run_git_command") as mock_git:
+            with patch(
+                "recce_cloud.ci_providers.base.BaseCIProvider.run_git_command"
+            ) as mock_git:
                 mock_git.return_value = "main"
 
                 result = self.runner.invoke(
@@ -816,7 +834,9 @@ class TestDownloadDryRun(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
         self.assertIn("Platform: github-actions", result.output)
         self.assertIn("Repository: DataRecce/recce", result.output)
-        self.assertIn("Session Type: prod", result.output)  # Auto-detected from main branch
+        self.assertIn(
+            "Session Type: prod", result.output
+        )  # Auto-detected from main branch
 
         # Prod session should NOT show CR number or PR number
         self.assertNotIn("PR Number:", result.output)
@@ -977,7 +997,9 @@ class TestDeleteDryRun(unittest.TestCase):
         # Assertions
         self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
         self.assertIn("Dry run mode enabled", result.output)
-        self.assertIn("Warning: Platform not supported for auto-session discovery", result.output)
+        self.assertIn(
+            "Warning: Platform not supported for auto-session discovery", result.output
+        )
 
     def test_dry_run_gitlab_ci_self_hosted(self):
         """Test dry-run with self-hosted GitLab instance."""
@@ -1046,7 +1068,9 @@ class TestDoctor(unittest.TestCase):
         env = {}
 
         with patch.dict(os.environ, env, clear=True):
-            with patch("recce_cloud.auth.profile.get_api_token", return_value="test_token"):
+            with patch(
+                "recce_cloud.auth.profile.get_api_token", return_value="test_token"
+            ):
                 with patch(
                     "recce_cloud.auth.login.check_login_status",
                     return_value=(True, "test@example.com"),
@@ -1075,7 +1099,9 @@ class TestDoctor(unittest.TestCase):
         }
 
         with patch.dict(os.environ, env, clear=True):
-            with patch("recce_cloud.auth.profile.get_api_token", return_value="test_token"):
+            with patch(
+                "recce_cloud.auth.profile.get_api_token", return_value="test_token"
+            ):
                 with patch(
                     "recce_cloud.auth.login.check_login_status",
                     return_value=(True, "test@example.com"),
@@ -1085,8 +1111,12 @@ class TestDoctor(unittest.TestCase):
                         return_value=None,
                     ):
                         # Mock API calls
-                        with patch("recce_cloud.api.client.RecceCloudClient.get_organization") as mock_get_org:
-                            with patch("recce_cloud.api.client.RecceCloudClient.get_project") as mock_get_project:
+                        with patch(
+                            "recce_cloud.api.client.RecceCloudClient.get_organization"
+                        ) as mock_get_org:
+                            with patch(
+                                "recce_cloud.api.client.RecceCloudClient.get_project"
+                            ) as mock_get_project:
                                 with patch(
                                     "recce_cloud.api.client.RecceCloudClient.list_sessions"
                                 ) as mock_list_sessions:
@@ -1112,7 +1142,9 @@ class TestDoctor(unittest.TestCase):
         env = {}
 
         with patch.dict(os.environ, env, clear=True):
-            with patch("recce_cloud.auth.profile.get_api_token", return_value="test_token"):
+            with patch(
+                "recce_cloud.auth.profile.get_api_token", return_value="test_token"
+            ):
                 with patch(
                     "recce_cloud.auth.login.check_login_status",
                     return_value=(True, "test@example.com"),
@@ -1122,8 +1154,12 @@ class TestDoctor(unittest.TestCase):
                         return_value={"org_id": "org-123", "project_id": "proj-456"},
                     ):
                         # Mock API calls
-                        with patch("recce_cloud.api.client.RecceCloudClient.get_organization") as mock_get_org:
-                            with patch("recce_cloud.api.client.RecceCloudClient.get_project") as mock_get_project:
+                        with patch(
+                            "recce_cloud.api.client.RecceCloudClient.get_organization"
+                        ) as mock_get_org:
+                            with patch(
+                                "recce_cloud.api.client.RecceCloudClient.get_project"
+                            ) as mock_get_project:
                                 with patch(
                                     "recce_cloud.api.client.RecceCloudClient.list_sessions"
                                 ) as mock_list_sessions:
@@ -1155,7 +1191,9 @@ class TestDoctor(unittest.TestCase):
                                     result = self.runner.invoke(cloud_cli, ["doctor"])
 
         # Assertions
-        self.assertEqual(result.exit_code, 0, f"Should pass when all checks pass: {result.output}")
+        self.assertEqual(
+            result.exit_code, 0, f"Should pass when all checks pass: {result.output}"
+        )
         self.assertIn("Recce Doctor", result.output)
         self.assertIn("Logged in as", result.output)
         self.assertIn("Bound to", result.output)
@@ -1171,7 +1209,9 @@ class TestDoctor(unittest.TestCase):
         env = {}
 
         with patch.dict(os.environ, env, clear=True):
-            with patch("recce_cloud.auth.profile.get_api_token", return_value="test_token"):
+            with patch(
+                "recce_cloud.auth.profile.get_api_token", return_value="test_token"
+            ):
                 with patch(
                     "recce_cloud.auth.login.check_login_status",
                     return_value=(True, "test@example.com"),
@@ -1181,8 +1221,12 @@ class TestDoctor(unittest.TestCase):
                         return_value={"org": "myorg", "project": "myproject"},
                     ):
                         # Mock API calls
-                        with patch("recce_cloud.api.client.RecceCloudClient.get_organization") as mock_get_org:
-                            with patch("recce_cloud.api.client.RecceCloudClient.get_project") as mock_get_project:
+                        with patch(
+                            "recce_cloud.api.client.RecceCloudClient.get_organization"
+                        ) as mock_get_org:
+                            with patch(
+                                "recce_cloud.api.client.RecceCloudClient.get_project"
+                            ) as mock_get_project:
                                 with patch(
                                     "recce_cloud.api.client.RecceCloudClient.list_sessions"
                                 ) as mock_list_sessions:
@@ -1199,7 +1243,9 @@ class TestDoctor(unittest.TestCase):
                                     result = self.runner.invoke(cloud_cli, ["doctor"])
 
         # Assertions
-        self.assertNotEqual(result.exit_code, 0, "Should fail when no production session")
+        self.assertNotEqual(
+            result.exit_code, 0, "Should fail when no production session"
+        )
         self.assertIn("No production artifacts found", result.output)
         self.assertIn("dbt docs generate --target prod", result.output)
         self.assertIn("recce-cloud upload --type prod", result.output)
@@ -1209,7 +1255,9 @@ class TestDoctor(unittest.TestCase):
         env = {}
 
         with patch.dict(os.environ, env, clear=True):
-            with patch("recce_cloud.auth.profile.get_api_token", return_value="test_token"):
+            with patch(
+                "recce_cloud.auth.profile.get_api_token", return_value="test_token"
+            ):
                 with patch(
                     "recce_cloud.auth.login.check_login_status",
                     return_value=(True, "test@example.com"),
@@ -1219,8 +1267,12 @@ class TestDoctor(unittest.TestCase):
                         return_value={"org": "myorg", "project": "myproject"},
                     ):
                         # Mock API calls
-                        with patch("recce_cloud.api.client.RecceCloudClient.get_organization") as mock_get_org:
-                            with patch("recce_cloud.api.client.RecceCloudClient.get_project") as mock_get_project:
+                        with patch(
+                            "recce_cloud.api.client.RecceCloudClient.get_organization"
+                        ) as mock_get_org:
+                            with patch(
+                                "recce_cloud.api.client.RecceCloudClient.get_project"
+                            ) as mock_get_project:
                                 with patch(
                                     "recce_cloud.api.client.RecceCloudClient.list_sessions"
                                 ) as mock_list_sessions:
@@ -1246,7 +1298,9 @@ class TestDoctor(unittest.TestCase):
                                     result = self.runner.invoke(cloud_cli, ["doctor"])
 
         # Assertions
-        self.assertNotEqual(result.exit_code, 0, "Should fail when production session has no data")
+        self.assertNotEqual(
+            result.exit_code, 0, "Should fail when production session has no data"
+        )
         self.assertIn("Production session exists but has no data", result.output)
         self.assertIn("dbt docs generate --target prod", result.output)
         self.assertIn("recce-cloud upload --type prod", result.output)
@@ -1258,7 +1312,9 @@ class TestDoctor(unittest.TestCase):
         env = {}
 
         with patch.dict(os.environ, env, clear=True):
-            with patch("recce_cloud.auth.profile.get_api_token", return_value="test_token"):
+            with patch(
+                "recce_cloud.auth.profile.get_api_token", return_value="test_token"
+            ):
                 with patch(
                     "recce_cloud.auth.login.check_login_status",
                     return_value=(True, "test@example.com"),
@@ -1268,8 +1324,12 @@ class TestDoctor(unittest.TestCase):
                         return_value={"org_id": "org-123", "project_id": "proj-456"},
                     ):
                         # Mock API calls
-                        with patch("recce_cloud.api.client.RecceCloudClient.get_organization") as mock_get_org:
-                            with patch("recce_cloud.api.client.RecceCloudClient.get_project") as mock_get_project:
+                        with patch(
+                            "recce_cloud.api.client.RecceCloudClient.get_organization"
+                        ) as mock_get_org:
+                            with patch(
+                                "recce_cloud.api.client.RecceCloudClient.get_project"
+                            ) as mock_get_project:
                                 with patch(
                                     "recce_cloud.api.client.RecceCloudClient.list_sessions"
                                 ) as mock_list_sessions:
@@ -1298,10 +1358,14 @@ class TestDoctor(unittest.TestCase):
                                         },
                                     ]
 
-                                    result = self.runner.invoke(cloud_cli, ["doctor", "--json"])
+                                    result = self.runner.invoke(
+                                        cloud_cli, ["doctor", "--json"]
+                                    )
 
         # Assertions
-        self.assertEqual(result.exit_code, 0, f"Should pass with JSON output: {result.output}")
+        self.assertEqual(
+            result.exit_code, 0, f"Should pass with JSON output: {result.output}"
+        )
 
         # Parse JSON output
         data = json.loads(result.output)
@@ -1345,7 +1409,9 @@ class TestDoctor(unittest.TestCase):
         env = {}
 
         with patch.dict(os.environ, env, clear=True):
-            with patch("recce_cloud.auth.profile.get_api_token", return_value="expired_token"):
+            with patch(
+                "recce_cloud.auth.profile.get_api_token", return_value="expired_token"
+            ):
                 with patch(
                     "recce_cloud.auth.login.check_login_status",
                     return_value=(False, None),
@@ -1643,7 +1709,9 @@ class TestDiagnosticServiceAPIErrors(unittest.TestCase):
         env = {}
 
         with patch.dict(os.environ, env, clear=True):
-            with patch("recce_cloud.auth.profile.get_api_token", return_value="test_token"):
+            with patch(
+                "recce_cloud.auth.profile.get_api_token", return_value="test_token"
+            ):
                 with patch(
                     "recce_cloud.auth.login.check_login_status",
                     return_value=(True, "test@example.com"),
@@ -1738,11 +1806,48 @@ class TestUploadSessionBaseFlag(unittest.TestCase):
         with patch.dict(os.environ, env, clear=True):
             result = self.runner.invoke(
                 cloud_cli,
-                ["upload", "--target-path", self.temp_dir, "--dry-run", "--session-base"],
+                [
+                    "upload",
+                    "--target-path",
+                    self.temp_dir,
+                    "--dry-run",
+                    "--session-base",
+                ],
             )
 
         self.assertEqual(result.exit_code, 0, f"Failed: {result.output}")
         self.assertIn("Session base", result.output)
+
+    def test_session_base_with_type_prod_rejected(self):
+        """Test --session-base with --type prod is rejected early."""
+        env = {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_REPOSITORY": "DataRecce/recce",
+            "GITHUB_EVENT_NAME": "push",
+            "GITHUB_SHA": "abc123def456",
+            "GITHUB_REF": "refs/heads/main",
+            "RECCE_API_TOKEN": "test_token",
+        }
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(
+                cloud_cli,
+                [
+                    "upload",
+                    "--target-path",
+                    self.temp_dir,
+                    "--session-base",
+                    "--type",
+                    "prod",
+                ],
+            )
+
+        self.assertEqual(
+            result.exit_code,
+            2,
+            f"Expected exit code 2, got: {result.exit_code}\n{result.output}",
+        )
+        self.assertIn("--session-base cannot be used with --type prod", result.output)
 
     def test_dry_run_without_session_base_no_mention(self):
         """Test --dry-run without --session-base does not mention session base."""

@@ -37,7 +37,9 @@ from recce_cloud.upload import upload_to_existing_session, upload_with_platform_
 logging.basicConfig(
     level=logging.INFO,
     format="%(message)s",
-    handlers=[RichHandler(console=Console(stderr=True), show_time=False, show_path=False)],
+    handlers=[
+        RichHandler(console=Console(stderr=True), show_time=False, show_path=False)
+    ],
 )
 logger = logging.getLogger(__name__)
 
@@ -110,10 +112,16 @@ def login(token, status):
     if status:
         is_logged_in, email = check_login_status()
         if is_logged_in:
-            console.print(f"[green]✓[/green] Logged in as [cyan]{email or 'Unknown'}[/cyan]")
+            console.print(
+                f"[green]✓[/green] Logged in as [cyan]{email or 'Unknown'}[/cyan]"
+            )
             token_value = get_api_token()
             if token_value:
-                masked = f"{token_value[:8]}...{token_value[-4:]}" if len(token_value) > 12 else "***"
+                masked = (
+                    f"{token_value[:8]}...{token_value[-4:]}"
+                    if len(token_value) > 12
+                    else "***"
+                )
                 console.print(f"  Token: {masked} (valid)")
         else:
             console.print("[yellow]Not logged in[/yellow]")
@@ -123,7 +131,9 @@ def login(token, status):
     # Check if already logged in
     is_logged_in, email = check_login_status()
     if is_logged_in:
-        console.print(f"[green]✓[/green] Already logged in as [cyan]{email or 'Unknown'}[/cyan]")
+        console.print(
+            f"[green]✓[/green] Already logged in as [cyan]{email or 'Unknown'}[/cyan]"
+        )
         if not click.confirm("Do you want to re-authenticate?", default=False):
             sys.exit(0)
 
@@ -141,7 +151,9 @@ def login(token, status):
         sys.exit(0)
     else:
         console.print()
-        console.print("[yellow]Tip:[/yellow] For headless environments, use 'recce-cloud login --token <token>'")
+        console.print(
+            "[yellow]Tip:[/yellow] For headless environments, use 'recce-cloud login --token <token>'"
+        )
         sys.exit(1)
 
 
@@ -220,7 +232,9 @@ def init(org, project, status, clear):
     token = os.getenv("RECCE_API_TOKEN") or get_api_token()
     if not token:
         console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
-        console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
+        console.print(
+            "Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first"
+        )
         sys.exit(1)
 
     # Status check mode
@@ -250,7 +264,9 @@ def init(org, project, status, clear):
 
     # Validate flag combinations
     if (org and not project) or (project and not org):
-        console.print("[red]Error:[/red] Both --org and --project must be provided together")
+        console.print(
+            "[red]Error:[/red] Both --org and --project must be provided together"
+        )
         sys.exit(1)
 
     # Get user email for binding metadata
@@ -264,7 +280,9 @@ def init(org, project, status, clear):
             api = RecceCloudClient(token)
             org_obj = api.get_organization(org)
             if not org_obj:
-                console.print(f"[red]Error:[/red] Organization '{org}' not found or you don't have access")
+                console.print(
+                    f"[red]Error:[/red] Organization '{org}' not found or you don't have access"
+                )
                 sys.exit(1)
 
             # Use org ID for project lookup (API requires ID)
@@ -320,7 +338,9 @@ def init(org, project, status, clear):
             console.print(f"  {i}. {display_name}")
 
         org_idx = click.prompt("Enter number", type=click.IntRange(1, len(org_choices)))
-        selected_org_id, selected_org_name, selected_org_display = org_choices[org_idx - 1]
+        selected_org_id, selected_org_name, selected_org_display = org_choices[
+            org_idx - 1
+        ]
 
         # List projects (use org_id for API call)
         console.print()
@@ -328,7 +348,9 @@ def init(org, project, status, clear):
         projects = api.list_projects(selected_org_id)
 
         if not projects:
-            console.print(f"[yellow]No projects found in {selected_org_display}[/yellow]")
+            console.print(
+                f"[yellow]No projects found in {selected_org_display}[/yellow]"
+            )
             console.print(f"Please create a project at {get_base_url()} first")
             sys.exit(1)
 
@@ -337,7 +359,11 @@ def init(org, project, status, clear):
         project_choices = []
         for p in projects:
             # Skip archived projects (check status field and archived flags)
-            if p.get("status") == "archived" or p.get("archived") or p.get("is_archived"):
+            if (
+                p.get("status") == "archived"
+                or p.get("archived")
+                or p.get("is_archived")
+            ):
                 continue
             project_id = str(p.get("id"))
             project_name = p.get("name") or p.get("slug") or project_id
@@ -345,7 +371,9 @@ def init(org, project, status, clear):
             project_choices.append((project_id, display_name))
 
         if not project_choices:
-            console.print(f"[yellow]No active projects found in {selected_org_display}[/yellow]")
+            console.print(
+                f"[yellow]No active projects found in {selected_org_display}[/yellow]"
+            )
             console.print(f"Please create a project at {get_base_url()} first")
             sys.exit(1)
 
@@ -355,7 +383,9 @@ def init(org, project, status, clear):
         for i, (_, display_name) in enumerate(project_choices, 1):
             console.print(f"  {i}. {display_name}")
 
-        project_idx = click.prompt("Enter number", type=click.IntRange(1, len(project_choices)))
+        project_idx = click.prompt(
+            "Enter number", type=click.IntRange(1, len(project_choices))
+        )
         selected_project_id, selected_project_display = project_choices[project_idx - 1]
 
         # Save binding using IDs (immutable) instead of slugs (can be renamed)
@@ -379,7 +409,9 @@ def init(org, project, status, clear):
     except Exception as e:
         logger.debug("Unexpected error during init: %s", e, exc_info=True)
         console.print(f"[red]Error:[/red] An unexpected error occurred: {e}")
-        console.print("  Try running 'recce-cloud login' again or check your network connection.")
+        console.print(
+            "  Try running 'recce-cloud login' again or check your network connection."
+        )
         sys.exit(1)
 
 
@@ -418,24 +450,32 @@ def _get_production_session_id(console: Console, token: str) -> Optional[str]:
             if session.get("is_base"):
                 session_id = session.get("id")
                 if not session_id:
-                    console.print("[red]Error:[/red] Production session found but has no ID")
+                    console.print(
+                        "[red]Error:[/red] Production session found but has no ID"
+                    )
                     return None
                 session_name = session.get("name") or "(unnamed)"
-                session_id_display = session_id[:8] if len(session_id) >= 8 else session_id
+                session_id_display = (
+                    session_id[:8] if len(session_id) >= 8 else session_id
+                )
                 console.print(
                     f"[cyan]Info:[/cyan] Found production session '{session_name}' (ID: {session_id_display}...)"
                 )
                 return session_id
 
         console.print("[red]Error:[/red] No production session found")
-        console.print("Create a production session first using 'recce-cloud upload --type prod' or via CI pipeline")
+        console.print(
+            "Create a production session first using 'recce-cloud upload --type prod' or via CI pipeline"
+        )
         return None
 
     except RecceCloudException as e:
         console.print(f"[red]Error:[/red] Failed to fetch sessions: {e}")
         return None
     except Exception as e:
-        logger.debug("Unexpected error in _get_production_session_id: %s", e, exc_info=True)
+        logger.debug(
+            "Unexpected error in _get_production_session_id: %s", e, exc_info=True
+        )
         console.print(f"[red]Error:[/red] Unexpected error: {e}")
         console.print("  Check your network connection and try again.")
         return None
@@ -487,7 +527,16 @@ def _get_production_session_id(console: Console, token: str) -> Optional[str]:
     is_flag=True,
     help="Upload session-specific base artifacts instead of current artifacts.",
 )
-def upload(target_path, session_id, session_name, skip_confirmation, pr, session_type, dry_run, session_base):
+def upload(
+    target_path,
+    session_id,
+    session_name,
+    skip_confirmation,
+    pr,
+    session_type,
+    dry_run,
+    session_base,
+):
     """
     Upload dbt artifacts (manifest.json, catalog.json) to Recce Cloud.
 
@@ -560,11 +609,15 @@ def upload(target_path, session_id, session_name, skip_confirmation, pr, session
             if ci_info.session_type:
                 info_table.append(f"[cyan]Session Type:[/cyan] {ci_info.session_type}")
             if ci_info.commit_sha:
-                info_table.append(f"[cyan]Commit SHA:[/cyan] {ci_info.commit_sha[:8]}...")
+                info_table.append(
+                    f"[cyan]Commit SHA:[/cyan] {ci_info.commit_sha[:8]}..."
+                )
             if ci_info.base_branch:
                 info_table.append(f"[cyan]Base Branch:[/cyan] {ci_info.base_branch}")
             if ci_info.source_branch:
-                info_table.append(f"[cyan]Source Branch:[/cyan] {ci_info.source_branch}")
+                info_table.append(
+                    f"[cyan]Source Branch:[/cyan] {ci_info.source_branch}"
+                )
             if ci_info.repository:
                 info_table.append(f"[cyan]Repository:[/cyan] {ci_info.repository}")
 
@@ -580,7 +633,9 @@ def upload(target_path, session_id, session_name, skip_confirmation, pr, session
     # 2. Validate artifacts exist
     if not verify_artifacts_path(target_path):
         console.print(f"[red]Error:[/red] Invalid target path: {target_path}")
-        console.print("Please provide a valid target path containing manifest.json and catalog.json.")
+        console.print(
+            "Please provide a valid target path containing manifest.json and catalog.json."
+        )
         sys.exit(3)
 
     manifest_path = os.path.join(target_path, "manifest.json")
@@ -590,14 +645,28 @@ def upload(target_path, session_id, session_name, skip_confirmation, pr, session
     try:
         adapter_type = get_adapter_type(manifest_path)
     except Exception as e:
-        console.print("[red]Error:[/red] Failed to parse adapter type from manifest.json")
+        console.print(
+            "[red]Error:[/red] Failed to parse adapter type from manifest.json"
+        )
         console.print(f"Reason: {e}")
         sys.exit(3)
 
-    # 4. Handle dry-run mode (before authentication or API calls)
+    # 4. Early validation: --session-base + --type prod is not allowed
+    if session_base and session_type == "prod":
+        console.print(
+            "[red]Error:[/red] --session-base cannot be used with --type prod."
+        )
+        console.print(
+            "Production sessions use the shared project base. Session base is for PR and dev sessions only."
+        )
+        sys.exit(2)
+
+    # 5. Handle dry-run mode (before authentication or API calls)
     if dry_run:
         console.rule("Dry Run Summary", style="yellow")
-        console.print("[yellow]Dry run mode enabled - no actual upload will be performed[/yellow]")
+        console.print(
+            "[yellow]Dry run mode enabled - no actual upload will be performed[/yellow]"
+        )
         console.print()
 
         # Display platform information if detected
@@ -635,10 +704,14 @@ def upload(target_path, session_id, session_name, skip_confirmation, pr, session
             if ci_info and ci_info.platform in ["github-actions", "gitlab-ci"]:
                 console.print("  • Platform-specific APIs will be used")
             else:
-                console.print("  • [yellow]Warning: Platform not supported for auto-session creation[/yellow]")
+                console.print(
+                    "  • [yellow]Warning: Platform not supported for auto-session creation[/yellow]"
+                )
             # Warn if auto-detected "dev" would be blocked
             if ci_info and ci_info.session_type == "dev" and session_type is None:
-                console.print("  • [red]Blocked: feature branch with no PR/MR detected[/red]")
+                console.print(
+                    "  • [red]Blocked: feature branch with no PR/MR detected[/red]"
+                )
 
         console.print()
         console.print("[cyan]Files to upload:[/cyan]")
@@ -663,8 +736,12 @@ def upload(target_path, session_id, session_name, skip_confirmation, pr, session
 
         token = os.getenv("RECCE_API_TOKEN") or get_api_token()
         if not token:
-            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
-            console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
+            console.print(
+                "[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in"
+            )
+            console.print(
+                "Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first"
+            )
             sys.exit(2)
 
         upload_to_existing_session(
@@ -685,8 +762,12 @@ def upload(target_path, session_id, session_name, skip_confirmation, pr, session
 
         token = os.getenv("RECCE_API_TOKEN") or get_api_token()
         if not token:
-            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
-            console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
+            console.print(
+                "[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in"
+            )
+            console.print(
+                "Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first"
+            )
             sys.exit(2)
 
         upload_with_session_name(
@@ -706,12 +787,18 @@ def upload(target_path, session_id, session_name, skip_confirmation, pr, session
         # Block auto-detected "dev" sessions (feature branch push with no PR)
         # session_type (the CLI param) is None when user didn't pass --type
         if ci_info and ci_info.session_type == "dev" and session_type is None:
-            console.print("[red]Error:[/red] No pull request detected and branch is not main/master")
+            console.print(
+                "[red]Error:[/red] No pull request detected and branch is not main/master"
+            )
             console.print()
-            console.print("This happens when CI runs on a branch push without an open PR/MR.")
+            console.print(
+                "This happens when CI runs on a branch push without an open PR/MR."
+            )
             console.print()
             console.print("Options:")
-            console.print("  1. Use [bold]--pr <number>[/bold] if a PR/MR exists but wasn't auto-detected")
+            console.print(
+                "  1. Use [bold]--pr <number>[/bold] if a PR/MR exists but wasn't auto-detected"
+            )
             console.print("  2. Use [bold]--type prod[/bold] for production uploads")
             console.print(
                 "  3. Use [bold]--session-name <name>[/bold] or [bold]--session-id <id>[/bold] for explicit targeting"
@@ -732,8 +819,12 @@ def upload(target_path, session_id, session_name, skip_confirmation, pr, session
             elif ci_info.platform == "gitlab-ci":
                 provider = "gitlab"
             else:
-                console.print(f"[red]Error:[/red] Unsupported CI platform: {ci_info.platform}")
-                console.print("RECCE_API_TOKEN is supported on GitHub Actions and GitLab CI.")
+                console.print(
+                    f"[red]Error:[/red] Unsupported CI platform: {ci_info.platform}"
+                )
+                console.print(
+                    "RECCE_API_TOKEN is supported on GitHub Actions and GitLab CI."
+                )
                 sys.exit(2)
 
             console.print("[cyan]Info:[/cyan] Using RECCE_API_TOKEN for authentication")
@@ -760,9 +851,13 @@ def upload(target_path, session_id, session_name, skip_confirmation, pr, session
         elif ci_info and ci_info.access_token:
             token = ci_info.access_token
             if ci_info.platform == "github-actions":
-                console.print("[cyan]Info:[/cyan] Using GITHUB_TOKEN for platform-specific authentication")
+                console.print(
+                    "[cyan]Info:[/cyan] Using GITHUB_TOKEN for platform-specific authentication"
+                )
             elif ci_info.platform == "gitlab-ci":
-                console.print("[cyan]Info:[/cyan] Using CI_JOB_TOKEN for platform-specific authentication")
+                console.print(
+                    "[cyan]Info:[/cyan] Using CI_JOB_TOKEN for platform-specific authentication"
+                )
 
             upload_with_platform_apis(
                 console,
@@ -782,31 +877,32 @@ def upload(target_path, session_id, session_name, skip_confirmation, pr, session
             if not prod_session_id:
                 sys.exit(2)
 
-            if session_base:
-                console.print("[red]Error:[/red] --session-base cannot be used with --type prod.")
-                console.print(
-                    "Production sessions use the shared project base. Session base is for PR and dev sessions only."
-                )
-                sys.exit(2)
-            else:
-                upload_to_existing_session(
-                    console,
-                    recce_api_token,
-                    prod_session_id,
-                    manifest_path,
-                    catalog_path,
-                    adapter_type,
-                    target_path,
-                )
+            upload_to_existing_session(
+                console,
+                recce_api_token,
+                prod_session_id,
+                manifest_path,
+                catalog_path,
+                adapter_type,
+                target_path,
+            )
 
         # Error with guidance
         else:
-            console.print("[red]Error:[/red] No authentication method found for auto-upload")
+            console.print(
+                "[red]Error:[/red] No authentication method found for auto-upload"
+            )
             console.print()
             console.print("To fix this, try one of the following:")
-            console.print("  1. Set RECCE_API_TOKEN environment variable (works in any CI)")
-            console.print("  2. Run in GitHub Actions (GITHUB_TOKEN) or GitLab CI (CI_JOB_TOKEN)")
-            console.print("  3. Use --session-id or --session-name for explicit session targeting")
+            console.print(
+                "  1. Set RECCE_API_TOKEN environment variable (works in any CI)"
+            )
+            console.print(
+                "  2. Run in GitHub Actions (GITHUB_TOKEN) or GitLab CI (CI_JOB_TOKEN)"
+            )
+            console.print(
+                "  3. Use --session-id or --session-name for explicit session targeting"
+            )
             sys.exit(2)
 
 
@@ -855,7 +951,9 @@ def list_sessions_cmd(session_type, output_json):
     token = os.getenv("RECCE_API_TOKEN") or get_api_token()
     if not token:
         console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
-        console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
+        console.print(
+            "Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first"
+        )
         sys.exit(2)
 
     # 2. Resolve org/project configuration
@@ -877,7 +975,9 @@ def list_sessions_cmd(session_type, output_json):
 
         org_info = client.get_organization(org)
         if not org_info:
-            console.print(f"[red]Error:[/red] Organization '{org}' not found or you don't have access")
+            console.print(
+                f"[red]Error:[/red] Organization '{org}' not found or you don't have access"
+            )
             sys.exit(2)
         org_id = org_info.get("id")
         if not org_id:
@@ -886,7 +986,9 @@ def list_sessions_cmd(session_type, output_json):
 
         project_info = client.get_project(org_id, project)
         if not project_info:
-            console.print(f"[red]Error:[/red] Project '{project}' not found in organization '{org}'")
+            console.print(
+                f"[red]Error:[/red] Project '{project}' not found in organization '{org}'"
+            )
             sys.exit(2)
         project_id = project_info.get("id")
         if not project_id:
@@ -894,7 +996,9 @@ def list_sessions_cmd(session_type, output_json):
             sys.exit(2)
 
     except Exception as e:
-        logger.debug("Failed to initialize client for list_sessions: %s", e, exc_info=True)
+        logger.debug(
+            "Failed to initialize client for list_sessions: %s", e, exc_info=True
+        )
         console.print(f"[red]Error:[/red] Failed to initialize: {e}")
         console.print("  Check your authentication and network connection.")
         sys.exit(2)
@@ -960,7 +1064,9 @@ def list_sessions_cmd(session_type, output_json):
                 pass
         adapter = session.get("adapter_type", "-")
 
-        table.add_row(name or "(unnamed)", session_id, s_type, created_at, adapter or "-")
+        table.add_row(
+            name or "(unnamed)", session_id, s_type, created_at, adapter or "-"
+        )
 
     console.print(table)
     sys.exit(0)
@@ -1033,7 +1139,9 @@ def download(target_path, session_id, prod, dry_run, force):
 
     # Validate flag combinations
     if session_id and prod:
-        console.print("[yellow]Warning:[/yellow] --prod is ignored when --session-id is provided")
+        console.print(
+            "[yellow]Warning:[/yellow] --prod is ignored when --session-id is provided"
+        )
 
     # Determine session type from --prod flag
     session_type = "prod" if prod else None
@@ -1086,7 +1194,9 @@ def download(target_path, session_id, prod, dry_run, force):
     # 2. Handle dry-run mode (before authentication or API calls)
     if dry_run:
         console.rule("Dry Run Summary", style="yellow")
-        console.print("[yellow]Dry run mode enabled - no actual download will be performed[/yellow]")
+        console.print(
+            "[yellow]Dry run mode enabled - no actual download will be performed[/yellow]"
+        )
         console.print()
 
         # Display platform information if detected
@@ -1115,7 +1225,9 @@ def download(target_path, session_id, prod, dry_run, force):
             if ci_info and ci_info.platform in ["github-actions", "gitlab-ci"]:
                 console.print("  • Platform-specific APIs will be used")
             else:
-                console.print("  • [yellow]Warning: Platform not supported for auto-session discovery[/yellow]")
+                console.print(
+                    "  • [yellow]Warning: Platform not supported for auto-session discovery[/yellow]"
+                )
 
         console.print()
         console.print("[cyan]Download destination:[/cyan]")
@@ -1124,7 +1236,9 @@ def download(target_path, session_id, prod, dry_run, force):
         if force:
             console.print("  • Will overwrite existing files")
         elif os.path.exists(target_path):
-            console.print("  • [yellow]Warning: Target path exists (use --force to overwrite)[/yellow]")
+            console.print(
+                "  • [yellow]Warning: Target path exists (use --force to overwrite)[/yellow]"
+            )
 
         console.print()
         console.print("[green]✓[/green] Dry run completed successfully")
@@ -1138,8 +1252,12 @@ def download(target_path, session_id, prod, dry_run, force):
 
         token = os.getenv("RECCE_API_TOKEN") or get_api_token()
         if not token:
-            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
-            console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
+            console.print(
+                "[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in"
+            )
+            console.print(
+                "Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first"
+            )
             sys.exit(2)
 
         download_from_existing_session(console, token, session_id, target_path, force)
@@ -1147,15 +1265,23 @@ def download(target_path, session_id, prod, dry_run, force):
         # Platform-specific workflow: Use platform APIs to find session and download
         # This workflow MUST use CI job tokens (CI_JOB_TOKEN or GITHUB_TOKEN)
         if not ci_info or not ci_info.access_token:
-            console.print("[red]Error:[/red] Platform-specific download requires CI environment")
-            console.print("Either run in GitHub Actions/GitLab CI or provide --session-id for generic download")
+            console.print(
+                "[red]Error:[/red] Platform-specific download requires CI environment"
+            )
+            console.print(
+                "Either run in GitHub Actions/GitLab CI or provide --session-id for generic download"
+            )
             sys.exit(2)
 
         token = ci_info.access_token
         if ci_info.platform == "github-actions":
-            console.print("[cyan]Info:[/cyan] Using GITHUB_TOKEN for platform-specific authentication")
+            console.print(
+                "[cyan]Info:[/cyan] Using GITHUB_TOKEN for platform-specific authentication"
+            )
         elif ci_info.platform == "gitlab-ci":
-            console.print("[cyan]Info:[/cyan] Using CI_JOB_TOKEN for platform-specific authentication")
+            console.print(
+                "[cyan]Info:[/cyan] Using CI_JOB_TOKEN for platform-specific authentication"
+            )
 
         download_with_platform_apis(console, token, ci_info, target_path, force)
 
@@ -1221,16 +1347,24 @@ def delete(session_id, dry_run, force):
             # Only show session type and CR info for platform workflow
             if not session_id:
                 if ci_info.session_type:
-                    info_table.append(f"[cyan]Session Type:[/cyan] {ci_info.session_type}")
+                    info_table.append(
+                        f"[cyan]Session Type:[/cyan] {ci_info.session_type}"
+                    )
 
                 # Only show CR number and URL for CR sessions (not for prod)
                 if ci_info.session_type == "pr" and ci_info.pr_number is not None:
                     if ci_info.platform == "github-actions":
-                        info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.pr_number}")
+                        info_table.append(
+                            f"[cyan]PR Number:[/cyan] {ci_info.pr_number}"
+                        )
                     elif ci_info.platform == "gitlab-ci":
-                        info_table.append(f"[cyan]MR Number:[/cyan] {ci_info.pr_number}")
+                        info_table.append(
+                            f"[cyan]MR Number:[/cyan] {ci_info.pr_number}"
+                        )
                     else:
-                        info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.pr_number}")
+                        info_table.append(
+                            f"[cyan]PR Number:[/cyan] {ci_info.pr_number}"
+                        )
 
                 # Only show PR URL for CR sessions
                 if ci_info.session_type == "pr" and ci_info.pr_url:
@@ -1253,7 +1387,9 @@ def delete(session_id, dry_run, force):
     # 2. Handle dry-run mode (before authentication or API calls)
     if dry_run:
         console.rule("Dry Run Summary", style="yellow")
-        console.print("[yellow]Dry run mode enabled - no actual deletion will be performed[/yellow]")
+        console.print(
+            "[yellow]Dry run mode enabled - no actual deletion will be performed[/yellow]"
+        )
         console.print()
 
         # Display platform information if detected
@@ -1279,7 +1415,9 @@ def delete(session_id, dry_run, force):
             if ci_info and ci_info.platform in ["github-actions", "gitlab-ci"]:
                 console.print("  • Platform-specific APIs will be used")
             else:
-                console.print("  • [yellow]Warning: Platform not supported for auto-session discovery[/yellow]")
+                console.print(
+                    "  • [yellow]Warning: Platform not supported for auto-session discovery[/yellow]"
+                )
 
         console.print()
         console.print("[green]✓[/green] Dry run completed successfully")
@@ -1305,8 +1443,12 @@ def delete(session_id, dry_run, force):
 
         token = os.getenv("RECCE_API_TOKEN") or get_api_token()
         if not token:
-            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
-            console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
+            console.print(
+                "[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in"
+            )
+            console.print(
+                "Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first"
+            )
             sys.exit(2)
 
         delete_existing_session(console, token, session_id)
@@ -1314,15 +1456,23 @@ def delete(session_id, dry_run, force):
         # Platform-specific workflow: Use platform APIs to find and delete session
         # This workflow MUST use CI job tokens (CI_JOB_TOKEN or GITHUB_TOKEN)
         if not ci_info or not ci_info.access_token:
-            console.print("[red]Error:[/red] Platform-specific delete requires CI environment")
-            console.print("Either run in GitHub Actions/GitLab CI or provide --session-id for generic delete")
+            console.print(
+                "[red]Error:[/red] Platform-specific delete requires CI environment"
+            )
+            console.print(
+                "Either run in GitHub Actions/GitLab CI or provide --session-id for generic delete"
+            )
             sys.exit(2)
 
         token = ci_info.access_token
         if ci_info.platform == "github-actions":
-            console.print("[cyan]Info:[/cyan] Using GITHUB_TOKEN for platform-specific authentication")
+            console.print(
+                "[cyan]Info:[/cyan] Using GITHUB_TOKEN for platform-specific authentication"
+            )
         elif ci_info.platform == "gitlab-ci":
-            console.print("[cyan]Info:[/cyan] Using CI_JOB_TOKEN for platform-specific authentication")
+            console.print(
+                "[cyan]Info:[/cyan] Using CI_JOB_TOKEN for platform-specific authentication"
+            )
 
         delete_with_platform_apis(console, token, ci_info, prod=False)
 
@@ -1401,7 +1551,9 @@ def report(repo, since, until, base_branch, merged_only, output):
     token = os.getenv("RECCE_API_TOKEN") or get_api_token()
     if not token:
         console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
-        console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
+        console.print(
+            "Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first"
+        )
         sys.exit(2)
 
     # Auto-detect repo from git remote if not provided
@@ -1437,7 +1589,9 @@ def report(repo, since, until, base_branch, merged_only, output):
             logger.debug("Failed to auto-detect repository from git remote: %s", e)
 
     if not repo:
-        console.print("[red]Error:[/red] Could not detect repository. Please provide --repo option.")
+        console.print(
+            "[red]Error:[/red] Could not detect repository. Please provide --repo option."
+        )
         sys.exit(1)
 
     # Generate report
@@ -1464,7 +1618,8 @@ def report(repo, since, until, base_branch, merged_only, output):
 )
 @click.option(
     "--session-name",
-    help="Name of the session to generate data review for. " "Mutually exclusive with --session-id.",
+    help="Name of the session to generate data review for. "
+    "Mutually exclusive with --session-id.",
 )
 @click.option(
     "--org",
@@ -1553,14 +1708,17 @@ def review(session_id, session_name, org, project, regenerate, timeout, json_out
                 )
             )
         else:
-            console.print("[red]Error:[/red] Either --session-id or --session-name must be provided")
+            console.print(
+                "[red]Error:[/red] Either --session-id or --session-name must be provided"
+            )
         sys.exit(1)
 
     # Warn if both are provided (session-id takes precedence)
     if session_id and session_name:
         if not json_output:
             console.print(
-                "[yellow]Warning:[/yellow] Both --session-id and --session-name provided. " "Using --session-id."
+                "[yellow]Warning:[/yellow] Both --session-id and --session-name provided. "
+                "Using --session-id."
             )
         session_name = None  # Clear session_name to use session_id
 
@@ -1579,8 +1737,12 @@ def review(session_id, session_name, org, project, regenerate, timeout, json_out
                 )
             )
         else:
-            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in")
-            console.print("Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first")
+            console.print(
+                "[red]Error:[/red] No RECCE_API_TOKEN provided and not logged in"
+            )
+            console.print(
+                "Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first"
+            )
         sys.exit(2)
 
     # 2. Resolve org/project configuration
@@ -1603,7 +1765,9 @@ def review(session_id, session_name, org, project, regenerate, timeout, json_out
         else:
             console.print(f"[red]Error:[/red] {e}")
             console.print()
-            console.print("Provide --org and --project options, or run 'recce-cloud init' to bind to a project")
+            console.print(
+                "Provide --org and --project options, or run 'recce-cloud init' to bind to a project"
+            )
         sys.exit(1)
 
     if not json_output:
@@ -1611,7 +1775,9 @@ def review(session_id, session_name, org, project, regenerate, timeout, json_out
         console.print(f"[cyan]Organization:[/cyan] {org_id}")
         console.print(f"[cyan]Project:[/cyan] {project_id}")
         if session_id:
-            session_id_display = session_id[:8] + "..." if len(session_id) > 8 else session_id
+            session_id_display = (
+                session_id[:8] + "..." if len(session_id) > 8 else session_id
+            )
             console.print(f"[cyan]Session ID:[/cyan] {session_id_display}")
         else:
             console.print(f"[cyan]Session:[/cyan] {session_name}")
