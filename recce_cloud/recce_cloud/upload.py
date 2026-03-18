@@ -38,7 +38,7 @@ def upload_to_existing_session(
     catalog_path: str,
     adapter_type: str,
     target_path: str,
-    isolated_base: bool = False,
+    session_base: bool = False,
 ):
     """
     Upload artifacts to an existing Recce Cloud session using session ID.
@@ -67,8 +67,8 @@ def upload_to_existing_session(
         console.print(f"[red]Error:[/red] Session ID {session_id} does not belong to any project.")
         sys.exit(2)
 
-    if isolated_base:
-        upload_isolated_base(
+    if session_base:
+        upload_session_base(
             console,
             token,
             session_id,
@@ -76,7 +76,7 @@ def upload_to_existing_session(
             catalog_path,
             target_path,
         )
-        return  # upload_isolated_base calls sys.exit(0)
+        return  # upload_session_base calls sys.exit(0)
 
     # Get presigned URLs
     with cloud_error_handler(console, "get upload URLs"):
@@ -111,7 +111,7 @@ def upload_with_platform_apis(
     adapter_type: str,
     target_path: str,
     client=None,
-    isolated_base: bool = False,
+    session_base: bool = False,
 ):
     """
     Upload artifacts using touch-recce-session APIs.
@@ -160,16 +160,16 @@ def upload_with_platform_apis(
 
     console.print(f"[green]Session ID:[/green] {session_id}")
 
-    if isolated_base:
+    if session_base:
         if not isinstance(client, RecceTokenCloudClient):
-            console.print("[red]Error:[/red] --isolated-base requires RECCE_API_TOKEN authentication.")
+            console.print("[red]Error:[/red] --session-base requires RECCE_API_TOKEN authentication.")
             console.print(
-                "Platform-specific tokens (GITHUB_TOKEN, CI_JOB_TOKEN) are not supported for isolated base upload."
+                "Platform-specific tokens (GITHUB_TOKEN, CI_JOB_TOKEN) are not supported for session base upload."
             )
             console.print("Set the RECCE_API_TOKEN environment variable or run 'recce-cloud login' first.")
             sys.exit(2)
 
-        upload_isolated_base(
+        upload_session_base(
             console,
             token,
             session_id,
@@ -178,7 +178,7 @@ def upload_with_platform_apis(
             target_path,
             client=client,
         )
-        return  # upload_isolated_base calls sys.exit(0)
+        return  # upload_session_base calls sys.exit(0)
 
     _put_artifact(console, "manifest", manifest_path, manifest_upload_url)
     _put_artifact(console, "catalog", catalog_path, catalog_upload_url)
@@ -208,7 +208,7 @@ def upload_with_session_name(
     adapter_type: str,
     target_path: str,
     skip_confirmation: bool = False,
-    isolated_base: bool = False,
+    session_base: bool = False,
 ):
     """
     Upload artifacts to a session identified by name.
@@ -320,8 +320,8 @@ def upload_with_session_name(
             console.print(f'[green]Created new session:[/green] "{session_name}" (ID: {session_id})')
 
     # 5. Upload artifacts
-    if isolated_base:
-        upload_isolated_base(
+    if session_base:
+        upload_session_base(
             console,
             token,
             session_id,
@@ -361,7 +361,7 @@ def upload_with_session_name(
         sys.exit(0)
 
 
-def upload_isolated_base(
+def upload_session_base(
     console,
     token: str,
     session_id: str,
@@ -371,9 +371,9 @@ def upload_isolated_base(
     client=None,
 ):
     """
-    Upload isolated base artifacts to an existing session.
+    Upload session base artifacts to an existing session.
 
-    Gets presigned URLs for the isolated base subpath, uploads manifest + catalog,
+    Gets presigned URLs for the session base subpath, uploads manifest + catalog,
     then notifies the server to set has_isolated_base=True.
 
     Accepts an optional pre-built client (e.g., RecceTokenCloudClient); if not
@@ -393,10 +393,10 @@ def upload_isolated_base(
         with cloud_error_handler(console, "initialize API client", exit_code=ExitCode.INIT_ERROR):
             client = RecceCloudClient(token)
 
-    console.rule("Uploading Isolated Base Artifacts", style="blue")
+    console.rule("Uploading Session Base Artifacts", style="blue")
 
-    # Get isolated base upload URLs
-    with cloud_error_handler(console, "get isolated base upload URLs"):
+    # Get session base upload URLs
+    with cloud_error_handler(console, "get session base upload URLs"):
         if isinstance(client, RecceTokenCloudClient):
             presigned_urls = client.get_isolated_base_upload_urls(session_id)
         else:
@@ -414,14 +414,14 @@ def upload_isolated_base(
     _put_artifact(console, "catalog", catalog_path, presigned_urls["catalog_url"])
 
     # Notify upload completion (non-fatal)
-    console.print("Notifying isolated base upload completion...")
-    with cloud_error_handler(console, "notify isolated base upload completion"):
+    console.print("Notifying session base upload completion...")
+    with cloud_error_handler(console, "notify session base upload completion"):
         if isinstance(client, RecceTokenCloudClient):
             client.isolated_base_upload_completed(session_id)
         else:
             client.isolated_base_upload_completed(org_id, project_id, session_id)
 
     # Success
-    console.rule("Isolated Base Uploaded Successfully", style="green")
-    console.print(f'Uploaded isolated base artifacts to session "{session_id}" from "{os.path.abspath(target_path)}"')
+    console.rule("Session Base Uploaded Successfully", style="green")
+    console.print(f'Uploaded session base artifacts to session "{session_id}" from "{os.path.abspath(target_path)}"')
     sys.exit(0)
