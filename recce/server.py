@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import signal
+import sys
 import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -528,6 +529,7 @@ class RecceInstanceInfoOut(BaseModel):
     single_env: bool
     authed: bool
     cloud_instance: bool
+    python_version: str
     lifetime_expired_at: Optional[datetime] = None
     idle_timeout: Optional[int] = None
     share_url: Optional[str] = None
@@ -552,6 +554,7 @@ async def recce_instance_info():
         "single_env": single_env,
         "authed": True if api_token else False,
         "cloud_instance": is_recce_cloud_instance(),
+        "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         "lifetime_expired_at": app_state.lifetime_expired_at,  # UTC timezone
         "idle_timeout": app_state.idle_timeout,
         "share_url": app_state.share_url,

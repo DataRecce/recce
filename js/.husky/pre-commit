@@ -2,6 +2,7 @@
 set -e
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
+export GIT_WORK_TREE="$REPO_ROOT"
 
 # Reminder: All commits require --signoff (-s) for DCO compliance
 # The commit-msg hook will enforce this, but here's a heads up!

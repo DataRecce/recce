@@ -50,6 +50,8 @@ export interface InstanceInfoType {
   shareUrl?: string;
   /** Current session ID */
   sessionId?: string;
+  /** Python runtime version (e.g., "3.9.18") */
+  pythonVersion?: string;
 }
 
 /**
@@ -77,4 +79,5 @@ export const defaultInstanceInfo: InstanceInfoType = {
   featureToggles: defaultFeatureToggles,
   shareUrl: undefined,
   sessionId: undefined,
+  pythonVersion: undefined,
 };
