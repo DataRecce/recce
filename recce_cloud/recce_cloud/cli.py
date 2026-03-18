@@ -29,7 +29,6 @@ from recce_cloud.download import (
 )
 from recce_cloud.report import fetch_and_generate_report
 from recce_cloud.review import run_review_command
-from recce_cloud.constants import SESSION_TYPES, SESSION_TYPES_UPLOAD, get_base_url
 from recce_cloud.telemetry import TrackedCommand, track
 from recce_cloud.upload import upload_to_existing_session, upload_with_platform_apis
 
