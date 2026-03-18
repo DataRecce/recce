@@ -27,7 +27,9 @@ def _put_artifact(console, label: str, file_path: str, upload_url: str):
         with open(file_path, "rb") as f:
             response = requests.put(upload_url, data=f.read())
         if response.status_code not in [200, 204]:
-            raise Exception(f"Upload failed with status {response.status_code}: {response.text}")
+            raise Exception(
+                f"Upload failed with status {response.status_code}: {response.text}"
+            )
 
 
 def upload_to_existing_session(
@@ -46,12 +48,16 @@ def upload_to_existing_session(
     This is the generic workflow that requires a pre-existing session ID.
     """
     # Initialize client
-    with cloud_error_handler(console, "initialize API client", exit_code=ExitCode.INIT_ERROR):
+    with cloud_error_handler(
+        console, "initialize API client", exit_code=ExitCode.INIT_ERROR
+    ):
         client = RecceCloudClient(token)
 
     # Get session info
     console.print(f'Uploading artifacts for session ID "{session_id}"')
-    with cloud_error_handler(console, "get session info", exit_code=ExitCode.INIT_ERROR):
+    with cloud_error_handler(
+        console, "get session info", exit_code=ExitCode.INIT_ERROR
+    ):
         session = client.get_session(session_id)
 
     # Inline validation stays outside
@@ -60,11 +66,15 @@ def upload_to_existing_session(
         sys.exit(2)
     org_id = session.get("org_id")
     if org_id is None:
-        console.print(f"[red]Error:[/red] Session ID {session_id} does not belong to any organization.")
+        console.print(
+            f"[red]Error:[/red] Session ID {session_id} does not belong to any organization."
+        )
         sys.exit(2)
     project_id = session.get("project_id")
     if project_id is None:
-        console.print(f"[red]Error:[/red] Session ID {session_id} does not belong to any project.")
+        console.print(
+            f"[red]Error:[/red] Session ID {session_id} does not belong to any project."
+        )
         sys.exit(2)
 
     if session_base:
@@ -80,7 +90,9 @@ def upload_to_existing_session(
 
     # Get presigned URLs
     with cloud_error_handler(console, "get upload URLs"):
-        presigned_urls = client.get_upload_urls_by_session_id(org_id, project_id, session_id)
+        presigned_urls = client.get_upload_urls_by_session_id(
+            org_id, project_id, session_id
+        )
 
     _put_artifact(console, "manifest", manifest_path, presigned_urls["manifest_url"])
     _put_artifact(console, "catalog", catalog_path, presigned_urls["catalog_url"])
@@ -123,7 +135,9 @@ def upload_with_platform_apis(
     if client is None:
         # Validate platform support
         if ci_info.platform not in ["github-actions", "gitlab-ci"]:
-            console.print("[red]Error:[/red] Platform-specific upload requires GitHub Actions or GitLab CI environment")
+            console.print(
+                "[red]Error:[/red] Platform-specific upload requires GitHub Actions or GitLab CI environment"
+            )
             console.print(f"Detected platform: {ci_info.platform or 'unknown'}")
             console.print(
                 "Either run this command in a supported CI environment or provide --session-id for generic upload"
@@ -154,7 +168,9 @@ def upload_with_platform_apis(
     catalog_upload_url = session_response.get("catalog_upload_url")
 
     if not session_id or not manifest_upload_url or not catalog_upload_url:
-        console.print("[red]Error:[/red] Incomplete response from touch-recce-session API")
+        console.print(
+            "[red]Error:[/red] Incomplete response from touch-recce-session API"
+        )
         console.print(f"Response: {session_response}")
         sys.exit(4)
 
@@ -162,11 +178,15 @@ def upload_with_platform_apis(
 
     if session_base:
         if not isinstance(client, RecceTokenCloudClient):
-            console.print("[red]Error:[/red] --session-base requires RECCE_API_TOKEN authentication.")
+            console.print(
+                "[red]Error:[/red] --session-base requires RECCE_API_TOKEN authentication."
+            )
             console.print(
                 "Platform-specific tokens (GITHUB_TOKEN, CI_JOB_TOKEN) are not supported for session base upload."
             )
-            console.print("Set the RECCE_API_TOKEN environment variable or run 'recce-cloud login' first.")
+            console.print(
+                "Set the RECCE_API_TOKEN environment variable or run 'recce-cloud login' first."
+            )
             sys.exit(2)
 
         upload_session_base(
@@ -190,7 +210,9 @@ def upload_with_platform_apis(
 
     # Success!
     console.rule("Uploaded Successfully", style="green")
-    console.print(f'Uploaded dbt artifacts to Recce Cloud for session ID "{session_id}"')
+    console.print(
+        f'Uploaded dbt artifacts to Recce Cloud for session ID "{session_id}"'
+    )
     console.print(f'Artifacts from: "{os.path.abspath(target_path)}"')
 
     if ci_info.pr_url:
@@ -239,7 +261,9 @@ def upload_with_session_name(
         sys.exit(2)
 
     # 2. Initialize API client
-    with cloud_error_handler(console, "initialize API client", exit_code=ExitCode.INIT_ERROR):
+    with cloud_error_handler(
+        console, "initialize API client", exit_code=ExitCode.INIT_ERROR
+    ):
         client = RecceCloudClient(token)
 
     # 3. Resolve org/project IDs (they might be slugs/names in config)
@@ -247,7 +271,9 @@ def upload_with_session_name(
     try:
         org_info = client.get_organization(org)
         if not org_info:
-            console.print(f"[red]Error:[/red] Organization '{org}' not found or you don't have access")
+            console.print(
+                f"[red]Error:[/red] Organization '{org}' not found or you don't have access"
+            )
             sys.exit(2)
         org_id = org_info.get("id")
         if not org_id:
@@ -256,7 +282,9 @@ def upload_with_session_name(
 
         project_info = client.get_project(org_id, project)
         if not project_info:
-            console.print(f"[red]Error:[/red] Project '{project}' not found in organization '{org}'")
+            console.print(
+                f"[red]Error:[/red] Project '{project}' not found in organization '{org}'"
+            )
             sys.exit(2)
         project_id = project_info.get("id")
         if not project_id:
@@ -292,7 +320,9 @@ def upload_with_session_name(
     if existing_session:
         # Session found, use it
         session_id = existing_session.get("id")
-        console.print(f'[green]Found existing session:[/green] "{session_name}" (ID: {session_id})')
+        console.print(
+            f'[green]Found existing session:[/green] "{session_name}" (ID: {session_id})'
+        )
     else:
         # Session not found, prompt to create
         console.print(f'[yellow]Session "{session_name}" not found[/yellow]')
@@ -317,7 +347,9 @@ def upload_with_session_name(
                 session_type="manual",
             )
             session_id = new_session.get("id")
-            console.print(f'[green]Created new session:[/green] "{session_name}" (ID: {session_id})')
+            console.print(
+                f'[green]Created new session:[/green] "{session_name}" (ID: {session_id})'
+            )
 
     # 5. Upload artifacts
     if session_base:
@@ -333,9 +365,13 @@ def upload_with_session_name(
         # Get presigned URLs and upload (existing flow)
         console.rule("Uploading Artifacts", style="blue")
         with cloud_error_handler(console, "get upload URLs"):
-            presigned_urls = client.get_upload_urls_by_session_id(org_id, project_id, session_id)
+            presigned_urls = client.get_upload_urls_by_session_id(
+                org_id, project_id, session_id
+            )
 
-        _put_artifact(console, "manifest", manifest_path, presigned_urls["manifest_url"])
+        _put_artifact(
+            console, "manifest", manifest_path, presigned_urls["manifest_url"]
+        )
         _put_artifact(console, "catalog", catalog_path, presigned_urls["catalog_url"])
 
         # Update session metadata (if session already existed, update adapter_type; non-fatal)
@@ -390,7 +426,9 @@ def upload_session_base(
             a RecceCloudClient is created internally.
     """
     if client is None:
-        with cloud_error_handler(console, "initialize API client", exit_code=ExitCode.INIT_ERROR):
+        with cloud_error_handler(
+            console, "initialize API client", exit_code=ExitCode.INIT_ERROR
+        ):
             client = RecceCloudClient(token)
 
     console.rule("Uploading Session Base Artifacts", style="blue")
@@ -406,16 +444,22 @@ def upload_session_base(
             org_id = session.get("org_id")
             project_id = session.get("project_id")
             if not org_id or not project_id:
-                console.print("[red]Error:[/red] Could not resolve org/project for session")
+                console.print(
+                    "[red]Error:[/red] Could not resolve org/project for session"
+                )
                 sys.exit(2)
-            presigned_urls = client.get_isolated_base_upload_urls(org_id, project_id, session_id)
+            presigned_urls = client.get_isolated_base_upload_urls(
+                org_id, project_id, session_id
+            )
 
     _put_artifact(console, "manifest", manifest_path, presigned_urls["manifest_url"])
     _put_artifact(console, "catalog", catalog_path, presigned_urls["catalog_url"])
 
     # Notify upload completion (non-fatal)
     console.print("Notifying session base upload completion...")
-    with cloud_error_handler(console, "notify session base upload completion"):
+    with cloud_error_handler(
+        console, "notify session base upload completion", fatal=False
+    ):
         if isinstance(client, RecceTokenCloudClient):
             client.isolated_base_upload_completed(session_id)
         else:
@@ -423,5 +467,7 @@ def upload_session_base(
 
     # Success
     console.rule("Session Base Uploaded Successfully", style="green")
-    console.print(f'Uploaded session base artifacts to session "{session_id}" from "{os.path.abspath(target_path)}"')
+    console.print(
+        f'Uploaded session base artifacts to session "{session_id}" from "{os.path.abspath(target_path)}"'
+    )
     sys.exit(0)
