@@ -630,6 +630,7 @@ class CllIn(BaseModel):
     no_cll: Optional[bool] = False
     no_upstream: Optional[bool] = False
     no_downstream: Optional[bool] = False
+    full_map: Optional[bool] = False
 
 
 class CllOutput(BaseModel):
@@ -648,6 +649,7 @@ async def column_level_lineage_by_node(cll_input: CllIn):
         no_upstream=cll_input.no_upstream,
         no_downstream=cll_input.no_downstream,
         no_cll=cll_input.no_cll,
+        full_map=cll_input.full_map,
     )
 
     return CllOutput(current=cll)

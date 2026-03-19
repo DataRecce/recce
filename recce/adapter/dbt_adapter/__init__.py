@@ -299,6 +299,7 @@ class DbtAdapter(BaseAdapter):
     manifest: Manifest = None
     previous_state: PreviousState = None
     target_path: str = None
+    _full_cll_map: Optional["CllData"] = None
     curr_manifest: WritableManifest = None
     curr_catalog: CatalogArtifact = None
     base_path: str = None
@@ -979,6 +980,75 @@ class DbtAdapter(BaseAdapter):
         node_diff.change = change
         return node_diff
 
+    def build_full_cll_map(self) -> CllData:
+        """Build the full CLL map for every node in the manifest. Result is cached."""
+        if self._full_cll_map is not None:
+            return self._full_cll_map
+
+        manifest = self.curr_manifest
+
+        # Collect all node IDs from all resource types
+        all_node_ids = set()
+        for key in ["sources", "nodes", "exposures", "metrics"]:
+            attr = getattr(manifest, key)
+            all_node_ids.update(set(attr.keys()))
+        if hasattr(manifest, "semantic_models"):
+            attr = getattr(manifest, "semantic_models")
+            all_node_ids.update(set(attr.keys()))
+
+        nodes = {}
+        columns = {}
+        parent_map = {}
+
+        for node_id in all_node_ids:
+            cll_data_one = deepcopy(self.get_cll_cached(node_id, base=False))
+            if cll_data_one is None:
+                continue
+
+            nodes[node_id] = cll_data_one.nodes.get(node_id)
+            for c_id, c in cll_data_one.columns.items():
+                columns[c_id] = c
+            for p_id, parents in cll_data_one.parent_map.items():
+                parent_map[p_id] = parents
+
+        # Build the child map from parent_map
+        child_map = {}
+        for parent_id, parents in parent_map.items():
+            for parent in parents:
+                if parent not in child_map:
+                    child_map[parent] = set()
+                child_map[parent].add(parent_id)
+
+        # Add change analysis for all nodes
+        for node_id, node in nodes.items():
+            node_diff = self.get_change_analysis_cached(node_id)
+            if node_diff is not None:
+                node.change_status = node_diff.change_status
+                if node_diff.change is not None:
+                    node.change_category = node_diff.change.category
+                # Annotate columns with change status
+                for c_name, col in node.columns.items():
+                    col_id = f"{node_id}_{c_name}"
+                    col_obj = columns.get(col_id)
+                    if col_obj is None:
+                        continue
+                    if node_diff.change_status == "added":
+                        col_obj.change_status = "added"
+                    elif node_diff.change_status == "removed":
+                        col_obj.change_status = "removed"
+                    elif node_diff.change is not None and node_diff.change.columns is not None:
+                        column_diff = node_diff.change.columns.get(c_name)
+                        if column_diff:
+                            col_obj.change_status = column_diff
+
+        self._full_cll_map = CllData(
+            nodes=nodes,
+            columns=columns,
+            parent_map=parent_map,
+            child_map=child_map,
+        )
+        return self._full_cll_map
+
     def get_cll(
         self,
         node_id: Optional[str] = None,
@@ -988,6 +1058,7 @@ class DbtAdapter(BaseAdapter):
         no_upstream: Optional[bool] = False,
         no_downstream: Optional[bool] = False,
         no_filter: Optional[bool] = False,
+        full_map: Optional[bool] = False,
     ) -> CllData:
         cll_tracker = LineagePerfTracker()
         cll_tracker.set_params(
@@ -999,6 +1070,15 @@ class DbtAdapter(BaseAdapter):
             no_downstream=no_downstream,
         )
         cll_tracker.start_column_lineage()
+
+        # Full map mode: return the complete pre-computed CLL map
+        if full_map:
+            result = deepcopy(self.build_full_cll_map())
+            cll_tracker.end_column_lineage()
+            cll_tracker.set_total_nodes(len(result.nodes) + len(result.columns))
+            log_performance("column level lineage", cll_tracker.to_dict())
+            cll_tracker.reset()
+            return result
 
         manifest = self.curr_manifest
         manifest_dict = manifest.to_dict()
@@ -1023,44 +1103,35 @@ class DbtAdapter(BaseAdapter):
             cll_node_ids = cll_node_ids.union(find_downstream(cll_node_ids, manifest_dict.get("child_map")))
 
         if not no_cll:
-            allowed_related_nodes = set()
-            for key in ["sources", "nodes", "exposures", "metrics"]:
-                attr = getattr(manifest, key)
-                allowed_related_nodes.update(set(attr.keys()))
-            if hasattr(manifest, "semantic_models"):
-                attr = getattr(manifest, "semantic_models")
-                allowed_related_nodes.update(set(attr.keys()))
+            # Build full map on first call (cached for subsequent calls)
+            full_map_data = self.build_full_cll_map()
+
+            # Slice from full map: take only the nodes in cll_node_ids
             for cll_node_id in cll_node_ids:
-                if cll_node_id not in allowed_related_nodes:
+                if cll_node_id not in full_map_data.nodes:
                     continue
-                cll_data_one = deepcopy(self.get_cll_cached(cll_node_id, base=False))
                 cll_tracker.increment_cll_nodes()
-                if cll_data_one is None:
-                    continue
+                nodes[cll_node_id] = deepcopy(full_map_data.nodes[cll_node_id])
 
-                nodes[cll_node_id] = cll_data_one.nodes.get(cll_node_id)
-                node_diff = None
-                if change_analysis:
-                    node_diff = self.get_change_analysis_cached(cll_node_id)
-                    cll_tracker.increment_change_analysis_nodes()
-                if node_diff is not None:
-                    nodes[cll_node_id].change_status = node_diff.change_status
-                    if node_diff.change is not None:
-                        nodes[cll_node_id].change_category = node_diff.change.category
-                for c_id, c in cll_data_one.columns.items():
-                    columns[c_id] = c
-                    if node_diff is not None:
-                        if node_diff.change_status == "added":
-                            c.change_status = "added"
-                        elif node_diff.change_status == "removed":
-                            c.change_status = "removed"
-                        elif node_diff.change is not None and node_diff.change.columns is not None:
-                            column_diff = node_diff.change.columns.get(c.name)
-                            if column_diff:
-                                c.change_status = column_diff
+                # Copy columns for this node
+                for c_name in nodes[cll_node_id].columns:
+                    col_id = f"{cll_node_id}_{c_name}"
+                    if col_id in full_map_data.columns:
+                        columns[col_id] = deepcopy(full_map_data.columns[col_id])
 
-                for p_id, parents in cll_data_one.parent_map.items():
-                    parent_map[p_id] = parents
+            # Copy parent_map entries for included nodes and columns
+            for key in list(nodes.keys()) + list(columns.keys()):
+                if key in full_map_data.parent_map:
+                    parent_map[key] = set(full_map_data.parent_map[key])
+
+            # If change_analysis not requested, clear change metadata from the copies
+            if not change_analysis:
+                for node in nodes.values():
+                    node.change_status = None
+                    node.change_category = None
+                    node.impacted = None
+                for col in columns.values():
+                    col.change_status = None
         else:
             for cll_node_id in cll_node_ids:
                 cll_node = None
