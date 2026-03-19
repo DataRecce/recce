@@ -24,16 +24,14 @@ _initialized = False
 # Same host as recce-cloud-infra
 POSTHOG_HOST = "https://us.i.posthog.com"
 
-# PostHog project API keys — injected at build time by hatch_build.py into
+# PostHog production API key — injected at build time by hatch_build.py into
 # _posthog_keys.py. Empty string when not injected (dev builds).
-# Runtime env vars RECCE_POSTHOG_API_KEY / RECCE_POSTHOG_API_KEY_STAGING
-# override for testing or custom deployments.
+# Runtime env var RECCE_POSTHOG_API_KEY overrides for custom deployments.
+# Staging key is NOT embedded — use RECCE_POSTHOG_API_KEY_STAGING env var.
 try:
     from recce_cloud._posthog_keys import POSTHOG_KEY_PROD as _POSTHOG_KEY_PROD
-    from recce_cloud._posthog_keys import POSTHOG_KEY_STAGING as _POSTHOG_KEY_STAGING
 except ImportError:
     _POSTHOG_KEY_PROD = ""
-    _POSTHOG_KEY_STAGING = ""
 
 # Production API hosts — anything else is treated as staging/dev.
 _PROD_HOSTS = {
@@ -54,14 +52,14 @@ def _get_api_key():
     # type: () -> Optional[str]
     """Get the PostHog project API key for event ingestion.
 
-    Keys are injected at build time into _posthog_keys.py by hatch_build.py.
+    Production key is injected at build time into _posthog_keys.py.
     Runtime env vars can override for testing or custom deployments:
-    - RECCE_POSTHOG_API_KEY: overrides prod key
-    - RECCE_POSTHOG_API_KEY_STAGING: overrides staging key
+    - RECCE_POSTHOG_API_KEY: overrides the embedded prod key
+    - RECCE_POSTHOG_API_KEY_STAGING: required for staging (not embedded)
     """
     if _is_prod_environment():
         return os.environ.get("RECCE_POSTHOG_API_KEY") or _POSTHOG_KEY_PROD
-    return os.environ.get("RECCE_POSTHOG_API_KEY_STAGING") or _POSTHOG_KEY_STAGING
+    return os.environ.get("RECCE_POSTHOG_API_KEY_STAGING") or ""
 
 
 def _should_track():

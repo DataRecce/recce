@@ -23,28 +23,29 @@ class CustomMetadataHook(MetadataHookInterface):
 
 
 class CustomBuildHook(BuildHookInterface):
-    """Inject PostHog API keys at build time from environment variables.
+    """Inject PostHog production API key at build time from environment variable.
 
     PostHog project API keys (phc_) are write-only public tokens safe for
-    client-side use. They are injected at build time so the published package
-    has telemetry enabled out of the box, while the source repo stays clean.
+    client-side use. The production key is injected at build time so the
+    published package has telemetry enabled out of the box, while the source
+    repo stays clean.
 
-    Set these env vars before building:
-      RECCE_POSTHOG_API_KEY          - production project key
-      RECCE_POSTHOG_API_KEY_STAGING  - staging project key
+    Set this env var before building:
+      RECCE_POSTHOG_API_KEY  - production project key
+
+    Staging key is NOT embedded — use the RECCE_POSTHOG_API_KEY_STAGING
+    env var at runtime for local/staging testing.
     """
 
     PLUGIN_NAME = "custom"
 
     def initialize(self, version, build_data):
-        """Generate _posthog_keys.py with API keys from env vars."""
+        """Generate _posthog_keys.py with the production API key from env var."""
         keys_path = Path(self.root) / "recce_cloud" / "_posthog_keys.py"
         prod_key = os.environ.get("RECCE_POSTHOG_API_KEY", "")
-        staging_key = os.environ.get("RECCE_POSTHOG_API_KEY_STAGING", "")
 
         keys_path.write_text(
-            '"""PostHog API keys — generated at build time by hatch_build.py."""\n'
-            f'POSTHOG_KEY_PROD = "{prod_key}"\n'
-            f'POSTHOG_KEY_STAGING = "{staging_key}"\n',
+            '"""PostHog API key — generated at build time by hatch_build.py."""\n'
+            f'POSTHOG_KEY_PROD = "{prod_key}"\n',
             encoding="utf-8",
         )
