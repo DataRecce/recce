@@ -131,7 +131,7 @@ echo "Test repo:    $SMOKE_TEST_GITHUB_REPO"
 echo "Test branch:  $TEST_BRANCH"
 echo "Fixtures:     $FIXTURES_DIR"
 echo "API host:     $RECCE_CLOUD_API_HOST"
-echo "API token:    ${SMOKE_TEST_API_TOKEN:+set}${SMOKE_TEST_API_TOKEN:-not set}"
+echo "API token:    $(if [[ -n "${SMOKE_TEST_API_TOKEN:-}" ]]; then echo 'set'; else echo 'not set'; fi)"
 echo "Org/Project:  ${SMOKE_TEST_ORG:-not set}/${SMOKE_TEST_PROJECT:-not set}"
 
 # ==== Test 1: GitHub PR Upload ====
