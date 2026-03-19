@@ -200,10 +200,11 @@ class TestEnvironmentDetection:
         "recce_cloud.constants.get_api_host",
         return_value="https://staging.datarecce.io",
     )
-    def test_no_env_var_returns_bundled_staging_key(self, mock_host):
-        from recce_cloud.telemetry import _get_api_key, _POSTHOG_KEY_STAGING
+    def test_no_env_var_returns_empty_for_staging(self, mock_host):
+        from recce_cloud.telemetry import _get_api_key
 
-        assert _get_api_key() == _POSTHOG_KEY_STAGING
+        # Staging key is not embedded — requires env var at runtime
+        assert _get_api_key() == ""
 
 
 class TestShouldTrack:
