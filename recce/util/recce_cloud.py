@@ -275,16 +275,6 @@ class RecceCloud:
             )
         return response.json().get("user")
 
-    def set_onboarding_state(self, state: str):
-        api_url = f"{self.base_url}/users/onboarding-state"
-        try:
-            response = self._request("PUT", api_url, json={"state": state})
-            response.raise_for_status()
-        except requests.exceptions.HTTPError as e:
-            # Don't Raise an exception if setting onboarding_state fails
-            logger.warning(f"Failed to set Onboarding State in Recce Cloud. Reason: {str(e)}")
-        return
-
     def get_session(self, session_id: str):
         api_url = f"{self.base_url_v2}/sessions/{session_id}"
         response = self._request("GET", api_url)
@@ -439,22 +429,3 @@ class RecceCloud:
             )
         data = response.json()
         return data.get("sessions", [])
-
-
-def get_recce_cloud_onboarding_state(token: str) -> str:
-    if token and token.startswith("rct-"):
-        return "undefined"
-
-    try:
-        recce_cloud = RecceCloud(token)
-        user_info = recce_cloud.get_user_info()
-        if user_info:
-            return user_info.get("onboarding_state")
-    except Exception as e:
-        logger.debug(str(e))
-    return "undefined"
-
-
-def set_recce_cloud_onboarding_state(token: str, new_state: str):
-    recce_cloud = RecceCloud(token)
-    recce_cloud.set_onboarding_state(new_state)
