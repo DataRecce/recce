@@ -24,6 +24,13 @@ _initialized = False
 # Same host as recce-cloud-infra
 POSTHOG_HOST = "https://us.i.posthog.com"
 
+# PostHog project API keys (phc_) are write-only public tokens designed
+# for client-side use — safe to embed per PostHog's official guidance.
+# See: https://posthog.com/docs/api/post-only-endpoints
+# Env vars RECCE_POSTHOG_API_KEY / RECCE_POSTHOG_API_KEY_STAGING override these.
+_POSTHOG_KEY_PROD = "phc_WDJMPIYB2WTasN3sVxwIasBOSTjZ9rVTkpqf5lVKeRL"
+_POSTHOG_KEY_STAGING = "phc_9QTMdAwlgjRHtxrWbECkLMzukdunmT0GM4wAUN5z1cY"
+
 # Production API hosts — anything else is treated as staging/dev.
 _PROD_HOSTS = {
     "https://cloud.datarecce.io",
@@ -41,16 +48,17 @@ def _is_prod_environment():
 
 def _get_api_key():
     # type: () -> Optional[str]
-    """Get the PostHog API key from environment variables.
+    """Get the PostHog project API key for event ingestion.
 
-    Keys are configured via env vars — nothing is bundled in the package.
-    The CLI selects the key based on which Recce Cloud API host it targets:
-    - RECCE_POSTHOG_API_KEY: prod (when targeting cloud.datarecce.io)
-    - RECCE_POSTHOG_API_KEY_STAGING: staging (everything else)
+    Keys are bundled in the package — PostHog project API keys (phc_) are
+    write-only public tokens, safe to embed per PostHog official guidance.
+    Env vars can override for testing or custom deployments:
+    - RECCE_POSTHOG_API_KEY: overrides prod key
+    - RECCE_POSTHOG_API_KEY_STAGING: overrides staging key
     """
     if _is_prod_environment():
-        return os.environ.get("RECCE_POSTHOG_API_KEY") or None
-    return os.environ.get("RECCE_POSTHOG_API_KEY_STAGING") or None
+        return os.environ.get("RECCE_POSTHOG_API_KEY") or _POSTHOG_KEY_PROD
+    return os.environ.get("RECCE_POSTHOG_API_KEY_STAGING") or _POSTHOG_KEY_STAGING
 
 
 def _should_track():
