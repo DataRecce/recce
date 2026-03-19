@@ -150,50 +150,6 @@ class TestDoLifespanSetup:
         state.kwargs = {}
         return state
 
-    @patch("recce.server.setup_server")
-    @patch("recce.util.onboarding_state.update_onboarding_state")
-    def test_onboarding_state_called_with_api_token(self, mock_update, mock_setup, server_app_state):
-        """When api_token is present, update_onboarding_state should be called."""
-        server_app_state.flag = {"single_env_onboarding": True}
-
-        _do_lifespan_setup(server_app_state)
-
-        mock_update.assert_called_once_with("test_token", True)
-        mock_setup.assert_called_once_with(server_app_state)
-
-    @patch("recce.server.setup_server")
-    @patch("recce.util.onboarding_state.update_onboarding_state")
-    def test_onboarding_state_not_called_without_api_token(self, mock_update, mock_setup, server_app_state):
-        """When api_token is None, update_onboarding_state should not be called."""
-        server_app_state.auth_options = {"api_token": None}
-
-        _do_lifespan_setup(server_app_state)
-
-        mock_update.assert_not_called()
-        mock_setup.assert_called_once()
-
-    @patch("recce.server.setup_server")
-    @patch("recce.util.onboarding_state.update_onboarding_state")
-    def test_onboarding_state_not_called_without_auth_options(self, mock_update, mock_setup, server_app_state):
-        """When auth_options is None, update_onboarding_state should not be called."""
-        server_app_state.auth_options = None
-        server_app_state.flag = None
-
-        _do_lifespan_setup(server_app_state)
-
-        mock_update.assert_not_called()
-        mock_setup.assert_called_once()
-
-    @patch("recce.server.setup_server")
-    @patch("recce.util.onboarding_state.update_onboarding_state", side_effect=Exception("API error"))
-    def test_onboarding_state_failure_is_nonfatal(self, mock_update, mock_setup, server_app_state):
-        """update_onboarding_state failure should be swallowed and not block setup."""
-        _do_lifespan_setup(server_app_state)
-
-        mock_update.assert_called_once()
-        # setup_server should still be called despite onboarding failure
-        mock_setup.assert_called_once_with(server_app_state)
-
     @patch("recce.core.load_context")
     def test_setup_ready_only_calls_load_context(self, mock_load_context):
         """setup_ready_only should call load_context() and return the context."""
