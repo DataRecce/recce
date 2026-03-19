@@ -233,7 +233,9 @@ class CloudStateLoader(RecceStateLoader):
         current_artifacts = self._download_session_artifacts(self.recce_cloud, org_id, project_id, self.session_id)
 
         logger.debug(f"Downloading base session artifacts for project {project_id}")
-        base_artifacts = self._download_base_session_artifacts(self.recce_cloud, org_id, project_id)
+        base_artifacts = self._download_base_session_artifacts(
+            self.recce_cloud, org_id, project_id, session_id=self.session_id
+        )
 
         # 3. Try to download existing recce_state, otherwise create new state
         try:
@@ -299,12 +301,17 @@ class CloudStateLoader(RecceStateLoader):
 
         return state
 
-    def _download_base_session_artifacts(self, recce_cloud, org_id: str, project_id: str) -> dict:
-        """Download manifest and catalog for the base session, return JSON data directly."""
+    def _download_base_session_artifacts(
+        self, recce_cloud, org_id: str, project_id: str, session_id: str = None
+    ) -> dict:
+        """Download manifest and catalog for the base session, return JSON data directly.
+
+        If session_id is provided, the server resolves PR-specific base if available.
+        """
         import requests
 
         # Get download URLs for base session
-        presigned_urls = recce_cloud.get_base_session_download_urls(org_id, project_id)
+        presigned_urls = recce_cloud.get_base_session_download_urls(org_id, project_id, session_id=session_id)
 
         artifacts = {}
 

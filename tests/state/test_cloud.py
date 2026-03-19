@@ -680,6 +680,79 @@ class TestCloudStateLoader(unittest.TestCase):
     @patch.object(CloudStateLoader, "_download_session_recce_state")
     @patch.object(CloudStateLoader, "_download_base_session_artifacts")
     @patch.object(CloudStateLoader, "_download_session_artifacts")
+    def test_load_state_from_session_passes_session_id_to_base_download(
+        self,
+        mock_download_session_artifacts,
+        mock_download_base_session_artifacts,
+        mock_download_session_state,
+    ):
+        """Verify _load_state_from_session passes session_id to _download_base_session_artifacts."""
+        loader = CloudStateLoader(cloud_options={"api_token": "token", "session_id": "test_session"})
+        loader.catalog = "session"
+        loader.session_id = "test_session"
+
+        loader.recce_cloud = Mock()
+        loader.recce_cloud.get_session.return_value = {
+            "org_id": "org1",
+            "project_id": "proj1",
+        }
+
+        mock_download_session_artifacts.return_value = {"manifest": "current_manifest", "catalog": "current_catalog"}
+        mock_download_base_session_artifacts.return_value = {"manifest": "base_manifest", "catalog": "base_catalog"}
+        mock_download_session_state.return_value = RecceState()
+
+        loader._load_state_from_session()
+
+        # Verify session_id was passed to _download_base_session_artifacts
+        mock_download_base_session_artifacts.assert_called_once_with(
+            loader.recce_cloud, "org1", "proj1", session_id="test_session"
+        )
+
+    @patch("requests.get")
+    def test_download_base_session_artifacts_passes_session_id(self, mock_get):
+        """Verify _download_base_session_artifacts passes session_id to get_base_session_download_urls."""
+        loader = CloudStateLoader(cloud_options={"api_token": "token", "session_id": "test_session"})
+        loader.catalog = "session"
+
+        mock_cloud = Mock()
+        mock_cloud.get_base_session_download_urls.return_value = {
+            "manifest_url": "http://base_manifest.url",
+            "catalog_url": "http://base_catalog.url",
+        }
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.side_effect = ["base_manifest_data", "base_catalog_data"]
+        mock_get.return_value = mock_response
+
+        loader._download_base_session_artifacts(mock_cloud, "org1", "proj1", session_id="test_session")
+
+        mock_cloud.get_base_session_download_urls.assert_called_once_with("org1", "proj1", session_id="test_session")
+
+    @patch("requests.get")
+    def test_download_base_session_artifacts_without_session_id(self, mock_get):
+        """Verify _download_base_session_artifacts works without session_id (backward compat)."""
+        loader = CloudStateLoader(cloud_options={"api_token": "token", "session_id": "test_session"})
+        loader.catalog = "session"
+
+        mock_cloud = Mock()
+        mock_cloud.get_base_session_download_urls.return_value = {
+            "manifest_url": "http://base_manifest.url",
+            "catalog_url": "http://base_catalog.url",
+        }
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.side_effect = ["base_manifest_data", "base_catalog_data"]
+        mock_get.return_value = mock_response
+
+        loader._download_base_session_artifacts(mock_cloud, "org1", "proj1")
+
+        mock_cloud.get_base_session_download_urls.assert_called_once_with("org1", "proj1", session_id=None)
+
+    @patch.object(CloudStateLoader, "_download_session_recce_state")
+    @patch.object(CloudStateLoader, "_download_base_session_artifacts")
+    @patch.object(CloudStateLoader, "_download_session_artifacts")
     def test_load_state_from_session_sets_pull_request_from_pr_link(
         self,
         mock_download_session_artifacts,

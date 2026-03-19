@@ -18,6 +18,7 @@ from recce_cloud import __version__
 from recce_cloud.artifact import get_adapter_type, verify_artifacts_path
 from recce_cloud.ci_providers import CIDetector
 from recce_cloud.commands.diagnostics import doctor
+from recce_cloud.constants import SESSION_TYPES, SESSION_TYPES_UPLOAD, get_base_url
 from recce_cloud.delete import (
     delete_existing_session,
     delete_with_platform_apis,
@@ -28,8 +29,12 @@ from recce_cloud.download import (
 )
 from recce_cloud.report import fetch_and_generate_report
 from recce_cloud.review import run_review_command
-from recce_cloud.constants import SESSION_TYPES, SESSION_TYPES_UPLOAD, get_base_url
-from recce_cloud.upload import upload_to_existing_session, upload_with_platform_apis
+from recce_cloud.telemetry import TrackedCommand, track
+from recce_cloud.upload import (
+    UploadError,
+    upload_to_existing_session,
+    upload_with_platform_apis,
+)
 
 # Configure logging
 logging.basicConfig(
@@ -61,14 +66,14 @@ def cloud_cli():
 cloud_cli.add_command(doctor)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 def version():
     """Show the version of recce-cloud."""
     console = Console()
     console.print(__version__)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 @click.option(
     "--token",
     default=None,
@@ -138,12 +143,14 @@ def login(token, status):
     # Direct token authentication mode
     if token:
         if login_with_token(token):
+            track("cli_login_completed", {"method": "token"})
             sys.exit(0)
         else:
             sys.exit(1)
 
     # Browser OAuth flow
     if login_with_browser():
+        track("cli_login_completed", {"method": "browser"})
         sys.exit(0)
     else:
         console.print()
@@ -153,7 +160,7 @@ def login(token, status):
         sys.exit(1)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 def logout():
     """
     Remove stored Recce Cloud credentials.
@@ -170,7 +177,7 @@ def logout():
     console.print(f"  Credentials removed from {get_profile_path()}")
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 @click.option(
     "--org",
     help="Organization ID, name, or slug to bind to",
@@ -477,7 +484,7 @@ def _get_production_session_id(console: Console, token: str) -> Optional[str]:
         return None
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 @click.option(
     "--target-path",
     type=click.Path(exists=True),
@@ -518,8 +525,20 @@ def _get_production_session_id(console: Console, token: str) -> Optional[str]:
     is_flag=True,
     help="Show what would be uploaded without actually uploading",
 )
+@click.option(
+    "--session-base",
+    is_flag=True,
+    help="Upload session-specific base artifacts instead of current artifacts.",
+)
 def upload(
-    target_path, session_id, session_name, skip_confirmation, pr, session_type, dry_run
+    target_path,
+    session_id,
+    session_name,
+    skip_confirmation,
+    pr,
+    session_type,
+    dry_run,
+    session_base,
 ):
     """
     Upload dbt artifacts (manifest.json, catalog.json) to Recce Cloud.
@@ -551,6 +570,15 @@ def upload(
       recce-cloud upload --target-path custom-target
     """
     console = Console()
+
+    # Track upload-specific properties
+    track("cli_upload_started", {
+        "has_session_id": session_id is not None,
+        "has_session_name": session_name is not None,
+        "session_type": session_type,
+        "dry_run": dry_run,
+        "session_base": session_base,
+    })
 
     # 1. Auto-detect CI environment information
     console.rule("CI Environment Detection", style="blue")
@@ -627,7 +655,17 @@ def upload(
         console.print(f"Reason: {e}")
         sys.exit(3)
 
-    # 4. Handle dry-run mode (before authentication or API calls)
+    # 4. Early validation: --session-base + --type prod is not allowed
+    if session_base and session_type == "prod":
+        console.print(
+            "[red]Error:[/red] --session-base cannot be used with --type prod."
+        )
+        console.print(
+            "Production sessions use the shared project base. Session base is for PR and dev sessions only."
+        )
+        sys.exit(2)
+
+    # 5. Handle dry-run mode (before authentication or API calls)
     if dry_run:
         console.rule("Dry Run Summary", style="yellow")
         console.print(
@@ -685,12 +723,50 @@ def upload(
         console.print(f"  • catalog.json: {os.path.abspath(catalog_path)}")
         console.print(f"  • Adapter type: {adapter_type}")
 
+        if session_base:
+            console.print()
+            console.print("[cyan]Session base:[/cyan] Yes (uploading base artifacts)")
+
         console.print()
         console.print("[green]✓[/green] Dry run completed successfully")
         sys.exit(0)
 
     # 5. Choose upload workflow based on provided options
     # Priority: --session-id > --session-name > platform-specific auto-detection
+    try:
+        _run_upload_workflow(
+            console,
+            session_id,
+            session_name,
+            skip_confirmation,
+            session_type,
+            session_base,
+            ci_info,
+            manifest_path,
+            catalog_path,
+            adapter_type,
+            target_path,
+        )
+    except UploadError as e:
+        sys.exit(e.exit_code)
+
+    sys.exit(0)
+
+
+def _run_upload_workflow(
+    console,
+    session_id,
+    session_name,
+    skip_confirmation,
+    session_type,
+    session_base,
+    ci_info,
+    manifest_path,
+    catalog_path,
+    adapter_type,
+    target_path,
+):
+    """Execute the upload workflow. Raises UploadError on failure, returns normally on success."""
     if session_id:
         # Generic workflow: Upload to existing session using session ID
         # This workflow requires RECCE_API_TOKEN or logged-in profile
@@ -704,7 +780,7 @@ def upload(
             console.print(
                 "Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first"
             )
-            sys.exit(2)
+            raise UploadError("No RECCE_API_TOKEN provided and not logged in")
 
         upload_to_existing_session(
             console,
@@ -714,6 +790,7 @@ def upload(
             catalog_path,
             adapter_type,
             target_path,
+            session_base=session_base,
         )
     elif session_name:
         # Session name workflow: Look up session by name, create if not exists
@@ -729,7 +806,7 @@ def upload(
             console.print(
                 "Either set RECCE_API_TOKEN environment variable or run 'recce-cloud login' first"
             )
-            sys.exit(2)
+            raise UploadError("No RECCE_API_TOKEN provided and not logged in")
 
         upload_with_session_name(
             console,
@@ -740,6 +817,7 @@ def upload(
             adapter_type,
             target_path,
             skip_confirmation=skip_confirmation,
+            session_base=session_base,
         )
     else:
         # Auto-detect workflow: Try RECCE_API_TOKEN first, then platform tokens
@@ -763,7 +841,7 @@ def upload(
             console.print(
                 "  3. Use [bold]--session-name <name>[/bold] or [bold]--session-id <id>[/bold] for explicit targeting"
             )
-            sys.exit(1)
+            raise UploadError("No pull request detected", exit_code=1)
 
         # Priority 1: RECCE_API_TOKEN + CI detected → generic client
         from recce_cloud.auth.profile import get_api_token
@@ -785,7 +863,7 @@ def upload(
                 console.print(
                     "RECCE_API_TOKEN is supported on GitHub Actions and GitLab CI."
                 )
-                sys.exit(2)
+                raise UploadError(f"Unsupported CI platform: {ci_info.platform}")
 
             console.print("[cyan]Info:[/cyan] Using RECCE_API_TOKEN for authentication")
 
@@ -804,6 +882,7 @@ def upload(
                 adapter_type,
                 target_path,
                 client=client,
+                session_base=session_base,
             )
 
         # Priority 2: Platform token + CI detected → existing platform clients
@@ -826,6 +905,7 @@ def upload(
                 catalog_path,
                 adapter_type,
                 target_path,
+                session_base=session_base,
             )
 
         # Fallback: --type prod outside CI (upload to production session by ID)
@@ -833,17 +913,26 @@ def upload(
             # Fetch the production session ID
             prod_session_id = _get_production_session_id(console, recce_api_token)
             if not prod_session_id:
-                sys.exit(2)
+                raise UploadError("No production session found")
 
-            upload_to_existing_session(
-                console,
-                recce_api_token,
-                prod_session_id,
-                manifest_path,
-                catalog_path,
-                adapter_type,
-                target_path,
-            )
+            if session_base:
+                console.print(
+                    "[red]Error:[/red] --session-base cannot be used with --type prod."
+                )
+                console.print(
+                    "Production sessions use the shared project base. Session base is for PR and dev sessions only."
+                )
+                raise UploadError("--session-base cannot be used with --type prod")
+            else:
+                upload_to_existing_session(
+                    console,
+                    recce_api_token,
+                    prod_session_id,
+                    manifest_path,
+                    catalog_path,
+                    adapter_type,
+                    target_path,
+                )
 
         # Error with guidance
         else:
@@ -861,10 +950,10 @@ def upload(
             console.print(
                 "  3. Use --session-id or --session-name for explicit session targeting"
             )
-            sys.exit(2)
+            raise UploadError("No authentication method found")
 
 
-@cloud_cli.command(name="list")
+@cloud_cli.command(name="list", cls=TrackedCommand)
 @click.option(
     "--type",
     "session_type",
@@ -1030,7 +1119,7 @@ def list_sessions_cmd(session_type, output_json):
     sys.exit(0)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 @click.option(
     "--target-path",
     type=click.Path(),
@@ -1087,6 +1176,13 @@ def download(target_path, session_id, prod, dry_run, force):
       recce-cloud download --force
     """
     console = Console()
+
+    # Track download-specific properties
+    track("cli_download_started", {
+        "has_session_id": session_id is not None,
+        "prod": prod,
+        "dry_run": dry_run,
+    })
 
     # Validate flag combinations
     if session_id and prod:
@@ -1237,7 +1333,7 @@ def download(target_path, session_id, prod, dry_run, force):
         download_with_platform_apis(console, token, ci_info, target_path, force)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 @click.option(
     "--session-id",
     envvar="RECCE_SESSION_ID",
@@ -1428,7 +1524,7 @@ def delete(session_id, dry_run, force):
         delete_with_platform_apis(console, token, ci_info, prod=False)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 @click.option(
     "--repo",
     type=str,
@@ -1560,7 +1656,7 @@ def report(repo, since, until, base_branch, merged_only, output):
     sys.exit(exit_code)
 
 
-@cloud_cli.command()
+@cloud_cli.command(cls=TrackedCommand)
 @click.option(
     "--session-id",
     envvar="RECCE_SESSION_ID",
@@ -1638,6 +1734,14 @@ def review(session_id, session_name, org, project, regenerate, timeout, json_out
       recce-cloud review --session-name my-session --timeout 600
     """
     console = Console()
+
+    # Track review-specific properties
+    track("cli_review_started", {
+        "has_session_id": session_id is not None,
+        "has_session_name": session_name is not None,
+        "regenerate": regenerate,
+        "json_output": json_output,
+    })
 
     # Validate that at least one of session_id or session_name is provided
     if not session_id and not session_name:

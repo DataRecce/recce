@@ -13,8 +13,9 @@ from recce.pull_request import PullRequestInfo
 if typing.TYPE_CHECKING:
     from recce.util.cloud import ChecksCloud
 
-RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
-RECCE_CLOUD_BASE_URL = os.environ.get("RECCE_CLOUD_BASE_URL", RECCE_CLOUD_API_HOST)
+RECCE_CLOUD_DEFAULT_HOST = "https://cloud.reccehq.com"
+RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", RECCE_CLOUD_DEFAULT_HOST)
+RECCE_CLOUD_BASE_URL = os.environ.get("RECCE_CLOUD_BASE_URL", os.environ.get("RECCE_CLOUD_HOST", RECCE_CLOUD_API_HOST))
 
 DOCKER_INTERNAL_URL_PREFIX = "http://host.docker.internal"
 LOCALHOST_URL_PREFIX = "http://localhost"
@@ -340,9 +341,14 @@ class RecceCloud:
             presigned_urls[key] = self._replace_localhost_with_docker_internal(url)
         return presigned_urls
 
-    def get_base_session_download_urls(self, org_id: str, project_id: str) -> dict[str, str]:
-        """Get download URLs for the base session of a project."""
+    def get_base_session_download_urls(self, org_id: str, project_id: str, session_id: str = None) -> dict[str, str]:
+        """Get download URLs for the base session of a project.
+
+        If session_id is provided, the server resolves PR-specific base if available.
+        """
         api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/base-session/download-url"
+        if session_id:
+            api_url += f"?session_id={session_id}"
         response = self._request("GET", api_url)
         if response.status_code != 200:
             raise RecceCloudException(

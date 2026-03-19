@@ -30,7 +30,11 @@ import {
 import { useIsDark } from "../../hooks";
 import { TopKBarChart } from "../data/TopKBarChart";
 import { createResultView } from "../result/createResultView";
-import type { CreatedResultViewProps, ResultViewData } from "../result/types";
+import type {
+  CreatedResultViewProps,
+  ResultViewData,
+  ResultViewTransformOptions,
+} from "../result/types";
 
 // ============================================================================
 // Type Definitions
@@ -129,10 +133,8 @@ function transformTopKDiffData(
   {
     viewOptions,
     onViewOptionsChanged,
-  }: {
-    viewOptions?: TopKViewOptions;
-    onViewOptionsChanged?: (options: TopKViewOptions) => void;
-  },
+    isDark,
+  }: ResultViewTransformOptions<TopKViewOptions>,
 ): ResultViewData | null {
   const result = run.result;
   const params = run.params as TopKDiffParams;
@@ -179,6 +181,7 @@ function transformTopKDiffData(
             currentData={currentTopK}
             showComparison={true}
             maxItems={isDisplayTopTen ? 10 : undefined}
+            theme={isDark ? "dark" : "light"}
           />
           <Box sx={{ flex: 1 }} />
         </Stack>

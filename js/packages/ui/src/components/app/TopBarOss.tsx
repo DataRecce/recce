@@ -14,6 +14,7 @@ import {
   useLineageGraphContext,
   useRecceInstanceContext,
 } from "../../contexts";
+import { PUBLIC_CLOUD_WEB_URL } from "../../lib/const";
 import { colors } from "../../theme";
 import { IdleTimeoutBadge } from "../timeout/IdleTimeoutBadge";
 import AuthModal from "./AuthModal";
@@ -50,9 +51,7 @@ export const TopBarOss = () => {
   const { url: prURL, id: prID } = envInfo?.pullRequest ?? {};
   const demoPrId = prURL ? prURL.split("/").pop() : null;
   const brandLink =
-    cloudMode || authed
-      ? "https://cloud.datarecce.io/"
-      : "https://reccehq.com/";
+    cloudMode || authed ? PUBLIC_CLOUD_WEB_URL : "https://reccehq.com/";
   const [showModal, setShowModal] = useState(false);
 
   return (

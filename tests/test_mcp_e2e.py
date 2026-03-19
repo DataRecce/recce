@@ -377,6 +377,104 @@ def mcp_e2e_single_env():
         helper.cleanup()
 
 
+class TestValueDiffE2E:
+    """Layer 1: value_diff with real DuckDB."""
+
+    @pytest.mark.asyncio
+    async def test_value_diff_detects_added_row(self, mcp_e2e_with_data):
+        server, _ = mcp_e2e_with_data
+        result = await server._tool_value_diff({"model": "customers", "primary_key": "id"})
+        assert "summary" in result
+        assert result["summary"]["added"] == 1  # Charlie added
+
+    @pytest.mark.asyncio
+    async def test_value_diff_detail_shows_rows(self, mcp_e2e_with_data):
+        server, _ = mcp_e2e_with_data
+        result = await server._tool_value_diff_detail({"model": "customers", "primary_key": "id"})
+        assert isinstance(result, dict)
+        assert "data" in result
+
+
+class TestTopKDiffE2E:
+    """Layer 1: top_k_diff with real DuckDB."""
+
+    @pytest.mark.asyncio
+    async def test_top_k_diff_returns_values(self, mcp_e2e_with_data):
+        server, _ = mcp_e2e_with_data
+        result = await server._tool_top_k_diff({"model": "customers", "column_name": "name"})
+        assert isinstance(result, dict)
+        assert "base" in result
+        assert "current" in result
+
+
+class TestHistogramDiffE2E:
+    """Layer 1: histogram_diff with real DuckDB."""
+
+    @pytest.mark.asyncio
+    async def test_histogram_diff_auto_detects_type(self, mcp_e2e_with_data):
+        server, _ = mcp_e2e_with_data
+        result = await server._tool_histogram_diff({"model": "customers", "column_name": "age"})
+        assert isinstance(result, dict)
+        assert "base" in result
+        assert "current" in result
+
+
+class TestGetModelE2E:
+    """Layer 1: get_model with real DuckDB."""
+
+    @pytest.mark.asyncio
+    async def test_get_model_returns_columns(self, mcp_e2e_with_data):
+        server, _ = mcp_e2e_with_data
+        result = await server._tool_get_model({"model_id": "model.recce_test.customers"})
+        assert "model" in result
+        assert "base" in result["model"]
+        assert "current" in result["model"]
+
+
+class TestGetCllE2E:
+    """Layer 1: get_cll with real DuckDB."""
+
+    @pytest.mark.asyncio
+    async def test_get_cll_returns_cll_data(self, mcp_e2e_with_data):
+        server, _ = mcp_e2e_with_data
+        result = await server._tool_get_cll({})
+        assert isinstance(result, dict)
+        assert "nodes" in result
+        assert "columns" in result
+
+
+class TestGetServerInfoE2E:
+    """Layer 1: get_server_info with real DuckDB."""
+
+    @pytest.mark.asyncio
+    async def test_get_server_info_returns_info(self, mcp_e2e_with_data):
+        server, _ = mcp_e2e_with_data
+        result = await server._tool_get_server_info({})
+        assert result["adapter_type"] == "dbt"
+        assert "support_tasks" in result
+        assert isinstance(result["support_tasks"], dict)
+
+
+class TestSelectNodesE2E:
+    """Layer 1: select_nodes with real DuckDB."""
+
+    @pytest.mark.asyncio
+    async def test_select_nodes_returns_node_ids(self, mcp_e2e_with_data):
+        server, _ = mcp_e2e_with_data
+        result = await server._tool_select_nodes({})
+        assert "nodes" in result
+        assert isinstance(result["nodes"], list)
+        # Should contain our models
+        assert any("customers" in n for n in result["nodes"])
+
+    @pytest.mark.asyncio
+    async def test_select_nodes_filters_test_nodes(self, mcp_e2e_with_data):
+        server, _ = mcp_e2e_with_data
+        result = await server._tool_select_nodes({})
+        for node in result["nodes"]:
+            assert not node.startswith("test.")
+
+
 class TestSingleEnvModeE2E:
     """Layer 1: single-env mode adds _warning to diff results."""
 
@@ -425,6 +523,14 @@ class TestMCPProtocolE2E:
                 "query",
                 "query_diff",
                 "profile_diff",
+                "value_diff",
+                "value_diff_detail",
+                "top_k_diff",
+                "histogram_diff",
+                "get_model",
+                "get_cll",
+                "get_server_info",
+                "select_nodes",
                 "list_checks",
                 "run_check",
             }

@@ -20,7 +20,7 @@ class BaseRecceCloudClient(ABC):
 
         Args:
             token: Authentication token (GITHUB_TOKEN, CI_JOB_TOKEN, or RECCE_API_TOKEN)
-            api_host: Recce Cloud API host (defaults to RECCE_CLOUD_API_HOST or https://cloud.datarecce.io)
+            api_host: Recce Cloud API host (defaults to RECCE_CLOUD_API_HOST or https://cloud.reccehq.com)
         """
         self.token = token
         self.api_host = api_host or get_api_host()
