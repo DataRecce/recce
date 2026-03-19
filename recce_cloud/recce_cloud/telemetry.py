@@ -170,18 +170,6 @@ def track(event, properties=None):
         logger.debug("PostHog track error: %s", e)
 
 
-def get_user_id_property():
-    # type: () -> str
-    """Get user_id for inclusion as an event property.
-
-    We manage identity ourselves — user_id is included as a regular
-    event property rather than relying on PostHog's person merging
-    (alias/identify). Cross-system analysis uses this property to
-    join CLI events with server-side events.
-    """
-    return get_distinct_id()
-
-
 def shutdown():
     # type: () -> None
     """Flush pending events and stop background threads."""
