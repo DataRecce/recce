@@ -236,17 +236,6 @@ def _do_lifespan_setup(app_state: AppState):
     (create_task, get_running_loop, etc.) here — schedule them in the async
     caller after this returns.
     """
-    # Update onboarding state in background (non-fatal)
-    try:
-        api_token = app_state.auth_options.get("api_token") if app_state.auth_options else None
-        single_env = app_state.flag.get("single_env_onboarding", False) if app_state.flag else False
-        if api_token:
-            from recce.util.onboarding_state import update_onboarding_state
-
-            update_onboarding_state(api_token, single_env)
-    except Exception:
-        logger.debug("Failed to update onboarding state (non-fatal)", exc_info=True)
-
     if app_state.command == "server":
         ctx = setup_server(app_state)
     elif app_state.command == "read-only":
