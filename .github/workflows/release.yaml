@@ -136,6 +136,8 @@ jobs:
           uv run twine upload dist/*
         env:
           PYPIRC: ${{ secrets.PYPI }}
+          RECCE_POSTHOG_API_KEY: ${{ secrets.RECCE_POSTHOG_API_KEY }}
+          RECCE_POSTHOG_API_KEY_STAGING: ${{ secrets.RECCE_POSTHOG_API_KEY_STAGING }}
 
       - name: Mark Sentry Release
         uses: getsentry/action-release@v1

@@ -24,12 +24,16 @@ _initialized = False
 # Same host as recce-cloud-infra
 POSTHOG_HOST = "https://us.i.posthog.com"
 
-# PostHog project API keys (phc_) are write-only public tokens designed
-# for client-side use — safe to embed per PostHog's official guidance.
-# See: https://posthog.com/docs/api/post-only-endpoints
-# Env vars RECCE_POSTHOG_API_KEY / RECCE_POSTHOG_API_KEY_STAGING override these.
-_POSTHOG_KEY_PROD = "phc_WDJMPIYB2WTasN3sVxwIasBOSTjZ9rVTkpqf5lVKeRL"
-_POSTHOG_KEY_STAGING = "phc_9QTMdAwlgjRHtxrWbECkLMzukdunmT0GM4wAUN5z1cY"
+# PostHog project API keys — injected at build time by hatch_build.py into
+# _posthog_keys.py. Empty string when not injected (dev builds).
+# Runtime env vars RECCE_POSTHOG_API_KEY / RECCE_POSTHOG_API_KEY_STAGING
+# override for testing or custom deployments.
+try:
+    from recce_cloud._posthog_keys import POSTHOG_KEY_PROD as _POSTHOG_KEY_PROD
+    from recce_cloud._posthog_keys import POSTHOG_KEY_STAGING as _POSTHOG_KEY_STAGING
+except ImportError:
+    _POSTHOG_KEY_PROD = ""
+    _POSTHOG_KEY_STAGING = ""
 
 # Production API hosts — anything else is treated as staging/dev.
 _PROD_HOSTS = {
@@ -50,9 +54,8 @@ def _get_api_key():
     # type: () -> Optional[str]
     """Get the PostHog project API key for event ingestion.
 
-    Keys are bundled in the package — PostHog project API keys (phc_) are
-    write-only public tokens, safe to embed per PostHog official guidance.
-    Env vars can override for testing or custom deployments:
+    Keys are injected at build time into _posthog_keys.py by hatch_build.py.
+    Runtime env vars can override for testing or custom deployments:
     - RECCE_POSTHOG_API_KEY: overrides prod key
     - RECCE_POSTHOG_API_KEY_STAGING: overrides staging key
     """
