@@ -29,7 +29,7 @@ function BoxedSvg({
     <svg
       viewBox={`0 0 ${VB_W} ${VB_H}`}
       width={size}
-      height={typeof size === "number" ? size * ASPECT : undefined}
+      height={typeof size === "number" ? size * ASPECT : `${ASPECT}em`}
       style={style}
       className={className}
       aria-hidden="true"

@@ -23,7 +23,7 @@ const meta: Meta<typeof DataTypeIcon> = {
     size: {
       description:
         'Icon size — "1em" (default, scales with font-size) or a number for explicit pixels',
-      control: "text",
+      control: { type: "number" },
     },
   },
 };

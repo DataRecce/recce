@@ -59,8 +59,8 @@ describe("DataTypeIcon", () => {
     const { container } = render(<DataTypeIcon type="INTEGER" />);
     const svg = container.querySelector("svg");
     expect(svg).toHaveAttribute("width", "1em");
-    // Height is omitted for string sizes — browser derives it from viewBox
-    expect(svg).not.toHaveAttribute("height");
+    // Maintain same aspect ratio: height/width = 18/30 = 0.6
+    expect(svg).toHaveAttribute("height", "0.6em");
   });
 
   test("accepts explicit numeric size for backwards compatibility", () => {
