@@ -1794,7 +1794,9 @@ def mcp_server(state_file, sse, host, port, **kwargs):
     """
     from rich.console import Console
 
-    console = Console()
+    # In stdio mode, stdout is the JSON-RPC transport — all human-readable
+    # output must go to stderr to avoid MCP client parse errors.
+    console = Console(stderr=True) if not sse else Console()
     try:
         # Import here to avoid import errors if mcp is not installed
         from recce.mcp_server import run_mcp_server
