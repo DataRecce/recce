@@ -5,6 +5,7 @@ import {
   createEmptyProfileDataFrame,
   createLargeProfileDataFrame,
   createProfileRun,
+  createProfileRunUppercase,
 } from "./fixtures";
 
 // ============================================
@@ -125,6 +126,21 @@ export const WithPinnedColumns: Story = {
       description: {
         story:
           "Profile view with the column_name column pinned to the left for easier navigation when scrolling horizontally.",
+      },
+    },
+  },
+};
+
+export const UppercaseColumnKeys: Story = {
+  name: "Uppercase Column Keys (Real Backend Data)",
+  args: {
+    run: createProfileRunUppercase(),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Profile view with UPPERCASE column keys matching real backend data (BigQuery, Snowflake). Verifies column name rendering works regardless of key casing.",
       },
     },
   },
