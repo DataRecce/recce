@@ -151,7 +151,6 @@ export const schemaColumns: ColDef[] = [
                     >
                       <DataTypeIcon
                         type={String(baseType)}
-                        size={16}
                         disableTooltip
                       />
                     </span>
@@ -160,7 +159,6 @@ export const schemaColumns: ColDef[] = [
                   {currentType && (
                     <DataTypeIcon
                       type={String(currentType)}
-                      size={16}
                       disableTooltip
                     />
                   )}
@@ -169,7 +167,6 @@ export const schemaColumns: ColDef[] = [
                 columnType && (
                   <DataTypeIcon
                     type={String(columnType)}
-                    size={16}
                     disableTooltip
                   />
                 )
