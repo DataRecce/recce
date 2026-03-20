@@ -267,7 +267,7 @@ export function ColumnNameCell({
               alignItems: "center",
               gap: "0.125rem",
               ml: "0.25rem",
-              fontSize: "1.25rem",
+              fontSize: "1.6rem",
             }}
           >
             {baseType && (
@@ -285,7 +285,7 @@ export function ColumnNameCell({
           </Box>
         ) : (
           columnType && (
-            <Box component="span" sx={{ ml: "0.25rem", fontSize: "1.25rem" }}>
+            <Box component="span" sx={{ ml: "0.25rem", fontSize: "1.6rem" }}>
               <DataTypeIcon type={columnType} disableTooltip />
             </Box>
           )

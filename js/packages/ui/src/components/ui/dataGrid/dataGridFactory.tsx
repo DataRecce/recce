@@ -224,7 +224,7 @@ export function profileColumnNameRenderer(
           {name}
         </Box>
         {dataType && (
-          <Box component="span" sx={{ fontSize: "1.25rem" }}>
+          <Box component="span" sx={{ fontSize: "1.6rem" }}>
             <DataTypeIcon type={dataType} disableTooltip />
           </Box>
         )}
@@ -281,7 +281,7 @@ export function profileDiffColumnNameRenderer(
               display: "inline-flex",
               alignItems: "center",
               gap: "0.125rem",
-              fontSize: "1.25rem",
+              fontSize: "1.6rem",
             }}
           >
             <Box
@@ -297,7 +297,7 @@ export function profileDiffColumnNameRenderer(
           </Box>
         ) : (
           displayType && (
-            <Box component="span" sx={{ fontSize: "1.25rem" }}>
+            <Box component="span" sx={{ fontSize: "1.6rem" }}>
               <DataTypeIcon type={displayType} disableTooltip />
             </Box>
           )
