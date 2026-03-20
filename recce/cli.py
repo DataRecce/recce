@@ -93,7 +93,7 @@ def create_state_loader_by_args(state_file=None, **kwargs):
     """
     from rich.console import Console
 
-    console = Console()
+    console = Console(stderr=True)
 
     api_token = kwargs.get("api_token")
     is_review = kwargs.get("review", False)
