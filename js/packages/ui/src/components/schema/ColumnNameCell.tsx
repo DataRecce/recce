@@ -265,8 +265,9 @@ export function ColumnNameCell({
             sx={{
               display: "inline-flex",
               alignItems: "center",
-              gap: "2px",
-              ml: "4px",
+              gap: "0.125rem",
+              ml: "0.25rem",
+              fontSize: "1.25rem",
             }}
           >
             {baseType && (
@@ -274,20 +275,18 @@ export function ColumnNameCell({
                 component="span"
                 sx={{ textDecoration: "line-through", opacity: 0.6 }}
               >
-                <DataTypeIcon type={baseType} size={16} disableTooltip />
+                <DataTypeIcon type={baseType} disableTooltip />
               </Box>
             )}
             <Box component="span" sx={{ fontSize: "0.7em", opacity: 0.5 }}>
               →
             </Box>
-            {currentType && (
-              <DataTypeIcon type={currentType} size={16} disableTooltip />
-            )}
+            {currentType && <DataTypeIcon type={currentType} disableTooltip />}
           </Box>
         ) : (
           columnType && (
-            <Box component="span" sx={{ ml: "4px" }}>
-              <DataTypeIcon type={columnType} size={16} disableTooltip />
+            <Box component="span" sx={{ ml: "0.25rem", fontSize: "1.25rem" }}>
+              <DataTypeIcon type={columnType} disableTooltip />
             </Box>
           )
         )}
