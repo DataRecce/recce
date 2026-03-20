@@ -21,8 +21,9 @@ const meta: Meta<typeof DataTypeIcon> = {
       control: "text",
     },
     size: {
-      description: "Icon size in pixels",
-      control: { type: "number", min: 12, max: 48 },
+      description:
+        'Icon size — "1em" (default, scales with font-size) or a number for explicit pixels',
+      control: "text",
     },
   },
 };
@@ -66,7 +67,7 @@ export const AllCategories: Story = {
         gap: "12px 24px",
         alignItems: "center",
         fontFamily: "system-ui, sans-serif",
-        fontSize: 14,
+        fontSize: "0.875rem",
       }}
     >
       <strong>Icon</strong>
@@ -130,16 +131,53 @@ export const Unknown: Story = {
 // Size Variants
 // ============================================
 
-export const SmallSize: Story = {
-  name: "Small Size (CLL)",
+export const FontSizeScaling: Story = {
+  name: "Font-Size Scaling",
   parameters: {
     docs: {
       description: {
-        story: "Compact 16px icon as used in the Column-Level Lineage view.",
+        story:
+          "Icons scale with CSS font-size. Wrap in a container with the desired font-size to control icon dimensions.",
       },
     },
   },
-  args: { type: "VARCHAR", size: 16 },
+  render: () => (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "1rem",
+        fontFamily: "system-ui, sans-serif",
+      }}
+    >
+      {[
+        { label: "0.75rem", fontSize: "0.75rem" },
+        { label: "1rem (default)", fontSize: "1rem" },
+        { label: "1.25rem (profile grid)", fontSize: "1.25rem" },
+        { label: "1.5rem", fontSize: "1.5rem" },
+        { label: "2rem", fontSize: "2rem" },
+      ].map(({ label, fontSize }) => (
+        <div
+          key={label}
+          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+        >
+          <code style={{ width: "12rem", flexShrink: 0 }}>{label}</code>
+          <span style={{ fontSize }}>
+            <DataTypeIcon type="INTEGER" />
+          </span>
+          <span style={{ fontSize }}>
+            <DataTypeIcon type="VARCHAR(256)" />
+          </span>
+          <span style={{ fontSize }}>
+            <DataTypeIcon type="TIMESTAMP_NTZ" />
+          </span>
+          <span style={{ fontSize }}>
+            <DataTypeIcon type="GEOGRAPHY" />
+          </span>
+        </div>
+      ))}
+    </div>
+  ),
 };
 
 // ============================================
@@ -187,7 +225,7 @@ export const RealWorldTypes: Story = {
         flexDirection: "column",
         gap: 20,
         fontFamily: "system-ui, sans-serif",
-        fontSize: 14,
+        fontSize: "0.875rem",
       }}
     >
       {realWorldTypes.map(({ platform, types }) => (
