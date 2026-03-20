@@ -82,7 +82,7 @@ describe("profileColumnNameRenderer", () => {
 
     render(<>{profileColumnNameRenderer(params)}</>);
 
-    // BUG: This currently renders empty string because params.value is undefined
+    // Regression: previously rendered empty string when params.value was undefined
     expect(screen.getByText("CUSTOMER_ID")).toBeInTheDocument();
   });
 
@@ -129,7 +129,7 @@ describe("profileDiffColumnNameRenderer", () => {
 
     render(<>{profileDiffColumnNameRenderer(params)}</>);
 
-    // BUG: This currently renders empty string
+    // Regression: previously rendered empty string when params.value was undefined
     expect(screen.getByText("FIRST_NAME")).toBeInTheDocument();
   });
 

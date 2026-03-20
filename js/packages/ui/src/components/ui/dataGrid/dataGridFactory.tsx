@@ -240,12 +240,11 @@ export function profileDiffColumnNameRenderer(
   if (!row) return null;
   const fieldName = (params.colDef as ColDef<RowObjectType>)?.field ?? "";
   const name = String(getCaseInsensitive(row, fieldName) ?? params.value ?? "");
-  const baseType = getCaseInsensitive(row, "base__data_type")
-    ? String(getCaseInsensitive(row, "base__data_type"))
-    : undefined;
-  const currentType = getCaseInsensitive(row, "current__data_type")
-    ? String(getCaseInsensitive(row, "current__data_type"))
-    : undefined;
+  const rawBaseType = getCaseInsensitive(row, "base__data_type");
+  const baseType = rawBaseType != null ? String(rawBaseType) : undefined;
+  const rawCurrentType = getCaseInsensitive(row, "current__data_type");
+  const currentType =
+    rawCurrentType != null ? String(rawCurrentType) : undefined;
   const isTypeChanged =
     baseType != null && currentType != null && baseType !== currentType;
   const displayType = currentType ?? baseType;

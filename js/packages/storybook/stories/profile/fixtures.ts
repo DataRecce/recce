@@ -410,9 +410,6 @@ export const createLargeProfileDataFrame = (): DataFrame => {
 };
 
 /**
- * Empty profile result - has column definitions but no data rows
- */
-/**
  * Create a DataFrame with UPPERCASE column keys matching real backend data
  * (BigQuery, Snowflake, etc. return uppercase column names)
  * This fixture helps catch bugs where rendering depends on key casing.
