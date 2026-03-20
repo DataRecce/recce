@@ -46,7 +46,9 @@ class TestGetDistinctId:
 
 
 class TestGetCommonProperties:
-    @patch("recce_cloud.auth.profile.load_profile", return_value={"user_id": "test-uid"})
+    @patch(
+        "recce_cloud.auth.profile.load_profile", return_value={"user_id": "test-uid"}
+    )
     @patch("recce_cloud.ci_providers.CIDetector.detect", return_value=None)
     @patch("recce_cloud.__version__", "1.2.3")
     def test_includes_version_and_platform(self, mock_ci, mock_profile):
@@ -102,7 +104,9 @@ class TestTrack:
     @patch("recce_cloud.telemetry.get_common_properties", return_value={"v": "1"})
     @patch("recce_cloud.telemetry.get_distinct_id", return_value="user123")
     @patch("recce_cloud.telemetry._get_client")
-    def test_disables_person_profile_processing(self, mock_get_client, mock_id, mock_props):
+    def test_disables_person_profile_processing(
+        self, mock_get_client, mock_id, mock_props
+    ):
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
 
@@ -124,69 +128,106 @@ class TestTrack:
 
 
 class TestEnvironmentDetection:
-    @patch("recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io")
+    @patch(
+        "recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io"
+    )
     def test_prod_host_datarecce(self, mock_host):
         from recce_cloud.telemetry import _is_prod_environment
+
         assert _is_prod_environment() is True
 
-    @patch("recce_cloud.constants.get_api_host", return_value="https://cloud.reccehq.com")
+    @patch(
+        "recce_cloud.constants.get_api_host", return_value="https://cloud.reccehq.com"
+    )
     def test_prod_host_reccehq(self, mock_host):
         from recce_cloud.telemetry import _is_prod_environment
+
         assert _is_prod_environment() is True
 
-    @patch("recce_cloud.constants.get_api_host", return_value="https://staging.datarecce.io")
+    @patch(
+        "recce_cloud.constants.get_api_host",
+        return_value="https://staging.datarecce.io",
+    )
     def test_staging_host(self, mock_host):
         from recce_cloud.telemetry import _is_prod_environment
+
         assert _is_prod_environment() is False
 
     @patch("recce_cloud.constants.get_api_host", return_value="http://localhost:9527")
     def test_localhost_is_not_prod(self, mock_host):
         from recce_cloud.telemetry import _is_prod_environment
+
         assert _is_prod_environment() is False
 
-    @patch("recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io/")
+    @patch(
+        "recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io/"
+    )
     def test_trailing_slash_stripped(self, mock_host):
         from recce_cloud.telemetry import _is_prod_environment
+
         assert _is_prod_environment() is True
 
-    @patch.dict(os.environ, {"RECCE_POSTHOG_API_KEY": "prod-key"})
-    @patch("recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io")
-    def test_prod_env_uses_prod_key(self, mock_host):
-        from recce_cloud.telemetry import _get_api_key
-        assert _get_api_key() == "prod-key"
+    @patch.dict(os.environ, {}, clear=True)
+    @patch(
+        "recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io"
+    )
+    def test_prod_uses_hardcoded_key(self, mock_host):
+        from recce_cloud.telemetry import _get_api_key, _POSTHOG_KEY_PROD
 
-    @patch.dict(os.environ, {"RECCE_POSTHOG_API_KEY_STAGING": "staging-key"})
-    @patch("recce_cloud.constants.get_api_host", return_value="https://staging.datarecce.io")
-    def test_staging_env_uses_staging_key(self, mock_host):
+        assert _get_api_key() == _POSTHOG_KEY_PROD
+        assert _POSTHOG_KEY_PROD != ""
+
+    @patch.dict(os.environ, {"RECCE_POSTHOG_API_KEY": "custom-key"})
+    @patch(
+        "recce_cloud.constants.get_api_host",
+        return_value="https://staging.datarecce.io",
+    )
+    def test_non_prod_uses_env_var(self, mock_host):
         from recce_cloud.telemetry import _get_api_key
-        assert _get_api_key() == "staging-key"
+
+        assert _get_api_key() == "custom-key"
 
     @patch.dict(os.environ, {}, clear=True)
-    @patch("recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io")
-    def test_no_env_var_returns_none(self, mock_host):
+    @patch(
+        "recce_cloud.constants.get_api_host",
+        return_value="https://staging.datarecce.io",
+    )
+    def test_non_prod_no_env_var_returns_empty(self, mock_host):
         from recce_cloud.telemetry import _get_api_key
-        assert _get_api_key() is None
+
+        # Non-production telemetry is off by default
+        assert _get_api_key() == ""
 
 
 class TestShouldTrack:
-    @patch("recce_cloud.auth.profile.load_profile", return_value={"anonymous_tracking": False})
+    @patch(
+        "recce_cloud.auth.profile.load_profile",
+        return_value={"anonymous_tracking": False},
+    )
     def test_disabled_when_tracking_false(self, mock_profile):
         from recce_cloud.telemetry import _should_track
+
         assert _should_track() is False
 
-    @patch("recce_cloud.auth.profile.load_profile", return_value={"anonymous_tracking": True})
+    @patch(
+        "recce_cloud.auth.profile.load_profile",
+        return_value={"anonymous_tracking": True},
+    )
     def test_enabled_when_tracking_true(self, mock_profile):
         from recce_cloud.telemetry import _should_track
+
         assert _should_track() is True
 
     @patch("recce_cloud.auth.profile.load_profile", return_value={})
     def test_disabled_when_field_missing(self, mock_profile):
         from recce_cloud.telemetry import _should_track
+
         assert _should_track() is False
 
     @patch("recce_cloud.auth.profile.load_profile", side_effect=Exception("no file"))
     def test_disabled_on_exception(self, mock_profile):
         from recce_cloud.telemetry import _should_track
+
         assert _should_track() is False
 
 
@@ -199,8 +240,10 @@ class TestGetClient:
         mod._client = None
         mod._initialized = False
 
-        with patch.object(mod, "_should_track", return_value=True), \
-             patch.object(mod, "_get_api_key", return_value=None):
+        with (
+            patch.object(mod, "_should_track", return_value=True),
+            patch.object(mod, "_get_api_key", return_value=None),
+        ):
             client = mod._get_client()
             assert client is None
 
