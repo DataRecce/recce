@@ -24,14 +24,10 @@ _initialized = False
 # Same host as recce-cloud-infra
 POSTHOG_HOST = "https://us.i.posthog.com"
 
-# PostHog production API key — injected at build time by hatch_build.py into
-# _posthog_keys.py. Empty string when not injected (dev builds).
-# Runtime env var RECCE_POSTHOG_API_KEY overrides for custom deployments.
-# Staging key is NOT embedded — use RECCE_POSTHOG_API_KEY_STAGING env var.
-try:
-    from recce_cloud._posthog_keys import POSTHOG_KEY_PROD as _POSTHOG_KEY_PROD
-except ImportError:
-    _POSTHOG_KEY_PROD = ""
+# PostHog project API key for production — write-only public token (phc_),
+# safe for client-side embedding. Non-production environments require
+# RECCE_POSTHOG_API_KEY env var to opt in to telemetry.
+_POSTHOG_KEY_PROD = "phc_WDJMPIYB2WTasN3sVxwIasBOSTjZ9rVTkpqf5lVKeRL"
 
 # Production API hosts — anything else is treated as staging/dev.
 _PROD_HOSTS = {
@@ -52,14 +48,13 @@ def _get_api_key():
     # type: () -> Optional[str]
     """Get the PostHog project API key for event ingestion.
 
-    Production key is injected at build time into _posthog_keys.py.
-    Runtime env vars can override for testing or custom deployments:
-    - RECCE_POSTHOG_API_KEY: overrides the embedded prod key
-    - RECCE_POSTHOG_API_KEY_STAGING: required for staging (not embedded)
+    Production environments use the hardcoded prod key automatically.
+    Non-production environments require RECCE_POSTHOG_API_KEY env var
+    to opt in — telemetry is off by default outside production.
     """
     if _is_prod_environment():
-        return os.environ.get("RECCE_POSTHOG_API_KEY") or _POSTHOG_KEY_PROD
-    return os.environ.get("RECCE_POSTHOG_API_KEY_STAGING") or ""
+        return _POSTHOG_KEY_PROD
+    return os.environ.get("RECCE_POSTHOG_API_KEY") or ""
 
 
 def _should_track():

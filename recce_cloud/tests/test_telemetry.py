@@ -167,43 +167,35 @@ class TestEnvironmentDetection:
 
         assert _is_prod_environment() is True
 
-    @patch.dict(os.environ, {"RECCE_POSTHOG_API_KEY": "prod-key"})
-    @patch(
-        "recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io"
-    )
-    def test_prod_env_uses_prod_key(self, mock_host):
-        from recce_cloud.telemetry import _get_api_key
-
-        assert _get_api_key() == "prod-key"
-
-    @patch.dict(os.environ, {"RECCE_POSTHOG_API_KEY_STAGING": "staging-key"})
-    @patch(
-        "recce_cloud.constants.get_api_host",
-        return_value="https://staging.datarecce.io",
-    )
-    def test_staging_env_uses_staging_key(self, mock_host):
-        from recce_cloud.telemetry import _get_api_key
-
-        assert _get_api_key() == "staging-key"
-
     @patch.dict(os.environ, {}, clear=True)
     @patch(
         "recce_cloud.constants.get_api_host", return_value="https://cloud.datarecce.io"
     )
-    def test_no_env_var_returns_bundled_prod_key(self, mock_host):
+    def test_prod_uses_hardcoded_key(self, mock_host):
         from recce_cloud.telemetry import _get_api_key, _POSTHOG_KEY_PROD
 
         assert _get_api_key() == _POSTHOG_KEY_PROD
+        assert _POSTHOG_KEY_PROD != ""
+
+    @patch.dict(os.environ, {"RECCE_POSTHOG_API_KEY": "custom-key"})
+    @patch(
+        "recce_cloud.constants.get_api_host",
+        return_value="https://staging.datarecce.io",
+    )
+    def test_non_prod_uses_env_var(self, mock_host):
+        from recce_cloud.telemetry import _get_api_key
+
+        assert _get_api_key() == "custom-key"
 
     @patch.dict(os.environ, {}, clear=True)
     @patch(
         "recce_cloud.constants.get_api_host",
         return_value="https://staging.datarecce.io",
     )
-    def test_no_env_var_returns_empty_for_staging(self, mock_host):
+    def test_non_prod_no_env_var_returns_empty(self, mock_host):
         from recce_cloud.telemetry import _get_api_key
 
-        # Staging key is not embedded — requires env var at runtime
+        # Non-production telemetry is off by default
         assert _get_api_key() == ""
 
 

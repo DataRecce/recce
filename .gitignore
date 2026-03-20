@@ -7,9 +7,6 @@ __pycache__/
 dist/
 .envrc
 
-# Generated at build time by hatch_build.py
-recce_cloud/recce_cloud/_posthog_keys.py
-
 dbt.log
 coverage.xml
 .coverage
