@@ -54,4 +54,20 @@ describe("DataTypeIcon", () => {
     await userEvent.hover(icon);
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
+
+  test("renders with 1em width by default (scales with font-size)", () => {
+    const { container } = render(<DataTypeIcon type="INTEGER" />);
+    const svg = container.querySelector("svg");
+    expect(svg).toHaveAttribute("width", "1em");
+    // Height is omitted for string sizes — browser derives it from viewBox
+    expect(svg).not.toHaveAttribute("height");
+  });
+
+  test("accepts explicit numeric size for backwards compatibility", () => {
+    const { container } = render(<DataTypeIcon type="INTEGER" size={32} />);
+    const svg = container.querySelector("svg");
+    // 32 * (18/30) = 19.2
+    expect(svg).toHaveAttribute("width", "32");
+    expect(svg).toHaveAttribute("height", "19.2");
+  });
 });
