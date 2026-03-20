@@ -10,7 +10,7 @@ RECCE_PRESET_CHECK_COMMENT = """Preset Checks
 Please see https://docs.reccehq.com/features/preset-checks/
 """
 RECCE_ERROR_LOG_FILE = "recce_error.log"
-console = Console()
+console = Console(stderr=True)
 
 
 class RecceConfig(metaclass=SingletonMeta):
