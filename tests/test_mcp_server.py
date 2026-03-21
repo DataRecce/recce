@@ -1243,6 +1243,20 @@ class TestCallToolHandler:
         assert r.root.isError is True
 
     @pytest.mark.asyncio
+    async def test_new_syntax_error_logs_warning(self, mcp_server, caplog):
+        """DRC-3053/3054: New SYNTAX_ERROR indicators should log warning through call_tool."""
+        import logging
+
+        server, mock_context = mcp_server
+        mock_context.get_lineage_diff.side_effect = Exception(
+            "SQL compilation error: invalid identifier 'DBT_VALID_FROM'"
+        )
+        with caplog.at_level(logging.WARNING, logger="recce.mcp_server"):
+            result = await self._invoke_call_tool(server, "lineage_diff")
+        assert result.root.isError is True
+        assert "Expected syntax_error error" in caplog.text
+
+    @pytest.mark.asyncio
     async def test_large_response_truncates_log(self, mcp_server):
         """Large tool responses are truncated in the debug log."""
         server, mock_context = mcp_server
