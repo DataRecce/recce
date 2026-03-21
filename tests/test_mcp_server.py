@@ -1078,6 +1078,12 @@ class TestErrorClassification:
         server, _ = mcp_server
         assert server._classify_db_error("SQL compilation error: invalid identifier 'DBT_VALID_FROM'") == "syntax_error"
 
+    def test_classify_recce_exception_model_not_found(self, mcp_server):
+        """DRC-3051: RecceException from get_columns None guard should classify as table_not_found."""
+        server, _ = mcp_server
+        msg = "Model 'stg_orders' does not exist in base environment. Check that the model is in the manifest and catalog."
+        assert server._classify_db_error(msg) == "table_not_found"
+
     @pytest.mark.asyncio
     async def test_classified_error_propagates(self, mcp_server):
         """Classified DB errors should still raise (SDK sets isError=True)"""
