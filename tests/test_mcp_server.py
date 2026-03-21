@@ -1060,6 +1060,24 @@ class TestErrorClassification:
             == "permission_denied"
         )
 
+    def test_classify_snowflake_invalid_query_block(self, mcp_server):
+        """DRC-3054 / RECCE-72T: Snowflake 002076 (42601) SQL compilation error."""
+        server, _ = mcp_server
+        assert server._classify_db_error("SQL compilation error: Invalid query block 'db_staging'") == "syntax_error"
+
+    def test_classify_snowflake_column_count_mismatch(self, mcp_server):
+        """DRC-3054 / RECCE-73R: Snowflake 002057 (42601) view definition mismatch."""
+        server, _ = mcp_server
+        assert (
+            server._classify_db_error("SQL compilation error: View definition column count mismatch in MART_VISITS")
+            == "syntax_error"
+        )
+
+    def test_classify_snowflake_invalid_identifier(self, mcp_server):
+        """DRC-3053 / RECCE-8BZ: Snowflake 000904 (42000) invalid column reference."""
+        server, _ = mcp_server
+        assert server._classify_db_error("SQL compilation error: invalid identifier 'DBT_VALID_FROM'") == "syntax_error"
+
     @pytest.mark.asyncio
     async def test_classified_error_propagates(self, mcp_server):
         """Classified DB errors should still raise (SDK sets isError=True)"""
