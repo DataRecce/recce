@@ -1030,6 +1030,36 @@ class TestErrorClassification:
         assert server._classify_db_error("Connection refused") is None
         assert server._classify_db_error("Internal server error") is None
 
+    def test_classify_snowflake_table_does_not_exist_or_not_authorized(self, mcp_server):
+        """DRC-3052 / RECCE-746: Snowflake 'does not exist or not authorized' matches permission_denied first."""
+        server, _ = mcp_server
+        assert (
+            server._classify_db_error(
+                "Database Error: Table 'FCT_GHA_AUCTION_COMBINED_SPEND' does not exist or not authorized."
+            )
+            == "permission_denied"
+        )
+
+    def test_classify_snowflake_schema_does_not_exist_or_not_authorized(self, mcp_server):
+        """DRC-3052 / RECCE-7A7: Schema variant also matches permission_denied first."""
+        server, _ = mcp_server
+        assert (
+            server._classify_db_error(
+                "Database Error: Schema 'PARADIME_TURBO_CI_PR_628_BASE' does not exist or not authorized."
+            )
+            == "permission_denied"
+        )
+
+    def test_classify_snowflake_object_does_not_exist_or_not_authorized(self, mcp_server):
+        """DRC-3052 / RECCE-73P: Object variant also matches permission_denied first."""
+        server, _ = mcp_server
+        assert (
+            server._classify_db_error(
+                "Database Error: Object 'STG_PRODUCT_ANALYTICS_EVENTS' does not exist or not authorized."
+            )
+            == "permission_denied"
+        )
+
     @pytest.mark.asyncio
     async def test_classified_error_propagates(self, mcp_server):
         """Classified DB errors should still raise (SDK sets isError=True)"""
