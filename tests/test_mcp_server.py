@@ -304,6 +304,52 @@ class TestRecceMCPServer:
         assert result["approved"] == 1
 
     @pytest.mark.asyncio
+    async def test_tool_create_check_basic(self, mcp_server):
+        """create_check creates a new check and auto-runs it."""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import Check, RunStatus, RunType
+
+        check_id = uuid4()
+        mock_check = MagicMock(spec=Check)
+        mock_check.check_id = check_id
+
+        mock_run = MagicMock()
+        mock_run.status = RunStatus.FINISHED
+        mock_run.error = None
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.list.return_value = []  # No existing checks
+
+        with (
+            patch("recce.models.CheckDAO", return_value=mock_check_dao),
+            patch("recce.apis.check_func.create_check_without_run", return_value=mock_check) as mock_create,
+            patch("recce.apis.run_func.submit_run", return_value=(mock_run, asyncio.sleep(0))) as mock_submit,
+            patch("recce.apis.check_func.export_persistent_state"),
+        ):
+
+            result = await server._tool_create_check(
+                {
+                    "type": "row_count_diff",
+                    "params": {"node_names": ["orders"]},
+                    "name": "Row Count Diff of orders",
+                    "description": "15% increase",
+                }
+            )
+
+        assert result["check_id"] == str(check_id)
+        assert result["created"] is True
+        assert result["run_executed"] is True
+        assert "run_error" not in result
+        mock_create.assert_called_once()
+        mock_submit.assert_called_once_with(
+            RunType.ROW_COUNT_DIFF,
+            params={"node_names": ["orders"]},
+            check_id=check_id,
+        )
+
+    @pytest.mark.asyncio
     async def test_tool_run_check_row_count_diff(self, mcp_server):
         """Test running a row_count_diff check"""
         server, _ = mcp_server
@@ -838,6 +884,31 @@ class TestMCPServerModes:
         for tool_name in blocked_tools:
             result = await TestCallToolHandler._invoke_call_tool(server, tool_name, {})
             assert result.root.isError is True
+
+    @pytest.mark.asyncio
+    async def test_create_check_in_server_mode_tools(self):
+        """create_check tool is available in server mode."""
+        from mcp.types import ListToolsRequest
+
+        mock_context = MagicMock(spec=RecceContext)
+        server = RecceMCPServer(mock_context, mode=RecceServerMode.server)
+        handler = server.server.request_handlers[ListToolsRequest]
+        result = await handler(ListToolsRequest(method="tools/list"))
+        tools = result.root.tools
+        tool_names = [t.name for t in tools]
+        assert "create_check" in tool_names
+
+    @pytest.mark.asyncio
+    async def test_create_check_blocked_in_non_server_mode(self):
+        """create_check is blocked in preview/read-only mode."""
+        mock_context = MagicMock(spec=RecceContext)
+        server = RecceMCPServer(mock_context, mode=RecceServerMode.preview)
+        r = await TestCallToolHandler._invoke_call_tool(
+            server,
+            "create_check",
+            {"type": "row_count_diff", "params": {}, "name": "test"},
+        )
+        assert r.root.isError is True
 
 
 @pytest.fixture
