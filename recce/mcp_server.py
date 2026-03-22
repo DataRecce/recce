@@ -747,10 +747,13 @@ class RecceMCPServer:
                     "create_check",
                 }
                 if self.mode != RecceServerMode.server and name in blocked_tools_in_non_server:
+                    # Allowed tools = all registered minus blocked
+                    allowed_tools = sorted(
+                        {"lineage_diff", "schema_diff", "get_model", "get_cll", "get_server_info", "select_nodes"}
+                    )
                     raise ValueError(
                         f"Tool '{name}' is not available in {self.mode.value} mode. "
-                        "Only 'lineage_diff', 'schema_diff', 'get_model', 'get_cll', "
-                        "'get_server_info', and 'select_nodes' are available in this mode."
+                        f"Only {', '.join(repr(t) for t in allowed_tools)} are available in this mode."
                     )
 
                 if name == "lineage_diff":
@@ -1256,7 +1259,8 @@ class RecceMCPServer:
         description = arguments.get("description", "")
 
         # Idempotency: find existing check with same (type, params)
-        existing_checks = CheckDAO().list()
+        check_dao = CheckDAO()
+        existing_checks = check_dao.list()
         existing = None
         for c in existing_checks:
             if c.type == check_type and c.params == params:
@@ -1265,7 +1269,7 @@ class RecceMCPServer:
 
         if existing:
             patch = PatchCheckIn(name=name, description=description)
-            CheckDAO().update_check_by_id(existing.check_id, patch)
+            check_dao.update_check_by_id(existing.check_id, patch)
             check_id = existing.check_id
             created = False
         else:
