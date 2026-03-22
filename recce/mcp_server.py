@@ -203,6 +203,11 @@ class RecceMCPServer:
                         Nodes dataframe includes: idx, id, name, resource_type, materialized, change_status, impacted.
                         Edges dataframe includes: from (parent node idx), to (child node idx).
 
+                        The 'impacted' column is authoritative for impact analysis:
+                        - impacted=true: model is modified or downstream of a modified model (connected via ref()).
+                        - impacted=false: model is NOT in the impact path, even if it shares upstream sources.
+                        Always check the 'impacted' column before reporting which models are affected by a change.
+
                         Rendering guidance for Mermaid diagram:
                         Use graph LR and apply these styles based on change_status and impacted:
                         - change_status="added": fill:#d4edda, stroke:#28a745, color:#000000
