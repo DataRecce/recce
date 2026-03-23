@@ -719,6 +719,40 @@ class RecceMCPServer:
                     ]
                 )
 
+                # Discovery tool — requires server mode (calls row_count_diff internally)
+                tools.append(
+                    Tool(
+                        name="impact_analysis",
+                        description=textwrap.dedent(
+                            """
+                            Discover the impact of dbt model changes. Returns which models are
+                            modified or downstream-impacted, with row count and value-level signals
+                            for non-view models.
+
+                            This is a starting point for investigation, not a complete analysis.
+                            Use the results to identify anomalies, then follow up with profile_diff,
+                            query_diff, or other tools until you have confidence in the root cause.
+
+                            Models with value_diff: null have unknown data impact — use
+                            suggested_deep_dives or call profile_diff/query_diff to investigate.
+                        """
+                        ).strip(),
+                        inputSchema={
+                            "type": "object",
+                            "properties": {
+                                "select": {
+                                    "type": "string",
+                                    "description": "dbt selector syntax. Default: 'state:modified+' (all modified models and downstream)",
+                                },
+                                "skip_value_diff": {
+                                    "type": "boolean",
+                                    "description": "Skip row-level value comparison on modified models. Default: false",
+                                },
+                            },
+                        },
+                    )
+                )
+
             self.mcp_logger.log_list_tools(tools)
 
             # Log available tools to console
@@ -750,6 +784,7 @@ class RecceMCPServer:
                     "list_checks",
                     "run_check",
                     "create_check",
+                    "impact_analysis",
                 }
                 if self.mode != RecceServerMode.server and name in blocked_tools_in_non_server:
                     # Allowed tools = all registered minus blocked
@@ -781,6 +816,8 @@ class RecceMCPServer:
                     result = await self._tool_top_k_diff(arguments)
                 elif name == "histogram_diff":
                     result = await self._tool_histogram_diff(arguments)
+                elif name == "impact_analysis":
+                    result = await self._tool_impact_analysis(arguments)
                 elif name == "get_model":
                     result = await self._tool_get_model(arguments)
                 elif name == "get_cll":
@@ -1121,6 +1158,10 @@ class RecceMCPServer:
         if hasattr(result, "model_dump"):
             result = result.model_dump(mode="json")
         return self._maybe_add_single_env_warning(result)
+
+    async def _tool_impact_analysis(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Discover the impact of dbt model changes."""
+        raise NotImplementedError("impact_analysis not yet implemented")
 
     async def _tool_get_model(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get model column details from both environments"""
