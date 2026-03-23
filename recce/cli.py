@@ -495,6 +495,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 )
 @click.option("--review", is_flag=True, help="Open the state file in the review mode.")
 @click.option("--single-env", is_flag=True, help="Launch in single environment mode directly.")
+@click.option("--cll-full-map", is_flag=True, help="Pre-cache the full column-level lineage map on first CLL request.")
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -555,6 +556,7 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         "show_relaunch_hint": False,
         "preview": False,
         "read_only": False,
+        "cll_full_map": False,
     }
     console = Console()
 
@@ -590,6 +592,9 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         flag["preview"] = True
     elif server_mode == RecceServerMode.read_only:
         flag["read_only"] = True
+
+    if kwargs.get("cll_full_map", False):
+        flag["cll_full_map"] = True
 
     # Create state loader using shared function
     from recce.util.startup_perf import get_startup_tracker
