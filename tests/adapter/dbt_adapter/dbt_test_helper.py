@@ -5,6 +5,7 @@ from datetime import datetime
 from io import StringIO
 
 from dbt.contracts.graph.nodes import (
+    GenericTestNode,
     ModelNode,
     SeedNode,
     SnapshotNode,
@@ -293,6 +294,50 @@ class DbtTestHelper:
         with dbt_adapter.connection_named("cleanup"):
             dbt_adapter.execute(f"DROP SCHEMA IF EXISTS {self.base_schema} CASCADE")
             dbt_adapter.execute(f"DROP SCHEMA IF EXISTS {self.curr_schema} CASCADE")
+
+    def add_unique_test(self, model_unique_id, model_name, column_name, package_name="recce_test"):
+        """Add a unique test to the manifest so get_model() detects primary key.
+
+        This creates a GenericTestNode in both base and current manifests,
+        then rebuilds the child_map via set_artifacts().
+        """
+        test_name = f"unique_{model_name}_{column_name}"
+        test_unique_id = f"test.{package_name}.{test_name}.abc123"
+
+        node_dict = {
+            "resource_type": "test",
+            "name": test_name,
+            "package_name": package_name,
+            "path": "",
+            "original_file_path": "",
+            "unique_id": test_unique_id,
+            "fqn": [package_name, test_name],
+            "schema": "test_schema",
+            "alias": test_name,
+            "checksum": {"name": "sha256", "checksum": "abc123"},
+            "raw_code": "",
+            "config": {},
+            "depends_on": {"nodes": [model_unique_id]},
+            "test_metadata": {
+                "name": "unique",
+                "kwargs": {"column_name": column_name, "model": model_name},
+            },
+        }
+        test_node = GenericTestNode.from_dict(node_dict)
+
+        # Add to both manifests so PK is detected regardless of which env is queried
+        self.curr_manifest.add_node_nofile(test_node)
+        self.base_manifest.add_node_nofile(test_node)
+
+        # Rebuild child_map via writable_manifest() → set_artifacts()
+        self.adapter.set_artifacts(
+            self.base_manifest.writable_manifest(),
+            self.curr_manifest.writable_manifest(),
+            self.curr_manifest,
+            self.base_manifest,
+            self.base_catalog,
+            self.curr_catalog,
+        )
 
     def create_snapshot(self, sanpshot_name, base_csv, curr_csv, depends_on=[]):
         self.create_model(sanpshot_name, base_csv, curr_csv, depends_on=depends_on, resource_type="snapshot")
