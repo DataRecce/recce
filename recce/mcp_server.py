@@ -1283,10 +1283,58 @@ class RecceMCPServer:
         except Exception as e:
             errors.append({"step": "schema_diff", "message": str(e)})
 
+        # Step 4: Suggested deep dives (deterministic rules)
+        suggested_deep_dives = []
+        seen_models = set()  # Avoid duplicate suggestions
+
+        for model in impacted_models:
+            name = model["name"]
+
+            # R2: row_count delta > 5% → profile whole model
+            if model["row_count"] and model["row_count"]["delta_pct"] is not None:
+                if abs(model["row_count"]["delta_pct"]) > 5:
+                    if name not in seen_models:
+                        suggested_deep_dives.append(
+                            {
+                                "model": name,
+                                "tool": "profile_diff",
+                                "columns": None,  # whole model
+                            }
+                        )
+                        seen_models.add(name)
+                        continue
+
+            # R3: schema_changes non-empty → profile changed columns
+            if model["schema_changes"]:
+                changed_cols = [c["column"] for c in model["schema_changes"]]
+                if name not in seen_models:
+                    suggested_deep_dives.append(
+                        {
+                            "model": name,
+                            "tool": "profile_diff",
+                            "columns": changed_cols,
+                        }
+                    )
+                    seen_models.add(name)
+                    continue
+
+            # R4: value_diff null on modified model → profile whole model
+            is_modified = model["change_status"] in ("modified", "added")
+            if model["value_diff"] is None and is_modified:
+                if name not in seen_models:
+                    suggested_deep_dives.append(
+                        {
+                            "model": name,
+                            "tool": "profile_diff",
+                            "columns": None,
+                        }
+                    )
+                    seen_models.add(name)
+
         return {
             "impacted_models": impacted_models,
             "not_impacted_models": not_impacted_models,
-            "suggested_deep_dives": [],
+            "suggested_deep_dives": suggested_deep_dives,
             "errors": errors,
         }
 

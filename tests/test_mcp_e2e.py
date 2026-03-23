@@ -276,6 +276,67 @@ class TestImpactAnalysisE2E:
         customers = next(m for m in result["impacted_models"] if m["name"] == "customers")
         assert customers["schema_changes"] == []
 
+    @pytest.mark.asyncio
+    async def test_suggested_deep_dive_r2_row_count_delta(self, mcp_e2e_impact):
+        """R2: row_count delta > 5% → suggest profile_diff on whole model."""
+        server, _ = mcp_e2e_impact
+        result = await server._tool_impact_analysis({})
+
+        # customers: base=2, curr=3, delta_pct=50% → R2 triggers
+        dives = result["suggested_deep_dives"]
+        customer_dive = next((d for d in dives if d["model"] == "customers"), None)
+        assert customer_dive is not None
+        assert customer_dive["tool"] == "profile_diff"
+
+    @pytest.mark.asyncio
+    async def test_suggested_deep_dive_r3_schema_change(self, mcp_e2e):
+        """R3: schema_changes non-empty → suggest profile_diff on changed columns."""
+        server, helper = mcp_e2e
+
+        helper.create_model(
+            "users",
+            base_csv="id,name\n1,Alice",
+            curr_csv="id,name,email\n1,Alice,alice@test.com",
+            unique_id="model.recce_test.users",
+            base_columns={"id": "INTEGER", "name": "VARCHAR"},
+            curr_columns={"id": "INTEGER", "name": "VARCHAR", "email": "VARCHAR"},
+        )
+        result = await server._tool_impact_analysis({})
+
+        dives = result["suggested_deep_dives"]
+        users_dive = next((d for d in dives if d["model"] == "users"), None)
+        assert users_dive is not None
+        assert "email" in (users_dive.get("columns") or [])
+
+    @pytest.mark.asyncio
+    async def test_suggested_deep_dive_r4_null_value_diff(self, mcp_e2e):
+        """R4: value_diff null on modified model → suggest profile_diff."""
+        server, helper = mcp_e2e
+
+        # Create a modified view: different data → different checksum → "modified"
+        # Views get value_diff=null (skipped), so R4 should trigger
+        helper.create_model(
+            "stg_orders",
+            base_csv="id,amount\n1,100",
+            curr_csv="id,amount\n1,200",
+            unique_id="model.recce_test.stg_orders",
+            base_columns={"id": "INTEGER", "amount": "INTEGER"},
+            curr_columns={"id": "INTEGER", "amount": "INTEGER"},
+            patch_func=lambda d: d["config"].update({"materialized": "view"}),
+        )
+        result = await server._tool_impact_analysis({})
+
+        # stg_orders is modified (different checksum) + view (value_diff=null) → R4
+        stg = next(m for m in result["impacted_models"] if m["name"] == "stg_orders")
+        assert stg["change_status"] == "modified"
+        assert stg["value_diff"] is None
+
+        dives = result["suggested_deep_dives"]
+        view_dive = next((d for d in dives if d["model"] == "stg_orders"), None)
+        assert view_dive is not None
+        assert view_dive["tool"] == "profile_diff"
+        assert view_dive["columns"] is None  # whole model
+
 
 class TestRowCountDiffE2E:
     """Layer 1: row_count_diff with real DuckDB."""
