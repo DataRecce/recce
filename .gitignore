@@ -32,6 +32,8 @@ recce/data
 **/docs/tasks/**/*.json
 **/docs/summaries/**/*.md
 **/docs/summaries/**/*.json
+**/docs/superpowers/**/*.md
+**/docs/superpowers/**/*.json
 
 # Git worktrees for isolated development
 .worktrees/
