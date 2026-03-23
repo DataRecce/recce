@@ -1772,6 +1772,13 @@ def mcp_server(state_file, sse, host, port, **kwargs):
         mode where diff tools compare the current environment against
         itself (no changes expected).
 
+    \b
+    Available tools:
+        The MCP server provides tools for lineage exploration, schema
+        inspection, data diffing, and check management. The available
+        tools depend on the server mode (server vs preview/read-only).
+        See full list: https://docs.reccehq.com/setup-guides/mcp-server/#available-tools
+
     Examples:\n
 
     \b
