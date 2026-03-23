@@ -48,12 +48,11 @@ class LineagePerfTracker:
     def increment_change_analysis_nodes(self):
         self.change_analysis_nodes += 1
 
-    def set_params(self, has_node, has_column, change_analysis, no_cll=False, no_upstream=False, no_downstream=False):
+    def set_params(self, has_node, has_column, change_analysis, no_upstream=False, no_downstream=False):
         self.params = {
             "has_node": has_node,
             "has_column": has_column,
             "change_analysis": change_analysis,
-            "no_cll": no_cll,
             "no_upstream": no_upstream,
             "no_downstream": no_downstream,
         }
