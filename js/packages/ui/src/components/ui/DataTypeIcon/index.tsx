@@ -25,7 +25,7 @@ export { buildColumnTooltip } from "./tooltipText";
 const ICON_MAP: Record<
   TypeCategory,
   React.ComponentType<{
-    size?: number;
+    size?: number | string;
     style?: CSSProperties;
     className?: string;
   }>
@@ -46,7 +46,7 @@ const ICON_MAP: Record<
 
 export interface DataTypeIconProps {
   type: string;
-  size?: number;
+  size?: number | string;
   style?: CSSProperties;
   className?: string;
   disableTooltip?: boolean;
@@ -54,7 +54,7 @@ export interface DataTypeIconProps {
 
 export function DataTypeIcon({
   type,
-  size = 24,
+  size,
   style,
   className,
   disableTooltip,
