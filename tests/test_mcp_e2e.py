@@ -210,6 +210,42 @@ class TestImpactAnalysisE2E:
         assert "unrelated" not in impacted_names
         assert "unrelated" in result["not_impacted_models"]
 
+    @pytest.mark.asyncio
+    async def test_row_count_populated_for_tables(self, mcp_e2e_impact):
+        """Tables get row_count, views get null."""
+        server, _ = mcp_e2e_impact
+        result = await server._tool_impact_analysis({})
+
+        customers = next(m for m in result["impacted_models"] if m["name"] == "customers")
+        assert customers["row_count"] is not None
+        assert customers["row_count"]["base"] == 2
+        assert customers["row_count"]["current"] == 3
+        assert customers["row_count"]["delta"] == 1
+        # delta_pct = 1/2 * 100 = 50.0
+        assert customers["row_count"]["delta_pct"] == 50.0
+
+    @pytest.mark.asyncio
+    async def test_row_count_null_for_views(self, mcp_e2e_impact):
+        """Views should have row_count: null (expensive full-table scan)."""
+        server, helper = mcp_e2e_impact
+
+        # Add a view model
+        helper.create_model(
+            "customers_view",
+            base_csv="id\n1",
+            curr_csv="id\n1",
+            unique_id="model.recce_test.customers_view",
+            depends_on=["model.recce_test.customers"],
+            base_columns={"id": "INTEGER"},
+            curr_columns={"id": "INTEGER"},
+            patch_func=lambda d: d["config"].update({"materialized": "view"}),
+        )
+        result = await server._tool_impact_analysis({})
+
+        view_model = next((m for m in result["impacted_models"] if m["name"] == "customers_view"), None)
+        assert view_model is not None
+        assert view_model["row_count"] is None
+
 
 class TestRowCountDiffE2E:
     """Layer 1: row_count_diff with real DuckDB."""
