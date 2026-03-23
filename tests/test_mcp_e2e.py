@@ -338,6 +338,62 @@ class TestImpactAnalysisE2E:
         assert view_dive["columns"] is None  # whole model
 
 
+class TestImpactAnalysisFullScenario:
+    """Full scenario matching ch3-join-shift pattern from spec."""
+
+    @pytest.mark.asyncio
+    async def test_full_scenario_modified_with_downstream(self, mcp_e2e):
+        """Modified model + downstream + unrelated → correct classification."""
+        server, helper = mcp_e2e
+
+        # stg_orders: source (modified, different data)
+        helper.create_model(
+            "stg_orders",
+            base_csv="id,amount\n1,100\n2,200",
+            curr_csv="id,amount\n1,150\n2,250",
+            unique_id="model.recce_test.stg_orders",
+            base_columns={"id": "INTEGER", "amount": "INTEGER"},
+            curr_columns={"id": "INTEGER", "amount": "INTEGER"},
+        )
+        # orders: downstream of stg_orders
+        helper.create_model(
+            "orders",
+            base_csv="id,total\n1,100\n2,200",
+            curr_csv="id,total\n1,100\n2,200",
+            unique_id="model.recce_test.orders",
+            depends_on=["model.recce_test.stg_orders"],
+            base_columns={"id": "INTEGER", "total": "INTEGER"},
+            curr_columns={"id": "INTEGER", "total": "INTEGER"},
+        )
+        # customers: unrelated model (no dependency)
+        helper.create_model(
+            "customers",
+            base_csv="id,name\n1,Alice",
+            curr_csv="id,name\n1,Alice",
+            unique_id="model.recce_test.customers",
+            base_columns={"id": "INTEGER", "name": "VARCHAR"},
+            curr_columns={"id": "INTEGER", "name": "VARCHAR"},
+        )
+
+        result = await server._tool_impact_analysis({})
+
+        # Verify classification
+        impacted_names = {m["name"] for m in result["impacted_models"]}
+        assert "stg_orders" in impacted_names
+        assert "orders" in impacted_names
+        assert "customers" not in impacted_names
+        assert "customers" in result["not_impacted_models"]
+
+        # Verify row counts
+        stg = next(m for m in result["impacted_models"] if m["name"] == "stg_orders")
+        assert stg["row_count"]["base"] == 2
+        assert stg["row_count"]["current"] == 2
+        assert stg["row_count"]["delta"] == 0
+
+        # No errors
+        assert result["errors"] == []
+
+
 class TestImpactAnalysisSingleEnv:
     @pytest.mark.asyncio
     async def test_single_env_adds_warning(self, mcp_e2e_single_env):

@@ -1161,6 +1161,7 @@ class RecceMCPServer:
 
     async def _tool_impact_analysis(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Discover the impact of dbt model changes."""
+        start_time = time.time()
         select = arguments.get("select", "state:modified+")
         skip_value_diff = arguments.get("skip_value_diff", False)  # noqa: F841 — used in later steps
         errors = []
@@ -1330,6 +1331,11 @@ class RecceMCPServer:
                         }
                     )
                     seen_models.add(name)
+
+        if sentry_metrics:
+            duration = time.time() - start_time
+            sentry_metrics.distribution("mcp.impact_analysis.duration", duration, unit="second")
+            sentry_metrics.distribution("mcp.impact_analysis.impacted_count", len(impacted_models))
 
         result = {
             "impacted_models": impacted_models,
