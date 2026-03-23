@@ -1163,7 +1163,7 @@ class RecceMCPServer:
         """Discover the impact of dbt model changes."""
         start_time = time.time()
         select = arguments.get("select", "state:modified+")
-        skip_value_diff = arguments.get("skip_value_diff", False)  # noqa: F841 — used in later steps
+        skip_value_diff = arguments.get("skip_value_diff", False)
         errors = []
 
         # Step 1: Lineage classification
@@ -1283,6 +1283,127 @@ class RecceMCPServer:
                 model["schema_changes"] = changes
         except Exception as e:
             errors.append({"step": "schema_diff", "message": str(e)})
+
+        # Step 3: Value diff (PK Join on modified non-view models)
+        if not skip_value_diff:
+            for model in impacted_models:
+                if model["materialized"] == "view" or model["change_status"] is None:
+                    continue  # skip views and downstream-only models
+                node_id = node_id_by_name.get(model["name"])
+                if not node_id:
+                    continue
+                try:
+                    model_info = self.context.adapter.get_model(node_id)
+                    pk = model_info.get("primary_key")
+                    if not pk:
+                        continue  # no PK → value_diff stays null
+
+                    # Get column info for building SQL
+                    columns_info = model_info.get("columns", {})
+                    non_pk_cols = [c for c in columns_info if c != pk]
+                    if not non_pk_cols:
+                        continue  # only PK column, no value diff to compute
+
+                    # Build relations for base and current schemas
+                    base_rel = self.context.adapter.create_relation(model["name"], base=True)
+                    curr_rel = self.context.adapter.create_relation(model["name"], base=False)
+                    if not base_rel or not curr_rel:
+                        continue
+
+                    # Build column diff expression: any non-PK column changed
+                    col_diff_parts = []
+                    for col in non_pk_cols:
+                        col_diff_parts.append(f'b."{col}" IS DISTINCT FROM c."{col}"')
+                    col_diff_expr = " OR ".join(col_diff_parts)
+
+                    # Build per-column stats: count of changed rows + mean for numeric columns
+                    numeric_types = {
+                        "TINYINT",
+                        "SMALLINT",
+                        "INTEGER",
+                        "BIGINT",
+                        "INT",
+                        "FLOAT",
+                        "DOUBLE",
+                        "DECIMAL",
+                        "NUMERIC",
+                        "REAL",
+                        "HUGEINT",
+                        "INT1",
+                        "INT2",
+                        "INT4",
+                        "INT8",
+                        "FLOAT4",
+                        "FLOAT8",
+                    }
+                    per_col_parts = []
+                    for col in non_pk_cols:
+                        per_col_parts.append(
+                            f'COUNT(CASE WHEN b."{pk}" IS NOT NULL AND c."{pk}" IS NOT NULL '
+                            f'AND b."{col}" IS DISTINCT FROM c."{col}" THEN 1 END) AS "{col}__changed"'
+                        )
+                        col_type = columns_info[col].get("type", "").upper().split("(")[0].strip()
+                        if col_type in numeric_types:
+                            per_col_parts.append(f'AVG(b."{col}") AS "{col}__base_mean"')
+                            per_col_parts.append(f'AVG(c."{col}") AS "{col}__curr_mean"')
+
+                    per_col_sql = ",\n  ".join(per_col_parts)
+
+                    sql = (
+                        f"SELECT\n"
+                        f'  COUNT(CASE WHEN b."{pk}" IS NULL THEN 1 END) AS rows_added,\n'
+                        f'  COUNT(CASE WHEN c."{pk}" IS NULL THEN 1 END) AS rows_removed,\n'
+                        f'  COUNT(CASE WHEN b."{pk}" IS NOT NULL AND c."{pk}" IS NOT NULL\n'
+                        f"             AND ({col_diff_expr}) THEN 1 END) AS rows_changed,\n"
+                        f"  {per_col_sql}\n"
+                        f"FROM {curr_rel} c\n"
+                        f'FULL OUTER JOIN {base_rel} b ON c."{pk}" = b."{pk}"'
+                    )
+
+                    def _run_value_diff_query(adapter, query):
+                        with adapter.connection_named("value_diff"):
+                            _, table = adapter.execute(query, fetch=True)
+                            return table
+
+                    table = await asyncio.get_event_loop().run_in_executor(
+                        None, _run_value_diff_query, self.context.adapter, sql
+                    )
+
+                    if table and len(table) > 0:
+                        row = table[0]
+                        rows_added = int(row[0])
+                        rows_removed = int(row[1])
+                        rows_changed = int(row[2])
+
+                        # Parse per-column stats from remaining columns
+                        col_idx = 3
+                        columns_result = {}
+                        for col in non_pk_cols:
+                            col_changed = int(row[col_idx])
+                            col_idx += 1
+                            col_type = columns_info[col].get("type", "").upper().split("(")[0].strip()
+                            base_mean = None
+                            current_mean = None
+                            if col_type in numeric_types:
+                                raw_base = row[col_idx]
+                                raw_curr = row[col_idx + 1]
+                                base_mean = float(raw_base) if raw_base is not None else None
+                                current_mean = float(raw_curr) if raw_curr is not None else None
+                                col_idx += 2
+                            columns_result[col] = {
+                                "rows_changed": col_changed,
+                                "base_mean": base_mean,
+                                "current_mean": current_mean,
+                            }
+
+                        model["value_diff"] = {
+                            "rows_added": rows_added,
+                            "rows_removed": rows_removed,
+                            "rows_changed": rows_changed,
+                            "columns": columns_result,
+                        }
+                except Exception as e:
+                    errors.append({"step": "value_diff", "model": model["name"], "message": str(e)})
 
         # Step 4: Suggested deep dives (deterministic rules)
         suggested_deep_dives = []
