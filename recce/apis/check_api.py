@@ -11,6 +11,7 @@ from recce.apis.check_func import (
     export_persistent_state,
 )
 from recce.apis.run_func import submit_run
+from recce.core import default_context
 from recce.event import log_api_event
 from recce.exceptions import RecceException
 from recce.models import Check, CheckDAO, Run, RunDAO, RunType
@@ -63,10 +64,14 @@ class CheckOut(BaseModel):
 
 def _get_latest_artifact_time() -> Optional[datetime]:
     """Get the latest manifest generated_at timestamp across base and current environments."""
-    try:
-        from recce.core import load_context
+    import logging
 
-        ctx = load_context()
+    logger = logging.getLogger(__name__)
+
+    try:
+        ctx = default_context()
+        if ctx is None:
+            return None
         adapter = ctx.adapter
 
         timestamps = []
@@ -80,7 +85,8 @@ def _get_latest_artifact_time() -> Optional[datetime]:
                     timestamps.append(ts)
 
         return max(timestamps) if timestamps else None
-    except Exception:
+    except (AttributeError, TypeError) as e:
+        logger.debug("Could not determine artifact time: %s", e)
         return None
 
 
@@ -189,12 +195,8 @@ async def get_check_handler(check_id: UUID):
     if check is None:
         raise HTTPException(status_code=404, detail="Not Found")
 
-    runs = RunDAO().list_by_check_id(check_id)
-    last_run = runs[-1] if len(runs) > 0 else None
-
-    out = CheckOut.from_check(check)
-    out.last_run = last_run
-    return out
+    artifact_time = _get_latest_artifact_time()
+    return CheckOut.from_check(check, artifact_time=artifact_time)
 
 
 class PatchCheckIn(BaseModel):

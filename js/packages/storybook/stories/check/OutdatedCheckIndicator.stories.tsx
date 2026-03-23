@@ -17,7 +17,7 @@ const cardMeta: Meta<typeof CheckCard> = {
       description: {
         component: `Visual markers for stale/outdated checks so users know when to re-validate.
 
-When the underlying data has changed since the last check run, the check card shows an amber **"Outdated"** badge with a tooltip showing when the check was last run.
+When the dbt artifacts/manifest have been regenerated since the last check run, the check card shows an amber **"Outdated"** badge with a tooltip showing when the check was last run.
 
 ## Usage
 

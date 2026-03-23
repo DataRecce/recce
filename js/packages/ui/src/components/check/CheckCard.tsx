@@ -5,6 +5,7 @@ import Checkbox from "@mui/material/Checkbox";
 import Chip from "@mui/material/Chip";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import { formatDistanceToNow } from "date-fns";
 import { type MouseEvent, memo } from "react";
 
 /**
@@ -46,9 +47,15 @@ export interface CheckCardData {
   runStatus?: CheckRunStatus;
   /** Whether the check is a preset */
   isPreset?: boolean;
-  /** Whether the check result is outdated (data changed since last run) */
+  /**
+   * Whether the check result is outdated because the dbt project/manifest
+   * (code or artifacts) has changed since the last run.
+   */
   isOutdated?: boolean;
-  /** ISO timestamp of the last run, shown in outdated tooltip */
+  /**
+   * ISO timestamp of the last check run used to determine staleness when the
+   * dbt manifest or related artifacts are regenerated (shown in outdated tooltip).
+   */
   lastRunAt?: string;
 }
 
@@ -149,25 +156,16 @@ function _getStatusLabel(status?: CheckRunStatus): string {
 }
 
 /**
- * Format an ISO timestamp as a relative time string for the outdated tooltip
+ * Format an ISO timestamp as a relative time string for the outdated tooltip.
+ * Uses date-fns for consistent formatting across the UI.
  */
 function formatOutdatedTooltip(lastRunAt?: string): string {
   if (!lastRunAt) return "Check may be outdated";
   const date = new Date(lastRunAt);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  let ago: string;
-  if (diffMins < 60) {
-    ago = `${diffMins}m ago`;
-  } else if (diffHours < 24) {
-    ago = `${diffHours}h ago`;
-  } else {
-    ago = `${diffDays}d ago`;
+  if (date.getTime() > Date.now()) {
+    return "Check may be outdated — last run: just now";
   }
+  const ago = formatDistanceToNow(date, { addSuffix: true });
   return `Check may be outdated — last run: ${ago}`;
 }
 

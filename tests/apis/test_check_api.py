@@ -82,51 +82,58 @@ class TestIsCheckOutdated(unittest.TestCase):
 class TestGetLatestArtifactTime(unittest.TestCase):
     """Tests for _get_latest_artifact_time with mocked context."""
 
-    @patch("recce.core.load_context")
-    def test_returns_max_of_both_manifests(self, mock_load_context):
+    @patch("recce.apis.check_api.default_context")
+    def test_returns_max_of_both_manifests(self, mock_default_context):
         base_time = datetime(2026, 3, 20, 10, 0, 0, tzinfo=timezone.utc)
         curr_time = datetime(2026, 3, 20, 12, 0, 0, tzinfo=timezone.utc)
 
         adapter = MagicMock()
         adapter.base_manifest.metadata.generated_at = base_time
         adapter.curr_manifest.metadata.generated_at = curr_time
-        mock_load_context.return_value.adapter = adapter
+        mock_default_context.return_value.adapter = adapter
 
         result = _get_latest_artifact_time()
         self.assertEqual(result, curr_time)
 
-    @patch("recce.core.load_context")
-    def test_returns_base_when_only_base_has_manifest(self, mock_load_context):
+    @patch("recce.apis.check_api.default_context")
+    def test_returns_base_when_only_base_has_manifest(self, mock_default_context):
         base_time = datetime(2026, 3, 20, 10, 0, 0, tzinfo=timezone.utc)
 
         adapter = MagicMock()
         adapter.base_manifest.metadata.generated_at = base_time
         adapter.curr_manifest = None
-        mock_load_context.return_value.adapter = adapter
+        mock_default_context.return_value.adapter = adapter
 
         result = _get_latest_artifact_time()
         self.assertEqual(result, base_time)
 
-    @patch("recce.core.load_context")
-    def test_returns_none_when_no_manifests(self, mock_load_context):
-        adapter = MagicMock(spec=[])  # no attributes
-        mock_load_context.return_value.adapter = adapter
+    @patch("recce.apis.check_api.default_context")
+    def test_returns_none_when_context_is_none(self, mock_default_context):
+        mock_default_context.return_value = None
 
         result = _get_latest_artifact_time()
         self.assertIsNone(result)
 
-    @patch("recce.core.load_context")
-    def test_returns_none_when_generated_at_not_datetime(self, mock_load_context):
+    @patch("recce.apis.check_api.default_context")
+    def test_returns_none_when_no_manifests(self, mock_default_context):
+        adapter = MagicMock(spec=[])  # no attributes
+        mock_default_context.return_value.adapter = adapter
+
+        result = _get_latest_artifact_time()
+        self.assertIsNone(result)
+
+    @patch("recce.apis.check_api.default_context")
+    def test_returns_none_when_generated_at_not_datetime(self, mock_default_context):
         adapter = MagicMock()
         adapter.base_manifest.metadata.generated_at = "not-a-datetime"
         adapter.curr_manifest.metadata.generated_at = "also-not"
-        mock_load_context.return_value.adapter = adapter
+        mock_default_context.return_value.adapter = adapter
 
         result = _get_latest_artifact_time()
         self.assertIsNone(result)
 
-    @patch("recce.core.load_context", side_effect=Exception("no context"))
-    def test_returns_none_on_exception(self, mock_load_context):
+    @patch("recce.apis.check_api.default_context", side_effect=AttributeError("no adapter"))
+    def test_returns_none_on_attribute_error(self, mock_default_context):
         result = _get_latest_artifact_time()
         self.assertIsNone(result)
 
