@@ -14,6 +14,7 @@
  */
 
 import type { ColumnType, DataFrame, RowObjectType } from "../../../api";
+import { getCaseInsensitive } from "../../../utils/transforms";
 import type { ColumnMapEntry, MergeColumnMapEntry } from "../gridUtils";
 import { buildDiffRows, type DiffColumnMapEntry } from "../rowBuilders";
 
@@ -904,6 +905,197 @@ describe("buildDiffRows", () => {
       expect(result.rows).toHaveLength(1);
       // _index should be a hashed number for non-numeric keys
       expect(typeof result.rows[0]._index).toBe("number");
+    });
+  });
+
+  // ============================================================================
+  // PK Key Casing Contract Tests (DRC-3037)
+  // ============================================================================
+
+  describe("buildDiffRows - PK key casing contract", () => {
+    const uppercaseColumns: DataFrame["columns"] = [
+      { key: "COLUMN_NAME", name: "COLUMN_NAME", type: "text" },
+      { key: "DATA_TYPE", name: "DATA_TYPE", type: "text" },
+      { key: "ROW_COUNT", name: "ROW_COUNT", type: "integer" },
+    ];
+
+    const uppercaseBaseData: Record<string, RowObjectType> = {
+      CUSTOMER_ID: createRow(
+        { COLUMN_NAME: "CUSTOMER_ID", DATA_TYPE: "integer", ROW_COUNT: 1000 },
+        undefined,
+        1,
+      ),
+      FIRST_NAME: createRow(
+        { COLUMN_NAME: "FIRST_NAME", DATA_TYPE: "varchar", ROW_COUNT: 1000 },
+        undefined,
+        2,
+      ),
+    };
+
+    const uppercaseCurrentData: Record<string, RowObjectType> = {
+      CUSTOMER_ID: createRow(
+        { COLUMN_NAME: "CUSTOMER_ID", DATA_TYPE: "integer", ROW_COUNT: 1200 },
+        undefined,
+        1,
+      ),
+      FIRST_NAME: createRow(
+        { COLUMN_NAME: "FIRST_NAME", DATA_TYPE: "varchar", ROW_COUNT: 1200 },
+        undefined,
+        2,
+      ),
+    };
+
+    const uppercaseColumnMap: Record<string, MergeColumnMapEntry> = {
+      COLUMN_NAME: createMergeColumnMapEntry(
+        "COLUMN_NAME",
+        "text",
+        undefined,
+        "COLUMN_NAME",
+        "COLUMN_NAME",
+      ),
+      DATA_TYPE: createMergeColumnMapEntry(
+        "DATA_TYPE",
+        "text",
+        undefined,
+        "DATA_TYPE",
+        "DATA_TYPE",
+      ),
+      ROW_COUNT: createMergeColumnMapEntry(
+        "ROW_COUNT",
+        "integer",
+        undefined,
+        "ROW_COUNT",
+        "ROW_COUNT",
+      ),
+    };
+
+    test("stores PK values with lowercased keys when column keys are UPPERCASE", () => {
+      const columnMap = structuredClone(uppercaseColumnMap);
+
+      const result = buildDiffRows({
+        baseMap: uppercaseBaseData,
+        currentMap: uppercaseCurrentData,
+        baseColumns: uppercaseColumns,
+        currentColumns: uppercaseColumns,
+        columnMap,
+        primaryKeys: ["COLUMN_NAME"],
+      });
+
+      const row = result.rows[0];
+      // PK is stored under lowercased key
+      expect(row.column_name).toBeDefined();
+      expect(row.column_name).toBe("CUSTOMER_ID");
+      // Original UPPERCASE key should NOT exist on the row
+      expect(row.COLUMN_NAME).toBeUndefined();
+    });
+
+    test("stores non-PK values with lowercased prefixed keys when column keys are UPPERCASE", () => {
+      const columnMap = structuredClone(uppercaseColumnMap);
+
+      const result = buildDiffRows({
+        baseMap: uppercaseBaseData,
+        currentMap: uppercaseCurrentData,
+        baseColumns: uppercaseColumns,
+        currentColumns: uppercaseColumns,
+        columnMap,
+        primaryKeys: ["COLUMN_NAME"],
+      });
+
+      const row = result.rows[0];
+      // Non-PK columns stored with lowercased prefixed keys
+      expect(row.base__data_type).toBeDefined();
+      expect(row.current__data_type).toBeDefined();
+      expect(row.base__row_count).toBeDefined();
+      expect(row.current__row_count).toBeDefined();
+      // UPPERCASE prefixed keys should NOT exist
+      expect(row.base__DATA_TYPE).toBeUndefined();
+      expect(row.current__DATA_TYPE).toBeUndefined();
+    });
+
+    test("PK values are accessible via getCaseInsensitive regardless of original key case", () => {
+      const columnMap = structuredClone(uppercaseColumnMap);
+
+      const result = buildDiffRows({
+        baseMap: uppercaseBaseData,
+        currentMap: uppercaseCurrentData,
+        baseColumns: uppercaseColumns,
+        currentColumns: uppercaseColumns,
+        columnMap,
+        primaryKeys: ["COLUMN_NAME"],
+      });
+
+      const row = result.rows[0];
+      // getCaseInsensitive should find the value regardless of case used
+      expect(getCaseInsensitive(row, "COLUMN_NAME")).toBe("CUSTOMER_ID");
+      expect(getCaseInsensitive(row, "column_name")).toBe("CUSTOMER_ID");
+      expect(getCaseInsensitive(row, "Column_Name")).toBe("CUSTOMER_ID");
+    });
+
+    test("handles mixed case PKs across base and current", () => {
+      const columnMap = structuredClone(uppercaseColumnMap);
+
+      const baseMap: Record<string, RowObjectType> = {
+        CUSTOMER_ID: createRow(
+          {
+            COLUMN_NAME: "CUSTOMER_ID",
+            DATA_TYPE: "integer",
+            ROW_COUNT: 1000,
+          },
+          undefined,
+          1,
+        ),
+      };
+      const currentMap: Record<string, RowObjectType> = {
+        CUSTOMER_ID: createRow(
+          {
+            COLUMN_NAME: "CUSTOMER_ID",
+            DATA_TYPE: "integer",
+            ROW_COUNT: 1200,
+          },
+          undefined,
+          1,
+        ),
+      };
+
+      const result = buildDiffRows({
+        baseMap,
+        currentMap,
+        baseColumns: uppercaseColumns,
+        currentColumns: uppercaseColumns,
+        columnMap,
+        primaryKeys: ["COLUMN_NAME"],
+      });
+
+      expect(result.rows).toHaveLength(1);
+      const row = result.rows[0];
+      // Both base and current should store PK under same lowercased key
+      expect(row.column_name).toBe("CUSTOMER_ID");
+      // Row should be modified because ROW_COUNT changed
+      expect(row.__status).toBe("modified");
+    });
+
+    test("PK lowercasing does not affect non-PK column values", () => {
+      const columnMap = structuredClone(uppercaseColumnMap);
+
+      const result = buildDiffRows({
+        baseMap: uppercaseBaseData,
+        currentMap: uppercaseCurrentData,
+        baseColumns: uppercaseColumns,
+        currentColumns: uppercaseColumns,
+        columnMap,
+        primaryKeys: ["COLUMN_NAME"],
+      });
+
+      const row = result.rows.find(
+        (r) => getCaseInsensitive(r, "COLUMN_NAME") === "CUSTOMER_ID",
+      );
+      expect(row).toBeDefined();
+
+      // Non-PK values stored under lowercased prefixed keys with correct values
+      expect(row!.base__data_type).toBe("integer");
+      expect(row!.current__data_type).toBe("integer");
+      expect(row!.base__row_count).toBe(1000);
+      expect(row!.current__row_count).toBe(1200);
     });
   });
 });

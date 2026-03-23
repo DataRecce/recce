@@ -363,8 +363,7 @@ function LineageColumnNodeComponent({
           type && (
             <DataTypeIcon
               type={type}
-              size={16}
-              style={{ flexShrink: 0, opacity: 0.7 }}
+              style={{ flexShrink: 0, opacity: 0.7, fontSize: "1rem" }}
             />
           )
         )}

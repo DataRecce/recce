@@ -24,6 +24,11 @@ _initialized = False
 # Same host as recce-cloud-infra
 POSTHOG_HOST = "https://us.i.posthog.com"
 
+# PostHog project API key for production — write-only public token (phc_),
+# safe for client-side embedding. Non-production environments require
+# RECCE_POSTHOG_API_KEY env var to opt in to telemetry.
+_POSTHOG_KEY_PROD = "phc_WDJMPIYB2WTasN3sVxwIasBOSTjZ9rVTkpqf5lVKeRL"
+
 # Production API hosts — anything else is treated as staging/dev.
 _PROD_HOSTS = {
     "https://cloud.datarecce.io",
@@ -41,16 +46,15 @@ def _is_prod_environment():
 
 def _get_api_key():
     # type: () -> Optional[str]
-    """Get the PostHog API key from environment variables.
+    """Get the PostHog project API key for event ingestion.
 
-    Keys are configured via env vars — nothing is bundled in the package.
-    The CLI selects the key based on which Recce Cloud API host it targets:
-    - RECCE_POSTHOG_API_KEY: prod (when targeting cloud.datarecce.io)
-    - RECCE_POSTHOG_API_KEY_STAGING: staging (everything else)
+    Production environments use the hardcoded prod key automatically.
+    Non-production environments require RECCE_POSTHOG_API_KEY env var
+    to opt in — telemetry is off by default outside production.
     """
     if _is_prod_environment():
-        return os.environ.get("RECCE_POSTHOG_API_KEY") or None
-    return os.environ.get("RECCE_POSTHOG_API_KEY_STAGING") or None
+        return _POSTHOG_KEY_PROD
+    return os.environ.get("RECCE_POSTHOG_API_KEY") or ""
 
 
 def _should_track():
@@ -168,18 +172,6 @@ def track(event, properties=None):
         )
     except Exception as e:
         logger.debug("PostHog track error: %s", e)
-
-
-def get_user_id_property():
-    # type: () -> str
-    """Get user_id for inclusion as an event property.
-
-    We manage identity ourselves — user_id is included as a regular
-    event property rather than relying on PostHog's person merging
-    (alias/identify). Cross-system analysis uses this property to
-    join CLI events with server-side events.
-    """
-    return get_distinct_id()
 
 
 def shutdown():

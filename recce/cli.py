@@ -93,7 +93,7 @@ def create_state_loader_by_args(state_file=None, **kwargs):
     """
     from rich.console import Console
 
-    console = Console()
+    console = Console(stderr=True)
 
     api_token = kwargs.get("api_token")
     is_review = kwargs.get("review", False)
@@ -1777,6 +1777,13 @@ def mcp_server(state_file, sse, host, port, **kwargs):
         mode where diff tools compare the current environment against
         itself (no changes expected).
 
+    \b
+    Available tools:
+        The MCP server provides tools for lineage exploration, schema
+        inspection, data diffing, and check management. The available
+        tools depend on the server mode (server vs preview/read-only).
+        See full list: https://docs.reccehq.com/setup-guides/mcp-server/#available-tools
+
     Examples:\n
 
     \b
@@ -1799,7 +1806,9 @@ def mcp_server(state_file, sse, host, port, **kwargs):
     """
     from rich.console import Console
 
-    console = Console()
+    # In stdio mode, stdout is the JSON-RPC transport — all human-readable
+    # output must go to stderr to avoid MCP client parse errors.
+    console = Console(stderr=True) if not sse else Console()
     try:
         # Import here to avoid import errors if mcp is not installed
         from recce.mcp_server import run_mcp_server
