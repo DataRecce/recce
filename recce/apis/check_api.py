@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
@@ -15,8 +14,6 @@ from recce.apis.run_func import submit_run
 from recce.event import log_api_event
 from recce.exceptions import RecceException
 from recce.models import Check, CheckDAO, Run, RunDAO, RunType
-
-logger = logging.getLogger("uvicorn")
 
 check_router = APIRouter(tags=["check"])
 
@@ -44,10 +41,12 @@ class CheckOut(BaseModel):
     is_outdated: bool = False
 
     @classmethod
-    def from_check(cls, check: Check):
+    def from_check(cls, check: Check, artifact_time: Optional[datetime] = None):
         check_related_runs = RunDAO().list_by_check_id(check.check_id)
         last_run = check_related_runs[-1] if len(check_related_runs) > 0 else None
-        is_outdated = _is_check_outdated(last_run)
+        if artifact_time is None:
+            artifact_time = _get_latest_artifact_time()
+        is_outdated = _is_check_outdated(last_run, artifact_time)
         return CheckOut(
             check_id=check.check_id,
             name=check.name,
@@ -85,12 +84,11 @@ def _get_latest_artifact_time() -> Optional[datetime]:
         return None
 
 
-def _is_check_outdated(last_run: Optional[Run]) -> bool:
+def _is_check_outdated(last_run: Optional[Run], artifact_time: Optional[datetime]) -> bool:
     """A check is outdated when dbt artifacts were regenerated after the check's last run."""
     if last_run is None:
         return False
 
-    artifact_time = _get_latest_artifact_time()
     if artifact_time is None:
         return False
 
@@ -176,10 +174,11 @@ async def run_check_handler(check_id: UUID, input: RunCheckIn):
     response_model_exclude_none=True,
 )
 async def list_checks_handler():
+    artifact_time = _get_latest_artifact_time()
     checks = []
 
     for check in CheckDAO().list():
-        checks.append(CheckOut.from_check(check))
+        checks.append(CheckOut.from_check(check, artifact_time=artifact_time))
 
     return checks
 
