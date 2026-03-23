@@ -627,7 +627,6 @@ class CllIn(BaseModel):
     node_id: Optional[str] = None
     column: Optional[str] = None
     change_analysis: Optional[bool] = False
-    no_cll: Optional[bool] = False
     no_upstream: Optional[bool] = False
     no_downstream: Optional[bool] = False
 
@@ -647,7 +646,6 @@ async def column_level_lineage_by_node(cll_input: CllIn):
         change_analysis=cll_input.change_analysis,
         no_upstream=cll_input.no_upstream,
         no_downstream=cll_input.no_downstream,
-        no_cll=cll_input.no_cll,
     )
 
     return CllOutput(current=cll)

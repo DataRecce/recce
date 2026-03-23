@@ -984,7 +984,6 @@ class DbtAdapter(BaseAdapter):
         node_id: Optional[str] = None,
         column: Optional[str] = None,
         change_analysis: Optional[bool] = False,
-        no_cll: Optional[bool] = False,
         no_upstream: Optional[bool] = False,
         no_downstream: Optional[bool] = False,
         no_filter: Optional[bool] = False,
@@ -994,7 +993,6 @@ class DbtAdapter(BaseAdapter):
             has_node=node_id is not None,
             has_column=column is not None,
             change_analysis=change_analysis,
-            no_cll=no_cll,
             no_upstream=no_upstream,
             no_downstream=no_downstream,
         )
@@ -1022,100 +1020,44 @@ class DbtAdapter(BaseAdapter):
         if not no_downstream:
             cll_node_ids = cll_node_ids.union(find_downstream(cll_node_ids, manifest_dict.get("child_map")))
 
-        if not no_cll:
-            allowed_related_nodes = set()
-            for key in ["sources", "nodes", "exposures", "metrics"]:
-                attr = getattr(manifest, key)
-                allowed_related_nodes.update(set(attr.keys()))
-            if hasattr(manifest, "semantic_models"):
-                attr = getattr(manifest, "semantic_models")
-                allowed_related_nodes.update(set(attr.keys()))
-            for cll_node_id in cll_node_ids:
-                if cll_node_id not in allowed_related_nodes:
-                    continue
-                cll_data_one = deepcopy(self.get_cll_cached(cll_node_id, base=False))
-                cll_tracker.increment_cll_nodes()
-                if cll_data_one is None:
-                    continue
+        allowed_related_nodes = set()
+        for key in ["sources", "nodes", "exposures", "metrics"]:
+            attr = getattr(manifest, key)
+            allowed_related_nodes.update(set(attr.keys()))
+        if hasattr(manifest, "semantic_models"):
+            attr = getattr(manifest, "semantic_models")
+            allowed_related_nodes.update(set(attr.keys()))
+        for cll_node_id in cll_node_ids:
+            if cll_node_id not in allowed_related_nodes:
+                continue
+            cll_data_one = deepcopy(self.get_cll_cached(cll_node_id, base=False))
+            cll_tracker.increment_cll_nodes()
+            if cll_data_one is None:
+                continue
 
-                nodes[cll_node_id] = cll_data_one.nodes.get(cll_node_id)
-                node_diff = None
-                if change_analysis:
-                    node_diff = self.get_change_analysis_cached(cll_node_id)
-                    cll_tracker.increment_change_analysis_nodes()
+            nodes[cll_node_id] = cll_data_one.nodes.get(cll_node_id)
+            node_diff = None
+            if change_analysis:
+                node_diff = self.get_change_analysis_cached(cll_node_id)
+                cll_tracker.increment_change_analysis_nodes()
+            if node_diff is not None:
+                nodes[cll_node_id].change_status = node_diff.change_status
+                if node_diff.change is not None:
+                    nodes[cll_node_id].change_category = node_diff.change.category
+            for c_id, c in cll_data_one.columns.items():
+                columns[c_id] = c
                 if node_diff is not None:
-                    nodes[cll_node_id].change_status = node_diff.change_status
-                    if node_diff.change is not None:
-                        nodes[cll_node_id].change_category = node_diff.change.category
-                for c_id, c in cll_data_one.columns.items():
-                    columns[c_id] = c
-                    if node_diff is not None:
-                        if node_diff.change_status == "added":
-                            c.change_status = "added"
-                        elif node_diff.change_status == "removed":
-                            c.change_status = "removed"
-                        elif node_diff.change is not None and node_diff.change.columns is not None:
-                            column_diff = node_diff.change.columns.get(c.name)
-                            if column_diff:
-                                c.change_status = column_diff
+                    if node_diff.change_status == "added":
+                        c.change_status = "added"
+                    elif node_diff.change_status == "removed":
+                        c.change_status = "removed"
+                    elif node_diff.change is not None and node_diff.change.columns is not None:
+                        column_diff = node_diff.change.columns.get(c.name)
+                        if column_diff:
+                            c.change_status = column_diff
 
-                for p_id, parents in cll_data_one.parent_map.items():
-                    parent_map[p_id] = parents
-        else:
-            for cll_node_id in cll_node_ids:
-                cll_node = None
-                cll_node_columns: Dict[str, CllColumn] = {}
-
-                if cll_node_id in manifest.sources:
-                    cll_node = CllNode.build_cll_node(manifest, "sources", cll_node_id)
-                    if self.curr_catalog and cll_node_id in self.curr_catalog.sources:
-                        cll_node_columns = {
-                            column.name: CllColumn(
-                                id=f"{cll_node_id}_{column.name}",
-                                table_id=cll_node_id,
-                                name=column.name,
-                                type=column.type,
-                            )
-                            for column in self.curr_catalog.sources[cll_node_id].columns.values()
-                        }
-                elif cll_node_id in manifest.nodes:
-                    cll_node = CllNode.build_cll_node(manifest, "nodes", cll_node_id)
-                    if self.curr_catalog and cll_node_id in self.curr_catalog.nodes:
-                        cll_node_columns = {
-                            column.name: CllColumn(
-                                id=f"{cll_node_id}_{column.name}",
-                                table_id=cll_node_id,
-                                name=column.name,
-                                type=column.type,
-                            )
-                            for column in self.curr_catalog.nodes[cll_node_id].columns.values()
-                        }
-                elif cll_node_id in manifest.exposures:
-                    cll_node = CllNode.build_cll_node(manifest, "exposures", cll_node_id)
-                elif hasattr(manifest, "semantic_models") and cll_node_id in manifest.semantic_models:
-                    cll_node = CllNode.build_cll_node(manifest, "semantic_models", cll_node_id)
-                elif cll_node_id in manifest.metrics:
-                    cll_node = CllNode.build_cll_node(manifest, "metrics", cll_node_id)
-
-                if not cll_node:
-                    continue
-                nodes[cll_node_id] = cll_node
-
-                node_diff = None
-                if change_analysis:
-                    node_diff = self.get_change_analysis_cached(cll_node_id)
-                    cll_tracker.increment_change_analysis_nodes()
-                if node_diff is not None:
-                    cll_node.change_status = node_diff.change_status
-                    if node_diff.change is not None:
-                        cll_node.change_category = node_diff.change.category
-                        for c, cll_column in cll_node_columns.items():
-                            cll_node.columns[c] = cll_column
-                            columns[cll_column.id] = cll_column
-                            if node_diff.change.columns and c in node_diff.change.columns:
-                                cll_column.change_status = node_diff.change.columns[c]
-
-                parent_map[cll_node_id] = manifest.parent_map.get(cll_node_id, [])
+            for p_id, parents in cll_data_one.parent_map.items():
+                parent_map[p_id] = parents
 
         # build the child map
         for parent_id, parents in parent_map.items():
@@ -1146,12 +1088,8 @@ class DbtAdapter(BaseAdapter):
                     node_diff = self.get_change_analysis_cached(nid)
                     if node_diff is not None and node_diff.change is not None:
                         extra_node_ids.add(nid)
-                        if no_cll:
-                            if node_diff.change.category in ["breaking", "partial_breaking", "unknown"]:
-                                anchor_node_ids.add(nid)
-                        else:
-                            if node_diff.change.category in ["breaking", "unknown"]:
-                                anchor_node_ids.add(nid)
+                        if node_diff.change.category in ["breaking", "unknown"]:
+                            anchor_node_ids.add(nid)
                         if node_diff.change.columns is not None:
                             for column_name in node_diff.change.columns:
                                 anchor_node_ids.add(f"{nid}_{column_name}")
@@ -1164,12 +1102,8 @@ class DbtAdapter(BaseAdapter):
                 node_diff = self.get_change_analysis_cached(node_id)
                 if node_diff is not None and node_diff.change is not None:
                     extra_node_ids.add(node_id)
-                    if no_cll:
-                        if node_diff.change.category in ["breaking", "partial_breaking", "unknown"]:
-                            anchor_node_ids.add(node_id)
-                    else:
-                        if node_diff.change.category in ["breaking", "unknown"]:
-                            anchor_node_ids.add(node_id)
+                    if node_diff.change.category in ["breaking", "unknown"]:
+                        anchor_node_ids.add(node_id)
                     if node_diff.change.columns is not None:
                         for column_name in node_diff.change.columns:
                             anchor_node_ids.add(f"{node_id}_{column_name}")
@@ -1177,12 +1111,11 @@ class DbtAdapter(BaseAdapter):
                     anchor_node_ids.add(node_id)
             else:
                 anchor_node_ids.add(node_id)
-                if not no_cll:
-                    node = nodes.get(node_id)
-                    if node:
-                        for column_name in node.columns:
-                            column_key = build_column_key(node_id, column_name)
-                            anchor_node_ids.add(column_key)
+                node = nodes.get(node_id)
+                if node:
+                    for column_name in node.columns:
+                        column_key = build_column_key(node_id, column_name)
+                        anchor_node_ids.add(column_key)
         else:
             anchor_node_ids.add(f"{node_id}_{column}")
 
