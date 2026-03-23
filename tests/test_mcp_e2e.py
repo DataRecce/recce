@@ -338,6 +338,45 @@ class TestImpactAnalysisE2E:
         assert view_dive["columns"] is None  # whole model
 
 
+class TestImpactAnalysisSingleEnv:
+    @pytest.mark.asyncio
+    async def test_single_env_adds_warning(self, mcp_e2e_single_env):
+        server, helper = mcp_e2e_single_env
+        # mcp_e2e_single_env fixture already has customers model
+        result = await server._tool_impact_analysis({})
+        assert "_warning" in result
+
+
+class TestImpactAnalysisErrorResilience:
+    @pytest.mark.asyncio
+    async def test_row_count_error_captured_not_fatal(self, mcp_e2e):
+        """If row_count_diff fails for one model, others still get results."""
+        server, helper = mcp_e2e
+
+        # Create a model in manifest but without a physical table (sql-only, no csv)
+        helper.create_model(
+            "ghost",
+            base_sql="SELECT 1",
+            curr_sql="SELECT 1",
+            unique_id="model.recce_test.ghost",
+            base_columns={"id": "INTEGER"},
+            curr_columns={"id": "INTEGER"},
+        )
+        helper.create_model(
+            "real_model",
+            base_csv="id\n1",
+            curr_csv="id\n1\n2",
+            unique_id="model.recce_test.real_model",
+            base_columns={"id": "INTEGER"},
+            curr_columns={"id": "INTEGER"},
+        )
+        result = await server._tool_impact_analysis({})
+
+        # Should not crash — structure is intact
+        assert "impacted_models" in result
+        assert "errors" in result
+
+
 class TestRowCountDiffE2E:
     """Layer 1: row_count_diff with real DuckDB."""
 

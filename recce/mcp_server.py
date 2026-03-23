@@ -1331,12 +1331,13 @@ class RecceMCPServer:
                     )
                     seen_models.add(name)
 
-        return {
+        result = {
             "impacted_models": impacted_models,
             "not_impacted_models": not_impacted_models,
             "suggested_deep_dives": suggested_deep_dives,
             "errors": errors,
         }
+        return self._maybe_add_single_env_warning(result)
 
     async def _tool_get_model(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get model column details from both environments"""
