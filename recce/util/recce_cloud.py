@@ -13,8 +13,9 @@ from recce.pull_request import PullRequestInfo
 if typing.TYPE_CHECKING:
     from recce.util.cloud import ChecksCloud
 
-RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
-RECCE_CLOUD_BASE_URL = os.environ.get("RECCE_CLOUD_BASE_URL", RECCE_CLOUD_API_HOST)
+RECCE_CLOUD_DEFAULT_HOST = "https://cloud.reccehq.com"
+RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", RECCE_CLOUD_DEFAULT_HOST)
+RECCE_CLOUD_BASE_URL = os.environ.get("RECCE_CLOUD_BASE_URL", os.environ.get("RECCE_CLOUD_HOST", RECCE_CLOUD_API_HOST))
 
 DOCKER_INTERNAL_URL_PREFIX = "http://host.docker.internal"
 LOCALHOST_URL_PREFIX = "http://localhost"
@@ -274,16 +275,6 @@ class RecceCloud:
             )
         return response.json().get("user")
 
-    def set_onboarding_state(self, state: str):
-        api_url = f"{self.base_url}/users/onboarding-state"
-        try:
-            response = self._request("PUT", api_url, json={"state": state})
-            response.raise_for_status()
-        except requests.exceptions.HTTPError as e:
-            # Don't Raise an exception if setting onboarding_state fails
-            logger.warning(f"Failed to set Onboarding State in Recce Cloud. Reason: {str(e)}")
-        return
-
     def get_session(self, session_id: str):
         api_url = f"{self.base_url_v2}/sessions/{session_id}"
         response = self._request("GET", api_url)
@@ -340,9 +331,14 @@ class RecceCloud:
             presigned_urls[key] = self._replace_localhost_with_docker_internal(url)
         return presigned_urls
 
-    def get_base_session_download_urls(self, org_id: str, project_id: str) -> dict[str, str]:
-        """Get download URLs for the base session of a project."""
+    def get_base_session_download_urls(self, org_id: str, project_id: str, session_id: str = None) -> dict[str, str]:
+        """Get download URLs for the base session of a project.
+
+        If session_id is provided, the server resolves PR-specific base if available.
+        """
         api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/base-session/download-url"
+        if session_id:
+            api_url += f"?session_id={session_id}"
         response = self._request("GET", api_url)
         if response.status_code != 200:
             raise RecceCloudException(
@@ -433,22 +429,3 @@ class RecceCloud:
             )
         data = response.json()
         return data.get("sessions", [])
-
-
-def get_recce_cloud_onboarding_state(token: str) -> str:
-    if token and token.startswith("rct-"):
-        return "undefined"
-
-    try:
-        recce_cloud = RecceCloud(token)
-        user_info = recce_cloud.get_user_info()
-        if user_info:
-            return user_info.get("onboarding_state")
-    except Exception as e:
-        logger.debug(str(e))
-    return "undefined"
-
-
-def set_recce_cloud_onboarding_state(token: str, new_state: str):
-    recce_cloud = RecceCloud(token)
-    recce_cloud.set_onboarding_state(new_state)

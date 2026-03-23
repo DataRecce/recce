@@ -1,0 +1,104 @@
+name: mcp-error-classification-verification
+description: >
+  Verify DRC-3051 (None relation guard in get_columns), DRC-3052 (Snowflake
+  "does not exist or not authorized" classification), DRC-3053 (INVALID
+  IDENTIFIER added to SYNTAX_ERROR_INDICATORS), and DRC-3054 (INVALID QUERY
+  BLOCK and COLUMN COUNT MISMATCH added to SYNTAX_ERROR_INDICATORS) via unit
+  tests and MCP full-stack E2E verification.
+tags: [backend, mcp, cli-only, error-classification, drc-3051, drc-3053, drc-3054]
+mapping: ~
+
+# Environment variables (set before running):
+#   RECCE_REPO    — path to recce repo root (default: git rev-parse --show-toplevel)
+#   JAFFLE_SHOP   — path to jaffle_shop_duckdb project (default: ../jaffle_shop_duckdb relative to RECCE_REPO)
+
+steps:
+  - id: verify-syntax-error-indicators-import
+    action: "Execute external"
+    description: >
+      Confirm that all three new SYNTAX_ERROR_INDICATORS (INVALID IDENTIFIER,
+      INVALID QUERY BLOCK, COLUMN COUNT MISMATCH) are present in the exported
+      constant from recce.tasks.rowcount.
+    execute:
+      cli:
+        - run: >
+            RECCE_REPO="${RECCE_REPO:-$(git rev-parse --show-toplevel)}" &&
+            cd "$RECCE_REPO" &&
+            python -c "
+            from recce.tasks.rowcount import SYNTAX_ERROR_INDICATORS;
+            required = ['INVALID IDENTIFIER', 'INVALID QUERY BLOCK', 'COLUMN COUNT MISMATCH'];
+            missing = [r for r in required if r not in SYNTAX_ERROR_INDICATORS];
+            print('SYNTAX_ERROR_INDICATORS:', SYNTAX_ERROR_INDICATORS);
+            assert not missing, f'Missing indicators: {missing}';
+            print('ALL REQUIRED INDICATORS PRESENT')
+            "
+          expect: "exit code 0"
+    wait_after: 1
+    on_fail: fail
+
+  - id: run-none-relation-guard-tests
+    action: "Execute external"
+    description: >
+      Run the two unit tests in test_get_columns_guard.py that verify DRC-3051:
+      get_columns raises RecceException when create_relation returns None.
+    execute:
+      cli:
+        - run: >
+            RECCE_REPO="${RECCE_REPO:-$(git rev-parse --show-toplevel)}" &&
+            cd "$RECCE_REPO" &&
+            python -m pytest tests/test_get_columns_guard.py -v
+          expect: "2 passed"
+    wait_after: 2
+    on_fail: fail
+
+  - id: run-error-classification-unit-tests
+    action: "Execute external"
+    description: >
+      Run the full test_mcp_server.py suite. Covers TestErrorClassification
+      (Snowflake patterns), TestCallToolHandler (call_tool warning path),
+      and all other MCP server tests for regression checks.
+    execute:
+      cli:
+        - run: >
+            RECCE_REPO="${RECCE_REPO:-$(git rev-parse --show-toplevel)}" &&
+            cd "$RECCE_REPO" &&
+            python -m pytest tests/test_mcp_server.py -v --tb=short
+          expect: "exit code 0"
+    wait_after: 2
+    on_fail: fail
+
+  - id: run-targeted-classification-tests-only
+    action: "Execute external"
+    description: >
+      Run only the DRC-specific classification tests by keyword for isolated
+      signal: DRC-3051 None-guard, DRC-3052 Snowflake variants, DRC-3053
+      invalid identifier, DRC-3054 invalid query block and column count.
+    execute:
+      cli:
+        - run: >
+            RECCE_REPO="${RECCE_REPO:-$(git rev-parse --show-toplevel)}" &&
+            cd "$RECCE_REPO" &&
+            python -m pytest tests/test_mcp_server.py -v -k "snowflake or recce_exception or syntax_error or new_syntax_error" --tb=short
+          expect: "exit code 0"
+    wait_after: 1
+    on_fail: fail
+
+  - id: run-mcp-e2e-full-stack
+    action: "Execute external"
+    description: >
+      Run the MCP E2E template script against a local dbt project to verify
+      all 8 MCP tools in full-mode and single-env mode. PYTHONPATH must
+      include the recce repo root so local source code is loaded.
+    execute:
+      cli:
+        - run: >
+            RECCE_REPO="${RECCE_REPO:-$(git rev-parse --show-toplevel)}" &&
+            JAFFLE_SHOP="${JAFFLE_SHOP:-$(dirname "$RECCE_REPO")/jaffle_shop_duckdb}" &&
+            TEMPLATE="$RECCE_REPO/.claude/skills/recce-mcp-e2e/test_mcp_e2e_template.py" &&
+            sed "s|PROJECT_DIR_PLACEHOLDER|${JAFFLE_SHOP}|g" "$TEMPLATE" > "$JAFFLE_SHOP/test_mcp_e2e.py" &&
+            cd "$JAFFLE_SHOP" &&
+            PYTHONPATH="${RECCE_REPO}:${PYTHONPATH}" python test_mcp_e2e.py;
+            EXIT=$?; rm -f "$JAFFLE_SHOP/test_mcp_e2e.py"; exit $EXIT
+          expect: "ALL PASS"
+    wait_after: 3
+    on_fail: fail

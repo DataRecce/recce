@@ -18,8 +18,8 @@ class RecceTokenCloudClient(BaseRecceCloudClient):
     def __init__(
         self,
         token: str,
-        provider: str,
-        repository: str,
+        provider: Optional[str] = None,
+        repository: Optional[str] = None,
         project_dir: Optional[str] = None,
         api_host: Optional[str] = None,
     ):
@@ -28,8 +28,8 @@ class RecceTokenCloudClient(BaseRecceCloudClient):
 
         Args:
             token: RECCE_API_TOKEN
-            provider: Repository provider ("github" or "gitlab")
-            repository: Repository in format "owner/repo"
+            provider: Repository provider ("github" or "gitlab"), required for touch-recce-session
+            repository: Repository in format "owner/repo", required for touch-recce-session
             project_dir: Optional project directory (for monorepos)
             api_host: Recce Cloud API host
         """
@@ -101,6 +101,57 @@ class RecceTokenCloudClient(BaseRecceCloudClient):
             payload["commit_sha"] = commit_sha
 
         return self._make_request("POST", url, json=payload)
+
+    def isolated_base_upload_completed(self, session_id: str) -> Dict:
+        """
+        Notify Recce Cloud that isolated base upload is complete.
+
+        Uses the RECCE_API_TOKEN endpoint which only requires session_id
+        (no org/project context needed).
+
+        Args:
+            session_id: Session ID
+
+        Returns:
+            Empty dictionary or acknowledgement
+        """
+        url = f"{self.api_host}/api/v2/isolated-base/upload-completed"
+        payload = {"session_id": session_id}
+        return self._make_request("POST", url, json=payload)
+
+    def get_isolated_base_upload_urls(self, session_id: str) -> Dict:
+        """
+        Get presigned S3 upload URLs for isolated base artifacts.
+
+        Uses the RECCE_API_TOKEN endpoint which only requires session_id
+        (no org/project context needed).
+
+        Args:
+            session_id: Session ID
+
+        Returns:
+            dict with keys:
+                - manifest_url: Presigned URL for uploading base manifest.json
+                - catalog_url: Presigned URL for uploading base catalog.json
+        """
+        from recce_cloud.api.client import replace_localhost_with_docker_internal
+
+        url = f"{self.api_host}/api/v2/isolated-base/upload-url"
+        payload = {"session_id": session_id}
+        data = self._make_request("POST", url, json=payload)
+
+        presigned_urls = data.get("presigned_urls")
+        if presigned_urls is None:
+            from recce_cloud.api.exceptions import RecceCloudException
+
+            raise RecceCloudException(
+                reason="No presigned URLs returned from the server.",
+                status_code=404,
+            )
+
+        for key, val in presigned_urls.items():
+            presigned_urls[key] = replace_localhost_with_docker_internal(val)
+        return presigned_urls
 
     def get_session_download_urls(
         self,

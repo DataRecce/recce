@@ -56,6 +56,7 @@ import {
   toRowCountDiffDataGrid,
   toValueDiffGridConfigured as toValueDiffGrid,
 } from "../../../utils/dataGrid";
+import { getCaseInsensitive } from "../../../utils/transforms";
 import { buildColumnTooltip, DataTypeIcon } from "../DataTypeIcon";
 import { toValueDataGrid } from "./generators/toValueDataGrid";
 
@@ -191,11 +192,15 @@ function determineDataKind(run: Run): RunResultData | null {
  * Cell renderer for column_name in single profile and side-by-side diff children.
  * Shows the column name + DataTypeIcon inline.
  */
-function profileColumnNameRenderer(params: ICellRendererParams<RowObjectType>) {
+export function profileColumnNameRenderer(
+  params: ICellRendererParams<RowObjectType>,
+) {
   const row = params.data;
   if (!row) return null;
-  const name = params.value ? String(params.value) : "";
-  const dataType = row.data_type ? String(row.data_type) : undefined;
+  const fieldName = (params.colDef as ColDef<RowObjectType>)?.field ?? "";
+  const name = String(getCaseInsensitive(row, fieldName) ?? params.value ?? "");
+  const dataType =
+    String(getCaseInsensitive(row, "data_type") ?? "") || undefined;
   const tooltipText = buildColumnTooltip({ name, currentType: dataType });
 
   return (
@@ -218,7 +223,11 @@ function profileColumnNameRenderer(params: ICellRendererParams<RowObjectType>) {
         >
           {name}
         </Box>
-        {dataType && <DataTypeIcon type={dataType} size={20} disableTooltip />}
+        {dataType && (
+          <Box component="span" sx={{ fontSize: "1.6rem" }}>
+            <DataTypeIcon type={dataType} disableTooltip />
+          </Box>
+        )}
       </Box>
     </Tooltip>
   );
@@ -228,18 +237,18 @@ function profileColumnNameRenderer(params: ICellRendererParams<RowObjectType>) {
  * Cell renderer for column_name in inline diff mode.
  * Reads base/current data types from prefixed keys and renders DataTypeIcon(s).
  */
-function profileDiffColumnNameRenderer(
+export function profileDiffColumnNameRenderer(
   params: ICellRendererParams<RowObjectType>,
 ) {
   const row = params.data;
   if (!row) return null;
-  const name = params.value ? String(params.value) : "";
-  const baseType = row.base__data_type
-    ? String(row.base__data_type)
-    : undefined;
-  const currentType = row.current__data_type
-    ? String(row.current__data_type)
-    : undefined;
+  const fieldName = (params.colDef as ColDef<RowObjectType>)?.field ?? "";
+  const name = String(getCaseInsensitive(row, fieldName) ?? params.value ?? "");
+  const rawBaseType = getCaseInsensitive(row, "base__data_type");
+  const baseType = rawBaseType != null ? String(rawBaseType) : undefined;
+  const rawCurrentType = getCaseInsensitive(row, "current__data_type");
+  const currentType =
+    rawCurrentType != null ? String(rawCurrentType) : undefined;
   const isTypeChanged =
     baseType != null && currentType != null && baseType !== currentType;
   const displayType = currentType ?? baseType;
@@ -271,23 +280,26 @@ function profileDiffColumnNameRenderer(
             sx={{
               display: "inline-flex",
               alignItems: "center",
-              gap: "2px",
+              gap: "0.125rem",
+              fontSize: "1.6rem",
             }}
           >
             <Box
               component="span"
               sx={{ textDecoration: "line-through", opacity: 0.6 }}
             >
-              <DataTypeIcon type={baseType} size={20} disableTooltip />
+              <DataTypeIcon type={baseType} disableTooltip />
             </Box>
             <Box component="span" sx={{ fontSize: "0.7em", opacity: 0.5 }}>
               →
             </Box>
-            <DataTypeIcon type={currentType} size={20} disableTooltip />
+            <DataTypeIcon type={currentType} disableTooltip />
           </Box>
         ) : (
           displayType && (
-            <DataTypeIcon type={displayType} size={20} disableTooltip />
+            <Box component="span" sx={{ fontSize: "1.6rem" }}>
+              <DataTypeIcon type={displayType} disableTooltip />
+            </Box>
           )
         )}
       </Box>
@@ -314,7 +326,7 @@ function isDataTypeField(field: string | undefined): boolean {
  * 1. Remove data_type columns (flat and side-by-side children)
  * 2. Inject a custom cell renderer on column_name that shows name + DataTypeIcon inline
  */
-function injectProfileColumnNameRenderer(
+export function injectProfileColumnNameRenderer(
   result: DataGridResult,
 ): DataGridResult {
   const isInlineDiff =

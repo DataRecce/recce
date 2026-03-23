@@ -1246,6 +1246,60 @@ class TestErrorClassification:
         assert server._classify_db_error("Connection refused") is None
         assert server._classify_db_error("Internal server error") is None
 
+    def test_classify_snowflake_table_does_not_exist_or_not_authorized(self, mcp_server):
+        """DRC-3052 / RECCE-746: Snowflake 'does not exist or not authorized' matches permission_denied first."""
+        server, _ = mcp_server
+        assert (
+            server._classify_db_error(
+                "Database Error: Table 'FCT_GHA_AUCTION_COMBINED_SPEND' does not exist or not authorized."
+            )
+            == "permission_denied"
+        )
+
+    def test_classify_snowflake_schema_does_not_exist_or_not_authorized(self, mcp_server):
+        """DRC-3052 / RECCE-7A7: Schema variant also matches permission_denied first."""
+        server, _ = mcp_server
+        assert (
+            server._classify_db_error(
+                "Database Error: Schema 'PARADIME_TURBO_CI_PR_628_BASE' does not exist or not authorized."
+            )
+            == "permission_denied"
+        )
+
+    def test_classify_snowflake_object_does_not_exist_or_not_authorized(self, mcp_server):
+        """DRC-3052 / RECCE-73P: Object variant also matches permission_denied first."""
+        server, _ = mcp_server
+        assert (
+            server._classify_db_error(
+                "Database Error: Object 'STG_PRODUCT_ANALYTICS_EVENTS' does not exist or not authorized."
+            )
+            == "permission_denied"
+        )
+
+    def test_classify_snowflake_invalid_query_block(self, mcp_server):
+        """DRC-3054 / RECCE-72T: Snowflake 002076 (42601) SQL compilation error."""
+        server, _ = mcp_server
+        assert server._classify_db_error("SQL compilation error: Invalid query block 'db_staging'") == "syntax_error"
+
+    def test_classify_snowflake_column_count_mismatch(self, mcp_server):
+        """DRC-3054 / RECCE-73R: Snowflake 002057 (42601) view definition mismatch."""
+        server, _ = mcp_server
+        assert (
+            server._classify_db_error("SQL compilation error: View definition column count mismatch in MART_VISITS")
+            == "syntax_error"
+        )
+
+    def test_classify_snowflake_invalid_identifier(self, mcp_server):
+        """DRC-3053 / RECCE-8BZ: Snowflake 000904 (42000) invalid column reference."""
+        server, _ = mcp_server
+        assert server._classify_db_error("SQL compilation error: invalid identifier 'DBT_VALID_FROM'") == "syntax_error"
+
+    def test_classify_recce_exception_model_not_found(self, mcp_server):
+        """DRC-3051: RecceException from get_columns None guard should classify as table_not_found."""
+        server, _ = mcp_server
+        msg = "Model 'stg_orders' does not exist in base environment. Check that the model is in the manifest and catalog."
+        assert server._classify_db_error(msg) == "table_not_found"
+
     @pytest.mark.asyncio
     async def test_classified_error_propagates(self, mcp_server):
         """Classified DB errors should still raise (SDK sets isError=True)"""
@@ -1442,6 +1496,20 @@ class TestCallToolHandler:
                 },
             )
         assert r.root.isError is not True
+
+    @pytest.mark.asyncio
+    async def test_new_syntax_error_logs_warning(self, mcp_server, caplog):
+        """DRC-3053/3054: New SYNTAX_ERROR indicators should log warning through call_tool."""
+        import logging
+
+        server, mock_context = mcp_server
+        mock_context.get_lineage_diff.side_effect = Exception(
+            "SQL compilation error: invalid identifier 'DBT_VALID_FROM'"
+        )
+        with caplog.at_level(logging.WARNING, logger="recce.mcp_server"):
+            result = await self._invoke_call_tool(server, "lineage_diff")
+        assert result.root.isError is True
+        assert "Expected syntax_error error" in caplog.text
 
     @pytest.mark.asyncio
     async def test_large_response_truncates_log(self, mcp_server):

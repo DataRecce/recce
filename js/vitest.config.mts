@@ -268,6 +268,10 @@ export default defineConfig({
         __dirname,
         "./packages/ui/src/components/rowcount/index.ts",
       ),
+      "@datarecce/ui/lib/const": path.resolve(
+        __dirname,
+        "./packages/ui/src/lib/const.ts",
+      ),
       "@datarecce/ui/lib/api/track": path.resolve(
         __dirname,
         "./packages/ui/src/lib/api/track.ts",
