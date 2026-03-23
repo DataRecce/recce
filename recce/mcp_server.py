@@ -672,6 +672,50 @@ class RecceMCPServer:
                                 "required": ["check_id"],
                             },
                         ),
+                        Tool(
+                            name="create_check",
+                            description=(
+                                "Create a persistent checklist item from analysis findings. "
+                                "The check is saved to the session and a run is automatically executed "
+                                "to produce verifiable evidence. Use this after completing analysis "
+                                "to persist important findings as reviewable checklist items.\n\n"
+                                "Idempotent: if a check with the same (type, params) already exists "
+                                "in this session, its name and description are updated instead of "
+                                "creating a duplicate."
+                            ),
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "row_count_diff",
+                                            "schema_diff",
+                                            "query_diff",
+                                            "profile_diff",
+                                            "value_diff",
+                                            "value_diff_detail",
+                                            "top_k_diff",
+                                            "histogram_diff",
+                                        ],
+                                        "description": "The check type (must match a diff tool type)",
+                                    },
+                                    "params": {
+                                        "type": "object",
+                                        "description": "Parameters for the check (same format as the corresponding diff tool)",
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "description": "Human-readable check name (e.g., 'Row Count Diff of orders')",
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "description": "Analysis summary explaining what was found and why it matters",
+                                    },
+                                },
+                                "required": ["type", "params", "name"],
+                            },
+                        ),
                     ]
                 )
 
@@ -705,12 +749,16 @@ class RecceMCPServer:
                     "histogram_diff",
                     "list_checks",
                     "run_check",
+                    "create_check",
                 }
                 if self.mode != RecceServerMode.server and name in blocked_tools_in_non_server:
+                    # Allowed tools = all registered minus blocked
+                    allowed_tools = sorted(
+                        {"lineage_diff", "schema_diff", "get_model", "get_cll", "get_server_info", "select_nodes"}
+                    )
                     raise ValueError(
                         f"Tool '{name}' is not available in {self.mode.value} mode. "
-                        "Only 'lineage_diff', 'schema_diff', 'get_model', 'get_cll', "
-                        "'get_server_info', and 'select_nodes' are available in this mode."
+                        f"Only {', '.join(repr(t) for t in allowed_tools)} are available in this mode."
                     )
 
                 if name == "lineage_diff":
@@ -745,6 +793,8 @@ class RecceMCPServer:
                     result = await self._tool_list_checks(arguments)
                 elif name == "run_check":
                     result = await self._tool_run_check(arguments)
+                elif name == "create_check":
+                    result = await self._tool_create_check(arguments)
                 else:
                     raise ValueError(f"Unknown tool: {name}")
 
@@ -1196,6 +1246,72 @@ class RecceMCPServer:
             return run.model_dump(mode="json")
         except RecceException as e:
             raise ValueError(str(e)) from e
+
+    async def _tool_create_check(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a persistent check from analysis findings."""
+        from recce.apis.check_api import PatchCheckIn
+        from recce.apis.check_func import (
+            create_check_without_run,
+            export_persistent_state,
+        )
+        from recce.apis.run_func import submit_run
+        from recce.models import CheckDAO
+        from recce.models.types import RunStatus, RunType
+
+        check_type = RunType(arguments["type"])
+        params = arguments.get("params", {})
+        name = arguments["name"]
+        description = arguments.get("description", "")
+
+        # Idempotency: find existing check with same (type, params)
+        check_dao = CheckDAO()
+        existing_checks = check_dao.list()
+        existing = None
+        for c in existing_checks:
+            if c.type == check_type and c.params == params:
+                existing = c
+                break
+
+        if existing:
+            patch = PatchCheckIn(name=name, description=description)
+            check_dao.update_check_by_id(existing.check_id, patch)
+            check_id = existing.check_id
+            created = False
+        else:
+            check = create_check_without_run(
+                check_name=name,
+                check_description=description,
+                check_type=check_type,
+                params=params,
+                check_view_options={},
+            )
+            check_id = check.check_id
+            created = True
+
+        # Auto-run for evidence. Skip for metadata-only types
+        # (schema_diff/lineage_diff read from manifest, not DB query)
+        run_executed = False
+        run_error = None
+        if check_type not in (RunType.LINEAGE_DIFF, RunType.SCHEMA_DIFF):
+            run, future = submit_run(check_type, params=params, check_id=check_id)
+            await future
+            # submit_run's future always resolves (errors caught internally).
+            # Check run.status, not the return value.
+            run_executed = run.status == RunStatus.FINISHED
+            if run.status == RunStatus.FAILED:
+                run_error = run.error
+
+        # Persist state to cloud/disk (matches REST endpoint pattern)
+        await asyncio.get_event_loop().run_in_executor(None, export_persistent_state)
+
+        result = {
+            "check_id": str(check_id),
+            "created": created,
+            "run_executed": run_executed,
+        }
+        if run_error:
+            result["run_error"] = run_error
+        return result
 
     async def run(self):
         """Run the MCP server in stdio mode"""
