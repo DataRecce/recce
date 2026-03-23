@@ -1161,7 +1161,63 @@ class RecceMCPServer:
 
     async def _tool_impact_analysis(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Discover the impact of dbt model changes."""
-        raise NotImplementedError("impact_analysis not yet implemented")
+        select = arguments.get("select", "state:modified+")
+        skip_value_diff = arguments.get("skip_value_diff", False)  # noqa: F841 — used in later steps
+        errors = []
+
+        # Step 1: Lineage classification
+        lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
+        diff_info = lineage_diff.get("diff", {})
+
+        # Get impacted node IDs (modified + downstream)
+        impacted_node_ids = self.context.adapter.select_nodes(select=select)
+        # Get only modified nodes (not downstream)
+        modified_node_ids = self.context.adapter.select_nodes(select="state:modified")
+
+        # Build node info from current (or base for removed)
+        all_nodes = {}
+        for env_key in ["base", "current"]:
+            if env_key in lineage_diff and "nodes" in lineage_diff[env_key]:
+                for node_id, node_info in lineage_diff[env_key]["nodes"].items():
+                    if node_id not in all_nodes:
+                        all_nodes[node_id] = node_info
+                    elif env_key == "current":
+                        all_nodes[node_id] = node_info  # current overrides base
+
+        # Classify nodes
+        impacted_models = []
+        not_impacted_models = []
+
+        for node_id, node_info in all_nodes.items():
+            # Only process models (not sources, tests, etc.)
+            if not node_id.startswith("model."):
+                continue
+
+            name = node_info.get("name")
+            materialized = node_info.get("config", {}).get("materialized")
+            change_status = diff_info.get(node_id, {}).get("change_status")
+
+            if node_id in impacted_node_ids:
+                model_entry = {
+                    "name": name,
+                    "change_status": (
+                        change_status if node_id in modified_node_ids or change_status in ("added", "removed") else None
+                    ),
+                    "materialized": materialized,
+                    "row_count": None,
+                    "schema_changes": [],
+                    "value_diff": None,
+                }
+                impacted_models.append(model_entry)
+            else:
+                not_impacted_models.append(name)
+
+        return {
+            "impacted_models": impacted_models,
+            "not_impacted_models": not_impacted_models,
+            "suggested_deep_dives": [],
+            "errors": errors,
+        }
 
     async def _tool_get_model(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get model column details from both environments"""
