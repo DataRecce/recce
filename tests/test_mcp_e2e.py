@@ -495,6 +495,35 @@ class TestImpactAnalysisValueDiff:
         assert orders["value_diff"] is None
 
     @pytest.mark.asyncio
+    async def test_r1_high_rows_changed_stable_count(self, mcp_e2e):
+        """R1: rows_changed high + row_count stable → suggest profile_diff on changed columns."""
+        server, helper = mcp_e2e
+
+        helper.create_model(
+            "orders",
+            base_csv="id,amount\n1,100\n2,200",
+            curr_csv="id,amount\n1,999\n2,888",
+            unique_id="model.recce_test.orders",
+            base_columns={"id": "INTEGER", "amount": "INTEGER"},
+            curr_columns={"id": "INTEGER", "amount": "INTEGER"},
+        )
+        helper.add_unique_test("model.recce_test.orders", "orders", "id")
+
+        result = await server._tool_impact_analysis({})
+
+        orders = next(m for m in result["impacted_models"] if m["name"] == "orders")
+        # row_count: base=2, curr=2, delta=0 (stable)
+        # value_diff: rows_changed=2 (100% of matched rows)
+        assert orders["row_count"]["delta"] == 0
+        assert orders["value_diff"]["rows_changed"] == 2
+
+        dives = result["suggested_deep_dives"]
+        orders_dive = next((d for d in dives if d["model"] == "orders"), None)
+        assert orders_dive is not None
+        assert orders_dive["tool"] == "profile_diff"
+        assert "amount" in (orders_dive["columns"] or [])
+
+    @pytest.mark.asyncio
     async def test_value_diff_per_column_means(self, mcp_e2e):
         """Per-column base_mean and current_mean for numeric columns."""
         server, helper = mcp_e2e

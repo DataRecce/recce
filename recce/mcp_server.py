@@ -1412,6 +1412,31 @@ class RecceMCPServer:
         for model in impacted_models:
             name = model["name"]
 
+            # R1: rows_changed high + row_count stable → profile changed columns
+            if (
+                model["value_diff"] is not None
+                and model["row_count"] is not None
+                and model["row_count"]["delta_pct"] is not None
+                and abs(model["row_count"]["delta_pct"]) <= 5
+            ):
+                vd = model["value_diff"]
+                # Calculate ratio of changed rows to total matched rows
+                total_matched = (model["row_count"]["current"] or 0) - vd["rows_added"]
+                if total_matched > 0 and vd["rows_changed"] / total_matched > 0.2:
+                    top_cols = [
+                        col for col, stats in (vd.get("columns") or {}).items() if stats.get("rows_changed", 0) > 0
+                    ]
+                    if name not in seen_models:
+                        suggested_deep_dives.append(
+                            {
+                                "model": name,
+                                "tool": "profile_diff",
+                                "columns": top_cols if top_cols else None,
+                            }
+                        )
+                        seen_models.add(name)
+                        continue
+
             # R2: row_count delta > 5% → profile whole model
             if model["row_count"] and model["row_count"]["delta_pct"] is not None:
                 if abs(model["row_count"]["delta_pct"]) > 5:
