@@ -246,6 +246,36 @@ class TestImpactAnalysisE2E:
         assert view_model is not None
         assert view_model["row_count"] is None
 
+    @pytest.mark.asyncio
+    async def test_schema_changes_detected(self, mcp_e2e):
+        """Column additions/removals appear in schema_changes."""
+        server, helper = mcp_e2e
+
+        # Model with schema change: base has (id, name), curr has (id, name, email)
+        helper.create_model(
+            "users",
+            base_csv="id,name\n1,Alice",
+            curr_csv="id,name,email\n1,Alice,alice@test.com",
+            unique_id="model.recce_test.users",
+            base_columns={"id": "INTEGER", "name": "VARCHAR"},
+            curr_columns={"id": "INTEGER", "name": "VARCHAR", "email": "VARCHAR"},
+        )
+        result = await server._tool_impact_analysis({})
+
+        users = next(m for m in result["impacted_models"] if m["name"] == "users")
+        assert len(users["schema_changes"]) > 0
+        added_cols = [c for c in users["schema_changes"] if c["change_status"] == "added"]
+        assert any(c["column"] == "email" for c in added_cols)
+
+    @pytest.mark.asyncio
+    async def test_schema_changes_empty_when_no_change(self, mcp_e2e_impact):
+        """Models with identical schema should have empty schema_changes."""
+        server, _ = mcp_e2e_impact
+        result = await server._tool_impact_analysis({})
+
+        customers = next(m for m in result["impacted_models"] if m["name"] == "customers")
+        assert customers["schema_changes"] == []
+
 
 class TestRowCountDiffE2E:
     """Layer 1: row_count_diff with real DuckDB."""

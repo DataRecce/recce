@@ -1248,6 +1248,41 @@ class RecceMCPServer:
             except Exception as e:
                 errors.append({"step": "row_count_diff", "message": str(e)})
 
+        # Step 2b: Schema diff (compare columns between base and current)
+        try:
+            base_nodes = lineage_diff.get("base", {}).get("nodes", {})
+            current_nodes = lineage_diff.get("current", {}).get("nodes", {})
+
+            # Build node_id lookup for impacted models
+            node_id_by_name = {}
+            for node_id in impacted_node_ids:
+                node_info = all_nodes.get(node_id, {})
+                if node_info.get("name"):
+                    node_id_by_name[node_info["name"]] = node_id
+
+            for model in impacted_models:
+                node_id = node_id_by_name.get(model["name"])
+                if not node_id:
+                    continue
+
+                base_cols = set(base_nodes.get(node_id, {}).get("columns", {}).keys())
+                curr_cols = set(current_nodes.get(node_id, {}).get("columns", {}).keys())
+
+                changes = []
+                for col in curr_cols - base_cols:
+                    changes.append({"column": col, "change_status": "added"})
+                for col in base_cols - curr_cols:
+                    changes.append({"column": col, "change_status": "removed"})
+                for col in base_cols & curr_cols:
+                    base_type = base_nodes[node_id]["columns"][col].get("type")
+                    curr_type = current_nodes[node_id]["columns"][col].get("type")
+                    if base_type != curr_type:
+                        changes.append({"column": col, "change_status": "modified"})
+
+                model["schema_changes"] = changes
+        except Exception as e:
+            errors.append({"step": "schema_diff", "message": str(e)})
+
         return {
             "impacted_models": impacted_models,
             "not_impacted_models": not_impacted_models,
