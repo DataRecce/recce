@@ -65,6 +65,9 @@ export interface ResultViewTransformOptions<TViewOptions> {
    * Passed through from component props.
    */
   onAddToChecklist?: (run: unknown) => void;
+
+  /** Whether dark mode is active (from useIsDark hook in createResultView) */
+  isDark: boolean;
 }
 
 /**

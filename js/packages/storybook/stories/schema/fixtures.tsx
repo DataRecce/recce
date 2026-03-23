@@ -149,29 +149,17 @@ export const schemaColumns: ColDef[] = [
                     <span
                       style={{ textDecoration: "line-through", opacity: 0.6 }}
                     >
-                      <DataTypeIcon
-                        type={String(baseType)}
-                        size={16}
-                        disableTooltip
-                      />
+                      <DataTypeIcon type={String(baseType)} disableTooltip />
                     </span>
                   )}
                   <span style={{ fontSize: "0.7em", opacity: 0.5 }}>→</span>
                   {currentType && (
-                    <DataTypeIcon
-                      type={String(currentType)}
-                      size={16}
-                      disableTooltip
-                    />
+                    <DataTypeIcon type={String(currentType)} disableTooltip />
                   )}
                 </span>
               ) : (
                 columnType && (
-                  <DataTypeIcon
-                    type={String(columnType)}
-                    size={16}
-                    disableTooltip
-                  />
+                  <DataTypeIcon type={String(columnType)} disableTooltip />
                 )
               )}
             </span>

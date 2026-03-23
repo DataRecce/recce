@@ -24,6 +24,7 @@ export interface RecceInstanceInfo {
   session_id?: string;
   organization_name?: string;
   web_url?: string;
+  python_version?: string;
 }
 
 /**

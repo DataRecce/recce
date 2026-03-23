@@ -160,6 +160,31 @@ export const DatetimeColumn: Story = {
 };
 
 // ============================================
+// Theme
+// ============================================
+
+export const DarkTheme: Story = {
+  name: "Dark Theme",
+  args: {
+    run: createHistogramDiffRun({
+      result: createHistogramDiffResult(),
+    }),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Histogram in dark theme — verifies axis labels, legend, and tooltip contrast.",
+      },
+    },
+    backgrounds: { default: "dark" },
+  },
+  globals: {
+    theme: "dark",
+  },
+};
+
+// ============================================
 // Edge Cases
 // ============================================
 

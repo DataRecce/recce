@@ -1319,7 +1319,7 @@ class RecceMCPServer:
                 try:
                     from rich.console import Console
 
-                    console = Console()
+                    console = Console(stderr=True)
 
                     # Export the state
                     msg = self.state_loader.export(self.context.export_state())

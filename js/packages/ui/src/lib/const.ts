@@ -4,7 +4,7 @@ apiUrl ??= typeof window !== "undefined" ? window.location.origin : "";
 export const PUBLIC_API_URL = apiUrl;
 
 let cloudWebUrl = process.env.NEXT_PUBLIC_CLOUD_WEB_URL;
-cloudWebUrl ??= "https://cloud.datarecce.io";
+cloudWebUrl ??= "https://cloud.reccehq.com";
 
 export const PUBLIC_CLOUD_WEB_URL = cloudWebUrl;
 

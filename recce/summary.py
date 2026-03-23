@@ -1,4 +1,3 @@
-import os
 import sys
 from typing import Dict, List, Optional, Set, Type, Union
 from uuid import UUID
@@ -19,8 +18,7 @@ from recce.tasks.valuediff import (
     ValueDiffDetailTaskResultDiffer,
     ValueDiffTaskResultDiffer,
 )
-
-RECCE_CLOUD_HOST = os.environ.get("RECCE_CLOUD_HOST", "https://cloud.datarecce.io")
+from recce.util.recce_cloud import RECCE_CLOUD_BASE_URL
 
 ADD_COLOR = "#1dce00"
 MODIFIED_COLOR = "#ffa502"
@@ -561,7 +559,7 @@ No changed module was detected.
             pr_info = ctx.state_loader.pr_info
             if pr_info.repository is not None and pr_info.id is not None:
                 # the classic route will be deprecated soon
-                content += f"\nSee PR page: {RECCE_CLOUD_HOST}/classic/{pr_info.repository}/pulls/{pr_info.id}\n"
+                content += f"\nSee PR page: {RECCE_CLOUD_BASE_URL}/classic/{pr_info.repository}/pulls/{pr_info.id}\n"
 
         return content
 

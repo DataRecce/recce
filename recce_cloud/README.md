@@ -169,7 +169,7 @@ The CLI supports multiple authentication methods (in priority order):
 
 **Recce Cloud API Token:**
 
-1. Log in to [Recce Cloud](https://cloud.datarecce.io)
+1. Log in to [Recce Cloud](https://cloud.reccehq.com)
 2. Go to Settings → API Tokens
 
 ## CI/CD Integration Examples

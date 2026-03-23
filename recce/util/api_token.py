@@ -9,7 +9,7 @@ from recce.util.recce_cloud import (
     RecceCloud,
 )
 
-console = Console()
+console = Console(stderr=True)
 
 
 def show_invalid_api_token_message():

@@ -54,14 +54,12 @@ class TestCommandServer(TestCase):
         result = self.runner.invoke(cli_command_server, ["--cloud", "--password", "unittest"])
         assert result.exit_code == 1
 
-    @patch("recce.util.recce_cloud.get_recce_cloud_onboarding_state")
     @patch("recce.cli.uvicorn.run")
     @patch("recce.cli.CloudStateLoader")
-    def test_cmd_server_with_cloud(self, mock_state_loader_class, mock_run, mock_get_recce_cloud_onboarding_state):
+    def test_cmd_server_with_cloud(self, mock_state_loader_class, mock_run):
         mock_state_loader = MagicMock(spec=CloudStateLoader)
         mock_state_loader.verify.return_value = True
         mock_state_loader.review_mode = True
-        mock_get_recce_cloud_onboarding_state.return_value = "completed"
 
         mock_state_loader_class.return_value = mock_state_loader
         self.runner.invoke(
@@ -70,7 +68,6 @@ class TestCommandServer(TestCase):
         mock_state_loader_class.assert_called_once()
         mock_run.assert_called_once()
 
-    @patch("recce.util.recce_cloud.get_recce_cloud_onboarding_state")
     @patch("recce.cli.uvicorn.run")
     @patch("recce.cli.CloudStateLoader")
     @patch("recce.cli.prepare_api_token", return_value="test_api_token")
@@ -79,13 +76,11 @@ class TestCommandServer(TestCase):
         mock_prepare_api_token,
         mock_state_loader_class,
         mock_run,
-        mock_get_recce_cloud_onboarding_state,
     ):
         """Test that --session-id automatically enables cloud and review mode"""
         mock_state_loader = MagicMock(spec=CloudStateLoader)
         mock_state_loader.verify.return_value = True
         mock_state_loader.review_mode = True
-        mock_get_recce_cloud_onboarding_state.return_value = "completed"
 
         mock_state_loader_class.return_value = mock_state_loader
 
@@ -104,7 +99,6 @@ class TestCommandServer(TestCase):
 
         mock_run.assert_called_once()
 
-    @patch("recce.util.recce_cloud.get_recce_cloud_onboarding_state")
     @patch("recce.cli.uvicorn.run")
     @patch("recce.cli.CloudStateLoader")
     @patch("recce.cli.prepare_api_token", return_value="test_api_token")
@@ -113,13 +107,11 @@ class TestCommandServer(TestCase):
         mock_prepare_api_token,
         mock_state_loader_class,
         mock_run,
-        mock_get_recce_cloud_onboarding_state,
     ):
         """Test that --share-url automatically enables cloud and review mode"""
         mock_state_loader = MagicMock(spec=CloudStateLoader)
         mock_state_loader.verify.return_value = True
         mock_state_loader.review_mode = True
-        mock_get_recce_cloud_onboarding_state.return_value = "completed"
 
         mock_state_loader_class.return_value = mock_state_loader
 
@@ -317,3 +309,38 @@ class TestCommandMCPServer(TestCase):
 
         # No single-env guidance in output
         assert "Base artifacts not found" not in result.output
+
+
+class _FakeVersionInfo(tuple):
+    """A tuple subclass that also exposes .major/.minor/.micro attributes like sys.version_info."""
+
+    def __new__(cls, major, minor, micro, releaselevel="final", serial=0):
+        obj = super().__new__(cls, (major, minor, micro, releaselevel, serial))
+        obj.major = major
+        obj.minor = minor
+        obj.micro = micro
+        obj.releaselevel = releaselevel
+        obj.serial = serial
+        return obj
+
+
+def test_cli_shows_python39_deprecation_warning():
+    """CLI should show deprecation warning when running on Python 3.9."""
+    runner = CliRunner()
+    from recce.cli import cli
+
+    with patch("sys.version_info", _FakeVersionInfo(3, 9, 18)):
+        result = runner.invoke(cli, ["version"])
+        assert result.exit_code == 0
+        assert "Deprecation Warning" in result.output
+
+
+def test_cli_no_warning_on_python310():
+    """CLI should NOT show deprecation warning when running on Python 3.10+."""
+    runner = CliRunner()
+    from recce.cli import cli
+
+    with patch("sys.version_info", _FakeVersionInfo(3, 10, 0)):
+        result = runner.invoke(cli, ["version"])
+        assert result.exit_code == 0
+        assert "Deprecation Warning" not in result.output

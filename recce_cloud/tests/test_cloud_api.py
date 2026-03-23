@@ -15,7 +15,7 @@ class TestRecceCloudClientOrgProject(unittest.TestCase):
 
         api = RecceCloudClient("test_token_123")
         self.assertEqual(api.token, "test_token_123")
-        self.assertIn("cloud.datarecce.io", api.base_url_v2)
+        self.assertIn("cloud.reccehq.com", api.base_url_v2)
 
     def test_init_without_token(self):
         """Test API client initialization without token raises error."""

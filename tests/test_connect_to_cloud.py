@@ -41,9 +41,8 @@ class ConnectToCloudTests(unittest.TestCase):
         self.assertEqual(result, test_string)
 
     @patch("recce.connect_to_cloud.update_recce_api_token")
-    @patch("recce.connect_to_cloud.update_onboarding_state")
     @patch("recce.connect_to_cloud.RecceCloud")
-    def test_handle_callback_request_success(self, mock_recce_cloud, mock_update_state, mock_update_token):
+    def test_handle_callback_request_success(self, mock_recce_cloud, mock_update_token):
         private_key, public_key = generate_key_pair()
 
         # Prepare encrypted token
@@ -63,7 +62,6 @@ class ConnectToCloudTests(unittest.TestCase):
 
         assert result == test_token
         mock_update_token.assert_called_once_with(test_token)
-        mock_update_state.assert_called_once_with(test_token, False)
 
     def test_is_callback_server_running(self):
         # Should return False by default

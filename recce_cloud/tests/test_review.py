@@ -24,7 +24,7 @@ class TestReviewHelpers(unittest.TestCase):
 
         self.assertEqual(
             url,
-            "https://cloud.datarecce.io/my-org/my-project/session-123/review",
+            "https://cloud.reccehq.com/my-org/my-project/session-123/review",
         )
 
     def test_generate_review_url_with_special_chars(self):
@@ -45,7 +45,7 @@ class TestReviewHelpers(unittest.TestCase):
 
         self.assertEqual(
             url,
-            "https://cloud.datarecce.io/my-org-slug/my-project-slug/session-123/review",
+            "https://cloud.reccehq.com/my-org-slug/my-project-slug/session-123/review",
         )
         mock_client.get_organization.assert_called_once_with("1")
         mock_client.get_project.assert_called_once_with("1", "2")
@@ -60,7 +60,7 @@ class TestReviewHelpers(unittest.TestCase):
         # Should fall back to using IDs
         self.assertEqual(
             url,
-            "https://cloud.datarecce.io/123/456/session-123/review",
+            "https://cloud.reccehq.com/123/456/session-123/review",
         )
 
 
@@ -627,7 +627,7 @@ class TestReviewResult(unittest.TestCase):
             status=ReviewStatus.SUCCEEDED,
             session_id="session-123",
             session_name="test-session",
-            review_url="https://cloud.datarecce.io/org/project/sessions/session-123/review",
+            review_url="https://cloud.reccehq.com/org/project/sessions/session-123/review",
             task_id="task-456",
             error_message=None,
             summary="# Review Summary",

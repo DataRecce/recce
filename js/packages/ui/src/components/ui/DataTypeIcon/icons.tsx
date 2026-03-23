@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 import { useId } from "react";
 
 interface IconProps {
-  size?: number;
+  size?: number | string;
   style?: CSSProperties;
   className?: string;
 }
@@ -17,9 +17,10 @@ const VB_H = 18;
 const BOX_RX = 3;
 const BOX_STROKE = 1.2;
 const BOX_INSET = 0.6; // half stroke so border sits inside viewBox
+const ASPECT = VB_H / VB_W;
 
 function BoxedSvg({
-  size = 24,
+  size = "1em",
   style,
   className,
   children,
@@ -28,7 +29,7 @@ function BoxedSvg({
     <svg
       viewBox={`0 0 ${VB_W} ${VB_H}`}
       width={size}
-      height={(size * VB_H) / VB_W}
+      height={typeof size === "number" ? size * ASPECT : `${ASPECT}em`}
       style={style}
       className={className}
       aria-hidden="true"
