@@ -124,6 +124,78 @@ def test_cll_table_alisa(dbt_test_helper):
     assert_column(result, "model.model2", "c", transformation_type="passthrough", parents=[("model.model1", "c")])
 
 
+def test_get_parent_table_name(dbt_test_helper):
+    """_get_parent_table_name returns alias for nodes, identifier for sources, None for unknown."""
+
+    def patch_alias(node):
+        node["alias"] = "custom_alias"
+
+    dbt_test_helper.create_model(
+        "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}, patch_func=patch_alias
+    )
+
+    csv_data = """
+    id,name
+    1,Alice
+    """
+    dbt_test_helper.create_source(
+        "src", "tbl", unique_id="source.src.tbl", curr_csv=csv_data, curr_columns={"id": "int", "name": "varchar"}
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+    from recce.adapter.dbt_adapter import as_manifest
+
+    manifest = as_manifest(adapter.get_manifest(base=False))
+
+    # Model node → returns alias
+    assert adapter._get_parent_table_name(manifest, "model.model1") == "custom_alias"
+
+    # Source node → returns identifier (defaults to table name)
+    assert adapter._get_parent_table_name(manifest, "source.src.tbl") == "tbl"
+
+    # Unknown node → returns None
+    assert adapter._get_parent_table_name(manifest, "exposure.unknown") is None
+
+
+def test_build_schema_from_aliases(dbt_test_helper):
+    """_build_schema_from_aliases builds schema keyed by alias, skips unknown parents."""
+    dbt_test_helper.create_model(
+        "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
+    )
+
+    csv_data = """
+    id,name
+    1,Alice
+    """
+    dbt_test_helper.create_source(
+        "src", "tbl", unique_id="source.src.tbl", curr_csv=csv_data, curr_columns={"id": "int", "name": "varchar"}
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+    from recce.adapter.dbt_adapter import as_manifest
+
+    manifest = as_manifest(adapter.get_manifest(base=False))
+    catalog = adapter.curr_catalog
+
+    # Mix of model, source, and unknown parent
+    parent_list = ["model.model1", "source.src.tbl", "exposure.unknown"]
+    schema = adapter._build_schema_from_aliases(manifest, catalog, parent_list)
+
+    # model1 columns from catalog
+    assert "model1" in schema
+    assert "c" in schema["model1"]
+
+    # source columns from catalog
+    assert "tbl" in schema
+    assert "id" in schema["tbl"]
+
+    # Unknown parent is skipped
+    assert len(schema) == 2
+
+    # With catalog=None → empty schema
+    assert adapter._build_schema_from_aliases(manifest, None, parent_list) == {}
+
+
 def _set_compiled_code(adapter, node_id, compiled_code, base=False):
     """Set compiled_code on a manifest node after set_artifacts has been called.
 

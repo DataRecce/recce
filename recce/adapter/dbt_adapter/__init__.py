@@ -1226,6 +1226,36 @@ class DbtAdapter(BaseAdapter):
             child_map=child_map,
         )
 
+    @staticmethod
+    def _get_parent_table_name(manifest, parent_id: str) -> Optional[str]:
+        """Get the table name (alias) for a parent node as it appears in compiled SQL."""
+        if parent_id in manifest.nodes:
+            parent_node = manifest.nodes[parent_id]
+            return getattr(parent_node, 'alias', None) or parent_node.name
+        if parent_id in manifest.sources:
+            parent_src = manifest.sources[parent_id]
+            return getattr(parent_src, 'identifier', None) or parent_src.name
+        return None
+
+    def _build_schema_from_aliases(self, manifest, catalog, parent_list) -> dict:
+        """Build sqlglot schema dict keyed by parent aliases (for pre-compiled SQL)."""
+        schema = {}
+        if catalog is None:
+            return schema
+        for parent_id in parent_list:
+            table_name = self._get_parent_table_name(manifest, parent_id)
+            if table_name is None:
+                continue
+            columns = {}
+            if parent_id in catalog.nodes:
+                for col_name, col_metadata in catalog.nodes[parent_id].columns.items():
+                    columns[col_name] = col_metadata.type
+            if parent_id in catalog.sources:
+                for col_name, col_metadata in catalog.sources[parent_id].columns.items():
+                    columns[col_name] = col_metadata.type
+            schema[table_name] = columns
+        return schema
+
     @lru_cache(maxsize=128)
     def get_cll_cached(self, node_id: str, base: Optional[bool] = False) -> Optional[CllData]:
         cll_tracker = CLLPerformanceTracking()
@@ -1279,13 +1309,8 @@ class DbtAdapter(BaseAdapter):
             # fall back to Jinja rendering to avoid incorrect mappings.
             has_alias_collision = False
             for parent_id in parent_list:
-                if parent_id in manifest.nodes:
-                    parent_node = manifest.nodes[parent_id]
-                    table_name = getattr(parent_node, 'alias', None) or parent_node.name
-                elif parent_id in manifest.sources:
-                    parent_src = manifest.sources[parent_id]
-                    table_name = getattr(parent_src, 'identifier', None) or parent_src.name
-                else:
+                table_name = self._get_parent_table_name(manifest, parent_id)
+                if table_name is None:
                     continue
                 key = table_name.lower()
                 if key in table_id_map:
@@ -1299,25 +1324,7 @@ class DbtAdapter(BaseAdapter):
                 pre_compiled = None
 
         if pre_compiled:
-            schema = {}
-            if catalog is not None:
-                for parent_id in parent_list:
-                    if parent_id in manifest.nodes:
-                        parent_node = manifest.nodes[parent_id]
-                        table_name = getattr(parent_node, 'alias', None) or parent_node.name
-                    elif parent_id in manifest.sources:
-                        parent_src = manifest.sources[parent_id]
-                        table_name = getattr(parent_src, 'identifier', None) or parent_src.name
-                    else:
-                        continue
-                    columns = {}
-                    if parent_id in catalog.nodes:
-                        for col_name, col_metadata in catalog.nodes[parent_id].columns.items():
-                            columns[col_name] = col_metadata.type
-                    if parent_id in catalog.sources:
-                        for col_name, col_metadata in catalog.sources[parent_id].columns.items():
-                            columns[col_name] = col_metadata.type
-                    schema[table_name] = columns
+            schema = self._build_schema_from_aliases(manifest, catalog, parent_list)
 
         if not pre_compiled:
             # Fall back to Jinja rendering with custom ref/source functions
