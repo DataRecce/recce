@@ -46,6 +46,10 @@ export interface CheckCardData {
   runStatus?: CheckRunStatus;
   /** Whether the check is a preset */
   isPreset?: boolean;
+  /** Whether the check result is outdated (data changed since last run) */
+  isOutdated?: boolean;
+  /** ISO timestamp of the last run, shown in outdated tooltip */
+  lastRunAt?: string;
 }
 
 /**
@@ -142,6 +146,29 @@ function _getStatusLabel(status?: CheckRunStatus): string {
     error: "Error",
   };
   return labels[status];
+}
+
+/**
+ * Format an ISO timestamp as a relative time string for the outdated tooltip
+ */
+function formatOutdatedTooltip(lastRunAt?: string): string {
+  if (!lastRunAt) return "Check may be outdated";
+  const date = new Date(lastRunAt);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  let ago: string;
+  if (diffMins < 60) {
+    ago = `${diffMins}m ago`;
+  } else if (diffHours < 24) {
+    ago = `${diffHours}h ago`;
+  } else {
+    ago = `${diffDays}d ago`;
+  }
+  return `Check may be outdated — last run: ${ago}`;
 }
 
 /**
@@ -279,20 +306,26 @@ function CheckCardComponent({
         {check.name}
       </Typography>
 
-      {/* Run status indicator */}
-      {/*{check.runStatus && (*/}
-      {/*  <Tooltip title={getStatusLabel(check.runStatus)}>*/}
-      {/*    <Box*/}
-      {/*      sx={{*/}
-      {/*        width: 8,*/}
-      {/*        height: 8,*/}
-      {/*        borderRadius: "50%",*/}
-      {/*        backgroundColor: getStatusColor(check.runStatus),*/}
-      {/*        flexShrink: 0,*/}
-      {/*      }}*/}
-      {/*    />*/}
-      {/*  </Tooltip>*/}
-      {/*)}*/}
+      {/* Outdated indicator */}
+      {check.isOutdated && (
+        <Tooltip title={formatOutdatedTooltip(check.lastRunAt)}>
+          <Chip
+            label="Outdated"
+            size="small"
+            sx={{
+              height: 20,
+              fontSize: "0.65rem",
+              fontWeight: 500,
+              backgroundColor: "rgb(245 158 11 / 0.12)",
+              color: "#b45309",
+              flexShrink: 0,
+              "& .MuiChip-label": {
+                px: 0.75,
+              },
+            }}
+          />
+        </Tooltip>
+      )}
 
       {/* Preset badge */}
       {check.isPreset && (
