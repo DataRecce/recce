@@ -62,4 +62,22 @@ describe("CheckCard", () => {
 
     expect(handleApprovalChange).toHaveBeenCalledWith("check-1", true);
   });
+
+  it("renders Outdated chip when isOutdated is true", () => {
+    render(<CheckCard check={{ ...baseCheck, isOutdated: true }} />);
+
+    expect(screen.getByText("Outdated")).toBeInTheDocument();
+  });
+
+  it("does not render Outdated chip when isOutdated is false", () => {
+    render(<CheckCard check={{ ...baseCheck, isOutdated: false }} />);
+
+    expect(screen.queryByText("Outdated")).not.toBeInTheDocument();
+  });
+
+  it("does not render Outdated chip when isOutdated is undefined", () => {
+    render(<CheckCard check={baseCheck} />);
+
+    expect(screen.queryByText("Outdated")).not.toBeInTheDocument();
+  });
 });

@@ -25,6 +25,7 @@ export interface Check<PT = unknown, VO = unknown> {
   is_checked?: boolean;
   is_preset?: boolean;
   last_run?: Run;
+  is_outdated?: boolean;
 }
 
 /**

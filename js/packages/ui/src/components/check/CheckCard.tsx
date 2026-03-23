@@ -5,6 +5,7 @@ import Checkbox from "@mui/material/Checkbox";
 import Chip from "@mui/material/Chip";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import { formatDistanceToNow } from "date-fns";
 import { type MouseEvent, memo } from "react";
 
 /**
@@ -46,6 +47,16 @@ export interface CheckCardData {
   runStatus?: CheckRunStatus;
   /** Whether the check is a preset */
   isPreset?: boolean;
+  /**
+   * Whether the check result is outdated because the dbt project/manifest
+   * (code or artifacts) has changed since the last run.
+   */
+  isOutdated?: boolean;
+  /**
+   * ISO timestamp of the last check run used to determine staleness when the
+   * dbt manifest or related artifacts are regenerated (shown in outdated tooltip).
+   */
+  lastRunAt?: string;
 }
 
 /**
@@ -142,6 +153,27 @@ function _getStatusLabel(status?: CheckRunStatus): string {
     error: "Error",
   };
   return labels[status];
+}
+
+/**
+ * Format an ISO timestamp as a relative time string for the outdated tooltip.
+ * Uses date-fns for consistent formatting across the UI.
+ */
+function formatOutdatedTooltip(lastRunAt?: string): string {
+  if (!lastRunAt) return "Check may be outdated";
+  const date = new Date(lastRunAt);
+  if (Number.isNaN(date.getTime())) {
+    return "Check may be outdated";
+  }
+  if (date.getTime() > Date.now()) {
+    return "Check may be outdated — last run: just now";
+  }
+  try {
+    const ago = formatDistanceToNow(date, { addSuffix: true });
+    return `Check may be outdated — last run: ${ago}`;
+  } catch {
+    return "Check may be outdated";
+  }
 }
 
 /**
@@ -279,20 +311,26 @@ function CheckCardComponent({
         {check.name}
       </Typography>
 
-      {/* Run status indicator */}
-      {/*{check.runStatus && (*/}
-      {/*  <Tooltip title={getStatusLabel(check.runStatus)}>*/}
-      {/*    <Box*/}
-      {/*      sx={{*/}
-      {/*        width: 8,*/}
-      {/*        height: 8,*/}
-      {/*        borderRadius: "50%",*/}
-      {/*        backgroundColor: getStatusColor(check.runStatus),*/}
-      {/*        flexShrink: 0,*/}
-      {/*      }}*/}
-      {/*    />*/}
-      {/*  </Tooltip>*/}
-      {/*)}*/}
+      {/* Outdated indicator */}
+      {check.isOutdated && (
+        <Tooltip title={formatOutdatedTooltip(check.lastRunAt)}>
+          <Chip
+            label="Outdated"
+            size="small"
+            sx={{
+              height: 20,
+              fontSize: "0.65rem",
+              fontWeight: 500,
+              backgroundColor: "rgb(245 158 11 / 0.12)",
+              color: "#b45309",
+              flexShrink: 0,
+              "& .MuiChip-label": {
+                px: 0.75,
+              },
+            }}
+          />
+        </Tooltip>
+      )}
 
       {/* Preset badge */}
       {check.isPreset && (
