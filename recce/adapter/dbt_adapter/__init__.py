@@ -400,6 +400,12 @@ class DbtAdapter(BaseAdapter):
 
     def get_columns(self, model: str, base=False) -> List[Column]:
         relation = self.create_relation(model, base)
+        if relation is None:
+            env = "base" if base else "current"
+            raise RecceException(
+                f"Model '{model}' does not exist in {env} environment. "
+                f"Check that the model is in the manifest and catalog."
+            )
         get_columns_macro = "get_columns_in_relation"
         if self.adapter.connections.TYPE == "databricks":
             get_columns_macro = "get_columns_comments"

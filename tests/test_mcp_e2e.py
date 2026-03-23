@@ -350,6 +350,79 @@ class TestCheckToolsE2E:
             await server._tool_run_check({"check_id": str(uuid.uuid4())})
 
 
+class TestCreateCheckE2E:
+    """Layer 1: create_check with real DuckDB."""
+
+    @pytest.mark.asyncio
+    async def test_create_check_row_count_diff(self, mcp_e2e_with_data):
+        """create_check creates a check with a linked run."""
+        server, _ = mcp_e2e_with_data
+        result = await server._tool_create_check(
+            {
+                "type": "row_count_diff",
+                "params": {"node_names": ["customers"]},
+                "name": "Row Count Diff of customers",
+                "description": "Checking row count changes",
+            }
+        )
+
+        assert result["created"] is True
+        assert result["run_executed"] is True
+        assert "run_error" not in result
+
+        # Verify check appears in list_checks
+        checks_result = await server._tool_list_checks({})
+        assert checks_result["total"] == 1
+        assert checks_result["checks"][0]["name"] == "Row Count Diff of customers"
+        assert checks_result["checks"][0]["check_id"] == result["check_id"]
+
+    @pytest.mark.asyncio
+    async def test_create_check_idempotent(self, mcp_e2e_with_data):
+        """Calling create_check twice with same (type, params) does not duplicate."""
+        server, _ = mcp_e2e_with_data
+
+        await server._tool_create_check(
+            {
+                "type": "row_count_diff",
+                "params": {"node_names": ["customers"]},
+                "name": "First name",
+                "description": "First description",
+            }
+        )
+        result2 = await server._tool_create_check(
+            {
+                "type": "row_count_diff",
+                "params": {"node_names": ["customers"]},
+                "name": "Updated name",
+                "description": "Updated description",
+            }
+        )
+
+        assert result2["created"] is False
+
+        checks_result = await server._tool_list_checks({})
+        assert checks_result["total"] == 1
+        assert checks_result["checks"][0]["name"] == "Updated name"
+
+    @pytest.mark.asyncio
+    async def test_create_check_then_run_check(self, mcp_e2e_with_data):
+        """A check created via create_check can be re-run via run_check."""
+        server, _ = mcp_e2e_with_data
+
+        create_result = await server._tool_create_check(
+            {
+                "type": "row_count_diff",
+                "params": {"node_names": ["customers"]},
+                "name": "Row Count Check",
+            }
+        )
+        check_id = create_result["check_id"]
+
+        run_result = await server._tool_run_check({"check_id": check_id})
+        assert "run_id" in run_result
+        assert run_result["type"] == "row_count_diff"
+
+
 @pytest.fixture
 def mcp_e2e_single_env():
     """RecceMCPServer in single-env mode with real DuckDB."""
@@ -533,6 +606,7 @@ class TestMCPProtocolE2E:
                 "select_nodes",
                 "list_checks",
                 "run_check",
+                "create_check",
             }
             assert expected == tool_names
 
