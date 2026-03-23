@@ -1212,6 +1212,42 @@ class RecceMCPServer:
             else:
                 not_impacted_models.append(name)
 
+        # Step 2a: Row count diff (skip views and removed models)
+        countable_models = [
+            m for m in impacted_models if m["materialized"] != "view" and m["change_status"] != "removed"
+        ]
+        if countable_models:
+            countable_names = [m["name"] for m in countable_models]
+            try:
+                task = RowCountDiffTask(params={"node_names": countable_names})
+                row_count_result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+
+                for model in countable_models:
+                    name = model["name"]
+                    if name in row_count_result:
+                        rc = row_count_result[name]
+                        base = rc.get("base")
+                        curr = rc.get("curr")
+                        if base is not None and curr is not None:
+                            delta = curr - base
+                            delta_pct = (delta / base * 100) if base != 0 else None
+                            model["row_count"] = {
+                                "base": base,
+                                "current": curr,
+                                "delta": delta,
+                                "delta_pct": round(delta_pct, 1) if delta_pct is not None else None,
+                            }
+                        elif curr is not None:
+                            # Added model (no base)
+                            model["row_count"] = {
+                                "base": None,
+                                "current": curr,
+                                "delta": None,
+                                "delta_pct": None,
+                            }
+            except Exception as e:
+                errors.append({"step": "row_count_diff", "message": str(e)})
+
         return {
             "impacted_models": impacted_models,
             "not_impacted_models": not_impacted_models,
