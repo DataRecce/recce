@@ -111,6 +111,106 @@ def mcp_e2e_with_data(mcp_e2e):
 # ---------------------------------------------------------------------------
 
 
+@pytest.fixture
+def mcp_e2e_impact(mcp_e2e):
+    """Pre-populated for impact_analysis tests.
+
+    customers: modified (different base/curr data → different checksum).
+    orders: depends on customers, but same data in both envs → purely downstream.
+    """
+    server, helper = mcp_e2e
+
+    helper.create_model(
+        "customers",
+        base_csv="""\
+            id,name,age
+            1,Alice,30
+            2,Bob,25""",
+        curr_csv="""\
+            id,name,age
+            1,Alice,30
+            2,Bob,25
+            3,Charlie,35""",
+        unique_id="model.recce_test.customers",
+        base_columns={"id": "INTEGER", "name": "VARCHAR", "age": "INTEGER"},
+        curr_columns={"id": "INTEGER", "name": "VARCHAR", "age": "INTEGER"},
+    )
+
+    # orders has SAME data in both envs — only downstream of customers, not directly modified
+    helper.create_model(
+        "orders",
+        base_csv="""\
+            id,customer_id,amount
+            1,1,100
+            2,2,200""",
+        curr_csv="""\
+            id,customer_id,amount
+            1,1,100
+            2,2,200""",
+        unique_id="model.recce_test.orders",
+        depends_on=["model.recce_test.customers"],
+        base_columns={"id": "INTEGER", "customer_id": "INTEGER", "amount": "INTEGER"},
+        curr_columns={"id": "INTEGER", "customer_id": "INTEGER", "amount": "INTEGER"},
+    )
+
+    yield server, helper
+
+
+class TestImpactAnalysisE2E:
+    """Layer 1: impact_analysis with real DuckDB."""
+
+    @pytest.mark.asyncio
+    async def test_classifies_modified_and_downstream(self, mcp_e2e_impact):
+        """customers modified, orders is downstream."""
+        server, helper = mcp_e2e_impact
+        result = await server._tool_impact_analysis({})
+
+        # Structure check
+        assert "impacted_models" in result
+        assert "not_impacted_models" in result
+        assert "suggested_deep_dives" in result
+        assert "errors" in result
+
+        # customers is modified (different data → different checksum)
+        model_names = [m["name"] for m in result["impacted_models"]]
+        assert "customers" in model_names
+
+        customers = next(m for m in result["impacted_models"] if m["name"] == "customers")
+        assert customers["change_status"] == "modified"
+        assert customers["materialized"] == "table"
+
+    @pytest.mark.asyncio
+    async def test_downstream_has_null_change_status(self, mcp_e2e_impact):
+        """orders is downstream of modified customers — change_status should be null."""
+        server, _ = mcp_e2e_impact
+        result = await server._tool_impact_analysis({})
+
+        model_names = [m["name"] for m in result["impacted_models"]]
+        assert "orders" in model_names
+
+        orders = next(m for m in result["impacted_models"] if m["name"] == "orders")
+        assert orders["change_status"] is None  # downstream, not directly modified
+
+    @pytest.mark.asyncio
+    async def test_no_false_positives_without_siblings(self, mcp_e2e_impact):
+        """Only impacted models appear in impacted_models."""
+        server, helper = mcp_e2e_impact
+        # Add an unrelated model with no dependency on customers
+        helper.create_model(
+            "unrelated",
+            base_csv="id\n1",
+            curr_csv="id\n1",
+            unique_id="model.recce_test.unrelated",
+            base_columns={"id": "INTEGER"},
+            curr_columns={"id": "INTEGER"},
+        )
+        result = await server._tool_impact_analysis({})
+
+        impacted_names = [m["name"] for m in result["impacted_models"]]
+        assert "unrelated" not in impacted_names
+        assert "unrelated" in result["not_impacted_models"]
+
+
 class TestRowCountDiffE2E:
     """Layer 1: row_count_diff with real DuckDB."""
 
@@ -600,6 +700,7 @@ class TestMCPProtocolE2E:
                 "value_diff_detail",
                 "top_k_diff",
                 "histogram_diff",
+                "impact_analysis",
                 "get_model",
                 "get_cll",
                 "get_server_info",
