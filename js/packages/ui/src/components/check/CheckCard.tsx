@@ -162,11 +162,18 @@ function _getStatusLabel(status?: CheckRunStatus): string {
 function formatOutdatedTooltip(lastRunAt?: string): string {
   if (!lastRunAt) return "Check may be outdated";
   const date = new Date(lastRunAt);
+  if (Number.isNaN(date.getTime())) {
+    return "Check may be outdated";
+  }
   if (date.getTime() > Date.now()) {
     return "Check may be outdated — last run: just now";
   }
-  const ago = formatDistanceToNow(date, { addSuffix: true });
-  return `Check may be outdated — last run: ${ago}`;
+  try {
+    const ago = formatDistanceToNow(date, { addSuffix: true });
+    return `Check may be outdated — last run: ${ago}`;
+  } catch {
+    return "Check may be outdated";
+  }
 }
 
 /**
