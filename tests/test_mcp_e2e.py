@@ -433,6 +433,87 @@ class TestImpactAnalysisErrorResilience:
         assert "errors" in result
 
 
+class TestImpactAnalysisValueDiff:
+    """Phase 2: value_diff with PK detection."""
+
+    @pytest.mark.asyncio
+    async def test_value_diff_with_pk(self, mcp_e2e):
+        """Models with unique test + changed data get value_diff populated."""
+        server, helper = mcp_e2e
+        helper.create_model(
+            "orders",
+            base_csv="id,amount\n1,100\n2,200",
+            curr_csv="id,amount\n1,150\n2,200\n3,300",
+            unique_id="model.recce_test.orders",
+            base_columns={"id": "INTEGER", "amount": "INTEGER"},
+            curr_columns={"id": "INTEGER", "amount": "INTEGER"},
+        )
+        helper.add_unique_test("model.recce_test.orders", "orders", "id")
+
+        result = await server._tool_impact_analysis({})
+        orders = next(m for m in result["impacted_models"] if m["name"] == "orders")
+        vd = orders["value_diff"]
+        assert vd is not None
+        assert vd["rows_changed"] == 1  # id=1: amount 100→150
+        assert vd["rows_added"] == 1  # id=3: new
+        assert vd["rows_removed"] == 0
+        assert "columns" in vd
+        assert "amount" in vd["columns"]
+        assert vd["columns"]["amount"]["rows_changed"] == 1
+
+    @pytest.mark.asyncio
+    async def test_no_pk_returns_null(self, mcp_e2e):
+        """Models without unique test get value_diff: null."""
+        server, helper = mcp_e2e
+        helper.create_model(
+            "orders",
+            base_csv="id,amount\n1,100",
+            curr_csv="id,amount\n1,150",
+            unique_id="model.recce_test.orders",
+            base_columns={"id": "INTEGER", "amount": "INTEGER"},
+            curr_columns={"id": "INTEGER", "amount": "INTEGER"},
+        )
+        result = await server._tool_impact_analysis({})
+        orders = next(m for m in result["impacted_models"] if m["name"] == "orders")
+        assert orders["value_diff"] is None
+
+    @pytest.mark.asyncio
+    async def test_skip_value_diff_flag(self, mcp_e2e):
+        """skip_value_diff=true keeps value_diff as null even with PK."""
+        server, helper = mcp_e2e
+        helper.create_model(
+            "orders",
+            base_csv="id,amount\n1,100",
+            curr_csv="id,amount\n1,150",
+            unique_id="model.recce_test.orders",
+            base_columns={"id": "INTEGER", "amount": "INTEGER"},
+            curr_columns={"id": "INTEGER", "amount": "INTEGER"},
+        )
+        helper.add_unique_test("model.recce_test.orders", "orders", "id")
+        result = await server._tool_impact_analysis({"skip_value_diff": True})
+        orders = next(m for m in result["impacted_models"] if m["name"] == "orders")
+        assert orders["value_diff"] is None
+
+    @pytest.mark.asyncio
+    async def test_value_diff_per_column_means(self, mcp_e2e):
+        """Per-column base_mean and current_mean for numeric columns."""
+        server, helper = mcp_e2e
+        helper.create_model(
+            "orders",
+            base_csv="id,amount\n1,100\n2,200",
+            curr_csv="id,amount\n1,150\n2,250",
+            unique_id="model.recce_test.orders",
+            base_columns={"id": "INTEGER", "amount": "INTEGER"},
+            curr_columns={"id": "INTEGER", "amount": "INTEGER"},
+        )
+        helper.add_unique_test("model.recce_test.orders", "orders", "id")
+        result = await server._tool_impact_analysis({})
+        orders = next(m for m in result["impacted_models"] if m["name"] == "orders")
+        vd = orders["value_diff"]
+        assert vd["columns"]["amount"]["base_mean"] is not None
+        assert vd["columns"]["amount"]["current_mean"] is not None
+
+
 class TestRowCountDiffE2E:
     """Layer 1: row_count_diff with real DuckDB."""
 
