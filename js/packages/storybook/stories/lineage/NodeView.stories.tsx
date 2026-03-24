@@ -1,4 +1,8 @@
-import type { NodeViewNodeData, NodeViewProps } from "@datarecce/ui/advanced";
+import type {
+  NodeViewNodeData,
+  NodeViewProps,
+  SchemaViewProps,
+} from "@datarecce/ui/advanced";
 import { NodeView } from "@datarecce/ui/advanced";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -15,18 +19,13 @@ import { fn } from "storybook/test";
 // STUB COMPONENTS
 // =============================================================================
 
-function StubSchemaView({
-  base,
-  current,
-}: {
-  base?: Record<string, unknown>;
-  current?: Record<string, unknown>;
-}) {
+function StubSchemaView({ base, current }: SchemaViewProps) {
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="body2" color="text.secondary">
-        Schema diff view — base has {base ? Object.keys(base).length : 0}{" "}
-        columns, current has {current ? Object.keys(current).length : 0} columns
+        Schema diff view — base has{" "}
+        {base?.columns ? Object.keys(base.columns).length : 0} columns, current
+        has {current?.columns ? Object.keys(current.columns).length : 0} columns
       </Typography>
     </Box>
   );
@@ -72,6 +71,8 @@ function createNode(
       changeStatus: overrides.changeStatus,
       data: {
         base: {
+          id: "stg_orders",
+          unique_id: "model.jaffle_shop.stg_orders",
           name: "stg_orders",
           raw_code: overrides.baseCode ?? "SELECT * FROM raw.orders",
           columns: overrides.baseColumns ?? {
@@ -81,6 +82,8 @@ function createNode(
           },
         },
         current: {
+          id: "stg_orders",
+          unique_id: "model.jaffle_shop.stg_orders",
           name: "stg_orders",
           raw_code: overrides.currentCode ?? "SELECT * FROM raw.orders",
           columns: overrides.currentColumns ?? {

@@ -33,8 +33,22 @@ function createNode(
       resourceType,
       from: "both",
       data: {
-        base: columns ? { columns } : undefined,
-        current: columns ? { columns } : undefined,
+        base: columns
+          ? {
+              id: "test.node",
+              unique_id: "test.node",
+              name: "test_node",
+              columns,
+            }
+          : undefined,
+        current: columns
+          ? {
+              id: "test.node",
+              unique_id: "test.node",
+              name: "test_node",
+              columns,
+            }
+          : undefined,
       },
     },
   };

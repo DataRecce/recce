@@ -1346,6 +1346,36 @@ class DbtAdapter(BaseAdapter):
             child_map=child_map,
         )
 
+    @staticmethod
+    def _get_parent_table_name(manifest, parent_id: str) -> Optional[str]:
+        """Get the table name (alias) for a parent node as it appears in compiled SQL."""
+        if parent_id in manifest.nodes:
+            parent_node = manifest.nodes[parent_id]
+            return getattr(parent_node, 'alias', None) or parent_node.name
+        if parent_id in manifest.sources:
+            parent_src = manifest.sources[parent_id]
+            return getattr(parent_src, 'identifier', None) or parent_src.name
+        return None
+
+    def _build_schema_from_aliases(self, manifest, catalog, parent_list) -> dict:
+        """Build sqlglot schema dict keyed by parent aliases (for pre-compiled SQL)."""
+        schema = {}
+        if catalog is None:
+            return schema
+        for parent_id in parent_list:
+            table_name = self._get_parent_table_name(manifest, parent_id)
+            if table_name is None:
+                continue
+            columns = {}
+            if parent_id in catalog.nodes:
+                for col_name, col_metadata in catalog.nodes[parent_id].columns.items():
+                    columns[col_name] = col_metadata.type
+            if parent_id in catalog.sources:
+                for col_name, col_metadata in catalog.sources[parent_id].columns.items():
+                    columns[col_name] = col_metadata.type
+            schema[table_name] = columns
+        return schema
+
     @lru_cache(maxsize=128)
     def get_cll_cached(self, node_id: str, base: Optional[bool] = False) -> Optional[CllData]:
         cll_tracker = CLLPerformanceTracking()
@@ -1388,66 +1418,99 @@ class DbtAdapter(BaseAdapter):
 
         table_id_map = {}
 
-        def ref_func(*args):
-            node_name: str = None
-            project_or_package: str = None
+        # Check if the manifest node already has compiled SQL
+        manifest_node = manifest.nodes.get(node_id)
+        pre_compiled = getattr(manifest_node, 'compiled_code', None) if manifest_node else None
 
-            if len(args) == 1:
-                node_name = args[0]
-            else:
-                project_or_package = args[0]
-                node_name = args[1]
-
-            for key, n in manifest.nodes.items():
-                if n.name != node_name:
-                    continue
-                if project_or_package is not None and n.package_name != project_or_package:
-                    continue
-
-                # replace id "." to "_"
-                unique_id = n.unique_id
-                table_name = unique_id.replace(".", "_")
-                table_id_map[table_name.lower()] = unique_id
-                return table_name
-
-            raise ValueError(f"Cannot find node {node_name} in the manifest")
-
-        def source_func(source_name, name):
-            for key, n in manifest.sources.items():
-                if n.source_name != source_name:
-                    continue
-                if n.name != name:
-                    continue
-
-                # replace id "." to "_"
-                unique_id = n.unique_id
-                table_name = unique_id.replace(".", "_")
-                table_id_map[table_name.lower()] = unique_id
-                return table_name
-
-            raise ValueError(f"Cannot find source {source_name}.{name} in the manifest")
-
-        raw_code = node.raw_code
-        jinja_context = dict(
-            ref=ref_func,
-            source=source_func,
-        )
-
-        schema = {}
-        if catalog is not None:
+        if pre_compiled:
+            # Use pre-compiled SQL directly — build table_id_map from parent aliases.
+            # sqlglot strips database/schema qualifiers, so d.node will be just the table
+            # name (alias). If two parents share the same alias (rare: cross-project refs),
+            # fall back to Jinja rendering to avoid incorrect mappings.
+            has_alias_collision = False
             for parent_id in parent_list:
-                table_name = parent_id.replace(".", "_")
-                columns = {}
-                if parent_id in catalog.nodes:
-                    for col_name, col_metadata in catalog.nodes[parent_id].columns.items():
-                        columns[col_name] = col_metadata.type
-                if parent_id in catalog.sources:
-                    for col_name, col_metadata in catalog.sources[parent_id].columns.items():
-                        columns[col_name] = col_metadata.type
-                schema[table_name] = columns
+                table_name = self._get_parent_table_name(manifest, parent_id)
+                if table_name is None:
+                    continue
+                key = table_name.lower()
+                if key in table_id_map:
+                    has_alias_collision = True
+                    break
+                table_id_map[key] = parent_id
+
+            if has_alias_collision:
+                # Reset and fall through to Jinja path
+                table_id_map.clear()
+                pre_compiled = None
+
+        if pre_compiled:
+            schema = self._build_schema_from_aliases(manifest, catalog, parent_list)
+
+        if not pre_compiled:
+            # Fall back to Jinja rendering with custom ref/source functions
+            def ref_func(*args):
+                node_name: str = None
+                project_or_package: str = None
+
+                if len(args) == 1:
+                    node_name = args[0]
+                else:
+                    project_or_package = args[0]
+                    node_name = args[1]
+
+                for key, n in manifest.nodes.items():
+                    if n.name != node_name:
+                        continue
+                    if project_or_package is not None and n.package_name != project_or_package:
+                        continue
+
+                    # replace id "." to "_"
+                    unique_id = n.unique_id
+                    table_name = unique_id.replace(".", "_")
+                    table_id_map[table_name.lower()] = unique_id
+                    return table_name
+
+                raise ValueError(f"Cannot find node {node_name} in the manifest")
+
+            def source_func(source_name, name):
+                for key, n in manifest.sources.items():
+                    if n.source_name != source_name:
+                        continue
+                    if n.name != name:
+                        continue
+
+                    # replace id "." to "_"
+                    unique_id = n.unique_id
+                    table_name = unique_id.replace(".", "_")
+                    table_id_map[table_name.lower()] = unique_id
+                    return table_name
+
+                raise ValueError(f"Cannot find source {source_name}.{name} in the manifest")
+
+            raw_code = node.raw_code
+            jinja_context = dict(
+                ref=ref_func,
+                source=source_func,
+            )
+
+            schema = {}
+            if catalog is not None:
+                for parent_id in parent_list:
+                    table_name = parent_id.replace(".", "_")
+                    columns = {}
+                    if parent_id in catalog.nodes:
+                        for col_name, col_metadata in catalog.nodes[parent_id].columns.items():
+                            columns[col_name] = col_metadata.type
+                    if parent_id in catalog.sources:
+                        for col_name, col_metadata in catalog.sources[parent_id].columns.items():
+                            columns[col_name] = col_metadata.type
+                    schema[table_name] = columns
 
         try:
-            compiled_sql = self.generate_sql(raw_code, base=base, context=jinja_context, provided_manifest=manifest)
+            if pre_compiled:
+                compiled_sql = pre_compiled
+            else:
+                compiled_sql = self.generate_sql(raw_code, base=base, context=jinja_context, provided_manifest=manifest)
             dialect = self.adapter.type()
             if self.get_manifest(base).metadata.adapter_type is not None:
                 dialect = self.get_manifest(base).metadata.adapter_type
