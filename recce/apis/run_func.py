@@ -69,6 +69,15 @@ def generate_run_name(run):
         model = params.get("model")
         column = params.get("column_name")
         return f"histogram diff of {model}.{column} ".capitalize()
+    elif run_type == RunType.LINEAGE_DIFF:
+        return "Lineage diff"
+    elif run_type == RunType.SCHEMA_DIFF:
+        node_names = params.get("node_names")
+        if node_names and len(node_names) == 1:
+            return f"Schema diff of {node_names[0]}"
+        elif node_names:
+            return f"Schema diff of {len(node_names)} nodes"
+        return "Schema diff"
     else:
         return f"{'run'.capitalize()} - {now}"
 
@@ -92,7 +101,7 @@ def create_task(run_type: RunType, params: dict):
     return taskClz(params)
 
 
-def submit_run(type, params, check_id=None):
+def submit_run(type, params, check_id=None, triggered_by=None):
     try:
         run_type = RunType(type)
     except ValueError:
@@ -111,7 +120,7 @@ def submit_run(type, params, check_id=None):
         if dbt_adaptor.adapter is None:
             raise RecceException("Recce Server is not launched under DBT project folder.")
 
-    run = Run(type=run_type, params=params, check_id=check_id, status=RunStatus.RUNNING)
+    run = Run(type=run_type, params=params, check_id=check_id, status=RunStatus.RUNNING, triggered_by=triggered_by)
     run.name = generate_run_name(run)
     RunDAO().create(run)
 

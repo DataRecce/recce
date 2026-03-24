@@ -162,7 +162,7 @@ async def run_check_handler(check_id: UUID, input: RunCheckIn):
                 rerun=True,
             ),
         )
-        run, future = submit_run(check.type, check.params, check_id=check_id)
+        run, future = submit_run(check.type, check.params, check_id=check_id, triggered_by="user")
     except RecceException as e:
         raise HTTPException(status_code=400, detail=str(e))
 

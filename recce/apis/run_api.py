@@ -56,7 +56,7 @@ async def create_run_handler(input: CreateRunIn):
         ),
     )
     try:
-        run, future = submit_run(input.type, input.params)
+        run, future = submit_run(input.type, input.params, triggered_by="user")
     except RecceException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -102,6 +102,8 @@ async def list_run_handler():
             "params": run.params,
             "status": run.status,
             "check_id": run.check_id,
+            "error": run.error,
+            "triggered_by": run.triggered_by,
         }
         for run in runs
     ]
