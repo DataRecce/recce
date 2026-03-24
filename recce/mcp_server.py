@@ -729,6 +729,13 @@ class RecceMCPServer:
                             modified or downstream-impacted, with row count and value-level signals
                             for non-view models.
 
+                            IMPORTANT: You MUST call this tool BEFORE reporting which models are
+                            impacted by a code change. Do NOT determine impact by reading code,
+                            inferring from ref() calls, or guessing from model names — these
+                            approaches confuse upstream dependencies with downstream impact and
+                            produce false positives. This tool uses the lineage DAG to
+                            deterministically classify models.
+
                             This is a starting point for investigation, not a complete analysis.
                             Use the results to identify anomalies, then follow up with profile_diff,
                             query_diff, or other tools until you have confidence in the root cause.
@@ -742,7 +749,11 @@ class RecceMCPServer:
                             "properties": {
                                 "select": {
                                     "type": "string",
-                                    "description": "dbt selector syntax. Default: 'state:modified+' (all modified models and downstream)",
+                                    "description": (
+                                        "dbt selector syntax. Default: data-affecting changes only "
+                                        "(body + macros + contract and their downstream). "
+                                        "Use 'state:modified+' to include all changes including config."
+                                    ),
                                 },
                                 "skip_value_diff": {
                                     "type": "boolean",
@@ -1162,7 +1173,12 @@ class RecceMCPServer:
     async def _tool_impact_analysis(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Discover the impact of dbt model changes."""
         start_time = time.time()
-        select = arguments.get("select", "state:modified+")
+        # Default: only body/macros/contract changes (data-affecting).
+        # Excludes config, relation, and persisted_descriptions changes.
+        select = arguments.get(
+            "select",
+            "state:modified.body+ state:modified.macros+ state:modified.contract+",
+        )
         skip_value_diff = arguments.get("skip_value_diff", False)
         errors = []
 
@@ -1484,6 +1500,18 @@ class RecceMCPServer:
             sentry_metrics.distribution("mcp.impact_analysis.impacted_count", len(impacted_models))
 
         result = {
+            "_guidance": (
+                "DO NOT OVERRIDE these classifications with your own analysis. "
+                "These lists are computed from the lineage DAG and are definitive. "
+                "Copy impacted_models and not_impacted_models directly into your output. "
+                "When value_diff.rows_changed is present for a model, "
+                "use that number as the affected_row_count (exact count of "
+                "rows whose values differ between base and current). "
+                "A model with 0 value changes is still impacted if it appears "
+                "in this list — impact means 'in the blast radius', not "
+                "'has changed data'."
+            ),
+            "classification_source": "lineage_dag",
             "impacted_models": impacted_models,
             "not_impacted_models": not_impacted_models,
             "suggested_deep_dives": suggested_deep_dives,
