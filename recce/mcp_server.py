@@ -1407,12 +1407,14 @@ class RecceMCPServer:
                                 current_mean = float(raw_curr) if raw_curr is not None else None
                                 col_idx += 2
                             columns_result[col] = {
-                                "rows_changed": col_changed,
+                                "affected_row_count": col_changed,
                                 "base_mean": base_mean,
                                 "current_mean": current_mean,
                             }
 
+                        total_affected = rows_added + rows_removed + rows_changed
                         model["value_diff"] = {
+                            "affected_row_count": total_affected,
                             "rows_added": rows_added,
                             "rows_removed": rows_removed,
                             "rows_changed": rows_changed,
@@ -1440,7 +1442,9 @@ class RecceMCPServer:
                 total_matched = (model["row_count"]["current"] or 0) - vd["rows_added"]
                 if total_matched > 0 and vd["rows_changed"] / total_matched > 0.2:
                     top_cols = [
-                        col for col, stats in (vd.get("columns") or {}).items() if stats.get("rows_changed", 0) > 0
+                        col
+                        for col, stats in (vd.get("columns") or {}).items()
+                        if stats.get("affected_row_count", 0) > 0
                     ]
                     if name not in seen_models:
                         suggested_deep_dives.append(
@@ -1494,6 +1498,18 @@ class RecceMCPServer:
                     )
                     seen_models.add(name)
 
+        # Compute per-model affected_row_count: value_diff total or abs(row_count.delta) as fallback
+        max_affected = 0
+        for model in impacted_models:
+            if model["value_diff"] is not None:
+                model["affected_row_count"] = model["value_diff"]["affected_row_count"]
+            elif model["row_count"] is not None and model["row_count"].get("delta") is not None:
+                model["affected_row_count"] = abs(model["row_count"]["delta"])
+            else:
+                model["affected_row_count"] = None
+            if model["affected_row_count"] is not None and model["affected_row_count"] > max_affected:
+                max_affected = model["affected_row_count"]
+
         if sentry_metrics:
             duration = time.time() - start_time
             sentry_metrics.distribution("mcp.impact_analysis.duration", duration, unit="second")
@@ -1503,17 +1519,17 @@ class RecceMCPServer:
             "_guidance": (
                 "DO NOT OVERRIDE these classifications with your own analysis. "
                 "These lists are computed from the lineage DAG and are definitive. "
-                "Copy impacted_models and not_impacted_models directly into your output. "
-                "When value_diff.rows_changed is present for a model, "
-                "use that number as the affected_row_count (exact count of "
-                "rows whose values differ between base and current). "
+                "Copy confirmed_impacted_models and confirmed_not_impacted_models "
+                "directly into your impacted_models and not_impacted_models output. "
+                "Use total_affected_row_count as your affected_row_count output. "
                 "A model with 0 value changes is still impacted if it appears "
                 "in this list — impact means 'in the blast radius', not "
                 "'has changed data'."
             ),
             "classification_source": "lineage_dag",
-            "impacted_models": impacted_models,
-            "not_impacted_models": not_impacted_models,
+            "total_affected_row_count": max_affected,
+            "confirmed_impacted_models": impacted_models,
+            "confirmed_not_impacted_models": not_impacted_models,
             "suggested_deep_dives": suggested_deep_dives,
             "errors": errors,
         }
