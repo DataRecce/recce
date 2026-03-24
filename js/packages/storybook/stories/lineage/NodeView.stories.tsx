@@ -1,5 +1,10 @@
 import type { NodeViewNodeData, NodeViewProps } from "@datarecce/ui/advanced";
 import { NodeView } from "@datarecce/ui/advanced";
+import type { LineageGraphNode } from "@datarecce/ui/contexts";
+import {
+  MaterializationTag as MaterializationTagBase,
+  ResourceTypeTag as ResourceTypeTagBase,
+} from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -49,6 +54,24 @@ function StubNodeSqlView({ node }: { node: NodeViewNodeData }) {
   );
 }
 
+/**
+ * Tag component that shows MaterializationTag for models, ResourceTypeTag otherwise.
+ * Mirrors the logic in NodeViewOss.tsx.
+ */
+function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
+  const materialized =
+    node.data.data.current?.config?.materialized ??
+    node.data.data.base?.config?.materialized;
+
+  if (node.data.resourceType === "model" && materialized) {
+    return <MaterializationTagBase data={{ materialized }} />;
+  }
+
+  return (
+    <ResourceTypeTagBase data={{ resourceType: node.data.resourceType }} />
+  );
+}
+
 // =============================================================================
 // FIXTURE FACTORIES
 // =============================================================================
@@ -62,8 +85,13 @@ function createNode(
     name?: string;
     resourceType?: string;
     changeStatus?: string;
+    materialized?: string;
   } = {},
 ): NodeViewNodeData {
+  const config = overrides.materialized
+    ? { materialized: overrides.materialized }
+    : undefined;
+
   return {
     id: "model.jaffle_shop.stg_orders",
     data: {
@@ -79,6 +107,7 @@ function createNode(
             customer_id: { name: "customer_id", type: "integer" },
             order_date: { name: "order_date", type: "date" },
           },
+          config,
         },
         current: {
           name: "stg_orders",
@@ -88,6 +117,7 @@ function createNode(
             customer_id: { name: "customer_id", type: "integer" },
             order_date: { name: "order_date", type: "date" },
           },
+          config,
         },
       },
     },
@@ -122,6 +152,7 @@ const meta: Meta<typeof NodeView> = {
     isSingleEnv: false,
     SchemaView: StubSchemaView,
     NodeSqlView: StubNodeSqlView,
+    ResourceTypeTag,
   },
 };
 
@@ -135,7 +166,7 @@ type Story = StoryObj<typeof NodeView>;
 /** No differences in schema or code — no dots shown on either tab. */
 export const NoDifferences: Story = {
   args: {
-    node: createNode(),
+    node: createNode({ materialized: "view" }),
   },
 };
 
@@ -204,6 +235,7 @@ export const SingleEnvMode: Story = {
   args: {
     isSingleEnv: true,
     node: createNode({
+      materialized: "table",
       baseCode: "SELECT 1",
       currentCode: "SELECT 2",
       baseColumns: {
@@ -214,5 +246,45 @@ export const SingleEnvMode: Story = {
         b: { name: "b", type: "integer" },
       },
     }),
+  },
+};
+
+// =============================================================================
+// MATERIALIZATION TAG STORIES
+// =============================================================================
+
+/** Model materialized as incremental — shows incremental icon in tag row. */
+export const IncrementalModel: Story = {
+  args: {
+    node: createNode({ materialized: "incremental" }),
+  },
+};
+
+/** Model materialized as table — shows solid cube icon in tag row. */
+export const TableModel: Story = {
+  args: {
+    node: createNode({ materialized: "table" }),
+  },
+};
+
+/** Model materialized as ephemeral — shows dashed cube icon in tag row. */
+export const EphemeralModel: Story = {
+  args: {
+    node: createNode({ materialized: "ephemeral" }),
+  },
+};
+
+/** Model materialized as materialized_view — shows cube+eye icon in tag row. */
+export const MaterializedViewModel: Story = {
+  name: "Materialized View Model",
+  args: {
+    node: createNode({ materialized: "materialized_view" }),
+  },
+};
+
+/** Source node — shows resource type tag (no materialization). */
+export const SourceNode: Story = {
+  args: {
+    node: createNode({ resourceType: "source", name: "raw_orders" }),
   },
 };

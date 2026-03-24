@@ -26,7 +26,11 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { Handle, Position } from "@xyflow/react";
 import { type MouseEvent, memo, type ReactNode, useState } from "react";
-import { getIconForChangeStatus, getIconForResourceType } from "../styles";
+import {
+  getIconForChangeStatus,
+  getIconForMaterialization,
+  getIconForResourceType,
+} from "../styles";
 
 // =============================================================================
 // TYPES
@@ -65,6 +69,8 @@ export interface LineageNodeData extends Record<string, unknown> {
   isSelected?: boolean;
   /** Resource type for icon display */
   resourceType?: string;
+  /** Materialization strategy (table, view, incremental, etc.) */
+  materialized?: string;
   /** Package name */
   packageName?: string;
   /** Whether to show column-level details */
@@ -310,6 +316,7 @@ function LineageNodeComponent({
     changeStatus = "unchanged",
     isSelected: dataIsSelected,
     resourceType,
+    materialized,
   } = data;
 
   // Use isNodeSelected prop, fall back to data.isSelected, then to selected
@@ -323,7 +330,10 @@ function LineageNodeComponent({
     color: colorChangeStatus,
     backgroundColor: backgroundColorChangeStatus,
   } = getIconForChangeStatus(changeStatus, isDark);
-  const { icon: ResourceIcon } = getIconForResourceType(resourceType);
+  const { icon: ResourceIcon } =
+    resourceType === "model" && materialized
+      ? getIconForMaterialization(materialized)
+      : getIconForResourceType(resourceType);
 
   // Calculate styles based on state
   const borderWidth = "2px";

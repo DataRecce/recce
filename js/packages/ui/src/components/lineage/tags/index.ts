@@ -7,6 +7,11 @@
  */
 
 export {
+  MaterializationTag,
+  type MaterializationTagData,
+  type MaterializationTagProps,
+} from "./MaterializationTag";
+export {
   ResourceTypeTag,
   type ResourceTypeTagData,
   type ResourceTypeTagProps,

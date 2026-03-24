@@ -41,11 +41,13 @@ export interface NodeViewNodeData {
         raw_code?: string;
         name?: string;
         columns?: Record<string, NodeColumnData | undefined>;
+        config?: { materialized?: string };
       };
       current?: {
         raw_code?: string;
         name?: string;
         columns?: Record<string, NodeColumnData | undefined>;
+        config?: { materialized?: string };
       };
     };
     change?: {

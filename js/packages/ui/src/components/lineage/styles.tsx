@@ -316,6 +316,117 @@ export const IconSemanticModel: IconComponent = (props) => (
 );
 
 // =============================================================================
+// MATERIALIZATION ICONS
+// =============================================================================
+
+/**
+ * Eye icon for "view" materialization type
+ */
+export const IconViewMat: IconComponent = (props) => (
+  <svg
+    stroke="currentColor"
+    fill="currentColor"
+    strokeWidth="0"
+    viewBox="0 0 512 512"
+    height="1em"
+    width="1em"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path d="M256 128C141.4 128 37.5 193.3 1.6 246.1c-2.1 3.2-2.1 7.5 0 10.7C37.5 309.7 141.4 384 256 384s218.5-74.3 254.4-127.2c2.1-3.2 2.1-7.5 0-10.7C474.5 193.3 370.6 128 256 128zm0 208c-53 0-96-43-96-96s43-96 96-96 96 43 96 96-43 96-96 96zm0-144c-26.5 0-48 21.5-48 48s21.5 48 48 48 48-21.5 48-48-21.5-48-48-48z" />
+  </svg>
+);
+
+/**
+ * Cube icon with dashed top portion for "incremental" materialization type
+ * Bottom 2/3 is solid fill, top 1/3 is dashed strokes
+ */
+export const IconIncremental: IconComponent = (props) => (
+  <svg
+    stroke="currentColor"
+    fill="currentColor"
+    strokeWidth="0"
+    viewBox="0 0 512 512"
+    height="1em"
+    width="1em"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <defs>
+      <clipPath id="incremental-bottom">
+        <rect x="0" y="200" width="512" height="312" />
+      </clipPath>
+      <clipPath id="incremental-top">
+        <rect x="0" y="0" width="512" height="200" />
+      </clipPath>
+    </defs>
+    {/* Bottom 2/3: solid fill */}
+    <path
+      clipPath="url(#incremental-bottom)"
+      d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z"
+    />
+    {/* Top 1/3: dashed strokes */}
+    <path
+      clipPath="url(#incremental-top)"
+      d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="12"
+      strokeDasharray="20 12"
+    />
+  </svg>
+);
+
+/**
+ * Fully dashed cube icon for "ephemeral" materialization type
+ */
+export const IconEphemeral: IconComponent = (props) => (
+  <svg
+    stroke="currentColor"
+    fill="none"
+    strokeWidth="0"
+    viewBox="0 0 512 512"
+    height="1em"
+    width="1em"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="12"
+      strokeDasharray="20 12"
+    />
+  </svg>
+);
+
+/**
+ * Solid cube with small eye overlay for "materialized_view" materialization type
+ */
+export const IconMaterializedView: IconComponent = (props) => (
+  <svg
+    stroke="currentColor"
+    fill="currentColor"
+    strokeWidth="0"
+    viewBox="0 0 512 512"
+    height="1em"
+    width="1em"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    {/* Scaled-down cube at ~75% */}
+    <g transform="translate(0, 0) scale(0.75)">
+      <path d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z" />
+    </g>
+    {/* Eye icon overlay in bottom-right (~50% size) */}
+    <g transform="translate(250, 260) scale(0.5)">
+      <path d="M256 128C141.4 128 37.5 193.3 1.6 246.1c-2.1 3.2-2.1 7.5 0 10.7C37.5 309.7 141.4 384 256 384s218.5-74.3 254.4-127.2c2.1-3.2 2.1-7.5 0-10.7C474.5 193.3 370.6 128 256 128zm0 208c-53 0-96-43-96-96s43-96 96-96 96 43 96 96-43 96-96 96zm0-144c-26.5 0-48 21.5-48 48s21.5 48 48 48 48-21.5 48-48-21.5-48-48-48z" />
+    </g>
+  </svg>
+);
+
+// =============================================================================
 // STYLING FUNCTIONS
 // =============================================================================
 
@@ -432,6 +543,47 @@ export function getIconForResourceType(
         color: "inherit",
         icon: undefined,
       };
+  }
+}
+
+/**
+ * Materialization types supported by dbt
+ */
+export type MaterializationType =
+  | "table"
+  | "view"
+  | "incremental"
+  | "ephemeral"
+  | "materialized_view";
+
+/**
+ * Get icon and color for a materialization type
+ *
+ * @param materialization - The materialization type (table, view, incremental, etc.)
+ * @returns Object containing color and icon component
+ *
+ * @example
+ * ```tsx
+ * const { color, icon: Icon } = getIconForMaterialization("view");
+ * return Icon ? <Icon style={{ color }} /> : null;
+ * ```
+ */
+export function getIconForMaterialization(
+  materialization?: string,
+): ResourceTypeStyle {
+  switch (materialization) {
+    case "table":
+      return { color: colors.cyan[200], icon: IconModel };
+    case "view":
+      return { color: colors.fuchsia[300], icon: IconViewMat };
+    case "incremental":
+      return { color: colors.iochmara[300], icon: IconIncremental };
+    case "ephemeral":
+      return { color: colors.neutral[400], icon: IconEphemeral };
+    case "materialized_view":
+      return { color: colors.fuchsia[200], icon: IconMaterializedView };
+    default:
+      return { color: "inherit", icon: undefined };
   }
 }
 

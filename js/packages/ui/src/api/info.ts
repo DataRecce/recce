@@ -29,6 +29,9 @@ export interface NodeData {
   package_name?: string;
   columns?: Record<string, NodeColumnData | undefined>;
   primary_key?: string;
+  config?: {
+    materialized?: string;
+  };
 }
 
 /**

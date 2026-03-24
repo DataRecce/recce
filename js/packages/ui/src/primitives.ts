@@ -64,6 +64,26 @@ export {
   type LineageNodeProps,
   type NodeChangeStatus,
 } from "./components/lineage/nodes";
+/**
+ * Resource type tag for lineage nodes.
+ *
+ * @remarks
+ * Exports: ResourceTypeTag, ResourceTypeTagData, ResourceTypeTagProps.
+ */
+/**
+ * Materialization tag for lineage nodes.
+ *
+ * @remarks
+ * Exports: MaterializationTag, MaterializationTagData, MaterializationTagProps.
+ */
+export {
+  MaterializationTag,
+  type MaterializationTagData,
+  type MaterializationTagProps,
+  ResourceTypeTag,
+  type ResourceTypeTagData,
+  type ResourceTypeTagProps,
+} from "./components/lineage/tags";
 
 // =============================================================================
 // CHECK PRIMITIVES

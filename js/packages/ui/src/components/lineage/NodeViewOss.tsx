@@ -46,7 +46,10 @@ import {
   type RunTypeIconMap,
 } from "./NodeView";
 import { SandboxViewOss } from "./SandboxViewOss";
-import { ResourceTypeTag as ResourceTypeTagBase } from "./tags";
+import {
+  MaterializationTag as MaterializationTagBase,
+  ResourceTypeTag as ResourceTypeTagBase,
+} from "./tags";
 
 // =============================================================================
 // TYPES
@@ -57,9 +60,19 @@ interface NodeViewProps {
   onCloseNode: () => void;
 }
 
-const ResourceTypeTag = ({ node }: { node: LineageGraphNode }) => (
-  <ResourceTypeTagBase data={{ resourceType: node.data.resourceType }} />
-);
+const ResourceTypeTag = ({ node }: { node: LineageGraphNode }) => {
+  const materialized =
+    node.data.data.current?.config?.materialized ??
+    node.data.data.base?.config?.materialized;
+
+  if (node.data.resourceType === "model" && materialized) {
+    return <MaterializationTagBase data={{ materialized }} />;
+  }
+
+  return (
+    <ResourceTypeTagBase data={{ resourceType: node.data.resourceType }} />
+  );
+};
 
 // =============================================================================
 // OSS-SPECIFIC WRAPPER COMPONENTS

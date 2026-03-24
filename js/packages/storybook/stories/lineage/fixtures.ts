@@ -27,6 +27,7 @@ export interface LineageNodeData extends Record<string, unknown> {
   changeStatus?: NodeChangeStatus;
   isSelected?: boolean;
   resourceType?: string;
+  materialized?: string;
   packageName?: string;
   showColumns?: boolean;
   columns?: Array<{
@@ -51,6 +52,7 @@ interface CreateNodeOptions {
   position: { x: number; y: number };
   changeStatus?: NodeChangeStatus;
   resourceType?: string;
+  materialized?: string;
   showColumns?: boolean;
   columnCount?: number;
   data?: Partial<LineageNodeData>;
@@ -79,6 +81,7 @@ export function createNode({
   position,
   changeStatus = "unchanged",
   resourceType = "model",
+  materialized,
   showColumns = false,
   columnCount = 0,
   data = {},
@@ -92,6 +95,7 @@ export function createNode({
       nodeType: resourceType,
       changeStatus,
       resourceType,
+      materialized,
       showColumns,
       ...data,
     },
@@ -140,18 +144,21 @@ export function createDiamondNodes(): Node<LineageNodeData>[] {
       label: "Model A",
       position: { x: 400, y: 150 },
       changeStatus: "modified",
+      materialized: "view",
     }),
     createNode({
       id: "model_b",
       label: "Model B",
       position: { x: 400, y: 350 },
       changeStatus: "added",
+      materialized: "incremental",
     }),
     createNode({
       id: "final",
       label: "Final Model",
       position: { x: 800, y: 250 },
       changeStatus: "unchanged",
+      materialized: "table",
     }),
   ];
 }
@@ -278,14 +285,50 @@ export function largeGraph() {
     "unchanged",
   ];
 
-  // Layer configuration: x position, node count, prefix
+  // Layer configuration: x position, node count, prefix, materialization
   const layers = [
-    { x: 0, count: 8, prefix: "src", resourceType: "source" },
-    { x: 400, count: 12, prefix: "stg", resourceType: "model" },
-    { x: 800, count: 15, prefix: "int", resourceType: "model" },
-    { x: 1200, count: 18, prefix: "fct", resourceType: "model" },
-    { x: 1600, count: 12, prefix: "dim", resourceType: "model" },
-    { x: 2000, count: 5, prefix: "mart", resourceType: "model" },
+    {
+      x: 0,
+      count: 8,
+      prefix: "src",
+      resourceType: "source",
+      materialized: undefined,
+    },
+    {
+      x: 400,
+      count: 12,
+      prefix: "stg",
+      resourceType: "model",
+      materialized: "view" as const,
+    },
+    {
+      x: 800,
+      count: 15,
+      prefix: "int",
+      resourceType: "model",
+      materialized: "ephemeral" as const,
+    },
+    {
+      x: 1200,
+      count: 18,
+      prefix: "fct",
+      resourceType: "model",
+      materialized: "incremental" as const,
+    },
+    {
+      x: 1600,
+      count: 12,
+      prefix: "dim",
+      resourceType: "model",
+      materialized: "table" as const,
+    },
+    {
+      x: 2000,
+      count: 5,
+      prefix: "mart",
+      resourceType: "model",
+      materialized: "materialized_view" as const,
+    },
   ];
 
   let nodeIndex = 0;
@@ -304,6 +347,7 @@ export function largeGraph() {
           position: { x: layer.x, y: startY + i * verticalSpacing },
           changeStatus: statuses[nodeIndex % statuses.length],
           resourceType: layer.resourceType,
+          materialized: layer.materialized,
         }),
       );
       nodeIndex++;
@@ -376,11 +420,14 @@ function createLineageGraphNode(
   resourceType: string,
   columns: ColumnDef[],
   changeStatus?: "added" | "removed" | "modified",
+  materialized?: string,
 ): LineageGraphNode {
   const columnData: Record<string, { name: string; type: string }> = {};
   for (const col of columns) {
     columnData[col.name] = { name: col.name, type: col.type };
   }
+
+  const config = materialized ? { materialized } : undefined;
 
   return {
     id,
@@ -401,6 +448,7 @@ function createLineageGraphNode(
           resource_type: resourceType,
           package_name: "demo",
           columns: columnData,
+          config,
         },
         current: {
           id,
@@ -409,6 +457,7 @@ function createLineageGraphNode(
           resource_type: resourceType,
           package_name: "demo",
           columns: columnData,
+          config,
         },
       },
       parents: {},
@@ -456,7 +505,7 @@ export function createCllLineageGraph(): LineageGraph {
       ],
     ),
 
-    // Staging
+    // Staging (views — lightweight transformations)
     "model.demo.stg_users": createLineageGraphNode(
       "model.demo.stg_users",
       "stg_users",
@@ -477,6 +526,7 @@ export function createCllLineageGraph(): LineageGraph {
         },
       ],
       "modified",
+      "view",
     ),
     "model.demo.stg_orders": createLineageGraphNode(
       "model.demo.stg_orders",
@@ -505,9 +555,11 @@ export function createCllLineageGraph(): LineageGraph {
           transformationType: "passthrough",
         },
       ],
+      undefined,
+      "view",
     ),
 
-    // Dimension
+    // Dimension (table — pre-built for fast joins)
     "model.demo.dim_users": createLineageGraphNode(
       "model.demo.dim_users",
       "dim_users",
@@ -528,9 +580,11 @@ export function createCllLineageGraph(): LineageGraph {
           changeStatus: "added",
         },
       ],
+      undefined,
+      "table",
     ),
 
-    // Fact
+    // Fact (incremental — append new orders)
     "model.demo.fct_orders": createLineageGraphNode(
       "model.demo.fct_orders",
       "fct_orders",
@@ -559,9 +613,11 @@ export function createCllLineageGraph(): LineageGraph {
           transformationType: "passthrough",
         },
       ],
+      undefined,
+      "incremental",
     ),
 
-    // Mart
+    // Mart (materialized view — refreshed by the warehouse)
     "model.demo.mart_customer_orders": createLineageGraphNode(
       "model.demo.mart_customer_orders",
       "mart_customer_orders",
@@ -594,6 +650,8 @@ export function createCllLineageGraph(): LineageGraph {
           transformationType: "derived",
         },
       ],
+      undefined,
+      "materialized_view",
     ),
   };
 
