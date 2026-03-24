@@ -107,6 +107,51 @@ class GitHubRecceCloudClient(BaseRecceCloudClient):
 
         return self._make_request("GET", url, params=params)
 
+    def get_isolated_base_upload_urls(self, session_id: str) -> Dict:
+        """
+        Get presigned S3 upload URLs for isolated base artifacts via GitHub Action.
+
+        Args:
+            session_id: Session ID
+
+        Returns:
+            dict with keys: manifest_url, catalog_url
+        """
+        from recce_cloud.api.client import replace_localhost_with_docker_internal
+
+        url = (
+            f"{self.api_host}/api/v2/github/{self.repository}/isolated-base/upload-url"
+        )
+        payload = {"session_id": session_id}
+        data = self._make_request("POST", url, json=payload)
+
+        presigned_urls = data.get("presigned_urls")
+        if presigned_urls is None:
+            from recce_cloud.api.exceptions import RecceCloudException
+
+            raise RecceCloudException(
+                reason="No presigned URLs returned from the server.",
+                status_code=404,
+            )
+
+        for key, val in presigned_urls.items():
+            presigned_urls[key] = replace_localhost_with_docker_internal(val)
+        return presigned_urls
+
+    def isolated_base_upload_completed(self, session_id: str) -> Dict:
+        """
+        Notify Recce Cloud that isolated base upload is complete via GitHub Action.
+
+        Args:
+            session_id: Session ID
+
+        Returns:
+            Empty dictionary or acknowledgement
+        """
+        url = f"{self.api_host}/api/v2/github/{self.repository}/isolated-base/upload-completed"
+        payload = {"session_id": session_id}
+        return self._make_request("POST", url, json=payload)
+
     def delete_session(
         self,
         pr_number: Optional[int] = None,

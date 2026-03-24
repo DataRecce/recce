@@ -1,14 +1,11 @@
 import Box from "@mui/material/Box";
 import Link from "@mui/material/Link";
 import MuiPopover from "@mui/material/Popover";
-import { ReactElement, useCallback, useRef, useState } from "react";
+import { type ReactNode, useCallback, useRef, useState } from "react";
 import { RECCE_SUPPORT_CALENDAR_URL } from "../../lib/const";
 
 interface SetupConnectionPopoverProps {
-  children: ReactElement<{
-    ref?: React.Ref<HTMLElement>;
-    [key: string]: unknown;
-  }>;
+  children: ReactNode;
   display: boolean;
 }
 
