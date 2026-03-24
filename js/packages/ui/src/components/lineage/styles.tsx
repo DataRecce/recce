@@ -11,7 +11,7 @@
  * Source: Ported from OSS js/src/components/lineage/styles.tsx
  */
 
-import type { ComponentType, SVGProps } from "react";
+import { type ComponentType, type SVGProps, useId } from "react";
 import { colors } from "../../theme/colors";
 
 // =============================================================================
@@ -341,41 +341,47 @@ export const IconViewMat: IconComponent = (props) => (
  * Cube icon with dashed top portion for "incremental" materialization type
  * Bottom 2/3 is solid fill, top 1/3 is dashed strokes
  */
-export const IconIncremental: IconComponent = (props) => (
-  <svg
-    stroke="currentColor"
-    fill="currentColor"
-    strokeWidth="0"
-    viewBox="0 0 512 512"
-    height="1em"
-    width="1em"
-    xmlns="http://www.w3.org/2000/svg"
-    {...props}
-  >
-    <defs>
-      <clipPath id="incremental-bottom">
-        <rect x="0" y="200" width="512" height="312" />
-      </clipPath>
-      <clipPath id="incremental-top">
-        <rect x="0" y="0" width="512" height="200" />
-      </clipPath>
-    </defs>
-    {/* Bottom 2/3: solid fill */}
-    <path
-      clipPath="url(#incremental-bottom)"
-      d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z"
-    />
-    {/* Top 1/3: dashed strokes */}
-    <path
-      clipPath="url(#incremental-top)"
-      d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z"
-      fill="none"
+export const IconIncremental: IconComponent = (props) => {
+  const id = useId();
+  const bottomId = `inc-bottom-${id}`;
+  const topId = `inc-top-${id}`;
+
+  return (
+    <svg
       stroke="currentColor"
-      strokeWidth="12"
-      strokeDasharray="20 12"
-    />
-  </svg>
-);
+      fill="currentColor"
+      strokeWidth="0"
+      viewBox="0 0 512 512"
+      height="1em"
+      width="1em"
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+    >
+      <defs>
+        <clipPath id={bottomId}>
+          <rect x="0" y="200" width="512" height="312" />
+        </clipPath>
+        <clipPath id={topId}>
+          <rect x="0" y="0" width="512" height="200" />
+        </clipPath>
+      </defs>
+      {/* Bottom 2/3: solid fill */}
+      <path
+        clipPath={`url(#${bottomId})`}
+        d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z"
+      />
+      {/* Top 1/3: dashed strokes */}
+      <path
+        clipPath={`url(#${topId})`}
+        d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="12"
+        strokeDasharray="20 12"
+      />
+    </svg>
+  );
+};
 
 /**
  * Fully dashed cube icon for "ephemeral" materialization type
