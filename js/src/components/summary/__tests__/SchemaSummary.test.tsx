@@ -62,8 +62,8 @@ vi.mock("@datarecce/ui/components/schema", () => ({
 }));
 
 vi.mock("@datarecce/ui/components/lineage", () => ({
-  ResourceTypeTag: ({ data }: { data: { resourceType: string } }) => (
-    <span data-testid="resource-type-tag">{data.resourceType}</span>
+  NodeTag: ({ resourceType }: { resourceType: string }) => (
+    <span data-testid="resource-type-tag">{resourceType}</span>
   ),
   RowCountDiffTag: () => <span data-testid="row-count-diff-tag">RowCount</span>,
 }));

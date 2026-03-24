@@ -9,7 +9,7 @@ import Typography from "@mui/material/Typography";
 import { useEffect, useState } from "react";
 import type { LineageGraph, LineageGraphNode } from "../../contexts";
 import { mergeKeysWithStatus } from "../../utils";
-import { ResourceTypeTag, RowCountDiffTag } from "../lineage";
+import { NodeTag, RowCountDiffTag } from "../lineage";
 import { SchemaView } from "../schema";
 
 interface SchemaDiffCardProps {
@@ -28,7 +28,7 @@ function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
         }
         subheader={
           <Stack direction="row" spacing="8px" sx={{ p: "16px" }}>
-            <ResourceTypeTag data={{ resourceType: node.data.resourceType }} />
+            <NodeTag resourceType={node.data.resourceType} />
             {node.data.resourceType === "model" && (
               <RowCountDiffTag node={node} />
             )}

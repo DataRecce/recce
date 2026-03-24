@@ -46,10 +46,7 @@ import {
   type RunTypeIconMap,
 } from "./NodeView";
 import { SandboxViewOss } from "./SandboxViewOss";
-import {
-  MaterializationTag as MaterializationTagBase,
-  ResourceTypeTag as ResourceTypeTagBase,
-} from "./tags";
+import { NodeTag } from "./tags";
 
 // =============================================================================
 // TYPES
@@ -65,12 +62,11 @@ const ResourceTypeTag = ({ node }: { node: LineageGraphNode }) => {
     node.data.data.current?.config?.materialized ??
     node.data.data.base?.config?.materialized;
 
-  if (node.data.resourceType === "model" && materialized) {
-    return <MaterializationTagBase data={{ materialized }} />;
-  }
-
   return (
-    <ResourceTypeTagBase data={{ resourceType: node.data.resourceType }} />
+    <NodeTag
+      resourceType={node.data.resourceType}
+      materialized={materialized}
+    />
   );
 };
 

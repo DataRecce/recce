@@ -1,10 +1,7 @@
 import type { NodeViewNodeData, NodeViewProps } from "@datarecce/ui/advanced";
 import { NodeView } from "@datarecce/ui/advanced";
 import type { LineageGraphNode } from "@datarecce/ui/contexts";
-import {
-  MaterializationTag as MaterializationTagBase,
-  ResourceTypeTag as ResourceTypeTagBase,
-} from "@datarecce/ui/primitives";
+import { NodeTag } from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -54,21 +51,16 @@ function StubNodeSqlView({ node }: { node: NodeViewNodeData }) {
   );
 }
 
-/**
- * Tag component that shows MaterializationTag for models, ResourceTypeTag otherwise.
- * Mirrors the logic in NodeViewOss.tsx.
- */
 function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
   const materialized =
     node.data.data.current?.config?.materialized ??
     node.data.data.base?.config?.materialized;
 
-  if (node.data.resourceType === "model" && materialized) {
-    return <MaterializationTagBase data={{ materialized }} />;
-  }
-
   return (
-    <ResourceTypeTagBase data={{ resourceType: node.data.resourceType }} />
+    <NodeTag
+      resourceType={node.data.resourceType}
+      materialized={materialized}
+    />
   );
 }
 
