@@ -26,6 +26,25 @@ import { type RunEntry, RunTimelineEntry } from "./RunTimelineEntry";
 import { TimelineEventOss as TimelineEvent } from "./TimelineEventOss";
 
 // ============================================================================
+// Helpers
+// ============================================================================
+
+/**
+ * Map OSS run status ("finished", "running", etc.) to display status
+ * ("success", "error") using the error field.
+ */
+function deriveRunStatus(
+  status: string | undefined,
+  error: string | undefined | null,
+): string {
+  if (status === "finished") {
+    return error ? "error" : "success";
+  }
+  // "running", "pending", "cancelled" pass through
+  return status ?? "unknown";
+}
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -111,7 +130,9 @@ export function CheckTimelineOss({ checkId }: CheckTimelineProps) {
           (r): RunEntry => ({
             run_id: r.run_id,
             run_at: r.run_at,
-            status: r.status ?? "unknown",
+            status: deriveRunStatus(r.status, r.error),
+            summary: r.error || undefined,
+            triggered_by: r.triggered_by,
           }),
         );
     },

@@ -6,6 +6,7 @@ export interface RunEntry {
   run_at: string;
   status: string;
   summary?: string;
+  triggered_by?: string; // "user" | "recce_ai"
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -61,6 +62,19 @@ export function RunTimelineEntry({
     >
       <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.75rem" }}>
         Run #{index} — {label}
+        {run.triggered_by === "recce_ai" && (
+          <Typography
+            component="span"
+            sx={{
+              ml: 0.75,
+              fontSize: "0.65rem",
+              fontWeight: 500,
+              color: "#7c3aed",
+            }}
+          >
+            by AI
+          </Typography>
+        )}
       </Typography>
       {run.summary && (
         <Typography

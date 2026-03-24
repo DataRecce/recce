@@ -479,8 +479,9 @@ export function CheckDetailOss({
                     </MuiTooltip>
                   )}
 
-                  {/* Actor badge */}
+                  {/* Actor badge — skip for presets (already shown by Preset chip) */}
                   {check?.actor_type &&
+                    !check.is_preset &&
                     ACTOR_BADGE_CONFIG[check.actor_type] && (
                       <Chip
                         label={ACTOR_BADGE_CONFIG[check.actor_type].label}

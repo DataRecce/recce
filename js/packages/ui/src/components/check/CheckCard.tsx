@@ -351,22 +351,24 @@ function CheckCardComponent({
         </Tooltip>
       )}
 
-      {/* Actor badge */}
-      {check.actorType && ACTOR_BADGE_CONFIG[check.actorType] && (
-        <Chip
-          label={ACTOR_BADGE_CONFIG[check.actorType].label}
-          size="small"
-          sx={{
-            height: 20,
-            fontSize: "0.65rem",
-            fontWeight: 500,
-            backgroundColor: ACTOR_BADGE_CONFIG[check.actorType].bg,
-            color: ACTOR_BADGE_CONFIG[check.actorType].color,
-            flexShrink: 0,
-            "& .MuiChip-label": { px: 0.75 },
-          }}
-        />
-      )}
+      {/* Actor badge — skip for presets (already shown by Preset chip) */}
+      {check.actorType &&
+        !check.isPreset &&
+        ACTOR_BADGE_CONFIG[check.actorType] && (
+          <Chip
+            label={ACTOR_BADGE_CONFIG[check.actorType].label}
+            size="small"
+            sx={{
+              height: 20,
+              fontSize: "0.65rem",
+              fontWeight: 500,
+              backgroundColor: ACTOR_BADGE_CONFIG[check.actorType].bg,
+              color: ACTOR_BADGE_CONFIG[check.actorType].color,
+              flexShrink: 0,
+              "& .MuiChip-label": { px: 0.75 },
+            }}
+          />
+        )}
 
       {/* Preset badge */}
       {check.isPreset && (

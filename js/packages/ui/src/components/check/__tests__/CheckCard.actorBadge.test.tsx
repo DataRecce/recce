@@ -14,9 +14,15 @@ describe("CheckCard actor badge", () => {
     expect(screen.getByText("AI")).toBeInTheDocument();
   });
 
-  it("renders Preset badge when actorType is preset_system", () => {
-    render(<CheckCard check={{ ...baseCheck, actorType: "preset_system" }} />);
-    expect(screen.getByText("Preset")).toBeInTheDocument();
+  it("skips actor badge when isPreset is true (Preset chip already shown)", () => {
+    render(
+      <CheckCard
+        check={{ ...baseCheck, actorType: "preset_system", isPreset: true }}
+      />,
+    );
+    // The outlined Preset chip (from isPreset) should exist
+    const presetChips = screen.getAllByText("Preset");
+    expect(presetChips).toHaveLength(1); // Only the isPreset chip, no actor badge
   });
 
   it("does not render badge when actorType is undefined", () => {
