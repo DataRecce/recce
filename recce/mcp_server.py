@@ -668,6 +668,11 @@ class RecceMCPServer:
                                         "type": "string",
                                         "description": "The ID of the check to run",
                                     },
+                                    "triggered_by": {
+                                        "type": "string",
+                                        "enum": ["user", "recce_ai"],
+                                        "description": "Who triggered this run. Defaults to 'user'.",
+                                    },
                                 },
                                 "required": ["check_id"],
                             },
@@ -711,6 +716,11 @@ class RecceMCPServer:
                                     "description": {
                                         "type": "string",
                                         "description": "Analysis summary explaining what was found and why it matters",
+                                    },
+                                    "triggered_by": {
+                                        "type": "string",
+                                        "enum": ["user", "recce_ai"],
+                                        "description": "Who triggered this run. Defaults to 'user'.",
                                     },
                                 },
                                 "required": ["type", "params", "name"],
@@ -1617,6 +1627,28 @@ class RecceMCPServer:
 
         return result
 
+    def _create_metadata_run(self, check_type, params, check_id, result, triggered_by):
+        """Create a Run record for metadata-only check types (no DB query).
+
+        These types (lineage_diff, schema_diff) read from dbt manifest, not from
+        database queries. We still create a Run record so they appear in Activity.
+        """
+        from recce.apis.run_func import generate_run_name
+        from recce.models import Run, RunDAO
+        from recce.models.types import RunStatus
+
+        run = Run(
+            type=check_type,
+            params=params,
+            check_id=check_id,
+            status=RunStatus.FINISHED,
+            result=result,
+            triggered_by=triggered_by,
+        )
+        run.name = generate_run_name(run)
+        RunDAO().create(run)
+        return run
+
     async def _tool_run_check(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Run a single check by ID"""
         from recce.apis.run_func import submit_run
@@ -1631,14 +1663,26 @@ class RecceMCPServer:
         if not check:
             raise ValueError(f"Check with ID {check_id} not found")
 
-        if check.type == RunType.LINEAGE_DIFF:
-            return await self._tool_lineage_diff(check.params or {})
+        triggered_by = arguments.get("triggered_by", "user")
 
-        if check.type == RunType.SCHEMA_DIFF:
-            return await self._tool_schema_diff(check.params or {})
+        if check.type in (RunType.LINEAGE_DIFF, RunType.SCHEMA_DIFF):
+            if check.type == RunType.LINEAGE_DIFF:
+                result = await self._tool_lineage_diff(check.params or {})
+            else:
+                result = await self._tool_schema_diff(check.params or {})
+            run = self._create_metadata_run(
+                check_type=check.type,
+                params=check.params or {},
+                check_id=check_id,
+                result=result,
+                triggered_by=triggered_by,
+            )
+            return run.model_dump(mode="json")
 
         try:
-            run, future = submit_run(check.type, params=check.params or {}, check_id=check_id)
+            run, future = submit_run(
+                check.type, params=check.params or {}, check_id=check_id, triggered_by=triggered_by
+            )
             run.result = await future
             return run.model_dump(mode="json")
         except RecceException as e:
@@ -1685,12 +1729,26 @@ class RecceMCPServer:
             check_id = check.check_id
             created = True
 
-        # Auto-run for evidence. Skip for metadata-only types
-        # (schema_diff/lineage_diff read from manifest, not DB query)
+        # Auto-run for evidence
         run_executed = False
         run_error = None
-        if check_type not in (RunType.LINEAGE_DIFF, RunType.SCHEMA_DIFF):
-            run, future = submit_run(check_type, params=params, check_id=check_id)
+        triggered_by = arguments.get("triggered_by", "user")
+        if check_type in (RunType.LINEAGE_DIFF, RunType.SCHEMA_DIFF):
+            # Metadata-only: read from manifest, create Run record for Activity
+            if check_type == RunType.LINEAGE_DIFF:
+                result = await self._tool_lineage_diff(params)
+            else:
+                result = await self._tool_schema_diff(params)
+            self._create_metadata_run(
+                check_type=check_type,
+                params=params,
+                check_id=check_id,
+                result=result,
+                triggered_by=triggered_by,
+            )
+            run_executed = True
+        else:
+            run, future = submit_run(check_type, params=params, check_id=check_id, triggered_by=triggered_by)
             await future
             # submit_run's future always resolves (errors caught internally).
             # Check run.status, not the return value.
