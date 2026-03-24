@@ -642,7 +642,7 @@ async def column_level_lineage_by_node(cll_input: CllIn):
     from recce.adapter.dbt_adapter import DbtAdapter
 
     app_state: AppState = app.state
-    cll_full_map_enabled = app_state.flag.get("cll_full_map", False) if app_state.flag else False
+    disable_cll_cache = app_state.flag.get("disable_cll_cache", False) if app_state.flag else False
 
     dbt_adapter: DbtAdapter = default_context().adapter
     cll = dbt_adapter.get_cll(
@@ -653,7 +653,7 @@ async def column_level_lineage_by_node(cll_input: CllIn):
         no_downstream=cll_input.no_downstream,
         no_cll=cll_input.no_cll,
         full_map=cll_input.full_map,
-        cll_full_map_enabled=cll_full_map_enabled,
+        disable_cll_cache=disable_cll_cache,
     )
 
     return CllOutput(current=cll)

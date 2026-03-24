@@ -1068,7 +1068,7 @@ class DbtAdapter(BaseAdapter):
         no_downstream: Optional[bool] = False,
         no_filter: Optional[bool] = False,
         full_map: Optional[bool] = False,
-        cll_full_map_enabled: Optional[bool] = False,
+        disable_cll_cache: Optional[bool] = False,
     ) -> CllData:
         cll_tracker = LineagePerfTracker()
         cll_tracker.set_params(
@@ -1115,7 +1115,7 @@ class DbtAdapter(BaseAdapter):
             cll_node_ids = cll_node_ids.union(find_downstream(cll_node_ids, manifest_dict.get("child_map")))
 
         if not no_cll:
-            if cll_full_map_enabled:
+            if not disable_cll_cache:
                 # Full map path: build entire CLL map once (cached), then slice
                 full_map_data = self.build_full_cll_map()
 
@@ -1333,7 +1333,7 @@ class DbtAdapter(BaseAdapter):
 
         cll_tracker.end_column_lineage()
         cll_tracker.set_total_nodes(len(nodes) + len(columns))
-        if cll_full_map_enabled:
+        if not disable_cll_cache:
             log_performance("column level lineage [cached_full_map]", cll_tracker.to_dict())
         else:
             log_performance("column level lineage", cll_tracker.to_dict())

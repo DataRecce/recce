@@ -77,7 +77,7 @@ def assert_cll_contain_columns(cll_data: CllData, columns):
         assert column[1] == cll_data.columns[column_key].name, f"Column {column[1]} name mismatch"
 
 
-def test_cll_basic(dbt_test_helper, cll_full_map_enabled):
+def test_cll_basic(dbt_test_helper, disable_cll_cache):
     dbt_test_helper.create_model(
         "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
     )
@@ -105,7 +105,7 @@ def test_cll_basic(dbt_test_helper, cll_full_map_enabled):
     assert_column(result, "model.model3", "c", transformation_type="passthrough", parents=[("model.model1", "c")])
 
 
-def test_cll_table_alisa(dbt_test_helper, cll_full_map_enabled):
+def test_cll_table_alisa(dbt_test_helper, disable_cll_cache):
     def patch_node(node):
         node["alias"] = "model1_alias"
 
@@ -124,7 +124,7 @@ def test_cll_table_alisa(dbt_test_helper, cll_full_map_enabled):
     assert_column(result, "model.model2", "c", transformation_type="passthrough", parents=[("model.model1", "c")])
 
 
-def test_seed(dbt_test_helper, cll_full_map_enabled):
+def test_seed(dbt_test_helper, disable_cll_cache):
     csv_data_curr = """
     customer_id,name,age
     1,Alice,30
@@ -161,7 +161,7 @@ def test_seed(dbt_test_helper, cll_full_map_enabled):
     )
 
 
-def test_python_model(dbt_test_helper, cll_full_map_enabled):
+def test_python_model(dbt_test_helper, disable_cll_cache):
     def python_node(node):
         node["language"] = "python"
 
@@ -190,7 +190,7 @@ def test_python_model(dbt_test_helper, cll_full_map_enabled):
     assert_column(result, "model2", "customer_id", transformation_type="unknown", parents=[])
 
 
-def test_source(dbt_test_helper, cll_full_map_enabled):
+def test_source(dbt_test_helper, disable_cll_cache):
     csv_data_curr = """
         customer_id,name,age
         1,Alice,30
@@ -224,7 +224,7 @@ def test_source(dbt_test_helper, cll_full_map_enabled):
     )
 
 
-def test_parse_error(dbt_test_helper, cll_full_map_enabled):
+def test_parse_error(dbt_test_helper, disable_cll_cache):
     dbt_test_helper.create_model("model1", curr_sql="select 1 as c", curr_columns={"c": "int"})
     dbt_test_helper.create_model("model2", curr_sql="this is not a valid sql", curr_columns={"c": "int"})
     adapter: DbtAdapter = dbt_test_helper.context.adapter
@@ -232,14 +232,14 @@ def test_parse_error(dbt_test_helper, cll_full_map_enabled):
     assert_column(result, "model2", "c", transformation_type="unknown", parents=[])
 
 
-def test_model_without_catalog(dbt_test_helper, cll_full_map_enabled):
+def test_model_without_catalog(dbt_test_helper, disable_cll_cache):
     dbt_test_helper.create_model("model1", curr_sql="select 1 as c")
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     result = adapter.get_cll("model1")
     assert not result.nodes["model1"].columns
 
 
-def test_column_level_lineage(dbt_test_helper, cll_full_map_enabled):
+def test_column_level_lineage(dbt_test_helper, disable_cll_cache):
     dbt_test_helper.create_model(
         "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
     )
@@ -465,7 +465,7 @@ def test_impact_radius_with_change_analysis_no_cll_2(dbt_test_helper):
     assert_model(result, "model.model5", parents=["model.model1"], impacted=True)
 
 
-def test_impact_radius_with_change_analysis_with_cll(dbt_test_helper, cll_full_map_enabled):
+def test_impact_radius_with_change_analysis_with_cll(dbt_test_helper, disable_cll_cache):
     dbt_test_helper.create_model(
         "model1",
         unique_id="model.model1",
@@ -522,7 +522,7 @@ def test_impact_radius_with_change_analysis_with_cll(dbt_test_helper, cll_full_m
     assert_model(result, "model.model4", parents=["model.model2"], change_category="partial_breaking", impacted=True)
 
 
-def test_impact_radius_with_change_analysis_with_cll_added_removed(dbt_test_helper, cll_full_map_enabled):
+def test_impact_radius_with_change_analysis_with_cll_added_removed(dbt_test_helper, disable_cll_cache):
     # rename model
     dbt_test_helper.create_model(
         "model1",
@@ -611,7 +611,7 @@ def test_impact_radius_by_node_no_cll(dbt_test_helper):
     assert_cll_contain_nodes(result, ["model.model1"])
 
 
-def test_impact_radius_by_node_with_cll(dbt_test_helper, cll_full_map_enabled):
+def test_impact_radius_by_node_with_cll(dbt_test_helper, disable_cll_cache):
     # added column
     dbt_test_helper.create_model(
         "model1",
@@ -666,7 +666,7 @@ def test_impact_radius_by_node_with_cll(dbt_test_helper, cll_full_map_enabled):
     assert_column(result, "model.model1", "d", transformation_type="source", parents=[], change_status="added")
 
 
-def test_impact_radius_by_node_with_cll_2(dbt_test_helper, cll_full_map_enabled):
+def test_impact_radius_by_node_with_cll_2(dbt_test_helper, disable_cll_cache):
     # added column
     dbt_test_helper.create_model(
         "model1",
@@ -833,7 +833,7 @@ def test_build_full_cll_map_with_changes(dbt_test_helper):
     assert len(full_map.nodes) == 3
 
 
-def test_get_cll_uses_full_map_for_unchanged_model(dbt_test_helper, cll_full_map_enabled):
+def test_get_cll_uses_full_map_for_unchanged_model(dbt_test_helper, disable_cll_cache):
     """get_cll should return data for unchanged models (served from full map)."""
     # model1 is changed
     dbt_test_helper.create_model(
