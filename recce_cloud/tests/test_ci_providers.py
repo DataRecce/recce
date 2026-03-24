@@ -54,7 +54,9 @@ class TestGitHubActionsProvider:
     def test_extract_commit_sha_fallback(self):
         """Test commit SHA extraction with git fallback."""
         with patch.dict(os.environ, {}, clear=True):
-            with patch.object(GitHubActionsProvider, "run_git_command", return_value="git123456"):
+            with patch.object(
+                GitHubActionsProvider, "run_git_command", return_value="git123456"
+            ):
                 provider = GitHubActionsProvider()
                 commit_sha = provider._extract_commit_sha()
                 assert commit_sha == "git123456"
@@ -137,6 +139,63 @@ class TestGitHubActionsProvider:
             assert ci_info.session_type == "prod"
             assert ci_info.source_branch == "main"
 
+    def test_extract_ci_info_non_main_default_branch(self):
+        """Test CI info extraction when default branch is 'stage' (DRC-2654).
+
+        Simulates CD push to 'stage': no GITHUB_BASE_REF/HEAD_REF (not a PR event),
+        GITHUB_REF_NAME is 'stage'. Auto-detected session_type should be 'dev',
+        which the user overrides with --type prod.
+        """
+        with patch.dict(
+            os.environ,
+            {
+                "GITHUB_ACTIONS": "true",
+                "GITHUB_SHA": "stage123",
+                "GITHUB_REF_NAME": "stage",
+                "GITHUB_REPOSITORY": "owner/repo",
+                "GITHUB_TOKEN": "ghp_test_token",
+            },
+            clear=True,
+        ):
+            provider = GitHubActionsProvider()
+            ci_info = provider.extract_ci_info()
+
+            assert ci_info.platform == "github-actions"
+            assert ci_info.pr_number is None
+            assert ci_info.source_branch == "stage"
+            assert (
+                ci_info.base_branch == "main"
+            )  # default when GITHUB_BASE_REF is unset
+            # Non-main branch without PR auto-detects as "dev"
+            assert ci_info.session_type == "dev"
+
+    def test_override_session_type_for_non_main_branch(self):
+        """Test --type prod override for non-main default branch (DRC-2654).
+
+        When user passes --type prod, CIDetector.apply_overrides should change
+        session_type from 'dev' to 'prod'.
+        """
+        from recce_cloud.ci_providers.detector import CIDetector
+
+        with patch.dict(
+            os.environ,
+            {
+                "GITHUB_ACTIONS": "true",
+                "GITHUB_SHA": "stage123",
+                "GITHUB_REF_NAME": "stage",
+                "GITHUB_REPOSITORY": "owner/repo",
+            },
+            clear=True,
+        ):
+            provider = GitHubActionsProvider()
+            ci_info = provider.extract_ci_info()
+            assert ci_info.session_type == "dev"
+
+            # Apply --type prod override
+            ci_info = CIDetector.apply_overrides(ci_info, session_type="prod")
+            assert ci_info.session_type == "prod"
+            assert ci_info.source_branch == "stage"
+
     def test_extract_access_token(self):
         """Test GITHUB_TOKEN detection."""
         with patch.dict(
@@ -155,7 +214,9 @@ class TestGitHubActionsProvider:
 
     def test_extract_access_token_not_set(self):
         """Test when GITHUB_TOKEN is not set."""
-        with patch.dict(os.environ, {"GITHUB_ACTIONS": "true", "GITHUB_SHA": "abc123"}, clear=True):
+        with patch.dict(
+            os.environ, {"GITHUB_ACTIONS": "true", "GITHUB_SHA": "abc123"}, clear=True
+        ):
             provider = GitHubActionsProvider()
             ci_info = provider.extract_ci_info()
 
@@ -231,7 +292,10 @@ class TestGitLabCIProvider:
 
             assert ci_info.platform == "gitlab-ci"
             assert ci_info.pr_number == 101
-            assert ci_info.pr_url == "https://gitlab.com/group/project/-/merge_requests/101"
+            assert (
+                ci_info.pr_url
+                == "https://gitlab.com/group/project/-/merge_requests/101"
+            )
             assert ci_info.session_type == "pr"
             assert ci_info.commit_sha == "gitlab456"
             assert ci_info.base_branch == "main"
@@ -253,13 +317,20 @@ class TestGitLabCIProvider:
             provider = GitLabCIProvider()
             ci_info = provider.extract_ci_info()
 
-            assert ci_info.pr_url == "https://gitlab.mycompany.com/mycompany/myproject/-/merge_requests/42"
+            assert (
+                ci_info.pr_url
+                == "https://gitlab.mycompany.com/mycompany/myproject/-/merge_requests/42"
+            )
 
     def test_extract_access_token(self):
         """Test CI_JOB_TOKEN detection."""
         with patch.dict(
             os.environ,
-            {"GITLAB_CI": "true", "CI_JOB_TOKEN": "glpat-test123token456", "CI_COMMIT_SHA": "gitlab123"},
+            {
+                "GITLAB_CI": "true",
+                "CI_JOB_TOKEN": "glpat-test123token456",
+                "CI_COMMIT_SHA": "gitlab123",
+            },
             clear=True,
         ):
             provider = GitLabCIProvider()
@@ -269,7 +340,9 @@ class TestGitLabCIProvider:
 
     def test_extract_access_token_not_set(self):
         """Test when CI_JOB_TOKEN is not set."""
-        with patch.dict(os.environ, {"GITLAB_CI": "true", "CI_COMMIT_SHA": "gitlab123"}, clear=True):
+        with patch.dict(
+            os.environ, {"GITLAB_CI": "true", "CI_COMMIT_SHA": "gitlab123"}, clear=True
+        ):
             provider = GitLabCIProvider()
             ci_info = provider.extract_ci_info()
 
@@ -281,13 +354,17 @@ class TestCIDetector:
 
     def test_detect_github_actions(self):
         """Test detection of GitHub Actions."""
-        with patch.dict(os.environ, {"GITHUB_ACTIONS": "true", "GITHUB_SHA": "test123"}, clear=True):
+        with patch.dict(
+            os.environ, {"GITHUB_ACTIONS": "true", "GITHUB_SHA": "test123"}, clear=True
+        ):
             ci_info = CIDetector.detect()
             assert ci_info.platform == "github-actions"
 
     def test_detect_gitlab_ci(self):
         """Test detection of GitLab CI."""
-        with patch.dict(os.environ, {"GITLAB_CI": "true", "CI_COMMIT_SHA": "test456"}, clear=True):
+        with patch.dict(
+            os.environ, {"GITLAB_CI": "true", "CI_COMMIT_SHA": "test456"}, clear=True
+        ):
             ci_info = CIDetector.detect()
             assert ci_info.platform == "gitlab-ci"
 
@@ -296,7 +373,10 @@ class TestCIDetector:
         with patch.dict(os.environ, {}, clear=True):
             with patch.object(CIDetector, "_fallback_detection") as mock_fallback:
                 mock_fallback.return_value = CIInfo(
-                    platform=None, session_type="dev", commit_sha="fallback123", base_branch="main"
+                    platform=None,
+                    session_type="dev",
+                    commit_sha="fallback123",
+                    base_branch="main",
                 )
                 ci_info = CIDetector.detect()
                 assert ci_info.platform is None
@@ -305,7 +385,12 @@ class TestCIDetector:
 
     def test_apply_overrides_cr_github(self):
         """Test applying CR override for GitHub Actions."""
-        ci_info = CIInfo(platform="github-actions", pr_number=100, session_type="pr", repository="owner/repo")
+        ci_info = CIInfo(
+            platform="github-actions",
+            pr_number=100,
+            session_type="pr",
+            repository="owner/repo",
+        )
         ci_info = CIDetector.apply_overrides(ci_info, pr=200)
 
         assert ci_info.pr_number == 200
@@ -315,11 +400,18 @@ class TestCIDetector:
     def test_apply_overrides_cr_gitlab(self):
         """Test applying CR override for GitLab CI."""
         with patch.dict(os.environ, {"CI_SERVER_URL": "https://gitlab.com"}):
-            ci_info = CIInfo(platform="gitlab-ci", pr_number=50, session_type="pr", repository="group/project")
+            ci_info = CIInfo(
+                platform="gitlab-ci",
+                pr_number=50,
+                session_type="pr",
+                repository="group/project",
+            )
             ci_info = CIDetector.apply_overrides(ci_info, pr=75)
 
             assert ci_info.pr_number == 75
-            assert ci_info.pr_url == "https://gitlab.com/group/project/-/merge_requests/75"
+            assert (
+                ci_info.pr_url == "https://gitlab.com/group/project/-/merge_requests/75"
+            )
             assert ci_info.session_type == "pr"
 
     def test_apply_overrides_session_type(self):
@@ -340,7 +432,9 @@ class TestCIDetector:
     def test_fallback_detection_with_git(self):
         """Test fallback detection using git commands."""
         with patch.dict(os.environ, {}, clear=True):
-            with patch("recce_cloud.ci_providers.base.BaseCIProvider.run_git_command") as mock_git:
+            with patch(
+                "recce_cloud.ci_providers.base.BaseCIProvider.run_git_command"
+            ) as mock_git:
                 mock_git.side_effect = ["commit123", "feature-branch"]
                 ci_info = CIDetector._fallback_detection()
 
