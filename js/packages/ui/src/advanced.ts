@@ -90,6 +90,7 @@ export {
   NodeView,
   type NodeViewNodeData,
   type NodeViewProps,
+  type SchemaViewProps,
 } from "./components/lineage/NodeView";
 
 // =============================================================================
