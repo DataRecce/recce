@@ -94,6 +94,57 @@ export const manyChecks: CheckCardData[] = Array.from(
   },
 );
 
+/**
+ * Sample checks with outdated indicators
+ */
+export const outdatedChecks: CheckCardData[] = [
+  {
+    id: "check-fresh-001",
+    name: "Row count validation",
+    type: "row_count_diff",
+    isApproved: true,
+    runStatus: "success",
+  },
+  {
+    id: "check-outdated-001",
+    name: "Schema change review",
+    type: "schema_diff",
+    runStatus: "success",
+    isOutdated: true,
+    lastRunAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), // 3h ago
+  },
+  {
+    id: "check-fresh-002",
+    name: "Customer profile diff",
+    type: "profile_diff",
+    isApproved: true,
+    runStatus: "success",
+  },
+  {
+    id: "check-outdated-002",
+    name: "Order total query",
+    type: "query_diff",
+    runStatus: "success",
+    isOutdated: true,
+    lastRunAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3d ago
+  },
+  {
+    id: "check-outdated-003",
+    name: "Revenue histogram",
+    type: "histogram_diff",
+    runStatus: "success",
+    isOutdated: true,
+    isPreset: true,
+    lastRunAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(), // 14d ago
+  },
+  {
+    id: "check-outdated-004",
+    name: "Status top-k analysis",
+    type: "top_k_diff",
+    isOutdated: true,
+  },
+];
+
 // ============================================
 // CheckDetail Factories
 // ============================================
