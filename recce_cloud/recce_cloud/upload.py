@@ -8,7 +8,6 @@ import os
 import click
 import requests
 
-from recce_cloud.api import RecceTokenCloudClient
 from recce_cloud.api.client import RecceCloudClient
 from recce_cloud.api.exceptions import RecceCloudException
 from recce_cloud.api.factory import create_platform_client
@@ -187,18 +186,6 @@ def upload_with_platform_apis(
     console.print(f"[green]Session ID:[/green] {session_id}")
 
     if session_base:
-        if not isinstance(client, RecceTokenCloudClient):
-            console.print(
-                "[red]Error:[/red] --session-base requires RECCE_API_TOKEN authentication."
-            )
-            console.print(
-                "Platform-specific tokens (GITHUB_TOKEN, CI_JOB_TOKEN) are not supported for session base upload."
-            )
-            console.print(
-                "Set the RECCE_API_TOKEN environment variable or run 'recce-cloud login' first."
-            )
-            raise UploadError("--session-base requires RECCE_API_TOKEN authentication")
-
         upload_session_base(
             console,
             token,
@@ -442,24 +429,24 @@ def upload_session_base(
     console.rule("Uploading Session Base Artifacts", style="blue")
 
     # Get session base upload URLs
-    if isinstance(client, RecceTokenCloudClient):
-        with cloud_error_handler(console, "get session base upload URLs"):
-            presigned_urls = client.get_isolated_base_upload_urls(session_id)
-    else:
-        # RecceCloudClient needs org_id/project_id — resolve from session
+    if isinstance(client, RecceCloudClient):
+        # RecceCloudClient (login-based) needs org_id/project_id — resolve from session
         with cloud_error_handler(console, "get session info"):
             session = client.get_session(session_id)
         org_id = session.get("org_id")
         project_id = session.get("project_id")
         if not org_id or not project_id:
-            console.print(
-                "[red]Error:[/red] Could not resolve org/project for session"
-            )
+            console.print("[red]Error:[/red] Could not resolve org/project for session")
             raise UploadError("Could not resolve org/project for session")
         with cloud_error_handler(console, "get session base upload URLs"):
             presigned_urls = client.get_isolated_base_upload_urls(
                 org_id, project_id, session_id
             )
+    else:
+        # RecceTokenCloudClient, GitHubRecceCloudClient, GitLabRecceCloudClient
+        # all resolve project server-side from the token
+        with cloud_error_handler(console, "get session base upload URLs"):
+            presigned_urls = client.get_isolated_base_upload_urls(session_id)
 
     _put_artifact(console, "manifest", manifest_path, presigned_urls["manifest_url"])
     _put_artifact(console, "catalog", catalog_path, presigned_urls["catalog_url"])
@@ -469,10 +456,10 @@ def upload_session_base(
     with cloud_error_handler(
         console, "notify session base upload completion", fatal=False
     ):
-        if isinstance(client, RecceTokenCloudClient):
-            client.isolated_base_upload_completed(session_id)
-        else:
+        if isinstance(client, RecceCloudClient):
             client.isolated_base_upload_completed(org_id, project_id, session_id)
+        else:
+            client.isolated_base_upload_completed(session_id)
 
     # Success
     console.rule("Session Base Uploaded Successfully", style="green")
