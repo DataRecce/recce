@@ -1,0 +1,50 @@
+{
+  "current": {
+    "nodes": {},
+    "columns": {
+      "model.jaffle_shop.stg_customers_full_name": {
+        "id": "model.jaffle_shop.stg_customers_full_name",
+        "table_id": "model.jaffle_shop.stg_customers",
+        "name": "full_name",
+        "type": "VARCHAR",
+        "transformation_type": "derived",
+        "change_status": "added",
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_customers_first_name": {
+        "id": "seed.jaffle_shop.raw_customers_first_name",
+        "table_id": "seed.jaffle_shop.raw_customers",
+        "name": "first_name",
+        "type": "VARCHAR",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_customers_last_name": {
+        "id": "seed.jaffle_shop.raw_customers_last_name",
+        "table_id": "seed.jaffle_shop.raw_customers",
+        "name": "last_name",
+        "type": "VARCHAR",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "model.jaffle_shop.stg_customers_full_name": [
+        "seed.jaffle_shop.raw_customers_first_name",
+        "seed.jaffle_shop.raw_customers_last_name"
+      ],
+      "seed.jaffle_shop.raw_customers_first_name": [],
+      "seed.jaffle_shop.raw_customers_last_name": []
+    },
+    "child_map": {
+      "seed.jaffle_shop.raw_customers_first_name": [
+        "model.jaffle_shop.stg_customers_full_name"
+      ],
+      "seed.jaffle_shop.raw_customers_last_name": [
+        "model.jaffle_shop.stg_customers_full_name"
+      ]
+    }
+  }
+}

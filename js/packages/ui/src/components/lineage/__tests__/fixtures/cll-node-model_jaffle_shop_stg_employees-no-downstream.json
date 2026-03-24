@@ -1,0 +1,38 @@
+{
+  "current": {
+    "nodes": {
+      "model.jaffle_shop.stg_employees": {
+        "id": "model.jaffle_shop.stg_employees",
+        "name": "stg_employees",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with source as (\n    select * from {{ ref('raw_employees') }}\n),\n\nrenamed as (\n    select\n        id as employee_id,\n        store_id,\n        first_name,\n        last_name,\n        role,\n        cast(hired_at as date) as hired_at\n    from source\n)\n\nselect * from renamed",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "seed.jaffle_shop.raw_employees": {
+        "id": "seed.jaffle_shop.raw_employees",
+        "name": "raw_employees",
+        "package_name": "jaffle_shop",
+        "resource_type": "seed",
+        "raw_code": "",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      }
+    },
+    "columns": {},
+    "parent_map": {
+      "model.jaffle_shop.stg_employees": ["seed.jaffle_shop.raw_employees"],
+      "seed.jaffle_shop.raw_employees": []
+    },
+    "child_map": {
+      "seed.jaffle_shop.raw_employees": ["model.jaffle_shop.stg_employees"]
+    }
+  }
+}

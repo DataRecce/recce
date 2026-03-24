@@ -1,0 +1,56 @@
+{
+  "current": {
+    "nodes": {
+      "model.jaffle_shop.order_discounts": {
+        "id": "model.jaffle_shop.order_discounts",
+        "name": "order_discounts",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with orders as (\n    select * from {{ ref('int_order_enriched') }}\n),\n\ndiscounts as (\n    select\n        order_id,\n        customer_id,\n        order_date,\n        subtotal,\n        has_promotion,\n        promotion_name,\n        discount_type,\n        discount_value,\n        discount_amount,\n        case when subtotal > 0\n            then round(discount_amount / subtotal * 100, 1)\n            else 0\n        end as discount_pct_of_order,\n        subtotal - discount_amount as net_revenue\n    from orders\n    where has_promotion = true\n)\n\nselect * from discounts",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.promotion_roi": {
+        "id": "model.jaffle_shop.promotion_roi",
+        "name": "promotion_roi",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with effectiveness as (\n    select * from {{ ref('int_promotion_effectiveness') }}\n),\n\ndiscounts as (\n    select\n        promotion_name,\n        count(*) as usage_count,\n        sum(discount_amount) as total_discount_given,\n        sum(net_revenue) as total_net_revenue\n    from {{ ref('order_discounts') }}\n    group by promotion_name\n),\n\nroi as (\n    select\n        e.promotion_name,\n        e.discount_type,\n        e.order_count,\n        e.avg_order_value,\n        e.total_revenue,\n        e.avg_margin,\n        coalesce(d.total_discount_given, 0) as total_discount_given,\n        coalesce(d.total_net_revenue, 0) as net_revenue_after_discount,\n        case when coalesce(d.total_discount_given, 0) > 0\n            then round(coalesce(d.total_net_revenue, 0) / d.total_discount_given, 2)\n            else 0\n        end as revenue_per_discount_dollar\n    from effectiveness e\n    left join discounts d on e.promotion_name = d.promotion_name\n    where e.has_promotion = true\n)\n\nselect * from roi",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.metric_promotion_daily": {
+        "id": "model.jaffle_shop.metric_promotion_daily",
+        "name": "metric_promotion_daily",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with discounts as (\n    select * from {{ ref('order_discounts') }}\n),\n\ndaily as (\n    select\n        order_date,\n        promotion_name,\n        discount_type,\n        count(*) as usage_count,\n        sum(discount_amount) as total_discount,\n        sum(subtotal) as total_order_value,\n        sum(net_revenue) as total_net_revenue,\n        avg(discount_pct_of_order) as avg_discount_pct\n    from discounts\n    group by order_date, promotion_name, discount_type\n)\n\nselect * from daily",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      }
+    },
+    "columns": {},
+    "parent_map": {
+      "model.jaffle_shop.order_discounts": [],
+      "model.jaffle_shop.promotion_roi": ["model.jaffle_shop.order_discounts"],
+      "model.jaffle_shop.metric_promotion_daily": [
+        "model.jaffle_shop.order_discounts"
+      ]
+    },
+    "child_map": {
+      "model.jaffle_shop.order_discounts": [
+        "model.jaffle_shop.promotion_roi",
+        "model.jaffle_shop.metric_promotion_daily"
+      ]
+    }
+  }
+}

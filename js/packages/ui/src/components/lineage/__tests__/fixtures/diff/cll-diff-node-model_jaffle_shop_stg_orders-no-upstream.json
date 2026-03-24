@@ -1,0 +1,329 @@
+{
+  "current": {
+    "nodes": {
+      "model.jaffle_shop.stg_orders": {
+        "id": "model.jaffle_shop.stg_orders",
+        "name": "stg_orders",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with source as (\n\n    {#-\n    Normally we would select from the table here, but we are using seeds to load\n    our data in this project\n    #}\n    select * from {{ ref('raw_orders') }}\n\n),\n\nrenamed as (\n\n    select\n        id as order_id,\n        user_id as customer_id,\n        order_date,\n        'ORDER-' || status as status\n\n    from source\n\n)\n\nselect * from renamed",
+        "source_name": null,
+        "change_status": "modified",
+        "change_category": "partial_breaking",
+        "columns": {
+          "status": {
+            "id": "model.jaffle_shop.stg_orders_status",
+            "table_id": "model.jaffle_shop.stg_orders",
+            "name": "status",
+            "type": "VARCHAR",
+            "transformation_type": "derived",
+            "change_status": "modified",
+            "depends_on": []
+          }
+        },
+        "impacted": false
+      },
+      "model.jaffle_shop.int_store_performance": {
+        "id": "model.jaffle_shop.int_store_performance",
+        "name": "int_store_performance",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with revenue as (\n    select * from {{ ref('int_store_revenue') }}\n),\n\nstaff as (\n    select * from {{ ref('int_store_employees_active') }}\n),\n\nperformance as (\n    select\n        s.store_id,\n        s.store_name,\n        s.city,\n        s.state,\n        s.total_employees,\n        r.order_count,\n        r.unique_customers,\n        r.total_revenue,\n        r.total_margin,\n        r.avg_order_value,\n        case when s.total_employees > 0\n            then round(r.total_revenue / s.total_employees, 2)\n            else 0\n        end as revenue_per_employee,\n        case when s.total_employees > 0\n            then round(cast(r.order_count as decimal) / s.total_employees, 1)\n            else 0\n        end as orders_per_employee\n    from staff s\n    left join revenue r on s.store_id = r.store_id\n)\n\nselect * from performance",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.store_rankings": {
+        "id": "model.jaffle_shop.store_rankings",
+        "name": "store_rankings",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with performance as (\n    select * from {{ ref('store_performance') }}\n),\n\nranked as (\n    select\n        store_id,\n        store_name,\n        city,\n        state,\n        total_revenue,\n        total_margin,\n        order_count,\n        unique_customers,\n        revenue_per_employee,\n        rank() over (order by total_revenue desc) as revenue_rank,\n        rank() over (order by total_margin desc) as margin_rank,\n        rank() over (order by order_count desc) as order_count_rank,\n        rank() over (order by revenue_per_employee desc) as efficiency_rank,\n        rank() over (order by unique_customers desc) as customer_reach_rank\n    from performance\n)\n\nselect * from ranked",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.int_store_revenue": {
+        "id": "model.jaffle_shop.int_store_revenue",
+        "name": "int_store_revenue",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with assignments as (\n    select * from {{ ref('int_store_order_assignments') }}\n),\n\norders as (\n    select * from {{ ref('int_order_enriched') }}\n),\n\nstore_rev as (\n    select\n        a.store_id,\n        count(distinct a.order_id) as order_count,\n        count(distinct a.customer_id) as unique_customers,\n        sum(o.subtotal) as total_revenue,\n        sum(o.total_cost) as total_cost,\n        sum(o.total_margin) as total_margin,\n        avg(o.subtotal) as avg_order_value\n    from assignments a\n    inner join orders o on a.order_id = o.order_id\n    where o.status != 'returned'\n    group by a.store_id\n)\n\nselect * from store_rev",
+        "source_name": null,
+        "change_status": "modified",
+        "change_category": "breaking",
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.rpt_store_dashboard": {
+        "id": "model.jaffle_shop.rpt_store_dashboard",
+        "name": "rpt_store_dashboard",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with rankings as (\n    select * from {{ ref('store_rankings') }}\n),\n\ninventory as (\n    select * from {{ ref('store_inventory') }}\n),\n\ndaily as (\n    select\n        store_id,\n        count(distinct order_date) as active_days,\n        avg(revenue) as avg_daily_revenue\n    from {{ ref('metric_store_daily') }}\n    group by store_id\n),\n\ndashboard as (\n    select\n        r.store_id,\n        r.store_name,\n        r.city,\n        r.state,\n        r.total_revenue,\n        r.total_margin,\n        r.order_count,\n        r.unique_customers,\n        r.revenue_per_employee,\n        r.revenue_rank,\n        r.efficiency_rank,\n        i.total_stock_units,\n        i.out_of_stock_products,\n        i.low_stock_products,\n        d.active_days,\n        d.avg_daily_revenue\n    from rankings r\n    left join inventory i on r.store_id = i.store_id\n    left join daily d on r.store_id = d.store_id\n)\n\nselect * from dashboard",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.store_performance": {
+        "id": "model.jaffle_shop.store_performance",
+        "name": "store_performance",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "select * from {{ ref('int_store_performance') }}",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.order_returns": {
+        "id": "model.jaffle_shop.order_returns",
+        "name": "order_returns",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with orders as (\n    select * from {{ ref('orders') }}\n),\n\nreturns as (\n    select\n        *,\n        case\n            when status in ('returned', 'Sreturned') then 'completed_return'\n            when status in ('return_pending', 'Sreturn_pending') then 'pending_return'\n        end as return_status\n    from orders\n    where status in ('returned', 'return_pending', 'Sreturned', 'Sreturn_pending')\n)\n\nselect * from returns",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "status": {
+            "id": "model.jaffle_shop.order_returns_status",
+            "table_id": "model.jaffle_shop.order_returns",
+            "name": "status",
+            "type": "VARCHAR",
+            "transformation_type": "passthrough",
+            "change_status": null,
+            "depends_on": []
+          },
+          "return_status": {
+            "id": "model.jaffle_shop.order_returns_return_status",
+            "table_id": "model.jaffle_shop.order_returns",
+            "name": "return_status",
+            "type": "VARCHAR",
+            "transformation_type": "derived",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      }
+    },
+    "columns": {
+      "model.jaffle_shop.stg_orders_status": {
+        "id": "model.jaffle_shop.stg_orders_status",
+        "table_id": "model.jaffle_shop.stg_orders",
+        "name": "status",
+        "type": "VARCHAR",
+        "transformation_type": "derived",
+        "change_status": "modified",
+        "depends_on": []
+      },
+      "model.jaffle_shop.orders_status": {
+        "id": "model.jaffle_shop.orders_status",
+        "table_id": "model.jaffle_shop.orders",
+        "name": "status",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.payments_fact_order_status": {
+        "id": "model.jaffle_shop.payments_fact_order_status",
+        "table_id": "model.jaffle_shop.payments_fact",
+        "name": "order_status",
+        "type": "VARCHAR",
+        "transformation_type": "renamed",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.new_orders_status": {
+        "id": "model.jaffle_shop.new_orders_status",
+        "table_id": "model.jaffle_shop.new_orders",
+        "name": "status",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.order_returns_status": {
+        "id": "model.jaffle_shop.order_returns_status",
+        "table_id": "model.jaffle_shop.order_returns",
+        "name": "status",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.order_returns_return_status": {
+        "id": "model.jaffle_shop.order_returns_return_status",
+        "table_id": "model.jaffle_shop.order_returns",
+        "name": "return_status",
+        "type": "VARCHAR",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.metric_daily_orders_completed_orders": {
+        "id": "model.jaffle_shop.metric_daily_orders_completed_orders",
+        "table_id": "model.jaffle_shop.metric_daily_orders",
+        "name": "completed_orders",
+        "type": "HUGEINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.metric_daily_orders_returned_orders": {
+        "id": "model.jaffle_shop.metric_daily_orders_returned_orders",
+        "table_id": "model.jaffle_shop.metric_daily_orders",
+        "name": "returned_orders",
+        "type": "HUGEINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.metric_daily_orders_shipped_orders": {
+        "id": "model.jaffle_shop.metric_daily_orders_shipped_orders",
+        "table_id": "model.jaffle_shop.metric_daily_orders",
+        "name": "shipped_orders",
+        "type": "HUGEINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.metric_daily_orders_placed_orders": {
+        "id": "model.jaffle_shop.metric_daily_orders_placed_orders",
+        "table_id": "model.jaffle_shop.metric_daily_orders",
+        "name": "placed_orders",
+        "type": "HUGEINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_order_enriched_status": {
+        "id": "model.jaffle_shop.int_order_enriched_status",
+        "table_id": "model.jaffle_shop.int_order_enriched",
+        "name": "status",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_orders_with_promotions_status": {
+        "id": "model.jaffle_shop.int_orders_with_promotions_status",
+        "table_id": "model.jaffle_shop.int_orders_with_promotions",
+        "name": "status",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.order_fulfillment_status": {
+        "id": "model.jaffle_shop.order_fulfillment_status",
+        "table_id": "model.jaffle_shop.order_fulfillment",
+        "name": "status",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "model.jaffle_shop.stg_orders_status": [],
+      "model.jaffle_shop.int_store_performance": [
+        "model.jaffle_shop.int_store_revenue"
+      ],
+      "model.jaffle_shop.store_rankings": [
+        "model.jaffle_shop.store_performance"
+      ],
+      "model.jaffle_shop.orders_status": [
+        "model.jaffle_shop.stg_orders_status"
+      ],
+      "model.jaffle_shop.int_store_revenue": [
+        "model.jaffle_shop.int_order_enriched_status"
+      ],
+      "model.jaffle_shop.rpt_store_dashboard": [
+        "model.jaffle_shop.store_rankings"
+      ],
+      "model.jaffle_shop.store_performance": [
+        "model.jaffle_shop.int_store_performance"
+      ],
+      "model.jaffle_shop.payments_fact_order_status": [
+        "model.jaffle_shop.orders_status"
+      ],
+      "model.jaffle_shop.new_orders_status": [
+        "model.jaffle_shop.stg_orders_status"
+      ],
+      "model.jaffle_shop.order_returns": ["model.jaffle_shop.orders_status"],
+      "model.jaffle_shop.order_returns_status": [
+        "model.jaffle_shop.orders_status"
+      ],
+      "model.jaffle_shop.order_returns_return_status": [
+        "model.jaffle_shop.orders_status"
+      ],
+      "model.jaffle_shop.metric_daily_orders_completed_orders": [
+        "model.jaffle_shop.int_order_enriched_status"
+      ],
+      "model.jaffle_shop.metric_daily_orders_returned_orders": [
+        "model.jaffle_shop.int_order_enriched_status"
+      ],
+      "model.jaffle_shop.metric_daily_orders_shipped_orders": [
+        "model.jaffle_shop.int_order_enriched_status"
+      ],
+      "model.jaffle_shop.metric_daily_orders_placed_orders": [
+        "model.jaffle_shop.int_order_enriched_status"
+      ],
+      "model.jaffle_shop.int_order_enriched_status": [
+        "model.jaffle_shop.int_orders_with_promotions_status"
+      ],
+      "model.jaffle_shop.int_orders_with_promotions_status": [
+        "model.jaffle_shop.stg_orders_status"
+      ],
+      "model.jaffle_shop.order_fulfillment_status": [
+        "model.jaffle_shop.orders_status"
+      ]
+    },
+    "child_map": {
+      "model.jaffle_shop.int_store_revenue": [
+        "model.jaffle_shop.int_store_performance"
+      ],
+      "model.jaffle_shop.store_performance": [
+        "model.jaffle_shop.store_rankings"
+      ],
+      "model.jaffle_shop.stg_orders_status": [
+        "model.jaffle_shop.int_orders_with_promotions_status",
+        "model.jaffle_shop.orders_status",
+        "model.jaffle_shop.new_orders_status"
+      ],
+      "model.jaffle_shop.int_order_enriched_status": [
+        "model.jaffle_shop.metric_daily_orders_shipped_orders",
+        "model.jaffle_shop.metric_daily_orders_placed_orders",
+        "model.jaffle_shop.int_store_revenue",
+        "model.jaffle_shop.metric_daily_orders_returned_orders",
+        "model.jaffle_shop.metric_daily_orders_completed_orders"
+      ],
+      "model.jaffle_shop.store_rankings": [
+        "model.jaffle_shop.rpt_store_dashboard"
+      ],
+      "model.jaffle_shop.int_store_performance": [
+        "model.jaffle_shop.store_performance"
+      ],
+      "model.jaffle_shop.orders_status": [
+        "model.jaffle_shop.order_fulfillment_status",
+        "model.jaffle_shop.payments_fact_order_status",
+        "model.jaffle_shop.order_returns_return_status",
+        "model.jaffle_shop.order_returns",
+        "model.jaffle_shop.order_returns_status"
+      ],
+      "model.jaffle_shop.int_orders_with_promotions_status": [
+        "model.jaffle_shop.int_order_enriched_status"
+      ]
+    }
+  }
+}

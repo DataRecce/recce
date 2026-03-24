@@ -1,0 +1,167 @@
+{
+  "current": {
+    "nodes": {},
+    "columns": {
+      "model.jaffle_shop.int_store_revenue_order_count": {
+        "id": "model.jaffle_shop.int_store_revenue_order_count",
+        "table_id": "model.jaffle_shop.int_store_revenue",
+        "name": "order_count",
+        "type": "BIGINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_orders_order_id": {
+        "id": "model.jaffle_shop.stg_orders_order_id",
+        "table_id": "model.jaffle_shop.stg_orders",
+        "name": "order_id",
+        "type": "INTEGER",
+        "transformation_type": "renamed",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_order_assignments_order_id": {
+        "id": "model.jaffle_shop.int_store_order_assignments_order_id",
+        "table_id": "model.jaffle_shop.int_store_order_assignments",
+        "name": "order_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_rankings_order_count": {
+        "id": "model.jaffle_shop.store_rankings_order_count",
+        "table_id": "model.jaffle_shop.store_rankings",
+        "name": "order_count",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_rankings_order_count_rank": {
+        "id": "model.jaffle_shop.store_rankings_order_count_rank",
+        "table_id": "model.jaffle_shop.store_rankings",
+        "name": "order_count_rank",
+        "type": "BIGINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_performance_order_count": {
+        "id": "model.jaffle_shop.store_performance_order_count",
+        "table_id": "model.jaffle_shop.store_performance",
+        "name": "order_count",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_performance_orders_per_employee": {
+        "id": "model.jaffle_shop.store_performance_orders_per_employee",
+        "table_id": "model.jaffle_shop.store_performance",
+        "name": "orders_per_employee",
+        "type": "DOUBLE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_orders_id": {
+        "id": "seed.jaffle_shop.raw_orders_id",
+        "table_id": "seed.jaffle_shop.raw_orders",
+        "name": "id",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_performance_order_count": {
+        "id": "model.jaffle_shop.int_store_performance_order_count",
+        "table_id": "model.jaffle_shop.int_store_performance",
+        "name": "order_count",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_performance_orders_per_employee": {
+        "id": "model.jaffle_shop.int_store_performance_orders_per_employee",
+        "table_id": "model.jaffle_shop.int_store_performance",
+        "name": "orders_per_employee",
+        "type": "DOUBLE",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.rpt_store_dashboard_order_count": {
+        "id": "model.jaffle_shop.rpt_store_dashboard_order_count",
+        "table_id": "model.jaffle_shop.rpt_store_dashboard",
+        "name": "order_count",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "model.jaffle_shop.int_store_revenue_order_count": [
+        "model.jaffle_shop.int_store_order_assignments_order_id"
+      ],
+      "model.jaffle_shop.stg_orders_order_id": [
+        "seed.jaffle_shop.raw_orders_id"
+      ],
+      "model.jaffle_shop.int_store_order_assignments_order_id": [
+        "model.jaffle_shop.stg_orders_order_id"
+      ],
+      "model.jaffle_shop.store_rankings_order_count": [
+        "model.jaffle_shop.store_performance_order_count"
+      ],
+      "model.jaffle_shop.store_rankings_order_count_rank": [
+        "model.jaffle_shop.store_performance_order_count"
+      ],
+      "model.jaffle_shop.store_performance_order_count": [
+        "model.jaffle_shop.int_store_performance_order_count"
+      ],
+      "model.jaffle_shop.store_performance_orders_per_employee": [
+        "model.jaffle_shop.int_store_performance_orders_per_employee"
+      ],
+      "seed.jaffle_shop.raw_orders_id": [],
+      "model.jaffle_shop.int_store_performance_order_count": [
+        "model.jaffle_shop.int_store_revenue_order_count"
+      ],
+      "model.jaffle_shop.int_store_performance_orders_per_employee": [
+        "model.jaffle_shop.int_store_revenue_order_count"
+      ],
+      "model.jaffle_shop.rpt_store_dashboard_order_count": [
+        "model.jaffle_shop.store_rankings_order_count"
+      ]
+    },
+    "child_map": {
+      "model.jaffle_shop.int_store_order_assignments_order_id": [
+        "model.jaffle_shop.int_store_revenue_order_count"
+      ],
+      "model.jaffle_shop.stg_orders_order_id": [
+        "model.jaffle_shop.int_store_order_assignments_order_id"
+      ],
+      "seed.jaffle_shop.raw_orders_id": [
+        "model.jaffle_shop.stg_orders_order_id"
+      ],
+      "model.jaffle_shop.store_performance_order_count": [
+        "model.jaffle_shop.store_rankings_order_count_rank",
+        "model.jaffle_shop.store_rankings_order_count"
+      ],
+      "model.jaffle_shop.int_store_performance_order_count": [
+        "model.jaffle_shop.store_performance_order_count"
+      ],
+      "model.jaffle_shop.int_store_performance_orders_per_employee": [
+        "model.jaffle_shop.store_performance_orders_per_employee"
+      ],
+      "model.jaffle_shop.int_store_revenue_order_count": [
+        "model.jaffle_shop.int_store_performance_order_count",
+        "model.jaffle_shop.int_store_performance_orders_per_employee"
+      ],
+      "model.jaffle_shop.store_rankings_order_count": [
+        "model.jaffle_shop.rpt_store_dashboard_order_count"
+      ]
+    }
+  }
+}

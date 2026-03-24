@@ -1,0 +1,21 @@
+{
+  "current": {
+    "nodes": {
+      "seed.jaffle_shop.raw_stores": {
+        "id": "seed.jaffle_shop.raw_stores",
+        "name": "raw_stores",
+        "package_name": "jaffle_shop",
+        "resource_type": "seed",
+        "raw_code": "",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      }
+    },
+    "columns": {},
+    "parent_map": { "seed.jaffle_shop.raw_stores": [] },
+    "child_map": {}
+  }
+}

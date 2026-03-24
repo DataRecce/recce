@@ -1,0 +1,51 @@
+{
+  "current": {
+    "nodes": {},
+    "columns": {
+      "model.jaffle_shop.stg_employees_employee_id": {
+        "id": "model.jaffle_shop.stg_employees_employee_id",
+        "table_id": "model.jaffle_shop.stg_employees",
+        "name": "employee_id",
+        "type": "INTEGER",
+        "transformation_type": "renamed",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_employees_id": {
+        "id": "seed.jaffle_shop.raw_employees_id",
+        "table_id": "seed.jaffle_shop.raw_employees",
+        "name": "id",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_staffing_employee_id": {
+        "id": "model.jaffle_shop.store_staffing_employee_id",
+        "table_id": "model.jaffle_shop.store_staffing",
+        "name": "employee_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "model.jaffle_shop.stg_employees_employee_id": [
+        "seed.jaffle_shop.raw_employees_id"
+      ],
+      "seed.jaffle_shop.raw_employees_id": [],
+      "model.jaffle_shop.store_staffing_employee_id": [
+        "model.jaffle_shop.stg_employees_employee_id"
+      ]
+    },
+    "child_map": {
+      "seed.jaffle_shop.raw_employees_id": [
+        "model.jaffle_shop.stg_employees_employee_id"
+      ],
+      "model.jaffle_shop.stg_employees_employee_id": [
+        "model.jaffle_shop.store_staffing_employee_id"
+      ]
+    }
+  }
+}

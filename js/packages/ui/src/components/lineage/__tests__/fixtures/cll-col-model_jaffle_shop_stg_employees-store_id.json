@@ -1,0 +1,216 @@
+{
+  "current": {
+    "nodes": {
+      "model.jaffle_shop.stores": {
+        "id": "model.jaffle_shop.stores",
+        "name": "stores",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with staff as (\n    select * from {{ ref('int_store_employees_active') }}\n),\n\nfinal as (\n    select\n        store_id,\n        store_name,\n        city,\n        state,\n        total_employees,\n        manager_count,\n        barista_count,\n        cashier_count,\n        cook_count,\n        earliest_hire,\n        latest_hire\n    from staff\n)\n\nselect * from final",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.store_performance": {
+        "id": "model.jaffle_shop.store_performance",
+        "name": "store_performance",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "select * from {{ ref('int_store_performance') }}",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.int_store_employees_active": {
+        "id": "model.jaffle_shop.int_store_employees_active",
+        "name": "int_store_employees_active",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with employees as (\n    select * from {{ ref('stg_employees') }}\n),\n\nstores as (\n    select * from {{ ref('stg_stores') }}\n),\n\nstore_staff as (\n    select\n        s.store_id,\n        s.store_name,\n        s.city,\n        s.state,\n        count(*) as total_employees,\n        sum(case when e.role = 'manager' then 1 else 0 end) as manager_count,\n        sum(case when e.role = 'barista' then 1 else 0 end) as barista_count,\n        sum(case when e.role = 'cashier' then 1 else 0 end) as cashier_count,\n        sum(case when e.role = 'cook' then 1 else 0 end) as cook_count,\n        min(e.hired_at) as earliest_hire,\n        max(e.hired_at) as latest_hire\n    from stores s\n    left join employees e on s.store_id = e.store_id\n    group by s.store_id, s.store_name, s.city, s.state\n)\n\nselect * from store_staff",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.store_staffing": {
+        "id": "model.jaffle_shop.store_staffing",
+        "name": "store_staffing",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with employees as (\n    select * from {{ ref('stg_employees') }}\n),\n\nstores as (\n    select * from {{ ref('stg_stores') }}\n),\n\nstaffing as (\n    select\n        e.employee_id,\n        e.first_name,\n        e.last_name,\n        e.role,\n        e.hired_at,\n        e.store_id,\n        s.store_name,\n        s.city,\n        s.state\n    from employees e\n    left join stores s on e.store_id = s.store_id\n)\n\nselect * from staffing",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "store_id": {
+            "id": "model.jaffle_shop.store_staffing_store_id",
+            "table_id": "model.jaffle_shop.store_staffing",
+            "name": "store_id",
+            "type": "INTEGER",
+            "transformation_type": "passthrough",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.int_store_performance": {
+        "id": "model.jaffle_shop.int_store_performance",
+        "name": "int_store_performance",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with revenue as (\n    select * from {{ ref('int_store_revenue') }}\n),\n\nstaff as (\n    select * from {{ ref('int_store_employees_active') }}\n),\n\nperformance as (\n    select\n        s.store_id,\n        s.store_name,\n        s.city,\n        s.state,\n        s.total_employees,\n        r.order_count,\n        r.unique_customers,\n        r.total_revenue,\n        r.total_margin,\n        r.avg_order_value,\n        case when s.total_employees > 0\n            then round(r.total_revenue / s.total_employees, 2)\n            else 0\n        end as revenue_per_employee,\n        case when s.total_employees > 0\n            then round(cast(r.order_count as decimal) / s.total_employees, 1)\n            else 0\n        end as orders_per_employee\n    from staff s\n    left join revenue r on s.store_id = r.store_id\n)\n\nselect * from performance",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.metric_store_daily": {
+        "id": "model.jaffle_shop.metric_store_daily",
+        "name": "metric_store_daily",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with revenue as (\n    select * from {{ ref('revenue_summary') }}\n),\n\nstores as (\n    select * from {{ ref('stores') }}\n),\n\ndaily as (\n    select\n        r.order_date,\n        r.store_id,\n        s.store_name,\n        s.city,\n        r.order_count,\n        r.revenue,\n        r.cost,\n        r.margin,\n        r.discounts,\n        r.net_revenue\n    from revenue r\n    left join stores s on r.store_id = s.store_id\n)\n\nselect * from daily",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.store_rankings": {
+        "id": "model.jaffle_shop.store_rankings",
+        "name": "store_rankings",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with performance as (\n    select * from {{ ref('store_performance') }}\n),\n\nranked as (\n    select\n        store_id,\n        store_name,\n        city,\n        state,\n        total_revenue,\n        total_margin,\n        order_count,\n        unique_customers,\n        revenue_per_employee,\n        rank() over (order by total_revenue desc) as revenue_rank,\n        rank() over (order by total_margin desc) as margin_rank,\n        rank() over (order by order_count desc) as order_count_rank,\n        rank() over (order by revenue_per_employee desc) as efficiency_rank,\n        rank() over (order by unique_customers desc) as customer_reach_rank\n    from performance\n)\n\nselect * from ranked",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.rpt_store_dashboard": {
+        "id": "model.jaffle_shop.rpt_store_dashboard",
+        "name": "rpt_store_dashboard",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with rankings as (\n    select * from {{ ref('store_rankings') }}\n),\n\ninventory as (\n    select * from {{ ref('store_inventory') }}\n),\n\ndaily as (\n    select\n        store_id,\n        count(distinct order_date) as active_days,\n        avg(revenue) as avg_daily_revenue\n    from {{ ref('metric_store_daily') }}\n    group by store_id\n),\n\ndashboard as (\n    select\n        r.store_id,\n        r.store_name,\n        r.city,\n        r.state,\n        r.total_revenue,\n        r.total_margin,\n        r.order_count,\n        r.unique_customers,\n        r.revenue_per_employee,\n        r.revenue_rank,\n        r.efficiency_rank,\n        i.total_stock_units,\n        i.out_of_stock_products,\n        i.low_stock_products,\n        d.active_days,\n        d.avg_daily_revenue\n    from rankings r\n    left join inventory i on r.store_id = i.store_id\n    left join daily d on r.store_id = d.store_id\n)\n\nselect * from dashboard",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.order_fulfillment": {
+        "id": "model.jaffle_shop.order_fulfillment",
+        "name": "order_fulfillment",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with orders as (\n    select * from {{ ref('orders') }}\n),\n\nassignments as (\n    select * from {{ ref('int_store_order_assignments') }}\n),\n\nstaff as (\n    select * from {{ ref('int_store_employees_active') }}\n),\n\nfulfillment as (\n    select\n        o.order_id,\n        o.customer_id,\n        o.order_date,\n        o.status,\n        o.amount,\n        a.store_id,\n        s.store_name,\n        s.city,\n        s.state,\n        s.total_employees as store_employee_count\n    from orders o\n    left join assignments a on o.order_id = a.order_id\n    left join staff s on a.store_id = s.store_id\n)\n\nselect * from fulfillment",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      }
+    },
+    "columns": {
+      "model.jaffle_shop.stg_employees_store_id": {
+        "id": "model.jaffle_shop.stg_employees_store_id",
+        "table_id": "model.jaffle_shop.stg_employees",
+        "name": "store_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_employees_store_id": {
+        "id": "seed.jaffle_shop.raw_employees_store_id",
+        "table_id": "seed.jaffle_shop.raw_employees",
+        "name": "store_id",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_staffing_store_id": {
+        "id": "model.jaffle_shop.store_staffing_store_id",
+        "table_id": "model.jaffle_shop.store_staffing",
+        "name": "store_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "model.jaffle_shop.stores": [
+        "model.jaffle_shop.int_store_employees_active"
+      ],
+      "model.jaffle_shop.store_performance": [
+        "model.jaffle_shop.int_store_performance"
+      ],
+      "model.jaffle_shop.int_store_employees_active": [
+        "model.jaffle_shop.stg_employees_store_id"
+      ],
+      "model.jaffle_shop.store_staffing": [
+        "model.jaffle_shop.stg_employees_store_id"
+      ],
+      "model.jaffle_shop.int_store_performance": [
+        "model.jaffle_shop.int_store_employees_active"
+      ],
+      "model.jaffle_shop.metric_store_daily": ["model.jaffle_shop.stores"],
+      "model.jaffle_shop.store_rankings": [
+        "model.jaffle_shop.store_performance"
+      ],
+      "model.jaffle_shop.rpt_store_dashboard": [
+        "model.jaffle_shop.store_rankings",
+        "model.jaffle_shop.metric_store_daily"
+      ],
+      "model.jaffle_shop.order_fulfillment": [
+        "model.jaffle_shop.int_store_employees_active"
+      ],
+      "model.jaffle_shop.stg_employees_store_id": [
+        "seed.jaffle_shop.raw_employees_store_id"
+      ],
+      "seed.jaffle_shop.raw_employees_store_id": [],
+      "model.jaffle_shop.store_staffing_store_id": [
+        "model.jaffle_shop.stg_employees_store_id"
+      ]
+    },
+    "child_map": {
+      "model.jaffle_shop.int_store_employees_active": [
+        "model.jaffle_shop.int_store_performance",
+        "model.jaffle_shop.stores",
+        "model.jaffle_shop.order_fulfillment"
+      ],
+      "model.jaffle_shop.int_store_performance": [
+        "model.jaffle_shop.store_performance"
+      ],
+      "model.jaffle_shop.stg_employees_store_id": [
+        "model.jaffle_shop.int_store_employees_active",
+        "model.jaffle_shop.store_staffing",
+        "model.jaffle_shop.store_staffing_store_id"
+      ],
+      "model.jaffle_shop.stores": ["model.jaffle_shop.metric_store_daily"],
+      "model.jaffle_shop.store_performance": [
+        "model.jaffle_shop.store_rankings"
+      ],
+      "model.jaffle_shop.metric_store_daily": [
+        "model.jaffle_shop.rpt_store_dashboard"
+      ],
+      "model.jaffle_shop.store_rankings": [
+        "model.jaffle_shop.rpt_store_dashboard"
+      ],
+      "seed.jaffle_shop.raw_employees_store_id": [
+        "model.jaffle_shop.stg_employees_store_id"
+      ]
+    }
+  }
+}

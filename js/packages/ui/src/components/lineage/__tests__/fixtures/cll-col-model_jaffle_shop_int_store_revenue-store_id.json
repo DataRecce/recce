@@ -1,0 +1,139 @@
+{
+  "current": {
+    "nodes": {
+      "model.jaffle_shop.store_rankings": {
+        "id": "model.jaffle_shop.store_rankings",
+        "name": "store_rankings",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with performance as (\n    select * from {{ ref('store_performance') }}\n),\n\nranked as (\n    select\n        store_id,\n        store_name,\n        city,\n        state,\n        total_revenue,\n        total_margin,\n        order_count,\n        unique_customers,\n        revenue_per_employee,\n        rank() over (order by total_revenue desc) as revenue_rank,\n        rank() over (order by total_margin desc) as margin_rank,\n        rank() over (order by order_count desc) as order_count_rank,\n        rank() over (order by revenue_per_employee desc) as efficiency_rank,\n        rank() over (order by unique_customers desc) as customer_reach_rank\n    from performance\n)\n\nselect * from ranked",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.store_performance": {
+        "id": "model.jaffle_shop.store_performance",
+        "name": "store_performance",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "select * from {{ ref('int_store_performance') }}",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.int_store_performance": {
+        "id": "model.jaffle_shop.int_store_performance",
+        "name": "int_store_performance",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with revenue as (\n    select * from {{ ref('int_store_revenue') }}\n),\n\nstaff as (\n    select * from {{ ref('int_store_employees_active') }}\n),\n\nperformance as (\n    select\n        s.store_id,\n        s.store_name,\n        s.city,\n        s.state,\n        s.total_employees,\n        r.order_count,\n        r.unique_customers,\n        r.total_revenue,\n        r.total_margin,\n        r.avg_order_value,\n        case when s.total_employees > 0\n            then round(r.total_revenue / s.total_employees, 2)\n            else 0\n        end as revenue_per_employee,\n        case when s.total_employees > 0\n            then round(cast(r.order_count as decimal) / s.total_employees, 1)\n            else 0\n        end as orders_per_employee\n    from staff s\n    left join revenue r on s.store_id = r.store_id\n)\n\nselect * from performance",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.rpt_store_dashboard": {
+        "id": "model.jaffle_shop.rpt_store_dashboard",
+        "name": "rpt_store_dashboard",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with rankings as (\n    select * from {{ ref('store_rankings') }}\n),\n\ninventory as (\n    select * from {{ ref('store_inventory') }}\n),\n\ndaily as (\n    select\n        store_id,\n        count(distinct order_date) as active_days,\n        avg(revenue) as avg_daily_revenue\n    from {{ ref('metric_store_daily') }}\n    group by store_id\n),\n\ndashboard as (\n    select\n        r.store_id,\n        r.store_name,\n        r.city,\n        r.state,\n        r.total_revenue,\n        r.total_margin,\n        r.order_count,\n        r.unique_customers,\n        r.revenue_per_employee,\n        r.revenue_rank,\n        r.efficiency_rank,\n        i.total_stock_units,\n        i.out_of_stock_products,\n        i.low_stock_products,\n        d.active_days,\n        d.avg_daily_revenue\n    from rankings r\n    left join inventory i on r.store_id = i.store_id\n    left join daily d on r.store_id = d.store_id\n)\n\nselect * from dashboard",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      }
+    },
+    "columns": {
+      "model.jaffle_shop.int_store_revenue_store_id": {
+        "id": "model.jaffle_shop.int_store_revenue_store_id",
+        "table_id": "model.jaffle_shop.int_store_revenue",
+        "name": "store_id",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_orders_order_id": {
+        "id": "model.jaffle_shop.stg_orders_order_id",
+        "table_id": "model.jaffle_shop.stg_orders",
+        "name": "order_id",
+        "type": "INTEGER",
+        "transformation_type": "renamed",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_order_assignments_store_id": {
+        "id": "model.jaffle_shop.int_store_order_assignments_store_id",
+        "table_id": "model.jaffle_shop.int_store_order_assignments",
+        "name": "store_id",
+        "type": "BIGINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_orders_id": {
+        "id": "seed.jaffle_shop.raw_orders_id",
+        "table_id": "seed.jaffle_shop.raw_orders",
+        "name": "id",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "model.jaffle_shop.store_rankings": [
+        "model.jaffle_shop.store_performance"
+      ],
+      "model.jaffle_shop.store_performance": [
+        "model.jaffle_shop.int_store_performance"
+      ],
+      "model.jaffle_shop.int_store_performance": [
+        "model.jaffle_shop.int_store_revenue_store_id"
+      ],
+      "model.jaffle_shop.rpt_store_dashboard": [
+        "model.jaffle_shop.store_rankings"
+      ],
+      "model.jaffle_shop.int_store_revenue_store_id": [
+        "model.jaffle_shop.int_store_order_assignments_store_id"
+      ],
+      "model.jaffle_shop.stg_orders_order_id": [
+        "seed.jaffle_shop.raw_orders_id"
+      ],
+      "model.jaffle_shop.int_store_order_assignments_store_id": [
+        "model.jaffle_shop.stg_orders_order_id"
+      ],
+      "seed.jaffle_shop.raw_orders_id": []
+    },
+    "child_map": {
+      "model.jaffle_shop.int_store_order_assignments_store_id": [
+        "model.jaffle_shop.int_store_revenue_store_id"
+      ],
+      "model.jaffle_shop.store_performance": [
+        "model.jaffle_shop.store_rankings"
+      ],
+      "model.jaffle_shop.int_store_performance": [
+        "model.jaffle_shop.store_performance"
+      ],
+      "model.jaffle_shop.stg_orders_order_id": [
+        "model.jaffle_shop.int_store_order_assignments_store_id"
+      ],
+      "model.jaffle_shop.int_store_revenue_store_id": [
+        "model.jaffle_shop.int_store_performance"
+      ],
+      "model.jaffle_shop.store_rankings": [
+        "model.jaffle_shop.rpt_store_dashboard"
+      ],
+      "seed.jaffle_shop.raw_orders_id": [
+        "model.jaffle_shop.stg_orders_order_id"
+      ]
+    }
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "current": {
+    "nodes": {},
+    "columns": {
+      "model.jaffle_shop.revenue_summary_order_date": {
+        "id": "model.jaffle_shop.revenue_summary_order_date",
+        "table_id": "model.jaffle_shop.revenue_summary",
+        "name": "order_date",
+        "type": "DATE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_orders_order_date": {
+        "id": "model.jaffle_shop.stg_orders_order_date",
+        "table_id": "model.jaffle_shop.stg_orders",
+        "name": "order_date",
+        "type": "DATE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_order_enriched_order_date": {
+        "id": "model.jaffle_shop.int_order_enriched_order_date",
+        "table_id": "model.jaffle_shop.int_order_enriched",
+        "name": "order_date",
+        "type": "DATE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.metric_store_daily_order_date": {
+        "id": "model.jaffle_shop.metric_store_daily_order_date",
+        "table_id": "model.jaffle_shop.metric_store_daily",
+        "name": "order_date",
+        "type": "DATE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_orders_order_date": {
+        "id": "seed.jaffle_shop.raw_orders_order_date",
+        "table_id": "seed.jaffle_shop.raw_orders",
+        "name": "order_date",
+        "type": "DATE",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_orders_with_promotions_order_date": {
+        "id": "model.jaffle_shop.int_orders_with_promotions_order_date",
+        "table_id": "model.jaffle_shop.int_orders_with_promotions",
+        "name": "order_date",
+        "type": "DATE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.rpt_store_dashboard_active_days": {
+        "id": "model.jaffle_shop.rpt_store_dashboard_active_days",
+        "table_id": "model.jaffle_shop.rpt_store_dashboard",
+        "name": "active_days",
+        "type": "BIGINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "model.jaffle_shop.revenue_summary_order_date": [
+        "model.jaffle_shop.int_order_enriched_order_date"
+      ],
+      "model.jaffle_shop.stg_orders_order_date": [
+        "seed.jaffle_shop.raw_orders_order_date"
+      ],
+      "model.jaffle_shop.int_order_enriched_order_date": [
+        "model.jaffle_shop.int_orders_with_promotions_order_date"
+      ],
+      "model.jaffle_shop.metric_store_daily_order_date": [
+        "model.jaffle_shop.revenue_summary_order_date"
+      ],
+      "seed.jaffle_shop.raw_orders_order_date": [],
+      "model.jaffle_shop.int_orders_with_promotions_order_date": [
+        "model.jaffle_shop.stg_orders_order_date"
+      ],
+      "model.jaffle_shop.rpt_store_dashboard_active_days": [
+        "model.jaffle_shop.metric_store_daily_order_date"
+      ]
+    },
+    "child_map": {
+      "model.jaffle_shop.int_order_enriched_order_date": [
+        "model.jaffle_shop.revenue_summary_order_date"
+      ],
+      "seed.jaffle_shop.raw_orders_order_date": [
+        "model.jaffle_shop.stg_orders_order_date"
+      ],
+      "model.jaffle_shop.int_orders_with_promotions_order_date": [
+        "model.jaffle_shop.int_order_enriched_order_date"
+      ],
+      "model.jaffle_shop.stg_orders_order_date": [
+        "model.jaffle_shop.int_orders_with_promotions_order_date"
+      ],
+      "model.jaffle_shop.revenue_summary_order_date": [
+        "model.jaffle_shop.metric_store_daily_order_date"
+      ],
+      "model.jaffle_shop.metric_store_daily_order_date": [
+        "model.jaffle_shop.rpt_store_dashboard_active_days"
+      ]
+    }
+  }
+}
