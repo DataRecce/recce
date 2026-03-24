@@ -19,6 +19,8 @@ const materializationLabels: Record<string, string> = {
   incremental: "incremental",
   ephemeral: "ephemeral",
   materialized_view: "mat. view",
+  dynamic_table: "dyn. table",
+  streaming_table: "stream. table",
 };
 
 function getMaterializationLabel(materialized: string): string {
@@ -51,7 +53,7 @@ function NodeTagComponent({
       <Box component="span" sx={getTagRootSx(isDark)} data-testid={testId}>
         {Icon && (
           <Box component="span" sx={tagStartElementSx}>
-            <Icon />
+            <Icon aria-hidden="true" />
           </Box>
         )}
         {label}

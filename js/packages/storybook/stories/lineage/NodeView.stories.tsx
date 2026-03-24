@@ -76,9 +76,12 @@ function createNode(
     resourceType?: string;
     changeStatus?: string;
     materialized?: string;
+    baseMaterialized?: string;
   } = {},
 ): NodeViewNodeData {
-  const config = overrides.materialized
+  const baseMat = overrides.baseMaterialized ?? overrides.materialized;
+  const baseConfig = baseMat ? { materialized: baseMat } : undefined;
+  const currentConfig = overrides.materialized
     ? { materialized: overrides.materialized }
     : undefined;
 
@@ -99,7 +102,7 @@ function createNode(
             customer_id: { name: "customer_id", type: "integer" },
             order_date: { name: "order_date", type: "date" },
           },
-          config,
+          config: baseConfig,
         },
         current: {
           id: "stg_orders",
@@ -111,7 +114,7 @@ function createNode(
             customer_id: { name: "customer_id", type: "integer" },
             order_date: { name: "order_date", type: "date" },
           },
-          config,
+          config: currentConfig,
         },
       },
     },
@@ -244,41 +247,16 @@ export const SingleEnvMode: Story = {
 };
 
 // =============================================================================
-// MATERIALIZATION TAG STORIES
+// MATERIALIZATION CHANGE STORY
 // =============================================================================
 
-/** Model materialized as incremental — shows incremental icon in tag row. */
-export const IncrementalModel: Story = {
+/** Materialization changed from view to table between base and current. */
+export const MaterializationChanged: Story = {
   args: {
-    node: createNode({ materialized: "incremental" }),
-  },
-};
-
-/** Model materialized as table — shows solid cube icon in tag row. */
-export const TableModel: Story = {
-  args: {
-    node: createNode({ materialized: "table" }),
-  },
-};
-
-/** Model materialized as ephemeral — shows dashed cube icon in tag row. */
-export const EphemeralModel: Story = {
-  args: {
-    node: createNode({ materialized: "ephemeral" }),
-  },
-};
-
-/** Model materialized as materialized_view — shows cube+eye icon in tag row. */
-export const MaterializedViewModel: Story = {
-  name: "Materialized View Model",
-  args: {
-    node: createNode({ materialized: "materialized_view" }),
-  },
-};
-
-/** Source node — shows resource type tag (no materialization). */
-export const SourceNode: Story = {
-  args: {
-    node: createNode({ resourceType: "source", name: "raw_orders" }),
+    node: createNode({
+      baseMaterialized: "view",
+      materialized: "table",
+      changeStatus: "modified",
+    }),
   },
 };

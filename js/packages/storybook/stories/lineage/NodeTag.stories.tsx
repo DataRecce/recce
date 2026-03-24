@@ -20,65 +20,53 @@ export default meta;
 type Story = StoryObj<typeof NodeTag>;
 
 // ============================================
-// Resource Types
+// All Types Overview
 // ============================================
 
-export const Model: Story = {
-  args: { resourceType: "model" },
-};
-
-export const Source: Story = {
-  args: { resourceType: "source" },
-};
-
-export const Seed: Story = {
-  args: { resourceType: "seed" },
-};
-
-export const Snapshot: Story = {
-  args: { resourceType: "snapshot" },
-};
-
-export const Metric: Story = {
-  args: { resourceType: "metric" },
-};
-
-export const Exposure: Story = {
-  args: { resourceType: "exposure" },
-};
-
-export const SemanticModel: Story = {
-  name: "Semantic Model",
-  args: { resourceType: "semantic_model" },
-};
-
-// ============================================
-// Model with Materialization
-// ============================================
-
-export const ModelTable: Story = {
-  name: "Model — table",
-  args: { resourceType: "model", materialized: "table" },
-};
-
-export const ModelView: Story = {
-  name: "Model — view",
-  args: { resourceType: "model", materialized: "view" },
-};
-
-export const ModelIncremental: Story = {
-  name: "Model — incremental",
-  args: { resourceType: "model", materialized: "incremental" },
-};
-
-export const ModelEphemeral: Story = {
-  name: "Model — ephemeral",
-  args: { resourceType: "model", materialized: "ephemeral" },
-};
-
-export const ModelMaterializedView: Story = {
-  name: "Model — materialized view",
-  args: { resourceType: "model", materialized: "materialized_view" },
+export const AllTypes: Story = {
+  name: "All Types",
+  render: () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      <div>
+        <div style={{ marginBottom: 8, fontWeight: 600 }}>Resource Types</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {[
+            "model",
+            "source",
+            "seed",
+            "snapshot",
+            "metric",
+            "exposure",
+            "semantic_model",
+          ].map((type) => (
+            <div key={type}>
+              <NodeTag resourceType={type} />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div>
+        <div style={{ marginBottom: 8, fontWeight: 600 }}>
+          Materializations (model)
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {[
+            "table",
+            "view",
+            "incremental",
+            "ephemeral",
+            "materialized_view",
+            "dynamic_table",
+            "streaming_table",
+          ].map((type) => (
+            <div key={type}>
+              <NodeTag resourceType="model" materialized={type} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  ),
 };
 
 // ============================================
@@ -98,50 +86,4 @@ export const UnknownMaterialization: Story = {
 export const Undefined: Story = {
   name: "Undefined",
   args: {},
-};
-
-// ============================================
-// All Types Overview
-// ============================================
-
-export const AllResourceTypes: Story = {
-  name: "All Resource Types",
-  render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-      {[
-        "model",
-        "source",
-        "seed",
-        "snapshot",
-        "metric",
-        "exposure",
-        "semantic_model",
-      ].map((type) => (
-        <div
-          key={type}
-          style={{ display: "flex", alignItems: "center", gap: "12px" }}
-        >
-          <NodeTag resourceType={type} />
-        </div>
-      ))}
-    </div>
-  ),
-};
-
-export const AllMaterializations: Story = {
-  name: "All Materializations (model)",
-  render: () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-      {["table", "view", "incremental", "ephemeral", "materialized_view"].map(
-        (type) => (
-          <div
-            key={type}
-            style={{ display: "flex", alignItems: "center", gap: "12px" }}
-          >
-            <NodeTag resourceType="model" materialized={type} />
-          </div>
-        ),
-      )}
-    </div>
-  ),
 };

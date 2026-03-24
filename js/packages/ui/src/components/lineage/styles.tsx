@@ -560,7 +560,9 @@ export type MaterializationType =
   | "view"
   | "incremental"
   | "ephemeral"
-  | "materialized_view";
+  | "materialized_view"
+  | "dynamic_table"
+  | "streaming_table";
 
 /**
  * Get icon and color for a materialization type
@@ -587,6 +589,8 @@ export function getIconForMaterialization(
     case "ephemeral":
       return { color: colors.neutral[400], icon: IconEphemeral };
     case "materialized_view":
+    case "dynamic_table":
+    case "streaming_table":
       return { color: colors.fuchsia[200], icon: IconMaterializedView };
     default:
       return { color: "inherit", icon: undefined };

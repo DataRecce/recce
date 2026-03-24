@@ -63,7 +63,7 @@ vi.mock("@datarecce/ui/components/schema", () => ({
 
 vi.mock("@datarecce/ui/components/lineage", () => ({
   NodeTag: ({ resourceType }: { resourceType: string }) => (
-    <span data-testid="resource-type-tag">{resourceType}</span>
+    <span>{resourceType}</span>
   ),
   RowCountDiffTag: () => <span data-testid="row-count-diff-tag">RowCount</span>,
 }));
@@ -269,7 +269,7 @@ describe("SchemaSummary (Simplified)", () => {
   });
 
   describe("integration", () => {
-    it("displays ResourceTypeTag", async () => {
+    it("displays NodeTag with resource type", async () => {
       const lineageGraph = createMockLineageGraph([
         createMockNode(
           "node1",
@@ -282,7 +282,7 @@ describe("SchemaSummary (Simplified)", () => {
       render(<SchemaSummary lineageGraph={lineageGraph} />);
 
       await waitFor(() => {
-        expect(screen.getByTestId("resource-type-tag")).toBeInTheDocument();
+        expect(screen.getByText("model")).toBeInTheDocument();
       });
     });
 

@@ -75,16 +75,18 @@ describe("NodeTag", () => {
   });
 
   describe("styling", () => {
-    it("applies light mode styling", () => {
+    it("calls useIsDark and renders in light mode", () => {
       mockIsDark.mockReturnValue(false);
-      render(<NodeTag resourceType="model" data-testid="light-tag" />);
-      expect(screen.getByTestId("light-tag")).toBeInTheDocument();
+      const { container } = render(<NodeTag resourceType="model" />);
+      expect(container.firstChild).toBeInTheDocument();
+      expect(mockIsDark).toHaveBeenCalled();
     });
 
-    it("applies dark mode styling", () => {
+    it("calls useIsDark and renders in dark mode", () => {
       mockIsDark.mockReturnValue(true);
-      render(<NodeTag resourceType="model" data-testid="dark-tag" />);
-      expect(screen.getByTestId("dark-tag")).toBeInTheDocument();
+      const { container } = render(<NodeTag resourceType="model" />);
+      expect(container.firstChild).toBeInTheDocument();
+      expect(mockIsDark).toHaveBeenCalled();
     });
   });
 

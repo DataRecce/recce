@@ -559,12 +559,12 @@ function LineageNodeComponent({
               <>
                 {ResourceIcon && (
                   <Box sx={{ fontSize: 16, color: iconColor }}>
-                    <ResourceIcon />
+                    <ResourceIcon aria-hidden="true" />
                   </Box>
                 )}
                 {changeStatus && IconChangeStatus && (
                   <Box sx={{ color: changeStatusIconColor }}>
-                    <IconChangeStatus />
+                    <IconChangeStatus aria-hidden="true" />
                   </Box>
                 )}
               </>
