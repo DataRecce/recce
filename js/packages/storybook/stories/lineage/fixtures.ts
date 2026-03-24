@@ -1,5 +1,9 @@
 import type { ColumnLineageData } from "@datarecce/ui/api";
-import type { LineageGraph, LineageGraphNode } from "@datarecce/ui/contexts";
+import {
+  buildLineageGraph,
+  type LineageGraph,
+  type LineageGraphNode,
+} from "@datarecce/ui/contexts";
 import type { Edge, Node } from "@xyflow/react";
 
 /**
@@ -1059,4 +1063,32 @@ export function createCllData(): ColumnLineageData {
       child_map,
     },
   };
+}
+
+// =============================================================================
+// JAFFLE SHOP DUCKDB (LARGE MOCK GRAPH)
+// =============================================================================
+
+import type { LineageDiffData, NodeData } from "@datarecce/ui/api";
+import jaffleData from "./jaffle.json";
+
+/**
+ * Jaffle Shop DuckDB — 99-node mock lineage graph
+ * Topology extracted from the jaffle_shop_duckdb dbt manifest, loaded from jaffle.json.
+ * stg_orders and its 49 downstream models are marked modified to simulate a PR diff.
+ *
+ * Layers: 12 seeds, 12 staging, 25 intermediate, 35 marts, 15 metrics
+ */
+export function jaffleShopLineageGraph(): LineageGraph {
+  const lineageData = {
+    metadata: { pr_url: "" },
+    nodes: jaffleData.nodes as Record<string, NodeData>,
+    parent_map: jaffleData.parent_map,
+  };
+
+  return buildLineageGraph(
+    lineageData,
+    lineageData,
+    jaffleData.diff as LineageDiffData,
+  );
 }
