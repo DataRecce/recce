@@ -1763,3 +1763,28 @@ class TestQueryRowCountDbtErrors:
         assert result["status"] == RowCountStatus.TABLE_NOT_FOUND
         assert result["count"] is None
         assert "not found" in result["message"]
+
+
+class TestImpactAnalysisRegistration:
+    """Test impact_analysis tool registration."""
+
+    @pytest.mark.asyncio
+    async def test_impact_analysis_in_tool_list(self, mcp_server):
+        from mcp.types import ListToolsRequest
+
+        server, mock_context = mcp_server
+        handler = server.server.request_handlers[ListToolsRequest]
+        result = await handler(ListToolsRequest(method="tools/list"))
+        tool_names = [t.name for t in result.root.tools]
+        assert "impact_analysis" in tool_names
+
+    @pytest.mark.asyncio
+    async def test_impact_analysis_schema_has_select(self, mcp_server):
+        from mcp.types import ListToolsRequest
+
+        server, mock_context = mcp_server
+        handler = server.server.request_handlers[ListToolsRequest]
+        result = await handler(ListToolsRequest(method="tools/list"))
+        tool = next(t for t in result.root.tools if t.name == "impact_analysis")
+        assert "select" in tool.inputSchema["properties"]
+        assert "skip_value_diff" in tool.inputSchema["properties"]

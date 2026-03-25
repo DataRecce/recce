@@ -62,7 +62,11 @@ class BaseRecceCloudClient(ABC):
             if e.response is not None:
                 try:
                     error_detail = e.response.json()
-                    reason = error_detail.get("message", str(e))
+                    reason = (
+                        error_detail.get("detail")
+                        or error_detail.get("message")
+                        or str(e)
+                    )
                 except Exception:
                     reason = e.response.text or str(e)
             raise RecceCloudException(

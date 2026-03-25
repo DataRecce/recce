@@ -719,6 +719,51 @@ class RecceMCPServer:
                     ]
                 )
 
+                # Discovery tool — requires server mode (calls row_count_diff internally)
+                tools.append(
+                    Tool(
+                        name="impact_analysis",
+                        description=textwrap.dedent(
+                            """
+                            Discover the impact of dbt model changes. Returns which models are
+                            modified or downstream-impacted, with row count and value-level signals
+                            for non-view models.
+
+                            IMPORTANT: You MUST call this tool BEFORE reporting which models are
+                            impacted by a code change. Do NOT determine impact by reading code,
+                            inferring from ref() calls, or guessing from model names — these
+                            approaches confuse upstream dependencies with downstream impact and
+                            produce false positives. This tool uses the lineage DAG to
+                            deterministically classify models.
+
+                            This is a starting point for investigation, not a complete analysis.
+                            Use the results to identify anomalies, then follow up with profile_diff,
+                            query_diff, or other tools until you have confidence in the root cause.
+
+                            Models with value_diff: null have unknown data impact — use
+                            suggested_deep_dives or call profile_diff/query_diff to investigate.
+                        """
+                        ).strip(),
+                        inputSchema={
+                            "type": "object",
+                            "properties": {
+                                "select": {
+                                    "type": "string",
+                                    "description": (
+                                        "dbt selector syntax. Default: data-affecting changes only "
+                                        "(body + macros + contract and their downstream). "
+                                        "Use 'state:modified+' to include all changes including config."
+                                    ),
+                                },
+                                "skip_value_diff": {
+                                    "type": "boolean",
+                                    "description": "Skip row-level value comparison on modified models. Default: false",
+                                },
+                            },
+                        },
+                    )
+                )
+
             self.mcp_logger.log_list_tools(tools)
 
             # Log available tools to console
@@ -750,6 +795,7 @@ class RecceMCPServer:
                     "list_checks",
                     "run_check",
                     "create_check",
+                    "impact_analysis",
                 }
                 if self.mode != RecceServerMode.server and name in blocked_tools_in_non_server:
                     # Allowed tools = all registered minus blocked
@@ -781,6 +827,8 @@ class RecceMCPServer:
                     result = await self._tool_top_k_diff(arguments)
                 elif name == "histogram_diff":
                     result = await self._tool_histogram_diff(arguments)
+                elif name == "impact_analysis":
+                    result = await self._tool_impact_analysis(arguments)
                 elif name == "get_model":
                     result = await self._tool_get_model(arguments)
                 elif name == "get_cll":
@@ -1120,6 +1168,355 @@ class RecceMCPServer:
         result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
         if hasattr(result, "model_dump"):
             result = result.model_dump(mode="json")
+        return self._maybe_add_single_env_warning(result)
+
+    async def _tool_impact_analysis(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Discover the impact of dbt model changes."""
+        start_time = time.time()
+        # Default: only body/macros/contract changes (data-affecting).
+        # Excludes config, relation, and persisted_descriptions changes.
+        select = arguments.get(
+            "select",
+            "state:modified.body+ state:modified.macros+ state:modified.contract+",
+        )
+        skip_value_diff = arguments.get("skip_value_diff", False)
+        errors = []
+
+        # Step 1: Lineage classification
+        lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
+        diff_info = lineage_diff.get("diff", {})
+
+        # Get impacted node IDs (modified + downstream)
+        impacted_node_ids = self.context.adapter.select_nodes(select=select)
+        # Get only modified nodes (not downstream)
+        modified_node_ids = self.context.adapter.select_nodes(select="state:modified")
+
+        # Build node info from current (or base for removed)
+        all_nodes = {}
+        for env_key in ["base", "current"]:
+            if env_key in lineage_diff and "nodes" in lineage_diff[env_key]:
+                for node_id, node_info in lineage_diff[env_key]["nodes"].items():
+                    if node_id not in all_nodes:
+                        all_nodes[node_id] = node_info
+                    elif env_key == "current":
+                        all_nodes[node_id] = node_info  # current overrides base
+
+        # Classify nodes
+        impacted_models = []
+        not_impacted_models = []
+
+        for node_id, node_info in all_nodes.items():
+            # Only process models (not sources, tests, etc.)
+            if not node_id.startswith("model."):
+                continue
+
+            name = node_info.get("name")
+            materialized = node_info.get("config", {}).get("materialized")
+            change_status = diff_info.get(node_id, {}).get("change_status")
+
+            if node_id in impacted_node_ids:
+                model_entry = {
+                    "name": name,
+                    "change_status": (
+                        change_status if node_id in modified_node_ids or change_status in ("added", "removed") else None
+                    ),
+                    "materialized": materialized,
+                    "row_count": None,
+                    "schema_changes": [],
+                    "value_diff": None,
+                }
+                impacted_models.append(model_entry)
+            else:
+                not_impacted_models.append(name)
+
+        # Step 2a: Row count diff (skip views and removed models)
+        countable_models = [
+            m for m in impacted_models if m["materialized"] != "view" and m["change_status"] != "removed"
+        ]
+        if countable_models:
+            countable_names = [m["name"] for m in countable_models]
+            try:
+                task = RowCountDiffTask(params={"node_names": countable_names})
+                row_count_result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+
+                for model in countable_models:
+                    name = model["name"]
+                    if name in row_count_result:
+                        rc = row_count_result[name]
+                        base = rc.get("base")
+                        curr = rc.get("curr")
+                        if base is not None and curr is not None:
+                            delta = curr - base
+                            delta_pct = (delta / base * 100) if base != 0 else None
+                            model["row_count"] = {
+                                "base": base,
+                                "current": curr,
+                                "delta": delta,
+                                "delta_pct": round(delta_pct, 1) if delta_pct is not None else None,
+                            }
+                        elif curr is not None:
+                            # Added model (no base)
+                            model["row_count"] = {
+                                "base": None,
+                                "current": curr,
+                                "delta": None,
+                                "delta_pct": None,
+                            }
+            except Exception as e:
+                errors.append({"step": "row_count_diff", "message": str(e)})
+
+        # Step 2b: Schema diff (compare columns between base and current)
+        try:
+            base_nodes = lineage_diff.get("base", {}).get("nodes", {})
+            current_nodes = lineage_diff.get("current", {}).get("nodes", {})
+
+            # Build node_id lookup for impacted models
+            node_id_by_name = {}
+            for node_id in impacted_node_ids:
+                node_info = all_nodes.get(node_id, {})
+                if node_info.get("name"):
+                    node_id_by_name[node_info["name"]] = node_id
+
+            for model in impacted_models:
+                node_id = node_id_by_name.get(model["name"])
+                if not node_id:
+                    continue
+
+                base_cols = set(base_nodes.get(node_id, {}).get("columns", {}).keys())
+                curr_cols = set(current_nodes.get(node_id, {}).get("columns", {}).keys())
+
+                changes = []
+                for col in curr_cols - base_cols:
+                    changes.append({"column": col, "change_status": "added"})
+                for col in base_cols - curr_cols:
+                    changes.append({"column": col, "change_status": "removed"})
+                for col in base_cols & curr_cols:
+                    base_type = base_nodes[node_id]["columns"][col].get("type")
+                    curr_type = current_nodes[node_id]["columns"][col].get("type")
+                    if base_type != curr_type:
+                        changes.append({"column": col, "change_status": "modified"})
+
+                model["schema_changes"] = changes
+        except Exception as e:
+            errors.append({"step": "schema_diff", "message": str(e)})
+
+        # Step 3: Value diff (PK Join on modified non-view models)
+        if not skip_value_diff:
+            for model in impacted_models:
+                if model["materialized"] == "view" or model["change_status"] is None:
+                    continue  # skip views and downstream-only models
+                node_id = node_id_by_name.get(model["name"])
+                if not node_id:
+                    continue
+                try:
+                    model_info = self.context.adapter.get_model(node_id)
+                    pk = model_info.get("primary_key")
+                    if not pk:
+                        continue  # no PK → value_diff stays null
+
+                    # Get column info for building SQL
+                    columns_info = model_info.get("columns", {})
+                    non_pk_cols = [c for c in columns_info if c != pk]
+                    if not non_pk_cols:
+                        continue  # only PK column, no value diff to compute
+
+                    # Build relations for base and current schemas
+                    base_rel = self.context.adapter.create_relation(model["name"], base=True)
+                    curr_rel = self.context.adapter.create_relation(model["name"], base=False)
+                    if not base_rel or not curr_rel:
+                        continue
+
+                    # Build column diff expression: any non-PK column changed
+                    col_diff_parts = []
+                    for col in non_pk_cols:
+                        col_diff_parts.append(f'b."{col}" IS DISTINCT FROM c."{col}"')
+                    col_diff_expr = " OR ".join(col_diff_parts)
+
+                    # Build per-column stats: count of changed rows + mean for numeric columns
+                    numeric_types = {
+                        "TINYINT",
+                        "SMALLINT",
+                        "INTEGER",
+                        "BIGINT",
+                        "INT",
+                        "FLOAT",
+                        "DOUBLE",
+                        "DECIMAL",
+                        "NUMERIC",
+                        "REAL",
+                        "HUGEINT",
+                        "INT1",
+                        "INT2",
+                        "INT4",
+                        "INT8",
+                        "FLOAT4",
+                        "FLOAT8",
+                    }
+                    per_col_parts = []
+                    for col in non_pk_cols:
+                        per_col_parts.append(
+                            f'COUNT(CASE WHEN b."{pk}" IS NOT NULL AND c."{pk}" IS NOT NULL '
+                            f'AND b."{col}" IS DISTINCT FROM c."{col}" THEN 1 END) AS "{col}__changed"'
+                        )
+                        col_type = columns_info[col].get("type", "").upper().split("(")[0].strip()
+                        if col_type in numeric_types:
+                            per_col_parts.append(f'AVG(b."{col}") AS "{col}__base_mean"')
+                            per_col_parts.append(f'AVG(c."{col}") AS "{col}__curr_mean"')
+
+                    per_col_sql = ",\n  ".join(per_col_parts)
+
+                    sql = (
+                        f"SELECT\n"
+                        f'  COUNT(CASE WHEN b."{pk}" IS NULL THEN 1 END) AS rows_added,\n'
+                        f'  COUNT(CASE WHEN c."{pk}" IS NULL THEN 1 END) AS rows_removed,\n'
+                        f'  COUNT(CASE WHEN b."{pk}" IS NOT NULL AND c."{pk}" IS NOT NULL\n'
+                        f"             AND ({col_diff_expr}) THEN 1 END) AS rows_changed,\n"
+                        f"  {per_col_sql}\n"
+                        f"FROM {curr_rel} c\n"
+                        f'FULL OUTER JOIN {base_rel} b ON c."{pk}" = b."{pk}"'
+                    )
+
+                    def _run_value_diff_query(adapter, query):
+                        with adapter.connection_named("value_diff"):
+                            _, table = adapter.execute(query, fetch=True)
+                            return table
+
+                    table = await asyncio.get_event_loop().run_in_executor(
+                        None, _run_value_diff_query, self.context.adapter, sql
+                    )
+
+                    if table and len(table) > 0:
+                        row = table[0]
+                        rows_added = int(row[0])
+                        rows_removed = int(row[1])
+                        rows_changed = int(row[2])
+
+                        # Parse per-column stats from remaining columns
+                        col_idx = 3
+                        columns_result = {}
+                        for col in non_pk_cols:
+                            col_changed = int(row[col_idx])
+                            col_idx += 1
+                            col_type = columns_info[col].get("type", "").upper().split("(")[0].strip()
+                            base_mean = None
+                            current_mean = None
+                            if col_type in numeric_types:
+                                raw_base = row[col_idx]
+                                raw_curr = row[col_idx + 1]
+                                base_mean = float(raw_base) if raw_base is not None else None
+                                current_mean = float(raw_curr) if raw_curr is not None else None
+                                col_idx += 2
+                            columns_result[col] = {
+                                "rows_changed": col_changed,
+                                "base_mean": base_mean,
+                                "current_mean": current_mean,
+                            }
+
+                        model["value_diff"] = {
+                            "rows_added": rows_added,
+                            "rows_removed": rows_removed,
+                            "rows_changed": rows_changed,
+                            "columns": columns_result,
+                        }
+                except Exception as e:
+                    errors.append({"step": "value_diff", "model": model["name"], "message": str(e)})
+
+        # Step 4: Suggested deep dives (deterministic rules)
+        suggested_deep_dives = []
+        seen_models = set()  # Avoid duplicate suggestions
+
+        for model in impacted_models:
+            name = model["name"]
+
+            # R1: rows_changed high + row_count stable → profile changed columns
+            if (
+                model["value_diff"] is not None
+                and model["row_count"] is not None
+                and model["row_count"]["delta_pct"] is not None
+                and abs(model["row_count"]["delta_pct"]) <= 5
+            ):
+                vd = model["value_diff"]
+                # Calculate ratio of changed rows to total matched rows
+                total_matched = (model["row_count"]["current"] or 0) - vd["rows_added"]
+                if total_matched > 0 and vd["rows_changed"] / total_matched > 0.2:
+                    top_cols = [
+                        col for col, stats in (vd.get("columns") or {}).items() if stats.get("rows_changed", 0) > 0
+                    ]
+                    if name not in seen_models:
+                        suggested_deep_dives.append(
+                            {
+                                "model": name,
+                                "tool": "profile_diff",
+                                "columns": top_cols if top_cols else None,
+                            }
+                        )
+                        seen_models.add(name)
+                        continue
+
+            # R2: row_count delta > 5% → profile whole model
+            if model["row_count"] and model["row_count"]["delta_pct"] is not None:
+                if abs(model["row_count"]["delta_pct"]) > 5:
+                    if name not in seen_models:
+                        suggested_deep_dives.append(
+                            {
+                                "model": name,
+                                "tool": "profile_diff",
+                                "columns": None,  # whole model
+                            }
+                        )
+                        seen_models.add(name)
+                        continue
+
+            # R3: schema_changes non-empty → profile changed columns
+            if model["schema_changes"]:
+                changed_cols = [c["column"] for c in model["schema_changes"]]
+                if name not in seen_models:
+                    suggested_deep_dives.append(
+                        {
+                            "model": name,
+                            "tool": "profile_diff",
+                            "columns": changed_cols,
+                        }
+                    )
+                    seen_models.add(name)
+                    continue
+
+            # R4: value_diff null on modified model → profile whole model
+            is_modified = model["change_status"] in ("modified", "added")
+            if model["value_diff"] is None and is_modified:
+                if name not in seen_models:
+                    suggested_deep_dives.append(
+                        {
+                            "model": name,
+                            "tool": "profile_diff",
+                            "columns": None,
+                        }
+                    )
+                    seen_models.add(name)
+
+        if sentry_metrics:
+            duration = time.time() - start_time
+            sentry_metrics.distribution("mcp.impact_analysis.duration", duration, unit="second")
+            sentry_metrics.distribution("mcp.impact_analysis.impacted_count", len(impacted_models))
+
+        result = {
+            "_guidance": (
+                "DO NOT OVERRIDE these classifications with your own analysis. "
+                "These lists are computed from the lineage DAG and are definitive. "
+                "Copy impacted_models and not_impacted_models directly into your output. "
+                "When value_diff.rows_changed is present for a model, "
+                "use that number as the affected_row_count (exact count of "
+                "rows whose values differ between base and current). "
+                "A model with 0 value changes is still impacted if it appears "
+                "in this list — impact means 'in the blast radius', not "
+                "'has changed data'."
+            ),
+            "classification_source": "lineage_dag",
+            "impacted_models": impacted_models,
+            "not_impacted_models": not_impacted_models,
+            "suggested_deep_dives": suggested_deep_dives,
+            "errors": errors,
+        }
         return self._maybe_add_single_env_warning(result)
 
     async def _tool_get_model(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
