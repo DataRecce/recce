@@ -200,13 +200,20 @@ def _set_compiled_code(adapter, node_id, compiled_code, base=False):
     """Set compiled_code on a manifest node after set_artifacts has been called.
 
     The test helper's set_artifacts round-trips through writable_manifest() which
-    strips compiled_code. This helper patches it back directly on both the
-    WritableManifest and the Manifest used by the adapter.
+    strips compiled_code. This helper patches it back on both the WritableManifest
+    and the Manifest, and clears the lru_cache so get_cll_cached picks up the change.
     """
     writable = adapter.curr_manifest if not base else adapter.base_manifest
     if node_id in writable.nodes:
         writable.nodes[node_id].compiled_code = compiled_code
         writable.nodes[node_id].compiled = True
+
+    manifest = adapter.previous_state.manifest if base else adapter.manifest
+    if node_id in manifest.nodes:
+        manifest.nodes[node_id].compiled_code = compiled_code
+        manifest.nodes[node_id].compiled = True
+
+    adapter.get_cll_cached.cache_clear()
 
 
 def test_cll_with_compiled_code(dbt_test_helper):

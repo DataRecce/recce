@@ -4,7 +4,7 @@ import os
 import time
 import uuid
 from contextlib import contextmanager
-from copy import deepcopy
+from copy import copy
 from dataclasses import dataclass, fields
 from errno import ENOENT
 from functools import lru_cache
@@ -1047,23 +1047,29 @@ class DbtAdapter(BaseAdapter):
             for cll_node_id in cll_node_ids:
                 if cll_node_id not in allowed_related_nodes:
                     continue
-                cll_data_one = deepcopy(self.get_cll_cached(cll_node_id, base=False))
+                cll_data_one = self.get_cll_cached(cll_node_id, base=False)
                 cll_tracker.increment_cll_nodes()
                 if cll_data_one is None:
                     continue
 
-                nodes[cll_node_id] = cll_data_one.nodes.get(cll_node_id)
-                node_diff = None
-                if change_analysis:
-                    node_diff = self.get_change_analysis_cached(cll_node_id)
-                    cll_tracker.increment_change_analysis_nodes()
-                if node_diff is not None:
-                    nodes[cll_node_id].change_status = node_diff.change_status
-                    if node_diff.change is not None:
-                        nodes[cll_node_id].change_category = node_diff.change.category
-                for c_id, c in cll_data_one.columns.items():
-                    columns[c_id] = c
+                # Shallow-copy node to avoid mutating the cache
+                node = cll_data_one.nodes.get(cll_node_id)
+                if node is not None:
+                    node_diff = None
+                    if change_analysis:
+                        node_diff = self.get_change_analysis_cached(cll_node_id)
+                        cll_tracker.increment_change_analysis_nodes()
                     if node_diff is not None:
+                        node = copy(node)
+                        node.change_status = node_diff.change_status
+                        if node_diff.change is not None:
+                            node.change_category = node_diff.change.category
+                    nodes[cll_node_id] = node
+
+                for c_id, c in cll_data_one.columns.items():
+                    if node_diff is not None:
+                        # Shallow-copy column to avoid mutating the cache
+                        c = copy(c)
                         if node_diff.change_status == "added":
                             c.change_status = "added"
                         elif node_diff.change_status == "removed":
@@ -1265,7 +1271,7 @@ class DbtAdapter(BaseAdapter):
             schema[table_name] = columns
         return schema
 
-    @lru_cache(maxsize=128)
+    @lru_cache(maxsize=4096)
     def get_cll_cached(self, node_id: str, base: Optional[bool] = False) -> Optional[CllData]:
         cll_tracker = CLLPerformanceTracking()
 
@@ -1287,7 +1293,7 @@ class DbtAdapter(BaseAdapter):
                 cll_data.parent_map[column_id] = set()
             return cll_data
 
-        manifest = as_manifest(self.get_manifest(base))
+        manifest = self.previous_state.manifest if base else self.manifest
         catalog = self.curr_catalog if base is False else self.base_catalog
         resource_type = node.resource_type
         if resource_type not in {"model", "seed", "source", "snapshot"}:
