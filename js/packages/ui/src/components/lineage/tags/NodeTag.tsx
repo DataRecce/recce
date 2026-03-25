@@ -34,7 +34,7 @@ function NodeTagComponent({
 }: NodeTagProps) {
   const isDark = useIsDark();
 
-  const showMaterialization = resourceType === "model" && materialized;
+  const showMaterialization = resourceType === "model" && materialized != null;
 
   const { icon: Icon } = showMaterialization
     ? getIconForMaterialization(materialized)
