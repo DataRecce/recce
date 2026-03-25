@@ -1239,10 +1239,8 @@ class RecceMCPServer:
             else:
                 not_impacted_models.append(name)
 
-        # Step 2a: Row count diff (skip views and removed models)
-        countable_models = [
-            m for m in impacted_models if m["materialized"] != "view" and m["change_status"] != "removed"
-        ]
+        # Step 2a: Row count diff (skip removed models; include views for delta detection)
+        countable_models = [m for m in impacted_models if m["change_status"] != "removed"]
         if countable_models:
             countable_names = [m["name"] for m in countable_models]
             try:
