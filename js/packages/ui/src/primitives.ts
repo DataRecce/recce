@@ -64,6 +64,7 @@ export {
   type LineageNodeProps,
   type NodeChangeStatus,
 } from "./components/lineage/nodes";
+export { NodeTag, type NodeTagProps } from "./components/lineage/tags";
 
 // =============================================================================
 // CHECK PRIMITIVES
