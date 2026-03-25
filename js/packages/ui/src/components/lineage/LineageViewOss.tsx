@@ -191,6 +191,36 @@ export function PrivateLineageView(
   }>({ pending: false });
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
 
+  // Fetch the full CLL map (one-time), cache it, slice for the given params,
+  // and patch the lineage diff cache with change data.
+  async function fetchAndCacheFullMap(
+    cllApiInput: CllInput,
+  ): Promise<ColumnLineageData> {
+    const fullMap = await actionGetCll.mutateAsync({
+      change_analysis: cllApiInput.change_analysis,
+      full_map: true,
+    });
+    fullCllMapRef.current = fullMap;
+    const cll = sliceCllMap(fullMap, cllApiInput);
+    if (cllApiInput.change_analysis && fullMap) {
+      cllCachePatchRef.current = { pending: true, cllData: cll };
+      queryClient.setQueryData(
+        cacheKeys.lineage(),
+        (old: ServerInfoResult | undefined) => {
+          if (!old) return old;
+          return {
+            ...old,
+            lineage: {
+              ...old.lineage,
+              diff: patchLineageDiffFromCll(old.lineage.diff, fullMap),
+            },
+          };
+        },
+      );
+    }
+    return cll;
+  }
+
   const findNodeByName = useCallback(
     (name: string) => {
       return nodes.filter(isLineageGraphNode).find((n) => n.data.name === name);
@@ -429,29 +459,7 @@ export function PrivateLineageView(
               changeAnalysisModeRef.current,
           };
           try {
-            const fullMap = await actionGetCll.mutateAsync({
-              change_analysis: cllApiInput.change_analysis,
-              full_map: true,
-            });
-            fullCllMapRef.current = fullMap;
-            cll = sliceCllMap(fullMap, cllApiInput);
-            // Patch the lineage diff cache with change data from full CLL map
-            if (cllApiInput.change_analysis && fullMap) {
-              cllCachePatchRef.current = { pending: true, cllData: cll };
-              queryClient.setQueryData(
-                cacheKeys.lineage(),
-                (old: ServerInfoResult | undefined) => {
-                  if (!old) return old;
-                  return {
-                    ...old,
-                    lineage: {
-                      ...old.lineage,
-                      diff: patchLineageDiffFromCll(old.lineage.diff, fullMap),
-                    },
-                  };
-                },
-              );
-            }
+            cll = await fetchAndCacheFullMap(cllApiInput);
           } catch (e) {
             if (e instanceof AxiosError) {
               const e2 = e as AxiosError<{ detail?: string }>;
@@ -707,31 +715,7 @@ export function PrivateLineageView(
         if (fullCllMapRef.current) {
           cll = sliceCllMap(fullCllMapRef.current, cllApiInput);
         } else {
-          const fullMap = await actionGetCll.mutateAsync({
-            ...cllApiInput,
-            full_map: true,
-          });
-          fullCllMapRef.current = fullMap;
-          cll = sliceCllMap(fullMap, cllApiInput);
-          // Patch the lineage diff cache with change data from full CLL map.
-          // Also set the guard ref so the useLayoutEffect that re-fires
-          // (due to lineageGraph recomputing) skips the redundant CLL call.
-          if (cllApiInput.change_analysis && fullMap) {
-            cllCachePatchRef.current = { pending: true, cllData: cll };
-            queryClient.setQueryData(
-              cacheKeys.lineage(),
-              (old: ServerInfoResult | undefined) => {
-                if (!old) return old;
-                return {
-                  ...old,
-                  lineage: {
-                    ...old.lineage,
-                    diff: patchLineageDiffFromCll(old.lineage.diff, fullMap),
-                  },
-                };
-              },
-            );
-          }
+          cll = await fetchAndCacheFullMap(cllApiInput);
         }
       } catch (e) {
         if (e instanceof AxiosError) {

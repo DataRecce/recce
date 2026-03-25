@@ -277,10 +277,27 @@ function buildSlice(
 ): ColumnLineageData {
   const { nodes, columns, parent_map } = fullMap.current;
 
+  // Shallow-clone nodes: set impacted flag + filter node.columns
   const slicedNodes: typeof nodes = {};
   for (const nid of reachableNodes) {
     if (nodes[nid]) {
-      slicedNodes[nid] = nodes[nid];
+      const orig = nodes[nid];
+      const isExtra = extraNodes?.has(nid) ?? false;
+      // Filter node.columns to only include columns in the reachable set
+      const filteredColumns: NonNullable<typeof orig.columns> = {};
+      if (orig.columns) {
+        for (const [colName, colData] of Object.entries(orig.columns)) {
+          const colKey = `${nid}_${colName}`;
+          if (reachableColumns.has(colKey)) {
+            filteredColumns[colName] = colData;
+          }
+        }
+      }
+      slicedNodes[nid] = {
+        ...orig,
+        impacted: isExtra ? false : true,
+        columns: filteredColumns,
+      };
     }
   }
 

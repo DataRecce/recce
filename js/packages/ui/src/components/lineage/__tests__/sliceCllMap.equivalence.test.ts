@@ -52,6 +52,16 @@ function assertEquivalent(
   const serverCols = sortedKeys(server.current.columns);
   expect(clientCols, `${label}: columns`).toEqual(serverCols);
 
+  // Check node metadata: impacted flag and node.columns
+  for (const nid of serverNodes) {
+    const cn = client.current.nodes[nid];
+    const sn = server.current.nodes[nid];
+    expect(cn.impacted, `${label}: ${nid}.impacted`).toEqual(sn.impacted);
+    expect(sortedKeys(cn.columns ?? {}), `${label}: ${nid}.columns`).toEqual(
+      sortedKeys(sn.columns ?? {}),
+    );
+  }
+
   const clientParent = sortMapValues(client.current.parent_map);
   const serverParent = sortMapValues(server.current.parent_map);
   expect(sortedKeys(clientParent), `${label}: parent_map keys`).toEqual(
