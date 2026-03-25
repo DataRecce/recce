@@ -553,18 +553,6 @@ export function getIconForResourceType(
 }
 
 /**
- * Materialization types supported by dbt
- */
-export type MaterializationType =
-  | "table"
-  | "view"
-  | "incremental"
-  | "ephemeral"
-  | "materialized_view"
-  | "dynamic_table"
-  | "streaming_table";
-
-/**
  * Get icon and color for a materialization type
  *
  * @param materialization - The materialization type (table, view, incremental, etc.)

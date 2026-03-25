@@ -28,7 +28,13 @@ function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
         }
         subheader={
           <Stack direction="row" spacing="8px" sx={{ p: "16px" }}>
-            <NodeTag resourceType={node.data.resourceType} />
+            <NodeTag
+              resourceType={node.data.resourceType}
+              materialized={
+                node.data.data.current?.config?.materialized ??
+                node.data.data.base?.config?.materialized
+              }
+            />
             {node.data.resourceType === "model" && (
               <RowCountDiffTag node={node} />
             )}
