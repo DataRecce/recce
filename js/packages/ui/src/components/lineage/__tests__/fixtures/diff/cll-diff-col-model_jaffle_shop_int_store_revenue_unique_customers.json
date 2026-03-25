@@ -1,0 +1,139 @@
+{
+  "current": {
+    "nodes": {},
+    "columns": {
+      "seed.jaffle_shop.raw_orders_user_id": {
+        "id": "seed.jaffle_shop.raw_orders_user_id",
+        "table_id": "seed.jaffle_shop.raw_orders",
+        "name": "user_id",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_performance_unique_customers": {
+        "id": "model.jaffle_shop.store_performance_unique_customers",
+        "table_id": "model.jaffle_shop.store_performance",
+        "name": "unique_customers",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_order_assignments_customer_id": {
+        "id": "model.jaffle_shop.int_store_order_assignments_customer_id",
+        "table_id": "model.jaffle_shop.int_store_order_assignments",
+        "name": "customer_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_performance_unique_customers": {
+        "id": "model.jaffle_shop.int_store_performance_unique_customers",
+        "table_id": "model.jaffle_shop.int_store_performance",
+        "name": "unique_customers",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_revenue_unique_customers": {
+        "id": "model.jaffle_shop.int_store_revenue_unique_customers",
+        "table_id": "model.jaffle_shop.int_store_revenue",
+        "name": "unique_customers",
+        "type": "BIGINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_rankings_unique_customers": {
+        "id": "model.jaffle_shop.store_rankings_unique_customers",
+        "table_id": "model.jaffle_shop.store_rankings",
+        "name": "unique_customers",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_rankings_customer_reach_rank": {
+        "id": "model.jaffle_shop.store_rankings_customer_reach_rank",
+        "table_id": "model.jaffle_shop.store_rankings",
+        "name": "customer_reach_rank",
+        "type": "BIGINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_orders_customer_id": {
+        "id": "model.jaffle_shop.stg_orders_customer_id",
+        "table_id": "model.jaffle_shop.stg_orders",
+        "name": "customer_id",
+        "type": "INTEGER",
+        "transformation_type": "renamed",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.rpt_store_dashboard_unique_customers": {
+        "id": "model.jaffle_shop.rpt_store_dashboard_unique_customers",
+        "table_id": "model.jaffle_shop.rpt_store_dashboard",
+        "name": "unique_customers",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "seed.jaffle_shop.raw_orders_user_id": [],
+      "model.jaffle_shop.store_performance_unique_customers": [
+        "model.jaffle_shop.int_store_performance_unique_customers"
+      ],
+      "model.jaffle_shop.int_store_order_assignments_customer_id": [
+        "model.jaffle_shop.stg_orders_customer_id"
+      ],
+      "model.jaffle_shop.int_store_performance_unique_customers": [
+        "model.jaffle_shop.int_store_revenue_unique_customers"
+      ],
+      "model.jaffle_shop.int_store_revenue_unique_customers": [
+        "model.jaffle_shop.int_store_order_assignments_customer_id"
+      ],
+      "model.jaffle_shop.store_rankings_unique_customers": [
+        "model.jaffle_shop.store_performance_unique_customers"
+      ],
+      "model.jaffle_shop.store_rankings_customer_reach_rank": [
+        "model.jaffle_shop.store_performance_unique_customers"
+      ],
+      "model.jaffle_shop.stg_orders_customer_id": [
+        "seed.jaffle_shop.raw_orders_user_id"
+      ],
+      "model.jaffle_shop.rpt_store_dashboard_unique_customers": [
+        "model.jaffle_shop.store_rankings_unique_customers"
+      ]
+    },
+    "child_map": {
+      "model.jaffle_shop.stg_orders_customer_id": [
+        "model.jaffle_shop.int_store_order_assignments_customer_id"
+      ],
+      "model.jaffle_shop.int_store_performance_unique_customers": [
+        "model.jaffle_shop.store_performance_unique_customers"
+      ],
+      "model.jaffle_shop.int_store_revenue_unique_customers": [
+        "model.jaffle_shop.int_store_performance_unique_customers"
+      ],
+      "model.jaffle_shop.int_store_order_assignments_customer_id": [
+        "model.jaffle_shop.int_store_revenue_unique_customers"
+      ],
+      "model.jaffle_shop.store_performance_unique_customers": [
+        "model.jaffle_shop.store_rankings_customer_reach_rank",
+        "model.jaffle_shop.store_rankings_unique_customers"
+      ],
+      "seed.jaffle_shop.raw_orders_user_id": [
+        "model.jaffle_shop.stg_orders_customer_id"
+      ],
+      "model.jaffle_shop.store_rankings_unique_customers": [
+        "model.jaffle_shop.rpt_store_dashboard_unique_customers"
+      ]
+    }
+  }
+}

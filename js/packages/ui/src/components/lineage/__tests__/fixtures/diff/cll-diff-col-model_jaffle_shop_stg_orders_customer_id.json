@@ -1,0 +1,740 @@
+{
+  "current": {
+    "nodes": {
+      "model.jaffle_shop.rpt_customer_dashboard": {
+        "id": "model.jaffle_shop.rpt_customer_dashboard",
+        "name": "rpt_customer_dashboard",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with customer_360 as (\n    select * from {{ ref('customer_360') }}\n),\n\nsummary as (\n    select\n        count(*) as total_customers,\n        count(case when number_of_orders > 0 then 1 end) as active_customers,\n        avg(customer_lifetime_value) as avg_clv,\n        avg(number_of_orders) as avg_orders_per_customer,\n        count(case when customer_segment = 'Champion' then 1 end) as champion_customers,\n        count(case when customer_segment = 'At Risk' then 1 end) as at_risk_customers,\n        count(case when customer_segment = 'Lost' then 1 end) as lost_customers,\n        avg(review_count) as avg_reviews_per_customer\n    from customer_360\n)\n\nselect * from summary",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.int_customer_segments": {
+        "id": "model.jaffle_shop.int_customer_segments",
+        "name": "int_customer_segments",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with order_history as (\n    select * from {{ ref('int_customer_order_history') }}\n),\n\nfirst_last as (\n    select * from {{ ref('int_customer_first_last_orders') }}\n),\n\nrfm as (\n    select\n        oh.customer_id,\n        oh.first_name,\n        oh.last_name,\n        oh.total_orders,\n        oh.total_spent,\n        fl.days_since_last_order,\n        ntile(5) over (order by fl.days_since_last_order desc) as recency_score,\n        ntile(5) over (order by oh.total_orders) as frequency_score,\n        ntile(5) over (order by oh.total_spent) as monetary_score\n    from order_history oh\n    inner join first_last fl on oh.customer_id = fl.customer_id\n    where oh.total_orders > 0\n),\n\nsegmented as (\n    select\n        *,\n        recency_score + frequency_score + monetary_score as rfm_total,\n        case\n            when recency_score >= 4 and frequency_score >= 4 and monetary_score >= 4 then 'Champion'\n            when recency_score >= 4 and frequency_score >= 3 then 'Loyal'\n            when recency_score >= 4 and frequency_score <= 2 then 'New Customer'\n            when recency_score <= 2 and frequency_score >= 3 then 'At Risk'\n            when recency_score <= 2 and frequency_score <= 2 and monetary_score >= 3 then 'Cant Lose'\n            when recency_score <= 2 then 'Lost'\n            else 'Potential'\n        end as customer_segment\n    from rfm\n)\n\nselect * from segmented",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.int_customer_order_history": {
+        "id": "model.jaffle_shop.int_customer_order_history",
+        "name": "int_customer_order_history",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with customers as (\n    select * from {{ ref('stg_customers') }}\n),\n\norders as (\n    select * from {{ ref('int_order_enriched') }}\n),\n\nhistory as (\n    select\n        c.customer_id,\n        c.first_name,\n        c.last_name,\n        count(o.order_id) as total_orders,\n        coalesce(sum(o.subtotal), 0) as total_spent,\n        coalesce(sum(o.total_margin), 0) as total_margin_generated,\n        coalesce(avg(o.subtotal), 0) as avg_order_value,\n        coalesce(sum(o.total_quantity), 0) as total_items_purchased,\n        count(distinct o.order_date) as distinct_order_days\n    from customers c\n    left join orders o on c.customer_id = o.customer_id\n    group by c.customer_id, c.first_name, c.last_name\n)\n\nselect * from history",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.metric_customer_acquisition_monthly": {
+        "id": "model.jaffle_shop.metric_customer_acquisition_monthly",
+        "name": "metric_customer_acquisition_monthly",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with cohorts as (\n    select * from {{ ref('customer_cohorts') }}\n),\n\nfinal as (\n    select\n        cohort_month,\n        cohort_size as new_customers,\n        avg_lifetime_orders,\n        avg_tenure_days,\n        sum(cohort_size) over (order by cohort_month) as cumulative_customers\n    from cohorts\n)\n\nselect * from final",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.customer_lifetime_value": {
+        "id": "model.jaffle_shop.customer_lifetime_value",
+        "name": "customer_lifetime_value",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with customers as (\n    select * from {{ ref('customers') }}\n),\n\nfirst_last as (\n    select * from {{ ref('int_customer_first_last_orders') }}\n),\n\nclv as (\n    select\n        c.customer_id,\n        c.first_name,\n        c.last_name,\n        c.number_of_orders,\n        c.customer_lifetime_value as total_revenue,\n        fl.first_order_date,\n        fl.last_order_date,\n        fl.customer_tenure_days,\n        fl.days_since_last_order,\n        case when fl.customer_tenure_days > 0\n            then round(c.customer_lifetime_value / (fl.customer_tenure_days / 30.0), 2)\n            else c.customer_lifetime_value\n        end as monthly_value,\n        case when c.number_of_orders > 0\n            then round(c.customer_lifetime_value / c.number_of_orders, 2)\n            else 0\n        end as avg_order_value\n    from customers c\n    left join first_last fl on c.customer_id = fl.customer_id\n)\n\nselect * from clv",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.customer_cohorts": {
+        "id": "model.jaffle_shop.customer_cohorts",
+        "name": "customer_cohorts",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with first_last as (\n    select * from {{ ref('int_customer_first_last_orders') }}\n),\n\ncohorts as (\n    select\n        {{ dbt.date_trunc('month', 'first_order_date') }} as cohort_month,\n        count(*) as cohort_size,\n        avg(lifetime_orders) as avg_lifetime_orders,\n        avg(customer_tenure_days) as avg_tenure_days\n    from first_last\n    group by {{ dbt.date_trunc('month', 'first_order_date') }}\n)\n\nselect * from cohorts",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.int_customer_first_last_orders": {
+        "id": "model.jaffle_shop.int_customer_first_last_orders",
+        "name": "int_customer_first_last_orders",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "{{ config(materialized='table') }}\n\nwith orders as (\n    select * from {{ ref('int_order_enriched') }}\n),\n\nfirst_last as (\n    select\n        customer_id,\n        min(order_date) as first_order_date,\n        max(order_date) as last_order_date,\n        {{ dbt.datediff('min(order_date)', 'max(order_date)', 'day') }} as customer_tenure_days,\n        count(*) as lifetime_orders,\n        {{ dbt.datediff('max(order_date)', '(select max(order_date) from orders)', 'day') }} as days_since_last_order\n    from orders\n    group by customer_id\n)\n\nselect * from first_last",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "customer_id": {
+            "id": "model.jaffle_shop.int_customer_first_last_orders_customer_id",
+            "table_id": "model.jaffle_shop.int_customer_first_last_orders",
+            "name": "customer_id",
+            "type": "INTEGER",
+            "transformation_type": "passthrough",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.customer_acquisition": {
+        "id": "model.jaffle_shop.customer_acquisition",
+        "name": "customer_acquisition",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with first_last as (\n    select * from {{ ref('int_customer_first_last_orders') }}\n),\n\norders as (\n    select * from {{ ref('int_order_enriched') }}\n),\n\nfirst_order_details as (\n    select\n        fl.customer_id,\n        fl.first_order_date,\n        o.has_promotion as acquired_via_promotion,\n        o.promotion_name as acquisition_promotion,\n        o.subtotal as first_order_value,\n        o.item_count as first_order_items,\n        {{ dbt.date_trunc('month', 'fl.first_order_date') }} as acquisition_month\n    from first_last fl\n    inner join orders o on fl.customer_id = o.customer_id\n        and fl.first_order_date = o.order_date\n)\n\nselect * from first_order_details",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "customer_id": {
+            "id": "model.jaffle_shop.customer_acquisition_customer_id",
+            "table_id": "model.jaffle_shop.customer_acquisition",
+            "name": "customer_id",
+            "type": "INTEGER",
+            "transformation_type": "passthrough",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.customer_segments_final": {
+        "id": "model.jaffle_shop.customer_segments_final",
+        "name": "customer_segments_final",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with segments as (\n    select * from {{ ref('int_customer_segments') }}\n),\n\nfinal as (\n    select\n        customer_id,\n        first_name,\n        last_name,\n        customer_segment,\n        recency_score,\n        frequency_score,\n        monetary_score,\n        rfm_total,\n        total_orders,\n        total_spent,\n        days_since_last_order\n    from segments\n)\n\nselect * from final",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.customers": {
+        "id": "model.jaffle_shop.customers",
+        "name": "customers",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with customers as (\n\n    select * from {{ ref('stg_customers') }}\n\n),\n\norders as (\n\n    select * from {{ ref('stg_orders') }}\n\n),\n\npayments as (\n\n    select * from {{ ref('stg_payments') }}\n\n),\n\ncustomer_orders as (\n\n        select\n        customer_id,\n\n        min(order_date) as first_order,\n        max(order_date) as most_recent_order,\n        count(order_id) as number_of_orders\n    from orders\n\n    group by customer_id\n\n),\n\ncustomer_payments as (\n\n    select\n        orders.customer_id,\n        sum(amount) as total_amount\n\n    from payments\n\n    left join orders on\n         payments.order_id = orders.order_id\n\n    group by orders.customer_id\n\n),\n\nfinal as (\n\n    select\n        customers.customer_id,\n        customers.first_name,\n        customers.last_name,\n        customer_orders.first_order,\n        customer_orders.most_recent_order,\n        customer_orders.number_of_orders,\n        customer_payments.total_amount as customer_lifetime_value\n\n    from customers\n\n    left join customer_orders\n        on customers.customer_id = customer_orders.customer_id\n\n    left join customer_payments\n        on  customers.customer_id = customer_payments.customer_id\n\n)\n\nselect * from final",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.metric_customer_retention_monthly": {
+        "id": "model.jaffle_shop.metric_customer_retention_monthly",
+        "name": "metric_customer_retention_monthly",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with retention as (\n    select * from {{ ref('customer_retention') }}\n),\n\ncohort_sizes as (\n    select\n        cohort_month,\n        customers as cohort_size\n    from retention\n    where months_since_first = 0\n),\n\nrates as (\n    select\n        r.cohort_month,\n        r.months_since_first,\n        r.customers as retained_customers,\n        cs.cohort_size,\n        round(cast(r.customers as decimal) / cs.cohort_size * 100, 1) as retention_rate\n    from retention r\n    inner join cohort_sizes cs on r.cohort_month = cs.cohort_month\n)\n\nselect * from rates",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "retained_customers": {
+            "id": "model.jaffle_shop.metric_customer_retention_monthly_retained_customers",
+            "table_id": "model.jaffle_shop.metric_customer_retention_monthly",
+            "name": "retained_customers",
+            "type": "BIGINT",
+            "transformation_type": "renamed",
+            "change_status": null,
+            "depends_on": []
+          },
+          "cohort_size": {
+            "id": "model.jaffle_shop.metric_customer_retention_monthly_cohort_size",
+            "table_id": "model.jaffle_shop.metric_customer_retention_monthly",
+            "name": "cohort_size",
+            "type": "BIGINT",
+            "transformation_type": "renamed",
+            "change_status": null,
+            "depends_on": []
+          },
+          "retention_rate": {
+            "id": "model.jaffle_shop.metric_customer_retention_monthly_retention_rate",
+            "table_id": "model.jaffle_shop.metric_customer_retention_monthly",
+            "name": "retention_rate",
+            "type": "DOUBLE",
+            "transformation_type": "derived",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.customer_retention": {
+        "id": "model.jaffle_shop.customer_retention",
+        "name": "customer_retention",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with first_last as (\n    select * from {{ ref('int_customer_first_last_orders') }}\n),\n\norders as (\n    select * from {{ ref('int_order_enriched') }}\n),\n\ncohort_orders as (\n    select\n        fl.customer_id,\n        {{ dbt.date_trunc('month', 'fl.first_order_date') }} as cohort_month,\n        {{ dbt.date_trunc('month', 'o.order_date') }} as order_month,\n        {{ dbt.datediff('fl.first_order_date', 'o.order_date', 'month') }} as months_since_first\n    from first_last fl\n    inner join orders o on fl.customer_id = o.customer_id\n),\n\nretention as (\n    select\n        cohort_month,\n        months_since_first,\n        count(distinct customer_id) as customers\n    from cohort_orders\n    group by cohort_month, months_since_first\n)\n\nselect * from retention",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "customers": {
+            "id": "model.jaffle_shop.customer_retention_customers",
+            "table_id": "model.jaffle_shop.customer_retention",
+            "name": "customers",
+            "type": "BIGINT",
+            "transformation_type": "derived",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.int_customer_payment_methods": {
+        "id": "model.jaffle_shop.int_customer_payment_methods",
+        "name": "int_customer_payment_methods",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with payments as (\n    select * from {{ ref('stg_payments') }}\n),\n\norders as (\n    select * from {{ ref('stg_orders') }}\n),\n\ncustomer_payments as (\n    select\n        o.customer_id,\n        p.payment_method,\n        count(*) as usage_count,\n        sum(p.amount) as total_amount\n    from payments p\n    inner join orders o on p.order_id = o.order_id\n    group by o.customer_id, p.payment_method\n),\n\npreferred as (\n    select\n        customer_id,\n        payment_method as preferred_payment_method,\n        row_number() over (partition by customer_id order by usage_count desc) as rn\n    from customer_payments\n),\n\npivoted as (\n    select\n        cp.customer_id,\n        sum(case when cp.payment_method = 'credit_card' then cp.total_amount else 0 end) as credit_card_total,\n        sum(case when cp.payment_method = 'bank_transfer' then cp.total_amount else 0 end) as bank_transfer_total,\n        sum(case when cp.payment_method = 'coupon' then cp.total_amount else 0 end) as coupon_total,\n        sum(case when cp.payment_method = 'gift_card' then cp.total_amount else 0 end) as gift_card_total,\n        max(pref.preferred_payment_method) as preferred_payment_method\n    from customer_payments cp\n    left join preferred pref on cp.customer_id = pref.customer_id and pref.rn = 1\n    group by cp.customer_id\n)\n\nselect * from pivoted",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "customer_id": {
+            "id": "model.jaffle_shop.int_customer_payment_methods_customer_id",
+            "table_id": "model.jaffle_shop.int_customer_payment_methods",
+            "name": "customer_id",
+            "type": "INTEGER",
+            "transformation_type": "passthrough",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.rpt_executive_dashboard": {
+        "id": "model.jaffle_shop.rpt_executive_dashboard",
+        "name": "rpt_executive_dashboard",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with monthly_sales as (\n    select * from {{ ref('metric_monthly_sales') }}\n),\n\nsegments as (\n    select\n        customer_segment,\n        count(*) as customer_count,\n        sum(total_spent) as segment_revenue\n    from {{ ref('customer_segments_final') }}\n    group by customer_segment\n),\n\nmargin as (\n    select\n        sum(total_revenue) as total_revenue,\n        sum(total_margin) as total_margin,\n        sum(total_net_revenue) as total_net_revenue,\n        round(sum(total_margin) / nullif(sum(total_revenue), 0) * 100, 1) as overall_margin_pct\n    from {{ ref('gross_margin') }}\n),\n\nfinal as (\n    select\n        ms.month_start,\n        ms.total_orders,\n        ms.total_revenue,\n        ms.net_revenue,\n        ms.total_margin,\n        m.overall_margin_pct,\n        ms.total_items_sold,\n        ms.active_days\n    from monthly_sales ms\n    cross join margin m\n)\n\nselect * from final",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.customer_360": {
+        "id": "model.jaffle_shop.customer_360",
+        "name": "customer_360",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with customers as (\n    select * from {{ ref('customers') }}\n),\n\nclv as (\n    select * from {{ ref('customer_lifetime_value') }}\n),\n\nfirst_last as (\n    select * from {{ ref('int_customer_first_last_orders') }}\n),\n\nenriched_orders as (\n    select * from {{ ref('int_order_enriched') }}\n),\n\nretention as (\n    select\n        fl.customer_id,\n        max({{ dbt.datediff('fl.first_order_date', 'o.order_date', 'month') }}) as months_active\n    from first_last fl\n    inner join enriched_orders o on fl.customer_id = o.customer_id\n    group by fl.customer_id\n),\n\nreviews as (\n    select * from {{ ref('int_customer_review_activity') }}\n),\n\nsegments as (\n    select * from {{ ref('customer_segments_final') }}\n),\n\nunified as (\n    select\n        c.customer_id,\n        c.first_name,\n        c.last_name,\n        c.first_order,\n        c.most_recent_order,\n        c.number_of_orders,\n        c.customer_lifetime_value,\n        clv.monthly_value,\n        clv.avg_order_value,\n        clv.customer_tenure_days,\n        clv.days_since_last_order,\n        s.customer_segment,\n        s.rfm_total,\n        coalesce(r.review_count, 0) as review_count,\n        r.avg_rating as avg_review_rating,\n        coalesce(ret.months_active, 0) as months_active\n    from customers c\n    left join clv on c.customer_id = clv.customer_id\n    left join segments s on c.customer_id = s.customer_id\n    left join reviews r on c.customer_id = r.customer_id\n    left join retention ret on c.customer_id = ret.customer_id\n)\n\nselect * from unified",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      }
+    },
+    "columns": {
+      "seed.jaffle_shop.raw_orders_user_id": {
+        "id": "seed.jaffle_shop.raw_orders_user_id",
+        "table_id": "seed.jaffle_shop.raw_orders",
+        "name": "user_id",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.order_discounts_customer_id": {
+        "id": "model.jaffle_shop.order_discounts_customer_id",
+        "table_id": "model.jaffle_shop.order_discounts",
+        "name": "customer_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_performance_unique_customers": {
+        "id": "model.jaffle_shop.int_store_performance_unique_customers",
+        "table_id": "model.jaffle_shop.int_store_performance",
+        "name": "unique_customers",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.orders_customer_id": {
+        "id": "model.jaffle_shop.orders_customer_id",
+        "table_id": "model.jaffle_shop.orders",
+        "name": "customer_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.order_returns_customer_id": {
+        "id": "model.jaffle_shop.order_returns_customer_id",
+        "table_id": "model.jaffle_shop.order_returns",
+        "name": "customer_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_performance_unique_customers": {
+        "id": "model.jaffle_shop.store_performance_unique_customers",
+        "table_id": "model.jaffle_shop.store_performance",
+        "name": "unique_customers",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_customer_first_last_orders_customer_id": {
+        "id": "model.jaffle_shop.int_customer_first_last_orders_customer_id",
+        "table_id": "model.jaffle_shop.int_customer_first_last_orders",
+        "name": "customer_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_revenue_unique_customers": {
+        "id": "model.jaffle_shop.int_store_revenue_unique_customers",
+        "table_id": "model.jaffle_shop.int_store_revenue",
+        "name": "unique_customers",
+        "type": "BIGINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_daily_order_summary_unique_customers": {
+        "id": "model.jaffle_shop.int_daily_order_summary_unique_customers",
+        "table_id": "model.jaffle_shop.int_daily_order_summary",
+        "name": "unique_customers",
+        "type": "BIGINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.metric_weekly_sales_total_customer_visits": {
+        "id": "model.jaffle_shop.metric_weekly_sales_total_customer_visits",
+        "table_id": "model.jaffle_shop.metric_weekly_sales",
+        "name": "total_customer_visits",
+        "type": "HUGEINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_rankings_unique_customers": {
+        "id": "model.jaffle_shop.store_rankings_unique_customers",
+        "table_id": "model.jaffle_shop.store_rankings",
+        "name": "unique_customers",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_rankings_customer_reach_rank": {
+        "id": "model.jaffle_shop.store_rankings_customer_reach_rank",
+        "table_id": "model.jaffle_shop.store_rankings",
+        "name": "customer_reach_rank",
+        "type": "BIGINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.customer_acquisition_customer_id": {
+        "id": "model.jaffle_shop.customer_acquisition_customer_id",
+        "table_id": "model.jaffle_shop.customer_acquisition",
+        "name": "customer_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_order_assignments_customer_id": {
+        "id": "model.jaffle_shop.int_store_order_assignments_customer_id",
+        "table_id": "model.jaffle_shop.int_store_order_assignments",
+        "name": "customer_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.new_orders_customer_id": {
+        "id": "model.jaffle_shop.new_orders_customer_id",
+        "table_id": "model.jaffle_shop.new_orders",
+        "name": "customer_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.metric_daily_revenue_unique_customers": {
+        "id": "model.jaffle_shop.metric_daily_revenue_unique_customers",
+        "table_id": "model.jaffle_shop.metric_daily_revenue",
+        "name": "unique_customers",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.metric_customer_retention_monthly_retained_customers": {
+        "id": "model.jaffle_shop.metric_customer_retention_monthly_retained_customers",
+        "table_id": "model.jaffle_shop.metric_customer_retention_monthly",
+        "name": "retained_customers",
+        "type": "BIGINT",
+        "transformation_type": "renamed",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.metric_customer_retention_monthly_cohort_size": {
+        "id": "model.jaffle_shop.metric_customer_retention_monthly_cohort_size",
+        "table_id": "model.jaffle_shop.metric_customer_retention_monthly",
+        "name": "cohort_size",
+        "type": "BIGINT",
+        "transformation_type": "renamed",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.metric_customer_retention_monthly_retention_rate": {
+        "id": "model.jaffle_shop.metric_customer_retention_monthly_retention_rate",
+        "table_id": "model.jaffle_shop.metric_customer_retention_monthly",
+        "name": "retention_rate",
+        "type": "DOUBLE",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.customer_retention_customers": {
+        "id": "model.jaffle_shop.customer_retention_customers",
+        "table_id": "model.jaffle_shop.customer_retention",
+        "name": "customers",
+        "type": "BIGINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_order_enriched_customer_id": {
+        "id": "model.jaffle_shop.int_order_enriched_customer_id",
+        "table_id": "model.jaffle_shop.int_order_enriched",
+        "name": "customer_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.payments_fact_customer_id": {
+        "id": "model.jaffle_shop.payments_fact_customer_id",
+        "table_id": "model.jaffle_shop.payments_fact",
+        "name": "customer_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_orders_customer_id": {
+        "id": "model.jaffle_shop.stg_orders_customer_id",
+        "table_id": "model.jaffle_shop.stg_orders",
+        "name": "customer_id",
+        "type": "INTEGER",
+        "transformation_type": "renamed",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.order_fulfillment_customer_id": {
+        "id": "model.jaffle_shop.order_fulfillment_customer_id",
+        "table_id": "model.jaffle_shop.order_fulfillment",
+        "name": "customer_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_customer_payment_methods_customer_id": {
+        "id": "model.jaffle_shop.int_customer_payment_methods_customer_id",
+        "table_id": "model.jaffle_shop.int_customer_payment_methods",
+        "name": "customer_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.rpt_store_dashboard_unique_customers": {
+        "id": "model.jaffle_shop.rpt_store_dashboard_unique_customers",
+        "table_id": "model.jaffle_shop.rpt_store_dashboard",
+        "name": "unique_customers",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_orders_with_promotions_customer_id": {
+        "id": "model.jaffle_shop.int_orders_with_promotions_customer_id",
+        "table_id": "model.jaffle_shop.int_orders_with_promotions",
+        "name": "customer_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "model.jaffle_shop.rpt_customer_dashboard": [
+        "model.jaffle_shop.customer_360"
+      ],
+      "model.jaffle_shop.int_customer_segments": [
+        "model.jaffle_shop.int_customer_order_history",
+        "model.jaffle_shop.int_customer_first_last_orders",
+        "model.jaffle_shop.int_customer_first_last_orders_customer_id"
+      ],
+      "seed.jaffle_shop.raw_orders_user_id": [],
+      "model.jaffle_shop.int_customer_order_history": [
+        "model.jaffle_shop.int_order_enriched_customer_id"
+      ],
+      "model.jaffle_shop.order_discounts_customer_id": [
+        "model.jaffle_shop.int_order_enriched_customer_id"
+      ],
+      "model.jaffle_shop.int_store_performance_unique_customers": [
+        "model.jaffle_shop.int_store_revenue_unique_customers"
+      ],
+      "model.jaffle_shop.metric_customer_acquisition_monthly": [
+        "model.jaffle_shop.customer_cohorts"
+      ],
+      "model.jaffle_shop.orders_customer_id": [
+        "model.jaffle_shop.stg_orders_customer_id"
+      ],
+      "model.jaffle_shop.customer_lifetime_value": [
+        "model.jaffle_shop.int_customer_first_last_orders",
+        "model.jaffle_shop.int_customer_first_last_orders_customer_id",
+        "model.jaffle_shop.customers"
+      ],
+      "model.jaffle_shop.order_returns_customer_id": [
+        "model.jaffle_shop.orders_customer_id"
+      ],
+      "model.jaffle_shop.store_performance_unique_customers": [
+        "model.jaffle_shop.int_store_performance_unique_customers"
+      ],
+      "model.jaffle_shop.customer_cohorts": [
+        "model.jaffle_shop.int_customer_first_last_orders"
+      ],
+      "model.jaffle_shop.int_customer_first_last_orders": [
+        "model.jaffle_shop.int_order_enriched_customer_id"
+      ],
+      "model.jaffle_shop.int_customer_first_last_orders_customer_id": [
+        "model.jaffle_shop.int_order_enriched_customer_id"
+      ],
+      "model.jaffle_shop.int_store_revenue_unique_customers": [
+        "model.jaffle_shop.int_store_order_assignments_customer_id"
+      ],
+      "model.jaffle_shop.int_daily_order_summary_unique_customers": [
+        "model.jaffle_shop.int_order_enriched_customer_id"
+      ],
+      "model.jaffle_shop.metric_weekly_sales_total_customer_visits": [
+        "model.jaffle_shop.metric_daily_revenue_unique_customers"
+      ],
+      "model.jaffle_shop.store_rankings_unique_customers": [
+        "model.jaffle_shop.store_performance_unique_customers"
+      ],
+      "model.jaffle_shop.store_rankings_customer_reach_rank": [
+        "model.jaffle_shop.store_performance_unique_customers"
+      ],
+      "model.jaffle_shop.customer_acquisition": [
+        "model.jaffle_shop.int_order_enriched_customer_id",
+        "model.jaffle_shop.int_customer_first_last_orders",
+        "model.jaffle_shop.int_customer_first_last_orders_customer_id"
+      ],
+      "model.jaffle_shop.customer_acquisition_customer_id": [
+        "model.jaffle_shop.int_customer_first_last_orders_customer_id"
+      ],
+      "model.jaffle_shop.customer_segments_final": [
+        "model.jaffle_shop.int_customer_segments"
+      ],
+      "model.jaffle_shop.int_store_order_assignments_customer_id": [
+        "model.jaffle_shop.stg_orders_customer_id"
+      ],
+      "model.jaffle_shop.new_orders_customer_id": [
+        "model.jaffle_shop.stg_orders_customer_id"
+      ],
+      "model.jaffle_shop.metric_daily_revenue_unique_customers": [
+        "model.jaffle_shop.int_daily_order_summary_unique_customers"
+      ],
+      "model.jaffle_shop.customers": [
+        "model.jaffle_shop.stg_orders_customer_id"
+      ],
+      "model.jaffle_shop.metric_customer_retention_monthly": [
+        "model.jaffle_shop.customer_retention"
+      ],
+      "model.jaffle_shop.metric_customer_retention_monthly_retained_customers": [
+        "model.jaffle_shop.customer_retention_customers"
+      ],
+      "model.jaffle_shop.metric_customer_retention_monthly_cohort_size": [
+        "model.jaffle_shop.customer_retention_customers"
+      ],
+      "model.jaffle_shop.metric_customer_retention_monthly_retention_rate": [
+        "model.jaffle_shop.customer_retention_customers"
+      ],
+      "model.jaffle_shop.customer_retention": [
+        "model.jaffle_shop.int_order_enriched_customer_id",
+        "model.jaffle_shop.int_customer_first_last_orders",
+        "model.jaffle_shop.int_customer_first_last_orders_customer_id"
+      ],
+      "model.jaffle_shop.customer_retention_customers": [
+        "model.jaffle_shop.int_customer_first_last_orders_customer_id"
+      ],
+      "model.jaffle_shop.int_order_enriched_customer_id": [
+        "model.jaffle_shop.int_orders_with_promotions_customer_id"
+      ],
+      "model.jaffle_shop.payments_fact_customer_id": [
+        "model.jaffle_shop.orders_customer_id"
+      ],
+      "model.jaffle_shop.stg_orders_customer_id": [
+        "seed.jaffle_shop.raw_orders_user_id"
+      ],
+      "model.jaffle_shop.order_fulfillment_customer_id": [
+        "model.jaffle_shop.orders_customer_id"
+      ],
+      "model.jaffle_shop.int_customer_payment_methods": [
+        "model.jaffle_shop.stg_orders_customer_id"
+      ],
+      "model.jaffle_shop.int_customer_payment_methods_customer_id": [
+        "model.jaffle_shop.stg_orders_customer_id"
+      ],
+      "model.jaffle_shop.rpt_store_dashboard_unique_customers": [
+        "model.jaffle_shop.store_rankings_unique_customers"
+      ],
+      "model.jaffle_shop.rpt_executive_dashboard": [
+        "model.jaffle_shop.customer_segments_final"
+      ],
+      "model.jaffle_shop.customer_360": [
+        "model.jaffle_shop.customer_lifetime_value",
+        "model.jaffle_shop.customer_segments_final",
+        "model.jaffle_shop.int_order_enriched_customer_id",
+        "model.jaffle_shop.int_customer_first_last_orders_customer_id",
+        "model.jaffle_shop.customers",
+        "model.jaffle_shop.int_customer_first_last_orders"
+      ],
+      "model.jaffle_shop.int_orders_with_promotions_customer_id": [
+        "model.jaffle_shop.stg_orders_customer_id"
+      ]
+    },
+    "child_map": {
+      "model.jaffle_shop.customer_360": [
+        "model.jaffle_shop.rpt_customer_dashboard"
+      ],
+      "model.jaffle_shop.int_customer_order_history": [
+        "model.jaffle_shop.int_customer_segments"
+      ],
+      "model.jaffle_shop.int_customer_first_last_orders_customer_id": [
+        "model.jaffle_shop.customer_acquisition",
+        "model.jaffle_shop.customer_lifetime_value",
+        "model.jaffle_shop.customer_360",
+        "model.jaffle_shop.int_customer_segments",
+        "model.jaffle_shop.customer_retention_customers",
+        "model.jaffle_shop.customer_retention",
+        "model.jaffle_shop.customer_acquisition_customer_id"
+      ],
+      "model.jaffle_shop.int_customer_first_last_orders": [
+        "model.jaffle_shop.customer_acquisition",
+        "model.jaffle_shop.customer_lifetime_value",
+        "model.jaffle_shop.customer_360",
+        "model.jaffle_shop.int_customer_segments",
+        "model.jaffle_shop.customer_cohorts",
+        "model.jaffle_shop.customer_retention"
+      ],
+      "model.jaffle_shop.int_order_enriched_customer_id": [
+        "model.jaffle_shop.customer_acquisition",
+        "model.jaffle_shop.customer_360",
+        "model.jaffle_shop.int_customer_order_history",
+        "model.jaffle_shop.int_customer_first_last_orders_customer_id",
+        "model.jaffle_shop.customer_retention",
+        "model.jaffle_shop.int_customer_first_last_orders",
+        "model.jaffle_shop.int_daily_order_summary_unique_customers",
+        "model.jaffle_shop.order_discounts_customer_id"
+      ],
+      "model.jaffle_shop.int_store_revenue_unique_customers": [
+        "model.jaffle_shop.int_store_performance_unique_customers"
+      ],
+      "model.jaffle_shop.customer_cohorts": [
+        "model.jaffle_shop.metric_customer_acquisition_monthly"
+      ],
+      "model.jaffle_shop.stg_orders_customer_id": [
+        "model.jaffle_shop.int_store_order_assignments_customer_id",
+        "model.jaffle_shop.int_customer_payment_methods",
+        "model.jaffle_shop.customers",
+        "model.jaffle_shop.new_orders_customer_id",
+        "model.jaffle_shop.int_customer_payment_methods_customer_id",
+        "model.jaffle_shop.int_orders_with_promotions_customer_id",
+        "model.jaffle_shop.orders_customer_id"
+      ],
+      "model.jaffle_shop.customers": [
+        "model.jaffle_shop.customer_lifetime_value",
+        "model.jaffle_shop.customer_360"
+      ],
+      "model.jaffle_shop.orders_customer_id": [
+        "model.jaffle_shop.payments_fact_customer_id",
+        "model.jaffle_shop.order_returns_customer_id",
+        "model.jaffle_shop.order_fulfillment_customer_id"
+      ],
+      "model.jaffle_shop.int_store_performance_unique_customers": [
+        "model.jaffle_shop.store_performance_unique_customers"
+      ],
+      "model.jaffle_shop.int_store_order_assignments_customer_id": [
+        "model.jaffle_shop.int_store_revenue_unique_customers"
+      ],
+      "model.jaffle_shop.metric_daily_revenue_unique_customers": [
+        "model.jaffle_shop.metric_weekly_sales_total_customer_visits"
+      ],
+      "model.jaffle_shop.store_performance_unique_customers": [
+        "model.jaffle_shop.store_rankings_customer_reach_rank",
+        "model.jaffle_shop.store_rankings_unique_customers"
+      ],
+      "model.jaffle_shop.int_customer_segments": [
+        "model.jaffle_shop.customer_segments_final"
+      ],
+      "model.jaffle_shop.int_daily_order_summary_unique_customers": [
+        "model.jaffle_shop.metric_daily_revenue_unique_customers"
+      ],
+      "model.jaffle_shop.customer_retention": [
+        "model.jaffle_shop.metric_customer_retention_monthly"
+      ],
+      "model.jaffle_shop.customer_retention_customers": [
+        "model.jaffle_shop.metric_customer_retention_monthly_cohort_size",
+        "model.jaffle_shop.metric_customer_retention_monthly_retention_rate",
+        "model.jaffle_shop.metric_customer_retention_monthly_retained_customers"
+      ],
+      "model.jaffle_shop.int_orders_with_promotions_customer_id": [
+        "model.jaffle_shop.int_order_enriched_customer_id"
+      ],
+      "seed.jaffle_shop.raw_orders_user_id": [
+        "model.jaffle_shop.stg_orders_customer_id"
+      ],
+      "model.jaffle_shop.store_rankings_unique_customers": [
+        "model.jaffle_shop.rpt_store_dashboard_unique_customers"
+      ],
+      "model.jaffle_shop.customer_segments_final": [
+        "model.jaffle_shop.customer_360",
+        "model.jaffle_shop.rpt_executive_dashboard"
+      ],
+      "model.jaffle_shop.customer_lifetime_value": [
+        "model.jaffle_shop.customer_360"
+      ]
+    }
+  }
+}

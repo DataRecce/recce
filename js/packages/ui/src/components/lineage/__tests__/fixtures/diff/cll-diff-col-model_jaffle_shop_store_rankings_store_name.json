@@ -1,0 +1,111 @@
+{
+  "current": {
+    "nodes": {},
+    "columns": {
+      "model.jaffle_shop.store_performance_store_name": {
+        "id": "model.jaffle_shop.store_performance_store_name",
+        "table_id": "model.jaffle_shop.store_performance",
+        "name": "store_name",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_stores_name": {
+        "id": "seed.jaffle_shop.raw_stores_name",
+        "table_id": "seed.jaffle_shop.raw_stores",
+        "name": "name",
+        "type": "VARCHAR",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_performance_store_name": {
+        "id": "model.jaffle_shop.int_store_performance_store_name",
+        "table_id": "model.jaffle_shop.int_store_performance",
+        "name": "store_name",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_rankings_store_name": {
+        "id": "model.jaffle_shop.store_rankings_store_name",
+        "table_id": "model.jaffle_shop.store_rankings",
+        "name": "store_name",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_stores_store_name": {
+        "id": "model.jaffle_shop.stg_stores_store_name",
+        "table_id": "model.jaffle_shop.stg_stores",
+        "name": "store_name",
+        "type": "VARCHAR",
+        "transformation_type": "renamed",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_employees_active_store_name": {
+        "id": "model.jaffle_shop.int_store_employees_active_store_name",
+        "table_id": "model.jaffle_shop.int_store_employees_active",
+        "name": "store_name",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.rpt_store_dashboard_store_name": {
+        "id": "model.jaffle_shop.rpt_store_dashboard_store_name",
+        "table_id": "model.jaffle_shop.rpt_store_dashboard",
+        "name": "store_name",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "model.jaffle_shop.store_performance_store_name": [
+        "model.jaffle_shop.int_store_performance_store_name"
+      ],
+      "seed.jaffle_shop.raw_stores_name": [],
+      "model.jaffle_shop.int_store_performance_store_name": [
+        "model.jaffle_shop.int_store_employees_active_store_name"
+      ],
+      "model.jaffle_shop.store_rankings_store_name": [
+        "model.jaffle_shop.store_performance_store_name"
+      ],
+      "model.jaffle_shop.stg_stores_store_name": [
+        "seed.jaffle_shop.raw_stores_name"
+      ],
+      "model.jaffle_shop.int_store_employees_active_store_name": [
+        "model.jaffle_shop.stg_stores_store_name"
+      ],
+      "model.jaffle_shop.rpt_store_dashboard_store_name": [
+        "model.jaffle_shop.store_rankings_store_name"
+      ]
+    },
+    "child_map": {
+      "model.jaffle_shop.int_store_performance_store_name": [
+        "model.jaffle_shop.store_performance_store_name"
+      ],
+      "model.jaffle_shop.int_store_employees_active_store_name": [
+        "model.jaffle_shop.int_store_performance_store_name"
+      ],
+      "model.jaffle_shop.stg_stores_store_name": [
+        "model.jaffle_shop.int_store_employees_active_store_name"
+      ],
+      "model.jaffle_shop.store_performance_store_name": [
+        "model.jaffle_shop.store_rankings_store_name"
+      ],
+      "seed.jaffle_shop.raw_stores_name": [
+        "model.jaffle_shop.stg_stores_store_name"
+      ],
+      "model.jaffle_shop.store_rankings_store_name": [
+        "model.jaffle_shop.rpt_store_dashboard_store_name"
+      ]
+    }
+  }
+}

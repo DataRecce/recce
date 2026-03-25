@@ -1,0 +1,95 @@
+{
+  "current": {
+    "nodes": {},
+    "columns": {
+      "model.jaffle_shop.orders_credit_card_amount": {
+        "id": "model.jaffle_shop.orders_credit_card_amount",
+        "table_id": "model.jaffle_shop.orders",
+        "name": "credit_card_amount",
+        "type": "HUGEINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.order_returns_credit_card_amount": {
+        "id": "model.jaffle_shop.order_returns_credit_card_amount",
+        "table_id": "model.jaffle_shop.order_returns",
+        "name": "credit_card_amount",
+        "type": "HUGEINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_payments_payment_method": {
+        "id": "model.jaffle_shop.stg_payments_payment_method",
+        "table_id": "model.jaffle_shop.stg_payments",
+        "name": "payment_method",
+        "type": "VARCHAR",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_payments_amount": {
+        "id": "model.jaffle_shop.stg_payments_amount",
+        "table_id": "model.jaffle_shop.stg_payments",
+        "name": "amount",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_payments_payment_method": {
+        "id": "seed.jaffle_shop.raw_payments_payment_method",
+        "table_id": "seed.jaffle_shop.raw_payments",
+        "name": "payment_method",
+        "type": "VARCHAR",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_payments_amount": {
+        "id": "seed.jaffle_shop.raw_payments_amount",
+        "table_id": "seed.jaffle_shop.raw_payments",
+        "name": "amount",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "model.jaffle_shop.orders_credit_card_amount": [
+        "model.jaffle_shop.stg_payments_payment_method",
+        "model.jaffle_shop.stg_payments_amount"
+      ],
+      "model.jaffle_shop.order_returns_credit_card_amount": [
+        "model.jaffle_shop.orders_credit_card_amount"
+      ],
+      "model.jaffle_shop.stg_payments_payment_method": [
+        "seed.jaffle_shop.raw_payments_payment_method"
+      ],
+      "model.jaffle_shop.stg_payments_amount": [
+        "seed.jaffle_shop.raw_payments_amount"
+      ],
+      "seed.jaffle_shop.raw_payments_payment_method": [],
+      "seed.jaffle_shop.raw_payments_amount": []
+    },
+    "child_map": {
+      "model.jaffle_shop.stg_payments_amount": [
+        "model.jaffle_shop.orders_credit_card_amount"
+      ],
+      "model.jaffle_shop.stg_payments_payment_method": [
+        "model.jaffle_shop.orders_credit_card_amount"
+      ],
+      "model.jaffle_shop.orders_credit_card_amount": [
+        "model.jaffle_shop.order_returns_credit_card_amount"
+      ],
+      "seed.jaffle_shop.raw_payments_amount": [
+        "model.jaffle_shop.stg_payments_amount"
+      ],
+      "seed.jaffle_shop.raw_payments_payment_method": [
+        "model.jaffle_shop.stg_payments_payment_method"
+      ]
+    }
+  }
+}

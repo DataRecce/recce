@@ -279,119 +279,107 @@ describe("sliceCllMap equivalence with backend fixtures", () => {
 
 // ============================================================================
 // Diff fixtures: server with actual dbt changes (stg_customers: added column,
-// stg_orders: modified column def, int_store_revenue: WHERE clause added)
+// stg_orders: modified column def, int_store_revenue: WHERE clause added).
+// Full map captured with full_map=true (all 99 nodes). Each node/column
+// fixture captured via classic API call for comparison.
 // ============================================================================
 
 const diffFullMap = loadFixture("diff/cll-diff-full-map");
 
+// Helper to build a column test case
+function col(nodeId: string, column: string): TestCase {
+  const safeCol = `${nodeId}_${column}`.replaceAll(".", "_");
+  return {
+    label: `${nodeId.split(".").pop()}.${column}`,
+    fixture: `diff/cll-diff-col-${safeCol}`,
+    params: { node_id: nodeId, column, change_analysis: true },
+  };
+}
+
+// Helper to build a node test case
+function node(nodeId: string, label?: string): TestCase {
+  const safe = nodeId.replaceAll(".", "_");
+  return {
+    label: label ?? nodeId.split(".").pop()!,
+    fixture: `diff/cll-diff-node-${safe}`,
+    params: { node_id: nodeId, change_analysis: true },
+  };
+}
+
+// --- Changed nodes ---
+const INT_STORE_REV = "model.jaffle_shop.int_store_revenue";
+const STG_ORDERS = "model.jaffle_shop.stg_orders";
+const STG_CUSTOMERS = "model.jaffle_shop.stg_customers";
+// --- Downstream / impacted nodes ---
+const ORDERS = "model.jaffle_shop.orders";
+const INT_ORDER_ENRICHED = "model.jaffle_shop.int_order_enriched";
+const STORE_RANKINGS = "model.jaffle_shop.store_rankings";
+const ORDER_RETURNS = "model.jaffle_shop.order_returns";
+
 const DIFF_NODE_TESTS: TestCase[] = [
-  // stg_customers: non_breaking (added column full_name)
-  {
-    label: "stg_customers (non_breaking)",
-    fixture: "diff/cll-diff-node-model_jaffle_shop_stg_customers",
-    params: {
-      node_id: "model.jaffle_shop.stg_customers",
-      change_analysis: true,
-    },
-  },
-  {
-    label: "stg_customers no_upstream",
-    fixture: "diff/cll-diff-node-model_jaffle_shop_stg_customers-no-upstream",
-    params: {
-      node_id: "model.jaffle_shop.stg_customers",
-      change_analysis: true,
-      no_upstream: true,
-    },
-  },
-  {
-    label: "stg_customers no_downstream",
-    fixture: "diff/cll-diff-node-model_jaffle_shop_stg_customers-no-downstream",
-    params: {
-      node_id: "model.jaffle_shop.stg_customers",
-      change_analysis: true,
-      no_downstream: true,
-    },
-  },
-  // stg_orders: partial_breaking (modified status column def)
-  {
-    label: "stg_orders (partial_breaking)",
-    fixture: "diff/cll-diff-node-model_jaffle_shop_stg_orders",
-    params: {
-      node_id: "model.jaffle_shop.stg_orders",
-      change_analysis: true,
-    },
-  },
-  {
-    label: "stg_orders no_upstream",
-    fixture: "diff/cll-diff-node-model_jaffle_shop_stg_orders-no-upstream",
-    params: {
-      node_id: "model.jaffle_shop.stg_orders",
-      change_analysis: true,
-      no_upstream: true,
-    },
-  },
-  {
-    label: "stg_orders no_downstream",
-    fixture: "diff/cll-diff-node-model_jaffle_shop_stg_orders-no-downstream",
-    params: {
-      node_id: "model.jaffle_shop.stg_orders",
-      change_analysis: true,
-      no_downstream: true,
-    },
-  },
-  // int_store_revenue: breaking (WHERE clause added)
-  {
-    label: "int_store_revenue (breaking)",
-    fixture: "diff/cll-diff-node-model_jaffle_shop_int_store_revenue",
-    params: {
-      node_id: "model.jaffle_shop.int_store_revenue",
-      change_analysis: true,
-    },
-  },
-  {
-    label: "int_store_revenue no_upstream",
-    fixture:
-      "diff/cll-diff-node-model_jaffle_shop_int_store_revenue-no-upstream",
-    params: {
-      node_id: "model.jaffle_shop.int_store_revenue",
-      change_analysis: true,
-      no_upstream: true,
-    },
-  },
-  {
-    label: "int_store_revenue no_downstream",
-    fixture:
-      "diff/cll-diff-node-model_jaffle_shop_int_store_revenue-no-downstream",
-    params: {
-      node_id: "model.jaffle_shop.int_store_revenue",
-      change_analysis: true,
-      no_downstream: true,
-    },
-  },
+  node(STG_CUSTOMERS, "stg_customers (non_breaking)"),
+  node(STG_ORDERS, "stg_orders (partial_breaking)"),
+  node(INT_STORE_REV, "int_store_revenue (breaking)"),
+  node(ORDERS, "orders (downstream)"),
+  node(INT_ORDER_ENRICHED, "int_order_enriched (downstream)"),
+  node(STORE_RANKINGS, "store_rankings (far downstream)"),
+  node(ORDER_RETURNS, "order_returns (downstream)"),
 ];
 
 const DIFF_COLUMN_TESTS: TestCase[] = [
-  {
-    label: "stg_customers.full_name (added column)",
-    fixture: "diff/cll-diff-col-model_jaffle_shop_stg_customers_full_name",
-    params: {
-      node_id: "model.jaffle_shop.stg_customers",
-      column: "full_name",
-      change_analysis: true,
-    },
-  },
-  {
-    label: "stg_orders.status (modified column)",
-    fixture: "diff/cll-diff-col-model_jaffle_shop_stg_orders_status",
-    params: {
-      node_id: "model.jaffle_shop.stg_orders",
-      column: "status",
-      change_analysis: true,
-    },
-  },
+  // int_store_revenue: breaking, 5 columns
+  col(INT_STORE_REV, "store_id"),
+  col(INT_STORE_REV, "order_count"),
+  col(INT_STORE_REV, "unique_customers"),
+  col(INT_STORE_REV, "total_revenue"),
+  col(INT_STORE_REV, "total_cost"),
+  // stg_orders: partial_breaking, 4 columns
+  col(STG_ORDERS, "status"),
+  col(STG_ORDERS, "order_id"),
+  col(STG_ORDERS, "customer_id"),
+  col(STG_ORDERS, "order_date"),
+  // stg_customers: non_breaking, 4 columns
+  col(STG_CUSTOMERS, "full_name"),
+  col(STG_CUSTOMERS, "customer_id"),
+  col(STG_CUSTOMERS, "first_name"),
+  col(STG_CUSTOMERS, "last_name"),
+  // orders: downstream, 5 columns (reaches outside impact scope)
+  col(ORDERS, "order_id"),
+  col(ORDERS, "customer_id"),
+  col(ORDERS, "order_date"),
+  col(ORDERS, "status"),
+  col(ORDERS, "credit_card_amount"),
+  // int_order_enriched: downstream, 5 columns
+  col(INT_ORDER_ENRICHED, "order_id"),
+  col(INT_ORDER_ENRICHED, "customer_id"),
+  col(INT_ORDER_ENRICHED, "order_date"),
+  col(INT_ORDER_ENRICHED, "status"),
+  col(INT_ORDER_ENRICHED, "item_count"),
+  // store_rankings: far downstream, 5 columns
+  col(STORE_RANKINGS, "store_id"),
+  col(STORE_RANKINGS, "store_name"),
+  col(STORE_RANKINGS, "city"),
+  col(STORE_RANKINGS, "state"),
+  col(STORE_RANKINGS, "total_revenue"),
+  // order_returns: downstream, 5 columns
+  col(ORDER_RETURNS, "order_id"),
+  col(ORDER_RETURNS, "customer_id"),
+  col(ORDER_RETURNS, "order_date"),
+  col(ORDER_RETURNS, "status"),
+  col(ORDER_RETURNS, "credit_card_amount"),
 ];
 
 describe("sliceCllMap equivalence with diff fixtures", () => {
+  describe("impact overview", () => {
+    it("matches server impact overview", () => {
+      const serverResult = loadFixture("diff/cll-diff-impact-overview");
+      const clientResult = sliceCllMap(diffFullMap, {
+        change_analysis: true,
+      });
+      assertEquivalent("impact-overview", clientResult, serverResult);
+    });
+  });
+
   describe("node-level (with changes)", () => {
     for (const tc of DIFF_NODE_TESTS) {
       it(tc.label, () => {

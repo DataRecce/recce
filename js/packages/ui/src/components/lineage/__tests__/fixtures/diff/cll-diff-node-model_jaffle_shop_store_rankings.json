@@ -1,81 +1,101 @@
 {
   "current": {
     "nodes": {
-      "model.jaffle_shop.stg_orders": {
-        "id": "model.jaffle_shop.stg_orders",
-        "name": "stg_orders",
+      "seed.jaffle_shop.raw_orders": {
+        "id": "seed.jaffle_shop.raw_orders",
+        "name": "raw_orders",
         "package_name": "jaffle_shop",
-        "resource_type": "model",
-        "raw_code": "with source as (\n\n    {#-\n    Normally we would select from the table here, but we are using seeds to load\n    our data in this project\n    #}\n    select * from {{ ref('raw_orders') }}\n\n),\n\nrenamed as (\n\n    select\n        id as order_id,\n        user_id as customer_id,\n        order_date,\n        'ORDER-' || status as status\n\n    from source\n\n)\n\nselect * from renamed",
+        "resource_type": "seed",
+        "raw_code": "",
         "source_name": null,
-        "change_status": "modified",
-        "change_category": "partial_breaking",
+        "change_status": null,
+        "change_category": null,
         "columns": {
-          "order_id": {
-            "id": "model.jaffle_shop.stg_orders_order_id",
-            "table_id": "model.jaffle_shop.stg_orders",
-            "name": "order_id",
+          "id": {
+            "id": "seed.jaffle_shop.raw_orders_id",
+            "table_id": "seed.jaffle_shop.raw_orders",
+            "name": "id",
             "type": "INTEGER",
-            "transformation_type": "renamed",
+            "transformation_type": "source",
             "change_status": null,
             "depends_on": []
           },
           "status": {
-            "id": "model.jaffle_shop.stg_orders_status",
-            "table_id": "model.jaffle_shop.stg_orders",
+            "id": "seed.jaffle_shop.raw_orders_status",
+            "table_id": "seed.jaffle_shop.raw_orders",
             "name": "status",
             "type": "VARCHAR",
-            "transformation_type": "derived",
-            "change_status": "modified",
-            "depends_on": []
-          }
-        },
-        "impacted": true
-      },
-      "model.jaffle_shop.store_rankings": {
-        "id": "model.jaffle_shop.store_rankings",
-        "name": "store_rankings",
-        "package_name": "jaffle_shop",
-        "resource_type": "model",
-        "raw_code": "with performance as (\n    select * from {{ ref('store_performance') }}\n),\n\nranked as (\n    select\n        store_id,\n        store_name,\n        city,\n        state,\n        total_revenue,\n        total_margin,\n        order_count,\n        unique_customers,\n        revenue_per_employee,\n        rank() over (order by total_revenue desc) as revenue_rank,\n        rank() over (order by total_margin desc) as margin_rank,\n        rank() over (order by order_count desc) as order_count_rank,\n        rank() over (order by revenue_per_employee desc) as efficiency_rank,\n        rank() over (order by unique_customers desc) as customer_reach_rank\n    from performance\n)\n\nselect * from ranked",
-        "source_name": null,
-        "change_status": null,
-        "change_category": null,
-        "columns": {},
-        "impacted": true
-      },
-      "model.jaffle_shop.int_store_revenue": {
-        "id": "model.jaffle_shop.int_store_revenue",
-        "name": "int_store_revenue",
-        "package_name": "jaffle_shop",
-        "resource_type": "model",
-        "raw_code": "with assignments as (\n    select * from {{ ref('int_store_order_assignments') }}\n),\n\norders as (\n    select * from {{ ref('int_order_enriched') }}\n),\n\nstore_rev as (\n    select\n        a.store_id,\n        count(distinct a.order_id) as order_count,\n        count(distinct a.customer_id) as unique_customers,\n        sum(o.subtotal) as total_revenue,\n        sum(o.total_cost) as total_cost,\n        sum(o.total_margin) as total_margin,\n        avg(o.subtotal) as avg_order_value\n    from assignments a\n    inner join orders o on a.order_id = o.order_id\n    where o.status != 'returned'\n    group by a.store_id\n)\n\nselect * from store_rev",
-        "source_name": null,
-        "change_status": "modified",
-        "change_category": "breaking",
-        "columns": {
-          "store_id": {
-            "id": "model.jaffle_shop.int_store_revenue_store_id",
-            "table_id": "model.jaffle_shop.int_store_revenue",
-            "name": "store_id",
-            "type": "BIGINT",
-            "transformation_type": "passthrough",
+            "transformation_type": "source",
             "change_status": null,
             "depends_on": []
           }
         },
         "impacted": true
       },
-      "model.jaffle_shop.rpt_store_dashboard": {
-        "id": "model.jaffle_shop.rpt_store_dashboard",
-        "name": "rpt_store_dashboard",
+      "seed.jaffle_shop.raw_promotions": {
+        "id": "seed.jaffle_shop.raw_promotions",
+        "name": "raw_promotions",
         "package_name": "jaffle_shop",
-        "resource_type": "model",
-        "raw_code": "with rankings as (\n    select * from {{ ref('store_rankings') }}\n),\n\ninventory as (\n    select * from {{ ref('store_inventory') }}\n),\n\ndaily as (\n    select\n        store_id,\n        count(distinct order_date) as active_days,\n        avg(revenue) as avg_daily_revenue\n    from {{ ref('metric_store_daily') }}\n    group by store_id\n),\n\ndashboard as (\n    select\n        r.store_id,\n        r.store_name,\n        r.city,\n        r.state,\n        r.total_revenue,\n        r.total_margin,\n        r.order_count,\n        r.unique_customers,\n        r.revenue_per_employee,\n        r.revenue_rank,\n        r.efficiency_rank,\n        i.total_stock_units,\n        i.out_of_stock_products,\n        i.low_stock_products,\n        d.active_days,\n        d.avg_daily_revenue\n    from rankings r\n    left join inventory i on r.store_id = i.store_id\n    left join daily d on r.store_id = d.store_id\n)\n\nselect * from dashboard",
+        "resource_type": "seed",
+        "raw_code": "",
         "source_name": null,
         "change_status": null,
         "change_category": null,
-        "columns": {},
+        "columns": {
+          "id": {
+            "id": "seed.jaffle_shop.raw_promotions_id",
+            "table_id": "seed.jaffle_shop.raw_promotions",
+            "name": "id",
+            "type": "INTEGER",
+            "transformation_type": "source",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.int_order_payments_matched": {
+        "id": "model.jaffle_shop.int_order_payments_matched",
+        "name": "int_order_payments_matched",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with payments as (\n    select\n        order_id,\n        sum(amount) as total_paid,\n        count(*) as payment_count,\n        count(distinct payment_method) as payment_method_count\n    from {{ ref('stg_payments') }}\n    group by order_id\n),\n\norder_totals as (\n    select * from {{ ref('int_order_totals') }}\n),\n\nmatched as (\n    select\n        coalesce(ot.order_id, p.order_id) as order_id,\n        ot.subtotal as order_subtotal,\n        p.total_paid,\n        p.payment_count,\n        p.payment_method_count,\n        case\n            when p.total_paid is null then 'unpaid'\n            when abs(coalesce(ot.subtotal, 0) - p.total_paid) < 0.01 then 'matched'\n            when p.total_paid < coalesce(ot.subtotal, 0) then 'underpaid'\n            else 'overpaid'\n        end as payment_status\n    from order_totals ot\n    full outer join payments p on ot.order_id = p.order_id\n)\n\nselect * from matched",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "order_id": {
+            "id": "model.jaffle_shop.int_order_payments_matched_order_id",
+            "table_id": "model.jaffle_shop.int_order_payments_matched",
+            "name": "order_id",
+            "type": "INTEGER",
+            "transformation_type": "derived",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.int_category_hierarchy": {
+        "id": "model.jaffle_shop.int_category_hierarchy",
+        "name": "int_category_hierarchy",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with recursive category_tree as (\n    select\n        category_id,\n        category_name,\n        parent_category_id,\n        category_name as root_category,\n        category_name as full_path,\n        0 as depth\n    from {{ ref('stg_categories') }}\n    where parent_category_id is null\n\n    union all\n\n    select\n        c.category_id,\n        c.category_name,\n        c.parent_category_id,\n        ct.root_category,\n        ct.full_path || ' > ' || c.category_name as full_path,\n        ct.depth + 1 as depth\n    from {{ ref('stg_categories') }} c\n    inner join category_tree ct on c.parent_category_id = ct.category_id\n)\n\nselect * from category_tree",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "category_id": {
+            "id": "model.jaffle_shop.int_category_hierarchy_category_id",
+            "table_id": "model.jaffle_shop.int_category_hierarchy",
+            "name": "category_id",
+            "type": "INTEGER",
+            "transformation_type": "derived",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
         "impacted": true
       },
       "model.jaffle_shop.store_performance": {
@@ -139,20 +159,20 @@
         },
         "impacted": true
       },
-      "model.jaffle_shop.int_products_with_categories": {
-        "id": "model.jaffle_shop.int_products_with_categories",
-        "name": "int_products_with_categories",
+      "model.jaffle_shop.int_order_totals": {
+        "id": "model.jaffle_shop.int_order_totals",
+        "name": "int_order_totals",
         "package_name": "jaffle_shop",
         "resource_type": "model",
-        "raw_code": "with products as (\n    select * from {{ ref('stg_products') }}\n),\n\ncategories as (\n    select * from {{ ref('int_category_hierarchy') }}\n),\n\njoined as (\n    select\n        p.product_id,\n        p.product_name,\n        p.category_id,\n        c.category_name,\n        c.root_category,\n        c.full_path as category_path,\n        c.depth as category_depth,\n        p.price,\n        p.cost,\n        p.created_at\n    from products p\n    left join categories c on p.category_id = c.category_id\n)\n\nselect * from joined",
+        "raw_code": "with enriched_items as (\n    select * from {{ ref('int_order_items_enriched') }}\n),\n\norder_aggs as (\n    select\n        order_id,\n        count(*) as item_count,\n        sum(quantity) as total_quantity,\n        sum(line_total) as subtotal,\n        sum(line_cost) as total_cost,\n        sum(line_margin) as total_margin,\n        count(distinct root_category) as category_count\n    from enriched_items\n    group by order_id\n)\n\nselect * from order_aggs",
         "source_name": null,
         "change_status": null,
         "change_category": null,
         "columns": {
-          "product_id": {
-            "id": "model.jaffle_shop.int_products_with_categories_product_id",
-            "table_id": "model.jaffle_shop.int_products_with_categories",
-            "name": "product_id",
+          "order_id": {
+            "id": "model.jaffle_shop.int_order_totals_order_id",
+            "table_id": "model.jaffle_shop.int_order_totals",
+            "name": "order_id",
             "type": "INTEGER",
             "transformation_type": "passthrough",
             "change_status": null,
@@ -175,6 +195,28 @@
             "id": "model.jaffle_shop.stg_employees_store_id",
             "table_id": "model.jaffle_shop.stg_employees",
             "name": "store_id",
+            "type": "INTEGER",
+            "transformation_type": "passthrough",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.int_product_margins": {
+        "id": "model.jaffle_shop.int_product_margins",
+        "name": "int_product_margins",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with products as (\n    select * from {{ ref('stg_products') }}\n),\n\nmargins as (\n    select\n        product_id,\n        price,\n        cost,\n        price - cost as margin,\n        case when price > 0\n            then round((price - cost) / price * 100, 1)\n            else 0\n        end as margin_pct\n    from products\n)\n\nselect * from margins",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "product_id": {
+            "id": "model.jaffle_shop.int_product_margins_product_id",
+            "table_id": "model.jaffle_shop.int_product_margins",
+            "name": "product_id",
             "type": "INTEGER",
             "transformation_type": "passthrough",
             "change_status": null,
@@ -214,121 +256,6 @@
         },
         "impacted": true
       },
-      "seed.jaffle_shop.raw_order_items": {
-        "id": "seed.jaffle_shop.raw_order_items",
-        "name": "raw_order_items",
-        "package_name": "jaffle_shop",
-        "resource_type": "seed",
-        "raw_code": "",
-        "source_name": null,
-        "change_status": null,
-        "change_category": null,
-        "columns": {
-          "order_id": {
-            "id": "seed.jaffle_shop.raw_order_items_order_id",
-            "table_id": "seed.jaffle_shop.raw_order_items",
-            "name": "order_id",
-            "type": "INTEGER",
-            "transformation_type": "source",
-            "change_status": null,
-            "depends_on": []
-          },
-          "product_id": {
-            "id": "seed.jaffle_shop.raw_order_items_product_id",
-            "table_id": "seed.jaffle_shop.raw_order_items",
-            "name": "product_id",
-            "type": "INTEGER",
-            "transformation_type": "source",
-            "change_status": null,
-            "depends_on": []
-          }
-        },
-        "impacted": true
-      },
-      "model.jaffle_shop.stg_categories": {
-        "id": "model.jaffle_shop.stg_categories",
-        "name": "stg_categories",
-        "package_name": "jaffle_shop",
-        "resource_type": "model",
-        "raw_code": "with source as (\n    select * from {{ ref('raw_categories') }}\n),\n\nrenamed as (\n    select\n        id as category_id,\n        name as category_name,\n        parent_category_id\n    from source\n)\n\nselect * from renamed",
-        "source_name": null,
-        "change_status": null,
-        "change_category": null,
-        "columns": {
-          "category_id": {
-            "id": "model.jaffle_shop.stg_categories_category_id",
-            "table_id": "model.jaffle_shop.stg_categories",
-            "name": "category_id",
-            "type": "INTEGER",
-            "transformation_type": "renamed",
-            "change_status": null,
-            "depends_on": []
-          },
-          "parent_category_id": {
-            "id": "model.jaffle_shop.stg_categories_parent_category_id",
-            "table_id": "model.jaffle_shop.stg_categories",
-            "name": "parent_category_id",
-            "type": "INTEGER",
-            "transformation_type": "passthrough",
-            "change_status": null,
-            "depends_on": []
-          }
-        },
-        "impacted": true
-      },
-      "seed.jaffle_shop.raw_employees": {
-        "id": "seed.jaffle_shop.raw_employees",
-        "name": "raw_employees",
-        "package_name": "jaffle_shop",
-        "resource_type": "seed",
-        "raw_code": "",
-        "source_name": null,
-        "change_status": null,
-        "change_category": null,
-        "columns": {
-          "store_id": {
-            "id": "seed.jaffle_shop.raw_employees_store_id",
-            "table_id": "seed.jaffle_shop.raw_employees",
-            "name": "store_id",
-            "type": "INTEGER",
-            "transformation_type": "source",
-            "change_status": null,
-            "depends_on": []
-          }
-        },
-        "impacted": true
-      },
-      "model.jaffle_shop.stg_order_promotions": {
-        "id": "model.jaffle_shop.stg_order_promotions",
-        "name": "stg_order_promotions",
-        "package_name": "jaffle_shop",
-        "resource_type": "model",
-        "raw_code": "with source as (\n    select * from {{ ref('raw_order_promotions') }}\n),\n\nrenamed as (\n    select\n        order_id,\n        promotion_id\n    from source\n)\n\nselect * from renamed",
-        "source_name": null,
-        "change_status": null,
-        "change_category": null,
-        "columns": {
-          "order_id": {
-            "id": "model.jaffle_shop.stg_order_promotions_order_id",
-            "table_id": "model.jaffle_shop.stg_order_promotions",
-            "name": "order_id",
-            "type": "INTEGER",
-            "transformation_type": "passthrough",
-            "change_status": null,
-            "depends_on": []
-          },
-          "promotion_id": {
-            "id": "model.jaffle_shop.stg_order_promotions_promotion_id",
-            "table_id": "model.jaffle_shop.stg_order_promotions",
-            "name": "promotion_id",
-            "type": "INTEGER",
-            "transformation_type": "passthrough",
-            "change_status": null,
-            "depends_on": []
-          }
-        },
-        "impacted": true
-      },
       "model.jaffle_shop.int_order_enriched": {
         "id": "model.jaffle_shop.int_order_enriched",
         "name": "int_order_enriched",
@@ -360,9 +287,9 @@
         },
         "impacted": true
       },
-      "seed.jaffle_shop.raw_categories": {
-        "id": "seed.jaffle_shop.raw_categories",
-        "name": "raw_categories",
+      "seed.jaffle_shop.raw_order_items": {
+        "id": "seed.jaffle_shop.raw_order_items",
+        "name": "raw_order_items",
         "package_name": "jaffle_shop",
         "resource_type": "seed",
         "raw_code": "",
@@ -370,52 +297,21 @@
         "change_status": null,
         "change_category": null,
         "columns": {
-          "id": {
-            "id": "seed.jaffle_shop.raw_categories_id",
-            "table_id": "seed.jaffle_shop.raw_categories",
-            "name": "id",
-            "type": "INTEGER",
-            "transformation_type": "source",
-            "change_status": null,
-            "depends_on": []
-          },
-          "parent_category_id": {
-            "id": "seed.jaffle_shop.raw_categories_parent_category_id",
-            "table_id": "seed.jaffle_shop.raw_categories",
-            "name": "parent_category_id",
-            "type": "INTEGER",
-            "transformation_type": "source",
-            "change_status": null,
-            "depends_on": []
-          }
-        },
-        "impacted": true
-      },
-      "model.jaffle_shop.int_order_items_with_products": {
-        "id": "model.jaffle_shop.int_order_items_with_products",
-        "name": "int_order_items_with_products",
-        "package_name": "jaffle_shop",
-        "resource_type": "model",
-        "raw_code": "with order_items as (\n    select * from {{ ref('stg_order_items') }}\n),\n\nproducts as (\n    select * from {{ ref('int_products_with_categories') }}\n),\n\njoined as (\n    select\n        oi.order_item_id,\n        oi.order_id,\n        oi.product_id,\n        p.product_name,\n        p.category_name,\n        p.root_category,\n        p.category_path,\n        oi.quantity,\n        oi.unit_price,\n        oi.quantity * oi.unit_price as line_total\n    from order_items oi\n    left join products p on oi.product_id = p.product_id\n)\n\nselect * from joined",
-        "source_name": null,
-        "change_status": null,
-        "change_category": null,
-        "columns": {
           "order_id": {
-            "id": "model.jaffle_shop.int_order_items_with_products_order_id",
-            "table_id": "model.jaffle_shop.int_order_items_with_products",
+            "id": "seed.jaffle_shop.raw_order_items_order_id",
+            "table_id": "seed.jaffle_shop.raw_order_items",
             "name": "order_id",
             "type": "INTEGER",
-            "transformation_type": "passthrough",
+            "transformation_type": "source",
             "change_status": null,
             "depends_on": []
           },
           "product_id": {
-            "id": "model.jaffle_shop.int_order_items_with_products_product_id",
-            "table_id": "model.jaffle_shop.int_order_items_with_products",
+            "id": "seed.jaffle_shop.raw_order_items_product_id",
+            "table_id": "seed.jaffle_shop.raw_order_items",
             "name": "product_id",
             "type": "INTEGER",
-            "transformation_type": "passthrough",
+            "transformation_type": "source",
             "change_status": null,
             "depends_on": []
           }
@@ -445,28 +341,6 @@
             "id": "model.jaffle_shop.stg_order_items_product_id",
             "table_id": "model.jaffle_shop.stg_order_items",
             "name": "product_id",
-            "type": "INTEGER",
-            "transformation_type": "passthrough",
-            "change_status": null,
-            "depends_on": []
-          }
-        },
-        "impacted": true
-      },
-      "model.jaffle_shop.int_store_employees_active": {
-        "id": "model.jaffle_shop.int_store_employees_active",
-        "name": "int_store_employees_active",
-        "package_name": "jaffle_shop",
-        "resource_type": "model",
-        "raw_code": "with employees as (\n    select * from {{ ref('stg_employees') }}\n),\n\nstores as (\n    select * from {{ ref('stg_stores') }}\n),\n\nstore_staff as (\n    select\n        s.store_id,\n        s.store_name,\n        s.city,\n        s.state,\n        count(*) as total_employees,\n        sum(case when e.role = 'manager' then 1 else 0 end) as manager_count,\n        sum(case when e.role = 'barista' then 1 else 0 end) as barista_count,\n        sum(case when e.role = 'cashier' then 1 else 0 end) as cashier_count,\n        sum(case when e.role = 'cook' then 1 else 0 end) as cook_count,\n        min(e.hired_at) as earliest_hire,\n        max(e.hired_at) as latest_hire\n    from stores s\n    left join employees e on s.store_id = e.store_id\n    group by s.store_id, s.store_name, s.city, s.state\n)\n\nselect * from store_staff",
-        "source_name": null,
-        "change_status": null,
-        "change_category": null,
-        "columns": {
-          "store_id": {
-            "id": "model.jaffle_shop.int_store_employees_active_store_id",
-            "table_id": "model.jaffle_shop.int_store_employees_active",
-            "name": "store_id",
             "type": "INTEGER",
             "transformation_type": "passthrough",
             "change_status": null,
@@ -506,40 +380,93 @@
         },
         "impacted": true
       },
-      "seed.jaffle_shop.raw_payments": {
-        "id": "seed.jaffle_shop.raw_payments",
-        "name": "raw_payments",
+      "model.jaffle_shop.stg_categories": {
+        "id": "model.jaffle_shop.stg_categories",
+        "name": "stg_categories",
         "package_name": "jaffle_shop",
-        "resource_type": "seed",
-        "raw_code": "",
+        "resource_type": "model",
+        "raw_code": "with source as (\n    select * from {{ ref('raw_categories') }}\n),\n\nrenamed as (\n    select\n        id as category_id,\n        name as category_name,\n        parent_category_id\n    from source\n)\n\nselect * from renamed",
         "source_name": null,
         "change_status": null,
         "change_category": null,
         "columns": {
-          "order_id": {
-            "id": "seed.jaffle_shop.raw_payments_order_id",
-            "table_id": "seed.jaffle_shop.raw_payments",
-            "name": "order_id",
+          "category_id": {
+            "id": "model.jaffle_shop.stg_categories_category_id",
+            "table_id": "model.jaffle_shop.stg_categories",
+            "name": "category_id",
             "type": "INTEGER",
-            "transformation_type": "source",
+            "transformation_type": "renamed",
             "change_status": null,
             "depends_on": []
           },
-          "amount": {
-            "id": "seed.jaffle_shop.raw_payments_amount",
-            "table_id": "seed.jaffle_shop.raw_payments",
-            "name": "amount",
+          "parent_category_id": {
+            "id": "model.jaffle_shop.stg_categories_parent_category_id",
+            "table_id": "model.jaffle_shop.stg_categories",
+            "name": "parent_category_id",
             "type": "INTEGER",
-            "transformation_type": "source",
+            "transformation_type": "passthrough",
             "change_status": null,
             "depends_on": []
           }
         },
         "impacted": true
       },
-      "seed.jaffle_shop.raw_promotions": {
-        "id": "seed.jaffle_shop.raw_promotions",
-        "name": "raw_promotions",
+      "model.jaffle_shop.int_order_items_enriched": {
+        "id": "model.jaffle_shop.int_order_items_enriched",
+        "name": "int_order_items_enriched",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with items as (\n    select * from {{ ref('int_order_items_with_products') }}\n),\n\nmargins as (\n    select * from {{ ref('int_product_margins') }}\n),\n\nenriched as (\n    select\n        i.order_item_id,\n        i.order_id,\n        i.product_id,\n        i.product_name,\n        i.category_name,\n        i.root_category,\n        i.category_path,\n        i.quantity,\n        i.unit_price,\n        i.line_total,\n        m.cost,\n        m.margin_pct,\n        i.quantity * m.cost as line_cost,\n        i.line_total - (i.quantity * m.cost) as line_margin\n    from items i\n    left join margins m on i.product_id = m.product_id\n)\n\nselect * from enriched",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "order_id": {
+            "id": "model.jaffle_shop.int_order_items_enriched_order_id",
+            "table_id": "model.jaffle_shop.int_order_items_enriched",
+            "name": "order_id",
+            "type": "INTEGER",
+            "transformation_type": "passthrough",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.int_order_items_with_products": {
+        "id": "model.jaffle_shop.int_order_items_with_products",
+        "name": "int_order_items_with_products",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with order_items as (\n    select * from {{ ref('stg_order_items') }}\n),\n\nproducts as (\n    select * from {{ ref('int_products_with_categories') }}\n),\n\njoined as (\n    select\n        oi.order_item_id,\n        oi.order_id,\n        oi.product_id,\n        p.product_name,\n        p.category_name,\n        p.root_category,\n        p.category_path,\n        oi.quantity,\n        oi.unit_price,\n        oi.quantity * oi.unit_price as line_total\n    from order_items oi\n    left join products p on oi.product_id = p.product_id\n)\n\nselect * from joined",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "order_id": {
+            "id": "model.jaffle_shop.int_order_items_with_products_order_id",
+            "table_id": "model.jaffle_shop.int_order_items_with_products",
+            "name": "order_id",
+            "type": "INTEGER",
+            "transformation_type": "passthrough",
+            "change_status": null,
+            "depends_on": []
+          },
+          "product_id": {
+            "id": "model.jaffle_shop.int_order_items_with_products_product_id",
+            "table_id": "model.jaffle_shop.int_order_items_with_products",
+            "name": "product_id",
+            "type": "INTEGER",
+            "transformation_type": "passthrough",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "seed.jaffle_shop.raw_products": {
+        "id": "seed.jaffle_shop.raw_products",
+        "name": "raw_products",
         "package_name": "jaffle_shop",
         "resource_type": "seed",
         "raw_code": "",
@@ -548,9 +475,18 @@
         "change_category": null,
         "columns": {
           "id": {
-            "id": "seed.jaffle_shop.raw_promotions_id",
-            "table_id": "seed.jaffle_shop.raw_promotions",
+            "id": "seed.jaffle_shop.raw_products_id",
+            "table_id": "seed.jaffle_shop.raw_products",
             "name": "id",
+            "type": "INTEGER",
+            "transformation_type": "source",
+            "change_status": null,
+            "depends_on": []
+          },
+          "category_id": {
+            "id": "seed.jaffle_shop.raw_products_category_id",
+            "table_id": "seed.jaffle_shop.raw_products",
+            "name": "category_id",
             "type": "INTEGER",
             "transformation_type": "source",
             "change_status": null,
@@ -571,31 +507,40 @@
         "columns": {},
         "impacted": true
       },
-      "model.jaffle_shop.int_order_payments_matched": {
-        "id": "model.jaffle_shop.int_order_payments_matched",
-        "name": "int_order_payments_matched",
+      "seed.jaffle_shop.raw_order_promotions": {
+        "id": "seed.jaffle_shop.raw_order_promotions",
+        "name": "raw_order_promotions",
         "package_name": "jaffle_shop",
-        "resource_type": "model",
-        "raw_code": "with payments as (\n    select\n        order_id,\n        sum(amount) as total_paid,\n        count(*) as payment_count,\n        count(distinct payment_method) as payment_method_count\n    from {{ ref('stg_payments') }}\n    group by order_id\n),\n\norder_totals as (\n    select * from {{ ref('int_order_totals') }}\n),\n\nmatched as (\n    select\n        coalesce(ot.order_id, p.order_id) as order_id,\n        ot.subtotal as order_subtotal,\n        p.total_paid,\n        p.payment_count,\n        p.payment_method_count,\n        case\n            when p.total_paid is null then 'unpaid'\n            when abs(coalesce(ot.subtotal, 0) - p.total_paid) < 0.01 then 'matched'\n            when p.total_paid < coalesce(ot.subtotal, 0) then 'underpaid'\n            else 'overpaid'\n        end as payment_status\n    from order_totals ot\n    full outer join payments p on ot.order_id = p.order_id\n)\n\nselect * from matched",
+        "resource_type": "seed",
+        "raw_code": "",
         "source_name": null,
         "change_status": null,
         "change_category": null,
         "columns": {
           "order_id": {
-            "id": "model.jaffle_shop.int_order_payments_matched_order_id",
-            "table_id": "model.jaffle_shop.int_order_payments_matched",
+            "id": "seed.jaffle_shop.raw_order_promotions_order_id",
+            "table_id": "seed.jaffle_shop.raw_order_promotions",
             "name": "order_id",
             "type": "INTEGER",
-            "transformation_type": "derived",
+            "transformation_type": "source",
+            "change_status": null,
+            "depends_on": []
+          },
+          "promotion_id": {
+            "id": "seed.jaffle_shop.raw_order_promotions_promotion_id",
+            "table_id": "seed.jaffle_shop.raw_order_promotions",
+            "name": "promotion_id",
+            "type": "INTEGER",
+            "transformation_type": "source",
             "change_status": null,
             "depends_on": []
           }
         },
         "impacted": true
       },
-      "seed.jaffle_shop.raw_orders": {
-        "id": "seed.jaffle_shop.raw_orders",
-        "name": "raw_orders",
+      "seed.jaffle_shop.raw_categories": {
+        "id": "seed.jaffle_shop.raw_categories",
+        "name": "raw_categories",
         "package_name": "jaffle_shop",
         "resource_type": "seed",
         "raw_code": "",
@@ -604,21 +549,152 @@
         "change_category": null,
         "columns": {
           "id": {
-            "id": "seed.jaffle_shop.raw_orders_id",
-            "table_id": "seed.jaffle_shop.raw_orders",
+            "id": "seed.jaffle_shop.raw_categories_id",
+            "table_id": "seed.jaffle_shop.raw_categories",
             "name": "id",
             "type": "INTEGER",
             "transformation_type": "source",
             "change_status": null,
             "depends_on": []
           },
-          "status": {
-            "id": "seed.jaffle_shop.raw_orders_status",
-            "table_id": "seed.jaffle_shop.raw_orders",
-            "name": "status",
-            "type": "VARCHAR",
+          "parent_category_id": {
+            "id": "seed.jaffle_shop.raw_categories_parent_category_id",
+            "table_id": "seed.jaffle_shop.raw_categories",
+            "name": "parent_category_id",
+            "type": "INTEGER",
             "transformation_type": "source",
             "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.stg_promotions": {
+        "id": "model.jaffle_shop.stg_promotions",
+        "name": "stg_promotions",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with source as (\n    select * from {{ ref('raw_promotions') }}\n),\n\nrenamed as (\n    select\n        id as promotion_id,\n        name as promotion_name,\n        discount_type,\n        cast(discount_value as decimal) as discount_value,\n        cast(start_date as date) as start_date,\n        cast(end_date as date) as end_date\n    from source\n)\n\nselect * from renamed",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "promotion_id": {
+            "id": "model.jaffle_shop.stg_promotions_promotion_id",
+            "table_id": "model.jaffle_shop.stg_promotions",
+            "name": "promotion_id",
+            "type": "INTEGER",
+            "transformation_type": "renamed",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.int_store_revenue": {
+        "id": "model.jaffle_shop.int_store_revenue",
+        "name": "int_store_revenue",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with assignments as (\n    select * from {{ ref('int_store_order_assignments') }}\n),\n\norders as (\n    select * from {{ ref('int_order_enriched') }}\n),\n\nstore_rev as (\n    select\n        a.store_id,\n        count(distinct a.order_id) as order_count,\n        count(distinct a.customer_id) as unique_customers,\n        sum(o.subtotal) as total_revenue,\n        sum(o.total_cost) as total_cost,\n        sum(o.total_margin) as total_margin,\n        avg(o.subtotal) as avg_order_value\n    from assignments a\n    inner join orders o on a.order_id = o.order_id\n    where o.status != 'returned'\n    group by a.store_id\n)\n\nselect * from store_rev",
+        "source_name": null,
+        "change_status": "modified",
+        "change_category": "breaking",
+        "columns": {
+          "store_id": {
+            "id": "model.jaffle_shop.int_store_revenue_store_id",
+            "table_id": "model.jaffle_shop.int_store_revenue",
+            "name": "store_id",
+            "type": "BIGINT",
+            "transformation_type": "passthrough",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.store_rankings": {
+        "id": "model.jaffle_shop.store_rankings",
+        "name": "store_rankings",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with performance as (\n    select * from {{ ref('store_performance') }}\n),\n\nranked as (\n    select\n        store_id,\n        store_name,\n        city,\n        state,\n        total_revenue,\n        total_margin,\n        order_count,\n        unique_customers,\n        revenue_per_employee,\n        rank() over (order by total_revenue desc) as revenue_rank,\n        rank() over (order by total_margin desc) as margin_rank,\n        rank() over (order by order_count desc) as order_count_rank,\n        rank() over (order by revenue_per_employee desc) as efficiency_rank,\n        rank() over (order by unique_customers desc) as customer_reach_rank\n    from performance\n)\n\nselect * from ranked",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "seed.jaffle_shop.raw_employees": {
+        "id": "seed.jaffle_shop.raw_employees",
+        "name": "raw_employees",
+        "package_name": "jaffle_shop",
+        "resource_type": "seed",
+        "raw_code": "",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "store_id": {
+            "id": "seed.jaffle_shop.raw_employees_store_id",
+            "table_id": "seed.jaffle_shop.raw_employees",
+            "name": "store_id",
+            "type": "INTEGER",
+            "transformation_type": "source",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.stg_payments": {
+        "id": "model.jaffle_shop.stg_payments",
+        "name": "stg_payments",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "{{ config(materialized='table') }}\n  \n  with source as (\n    \n    {#-\n    Normally we would select from the table here, but we are using seeds to load\n    our data in this project\n    #}\n    select * from {{ ref('raw_payments') }}\n\n),\n\nrenamed as (\n\n    select\n        id as payment_id,\n        order_id,\n        CAST(payment_method as varchar(74)) as payment_method, -- Cast to varchar to ensure consistent data type\n\n        -- `amount` is currently stored in cents, so we convert it to dollars\n        amount as amount\n\n    from source\n    where amount > 0 -- We only want to include payments with a positive amount\n\n)\n\nselect * from renamed",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "order_id": {
+            "id": "model.jaffle_shop.stg_payments_order_id",
+            "table_id": "model.jaffle_shop.stg_payments",
+            "name": "order_id",
+            "type": "INTEGER",
+            "transformation_type": "passthrough",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.stg_orders": {
+        "id": "model.jaffle_shop.stg_orders",
+        "name": "stg_orders",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with source as (\n\n    {#-\n    Normally we would select from the table here, but we are using seeds to load\n    our data in this project\n    #}\n    select * from {{ ref('raw_orders') }}\n\n),\n\nrenamed as (\n\n    select\n        id as order_id,\n        user_id as customer_id,\n        order_date,\n        'ORDER-' || status as status\n\n    from source\n\n)\n\nselect * from renamed",
+        "source_name": null,
+        "change_status": "modified",
+        "change_category": "partial_breaking",
+        "columns": {
+          "order_id": {
+            "id": "model.jaffle_shop.stg_orders_order_id",
+            "table_id": "model.jaffle_shop.stg_orders",
+            "name": "order_id",
+            "type": "INTEGER",
+            "transformation_type": "renamed",
+            "change_status": null,
+            "depends_on": []
+          },
+          "status": {
+            "id": "model.jaffle_shop.stg_orders_status",
+            "table_id": "model.jaffle_shop.stg_orders",
+            "name": "status",
+            "type": "VARCHAR",
+            "transformation_type": "derived",
+            "change_status": "modified",
             "depends_on": []
           }
         },
@@ -673,64 +749,20 @@
         },
         "impacted": true
       },
-      "model.jaffle_shop.int_category_hierarchy": {
-        "id": "model.jaffle_shop.int_category_hierarchy",
-        "name": "int_category_hierarchy",
+      "model.jaffle_shop.int_store_employees_active": {
+        "id": "model.jaffle_shop.int_store_employees_active",
+        "name": "int_store_employees_active",
         "package_name": "jaffle_shop",
         "resource_type": "model",
-        "raw_code": "with recursive category_tree as (\n    select\n        category_id,\n        category_name,\n        parent_category_id,\n        category_name as root_category,\n        category_name as full_path,\n        0 as depth\n    from {{ ref('stg_categories') }}\n    where parent_category_id is null\n\n    union all\n\n    select\n        c.category_id,\n        c.category_name,\n        c.parent_category_id,\n        ct.root_category,\n        ct.full_path || ' > ' || c.category_name as full_path,\n        ct.depth + 1 as depth\n    from {{ ref('stg_categories') }} c\n    inner join category_tree ct on c.parent_category_id = ct.category_id\n)\n\nselect * from category_tree",
+        "raw_code": "with employees as (\n    select * from {{ ref('stg_employees') }}\n),\n\nstores as (\n    select * from {{ ref('stg_stores') }}\n),\n\nstore_staff as (\n    select\n        s.store_id,\n        s.store_name,\n        s.city,\n        s.state,\n        count(*) as total_employees,\n        sum(case when e.role = 'manager' then 1 else 0 end) as manager_count,\n        sum(case when e.role = 'barista' then 1 else 0 end) as barista_count,\n        sum(case when e.role = 'cashier' then 1 else 0 end) as cashier_count,\n        sum(case when e.role = 'cook' then 1 else 0 end) as cook_count,\n        min(e.hired_at) as earliest_hire,\n        max(e.hired_at) as latest_hire\n    from stores s\n    left join employees e on s.store_id = e.store_id\n    group by s.store_id, s.store_name, s.city, s.state\n)\n\nselect * from store_staff",
         "source_name": null,
         "change_status": null,
         "change_category": null,
         "columns": {
-          "category_id": {
-            "id": "model.jaffle_shop.int_category_hierarchy_category_id",
-            "table_id": "model.jaffle_shop.int_category_hierarchy",
-            "name": "category_id",
-            "type": "INTEGER",
-            "transformation_type": "derived",
-            "change_status": null,
-            "depends_on": []
-          }
-        },
-        "impacted": true
-      },
-      "model.jaffle_shop.stg_promotions": {
-        "id": "model.jaffle_shop.stg_promotions",
-        "name": "stg_promotions",
-        "package_name": "jaffle_shop",
-        "resource_type": "model",
-        "raw_code": "with source as (\n    select * from {{ ref('raw_promotions') }}\n),\n\nrenamed as (\n    select\n        id as promotion_id,\n        name as promotion_name,\n        discount_type,\n        cast(discount_value as decimal) as discount_value,\n        cast(start_date as date) as start_date,\n        cast(end_date as date) as end_date\n    from source\n)\n\nselect * from renamed",
-        "source_name": null,
-        "change_status": null,
-        "change_category": null,
-        "columns": {
-          "promotion_id": {
-            "id": "model.jaffle_shop.stg_promotions_promotion_id",
-            "table_id": "model.jaffle_shop.stg_promotions",
-            "name": "promotion_id",
-            "type": "INTEGER",
-            "transformation_type": "renamed",
-            "change_status": null,
-            "depends_on": []
-          }
-        },
-        "impacted": true
-      },
-      "model.jaffle_shop.int_order_totals": {
-        "id": "model.jaffle_shop.int_order_totals",
-        "name": "int_order_totals",
-        "package_name": "jaffle_shop",
-        "resource_type": "model",
-        "raw_code": "with enriched_items as (\n    select * from {{ ref('int_order_items_enriched') }}\n),\n\norder_aggs as (\n    select\n        order_id,\n        count(*) as item_count,\n        sum(quantity) as total_quantity,\n        sum(line_total) as subtotal,\n        sum(line_cost) as total_cost,\n        sum(line_margin) as total_margin,\n        count(distinct root_category) as category_count\n    from enriched_items\n    group by order_id\n)\n\nselect * from order_aggs",
-        "source_name": null,
-        "change_status": null,
-        "change_category": null,
-        "columns": {
-          "order_id": {
-            "id": "model.jaffle_shop.int_order_totals_order_id",
-            "table_id": "model.jaffle_shop.int_order_totals",
-            "name": "order_id",
+          "store_id": {
+            "id": "model.jaffle_shop.int_store_employees_active_store_id",
+            "table_id": "model.jaffle_shop.int_store_employees_active",
+            "name": "store_id",
             "type": "INTEGER",
             "transformation_type": "passthrough",
             "change_status": null,
@@ -739,31 +771,9 @@
         },
         "impacted": true
       },
-      "model.jaffle_shop.int_product_margins": {
-        "id": "model.jaffle_shop.int_product_margins",
-        "name": "int_product_margins",
-        "package_name": "jaffle_shop",
-        "resource_type": "model",
-        "raw_code": "with products as (\n    select * from {{ ref('stg_products') }}\n),\n\nmargins as (\n    select\n        product_id,\n        price,\n        cost,\n        price - cost as margin,\n        case when price > 0\n            then round((price - cost) / price * 100, 1)\n            else 0\n        end as margin_pct\n    from products\n)\n\nselect * from margins",
-        "source_name": null,
-        "change_status": null,
-        "change_category": null,
-        "columns": {
-          "product_id": {
-            "id": "model.jaffle_shop.int_product_margins_product_id",
-            "table_id": "model.jaffle_shop.int_product_margins",
-            "name": "product_id",
-            "type": "INTEGER",
-            "transformation_type": "passthrough",
-            "change_status": null,
-            "depends_on": []
-          }
-        },
-        "impacted": true
-      },
-      "seed.jaffle_shop.raw_products": {
-        "id": "seed.jaffle_shop.raw_products",
-        "name": "raw_products",
+      "seed.jaffle_shop.raw_payments": {
+        "id": "seed.jaffle_shop.raw_payments",
+        "name": "raw_payments",
         "package_name": "jaffle_shop",
         "resource_type": "seed",
         "raw_code": "",
@@ -771,19 +781,19 @@
         "change_status": null,
         "change_category": null,
         "columns": {
-          "id": {
-            "id": "seed.jaffle_shop.raw_products_id",
-            "table_id": "seed.jaffle_shop.raw_products",
-            "name": "id",
+          "order_id": {
+            "id": "seed.jaffle_shop.raw_payments_order_id",
+            "table_id": "seed.jaffle_shop.raw_payments",
+            "name": "order_id",
             "type": "INTEGER",
             "transformation_type": "source",
             "change_status": null,
             "depends_on": []
           },
-          "category_id": {
-            "id": "seed.jaffle_shop.raw_products_category_id",
-            "table_id": "seed.jaffle_shop.raw_products",
-            "name": "category_id",
+          "amount": {
+            "id": "seed.jaffle_shop.raw_payments_amount",
+            "table_id": "seed.jaffle_shop.raw_payments",
+            "name": "amount",
             "type": "INTEGER",
             "transformation_type": "source",
             "change_status": null,
@@ -823,20 +833,41 @@
         },
         "impacted": true
       },
-      "model.jaffle_shop.stg_payments": {
-        "id": "model.jaffle_shop.stg_payments",
-        "name": "stg_payments",
+      "model.jaffle_shop.rpt_store_dashboard": {
+        "id": "model.jaffle_shop.rpt_store_dashboard",
+        "name": "rpt_store_dashboard",
         "package_name": "jaffle_shop",
         "resource_type": "model",
-        "raw_code": "{{ config(materialized='table') }}\n  \n  with source as (\n    \n    {#-\n    Normally we would select from the table here, but we are using seeds to load\n    our data in this project\n    #}\n    select * from {{ ref('raw_payments') }}\n\n),\n\nrenamed as (\n\n    select\n        id as payment_id,\n        order_id,\n        CAST(payment_method as varchar(74)) as payment_method, -- Cast to varchar to ensure consistent data type\n\n        -- `amount` is currently stored in cents, so we convert it to dollars\n        amount as amount\n\n    from source\n    where amount > 0 -- We only want to include payments with a positive amount\n\n)\n\nselect * from renamed",
+        "raw_code": "with rankings as (\n    select * from {{ ref('store_rankings') }}\n),\n\ninventory as (\n    select * from {{ ref('store_inventory') }}\n),\n\ndaily as (\n    select\n        store_id,\n        count(distinct order_date) as active_days,\n        avg(revenue) as avg_daily_revenue\n    from {{ ref('metric_store_daily') }}\n    group by store_id\n),\n\ndashboard as (\n    select\n        r.store_id,\n        r.store_name,\n        r.city,\n        r.state,\n        r.total_revenue,\n        r.total_margin,\n        r.order_count,\n        r.unique_customers,\n        r.revenue_per_employee,\n        r.revenue_rank,\n        r.efficiency_rank,\n        i.total_stock_units,\n        i.out_of_stock_products,\n        i.low_stock_products,\n        d.active_days,\n        d.avg_daily_revenue\n    from rankings r\n    left join inventory i on r.store_id = i.store_id\n    left join daily d on r.store_id = d.store_id\n)\n\nselect * from dashboard",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.stg_order_promotions": {
+        "id": "model.jaffle_shop.stg_order_promotions",
+        "name": "stg_order_promotions",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with source as (\n    select * from {{ ref('raw_order_promotions') }}\n),\n\nrenamed as (\n    select\n        order_id,\n        promotion_id\n    from source\n)\n\nselect * from renamed",
         "source_name": null,
         "change_status": null,
         "change_category": null,
         "columns": {
           "order_id": {
-            "id": "model.jaffle_shop.stg_payments_order_id",
-            "table_id": "model.jaffle_shop.stg_payments",
+            "id": "model.jaffle_shop.stg_order_promotions_order_id",
+            "table_id": "model.jaffle_shop.stg_order_promotions",
             "name": "order_id",
+            "type": "INTEGER",
+            "transformation_type": "passthrough",
+            "change_status": null,
+            "depends_on": []
+          },
+          "promotion_id": {
+            "id": "model.jaffle_shop.stg_order_promotions_promotion_id",
+            "table_id": "model.jaffle_shop.stg_order_promotions",
+            "name": "promotion_id",
             "type": "INTEGER",
             "transformation_type": "passthrough",
             "change_status": null,
@@ -845,51 +876,20 @@
         },
         "impacted": true
       },
-      "seed.jaffle_shop.raw_order_promotions": {
-        "id": "seed.jaffle_shop.raw_order_promotions",
-        "name": "raw_order_promotions",
-        "package_name": "jaffle_shop",
-        "resource_type": "seed",
-        "raw_code": "",
-        "source_name": null,
-        "change_status": null,
-        "change_category": null,
-        "columns": {
-          "order_id": {
-            "id": "seed.jaffle_shop.raw_order_promotions_order_id",
-            "table_id": "seed.jaffle_shop.raw_order_promotions",
-            "name": "order_id",
-            "type": "INTEGER",
-            "transformation_type": "source",
-            "change_status": null,
-            "depends_on": []
-          },
-          "promotion_id": {
-            "id": "seed.jaffle_shop.raw_order_promotions_promotion_id",
-            "table_id": "seed.jaffle_shop.raw_order_promotions",
-            "name": "promotion_id",
-            "type": "INTEGER",
-            "transformation_type": "source",
-            "change_status": null,
-            "depends_on": []
-          }
-        },
-        "impacted": true
-      },
-      "model.jaffle_shop.int_order_items_enriched": {
-        "id": "model.jaffle_shop.int_order_items_enriched",
-        "name": "int_order_items_enriched",
+      "model.jaffle_shop.int_products_with_categories": {
+        "id": "model.jaffle_shop.int_products_with_categories",
+        "name": "int_products_with_categories",
         "package_name": "jaffle_shop",
         "resource_type": "model",
-        "raw_code": "with items as (\n    select * from {{ ref('int_order_items_with_products') }}\n),\n\nmargins as (\n    select * from {{ ref('int_product_margins') }}\n),\n\nenriched as (\n    select\n        i.order_item_id,\n        i.order_id,\n        i.product_id,\n        i.product_name,\n        i.category_name,\n        i.root_category,\n        i.category_path,\n        i.quantity,\n        i.unit_price,\n        i.line_total,\n        m.cost,\n        m.margin_pct,\n        i.quantity * m.cost as line_cost,\n        i.line_total - (i.quantity * m.cost) as line_margin\n    from items i\n    left join margins m on i.product_id = m.product_id\n)\n\nselect * from enriched",
+        "raw_code": "with products as (\n    select * from {{ ref('stg_products') }}\n),\n\ncategories as (\n    select * from {{ ref('int_category_hierarchy') }}\n),\n\njoined as (\n    select\n        p.product_id,\n        p.product_name,\n        p.category_id,\n        c.category_name,\n        c.root_category,\n        c.full_path as category_path,\n        c.depth as category_depth,\n        p.price,\n        p.cost,\n        p.created_at\n    from products p\n    left join categories c on p.category_id = c.category_id\n)\n\nselect * from joined",
         "source_name": null,
         "change_status": null,
         "change_category": null,
         "columns": {
-          "order_id": {
-            "id": "model.jaffle_shop.int_order_items_enriched_order_id",
-            "table_id": "model.jaffle_shop.int_order_items_enriched",
-            "name": "order_id",
+          "product_id": {
+            "id": "model.jaffle_shop.int_products_with_categories_product_id",
+            "table_id": "model.jaffle_shop.int_products_with_categories",
+            "name": "product_id",
             "type": "INTEGER",
             "transformation_type": "passthrough",
             "change_status": null,
@@ -900,30 +900,48 @@
       }
     },
     "columns": {
-      "model.jaffle_shop.stg_orders_order_id": {
-        "id": "model.jaffle_shop.stg_orders_order_id",
-        "table_id": "model.jaffle_shop.stg_orders",
-        "name": "order_id",
+      "seed.jaffle_shop.raw_orders_id": {
+        "id": "seed.jaffle_shop.raw_orders_id",
+        "table_id": "seed.jaffle_shop.raw_orders",
+        "name": "id",
         "type": "INTEGER",
-        "transformation_type": "renamed",
+        "transformation_type": "source",
         "change_status": null,
         "depends_on": []
       },
-      "model.jaffle_shop.stg_orders_status": {
-        "id": "model.jaffle_shop.stg_orders_status",
-        "table_id": "model.jaffle_shop.stg_orders",
+      "seed.jaffle_shop.raw_orders_status": {
+        "id": "seed.jaffle_shop.raw_orders_status",
+        "table_id": "seed.jaffle_shop.raw_orders",
         "name": "status",
         "type": "VARCHAR",
-        "transformation_type": "derived",
-        "change_status": "modified",
+        "transformation_type": "source",
+        "change_status": null,
         "depends_on": []
       },
-      "model.jaffle_shop.int_store_revenue_store_id": {
-        "id": "model.jaffle_shop.int_store_revenue_store_id",
-        "table_id": "model.jaffle_shop.int_store_revenue",
-        "name": "store_id",
-        "type": "BIGINT",
-        "transformation_type": "passthrough",
+      "seed.jaffle_shop.raw_promotions_id": {
+        "id": "seed.jaffle_shop.raw_promotions_id",
+        "table_id": "seed.jaffle_shop.raw_promotions",
+        "name": "id",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_order_payments_matched_order_id": {
+        "id": "model.jaffle_shop.int_order_payments_matched_order_id",
+        "table_id": "model.jaffle_shop.int_order_payments_matched",
+        "name": "order_id",
+        "type": "INTEGER",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_category_hierarchy_category_id": {
+        "id": "model.jaffle_shop.int_category_hierarchy_category_id",
+        "table_id": "model.jaffle_shop.int_category_hierarchy",
+        "name": "category_id",
+        "type": "INTEGER",
+        "transformation_type": "derived",
         "change_status": null,
         "depends_on": []
       },
@@ -963,10 +981,10 @@
         "change_status": null,
         "depends_on": []
       },
-      "model.jaffle_shop.int_products_with_categories_product_id": {
-        "id": "model.jaffle_shop.int_products_with_categories_product_id",
-        "table_id": "model.jaffle_shop.int_products_with_categories",
-        "name": "product_id",
+      "model.jaffle_shop.int_order_totals_order_id": {
+        "id": "model.jaffle_shop.int_order_totals_order_id",
+        "table_id": "model.jaffle_shop.int_order_totals",
+        "name": "order_id",
         "type": "INTEGER",
         "transformation_type": "passthrough",
         "change_status": null,
@@ -976,6 +994,15 @@
         "id": "model.jaffle_shop.stg_employees_store_id",
         "table_id": "model.jaffle_shop.stg_employees",
         "name": "store_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_product_margins_product_id": {
+        "id": "model.jaffle_shop.int_product_margins_product_id",
+        "table_id": "model.jaffle_shop.int_product_margins",
+        "name": "product_id",
         "type": "INTEGER",
         "transformation_type": "passthrough",
         "change_status": null,
@@ -999,69 +1026,6 @@
         "change_status": null,
         "depends_on": []
       },
-      "seed.jaffle_shop.raw_order_items_order_id": {
-        "id": "seed.jaffle_shop.raw_order_items_order_id",
-        "table_id": "seed.jaffle_shop.raw_order_items",
-        "name": "order_id",
-        "type": "INTEGER",
-        "transformation_type": "source",
-        "change_status": null,
-        "depends_on": []
-      },
-      "seed.jaffle_shop.raw_order_items_product_id": {
-        "id": "seed.jaffle_shop.raw_order_items_product_id",
-        "table_id": "seed.jaffle_shop.raw_order_items",
-        "name": "product_id",
-        "type": "INTEGER",
-        "transformation_type": "source",
-        "change_status": null,
-        "depends_on": []
-      },
-      "model.jaffle_shop.stg_categories_category_id": {
-        "id": "model.jaffle_shop.stg_categories_category_id",
-        "table_id": "model.jaffle_shop.stg_categories",
-        "name": "category_id",
-        "type": "INTEGER",
-        "transformation_type": "renamed",
-        "change_status": null,
-        "depends_on": []
-      },
-      "model.jaffle_shop.stg_categories_parent_category_id": {
-        "id": "model.jaffle_shop.stg_categories_parent_category_id",
-        "table_id": "model.jaffle_shop.stg_categories",
-        "name": "parent_category_id",
-        "type": "INTEGER",
-        "transformation_type": "passthrough",
-        "change_status": null,
-        "depends_on": []
-      },
-      "seed.jaffle_shop.raw_employees_store_id": {
-        "id": "seed.jaffle_shop.raw_employees_store_id",
-        "table_id": "seed.jaffle_shop.raw_employees",
-        "name": "store_id",
-        "type": "INTEGER",
-        "transformation_type": "source",
-        "change_status": null,
-        "depends_on": []
-      },
-      "model.jaffle_shop.stg_order_promotions_order_id": {
-        "id": "model.jaffle_shop.stg_order_promotions_order_id",
-        "table_id": "model.jaffle_shop.stg_order_promotions",
-        "name": "order_id",
-        "type": "INTEGER",
-        "transformation_type": "passthrough",
-        "change_status": null,
-        "depends_on": []
-      },
-      "model.jaffle_shop.stg_order_promotions_promotion_id": {
-        "id": "model.jaffle_shop.stg_order_promotions_promotion_id",
-        "table_id": "model.jaffle_shop.stg_order_promotions",
-        "name": "promotion_id",
-        "type": "INTEGER",
-        "transformation_type": "passthrough",
-        "change_status": null,
-        "depends_on": []
-      },
       "model.jaffle_shop.int_order_enriched_order_id": {
         "id": "model.jaffle_shop.int_order_enriched_order_id",
         "table_id": "model.jaffle_shop.int_order_enriched",
@@ -1080,39 +1044,21 @@
         "change_status": null,
         "depends_on": []
       },
-      "seed.jaffle_shop.raw_categories_id": {
-        "id": "seed.jaffle_shop.raw_categories_id",
-        "table_id": "seed.jaffle_shop.raw_categories",
-        "name": "id",
-        "type": "INTEGER",
-        "transformation_type": "source",
-        "change_status": null,
-        "depends_on": []
-      },
-      "seed.jaffle_shop.raw_categories_parent_category_id": {
-        "id": "seed.jaffle_shop.raw_categories_parent_category_id",
-        "table_id": "seed.jaffle_shop.raw_categories",
-        "name": "parent_category_id",
-        "type": "INTEGER",
-        "transformation_type": "source",
-        "change_status": null,
-        "depends_on": []
-      },
-      "model.jaffle_shop.int_order_items_with_products_order_id": {
-        "id": "model.jaffle_shop.int_order_items_with_products_order_id",
-        "table_id": "model.jaffle_shop.int_order_items_with_products",
+      "seed.jaffle_shop.raw_order_items_order_id": {
+        "id": "seed.jaffle_shop.raw_order_items_order_id",
+        "table_id": "seed.jaffle_shop.raw_order_items",
         "name": "order_id",
         "type": "INTEGER",
-        "transformation_type": "passthrough",
+        "transformation_type": "source",
         "change_status": null,
         "depends_on": []
       },
-      "model.jaffle_shop.int_order_items_with_products_product_id": {
-        "id": "model.jaffle_shop.int_order_items_with_products_product_id",
-        "table_id": "model.jaffle_shop.int_order_items_with_products",
+      "seed.jaffle_shop.raw_order_items_product_id": {
+        "id": "seed.jaffle_shop.raw_order_items_product_id",
+        "table_id": "seed.jaffle_shop.raw_order_items",
         "name": "product_id",
         "type": "INTEGER",
-        "transformation_type": "passthrough",
+        "transformation_type": "source",
         "change_status": null,
         "depends_on": []
       },
@@ -1129,15 +1075,6 @@
         "id": "model.jaffle_shop.stg_order_items_product_id",
         "table_id": "model.jaffle_shop.stg_order_items",
         "name": "product_id",
-        "type": "INTEGER",
-        "transformation_type": "passthrough",
-        "change_status": null,
-        "depends_on": []
-      },
-      "model.jaffle_shop.int_store_employees_active_store_id": {
-        "id": "model.jaffle_shop.int_store_employees_active_store_id",
-        "table_id": "model.jaffle_shop.int_store_employees_active",
-        "name": "store_id",
         "type": "INTEGER",
         "transformation_type": "passthrough",
         "change_status": null,
@@ -1161,58 +1098,157 @@
         "change_status": null,
         "depends_on": []
       },
-      "seed.jaffle_shop.raw_payments_order_id": {
-        "id": "seed.jaffle_shop.raw_payments_order_id",
-        "table_id": "seed.jaffle_shop.raw_payments",
+      "model.jaffle_shop.stg_categories_category_id": {
+        "id": "model.jaffle_shop.stg_categories_category_id",
+        "table_id": "model.jaffle_shop.stg_categories",
+        "name": "category_id",
+        "type": "INTEGER",
+        "transformation_type": "renamed",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_categories_parent_category_id": {
+        "id": "model.jaffle_shop.stg_categories_parent_category_id",
+        "table_id": "model.jaffle_shop.stg_categories",
+        "name": "parent_category_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_order_items_enriched_order_id": {
+        "id": "model.jaffle_shop.int_order_items_enriched_order_id",
+        "table_id": "model.jaffle_shop.int_order_items_enriched",
         "name": "order_id",
         "type": "INTEGER",
-        "transformation_type": "source",
+        "transformation_type": "passthrough",
         "change_status": null,
         "depends_on": []
       },
-      "seed.jaffle_shop.raw_payments_amount": {
-        "id": "seed.jaffle_shop.raw_payments_amount",
-        "table_id": "seed.jaffle_shop.raw_payments",
-        "name": "amount",
+      "model.jaffle_shop.int_order_items_with_products_order_id": {
+        "id": "model.jaffle_shop.int_order_items_with_products_order_id",
+        "table_id": "model.jaffle_shop.int_order_items_with_products",
+        "name": "order_id",
         "type": "INTEGER",
-        "transformation_type": "source",
+        "transformation_type": "passthrough",
         "change_status": null,
         "depends_on": []
       },
-      "seed.jaffle_shop.raw_promotions_id": {
-        "id": "seed.jaffle_shop.raw_promotions_id",
-        "table_id": "seed.jaffle_shop.raw_promotions",
+      "model.jaffle_shop.int_order_items_with_products_product_id": {
+        "id": "model.jaffle_shop.int_order_items_with_products_product_id",
+        "table_id": "model.jaffle_shop.int_order_items_with_products",
+        "name": "product_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_products_id": {
+        "id": "seed.jaffle_shop.raw_products_id",
+        "table_id": "seed.jaffle_shop.raw_products",
         "name": "id",
         "type": "INTEGER",
         "transformation_type": "source",
         "change_status": null,
         "depends_on": []
       },
-      "model.jaffle_shop.int_order_payments_matched_order_id": {
-        "id": "model.jaffle_shop.int_order_payments_matched_order_id",
-        "table_id": "model.jaffle_shop.int_order_payments_matched",
-        "name": "order_id",
+      "seed.jaffle_shop.raw_products_category_id": {
+        "id": "seed.jaffle_shop.raw_products_category_id",
+        "table_id": "seed.jaffle_shop.raw_products",
+        "name": "category_id",
         "type": "INTEGER",
-        "transformation_type": "derived",
+        "transformation_type": "source",
         "change_status": null,
         "depends_on": []
       },
-      "seed.jaffle_shop.raw_orders_id": {
-        "id": "seed.jaffle_shop.raw_orders_id",
-        "table_id": "seed.jaffle_shop.raw_orders",
+      "seed.jaffle_shop.raw_order_promotions_order_id": {
+        "id": "seed.jaffle_shop.raw_order_promotions_order_id",
+        "table_id": "seed.jaffle_shop.raw_order_promotions",
+        "name": "order_id",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_order_promotions_promotion_id": {
+        "id": "seed.jaffle_shop.raw_order_promotions_promotion_id",
+        "table_id": "seed.jaffle_shop.raw_order_promotions",
+        "name": "promotion_id",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_categories_id": {
+        "id": "seed.jaffle_shop.raw_categories_id",
+        "table_id": "seed.jaffle_shop.raw_categories",
         "name": "id",
         "type": "INTEGER",
         "transformation_type": "source",
         "change_status": null,
         "depends_on": []
       },
-      "seed.jaffle_shop.raw_orders_status": {
-        "id": "seed.jaffle_shop.raw_orders_status",
-        "table_id": "seed.jaffle_shop.raw_orders",
+      "seed.jaffle_shop.raw_categories_parent_category_id": {
+        "id": "seed.jaffle_shop.raw_categories_parent_category_id",
+        "table_id": "seed.jaffle_shop.raw_categories",
+        "name": "parent_category_id",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_promotions_promotion_id": {
+        "id": "model.jaffle_shop.stg_promotions_promotion_id",
+        "table_id": "model.jaffle_shop.stg_promotions",
+        "name": "promotion_id",
+        "type": "INTEGER",
+        "transformation_type": "renamed",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_revenue_store_id": {
+        "id": "model.jaffle_shop.int_store_revenue_store_id",
+        "table_id": "model.jaffle_shop.int_store_revenue",
+        "name": "store_id",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_employees_store_id": {
+        "id": "seed.jaffle_shop.raw_employees_store_id",
+        "table_id": "seed.jaffle_shop.raw_employees",
+        "name": "store_id",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_payments_order_id": {
+        "id": "model.jaffle_shop.stg_payments_order_id",
+        "table_id": "model.jaffle_shop.stg_payments",
+        "name": "order_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_orders_order_id": {
+        "id": "model.jaffle_shop.stg_orders_order_id",
+        "table_id": "model.jaffle_shop.stg_orders",
+        "name": "order_id",
+        "type": "INTEGER",
+        "transformation_type": "renamed",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_orders_status": {
+        "id": "model.jaffle_shop.stg_orders_status",
+        "table_id": "model.jaffle_shop.stg_orders",
         "name": "status",
         "type": "VARCHAR",
-        "transformation_type": "source",
-        "change_status": null,
+        "transformation_type": "derived",
+        "change_status": "modified",
         "depends_on": []
       },
       "model.jaffle_shop.stg_stores_store_id": {
@@ -1251,55 +1287,28 @@
         "change_status": null,
         "depends_on": []
       },
-      "model.jaffle_shop.int_category_hierarchy_category_id": {
-        "id": "model.jaffle_shop.int_category_hierarchy_category_id",
-        "table_id": "model.jaffle_shop.int_category_hierarchy",
-        "name": "category_id",
+      "model.jaffle_shop.int_store_employees_active_store_id": {
+        "id": "model.jaffle_shop.int_store_employees_active_store_id",
+        "table_id": "model.jaffle_shop.int_store_employees_active",
+        "name": "store_id",
         "type": "INTEGER",
-        "transformation_type": "derived",
+        "transformation_type": "passthrough",
         "change_status": null,
         "depends_on": []
       },
-      "model.jaffle_shop.stg_promotions_promotion_id": {
-        "id": "model.jaffle_shop.stg_promotions_promotion_id",
-        "table_id": "model.jaffle_shop.stg_promotions",
-        "name": "promotion_id",
-        "type": "INTEGER",
-        "transformation_type": "renamed",
-        "change_status": null,
-        "depends_on": []
-      },
-      "model.jaffle_shop.int_order_totals_order_id": {
-        "id": "model.jaffle_shop.int_order_totals_order_id",
-        "table_id": "model.jaffle_shop.int_order_totals",
+      "seed.jaffle_shop.raw_payments_order_id": {
+        "id": "seed.jaffle_shop.raw_payments_order_id",
+        "table_id": "seed.jaffle_shop.raw_payments",
         "name": "order_id",
-        "type": "INTEGER",
-        "transformation_type": "passthrough",
-        "change_status": null,
-        "depends_on": []
-      },
-      "model.jaffle_shop.int_product_margins_product_id": {
-        "id": "model.jaffle_shop.int_product_margins_product_id",
-        "table_id": "model.jaffle_shop.int_product_margins",
-        "name": "product_id",
-        "type": "INTEGER",
-        "transformation_type": "passthrough",
-        "change_status": null,
-        "depends_on": []
-      },
-      "seed.jaffle_shop.raw_products_id": {
-        "id": "seed.jaffle_shop.raw_products_id",
-        "table_id": "seed.jaffle_shop.raw_products",
-        "name": "id",
         "type": "INTEGER",
         "transformation_type": "source",
         "change_status": null,
         "depends_on": []
       },
-      "seed.jaffle_shop.raw_products_category_id": {
-        "id": "seed.jaffle_shop.raw_products_category_id",
-        "table_id": "seed.jaffle_shop.raw_products",
-        "name": "category_id",
+      "seed.jaffle_shop.raw_payments_amount": {
+        "id": "seed.jaffle_shop.raw_payments_amount",
+        "table_id": "seed.jaffle_shop.raw_payments",
+        "name": "amount",
         "type": "INTEGER",
         "transformation_type": "source",
         "change_status": null,
@@ -1323,37 +1332,28 @@
         "change_status": null,
         "depends_on": []
       },
-      "model.jaffle_shop.stg_payments_order_id": {
-        "id": "model.jaffle_shop.stg_payments_order_id",
-        "table_id": "model.jaffle_shop.stg_payments",
+      "model.jaffle_shop.stg_order_promotions_order_id": {
+        "id": "model.jaffle_shop.stg_order_promotions_order_id",
+        "table_id": "model.jaffle_shop.stg_order_promotions",
         "name": "order_id",
         "type": "INTEGER",
         "transformation_type": "passthrough",
         "change_status": null,
         "depends_on": []
       },
-      "seed.jaffle_shop.raw_order_promotions_order_id": {
-        "id": "seed.jaffle_shop.raw_order_promotions_order_id",
-        "table_id": "seed.jaffle_shop.raw_order_promotions",
-        "name": "order_id",
-        "type": "INTEGER",
-        "transformation_type": "source",
-        "change_status": null,
-        "depends_on": []
-      },
-      "seed.jaffle_shop.raw_order_promotions_promotion_id": {
-        "id": "seed.jaffle_shop.raw_order_promotions_promotion_id",
-        "table_id": "seed.jaffle_shop.raw_order_promotions",
+      "model.jaffle_shop.stg_order_promotions_promotion_id": {
+        "id": "model.jaffle_shop.stg_order_promotions_promotion_id",
+        "table_id": "model.jaffle_shop.stg_order_promotions",
         "name": "promotion_id",
         "type": "INTEGER",
-        "transformation_type": "source",
+        "transformation_type": "passthrough",
         "change_status": null,
         "depends_on": []
       },
-      "model.jaffle_shop.int_order_items_enriched_order_id": {
-        "id": "model.jaffle_shop.int_order_items_enriched_order_id",
-        "table_id": "model.jaffle_shop.int_order_items_enriched",
-        "name": "order_id",
+      "model.jaffle_shop.int_products_with_categories_product_id": {
+        "id": "model.jaffle_shop.int_products_with_categories_product_id",
+        "table_id": "model.jaffle_shop.int_products_with_categories",
+        "name": "product_id",
         "type": "INTEGER",
         "transformation_type": "passthrough",
         "change_status": null,
@@ -1361,29 +1361,28 @@
       }
     },
     "parent_map": {
-      "model.jaffle_shop.stg_orders": ["seed.jaffle_shop.raw_orders"],
-      "model.jaffle_shop.stg_orders_order_id": [
-        "seed.jaffle_shop.raw_orders_id"
+      "seed.jaffle_shop.raw_orders": [],
+      "seed.jaffle_shop.raw_orders_id": [],
+      "seed.jaffle_shop.raw_orders_status": [],
+      "seed.jaffle_shop.raw_promotions": [],
+      "seed.jaffle_shop.raw_promotions_id": [],
+      "model.jaffle_shop.int_order_payments_matched": [
+        "model.jaffle_shop.stg_payments",
+        "model.jaffle_shop.int_order_totals",
+        "model.jaffle_shop.int_order_totals_order_id",
+        "model.jaffle_shop.stg_payments_order_id"
       ],
-      "model.jaffle_shop.stg_orders_status": [
-        "seed.jaffle_shop.raw_orders_status"
+      "model.jaffle_shop.int_order_payments_matched_order_id": [
+        "model.jaffle_shop.stg_payments_order_id",
+        "model.jaffle_shop.int_order_totals_order_id"
       ],
-      "model.jaffle_shop.store_rankings": [
-        "model.jaffle_shop.store_performance"
+      "model.jaffle_shop.int_category_hierarchy": [
+        "model.jaffle_shop.stg_categories",
+        "model.jaffle_shop.stg_categories_parent_category_id",
+        "model.jaffle_shop.stg_categories_category_id"
       ],
-      "model.jaffle_shop.int_store_revenue": [
-        "model.jaffle_shop.int_store_order_assignments",
-        "model.jaffle_shop.int_order_enriched",
-        "model.jaffle_shop.int_store_order_assignments_order_id",
-        "model.jaffle_shop.int_store_order_assignments_store_id",
-        "model.jaffle_shop.int_order_enriched_status",
-        "model.jaffle_shop.int_order_enriched_order_id"
-      ],
-      "model.jaffle_shop.int_store_revenue_store_id": [
-        "model.jaffle_shop.int_store_order_assignments_store_id"
-      ],
-      "model.jaffle_shop.rpt_store_dashboard": [
-        "model.jaffle_shop.store_rankings"
+      "model.jaffle_shop.int_category_hierarchy_category_id": [
+        "model.jaffle_shop.stg_categories_category_id"
       ],
       "model.jaffle_shop.store_performance": [
         "model.jaffle_shop.int_store_performance"
@@ -1393,18 +1392,22 @@
       "seed.jaffle_shop.raw_stores_name": [],
       "seed.jaffle_shop.raw_stores_city": [],
       "seed.jaffle_shop.raw_stores_state": [],
-      "model.jaffle_shop.int_products_with_categories": [
-        "model.jaffle_shop.int_category_hierarchy_category_id",
-        "model.jaffle_shop.stg_products",
-        "model.jaffle_shop.int_category_hierarchy",
-        "model.jaffle_shop.stg_products_category_id"
+      "model.jaffle_shop.int_order_totals": [
+        "model.jaffle_shop.int_order_items_enriched_order_id",
+        "model.jaffle_shop.int_order_items_enriched"
       ],
-      "model.jaffle_shop.int_products_with_categories_product_id": [
-        "model.jaffle_shop.stg_products_product_id"
+      "model.jaffle_shop.int_order_totals_order_id": [
+        "model.jaffle_shop.int_order_items_enriched_order_id"
       ],
       "model.jaffle_shop.stg_employees": ["seed.jaffle_shop.raw_employees"],
       "model.jaffle_shop.stg_employees_store_id": [
         "seed.jaffle_shop.raw_employees_store_id"
+      ],
+      "model.jaffle_shop.int_product_margins": [
+        "model.jaffle_shop.stg_products"
+      ],
+      "model.jaffle_shop.int_product_margins_product_id": [
+        "model.jaffle_shop.stg_products_product_id"
       ],
       "model.jaffle_shop.int_store_order_assignments": [
         "model.jaffle_shop.stg_orders",
@@ -1416,34 +1419,13 @@
       "model.jaffle_shop.int_store_order_assignments_store_id": [
         "model.jaffle_shop.stg_orders_order_id"
       ],
-      "seed.jaffle_shop.raw_order_items": [],
-      "seed.jaffle_shop.raw_order_items_order_id": [],
-      "seed.jaffle_shop.raw_order_items_product_id": [],
-      "model.jaffle_shop.stg_categories": ["seed.jaffle_shop.raw_categories"],
-      "model.jaffle_shop.stg_categories_category_id": [
-        "seed.jaffle_shop.raw_categories_id"
-      ],
-      "model.jaffle_shop.stg_categories_parent_category_id": [
-        "seed.jaffle_shop.raw_categories_parent_category_id"
-      ],
-      "seed.jaffle_shop.raw_employees": [],
-      "seed.jaffle_shop.raw_employees_store_id": [],
-      "model.jaffle_shop.stg_order_promotions": [
-        "seed.jaffle_shop.raw_order_promotions"
-      ],
-      "model.jaffle_shop.stg_order_promotions_order_id": [
-        "seed.jaffle_shop.raw_order_promotions_order_id"
-      ],
-      "model.jaffle_shop.stg_order_promotions_promotion_id": [
-        "seed.jaffle_shop.raw_order_promotions_promotion_id"
-      ],
       "model.jaffle_shop.int_order_enriched": [
         "model.jaffle_shop.int_order_payments_matched_order_id",
-        "model.jaffle_shop.int_order_payments_matched",
+        "model.jaffle_shop.int_order_totals",
         "model.jaffle_shop.int_orders_with_promotions",
         "model.jaffle_shop.int_orders_with_promotions_order_id",
         "model.jaffle_shop.int_order_totals_order_id",
-        "model.jaffle_shop.int_order_totals"
+        "model.jaffle_shop.int_order_payments_matched"
       ],
       "model.jaffle_shop.int_order_enriched_order_id": [
         "model.jaffle_shop.int_orders_with_promotions_order_id"
@@ -1451,21 +1433,9 @@
       "model.jaffle_shop.int_order_enriched_status": [
         "model.jaffle_shop.int_orders_with_promotions_status"
       ],
-      "seed.jaffle_shop.raw_categories": [],
-      "seed.jaffle_shop.raw_categories_id": [],
-      "seed.jaffle_shop.raw_categories_parent_category_id": [],
-      "model.jaffle_shop.int_order_items_with_products": [
-        "model.jaffle_shop.int_products_with_categories",
-        "model.jaffle_shop.int_products_with_categories_product_id",
-        "model.jaffle_shop.stg_order_items",
-        "model.jaffle_shop.stg_order_items_product_id"
-      ],
-      "model.jaffle_shop.int_order_items_with_products_order_id": [
-        "model.jaffle_shop.stg_order_items_order_id"
-      ],
-      "model.jaffle_shop.int_order_items_with_products_product_id": [
-        "model.jaffle_shop.stg_order_items_product_id"
-      ],
+      "seed.jaffle_shop.raw_order_items": [],
+      "seed.jaffle_shop.raw_order_items_order_id": [],
+      "seed.jaffle_shop.raw_order_items_product_id": [],
       "model.jaffle_shop.stg_order_items": ["seed.jaffle_shop.raw_order_items"],
       "model.jaffle_shop.stg_order_items_order_id": [
         "seed.jaffle_shop.raw_order_items_order_id"
@@ -1473,26 +1443,14 @@
       "model.jaffle_shop.stg_order_items_product_id": [
         "seed.jaffle_shop.raw_order_items_product_id"
       ],
-      "model.jaffle_shop.int_store_employees_active": [
-        "model.jaffle_shop.stg_stores_state",
-        "model.jaffle_shop.stg_employees",
-        "model.jaffle_shop.stg_stores",
-        "model.jaffle_shop.stg_stores_store_id",
-        "model.jaffle_shop.stg_stores_store_name",
-        "model.jaffle_shop.stg_stores_city",
-        "model.jaffle_shop.stg_employees_store_id"
-      ],
-      "model.jaffle_shop.int_store_employees_active_store_id": [
-        "model.jaffle_shop.stg_stores_store_id"
-      ],
       "model.jaffle_shop.int_orders_with_promotions": [
-        "model.jaffle_shop.stg_orders",
-        "model.jaffle_shop.stg_promotions",
-        "model.jaffle_shop.stg_orders_order_id",
         "model.jaffle_shop.stg_order_promotions_promotion_id",
-        "model.jaffle_shop.stg_order_promotions_order_id",
+        "model.jaffle_shop.stg_promotions",
+        "model.jaffle_shop.stg_order_promotions",
         "model.jaffle_shop.stg_promotions_promotion_id",
-        "model.jaffle_shop.stg_order_promotions"
+        "model.jaffle_shop.stg_orders_order_id",
+        "model.jaffle_shop.stg_order_promotions_order_id",
+        "model.jaffle_shop.stg_orders"
       ],
       "model.jaffle_shop.int_orders_with_promotions_order_id": [
         "model.jaffle_shop.stg_orders_order_id"
@@ -1500,30 +1458,83 @@
       "model.jaffle_shop.int_orders_with_promotions_status": [
         "model.jaffle_shop.stg_orders_status"
       ],
-      "seed.jaffle_shop.raw_payments": [],
-      "seed.jaffle_shop.raw_payments_order_id": [],
-      "seed.jaffle_shop.raw_payments_amount": [],
-      "seed.jaffle_shop.raw_promotions": [],
-      "seed.jaffle_shop.raw_promotions_id": [],
+      "model.jaffle_shop.stg_categories": ["seed.jaffle_shop.raw_categories"],
+      "model.jaffle_shop.stg_categories_category_id": [
+        "seed.jaffle_shop.raw_categories_id"
+      ],
+      "model.jaffle_shop.stg_categories_parent_category_id": [
+        "seed.jaffle_shop.raw_categories_parent_category_id"
+      ],
+      "model.jaffle_shop.int_order_items_enriched": [
+        "model.jaffle_shop.int_product_margins_product_id",
+        "model.jaffle_shop.int_product_margins",
+        "model.jaffle_shop.int_order_items_with_products",
+        "model.jaffle_shop.int_order_items_with_products_product_id"
+      ],
+      "model.jaffle_shop.int_order_items_enriched_order_id": [
+        "model.jaffle_shop.int_order_items_with_products_order_id"
+      ],
+      "model.jaffle_shop.int_order_items_with_products": [
+        "model.jaffle_shop.stg_order_items_product_id",
+        "model.jaffle_shop.stg_order_items",
+        "model.jaffle_shop.int_products_with_categories",
+        "model.jaffle_shop.int_products_with_categories_product_id"
+      ],
+      "model.jaffle_shop.int_order_items_with_products_order_id": [
+        "model.jaffle_shop.stg_order_items_order_id"
+      ],
+      "model.jaffle_shop.int_order_items_with_products_product_id": [
+        "model.jaffle_shop.stg_order_items_product_id"
+      ],
+      "seed.jaffle_shop.raw_products": [],
+      "seed.jaffle_shop.raw_products_id": [],
+      "seed.jaffle_shop.raw_products_category_id": [],
       "model.jaffle_shop.int_store_performance": [
-        "model.jaffle_shop.int_store_employees_active",
+        "model.jaffle_shop.int_store_employees_active_store_id",
         "model.jaffle_shop.int_store_revenue",
-        "model.jaffle_shop.int_store_revenue_store_id",
-        "model.jaffle_shop.int_store_employees_active_store_id"
+        "model.jaffle_shop.int_store_employees_active",
+        "model.jaffle_shop.int_store_revenue_store_id"
       ],
-      "model.jaffle_shop.int_order_payments_matched": [
-        "model.jaffle_shop.stg_payments",
-        "model.jaffle_shop.stg_payments_order_id",
-        "model.jaffle_shop.int_order_totals",
-        "model.jaffle_shop.int_order_totals_order_id"
+      "seed.jaffle_shop.raw_order_promotions": [],
+      "seed.jaffle_shop.raw_order_promotions_order_id": [],
+      "seed.jaffle_shop.raw_order_promotions_promotion_id": [],
+      "seed.jaffle_shop.raw_categories": [],
+      "seed.jaffle_shop.raw_categories_id": [],
+      "seed.jaffle_shop.raw_categories_parent_category_id": [],
+      "model.jaffle_shop.stg_promotions": ["seed.jaffle_shop.raw_promotions"],
+      "model.jaffle_shop.stg_promotions_promotion_id": [
+        "seed.jaffle_shop.raw_promotions_id"
       ],
-      "model.jaffle_shop.int_order_payments_matched_order_id": [
-        "model.jaffle_shop.stg_payments_order_id",
-        "model.jaffle_shop.int_order_totals_order_id"
+      "model.jaffle_shop.int_store_revenue": [
+        "model.jaffle_shop.int_store_order_assignments_store_id",
+        "model.jaffle_shop.int_store_order_assignments_order_id",
+        "model.jaffle_shop.int_order_enriched_status",
+        "model.jaffle_shop.int_store_order_assignments",
+        "model.jaffle_shop.int_order_enriched",
+        "model.jaffle_shop.int_order_enriched_order_id"
       ],
-      "seed.jaffle_shop.raw_orders": [],
-      "seed.jaffle_shop.raw_orders_id": [],
-      "seed.jaffle_shop.raw_orders_status": [],
+      "model.jaffle_shop.int_store_revenue_store_id": [
+        "model.jaffle_shop.int_store_order_assignments_store_id"
+      ],
+      "model.jaffle_shop.store_rankings": [
+        "model.jaffle_shop.store_performance"
+      ],
+      "seed.jaffle_shop.raw_employees": [],
+      "seed.jaffle_shop.raw_employees_store_id": [],
+      "model.jaffle_shop.stg_payments": [
+        "seed.jaffle_shop.raw_payments",
+        "seed.jaffle_shop.raw_payments_amount"
+      ],
+      "model.jaffle_shop.stg_payments_order_id": [
+        "seed.jaffle_shop.raw_payments_order_id"
+      ],
+      "model.jaffle_shop.stg_orders": ["seed.jaffle_shop.raw_orders"],
+      "model.jaffle_shop.stg_orders_order_id": [
+        "seed.jaffle_shop.raw_orders_id"
+      ],
+      "model.jaffle_shop.stg_orders_status": [
+        "seed.jaffle_shop.raw_orders_status"
+      ],
       "model.jaffle_shop.stg_stores": ["seed.jaffle_shop.raw_stores"],
       "model.jaffle_shop.stg_stores_store_id": [
         "seed.jaffle_shop.raw_stores_id"
@@ -1535,34 +1546,21 @@
       "model.jaffle_shop.stg_stores_state": [
         "seed.jaffle_shop.raw_stores_state"
       ],
-      "model.jaffle_shop.int_category_hierarchy": [
-        "model.jaffle_shop.stg_categories_parent_category_id",
-        "model.jaffle_shop.stg_categories_category_id",
-        "model.jaffle_shop.stg_categories"
+      "model.jaffle_shop.int_store_employees_active": [
+        "model.jaffle_shop.stg_stores_store_name",
+        "model.jaffle_shop.stg_employees_store_id",
+        "model.jaffle_shop.stg_stores",
+        "model.jaffle_shop.stg_stores_store_id",
+        "model.jaffle_shop.stg_employees",
+        "model.jaffle_shop.stg_stores_state",
+        "model.jaffle_shop.stg_stores_city"
       ],
-      "model.jaffle_shop.int_category_hierarchy_category_id": [
-        "model.jaffle_shop.stg_categories_category_id"
+      "model.jaffle_shop.int_store_employees_active_store_id": [
+        "model.jaffle_shop.stg_stores_store_id"
       ],
-      "model.jaffle_shop.stg_promotions": ["seed.jaffle_shop.raw_promotions"],
-      "model.jaffle_shop.stg_promotions_promotion_id": [
-        "seed.jaffle_shop.raw_promotions_id"
-      ],
-      "model.jaffle_shop.int_order_totals": [
-        "model.jaffle_shop.int_order_items_enriched",
-        "model.jaffle_shop.int_order_items_enriched_order_id"
-      ],
-      "model.jaffle_shop.int_order_totals_order_id": [
-        "model.jaffle_shop.int_order_items_enriched_order_id"
-      ],
-      "model.jaffle_shop.int_product_margins": [
-        "model.jaffle_shop.stg_products"
-      ],
-      "model.jaffle_shop.int_product_margins_product_id": [
-        "model.jaffle_shop.stg_products_product_id"
-      ],
-      "seed.jaffle_shop.raw_products": [],
-      "seed.jaffle_shop.raw_products_id": [],
-      "seed.jaffle_shop.raw_products_category_id": [],
+      "seed.jaffle_shop.raw_payments": [],
+      "seed.jaffle_shop.raw_payments_order_id": [],
+      "seed.jaffle_shop.raw_payments_amount": [],
       "model.jaffle_shop.stg_products": ["seed.jaffle_shop.raw_products"],
       "model.jaffle_shop.stg_products_product_id": [
         "seed.jaffle_shop.raw_products_id"
@@ -1570,39 +1568,171 @@
       "model.jaffle_shop.stg_products_category_id": [
         "seed.jaffle_shop.raw_products_category_id"
       ],
-      "model.jaffle_shop.stg_payments": [
-        "seed.jaffle_shop.raw_payments",
-        "seed.jaffle_shop.raw_payments_amount"
+      "model.jaffle_shop.rpt_store_dashboard": [
+        "model.jaffle_shop.store_rankings"
       ],
-      "model.jaffle_shop.stg_payments_order_id": [
-        "seed.jaffle_shop.raw_payments_order_id"
+      "model.jaffle_shop.stg_order_promotions": [
+        "seed.jaffle_shop.raw_order_promotions"
       ],
-      "seed.jaffle_shop.raw_order_promotions": [],
-      "seed.jaffle_shop.raw_order_promotions_order_id": [],
-      "seed.jaffle_shop.raw_order_promotions_promotion_id": [],
-      "model.jaffle_shop.int_order_items_enriched": [
-        "model.jaffle_shop.int_product_margins",
-        "model.jaffle_shop.int_product_margins_product_id",
-        "model.jaffle_shop.int_order_items_with_products",
-        "model.jaffle_shop.int_order_items_with_products_product_id"
+      "model.jaffle_shop.stg_order_promotions_order_id": [
+        "seed.jaffle_shop.raw_order_promotions_order_id"
       ],
-      "model.jaffle_shop.int_order_items_enriched_order_id": [
-        "model.jaffle_shop.int_order_items_with_products_order_id"
+      "model.jaffle_shop.stg_order_promotions_promotion_id": [
+        "seed.jaffle_shop.raw_order_promotions_promotion_id"
+      ],
+      "model.jaffle_shop.int_products_with_categories": [
+        "model.jaffle_shop.stg_products",
+        "model.jaffle_shop.int_category_hierarchy",
+        "model.jaffle_shop.int_category_hierarchy_category_id",
+        "model.jaffle_shop.stg_products_category_id"
+      ],
+      "model.jaffle_shop.int_products_with_categories_product_id": [
+        "model.jaffle_shop.stg_products_product_id"
       ]
     },
     "child_map": {
-      "model.jaffle_shop.stg_stores_store_id": [
-        "model.jaffle_shop.int_store_employees_active",
-        "model.jaffle_shop.int_store_employees_active_store_id"
+      "model.jaffle_shop.int_order_enriched": [
+        "model.jaffle_shop.int_store_revenue"
       ],
-      "model.jaffle_shop.stg_employees": [
-        "model.jaffle_shop.int_store_employees_active"
+      "model.jaffle_shop.int_order_enriched_status": [
+        "model.jaffle_shop.int_store_revenue"
+      ],
+      "model.jaffle_shop.int_order_enriched_order_id": [
+        "model.jaffle_shop.int_store_revenue"
+      ],
+      "model.jaffle_shop.stg_payments": [
+        "model.jaffle_shop.int_order_payments_matched"
+      ],
+      "model.jaffle_shop.int_order_totals": [
+        "model.jaffle_shop.int_order_enriched",
+        "model.jaffle_shop.int_order_payments_matched"
+      ],
+      "model.jaffle_shop.int_order_totals_order_id": [
+        "model.jaffle_shop.int_order_payments_matched_order_id",
+        "model.jaffle_shop.int_order_enriched",
+        "model.jaffle_shop.int_order_payments_matched"
+      ],
+      "model.jaffle_shop.stg_payments_order_id": [
+        "model.jaffle_shop.int_order_payments_matched_order_id",
+        "model.jaffle_shop.int_order_payments_matched"
+      ],
+      "model.jaffle_shop.stg_orders": [
+        "model.jaffle_shop.int_store_order_assignments",
+        "model.jaffle_shop.int_orders_with_promotions"
+      ],
+      "model.jaffle_shop.stg_orders_order_id": [
+        "model.jaffle_shop.int_store_order_assignments_store_id",
+        "model.jaffle_shop.int_store_order_assignments_order_id",
+        "model.jaffle_shop.int_orders_with_promotions_order_id",
+        "model.jaffle_shop.int_orders_with_promotions"
+      ],
+      "model.jaffle_shop.stg_orders_status": [
+        "model.jaffle_shop.int_orders_with_promotions_status"
+      ],
+      "model.jaffle_shop.int_products_with_categories": [
+        "model.jaffle_shop.int_order_items_with_products"
+      ],
+      "model.jaffle_shop.int_products_with_categories_product_id": [
+        "model.jaffle_shop.int_order_items_with_products"
+      ],
+      "model.jaffle_shop.stg_categories": [
+        "model.jaffle_shop.int_category_hierarchy"
+      ],
+      "model.jaffle_shop.stg_categories_parent_category_id": [
+        "model.jaffle_shop.int_category_hierarchy"
+      ],
+      "model.jaffle_shop.stg_categories_category_id": [
+        "model.jaffle_shop.int_category_hierarchy",
+        "model.jaffle_shop.int_category_hierarchy_category_id"
+      ],
+      "model.jaffle_shop.int_store_performance": [
+        "model.jaffle_shop.store_performance"
+      ],
+      "model.jaffle_shop.int_order_items_enriched_order_id": [
+        "model.jaffle_shop.int_order_totals",
+        "model.jaffle_shop.int_order_totals_order_id"
+      ],
+      "model.jaffle_shop.int_order_items_enriched": [
+        "model.jaffle_shop.int_order_totals"
+      ],
+      "seed.jaffle_shop.raw_employees": ["model.jaffle_shop.stg_employees"],
+      "seed.jaffle_shop.raw_employees_store_id": [
+        "model.jaffle_shop.stg_employees_store_id"
+      ],
+      "model.jaffle_shop.int_order_items_with_products_order_id": [
+        "model.jaffle_shop.int_order_items_enriched_order_id"
+      ],
+      "model.jaffle_shop.int_store_order_assignments_order_id": [
+        "model.jaffle_shop.int_store_revenue"
+      ],
+      "model.jaffle_shop.int_store_order_assignments": [
+        "model.jaffle_shop.int_store_revenue"
+      ],
+      "model.jaffle_shop.int_order_items_with_products": [
+        "model.jaffle_shop.int_order_items_enriched"
+      ],
+      "model.jaffle_shop.int_order_items_with_products_product_id": [
+        "model.jaffle_shop.int_order_items_enriched"
+      ],
+      "model.jaffle_shop.int_store_order_assignments_store_id": [
+        "model.jaffle_shop.int_store_revenue",
+        "model.jaffle_shop.int_store_revenue_store_id"
+      ],
+      "model.jaffle_shop.stg_products": [
+        "model.jaffle_shop.int_product_margins",
+        "model.jaffle_shop.int_products_with_categories"
+      ],
+      "model.jaffle_shop.stg_products_product_id": [
+        "model.jaffle_shop.int_product_margins_product_id",
+        "model.jaffle_shop.int_products_with_categories_product_id"
       ],
       "model.jaffle_shop.stg_stores": [
-        "model.jaffle_shop.int_store_employees_active",
-        "model.jaffle_shop.int_store_order_assignments"
+        "model.jaffle_shop.int_store_order_assignments",
+        "model.jaffle_shop.int_store_employees_active"
+      ],
+      "model.jaffle_shop.int_product_margins_product_id": [
+        "model.jaffle_shop.int_order_items_enriched"
+      ],
+      "model.jaffle_shop.int_product_margins": [
+        "model.jaffle_shop.int_order_items_enriched"
+      ],
+      "model.jaffle_shop.int_store_employees_active": [
+        "model.jaffle_shop.int_store_performance"
+      ],
+      "model.jaffle_shop.int_store_employees_active_store_id": [
+        "model.jaffle_shop.int_store_performance"
+      ],
+      "model.jaffle_shop.int_order_payments_matched_order_id": [
+        "model.jaffle_shop.int_order_enriched"
+      ],
+      "model.jaffle_shop.int_orders_with_promotions": [
+        "model.jaffle_shop.int_order_enriched"
+      ],
+      "model.jaffle_shop.int_orders_with_promotions_order_id": [
+        "model.jaffle_shop.int_order_enriched",
+        "model.jaffle_shop.int_order_enriched_order_id"
+      ],
+      "model.jaffle_shop.int_order_payments_matched": [
+        "model.jaffle_shop.int_order_enriched"
+      ],
+      "model.jaffle_shop.int_orders_with_promotions_status": [
+        "model.jaffle_shop.int_order_enriched_status"
+      ],
+      "seed.jaffle_shop.raw_order_items": ["model.jaffle_shop.stg_order_items"],
+      "seed.jaffle_shop.raw_order_items_order_id": [
+        "model.jaffle_shop.stg_order_items_order_id"
+      ],
+      "seed.jaffle_shop.raw_order_items_product_id": [
+        "model.jaffle_shop.stg_order_items_product_id"
+      ],
+      "model.jaffle_shop.stg_stores_store_id": [
+        "model.jaffle_shop.int_store_employees_active_store_id",
+        "model.jaffle_shop.int_store_employees_active"
       ],
       "model.jaffle_shop.stg_employees_store_id": [
+        "model.jaffle_shop.int_store_employees_active"
+      ],
+      "model.jaffle_shop.stg_employees": [
         "model.jaffle_shop.int_store_employees_active"
       ],
       "model.jaffle_shop.stg_stores_store_name": [
@@ -1614,87 +1744,29 @@
       "model.jaffle_shop.stg_stores_state": [
         "model.jaffle_shop.int_store_employees_active"
       ],
-      "seed.jaffle_shop.raw_orders": ["model.jaffle_shop.stg_orders"],
-      "seed.jaffle_shop.raw_orders_id": [
-        "model.jaffle_shop.stg_orders_order_id"
-      ],
-      "seed.jaffle_shop.raw_orders_status": [
-        "model.jaffle_shop.stg_orders_status"
-      ],
-      "model.jaffle_shop.store_performance": [
-        "model.jaffle_shop.store_rankings"
-      ],
-      "model.jaffle_shop.stg_orders": [
-        "model.jaffle_shop.int_orders_with_promotions",
-        "model.jaffle_shop.int_store_order_assignments"
-      ],
-      "model.jaffle_shop.stg_orders_order_id": [
-        "model.jaffle_shop.int_orders_with_promotions",
-        "model.jaffle_shop.int_store_order_assignments_order_id",
-        "model.jaffle_shop.int_store_order_assignments_store_id",
-        "model.jaffle_shop.int_orders_with_promotions_order_id"
-      ],
-      "model.jaffle_shop.stg_payments_order_id": [
-        "model.jaffle_shop.int_order_payments_matched_order_id",
-        "model.jaffle_shop.int_order_payments_matched"
-      ],
-      "model.jaffle_shop.stg_payments": [
-        "model.jaffle_shop.int_order_payments_matched"
-      ],
-      "model.jaffle_shop.stg_orders_status": [
-        "model.jaffle_shop.int_orders_with_promotions_status"
-      ],
-      "model.jaffle_shop.int_store_order_assignments": [
-        "model.jaffle_shop.int_store_revenue"
-      ],
-      "model.jaffle_shop.int_order_enriched": [
-        "model.jaffle_shop.int_store_revenue"
-      ],
-      "model.jaffle_shop.int_store_order_assignments_order_id": [
-        "model.jaffle_shop.int_store_revenue"
-      ],
-      "model.jaffle_shop.int_store_order_assignments_store_id": [
-        "model.jaffle_shop.int_store_revenue",
-        "model.jaffle_shop.int_store_revenue_store_id"
-      ],
-      "model.jaffle_shop.int_order_enriched_status": [
-        "model.jaffle_shop.int_store_revenue"
-      ],
-      "model.jaffle_shop.int_order_enriched_order_id": [
-        "model.jaffle_shop.int_store_revenue"
-      ],
-      "model.jaffle_shop.store_rankings": [
-        "model.jaffle_shop.rpt_store_dashboard"
-      ],
-      "model.jaffle_shop.int_store_performance": [
-        "model.jaffle_shop.store_performance"
-      ],
-      "model.jaffle_shop.int_category_hierarchy_category_id": [
+      "model.jaffle_shop.int_category_hierarchy": [
         "model.jaffle_shop.int_products_with_categories"
       ],
-      "model.jaffle_shop.stg_products": [
-        "model.jaffle_shop.int_products_with_categories",
-        "model.jaffle_shop.int_product_margins"
-      ],
-      "model.jaffle_shop.int_category_hierarchy": [
+      "model.jaffle_shop.int_category_hierarchy_category_id": [
         "model.jaffle_shop.int_products_with_categories"
       ],
       "model.jaffle_shop.stg_products_category_id": [
         "model.jaffle_shop.int_products_with_categories"
       ],
-      "model.jaffle_shop.stg_products_product_id": [
-        "model.jaffle_shop.int_product_margins_product_id",
-        "model.jaffle_shop.int_products_with_categories_product_id"
+      "model.jaffle_shop.stg_order_promotions_promotion_id": [
+        "model.jaffle_shop.int_orders_with_promotions"
       ],
-      "model.jaffle_shop.int_order_payments_matched": [
-        "model.jaffle_shop.int_order_enriched"
+      "model.jaffle_shop.stg_promotions": [
+        "model.jaffle_shop.int_orders_with_promotions"
       ],
-      "model.jaffle_shop.int_order_payments_matched_order_id": [
-        "model.jaffle_shop.int_order_enriched"
+      "model.jaffle_shop.stg_order_promotions": [
+        "model.jaffle_shop.int_orders_with_promotions"
       ],
-      "seed.jaffle_shop.raw_employees": ["model.jaffle_shop.stg_employees"],
-      "seed.jaffle_shop.raw_employees_store_id": [
-        "model.jaffle_shop.stg_employees_store_id"
+      "model.jaffle_shop.stg_promotions_promotion_id": [
+        "model.jaffle_shop.int_orders_with_promotions"
+      ],
+      "model.jaffle_shop.stg_order_promotions_order_id": [
+        "model.jaffle_shop.int_orders_with_promotions"
       ],
       "seed.jaffle_shop.raw_categories": ["model.jaffle_shop.stg_categories"],
       "seed.jaffle_shop.raw_categories_id": [
@@ -1703,90 +1775,42 @@
       "seed.jaffle_shop.raw_categories_parent_category_id": [
         "model.jaffle_shop.stg_categories_parent_category_id"
       ],
-      "model.jaffle_shop.int_order_items_enriched": [
-        "model.jaffle_shop.int_order_totals"
-      ],
-      "model.jaffle_shop.int_order_items_enriched_order_id": [
-        "model.jaffle_shop.int_order_totals_order_id",
-        "model.jaffle_shop.int_order_totals"
-      ],
-      "seed.jaffle_shop.raw_order_promotions": [
-        "model.jaffle_shop.stg_order_promotions"
-      ],
-      "seed.jaffle_shop.raw_order_promotions_order_id": [
-        "model.jaffle_shop.stg_order_promotions_order_id"
-      ],
-      "seed.jaffle_shop.raw_order_promotions_promotion_id": [
-        "model.jaffle_shop.stg_order_promotions_promotion_id"
-      ],
-      "model.jaffle_shop.int_orders_with_promotions": [
-        "model.jaffle_shop.int_order_enriched"
-      ],
-      "model.jaffle_shop.int_orders_with_promotions_order_id": [
-        "model.jaffle_shop.int_order_enriched",
-        "model.jaffle_shop.int_order_enriched_order_id"
-      ],
-      "model.jaffle_shop.int_order_totals_order_id": [
-        "model.jaffle_shop.int_order_payments_matched_order_id",
-        "model.jaffle_shop.int_order_payments_matched",
-        "model.jaffle_shop.int_order_enriched"
-      ],
-      "model.jaffle_shop.int_order_totals": [
-        "model.jaffle_shop.int_order_enriched",
-        "model.jaffle_shop.int_order_payments_matched"
-      ],
-      "model.jaffle_shop.int_orders_with_promotions_status": [
-        "model.jaffle_shop.int_order_enriched_status"
-      ],
-      "model.jaffle_shop.int_store_employees_active": [
-        "model.jaffle_shop.int_store_performance"
-      ],
-      "model.jaffle_shop.int_store_employees_active_store_id": [
-        "model.jaffle_shop.int_store_performance"
-      ],
-      "model.jaffle_shop.int_products_with_categories": [
-        "model.jaffle_shop.int_order_items_with_products"
-      ],
-      "model.jaffle_shop.int_products_with_categories_product_id": [
+      "model.jaffle_shop.stg_order_items_product_id": [
+        "model.jaffle_shop.int_order_items_with_products_product_id",
         "model.jaffle_shop.int_order_items_with_products"
       ],
       "model.jaffle_shop.stg_order_items": [
         "model.jaffle_shop.int_order_items_with_products"
       ],
-      "model.jaffle_shop.stg_order_items_product_id": [
-        "model.jaffle_shop.int_order_items_with_products",
-        "model.jaffle_shop.int_order_items_with_products_product_id"
-      ],
       "model.jaffle_shop.stg_order_items_order_id": [
         "model.jaffle_shop.int_order_items_with_products_order_id"
-      ],
-      "seed.jaffle_shop.raw_order_items": ["model.jaffle_shop.stg_order_items"],
-      "seed.jaffle_shop.raw_order_items_order_id": [
-        "model.jaffle_shop.stg_order_items_order_id"
-      ],
-      "seed.jaffle_shop.raw_order_items_product_id": [
-        "model.jaffle_shop.stg_order_items_product_id"
-      ],
-      "model.jaffle_shop.stg_promotions": [
-        "model.jaffle_shop.int_orders_with_promotions"
-      ],
-      "model.jaffle_shop.stg_order_promotions_promotion_id": [
-        "model.jaffle_shop.int_orders_with_promotions"
-      ],
-      "model.jaffle_shop.stg_order_promotions_order_id": [
-        "model.jaffle_shop.int_orders_with_promotions"
-      ],
-      "model.jaffle_shop.stg_promotions_promotion_id": [
-        "model.jaffle_shop.int_orders_with_promotions"
-      ],
-      "model.jaffle_shop.stg_order_promotions": [
-        "model.jaffle_shop.int_orders_with_promotions"
       ],
       "model.jaffle_shop.int_store_revenue": [
         "model.jaffle_shop.int_store_performance"
       ],
       "model.jaffle_shop.int_store_revenue_store_id": [
         "model.jaffle_shop.int_store_performance"
+      ],
+      "seed.jaffle_shop.raw_promotions": ["model.jaffle_shop.stg_promotions"],
+      "seed.jaffle_shop.raw_promotions_id": [
+        "model.jaffle_shop.stg_promotions_promotion_id"
+      ],
+      "model.jaffle_shop.store_performance": [
+        "model.jaffle_shop.store_rankings"
+      ],
+      "seed.jaffle_shop.raw_payments": ["model.jaffle_shop.stg_payments"],
+      "seed.jaffle_shop.raw_payments_amount": [
+        "model.jaffle_shop.stg_payments"
+      ],
+      "seed.jaffle_shop.raw_payments_order_id": [
+        "model.jaffle_shop.stg_payments_order_id"
+      ],
+      "seed.jaffle_shop.raw_orders": ["model.jaffle_shop.stg_orders"],
+      "seed.jaffle_shop.raw_orders_id": [
+        "model.jaffle_shop.stg_orders_order_id"
+      ],
+      "seed.jaffle_shop.raw_orders_status": [
+        "model.jaffle_shop.stg_orders_status"
       ],
       "seed.jaffle_shop.raw_stores": ["model.jaffle_shop.stg_stores"],
       "seed.jaffle_shop.raw_stores_id": [
@@ -1799,26 +1823,6 @@
       "seed.jaffle_shop.raw_stores_state": [
         "model.jaffle_shop.stg_stores_state"
       ],
-      "model.jaffle_shop.stg_categories_parent_category_id": [
-        "model.jaffle_shop.int_category_hierarchy"
-      ],
-      "model.jaffle_shop.stg_categories_category_id": [
-        "model.jaffle_shop.int_category_hierarchy_category_id",
-        "model.jaffle_shop.int_category_hierarchy"
-      ],
-      "model.jaffle_shop.stg_categories": [
-        "model.jaffle_shop.int_category_hierarchy"
-      ],
-      "seed.jaffle_shop.raw_promotions": ["model.jaffle_shop.stg_promotions"],
-      "seed.jaffle_shop.raw_promotions_id": [
-        "model.jaffle_shop.stg_promotions_promotion_id"
-      ],
-      "model.jaffle_shop.int_product_margins_product_id": [
-        "model.jaffle_shop.int_order_items_enriched"
-      ],
-      "model.jaffle_shop.int_product_margins": [
-        "model.jaffle_shop.int_order_items_enriched"
-      ],
       "seed.jaffle_shop.raw_products": ["model.jaffle_shop.stg_products"],
       "seed.jaffle_shop.raw_products_id": [
         "model.jaffle_shop.stg_products_product_id"
@@ -1826,21 +1830,17 @@
       "seed.jaffle_shop.raw_products_category_id": [
         "model.jaffle_shop.stg_products_category_id"
       ],
-      "seed.jaffle_shop.raw_payments": ["model.jaffle_shop.stg_payments"],
-      "seed.jaffle_shop.raw_payments_amount": [
-        "model.jaffle_shop.stg_payments"
+      "model.jaffle_shop.store_rankings": [
+        "model.jaffle_shop.rpt_store_dashboard"
       ],
-      "seed.jaffle_shop.raw_payments_order_id": [
-        "model.jaffle_shop.stg_payments_order_id"
+      "seed.jaffle_shop.raw_order_promotions": [
+        "model.jaffle_shop.stg_order_promotions"
       ],
-      "model.jaffle_shop.int_order_items_with_products": [
-        "model.jaffle_shop.int_order_items_enriched"
+      "seed.jaffle_shop.raw_order_promotions_order_id": [
+        "model.jaffle_shop.stg_order_promotions_order_id"
       ],
-      "model.jaffle_shop.int_order_items_with_products_product_id": [
-        "model.jaffle_shop.int_order_items_enriched"
-      ],
-      "model.jaffle_shop.int_order_items_with_products_order_id": [
-        "model.jaffle_shop.int_order_items_enriched_order_id"
+      "seed.jaffle_shop.raw_order_promotions_promotion_id": [
+        "model.jaffle_shop.stg_order_promotions_promotion_id"
       ]
     }
   }

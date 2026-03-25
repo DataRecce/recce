@@ -1,0 +1,289 @@
+{
+  "current": {
+    "nodes": {
+      "seed.jaffle_shop.raw_orders": {
+        "id": "seed.jaffle_shop.raw_orders",
+        "name": "raw_orders",
+        "package_name": "jaffle_shop",
+        "resource_type": "seed",
+        "raw_code": "",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "id": {
+            "id": "seed.jaffle_shop.raw_orders_id",
+            "table_id": "seed.jaffle_shop.raw_orders",
+            "name": "id",
+            "type": "INTEGER",
+            "transformation_type": "source",
+            "change_status": null,
+            "depends_on": []
+          },
+          "status": {
+            "id": "seed.jaffle_shop.raw_orders_status",
+            "table_id": "seed.jaffle_shop.raw_orders",
+            "name": "status",
+            "type": "VARCHAR",
+            "transformation_type": "source",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.orders": {
+        "id": "model.jaffle_shop.orders",
+        "name": "orders",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "{% set payment_methods = ['credit_card', 'coupon', 'bank_transfer', 'gift_card'] %}\n\nwith orders as (\n\n    select * from {{ ref('stg_orders') }}\n\n),\n\npayments as (\n\n    select * from {{ ref('stg_payments') }}\n\n),\n\norder_payments as (\n\n    select\n        order_id,\n\n        {% for payment_method in payment_methods -%}\n        sum(case when payment_method = '{{ payment_method }}' then amount else 0 end) as {{ payment_method }}_amount,\n        {% endfor -%}\n\n        sum(amount) as total_amount\n\n    from payments\n\n    group by order_id\n\n),\n\nfinal as (\n\n    select\n        orders.order_id,\n        orders.customer_id,\n        orders.order_date,\n        orders.status,\n\n        {% for payment_method in payment_methods -%}\n\n        order_payments.{{ payment_method }}_amount,\n\n        {% endfor -%}\n\n        order_payments.total_amount as amount\n\n    from orders\n\n\n    left join order_payments\n        on orders.order_id = order_payments.order_id\n\n)\n\nselect * from final",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "status": {
+            "id": "model.jaffle_shop.orders_status",
+            "table_id": "model.jaffle_shop.orders",
+            "name": "status",
+            "type": "VARCHAR",
+            "transformation_type": "passthrough",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.order_returns": {
+        "id": "model.jaffle_shop.order_returns",
+        "name": "order_returns",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with orders as (\n    select * from {{ ref('orders') }}\n),\n\nreturns as (\n    select\n        *,\n        case\n            when status in ('returned', 'Sreturned') then 'completed_return'\n            when status in ('return_pending', 'Sreturn_pending') then 'pending_return'\n        end as return_status\n    from orders\n    where status in ('returned', 'return_pending', 'Sreturned', 'Sreturn_pending')\n)\n\nselect * from returns",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {},
+        "impacted": true
+      },
+      "model.jaffle_shop.stg_payments": {
+        "id": "model.jaffle_shop.stg_payments",
+        "name": "stg_payments",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "{{ config(materialized='table') }}\n  \n  with source as (\n    \n    {#-\n    Normally we would select from the table here, but we are using seeds to load\n    our data in this project\n    #}\n    select * from {{ ref('raw_payments') }}\n\n),\n\nrenamed as (\n\n    select\n        id as payment_id,\n        order_id,\n        CAST(payment_method as varchar(74)) as payment_method, -- Cast to varchar to ensure consistent data type\n\n        -- `amount` is currently stored in cents, so we convert it to dollars\n        amount as amount\n\n    from source\n    where amount > 0 -- We only want to include payments with a positive amount\n\n)\n\nselect * from renamed",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "order_id": {
+            "id": "model.jaffle_shop.stg_payments_order_id",
+            "table_id": "model.jaffle_shop.stg_payments",
+            "name": "order_id",
+            "type": "INTEGER",
+            "transformation_type": "passthrough",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "model.jaffle_shop.stg_orders": {
+        "id": "model.jaffle_shop.stg_orders",
+        "name": "stg_orders",
+        "package_name": "jaffle_shop",
+        "resource_type": "model",
+        "raw_code": "with source as (\n\n    {#-\n    Normally we would select from the table here, but we are using seeds to load\n    our data in this project\n    #}\n    select * from {{ ref('raw_orders') }}\n\n),\n\nrenamed as (\n\n    select\n        id as order_id,\n        user_id as customer_id,\n        order_date,\n        'ORDER-' || status as status\n\n    from source\n\n)\n\nselect * from renamed",
+        "source_name": null,
+        "change_status": "modified",
+        "change_category": "partial_breaking",
+        "columns": {
+          "order_id": {
+            "id": "model.jaffle_shop.stg_orders_order_id",
+            "table_id": "model.jaffle_shop.stg_orders",
+            "name": "order_id",
+            "type": "INTEGER",
+            "transformation_type": "renamed",
+            "change_status": null,
+            "depends_on": []
+          },
+          "status": {
+            "id": "model.jaffle_shop.stg_orders_status",
+            "table_id": "model.jaffle_shop.stg_orders",
+            "name": "status",
+            "type": "VARCHAR",
+            "transformation_type": "derived",
+            "change_status": "modified",
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      },
+      "seed.jaffle_shop.raw_payments": {
+        "id": "seed.jaffle_shop.raw_payments",
+        "name": "raw_payments",
+        "package_name": "jaffle_shop",
+        "resource_type": "seed",
+        "raw_code": "",
+        "source_name": null,
+        "change_status": null,
+        "change_category": null,
+        "columns": {
+          "order_id": {
+            "id": "seed.jaffle_shop.raw_payments_order_id",
+            "table_id": "seed.jaffle_shop.raw_payments",
+            "name": "order_id",
+            "type": "INTEGER",
+            "transformation_type": "source",
+            "change_status": null,
+            "depends_on": []
+          },
+          "amount": {
+            "id": "seed.jaffle_shop.raw_payments_amount",
+            "table_id": "seed.jaffle_shop.raw_payments",
+            "name": "amount",
+            "type": "INTEGER",
+            "transformation_type": "source",
+            "change_status": null,
+            "depends_on": []
+          }
+        },
+        "impacted": true
+      }
+    },
+    "columns": {
+      "seed.jaffle_shop.raw_orders_id": {
+        "id": "seed.jaffle_shop.raw_orders_id",
+        "table_id": "seed.jaffle_shop.raw_orders",
+        "name": "id",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_orders_status": {
+        "id": "seed.jaffle_shop.raw_orders_status",
+        "table_id": "seed.jaffle_shop.raw_orders",
+        "name": "status",
+        "type": "VARCHAR",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.orders_status": {
+        "id": "model.jaffle_shop.orders_status",
+        "table_id": "model.jaffle_shop.orders",
+        "name": "status",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_payments_order_id": {
+        "id": "model.jaffle_shop.stg_payments_order_id",
+        "table_id": "model.jaffle_shop.stg_payments",
+        "name": "order_id",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_orders_order_id": {
+        "id": "model.jaffle_shop.stg_orders_order_id",
+        "table_id": "model.jaffle_shop.stg_orders",
+        "name": "order_id",
+        "type": "INTEGER",
+        "transformation_type": "renamed",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_orders_status": {
+        "id": "model.jaffle_shop.stg_orders_status",
+        "table_id": "model.jaffle_shop.stg_orders",
+        "name": "status",
+        "type": "VARCHAR",
+        "transformation_type": "derived",
+        "change_status": "modified",
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_payments_order_id": {
+        "id": "seed.jaffle_shop.raw_payments_order_id",
+        "table_id": "seed.jaffle_shop.raw_payments",
+        "name": "order_id",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_payments_amount": {
+        "id": "seed.jaffle_shop.raw_payments_amount",
+        "table_id": "seed.jaffle_shop.raw_payments",
+        "name": "amount",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "seed.jaffle_shop.raw_orders": [],
+      "seed.jaffle_shop.raw_orders_id": [],
+      "seed.jaffle_shop.raw_orders_status": [],
+      "model.jaffle_shop.orders": [
+        "model.jaffle_shop.stg_payments",
+        "model.jaffle_shop.stg_orders",
+        "model.jaffle_shop.stg_payments_order_id",
+        "model.jaffle_shop.stg_orders_order_id"
+      ],
+      "model.jaffle_shop.orders_status": [
+        "model.jaffle_shop.stg_orders_status"
+      ],
+      "model.jaffle_shop.order_returns": [
+        "model.jaffle_shop.orders",
+        "model.jaffle_shop.orders_status"
+      ],
+      "model.jaffle_shop.stg_payments": [
+        "seed.jaffle_shop.raw_payments",
+        "seed.jaffle_shop.raw_payments_amount"
+      ],
+      "model.jaffle_shop.stg_payments_order_id": [
+        "seed.jaffle_shop.raw_payments_order_id"
+      ],
+      "model.jaffle_shop.stg_orders": ["seed.jaffle_shop.raw_orders"],
+      "model.jaffle_shop.stg_orders_order_id": [
+        "seed.jaffle_shop.raw_orders_id"
+      ],
+      "model.jaffle_shop.stg_orders_status": [
+        "seed.jaffle_shop.raw_orders_status"
+      ],
+      "seed.jaffle_shop.raw_payments": [],
+      "seed.jaffle_shop.raw_payments_order_id": [],
+      "seed.jaffle_shop.raw_payments_amount": []
+    },
+    "child_map": {
+      "model.jaffle_shop.stg_payments": ["model.jaffle_shop.orders"],
+      "model.jaffle_shop.stg_payments_order_id": ["model.jaffle_shop.orders"],
+      "model.jaffle_shop.stg_orders": ["model.jaffle_shop.orders"],
+      "model.jaffle_shop.stg_orders_order_id": ["model.jaffle_shop.orders"],
+      "model.jaffle_shop.stg_orders_status": [
+        "model.jaffle_shop.orders_status"
+      ],
+      "model.jaffle_shop.orders": ["model.jaffle_shop.order_returns"],
+      "model.jaffle_shop.orders_status": ["model.jaffle_shop.order_returns"],
+      "seed.jaffle_shop.raw_payments": ["model.jaffle_shop.stg_payments"],
+      "seed.jaffle_shop.raw_payments_amount": [
+        "model.jaffle_shop.stg_payments"
+      ],
+      "seed.jaffle_shop.raw_payments_order_id": [
+        "model.jaffle_shop.stg_payments_order_id"
+      ],
+      "seed.jaffle_shop.raw_orders": ["model.jaffle_shop.stg_orders"],
+      "seed.jaffle_shop.raw_orders_id": [
+        "model.jaffle_shop.stg_orders_order_id"
+      ],
+      "seed.jaffle_shop.raw_orders_status": [
+        "model.jaffle_shop.stg_orders_status"
+      ]
+    }
+  }
+}

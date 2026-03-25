@@ -1,0 +1,66 @@
+{
+  "current": {
+    "nodes": {},
+    "columns": {
+      "seed.jaffle_shop.raw_orders_order_date": {
+        "id": "seed.jaffle_shop.raw_orders_order_date",
+        "table_id": "seed.jaffle_shop.raw_orders",
+        "name": "order_date",
+        "type": "DATE",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.orders_order_date": {
+        "id": "model.jaffle_shop.orders_order_date",
+        "table_id": "model.jaffle_shop.orders",
+        "name": "order_date",
+        "type": "DATE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.order_returns_order_date": {
+        "id": "model.jaffle_shop.order_returns_order_date",
+        "table_id": "model.jaffle_shop.order_returns",
+        "name": "order_date",
+        "type": "DATE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_orders_order_date": {
+        "id": "model.jaffle_shop.stg_orders_order_date",
+        "table_id": "model.jaffle_shop.stg_orders",
+        "name": "order_date",
+        "type": "DATE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "seed.jaffle_shop.raw_orders_order_date": [],
+      "model.jaffle_shop.orders_order_date": [
+        "model.jaffle_shop.stg_orders_order_date"
+      ],
+      "model.jaffle_shop.order_returns_order_date": [
+        "model.jaffle_shop.orders_order_date"
+      ],
+      "model.jaffle_shop.stg_orders_order_date": [
+        "seed.jaffle_shop.raw_orders_order_date"
+      ]
+    },
+    "child_map": {
+      "model.jaffle_shop.stg_orders_order_date": [
+        "model.jaffle_shop.orders_order_date"
+      ],
+      "model.jaffle_shop.orders_order_date": [
+        "model.jaffle_shop.order_returns_order_date"
+      ],
+      "seed.jaffle_shop.raw_orders_order_date": [
+        "model.jaffle_shop.stg_orders_order_date"
+      ]
+    }
+  }
+}

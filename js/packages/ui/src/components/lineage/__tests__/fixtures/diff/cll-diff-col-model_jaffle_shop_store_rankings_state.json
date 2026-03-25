@@ -1,0 +1,111 @@
+{
+  "current": {
+    "nodes": {},
+    "columns": {
+      "model.jaffle_shop.store_performance_state": {
+        "id": "model.jaffle_shop.store_performance_state",
+        "table_id": "model.jaffle_shop.store_performance",
+        "name": "state",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_stores_state": {
+        "id": "seed.jaffle_shop.raw_stores_state",
+        "table_id": "seed.jaffle_shop.raw_stores",
+        "name": "state",
+        "type": "VARCHAR",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_performance_state": {
+        "id": "model.jaffle_shop.int_store_performance_state",
+        "table_id": "model.jaffle_shop.int_store_performance",
+        "name": "state",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_rankings_state": {
+        "id": "model.jaffle_shop.store_rankings_state",
+        "table_id": "model.jaffle_shop.store_rankings",
+        "name": "state",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_stores_state": {
+        "id": "model.jaffle_shop.stg_stores_state",
+        "table_id": "model.jaffle_shop.stg_stores",
+        "name": "state",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_employees_active_state": {
+        "id": "model.jaffle_shop.int_store_employees_active_state",
+        "table_id": "model.jaffle_shop.int_store_employees_active",
+        "name": "state",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.rpt_store_dashboard_state": {
+        "id": "model.jaffle_shop.rpt_store_dashboard_state",
+        "table_id": "model.jaffle_shop.rpt_store_dashboard",
+        "name": "state",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "model.jaffle_shop.store_performance_state": [
+        "model.jaffle_shop.int_store_performance_state"
+      ],
+      "seed.jaffle_shop.raw_stores_state": [],
+      "model.jaffle_shop.int_store_performance_state": [
+        "model.jaffle_shop.int_store_employees_active_state"
+      ],
+      "model.jaffle_shop.store_rankings_state": [
+        "model.jaffle_shop.store_performance_state"
+      ],
+      "model.jaffle_shop.stg_stores_state": [
+        "seed.jaffle_shop.raw_stores_state"
+      ],
+      "model.jaffle_shop.int_store_employees_active_state": [
+        "model.jaffle_shop.stg_stores_state"
+      ],
+      "model.jaffle_shop.rpt_store_dashboard_state": [
+        "model.jaffle_shop.store_rankings_state"
+      ]
+    },
+    "child_map": {
+      "model.jaffle_shop.int_store_performance_state": [
+        "model.jaffle_shop.store_performance_state"
+      ],
+      "model.jaffle_shop.int_store_employees_active_state": [
+        "model.jaffle_shop.int_store_performance_state"
+      ],
+      "model.jaffle_shop.stg_stores_state": [
+        "model.jaffle_shop.int_store_employees_active_state"
+      ],
+      "model.jaffle_shop.store_performance_state": [
+        "model.jaffle_shop.store_rankings_state"
+      ],
+      "seed.jaffle_shop.raw_stores_state": [
+        "model.jaffle_shop.stg_stores_state"
+      ],
+      "model.jaffle_shop.store_rankings_state": [
+        "model.jaffle_shop.rpt_store_dashboard_state"
+      ]
+    }
+  }
+}

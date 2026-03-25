@@ -1,0 +1,64 @@
+{
+  "current": {
+    "nodes": {},
+    "columns": {
+      "model.jaffle_shop.metric_daily_orders_avg_items_per_order": {
+        "id": "model.jaffle_shop.metric_daily_orders_avg_items_per_order",
+        "table_id": "model.jaffle_shop.metric_daily_orders",
+        "name": "avg_items_per_order",
+        "type": "DOUBLE",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_order_totals_item_count": {
+        "id": "model.jaffle_shop.int_order_totals_item_count",
+        "table_id": "model.jaffle_shop.int_order_totals",
+        "name": "item_count",
+        "type": "BIGINT",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_order_enriched_item_count": {
+        "id": "model.jaffle_shop.int_order_enriched_item_count",
+        "table_id": "model.jaffle_shop.int_order_enriched",
+        "name": "item_count",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.customer_acquisition_first_order_items": {
+        "id": "model.jaffle_shop.customer_acquisition_first_order_items",
+        "table_id": "model.jaffle_shop.customer_acquisition",
+        "name": "first_order_items",
+        "type": "BIGINT",
+        "transformation_type": "renamed",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "model.jaffle_shop.metric_daily_orders_avg_items_per_order": [
+        "model.jaffle_shop.int_order_enriched_item_count"
+      ],
+      "model.jaffle_shop.int_order_totals_item_count": [],
+      "model.jaffle_shop.int_order_enriched_item_count": [
+        "model.jaffle_shop.int_order_totals_item_count"
+      ],
+      "model.jaffle_shop.customer_acquisition_first_order_items": [
+        "model.jaffle_shop.int_order_enriched_item_count"
+      ]
+    },
+    "child_map": {
+      "model.jaffle_shop.int_order_enriched_item_count": [
+        "model.jaffle_shop.metric_daily_orders_avg_items_per_order",
+        "model.jaffle_shop.customer_acquisition_first_order_items"
+      ],
+      "model.jaffle_shop.int_order_totals_item_count": [
+        "model.jaffle_shop.int_order_enriched_item_count"
+      ]
+    }
+  }
+}

@@ -90,15 +90,27 @@ function makeFullMap(): ColumnLineageData {
 }
 
 describe("sliceCllMap", () => {
-  describe("impact overview (no params)", () => {
-    it("returns the full map unchanged when no node_id or column given", () => {
+  describe("impact overview (no node_id)", () => {
+    it("filters to changed nodes and their reachable lineage", () => {
+      const fullMap = makeFullMap();
+      // source_a has change_status="modified", change_category="breaking"
+      // With change_analysis, it becomes an anchor. BFS reaches all 3 nodes.
+      const result = sliceCllMap(fullMap, { change_analysis: true });
+
+      // All nodes reachable from the changed source_a
+      expect(Object.keys(result.current.nodes).sort()).toEqual(
+        [SOURCE, STAGING, MART].sort(),
+      );
+    });
+
+    it("without change_analysis, anchors on changed node IDs only", () => {
       const fullMap = makeFullMap();
       const result = sliceCllMap(fullMap, {});
 
-      expect(result.current.nodes).toEqual(fullMap.current.nodes);
-      expect(result.current.columns).toEqual(fullMap.current.columns);
-      expect(result.current.parent_map).toEqual(fullMap.current.parent_map);
-      expect(result.current.child_map).toEqual(fullMap.current.child_map);
+      // source_a is changed → anchor, BFS reaches staging and mart
+      expect(Object.keys(result.current.nodes).sort()).toEqual(
+        [SOURCE, STAGING, MART].sort(),
+      );
     });
   });
 

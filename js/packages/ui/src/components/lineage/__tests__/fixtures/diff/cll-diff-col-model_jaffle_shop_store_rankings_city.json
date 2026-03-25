@@ -1,0 +1,107 @@
+{
+  "current": {
+    "nodes": {},
+    "columns": {
+      "model.jaffle_shop.store_performance_city": {
+        "id": "model.jaffle_shop.store_performance_city",
+        "table_id": "model.jaffle_shop.store_performance",
+        "name": "city",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_stores_city": {
+        "id": "seed.jaffle_shop.raw_stores_city",
+        "table_id": "seed.jaffle_shop.raw_stores",
+        "name": "city",
+        "type": "VARCHAR",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_performance_city": {
+        "id": "model.jaffle_shop.int_store_performance_city",
+        "table_id": "model.jaffle_shop.int_store_performance",
+        "name": "city",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_rankings_city": {
+        "id": "model.jaffle_shop.store_rankings_city",
+        "table_id": "model.jaffle_shop.store_rankings",
+        "name": "city",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_stores_city": {
+        "id": "model.jaffle_shop.stg_stores_city",
+        "table_id": "model.jaffle_shop.stg_stores",
+        "name": "city",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_employees_active_city": {
+        "id": "model.jaffle_shop.int_store_employees_active_city",
+        "table_id": "model.jaffle_shop.int_store_employees_active",
+        "name": "city",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.rpt_store_dashboard_city": {
+        "id": "model.jaffle_shop.rpt_store_dashboard_city",
+        "table_id": "model.jaffle_shop.rpt_store_dashboard",
+        "name": "city",
+        "type": "VARCHAR",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "model.jaffle_shop.store_performance_city": [
+        "model.jaffle_shop.int_store_performance_city"
+      ],
+      "seed.jaffle_shop.raw_stores_city": [],
+      "model.jaffle_shop.int_store_performance_city": [
+        "model.jaffle_shop.int_store_employees_active_city"
+      ],
+      "model.jaffle_shop.store_rankings_city": [
+        "model.jaffle_shop.store_performance_city"
+      ],
+      "model.jaffle_shop.stg_stores_city": ["seed.jaffle_shop.raw_stores_city"],
+      "model.jaffle_shop.int_store_employees_active_city": [
+        "model.jaffle_shop.stg_stores_city"
+      ],
+      "model.jaffle_shop.rpt_store_dashboard_city": [
+        "model.jaffle_shop.store_rankings_city"
+      ]
+    },
+    "child_map": {
+      "model.jaffle_shop.int_store_performance_city": [
+        "model.jaffle_shop.store_performance_city"
+      ],
+      "model.jaffle_shop.int_store_employees_active_city": [
+        "model.jaffle_shop.int_store_performance_city"
+      ],
+      "model.jaffle_shop.stg_stores_city": [
+        "model.jaffle_shop.int_store_employees_active_city"
+      ],
+      "model.jaffle_shop.store_performance_city": [
+        "model.jaffle_shop.store_rankings_city"
+      ],
+      "seed.jaffle_shop.raw_stores_city": ["model.jaffle_shop.stg_stores_city"],
+      "model.jaffle_shop.store_rankings_city": [
+        "model.jaffle_shop.rpt_store_dashboard_city"
+      ]
+    }
+  }
+}

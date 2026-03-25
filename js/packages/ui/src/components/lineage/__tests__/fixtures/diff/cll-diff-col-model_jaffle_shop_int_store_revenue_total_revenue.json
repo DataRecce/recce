@@ -1,0 +1,314 @@
+{
+  "current": {
+    "nodes": {},
+    "columns": {
+      "model.jaffle_shop.store_performance_total_revenue": {
+        "id": "model.jaffle_shop.store_performance_total_revenue",
+        "table_id": "model.jaffle_shop.store_performance",
+        "name": "total_revenue",
+        "type": "DOUBLE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_performance_revenue_per_employee": {
+        "id": "model.jaffle_shop.store_performance_revenue_per_employee",
+        "table_id": "model.jaffle_shop.store_performance",
+        "name": "revenue_per_employee",
+        "type": "DOUBLE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_order_totals_subtotal": {
+        "id": "model.jaffle_shop.int_order_totals_subtotal",
+        "table_id": "model.jaffle_shop.int_order_totals",
+        "name": "subtotal",
+        "type": "DOUBLE",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_order_enriched_subtotal": {
+        "id": "model.jaffle_shop.int_order_enriched_subtotal",
+        "table_id": "model.jaffle_shop.int_order_enriched",
+        "name": "subtotal",
+        "type": "DOUBLE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_order_items_quantity": {
+        "id": "seed.jaffle_shop.raw_order_items_quantity",
+        "table_id": "seed.jaffle_shop.raw_order_items",
+        "name": "quantity",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_order_items_unit_price": {
+        "id": "seed.jaffle_shop.raw_order_items_unit_price",
+        "table_id": "seed.jaffle_shop.raw_order_items",
+        "name": "unit_price",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_order_items_quantity": {
+        "id": "model.jaffle_shop.stg_order_items_quantity",
+        "table_id": "model.jaffle_shop.stg_order_items",
+        "name": "quantity",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_order_items_unit_price": {
+        "id": "model.jaffle_shop.stg_order_items_unit_price",
+        "table_id": "model.jaffle_shop.stg_order_items",
+        "name": "unit_price",
+        "type": "DOUBLE",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_order_items_enriched_line_total": {
+        "id": "model.jaffle_shop.int_order_items_enriched_line_total",
+        "table_id": "model.jaffle_shop.int_order_items_enriched",
+        "name": "line_total",
+        "type": "DOUBLE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_order_items_with_products_line_total": {
+        "id": "model.jaffle_shop.int_order_items_with_products_line_total",
+        "table_id": "model.jaffle_shop.int_order_items_with_products",
+        "name": "line_total",
+        "type": "DOUBLE",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_performance_total_revenue": {
+        "id": "model.jaffle_shop.int_store_performance_total_revenue",
+        "table_id": "model.jaffle_shop.int_store_performance",
+        "name": "total_revenue",
+        "type": "DOUBLE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_performance_revenue_per_employee": {
+        "id": "model.jaffle_shop.int_store_performance_revenue_per_employee",
+        "table_id": "model.jaffle_shop.int_store_performance",
+        "name": "revenue_per_employee",
+        "type": "DOUBLE",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_revenue_total_revenue": {
+        "id": "model.jaffle_shop.int_store_revenue_total_revenue",
+        "table_id": "model.jaffle_shop.int_store_revenue",
+        "name": "total_revenue",
+        "type": "DOUBLE",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_rankings_total_revenue": {
+        "id": "model.jaffle_shop.store_rankings_total_revenue",
+        "table_id": "model.jaffle_shop.store_rankings",
+        "name": "total_revenue",
+        "type": "DOUBLE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_rankings_revenue_per_employee": {
+        "id": "model.jaffle_shop.store_rankings_revenue_per_employee",
+        "table_id": "model.jaffle_shop.store_rankings",
+        "name": "revenue_per_employee",
+        "type": "DOUBLE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_rankings_revenue_rank": {
+        "id": "model.jaffle_shop.store_rankings_revenue_rank",
+        "table_id": "model.jaffle_shop.store_rankings",
+        "name": "revenue_rank",
+        "type": "BIGINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.store_rankings_efficiency_rank": {
+        "id": "model.jaffle_shop.store_rankings_efficiency_rank",
+        "table_id": "model.jaffle_shop.store_rankings",
+        "name": "efficiency_rank",
+        "type": "BIGINT",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.rpt_store_dashboard_total_revenue": {
+        "id": "model.jaffle_shop.rpt_store_dashboard_total_revenue",
+        "table_id": "model.jaffle_shop.rpt_store_dashboard",
+        "name": "total_revenue",
+        "type": "DOUBLE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.rpt_store_dashboard_revenue_per_employee": {
+        "id": "model.jaffle_shop.rpt_store_dashboard_revenue_per_employee",
+        "table_id": "model.jaffle_shop.rpt_store_dashboard",
+        "name": "revenue_per_employee",
+        "type": "DOUBLE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.rpt_store_dashboard_revenue_rank": {
+        "id": "model.jaffle_shop.rpt_store_dashboard_revenue_rank",
+        "table_id": "model.jaffle_shop.rpt_store_dashboard",
+        "name": "revenue_rank",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.rpt_store_dashboard_efficiency_rank": {
+        "id": "model.jaffle_shop.rpt_store_dashboard_efficiency_rank",
+        "table_id": "model.jaffle_shop.rpt_store_dashboard",
+        "name": "efficiency_rank",
+        "type": "BIGINT",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "model.jaffle_shop.store_performance_total_revenue": [
+        "model.jaffle_shop.int_store_performance_total_revenue"
+      ],
+      "model.jaffle_shop.store_performance_revenue_per_employee": [
+        "model.jaffle_shop.int_store_performance_revenue_per_employee"
+      ],
+      "model.jaffle_shop.int_order_totals_subtotal": [
+        "model.jaffle_shop.int_order_items_enriched_line_total"
+      ],
+      "model.jaffle_shop.int_order_enriched_subtotal": [
+        "model.jaffle_shop.int_order_totals_subtotal"
+      ],
+      "seed.jaffle_shop.raw_order_items_quantity": [],
+      "seed.jaffle_shop.raw_order_items_unit_price": [],
+      "model.jaffle_shop.stg_order_items_quantity": [
+        "seed.jaffle_shop.raw_order_items_quantity"
+      ],
+      "model.jaffle_shop.stg_order_items_unit_price": [
+        "seed.jaffle_shop.raw_order_items_unit_price"
+      ],
+      "model.jaffle_shop.int_order_items_enriched_line_total": [
+        "model.jaffle_shop.int_order_items_with_products_line_total"
+      ],
+      "model.jaffle_shop.int_order_items_with_products_line_total": [
+        "model.jaffle_shop.stg_order_items_unit_price",
+        "model.jaffle_shop.stg_order_items_quantity"
+      ],
+      "model.jaffle_shop.int_store_performance_total_revenue": [
+        "model.jaffle_shop.int_store_revenue_total_revenue"
+      ],
+      "model.jaffle_shop.int_store_performance_revenue_per_employee": [
+        "model.jaffle_shop.int_store_revenue_total_revenue"
+      ],
+      "model.jaffle_shop.int_store_revenue_total_revenue": [
+        "model.jaffle_shop.int_order_enriched_subtotal"
+      ],
+      "model.jaffle_shop.store_rankings_total_revenue": [
+        "model.jaffle_shop.store_performance_total_revenue"
+      ],
+      "model.jaffle_shop.store_rankings_revenue_per_employee": [
+        "model.jaffle_shop.store_performance_revenue_per_employee"
+      ],
+      "model.jaffle_shop.store_rankings_revenue_rank": [
+        "model.jaffle_shop.store_performance_total_revenue"
+      ],
+      "model.jaffle_shop.store_rankings_efficiency_rank": [
+        "model.jaffle_shop.store_performance_revenue_per_employee"
+      ],
+      "model.jaffle_shop.rpt_store_dashboard_total_revenue": [
+        "model.jaffle_shop.store_rankings_total_revenue"
+      ],
+      "model.jaffle_shop.rpt_store_dashboard_revenue_per_employee": [
+        "model.jaffle_shop.store_rankings_revenue_per_employee"
+      ],
+      "model.jaffle_shop.rpt_store_dashboard_revenue_rank": [
+        "model.jaffle_shop.store_rankings_revenue_rank"
+      ],
+      "model.jaffle_shop.rpt_store_dashboard_efficiency_rank": [
+        "model.jaffle_shop.store_rankings_efficiency_rank"
+      ]
+    },
+    "child_map": {
+      "model.jaffle_shop.int_order_enriched_subtotal": [
+        "model.jaffle_shop.int_store_revenue_total_revenue"
+      ],
+      "model.jaffle_shop.int_order_totals_subtotal": [
+        "model.jaffle_shop.int_order_enriched_subtotal"
+      ],
+      "model.jaffle_shop.int_store_performance_total_revenue": [
+        "model.jaffle_shop.store_performance_total_revenue"
+      ],
+      "model.jaffle_shop.int_store_performance_revenue_per_employee": [
+        "model.jaffle_shop.store_performance_revenue_per_employee"
+      ],
+      "model.jaffle_shop.int_order_items_enriched_line_total": [
+        "model.jaffle_shop.int_order_totals_subtotal"
+      ],
+      "seed.jaffle_shop.raw_order_items_quantity": [
+        "model.jaffle_shop.stg_order_items_quantity"
+      ],
+      "seed.jaffle_shop.raw_order_items_unit_price": [
+        "model.jaffle_shop.stg_order_items_unit_price"
+      ],
+      "model.jaffle_shop.int_order_items_with_products_line_total": [
+        "model.jaffle_shop.int_order_items_enriched_line_total"
+      ],
+      "model.jaffle_shop.stg_order_items_quantity": [
+        "model.jaffle_shop.int_order_items_with_products_line_total"
+      ],
+      "model.jaffle_shop.stg_order_items_unit_price": [
+        "model.jaffle_shop.int_order_items_with_products_line_total"
+      ],
+      "model.jaffle_shop.int_store_revenue_total_revenue": [
+        "model.jaffle_shop.int_store_performance_total_revenue",
+        "model.jaffle_shop.int_store_performance_revenue_per_employee"
+      ],
+      "model.jaffle_shop.store_performance_total_revenue": [
+        "model.jaffle_shop.store_rankings_total_revenue",
+        "model.jaffle_shop.store_rankings_revenue_rank"
+      ],
+      "model.jaffle_shop.store_performance_revenue_per_employee": [
+        "model.jaffle_shop.store_rankings_efficiency_rank",
+        "model.jaffle_shop.store_rankings_revenue_per_employee"
+      ],
+      "model.jaffle_shop.store_rankings_total_revenue": [
+        "model.jaffle_shop.rpt_store_dashboard_total_revenue"
+      ],
+      "model.jaffle_shop.store_rankings_revenue_per_employee": [
+        "model.jaffle_shop.rpt_store_dashboard_revenue_per_employee"
+      ],
+      "model.jaffle_shop.store_rankings_revenue_rank": [
+        "model.jaffle_shop.rpt_store_dashboard_revenue_rank"
+      ],
+      "model.jaffle_shop.store_rankings_efficiency_rank": [
+        "model.jaffle_shop.rpt_store_dashboard_efficiency_rank"
+      ]
+    }
+  }
+}

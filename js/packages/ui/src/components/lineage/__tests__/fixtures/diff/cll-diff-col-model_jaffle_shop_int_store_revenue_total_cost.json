@@ -1,0 +1,155 @@
+{
+  "current": {
+    "nodes": {},
+    "columns": {
+      "model.jaffle_shop.int_order_totals_total_cost": {
+        "id": "model.jaffle_shop.int_order_totals_total_cost",
+        "table_id": "model.jaffle_shop.int_order_totals",
+        "name": "total_cost",
+        "type": "DOUBLE",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_product_margins_cost": {
+        "id": "model.jaffle_shop.int_product_margins_cost",
+        "table_id": "model.jaffle_shop.int_product_margins",
+        "name": "cost",
+        "type": "DOUBLE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_order_enriched_total_cost": {
+        "id": "model.jaffle_shop.int_order_enriched_total_cost",
+        "table_id": "model.jaffle_shop.int_order_enriched",
+        "name": "total_cost",
+        "type": "DOUBLE",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_order_items_quantity": {
+        "id": "seed.jaffle_shop.raw_order_items_quantity",
+        "table_id": "seed.jaffle_shop.raw_order_items",
+        "name": "quantity",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_order_items_quantity": {
+        "id": "model.jaffle_shop.stg_order_items_quantity",
+        "table_id": "model.jaffle_shop.stg_order_items",
+        "name": "quantity",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_order_items_enriched_line_cost": {
+        "id": "model.jaffle_shop.int_order_items_enriched_line_cost",
+        "table_id": "model.jaffle_shop.int_order_items_enriched",
+        "name": "line_cost",
+        "type": "DOUBLE",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_order_items_with_products_quantity": {
+        "id": "model.jaffle_shop.int_order_items_with_products_quantity",
+        "table_id": "model.jaffle_shop.int_order_items_with_products",
+        "name": "quantity",
+        "type": "INTEGER",
+        "transformation_type": "passthrough",
+        "change_status": null,
+        "depends_on": []
+      },
+      "seed.jaffle_shop.raw_products_cost": {
+        "id": "seed.jaffle_shop.raw_products_cost",
+        "table_id": "seed.jaffle_shop.raw_products",
+        "name": "cost",
+        "type": "INTEGER",
+        "transformation_type": "source",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.int_store_revenue_total_cost": {
+        "id": "model.jaffle_shop.int_store_revenue_total_cost",
+        "table_id": "model.jaffle_shop.int_store_revenue",
+        "name": "total_cost",
+        "type": "DOUBLE",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      },
+      "model.jaffle_shop.stg_products_cost": {
+        "id": "model.jaffle_shop.stg_products_cost",
+        "table_id": "model.jaffle_shop.stg_products",
+        "name": "cost",
+        "type": "DOUBLE",
+        "transformation_type": "derived",
+        "change_status": null,
+        "depends_on": []
+      }
+    },
+    "parent_map": {
+      "model.jaffle_shop.int_order_totals_total_cost": [
+        "model.jaffle_shop.int_order_items_enriched_line_cost"
+      ],
+      "model.jaffle_shop.int_product_margins_cost": [
+        "model.jaffle_shop.stg_products_cost"
+      ],
+      "model.jaffle_shop.int_order_enriched_total_cost": [
+        "model.jaffle_shop.int_order_totals_total_cost"
+      ],
+      "seed.jaffle_shop.raw_order_items_quantity": [],
+      "model.jaffle_shop.stg_order_items_quantity": [
+        "seed.jaffle_shop.raw_order_items_quantity"
+      ],
+      "model.jaffle_shop.int_order_items_enriched_line_cost": [
+        "model.jaffle_shop.int_order_items_with_products_quantity",
+        "model.jaffle_shop.int_product_margins_cost"
+      ],
+      "model.jaffle_shop.int_order_items_with_products_quantity": [
+        "model.jaffle_shop.stg_order_items_quantity"
+      ],
+      "seed.jaffle_shop.raw_products_cost": [],
+      "model.jaffle_shop.int_store_revenue_total_cost": [
+        "model.jaffle_shop.int_order_enriched_total_cost"
+      ],
+      "model.jaffle_shop.stg_products_cost": [
+        "seed.jaffle_shop.raw_products_cost"
+      ]
+    },
+    "child_map": {
+      "model.jaffle_shop.int_order_enriched_total_cost": [
+        "model.jaffle_shop.int_store_revenue_total_cost"
+      ],
+      "model.jaffle_shop.int_order_items_enriched_line_cost": [
+        "model.jaffle_shop.int_order_totals_total_cost"
+      ],
+      "model.jaffle_shop.int_order_items_with_products_quantity": [
+        "model.jaffle_shop.int_order_items_enriched_line_cost"
+      ],
+      "model.jaffle_shop.stg_products_cost": [
+        "model.jaffle_shop.int_product_margins_cost"
+      ],
+      "model.jaffle_shop.int_order_totals_total_cost": [
+        "model.jaffle_shop.int_order_enriched_total_cost"
+      ],
+      "seed.jaffle_shop.raw_order_items_quantity": [
+        "model.jaffle_shop.stg_order_items_quantity"
+      ],
+      "model.jaffle_shop.int_product_margins_cost": [
+        "model.jaffle_shop.int_order_items_enriched_line_cost"
+      ],
+      "model.jaffle_shop.stg_order_items_quantity": [
+        "model.jaffle_shop.int_order_items_with_products_quantity"
+      ],
+      "seed.jaffle_shop.raw_products_cost": [
+        "model.jaffle_shop.stg_products_cost"
+      ]
+    }
+  }
+}

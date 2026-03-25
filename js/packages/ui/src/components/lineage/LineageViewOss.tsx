@@ -49,6 +49,7 @@ import {
   trackCopyToClipboard,
   trackMultiNodesAction,
 } from "../../lib/api/track";
+import { sliceCllMap } from "./sliceCllMap";
 import "../../styles";
 import Box from "@mui/material/Box";
 import Divider from "@mui/material/Divider";
@@ -175,6 +176,10 @@ export function PrivateLineageView(
   const actionGetCll = useMutation({
     mutationFn: (input: CllInput) => getCll(input, apiClient),
   });
+  // Cached full CLL map fetched once on Impact click with full_map=true.
+  // All subsequent column/node navigation slices this client-side via sliceCllMap().
+  // Cleared when lineageGraph changes (re-fetch needed) or CLL is exited.
+  const fullCllMapRef = useRef<ColumnLineageData | undefined>(undefined);
   // Guard against useLayoutEffect re-entry after cache patching.
   // When setQueryData patches lineage.diff, queryServerInfo.data changes,
   // lineageGraph recomputes via useMemo, and the effect re-fires. This ref
@@ -415,6 +420,8 @@ export function PrivateLineageView(
           cll = cllCachePatchRef.current.cllData;
           cllCachePatchRef.current = { pending: false };
         } else {
+          // lineageGraph changed externally — invalidate cached full CLL map
+          fullCllMapRef.current = undefined;
           const cllApiInput: CllInput = {
             ...viewOptions.column_level_lineage,
             change_analysis:
@@ -422,11 +429,15 @@ export function PrivateLineageView(
               changeAnalysisModeRef.current,
           };
           try {
-            cll = await actionGetCll.mutateAsync(cllApiInput);
-            // Patch the lineage diff cache with change data from CLL
-            const cllResult = cll;
-            if (cllApiInput.change_analysis && cllResult) {
-              cllCachePatchRef.current = { pending: true, cllData: cllResult };
+            const fullMap = await actionGetCll.mutateAsync({
+              change_analysis: cllApiInput.change_analysis,
+              full_map: true,
+            });
+            fullCllMapRef.current = fullMap;
+            cll = sliceCllMap(fullMap, cllApiInput);
+            // Patch the lineage diff cache with change data from full CLL map
+            if (cllApiInput.change_analysis && fullMap) {
+              cllCachePatchRef.current = { pending: true, cllData: cll };
               queryClient.setQueryData(
                 cacheKeys.lineage(),
                 (old: ServerInfoResult | undefined) => {
@@ -435,10 +446,7 @@ export function PrivateLineageView(
                     ...old,
                     lineage: {
                       ...old.lineage,
-                      diff: patchLineageDiffFromCll(
-                        old.lineage.diff,
-                        cllResult,
-                      ),
+                      diff: patchLineageDiffFromCll(old.lineage.diff, fullMap),
                     },
                   };
                 },
@@ -694,26 +702,36 @@ export function PrivateLineageView(
           changeAnalysisMode,
       };
       try {
-        cll = await actionGetCll.mutateAsync(cllApiInput);
-        // Patch the lineage diff cache with change data from CLL.
-        // Also set the guard ref so the useLayoutEffect that re-fires
-        // (due to lineageGraph recomputing) skips the redundant CLL call.
-        const cllResult = cll;
-        if (cllApiInput.change_analysis && cllResult) {
-          cllCachePatchRef.current = { pending: true, cllData: cllResult };
-          queryClient.setQueryData(
-            cacheKeys.lineage(),
-            (old: ServerInfoResult | undefined) => {
-              if (!old) return old;
-              return {
-                ...old,
-                lineage: {
-                  ...old.lineage,
-                  diff: patchLineageDiffFromCll(old.lineage.diff, cllResult),
-                },
-              };
-            },
-          );
+        // If we have the full CLL map cached, slice client-side (instant).
+        // Otherwise fetch with full_map=true and cache it (one-time cost).
+        if (fullCllMapRef.current) {
+          cll = sliceCllMap(fullCllMapRef.current, cllApiInput);
+        } else {
+          const fullMap = await actionGetCll.mutateAsync({
+            ...cllApiInput,
+            full_map: true,
+          });
+          fullCllMapRef.current = fullMap;
+          cll = sliceCllMap(fullMap, cllApiInput);
+          // Patch the lineage diff cache with change data from full CLL map.
+          // Also set the guard ref so the useLayoutEffect that re-fires
+          // (due to lineageGraph recomputing) skips the redundant CLL call.
+          if (cllApiInput.change_analysis && fullMap) {
+            cllCachePatchRef.current = { pending: true, cllData: cll };
+            queryClient.setQueryData(
+              cacheKeys.lineage(),
+              (old: ServerInfoResult | undefined) => {
+                if (!old) return old;
+                return {
+                  ...old,
+                  lineage: {
+                    ...old.lineage,
+                    diff: patchLineageDiffFromCll(old.lineage.diff, fullMap),
+                  },
+                };
+              },
+            );
+          }
         }
       } catch (e) {
         if (e instanceof AxiosError) {
@@ -731,6 +749,8 @@ export function PrivateLineageView(
       // Clear change analysis mode when CLL is cleared by any path
       // (reselect, selectParentNodes, selectChildNodes, etc.)
       setChangeAnalysisMode(false);
+      // Clear cached full map when CLL is exited
+      fullCllMapRef.current = undefined;
     }
 
     // Capture positions if preservePositions is true

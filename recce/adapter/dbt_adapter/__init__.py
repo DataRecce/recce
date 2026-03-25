@@ -1010,7 +1010,15 @@ class DbtAdapter(BaseAdapter):
         manifest_dict = manifest.to_dict()
 
         # Find related model nodes
-        if node_id is not None:
+        if no_filter and node_id is None:
+            # Full map mode: start from ALL nodes so the frontend can
+            # slice any node/column without further API calls.
+            cll_node_ids = set()
+            for key in ["sources", "nodes", "exposures", "metrics"]:
+                cll_node_ids.update(getattr(manifest, key).keys())
+            if hasattr(manifest, "semantic_models"):
+                cll_node_ids.update(manifest.semantic_models.keys())
+        elif node_id is not None:
             cll_node_ids = {node_id}
         else:
             lineage_diff = self.get_lineage_diff()
@@ -1064,6 +1072,7 @@ class DbtAdapter(BaseAdapter):
                             column_diff = node_diff.change.columns.get(c.name)
                             if column_diff:
                                 c.change_status = column_diff
+                    columns[c_id] = c
 
                 for p_id, parents in cll_data_one.parent_map.items():
                     parent_map[p_id] = parents
