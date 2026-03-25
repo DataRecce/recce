@@ -4,6 +4,7 @@ import type {
   SchemaViewProps,
 } from "@datarecce/ui/advanced";
 import { NodeView } from "@datarecce/ui/advanced";
+import { NodeTag } from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -48,6 +49,19 @@ function StubNodeSqlView({ node }: { node: NodeViewNodeData }) {
   );
 }
 
+function ResourceTypeTag({ node }: { node: NodeViewNodeData }) {
+  const materialized =
+    node.data.data.current?.config?.materialized ??
+    node.data.data.base?.config?.materialized;
+
+  return (
+    <NodeTag
+      resourceType={node.data.resourceType}
+      materialized={materialized}
+    />
+  );
+}
+
 // =============================================================================
 // FIXTURE FACTORIES
 // =============================================================================
@@ -61,8 +75,16 @@ function createNode(
     name?: string;
     resourceType?: string;
     changeStatus?: string;
+    materialized?: string;
+    baseMaterialized?: string;
   } = {},
 ): NodeViewNodeData {
+  const baseMat = overrides.baseMaterialized ?? overrides.materialized;
+  const baseConfig = baseMat ? { materialized: baseMat } : undefined;
+  const currentConfig = overrides.materialized
+    ? { materialized: overrides.materialized }
+    : undefined;
+
   return {
     id: "model.jaffle_shop.stg_orders",
     data: {
@@ -80,6 +102,7 @@ function createNode(
             customer_id: { name: "customer_id", type: "integer" },
             order_date: { name: "order_date", type: "date" },
           },
+          config: baseConfig,
         },
         current: {
           id: "stg_orders",
@@ -91,6 +114,7 @@ function createNode(
             customer_id: { name: "customer_id", type: "integer" },
             order_date: { name: "order_date", type: "date" },
           },
+          config: currentConfig,
         },
       },
     },
@@ -125,6 +149,7 @@ const meta: Meta<typeof NodeView> = {
     isSingleEnv: false,
     SchemaView: StubSchemaView,
     NodeSqlView: StubNodeSqlView,
+    ResourceTypeTag,
   },
 };
 
@@ -138,7 +163,7 @@ type Story = StoryObj<typeof NodeView>;
 /** No differences in schema or code — no dots shown on either tab. */
 export const NoDifferences: Story = {
   args: {
-    node: createNode(),
+    node: createNode({ materialized: "view" }),
   },
 };
 
@@ -207,6 +232,7 @@ export const SingleEnvMode: Story = {
   args: {
     isSingleEnv: true,
     node: createNode({
+      materialized: "table",
       baseCode: "SELECT 1",
       currentCode: "SELECT 2",
       baseColumns: {
@@ -216,6 +242,21 @@ export const SingleEnvMode: Story = {
         a: { name: "a", type: "varchar" },
         b: { name: "b", type: "integer" },
       },
+    }),
+  },
+};
+
+// =============================================================================
+// MATERIALIZATION CHANGE STORY
+// =============================================================================
+
+/** Materialization changed from view to table between base and current. */
+export const MaterializationChanged: Story = {
+  args: {
+    node: createNode({
+      baseMaterialized: "view",
+      materialized: "table",
+      changeStatus: "modified",
     }),
   },
 };
