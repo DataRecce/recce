@@ -352,6 +352,47 @@ class TestSubmitRunParamsPropagation:
             assert run.params["primary_key"] == ["CUSTOMER_ID"]
 
     @pytest.mark.asyncio
+    async def test_triggered_by_propagates_to_run(self, mock_context, mock_task_class):
+        """Test that triggered_by parameter is set on the created Run object."""
+        from recce.apis.run_func import submit_run
+
+        with patch("recce.apis.run_func.create_task") as mock_create_task:
+            mock_task = mock_task_class({"model": "customers", "primary_key": ["customer_id"]})
+            mock_create_task.return_value = mock_task
+
+            run, future = submit_run(
+                type="value_diff",
+                params={"model": "customers", "primary_key": ["customer_id"]},
+                triggered_by="recce_ai",
+            )
+
+            assert run.triggered_by == "recce_ai"
+
+            # Clean up: wait for the future to complete
+            await asyncio.wrap_future(future)
+            await asyncio.sleep(0.1)
+
+    @pytest.mark.asyncio
+    async def test_triggered_by_defaults_to_none(self, mock_context, mock_task_class):
+        """Test that triggered_by defaults to None when not specified."""
+        from recce.apis.run_func import submit_run
+
+        with patch("recce.apis.run_func.create_task") as mock_create_task:
+            mock_task = mock_task_class({"model": "customers", "primary_key": ["customer_id"]})
+            mock_create_task.return_value = mock_task
+
+            run, future = submit_run(
+                type="value_diff",
+                params={"model": "customers", "primary_key": ["customer_id"]},
+            )
+
+            assert run.triggered_by is None
+
+            # Clean up: wait for the future to complete
+            await asyncio.wrap_future(future)
+            await asyncio.sleep(0.1)
+
+    @pytest.mark.asyncio
     async def test_run_params_unchanged_when_task_has_no_params(self, mock_context):
         """Test that run.params is unchanged when task.params is None."""
         from recce.apis.run_func import submit_run
