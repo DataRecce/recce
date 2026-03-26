@@ -55,6 +55,21 @@ class QueryMixin:
         result, _ = cls.execute_sql_with_limit(sql_template, base)
         return result
 
+    @classmethod
+    def execute_row_count(cls, sql_template, base: bool = False) -> Optional[int]:
+        """Execute SELECT COUNT(*) FROM (<sql>) to get total row count."""
+        dbt_adapter = default_context().adapter
+
+        try:
+            sql = dbt_adapter.generate_sql(sql_template, base)
+            count_sql = f"SELECT COUNT(*) AS _total_row_count FROM ({sql}) AS _count_subquery"
+            _, result = dbt_adapter.execute(count_sql, fetch=True, auto_begin=True)
+            if result.rows:
+                return int(result.rows[0][0])
+            return None
+        except Exception:
+            return None
+
     @staticmethod
     def close_connection(connection):
         dbt_adapter = default_context().adapter
