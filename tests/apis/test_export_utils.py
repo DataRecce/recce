@@ -58,6 +58,16 @@ def test_generate_xlsx_bytes():
     assert data[:2] == b"PK"
 
 
+def test_generate_xlsx_bytes_overflow():
+    """XLSX generation should raise ValueError when row count exceeds max_rows."""
+    import pytest
+
+    columns = ["id"]
+    rows = iter([(i,) for i in range(10)])
+    with pytest.raises(ValueError, match="exceeds maximum XLSX row limit"):
+        generate_xlsx_bytes(columns, rows, max_rows=5)
+
+
 def test_supported_types_and_formats():
     assert "query" in SUPPORTED_EXPORT_TYPES
     assert "query_base" in SUPPORTED_EXPORT_TYPES

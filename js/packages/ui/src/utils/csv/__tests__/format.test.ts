@@ -445,7 +445,7 @@ describe("toTSV", () => {
 });
 
 describe("formatRowCount", () => {
-  test("should format small numbers with commas", () => {
+  test("should format small numbers as plain counts", () => {
     expect(formatRowCount(0)).toBe("0 rows");
     expect(formatRowCount(1)).toBe("1 row");
     expect(formatRowCount(42)).toBe("42 rows");
