@@ -16,7 +16,7 @@
 import { BaseEdge, type EdgeProps, getBezierPath } from "@xyflow/react";
 import { memo } from "react";
 import type { LineageGraphEdge } from "../../../contexts/lineage/types";
-import { DIM_FILTER } from "../config";
+import { DIM_FILTER } from "../config/zoomConstants";
 import { type ChangeStatus, getIconForChangeStatus } from "../styles";
 
 // =============================================================================
