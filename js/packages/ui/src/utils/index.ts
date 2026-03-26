@@ -12,6 +12,7 @@ export {
   downloadExcel,
   downloadTSV,
   extractCSVData,
+  formatRowCount,
   generateCSVFilename,
   generateTimestamp,
   supportsCSVExport,

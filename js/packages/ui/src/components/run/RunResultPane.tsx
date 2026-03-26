@@ -15,6 +15,11 @@
 
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogTitle from "@mui/material/DialogTitle";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
@@ -52,6 +57,7 @@ import YAML from "yaml";
 import type { Run, RunParamTypes } from "../../api";
 import { useIsDark } from "../../hooks/useIsDark";
 import { CodeEditor } from "../../primitives";
+import { formatRowCount } from "../../utils";
 import { RunView } from "./RunView";
 import type { RunResultViewProps, RunResultViewRef } from "./types";
 
@@ -70,6 +76,8 @@ export type RunResultPaneTabValue = "result" | "params" | "query";
 export interface CSVExportProps {
   /** Whether CSV export is available */
   canExportCSV: boolean;
+  /** Total row count from backend (null if unavailable) */
+  totalRowCount?: number | null;
   /** Copy data as CSV to clipboard */
   copyAsCSV: () => Promise<void>;
   /** Copy data as TSV to clipboard (pastes into spreadsheets) */
@@ -323,6 +331,48 @@ const ParamView = memo(
 );
 ParamView.displayName = "ParamView";
 
+// ============================================================================
+// Export Helpers
+// ============================================================================
+
+const LARGE_EXPORT_THRESHOLD = 100_000;
+
+function downloadLabel(base: string, totalRowCount?: number | null): string {
+  if (totalRowCount != null && totalRowCount > 0) {
+    return `${base} (${formatRowCount(totalRowCount)})`;
+  }
+  return base;
+}
+
+interface LargeExportWarningDialogProps {
+  open: boolean;
+  rowCount: number;
+  onContinue: () => void;
+  onCancel: () => void;
+}
+
+const LargeExportWarningDialog = memo(
+  ({ open, rowCount, onContinue, onCancel }: LargeExportWarningDialogProps) => (
+    <Dialog open={open} onClose={onCancel}>
+      <DialogTitle>Large Export Warning</DialogTitle>
+      <DialogContent>
+        <DialogContentText>
+          You are about to download <strong>{formatRowCount(rowCount)}</strong>.
+          This may take a while and produce a large file. Are you sure you want
+          to continue?
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onCancel}>Cancel</Button>
+        <Button onClick={onContinue} variant="contained">
+          Continue
+        </Button>
+      </DialogActions>
+    </Dialog>
+  ),
+);
+LargeExportWarningDialog.displayName = "LargeExportWarningDialog";
+
 /**
  * Default export menu component
  */
@@ -336,6 +386,13 @@ const DefaultExportMenu = memo(
   }: RunResultExportMenuProps) => {
     const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
     const open = Boolean(anchorEl);
+    const [showWarning, setShowWarning] = useState(false);
+    const [pendingAction, setPendingAction] = useState<(() => void) | null>(
+      null,
+    );
+
+    const totalRowCount = csvExport?.totalRowCount ?? 0;
+    const needsWarning = totalRowCount > LARGE_EXPORT_THRESHOLD;
 
     const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
       setAnchorEl(event.currentTarget);
@@ -343,6 +400,28 @@ const DefaultExportMenu = memo(
 
     const handleClose = () => {
       setAnchorEl(null);
+    };
+
+    const handleDownload = (action: () => void) => {
+      if (needsWarning) {
+        setPendingAction(() => action);
+        setShowWarning(true);
+      } else {
+        action();
+        handleClose();
+      }
+    };
+
+    const handleWarningContinue = () => {
+      setShowWarning(false);
+      pendingAction?.();
+      setPendingAction(null);
+      handleClose();
+    };
+
+    const handleWarningCancel = () => {
+      setShowWarning(false);
+      setPendingAction(null);
     };
 
     return (
@@ -397,44 +476,49 @@ const DefaultExportMenu = memo(
             <ListItemText>Copy as CSV</ListItemText>
           </MenuItem>
           <MenuItem
-            onClick={() => {
-              csvExport?.downloadAsCSV();
-              handleClose();
-            }}
+            onClick={() => handleDownload(() => csvExport?.downloadAsCSV())}
             disabled={disableExport || !csvExport?.canExportCSV}
           >
             <ListItemIcon>
               <PiDownloadSimple />
             </ListItemIcon>
-            <ListItemText>Download as CSV</ListItemText>
+            <ListItemText>
+              {downloadLabel("Download as CSV", csvExport?.totalRowCount)}
+            </ListItemText>
           </MenuItem>
           <MenuItem
-            onClick={() => {
-              csvExport?.downloadAsTSV?.();
-              handleClose();
-            }}
+            onClick={() => handleDownload(() => csvExport?.downloadAsTSV?.())}
             disabled={disableExport || !csvExport?.canExportCSV}
           >
             <ListItemIcon>
               <PiDownloadSimple />
             </ListItemIcon>
-            <ListItemText>Download as TSV</ListItemText>
+            <ListItemText>
+              {downloadLabel("Download as TSV", csvExport?.totalRowCount)}
+            </ListItemText>
           </MenuItem>
           {csvExport?.downloadAsExcel && (
             <MenuItem
-              onClick={() => {
-                csvExport?.downloadAsExcel?.();
-                handleClose();
-              }}
+              onClick={() =>
+                handleDownload(() => csvExport?.downloadAsExcel?.())
+              }
               disabled={disableExport || !csvExport?.canExportCSV}
             >
               <ListItemIcon>
                 <PiDownloadSimple />
               </ListItemIcon>
-              <ListItemText>Download as Excel</ListItemText>
+              <ListItemText>
+                {downloadLabel("Download as Excel", csvExport?.totalRowCount)}
+              </ListItemText>
             </MenuItem>
           )}
         </Menu>
+        <LargeExportWarningDialog
+          open={showWarning}
+          rowCount={totalRowCount}
+          onContinue={handleWarningContinue}
+          onCancel={handleWarningCancel}
+        />
       </>
     );
   },
@@ -457,6 +541,13 @@ const DefaultShareMenu = memo(
   }: RunResultShareMenuProps) => {
     const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
     const open = Boolean(anchorEl);
+    const [showWarning, setShowWarning] = useState(false);
+    const [pendingAction, setPendingAction] = useState<(() => void) | null>(
+      null,
+    );
+
+    const totalRowCount = csvExport?.totalRowCount ?? 0;
+    const needsWarning = totalRowCount > LARGE_EXPORT_THRESHOLD;
 
     const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
       setAnchorEl(event.currentTarget);
@@ -464,6 +555,28 @@ const DefaultShareMenu = memo(
 
     const handleClose = () => {
       setAnchorEl(null);
+    };
+
+    const handleDownload = (action: () => void) => {
+      if (needsWarning) {
+        setPendingAction(() => action);
+        setShowWarning(true);
+      } else {
+        action();
+        handleClose();
+      }
+    };
+
+    const handleWarningContinue = () => {
+      setShowWarning(false);
+      pendingAction?.();
+      setPendingAction(null);
+      handleClose();
+    };
+
+    const handleWarningCancel = () => {
+      setShowWarning(false);
+      setPendingAction(null);
     };
 
     return (
@@ -518,41 +631,40 @@ const DefaultShareMenu = memo(
             <ListItemText>Copy as CSV</ListItemText>
           </MenuItem>
           <MenuItem
-            onClick={() => {
-              csvExport?.downloadAsCSV();
-              handleClose();
-            }}
+            onClick={() => handleDownload(() => csvExport?.downloadAsCSV())}
             disabled={disableExport || !csvExport?.canExportCSV}
           >
             <ListItemIcon>
               <PiDownloadSimple />
             </ListItemIcon>
-            <ListItemText>Download as CSV</ListItemText>
+            <ListItemText>
+              {downloadLabel("Download as CSV", csvExport?.totalRowCount)}
+            </ListItemText>
           </MenuItem>
           <MenuItem
-            onClick={() => {
-              csvExport?.downloadAsTSV?.();
-              handleClose();
-            }}
+            onClick={() => handleDownload(() => csvExport?.downloadAsTSV?.())}
             disabled={disableExport || !csvExport?.canExportCSV}
           >
             <ListItemIcon>
               <PiDownloadSimple />
             </ListItemIcon>
-            <ListItemText>Download as TSV</ListItemText>
+            <ListItemText>
+              {downloadLabel("Download as TSV", csvExport?.totalRowCount)}
+            </ListItemText>
           </MenuItem>
           {csvExport?.downloadAsExcel && (
             <MenuItem
-              onClick={() => {
-                csvExport?.downloadAsExcel?.();
-                handleClose();
-              }}
+              onClick={() =>
+                handleDownload(() => csvExport?.downloadAsExcel?.())
+              }
               disabled={disableExport || !csvExport?.canExportCSV}
             >
               <ListItemIcon>
                 <PiDownloadSimple />
               </ListItemIcon>
-              <ListItemText>Download as Excel</ListItemText>
+              <ListItemText>
+                {downloadLabel("Download as Excel", csvExport?.totalRowCount)}
+              </ListItemText>
             </MenuItem>
           )}
           <Divider />
@@ -582,6 +694,12 @@ const DefaultShareMenu = memo(
             </MenuItem>
           )}
         </Menu>
+        <LargeExportWarningDialog
+          open={showWarning}
+          rowCount={totalRowCount}
+          onContinue={handleWarningContinue}
+          onCancel={handleWarningCancel}
+        />
       </>
     );
   },
