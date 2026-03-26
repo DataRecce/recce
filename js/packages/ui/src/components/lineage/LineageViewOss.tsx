@@ -88,7 +88,15 @@ import { LineageViewNotification } from "../notifications";
 import { HSplit, toaster } from "../ui";
 import { ActionControlOss } from "./ActionControlOss";
 import { ColumnLevelLineageControlOss } from "./ColumnLevelLineageControlOss";
-import { edgeTypes, getNodeColor, initialNodes, nodeTypes } from "./config";
+import {
+  EXPLORE_MIN_ZOOM,
+  edgeTypes,
+  FIT_VIEW_PADDING,
+  getNodeColor,
+  initialNodes,
+  LEGIBLE_MIN_ZOOM,
+  nodeTypes,
+} from "./config";
 import {
   useLineageCopyToClipboard,
   useNavToCheck,
@@ -526,7 +534,13 @@ export function PrivateLineageView(
   useResizeObserver(refResize, async () => {
     if (selectMode !== "selecting") {
       if (!focusedNodeId) {
-        await reactFlow.fitView({ nodes, duration: 200 });
+        await reactFlow.fitView({
+          nodes,
+          duration: 200,
+          padding: FIT_VIEW_PADDING,
+          minZoom: LEGIBLE_MIN_ZOOM,
+          maxZoom: 1,
+        });
       } else {
         await centerNode(focusedNodeId);
       }
@@ -778,7 +792,13 @@ export function PrivateLineageView(
     if (fitView) {
       await new Promise((resolve) => setTimeout(resolve, 1));
       (() => {
-        void reactFlow.fitView({ nodes: newNodes, duration: 200 });
+        void reactFlow.fitView({
+          nodes: newNodes,
+          duration: 200,
+          padding: FIT_VIEW_PADDING,
+          minZoom: LEGIBLE_MIN_ZOOM,
+          maxZoom: 1,
+        });
       })();
     }
   };
@@ -1201,7 +1221,19 @@ export function PrivateLineageView(
             onClick={closeContextMenu}
             onInit={async () => {
               if (isModelsChanged) {
-                await reactFlow.fitView();
+                const changedNodes = nodes.filter(
+                  (n) =>
+                    isLineageGraphNode(n) && n.data.changeStatus !== undefined,
+                );
+                const fitTarget =
+                  changedNodes.length > 0 ? changedNodes : nodes;
+                await reactFlow.fitView({
+                  nodes: fitTarget,
+                  duration: 200,
+                  padding: FIT_VIEW_PADDING,
+                  minZoom: LEGIBLE_MIN_ZOOM,
+                  maxZoom: 1,
+                });
               } else {
                 const bounds = getNodesBounds(nodes, {});
                 await reactFlow.setCenter(
@@ -1214,7 +1246,7 @@ export function PrivateLineageView(
               }
             }}
             maxZoom={1}
-            minZoom={0.1}
+            minZoom={EXPLORE_MIN_ZOOM}
             nodesDraggable={interactive}
             ref={refReactFlow as unknown as Ref<HTMLDivElement>}
             colorMode={isDark ? "dark" : "light"}

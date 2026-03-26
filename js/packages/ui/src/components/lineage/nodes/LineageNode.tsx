@@ -26,6 +26,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { Handle, Position } from "@xyflow/react";
 import { type MouseEvent, memo, type ReactNode, useState } from "react";
+import { DIM_FILTER } from "../config";
 import {
   getIconForChangeStatus,
   getIconForMaterialization,
@@ -405,11 +406,11 @@ function LineageNodeComponent({
   // Filter for dimming
   const nodeFilter = (() => {
     if (selectMode === "action_result") {
-      return hasAction ? "none" : "opacity(0.2) grayscale(50%)";
+      return hasAction ? "none" : DIM_FILTER;
     }
     return isHighlighted || isFocused || isSelected || isHovered
       ? "none"
-      : "opacity(0.2) grayscale(50%)";
+      : DIM_FILTER;
   })();
 
   const handleCheckboxClick = (e: MouseEvent) => {
