@@ -185,8 +185,17 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         current, current_more = self.execute_sql_with_limit(sql_template, base=False, limit=limit)
         self.check_cancel()
 
+        # Get total row counts
+        if preview_change:
+            base_total = self.execute_row_count(base_sql_template, base=False)
+        else:
+            base_total = self.execute_row_count(base_sql_template or sql_template, base=True)
+        current_total = self.execute_row_count(sql_template, base=False)
+
         base_df = DataFrame.from_agate(base, limit=limit, more=base_more)
+        base_df.total_row_count = base_total
         current_df = DataFrame.from_agate(current, limit=limit, more=current_more)
+        current_df.total_row_count = current_total
 
         # Normalize primary_keys if present (for non-join diff, use current columns as reference)
         if self.params.primary_keys:
@@ -353,6 +362,7 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         limit = QUERY_LIMIT
         base, base_more = sqlmesh_adapter.fetchdf_with_limit(base_sql or sql, base=True, limit=limit)
         curr, curr_more = sqlmesh_adapter.fetchdf_with_limit(sql, base=False, limit=limit)
+        # Note: SQLMesh total_row_count deferred — would need fetchdf_count method
         return QueryDiffResult(
             base=DataFrame.from_pandas(base, limit=limit, more=base_more),
             current=DataFrame.from_pandas(curr, limit=limit, more=curr_more),
