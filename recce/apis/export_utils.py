@@ -90,16 +90,19 @@ def generate_xlsx_bytes(
     from openpyxl import Workbook
 
     wb = Workbook(write_only=True)
-    ws = wb.create_sheet()
+    try:
+        ws = wb.create_sheet()
 
-    ws.append(columns)
-    count = 0
-    for row in row_iterator:
-        if count >= max_rows:
-            raise ValueError(f"Export exceeds maximum XLSX row limit of {max_rows:,} rows")
-        ws.append(list(row))
-        count += 1
+        ws.append(columns)
+        count = 0
+        for row in row_iterator:
+            if count >= max_rows:
+                raise ValueError(f"Export exceeds maximum XLSX row limit of {max_rows:,} rows")
+            ws.append(list(row))
+            count += 1
 
-    output = io.BytesIO()
-    wb.save(output)
-    return output.getvalue()
+        output = io.BytesIO()
+        wb.save(output)
+        return output.getvalue()
+    finally:
+        wb.close()
