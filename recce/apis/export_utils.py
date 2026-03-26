@@ -95,10 +95,10 @@ def generate_xlsx_bytes(
     ws.append(columns)
     count = 0
     for row in row_iterator:
+        if count >= max_rows:
+            raise ValueError(f"Export exceeds maximum XLSX row limit of {max_rows:,} rows")
         ws.append(list(row))
         count += 1
-        if count >= max_rows:
-            break
 
     output = io.BytesIO()
     wb.save(output)

@@ -160,6 +160,20 @@ async def export_run_handler(run_id: UUID, format: str = Query("csv", descriptio
             detail=f"Export not supported for run type: {run.type.value}. Supported: {', '.join(SUPPORTED_EXPORT_TYPES)}",
         )
 
+    # Reject query_diff exports that used primary_keys (warehouse-side join diff).
+    # The stored result is diff-only, but _execute_export_query exports base/current
+    # raw queries, which would not match what the user saw in the UI.
+    if run.type.value == "query_diff":
+        params = run.params if isinstance(run.params, dict) else run.params.dict()
+        if params.get("primary_keys"):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Export is not yet supported for query_diff runs that use primary_keys "
+                    "(warehouse-side join diff). Use a standard query run for full export."
+                ),
+            )
+
     total_row_count = _get_total_row_count(run)
     if total_row_count is not None:
         if total_row_count > EXPORT_MAX_ROWS:
@@ -233,30 +247,29 @@ def _execute_export_query(run) -> t.Tuple[t.List[str], t.Iterator[tuple]]:
         is_base = run_type == "query_base"
         table, _ = QueryMixin.execute_sql_with_limit(sql_template, base=is_base)
         columns = list(table.column_names)
-        rows = [tuple(row.values()) for row in table.rows]
-        return columns, iter(rows)
+        return columns, (tuple(row.values()) for row in table.rows)
 
     elif run_type == "query_diff":
         base_sql = params.get("base_sql_template")
         base_table, _ = QueryMixin.execute_sql_with_limit(base_sql or sql_template, base=True)
         current_table, _ = QueryMixin.execute_sql_with_limit(sql_template, base=False)
 
+        from itertools import zip_longest
+
         columns = [f"base__{c}" for c in base_table.column_names] + [
             f"current__{c}" for c in current_table.column_names
         ]
 
+        num_cols_base = len(base_table.column_names)
+        num_cols_curr = len(current_table.column_names)
+        empty_base = tuple([None] * num_cols_base)
+        empty_curr = tuple([None] * num_cols_curr)
+
         def merged_rows():
-            base_rows = [tuple(r.values()) for r in base_table.rows]
-            curr_rows = [tuple(r.values()) for r in current_table.rows]
-            max_len = max(len(base_rows), len(curr_rows))
-            num_cols_base = len(base_table.column_names)
-            num_cols_curr = len(current_table.column_names)
-            empty_base = tuple([None] * num_cols_base)
-            empty_curr = tuple([None] * num_cols_curr)
-            for i in range(max_len):
-                b = base_rows[i] if i < len(base_rows) else empty_base
-                c = curr_rows[i] if i < len(curr_rows) else empty_curr
-                yield b + c
+            base_iter = (tuple(r.values()) for r in base_table.rows)
+            curr_iter = (tuple(r.values()) for r in current_table.rows)
+            for b, c in zip_longest(base_iter, curr_iter):
+                yield (b if b is not None else empty_base) + (c if c is not None else empty_curr)
 
         return columns, merged_rows()
 

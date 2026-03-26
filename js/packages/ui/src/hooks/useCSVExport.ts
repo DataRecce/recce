@@ -118,7 +118,6 @@ export function useCSVExport({
       // Use hidden anchor to avoid popup blockers (especially after warning dialog)
       const a = document.createElement("a");
       a.href = `/api/runs/${runId}/export?format=${format}`;
-      a.download = "";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -157,16 +156,29 @@ export function useCSVExport({
     }
   }, [getCSVContent]);
 
+  // Detect join-diff runs: query_diff with primary_keys uses warehouse-side join,
+  // and backend export doesn't yet return the join-diff output shown in the UI.
+  const isJoinDiffRun = useMemo(() => {
+    return (
+      run?.type === "query_diff" &&
+      Boolean(
+        (run?.params as Record<string, unknown> | undefined)?.primary_keys,
+      )
+    );
+  }, [run?.type, run?.params]);
+
   const downloadAsCSV = useCallback(() => {
     // For query types with a runId, use backend streaming export
+    // Exclude join-diff runs — backend would export raw queries, not the diff
     if (
       runId &&
+      !isJoinDiffRun &&
       ["query", "query_base", "query_diff"].includes(run?.type ?? "")
     ) {
       triggerBackendDownload("csv");
       return;
     }
-    // Fallback: client-side export for non-query types
+    // Fallback: client-side export for non-query types (and join-diff runs)
     const content = getCSVContent();
     if (!content) {
       toaster.create({
@@ -198,7 +210,7 @@ export function useCSVExport({
         duration: 3000,
       });
     }
-  }, [runId, run, getCSVContent, triggerBackendDownload]);
+  }, [runId, run, isJoinDiffRun, getCSVContent, triggerBackendDownload]);
 
   const copyAsTSV = useCallback(async () => {
     const content = getTSVContent();
@@ -234,6 +246,7 @@ export function useCSVExport({
   const downloadAsTSV = useCallback(() => {
     if (
       runId &&
+      !isJoinDiffRun &&
       ["query", "query_base", "query_diff"].includes(run?.type ?? "")
     ) {
       triggerBackendDownload("tsv");
@@ -270,11 +283,12 @@ export function useCSVExport({
         duration: 3000,
       });
     }
-  }, [runId, run, getTSVContent, triggerBackendDownload]);
+  }, [runId, run, isJoinDiffRun, getTSVContent, triggerBackendDownload]);
 
   const downloadAsExcel = useCallback(async () => {
     if (
       runId &&
+      !isJoinDiffRun &&
       ["query", "query_base", "query_diff"].includes(run?.type ?? "")
     ) {
       triggerBackendDownload("xlsx");
@@ -312,7 +326,7 @@ export function useCSVExport({
         duration: 3000,
       });
     }
-  }, [runId, run, getExtractedData, triggerBackendDownload]);
+  }, [runId, run, isJoinDiffRun, getExtractedData, triggerBackendDownload]);
 
   return {
     canExportCSV,
