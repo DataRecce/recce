@@ -4,7 +4,7 @@ import {
   EXPLORE_MIN_ZOOM,
   FIT_VIEW_PADDING,
   LEGIBLE_MIN_ZOOM,
-} from "../config";
+} from "../config/zoomConstants";
 
 describe("zoom constants", () => {
   it("LEGIBLE_MIN_ZOOM is above 0.3 for label readability", () => {

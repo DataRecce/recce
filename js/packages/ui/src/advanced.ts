@@ -66,7 +66,7 @@ export {
   EXPLORE_MIN_ZOOM,
   FIT_VIEW_PADDING,
   LEGIBLE_MIN_ZOOM,
-} from "./components/lineage/config";
+} from "./components/lineage/config/zoomConstants";
 /**
  * Low-level lineage canvas component for custom graph rendering.
  *
