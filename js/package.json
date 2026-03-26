@@ -79,7 +79,7 @@
     "simplebar-react": "3.3.2",
     "usehooks-ts": "^3.1.1",
     "write-excel-file": "^3.0.6",
-    "yaml": "^2.8.2"
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@amplitude/analytics-core": "^2.41.4",
