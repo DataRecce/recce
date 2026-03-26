@@ -30,17 +30,21 @@ import { TimelineEventOss as TimelineEvent } from "./TimelineEventOss";
 // ============================================================================
 
 /**
- * Map OSS run status ("finished", "running", etc.) to display status
- * ("success", "error") using the error field.
+ * Map OSS run status to display status using the error field.
+ * RunStatus enum values are capitalized: "Finished", "Failed", "Running", "Cancelled".
  */
 function deriveRunStatus(
   status: string | undefined,
   error: string | undefined | null,
 ): string {
-  if (status === "finished") {
+  const s = status?.toLowerCase();
+  if (s === "finished") {
     return error ? "error" : "success";
   }
-  // "running", "pending", "cancelled" pass through
+  if (s === "failed") {
+    return "error";
+  }
+  // "running", "cancelled" pass through
   return status ?? "unknown";
 }
 

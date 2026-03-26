@@ -660,7 +660,7 @@ class RecceMCPServer:
                         ),
                         Tool(
                             name="run_check",
-                            description="Run a single check by ID and wait for completion. Returns execution status, results, and approval status.",
+                            description="Run a single check by ID and wait for completion. Returns a Run object with fields: run_id, type, check_id, status, result, error, run_at, triggered_by.",
                             inputSchema={
                                 "type": "object",
                                 "properties": {
@@ -1735,18 +1735,21 @@ class RecceMCPServer:
         triggered_by = arguments.get("triggered_by", "user")
         if check_type in (RunType.LINEAGE_DIFF, RunType.SCHEMA_DIFF):
             # Metadata-only: read from manifest, create Run record for Activity
-            if check_type == RunType.LINEAGE_DIFF:
-                result = await self._tool_lineage_diff(params)
-            else:
-                result = await self._tool_schema_diff(params)
-            self._create_metadata_run(
-                check_type=check_type,
-                params=params,
-                check_id=check_id,
-                result=result,
-                triggered_by=triggered_by,
-            )
-            run_executed = True
+            try:
+                if check_type == RunType.LINEAGE_DIFF:
+                    result = await self._tool_lineage_diff(params)
+                else:
+                    result = await self._tool_schema_diff(params)
+                self._create_metadata_run(
+                    check_type=check_type,
+                    params=params,
+                    check_id=check_id,
+                    result=result,
+                    triggered_by=triggered_by,
+                )
+                run_executed = True
+            except Exception as e:
+                run_error = str(e)
         else:
             run, future = submit_run(check_type, params=params, check_id=check_id, triggered_by=triggered_by)
             await future
