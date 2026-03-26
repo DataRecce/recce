@@ -38,9 +38,9 @@ export interface LineageCanvasProps {
   height?: number | string;
   /** Whether the graph is interactive */
   interactive?: boolean;
-  /** Minimum zoom level (default: 0.1) */
+  /** Minimum zoom level (passed to ReactFlow) */
   minZoom?: number;
-  /** Maximum zoom level (default: 1) */
+  /** Maximum zoom level (passed to ReactFlow) */
   maxZoom?: number;
   /** Options passed to fitView on initial render */
   fitViewOptions?: FitViewOptions;
