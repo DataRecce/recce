@@ -176,6 +176,7 @@ export const PrivateLoadableRunView = ({
   // CSV export functionality
   const csvExport = useCSVExport({
     run,
+    runId,
     viewOptions: viewOptions as Record<string, unknown>,
   });
 
