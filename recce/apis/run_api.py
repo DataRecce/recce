@@ -236,23 +236,25 @@ def _get_total_row_count(run) -> t.Optional[int]:
 
 
 def _execute_export_query(run) -> t.Tuple[t.List[str], t.Iterator[tuple]]:
-    """Re-execute the run's SQL query without row limit and return columns + row iterator."""
+    """Re-execute the run's SQL query with EXPORT_MAX_ROWS limit and return columns + row iterator."""
     from recce.tasks.query import QueryMixin
 
-    params = run.params if isinstance(run.params, dict) else run.params.dict()
+    params = run.params if isinstance(run.params, dict) else (run.params.dict() if run.params else {})
     sql_template = params.get("sql_template")
+    if not sql_template:
+        raise ValueError("Run has no sql_template in params")
     run_type = run.type.value if hasattr(run.type, "value") else run.type
 
     if run_type in ("query", "query_base"):
         is_base = run_type == "query_base"
-        table, _ = QueryMixin.execute_sql_with_limit(sql_template, base=is_base)
+        table, _ = QueryMixin.execute_sql_with_limit(sql_template, base=is_base, limit=EXPORT_MAX_ROWS)
         columns = list(table.column_names)
         return columns, (tuple(row.values()) for row in table.rows)
 
     elif run_type == "query_diff":
         base_sql = params.get("base_sql_template")
-        base_table, _ = QueryMixin.execute_sql_with_limit(base_sql or sql_template, base=True)
-        current_table, _ = QueryMixin.execute_sql_with_limit(sql_template, base=False)
+        base_table, _ = QueryMixin.execute_sql_with_limit(base_sql or sql_template, base=True, limit=EXPORT_MAX_ROWS)
+        current_table, _ = QueryMixin.execute_sql_with_limit(sql_template, base=False, limit=EXPORT_MAX_ROWS)
 
         from itertools import zip_longest
 
