@@ -16,7 +16,7 @@ export {
   extractCSVData,
   supportsCSVExport,
 } from "./extractors";
-export { toCSV, toTSV } from "./format";
+export { formatRowCount, toCSV, toTSV } from "./format";
 
 /**
  * Generate timestamp string for filenames

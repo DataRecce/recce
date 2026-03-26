@@ -1,7 +1,7 @@
 /**
  * Tests for CSV and TSV formatting utilities
  */
-import { toCSV, toTSV } from "../format";
+import { formatRowCount, toCSV, toTSV } from "../format";
 
 describe("toCSV", () => {
   describe("basic formatting", () => {
@@ -441,5 +441,39 @@ describe("toTSV", () => {
       expect(lines[2]).toBe("email\t950\t0.95");
       expect(lines[3]).toBe("status\t800\t0.8");
     });
+  });
+});
+
+describe("formatRowCount", () => {
+  test("should format small numbers with commas", () => {
+    expect(formatRowCount(0)).toBe("0 rows");
+    expect(formatRowCount(1)).toBe("1 row");
+    expect(formatRowCount(42)).toBe("42 rows");
+    expect(formatRowCount(999)).toBe("999 rows");
+  });
+
+  test("should format thousands with k suffix", () => {
+    expect(formatRowCount(1000)).toBe("1k rows");
+    expect(formatRowCount(1200)).toBe("1.2k rows");
+    expect(formatRowCount(12000)).toBe("12k rows");
+    expect(formatRowCount(12500)).toBe("12.5k rows");
+    expect(formatRowCount(450000)).toBe("450k rows");
+    expect(formatRowCount(999999)).toBe("1M rows");
+  });
+
+  test("should format millions with M suffix", () => {
+    expect(formatRowCount(1000000)).toBe("1M rows");
+    expect(formatRowCount(1200000)).toBe("1.2M rows");
+    expect(formatRowCount(3500000)).toBe("3.5M rows");
+    expect(formatRowCount(10000000)).toBe("10M rows");
+  });
+
+  test("should drop .0 decimal for round numbers", () => {
+    expect(formatRowCount(1000)).toBe("1k rows");
+    expect(formatRowCount(2000000)).toBe("2M rows");
+  });
+
+  test("should handle singular row", () => {
+    expect(formatRowCount(1)).toBe("1 row");
   });
 });
