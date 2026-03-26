@@ -1,10 +1,22 @@
 import asyncio
+import typing as t
 from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 
+from recce.apis.export_utils import (
+    EXPORT_MAX_ROWS,
+    SUPPORTED_EXPORT_TYPES,
+    SUPPORTED_FORMATS,
+    XLSX_MAX_ROWS,
+    generate_export_filename,
+    generate_xlsx_bytes,
+    stream_csv_rows,
+    stream_tsv_rows,
+)
 from recce.apis.run_func import cancel_run, materialize_run_results, submit_run
 from recce.event import log_api_event
 from recce.exceptions import RecceException
@@ -128,3 +140,124 @@ async def aggregate_runs_handler(input: AggregateRunsIn):
         return result
     except Exception as e:
         raise HTTPException(status_code=405, detail=str(e))
+
+
+@run_router.get("/runs/{run_id}/export")
+async def export_run_handler(run_id: UUID, format: str = Query("csv", description="Export format: csv, tsv, or xlsx")):
+    """Export full query results as a downloadable file."""
+    if format not in SUPPORTED_FORMATS:
+        raise HTTPException(
+            status_code=400, detail=f"Unsupported format: {format}. Use: {', '.join(SUPPORTED_FORMATS)}"
+        )
+
+    run = RunDAO().find_run_by_id(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    if run.type.value not in SUPPORTED_EXPORT_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Export not supported for run type: {run.type.value}. Supported: {', '.join(SUPPORTED_EXPORT_TYPES)}",
+        )
+
+    total_row_count = _get_total_row_count(run)
+    if total_row_count is not None:
+        if total_row_count > EXPORT_MAX_ROWS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Export too large ({total_row_count:,} rows). Maximum is {EXPORT_MAX_ROWS:,} rows.",
+            )
+        if format == "xlsx" and total_row_count > XLSX_MAX_ROWS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Excel exports are limited to {XLSX_MAX_ROWS:,} rows. Use CSV or TSV for larger exports.",
+            )
+
+    filename = generate_export_filename(run.type.value, format)
+
+    try:
+        columns, row_iter = _execute_export_query(run)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export query failed: {str(e)}")
+
+    if format == "csv":
+        return StreamingResponse(
+            stream_csv_rows(columns, row_iter),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    elif format == "tsv":
+        return StreamingResponse(
+            stream_tsv_rows(columns, row_iter),
+            media_type="text/tab-separated-values",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    elif format == "xlsx":
+        xlsx_bytes = generate_xlsx_bytes(columns, row_iter)
+        return Response(
+            content=xlsx_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+
+def _get_total_row_count(run) -> t.Optional[int]:
+    """Extract total_row_count from run result.
+
+    Note: Run.result is always a dict (Pydantic serialization), never a DataFrame instance.
+    """
+    result = run.result
+    if not isinstance(result, dict):
+        return None
+
+    if "total_row_count" in result and isinstance(result["total_row_count"], (int, float)):
+        return int(result["total_row_count"])
+
+    base = result.get("base")
+    curr = result.get("current")
+    base_count = base.get("total_row_count") if isinstance(base, dict) else None
+    curr_count = curr.get("total_row_count") if isinstance(curr, dict) else None
+    counts = [int(c) for c in [base_count, curr_count] if c is not None]
+    return max(counts) if counts else None
+
+
+def _execute_export_query(run) -> t.Tuple[t.List[str], t.Iterator[tuple]]:
+    """Re-execute the run's SQL query without row limit and return columns + row iterator."""
+    from recce.tasks.query import QueryMixin
+
+    params = run.params if isinstance(run.params, dict) else run.params.dict()
+    sql_template = params.get("sql_template")
+    run_type = run.type.value if hasattr(run.type, "value") else run.type
+
+    if run_type in ("query", "query_base"):
+        is_base = run_type == "query_base"
+        table, _ = QueryMixin.execute_sql_with_limit(sql_template, base=is_base)
+        columns = list(table.column_names)
+        rows = [tuple(row.values()) for row in table.rows]
+        return columns, iter(rows)
+
+    elif run_type == "query_diff":
+        base_sql = params.get("base_sql_template")
+        base_table, _ = QueryMixin.execute_sql_with_limit(base_sql or sql_template, base=True)
+        current_table, _ = QueryMixin.execute_sql_with_limit(sql_template, base=False)
+
+        columns = [f"base__{c}" for c in base_table.column_names] + [
+            f"current__{c}" for c in current_table.column_names
+        ]
+
+        def merged_rows():
+            base_rows = [tuple(r.values()) for r in base_table.rows]
+            curr_rows = [tuple(r.values()) for r in current_table.rows]
+            max_len = max(len(base_rows), len(curr_rows))
+            num_cols_base = len(base_table.column_names)
+            num_cols_curr = len(current_table.column_names)
+            empty_base = tuple([None] * num_cols_base)
+            empty_curr = tuple([None] * num_cols_curr)
+            for i in range(max_len):
+                b = base_rows[i] if i < len(base_rows) else empty_base
+                c = curr_rows[i] if i < len(curr_rows) else empty_curr
+                yield b + c
+
+        return columns, merged_rows()
+
+    raise ValueError(f"Unsupported export run type: {run_type}")
