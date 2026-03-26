@@ -113,7 +113,11 @@ class QueryTask(Task, QueryMixin):
             table, more = self.execute_sql_with_limit(sql_template, base=self.is_base, limit=limit)
             self.check_cancel()
 
-            return DataFrame.from_agate(table, limit=limit, more=more)
+            total_row_count = self.execute_row_count(sql_template, base=self.is_base)
+
+            df = DataFrame.from_agate(table, limit=limit, more=more)
+            df.total_row_count = total_row_count
+            return df
 
     def execute_sqlmesh(self):
         from ..adapter.sqlmesh_adapter import SqlmeshAdapter
@@ -123,7 +127,9 @@ class QueryTask(Task, QueryMixin):
         sql = self.params.get("sql_template")
         limit = QUERY_LIMIT
         df, more = sqlmesh_adapter.fetchdf_with_limit(sql, base=self.is_base, limit=limit)
-        return DataFrame.from_pandas(df, limit=limit, more=more)
+        result = DataFrame.from_pandas(df, limit=limit, more=more)
+        # Note: SQLMesh total_row_count deferred — would need fetchdf_count method
+        return result
 
     def execute(self):
         context = default_context()
