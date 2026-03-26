@@ -16,6 +16,7 @@
 import { BaseEdge, type EdgeProps, getBezierPath } from "@xyflow/react";
 import { memo } from "react";
 import type { LineageGraphEdge } from "../../../contexts/lineage/types";
+import { DIM_FILTER } from "../config";
 import { type ChangeStatus, getIconForChangeStatus } from "../styles";
 
 // =============================================================================
@@ -118,7 +119,7 @@ function GraphEdgeComponent(props: GraphEdgeProps) {
     : true;
 
   if (!isHighlighted) {
-    style.filter = "opacity(0.2) grayscale(50%)";
+    style.filter = DIM_FILTER;
   }
 
   const [edgePath] = getBezierPath({
