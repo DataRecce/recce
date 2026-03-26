@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from recce.apis.export_utils import (
     EXPORT_MAX_ROWS,
+    MAX_CONCURRENT_EXPORTS,
     SUPPORTED_EXPORT_TYPES,
     SUPPORTED_FORMATS,
     XLSX_MAX_ROWS,
@@ -16,6 +17,7 @@ from recce.apis.export_utils import (
     generate_xlsx_bytes,
     stream_csv_rows,
     stream_tsv_rows,
+    wrap_sql_with_export_limit,
 )
 from recce.apis.run_func import cancel_run, materialize_run_results, submit_run
 from recce.event import log_api_event
@@ -23,6 +25,17 @@ from recce.exceptions import RecceException
 from recce.models import RunDAO
 
 run_router = APIRouter(tags=["run"])
+
+# Lazy-init semaphore to limit concurrent export queries.
+# Created lazily to avoid asyncio event loop issues at import time.
+_export_semaphore: t.Optional[asyncio.Semaphore] = None
+
+
+def _get_export_semaphore() -> asyncio.Semaphore:
+    global _export_semaphore
+    if _export_semaphore is None:
+        _export_semaphore = asyncio.Semaphore(MAX_CONCURRENT_EXPORTS)
+    return _export_semaphore
 
 
 class CreateRunIn(BaseModel):
@@ -187,27 +200,42 @@ async def export_run_handler(run_id: UUID, format: str = Query("csv", descriptio
                 detail=f"Excel exports are limited to {XLSX_MAX_ROWS:,} rows. Use CSV or TSV for larger exports.",
             )
 
+    # Limit concurrent exports to prevent server resource exhaustion.
+    # Fast-reject if all semaphore slots are taken rather than queuing.
+    sem = _get_export_semaphore()
+    if sem._value <= 0:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many concurrent exports. Please wait for the current export to complete.",
+        )
+
     filename = generate_export_filename(run.type.value, format)
 
-    try:
-        columns, row_iter = _execute_export_query(run)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Export query failed: {str(e)}")
+    # Run the blocking warehouse query in a thread pool to keep the
+    # async event loop responsive for other API requests and WebSocket heartbeats.
+    async with sem:
+        try:
+            columns, rows = await asyncio.to_thread(_execute_export_query, run)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Export query failed: {str(e)}")
 
+    # Semaphore released — data is in memory, formatting is cheap.
     if format == "csv":
         return StreamingResponse(
-            stream_csv_rows(columns, row_iter),
+            stream_csv_rows(columns, iter(rows)),
             media_type="text/csv",
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
     elif format == "tsv":
         return StreamingResponse(
-            stream_tsv_rows(columns, row_iter),
+            stream_tsv_rows(columns, iter(rows)),
             media_type="text/tab-separated-values",
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
     elif format == "xlsx":
-        xlsx_bytes = generate_xlsx_bytes(columns, row_iter)
+        xlsx_bytes = await asyncio.to_thread(generate_xlsx_bytes, columns, iter(rows))
         return Response(
             content=xlsx_bytes,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -235,44 +263,65 @@ def _get_total_row_count(run) -> t.Optional[int]:
     return max(counts) if counts else None
 
 
-def _execute_export_query(run) -> t.Tuple[t.List[str], t.Iterator[tuple]]:
-    """Re-execute the run's SQL query with EXPORT_MAX_ROWS limit and return columns + row iterator."""
-    from recce.tasks.query import QueryMixin
+def _execute_export_query(run) -> t.Tuple[t.List[str], t.List[tuple]]:
+    """Re-execute the run's SQL query with export limits and return columns + rows.
 
+    Uses SQL-level LIMIT to cap warehouse processing (saves compute cost),
+    plus dbt's fetchmany as a secondary Python-side guard.
+
+    Returns a materialized list (not a generator) so the database connection
+    can be closed before streaming begins — important since this runs in a
+    background thread via asyncio.to_thread.
+    """
+    from recce.core import default_context
+
+    dbt_adapter = default_context().adapter
     params = run.params if isinstance(run.params, dict) else (run.params.dict() if run.params else {})
     sql_template = params.get("sql_template")
     if not sql_template:
         raise ValueError("Run has no sql_template in params")
     run_type = run.type.value if hasattr(run.type, "value") else run.type
 
-    if run_type in ("query", "query_base"):
-        is_base = run_type == "query_base"
-        table, _ = QueryMixin.execute_sql_with_limit(sql_template, base=is_base, limit=EXPORT_MAX_ROWS)
-        columns = list(table.column_names)
-        return columns, (tuple(row.values()) for row in table.rows)
+    # Use connection_named for thread-safe connection management.
+    # Each thread gets its own database connection via dbt's thread-local storage.
+    with dbt_adapter.connection_named("export"):
+        if run_type in ("query", "query_base"):
+            is_base = run_type == "query_base"
+            compiled_sql = dbt_adapter.generate_sql(sql_template, is_base)
+            limited_sql = wrap_sql_with_export_limit(compiled_sql, EXPORT_MAX_ROWS)
+            _, table = dbt_adapter.execute(limited_sql, fetch=True, auto_begin=True)
+            columns = list(table.column_names)
+            rows = [tuple(row.values()) for row in table.rows]
+            return columns, rows
 
-    elif run_type == "query_diff":
-        base_sql = params.get("base_sql_template")
-        base_table, _ = QueryMixin.execute_sql_with_limit(base_sql or sql_template, base=True, limit=EXPORT_MAX_ROWS)
-        current_table, _ = QueryMixin.execute_sql_with_limit(sql_template, base=False, limit=EXPORT_MAX_ROWS)
+        elif run_type == "query_diff":
+            base_sql = params.get("base_sql_template")
 
-        from itertools import zip_longest
+            base_compiled = dbt_adapter.generate_sql(base_sql or sql_template, True)
+            base_limited = wrap_sql_with_export_limit(base_compiled, EXPORT_MAX_ROWS)
+            _, base_table = dbt_adapter.execute(base_limited, fetch=True, auto_begin=True)
 
-        columns = [f"base__{c}" for c in base_table.column_names] + [
-            f"current__{c}" for c in current_table.column_names
-        ]
+            curr_compiled = dbt_adapter.generate_sql(sql_template, False)
+            curr_limited = wrap_sql_with_export_limit(curr_compiled, EXPORT_MAX_ROWS)
+            _, current_table = dbt_adapter.execute(curr_limited, fetch=True, auto_begin=True)
 
-        num_cols_base = len(base_table.column_names)
-        num_cols_curr = len(current_table.column_names)
-        empty_base = tuple([None] * num_cols_base)
-        empty_curr = tuple([None] * num_cols_curr)
+            from itertools import zip_longest
 
-        def merged_rows():
-            base_iter = (tuple(r.values()) for r in base_table.rows)
-            curr_iter = (tuple(r.values()) for r in current_table.rows)
-            for b, c in zip_longest(base_iter, curr_iter):
-                yield (b if b is not None else empty_base) + (c if c is not None else empty_curr)
+            columns = [f"base__{c}" for c in base_table.column_names] + [
+                f"current__{c}" for c in current_table.column_names
+            ]
 
-        return columns, merged_rows()
+            num_cols_base = len(base_table.column_names)
+            num_cols_curr = len(current_table.column_names)
+            empty_base = tuple([None] * num_cols_base)
+            empty_curr = tuple([None] * num_cols_curr)
+
+            base_rows = [tuple(r.values()) for r in base_table.rows]
+            curr_rows = [tuple(r.values()) for r in current_table.rows]
+
+            merged = []
+            for b, c in zip_longest(base_rows, curr_rows):
+                merged.append((b if b is not None else empty_base) + (c if c is not None else empty_curr))
+            return columns, merged
 
     raise ValueError(f"Unsupported export run type: {run_type}")

@@ -5,11 +5,22 @@ import io
 import typing as t
 from datetime import date
 
-EXPORT_MAX_ROWS = 10_000_000
-XLSX_MAX_ROWS = 1_000_000
+EXPORT_MAX_ROWS = 500_000
+XLSX_MAX_ROWS = 100_000
+MAX_CONCURRENT_EXPORTS = 2
 
 SUPPORTED_EXPORT_TYPES = {"query", "query_base", "query_diff"}
 SUPPORTED_FORMATS = {"csv", "tsv", "xlsx"}
+
+
+def wrap_sql_with_export_limit(compiled_sql: str, max_rows: int) -> str:
+    """Wrap compiled SQL with a LIMIT clause to cap warehouse processing.
+
+    This ensures the warehouse stops scanning after max_rows, saving compute
+    cost and network transfer time. Works on all major warehouses (BigQuery,
+    Snowflake, Redshift, Postgres, Databricks, DuckDB).
+    """
+    return f"SELECT * FROM ({compiled_sql}) AS _export_limited LIMIT {max_rows}"
 
 
 def generate_export_filename(run_type: str, fmt: str) -> str:
