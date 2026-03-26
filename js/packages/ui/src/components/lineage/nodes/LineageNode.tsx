@@ -26,7 +26,7 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { Handle, Position } from "@xyflow/react";
 import { type MouseEvent, memo, type ReactNode, useState } from "react";
-import { DIM_FILTER } from "../config";
+import { DIM_FILTER } from "../config/zoomConstants";
 import {
   getIconForChangeStatus,
   getIconForMaterialization,

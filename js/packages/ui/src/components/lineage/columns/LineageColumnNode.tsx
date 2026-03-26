@@ -6,7 +6,7 @@ import { Handle, Position } from "@xyflow/react";
 import type { MouseEvent } from "react";
 import { memo, useState } from "react";
 import { DataTypeIcon } from "../../ui/DataTypeIcon";
-import { DIM_FILTER } from "../config";
+import { DIM_FILTER } from "../config/zoomConstants";
 
 /**
  * Transformation type for column-level lineage
