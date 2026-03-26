@@ -1,5 +1,11 @@
+import hashlib
+import json
+import logging
+import os
 import time
+from copy import deepcopy
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import sqlglot.expressions as exp
@@ -11,10 +17,145 @@ from sqlglot.optimizer.qualify import qualify
 from recce.exceptions import RecceException
 from recce.models.types import CllColumn, CllColumnDep
 
+logger = logging.getLogger("recce")
+
 CllResult = Tuple[
     List[CllColumnDep],  # Model to column dependencies
     Dict[str, CllColumn],  # Column to column dependencies
 ]
+
+
+_ERROR_MARKER = "__error__"
+
+
+class CllCache:
+    """Content-addressed cache for CLL results, with optional disk persistence.
+
+    Keyed by hash of (sql, dialect) so that identical compiled SQL reuses
+    results across environments and across server restarts.
+
+    - In-memory dict for fast lookups within a session.
+    - Optional disk persistence (JSON files) so the cache survives restarts.
+      Set cache_dir to enable. Each entry is a separate file named by its hash.
+    """
+
+    _SENTINEL = object()
+
+    def __init__(self, cache_dir: Optional[str] = None):
+        self._mem: Dict[str, object] = {}
+        self._hits = 0
+        self._misses = 0
+        self._cache_dir: Optional[Path] = None
+        if cache_dir:
+            self._cache_dir = Path(cache_dir)
+            self._cache_dir.mkdir(parents=True, exist_ok=True)
+
+    @staticmethod
+    def _make_key(sql: str, dialect: Optional[str]) -> str:
+        h = hashlib.sha256()
+        h.update(sql.encode("utf-8"))
+        if dialect is not None:
+            h.update(str(dialect).encode("utf-8"))
+        return h.hexdigest()
+
+    def _disk_path(self, key: str) -> Optional[Path]:
+        if self._cache_dir is None:
+            return None
+        return self._cache_dir / f"{key}.json"
+
+    @staticmethod
+    def _serialize(result: CllResult) -> dict:
+        m2c, c2c_map = result
+        return {
+            "m2c": [dep.model_dump() for dep in m2c],
+            "c2c": {name: col.model_dump() for name, col in c2c_map.items()},
+        }
+
+    @staticmethod
+    def _deserialize(data: dict) -> CllResult:
+        m2c = [CllColumnDep(**d) for d in data["m2c"]]
+        c2c_map = {name: CllColumn(**d) for name, d in data["c2c"].items()}
+        return m2c, c2c_map
+
+    def get(self, sql: str, dialect: Optional[str]) -> object:
+        """Returns CllResult, raises cached exception, or returns _SENTINEL on miss."""
+        key = self._make_key(sql, dialect)
+
+        # Check in-memory first
+        entry = self._mem.get(key, self._SENTINEL)
+        if entry is not self._SENTINEL:
+            self._hits += 1
+            if isinstance(entry, str) and entry == _ERROR_MARKER:
+                raise RecceException("CLL computation failed (cached)")
+            return deepcopy(entry)
+
+        # Check disk
+        disk_path = self._disk_path(key)
+        if disk_path and disk_path.exists():
+            try:
+                data = json.loads(disk_path.read_text())
+                if data.get("status") == "error":
+                    self._mem[key] = _ERROR_MARKER
+                    self._hits += 1
+                    raise RecceException("CLL computation failed (cached)")
+                result = self._deserialize(data)
+                self._mem[key] = result
+                self._hits += 1
+                return deepcopy(result)
+            except RecceException:
+                raise
+            except Exception:
+                pass  # corrupted cache file, treat as miss
+
+        self._misses += 1
+        return self._SENTINEL
+
+    def put(self, sql: str, dialect: Optional[str], result: CllResult):
+        key = self._make_key(sql, dialect)
+        self._mem[key] = deepcopy(result)
+        disk_path = self._disk_path(key)
+        if disk_path:
+            try:
+                disk_path.write_text(json.dumps(self._serialize(result)))
+            except Exception:
+                pass  # disk write failure is non-fatal
+
+    def put_error(self, sql: str, dialect: Optional[str], error: Exception):
+        key = self._make_key(sql, dialect)
+        self._mem[key] = _ERROR_MARKER
+        disk_path = self._disk_path(key)
+        if disk_path:
+            try:
+                disk_path.write_text(json.dumps({"status": "error", "message": str(error)}))
+            except Exception:
+                pass
+
+    def clear(self):
+        self._mem.clear()
+        self._hits = 0
+        self._misses = 0
+        # Note: does NOT delete disk files — they may be shared across instances
+
+    @property
+    def stats(self) -> Dict[str, int]:
+        total = self._hits + self._misses
+        return {
+            "hits": self._hits,
+            "misses": self._misses,
+            "total": total,
+            "hit_rate_pct": round(self._hits / total * 100, 1) if total > 0 else 0,
+            "size": len(self._mem),
+        }
+
+
+def _init_cll_cache() -> CllCache:
+    """Initialize the CLL cache, with disk persistence if configured."""
+    cache_dir = os.environ.get("CLL_CONTENT_CACHE_DIR")
+    return CllCache(cache_dir=cache_dir)
+
+
+# Module-level cache shared across all calls
+_cll_cache = _init_cll_cache()
 
 
 @dataclass
@@ -287,31 +428,43 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
     return m2c, c2c_map
 
 
-def cll(sql, schema=None, dialect=None) -> CllResult:
-    # given a sql, return the cll for the sql
-    # {
-    #     'depends_on': [{'node': 'model_id', 'column': 'column'}],
-    #     'columns': {
-    #         'column1': {
-    #             'type': 'derived',
-    #             'depends_on': [{'node': 'model_id', 'column': 'column'}],
-    #         }
-    #     }
-    # }
+def _is_content_cache_enabled() -> bool:
+    return os.environ.get("ENABLE_CLL_CONTENT_CACHE", "0") == "1"
 
+
+def cll(sql, schema=None, dialect=None) -> CllResult:
+    dialect_str = str(dialect) if dialect is not None else None
+
+    if _is_content_cache_enabled():
+        cached = _cll_cache.get(sql, dialect_str)
+        if cached is not CllCache._SENTINEL:
+            return cached
+
+    t_start = time.perf_counter()
     dialect = Dialect.get(dialect) if dialect is not None else None
+
+    cache_enabled = _is_content_cache_enabled()
 
     try:
         expression = parse_one(sql, dialect=dialect)
     except SqlglotError as e:
-        raise RecceException(f"Failed to parse SQL: {str(e)}")
+        exc = RecceException(f"Failed to parse SQL: {str(e)}")
+        if cache_enabled:
+            _cll_cache.put_error(sql, dialect_str, exc)
+        raise exc
 
     try:
         expression = qualify(expression, schema=schema, dialect=dialect)
     except OptimizeError as e:
-        raise RecceException(f"Failed to optimize SQL: {str(e)}")
+        exc = RecceException(f"Failed to optimize SQL: {str(e)}")
+        if cache_enabled:
+            _cll_cache.put_error(sql, dialect_str, exc)
+        raise exc
     except SqlglotError as e:
-        raise RecceException(f"Failed to qualify SQL: {str(e)}")
+        exc = RecceException(f"Failed to qualify SQL: {str(e)}")
+        if cache_enabled:
+            _cll_cache.put_error(sql, dialect_str, exc)
+        raise exc
 
     result = None
     scope_cll_map = {}
@@ -327,5 +480,20 @@ def cll(sql, schema=None, dialect=None) -> CllResult:
         scope_cll_map[scope] = result
 
     if result is None:
-        raise RecceException("Failed to extract CLL from SQL")
+        exc = RecceException("Failed to extract CLL from SQL")
+        if _is_content_cache_enabled():
+            _cll_cache.put_error(sql, dialect_str, exc)
+        raise exc
+
+    elapsed_ms = (time.perf_counter() - t_start) * 1000
+    if elapsed_ms > 100:
+        logger.info("[cll] computed in %.1fms (sql length=%d)", elapsed_ms, len(sql))
+
+    if _is_content_cache_enabled():
+        _cll_cache.put(sql, dialect_str, result)
     return result
+
+
+def get_cll_cache() -> CllCache:
+    """Access the module-level CLL cache (for stats/clearing)."""
+    return _cll_cache

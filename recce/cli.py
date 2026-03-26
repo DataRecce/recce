@@ -324,6 +324,111 @@ def version():
 @cli.command(cls=TrackCommand)
 @add_options(dbt_related_options)
 @add_options(recce_dbt_artifact_dir_options)
+@click.option(
+    "--cache-dir",
+    help="Directory to store the CLL cache files.",
+    type=click.Path(),
+    default=".recce/cll_cache",
+    show_default=True,
+)
+def init(cache_dir, **kwargs):
+    """
+    Pre-compute column-level lineage cache from dbt artifacts.
+
+    Computes CLL for all models and stores results to disk so that
+    subsequent `recce server` sessions start with a warm cache.
+
+    Examples:\n
+
+    \b
+    # Pre-compute CLL from default artifact paths (target/ and target-base/)
+    recce init
+
+    \b
+    # Specify a custom cache directory
+    recce init --cache-dir .recce/cll_cache
+    """
+
+    import time
+
+    from rich.console import Console
+
+    from recce.adapter.dbt_adapter import DbtAdapter
+    from recce.core import load_context
+    from recce.util.cll import CllCache, get_cll_cache
+
+    console = Console()
+    console.rule("Recce Init — Pre-compute CLL Cache", style="orange3")
+
+    # Enable content cache with disk persistence
+    import recce.util.cll as cll_module
+
+    project_dir_path = Path(kwargs.get("project_dir") or "./")
+    cache_path = project_dir_path / cache_dir
+    cll_module._cll_cache = CllCache(cache_dir=str(cache_path))
+    os.environ["ENABLE_CLL_CONTENT_CACHE"] = "1"
+
+    # Load context (adapter + artifacts)
+    # Use target-base as both target and base to just load artifacts
+    context_kwargs = {**kwargs}
+    try:
+        ctx = load_context(**context_kwargs)
+    except Exception as e:
+        console.print(f"[[red]Error[/red]] Failed to load context: {e}")
+        exit(1)
+
+    dbt_adapter: DbtAdapter = ctx.adapter
+    cache = get_cll_cache()
+
+    # Collect all model node IDs from both environments
+    envs = []
+    if dbt_adapter.curr_manifest:
+        curr_ids = [
+            nid for nid in dbt_adapter.curr_manifest.nodes
+            if dbt_adapter.curr_manifest.nodes[nid].resource_type in ("model", "snapshot")
+        ]
+        envs.append(("current", curr_ids, False))
+
+    if dbt_adapter.base_manifest:
+        base_ids = [
+            nid for nid in dbt_adapter.base_manifest.nodes
+            if dbt_adapter.base_manifest.nodes[nid].resource_type in ("model", "snapshot")
+        ]
+        envs.append(("base", base_ids, True))
+
+    for env_name, node_ids, is_base in envs:
+        console.print(f"\n[bold]{env_name}[/bold] environment: {len(node_ids)} models")
+        t_start = time.perf_counter()
+        success = 0
+        fail = 0
+
+        for nid in node_ids:
+            try:
+                result = dbt_adapter.get_cll_cached(nid, base=is_base)
+                if result is not None:
+                    success += 1
+                else:
+                    fail += 1
+            except Exception:
+                fail += 1
+
+        elapsed = time.perf_counter() - t_start
+        stats = cache.stats
+        console.print(
+            f"  {success} ok, {fail} skipped, {elapsed:.1f}s"
+            f" | cache: {stats['hits']} hits, {stats['misses']} new ({stats['hit_rate_pct']}% reused)"
+        )
+
+    console.print(f"\nCache saved to [bold]{cache_path}[/bold] ({cache.stats['size']} entries)")
+    console.print(
+        "Run [bold]ENABLE_CLL_CONTENT_CACHE=1 CLL_CONTENT_CACHE_DIR="
+        f"{cache_dir} recce server[/bold] to use the cached CLL."
+    )
+
+
+@cli.command(cls=TrackCommand)
+@add_options(dbt_related_options)
+@add_options(recce_dbt_artifact_dir_options)
 def debug(**kwargs):
     """
     Diagnose and verify Recce setup for the development and the base environments

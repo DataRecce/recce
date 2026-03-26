@@ -1,7 +1,10 @@
 import unittest
 from typing import List, Tuple
 
-from recce.util.cll import CllResult, cll
+import pytest
+
+from recce.exceptions import RecceException
+from recce.util.cll import CllResult, cll, get_cll_cache
 
 
 def assert_model(result: CllResult, depends_on: List[Tuple[str, str]]):
@@ -791,3 +794,143 @@ class ColumnLevelLineageTest(unittest.TestCase):
             """
         result = cll(sql)
         assert_model(result, [("table1", "a"), ("table1", "user_id"), ("table2", "user_id")])
+
+
+class CllCacheTest(unittest.TestCase):
+    def setUp(self):
+        import os
+
+        os.environ["ENABLE_CLL_CONTENT_CACHE"] = "1"
+        # Re-init cache without disk for tests
+        from recce.util import cll as cll_module
+
+        cll_module._cll_cache = cll_module.CllCache()
+
+    def tearDown(self):
+        import os
+
+        os.environ.pop("ENABLE_CLL_CONTENT_CACHE", None)
+        from recce.util import cll as cll_module
+
+        cll_module._cll_cache = cll_module._init_cll_cache()
+
+    def test_cache_hit_same_sql(self):
+        """Same SQL should be served from cache on second call."""
+        sql = "select a, b from table1"
+        result1 = cll(sql)
+        result2 = cll(sql)
+
+        stats = get_cll_cache().stats
+        assert stats["hits"] == 1
+        assert stats["misses"] == 1
+        assert stats["size"] == 1
+
+        # Results should be equal but independent (deep copied)
+        assert_column(result1, "a", "passthrough", [("table1", "a")])
+        assert_column(result2, "a", "passthrough", [("table1", "a")])
+
+    def test_cache_miss_different_sql(self):
+        """Different SQL should not hit cache."""
+        cll("select a from table1")
+        cll("select b from table2")
+
+        stats = get_cll_cache().stats
+        assert stats["hits"] == 0
+        assert stats["misses"] == 2
+        assert stats["size"] == 2
+
+    def test_cache_hit_different_schema(self):
+        """Same SQL with different schema should hit cache (key is sql+dialect only)."""
+        sql = "select a from table1"
+        cll(sql, schema={"table1": {"a": "INT"}})
+        cll(sql, schema={"table1": {"a": "VARCHAR"}})
+
+        stats = get_cll_cache().stats
+        assert stats["hits"] == 1
+        assert stats["misses"] == 1
+
+    def test_cache_miss_different_dialect(self):
+        """Same SQL but different dialect should not hit cache."""
+        sql = "select a from table1"
+        cll(sql, dialect="duckdb")
+        cll(sql, dialect="snowflake")
+
+        stats = get_cll_cache().stats
+        assert stats["hits"] == 0
+        assert stats["misses"] == 2
+
+    def test_cache_clear(self):
+        """Clearing cache should reset everything."""
+        cll("select a from table1")
+        assert get_cll_cache().stats["size"] == 1
+
+        get_cll_cache().clear()
+        assert get_cll_cache().stats["size"] == 0
+        assert get_cll_cache().stats["hits"] == 0
+        assert get_cll_cache().stats["misses"] == 0
+
+    def test_cached_result_is_independent_copy(self):
+        """Mutating a cached result should not affect future cache hits."""
+        sql = "select a, b from table1"
+        result1 = cll(sql)
+        # Mutate result1
+        m2c1, c2c1 = result1
+        c2c1["a"].transformation_type = "MUTATED"
+
+        result2 = cll(sql)
+        _, c2c2 = result2
+        assert c2c2["a"].transformation_type == "passthrough"
+
+    def test_error_caching(self):
+        """Failed CLL should be cached so the same SQL doesn't retry."""
+        bad_sql = "THIS IS NOT SQL"
+
+        with pytest.raises(RecceException):
+            cll(bad_sql)
+
+        stats1 = get_cll_cache().stats
+        assert stats1["misses"] == 1
+        assert stats1["hits"] == 0
+
+        # Second call should hit cache (re-raise cached error)
+        with pytest.raises(RecceException):
+            cll(bad_sql)
+
+        stats2 = get_cll_cache().stats
+        assert stats2["hits"] == 1
+        assert stats2["misses"] == 1
+
+    def test_disk_persistence(self):
+        """Cache should survive across CllCache instances when using disk."""
+        import tempfile
+        from recce.util.cll import CllCache
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # First instance: compute and store
+            cache1 = CllCache(cache_dir=tmpdir)
+            sql = "select a, b from table1"
+            result = cll(sql)
+            cache1.put(sql, None, result)
+            assert cache1.stats["size"] == 1
+
+            # Second instance: should load from disk
+            cache2 = CllCache(cache_dir=tmpdir)
+            loaded = cache2.get(sql, None)
+            assert loaded is not CllCache._SENTINEL
+            m2c, c2c = loaded
+            assert "a" in c2c
+            assert c2c["a"].transformation_type == "passthrough"
+            assert cache2.stats["hits"] == 1
+
+    def test_disk_persistence_errors(self):
+        """Cached errors should also persist to disk."""
+        import tempfile
+        from recce.util.cll import CllCache
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache1 = CllCache(cache_dir=tmpdir)
+            cache1.put_error("BAD SQL", None, RecceException("fail"))
+
+            cache2 = CllCache(cache_dir=tmpdir)
+            with pytest.raises(RecceException, match="cached"):
+                cache2.get("BAD SQL", None)

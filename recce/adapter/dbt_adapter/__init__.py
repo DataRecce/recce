@@ -25,7 +25,7 @@ from typing import (
 
 from recce.event import log_performance
 from recce.exceptions import RecceException
-from recce.util.cll import CLLPerformanceTracking, cll
+from recce.util.cll import CLLPerformanceTracking, cll, get_cll_cache
 from recce.util.lineage import (
     build_column_key,
     filter_dependency_maps,
@@ -994,6 +994,9 @@ class DbtAdapter(BaseAdapter):
         if self._full_cll_map is not None:
             return self._full_cll_map
 
+        import time as _time
+
+        _t_start = _time.perf_counter()
         manifest = self.curr_manifest
 
         # Collect all node IDs from all resource types
@@ -1049,6 +1052,19 @@ class DbtAdapter(BaseAdapter):
                         column_diff = node_diff.change.columns.get(c_name)
                         if column_diff:
                             col_obj.change_status = column_diff
+
+        _elapsed_ms = (_time.perf_counter() - _t_start) * 1000
+        cll_cache_stats = get_cll_cache().stats
+        log_performance("cll content cache", {**cll_cache_stats, "build_full_map_ms": round(_elapsed_ms, 1)})
+        logger.info(
+            "[performance] build_full_cll_map: %.1fms (%d nodes)"
+            " | content cache: %d hits / %d misses (%.1f%%)",
+            _elapsed_ms,
+            len(nodes),
+            cll_cache_stats["hits"],
+            cll_cache_stats["misses"],
+            cll_cache_stats["hit_rate_pct"],
+        )
 
         self._full_cll_map = CllData(
             nodes=nodes,
@@ -1720,9 +1736,10 @@ class DbtAdapter(BaseAdapter):
             elif refresh_file_path.endswith("catalog.json"):
                 self.base_catalog = load_catalog(path=refresh_file_path)
 
-        # Any artifact change invalidates change analysis and full map
+        # Any artifact change invalidates change analysis, full map, and content cache
         self.get_change_analysis_cached.cache_clear()
         self._full_cll_map = None
+        get_cll_cache().clear()
 
     def create_relation(self, model, base=False):
         node = self.find_node_by_name(model, base)
