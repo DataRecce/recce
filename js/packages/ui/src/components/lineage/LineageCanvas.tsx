@@ -4,6 +4,7 @@ import {
   Background,
   Controls,
   type Edge,
+  type FitViewOptions,
   MiniMap,
   type Node,
   ReactFlow,
@@ -37,6 +38,12 @@ export interface LineageCanvasProps {
   height?: number | string;
   /** Whether the graph is interactive */
   interactive?: boolean;
+  /** Minimum zoom level (default: 0.1) */
+  minZoom?: number;
+  /** Maximum zoom level (default: 1) */
+  maxZoom?: number;
+  /** Options passed to fitView on initial render */
+  fitViewOptions?: FitViewOptions;
 }
 
 const nodeTypes = {
@@ -58,6 +65,9 @@ export function LineageCanvas({
   showBackground = true,
   height = 600,
   interactive = true,
+  minZoom,
+  maxZoom,
+  fitViewOptions,
 }: LineageCanvasProps) {
   const [nodes, _setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, _setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -93,6 +103,9 @@ export function LineageCanvas({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
+        fitViewOptions={fitViewOptions}
+        minZoom={minZoom}
+        maxZoom={maxZoom}
         nodesDraggable={interactive}
         nodesConnectable={false}
         elementsSelectable={interactive}
