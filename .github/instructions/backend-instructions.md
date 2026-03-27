@@ -29,12 +29,12 @@ make install-dev
 
 ## Python Version Support
 
-**Supported versions:** Python 3.9, 3.10, 3.11, 3.12, 3.13
+**Supported versions:** Python 3.10, 3.11, 3.12, 3.13
 
 **Testing strategy:**
 - Primary development: Python 3.10 or 3.11
 - CI tests all versions via tox
-- Any new dependencies MUST support Python 3.9+
+- Any new dependencies MUST support Python 3.10+
 
 **Check your version:**
 ```bash
@@ -187,14 +187,14 @@ make test-tox
 # Runs in parallel
 
 make test-tox-python-versions
-# Tests across Python 3.9, 3.10, 3.11, 3.12, 3.13
+# Tests across Python 3.10, 3.11, 3.12, 3.13
 # Uses latest dbt
 # Takes ~10-15 minutes
 ```
 
 **Tox configuration (tox.ini):**
 - Environments: `dbt1.6`, `dbt1.7`, `dbt1.8`, `dbt1.9`, `dbtlatest`
-- Python versions: `3.9`, `3.10`, `3.11`, `3.12`, `3.13`
+- Python versions: `3.10`, `3.11`, `3.12`, `3.13`
 - Base Python for dbt tests: 3.10
 - Dependencies: pytest, pytest-asyncio, pytest-cov, pandas, duckdb, httpx, dbt-duckdb
 - Only latest dbt tests include mcp>=1.0.0
@@ -347,7 +347,7 @@ cd integration_tests/sqlmesh
    - Codecov upload
 
 2. **integration-tests.yaml** - Full smoke tests
-   - Matrix: Python 3.9-3.13 × dbt 1.6-latest
+   - Matrix: Python 3.10-3.13 × dbt 1.6-latest
    - Runs: `integration_tests/dbt/smoke_test.sh`
 
 3. **integration-tests-sqlmesh.yaml**
@@ -537,7 +537,7 @@ make deps-check                  # Check all deps (Docker required)
 2. **Pre-commit hooks are required** - Auto-installed with `make install-dev`
 3. **Never skip `make test` before committing** - Catches regressions early
 4. **All adapters must implement ALL BaseAdapter methods** - Partial implementations fail
-5. **Support Python 3.9+** - Check dependencies are compatible
+5. **Support Python 3.10+** - Check dependencies are compatible
 6. **State files are user-specific** - Never commit `recce_state.json`
 7. **Two separate packages** - Main (`setup.py`) and Cloud (`setup_cloud.py`)
 8. **Line length is 120** - Not 80, not 100, exactly 120
@@ -549,7 +549,7 @@ make deps-check                  # Check all deps (Docker required)
 **Server won't start:**
 - Check `recce debug` for artifact/connection issues
 - Verify dbt artifacts in `target/` and `target-base/`
-- Check Python version is 3.9+
+- Check Python version is 3.10+
 
 **Tests failing:**
 - Run with `-v` flag: `pytest tests/test_x.py -v`
