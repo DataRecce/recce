@@ -16,7 +16,7 @@ Recce is a data validation and review tool for dbt projects. It helps data teams
 - Commit state files (`recce_state.json`, `state.json`)
 - Edit files in `recce/data/` (auto-generated from frontend build)
 - Break adapter interface (all adapters must implement ALL `BaseAdapter` methods)
-- Skip Python 3.9+ compatibility for dependencies
+- Skip Python 3.10+ compatibility for dependencies
 - Bypass frontend build (run `cd js && pnpm run build` before testing with `recce server`)
 - Use interactive git commands (`git rebase -i`, `git add -i`)
 - Create worktrees in subdirectories (only at repo root)
@@ -123,7 +123,7 @@ git commit -s -m "feat(check): add timeline component"
 
 | Layer | Stack |
 |-------|-------|
-| Backend | Python 3.9-3.13, FastAPI, Click, Pydantic, dbt adapters, uv (package manager) |
+| Backend | Python 3.10-3.13, FastAPI, Click, Pydantic, dbt adapters, uv (package manager) |
 | Frontend | Node.js 20+, Next.js 16, React 19, TypeScript 5.9, MUI 7, Biome 2.4, Tailwind 4 |
 | Testing | pytest, Vitest, React Testing Library, Playwright |
 

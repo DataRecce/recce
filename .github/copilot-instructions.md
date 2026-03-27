@@ -8,7 +8,7 @@ tools and a web UI for comparing data environments, performing diffs, and collab
 **Key Info:**
 
 - **Type:** Python package (main) + TypeScript/React frontend + lightweight recce-cloud CLI
-- **Languages:** Python 3.9-3.13, TypeScript/React 19, Next.js 16
+- **Languages:** Python 3.10-3.13, TypeScript/React 19, Next.js 16
 - **Size:** ~50K lines (Python: 30K, TypeScript: 20K)
 - **Main Commands:** `recce server`, `recce run`, `recce-cloud upload`
 - **Frameworks:** FastAPI, Next.js, React 19, MUI, pnpm
@@ -51,7 +51,7 @@ pytest tests
 # With coverage report (htmlcov/index.html)
 make test-coverage
 
-# Multi-version testing (dbt 1.6-1.9, Python 3.9-3.13)
+# Multi-version testing (dbt 1.6-1.9, Python 3.10-3.13)
 make test-tox                    # ~5-10 minutes
 make test-tox-python-versions    # ~10-15 minutes
 ```
@@ -144,7 +144,7 @@ pnpm type:check    # TypeScript compiler
 
 3. **integration-tests.yaml** - Full dbt smoke tests
 
-- Matrix: Python 3.9-3.13 × dbt 1.6-latest
+- Matrix: Python 3.10-3.13 × dbt 1.6-latest
 - Runs `integration_tests/dbt/smoke_test.sh`
 - Tests: `recce run`, `recce summary`, `recce server`
 

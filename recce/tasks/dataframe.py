@@ -53,6 +53,7 @@ class DataFrame(BaseModel):
     data: t.List[tuple]
     limit: t.Optional[int] = Field(None, description="Limit the number of rows returned")
     more: t.Optional[bool] = Field(None, description="Whether there are more rows to fetch")
+    total_row_count: t.Optional[int] = Field(None, description="Total row count from the full query (before limit)")
 
     @staticmethod
     def from_agate(table: "agate.Table", limit: t.Optional[int] = None, more: t.Optional[bool] = None):

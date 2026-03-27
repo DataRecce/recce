@@ -6,6 +6,7 @@ import { Handle, Position } from "@xyflow/react";
 import type { MouseEvent } from "react";
 import { memo, useState } from "react";
 import { DataTypeIcon } from "../../ui/DataTypeIcon";
+import { DIM_FILTER } from "../config/zoomConstants";
 
 /**
  * Transformation type for column-level lineage
@@ -302,7 +303,7 @@ function LineageColumnNodeComponent({
           : isHovered
             ? "action.hover"
             : "background.paper",
-        filter: isHighlighted ? "none" : "opacity(0.2) grayscale(50%)",
+        filter: isHighlighted ? "none" : DIM_FILTER,
         cursor: "pointer",
         transition: "background-color 0.15s ease",
       }}

@@ -36,7 +36,7 @@ body:
       label: Relevant log output
       description: >
         Please copy and paste any relevant log output. This will be
-        automatically formatted into code, so no need for backticks. 
+        automatically formatted into code, so no need for backticks.
         Tip: you can find the executed sql in `logs/dbt.log`
       render: shell
   - type: textarea
@@ -46,7 +46,7 @@ body:
         examples:
         - recce: 0.1.0 (`recce version`)
         - OS: MacOS 13.2.1
-        - Python: 3.9.12 (`python3 --version`)
+        - Python: 3.10.12 (`python3 --version`)
         - Data Warehouse: snowflake or postgresql 14.10
         - dbt: (`dbt --version`)
 

@@ -56,6 +56,18 @@ export {
 // =============================================================================
 
 /**
+ * Zoom and display constants for the lineage view.
+ *
+ * @remarks
+ * Use with LineageCanvas fitViewOptions to match production behavior.
+ */
+export {
+  DIM_FILTER,
+  EXPLORE_MIN_ZOOM,
+  FIT_VIEW_PADDING,
+  LEGIBLE_MIN_ZOOM,
+} from "./components/lineage/config/zoomConstants";
+/**
  * Low-level lineage canvas component for custom graph rendering.
  *
  * @remarks
