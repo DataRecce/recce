@@ -2045,6 +2045,29 @@ class TestRunCheckEdgeCases:
                 with pytest.raises(ValueError, match="Task execution failed"):
                     await server._tool_run_check({"check_id": str(check_id)})
 
+    @pytest.mark.asyncio
+    async def test_run_check_metadata_branch_recce_exception(self, mcp_server):
+        """RecceException from _tool_lineage_diff in metadata branch should be wrapped in ValueError."""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.exceptions import RecceException
+        from recce.models.types import RunType
+
+        check_id = uuid4()
+        mock_check = MagicMock()
+        mock_check.check_id = check_id
+        mock_check.type = RunType.LINEAGE_DIFF
+        mock_check.params = {}
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.find_check_by_id.return_value = mock_check
+
+        with patch("recce.models.CheckDAO", return_value=mock_check_dao):
+            with patch.object(server, "_tool_lineage_diff", side_effect=RecceException("Lineage data unavailable")):
+                with pytest.raises(ValueError, match="Lineage data unavailable"):
+                    await server._tool_run_check({"check_id": str(check_id)})
+
 
 class TestQueryRowCountDbtErrors:
     """Test _query_row_count error classification in the dbt path (lines 141, 154)."""

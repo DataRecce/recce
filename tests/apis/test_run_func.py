@@ -479,3 +479,40 @@ class TestEdgeCases:
         # Note: dict.update() does shallow merge, so options is replaced entirely
         assert original["options"] == {"limit": 50}
         assert "offset" not in original["options"]
+
+
+# =============================================================================
+# Tests: generate_run_name for metadata types
+# =============================================================================
+
+
+class TestGenerateRunNameMetadataTypes:
+    """Tests for generate_run_name with lineage_diff and schema_diff types."""
+
+    def test_lineage_diff_name(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.LINEAGE_DIFF, params={})
+        assert generate_run_name(run) == "Lineage diff"
+
+    def test_schema_diff_no_node_names(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.SCHEMA_DIFF, params={})
+        assert generate_run_name(run) == "Schema diff"
+
+    def test_schema_diff_single_node(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.SCHEMA_DIFF, params={"node_names": ["customers"]})
+        assert generate_run_name(run) == "Schema diff of customers"
+
+    def test_schema_diff_multiple_nodes(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.SCHEMA_DIFF, params={"node_names": ["customers", "orders"]})
+        assert generate_run_name(run) == "Schema diff of 2 nodes"
