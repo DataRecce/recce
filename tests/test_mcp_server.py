@@ -2133,3 +2133,344 @@ class TestImpactAnalysisRegistration:
         assert "select" in tool.inputSchema["properties"]
         assert "skip_value_diff" in tool.inputSchema["properties"]
         assert "skip_downstream_value_diff" in tool.inputSchema["properties"]
+
+
+class TestImpactAnalysisBehavior:
+    """Test impact_analysis behavioral logic: data_impact, downstream value_diff."""
+
+    # ---------------------------------------------------------------------------
+    # Mock setup helpers
+    # ---------------------------------------------------------------------------
+
+    LINEAGE_DIFF_DATA = {
+        "base": {
+            "nodes": {
+                "model.project.modified_model": {
+                    "name": "modified_model",
+                    "config": {"materialized": "table"},
+                    "columns": {
+                        "id": {"type": "INTEGER"},
+                        "amount": {"type": "DECIMAL"},
+                    },
+                },
+                "model.project.downstream_model": {
+                    "name": "downstream_model",
+                    "config": {"materialized": "table"},
+                    "columns": {
+                        "id": {"type": "INTEGER"},
+                        "total": {"type": "DECIMAL"},
+                    },
+                },
+                "model.project.view_model": {
+                    "name": "view_model",
+                    "config": {"materialized": "view"},
+                    "columns": {},
+                },
+            },
+            "parent_map": {},
+        },
+        "current": {
+            "nodes": {
+                "model.project.modified_model": {
+                    "name": "modified_model",
+                    "config": {"materialized": "table"},
+                    "columns": {
+                        "id": {"type": "INTEGER"},
+                        "amount": {"type": "DECIMAL"},
+                    },
+                },
+                "model.project.downstream_model": {
+                    "name": "downstream_model",
+                    "config": {"materialized": "table"},
+                    "columns": {
+                        "id": {"type": "INTEGER"},
+                        "total": {"type": "DECIMAL"},
+                    },
+                },
+                "model.project.view_model": {
+                    "name": "view_model",
+                    "config": {"materialized": "view"},
+                    "columns": {},
+                },
+            },
+            "parent_map": {},
+        },
+        "diff": {
+            "model.project.modified_model": {"change_status": "modified"},
+        },
+    }
+
+    @staticmethod
+    def _make_mock_adapter():
+        """Return a mock adapter with all value_diff and row_count hooks wired up."""
+        adapter = MagicMock()
+
+        def mock_select_nodes(select=""):
+            if any(
+                s in select
+                for s in [
+                    "state:modified.body+",
+                    "state:modified.macros+",
+                    "state:modified.contract+",
+                ]
+            ):
+                return {
+                    "model.project.modified_model",
+                    "model.project.downstream_model",
+                    "model.project.view_model",
+                }
+            elif select == "state:modified":
+                return {"model.project.modified_model"}
+            return set()
+
+        adapter.select_nodes.side_effect = mock_select_nodes
+
+        def mock_get_model(node_id):
+            models = {
+                "model.project.modified_model": {
+                    "primary_key": "id",
+                    "columns": {
+                        "id": {"type": "INTEGER"},
+                        "amount": {"type": "DECIMAL"},
+                    },
+                },
+                "model.project.downstream_model": {
+                    "primary_key": "id",
+                    "columns": {
+                        "id": {"type": "INTEGER"},
+                        "total": {"type": "DECIMAL"},
+                    },
+                },
+            }
+            return models.get(node_id, {})
+
+        adapter.get_model.side_effect = mock_get_model
+        adapter.create_relation.return_value = "some_relation"
+        # connection_named is used as a context manager — MagicMock supports this natively
+        return adapter
+
+    @staticmethod
+    def _make_execute_side_effect(modified_has_changes=True):
+        """
+        Return a side_effect callable for adapter.execute(query, fetch=True).
+
+        Dispatches on query content (model name in SQL) rather than call order,
+        because impacted_models iteration order depends on dict/set ordering.
+
+        Row layout per model:
+        - modified_model (non-pk col: amount): [rows_added, rows_removed, rows_changed, amount__changed, amount__base_mean, amount__curr_mean]
+        - downstream_model (non-pk col: total): [rows_added, rows_removed, rows_changed, total__changed, total__base_mean, total__curr_mean]
+        """
+
+        def side_effect(query, fetch=False):
+            # Dispatch on column names in the SQL (create_relation returns a
+            # generic mock, so model name won't appear in query).
+            # modified_model has column "amount"; downstream_model has "total".
+            q = str(query)
+            if '"amount"' in q:
+                # modified_model
+                if modified_has_changes:
+                    row = [0, 0, 5, 5, 10.0, 15.0]  # 5 rows changed
+                else:
+                    row = [0, 0, 0, 0, 10.0, 10.0]
+            else:
+                # downstream_model (column "total") — zero changes
+                row = [0, 0, 0, 0, 5.0, 5.0]
+            table = MagicMock()
+            table.__len__ = MagicMock(return_value=1)
+            table.__getitem__ = MagicMock(side_effect=lambda i: row if i == 0 else None)
+            return (None, table)
+
+        return side_effect
+
+    @pytest.fixture
+    def setup_impact_mocks(self, mcp_server):
+        """Fixture that yields (server, mock_context) with all impact_analysis mocks wired."""
+        server, mock_context = mcp_server
+
+        mock_context.get_lineage_diff.return_value = MagicMock(
+            model_dump=MagicMock(return_value=self.LINEAGE_DIFF_DATA)
+        )
+
+        adapter = self._make_mock_adapter()
+        adapter.execute.side_effect = self._make_execute_side_effect(modified_has_changes=True)
+        mock_context.adapter = adapter
+
+        return server, mock_context
+
+    @staticmethod
+    async def _call_impact_analysis(server, **extra_args):
+        """Invoke impact_analysis via the MCP call_tool handler."""
+        handler = server.server.request_handlers[CallToolRequest]
+        req = CallToolRequest(
+            method="tools/call",
+            params=CallToolRequestParams(name="impact_analysis", arguments=extra_args),
+        )
+        result = await handler(req)
+        import json
+
+        return json.loads(result.root.content[0].text)
+
+    # ---------------------------------------------------------------------------
+    # Tests
+    # ---------------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_all_models_have_data_impact(self, setup_impact_mocks):
+        """Every model in confirmed_impacted_models must have a data_impact field."""
+        server, mock_context = setup_impact_mocks
+        valid_values = {"confirmed", "none", "potential"}
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value={}),
+        ):
+            result = await self._call_impact_analysis(server)
+
+        assert "confirmed_impacted_models" in result
+        assert len(result["confirmed_impacted_models"]) > 0
+        for model in result["confirmed_impacted_models"]:
+            assert "data_impact" in model, f"model {model['name']} missing data_impact"
+            assert (
+                model["data_impact"] in valid_values
+            ), f"model {model['name']} has invalid data_impact: {model['data_impact']}"
+
+    @pytest.mark.asyncio
+    async def test_data_impact_confirmed_when_value_changes_exist(self, setup_impact_mocks):
+        """Modified model with rows_changed > 0 → data_impact='confirmed'."""
+        server, mock_context = setup_impact_mocks
+        # adapter.execute already set to return 5 rows_changed for modified_model
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value={}),
+        ):
+            result = await self._call_impact_analysis(server)
+
+        models_by_name = {m["name"]: m for m in result["confirmed_impacted_models"]}
+        assert "modified_model" in models_by_name
+        modified = models_by_name["modified_model"]
+        assert modified["data_impact"] == "confirmed"
+        assert modified["value_diff"] is not None
+        assert modified["value_diff"]["affected_row_count"] == 5
+
+    @pytest.mark.asyncio
+    async def test_data_impact_none_when_zero_changes(self, setup_impact_mocks):
+        """Downstream model with all-zero value_diff → data_impact='none'."""
+        server, mock_context = setup_impact_mocks
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value={}),
+        ):
+            result = await self._call_impact_analysis(server)
+
+        models_by_name = {m["name"]: m for m in result["confirmed_impacted_models"]}
+        assert "downstream_model" in models_by_name
+        downstream = models_by_name["downstream_model"]
+        assert downstream["data_impact"] == "none"
+        assert downstream["value_diff"] is not None
+        assert downstream["value_diff"]["affected_row_count"] == 0
+
+    @pytest.mark.asyncio
+    async def test_potential_has_null_affected_row_count(self, setup_impact_mocks):
+        """Views (no value_diff) → data_impact='potential', affected_row_count=None.
+
+        Even if row_count.delta exists, affected_row_count should remain None for
+        potential models to avoid misleading callers.
+        """
+        server, mock_context = setup_impact_mocks
+        # Give view_model a non-zero row_count delta to confirm the override to null
+        row_count_data = {
+            "view_model": {"base": 100, "curr": 110},
+            "modified_model": {"base": 50, "curr": 50},
+            "downstream_model": {"base": 50, "curr": 50},
+        }
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value=row_count_data),
+        ):
+            result = await self._call_impact_analysis(server)
+
+        models_by_name = {m["name"]: m for m in result["confirmed_impacted_models"]}
+        assert "view_model" in models_by_name
+        view = models_by_name["view_model"]
+        assert view["data_impact"] == "potential"
+        assert view["affected_row_count"] is None
+
+    @pytest.mark.asyncio
+    async def test_guidance_is_descriptive(self, setup_impact_mocks):
+        """_guidance must describe data_impact without containing forbidden control text."""
+        server, mock_context = setup_impact_mocks
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value={}),
+        ):
+            result = await self._call_impact_analysis(server)
+
+        assert "_guidance" in result
+        guidance = result["_guidance"]
+        assert "data_impact" in guidance
+        assert "DO NOT OVERRIDE" not in guidance
+
+    @pytest.mark.asyncio
+    async def test_skip_downstream_value_diff(self, mcp_server):
+        """skip_downstream_value_diff=True: downstream tables get value_diff=None, data_impact='potential'."""
+        server, mock_context = mcp_server
+
+        mock_context.get_lineage_diff.return_value = MagicMock(
+            model_dump=MagicMock(return_value=self.LINEAGE_DIFF_DATA)
+        )
+
+        adapter = self._make_mock_adapter()
+        # Only ONE call expected — for modified_model only
+        execute_side_effect = self._make_execute_side_effect(modified_has_changes=True)
+        adapter.execute.side_effect = execute_side_effect
+        mock_context.adapter = adapter
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value={}),
+        ):
+            result = await self._call_impact_analysis(server, skip_downstream_value_diff=True)
+
+        models_by_name = {m["name"]: m for m in result["confirmed_impacted_models"]}
+
+        # Modified model still gets value_diff
+        assert models_by_name["modified_model"]["value_diff"] is not None
+        assert models_by_name["modified_model"]["data_impact"] == "confirmed"
+
+        # Downstream table: skipped → potential
+        assert models_by_name["downstream_model"]["value_diff"] is None
+        assert models_by_name["downstream_model"]["data_impact"] == "potential"
+
+    @pytest.mark.asyncio
+    async def test_skip_value_diff_takes_precedence(self, mcp_server):
+        """skip_value_diff=True: ALL models get value_diff=None, data_impact='potential'."""
+        server, mock_context = mcp_server
+
+        mock_context.get_lineage_diff.return_value = MagicMock(
+            model_dump=MagicMock(return_value=self.LINEAGE_DIFF_DATA)
+        )
+
+        adapter = self._make_mock_adapter()
+        mock_context.adapter = adapter
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value={}),
+        ):
+            result = await self._call_impact_analysis(server, skip_value_diff=True, skip_downstream_value_diff=False)
+
+        # adapter.execute should NOT have been called at all
+        adapter.execute.assert_not_called()
+
+        for model in result["confirmed_impacted_models"]:
+            assert (
+                model["value_diff"] is None
+            ), f"model {model['name']} should have value_diff=None when skip_value_diff=True"
+            assert (
+                model["data_impact"] == "potential"
+            ), f"model {model['name']} should have data_impact='potential' when skip_value_diff=True"
