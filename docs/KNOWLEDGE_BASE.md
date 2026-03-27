@@ -24,7 +24,7 @@ Monorepo with `@datarecce/ui` shared package. OSS app (`js/app/`) stays thin; sh
 
 ## Testing
 
-pytest for Python, Vitest + React Testing Library for frontend, Playwright for visual regression, tox for multi-version testing (dbt 1.6-1.9, Python 3.9-3.13).
+pytest for Python, Vitest + React Testing Library for frontend, Playwright for visual regression, tox for multi-version testing (dbt 1.6-1.9, Python 3.10-3.13).
 
 → `docs/testing.md`
 

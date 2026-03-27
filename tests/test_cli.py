@@ -309,3 +309,26 @@ class TestCommandMCPServer(TestCase):
 
         # No single-env guidance in output
         assert "Base artifacts not found" not in result.output
+
+
+def test_cli_shows_update_available_warning():
+    """CLI should show update available warning when a newer version exists."""
+    runner = CliRunner()
+    from recce.cli import cli
+
+    with patch("recce.__is_recce_outdated__", True), patch("recce.__latest_version__", "99.0.0"):
+        result = runner.invoke(cli, ["version"])
+        assert result.exit_code == 0
+        assert "Update Available" in result.output
+        assert "99.0.0" in result.output
+
+
+def test_cli_no_update_warning_when_current():
+    """CLI should NOT show update warning when already on latest version."""
+    runner = CliRunner()
+    from recce.cli import cli
+
+    with patch("recce.__is_recce_outdated__", False):
+        result = runner.invoke(cli, ["version"])
+        assert result.exit_code == 0
+        assert "Update Available" not in result.output
