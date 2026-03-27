@@ -330,7 +330,11 @@ export const ScreenshotDataGrid = forwardRef(_ScreenshotDataGrid) as <
 ) => React.ReactNode;
 
 // Re-export AG Grid types for convenience
-export type { ColDef, ColGroupDef, GetRowIdParams, GridReadyEvent };
-
 // For backward compatibility
-export type { DataGridHandle as RecceDataGridHandle };
+export type {
+  ColDef,
+  ColGroupDef,
+  DataGridHandle as RecceDataGridHandle,
+  GetRowIdParams,
+  GridReadyEvent,
+};
