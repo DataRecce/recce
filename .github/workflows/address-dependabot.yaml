@@ -49,7 +49,35 @@ jobs:
         working-directory: ./js
         run: pnpm install --frozen-lockfile
 
+      - name: Check open Dependabot PRs and notify Slack
+        id: pre-check
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SLACK_WEBHOOK_URL: ${{ secrets.ADDRESS_DEPENDABOT_SLACK_WEBHOOK_URL }}
+        run: |
+          PR_COUNT=$(gh pr list \
+            --repo "${{ github.repository }}" \
+            --author "app/dependabot" \
+            --state open \
+            --json number \
+            --jq 'length'
+          )
+          echo "pr_count=$PR_COUNT" >> "$GITHUB_OUTPUT"
+
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          if [ "$PR_COUNT" -eq 0 ]; then
+            MESSAGE="ℹ️ *Dependabot consolidation skipped* — no open Dependabot PRs found."
+          else
+            MESSAGE="🚀 *Starting Dependabot consolidation* — ${PR_COUNT} open PR(s) found. <${RUN_URL}|View run>"
+          fi
+
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"${MESSAGE}\"}"
+
       - uses: anthropics/claude-code-action@v1
+        if: steps.pre-check.outputs.pr_count != '0'
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY_ADDRESS_DEPENDABOT }}
           github_token: ${{ steps.app-token.outputs.token }}
@@ -61,7 +89,9 @@ jobs:
             Run the /address-dependabot skill. This skill will:
             1. Fetch all open Dependabot PRs via `gh pr list`
             2. Collect and classify the dependency changes
-            3. Create a `chore/dependabot` branch
+            3. Create a branch for the consolidated update. Use `chore/dependabot` as the branch name.
+               If that branch already exists (check with `git ls-remote --exit-code origin chore/dependabot`),
+               use `chore/dependabot-$(date +%Y-%m-%d)` instead. If that also exists, append `-2`, `-3`, etc.
             4. Apply all updates respecting @datarecce/ui published package boundaries
             5. Run the full test suite (lint, type-check, tests, build)
             6. Commit and push with sign-off
@@ -73,6 +103,48 @@ jobs:
             - Always use `git commit -s` for DCO sign-off
             - Use `--body-file` (not `--body`) when creating PRs
             - Do NOT bump @datarecce/ui consumer-facing dependency floors unless justified
+
+            At the very end of your work (whether successful, no PRs found, or failed), write a JSON
+            summary to /tmp/dependabot-result.json with this exact structure:
+            {
+              "status": "success",
+              "pr_url": "https://github.com/DataRecce/recce/pull/123",
+              "packages_updated": ["axios@1.7.9", "vitest@3.1.1"],
+              "message": "Consolidated 5 Dependabot PRs into chore/dependabot"
+            }
+            Use "success" when a PR is created, "no_prs" when there are no open Dependabot PRs,
+            or "failed" if something went wrong. Set pr_url to null if no PR was created.
+            List each updated package with its new version in packages_updated.
           claude_args: |
             --model claude-sonnet-4-6
             --max-turns 50
+
+      - name: Send Slack completion notification
+        if: always() && steps.pre-check.outputs.pr_count != '0'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.ADDRESS_DEPENDABOT_SLACK_WEBHOOK_URL }}
+        run: |
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          RESULT_FILE="/tmp/dependabot-result.json"
+
+          if [ ! -f "$RESULT_FILE" ]; then
+            MESSAGE="❌ *Dependabot consolidation failed* — no result produced. <${RUN_URL}|View run>"
+          else
+            STATUS=$(jq -r '.status' "$RESULT_FILE")
+            PR_URL=$(jq -r '.pr_url // empty' "$RESULT_FILE")
+            PACKAGES=$(jq -r '.packages_updated | join(", ")' "$RESULT_FILE" 2>/dev/null || echo "unknown")
+            MSG=$(jq -r '.message // empty' "$RESULT_FILE")
+
+            if [ "$STATUS" = "success" ] && [ -n "$PR_URL" ]; then
+              MESSAGE="✅ *Dependabot PRs consolidated*\nPR: <${PR_URL}|View PR>\nPackages: ${PACKAGES}"
+            elif [ "$STATUS" = "no_prs" ]; then
+              MESSAGE="ℹ️ *Dependabot consolidation skipped* — no open PRs found."
+            else
+              DETAIL="${MSG:-see run for details}"
+              MESSAGE="❌ *Dependabot consolidation failed* — ${DETAIL}. <${RUN_URL}|View run>"
+            fi
+          fi
+
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"${MESSAGE}\"}"
