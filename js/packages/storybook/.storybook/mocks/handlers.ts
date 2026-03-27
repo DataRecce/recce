@@ -145,6 +145,6 @@ export const handlers = [
 ];
 
 // Export mock data for use in tests or other mocks
-export { mockModelColumns, createModelInfoResponse };
+export { createModelInfoResponse, mockModelColumns };
 
 export default handlers;
