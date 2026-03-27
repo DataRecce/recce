@@ -329,8 +329,7 @@ export const ScreenshotDataGrid = forwardRef(_ScreenshotDataGrid) as <
   props: ScreenshotDataGridProps<TData> & { ref?: Ref<DataGridHandle> },
 ) => React.ReactNode;
 
-// Re-export AG Grid types for convenience
-// For backward compatibility
+// Re-export AG Grid types and internal handle for convenience
 export type {
   ColDef,
   ColGroupDef,
