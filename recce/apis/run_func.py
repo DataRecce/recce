@@ -52,15 +52,20 @@ def generate_run_name(run):
         model = params.get("model")
         return f"profile diff of {model}".capitalize()
     elif run_type == RunType.ROW_COUNT_DIFF:
+        # MCP uses node_names (array) or node_ids (array of fully-qualified IDs)
         nodes = params.get("node_names")
         if nodes:
             if len(nodes) == 1:
-                node = nodes[0]
-                return f"row count diff of {node}".capitalize()
+                return f"row count diff of {nodes[0]}".capitalize()
             else:
                 return f"row count of {len(nodes)} nodes".capitalize()
-        else:
-            return "row count of multiple nodes".capitalize()
+        node_ids = params.get("node_ids")
+        if node_ids:
+            if len(node_ids) == 1:
+                return f"row count diff of {node_ids[0].split('.')[-1]}".capitalize()
+            else:
+                return f"row count of {len(node_ids)} nodes".capitalize()
+        return "row count of multiple nodes".capitalize()
     elif run_type == RunType.TOP_K_DIFF:
         model = params.get("model")
         column = params.get("column_name")

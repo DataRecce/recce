@@ -486,6 +486,41 @@ class TestEdgeCases:
 # =============================================================================
 
 
+class TestGenerateRunNameRowCountDiff:
+    """Tests for generate_run_name with row_count_diff node_ids fallback."""
+
+    def test_row_count_diff_node_names_single(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.ROW_COUNT_DIFF, params={"node_names": ["customers"]})
+        assert generate_run_name(run) == "Row count diff of customers"
+
+    def test_row_count_diff_node_ids_single(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.ROW_COUNT_DIFF, params={"node_ids": ["model.jaffle_shop.customers"]})
+        assert generate_run_name(run) == "Row count diff of customers"
+
+    def test_row_count_diff_node_ids_multiple(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(
+            type=RunType.ROW_COUNT_DIFF,
+            params={"node_ids": ["model.jaffle_shop.customers", "model.jaffle_shop.orders"]},
+        )
+        assert generate_run_name(run) == "Row count of 2 nodes"
+
+    def test_row_count_diff_no_params(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.ROW_COUNT_DIFF, params={})
+        assert generate_run_name(run) == "Row count of multiple nodes"
+
+
 class TestGenerateRunNameMetadataTypes:
     """Tests for generate_run_name with lineage_diff and schema_diff types."""
 
