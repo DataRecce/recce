@@ -496,23 +496,49 @@ class TestGenerateRunNameMetadataTypes:
         run = Run(type=RunType.LINEAGE_DIFF, params={})
         assert generate_run_name(run) == "Lineage diff"
 
-    def test_schema_diff_no_node_names(self):
+    def test_schema_diff_no_params(self):
         from recce.apis.run_func import generate_run_name
         from recce.models.types import Run, RunType
 
         run = Run(type=RunType.SCHEMA_DIFF, params={})
         assert generate_run_name(run) == "Schema diff"
 
-    def test_schema_diff_single_node(self):
+    # REST API convention: node_id (single string, fully-qualified)
+    def test_schema_diff_node_id(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.SCHEMA_DIFF, params={"node_id": "model.jaffle_shop.customers"})
+        assert generate_run_name(run) == "Schema diff of customers"
+
+    # MCP convention: node_names (array of short names)
+    def test_schema_diff_single_node_name(self):
         from recce.apis.run_func import generate_run_name
         from recce.models.types import Run, RunType
 
         run = Run(type=RunType.SCHEMA_DIFF, params={"node_names": ["customers"]})
         assert generate_run_name(run) == "Schema diff of customers"
 
-    def test_schema_diff_multiple_nodes(self):
+    def test_schema_diff_multiple_node_names(self):
         from recce.apis.run_func import generate_run_name
         from recce.models.types import Run, RunType
 
         run = Run(type=RunType.SCHEMA_DIFF, params={"node_names": ["customers", "orders"]})
+        assert generate_run_name(run) == "Schema diff of 2 nodes"
+
+    # MCP convention: node_ids (array of fully-qualified IDs)
+    def test_schema_diff_single_node_id_array(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.SCHEMA_DIFF, params={"node_ids": ["model.jaffle_shop.customers"]})
+        assert generate_run_name(run) == "Schema diff of customers"
+
+    def test_schema_diff_multiple_node_ids(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(
+            type=RunType.SCHEMA_DIFF, params={"node_ids": ["model.jaffle_shop.customers", "model.jaffle_shop.orders"]}
+        )
         assert generate_run_name(run) == "Schema diff of 2 nodes"

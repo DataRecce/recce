@@ -72,11 +72,20 @@ def generate_run_name(run):
     elif run_type == RunType.LINEAGE_DIFF:
         return "Lineage diff"
     elif run_type == RunType.SCHEMA_DIFF:
+        # REST API uses node_id (single), MCP uses node_names/node_ids (arrays)
+        node_id = params.get("node_id")
+        if node_id:
+            return f"Schema diff of {node_id.split('.')[-1]}"
         node_names = params.get("node_names")
         if node_names and len(node_names) == 1:
             return f"Schema diff of {node_names[0]}"
         elif node_names:
             return f"Schema diff of {len(node_names)} nodes"
+        node_ids = params.get("node_ids")
+        if node_ids and len(node_ids) == 1:
+            return f"Schema diff of {node_ids[0].split('.')[-1]}"
+        elif node_ids:
+            return f"Schema diff of {len(node_ids)} nodes"
         return "Schema diff"
     else:
         return f"{'run'.capitalize()} - {now}"
