@@ -432,6 +432,55 @@ class TestImpactAnalysisErrorResilience:
         assert "impacted_models" in result
         assert "errors" in result
 
+    @pytest.mark.asyncio
+    async def test_schema_diff_error_does_not_block_value_diff(self, mcp_e2e):
+        """Regression: schema-diff failure must not prevent value-diff from running.
+
+        Before the fix, node_id_by_name was built inside the schema-diff try block.
+        If schema-diff raised before building the dict, value-diff would crash with
+        UnboundLocalError.
+        """
+        server, helper = mcp_e2e
+
+        helper.create_model(
+            "orders",
+            base_csv="id,amount\n1,100",
+            curr_csv="id,amount\n1,150",
+            unique_id="model.recce_test.orders",
+            base_columns={"id": "INTEGER", "amount": "INTEGER"},
+            curr_columns={"id": "INTEGER", "amount": "INTEGER"},
+        )
+        helper.add_unique_test("model.recce_test.orders", "orders", "id")
+
+        # Corrupt base node columns to force schema-diff to raise AttributeError
+        # (columns=None → None.keys() fails), while keeping classification intact
+        from unittest.mock import MagicMock
+
+        original_fn = server.context.get_lineage_diff
+
+        def patched_get_lineage_diff():
+            result = original_fn()
+            data = result.model_dump(mode="json")
+            for nid in list(data.get("base", {}).get("nodes", {}).keys()):
+                data["base"]["nodes"][nid]["columns"] = None
+            mock_result = MagicMock()
+            mock_result.model_dump.return_value = data
+            return mock_result
+
+        with patch.object(server.context, "get_lineage_diff", patched_get_lineage_diff):
+            result = await server._tool_impact_analysis({})
+
+        # Schema-diff error captured, not fatal
+        assert any(e["step"] == "schema_diff" for e in result["errors"])
+
+        # Function returned successfully (no UnboundLocalError)
+        assert "impacted_models" in result
+        orders = next(m for m in result["impacted_models"] if m["name"] == "orders")
+
+        # Value-diff still ran (the whole point of the fix)
+        assert orders["value_diff"] is not None
+        assert orders["value_diff"]["rows_changed"] >= 0
+
 
 class TestImpactAnalysisValueDiff:
     """Phase 2: value_diff with PK detection."""
