@@ -4,6 +4,9 @@ on:
     - cron: '0 0 * * 5' # run every Friday at midnight UTC
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   consolidate:
     runs-on: ubuntu-latest
