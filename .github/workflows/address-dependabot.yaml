@@ -57,10 +57,9 @@ jobs:
         run: |
           PR_COUNT=$(gh pr list \
             --repo "${{ github.repository }}" \
-            --author "app/dependabot" \
             --state open \
-            --json number \
-            --jq 'length'
+            --json number,author \
+            --jq '[.[] | select(.author.login == "dependabot[bot]" or .author.login == "app/dependabot")] | length'
           )
           echo "pr_count=$PR_COUNT" >> "$GITHUB_OUTPUT"
 
@@ -72,9 +71,10 @@ jobs:
             MESSAGE="🚀 *Starting Dependabot consolidation* — ${PR_COUNT} open PR(s) found. <${RUN_URL}|View run>"
           fi
 
+          payload=$(jq -n --arg text "$MESSAGE" '{text:$text}')
           curl -s -X POST "$SLACK_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
-            -d "{\"text\": \"${MESSAGE}\"}"
+            -d "$payload"
 
       - uses: anthropics/claude-code-action@v1
         if: steps.pre-check.outputs.pr_count != '0'
@@ -130,10 +130,10 @@ jobs:
           if [ ! -f "$RESULT_FILE" ]; then
             MESSAGE="❌ *Dependabot consolidation failed* — no result produced. <${RUN_URL}|View run>"
           else
-            STATUS=$(jq -r '.status' "$RESULT_FILE")
-            PR_URL=$(jq -r '.pr_url // empty' "$RESULT_FILE")
+            STATUS=$(jq -r '.status' "$RESULT_FILE" 2>/dev/null || echo "error")
+            PR_URL=$(jq -r '.pr_url // empty' "$RESULT_FILE" 2>/dev/null || echo "")
             PACKAGES=$(jq -r '.packages_updated | join(", ")' "$RESULT_FILE" 2>/dev/null || echo "unknown")
-            MSG=$(jq -r '.message // empty' "$RESULT_FILE")
+            MSG=$(jq -r '.message // empty' "$RESULT_FILE" 2>/dev/null || echo "invalid result JSON")
 
             if [ "$STATUS" = "success" ] && [ -n "$PR_URL" ]; then
               MESSAGE="✅ *Dependabot PRs consolidated*\nPR: <${PR_URL}|View PR>\nPackages: ${PACKAGES}"
@@ -145,6 +145,7 @@ jobs:
             fi
           fi
 
+          payload=$(jq -n --arg text "$MESSAGE" '{text:$text}')
           curl -s -X POST "$SLACK_WEBHOOK_URL" \
             -H "Content-Type: application/json" \
-            -d "{\"text\": \"${MESSAGE}\"}"
+            -d "$payload"
