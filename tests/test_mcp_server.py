@@ -2132,3 +2132,4 @@ class TestImpactAnalysisRegistration:
         tool = next(t for t in result.root.tools if t.name == "impact_analysis")
         assert "select" in tool.inputSchema["properties"]
         assert "skip_value_diff" in tool.inputSchema["properties"]
+        assert "skip_downstream_value_diff" in tool.inputSchema["properties"]
