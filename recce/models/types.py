@@ -51,7 +51,7 @@ class Run(BaseModel):
     progress: Optional[RunProgress] = None
     run_id: UUID4 = Field(default_factory=uuid.uuid4)
     run_at: str = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
-    triggered_by: Optional[str] = None  # "user" | "recce_ai" — who triggered the run
+    triggered_by: Optional[Literal["user", "recce_ai"]] = None  # who triggered the run
 
     def __init__(self, **data):
         # Normalize status for backward compatibility (lowercase -> capitalized)

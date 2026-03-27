@@ -47,17 +47,26 @@ export function RunTimelineEntry({
   const timeAgo = formatDistanceToNow(new Date(run.run_at), {
     addSuffix: true,
   });
+  const isInteractive = Boolean(onClick);
 
   return (
     <Box
-      onClick={() => onClick?.(run.run_id)}
+      component={isInteractive ? "button" : "div"}
+      type={isInteractive ? "button" : undefined}
+      onClick={isInteractive ? () => onClick?.(run.run_id) : undefined}
+      aria-label={isInteractive ? `View run #${index} — ${label}` : undefined}
       sx={{
         p: 1,
         borderLeft: `3px solid ${color}`,
         borderRadius: 1,
         bgcolor: "action.hover",
-        cursor: onClick ? "pointer" : "default",
-        "&:hover": onClick ? { bgcolor: "action.selected" } : {},
+        cursor: isInteractive ? "pointer" : "default",
+        "&:hover": isInteractive ? { bgcolor: "action.selected" } : {},
+        textAlign: "left",
+        width: "100%",
+        border: "none",
+        font: "inherit",
+        color: "inherit",
       }}
     >
       <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "0.75rem" }}>

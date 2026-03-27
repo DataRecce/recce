@@ -1666,18 +1666,21 @@ class RecceMCPServer:
         triggered_by = arguments.get("triggered_by", "user")
 
         if check.type in (RunType.LINEAGE_DIFF, RunType.SCHEMA_DIFF):
-            if check.type == RunType.LINEAGE_DIFF:
-                result = await self._tool_lineage_diff(check.params or {})
-            else:
-                result = await self._tool_schema_diff(check.params or {})
-            run = self._create_metadata_run(
-                check_type=check.type,
-                params=check.params or {},
-                check_id=check_id,
-                result=result,
-                triggered_by=triggered_by,
-            )
-            return run.model_dump(mode="json")
+            try:
+                if check.type == RunType.LINEAGE_DIFF:
+                    result = await self._tool_lineage_diff(check.params or {})
+                else:
+                    result = await self._tool_schema_diff(check.params or {})
+                run = self._create_metadata_run(
+                    check_type=check.type,
+                    params=check.params or {},
+                    check_id=check_id,
+                    result=result,
+                    triggered_by=triggered_by,
+                )
+                return run.model_dump(mode="json")
+            except RecceException as e:
+                raise ValueError(str(e)) from e
 
         try:
             run, future = submit_run(

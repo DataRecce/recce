@@ -752,8 +752,13 @@ class TestCheckToolsE2E:
             )
         )
         result = await server._tool_run_check({"check_id": str(check.check_id)})
-        assert "nodes" in result
-        assert "edges" in result
+        # _tool_run_check now returns a Run object with result nested inside
+        assert "run_id" in result
+        assert "type" in result
+        assert result["type"] == "lineage_diff"
+        assert result["result"] is not None
+        assert "nodes" in result["result"]
+        assert "edges" in result["result"]
 
     @pytest.mark.asyncio
     async def test_run_check_schema_diff(self, mcp_e2e_with_data):
@@ -770,8 +775,13 @@ class TestCheckToolsE2E:
             )
         )
         result = await server._tool_run_check({"check_id": str(check.check_id)})
-        assert "columns" in result
-        assert "data" in result
+        # _tool_run_check now returns a Run object with result nested inside
+        assert "run_id" in result
+        assert "type" in result
+        assert result["type"] == "schema_diff"
+        assert result["result"] is not None
+        assert "columns" in result["result"]
+        assert "data" in result["result"]
 
     @pytest.mark.asyncio
     async def test_run_check_not_found(self, mcp_e2e_with_data):
