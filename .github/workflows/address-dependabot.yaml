@@ -7,9 +7,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: address-dependabot
+  cancel-in-progress: true
+
 jobs:
   consolidate:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/create-github-app-token@v2
         id: app-token
