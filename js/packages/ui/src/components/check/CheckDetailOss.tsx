@@ -2,6 +2,7 @@
 
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import Chip from "@mui/material/Chip";
 import MuiDialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
@@ -90,6 +91,7 @@ import {
   ViewOptionTypes,
 } from "../run";
 import { toaster } from "../ui";
+import { ACTOR_BADGE_CONFIG } from "./CheckCard";
 import { LineageDiffViewOss as LineageDiffView } from "./LineageDiffViewOss";
 import { SchemaDiffView } from "./SchemaDiffView";
 import { CheckTimelineOss as CheckTimeline } from "./timeline/CheckTimelineOss";
@@ -476,6 +478,26 @@ export function CheckDetailOss({
                       </Box>
                     </MuiTooltip>
                   )}
+
+                  {/* Actor badge — skip for presets (already shown by Preset chip) */}
+                  {check?.actor_type &&
+                    !check.is_preset &&
+                    ACTOR_BADGE_CONFIG[check.actor_type] && (
+                      <Chip
+                        label={ACTOR_BADGE_CONFIG[check.actor_type].label}
+                        size="small"
+                        sx={{
+                          height: 20,
+                          fontSize: "0.65rem",
+                          fontWeight: 500,
+                          backgroundColor:
+                            ACTOR_BADGE_CONFIG[check.actor_type].bg,
+                          color: ACTOR_BADGE_CONFIG[check.actor_type].color,
+                          flexShrink: 0,
+                          "& .MuiChip-label": { px: 0.75 },
+                        }}
+                      />
+                    )}
 
                   <IconButton size="small" onClick={handleMenuClick}>
                     <VscKebabVertical />

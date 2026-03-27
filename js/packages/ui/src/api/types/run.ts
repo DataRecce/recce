@@ -98,6 +98,8 @@ export interface BaseRun {
   error?: string;
   /** Current status of the run */
   status?: RunStatus;
+  /** Who triggered this run: "user" | "recce_ai" */
+  triggered_by?: string;
 }
 
 // ============================================================================

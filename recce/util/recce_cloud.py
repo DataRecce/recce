@@ -39,6 +39,9 @@ class RecceCloudException(Exception):
             pass
         self.reason = reason
 
+    def __str__(self):
+        return f"{self.args[0]} [HTTP {self.status_code}] {self.reason}"
+
 
 class RecceCloud:
     def __init__(self, token: str):

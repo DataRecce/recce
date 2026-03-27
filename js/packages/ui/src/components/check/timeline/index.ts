@@ -4,6 +4,7 @@
 
 export { CheckTimelineOss } from "./CheckTimelineOss";
 export { CommentInput, type CommentInputProps } from "./CommentInput";
+export { type RunEntry, RunTimelineEntry } from "./RunTimelineEntry";
 export {
   type TimelineActor,
   TimelineEvent,
