@@ -759,6 +759,13 @@ class RecceMCPServer:
                                     "type": "boolean",
                                     "description": "Skip row-level value comparison on modified models. Default: false",
                                 },
+                                "skip_downstream_value_diff": {
+                                    "type": "boolean",
+                                    "description": (
+                                        "Skip value comparison on downstream models "
+                                        "(faster for large DAGs). Default: false"
+                                    ),
+                                },
                             },
                         },
                     )
@@ -1180,6 +1187,7 @@ class RecceMCPServer:
             "state:modified.body+ state:modified.macros+ state:modified.contract+",
         )
         skip_value_diff = arguments.get("skip_value_diff", False)
+        skip_downstream_value_diff = arguments.get("skip_downstream_value_diff", False)
         errors = []
 
         # Step 1: Lineage classification
@@ -1298,11 +1306,13 @@ class RecceMCPServer:
         except Exception as e:
             errors.append({"step": "schema_diff", "message": str(e)})
 
-        # Step 3: Value diff (PK Join on modified non-view models)
+        # Step 3: Value diff (PK Join on non-view impacted models)
         if not skip_value_diff:
             for model in impacted_models:
-                if model["materialized"] == "view" or model["change_status"] is None:
-                    continue  # skip views and downstream-only models
+                if model["materialized"] == "view":
+                    continue  # skip views (no PK, ambiguous semantics)
+                if skip_downstream_value_diff and model["change_status"] is None:
+                    continue  # opt-out for large DAGs
                 node_id = node_id_by_name.get(model["name"])
                 if not node_id:
                     continue
@@ -1496,15 +1506,31 @@ class RecceMCPServer:
                     )
                     seen_models.add(name)
 
-        # Compute per-model affected_row_count: value_diff total or abs(row_count.delta) as fallback
+        # Compute per-model affected_row_count and data_impact
         max_affected = 0
         for model in impacted_models:
+            # affected_row_count: value_diff total (priority) or abs(row_count.delta) (fallback)
             if model["value_diff"] is not None:
                 model["affected_row_count"] = model["value_diff"]["affected_row_count"]
             elif model["row_count"] is not None and model["row_count"].get("delta") is not None:
                 model["affected_row_count"] = abs(model["row_count"]["delta"])
             else:
                 model["affected_row_count"] = None
+
+            # data_impact: evidence level from value_diff
+            if model["value_diff"] is not None:
+                if model["value_diff"]["affected_row_count"] > 0:
+                    model["data_impact"] = "confirmed"
+                else:
+                    model["data_impact"] = "none"
+            else:
+                model["data_impact"] = "potential"
+
+            # When data_impact is "potential", force affected_row_count to null
+            # to avoid confusion from row_count fallback showing 0
+            if model["data_impact"] == "potential":
+                model["affected_row_count"] = None
+
             if model["affected_row_count"] is not None and model["affected_row_count"] > max_affected:
                 max_affected = model["affected_row_count"]
 
@@ -1515,14 +1541,14 @@ class RecceMCPServer:
 
         result = {
             "_guidance": (
-                "DO NOT OVERRIDE these classifications with your own analysis. "
-                "These lists are computed from the lineage DAG and are definitive. "
-                "Copy confirmed_impacted_models and confirmed_not_impacted_models "
-                "directly into your impacted_models and not_impacted_models output. "
-                "Use total_affected_row_count as your affected_row_count output. "
-                "A model with 0 value changes is still impacted if it appears "
-                "in this list — impact means 'in the blast radius', not "
-                "'has changed data'."
+                "confirmed_impacted_models lists all models in the DAG blast radius "
+                "(modified + downstream). The data_impact field indicates data-level "
+                "evidence: 'confirmed' = value_diff verified data changes exist, "
+                "'none' = value_diff verified zero data changes, 'potential' = no "
+                "value_diff available (views, no PK) — investigate with profile_diff. "
+                "Use data_impact to distinguish DAG-reachable models from actually "
+                "data-affected models. Note: incremental model value_diff may reflect "
+                "build window artifacts if not fully refreshed."
             ),
             "classification_source": "lineage_dag",
             "total_affected_row_count": max_affected,
