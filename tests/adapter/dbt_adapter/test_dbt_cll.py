@@ -77,7 +77,7 @@ def assert_cll_contain_columns(cll_data: CllData, columns):
         assert column[1] == cll_data.columns[column_key].name, f"Column {column[1]} name mismatch"
 
 
-def test_cll_basic(dbt_test_helper):
+def test_cll_basic(dbt_test_helper, disable_cll_cache):
     dbt_test_helper.create_model(
         "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
     )
@@ -105,7 +105,7 @@ def test_cll_basic(dbt_test_helper):
     assert_column(result, "model.model3", "c", transformation_type="passthrough", parents=[("model.model1", "c")])
 
 
-def test_cll_table_alisa(dbt_test_helper):
+def test_cll_table_alisa(dbt_test_helper, disable_cll_cache):
     def patch_node(node):
         node["alias"] = "model1_alias"
 
@@ -359,7 +359,7 @@ def test_cll_with_compiled_code_alias_collision_falls_back(dbt_test_helper):
     assert_column(result, "model.final", "id", transformation_type="passthrough", parents=[("model.pkg1.stg_orders", "id")])
 
 
-def test_seed(dbt_test_helper):
+def test_seed(dbt_test_helper, disable_cll_cache):
     csv_data_curr = """
     customer_id,name,age
     1,Alice,30
@@ -396,7 +396,7 @@ def test_seed(dbt_test_helper):
     )
 
 
-def test_python_model(dbt_test_helper):
+def test_python_model(dbt_test_helper, disable_cll_cache):
     def python_node(node):
         node["language"] = "python"
 
@@ -425,7 +425,7 @@ def test_python_model(dbt_test_helper):
     assert_column(result, "model2", "customer_id", transformation_type="unknown", parents=[])
 
 
-def test_source(dbt_test_helper):
+def test_source(dbt_test_helper, disable_cll_cache):
     csv_data_curr = """
         customer_id,name,age
         1,Alice,30
@@ -459,7 +459,7 @@ def test_source(dbt_test_helper):
     )
 
 
-def test_parse_error(dbt_test_helper):
+def test_parse_error(dbt_test_helper, disable_cll_cache):
     dbt_test_helper.create_model("model1", curr_sql="select 1 as c", curr_columns={"c": "int"})
     dbt_test_helper.create_model("model2", curr_sql="this is not a valid sql", curr_columns={"c": "int"})
     adapter: DbtAdapter = dbt_test_helper.context.adapter
@@ -467,14 +467,14 @@ def test_parse_error(dbt_test_helper):
     assert_column(result, "model2", "c", transformation_type="unknown", parents=[])
 
 
-def test_model_without_catalog(dbt_test_helper):
+def test_model_without_catalog(dbt_test_helper, disable_cll_cache):
     dbt_test_helper.create_model("model1", curr_sql="select 1 as c")
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     result = adapter.get_cll("model1")
     assert not result.nodes["model1"].columns
 
 
-def test_column_level_lineage(dbt_test_helper):
+def test_column_level_lineage(dbt_test_helper, disable_cll_cache):
     dbt_test_helper.create_model(
         "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
     )
@@ -700,7 +700,7 @@ def test_impact_radius_with_change_analysis_no_cll_2(dbt_test_helper):
     assert_model(result, "model.model5", parents=["model.model1"], impacted=True)
 
 
-def test_impact_radius_with_change_analysis_with_cll(dbt_test_helper):
+def test_impact_radius_with_change_analysis_with_cll(dbt_test_helper, disable_cll_cache):
     dbt_test_helper.create_model(
         "model1",
         unique_id="model.model1",
@@ -757,7 +757,7 @@ def test_impact_radius_with_change_analysis_with_cll(dbt_test_helper):
     assert_model(result, "model.model4", parents=["model.model2"], change_category="partial_breaking", impacted=True)
 
 
-def test_impact_radius_with_change_analysis_with_cll_added_removed(dbt_test_helper):
+def test_impact_radius_with_change_analysis_with_cll_added_removed(dbt_test_helper, disable_cll_cache):
     # rename model
     dbt_test_helper.create_model(
         "model1",
@@ -846,7 +846,7 @@ def test_impact_radius_by_node_no_cll(dbt_test_helper):
     assert_cll_contain_nodes(result, ["model.model1"])
 
 
-def test_impact_radius_by_node_with_cll(dbt_test_helper):
+def test_impact_radius_by_node_with_cll(dbt_test_helper, disable_cll_cache):
     # added column
     dbt_test_helper.create_model(
         "model1",
@@ -901,7 +901,7 @@ def test_impact_radius_by_node_with_cll(dbt_test_helper):
     assert_column(result, "model.model1", "d", transformation_type="source", parents=[], change_status="added")
 
 
-def test_impact_radius_by_node_with_cll_2(dbt_test_helper):
+def test_impact_radius_by_node_with_cll_2(dbt_test_helper, disable_cll_cache):
     # added column
     dbt_test_helper.create_model(
         "model1",
@@ -950,3 +950,196 @@ def test_impact_radius_by_node_with_cll_2(dbt_test_helper):
     assert_column(result, "model.model4", "y", transformation_type="passthrough", parents=[("model.model2", "y")])
     assert_cll_contain_nodes(result, ["model.model2", "model.model3", "model.model4"])
     assert_cll_contain_columns(result, [("model.model2", "d"), ("model.model2", "y"), ("model.model4", "y")])
+
+
+def test_build_full_cll_map(dbt_test_helper):
+    """Full map should contain ALL models, not just changed ones."""
+    dbt_test_helper.create_model(
+        "model1",
+        unique_id="model.model1",
+        curr_sql="select 1 as c",
+        base_sql="select 1 as c",
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql='select c, 2025 as y from {{ ref("model1") }}',
+        base_sql='select c, 2025 as y from {{ ref("model1") }}',
+        curr_columns={"c": "int", "y": "int"},
+        base_columns={"c": "int", "y": "int"},
+        depends_on=["model.model1"],
+    )
+    dbt_test_helper.create_model(
+        "model3",
+        unique_id="model.model3",
+        curr_sql='select c from {{ ref("model2") }} where y < 2025',
+        base_sql='select c from {{ ref("model2") }} where y < 2025',
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+        depends_on=["model.model2"],
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    # Build full map — should include ALL 3 models even though none changed
+    full_map = adapter.build_full_cll_map()
+
+    # All 3 models should be present
+    assert "model.model1" in full_map.nodes
+    assert "model.model2" in full_map.nodes
+    assert "model.model3" in full_map.nodes
+
+    # Columns should be present
+    assert "model.model1_c" in full_map.columns
+    assert "model.model2_c" in full_map.columns
+    assert "model.model2_y" in full_map.columns
+    assert "model.model3_c" in full_map.columns
+
+    # Parent map should have entries
+    assert "model.model2" in full_map.parent_map
+    assert "model.model3" in full_map.parent_map
+
+    # Child map should be built
+    assert len(full_map.child_map) > 0
+
+
+def test_build_full_cll_map_is_cached(dbt_test_helper):
+    """Second call should return the same cached object."""
+    dbt_test_helper.create_model(
+        "model1",
+        unique_id="model.model1",
+        curr_sql="select 1 as c",
+        base_sql="select 1 as c",
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    first = adapter.build_full_cll_map()
+    second = adapter.build_full_cll_map()
+    assert first is second  # Same object reference = cached
+
+
+def test_build_full_cll_map_with_changes(dbt_test_helper):
+    """Full map should include change_status and change_category for changed nodes."""
+    dbt_test_helper.create_model(
+        "model1",
+        unique_id="model.model1",
+        curr_sql="select 1 as c",
+        base_sql="select 1 as c --- non-breaking",
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql='select c, 2025 as y from {{ ref("model1") }}',
+        base_sql='select c, 2025 as y from {{ ref("model1") }} where c > 0 --- breaking',
+        curr_columns={"c": "int", "y": "int"},
+        base_columns={"c": "int", "y": "int"},
+        depends_on=["model.model1"],
+    )
+    # Unchanged model
+    dbt_test_helper.create_model(
+        "model3",
+        unique_id="model.model3",
+        curr_sql='select c from {{ ref("model2") }} where y < 2025',
+        base_sql='select c from {{ ref("model2") }} where y < 2025',
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+        depends_on=["model.model2"],
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+    full_map = adapter.build_full_cll_map()
+
+    # Changed nodes should have change metadata
+    assert full_map.nodes["model.model1"].change_status is not None
+    assert full_map.nodes["model.model2"].change_status is not None
+    assert full_map.nodes["model.model2"].change_category == "breaking"
+
+    # Unchanged model3 should still be present
+    assert "model.model3" in full_map.nodes
+
+    # All 3 models present (not filtered to just changed ones)
+    assert len(full_map.nodes) == 3
+
+
+def test_get_cll_uses_full_map_for_unchanged_model(dbt_test_helper, disable_cll_cache):
+    """get_cll should return data for unchanged models (served from full map)."""
+    # model1 is changed
+    dbt_test_helper.create_model(
+        "model1",
+        unique_id="model.model1",
+        curr_sql="select 1 as c, 2 as d",
+        base_sql="select 1 as c",
+        curr_columns={"c": "int", "d": "int"},
+        base_columns={"c": "int"},
+    )
+    # model2 is unchanged
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql='select c from {{ ref("model1") }}',
+        base_sql='select c from {{ ref("model1") }}',
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+        depends_on=["model.model1"],
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    # CLL for an unchanged model's column should work
+    result = adapter.get_cll(node_id="model.model2", column="c")
+    assert "model.model2_c" in result.columns or len(result.columns) > 0
+
+
+def test_get_cll_full_map(dbt_test_helper):
+    """full_map=True should return ALL nodes unfiltered."""
+    dbt_test_helper.create_model(
+        "model1",
+        unique_id="model.model1",
+        curr_sql="select 1 as c",
+        base_sql="select 1 as c --- non-breaking",
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql='select c, 2025 as y from {{ ref("model1") }}',
+        base_sql='select c, 2025 as y from {{ ref("model1") }} where c > 0',
+        curr_columns={"c": "int", "y": "int"},
+        base_columns={"c": "int", "y": "int"},
+        depends_on=["model.model1"],
+    )
+    dbt_test_helper.create_model(
+        "model3",
+        unique_id="model.model3",
+        curr_sql='select c from {{ ref("model2") }}',
+        base_sql='select c from {{ ref("model2") }}',
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+        depends_on=["model.model2"],
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    result = adapter.get_cll(full_map=True)
+    # All models present, unfiltered
+    assert len(result.nodes) == 3
+    assert "model.model1" in result.nodes
+    assert "model.model2" in result.nodes
+    assert "model.model3" in result.nodes
+
+    # Change analysis included by default in full map
+    assert result.nodes["model.model2"].change_category == "breaking"
+
+    # Columns present for all models
+    assert "model.model1_c" in result.columns
+    assert "model.model2_c" in result.columns
+    assert "model.model2_y" in result.columns
+    assert "model.model3_c" in result.columns

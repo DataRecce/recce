@@ -1,0 +1,1187 @@
+{
+  "nodes": {
+    "model.jaffle_shop.cost_analysis": {
+      "id": "model.jaffle_shop.cost_analysis",
+      "unique_id": "model.jaffle_shop.cost_analysis",
+      "name": "cost_analysis",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.customer_360": {
+      "id": "model.jaffle_shop.customer_360",
+      "unique_id": "model.jaffle_shop.customer_360",
+      "name": "customer_360",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.customer_acquisition": {
+      "id": "model.jaffle_shop.customer_acquisition",
+      "unique_id": "model.jaffle_shop.customer_acquisition",
+      "name": "customer_acquisition",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.customer_cohorts": {
+      "id": "model.jaffle_shop.customer_cohorts",
+      "unique_id": "model.jaffle_shop.customer_cohorts",
+      "name": "customer_cohorts",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.customer_lifetime_value": {
+      "id": "model.jaffle_shop.customer_lifetime_value",
+      "unique_id": "model.jaffle_shop.customer_lifetime_value",
+      "name": "customer_lifetime_value",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.customer_retention": {
+      "id": "model.jaffle_shop.customer_retention",
+      "unique_id": "model.jaffle_shop.customer_retention",
+      "name": "customer_retention",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.customer_review_summary": {
+      "id": "model.jaffle_shop.customer_review_summary",
+      "unique_id": "model.jaffle_shop.customer_review_summary",
+      "name": "customer_review_summary",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.customer_segments_final": {
+      "id": "model.jaffle_shop.customer_segments_final",
+      "unique_id": "model.jaffle_shop.customer_segments_final",
+      "name": "customer_segments_final",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.customers": {
+      "id": "model.jaffle_shop.customers",
+      "unique_id": "model.jaffle_shop.customers",
+      "name": "customers",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.gross_margin": {
+      "id": "model.jaffle_shop.gross_margin",
+      "unique_id": "model.jaffle_shop.gross_margin",
+      "name": "gross_margin",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_category_hierarchy": {
+      "id": "model.jaffle_shop.int_category_hierarchy",
+      "unique_id": "model.jaffle_shop.int_category_hierarchy",
+      "name": "int_category_hierarchy",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_customer_first_last_orders": {
+      "id": "model.jaffle_shop.int_customer_first_last_orders",
+      "unique_id": "model.jaffle_shop.int_customer_first_last_orders",
+      "name": "int_customer_first_last_orders",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_customer_order_history": {
+      "id": "model.jaffle_shop.int_customer_order_history",
+      "unique_id": "model.jaffle_shop.int_customer_order_history",
+      "name": "int_customer_order_history",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_customer_payment_methods": {
+      "id": "model.jaffle_shop.int_customer_payment_methods",
+      "unique_id": "model.jaffle_shop.int_customer_payment_methods",
+      "name": "int_customer_payment_methods",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_customer_review_activity": {
+      "id": "model.jaffle_shop.int_customer_review_activity",
+      "unique_id": "model.jaffle_shop.int_customer_review_activity",
+      "name": "int_customer_review_activity",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_customer_segments": {
+      "id": "model.jaffle_shop.int_customer_segments",
+      "unique_id": "model.jaffle_shop.int_customer_segments",
+      "name": "int_customer_segments",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_daily_order_summary": {
+      "id": "model.jaffle_shop.int_daily_order_summary",
+      "unique_id": "model.jaffle_shop.int_daily_order_summary",
+      "name": "int_daily_order_summary",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_inventory_movements": {
+      "id": "model.jaffle_shop.int_inventory_movements",
+      "unique_id": "model.jaffle_shop.int_inventory_movements",
+      "name": "int_inventory_movements",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_order_enriched": {
+      "id": "model.jaffle_shop.int_order_enriched",
+      "unique_id": "model.jaffle_shop.int_order_enriched",
+      "name": "int_order_enriched",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_order_items_enriched": {
+      "id": "model.jaffle_shop.int_order_items_enriched",
+      "unique_id": "model.jaffle_shop.int_order_items_enriched",
+      "name": "int_order_items_enriched",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_order_items_with_products": {
+      "id": "model.jaffle_shop.int_order_items_with_products",
+      "unique_id": "model.jaffle_shop.int_order_items_with_products",
+      "name": "int_order_items_with_products",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_order_payments_matched": {
+      "id": "model.jaffle_shop.int_order_payments_matched",
+      "unique_id": "model.jaffle_shop.int_order_payments_matched",
+      "name": "int_order_payments_matched",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_order_totals": {
+      "id": "model.jaffle_shop.int_order_totals",
+      "unique_id": "model.jaffle_shop.int_order_totals",
+      "name": "int_order_totals",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_orders_with_promotions": {
+      "id": "model.jaffle_shop.int_orders_with_promotions",
+      "unique_id": "model.jaffle_shop.int_orders_with_promotions",
+      "name": "int_orders_with_promotions",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_product_margins": {
+      "id": "model.jaffle_shop.int_product_margins",
+      "unique_id": "model.jaffle_shop.int_product_margins",
+      "name": "int_product_margins",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_product_ratings": {
+      "id": "model.jaffle_shop.int_product_ratings",
+      "unique_id": "model.jaffle_shop.int_product_ratings",
+      "name": "int_product_ratings",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_product_stock_levels": {
+      "id": "model.jaffle_shop.int_product_stock_levels",
+      "unique_id": "model.jaffle_shop.int_product_stock_levels",
+      "name": "int_product_stock_levels",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_products_with_categories": {
+      "id": "model.jaffle_shop.int_products_with_categories",
+      "unique_id": "model.jaffle_shop.int_products_with_categories",
+      "name": "int_products_with_categories",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_promotion_effectiveness": {
+      "id": "model.jaffle_shop.int_promotion_effectiveness",
+      "unique_id": "model.jaffle_shop.int_promotion_effectiveness",
+      "name": "int_promotion_effectiveness",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_reviews_with_products": {
+      "id": "model.jaffle_shop.int_reviews_with_products",
+      "unique_id": "model.jaffle_shop.int_reviews_with_products",
+      "name": "int_reviews_with_products",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_store_employees_active": {
+      "id": "model.jaffle_shop.int_store_employees_active",
+      "unique_id": "model.jaffle_shop.int_store_employees_active",
+      "name": "int_store_employees_active",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_store_order_assignments": {
+      "id": "model.jaffle_shop.int_store_order_assignments",
+      "unique_id": "model.jaffle_shop.int_store_order_assignments",
+      "name": "int_store_order_assignments",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_store_performance": {
+      "id": "model.jaffle_shop.int_store_performance",
+      "unique_id": "model.jaffle_shop.int_store_performance",
+      "name": "int_store_performance",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_store_revenue": {
+      "id": "model.jaffle_shop.int_store_revenue",
+      "unique_id": "model.jaffle_shop.int_store_revenue",
+      "name": "int_store_revenue",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.int_supply_order_costs": {
+      "id": "model.jaffle_shop.int_supply_order_costs",
+      "unique_id": "model.jaffle_shop.int_supply_order_costs",
+      "name": "int_supply_order_costs",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.inventory_health": {
+      "id": "model.jaffle_shop.inventory_health",
+      "unique_id": "model.jaffle_shop.inventory_health",
+      "name": "inventory_health",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.metric_customer_acquisition_monthly": {
+      "id": "model.jaffle_shop.metric_customer_acquisition_monthly",
+      "unique_id": "model.jaffle_shop.metric_customer_acquisition_monthly",
+      "name": "metric_customer_acquisition_monthly",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.metric_customer_retention_monthly": {
+      "id": "model.jaffle_shop.metric_customer_retention_monthly",
+      "unique_id": "model.jaffle_shop.metric_customer_retention_monthly",
+      "name": "metric_customer_retention_monthly",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.metric_daily_orders": {
+      "id": "model.jaffle_shop.metric_daily_orders",
+      "unique_id": "model.jaffle_shop.metric_daily_orders",
+      "name": "metric_daily_orders",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.metric_daily_revenue": {
+      "id": "model.jaffle_shop.metric_daily_revenue",
+      "unique_id": "model.jaffle_shop.metric_daily_revenue",
+      "name": "metric_daily_revenue",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.metric_inventory_daily": {
+      "id": "model.jaffle_shop.metric_inventory_daily",
+      "unique_id": "model.jaffle_shop.metric_inventory_daily",
+      "name": "metric_inventory_daily",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.metric_monthly_sales": {
+      "id": "model.jaffle_shop.metric_monthly_sales",
+      "unique_id": "model.jaffle_shop.metric_monthly_sales",
+      "name": "metric_monthly_sales",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.metric_product_sales_daily": {
+      "id": "model.jaffle_shop.metric_product_sales_daily",
+      "unique_id": "model.jaffle_shop.metric_product_sales_daily",
+      "name": "metric_product_sales_daily",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.metric_promotion_daily": {
+      "id": "model.jaffle_shop.metric_promotion_daily",
+      "unique_id": "model.jaffle_shop.metric_promotion_daily",
+      "name": "metric_promotion_daily",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.metric_store_daily": {
+      "id": "model.jaffle_shop.metric_store_daily",
+      "unique_id": "model.jaffle_shop.metric_store_daily",
+      "name": "metric_store_daily",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.metric_weekly_sales": {
+      "id": "model.jaffle_shop.metric_weekly_sales",
+      "unique_id": "model.jaffle_shop.metric_weekly_sales",
+      "name": "metric_weekly_sales",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.new_orders": {
+      "id": "model.jaffle_shop.new_orders",
+      "unique_id": "model.jaffle_shop.new_orders",
+      "name": "new_orders",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.order_discounts": {
+      "id": "model.jaffle_shop.order_discounts",
+      "unique_id": "model.jaffle_shop.order_discounts",
+      "name": "order_discounts",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.order_fulfillment": {
+      "id": "model.jaffle_shop.order_fulfillment",
+      "unique_id": "model.jaffle_shop.order_fulfillment",
+      "name": "order_fulfillment",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.order_items": {
+      "id": "model.jaffle_shop.order_items",
+      "unique_id": "model.jaffle_shop.order_items",
+      "name": "order_items",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.order_payment_status": {
+      "id": "model.jaffle_shop.order_payment_status",
+      "unique_id": "model.jaffle_shop.order_payment_status",
+      "name": "order_payment_status",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.order_returns": {
+      "id": "model.jaffle_shop.order_returns",
+      "unique_id": "model.jaffle_shop.order_returns",
+      "name": "order_returns",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.orders": {
+      "id": "model.jaffle_shop.orders",
+      "unique_id": "model.jaffle_shop.orders",
+      "name": "orders",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.payments_fact": {
+      "id": "model.jaffle_shop.payments_fact",
+      "unique_id": "model.jaffle_shop.payments_fact",
+      "name": "payments_fact",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.product_categories": {
+      "id": "model.jaffle_shop.product_categories",
+      "unique_id": "model.jaffle_shop.product_categories",
+      "name": "product_categories",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.product_inventory": {
+      "id": "model.jaffle_shop.product_inventory",
+      "unique_id": "model.jaffle_shop.product_inventory",
+      "name": "product_inventory",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.product_performance": {
+      "id": "model.jaffle_shop.product_performance",
+      "unique_id": "model.jaffle_shop.product_performance",
+      "name": "product_performance",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.product_profitability": {
+      "id": "model.jaffle_shop.product_profitability",
+      "unique_id": "model.jaffle_shop.product_profitability",
+      "name": "product_profitability",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.product_reviews": {
+      "id": "model.jaffle_shop.product_reviews",
+      "unique_id": "model.jaffle_shop.product_reviews",
+      "name": "product_reviews",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.products": {
+      "id": "model.jaffle_shop.products",
+      "unique_id": "model.jaffle_shop.products",
+      "name": "products",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.promotion_roi": {
+      "id": "model.jaffle_shop.promotion_roi",
+      "unique_id": "model.jaffle_shop.promotion_roi",
+      "name": "promotion_roi",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.reorder_recommendations": {
+      "id": "model.jaffle_shop.reorder_recommendations",
+      "unique_id": "model.jaffle_shop.reorder_recommendations",
+      "name": "reorder_recommendations",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.revenue_summary": {
+      "id": "model.jaffle_shop.revenue_summary",
+      "unique_id": "model.jaffle_shop.revenue_summary",
+      "name": "revenue_summary",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.rpt_customer_dashboard": {
+      "id": "model.jaffle_shop.rpt_customer_dashboard",
+      "unique_id": "model.jaffle_shop.rpt_customer_dashboard",
+      "name": "rpt_customer_dashboard",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.rpt_executive_dashboard": {
+      "id": "model.jaffle_shop.rpt_executive_dashboard",
+      "unique_id": "model.jaffle_shop.rpt_executive_dashboard",
+      "name": "rpt_executive_dashboard",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.rpt_product_dashboard": {
+      "id": "model.jaffle_shop.rpt_product_dashboard",
+      "unique_id": "model.jaffle_shop.rpt_product_dashboard",
+      "name": "rpt_product_dashboard",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.rpt_sales_dashboard": {
+      "id": "model.jaffle_shop.rpt_sales_dashboard",
+      "unique_id": "model.jaffle_shop.rpt_sales_dashboard",
+      "name": "rpt_sales_dashboard",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.rpt_store_dashboard": {
+      "id": "model.jaffle_shop.rpt_store_dashboard",
+      "unique_id": "model.jaffle_shop.rpt_store_dashboard",
+      "name": "rpt_store_dashboard",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.stg_categories": {
+      "id": "model.jaffle_shop.stg_categories",
+      "unique_id": "model.jaffle_shop.stg_categories",
+      "name": "stg_categories",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.stg_customers": {
+      "id": "model.jaffle_shop.stg_customers",
+      "unique_id": "model.jaffle_shop.stg_customers",
+      "name": "stg_customers",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.stg_employees": {
+      "id": "model.jaffle_shop.stg_employees",
+      "unique_id": "model.jaffle_shop.stg_employees",
+      "name": "stg_employees",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.stg_order_items": {
+      "id": "model.jaffle_shop.stg_order_items",
+      "unique_id": "model.jaffle_shop.stg_order_items",
+      "name": "stg_order_items",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.stg_order_promotions": {
+      "id": "model.jaffle_shop.stg_order_promotions",
+      "unique_id": "model.jaffle_shop.stg_order_promotions",
+      "name": "stg_order_promotions",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.stg_orders": {
+      "id": "model.jaffle_shop.stg_orders",
+      "unique_id": "model.jaffle_shop.stg_orders",
+      "name": "stg_orders",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.stg_payments": {
+      "id": "model.jaffle_shop.stg_payments",
+      "unique_id": "model.jaffle_shop.stg_payments",
+      "name": "stg_payments",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.stg_products": {
+      "id": "model.jaffle_shop.stg_products",
+      "unique_id": "model.jaffle_shop.stg_products",
+      "name": "stg_products",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.stg_promotions": {
+      "id": "model.jaffle_shop.stg_promotions",
+      "unique_id": "model.jaffle_shop.stg_promotions",
+      "name": "stg_promotions",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.stg_reviews": {
+      "id": "model.jaffle_shop.stg_reviews",
+      "unique_id": "model.jaffle_shop.stg_reviews",
+      "name": "stg_reviews",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.stg_stores": {
+      "id": "model.jaffle_shop.stg_stores",
+      "unique_id": "model.jaffle_shop.stg_stores",
+      "name": "stg_stores",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.stg_supply_orders": {
+      "id": "model.jaffle_shop.stg_supply_orders",
+      "unique_id": "model.jaffle_shop.stg_supply_orders",
+      "name": "stg_supply_orders",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.store_inventory": {
+      "id": "model.jaffle_shop.store_inventory",
+      "unique_id": "model.jaffle_shop.store_inventory",
+      "name": "store_inventory",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.store_performance": {
+      "id": "model.jaffle_shop.store_performance",
+      "unique_id": "model.jaffle_shop.store_performance",
+      "name": "store_performance",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.store_rankings": {
+      "id": "model.jaffle_shop.store_rankings",
+      "unique_id": "model.jaffle_shop.store_rankings",
+      "name": "store_rankings",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.store_staffing": {
+      "id": "model.jaffle_shop.store_staffing",
+      "unique_id": "model.jaffle_shop.store_staffing",
+      "name": "store_staffing",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.stores": {
+      "id": "model.jaffle_shop.stores",
+      "unique_id": "model.jaffle_shop.stores",
+      "name": "stores",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.supplier_lead_times": {
+      "id": "model.jaffle_shop.supplier_lead_times",
+      "unique_id": "model.jaffle_shop.supplier_lead_times",
+      "name": "supplier_lead_times",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "model.jaffle_shop.supply_orders_fact": {
+      "id": "model.jaffle_shop.supply_orders_fact",
+      "unique_id": "model.jaffle_shop.supply_orders_fact",
+      "name": "supply_orders_fact",
+      "resource_type": "model",
+      "package_name": "jaffle_shop"
+    },
+    "seed.jaffle_shop.raw_categories": {
+      "id": "seed.jaffle_shop.raw_categories",
+      "unique_id": "seed.jaffle_shop.raw_categories",
+      "name": "raw_categories",
+      "resource_type": "seed",
+      "package_name": "jaffle_shop"
+    },
+    "seed.jaffle_shop.raw_customers": {
+      "id": "seed.jaffle_shop.raw_customers",
+      "unique_id": "seed.jaffle_shop.raw_customers",
+      "name": "raw_customers",
+      "resource_type": "seed",
+      "package_name": "jaffle_shop"
+    },
+    "seed.jaffle_shop.raw_employees": {
+      "id": "seed.jaffle_shop.raw_employees",
+      "unique_id": "seed.jaffle_shop.raw_employees",
+      "name": "raw_employees",
+      "resource_type": "seed",
+      "package_name": "jaffle_shop"
+    },
+    "seed.jaffle_shop.raw_order_items": {
+      "id": "seed.jaffle_shop.raw_order_items",
+      "unique_id": "seed.jaffle_shop.raw_order_items",
+      "name": "raw_order_items",
+      "resource_type": "seed",
+      "package_name": "jaffle_shop"
+    },
+    "seed.jaffle_shop.raw_order_promotions": {
+      "id": "seed.jaffle_shop.raw_order_promotions",
+      "unique_id": "seed.jaffle_shop.raw_order_promotions",
+      "name": "raw_order_promotions",
+      "resource_type": "seed",
+      "package_name": "jaffle_shop"
+    },
+    "seed.jaffle_shop.raw_orders": {
+      "id": "seed.jaffle_shop.raw_orders",
+      "unique_id": "seed.jaffle_shop.raw_orders",
+      "name": "raw_orders",
+      "resource_type": "seed",
+      "package_name": "jaffle_shop"
+    },
+    "seed.jaffle_shop.raw_payments": {
+      "id": "seed.jaffle_shop.raw_payments",
+      "unique_id": "seed.jaffle_shop.raw_payments",
+      "name": "raw_payments",
+      "resource_type": "seed",
+      "package_name": "jaffle_shop"
+    },
+    "seed.jaffle_shop.raw_products": {
+      "id": "seed.jaffle_shop.raw_products",
+      "unique_id": "seed.jaffle_shop.raw_products",
+      "name": "raw_products",
+      "resource_type": "seed",
+      "package_name": "jaffle_shop"
+    },
+    "seed.jaffle_shop.raw_promotions": {
+      "id": "seed.jaffle_shop.raw_promotions",
+      "unique_id": "seed.jaffle_shop.raw_promotions",
+      "name": "raw_promotions",
+      "resource_type": "seed",
+      "package_name": "jaffle_shop"
+    },
+    "seed.jaffle_shop.raw_reviews": {
+      "id": "seed.jaffle_shop.raw_reviews",
+      "unique_id": "seed.jaffle_shop.raw_reviews",
+      "name": "raw_reviews",
+      "resource_type": "seed",
+      "package_name": "jaffle_shop"
+    },
+    "seed.jaffle_shop.raw_stores": {
+      "id": "seed.jaffle_shop.raw_stores",
+      "unique_id": "seed.jaffle_shop.raw_stores",
+      "name": "raw_stores",
+      "resource_type": "seed",
+      "package_name": "jaffle_shop"
+    },
+    "seed.jaffle_shop.raw_supply_orders": {
+      "id": "seed.jaffle_shop.raw_supply_orders",
+      "unique_id": "seed.jaffle_shop.raw_supply_orders",
+      "name": "raw_supply_orders",
+      "resource_type": "seed",
+      "package_name": "jaffle_shop"
+    }
+  },
+  "parent_map": {
+    "model.jaffle_shop.cost_analysis": [
+      "model.jaffle_shop.int_supply_order_costs",
+      "model.jaffle_shop.product_profitability"
+    ],
+    "model.jaffle_shop.customer_360": [
+      "model.jaffle_shop.customers",
+      "model.jaffle_shop.customer_lifetime_value",
+      "model.jaffle_shop.int_customer_first_last_orders",
+      "model.jaffle_shop.int_order_enriched",
+      "model.jaffle_shop.int_customer_review_activity",
+      "model.jaffle_shop.customer_segments_final"
+    ],
+    "model.jaffle_shop.customer_acquisition": [
+      "model.jaffle_shop.int_customer_first_last_orders",
+      "model.jaffle_shop.int_order_enriched"
+    ],
+    "model.jaffle_shop.customer_cohorts": [
+      "model.jaffle_shop.int_customer_first_last_orders"
+    ],
+    "model.jaffle_shop.customer_lifetime_value": [
+      "model.jaffle_shop.customers",
+      "model.jaffle_shop.int_customer_first_last_orders"
+    ],
+    "model.jaffle_shop.customer_retention": [
+      "model.jaffle_shop.int_customer_first_last_orders",
+      "model.jaffle_shop.int_order_enriched"
+    ],
+    "model.jaffle_shop.customer_review_summary": [
+      "model.jaffle_shop.int_customer_review_activity",
+      "model.jaffle_shop.int_product_ratings",
+      "model.jaffle_shop.stg_reviews"
+    ],
+    "model.jaffle_shop.customer_segments_final": [
+      "model.jaffle_shop.int_customer_segments"
+    ],
+    "model.jaffle_shop.customers": [
+      "model.jaffle_shop.stg_customers",
+      "model.jaffle_shop.stg_orders",
+      "model.jaffle_shop.stg_payments"
+    ],
+    "model.jaffle_shop.gross_margin": ["model.jaffle_shop.revenue_summary"],
+    "model.jaffle_shop.int_category_hierarchy": [
+      "model.jaffle_shop.stg_categories"
+    ],
+    "model.jaffle_shop.int_customer_first_last_orders": [
+      "model.jaffle_shop.int_order_enriched"
+    ],
+    "model.jaffle_shop.int_customer_order_history": [
+      "model.jaffle_shop.stg_customers",
+      "model.jaffle_shop.int_order_enriched"
+    ],
+    "model.jaffle_shop.int_customer_payment_methods": [
+      "model.jaffle_shop.stg_payments",
+      "model.jaffle_shop.stg_orders"
+    ],
+    "model.jaffle_shop.int_customer_review_activity": [
+      "model.jaffle_shop.stg_reviews"
+    ],
+    "model.jaffle_shop.int_customer_segments": [
+      "model.jaffle_shop.int_customer_order_history",
+      "model.jaffle_shop.int_customer_first_last_orders"
+    ],
+    "model.jaffle_shop.int_daily_order_summary": [
+      "model.jaffle_shop.int_order_enriched"
+    ],
+    "model.jaffle_shop.int_inventory_movements": [
+      "model.jaffle_shop.stg_supply_orders",
+      "model.jaffle_shop.int_order_items_with_products",
+      "model.jaffle_shop.int_store_order_assignments"
+    ],
+    "model.jaffle_shop.int_order_enriched": [
+      "model.jaffle_shop.int_orders_with_promotions",
+      "model.jaffle_shop.int_order_totals",
+      "model.jaffle_shop.int_order_payments_matched"
+    ],
+    "model.jaffle_shop.int_order_items_enriched": [
+      "model.jaffle_shop.int_order_items_with_products",
+      "model.jaffle_shop.int_product_margins"
+    ],
+    "model.jaffle_shop.int_order_items_with_products": [
+      "model.jaffle_shop.stg_order_items",
+      "model.jaffle_shop.int_products_with_categories"
+    ],
+    "model.jaffle_shop.int_order_payments_matched": [
+      "model.jaffle_shop.stg_payments",
+      "model.jaffle_shop.int_order_totals"
+    ],
+    "model.jaffle_shop.int_order_totals": [
+      "model.jaffle_shop.int_order_items_enriched"
+    ],
+    "model.jaffle_shop.int_orders_with_promotions": [
+      "model.jaffle_shop.stg_orders",
+      "model.jaffle_shop.stg_order_promotions",
+      "model.jaffle_shop.stg_promotions"
+    ],
+    "model.jaffle_shop.int_product_margins": ["model.jaffle_shop.stg_products"],
+    "model.jaffle_shop.int_product_ratings": [
+      "model.jaffle_shop.int_reviews_with_products"
+    ],
+    "model.jaffle_shop.int_product_stock_levels": [
+      "model.jaffle_shop.int_inventory_movements"
+    ],
+    "model.jaffle_shop.int_products_with_categories": [
+      "model.jaffle_shop.stg_products",
+      "model.jaffle_shop.int_category_hierarchy"
+    ],
+    "model.jaffle_shop.int_promotion_effectiveness": [
+      "model.jaffle_shop.int_orders_with_promotions",
+      "model.jaffle_shop.int_order_totals"
+    ],
+    "model.jaffle_shop.int_reviews_with_products": [
+      "model.jaffle_shop.stg_reviews",
+      "model.jaffle_shop.int_products_with_categories"
+    ],
+    "model.jaffle_shop.int_store_employees_active": [
+      "model.jaffle_shop.stg_employees",
+      "model.jaffle_shop.stg_stores"
+    ],
+    "model.jaffle_shop.int_store_order_assignments": [
+      "model.jaffle_shop.stg_orders",
+      "model.jaffle_shop.stg_stores"
+    ],
+    "model.jaffle_shop.int_store_performance": [
+      "model.jaffle_shop.int_store_revenue",
+      "model.jaffle_shop.int_store_employees_active"
+    ],
+    "model.jaffle_shop.int_store_revenue": [
+      "model.jaffle_shop.int_store_order_assignments",
+      "model.jaffle_shop.int_order_enriched"
+    ],
+    "model.jaffle_shop.int_supply_order_costs": [
+      "model.jaffle_shop.stg_supply_orders",
+      "model.jaffle_shop.stg_products"
+    ],
+    "model.jaffle_shop.inventory_health": [
+      "model.jaffle_shop.product_inventory",
+      "model.jaffle_shop.int_inventory_movements"
+    ],
+    "model.jaffle_shop.metric_customer_acquisition_monthly": [
+      "model.jaffle_shop.customer_cohorts"
+    ],
+    "model.jaffle_shop.metric_customer_retention_monthly": [
+      "model.jaffle_shop.customer_retention"
+    ],
+    "model.jaffle_shop.metric_daily_orders": [
+      "model.jaffle_shop.int_order_enriched"
+    ],
+    "model.jaffle_shop.metric_daily_revenue": [
+      "model.jaffle_shop.int_daily_order_summary"
+    ],
+    "model.jaffle_shop.metric_inventory_daily": [
+      "model.jaffle_shop.product_inventory"
+    ],
+    "model.jaffle_shop.metric_monthly_sales": [
+      "model.jaffle_shop.metric_daily_revenue"
+    ],
+    "model.jaffle_shop.metric_product_sales_daily": [
+      "model.jaffle_shop.order_items",
+      "model.jaffle_shop.int_order_enriched"
+    ],
+    "model.jaffle_shop.metric_promotion_daily": [
+      "model.jaffle_shop.order_discounts"
+    ],
+    "model.jaffle_shop.metric_store_daily": [
+      "model.jaffle_shop.revenue_summary",
+      "model.jaffle_shop.stores"
+    ],
+    "model.jaffle_shop.metric_weekly_sales": [
+      "model.jaffle_shop.metric_daily_revenue"
+    ],
+    "model.jaffle_shop.new_orders": ["model.jaffle_shop.stg_orders"],
+    "model.jaffle_shop.order_discounts": [
+      "model.jaffle_shop.int_order_enriched"
+    ],
+    "model.jaffle_shop.order_fulfillment": [
+      "model.jaffle_shop.orders",
+      "model.jaffle_shop.int_store_order_assignments",
+      "model.jaffle_shop.int_store_employees_active"
+    ],
+    "model.jaffle_shop.order_items": [
+      "model.jaffle_shop.int_order_items_enriched"
+    ],
+    "model.jaffle_shop.order_payment_status": [
+      "model.jaffle_shop.int_order_payments_matched"
+    ],
+    "model.jaffle_shop.order_returns": ["model.jaffle_shop.orders"],
+    "model.jaffle_shop.orders": [
+      "model.jaffle_shop.stg_orders",
+      "model.jaffle_shop.stg_payments"
+    ],
+    "model.jaffle_shop.payments_fact": [
+      "model.jaffle_shop.stg_payments",
+      "model.jaffle_shop.orders"
+    ],
+    "model.jaffle_shop.product_categories": [
+      "model.jaffle_shop.int_category_hierarchy",
+      "model.jaffle_shop.stg_products"
+    ],
+    "model.jaffle_shop.product_inventory": [
+      "model.jaffle_shop.int_product_stock_levels",
+      "model.jaffle_shop.stg_stores",
+      "model.jaffle_shop.stg_products"
+    ],
+    "model.jaffle_shop.product_performance": [
+      "model.jaffle_shop.products",
+      "model.jaffle_shop.order_items",
+      "model.jaffle_shop.int_product_ratings"
+    ],
+    "model.jaffle_shop.product_profitability": [
+      "model.jaffle_shop.product_performance",
+      "model.jaffle_shop.int_supply_order_costs"
+    ],
+    "model.jaffle_shop.product_reviews": [
+      "model.jaffle_shop.int_product_ratings"
+    ],
+    "model.jaffle_shop.products": [
+      "model.jaffle_shop.int_products_with_categories",
+      "model.jaffle_shop.int_product_margins"
+    ],
+    "model.jaffle_shop.promotion_roi": [
+      "model.jaffle_shop.int_promotion_effectiveness",
+      "model.jaffle_shop.order_discounts"
+    ],
+    "model.jaffle_shop.reorder_recommendations": [
+      "model.jaffle_shop.product_inventory",
+      "model.jaffle_shop.product_performance"
+    ],
+    "model.jaffle_shop.revenue_summary": [
+      "model.jaffle_shop.int_order_enriched",
+      "model.jaffle_shop.int_store_order_assignments"
+    ],
+    "model.jaffle_shop.rpt_customer_dashboard": [
+      "model.jaffle_shop.customer_360"
+    ],
+    "model.jaffle_shop.rpt_executive_dashboard": [
+      "model.jaffle_shop.metric_monthly_sales",
+      "model.jaffle_shop.customer_segments_final",
+      "model.jaffle_shop.gross_margin"
+    ],
+    "model.jaffle_shop.rpt_product_dashboard": [
+      "model.jaffle_shop.product_performance"
+    ],
+    "model.jaffle_shop.rpt_sales_dashboard": [
+      "model.jaffle_shop.metric_weekly_sales"
+    ],
+    "model.jaffle_shop.rpt_store_dashboard": [
+      "model.jaffle_shop.store_rankings",
+      "model.jaffle_shop.store_inventory",
+      "model.jaffle_shop.metric_store_daily"
+    ],
+    "model.jaffle_shop.stg_categories": ["seed.jaffle_shop.raw_categories"],
+    "model.jaffle_shop.stg_customers": ["seed.jaffle_shop.raw_customers"],
+    "model.jaffle_shop.stg_employees": ["seed.jaffle_shop.raw_employees"],
+    "model.jaffle_shop.stg_order_items": ["seed.jaffle_shop.raw_order_items"],
+    "model.jaffle_shop.stg_order_promotions": [
+      "seed.jaffle_shop.raw_order_promotions"
+    ],
+    "model.jaffle_shop.stg_orders": ["seed.jaffle_shop.raw_orders"],
+    "model.jaffle_shop.stg_payments": ["seed.jaffle_shop.raw_payments"],
+    "model.jaffle_shop.stg_products": ["seed.jaffle_shop.raw_products"],
+    "model.jaffle_shop.stg_promotions": ["seed.jaffle_shop.raw_promotions"],
+    "model.jaffle_shop.stg_reviews": ["seed.jaffle_shop.raw_reviews"],
+    "model.jaffle_shop.stg_stores": ["seed.jaffle_shop.raw_stores"],
+    "model.jaffle_shop.stg_supply_orders": [
+      "seed.jaffle_shop.raw_supply_orders"
+    ],
+    "model.jaffle_shop.store_inventory": [
+      "model.jaffle_shop.product_inventory"
+    ],
+    "model.jaffle_shop.store_performance": [
+      "model.jaffle_shop.int_store_performance"
+    ],
+    "model.jaffle_shop.store_rankings": ["model.jaffle_shop.store_performance"],
+    "model.jaffle_shop.store_staffing": [
+      "model.jaffle_shop.stg_employees",
+      "model.jaffle_shop.stg_stores"
+    ],
+    "model.jaffle_shop.stores": [
+      "model.jaffle_shop.int_store_employees_active"
+    ],
+    "model.jaffle_shop.supplier_lead_times": [
+      "model.jaffle_shop.int_supply_order_costs"
+    ],
+    "model.jaffle_shop.supply_orders_fact": [
+      "model.jaffle_shop.int_supply_order_costs"
+    ]
+  },
+  "diff": {
+    "model.jaffle_shop.customer_360": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.customer_acquisition": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.customer_cohorts": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.customer_lifetime_value": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.customer_retention": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.customer_segments_final": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.customers": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.gross_margin": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.int_customer_first_last_orders": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.int_customer_order_history": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.int_customer_payment_methods": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.int_customer_segments": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.int_daily_order_summary": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.int_inventory_movements": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.int_order_enriched": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.int_orders_with_promotions": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.int_product_stock_levels": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.int_promotion_effectiveness": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.int_store_order_assignments": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.int_store_performance": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.int_store_revenue": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.inventory_health": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.metric_customer_acquisition_monthly": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.metric_customer_retention_monthly": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.metric_daily_orders": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.metric_daily_revenue": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.metric_inventory_daily": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.metric_monthly_sales": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.metric_product_sales_daily": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.metric_promotion_daily": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.metric_store_daily": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.metric_weekly_sales": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.new_orders": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.order_discounts": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.order_fulfillment": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.order_returns": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.orders": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.payments_fact": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.product_inventory": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.promotion_roi": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.reorder_recommendations": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.revenue_summary": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.rpt_customer_dashboard": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.rpt_executive_dashboard": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.rpt_sales_dashboard": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.rpt_store_dashboard": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.stg_orders": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.store_inventory": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.store_performance": {
+      "change_status": "modified",
+      "change": null
+    },
+    "model.jaffle_shop.store_rankings": {
+      "change_status": "modified",
+      "change": null
+    }
+  }
+}

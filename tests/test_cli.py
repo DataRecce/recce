@@ -311,36 +311,24 @@ class TestCommandMCPServer(TestCase):
         assert "Base artifacts not found" not in result.output
 
 
-class _FakeVersionInfo(tuple):
-    """A tuple subclass that also exposes .major/.minor/.micro attributes like sys.version_info."""
-
-    def __new__(cls, major, minor, micro, releaselevel="final", serial=0):
-        obj = super().__new__(cls, (major, minor, micro, releaselevel, serial))
-        obj.major = major
-        obj.minor = minor
-        obj.micro = micro
-        obj.releaselevel = releaselevel
-        obj.serial = serial
-        return obj
-
-
-def test_cli_shows_python39_deprecation_warning():
-    """CLI should show deprecation warning when running on Python 3.9."""
+def test_cli_shows_update_available_warning():
+    """CLI should show update available warning when a newer version exists."""
     runner = CliRunner()
     from recce.cli import cli
 
-    with patch("sys.version_info", _FakeVersionInfo(3, 9, 18)):
+    with patch("recce.__is_recce_outdated__", True), patch("recce.__latest_version__", "99.0.0"):
         result = runner.invoke(cli, ["version"])
         assert result.exit_code == 0
-        assert "Deprecation Warning" in result.output
+        assert "Update Available" in result.output
+        assert "99.0.0" in result.output
 
 
-def test_cli_no_warning_on_python310():
-    """CLI should NOT show deprecation warning when running on Python 3.10+."""
+def test_cli_no_update_warning_when_current():
+    """CLI should NOT show update warning when already on latest version."""
     runner = CliRunner()
     from recce.cli import cli
 
-    with patch("sys.version_info", _FakeVersionInfo(3, 10, 0)):
+    with patch("recce.__is_recce_outdated__", False):
         result = runner.invoke(cli, ["version"])
         assert result.exit_code == 0
-        assert "Deprecation Warning" not in result.output
+        assert "Update Available" not in result.output

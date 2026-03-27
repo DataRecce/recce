@@ -367,8 +367,12 @@ vi.mock("@datarecce/ui/hooks", () => ({
   })),
   useCSVExport: vi.fn(() => ({
     canExportCSV: true,
+    totalRowCount: 500,
     copyAsCSV: vi.fn(),
+    copyAsTSV: vi.fn(),
     downloadAsCSV: vi.fn(),
+    downloadAsTSV: vi.fn(),
+    downloadAsExcel: vi.fn(),
   })),
   useCopyToClipboardButton: vi.fn(() => ({
     ref: { current: null },

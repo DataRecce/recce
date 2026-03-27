@@ -282,7 +282,7 @@ describe("GraphEdge", () => {
 
       const edge = screen.getByTestId("base-edge");
       // Filter should be applied for non-highlighted edges
-      expect(edge.style.filter).toBe("opacity(0.2) grayscale(50%)");
+      expect(edge.style.filter).toBe("opacity(0.4) grayscale(40%)");
     });
   });
 
@@ -364,7 +364,7 @@ describe("GraphEdge", () => {
       const edge = screen.getByTestId("base-edge");
       expect(edge.style.stroke).toBe("#ef4444");
       expect(edge.style.strokeDasharray).toBe("5");
-      expect(edge.style.filter).toBe("opacity(0.2) grayscale(50%)");
+      expect(edge.style.filter).toBe("opacity(0.4) grayscale(40%)");
     });
 
     it("renders plain edge without change status", () => {
