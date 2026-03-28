@@ -339,11 +339,17 @@ def init(cache_db, **kwargs):
     (~/.recce/cll_cache.db by default) so that subsequent `recce server`
     sessions start with a warm cache.
 
+    Works with one or both environments (target/ and/or target-base/).
+
     Examples:\n
 
     \b
     # Pre-compute CLL from default artifact paths (target/ and target-base/)
     recce init
+
+    \b
+    # Pre-compute from target only (no base environment)
+    recce init --target-base-path target
 
     \b
     # Specify a custom cache database path
@@ -356,7 +362,7 @@ def init(cache_db, **kwargs):
 
     from recce.adapter.dbt_adapter import DbtAdapter
     from recce.core import load_context
-    from recce.util.cll import CllCache, get_cll_cache
+    from recce.util.cll import CllCache, cll, get_cll_cache
 
     console = Console()
     console.rule("Recce Init — Pre-compute CLL Cache", style="orange3")
@@ -372,8 +378,33 @@ def init(cache_db, **kwargs):
     if evicted:
         console.print(f"Evicted {evicted} stale cache entries (>7 days unused)")
 
-    # Load context (adapter + artifacts)
+    # Check which artifact directories exist
+    project_dir_path = Path(kwargs.get("project_dir") or "./")
+    target_path = project_dir_path / kwargs.get("target_path", "target")
+    target_base_path = project_dir_path / kwargs.get("target_base_path", "target-base")
+
+    has_target = (target_path / "manifest.json").is_file()
+    has_base = (target_base_path / "manifest.json").is_file()
+
+    if not has_target and not has_base:
+        console.print(
+            "[[yellow]Warning[/yellow]] No dbt artifacts found.\n"
+            f"  Checked: {target_path}/manifest.json\n"
+            f"  Checked: {target_base_path}/manifest.json\n\n"
+            "Run [bold]dbt docs generate[/bold] or [bold]dbt compile[/bold] first."
+        )
+        exit(0)
+
+    # If only one env exists, use it for both (so load_context doesn't fail)
     context_kwargs = {**kwargs}
+    if has_target and not has_base:
+        console.print(f"[dim]Only target/ found — building cache for current environment only.[/dim]")
+        context_kwargs["target_base_path"] = kwargs.get("target_path", "target")
+    elif has_base and not has_target:
+        console.print(f"[dim]Only target-base/ found — building cache for base environment only.[/dim]")
+        context_kwargs["target_path"] = kwargs.get("target_base_path", "target-base")
+
+    # Load context (adapter + artifacts)
     try:
         ctx = load_context(**context_kwargs)
     except Exception as e:
@@ -382,35 +413,102 @@ def init(cache_db, **kwargs):
 
     dbt_adapter: DbtAdapter = ctx.adapter
 
-    # Collect all model node IDs from both environments
+    # Collect environments to process
     envs = []
-    if dbt_adapter.curr_manifest:
+    if has_target and dbt_adapter.curr_manifest:
         curr_ids = [
             nid for nid in dbt_adapter.curr_manifest.nodes
             if dbt_adapter.curr_manifest.nodes[nid].resource_type in ("model", "snapshot")
         ]
         envs.append(("current", curr_ids, False))
 
-    if dbt_adapter.base_manifest:
+    if has_base and dbt_adapter.base_manifest:
         base_ids = [
             nid for nid in dbt_adapter.base_manifest.nodes
             if dbt_adapter.base_manifest.nodes[nid].resource_type in ("model", "snapshot")
         ]
         envs.append(("base", base_ids, True))
 
+    os.environ["ENABLE_CLL_CONTENT_CACHE"] = "1"
+
     for env_name, node_ids, is_base in envs:
         console.print(f"\n[bold]{env_name}[/bold] environment: {len(node_ids)} models")
         t_start = time.perf_counter()
+
+        # Phase 1: Batch-compile models missing compiled_code
+        manifest = dbt_adapter._get_cached_manifest(is_base)
+        needs_compile = [
+            nid for nid in node_ids
+            if not getattr(manifest.nodes.get(nid), 'compiled_code', None)
+            and getattr(manifest.nodes.get(nid), 'raw_code', None)
+        ]
+        if needs_compile:
+            t_compile = time.perf_counter()
+            compiled_map = dbt_adapter.batch_compile_sql(needs_compile, base=is_base)
+            compile_elapsed = time.perf_counter() - t_compile
+            console.print(
+                f"  Batch-compiled {len(compiled_map)}/{len(needs_compile)} models"
+                f" missing compiled_code ({compile_elapsed:.1f}s)"
+            )
+        else:
+            compiled_map = {}
+
+        # Phase 2: Run CLL for each model
         success = 0
         fail = 0
+        catalog = dbt_adapter.curr_catalog if not is_base else dbt_adapter.base_catalog
+        node_index = dbt_adapter._get_node_name_index(is_base)
+        source_index = dbt_adapter._get_source_name_index(is_base)
+        dialect = None
+        if dbt_adapter.get_manifest(is_base).metadata.adapter_type:
+            dialect = dbt_adapter.get_manifest(is_base).metadata.adapter_type
+        elif dbt_adapter.adapter:
+            dialect = dbt_adapter.adapter.type()
 
         for nid in node_ids:
             try:
-                result = dbt_adapter.get_cll_cached(nid, base=is_base)
-                if result is not None:
-                    success += 1
-                else:
+                node_data = manifest.nodes.get(nid)
+                if node_data is None or node_data.resource_type not in ("model", "snapshot"):
                     fail += 1
+                    continue
+
+                # Get compiled SQL: from manifest or batch compilation
+                compiled_sql = getattr(node_data, 'compiled_code', None)
+                from_batch = False
+                if not compiled_sql:
+                    compiled_sql = compiled_map.get(nid)
+                    from_batch = True
+                if not compiled_sql:
+                    fail += 1
+                    continue
+
+                # Build schema from catalog for SELECT * expansion.
+                # Schema keys must match table names as they appear in the SQL:
+                # - Pre-compiled (from manifest): uses alias (e.g., "stg_orders")
+                # - Batch-compiled (from Jinja): uses unique_id with dots→underscores
+                #   (e.g., "source_jaffle_shop_ecom_raw_products")
+                schema = {}
+                parent_list = []
+                if hasattr(node_data.depends_on, "nodes"):
+                    parent_list = node_data.depends_on.nodes
+                if catalog:
+                    for pid in parent_list:
+                        if from_batch:
+                            tname = pid.replace(".", "_")
+                        else:
+                            tname = dbt_adapter._get_parent_table_name(manifest, pid)
+                            if tname is None:
+                                tname = pid.replace(".", "_")
+                        cols = {}
+                        if pid in catalog.nodes:
+                            cols = {c: m.type for c, m in catalog.nodes[pid].columns.items()}
+                        if pid in catalog.sources:
+                            cols = {c: m.type for c, m in catalog.sources[pid].columns.items()}
+                        if cols:
+                            schema[tname] = cols
+
+                cll(compiled_sql, schema=schema, dialect=dialect)
+                success += 1
             except Exception:
                 fail += 1
 

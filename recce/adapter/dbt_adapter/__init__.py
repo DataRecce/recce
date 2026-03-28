@@ -1392,6 +1392,97 @@ class DbtAdapter(BaseAdapter):
             schema[table_name] = columns
         return schema
 
+    def batch_compile_sql(self, node_ids: List[str], base: bool = False) -> Dict[str, str]:
+        """Compile raw SQL for multiple nodes in one batch.
+
+        Creates the parser, invocation context, and macro resolver once,
+        then compiles each node.  Returns {node_id: compiled_sql}.
+        Nodes that already have compiled_code or fail compilation are skipped.
+        """
+        manifest = self._get_cached_manifest(base)
+        node_index = self._get_node_name_index(base)
+        source_index = self._get_source_name_index(base)
+        catalog = self.curr_catalog if base is False else self.base_catalog
+
+        # Shared setup — done once for the whole batch
+        parser = SqlBlockParser(self.runtime_config, manifest, self.runtime_config)
+
+        if dbt_version >= dbt_version.parse("v1.8"):
+            from dbt_common.context import get_invocation_context, set_invocation_context
+            set_invocation_context({})
+            get_invocation_context()._env = dict(os.environ)
+
+            from dbt.clients import jinja
+            from dbt.context.providers import generate_runtime_macro_context, generate_runtime_model_context
+
+            macro_manifest = MacroManifest(manifest.macros)
+            self.adapter.set_macro_resolver(macro_manifest)
+            self.adapter.set_macro_context_generator(generate_runtime_macro_context)
+            use_jinja_path = True
+        else:
+            compiler = self.adapter.get_compiler()
+            use_jinja_path = False
+
+        results: Dict[str, str] = {}
+        for nid in node_ids:
+            manifest_node = manifest.nodes.get(nid)
+            if manifest_node is None:
+                continue
+
+            # Skip if already has compiled_code
+            pre_compiled = getattr(manifest_node, 'compiled_code', None)
+            if pre_compiled:
+                results[nid] = pre_compiled
+                continue
+
+            raw_code = getattr(manifest_node, 'raw_code', None)
+            if not raw_code:
+                continue
+
+            # Build per-node ref/source context
+            table_id_map = {}
+
+            def ref_func(*args, _node_index=node_index, _table_id_map=table_id_map):
+                if len(args) == 1:
+                    nm = args[0]
+                    uid = _node_index.get(nm)
+                else:
+                    uid = _node_index.get((args[1], args[0]))
+                    if uid is None:
+                        uid = _node_index.get(args[1])
+                    nm = args[-1]
+                if uid is None:
+                    raise ValueError(f"Cannot find node {nm}")
+                tn = uid.replace(".", "_")
+                _table_id_map[tn.lower()] = uid
+                return tn
+
+            def source_func(source_name, name, _source_index=source_index, _table_id_map=table_id_map):
+                uid = _source_index.get((source_name, name))
+                if uid is None:
+                    raise ValueError(f"Cannot find source {source_name}.{name}")
+                tn = uid.replace(".", "_")
+                _table_id_map[tn.lower()] = uid
+                return tn
+
+            try:
+                node_obj = parser.parse_remote(raw_code, "generated_" + uuid.uuid4().hex)
+                process_node(self.runtime_config, manifest, node_obj)
+
+                if use_jinja_path:
+                    jinja_ctx = generate_runtime_model_context(node_obj, self.runtime_config, manifest)
+                    jinja_ctx.update(dict(ref=ref_func, source=source_func))
+                    compiled = jinja.get_rendered(raw_code, jinja_ctx, node_obj)
+                else:
+                    compiler.compile_node(node_obj, manifest, dict(ref=ref_func, source=source_func))
+                    compiled = node_obj.compiled_code
+
+                results[nid] = compiled
+            except Exception:
+                continue  # skip models that fail compilation
+
+        return results
+
     def _get_cached_manifest(self, base: bool) -> "Manifest":
         """Return a cached Manifest object, avoiding repeated deserialization."""
         cache_attr = "_cached_manifest_base" if base else "_cached_manifest_curr"
