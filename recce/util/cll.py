@@ -2,12 +2,14 @@ import hashlib
 import json
 import logging
 import os
+import sqlite3
 import time
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+import sqlglot
 import sqlglot.expressions as exp
 from sqlglot import Dialect, parse_one
 from sqlglot.errors import OptimizeError, SqlglotError
@@ -27,28 +29,107 @@ CllResult = Tuple[
 
 _ERROR_MARKER = "__error__"
 
+_DEFAULT_DB_PATH = os.path.join(os.path.expanduser("~"), ".recce", "cll_cache.db")
+
+# Schema version for the cache DB — bump when the table schema changes.
+_CACHE_SCHEMA_VERSION = 1
+
+# Default TTL: entries not accessed for this many seconds are evicted.
+_DEFAULT_TTL_SECONDS = 7 * 24 * 3600  # 7 days
+
+
+def _current_sqlglot_version() -> str:
+    return sqlglot.__version__
+
 
 class CllCache:
-    """Content-addressed cache for CLL results, with optional disk persistence.
+    """Content-addressed cache for CLL results, backed by SQLite.
 
     Keyed by hash of (sql, dialect) so that identical compiled SQL reuses
     results across environments and across server restarts.
 
     - In-memory dict for fast lookups within a session.
-    - Optional disk persistence (JSON files) so the cache survives restarts.
-      Set cache_dir to enable. Each entry is a separate file named by its hash.
+    - SQLite database for disk persistence — survives restarts, supports
+      concurrent readers (WAL mode), and stores everything in a single file.
+    - Cache versioning: entries are tagged with the sqlglot version that
+      produced them.  On version mismatch the entry is treated as a miss
+      and recomputed.
+    - TTL eviction: entries not accessed within ``ttl_seconds`` are deleted
+      on startup (``evict_stale``).
     """
 
     _SENTINEL = object()
 
-    def __init__(self, cache_dir: Optional[str] = None):
+    def __init__(
+        self,
+        db_path: Optional[str] = None,
+        ttl_seconds: int = _DEFAULT_TTL_SECONDS,
+    ):
         self._mem: Dict[str, object] = {}
         self._hits = 0
         self._misses = 0
-        self._cache_dir: Optional[Path] = None
-        if cache_dir:
-            self._cache_dir = Path(cache_dir)
-            self._cache_dir.mkdir(parents=True, exist_ok=True)
+        self._db_path: Optional[str] = None
+        self._ttl_seconds = ttl_seconds
+        self._sqlglot_version = _current_sqlglot_version()
+        if db_path:
+            self._db_path = db_path
+            Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+            self._init_db()
+
+    def _init_db(self):
+        with self._connect() as conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS cll_cache ("
+                "  key TEXT PRIMARY KEY,"
+                "  value TEXT NOT NULL,"
+                "  sqlglot_version TEXT NOT NULL DEFAULT '',"
+                "  last_accessed REAL NOT NULL DEFAULT 0"
+                ")"
+            )
+            # Migrate: add columns if upgrading from older schema
+            self._migrate(conn)
+            # Store metadata
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS cache_meta ("
+                "  key TEXT PRIMARY KEY,"
+                "  value TEXT NOT NULL"
+                ")"
+            )
+            conn.execute(
+                "INSERT OR REPLACE INTO cache_meta (key, value) VALUES ('schema_version', ?)",
+                (str(_CACHE_SCHEMA_VERSION),),
+            )
+
+    def _migrate(self, conn: sqlite3.Connection):
+        """Add columns that may be missing from an older cache DB."""
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(cll_cache)").fetchall()}
+        if "sqlglot_version" not in columns:
+            conn.execute("ALTER TABLE cll_cache ADD COLUMN sqlglot_version TEXT NOT NULL DEFAULT ''")
+        if "last_accessed" not in columns:
+            conn.execute("ALTER TABLE cll_cache ADD COLUMN last_accessed REAL NOT NULL DEFAULT 0")
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self._db_path, timeout=10)
+        conn.execute("PRAGMA journal_mode=WAL")
+        return conn
+
+    def evict_stale(self) -> int:
+        """Delete entries not accessed within the TTL. Returns count of deleted rows."""
+        if not self._db_path:
+            return 0
+        cutoff = time.time() - self._ttl_seconds
+        try:
+            with self._connect() as conn:
+                cursor = conn.execute(
+                    "DELETE FROM cll_cache WHERE last_accessed > 0 AND last_accessed < ?",
+                    (cutoff,),
+                )
+                deleted = cursor.rowcount
+                if deleted:
+                    logger.info("[cll cache] evicted %d stale entries (TTL %dd)", deleted, self._ttl_seconds // 86400)
+                return deleted
+        except Exception:
+            return 0
 
     @staticmethod
     def _make_key(sql: str, dialect: Optional[str]) -> str:
@@ -58,21 +139,17 @@ class CllCache:
             h.update(str(dialect).encode("utf-8"))
         return h.hexdigest()
 
-    def _disk_path(self, key: str) -> Optional[Path]:
-        if self._cache_dir is None:
-            return None
-        return self._cache_dir / f"{key}.json"
-
     @staticmethod
-    def _serialize(result: CllResult) -> dict:
+    def _serialize(result: CllResult) -> str:
         m2c, c2c_map = result
-        return {
+        return json.dumps({
             "m2c": [dep.model_dump() for dep in m2c],
             "c2c": {name: col.model_dump() for name, col in c2c_map.items()},
-        }
+        })
 
     @staticmethod
-    def _deserialize(data: dict) -> CllResult:
+    def _deserialize(data_str: str) -> CllResult:
+        data = json.loads(data_str)
         m2c = [CllColumnDep(**d) for d in data["m2c"]]
         c2c_map = {name: CllColumn(**d) for name, d in data["c2c"].items()}
         return m2c, c2c_map
@@ -89,23 +166,40 @@ class CllCache:
                 raise RecceException("CLL computation failed (cached)")
             return deepcopy(entry)
 
-        # Check disk
-        disk_path = self._disk_path(key)
-        if disk_path and disk_path.exists():
+        # Check SQLite
+        if self._db_path:
             try:
-                data = json.loads(disk_path.read_text())
-                if data.get("status") == "error":
-                    self._mem[key] = _ERROR_MARKER
+                now = time.time()
+                with self._connect() as conn:
+                    row = conn.execute(
+                        "SELECT value, sqlglot_version FROM cll_cache WHERE key = ?", (key,)
+                    ).fetchone()
+                if row:
+                    data = json.loads(row[0])
+                    if data.get("status") == "error":
+                        self._mem[key] = _ERROR_MARKER
+                        self._hits += 1
+                        # Touch last_accessed
+                        with self._connect() as conn:
+                            conn.execute(
+                                "UPDATE cll_cache SET last_accessed = ? WHERE key = ?",
+                                (now, key),
+                            )
+                        raise RecceException("CLL computation failed (cached)")
+                    result = self._deserialize(row[0])
+                    self._mem[key] = result
                     self._hits += 1
-                    raise RecceException("CLL computation failed (cached)")
-                result = self._deserialize(data)
-                self._mem[key] = result
-                self._hits += 1
-                return deepcopy(result)
+                    # Touch last_accessed
+                    with self._connect() as conn:
+                        conn.execute(
+                            "UPDATE cll_cache SET last_accessed = ? WHERE key = ?",
+                            (now, key),
+                        )
+                    return deepcopy(result)
             except RecceException:
                 raise
             except Exception:
-                pass  # corrupted cache file, treat as miss
+                pass  # corrupted entry, treat as miss
 
         self._misses += 1
         return self._SENTINEL
@@ -113,20 +207,32 @@ class CllCache:
     def put(self, sql: str, dialect: Optional[str], result: CllResult):
         key = self._make_key(sql, dialect)
         self._mem[key] = deepcopy(result)
-        disk_path = self._disk_path(key)
-        if disk_path:
+        if self._db_path:
             try:
-                disk_path.write_text(json.dumps(self._serialize(result)))
+                value = self._serialize(result)
+                now = time.time()
+                with self._connect() as conn:
+                    conn.execute(
+                        "INSERT OR REPLACE INTO cll_cache (key, value, sqlglot_version, last_accessed)"
+                        " VALUES (?, ?, ?, ?)",
+                        (key, value, self._sqlglot_version, now),
+                    )
             except Exception:
                 pass  # disk write failure is non-fatal
 
     def put_error(self, sql: str, dialect: Optional[str], error: Exception):
         key = self._make_key(sql, dialect)
         self._mem[key] = _ERROR_MARKER
-        disk_path = self._disk_path(key)
-        if disk_path:
+        if self._db_path:
             try:
-                disk_path.write_text(json.dumps({"status": "error", "message": str(error)}))
+                value = json.dumps({"status": "error", "message": str(error)})
+                now = time.time()
+                with self._connect() as conn:
+                    conn.execute(
+                        "INSERT OR REPLACE INTO cll_cache (key, value, sqlglot_version, last_accessed)"
+                        " VALUES (?, ?, ?, ?)",
+                        (key, value, self._sqlglot_version, now),
+                    )
             except Exception:
                 pass
 
@@ -134,7 +240,7 @@ class CllCache:
         self._mem.clear()
         self._hits = 0
         self._misses = 0
-        # Note: does NOT delete disk files — they may be shared across instances
+        # Note: does NOT delete SQLite rows — they may be shared across instances
 
     @property
     def stats(self) -> Dict[str, int]:
@@ -149,9 +255,15 @@ class CllCache:
 
 
 def _init_cll_cache() -> CllCache:
-    """Initialize the CLL cache, with disk persistence if configured."""
-    cache_dir = os.environ.get("CLL_CONTENT_CACHE_DIR")
-    return CllCache(cache_dir=cache_dir)
+    """Initialize the CLL cache with SQLite persistence if configured.
+
+    Off by default (experimental). Enable with ENABLE_CLL_CONTENT_CACHE=1.
+    Set CLL_CACHE_DB to override the default path (~/.recce/cll_cache.db).
+    """
+    if os.environ.get("ENABLE_CLL_CONTENT_CACHE", "0") != "1":
+        return CllCache()
+    db_path = os.environ.get("CLL_CACHE_DB", _DEFAULT_DB_PATH)
+    return CllCache(db_path=db_path)
 
 
 # Module-level cache shared across all calls
@@ -429,41 +541,68 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
 
 
 def _is_content_cache_enabled() -> bool:
+    # Cache is off by default (experimental). Enable with ENABLE_CLL_CONTENT_CACHE=1.
     return os.environ.get("ENABLE_CLL_CONTENT_CACHE", "0") == "1"
 
 
+def _normalize_sql_for_cache(expression: exp.Expression, dialect=None) -> str:
+    """Strip database and schema qualifiers from Table and Column nodes.
+
+    CLL depends on table names and column names, not on which database or
+    schema they live in.  Normalizing lets base and current environments
+    share cache entries when the SQL logic is identical but the fully-
+    qualified paths differ (e.g. ``db.schema.table`` vs ``table``).
+
+    Operates on a *copy* so the original AST is not mutated.
+    """
+    tree = expression.copy()
+    for node in tree.walk(bfs=False):
+        if isinstance(node, (exp.Table, exp.Column)):
+            node.set("db", None)
+            node.set("catalog", None)
+    return tree.sql(dialect=dialect)
+
+
 def cll(sql, schema=None, dialect=None) -> CllResult:
-    dialect_str = str(dialect) if dialect is not None else None
-
-    if _is_content_cache_enabled():
-        cached = _cll_cache.get(sql, dialect_str)
-        if cached is not CllCache._SENTINEL:
-            return cached
-
     t_start = time.perf_counter()
     dialect = Dialect.get(dialect) if dialect is not None else None
+    dialect_str = str(dialect) if dialect is not None else None
 
     cache_enabled = _is_content_cache_enabled()
+    cache_key_sql = sql  # default; replaced with normalized version after parse
 
+    # For unparseable SQL, check cache with raw SQL to return cached errors.
     try:
         expression = parse_one(sql, dialect=dialect)
     except SqlglotError as e:
+        if cache_enabled:
+            cached = _cll_cache.get(sql, dialect_str)
+            if cached is not CllCache._SENTINEL:
+                return cached  # pragma: no cover — raises cached RecceException
         exc = RecceException(f"Failed to parse SQL: {str(e)}")
         if cache_enabled:
             _cll_cache.put_error(sql, dialect_str, exc)
         raise exc
+
+    # Use normalized SQL (without db/schema qualifiers) as the cache key
+    # so that base and current environments share entries.
+    if cache_enabled:
+        cache_key_sql = _normalize_sql_for_cache(expression, dialect=dialect)
+        cached = _cll_cache.get(cache_key_sql, dialect_str)
+        if cached is not CllCache._SENTINEL:
+            return cached
 
     try:
         expression = qualify(expression, schema=schema, dialect=dialect)
     except OptimizeError as e:
         exc = RecceException(f"Failed to optimize SQL: {str(e)}")
         if cache_enabled:
-            _cll_cache.put_error(sql, dialect_str, exc)
+            _cll_cache.put_error(cache_key_sql, dialect_str, exc)
         raise exc
     except SqlglotError as e:
         exc = RecceException(f"Failed to qualify SQL: {str(e)}")
         if cache_enabled:
-            _cll_cache.put_error(sql, dialect_str, exc)
+            _cll_cache.put_error(cache_key_sql, dialect_str, exc)
         raise exc
 
     result = None
@@ -481,16 +620,16 @@ def cll(sql, schema=None, dialect=None) -> CllResult:
 
     if result is None:
         exc = RecceException("Failed to extract CLL from SQL")
-        if _is_content_cache_enabled():
-            _cll_cache.put_error(sql, dialect_str, exc)
+        if cache_enabled:
+            _cll_cache.put_error(cache_key_sql, dialect_str, exc)
         raise exc
 
     elapsed_ms = (time.perf_counter() - t_start) * 1000
     if elapsed_ms > 100:
         logger.info("[cll] computed in %.1fms (sql length=%d)", elapsed_ms, len(sql))
 
-    if _is_content_cache_enabled():
-        _cll_cache.put(sql, dialect_str, result)
+    if cache_enabled:
+        _cll_cache.put(cache_key_sql, dialect_str, result)
     return result
 
 

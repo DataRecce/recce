@@ -1,10 +1,12 @@
+import os
 import unittest
-from typing import List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import pytest
 
 from recce.exceptions import RecceException
-from recce.util.cll import CllResult, cll, get_cll_cache
+from recce.models.types import CllColumn, CllColumnDep
+from recce.util.cll import CllCache, CllResult, _normalize_sql_for_cache, cll, get_cll_cache
 
 
 def assert_model(result: CllResult, depends_on: List[Tuple[str, str]]):
@@ -859,6 +861,22 @@ class CllCacheTest(unittest.TestCase):
         assert stats["hits"] == 0
         assert stats["misses"] == 2
 
+    def test_cache_hit_ignores_db_schema(self):
+        """SQL differing only in db/schema qualifiers should share a cache entry."""
+        sql_bare = "select a from table1 where table1.b > 0"
+        sql_qualified = "select a from db1.schema1.table1 where db1.schema1.table1.b > 0"
+
+        result1 = cll(sql_bare)
+        result2 = cll(sql_qualified)
+
+        stats = get_cll_cache().stats
+        assert stats["hits"] == 1
+        assert stats["misses"] == 1
+
+        # Both results should be correct
+        assert_column(result1, "a", "passthrough", [("table1", "a")])
+        assert_column(result2, "a", "passthrough", [("table1", "a")])
+
     def test_cache_clear(self):
         """Clearing cache should reset everything."""
         cll("select a from table1")
@@ -901,20 +919,22 @@ class CllCacheTest(unittest.TestCase):
         assert stats2["misses"] == 1
 
     def test_disk_persistence(self):
-        """Cache should survive across CllCache instances when using disk."""
+        """Cache should survive across CllCache instances when using SQLite."""
         import tempfile
         from recce.util.cll import CllCache
 
         with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "cll_cache.db")
+
             # First instance: compute and store
-            cache1 = CllCache(cache_dir=tmpdir)
+            cache1 = CllCache(db_path=db_path)
             sql = "select a, b from table1"
             result = cll(sql)
             cache1.put(sql, None, result)
             assert cache1.stats["size"] == 1
 
-            # Second instance: should load from disk
-            cache2 = CllCache(cache_dir=tmpdir)
+            # Second instance: should load from SQLite
+            cache2 = CllCache(db_path=db_path)
             loaded = cache2.get(sql, None)
             assert loaded is not CllCache._SENTINEL
             m2c, c2c = loaded
@@ -923,14 +943,942 @@ class CllCacheTest(unittest.TestCase):
             assert cache2.stats["hits"] == 1
 
     def test_disk_persistence_errors(self):
-        """Cached errors should also persist to disk."""
+        """Cached errors should also persist to SQLite."""
         import tempfile
         from recce.util.cll import CllCache
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            cache1 = CllCache(cache_dir=tmpdir)
+            db_path = os.path.join(tmpdir, "cll_cache.db")
+
+            cache1 = CllCache(db_path=db_path)
             cache1.put_error("BAD SQL", None, RecceException("fail"))
 
-            cache2 = CllCache(cache_dir=tmpdir)
+            cache2 = CllCache(db_path=db_path)
             with pytest.raises(RecceException, match="cached"):
                 cache2.get("BAD SQL", None)
+
+
+class CllCacheFeatureTest(unittest.TestCase):
+    """Tests for TTL eviction, auto-populate, and cache versioning."""
+
+    def test_ttl_eviction(self):
+        """Entries older than TTL should be evicted."""
+        import tempfile
+        import time as _time
+
+        from recce.util.cll import CllCache
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "cll_cache.db")
+            cache = CllCache(db_path=db_path, ttl_seconds=5)
+
+            # Insert an entry with last_accessed in the past (10s ago)
+            sql = "select a from table1"
+            result = cll(sql)
+            cache.put(sql, None, result)
+
+            # Manually backdate last_accessed
+            import sqlite3
+
+            conn = sqlite3.connect(db_path)
+            conn.execute("UPDATE cll_cache SET last_accessed = ?", (_time.time() - 10,))
+            conn.commit()
+            conn.close()
+
+            # Evict — should remove the entry
+            deleted = cache.evict_stale()
+            assert deleted == 1
+
+            # Verify it's gone from SQLite
+            cache2 = CllCache(db_path=db_path, ttl_seconds=5)
+            loaded = cache2.get(sql, None)
+            assert loaded is CllCache._SENTINEL
+
+    def test_ttl_keeps_recent_entries(self):
+        """Entries accessed recently should survive eviction."""
+        import tempfile
+
+        from recce.util.cll import CllCache
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "cll_cache.db")
+            cache = CllCache(db_path=db_path, ttl_seconds=3600)
+
+            sql = "select a from table1"
+            result = cll(sql)
+            cache.put(sql, None, result)
+
+            deleted = cache.evict_stale()
+            assert deleted == 0
+
+            # Entry should still be accessible
+            cache2 = CllCache(db_path=db_path, ttl_seconds=3600)
+            loaded = cache2.get(sql, None)
+            assert loaded is not CllCache._SENTINEL
+
+    def test_last_accessed_updated_on_get(self):
+        """Reading an entry should update its last_accessed timestamp."""
+        import tempfile
+        import time as _time
+
+        import sqlite3 as _sqlite3
+
+        from recce.util.cll import CllCache
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "cll_cache.db")
+            cache = CllCache(db_path=db_path)
+
+            sql = "select a from table1"
+            result = cll(sql)
+            key = CllCache._make_key(sql, None)
+            cache.put(sql, None, result)
+
+            # Backdate to 1 hour ago
+            conn = _sqlite3.connect(db_path)
+            old_time = _time.time() - 3600
+            conn.execute("UPDATE cll_cache SET last_accessed = ?", (old_time,))
+            conn.commit()
+            conn.close()
+
+            # Read via a new cache instance (forces SQLite read)
+            cache2 = CllCache(db_path=db_path)
+            cache2.get(sql, None)
+
+            # Verify last_accessed was updated to ~now
+            conn = _sqlite3.connect(db_path)
+            row = conn.execute("SELECT last_accessed FROM cll_cache WHERE key = ?", (key,)).fetchone()
+            conn.close()
+            assert row[0] > old_time + 3000  # should be much more recent
+
+    def test_version_mismatch_still_hits(self):
+        """Entry written by a different sqlglot version should still hit.
+
+        sqlglot version should not affect CLL results for the same SQL —
+        the version column is stored for diagnostics only, not for invalidation.
+        """
+        import tempfile
+
+        import sqlite3 as _sqlite3
+
+        from recce.util.cll import CllCache
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "cll_cache.db")
+            cache = CllCache(db_path=db_path)
+
+            sql = "select a from table1"
+            result = cll(sql)
+            cache.put(sql, None, result)
+
+            # Tamper: change the stored version to a fake one
+            key = CllCache._make_key(sql, None)
+            conn = _sqlite3.connect(db_path)
+            conn.execute("UPDATE cll_cache SET sqlglot_version = 'old.0.0' WHERE key = ?", (key,))
+            conn.commit()
+            conn.close()
+
+            # New cache instance should still hit (version is diagnostic only)
+            cache2 = CllCache(db_path=db_path)
+            loaded = cache2.get(sql, None)
+            assert loaded is not CllCache._SENTINEL
+            assert cache2.stats["hits"] == 1
+
+    def test_version_match_is_cache_hit(self):
+        """Entry with matching sqlglot version should hit normally."""
+        import tempfile
+
+        from recce.util.cll import CllCache
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "cll_cache.db")
+            cache = CllCache(db_path=db_path)
+
+            sql = "select a from table1"
+            result = cll(sql)
+            cache.put(sql, None, result)
+
+            # New instance with same sqlglot version — should hit
+            cache2 = CllCache(db_path=db_path)
+            loaded = cache2.get(sql, None)
+            assert loaded is not CllCache._SENTINEL
+            assert cache2.stats["hits"] == 1
+
+    def test_cache_off_by_default(self):
+        """Cache should be off by default (experimental mode)."""
+        from recce.util.cll import _is_content_cache_enabled
+
+        old_env = os.environ.pop("ENABLE_CLL_CONTENT_CACHE", None)
+        try:
+            assert _is_content_cache_enabled() is False
+        finally:
+            if old_env is not None:
+                os.environ["ENABLE_CLL_CONTENT_CACHE"] = old_env
+
+    def test_enable_cache_env_var(self):
+        """ENABLE_CLL_CONTENT_CACHE=1 should turn on caching."""
+        from recce.util.cll import _is_content_cache_enabled
+
+        old_env = os.environ.get("ENABLE_CLL_CONTENT_CACHE")
+        try:
+            os.environ["ENABLE_CLL_CONTENT_CACHE"] = "1"
+            assert _is_content_cache_enabled() is True
+        finally:
+            if old_env is not None:
+                os.environ["ENABLE_CLL_CONTENT_CACHE"] = old_env
+            else:
+                os.environ.pop("ENABLE_CLL_CONTENT_CACHE", None)
+
+    def test_schema_migration_adds_columns(self):
+        """Opening an old-format DB should auto-add new columns."""
+        import tempfile
+
+        import sqlite3 as _sqlite3
+
+        from recce.util.cll import CllCache
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "cll_cache.db")
+
+            # Create an old-format table (no sqlglot_version, no last_accessed)
+            sql = "select a from table1"
+            key = CllCache._make_key(sql, None)
+            value = '{"m2c":[], "c2c":{"a":{"name":"a","transformation_type":"passthrough","depends_on":[{"node":"table1","column":"a"}]}}}'
+
+            conn = _sqlite3.connect(db_path)
+            conn.execute("CREATE TABLE cll_cache (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+            conn.execute("INSERT INTO cll_cache (key, value) VALUES (?, ?)", (key, value))
+            conn.commit()
+            conn.close()
+
+            # Opening with CllCache should migrate
+            cache = CllCache(db_path=db_path)
+
+            # Verify columns were added
+            conn = _sqlite3.connect(db_path)
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(cll_cache)").fetchall()}
+            conn.close()
+            assert "sqlglot_version" in columns
+            assert "last_accessed" in columns
+
+            # Old entry with empty version should still be readable (backwards compat)
+            loaded = cache.get(sql, None)
+            assert loaded is not CllCache._SENTINEL
+
+
+def _assert_cll_results_equal(result_a: CllResult, result_b: CllResult, msg: str = ""):
+    """Assert two CllResult tuples are semantically identical."""
+    m2c_a, c2c_a = result_a
+    m2c_b, c2c_b = result_b
+
+    prefix = f"[{msg}] " if msg else ""
+
+    # Compare m2c (model-to-column deps)
+    assert len(m2c_a) == len(m2c_b), f"{prefix}m2c length mismatch: {len(m2c_a)} vs {len(m2c_b)}"
+    for i, (a, b) in enumerate(zip(m2c_a, m2c_b)):
+        assert a.node == b.node and a.column == b.column, (
+            f"{prefix}m2c[{i}] mismatch: ({a.node}, {a.column}) vs ({b.node}, {b.column})"
+        )
+
+    # Compare c2c (column-to-column deps)
+    assert set(c2c_a.keys()) == set(c2c_b.keys()), (
+        f"{prefix}c2c keys differ: {set(c2c_a.keys())} vs {set(c2c_b.keys())}"
+    )
+    for col_name in c2c_a:
+        col_a = c2c_a[col_name]
+        col_b = c2c_b[col_name]
+        assert col_a.transformation_type == col_b.transformation_type, (
+            f"{prefix}c2c[{col_name}].transformation_type: {col_a.transformation_type} vs {col_b.transformation_type}"
+        )
+        assert len(col_a.depends_on) == len(col_b.depends_on), (
+            f"{prefix}c2c[{col_name}].depends_on length: {len(col_a.depends_on)} vs {len(col_b.depends_on)}"
+        )
+        for j, (da, db) in enumerate(zip(col_a.depends_on, col_b.depends_on)):
+            assert da.node == db.node and da.column == db.column, (
+                f"{prefix}c2c[{col_name}].depends_on[{j}]: ({da.node}, {da.column}) vs ({db.node}, {db.column})"
+            )
+
+
+class CllCacheCorrectnessTest(unittest.TestCase):
+    """Verify that CLL cache produces identical output with and without caching.
+
+    For every test case:
+      1. Compute CLL with cache disabled (ground truth).
+      2. Compute CLL with cache enabled — first call is a miss.
+      3. Compute CLL with cache enabled — second call is a hit.
+      4. Assert all three results are identical.
+    """
+
+    def _cll_with_and_without_cache(
+        self,
+        sql: str,
+        schema: Optional[dict] = None,
+        dialect: Optional[str] = None,
+        label: str = "",
+    ) -> CllResult:
+        """Run cll() without cache, then twice with cache, assert all equal."""
+        from recce.util import cll as cll_module
+
+        # 1. Without cache
+        os.environ.pop("ENABLE_CLL_CONTENT_CACHE", None)
+        cll_module._cll_cache = CllCache()
+        result_nocache = cll(sql, schema=schema, dialect=dialect)
+
+        # 2. With cache — miss
+        os.environ["ENABLE_CLL_CONTENT_CACHE"] = "1"
+        cll_module._cll_cache = CllCache()
+        result_miss = cll(sql, schema=schema, dialect=dialect)
+        stats_after_miss = get_cll_cache().stats
+        assert stats_after_miss["misses"] == 1, f"[{label}] expected 1 miss"
+        assert stats_after_miss["hits"] == 0, f"[{label}] expected 0 hits after miss"
+
+        # 3. With cache — hit
+        result_hit = cll(sql, schema=schema, dialect=dialect)
+        stats_after_hit = get_cll_cache().stats
+        assert stats_after_hit["hits"] == 1, f"[{label}] expected 1 hit"
+
+        # Assert all three are identical
+        _assert_cll_results_equal(result_nocache, result_miss, f"{label} nocache vs miss")
+        _assert_cll_results_equal(result_nocache, result_hit, f"{label} nocache vs hit")
+
+        return result_nocache
+
+    def setUp(self):
+        self._orig_env = os.environ.get("ENABLE_CLL_CONTENT_CACHE")
+
+    def tearDown(self):
+        from recce.util import cll as cll_module
+
+        if self._orig_env is not None:
+            os.environ["ENABLE_CLL_CONTENT_CACHE"] = self._orig_env
+        else:
+            os.environ.pop("ENABLE_CLL_CONTENT_CACHE", None)
+        cll_module._cll_cache = cll_module._init_cll_cache()
+
+    # ----------------------------------------------------------------
+    # Category 1: Basic correctness — same SQL, cached vs uncached
+    # ----------------------------------------------------------------
+
+    def test_simple_select(self):
+        self._cll_with_and_without_cache(
+            "select a, b from table1",
+            label="simple_select",
+        )
+
+    def test_select_with_where(self):
+        self._cll_with_and_without_cache(
+            "select a, b from table1 where a > 0 and b < 100",
+            label="select_with_where",
+        )
+
+    def test_select_with_schema(self):
+        self._cll_with_and_without_cache(
+            "select * from table1",
+            schema={"table1": {"a": "int", "b": "varchar"}},
+            label="select_star_with_schema",
+        )
+
+    def test_select_with_alias(self):
+        self._cll_with_and_without_cache(
+            "select a as x, b as y from table1",
+            label="alias",
+        )
+
+    def test_derived_columns(self):
+        self._cll_with_and_without_cache(
+            "select a + b as total, cast(c as int) as c_int from table1",
+            label="derived",
+        )
+
+    def test_join(self):
+        self._cll_with_and_without_cache(
+            "select t1.a, t2.b from table1 t1 join table2 t2 on t1.id = t2.id",
+            label="join",
+        )
+
+    def test_group_by_having(self):
+        self._cll_with_and_without_cache(
+            "select a, sum(b) as total from table1 group by a having sum(b) > 10",
+            label="group_by_having",
+        )
+
+    def test_order_by(self):
+        self._cll_with_and_without_cache(
+            "select a, b from table1 order by a desc, c",
+            label="order_by",
+        )
+
+    # ----------------------------------------------------------------
+    # Category 2: Normalization safety — db/schema qualifiers stripped
+    # ----------------------------------------------------------------
+
+    def test_normalization_bare_vs_qualified(self):
+        """SQL differing only in db/schema qualifiers should produce identical CLL."""
+        from recce.util import cll as cll_module
+
+        sql_bare = "select a from table1 where b > 0"
+        sql_qualified = "select a from mydb.myschema.table1 where mydb.myschema.table1.b > 0"
+
+        # Compute ground truth without cache
+        os.environ.pop("ENABLE_CLL_CONTENT_CACHE", None)
+        cll_module._cll_cache = CllCache()
+        result_bare = cll(sql_bare)
+        result_qualified = cll(sql_qualified)
+
+        _assert_cll_results_equal(result_bare, result_qualified, "bare vs fully-qualified")
+
+    def test_normalization_different_schemas_same_table(self):
+        """Tables that differ only in schema prefix should produce same CLL."""
+        from recce.util import cll as cll_module
+
+        sql_a = "select x from schema_a.orders"
+        sql_b = "select x from schema_b.orders"
+
+        os.environ.pop("ENABLE_CLL_CONTENT_CACHE", None)
+        cll_module._cll_cache = CllCache()
+        result_a = cll(sql_a)
+        result_b = cll(sql_b)
+
+        _assert_cll_results_equal(result_a, result_b, "schema_a vs schema_b")
+
+    def test_normalization_cache_sharing(self):
+        """After caching sql with schema prefix, same SQL with different schema should hit cache.
+
+        Note: normalization strips db/catalog from Table and Column nodes, but
+        preserves table-qualified column refs (e.g., t1.c stays as t1.c).
+        So both SQL variants must use the same column reference style to share cache.
+        """
+        from recce.util import cll as cll_module
+
+        os.environ["ENABLE_CLL_CONTENT_CACHE"] = "1"
+        cll_module._cll_cache = CllCache()
+
+        # Both use table-qualified column refs — only db/schema differs
+        sql_schema_a = "select a, b from dev.public.t1 where dev.public.t1.c > 0"
+        sql_schema_b = "select a, b from prod.analytics.t1 where prod.analytics.t1.c > 0"
+
+        result_a = cll(sql_schema_a)
+        result_b = cll(sql_schema_b)
+
+        stats = get_cll_cache().stats
+        assert stats["misses"] == 1, "second SQL should share cache after normalization"
+        assert stats["hits"] == 1, "second SQL should be a cache hit"
+
+        _assert_cll_results_equal(result_a, result_b, "normalization sharing")
+
+    def test_normalization_column_in_where_clause(self):
+        """Qualified column references in WHERE should normalize identically."""
+        from recce.util import cll as cll_module
+
+        sql_bare = "select a from t1 where t1.b = 1"
+        sql_qualified = "select a from db.schema.t1 where db.schema.t1.b = 1"
+
+        os.environ.pop("ENABLE_CLL_CONTENT_CACHE", None)
+        cll_module._cll_cache = CllCache()
+        result_bare = cll(sql_bare)
+        result_qualified = cll(sql_qualified)
+
+        _assert_cll_results_equal(result_bare, result_qualified, "where clause normalization")
+
+    # ----------------------------------------------------------------
+    # Category 3: Normalization edge cases
+    # ----------------------------------------------------------------
+
+    def test_normalization_preserves_table_name_distinction(self):
+        """Different table names must NOT normalize to the same cache key."""
+        from recce.util import cll as cll_module
+
+        os.environ["ENABLE_CLL_CONTENT_CACHE"] = "1"
+        cll_module._cll_cache = CllCache()
+
+        result_orders = cll("select a from orders")
+        result_customers = cll("select a from customers")
+
+        stats = get_cll_cache().stats
+        assert stats["misses"] == 2, "different tables must be separate cache entries"
+        assert stats["hits"] == 0
+
+    def test_normalization_function_preserves_table_names(self):
+        """_normalize_sql_for_cache strips db/schema but keeps table name."""
+        from sqlglot import parse_one as p
+
+        expr = p("select a from mydb.myschema.orders where mydb.myschema.orders.b > 0")
+        normalized = _normalize_sql_for_cache(expr)
+        # Should reference 'orders' not 'mydb.myschema.orders'
+        assert "mydb" not in normalized
+        assert "myschema" not in normalized
+        assert "orders" in normalized
+
+    def test_normalization_does_not_mutate_original(self):
+        """_normalize_sql_for_cache should operate on a copy."""
+        from sqlglot import parse_one as p
+
+        expr = p("select a from mydb.myschema.table1")
+        original_sql = expr.sql()
+        _normalize_sql_for_cache(expr)
+        assert expr.sql() == original_sql, "Original AST should be unchanged"
+
+    # ----------------------------------------------------------------
+    # Category 4: Dialect handling
+    # ----------------------------------------------------------------
+
+    def test_dialect_duckdb(self):
+        self._cll_with_and_without_cache(
+            'select a, b from "table1" where a > 0',
+            dialect="duckdb",
+            label="duckdb",
+        )
+
+    def test_dialect_snowflake(self):
+        self._cll_with_and_without_cache(
+            "select a, b from table1 where a > 0",
+            dialect="snowflake",
+            label="snowflake",
+        )
+
+    def test_dialect_bigquery(self):
+        self._cll_with_and_without_cache(
+            "select a, b from `project.dataset.table1` where a > 0",
+            dialect="bigquery",
+            label="bigquery",
+        )
+
+    def test_dialect_postgres(self):
+        self._cll_with_and_without_cache(
+            'select a, b from "table1" where a::int > 0',
+            dialect="postgres",
+            label="postgres",
+        )
+
+    def test_dialect_redshift(self):
+        self._cll_with_and_without_cache(
+            "select a, b from table1 where a > 0",
+            dialect="redshift",
+            label="redshift",
+        )
+
+    def test_different_dialects_do_not_share_cache(self):
+        """Same SQL under different dialects must be separate cache entries."""
+        from recce.util import cll as cll_module
+
+        os.environ["ENABLE_CLL_CONTENT_CACHE"] = "1"
+        cll_module._cll_cache = CllCache()
+
+        sql = "select a from table1"
+        cll(sql, dialect="duckdb")
+        cll(sql, dialect="snowflake")
+
+        stats = get_cll_cache().stats
+        assert stats["misses"] == 2
+        assert stats["hits"] == 0
+
+    # ----------------------------------------------------------------
+    # Category 5: Complex SQL patterns
+    # ----------------------------------------------------------------
+
+    def test_cte_chain(self):
+        self._cll_with_and_without_cache(
+            """
+            with cte1 as (
+                select a, b from table1 where c > 0
+            ),
+            cte2 as (
+                select a, sum(b) as total from cte1 group by a
+            )
+            select * from cte2
+            """,
+            label="cte_chain",
+        )
+
+    def test_recursive_cte(self):
+        self._cll_with_and_without_cache(
+            """
+            with recursive nums as (
+                select 1 as n
+                union all
+                select n + 1 from nums where n < 10
+            )
+            select * from nums
+            """,
+            label="recursive_cte",
+        )
+
+    def test_recursive_cte_with_table(self):
+        self._cll_with_and_without_cache(
+            """
+            with recursive category_tree as (
+                select category_id, parent_id, name
+                from categories
+                where parent_id is null
+                union all
+                select c.category_id, c.parent_id, c.name
+                from categories c
+                inner join category_tree ct on c.parent_id = ct.category_id
+            )
+            select * from category_tree
+            """,
+            schema={"categories": {"category_id": "int", "parent_id": "int", "name": "varchar"}},
+            label="recursive_cte_table",
+        )
+
+    def test_union(self):
+        self._cll_with_and_without_cache(
+            """
+            select a, b from table1 where c > 0
+            union
+            select a, b from table2
+            """,
+            label="union",
+        )
+
+    def test_union_all(self):
+        self._cll_with_and_without_cache(
+            """
+            select a from table1
+            union all
+            select a from table2
+            union all
+            select a from table3
+            """,
+            label="union_all_3way",
+        )
+
+    def test_intersect(self):
+        self._cll_with_and_without_cache(
+            """
+            select a from table1
+            intersect
+            select a from table2
+            """,
+            label="intersect",
+        )
+
+    def test_subquery_in_from(self):
+        self._cll_with_and_without_cache(
+            """
+            select * from (
+                select a, b from table1 where c > 0
+            ) as sub
+            """,
+            label="subquery_from",
+        )
+
+    def test_subquery_in_where(self):
+        self._cll_with_and_without_cache(
+            """
+            select a from table1 where user_id in (
+                select user_id from table2 where status is not null
+            )
+            """,
+            label="subquery_where",
+        )
+
+    def test_window_function(self):
+        self._cll_with_and_without_cache(
+            """
+            select
+                a,
+                row_number() over (partition by b order by c desc) as rn,
+                sum(d) over (order by c) as running_total
+            from table1
+            """,
+            label="window_function",
+        )
+
+    def test_multiple_joins(self):
+        self._cll_with_and_without_cache(
+            """
+            select t1.a, t2.b, t3.c
+            from table1 t1
+            left join table2 t2 on t1.id = t2.id
+            inner join table3 t3 on t1.id = t3.id
+            where t2.status = 'active'
+            """,
+            label="multiple_joins",
+        )
+
+    def test_case_when(self):
+        self._cll_with_and_without_cache(
+            """
+            select
+                case
+                    when a > 100 then 'high'
+                    when a > 50 then 'medium'
+                    else 'low'
+                end as category,
+                b
+            from table1
+            """,
+            label="case_when",
+        )
+
+    def test_nested_cte_with_join(self):
+        self._cll_with_and_without_cache(
+            """
+            with
+            cte1 as (
+                select id, a from table1 where d > 0
+            ),
+            cte2 as (
+                select id, b from table2
+            )
+            select id, a, b, table3.c
+            from table3
+            left join cte1 on table3.id = cte1.id
+            join cte2 on table3.id = cte2.id
+            """,
+            label="nested_cte_join",
+        )
+
+    def test_inline_subquery_as_join(self):
+        self._cll_with_and_without_cache(
+            """
+            select t1.id, t1.a, sub.total
+            from table1 t1
+            left join (
+                select fk, sum(amount) as total
+                from table2
+                group by fk
+            ) sub on t1.id = sub.fk
+            """,
+            label="inline_subquery_join",
+        )
+
+    def test_aggregate_with_group_by_index(self):
+        self._cll_with_and_without_cache(
+            """
+            select a, count(b) as cnt, sum(c) as total
+            from table1
+            group by 1
+            having count(b) > 5
+            order by total desc
+            """,
+            label="aggregate_group_by_index",
+        )
+
+    # ----------------------------------------------------------------
+    # Category 6: Error cases — cached vs uncached behavior must match
+    # ----------------------------------------------------------------
+
+    def test_error_parse_failure_cached_vs_uncached(self):
+        """Parse errors should raise RecceException both with and without cache."""
+        from recce.util import cll as cll_module
+
+        bad_sql = "THIS IS NOT VALID SQL AT ALL !!! @@@"
+
+        # Without cache
+        os.environ.pop("ENABLE_CLL_CONTENT_CACHE", None)
+        cll_module._cll_cache = CllCache()
+        with pytest.raises(RecceException, match="Failed to parse"):
+            cll(bad_sql)
+
+        # With cache — first call (miss)
+        os.environ["ENABLE_CLL_CONTENT_CACHE"] = "1"
+        cll_module._cll_cache = CllCache()
+        with pytest.raises(RecceException, match="Failed to parse"):
+            cll(bad_sql)
+
+        # With cache — second call (should be cached error)
+        with pytest.raises(RecceException):
+            cll(bad_sql)
+
+        stats = get_cll_cache().stats
+        assert stats["hits"] == 1
+        assert stats["misses"] == 1
+
+    def test_error_consistency_across_calls(self):
+        """Errors should be consistently raised, never returning a stale good result."""
+        from recce.util import cll as cll_module
+
+        os.environ["ENABLE_CLL_CONTENT_CACHE"] = "1"
+        cll_module._cll_cache = CllCache()
+
+        # First: compute a valid result
+        cll("select a from table1")
+
+        # Then: a bad SQL — should NOT return the valid result
+        with pytest.raises(RecceException):
+            cll("DEFINITELY NOT SQL !!!")
+
+    # ----------------------------------------------------------------
+    # Category 7: Serialization roundtrip
+    # ----------------------------------------------------------------
+
+    def test_serialize_deserialize_roundtrip(self):
+        """serialize -> deserialize -> compare should preserve all data."""
+        # Build a non-trivial result
+        m2c = [
+            CllColumnDep(node="table1", column="id"),
+            CllColumnDep(node="table2", column="fk"),
+        ]
+        c2c = {
+            "a": CllColumn(
+                name="a",
+                transformation_type="passthrough",
+                depends_on=[CllColumnDep(node="table1", column="a")],
+            ),
+            "total": CllColumn(
+                name="total",
+                transformation_type="derived",
+                depends_on=[
+                    CllColumnDep(node="table1", column="x"),
+                    CllColumnDep(node="table1", column="y"),
+                ],
+            ),
+            "literal_col": CllColumn(
+                name="literal_col",
+                transformation_type="source",
+                depends_on=[],
+            ),
+            "renamed_col": CllColumn(
+                name="renamed_col",
+                transformation_type="renamed",
+                depends_on=[CllColumnDep(node="t2", column="orig")],
+            ),
+        }
+        original: CllResult = (m2c, c2c)
+
+        serialized = CllCache._serialize(original)
+        deserialized = CllCache._deserialize(serialized)
+
+        _assert_cll_results_equal(original, deserialized, "roundtrip")
+
+    def test_serialize_deserialize_empty_result(self):
+        """Empty m2c and c2c should roundtrip correctly."""
+        original: CllResult = ([], {})
+        serialized = CllCache._serialize(original)
+        deserialized = CllCache._deserialize(serialized)
+        _assert_cll_results_equal(original, deserialized, "empty roundtrip")
+
+    def test_serialize_deserialize_via_disk(self):
+        """Full roundtrip through SQLite: put -> new instance -> get."""
+        import tempfile
+
+        m2c = [CllColumnDep(node="t1", column="a")]
+        c2c = {
+            "x": CllColumn(
+                name="x",
+                transformation_type="derived",
+                depends_on=[CllColumnDep(node="t1", column="a"), CllColumnDep(node="t1", column="b")],
+            ),
+        }
+        original: CllResult = (m2c, c2c)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "test_roundtrip.db")
+
+            cache1 = CllCache(db_path=db_path)
+            cache1.put("select x from t1", None, original)
+
+            # New instance — only reads from SQLite
+            cache2 = CllCache(db_path=db_path)
+            loaded = cache2.get("select x from t1", None)
+            assert loaded is not CllCache._SENTINEL
+            _assert_cll_results_equal(original, loaded, "disk roundtrip")
+
+    def test_cache_returns_deep_copy(self):
+        """Mutating a cached result must not affect subsequent cache hits."""
+        from recce.util import cll as cll_module
+
+        os.environ["ENABLE_CLL_CONTENT_CACHE"] = "1"
+        cll_module._cll_cache = CllCache()
+
+        sql = "select a, b from table1 where c > 0"
+        result1 = cll(sql)
+
+        # Mutate result1
+        m2c1, c2c1 = result1
+        c2c1["a"].transformation_type = "CORRUPTED"
+        c2c1["a"].depends_on.append(CllColumnDep(node="fake", column="fake"))
+
+        # Get from cache again
+        result2 = cll(sql)
+        _, c2c2 = result2
+        assert c2c2["a"].transformation_type == "passthrough", "Cache must return independent copy"
+        assert len(c2c2["a"].depends_on) == 1, "Cache must return independent copy (depends_on)"
+
+    # ----------------------------------------------------------------
+    # Category 8: Real-world dbt-like SQL patterns
+    # ----------------------------------------------------------------
+
+    def test_dbt_style_model_with_source_refs(self):
+        """Simulates a typical dbt model referencing source tables."""
+        self._cll_with_and_without_cache(
+            """
+            with stg_orders as (
+                select
+                    order_id,
+                    customer_id,
+                    order_date,
+                    status
+                from raw.jaffle_shop.orders
+            ),
+            stg_payments as (
+                select
+                    payment_id,
+                    order_id as payment_order_id,
+                    amount
+                from raw.stripe.payments
+            )
+            select
+                stg_orders.order_id,
+                stg_orders.customer_id,
+                stg_orders.order_date,
+                stg_orders.status,
+                sum(stg_payments.amount) as total_amount
+            from stg_orders
+            left join stg_payments on stg_orders.order_id = stg_payments.payment_order_id
+            group by 1, 2, 3, 4
+            order by stg_orders.order_date desc
+            """,
+            label="dbt_style_model",
+        )
+
+    def test_dbt_incremental_pattern(self):
+        """Simulates compiled SQL from a dbt incremental model."""
+        self._cll_with_and_without_cache(
+            """
+            select
+                id,
+                created_at,
+                updated_at,
+                status
+            from raw.events
+            where updated_at > (select max(updated_at) from analytics.events)
+            """,
+            label="dbt_incremental",
+        )
+
+    def test_complex_cte_chain_with_multiple_transforms(self):
+        """Multi-CTE chain with renaming, derivation, and aggregation."""
+        self._cll_with_and_without_cache(
+            """
+            with base as (
+                select id, name, amount, created_at from orders
+            ),
+            enriched as (
+                select
+                    id,
+                    name as customer_name,
+                    amount * 1.1 as amount_with_tax,
+                    date_trunc('month', created_at) as order_month
+                from base
+            ),
+            monthly as (
+                select
+                    order_month,
+                    count(*) as order_count,
+                    sum(amount_with_tax) as monthly_revenue
+                from enriched
+                group by order_month
+            )
+            select
+                order_month,
+                order_count,
+                monthly_revenue,
+                sum(monthly_revenue) over (order by order_month) as cumulative_revenue
+            from monthly
+            order by order_month
+            """,
+            label="complex_cte_chain",
+        )

@@ -325,18 +325,19 @@ def version():
 @add_options(dbt_related_options)
 @add_options(recce_dbt_artifact_dir_options)
 @click.option(
-    "--cache-dir",
-    help="Directory to store the CLL cache files.",
+    "--cache-db",
+    help="Path to the SQLite database for CLL cache.",
     type=click.Path(),
-    default=".recce/cll_cache",
+    default=os.path.join(os.path.expanduser("~"), ".recce", "cll_cache.db"),
     show_default=True,
 )
-def init(cache_dir, **kwargs):
+def init(cache_db, **kwargs):
     """
     Pre-compute column-level lineage cache from dbt artifacts.
 
-    Computes CLL for all models and stores results to disk so that
-    subsequent `recce server` sessions start with a warm cache.
+    Computes CLL for all models and stores results in a SQLite database
+    (~/.recce/cll_cache.db by default) so that subsequent `recce server`
+    sessions start with a warm cache.
 
     Examples:\n
 
@@ -345,8 +346,8 @@ def init(cache_dir, **kwargs):
     recce init
 
     \b
-    # Specify a custom cache directory
-    recce init --cache-dir .recce/cll_cache
+    # Specify a custom cache database path
+    recce init --cache-db /path/to/cll_cache.db
     """
 
     import time
@@ -360,16 +361,18 @@ def init(cache_dir, **kwargs):
     console = Console()
     console.rule("Recce Init — Pre-compute CLL Cache", style="orange3")
 
-    # Enable content cache with disk persistence
+    # Set up cache with SQLite persistence
     import recce.util.cll as cll_module
 
-    project_dir_path = Path(kwargs.get("project_dir") or "./")
-    cache_path = project_dir_path / cache_dir
-    cll_module._cll_cache = CllCache(cache_dir=str(cache_path))
-    os.environ["ENABLE_CLL_CONTENT_CACHE"] = "1"
+    cll_module._cll_cache = CllCache(db_path=cache_db)
+
+    # Evict stale entries on startup
+    cache = get_cll_cache()
+    evicted = cache.evict_stale()
+    if evicted:
+        console.print(f"Evicted {evicted} stale cache entries (>7 days unused)")
 
     # Load context (adapter + artifacts)
-    # Use target-base as both target and base to just load artifacts
     context_kwargs = {**kwargs}
     try:
         ctx = load_context(**context_kwargs)
@@ -378,7 +381,6 @@ def init(cache_dir, **kwargs):
         exit(1)
 
     dbt_adapter: DbtAdapter = ctx.adapter
-    cache = get_cll_cache()
 
     # Collect all model node IDs from both environments
     envs = []
@@ -419,10 +421,9 @@ def init(cache_dir, **kwargs):
             f" | cache: {stats['hits']} hits, {stats['misses']} new ({stats['hit_rate_pct']}% reused)"
         )
 
-    console.print(f"\nCache saved to [bold]{cache_path}[/bold] ({cache.stats['size']} entries)")
+    console.print(f"\nCache saved to [bold]{cache_db}[/bold] ({cache.stats['size']} entries)")
     console.print(
-        "Run [bold]ENABLE_CLL_CONTENT_CACHE=1 CLL_CONTENT_CACHE_DIR="
-        f"{cache_dir} recce server[/bold] to use the cached CLL."
+        "Run [bold]ENABLE_CLL_CONTENT_CACHE=1 recce server[/bold] to use the cached CLL."
     )
 
 

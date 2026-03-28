@@ -1392,6 +1392,42 @@ class DbtAdapter(BaseAdapter):
             schema[table_name] = columns
         return schema
 
+    def _get_cached_manifest(self, base: bool) -> "Manifest":
+        """Return a cached Manifest object, avoiding repeated deserialization."""
+        cache_attr = "_cached_manifest_base" if base else "_cached_manifest_curr"
+        cached = getattr(self, cache_attr, None)
+        if cached is not None:
+            return cached
+        result = as_manifest(self.get_manifest(base))
+        setattr(self, cache_attr, result)
+        return result
+
+    def _get_node_name_index(self, base: bool) -> Dict[str, str]:
+        """Build a name → unique_id index for manifest nodes. Cached per env."""
+        cache_attr = "_node_name_index_base" if base else "_node_name_index_curr"
+        if hasattr(self, cache_attr):
+            return getattr(self, cache_attr)
+        manifest = self._get_cached_manifest(base)
+        index: Dict[str, str] = {}
+        for unique_id, n in manifest.nodes.items():
+            # Key by (name, package) for disambiguation, and by name alone for simple lookup
+            index[n.name] = unique_id
+            index[(n.name, n.package_name)] = unique_id
+        setattr(self, cache_attr, index)
+        return index
+
+    def _get_source_name_index(self, base: bool) -> Dict[str, str]:
+        """Build a (source_name, name) → unique_id index for manifest sources. Cached per env."""
+        cache_attr = "_source_name_index_base" if base else "_source_name_index_curr"
+        if hasattr(self, cache_attr):
+            return getattr(self, cache_attr)
+        manifest = self._get_cached_manifest(base)
+        index: Dict[str, str] = {}
+        for unique_id, n in manifest.sources.items():
+            index[(n.source_name, n.name)] = unique_id
+        setattr(self, cache_attr, index)
+        return index
+
     @lru_cache(maxsize=128)
     def get_cll_cached(self, node_id: str, base: Optional[bool] = False) -> Optional[CllData]:
         cll_tracker = CLLPerformanceTracking()
@@ -1414,7 +1450,7 @@ class DbtAdapter(BaseAdapter):
                 cll_data.parent_map[column_id] = set()
             return cll_data
 
-        manifest = as_manifest(self.get_manifest(base))
+        manifest = self._get_cached_manifest(base)
         catalog = self.curr_catalog if base is False else self.base_catalog
         resource_type = node.resource_type
         if resource_type not in {"model", "seed", "source", "snapshot"}:
@@ -1464,44 +1500,37 @@ class DbtAdapter(BaseAdapter):
 
         if not pre_compiled:
             # Fall back to Jinja rendering with custom ref/source functions
-            def ref_func(*args):
-                node_name: str = None
-                project_or_package: str = None
+            # Using pre-built indexes for O(1) lookups instead of linear scans
+            node_name_index = self._get_node_name_index(base)
+            source_name_index = self._get_source_name_index(base)
 
+            def ref_func(*args):
                 if len(args) == 1:
                     node_name = args[0]
+                    unique_id = node_name_index.get(node_name)
                 else:
                     project_or_package = args[0]
                     node_name = args[1]
+                    unique_id = node_name_index.get((node_name, project_or_package))
+                    if unique_id is None:
+                        unique_id = node_name_index.get(node_name)
 
-                for key, n in manifest.nodes.items():
-                    if n.name != node_name:
-                        continue
-                    if project_or_package is not None and n.package_name != project_or_package:
-                        continue
+                if unique_id is None:
+                    raise ValueError(f"Cannot find node {node_name} in the manifest")
 
-                    # replace id "." to "_"
-                    unique_id = n.unique_id
-                    table_name = unique_id.replace(".", "_")
-                    table_id_map[table_name.lower()] = unique_id
-                    return table_name
-
-                raise ValueError(f"Cannot find node {node_name} in the manifest")
+                table_name = unique_id.replace(".", "_")
+                table_id_map[table_name.lower()] = unique_id
+                return table_name
 
             def source_func(source_name, name):
-                for key, n in manifest.sources.items():
-                    if n.source_name != source_name:
-                        continue
-                    if n.name != name:
-                        continue
+                unique_id = source_name_index.get((source_name, name))
 
-                    # replace id "." to "_"
-                    unique_id = n.unique_id
-                    table_name = unique_id.replace(".", "_")
-                    table_id_map[table_name.lower()] = unique_id
-                    return table_name
+                if unique_id is None:
+                    raise ValueError(f"Cannot find source {source_name}.{name} in the manifest")
 
-                raise ValueError(f"Cannot find source {source_name}.{name} in the manifest")
+                table_name = unique_id.replace(".", "_")
+                table_id_map[table_name.lower()] = unique_id
+                return table_name
 
             raw_code = node.raw_code
             jinja_context = dict(
@@ -1736,9 +1765,14 @@ class DbtAdapter(BaseAdapter):
             elif refresh_file_path.endswith("catalog.json"):
                 self.base_catalog = load_catalog(path=refresh_file_path)
 
-        # Any artifact change invalidates change analysis, full map, and content cache
+        # Any artifact change invalidates change analysis, full map, content cache, and cached indexes
         self.get_change_analysis_cached.cache_clear()
         self._full_cll_map = None
+        for attr in ("_node_name_index_curr", "_node_name_index_base",
+                      "_source_name_index_curr", "_source_name_index_base",
+                      "_cached_manifest_curr", "_cached_manifest_base"):
+            if hasattr(self, attr):
+                delattr(self, attr)
         get_cll_cache().clear()
 
     def create_relation(self, model, base=False):
