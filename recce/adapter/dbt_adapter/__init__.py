@@ -1595,6 +1595,12 @@ class DbtAdapter(BaseAdapter):
             node_name_index = self._get_node_name_index(base)
             source_name_index = self._get_source_name_index(base)
 
+            # Pre-populate table_id_map from parent_list so it's available
+            # even when cll() returns from cache (skipping Jinja rendering).
+            for parent_id in parent_list:
+                table_name = parent_id.replace(".", "_")
+                table_id_map[table_name.lower()] = parent_id
+
             def ref_func(*args):
                 if len(args) == 1:
                     node_name = args[0]
@@ -1666,8 +1672,9 @@ class DbtAdapter(BaseAdapter):
         # parent map for node
         depends_on = set(parent_list)
         for d in m2c:
-            parent_key = f"{table_id_map[d.node.lower()]}_{d.column}"
-            depends_on.add(parent_key)
+            mapped_node = table_id_map.get(d.node.lower())
+            if mapped_node:
+                depends_on.add(f"{mapped_node}_{d.column}")
         cll_data.parent_map[node_id] = depends_on
 
         # parent map for columns
@@ -1676,8 +1683,9 @@ class DbtAdapter(BaseAdapter):
             column_id = f"{node.id}_{name}"
             if name in c2c_map:
                 for d in c2c_map[name].depends_on:
-                    parent_key = f"{table_id_map[d.node.lower()]}_{d.column}"
-                    depends_on.add(parent_key)
+                    mapped_node = table_id_map.get(d.node.lower())
+                    if mapped_node:
+                        depends_on.add(f"{mapped_node}_{d.column}")
                 column.transformation_type = c2c_map[name].transformation_type
             cll_data.parent_map[column_id] = set(depends_on)
 
