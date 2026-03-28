@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import os
@@ -989,12 +990,23 @@ class DbtAdapter(BaseAdapter):
         node_diff.change = change
         return node_diff
 
-    def _get_manifest_id(self, base: bool) -> str:
-        """A stable identifier for the current manifest, used as part of cache keys."""
-        manifest = self.curr_manifest if not base else self.base_manifest
-        if manifest and manifest.metadata and manifest.metadata.generated_at:
-            return str(manifest.metadata.generated_at)
-        return ""
+    @staticmethod
+    def _make_node_content_key(node_id: str, raw_code: Optional[str],
+                                parent_list: List[str], column_names: List[str]) -> str:
+        """Content-based cache key for per-node CllData.
+
+        Keyed by the inputs that determine the CllData output, not by manifest
+        identity.  This means base and current environments share cache entries
+        for unchanged models (same raw SQL, same parents, same columns).
+        """
+        h = hashlib.sha256()
+        h.update(node_id.encode("utf-8"))
+        h.update((raw_code or "").encode("utf-8"))
+        for p in sorted(parent_list):
+            h.update(p.encode("utf-8"))
+        for c in sorted(column_names):
+            h.update(c.encode("utf-8"))
+        return h.hexdigest()
 
     @staticmethod
     def _serialize_cll_data(cll_data: CllData) -> str:
@@ -1024,8 +1036,8 @@ class DbtAdapter(BaseAdapter):
 
         _t_start = _time.perf_counter()
         manifest = self.curr_manifest
+        catalog = self.curr_catalog
         cache = get_cll_cache()
-        manifest_id = self._get_manifest_id(base=False)
 
         # Collect all node IDs from all resource types
         all_node_ids = set()
@@ -1044,21 +1056,39 @@ class DbtAdapter(BaseAdapter):
         batch_to_store = []
 
         for node_id in all_node_ids:
-            # Try per-node CllData cache first
-            if manifest_id:
-                cached_json = cache.get_node(node_id, manifest_id)
-                if cached_json:
-                    try:
-                        cll_data_one = self._deserialize_cll_data(cached_json)
-                        node_cache_hits += 1
-                        nodes[node_id] = cll_data_one.nodes.get(node_id)
-                        for c_id, c in cll_data_one.columns.items():
-                            columns[c_id] = c
-                        for p_id, parents in cll_data_one.parent_map.items():
-                            parent_map[p_id] = parents
-                        continue
-                    except Exception:
-                        pass  # corrupted entry, fall through
+            # Build content-based cache key from the node's inputs
+            raw_code = None
+            p_list = []
+            col_names = []
+
+            if node_id in manifest.nodes:
+                n = manifest.nodes[node_id]
+                raw_code = n.raw_code
+                if hasattr(n.depends_on, "nodes"):
+                    p_list = n.depends_on.nodes
+                if catalog and node_id in catalog.nodes:
+                    col_names = list(catalog.nodes[node_id].columns.keys())
+            elif node_id in manifest.sources:
+                n = manifest.sources[node_id]
+                if catalog and node_id in catalog.sources:
+                    col_names = list(catalog.sources[node_id].columns.keys())
+
+            content_key = self._make_node_content_key(node_id, raw_code, p_list, col_names)
+
+            # Try per-node CllData cache (content-addressed)
+            cached_json = cache.get_node(node_id, content_key)
+            if cached_json:
+                try:
+                    cll_data_one = self._deserialize_cll_data(cached_json)
+                    node_cache_hits += 1
+                    nodes[node_id] = cll_data_one.nodes.get(node_id)
+                    for c_id, c in cll_data_one.columns.items():
+                        columns[c_id] = c
+                    for p_id, parents in cll_data_one.parent_map.items():
+                        parent_map[p_id] = parents
+                    continue
+                except Exception:
+                    pass  # corrupted entry, fall through
 
             # Cache miss — compute via adapter
             node_cache_misses += 1
@@ -1072,12 +1102,11 @@ class DbtAdapter(BaseAdapter):
             for p_id, parents in cll_data_one.parent_map.items():
                 parent_map[p_id] = parents
 
-            # Queue for batch storage
-            if manifest_id:
-                try:
-                    batch_to_store.append((node_id, manifest_id, self._serialize_cll_data(cll_data_one)))
-                except Exception:
-                    pass
+            # Queue for batch storage (content-keyed)
+            try:
+                batch_to_store.append((node_id, content_key, self._serialize_cll_data(cll_data_one)))
+            except Exception:
+                pass
 
         # Batch-write newly computed entries to cache
         if batch_to_store:
