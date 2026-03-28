@@ -989,6 +989,32 @@ class DbtAdapter(BaseAdapter):
         node_diff.change = change
         return node_diff
 
+    def _get_manifest_id(self, base: bool) -> str:
+        """A stable identifier for the current manifest, used as part of cache keys."""
+        manifest = self.curr_manifest if not base else self.base_manifest
+        if manifest and manifest.metadata and manifest.metadata.generated_at:
+            return str(manifest.metadata.generated_at)
+        return ""
+
+    @staticmethod
+    def _serialize_cll_data(cll_data: CllData) -> str:
+        """Serialize a per-node CllData to JSON (without change_status — that's added later)."""
+        return json.dumps({
+            "nodes": {nid: n.model_dump() for nid, n in cll_data.nodes.items()},
+            "columns": {cid: c.model_dump() for cid, c in cll_data.columns.items()},
+            "parent_map": {pid: list(parents) for pid, parents in cll_data.parent_map.items()},
+        })
+
+    @staticmethod
+    def _deserialize_cll_data(data_str: str) -> CllData:
+        """Deserialize a per-node CllData from JSON."""
+        data = json.loads(data_str)
+        return CllData(
+            nodes={nid: CllNode(**n) for nid, n in data["nodes"].items()},
+            columns={cid: CllColumn(**c) for cid, c in data["columns"].items()},
+            parent_map={pid: set(parents) for pid, parents in data["parent_map"].items()},
+        )
+
     def build_full_cll_map(self) -> CllData:
         """Build the full CLL map for every node in the manifest. Result is cached."""
         if self._full_cll_map is not None:
@@ -998,6 +1024,8 @@ class DbtAdapter(BaseAdapter):
 
         _t_start = _time.perf_counter()
         manifest = self.curr_manifest
+        cache = get_cll_cache()
+        manifest_id = self._get_manifest_id(base=False)
 
         # Collect all node IDs from all resource types
         all_node_ids = set()
@@ -1011,8 +1039,29 @@ class DbtAdapter(BaseAdapter):
         nodes = {}
         columns = {}
         parent_map = {}
+        node_cache_hits = 0
+        node_cache_misses = 0
+        batch_to_store = []
 
         for node_id in all_node_ids:
+            # Try per-node CllData cache first
+            if manifest_id:
+                cached_json = cache.get_node(node_id, manifest_id)
+                if cached_json:
+                    try:
+                        cll_data_one = self._deserialize_cll_data(cached_json)
+                        node_cache_hits += 1
+                        nodes[node_id] = cll_data_one.nodes.get(node_id)
+                        for c_id, c in cll_data_one.columns.items():
+                            columns[c_id] = c
+                        for p_id, parents in cll_data_one.parent_map.items():
+                            parent_map[p_id] = parents
+                        continue
+                    except Exception:
+                        pass  # corrupted entry, fall through
+
+            # Cache miss — compute via adapter
+            node_cache_misses += 1
             cll_data_one = deepcopy(self.get_cll_cached(node_id, base=False))
             if cll_data_one is None:
                 continue
@@ -1022,6 +1071,17 @@ class DbtAdapter(BaseAdapter):
                 columns[c_id] = c
             for p_id, parents in cll_data_one.parent_map.items():
                 parent_map[p_id] = parents
+
+            # Queue for batch storage
+            if manifest_id:
+                try:
+                    batch_to_store.append((node_id, manifest_id, self._serialize_cll_data(cll_data_one)))
+                except Exception:
+                    pass
+
+        # Batch-write newly computed entries to cache
+        if batch_to_store:
+            cache.put_nodes_batch(batch_to_store)
 
         # Build the child map from parent_map
         child_map = {}
@@ -1058,9 +1118,12 @@ class DbtAdapter(BaseAdapter):
         log_performance("cll content cache", {**cll_cache_stats, "build_full_map_ms": round(_elapsed_ms, 1)})
         logger.info(
             "[performance] build_full_cll_map: %.1fms (%d nodes)"
+            " | node cache: %d hits / %d misses"
             " | content cache: %d hits / %d misses (%.1f%%)",
             _elapsed_ms,
             len(nodes),
+            node_cache_hits,
+            node_cache_misses,
             cll_cache_stats["hits"],
             cll_cache_stats["misses"],
             cll_cache_stats["hit_rate_pct"],

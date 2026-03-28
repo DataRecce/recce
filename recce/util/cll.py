@@ -86,6 +86,15 @@ class CllCache:
                 "  last_accessed REAL NOT NULL DEFAULT 0"
                 ")"
             )
+            # Per-node CllData cache — stores the full get_cll_cached() result
+            # keyed by (node_id, manifest_id) so it invalidates on manifest change.
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS cll_node_cache ("
+                "  key TEXT PRIMARY KEY,"
+                "  value TEXT NOT NULL,"
+                "  last_accessed REAL NOT NULL DEFAULT 0"
+                ")"
+            )
             # Migrate: add columns if upgrading from older schema
             self._migrate(conn)
             # Store metadata
@@ -120,16 +129,83 @@ class CllCache:
         cutoff = time.time() - self._ttl_seconds
         try:
             with self._connect() as conn:
-                cursor = conn.execute(
+                c1 = conn.execute(
                     "DELETE FROM cll_cache WHERE last_accessed > 0 AND last_accessed < ?",
                     (cutoff,),
-                )
-                deleted = cursor.rowcount
+                ).rowcount
+                c2 = conn.execute(
+                    "DELETE FROM cll_node_cache WHERE last_accessed > 0 AND last_accessed < ?",
+                    (cutoff,),
+                ).rowcount
+                deleted = c1 + c2
                 if deleted:
                     logger.info("[cll cache] evicted %d stale entries (TTL %dd)", deleted, self._ttl_seconds // 86400)
                 return deleted
         except Exception:
             return 0
+
+    # ── Per-node CllData cache ──────────────────────────────────────────
+
+    @staticmethod
+    def make_node_key(node_id: str, manifest_id: str) -> str:
+        """Build a cache key for a per-node CllData entry."""
+        h = hashlib.sha256()
+        h.update(node_id.encode("utf-8"))
+        h.update(manifest_id.encode("utf-8"))
+        return h.hexdigest()
+
+    def get_node(self, node_id: str, manifest_id: str) -> Optional[str]:
+        """Get cached CllData JSON for a node. Returns JSON string or None."""
+        if not self._db_path:
+            return None
+        key = self.make_node_key(node_id, manifest_id)
+        try:
+            with self._connect() as conn:
+                row = conn.execute(
+                    "SELECT value FROM cll_node_cache WHERE key = ?", (key,)
+                ).fetchone()
+            if row:
+                now = time.time()
+                with self._connect() as conn:
+                    conn.execute(
+                        "UPDATE cll_node_cache SET last_accessed = ? WHERE key = ?",
+                        (now, key),
+                    )
+                return row[0]
+        except Exception:
+            pass
+        return None
+
+    def put_node(self, node_id: str, manifest_id: str, value_json: str):
+        """Store a per-node CllData JSON entry."""
+        if not self._db_path:
+            return
+        key = self.make_node_key(node_id, manifest_id)
+        try:
+            now = time.time()
+            with self._connect() as conn:
+                conn.execute(
+                    "INSERT OR REPLACE INTO cll_node_cache (key, value, last_accessed)"
+                    " VALUES (?, ?, ?)",
+                    (key, value_json, now),
+                )
+        except Exception:
+            pass
+
+    def put_nodes_batch(self, entries: List[Tuple[str, str, str]]):
+        """Batch-insert per-node CllData entries. Each entry: (node_id, manifest_id, value_json)."""
+        if not self._db_path or not entries:
+            return
+        now = time.time()
+        try:
+            with self._connect() as conn:
+                conn.executemany(
+                    "INSERT OR REPLACE INTO cll_node_cache (key, value, last_accessed)"
+                    " VALUES (?, ?, ?)",
+                    [(self.make_node_key(nid, mid), val, now) for nid, mid, val in entries],
+                )
+        except Exception:
+            pass
 
     @staticmethod
     def _make_key(sql: str, dialect: Optional[str]) -> str:
