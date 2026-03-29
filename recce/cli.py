@@ -358,11 +358,13 @@ def init(cache_db, **kwargs):
 
     import time
 
+    from copy import deepcopy
+
     from rich.console import Console
 
     from recce.adapter.dbt_adapter import DbtAdapter
     from recce.core import load_context
-    from recce.util.cll import CllCache, cll, get_cll_cache
+    from recce.util.cll import CllCache, get_cll_cache
 
     console = Console()
     console.rule("Recce Init — Pre-compute CLL Cache", style="orange3")
@@ -371,6 +373,7 @@ def init(cache_db, **kwargs):
     import recce.util.cll as cll_module
 
     cll_module._cll_cache = CllCache(db_path=cache_db)
+    os.environ["ENABLE_CLL_CONTENT_CACHE"] = "1"
 
     # Evict stale entries on startup
     cache = get_cll_cache()
@@ -429,97 +432,68 @@ def init(cache_db, **kwargs):
         ]
         envs.append(("base", base_ids, True))
 
-    os.environ["ENABLE_CLL_CONTENT_CACHE"] = "1"
-
     for env_name, node_ids, is_base in envs:
         console.print(f"\n[bold]{env_name}[/bold] environment: {len(node_ids)} models")
         t_start = time.perf_counter()
 
-        # Phase 1: Batch-compile models missing compiled_code
-        manifest = dbt_adapter._get_cached_manifest(is_base)
-        needs_compile = [
-            nid for nid in node_ids
-            if not getattr(manifest.nodes.get(nid), 'compiled_code', None)
-            and getattr(manifest.nodes.get(nid), 'raw_code', None)
-        ]
-        if needs_compile:
-            t_compile = time.perf_counter()
-            compiled_map = dbt_adapter.batch_compile_sql(needs_compile, base=is_base)
-            compile_elapsed = time.perf_counter() - t_compile
-            console.print(
-                f"  Batch-compiled {len(compiled_map)}/{len(needs_compile)} models"
-                f" missing compiled_code ({compile_elapsed:.1f}s)"
-            )
-        else:
-            compiled_map = {}
+        manifest = dbt_adapter.curr_manifest if not is_base else dbt_adapter.base_manifest
+        catalog = dbt_adapter.curr_catalog if not is_base else dbt_adapter.base_catalog
 
-        # Phase 2: Run CLL for each model
+        # Compute CllData per node via get_cll_cached and store to node cache
         success = 0
         fail = 0
-        catalog = dbt_adapter.curr_catalog if not is_base else dbt_adapter.base_catalog
-        node_index = dbt_adapter._get_node_name_index(is_base)
-        source_index = dbt_adapter._get_source_name_index(is_base)
-        dialect = None
-        if dbt_adapter.get_manifest(is_base).metadata.adapter_type:
-            dialect = dbt_adapter.get_manifest(is_base).metadata.adapter_type
-        elif dbt_adapter.adapter:
-            dialect = dbt_adapter.adapter.type()
+        cache_hits = 0
+        batch_to_store = []
 
         for nid in node_ids:
+            # Check node cache first
+            raw_code = None
+            p_list = []
+            col_names = []
+            if nid in manifest.nodes:
+                n = manifest.nodes[nid]
+                raw_code = n.raw_code
+                if hasattr(n.depends_on, "nodes"):
+                    p_list = n.depends_on.nodes
+                if catalog and nid in catalog.nodes:
+                    col_names = list(catalog.nodes[nid].columns.keys())
+
+            content_key = DbtAdapter._make_node_content_key(nid, raw_code, p_list, col_names)
+            cached_json = cache.get_node(nid, content_key)
+            if cached_json:
+                cache_hits += 1
+                success += 1
+                continue
+
+            # Cache miss — compute
             try:
-                node_data = manifest.nodes.get(nid)
-                if node_data is None or node_data.resource_type not in ("model", "snapshot"):
+                cll_data = deepcopy(dbt_adapter.get_cll_cached(nid, base=is_base))
+                if cll_data is None:
                     fail += 1
                     continue
-
-                # Get compiled SQL: from manifest or batch compilation
-                compiled_sql = getattr(node_data, 'compiled_code', None)
-                from_batch = False
-                if not compiled_sql:
-                    compiled_sql = compiled_map.get(nid)
-                    from_batch = True
-                if not compiled_sql:
-                    fail += 1
-                    continue
-
-                # Build schema from catalog for SELECT * expansion.
-                # Schema keys must match table names as they appear in the SQL:
-                # - Pre-compiled (from manifest): uses alias (e.g., "stg_orders")
-                # - Batch-compiled (from Jinja): uses unique_id with dots→underscores
-                #   (e.g., "source_jaffle_shop_ecom_raw_products")
-                schema = {}
-                parent_list = []
-                if hasattr(node_data.depends_on, "nodes"):
-                    parent_list = node_data.depends_on.nodes
-                if catalog:
-                    for pid in parent_list:
-                        if from_batch:
-                            tname = pid.replace(".", "_")
-                        else:
-                            tname = dbt_adapter._get_parent_table_name(manifest, pid)
-                            if tname is None:
-                                tname = pid.replace(".", "_")
-                        cols = {}
-                        if pid in catalog.nodes:
-                            cols = {c: m.type for c, m in catalog.nodes[pid].columns.items()}
-                        if pid in catalog.sources:
-                            cols = {c: m.type for c, m in catalog.sources[pid].columns.items()}
-                        if cols:
-                            schema[tname] = cols
-
-                cll(compiled_sql, schema=schema, dialect=dialect)
+                batch_to_store.append(
+                    (nid, content_key, DbtAdapter._serialize_cll_data(cll_data))
+                )
                 success += 1
             except Exception:
                 fail += 1
 
+        # Batch-write to cache
+        if batch_to_store:
+            cache.put_nodes_batch(batch_to_store)
+
         elapsed = time.perf_counter() - t_start
-        stats = cache.stats
+        new_entries = len(batch_to_store)
         console.print(
             f"  {success} ok, {fail} skipped, {elapsed:.1f}s"
-            f" | cache: {stats['hits']} hits, {stats['misses']} new ({stats['hit_rate_pct']}% reused)"
+            f" | cache: {cache_hits} hits, {new_entries} new"
         )
 
-    console.print(f"\nCache saved to [bold]{cache_db}[/bold] ({cache.stats['size']} entries)")
+        # Clear lru_cache between envs to avoid stale base=False results
+        dbt_adapter.get_cll_cached.cache_clear()
+
+    stats = cache.stats
+    console.print(f"\nCache saved to [bold]{cache_db}[/bold] ({stats['entries']} entries)")
     console.print(
         "Run [bold]ENABLE_CLL_CONTENT_CACHE=1 recce server[/bold] to use the cached CLL."
     )
