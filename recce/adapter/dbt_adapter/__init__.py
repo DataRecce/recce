@@ -1143,19 +1143,22 @@ class DbtAdapter(BaseAdapter):
                             col_obj.change_status = column_diff
 
         _elapsed_ms = (_time.perf_counter() - _t_start) * 1000
-        cll_cache_stats = get_cll_cache().stats
-        log_performance("cll content cache", {**cll_cache_stats, "build_full_map_ms": round(_elapsed_ms, 1)})
+        total_processed = node_cache_hits + node_cache_misses
+        hit_pct = round(node_cache_hits / total_processed * 100, 1) if total_processed else 0
+        log_performance("cll node cache", {
+            "build_full_map_ms": round(_elapsed_ms, 1),
+            "node_cache_hits": node_cache_hits,
+            "node_cache_misses": node_cache_misses,
+            "node_cache_hit_pct": hit_pct,
+        })
         logger.info(
             "[performance] build_full_cll_map: %.1fms (%d nodes)"
-            " | node cache: %d hits / %d misses"
-            " | content cache: %d hits / %d misses (%.1f%%)",
+            " | node cache: %d hits / %d misses (%.1f%%)",
             _elapsed_ms,
             len(nodes),
             node_cache_hits,
             node_cache_misses,
-            cll_cache_stats["hits"],
-            cll_cache_stats["misses"],
-            cll_cache_stats["hit_rate_pct"],
+            hit_pct,
         )
 
         self._full_cll_map = CllData(
