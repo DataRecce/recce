@@ -1032,9 +1032,7 @@ class DbtAdapter(BaseAdapter):
         if self._full_cll_map is not None:
             return self._full_cll_map
 
-        import time as _time
-
-        _t_start = _time.perf_counter()
+        _t_start = time.perf_counter()
         manifest = self.curr_manifest
         catalog = self.curr_catalog
         cache = get_cll_cache()
@@ -1142,7 +1140,7 @@ class DbtAdapter(BaseAdapter):
                         if column_diff:
                             col_obj.change_status = column_diff
 
-        _elapsed_ms = (_time.perf_counter() - _t_start) * 1000
+        _elapsed_ms = (time.perf_counter() - _t_start) * 1000
         total_processed = node_cache_hits + node_cache_misses
         hit_pct = round(node_cache_hits / total_processed * 100, 1) if total_processed else 0
         log_performance("cll node cache", {
@@ -1959,7 +1957,7 @@ class DbtAdapter(BaseAdapter):
             elif refresh_file_path.endswith("catalog.json"):
                 self.base_catalog = load_catalog(path=refresh_file_path)
 
-        # Any artifact change invalidates change analysis, full map, content cache, and cached indexes
+        # Any artifact change invalidates change analysis, full map, and cached indexes
         self.get_change_analysis_cached.cache_clear()
         self._full_cll_map = None
         for attr in ("_node_name_index_curr", "_node_name_index_base",

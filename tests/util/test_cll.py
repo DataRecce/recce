@@ -1,12 +1,12 @@
 import os
 import unittest
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import pytest
 
 from recce.exceptions import RecceException
 from recce.models.types import CllColumn, CllColumnDep
-from recce.util.cll import CllCache, CllResult, cll, get_cll_cache
+from recce.util.cll import CllCache, CllResult, cll
 
 
 def assert_model(result: CllResult, depends_on: List[Tuple[str, str]]):
@@ -983,75 +983,75 @@ def _assert_cll_results_equal(result_a: CllResult, result_b: CllResult, msg: str
             )
 
 
-class CllCacheCorrectnessTest(unittest.TestCase):
-    """Verify that cll() produces correct and deterministic results.
+class CllDeterminismTest(unittest.TestCase):
+    """Verify that cll() produces deterministic results.
 
-    Calls cll() twice with the same SQL and asserts both results are identical
-    (deterministic). Also verifies results are correct for various SQL patterns.
+    Calls cll() twice with the same SQL and asserts both results are identical.
+    Also verifies results are correct for various SQL patterns.
     """
 
-    def _cll_with_and_without_cache(
+    def _assert_deterministic(
         self,
         sql: str,
         schema: Optional[dict] = None,
         dialect: Optional[str] = None,
         label: str = "",
     ) -> CllResult:
-        """Run cll() twice, assert results are identical (deterministic)."""
+        """Run cll() twice, assert results are identical."""
         result1 = cll(sql, schema=schema, dialect=dialect)
         result2 = cll(sql, schema=schema, dialect=dialect)
         _assert_cll_results_equal(result1, result2, f"{label} call1 vs call2")
         return result1
 
     # ----------------------------------------------------------------
-    # Category 1: Basic correctness — same SQL, cached vs uncached
+    # Category 1: Basic correctness — deterministic output
     # ----------------------------------------------------------------
 
     def test_simple_select(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             "select a, b from table1",
             label="simple_select",
         )
 
     def test_select_with_where(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             "select a, b from table1 where a > 0 and b < 100",
             label="select_with_where",
         )
 
     def test_select_with_schema(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             "select * from table1",
             schema={"table1": {"a": "int", "b": "varchar"}},
             label="select_star_with_schema",
         )
 
     def test_select_with_alias(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             "select a as x, b as y from table1",
             label="alias",
         )
 
     def test_derived_columns(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             "select a + b as total, cast(c as int) as c_int from table1",
             label="derived",
         )
 
     def test_join(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             "select t1.a, t2.b from table1 t1 join table2 t2 on t1.id = t2.id",
             label="join",
         )
 
     def test_group_by_having(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             "select a, sum(b) as total from table1 group by a having sum(b) > 10",
             label="group_by_having",
         )
 
     def test_order_by(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             "select a, b from table1 order by a desc, c",
             label="order_by",
         )
@@ -1062,13 +1062,9 @@ class CllCacheCorrectnessTest(unittest.TestCase):
 
     def test_normalization_bare_vs_qualified(self):
         """SQL differing only in db/schema qualifiers should produce identical CLL."""
-        from recce.util import cll as cll_module
-
         sql_bare = "select a from table1 where b > 0"
         sql_qualified = "select a from mydb.myschema.table1 where mydb.myschema.table1.b > 0"
 
-        # Compute ground truth without cache
-        # cll() is now a pure function — no cache to configure
         result_bare = cll(sql_bare)
         result_qualified = cll(sql_qualified)
 
@@ -1076,12 +1072,9 @@ class CllCacheCorrectnessTest(unittest.TestCase):
 
     def test_normalization_different_schemas_same_table(self):
         """Tables that differ only in schema prefix should produce same CLL."""
-        from recce.util import cll as cll_module
-
         sql_a = "select x from schema_a.orders"
         sql_b = "select x from schema_b.orders"
 
-        # cll() is now a pure function — no cache to configure
         result_a = cll(sql_a)
         result_b = cll(sql_b)
 
@@ -1089,12 +1082,9 @@ class CllCacheCorrectnessTest(unittest.TestCase):
 
     def test_normalization_column_in_where_clause(self):
         """Qualified column references in WHERE should normalize identically."""
-        from recce.util import cll as cll_module
-
         sql_bare = "select a from t1 where t1.b = 1"
         sql_qualified = "select a from db.schema.t1 where db.schema.t1.b = 1"
 
-        # cll() is now a pure function — no cache to configure
         result_bare = cll(sql_bare)
         result_qualified = cll(sql_qualified)
 
@@ -1105,42 +1095,42 @@ class CllCacheCorrectnessTest(unittest.TestCase):
     # ----------------------------------------------------------------
 
     def test_dialect_duckdb(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             'select a, b from "table1" where a > 0',
             dialect="duckdb",
             label="duckdb",
         )
 
     def test_dialect_snowflake(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             "select a, b from table1 where a > 0",
             dialect="snowflake",
             label="snowflake",
         )
 
     def test_dialect_bigquery(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             "select a, b from `project.dataset.table1` where a > 0",
             dialect="bigquery",
             label="bigquery",
         )
 
     def test_dialect_postgres(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             'select a, b from "table1" where a::int > 0',
             dialect="postgres",
             label="postgres",
         )
 
     def test_dialect_redshift(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             "select a, b from table1 where a > 0",
             dialect="redshift",
             label="redshift",
         )
 
     def test_cte_chain(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             """
             with cte1 as (
                 select a, b from table1 where c > 0
@@ -1154,7 +1144,7 @@ class CllCacheCorrectnessTest(unittest.TestCase):
         )
 
     def test_recursive_cte(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             """
             with recursive nums as (
                 select 1 as n
@@ -1167,7 +1157,7 @@ class CllCacheCorrectnessTest(unittest.TestCase):
         )
 
     def test_recursive_cte_with_table(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             """
             with recursive category_tree as (
                 select category_id, parent_id, name
@@ -1185,7 +1175,7 @@ class CllCacheCorrectnessTest(unittest.TestCase):
         )
 
     def test_union(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             """
             select a, b from table1 where c > 0
             union
@@ -1195,7 +1185,7 @@ class CllCacheCorrectnessTest(unittest.TestCase):
         )
 
     def test_union_all(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             """
             select a from table1
             union all
@@ -1207,7 +1197,7 @@ class CllCacheCorrectnessTest(unittest.TestCase):
         )
 
     def test_intersect(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             """
             select a from table1
             intersect
@@ -1217,7 +1207,7 @@ class CllCacheCorrectnessTest(unittest.TestCase):
         )
 
     def test_subquery_in_from(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             """
             select * from (
                 select a, b from table1 where c > 0
@@ -1227,7 +1217,7 @@ class CllCacheCorrectnessTest(unittest.TestCase):
         )
 
     def test_subquery_in_where(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             """
             select a from table1 where user_id in (
                 select user_id from table2 where status is not null
@@ -1237,7 +1227,7 @@ class CllCacheCorrectnessTest(unittest.TestCase):
         )
 
     def test_window_function(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             """
             select
                 a,
@@ -1249,7 +1239,7 @@ class CllCacheCorrectnessTest(unittest.TestCase):
         )
 
     def test_multiple_joins(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             """
             select t1.a, t2.b, t3.c
             from table1 t1
@@ -1261,7 +1251,7 @@ class CllCacheCorrectnessTest(unittest.TestCase):
         )
 
     def test_case_when(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             """
             select
                 case
@@ -1276,7 +1266,7 @@ class CllCacheCorrectnessTest(unittest.TestCase):
         )
 
     def test_nested_cte_with_join(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             """
             with
             cte1 as (
@@ -1294,7 +1284,7 @@ class CllCacheCorrectnessTest(unittest.TestCase):
         )
 
     def test_inline_subquery_as_join(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             """
             select t1.id, t1.a, sub.total
             from table1 t1
@@ -1308,7 +1298,7 @@ class CllCacheCorrectnessTest(unittest.TestCase):
         )
 
     def test_aggregate_with_group_by_index(self):
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             """
             select a, count(b) as cnt, sum(c) as total
             from table1
@@ -1320,53 +1310,43 @@ class CllCacheCorrectnessTest(unittest.TestCase):
         )
 
     # ----------------------------------------------------------------
-    # Category 6: Error cases — cached vs uncached behavior must match
+    # Category 4: Error cases
     # ----------------------------------------------------------------
 
     def test_error_consistency_across_calls(self):
-        """Errors should be consistently raised, never returning a stale good result."""
-        from recce.util import cll as cll_module
-
-        # cll() is now a pure function — no cache to configure
-
-        # First: compute a valid result
+        """Invalid SQL should always raise, even after a successful call."""
         cll("select a from table1")
 
-        # Then: a bad SQL — should NOT return the valid result
         with pytest.raises(RecceException):
             cll("DEFINITELY NOT SQL !!!")
 
     # ----------------------------------------------------------------
-    # Category 7: Serialization roundtrip
+    # Category 5: Independence of returned results
     # ----------------------------------------------------------------
 
-    def test_cache_returns_deep_copy(self):
-        """Mutating a cached result must not affect subsequent cache hits."""
-        from recce.util import cll as cll_module
-
-        # cll() is now a pure function — no cache to configure
-
+    def test_returns_independent_results(self):
+        """Mutating one result must not affect subsequent calls."""
         sql = "select a, b from table1 where c > 0"
         result1 = cll(sql)
 
         # Mutate result1
-        m2c1, c2c1 = result1
+        _, c2c1 = result1
         c2c1["a"].transformation_type = "CORRUPTED"
         c2c1["a"].depends_on.append(CllColumnDep(node="fake", column="fake"))
 
-        # Get from cache again
+        # Second call should be unaffected
         result2 = cll(sql)
         _, c2c2 = result2
-        assert c2c2["a"].transformation_type == "passthrough", "Cache must return independent copy"
-        assert len(c2c2["a"].depends_on) == 1, "Cache must return independent copy (depends_on)"
+        assert c2c2["a"].transformation_type == "passthrough", "Must return independent result"
+        assert len(c2c2["a"].depends_on) == 1, "Must return independent result (depends_on)"
 
     # ----------------------------------------------------------------
-    # Category 8: Real-world dbt-like SQL patterns
+    # Category 6: Real-world dbt-like SQL patterns
     # ----------------------------------------------------------------
 
     def test_dbt_style_model_with_source_refs(self):
         """Simulates a typical dbt model referencing source tables."""
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             """
             with stg_orders as (
                 select
@@ -1399,7 +1379,7 @@ class CllCacheCorrectnessTest(unittest.TestCase):
 
     def test_dbt_incremental_pattern(self):
         """Simulates compiled SQL from a dbt incremental model."""
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             """
             select
                 id,
@@ -1414,7 +1394,7 @@ class CllCacheCorrectnessTest(unittest.TestCase):
 
     def test_complex_cte_chain_with_multiple_transforms(self):
         """Multi-CTE chain with renaming, derivation, and aggregation."""
-        self._cll_with_and_without_cache(
+        self._assert_deterministic(
             """
             with base as (
                 select id, name, amount, created_at from orders

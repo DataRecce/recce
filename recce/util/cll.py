@@ -4,7 +4,6 @@ import logging
 import os
 import sqlite3
 import time
-from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -163,8 +162,7 @@ class CllCache:
             pass
 
     def clear(self):
-        """Clear in-memory state. Does NOT delete SQLite rows."""
-        pass  # No in-memory state to clear in simplified version
+        """No-op. Retained so callers (e.g. adapter.refresh) don't need changes."""
 
     @property
     def stats(self) -> Dict[str, int]:
@@ -180,10 +178,13 @@ class CllCache:
 
 
 def _init_cll_cache() -> CllCache:
-    """Initialize the CLL cache with SQLite persistence if configured.
+    """Initialize the module-level CLL node cache.
 
-    Off by default (experimental). Enable with ENABLE_CLL_CONTENT_CACHE=1.
-    Set CLL_CACHE_DB to override the default path (~/.recce/cll_cache.db).
+    Off by default (experimental). Enable with ENABLE_CLL_CONTENT_CACHE=1
+    to persist per-node CllData in SQLite (~/.recce/cll_cache.db).
+    Set CLL_CACHE_DB to override the default path.
+
+    ``recce init`` bypasses this by setting ``_cll_cache`` directly.
     """
     if os.environ.get("ENABLE_CLL_CONTENT_CACHE", "0") != "1":
         return CllCache()
@@ -191,7 +192,7 @@ def _init_cll_cache() -> CllCache:
     return CllCache(db_path=db_path)
 
 
-# Module-level cache shared across all calls
+# Module-level node cache shared across all calls.
 _cll_cache = _init_cll_cache()
 
 
