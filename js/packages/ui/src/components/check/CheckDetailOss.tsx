@@ -625,6 +625,9 @@ export function CheckDetailOss({
                     sx={{
                       ml: 1,
                       whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      minWidth: 0,
                       display: "flex",
                       alignItems: "center",
                     }}
