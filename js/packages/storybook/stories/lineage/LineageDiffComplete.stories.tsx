@@ -1,0 +1,219 @@
+import type {
+  LineageCanvasProps,
+  LineageGraphEdge,
+  LineageGraphNodes,
+} from "@datarecce/ui/advanced";
+import {
+  buildLineageGraph,
+  LineageCanvas,
+  selectDownstream,
+  toReactFlow,
+} from "@datarecce/ui/advanced";
+import Box from "@mui/material/Box";
+import Chip from "@mui/material/Chip";
+import Typography from "@mui/material/Typography";
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useMemo } from "react";
+import lineageData from "./jaffle-shop-expand-lineage.json";
+
+/**
+ * @file LineageDiffComplete.stories.tsx
+ * @description Lineage diff view using real dbt artifacts from jaffle-shop-expand.
+ *
+ * Fixture source: https://github.com/DataRecce/jaffle-shop-expand/pull/1
+ *
+ * The PR fixes a bug in `stg_orders` where `ordered_at` was truncated to
+ * day granularity via `date_trunc('day')`, silently breaking all downstream
+ * hourly analysis models. The fixture captures the Recce diff between
+ * base (main) and current (the fix branch) of this ~1,149-model project.
+ *
+ * The fixture is delta-compressed: base is stored fully, current is
+ * reconstructed by merging base with the delta (only the 1 changed node).
+ *
+ * To regenerate the fixture:
+ *   1. cd into jaffle-shop-expand with prepared target/ and target-base/
+ *   2. recce server --target-base-path target-base
+ *   3. See scripts/extract-lineage-fixture.py
+ */
+
+const meta: Meta<typeof LineageCanvas> = {
+  title: "Lineage/Complete Lineage Diff",
+  component: LineageCanvas,
+  tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `Lineage diff view using real dbt artifacts from [jaffle-shop-expand](https://github.com/DataRecce/jaffle-shop-expand).
+
+Based on [PR #1](https://github.com/DataRecce/jaffle-shop-expand/pull/1): a one-line fix to \`stg_orders\` that impacts 143+ downstream models. The fixture is extracted directly from the Recce server API, so the graph uses the same \`buildLineageGraph()\` and \`selectDownstream()\` code paths as the real product.`,
+      },
+    },
+    layout: "fullscreen",
+  },
+};
+
+export default meta;
+type Story = StoryObj<typeof LineageCanvas>;
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Reconstruct current from base + delta, then build the LineageGraph.
+ *
+ * The fixture is delta-compressed to stay under the 500KB commit hook
+ * limit: base is stored fully (~460KB), and current_delta contains only
+ * the nodes/parent_map entries that differ (1 node for this PR).
+ */
+function buildRealLineageGraph() {
+  const { base, current_delta: delta, diff } = lineageData;
+
+  // Reconstruct current by overlaying delta onto a copy of base
+  const current = {
+    nodes: { ...base.nodes, ...delta.nodes },
+    parent_map: { ...base.parent_map, ...delta.parent_map },
+    manifest_metadata: delta.manifest_metadata,
+    catalog_metadata: delta.catalog_metadata,
+  };
+
+  const lineageGraph = buildLineageGraph(
+    base as unknown as Parameters<typeof buildLineageGraph>[0],
+    current as unknown as Parameters<typeof buildLineageGraph>[1],
+    diff as unknown as Parameters<typeof buildLineageGraph>[2],
+  );
+
+  return lineageGraph;
+}
+
+function adaptForCanvas(
+  rawNodes: LineageGraphNodes[],
+  rawEdges: LineageGraphEdge[],
+): { nodes: LineageCanvasProps["nodes"]; edges: LineageCanvasProps["edges"] } {
+  const nodes = rawNodes.map((node: LineageGraphNodes) => {
+    if (node.type === "lineageGraphNode") {
+      const graphData = node.data as {
+        name: string;
+        resourceType?: string;
+        changeStatus?: string;
+        packageName?: string;
+      };
+      return {
+        ...node,
+        type: "lineageNode" as const,
+        data: {
+          label: graphData.name,
+          resourceType: graphData.resourceType,
+          changeStatus: graphData.changeStatus,
+          packageName: graphData.packageName,
+        },
+      };
+    }
+    return node;
+  });
+
+  const edges = rawEdges.map((edge: LineageGraphEdge) => ({
+    ...edge,
+    type: edge.type === "lineageGraphEdge" ? "lineageEdge" : edge.type,
+  }));
+
+  return {
+    nodes: nodes as LineageCanvasProps["nodes"],
+    edges: edges as LineageCanvasProps["edges"],
+  };
+}
+
+// =============================================================================
+// STORIES
+// =============================================================================
+
+/**
+ * Wrapper that builds the impacted subgraph: modified nodes + all downstream.
+ */
+function ImpactedLineageDiffDemo() {
+  const { nodes, edges, impactedCount, modifiedNames } = useMemo(() => {
+    const graph = buildRealLineageGraph();
+
+    // Select modified nodes + all their downstream dependencies
+    const downstreamSet = selectDownstream(graph, graph.modifiedSet);
+    // Include the modified nodes themselves
+    const impactedIds = [...new Set([...graph.modifiedSet, ...downstreamSet])];
+
+    const [rawNodes, rawEdges] = toReactFlow(graph, {
+      selectedNodes: impactedIds,
+    });
+    const adapted = adaptForCanvas(rawNodes, rawEdges);
+
+    return {
+      ...adapted,
+      impactedCount: impactedIds.length,
+      modifiedNames: graph.modifiedSet.map(
+        (id) => graph.nodes[id]?.data.name ?? id,
+      ),
+    };
+  }, []);
+
+  return (
+    <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+      <Box
+        sx={{
+          p: 1.5,
+          borderBottom: 1,
+          borderColor: "divider",
+          bgcolor: "background.paper",
+          display: "flex",
+          alignItems: "center",
+          gap: 1.5,
+        }}
+      >
+        <Typography variant="subtitle2">jaffle-shop-expand</Typography>
+        <Chip
+          label={`${impactedCount} impacted nodes`}
+          size="small"
+          variant="outlined"
+        />
+        {modifiedNames.map((name) => (
+          <Chip
+            key={name}
+            label={name}
+            size="small"
+            color="warning"
+            variant="outlined"
+          />
+        ))}
+      </Box>
+      <Box sx={{ flex: 1, minHeight: 0 }}>
+        <LineageCanvas
+          nodes={nodes}
+          edges={edges}
+          showMiniMap
+          showControls
+          showBackground
+          height={800}
+          interactive
+        />
+      </Box>
+    </Box>
+  );
+}
+
+export const ImpactedDiff: Story = {
+  name: "Impacted Lineage Diff",
+  parameters: {
+    docs: {
+      description: {
+        story: `
+Based on [DataRecce/jaffle-shop-expand#1](https://github.com/DataRecce/jaffle-shop-expand/pull/1).
+
+**The bug:** \`stg_orders\` used \`date_trunc('day', ordered_at)\` which truncated timestamps to midnight, silently breaking all downstream hourly analysis (e.g. \`int_order_throughput_by_hour\`, \`int_peak_hour_analysis\` — \`extract(hour)\` always returned 0).
+
+**The fix:** Pass through \`ordered_at\` as-is — staging models should preserve source granularity.
+
+**What you see:** The modified node (\`stg_orders\`) plus all its downstream dependents (~143 models), filtered via \`selectDownstream()\`. This matches the "changed models" view in the real Recce UI.
+        `,
+      },
+    },
+    layout: "fullscreen",
+  },
+  render: () => <ImpactedLineageDiffDemo />,
+};
