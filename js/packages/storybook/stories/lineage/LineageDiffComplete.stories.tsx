@@ -25,7 +25,7 @@ import lineageData from "./jaffle-shop-expand-lineage.json";
  * The PR fixes a bug in `stg_orders` where `ordered_at` was truncated to
  * day granularity via `date_trunc('day')`, silently breaking all downstream
  * hourly analysis models. The fixture captures the Recce diff between
- * base (main) and current (the fix branch) of this ~1,149-model project.
+ * base (main) and current (the fix branch) of this ~1,149-node project.
  *
  * The fixture is delta-compressed: base is stored fully, current is
  * reconstructed by merging base with the delta (only the 1 changed node).
@@ -33,7 +33,10 @@ import lineageData from "./jaffle-shop-expand-lineage.json";
  * To regenerate the fixture:
  *   1. cd into jaffle-shop-expand with prepared target/ and target-base/
  *   2. recce server --target-base-path target-base
- *   3. See scripts/extract-lineage-fixture.py
+ *   3. curl -s http://localhost:8000/api/info | python3 -c \
+ *        "import json,sys; d=json.load(sys.stdin)['lineage']; ..." \
+ *        > stories/lineage/jaffle-shop-expand-lineage.json
+ *      (See the extraction one-liner in the PR description for the full command)
  */
 
 const meta: Meta<typeof LineageCanvas> = {
@@ -45,7 +48,7 @@ const meta: Meta<typeof LineageCanvas> = {
       description: {
         component: `Lineage diff view using real dbt artifacts from [jaffle-shop-expand](https://github.com/DataRecce/jaffle-shop-expand).
 
-Based on [PR #1](https://github.com/DataRecce/jaffle-shop-expand/pull/1): a one-line fix to \`stg_orders\` that impacts 143+ downstream models. The fixture is extracted directly from the Recce server API, so the graph uses the same \`buildLineageGraph()\` and \`selectDownstream()\` code paths as the real product.`,
+Based on [PR #1](https://github.com/DataRecce/jaffle-shop-expand/pull/1): a one-line fix to \`stg_orders\` that impacts 500+ downstream nodes. The fixture is extracted directly from the Recce server API, so the graph uses the same \`buildLineageGraph()\` and \`selectDownstream()\` code paths as the real product.`,
       },
     },
     layout: "fullscreen",
@@ -62,9 +65,9 @@ type Story = StoryObj<typeof LineageCanvas>;
 /**
  * Reconstruct current from base + delta, then build the LineageGraph.
  *
- * The fixture is delta-compressed to stay under the 500KB commit hook
- * limit: base is stored fully (~460KB), and current_delta contains only
- * the nodes/parent_map entries that differ (1 node for this PR).
+ * The fixture is delta-compressed to stay under the default
+ * check-added-large-files limit: base is stored fully, and current_delta
+ * contains only the nodes/parent_map entries that differ (1 node for this PR).
  */
 function buildRealLineageGraph() {
   const { base, current_delta: delta, diff } = lineageData;
@@ -134,9 +137,8 @@ function ImpactedLineageDiffDemo() {
   const { nodes, edges, impactedCount, modifiedNames } = useMemo(() => {
     const graph = buildRealLineageGraph();
 
-    // Select modified nodes + all their downstream dependencies
+    // selectDownstream includes the seed nodes, but we merge explicitly for clarity
     const downstreamSet = selectDownstream(graph, graph.modifiedSet);
-    // Include the modified nodes themselves
     const impactedIds = [...new Set([...graph.modifiedSet, ...downstreamSet])];
 
     const [rawNodes, rawEdges] = toReactFlow(graph, {
@@ -209,7 +211,7 @@ Based on [DataRecce/jaffle-shop-expand#1](https://github.com/DataRecce/jaffle-sh
 
 **The fix:** Pass through \`ordered_at\` as-is — staging models should preserve source granularity.
 
-**What you see:** The modified node (\`stg_orders\`) plus all its downstream dependents (~143 models), filtered via \`selectDownstream()\`. This matches the "changed models" view in the real Recce UI.
+**What you see:** The modified node (\`stg_orders\`) plus all its downstream dependents (~563 nodes), filtered via \`selectDownstream()\`. This matches the "changed models" view in the real Recce UI.
         `,
       },
     },
