@@ -446,21 +446,6 @@ export function CheckDetailOss({
                 />
                 <Box sx={{ flexGrow: 1 }} />
                 <Stack direction="row" spacing={2} sx={{ mr: "10px" }}>
-                  {relativeTime && (
-                    <Box
-                      sx={{
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        fontSize: "0.75rem",
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      {relativeTime}
-                    </Box>
-                  )}
-
                   {/* Preset label moved to the right */}
                   {isPresetCheck && (
                     <MuiTooltip title="This is a preset check">
@@ -633,6 +618,20 @@ export function CheckDetailOss({
                     />
                   )}
                 </Tabs>
+                {relativeTime && (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{
+                      ml: 1,
+                      whiteSpace: "nowrap",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    {relativeTime}
+                  </Typography>
+                )}
                 <Box sx={{ flexGrow: 1 }} />
                 <Stack direction="row" spacing={1} sx={{ mr: "10px" }}>
                   {(check.type === "query" ||
