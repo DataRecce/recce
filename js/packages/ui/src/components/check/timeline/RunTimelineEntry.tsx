@@ -57,6 +57,7 @@ export function RunTimelineEntry({
       aria-label={isInteractive ? `View run #${index} — ${label}` : undefined}
       sx={{
         p: 1,
+        border: "none",
         borderLeft: `3px solid ${color}`,
         borderRadius: 1,
         bgcolor: "action.hover",
@@ -64,7 +65,6 @@ export function RunTimelineEntry({
         "&:hover": isInteractive ? { bgcolor: "action.selected" } : {},
         textAlign: "left",
         width: "100%",
-        border: "none",
         font: "inherit",
         color: "inherit",
       }}
