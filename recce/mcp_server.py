@@ -1275,17 +1275,17 @@ class RecceMCPServer:
             except Exception as e:
                 errors.append({"step": "row_count_diff", "message": str(e)})
 
+        # Build node_id lookup for impacted models (used by schema diff and value diff)
+        node_id_by_name = {}
+        for node_id in impacted_node_ids:
+            node_info = all_nodes.get(node_id, {})
+            if node_info.get("name"):
+                node_id_by_name[node_info["name"]] = node_id
+
         # Step 2b: Schema diff (compare columns between base and current)
         try:
             base_nodes = lineage_diff.get("base", {}).get("nodes", {})
             current_nodes = lineage_diff.get("current", {}).get("nodes", {})
-
-            # Build node_id lookup for impacted models
-            node_id_by_name = {}
-            for node_id in impacted_node_ids:
-                node_info = all_nodes.get(node_id, {})
-                if node_info.get("name"):
-                    node_id_by_name[node_info["name"]] = node_id
 
             for model in impacted_models:
                 node_id = node_id_by_name.get(model["name"])
