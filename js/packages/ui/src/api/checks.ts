@@ -51,7 +51,7 @@ export interface CreateCheckBody {
 // ============================================================================
 
 /**
- * Default axios client for hooks that may be used outside RecceProvider.
+ * Default API client for hooks that may be used outside RecceProvider.
  * This is a fallback - components inside RecceProvider will use the configured client.
  */
 const defaultApiClient = createFetchClient({ baseURL: "" });
@@ -62,7 +62,7 @@ const defaultApiClient = createFetchClient({ baseURL: "" });
 
 /**
  * Create a simple check (no run association).
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The created check
  */
 export async function createSimpleCheck(client: ApiClient): Promise<Check> {
@@ -79,7 +79,7 @@ export async function createSimpleCheck(client: ApiClient): Promise<Check> {
  * Create a check from an existing run.
  * @param runId - The ID of the run to create a check from
  * @param viewOptions - Optional view options for the check
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The created check
  */
 export async function createCheckByRun(
@@ -100,7 +100,7 @@ export async function createCheckByRun(
 
 /**
  * List all checks.
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns Array of all checks
  */
 export async function listChecks(client: ApiClient): Promise<Check[]> {
@@ -110,7 +110,7 @@ export async function listChecks(client: ApiClient): Promise<Check[]> {
 /**
  * Get a check by ID.
  * @param checkId - The ID of the check to retrieve
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The check object
  */
 export async function getCheck(
@@ -127,7 +127,7 @@ export async function getCheck(
  * Update an existing check.
  * @param checkId - The ID of the check to update
  * @param payload - Partial check data to update
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The updated check
  */
 export async function updateCheck(
@@ -145,7 +145,7 @@ export async function updateCheck(
 /**
  * Delete a check.
  * @param checkId - The ID of the check to delete
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The deleted check ID
  */
 export async function deleteCheck(
@@ -162,7 +162,7 @@ export async function deleteCheck(
 /**
  * Reorder checks.
  * @param order - Source and destination indices
- * @param client - Required axios instance
+ * @param client - Required API client instance
  */
 export async function reorderChecks(
   order: {
@@ -177,7 +177,7 @@ export async function reorderChecks(
 /**
  * Mark a check as a preset check.
  * @param checkId - The ID of the check to mark as preset
- * @param client - Required axios instance
+ * @param client - Required API client instance
  */
 export async function markAsPresetCheck(
   checkId: string,
@@ -192,7 +192,7 @@ export async function markAsPresetCheck(
 
 /**
  * Hook to fetch and cache the list of checks.
- * Can be used outside RecceProvider with a fallback to default axios client.
+ * Can be used outside RecceProvider with a fallback to default API client.
  *
  * @param enabled - Whether the query should be enabled
  * @returns TanStack Query result with checks data

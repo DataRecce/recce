@@ -45,7 +45,7 @@ export interface SubmitOptions {
  * @param type - The type of run to execute
  * @param params - Parameters specific to the run type
  * @param options - Submission options (nowait, tracking)
- * @param client - Required axios instance (no default - library pattern)
+ * @param client - Required API client instance (no default - library pattern)
  * @returns The created run, or just run_id if nowait is true
  */
 export async function submitRun(
@@ -73,7 +73,7 @@ export async function submitRun(
 /**
  * Get a run by ID.
  * @param runId - The ID of the run to retrieve
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The run object
  */
 export async function getRun(runId: string, client: ApiClient): Promise<Run> {
@@ -87,7 +87,7 @@ export async function getRun(runId: string, client: ApiClient): Promise<Run> {
  * Wait for a run to complete.
  * @param runId - The ID of the run to wait for
  * @param timeout - Optional timeout in seconds
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The completed run object with result
  */
 export async function waitRun(
@@ -105,7 +105,7 @@ export async function waitRun(
 /**
  * Cancel a running run.
  * @param runId - The ID of the run to cancel
- * @param client - Required axios instance
+ * @param client - Required API client instance
  */
 export async function cancelRun(
   runId: string,
@@ -119,7 +119,7 @@ export async function cancelRun(
  * Re-runs the check with its stored parameters.
  * @param checkId - The ID of the check to run
  * @param options - Submission options (nowait)
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The created run, or just run_id if nowait is true
  */
 export async function submitRunFromCheck(
@@ -141,7 +141,7 @@ export async function submitRunFromCheck(
  * @param type - The run type to search for
  * @param params - Parameters to match against run params
  * @param limit - Maximum number of results to return
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns Array of matching runs
  */
 export async function searchRuns(
@@ -159,7 +159,7 @@ export async function searchRuns(
 
 /**
  * List all runs.
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns Array of all runs
  */
 export async function listRuns(client: ApiClient): Promise<Run[]> {
@@ -170,7 +170,7 @@ export async function listRuns(client: ApiClient): Promise<Run[]> {
 /**
  * Aggregate runs from API.
  * Returns run results grouped by model and run type.
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns Aggregated run results
  */
 export async function aggregateRuns(

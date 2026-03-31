@@ -22,7 +22,7 @@ export interface QueryRowCountResult {
 /**
  * Fetch model row count from the API (cached value).
  * @param modelName - The name of the model
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The row count diff for the model
  */
 export async function fetchModelRowCount(
@@ -38,7 +38,7 @@ export async function fetchModelRowCount(
 /**
  * Query model row count by executing a row count diff run.
  * @param modelName - The name of the model
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The row count diff for the model
  */
 export async function queryModelRowCount(
@@ -52,7 +52,7 @@ export async function queryModelRowCount(
 /**
  * Query row counts for multiple models.
  * @param modelNames - Array of model names to query
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The run ID and row count diff results for all models
  */
 export async function queryRowCount(
