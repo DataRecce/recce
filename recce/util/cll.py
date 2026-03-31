@@ -186,11 +186,11 @@ class CllCache:
 def _init_cll_cache() -> CllCache:
     """Initialize the module-level CLL node cache.
 
-    Off by default. Enable with ENABLE_CLL_CONTENT_CACHE=1
+    Off by default. Enable with ENABLE_CLL_CACHE=1
     to persist per-node CllData in SQLite (~/.recce/cll_cache.db).
     Set CLL_CACHE_DB to override the default path.
     """
-    if os.environ.get("ENABLE_CLL_CONTENT_CACHE", "0") != "1":
+    if os.environ.get("ENABLE_CLL_CACHE", "0") != "1":
         return CllCache()
     db_path = os.environ.get("CLL_CACHE_DB", _DEFAULT_DB_PATH)
     return CllCache(db_path=db_path)

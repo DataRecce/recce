@@ -1035,14 +1035,14 @@ class TestCllCacheErrorPaths(unittest.TestCase):
             assert result == {"entries": 0}
 
     def test_init_cll_cache_with_env_var_enabled(self):
-        """_init_cll_cache creates a cache with db_path when ENABLE_CLL_CONTENT_CACHE=1."""
+        """_init_cll_cache creates a cache with db_path when ENABLE_CLL_CACHE=1."""
         from unittest.mock import patch
 
         from recce.util.cll import _init_cll_cache
 
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = os.path.join(tmpdir, "test_cache.db")
-            with patch.dict(os.environ, {"ENABLE_CLL_CONTENT_CACHE": "1", "CLL_CACHE_DB": db_path}):
+            with patch.dict(os.environ, {"ENABLE_CLL_CACHE": "1", "CLL_CACHE_DB": db_path}):
                 cache = _init_cll_cache()
             assert cache._db_path == db_path
             assert os.path.exists(db_path)
@@ -1055,7 +1055,7 @@ class TestCllCacheErrorPaths(unittest.TestCase):
 
         with patch.dict(os.environ, {}, clear=True):
             # Remove the env var if present
-            os.environ.pop("ENABLE_CLL_CONTENT_CACHE", None)
+            os.environ.pop("ENABLE_CLL_CACHE", None)
             cache = _init_cll_cache()
         assert cache._db_path is None
 
