@@ -137,18 +137,26 @@ function createApiClient(
             try {
               let resolvedUrl = url;
 
-              // Replace /api prefix with configured apiPrefix (only if apiPrefix is non-empty)
-              // The URL at middleware time is fully resolved (includes baseURL).
-              // We need to find /api in the path portion after the origin.
+              // Replace /api prefix with configured apiPrefix (only if apiPrefix is non-empty).
+              // Uses string ops instead of new URL() to handle both absolute URLs
+              // (cloud mode with baseURL) and relative paths (OSS mode with baseURL="").
               if (apiPrefix) {
-                const parsed = new URL(resolvedUrl);
-                if (parsed.pathname === "/api") {
-                  parsed.pathname = apiPrefix;
-                  resolvedUrl = parsed.toString();
-                } else if (parsed.pathname.startsWith("/api/")) {
-                  // "/api".length === 4; keep everything after that
-                  parsed.pathname = apiPrefix + parsed.pathname.slice(4);
-                  resolvedUrl = parsed.toString();
+                // Find the /api path segment — could be at start of path (relative)
+                // or after the origin (absolute). We match both patterns.
+                const apiExact = resolvedUrl.endsWith("/api")
+                  ? resolvedUrl.lastIndexOf("/api")
+                  : -1;
+                const apiSlash = resolvedUrl.indexOf("/api/");
+
+                if (apiExact >= 0) {
+                  // Exact "/api" at end of URL
+                  resolvedUrl = resolvedUrl.slice(0, apiExact) + apiPrefix;
+                } else if (apiSlash >= 0) {
+                  // "/api/..." — replace /api with apiPrefix, keep the rest
+                  resolvedUrl =
+                    resolvedUrl.slice(0, apiSlash) +
+                    apiPrefix +
+                    resolvedUrl.slice(apiSlash + 4);
                 }
               }
 
