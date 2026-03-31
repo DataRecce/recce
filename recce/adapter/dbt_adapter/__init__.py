@@ -997,19 +997,27 @@ class DbtAdapter(BaseAdapter):
         parent_list: List[str],
         column_names: List[str],
     ) -> str:
-        """Content-based cache key for per-node CllData."""
+        """Content-based cache key for per-node CllData.
+
+        Uses null byte separators between fields to prevent hash collisions
+        from concatenation ambiguity (e.g., id="ab"+code="cd" vs id="abc"+code="d").
+        """
         h = hashlib.sha256()
         h.update(node_id.encode("utf-8"))
+        h.update(b"\x00")
         h.update((raw_code or "").encode("utf-8"))
+        h.update(b"\x00")
         for p in sorted(parent_list):
             h.update(p.encode("utf-8"))
+            h.update(b"\x00")
         for c in sorted(column_names):
             h.update(c.encode("utf-8"))
+            h.update(b"\x00")
         return h.hexdigest()
 
     @staticmethod
     def _serialize_cll_data(cll_data: CllData) -> str:
-        """Serialize a per-node CllData to JSON (without change_status)."""
+        """Serialize a per-node CllData to JSON, excluding change analysis fields (change_status, change_category)."""
         return json.dumps(
             {
                 "nodes": {
@@ -1038,6 +1046,7 @@ class DbtAdapter(BaseAdapter):
         manifest = self.curr_manifest
         catalog = self.curr_catalog
         cache = get_cll_cache()
+        cache.evict_stale()
 
         # Collect all node IDs from all resource types
         all_node_ids = set()
@@ -1056,7 +1065,6 @@ class DbtAdapter(BaseAdapter):
         batch_to_store = []
 
         for node_id in all_node_ids:
-            # Build content-based cache key
             raw_code = None
             p_list: List[str] = []
             col_names: List[str] = []
@@ -1075,42 +1083,34 @@ class DbtAdapter(BaseAdapter):
 
             content_key = self._make_node_content_key(node_id, raw_code, p_list, col_names)
 
-            # Try file cache
             cached_json = cache.get_node(node_id, content_key)
             if cached_json:
                 try:
                     cll_data_one = self._deserialize_cll_data(cached_json)
                     node_cache_hits += 1
-                    nodes[node_id] = cll_data_one.nodes.get(node_id)
-                    for c_id, c in cll_data_one.columns.items():
-                        columns[c_id] = c
-                    for p_id, parents in cll_data_one.parent_map.items():
-                        parent_map[p_id] = parents
+                except Exception as e:
+                    logger.debug("[cll cache] corrupted entry for %s, recomputing: %s", node_id, e)
+                    cached_json = None
+
+            if not cached_json:
+                node_cache_misses += 1
+                cll_data_one = deepcopy(self.get_cll_cached(node_id, base=False))
+                if cll_data_one is None:
                     continue
-                except Exception:
-                    pass  # corrupted, fall through
+                try:
+                    batch_to_store.append((node_id, content_key, self._serialize_cll_data(cll_data_one)))
+                except Exception as e:
+                    logger.debug("[cll cache] failed to serialize %s: %s", node_id, e)
 
-            # Cache miss — compute
-            node_cache_misses += 1
-            cll_data_one = deepcopy(self.get_cll_cached(node_id, base=False))
-            if cll_data_one is None:
-                continue
-
+            # Merge per-node data into accumulators
             nodes[node_id] = cll_data_one.nodes.get(node_id)
             for c_id, c in cll_data_one.columns.items():
                 columns[c_id] = c
             for p_id, parents in cll_data_one.parent_map.items():
                 parent_map[p_id] = parents
 
-            # Queue for batch storage
-            try:
-                batch_to_store.append((node_id, content_key, self._serialize_cll_data(cll_data_one)))
-            except Exception:
-                pass
-
         # Batch-write newly computed entries
-        if batch_to_store:
-            cache.put_nodes_batch(batch_to_store)
+        batch_write_ok = cache.put_nodes_batch(batch_to_store) if batch_to_store else True
 
         total_processed = node_cache_hits + node_cache_misses
         hit_pct = round(node_cache_hits / total_processed * 100, 1) if total_processed else 0
@@ -1120,7 +1120,7 @@ class DbtAdapter(BaseAdapter):
                 "node_cache_hits": node_cache_hits,
                 "node_cache_misses": node_cache_misses,
                 "hit_pct": hit_pct,
-                "batch_stored": len(batch_to_store),
+                "batch_stored": len(batch_to_store) if batch_write_ok else 0,
             },
         )
 
