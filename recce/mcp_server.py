@@ -750,8 +750,8 @@ class RecceMCPServer:
                             Use the results to identify anomalies, then follow up with profile_diff,
                             query_diff, or other tools until you have confidence in the root cause.
 
-                            Models with value_diff: null have unknown data impact — use
-                            suggested_deep_dives or call profile_diff/query_diff to investigate.
+                            Models with data_impact: 'potential' have unknown data impact — follow
+                            the model's next_action field to investigate with profile_diff/query_diff.
                         """
                         ).strip(),
                         inputSchema={
@@ -1441,82 +1441,7 @@ class RecceMCPServer:
                 except Exception as e:
                     errors.append({"step": "value_diff", "model": model["name"], "message": str(e)})
 
-        # Step 4: Suggested deep dives (deterministic rules)
-        suggested_deep_dives = []
-        seen_models = set()  # Avoid duplicate suggestions
-
-        for model in impacted_models:
-            name = model["name"]
-
-            # R1: rows_changed high + row_count stable → profile changed columns
-            if (
-                model["value_diff"] is not None
-                and model["row_count"] is not None
-                and model["row_count"]["delta_pct"] is not None
-                and abs(model["row_count"]["delta_pct"]) <= 5
-            ):
-                vd = model["value_diff"]
-                # Calculate ratio of changed rows to total matched rows
-                total_matched = (model["row_count"]["current"] or 0) - vd["rows_added"]
-                if total_matched > 0 and vd["rows_changed"] / total_matched > 0.2:
-                    top_cols = [
-                        col
-                        for col, stats in (vd.get("columns") or {}).items()
-                        if stats.get("affected_row_count", 0) > 0
-                    ]
-                    if name not in seen_models:
-                        suggested_deep_dives.append(
-                            {
-                                "model": name,
-                                "tool": "profile_diff",
-                                "columns": top_cols if top_cols else None,
-                            }
-                        )
-                        seen_models.add(name)
-                        continue
-
-            # R2: row_count delta > 5% → profile whole model
-            if model["row_count"] and model["row_count"]["delta_pct"] is not None:
-                if abs(model["row_count"]["delta_pct"]) > 5:
-                    if name not in seen_models:
-                        suggested_deep_dives.append(
-                            {
-                                "model": name,
-                                "tool": "profile_diff",
-                                "columns": None,  # whole model
-                            }
-                        )
-                        seen_models.add(name)
-                        continue
-
-            # R3: schema_changes non-empty → profile changed columns
-            if model["schema_changes"]:
-                changed_cols = [c["column"] for c in model["schema_changes"]]
-                if name not in seen_models:
-                    suggested_deep_dives.append(
-                        {
-                            "model": name,
-                            "tool": "profile_diff",
-                            "columns": changed_cols,
-                        }
-                    )
-                    seen_models.add(name)
-                    continue
-
-            # R4: value_diff null on modified model → profile whole model
-            is_modified = model["change_status"] in ("modified", "added")
-            if model["value_diff"] is None and is_modified:
-                if name not in seen_models:
-                    suggested_deep_dives.append(
-                        {
-                            "model": name,
-                            "tool": "profile_diff",
-                            "columns": None,
-                        }
-                    )
-                    seen_models.add(name)
-
-        # Compute per-model affected_row_count and data_impact
+        # Step 4: Compute per-model affected_row_count, data_impact, and next_action
         max_affected = 0
         for model in impacted_models:
             # affected_row_count: value_diff total (priority) or abs(row_count.delta) (fallback)
@@ -1544,6 +1469,67 @@ class RecceMCPServer:
             if model["affected_row_count"] is not None and model["affected_row_count"] > max_affected:
                 max_affected = model["affected_row_count"]
 
+            # next_action: only for "potential" models — confirmed/none need no follow-up
+            model["next_action"] = None
+            if model["data_impact"] == "potential":
+                is_modified = model["change_status"] in ("modified", "added")
+                is_downstream = model["change_status"] is None
+
+                if model["schema_changes"]:
+                    # Schema changed — profile the changed columns
+                    changed_cols = [c["column"] for c in model["schema_changes"]]
+                    model["next_action"] = {
+                        "tool": "profile_diff",
+                        "columns": changed_cols,
+                        "reason": "schema changed, value_diff unavailable",
+                        "priority": "high" if is_modified else "medium",
+                    }
+                elif is_modified:
+                    # Modified but no value_diff (view, no PK, or error)
+                    model["next_action"] = {
+                        "tool": "profile_diff",
+                        "columns": None,
+                        "reason": "modified model, value_diff unavailable (view or no PK)",
+                        "priority": "high",
+                    }
+                elif is_downstream and model["materialized"] == "view":
+                    # Downstream view — low priority
+                    model["next_action"] = {
+                        "tool": "profile_diff",
+                        "columns": None,
+                        "reason": "downstream view, value_diff skipped",
+                        "priority": "low",
+                    }
+                elif is_downstream:
+                    # Downstream table — medium priority
+                    model["next_action"] = {
+                        "tool": "profile_diff",
+                        "columns": None,
+                        "reason": "downstream model, value_diff skipped",
+                        "priority": "medium",
+                    }
+            elif model["data_impact"] == "confirmed":
+                # Confirmed changes — suggest profile_diff only if high change ratio
+                vd = model["value_diff"]
+                if (
+                    model["row_count"] is not None
+                    and model["row_count"]["delta_pct"] is not None
+                    and abs(model["row_count"]["delta_pct"]) <= 5
+                ):
+                    total_matched = (model["row_count"]["current"] or 0) - vd["rows_added"]
+                    if total_matched > 0 and vd["rows_changed"] / total_matched > 0.2:
+                        top_cols = [
+                            col
+                            for col, stats in (vd.get("columns") or {}).items()
+                            if stats.get("affected_row_count", 0) > 0
+                        ]
+                        model["next_action"] = {
+                            "tool": "profile_diff",
+                            "columns": top_cols if top_cols else None,
+                            "reason": "high change ratio with stable row count — investigate value shifts",
+                            "priority": "medium",
+                        }
+
         if sentry_metrics:
             duration = time.time() - start_time
             sentry_metrics.distribution("mcp.impact_analysis.duration", duration, unit="second")
@@ -1552,20 +1538,19 @@ class RecceMCPServer:
         result = {
             "_guidance": (
                 "confirmed_impacted_models lists all models in the DAG blast radius "
-                "(modified + downstream). The data_impact field indicates data-level "
-                "evidence: 'confirmed' = value_diff verified data changes exist, "
-                "'none' = value_diff verified zero data changes, 'potential' = no "
-                "value_diff available (views, no PK, or skipped via "
-                "skip_downstream_value_diff) — investigate with profile_diff. "
-                "Use data_impact to distinguish DAG-reachable models from actually "
-                "data-affected models. Note: incremental model value_diff may reflect "
+                "(modified + downstream). Use data_impact to triage: "
+                "'confirmed' = value_diff verified data changes exist — report directly. "
+                "'none' = value_diff verified zero data changes — report directly. "
+                "'potential' = no value_diff available (views, no PK, or skipped) "
+                "— follow the model's next_action to investigate. "
+                "Only models with next_action != null need further tool calls. "
+                "Note: incremental model value_diff may reflect "
                 "build window artifacts if not fully refreshed."
             ),
             "classification_source": "lineage_dag",
-            "total_affected_row_count": max_affected,
+            "max_affected_row_count": max_affected,
             "confirmed_impacted_models": impacted_models,
             "confirmed_not_impacted_models": not_impacted_models,
-            "suggested_deep_dives": suggested_deep_dives,
             "errors": errors,
         }
         return self._maybe_add_single_env_warning(result)
