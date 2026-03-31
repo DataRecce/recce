@@ -2009,6 +2009,8 @@ class TestImpactAnalysisBehavior:
         assert modified["data_impact"] == "confirmed"
         assert modified["value_diff"] is not None
         assert modified["value_diff"]["affected_row_count"] == 5
+        # confirmed models with low change ratio → next_action is None
+        # (next_action only set for potential, or confirmed with high change ratio)
 
     @pytest.mark.asyncio
     async def test_data_impact_none_when_zero_changes(self, setup_impact_mocks):
@@ -2054,6 +2056,9 @@ class TestImpactAnalysisBehavior:
         view = models_by_name["view_model"]
         assert view["data_impact"] == "potential"
         assert view["affected_row_count"] is None
+        # Potential models always get next_action
+        assert view["next_action"] is not None
+        assert view["next_action"]["tool"] == "profile_diff"
 
     @pytest.mark.asyncio
     async def test_guidance_is_descriptive(self, setup_impact_mocks):
@@ -2069,6 +2074,7 @@ class TestImpactAnalysisBehavior:
         assert "_guidance" in result
         guidance = result["_guidance"]
         assert "data_impact" in guidance
+        assert "next_action" in guidance
         assert "DO NOT OVERRIDE" not in guidance
 
     @pytest.mark.asyncio
@@ -2098,9 +2104,11 @@ class TestImpactAnalysisBehavior:
         assert models_by_name["modified_model"]["value_diff"] is not None
         assert models_by_name["modified_model"]["data_impact"] == "confirmed"
 
-        # Downstream table: skipped → potential
+        # Downstream table: skipped → potential with next_action
         assert models_by_name["downstream_model"]["value_diff"] is None
         assert models_by_name["downstream_model"]["data_impact"] == "potential"
+        assert models_by_name["downstream_model"]["next_action"] is not None
+        assert models_by_name["downstream_model"]["next_action"]["priority"] == "medium"
 
     @pytest.mark.asyncio
     async def test_skip_value_diff_takes_precedence(self, mcp_server):
