@@ -1,4 +1,4 @@
-import type { AxiosInstance } from "axios";
+import type { ApiClient } from "../lib/fetchClient";
 import { type SubmitOptions, submitRun } from "./runs";
 import { type ColumnRenderMode, type DataFrame } from "./types";
 
@@ -29,7 +29,7 @@ export interface ProfileDiffViewOptions {
 export async function submitProfileDiff(
   params: ProfileDiffParams,
   options: SubmitOptions | undefined,
-  client: AxiosInstance,
+  client: ApiClient,
 ) {
   return await submitRun("profile_diff", params, options, client);
 }
