@@ -1,6 +1,6 @@
 "use client";
 
-import type { AxiosInstance } from "axios";
+import type { ApiClient } from "../lib/fetchClient";
 
 /**
  * Check if debug logging is enabled via window.RECCE_DEBUG_IDLE
@@ -47,7 +47,7 @@ export function setKeepAliveCallback(callback: KeepAliveCallback | null): void {
  * @param client - Axios instance for API configuration (required)
  * @returns true if keep-alive was sent, false if throttled/skipped
  */
-export async function sendKeepAlive(client: AxiosInstance): Promise<boolean> {
+export async function sendKeepAlive(client: ApiClient): Promise<boolean> {
   const now = Date.now();
   const elapsed = now - lastKeepAliveTime;
 
