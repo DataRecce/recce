@@ -196,7 +196,22 @@ export function createFetchClient(config: FetchClientConfig): ApiClient {
       resolvedInit = result.init;
     }
 
-    const res = await fetch(resolvedURL, resolvedInit as RequestInit);
+    let res: Response;
+    try {
+      res = await fetch(resolvedURL, resolvedInit as RequestInit);
+    } catch (networkError) {
+      // Wrap network-level errors (TypeError for DNS/connection failures,
+      // AbortError for timeouts) in HttpError so consumers can use a single
+      // isHttpError() check for ALL request failures — matching Axios behavior
+      // where isAxiosError() returned true for network errors too.
+      throw new HttpError(
+        0,
+        null,
+        networkError instanceof Error
+          ? networkError.message
+          : String(networkError),
+      );
+    }
 
     let data: unknown;
     try {
