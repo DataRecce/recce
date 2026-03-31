@@ -264,6 +264,36 @@ describe("createFetchClient", () => {
       }
     });
 
+    it("wraps network TypeError in HttpError with status 0", async () => {
+      mockFetch.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+      try {
+        await client.get("/api/info");
+        throw new Error("Expected HttpError");
+      } catch (e) {
+        expect(isHttpError(e)).toBe(true);
+        if (!isHttpError(e)) throw e;
+        expect(e.status).toBe(0);
+        expect(e.data).toBeNull();
+        expect(e.message).toBe("Failed to fetch");
+      }
+    });
+
+    it("wraps AbortError (timeout) in HttpError with status 0", async () => {
+      const abortError = new DOMException("Signal timed out", "AbortError");
+      mockFetch.mockRejectedValueOnce(abortError);
+
+      try {
+        await client.get("/api/slow");
+        throw new Error("Expected HttpError");
+      } catch (e) {
+        expect(isHttpError(e)).toBe(true);
+        if (!isHttpError(e)) throw e;
+        expect(e.status).toBe(0);
+        expect(e.message).toBe("Signal timed out");
+      }
+    });
+
     it("throws HttpError on 409 with parsed data", async () => {
       mockFetch.mockResolvedValueOnce(jsonResponse({ conflict: true }, 409));
 
