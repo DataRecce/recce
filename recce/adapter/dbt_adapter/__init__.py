@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import os
@@ -25,7 +26,7 @@ from typing import (
 
 from recce.event import log_performance
 from recce.exceptions import RecceException
-from recce.util.cll import CLLPerformanceTracking, cll
+from recce.util.cll import CLLPerformanceTracking, cll, get_cll_cache
 from recce.util.lineage import (
     build_column_key,
     filter_dependency_maps,
@@ -989,12 +990,63 @@ class DbtAdapter(BaseAdapter):
         node_diff.change = change
         return node_diff
 
+    @staticmethod
+    def _make_node_content_key(
+        node_id: str,
+        raw_code: Optional[str],
+        parent_list: List[str],
+        column_names: List[str],
+    ) -> str:
+        """Content-based cache key for per-node CllData.
+
+        Uses null byte separators between fields to prevent hash collisions
+        from concatenation ambiguity (e.g., id="ab"+code="cd" vs id="abc"+code="d").
+        """
+        h = hashlib.sha256()
+        h.update(node_id.encode("utf-8"))
+        h.update(b"\x00")
+        h.update((raw_code or "").encode("utf-8"))
+        h.update(b"\x00")
+        for p in sorted(parent_list):
+            h.update(p.encode("utf-8"))
+            h.update(b"\x00")
+        for c in sorted(column_names):
+            h.update(c.encode("utf-8"))
+            h.update(b"\x00")
+        return h.hexdigest()
+
+    @staticmethod
+    def _serialize_cll_data(cll_data: CllData) -> str:
+        """Serialize a per-node CllData to JSON, excluding change analysis fields (change_status, change_category)."""
+        return json.dumps(
+            {
+                "nodes": {
+                    nid: n.model_dump(exclude={"change_status", "change_category"}) for nid, n in cll_data.nodes.items()
+                },
+                "columns": {cid: c.model_dump(exclude={"change_status"}) for cid, c in cll_data.columns.items()},
+                "parent_map": {pid: list(parents) for pid, parents in cll_data.parent_map.items()},
+            }
+        )
+
+    @staticmethod
+    def _deserialize_cll_data(data_str: str) -> CllData:
+        """Deserialize a per-node CllData from JSON."""
+        data = json.loads(data_str)
+        return CllData(
+            nodes={nid: CllNode(**n) for nid, n in data["nodes"].items()},
+            columns={cid: CllColumn(**c) for cid, c in data["columns"].items()},
+            parent_map={pid: set(parents) for pid, parents in data["parent_map"].items()},
+        )
+
     def build_full_cll_map(self) -> CllData:
         """Build the full CLL map for every node in the manifest. Result is cached."""
         if self._full_cll_map is not None:
             return self._full_cll_map
 
         manifest = self.curr_manifest
+        catalog = self.curr_catalog
+        cache = get_cll_cache()
+        cache.evict_stale()
 
         # Collect all node IDs from all resource types
         all_node_ids = set()
@@ -1008,17 +1060,81 @@ class DbtAdapter(BaseAdapter):
         nodes = {}
         columns = {}
         parent_map = {}
+        node_cache_hits = 0
+        node_cache_misses = 0
+        batch_to_store = []
 
         for node_id in all_node_ids:
-            cll_data_one = deepcopy(self.get_cll_cached(node_id, base=False))
-            if cll_data_one is None:
-                continue
+            raw_code = None
+            p_list: List[str] = []
+            col_names: List[str] = []
 
+            if node_id in manifest.nodes:
+                n = manifest.nodes[node_id]
+                raw_code = n.raw_code
+                if hasattr(n.depends_on, "nodes"):
+                    p_list = n.depends_on.nodes
+                if catalog and node_id in catalog.nodes:
+                    col_names = list(catalog.nodes[node_id].columns.keys())
+            elif node_id in manifest.sources:
+                n = manifest.sources[node_id]
+                if catalog and node_id in catalog.sources:
+                    col_names = list(catalog.sources[node_id].columns.keys())
+            elif node_id in manifest.exposures:
+                n = manifest.exposures[node_id]
+                if hasattr(n.depends_on, "nodes"):
+                    p_list = n.depends_on.nodes
+            elif hasattr(manifest, "semantic_models") and node_id in manifest.semantic_models:
+                n = manifest.semantic_models[node_id]
+                if hasattr(n.depends_on, "nodes"):
+                    p_list = n.depends_on.nodes
+            elif node_id in manifest.metrics:
+                n = manifest.metrics[node_id]
+                if hasattr(n.depends_on, "nodes"):
+                    p_list = n.depends_on.nodes
+
+            content_key = self._make_node_content_key(node_id, raw_code, p_list, col_names)
+
+            cached_json = cache.get_node(node_id, content_key)
+            if cached_json:
+                try:
+                    cll_data_one = self._deserialize_cll_data(cached_json)
+                    node_cache_hits += 1
+                except Exception as e:
+                    logger.debug("[cll cache] corrupted entry for %s, recomputing: %s", node_id, e)
+                    cached_json = None
+
+            if not cached_json:
+                node_cache_misses += 1
+                cll_data_one = deepcopy(self.get_cll_cached(node_id, base=False))
+                if cll_data_one is None:
+                    continue
+                try:
+                    batch_to_store.append((node_id, content_key, self._serialize_cll_data(cll_data_one)))
+                except Exception as e:
+                    logger.debug("[cll cache] failed to serialize %s: %s", node_id, e)
+
+            # Merge per-node data into accumulators
             nodes[node_id] = cll_data_one.nodes.get(node_id)
             for c_id, c in cll_data_one.columns.items():
                 columns[c_id] = c
             for p_id, parents in cll_data_one.parent_map.items():
                 parent_map[p_id] = parents
+
+        # Batch-write newly computed entries
+        batch_write_ok = cache.put_nodes_batch(batch_to_store) if batch_to_store else True
+
+        total_processed = node_cache_hits + node_cache_misses
+        hit_pct = round(node_cache_hits / total_processed * 100, 1) if total_processed else 0
+        log_performance(
+            "cll node cache",
+            {
+                "node_cache_hits": node_cache_hits,
+                "node_cache_misses": node_cache_misses,
+                "hit_pct": hit_pct,
+                "batch_stored": len(batch_to_store) if batch_write_ok else 0,
+            },
+        )
 
         # Build the child map from parent_map
         child_map = {}
@@ -1351,10 +1467,10 @@ class DbtAdapter(BaseAdapter):
         """Get the table name (alias) for a parent node as it appears in compiled SQL."""
         if parent_id in manifest.nodes:
             parent_node = manifest.nodes[parent_id]
-            return getattr(parent_node, 'alias', None) or parent_node.name
+            return getattr(parent_node, "alias", None) or parent_node.name
         if parent_id in manifest.sources:
             parent_src = manifest.sources[parent_id]
-            return getattr(parent_src, 'identifier', None) or parent_src.name
+            return getattr(parent_src, "identifier", None) or parent_src.name
         return None
 
     def _build_schema_from_aliases(self, manifest, catalog, parent_list) -> dict:
@@ -1420,7 +1536,7 @@ class DbtAdapter(BaseAdapter):
 
         # Check if the manifest node already has compiled SQL
         manifest_node = manifest.nodes.get(node_id)
-        pre_compiled = getattr(manifest_node, 'compiled_code', None) if manifest_node else None
+        pre_compiled = getattr(manifest_node, "compiled_code", None) if manifest_node else None
 
         if pre_compiled:
             # Use pre-compiled SQL directly — build table_id_map from parent aliases.
