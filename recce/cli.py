@@ -318,7 +318,7 @@ def version():
 @add_options(recce_dbt_artifact_dir_options)
 @click.option(
     "--cache-db",
-    help="Path to the SQLite database for CLL cache.",
+    help="Path to the column-level lineage cache database.",
     type=click.Path(),
     default=None,
     show_default=False,
@@ -327,24 +327,27 @@ def init(cache_db, **kwargs):
     """
     Pre-compute column-level lineage cache from dbt artifacts.
 
-    Computes CLL for all models and stores results in a SQLite database
+    Computes column-level lineage for all models and stores results in a SQLite database
     (~/.recce/cll_cache.db by default) so that subsequent `recce server`
     sessions start with a warm cache.
 
     Works with one or both environments (target/ and/or target-base/).
     """
 
+    import logging
     import time
     from copy import deepcopy
 
     from rich.console import Console
+    from rich.progress import Progress
 
     from recce.adapter.dbt_adapter import DbtAdapter
     from recce.core import load_context
     from recce.util.cll import _DEFAULT_DB_PATH, CllCache, get_cll_cache
 
+    logger = logging.getLogger("recce")
     console = Console()
-    console.rule("Recce Init — Pre-compute CLL Cache", style="orange3")
+    console.rule("Recce Init — Building column-level lineage cache", style="orange3")
 
     if cache_db is None:
         cache_db = _DEFAULT_DB_PATH
@@ -411,61 +414,75 @@ def init(cache_db, **kwargs):
         ]
         envs.append(("base", base_ids, True))
 
-    for env_name, node_ids, is_base in envs:
-        console.print(f"\n[bold]{env_name}[/bold] environment: {len(node_ids)} models")
-        t_start = time.perf_counter()
+    with Progress(console=console) as progress:
+        for env_name, node_ids, is_base in envs:
+            console.print(f"\n[bold]{env_name}[/bold] environment: {len(node_ids)} models")
+            t_start = time.perf_counter()
 
-        manifest = dbt_adapter.base_manifest if is_base else dbt_adapter.curr_manifest
-        catalog = dbt_adapter.base_catalog if is_base else dbt_adapter.curr_catalog
+            manifest = dbt_adapter.base_manifest if is_base else dbt_adapter.curr_manifest
+            catalog = dbt_adapter.base_catalog if is_base else dbt_adapter.curr_catalog
 
-        success = 0
-        fail = 0
-        cache_hits = 0
-        batch_to_store = []
+            success = 0
+            fail = 0
+            cache_hits = 0
+            batch_to_store = []
 
-        for nid in node_ids:
-            raw_code = None
-            p_list: list = []
-            col_names: list = []
-            if nid in manifest.nodes:
-                n = manifest.nodes[nid]
-                raw_code = n.raw_code
-                if hasattr(n.depends_on, "nodes"):
-                    p_list = n.depends_on.nodes
-                if catalog and nid in catalog.nodes:
-                    col_names = list(catalog.nodes[nid].columns.keys())
+            task = progress.add_task(f"  {env_name}", total=len(node_ids))
 
-            content_key = DbtAdapter._make_node_content_key(nid, raw_code, p_list, col_names)
-            cached_json = cache.get_node(nid, content_key)
-            if cached_json:
-                cache_hits += 1
-                success += 1
-                continue
+            for nid in node_ids:
+                raw_code = None
+                p_list: list = []
+                col_names: list = []
+                if nid in manifest.nodes:
+                    n = manifest.nodes[nid]
+                    raw_code = n.raw_code
+                    if hasattr(n.depends_on, "nodes"):
+                        p_list = n.depends_on.nodes
+                    if catalog and nid in catalog.nodes:
+                        col_names = list(catalog.nodes[nid].columns.keys())
 
-            try:
-                cll_data = deepcopy(dbt_adapter.get_cll_cached(nid, base=is_base))
-                if cll_data is None:
-                    fail += 1
+                content_key = DbtAdapter._make_node_content_key(nid, raw_code, p_list, col_names)
+                cached_json = cache.get_node(nid, content_key)
+                if cached_json:
+                    cache_hits += 1
+                    success += 1
+                    progress.advance(task)
                     continue
-                batch_to_store.append((nid, content_key, DbtAdapter._serialize_cll_data(cll_data)))
-                success += 1
-            except Exception:
-                fail += 1
 
-        if batch_to_store:
-            cache.put_nodes_batch(batch_to_store)
+                try:
+                    cll_data = deepcopy(dbt_adapter.get_cll_cached(nid, base=is_base))
+                    if cll_data is None:
+                        fail += 1
+                        progress.advance(task)
+                        continue
+                    batch_to_store.append((nid, content_key, DbtAdapter._serialize_cll_data(cll_data)))
+                    success += 1
+                except Exception as e:
+                    fail += 1
+                    if fail <= 3:
+                        console.print(f"  [dim red]  skip: {nid}: {e}[/dim red]")
+                    logger.warning("[recce init] CLL computation failed for %s: %s", nid, e)
+                progress.advance(task)
 
-        elapsed = time.perf_counter() - t_start
-        new_entries = len(batch_to_store)
-        console.print(
-            f"  {success} ok, {fail} skipped, {elapsed:.1f}s" f" | cache: {cache_hits} hits, {new_entries} new"
-        )
+            if batch_to_store:
+                if not cache.put_nodes_batch(batch_to_store):
+                    console.print(
+                        f"  [[yellow]Warning[/yellow]] Failed to write {len(batch_to_store)} entries to cache."
+                    )
 
-        dbt_adapter.get_cll_cached.cache_clear()
+            elapsed = time.perf_counter() - t_start
+            new_entries = len(batch_to_store)
+            console.print(
+                f"  {success} ok, {fail} skipped, {elapsed:.1f}s" f" | cache: {cache_hits} hits, {new_entries} new"
+            )
+
+            dbt_adapter.get_cll_cached.cache_clear()
+            if fail > 3:
+                console.print(f"  [dim]... and {fail - 3} more skipped (see logs for details)[/dim]")
 
     stats = cache.stats
     console.print(f"\nCache saved to [bold]{cache_db}[/bold] ({stats['entries']} entries)")
-    console.print("Run [bold]ENABLE_CLL_CACHE=1 recce server[/bold] to use the cached CLL.")
+    console.print("Run [bold]recce server --enable-cll-cache[/bold] to use the cached lineage.")
 
 
 @cli.command(cls=TrackCommand)
@@ -2027,22 +2044,22 @@ def mcp_server(state_file, sse, host, port, **kwargs):
         exit(1)
 
 
-@cli.group()
+@cli.group("cache", short_help="Manage column-level lineage cache.")
 def cache():
-    """Manage the CLL column-level lineage cache."""
+    """Manage column-level lineage cache."""
     pass
 
 
-@cache.command()
+@cache.command(cls=TrackCommand)
 @click.option(
     "--cache-db",
-    help="Path to the SQLite database for CLL cache.",
+    help="Path to the column-level lineage cache database.",
     type=click.Path(),
     default=None,
     show_default=False,
 )
 def stats(cache_db):
-    """Show CLL cache statistics."""
+    """Show column-level lineage cache statistics."""
     from rich.console import Console
 
     from recce.util.cll import _DEFAULT_DB_PATH, CllCache
@@ -2064,16 +2081,16 @@ def stats(cache_db):
     console.print(f"{s['entries']} entries, {file_size / 1024:.1f} KB")
 
 
-@cache.command(name="clear")
+@cache.command(name="clear", cls=TrackCommand)
 @click.option(
     "--cache-db",
-    help="Path to the SQLite database for CLL cache.",
+    help="Path to the column-level lineage cache database.",
     type=click.Path(),
     default=None,
     show_default=False,
 )
 def clear_cache(cache_db):
-    """Delete the CLL cache database file."""
+    """Delete the column-level lineage cache database file."""
     from rich.console import Console
 
     from recce.util.cll import _DEFAULT_DB_PATH
@@ -2087,8 +2104,27 @@ def clear_cache(cache_db):
         console.print(f"No cache file found at {cache_db}")
         return
 
-    os.remove(cache_db)
+    try:
+        os.remove(cache_db)
+    except FileNotFoundError:
+        console.print(f"Cache file was already removed: {cache_db}")
+        return
+    except PermissionError:
+        console.print(f"[[red]Error[/red]] Permission denied: cannot delete {cache_db}")
+        exit(1)
+    except OSError as e:
+        console.print(f"[[red]Error[/red]] Failed to delete cache: {e}")
+        exit(1)
     console.print(f"Deleted cache: {cache_db}")
+
+    # Clean up SQLite WAL/SHM sidecar files
+    for suffix in ("-wal", "-shm"):
+        sidecar = cache_db + suffix
+        if os.path.exists(sidecar):
+            try:
+                os.remove(sidecar)
+            except OSError:
+                pass
 
 
 if __name__ == "__main__":

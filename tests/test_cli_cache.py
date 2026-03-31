@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
@@ -53,6 +54,23 @@ class TestCacheClear:
         result = runner.invoke(cli, ["cache", "clear", "--cache-db", tmp_db])
         assert result.exit_code == 0
         assert "No cache file" in result.output
+
+    def test_clear_removes_wal_shm(self, runner, tmp_db):
+        """clear should also remove WAL and SHM sidecar files."""
+        c = CllCache(db_path=tmp_db)
+        c.put_nodes_batch([("node.a", "key_a", '{"nodes": {}}')])
+        # Force WAL/SHM files to exist
+        wal_path = tmp_db + "-wal"
+        shm_path = tmp_db + "-shm"
+        # Write dummy sidecar files (WAL mode creates these)
+        Path(wal_path).touch()
+        Path(shm_path).touch()
+
+        result = runner.invoke(cli, ["cache", "clear", "--cache-db", tmp_db])
+        assert result.exit_code == 0
+        assert not os.path.exists(tmp_db)
+        assert not os.path.exists(wal_path)
+        assert not os.path.exists(shm_path)
 
 
 class TestInit:
