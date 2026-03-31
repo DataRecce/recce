@@ -240,6 +240,32 @@ describe("createFetchClient", () => {
       const [, init] = mockFetch.mock.calls[0];
       expect(init.headers.has("Content-Type")).toBe(false);
     });
+
+    it("removes default Content-Type for FormData bodies", async () => {
+      const clientWithCT = createFetchClient({
+        baseURL: "http://localhost:8000",
+        headers: { "Content-Type": "application/json" },
+      });
+      mockFetch.mockResolvedValueOnce(jsonResponse({}));
+      const form = new FormData();
+      form.append("file", "data");
+
+      await clientWithCT.post("/api/upload", form);
+
+      const [, init] = mockFetch.mock.calls[0];
+      // Content-Type must be removed so browser sets multipart boundary
+      expect(init.headers.has("Content-Type")).toBe(false);
+    });
+
+    it("does not set Content-Type for POST with no body", async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse({}));
+
+      await client.post("/api/keep-alive");
+
+      const [, init] = mockFetch.mock.calls[0];
+      // No body → no Content-Type header
+      expect(init.headers.has("Content-Type")).toBe(false);
+    });
   });
 
   describe("error handling", () => {

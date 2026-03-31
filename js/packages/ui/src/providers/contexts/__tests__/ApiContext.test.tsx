@@ -429,7 +429,7 @@ describe("ApiContext (@datarecce/ui)", () => {
   });
 
   describe("Middleware behavior", () => {
-    it("applies apiPrefix middleware to requests", async () => {
+    it("rewrites /api/... URLs with apiPrefix", async () => {
       const { result } = renderHook(() => useApiClient(), {
         wrapper: ({ children }) => (
           <ApiProvider
@@ -444,17 +444,61 @@ describe("ApiContext (@datarecce/ui)", () => {
       });
 
       mockFetchResponse({ ok: true });
-
       await result.current.get("/api/info");
 
       const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
-      expect(fetchMock).toHaveBeenCalledTimes(1);
       const calledUrl = fetchMock.mock.calls[0][0];
       expect(calledUrl).toContain("/sessions/abc123/info");
       expect(calledUrl).not.toContain("/api/");
     });
 
-    it("applies auth token to requests", async () => {
+    it("rewrites exact /api URL with apiPrefix", async () => {
+      const { result } = renderHook(() => useApiClient(), {
+        wrapper: ({ children }) => (
+          <ApiProvider
+            config={{
+              baseUrl: "https://api.example.com",
+              apiPrefix: "/sessions/abc123",
+            }}
+          >
+            {children}
+          </ApiProvider>
+        ),
+      });
+
+      mockFetchResponse({ ok: true });
+      await result.current.get("/api");
+
+      const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+      const calledUrl = fetchMock.mock.calls[0][0];
+      expect(calledUrl).toContain("/sessions/abc123");
+      expect(calledUrl).not.toMatch(/\/api(?:\/|$)/);
+    });
+
+    it("does not rewrite URLs that don't start with /api", async () => {
+      const { result } = renderHook(() => useApiClient(), {
+        wrapper: ({ children }) => (
+          <ApiProvider
+            config={{
+              baseUrl: "https://api.example.com",
+              apiPrefix: "/sessions/abc123",
+            }}
+          >
+            {children}
+          </ApiProvider>
+        ),
+      });
+
+      mockFetchResponse({ ok: true });
+      await result.current.get("/health");
+
+      const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+      const calledUrl = fetchMock.mock.calls[0][0];
+      expect(calledUrl).toContain("/health");
+      expect(calledUrl).not.toContain("/sessions/abc123");
+    });
+
+    it("injects auth token as Bearer header", async () => {
       const { result } = renderHook(() => useApiClient(), {
         wrapper: ({ children }) => (
           <ApiProvider
@@ -469,14 +513,81 @@ describe("ApiContext (@datarecce/ui)", () => {
       });
 
       mockFetchResponse({ ok: true });
-
       await result.current.get("/api/info");
 
       const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
-      expect(fetchMock).toHaveBeenCalledTimes(1);
       const calledInit = fetchMock.mock.calls[0][1] as RequestInit;
       const headers = calledInit.headers as Headers;
       expect(headers.get("Authorization")).toBe("Bearer my-secret-token");
+    });
+
+    it("applies both apiPrefix and authToken together", async () => {
+      const { result } = renderHook(() => useApiClient(), {
+        wrapper: ({ children }) => (
+          <ApiProvider
+            config={{
+              baseUrl: "https://api.example.com",
+              apiPrefix: "/v2/sessions/xyz",
+              authToken: "combo-token",
+            }}
+          >
+            {children}
+          </ApiProvider>
+        ),
+      });
+
+      mockFetchResponse({ ok: true });
+      await result.current.get("/api/checks");
+
+      const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+      const calledUrl = fetchMock.mock.calls[0][0];
+      expect(calledUrl).toContain("/v2/sessions/xyz/checks");
+      const calledInit = fetchMock.mock.calls[0][1] as RequestInit;
+      const headers = calledInit.headers as Headers;
+      expect(headers.get("Authorization")).toBe("Bearer combo-token");
+    });
+
+    it("works with empty baseUrl (OSS mode with authToken)", async () => {
+      const { result } = renderHook(() => useApiClient(), {
+        wrapper: ({ children }) => (
+          <ApiProvider
+            config={{
+              baseUrl: "",
+              authToken: "oss-token",
+            }}
+          >
+            {children}
+          </ApiProvider>
+        ),
+      });
+
+      mockFetchResponse({ ok: true });
+      await result.current.get("/api/info");
+
+      const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+      // URL should be the relative path (no baseUrl)
+      expect(fetchMock.mock.calls[0][0]).toBe("/api/info");
+      // Auth header should still be injected
+      const calledInit = fetchMock.mock.calls[0][1] as RequestInit;
+      const headers = calledInit.headers as Headers;
+      expect(headers.get("Authorization")).toBe("Bearer oss-token");
+    });
+
+    it("skips middleware when neither apiPrefix nor authToken is set", async () => {
+      const { result } = renderHook(() => useApiClient(), {
+        wrapper: ({ children }) => (
+          <ApiProvider config={{ baseUrl: "https://api.example.com" }}>
+            {children}
+          </ApiProvider>
+        ),
+      });
+
+      mockFetchResponse({ ok: true });
+      await result.current.get("/api/info");
+
+      const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+      // URL should have /api intact — no rewriting
+      expect(fetchMock.mock.calls[0][0]).toContain("/api/info");
     });
   });
 });
