@@ -952,5 +952,160 @@ class TestBuildFullCllMapIntegration(unittest.TestCase):
             assert cache.stats["entries"] == 1  # single entry, shared
 
 
+# ---------------------------------------------------------------------------
+# Category 6: Error Paths and Edge Cases (coverage)
+# ---------------------------------------------------------------------------
+
+
+class TestCllCacheErrorPaths(unittest.TestCase):
+    """Tests for error handling and resilience in CllCache."""
+
+    def test_get_node_handles_sqlite_error(self):
+        """get_node returns None when SQLite raises an error."""
+        from unittest.mock import patch
+
+        from recce.util.cll import CllCache
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "cll_cache.db")
+            cache = CllCache(db_path=db_path)
+            cache.put_node("node1", "k1", '{"ok": true}')
+
+            with patch.object(cache, "_connect", side_effect=sqlite3.OperationalError("disk I/O")):
+                result = cache.get_node("node1", "k1")
+            assert result is None
+
+    def test_put_node_handles_sqlite_error(self):
+        """put_node silently handles SQLite errors without raising."""
+        from unittest.mock import patch
+
+        from recce.util.cll import CllCache
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "cll_cache.db")
+            cache = CllCache(db_path=db_path)
+
+            with patch.object(cache, "_connect", side_effect=sqlite3.OperationalError("locked")):
+                cache.put_node("node1", "k1", '{"data": 1}')
+
+            # Original cache still works after error
+            assert cache.get_node("node1", "k1") is None
+
+    def test_put_nodes_batch_handles_sqlite_error(self):
+        """put_nodes_batch returns False on SQLite error."""
+        from unittest.mock import patch
+
+        from recce.util.cll import CllCache
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "cll_cache.db")
+            cache = CllCache(db_path=db_path)
+
+            with patch.object(cache, "_connect", side_effect=sqlite3.OperationalError("disk full")):
+                result = cache.put_nodes_batch([("n1", "k1", '{"x": 1}')])
+            assert result is False
+
+    def test_evict_stale_handles_sqlite_error(self):
+        """evict_stale returns 0 on SQLite error."""
+        from unittest.mock import patch
+
+        from recce.util.cll import CllCache
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "cll_cache.db")
+            cache = CllCache(db_path=db_path)
+
+            with patch.object(cache, "_connect", side_effect=sqlite3.OperationalError("corrupt")):
+                result = cache.evict_stale()
+            assert result == 0
+
+    def test_stats_handles_sqlite_error(self):
+        """stats returns {"entries": 0} on SQLite error."""
+        from unittest.mock import patch
+
+        from recce.util.cll import CllCache
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "cll_cache.db")
+            cache = CllCache(db_path=db_path)
+            cache.put_node("n1", "k1", '{"x": 1}')
+
+            with patch.object(cache, "_connect", side_effect=sqlite3.OperationalError("error")):
+                result = cache.stats
+            assert result == {"entries": 0}
+
+    def test_init_cll_cache_with_env_var_enabled(self):
+        """_init_cll_cache creates a cache with db_path when ENABLE_CLL_CONTENT_CACHE=1."""
+        from unittest.mock import patch
+
+        from recce.util.cll import _init_cll_cache
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "test_cache.db")
+            with patch.dict(os.environ, {"ENABLE_CLL_CONTENT_CACHE": "1", "CLL_CACHE_DB": db_path}):
+                cache = _init_cll_cache()
+            assert cache._db_path == db_path
+            assert os.path.exists(db_path)
+
+    def test_init_cll_cache_disabled_by_default(self):
+        """_init_cll_cache creates a no-op cache when env var is not set."""
+        from unittest.mock import patch
+
+        from recce.util.cll import _init_cll_cache
+
+        with patch.dict(os.environ, {}, clear=True):
+            # Remove the env var if present
+            os.environ.pop("ENABLE_CLL_CONTENT_CACHE", None)
+            cache = _init_cll_cache()
+        assert cache._db_path is None
+
+    def test_deserialize_corrupted_json_falls_through(self):
+        """Corrupted cache entries cause deserialization to fail gracefully."""
+        from recce.adapter.dbt_adapter import DbtAdapter
+
+        with self.assertRaises(Exception):
+            DbtAdapter._deserialize_cll_data("not valid json{{{")
+
+    def test_deserialize_truncated_data_raises(self):
+        """Truncated JSON missing required fields raises on deserialization."""
+        from recce.adapter.dbt_adapter import DbtAdapter
+
+        with self.assertRaises(Exception):
+            DbtAdapter._deserialize_cll_data('{"nodes": {}}')
+
+    def test_serialize_with_change_status_excludes_it(self):
+        """Serialization excludes change_status and change_category from output."""
+        from recce.adapter.dbt_adapter import DbtAdapter
+
+        data = CllData(
+            nodes={
+                "model.a": CllNode(
+                    id="model.a",
+                    name="a",
+                    package_name="p",
+                    resource_type="model",
+                    change_status="modified",
+                    change_category="breaking",
+                ),
+            },
+            columns={
+                "model.a_c": CllColumn(
+                    id="model.a_c",
+                    name="c",
+                    change_status="added",
+                ),
+            },
+            parent_map={},
+        )
+
+        json_str = DbtAdapter._serialize_cll_data(data)
+        parsed = json.loads(json_str)
+
+        # change_status and change_category should be excluded
+        assert "change_status" not in parsed["nodes"]["model.a"]
+        assert "change_category" not in parsed["nodes"]["model.a"]
+        assert "change_status" not in parsed["columns"]["model.a_c"]
+
+
 if __name__ == "__main__":
     unittest.main()
