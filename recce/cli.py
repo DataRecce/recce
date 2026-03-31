@@ -316,6 +316,161 @@ def version():
 @cli.command(cls=TrackCommand)
 @add_options(dbt_related_options)
 @add_options(recce_dbt_artifact_dir_options)
+@click.option(
+    "--cache-db",
+    help="Path to the SQLite database for CLL cache.",
+    type=click.Path(),
+    default=None,
+    show_default=False,
+)
+def init(cache_db, **kwargs):
+    """
+    Pre-compute column-level lineage cache from dbt artifacts.
+
+    Computes CLL for all models and stores results in a SQLite database
+    (~/.recce/cll_cache.db by default) so that subsequent `recce server`
+    sessions start with a warm cache.
+
+    Works with one or both environments (target/ and/or target-base/).
+    """
+
+    import time
+    from copy import deepcopy
+
+    from rich.console import Console
+
+    from recce.adapter.dbt_adapter import DbtAdapter
+    from recce.core import load_context
+    from recce.util.cll import _DEFAULT_DB_PATH, CllCache, get_cll_cache
+
+    console = Console()
+    console.rule("Recce Init — Pre-compute CLL Cache", style="orange3")
+
+    if cache_db is None:
+        cache_db = _DEFAULT_DB_PATH
+
+    # Set up cache with SQLite persistence
+    import recce.util.cll as cll_module
+
+    cll_module._cll_cache = CllCache(db_path=cache_db)
+    os.environ["ENABLE_CLL_CACHE"] = "1"
+
+    cache = get_cll_cache()
+    evicted = cache.evict_stale()
+    if evicted:
+        console.print(f"Evicted {evicted} stale cache entries (>7 days unused)")
+
+    # Check which artifact directories exist
+    project_dir_path = Path(kwargs.get("project_dir") or "./")
+    target_path = project_dir_path / kwargs.get("target_path", "target")
+    target_base_path = project_dir_path / kwargs.get("target_base_path", "target-base")
+
+    has_target = (target_path / "manifest.json").is_file()
+    has_base = (target_base_path / "manifest.json").is_file()
+
+    if not has_target and not has_base:
+        console.print(
+            "[[yellow]Warning[/yellow]] No dbt artifacts found.\n"
+            f"  Checked: {target_path}/manifest.json\n"
+            f"  Checked: {target_base_path}/manifest.json\n\n"
+            "Run [bold]dbt docs generate[/bold] or [bold]dbt compile[/bold] first."
+        )
+        return
+
+    # If only one env exists, use it for both (so load_context doesn't fail)
+    context_kwargs = {**kwargs}
+    if has_target and not has_base:
+        console.print("[dim]Only target/ found — building cache for current environment only.[/dim]")
+        context_kwargs["target_base_path"] = kwargs.get("target_path", "target")
+    elif has_base and not has_target:
+        console.print("[dim]Only target-base/ found — building cache for base environment only.[/dim]")
+        context_kwargs["target_path"] = kwargs.get("target_base_path", "target-base")
+
+    try:
+        ctx = load_context(**context_kwargs)
+    except Exception as e:
+        console.print(f"[[red]Error[/red]] Failed to load context: {e}")
+        exit(1)
+
+    dbt_adapter: DbtAdapter = ctx.adapter
+
+    envs = []
+    if has_target and dbt_adapter.curr_manifest:
+        curr_ids = [
+            nid
+            for nid in dbt_adapter.curr_manifest.nodes
+            if dbt_adapter.curr_manifest.nodes[nid].resource_type in ("model", "snapshot")
+        ]
+        envs.append(("current", curr_ids, False))
+
+    if has_base and dbt_adapter.base_manifest:
+        base_ids = [
+            nid
+            for nid in dbt_adapter.base_manifest.nodes
+            if dbt_adapter.base_manifest.nodes[nid].resource_type in ("model", "snapshot")
+        ]
+        envs.append(("base", base_ids, True))
+
+    for env_name, node_ids, is_base in envs:
+        console.print(f"\n[bold]{env_name}[/bold] environment: {len(node_ids)} models")
+        t_start = time.perf_counter()
+
+        manifest = dbt_adapter.base_manifest if is_base else dbt_adapter.curr_manifest
+        catalog = dbt_adapter.base_catalog if is_base else dbt_adapter.curr_catalog
+
+        success = 0
+        fail = 0
+        cache_hits = 0
+        batch_to_store = []
+
+        for nid in node_ids:
+            raw_code = None
+            p_list: list = []
+            col_names: list = []
+            if nid in manifest.nodes:
+                n = manifest.nodes[nid]
+                raw_code = n.raw_code
+                if hasattr(n.depends_on, "nodes"):
+                    p_list = n.depends_on.nodes
+                if catalog and nid in catalog.nodes:
+                    col_names = list(catalog.nodes[nid].columns.keys())
+
+            content_key = DbtAdapter._make_node_content_key(nid, raw_code, p_list, col_names)
+            cached_json = cache.get_node(nid, content_key)
+            if cached_json:
+                cache_hits += 1
+                success += 1
+                continue
+
+            try:
+                cll_data = deepcopy(dbt_adapter.get_cll_cached(nid, base=is_base))
+                if cll_data is None:
+                    fail += 1
+                    continue
+                batch_to_store.append((nid, content_key, DbtAdapter._serialize_cll_data(cll_data)))
+                success += 1
+            except Exception:
+                fail += 1
+
+        if batch_to_store:
+            cache.put_nodes_batch(batch_to_store)
+
+        elapsed = time.perf_counter() - t_start
+        new_entries = len(batch_to_store)
+        console.print(
+            f"  {success} ok, {fail} skipped, {elapsed:.1f}s" f" | cache: {cache_hits} hits, {new_entries} new"
+        )
+
+        dbt_adapter.get_cll_cached.cache_clear()
+
+    stats = cache.stats
+    console.print(f"\nCache saved to [bold]{cache_db}[/bold] ({stats['entries']} entries)")
+    console.print("Run [bold]ENABLE_CLL_CACHE=1 recce server[/bold] to use the cached CLL.")
+
+
+@cli.command(cls=TrackCommand)
+@add_options(dbt_related_options)
+@add_options(recce_dbt_artifact_dir_options)
 def debug(**kwargs):
     """
     Diagnose and verify Recce setup for the development and the base environments
@@ -1870,6 +2025,70 @@ def mcp_server(state_file, sse, host, port, **kwargs):
 
             traceback.print_exc()
         exit(1)
+
+
+@cli.group()
+def cache():
+    """Manage the CLL column-level lineage cache."""
+    pass
+
+
+@cache.command()
+@click.option(
+    "--cache-db",
+    help="Path to the SQLite database for CLL cache.",
+    type=click.Path(),
+    default=None,
+    show_default=False,
+)
+def stats(cache_db):
+    """Show CLL cache statistics."""
+    from rich.console import Console
+
+    from recce.util.cll import _DEFAULT_DB_PATH, CllCache
+
+    console = Console()
+
+    if cache_db is None:
+        cache_db = _DEFAULT_DB_PATH
+
+    if not os.path.exists(cache_db):
+        console.print(f"Cache database not found: {cache_db}")
+        console.print("0 entries")
+        return
+
+    c = CllCache(db_path=cache_db)
+    s = c.stats
+    file_size = os.path.getsize(cache_db)
+    console.print(f"Cache: {cache_db}")
+    console.print(f"{s['entries']} entries, {file_size / 1024:.1f} KB")
+
+
+@cache.command(name="clear")
+@click.option(
+    "--cache-db",
+    help="Path to the SQLite database for CLL cache.",
+    type=click.Path(),
+    default=None,
+    show_default=False,
+)
+def clear_cache(cache_db):
+    """Delete the CLL cache database file."""
+    from rich.console import Console
+
+    from recce.util.cll import _DEFAULT_DB_PATH
+
+    console = Console()
+
+    if cache_db is None:
+        cache_db = _DEFAULT_DB_PATH
+
+    if not os.path.exists(cache_db):
+        console.print(f"No cache file found at {cache_db}")
+        return
+
+    os.remove(cache_db)
+    console.print(f"Deleted cache: {cache_db}")
 
 
 if __name__ == "__main__":
