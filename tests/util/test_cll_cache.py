@@ -5,15 +5,13 @@ round-trips, and cache-vs-fresh equivalence to ensure cached results are
 byte-for-byte identical to freshly computed results.
 """
 
-import hashlib
 import json
 import os
 import sqlite3
 import tempfile
 import time
 import unittest
-from typing import Dict, List, Optional, Set
-from unittest.mock import MagicMock, patch
+from typing import List, Optional
 
 from recce.models.types import CllColumn, CllColumnDep, CllData, CllNode
 
@@ -563,7 +561,7 @@ class TestCacheVsFreshEquivalence(unittest.TestCase):
                 assert fc.depends_on[i].column == cc.depends_on[i].column
 
         # Parent map
-        assert set(fresh.parent_map.keys()) == set(cached.parent_map.keys()), f"Parent map keys differ"
+        assert set(fresh.parent_map.keys()) == set(cached.parent_map.keys()), "Parent map keys differ"
         for pid in fresh.parent_map:
             assert fresh.parent_map[pid] == cached.parent_map[pid], f"Parent map values differ for {pid}"
 
