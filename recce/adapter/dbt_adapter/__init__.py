@@ -1080,6 +1080,18 @@ class DbtAdapter(BaseAdapter):
                 n = manifest.sources[node_id]
                 if catalog and node_id in catalog.sources:
                     col_names = list(catalog.sources[node_id].columns.keys())
+            elif node_id in manifest.exposures:
+                n = manifest.exposures[node_id]
+                if hasattr(n.depends_on, "nodes"):
+                    p_list = n.depends_on.nodes
+            elif hasattr(manifest, "semantic_models") and node_id in manifest.semantic_models:
+                n = manifest.semantic_models[node_id]
+                if hasattr(n.depends_on, "nodes"):
+                    p_list = n.depends_on.nodes
+            elif node_id in manifest.metrics:
+                n = manifest.metrics[node_id]
+                if hasattr(n.depends_on, "nodes"):
+                    p_list = n.depends_on.nodes
 
             content_key = self._make_node_content_key(node_id, raw_code, p_list, col_names)
 
