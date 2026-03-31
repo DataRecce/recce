@@ -1,7 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import axios, { type AxiosInstance, type AxiosResponse } from "axios";
+import {
+  type ApiClient,
+  type ApiResponse,
+  createFetchClient,
+} from "../lib/fetchClient";
 import { useApiConfigOptional } from "../providers/contexts/ApiContext";
 import { cacheKeys } from "./cacheKeys";
 import type { Run, RunType } from "./types";
@@ -50,7 +54,7 @@ export interface CreateCheckBody {
  * Default axios client for hooks that may be used outside RecceProvider.
  * This is a fallback - components inside RecceProvider will use the configured client.
  */
-const defaultApiClient = axios.create();
+const defaultApiClient = createFetchClient({ baseURL: "" });
 
 // ============================================================================
 // API Functions
@@ -61,8 +65,8 @@ const defaultApiClient = axios.create();
  * @param client - Required axios instance
  * @returns The created check
  */
-export async function createSimpleCheck(client: AxiosInstance): Promise<Check> {
-  const response = await client.post<CreateCheckBody, AxiosResponse<Check>>(
+export async function createSimpleCheck(client: ApiClient): Promise<Check> {
+  const response = await client.post<CreateCheckBody, ApiResponse<Check>>(
     "/api/checks",
     {
       type: "simple",
@@ -81,10 +85,10 @@ export async function createSimpleCheck(client: AxiosInstance): Promise<Check> {
 export async function createCheckByRun(
   runId: string,
   viewOptions: Record<string, unknown> | undefined,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<Check> {
   // NOTE: Removed getExperimentTrackingBreakingChangeEnabled() - OSS-specific
-  const response = await client.post<CreateCheckBody, AxiosResponse<Check>>(
+  const response = await client.post<CreateCheckBody, ApiResponse<Check>>(
     "/api/checks",
     {
       run_id: runId,
@@ -99,8 +103,8 @@ export async function createCheckByRun(
  * @param client - Required axios instance
  * @returns Array of all checks
  */
-export async function listChecks(client: AxiosInstance): Promise<Check[]> {
-  return (await client.get<never, AxiosResponse<Check[]>>("/api/checks")).data;
+export async function listChecks(client: ApiClient): Promise<Check[]> {
+  return (await client.get<never, ApiResponse<Check[]>>("/api/checks")).data;
 }
 
 /**
@@ -111,9 +115,9 @@ export async function listChecks(client: AxiosInstance): Promise<Check[]> {
  */
 export async function getCheck(
   checkId: string,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<Check> {
-  const response = await client.get<never, AxiosResponse<Check>>(
+  const response = await client.get<never, ApiResponse<Check>>(
     `/api/checks/${checkId}`,
   );
   return response.data;
@@ -129,9 +133,9 @@ export async function getCheck(
 export async function updateCheck(
   checkId: string,
   payload: Partial<Check>,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<Check> {
-  const response = await client.patch<Partial<Check>, AxiosResponse<Check>>(
+  const response = await client.patch<Partial<Check>, ApiResponse<Check>>(
     `/api/checks/${checkId}`,
     payload,
   );
@@ -146,11 +150,11 @@ export async function updateCheck(
  */
 export async function deleteCheck(
   checkId: string,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<Pick<Check, "check_id">> {
   const response = await client.delete<
     never,
-    AxiosResponse<Pick<Check, "check_id">>
+    ApiResponse<Pick<Check, "check_id">>
   >(`/api/checks/${checkId}`);
   return response.data;
 }
@@ -165,7 +169,7 @@ export async function reorderChecks(
     source: number;
     destination: number;
   },
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<void> {
   await client.post("/api/checks/reorder", order);
 }
@@ -177,7 +181,7 @@ export async function reorderChecks(
  */
 export async function markAsPresetCheck(
   checkId: string,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<void> {
   await client.post(`/api/checks/${checkId}/mark-as-preset`);
 }

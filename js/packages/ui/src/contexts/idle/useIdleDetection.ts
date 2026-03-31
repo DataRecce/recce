@@ -1,16 +1,16 @@
 "use client";
 
-import axios from "axios";
 import throttle from "lodash/throttle";
 import { useCallback, useEffect, useMemo } from "react";
 import { sendKeepAlive } from "../../api/keepAlive";
+import { createFetchClient } from "../../lib/fetchClient";
 import { useApiConfigOptional } from "../../providers/contexts/ApiContext";
 
 import { useRecceInstanceInfo } from "../instance";
 import { useIdleTimeoutSafe } from "./types";
 
 // Default axios client for use outside RecceProvider (OSS mode)
-const defaultApiClient = axios.create();
+const defaultApiClient = createFetchClient({ baseURL: "" });
 
 /**
  * Check if debug logging is enabled via window.RECCE_DEBUG_IDLE
