@@ -1,6 +1,7 @@
 "use client";
 
-import { type AxiosInstance, type AxiosResponse, isAxiosError } from "axios";
+import type { ApiClient, ApiResponse } from "../lib/fetchClient";
+import { isHttpError } from "../lib/fetchClient";
 
 export interface SaveAsInput {
   filename: string;
@@ -14,24 +15,24 @@ export interface ImportedState {
 
 export async function saveAs(
   input: SaveAsInput,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<void> {
   return (
-    await client.post<SaveAsInput, AxiosResponse<void>>("/api/save-as", input)
+    await client.post<SaveAsInput, ApiResponse<void>>("/api/save-as", input)
   ).data;
 }
 
 export async function rename(
   input: SaveAsInput,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<void> {
   return (
-    await client.post<SaveAsInput, AxiosResponse<void>>("/api/rename", input)
+    await client.post<SaveAsInput, ApiResponse<void>>("/api/rename", input)
   ).data;
 }
 
-export async function exportState(client: AxiosInstance): Promise<string> {
-  return (await client.post<never, AxiosResponse<string>>("/api/export")).data;
+export async function exportState(client: ApiClient): Promise<string> {
+  return (await client.post<never, ApiResponse<string>>("/api/export")).data;
 }
 
 interface ImportStateBody {
@@ -42,22 +43,22 @@ interface ImportStateBody {
 export async function importState(
   file: File,
   checksOnly: boolean | undefined,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<ImportedState> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("checks_only", (!!checksOnly).toString());
 
   return (
-    await client.post<ImportStateBody, AxiosResponse<ImportedState>>(
+    await client.post<ImportStateBody, ApiResponse<ImportedState>>(
       "/api/import",
       formData,
     )
   ).data;
 }
 
-export async function isStateSyncing(client: AxiosInstance): Promise<boolean> {
-  const response = await client.get<never, AxiosResponse<boolean>>("/api/sync");
+export async function isStateSyncing(client: ApiClient): Promise<boolean> {
+  const response = await client.get<never, ApiResponse<boolean>>("/api/sync");
   return response.status === 208;
 }
 
@@ -71,12 +72,12 @@ export interface SyncStateResponse {
 
 export async function syncState(
   input: SyncStateInput,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<SyncStateResponse> {
   try {
     const response = await client.post<
       SyncStateInput,
-      AxiosResponse<SyncStateResponse>
+      ApiResponse<SyncStateResponse>
     >("/api/sync", input);
 
     if (response.status === 202) {
@@ -90,8 +91,8 @@ export async function syncState(
       };
     }
   } catch (error) {
-    if (isAxiosError(error)) {
-      if (error.response?.status === 409) {
+    if (isHttpError(error)) {
+      if (error.status === 409) {
         // 409 conflict case
         return { status: "conflict" };
       }
@@ -107,9 +108,9 @@ export interface ShareStateResponse {
 }
 
 export async function shareState(
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<ShareStateResponse> {
   return (
-    await client.post<never, AxiosResponse<ShareStateResponse>>("/api/share")
+    await client.post<never, ApiResponse<ShareStateResponse>>("/api/share")
   ).data;
 }
