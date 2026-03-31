@@ -7,13 +7,16 @@
 // ============================================================================
 
 /**
- * Query parameters for Axios requests
+ * Query parameters for API requests
  * Supports string, number, and array values with undefined for optional params
  */
-export type AxiosQueryParams = Record<
+export type QueryParams = Record<
   string,
   string | string[] | number | number[] | undefined
 >;
+
+/** @deprecated Use QueryParams instead */
+export type AxiosQueryParams = QueryParams;
 
 // ============================================================================
 // Data Types
