@@ -10,6 +10,7 @@
 export class HttpError<T = unknown> extends Error {
   public readonly status: number;
   public readonly data: T;
+  readonly __isHttpError = true as const;
 
   constructor(status: number, data: T, message: string) {
     super(message);
@@ -31,7 +32,13 @@ export class HttpError<T = unknown> extends Error {
 export function isHttpError<T = unknown>(
   error: unknown,
 ): error is HttpError<T> {
-  return error instanceof HttpError;
+  return (
+    error instanceof HttpError ||
+    (error != null &&
+      typeof error === "object" &&
+      "__isHttpError" in error &&
+      (error as { __isHttpError: unknown }).__isHttpError === true)
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -92,11 +99,32 @@ export interface FetchClientConfig {
 // Helpers
 // ---------------------------------------------------------------------------
 
+function serializeParams(params: NonNullable<RequestConfig["params"]>): string {
+  const sp = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        sp.append(key, String(item));
+      }
+    } else {
+      sp.set(key, String(value));
+    }
+  }
+  const qs = sp.toString();
+  return qs ? `?${qs}` : "";
+}
+
 function buildURL(
   baseURL: string,
   path: string,
   params?: RequestConfig["params"],
 ): string {
+  if (!baseURL) {
+    // OSS mode: baseURL is empty, use path directly
+    return params ? `${path}${serializeParams(params)}` : path;
+  }
+
   const url = new URL(path, baseURL);
 
   if (params) {
@@ -147,6 +175,7 @@ export function createFetchClient(config: FetchClientConfig): ApiClient {
     if (body !== undefined && body !== null) {
       if (body instanceof FormData) {
         // Let the browser set Content-Type with boundary
+        headers.delete("Content-Type");
         init.body = body;
       } else {
         headers.set("Content-Type", "application/json");
@@ -169,7 +198,16 @@ export function createFetchClient(config: FetchClientConfig): ApiClient {
 
     const res = await fetch(resolvedURL, resolvedInit as RequestInit);
 
-    const data = await Promise.resolve(parseResponseBody(res));
+    let data: unknown;
+    try {
+      data = await Promise.resolve(parseResponseBody(res));
+    } catch {
+      throw new HttpError(
+        res.status,
+        null,
+        `Failed to parse response: ${res.statusText}`,
+      );
+    }
 
     if (!res.ok) {
       throw new HttpError(
