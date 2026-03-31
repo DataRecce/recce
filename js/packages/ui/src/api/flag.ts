@@ -6,6 +6,7 @@ import type { AxiosInstance, AxiosResponse } from "axios";
 export interface RecceServerFlags {
   single_env_onboarding: boolean;
   show_relaunch_hint: boolean;
+  disable_cll_cache: boolean;
 }
 
 /**

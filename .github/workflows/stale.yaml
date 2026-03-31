@@ -1,0 +1,43 @@
+name: Close Stale Issues
+on:
+  schedule:
+    - cron: '0 0 * * 1' # run weekly on Monday at midnight UTC
+  workflow_dispatch:
+    inputs:
+      debug-only:
+        description: 'Run in debug/dry-run mode (no changes)'
+        type: boolean
+        default: false
+
+permissions:
+  issues: write
+
+concurrency:
+  group: stale-issues
+  cancel-in-progress: true
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/stale@b5d41d4e1d5dceea10e7104786b73624c18a190f # v10.2.0
+        with:
+          stale-issue-message: >
+            This issue has been automatically marked as stale because it has not had
+            recent activity. It will be closed if no further activity occurs. If this
+            issue is still relevant, please comment to keep it open.
+          close-issue-message: >
+            This issue was closed because it has been stale for too long with no activity.
+            Feel free to reopen if this is still relevant.
+          days-before-issue-stale: 90
+          days-before-issue-close: 30
+          stale-issue-label: stale
+          close-issue-reason: not_planned
+          exempt-issue-labels: pinned,security,bug,keep-open,enhancement,linear,good first issue,help wanted
+          exempt-all-assignees: true
+          remove-stale-when-updated: true
+          operations-per-run: 100
+          days-before-pr-stale: -1
+          days-before-pr-close: -1
+          debug-only: ${{ inputs.debug-only || false }}

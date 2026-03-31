@@ -212,7 +212,8 @@ class CheckDAO:
         Create a new check.
 
         In local mode: Appends check to in-memory list
-        In cloud mode: Creates check via Recce Cloud API
+        In cloud mode: Write-through — creates check via Recce Cloud API AND
+        keeps in local state so runs can reference it and state export includes it.
 
         Args:
             check: Check object to create
@@ -237,7 +238,13 @@ class CheckDAO:
                 )
                 new_check = self._cloud_to_check(cloud_check)
 
-                logger.debug(f"Created check {new_check.check_id} in cloud")
+                # Write-through: also keep in local state so that:
+                # 1. Runs created after this check can reference it
+                # 2. export_persistent_state() includes checks in recce_state.json
+                # 3. Preview instance gets checks + runs together from S3 sync
+                self._checks.append(new_check)
+
+                logger.debug(f"Created check {new_check.check_id} in cloud and local state")
                 return new_check
             except Exception as e:
                 logger.error(f"Failed to create check in cloud: {e}")

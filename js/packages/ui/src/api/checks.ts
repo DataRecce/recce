@@ -26,6 +26,7 @@ export interface Check<PT = unknown, VO = unknown> {
   is_preset?: boolean;
   last_run?: Run;
   is_outdated?: boolean;
+  actor_type?: string; // "recce_ai" | "user" | "preset_system" — Cloud-only, undefined in OSS
 }
 
 /**

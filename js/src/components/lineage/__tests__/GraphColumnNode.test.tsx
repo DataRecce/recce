@@ -439,7 +439,7 @@ describe("GraphColumnNode", () => {
 
       render(<GraphColumnNode {...props} />);
 
-      // Component applies filter: "opacity(0.2) grayscale(50%)" when not highlighted
+      // Component applies DIM_FILTER when not highlighted
       // We verify the logic path is exercised
     });
   });

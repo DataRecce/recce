@@ -83,4 +83,6 @@ export interface DataFrame {
   limit?: number;
   /** Whether more rows are available beyond the limit */
   more?: boolean;
+  /** Total row count from full query result (before preview limit) */
+  total_row_count?: number;
 }

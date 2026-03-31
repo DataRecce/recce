@@ -352,6 +352,47 @@ class TestSubmitRunParamsPropagation:
             assert run.params["primary_key"] == ["CUSTOMER_ID"]
 
     @pytest.mark.asyncio
+    async def test_triggered_by_propagates_to_run(self, mock_context, mock_task_class):
+        """Test that triggered_by parameter is set on the created Run object."""
+        from recce.apis.run_func import submit_run
+
+        with patch("recce.apis.run_func.create_task") as mock_create_task:
+            mock_task = mock_task_class({"model": "customers", "primary_key": ["customer_id"]})
+            mock_create_task.return_value = mock_task
+
+            run, future = submit_run(
+                type="value_diff",
+                params={"model": "customers", "primary_key": ["customer_id"]},
+                triggered_by="recce_ai",
+            )
+
+            assert run.triggered_by == "recce_ai"
+
+            # Clean up: wait for the future to complete
+            await asyncio.wrap_future(future)
+            await asyncio.sleep(0.1)
+
+    @pytest.mark.asyncio
+    async def test_triggered_by_defaults_to_none(self, mock_context, mock_task_class):
+        """Test that triggered_by defaults to None when not specified."""
+        from recce.apis.run_func import submit_run
+
+        with patch("recce.apis.run_func.create_task") as mock_create_task:
+            mock_task = mock_task_class({"model": "customers", "primary_key": ["customer_id"]})
+            mock_create_task.return_value = mock_task
+
+            run, future = submit_run(
+                type="value_diff",
+                params={"model": "customers", "primary_key": ["customer_id"]},
+            )
+
+            assert run.triggered_by is None
+
+            # Clean up: wait for the future to complete
+            await asyncio.wrap_future(future)
+            await asyncio.sleep(0.1)
+
+    @pytest.mark.asyncio
     async def test_run_params_unchanged_when_task_has_no_params(self, mock_context):
         """Test that run.params is unchanged when task.params is None."""
         from recce.apis.run_func import submit_run
@@ -438,3 +479,101 @@ class TestEdgeCases:
         # Note: dict.update() does shallow merge, so options is replaced entirely
         assert original["options"] == {"limit": 50}
         assert "offset" not in original["options"]
+
+
+# =============================================================================
+# Tests: generate_run_name for metadata types
+# =============================================================================
+
+
+class TestGenerateRunNameRowCountDiff:
+    """Tests for generate_run_name with row_count_diff node_ids fallback."""
+
+    def test_row_count_diff_node_names_single(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.ROW_COUNT_DIFF, params={"node_names": ["customers"]})
+        assert generate_run_name(run) == "Row count diff of customers"
+
+    def test_row_count_diff_node_ids_single(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.ROW_COUNT_DIFF, params={"node_ids": ["model.jaffle_shop.customers"]})
+        assert generate_run_name(run) == "Row count diff of customers"
+
+    def test_row_count_diff_node_ids_multiple(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(
+            type=RunType.ROW_COUNT_DIFF,
+            params={"node_ids": ["model.jaffle_shop.customers", "model.jaffle_shop.orders"]},
+        )
+        assert generate_run_name(run) == "Row count of 2 nodes"
+
+    def test_row_count_diff_no_params(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.ROW_COUNT_DIFF, params={})
+        assert generate_run_name(run) == "Row count of multiple nodes"
+
+
+class TestGenerateRunNameMetadataTypes:
+    """Tests for generate_run_name with lineage_diff and schema_diff types."""
+
+    def test_lineage_diff_name(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.LINEAGE_DIFF, params={})
+        assert generate_run_name(run) == "Lineage diff"
+
+    def test_schema_diff_no_params(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.SCHEMA_DIFF, params={})
+        assert generate_run_name(run) == "Schema diff"
+
+    # REST API convention: node_id (single string, fully-qualified)
+    def test_schema_diff_node_id(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.SCHEMA_DIFF, params={"node_id": "model.jaffle_shop.customers"})
+        assert generate_run_name(run) == "Schema diff of customers"
+
+    # MCP convention: node_names (array of short names)
+    def test_schema_diff_single_node_name(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.SCHEMA_DIFF, params={"node_names": ["customers"]})
+        assert generate_run_name(run) == "Schema diff of customers"
+
+    def test_schema_diff_multiple_node_names(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.SCHEMA_DIFF, params={"node_names": ["customers", "orders"]})
+        assert generate_run_name(run) == "Schema diff of 2 nodes"
+
+    # MCP convention: node_ids (array of fully-qualified IDs)
+    def test_schema_diff_single_node_id_array(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(type=RunType.SCHEMA_DIFF, params={"node_ids": ["model.jaffle_shop.customers"]})
+        assert generate_run_name(run) == "Schema diff of customers"
+
+    def test_schema_diff_multiple_node_ids(self):
+        from recce.apis.run_func import generate_run_name
+        from recce.models.types import Run, RunType
+
+        run = Run(
+            type=RunType.SCHEMA_DIFF, params={"node_ids": ["model.jaffle_shop.customers", "model.jaffle_shop.orders"]}
+        )
+        assert generate_run_name(run) == "Schema diff of 2 nodes"

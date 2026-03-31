@@ -4,7 +4,7 @@ dynamic = ["version"]
 description = "Environment diff tool for dbt"
 readme = "README.md"
 authors = [{name = "InfuseAI Dev Team", email = "dev@infuseai.io"}]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
 
 dependencies = [
@@ -28,13 +28,13 @@ dependencies = [
     "python-multipart",
     "GitPython",
     "PyGithub",
-    "sqlglot>=27.29.0,<30.0",
+    "sqlglot>=27.29.0,<31.0",
     "pytz",
     "packaging",
+    "openpyxl>=3.1.0",
 ]
 
 classifiers = [
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -45,7 +45,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-mcp = ["mcp>=1.0.0; python_version >= '3.10'"]
+mcp = ["mcp>=1.0.0"]
 dev = [
     "pytest>=4.6",
     "pytest-asyncio>=0.23,<2.0",

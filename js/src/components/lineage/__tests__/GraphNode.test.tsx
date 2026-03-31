@@ -489,7 +489,7 @@ describe("GraphNode", () => {
       // The component uses this to apply opacity filter for non-highlighted nodes
       expect(mockIsNodeHighlighted).toHaveBeenCalledWith("test-node-1");
       // When isNodeHighlighted returns false (and not focused/selected/hovered),
-      // the component applies filter: "opacity(0.2) grayscale(50%)"
+      // the component applies DIM_FILTER ("opacity(0.4) grayscale(40%)")
       // Note: MUI sx prop styles are not accessible via inline style, but the logic is verified
     });
   });

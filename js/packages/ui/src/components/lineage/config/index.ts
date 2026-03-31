@@ -5,3 +5,10 @@ export {
   initialNodes,
   nodeTypes,
 } from "./nodeTypes";
+
+export {
+  DIM_FILTER,
+  EXPLORE_MIN_ZOOM,
+  FIT_VIEW_PADDING,
+  LEGIBLE_MIN_ZOOM,
+} from "./zoomConstants";

@@ -26,7 +26,12 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { Handle, Position } from "@xyflow/react";
 import { type MouseEvent, memo, type ReactNode, useState } from "react";
-import { getIconForChangeStatus, getIconForResourceType } from "../styles";
+import { DIM_FILTER } from "../config/zoomConstants";
+import {
+  getIconForChangeStatus,
+  getIconForMaterialization,
+  getIconForResourceType,
+} from "../styles";
 
 // =============================================================================
 // TYPES
@@ -65,6 +70,8 @@ export interface LineageNodeData extends Record<string, unknown> {
   isSelected?: boolean;
   /** Resource type for icon display */
   resourceType?: string;
+  /** Materialization strategy (table, view, incremental, etc.) */
+  materialized?: string;
   /** Package name */
   packageName?: string;
   /** Whether to show column-level details */
@@ -310,6 +317,7 @@ function LineageNodeComponent({
     changeStatus = "unchanged",
     isSelected: dataIsSelected,
     resourceType,
+    materialized,
   } = data;
 
   // Use isNodeSelected prop, fall back to data.isSelected, then to selected
@@ -323,7 +331,10 @@ function LineageNodeComponent({
     color: colorChangeStatus,
     backgroundColor: backgroundColorChangeStatus,
   } = getIconForChangeStatus(changeStatus, isDark);
-  const { icon: ResourceIcon } = getIconForResourceType(resourceType);
+  const { icon: ResourceIcon } =
+    resourceType === "model" && materialized
+      ? getIconForMaterialization(materialized)
+      : getIconForResourceType(resourceType);
 
   // Calculate styles based on state
   const borderWidth = "2px";
@@ -395,11 +406,11 @@ function LineageNodeComponent({
   // Filter for dimming
   const nodeFilter = (() => {
     if (selectMode === "action_result") {
-      return hasAction ? "none" : "opacity(0.2) grayscale(50%)";
+      return hasAction ? "none" : DIM_FILTER;
     }
     return isHighlighted || isFocused || isSelected || isHovered
       ? "none"
-      : "opacity(0.2) grayscale(50%)";
+      : DIM_FILTER;
   })();
 
   const handleCheckboxClick = (e: MouseEvent) => {
@@ -549,12 +560,12 @@ function LineageNodeComponent({
               <>
                 {ResourceIcon && (
                   <Box sx={{ fontSize: 16, color: iconColor }}>
-                    <ResourceIcon />
+                    <ResourceIcon aria-hidden="true" />
                   </Box>
                 )}
                 {changeStatus && IconChangeStatus && (
                   <Box sx={{ color: changeStatusIconColor }}>
-                    <IconChangeStatus />
+                    <IconChangeStatus aria-hidden="true" />
                   </Box>
                 )}
               </>

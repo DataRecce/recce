@@ -424,7 +424,7 @@ class CloudStateLoader(RecceStateLoader):
         # Create a copy of the state with empty artifacts for upload
         upload_state = RecceState()
         upload_state.runs = self.state.runs.copy() if self.state.runs else []
-        upload_state.checks = []
+        upload_state.checks = self.state.checks.copy() if self.state.checks else []
         # Keep artifacts empty (don't copy self.state.artifacts)
 
         # Upload the state with empty artifacts

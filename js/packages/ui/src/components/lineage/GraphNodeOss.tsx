@@ -362,6 +362,9 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
         label: name,
         changeStatus: nodeChangeStatus,
         resourceType,
+        materialized:
+          data.data?.current?.config?.materialized ??
+          data.data?.base?.config?.materialized,
       }}
       // Interactive props
       interactive={interactive}

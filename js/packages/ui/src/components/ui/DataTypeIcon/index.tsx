@@ -17,10 +17,10 @@ import {
   UnknownIcon,
 } from "./icons";
 
-export { classifyType };
-export type { TypeCategory };
 export type { ColumnTooltipInput } from "./tooltipText";
 export { buildColumnTooltip } from "./tooltipText";
+export type { TypeCategory };
+export { classifyType };
 
 const ICON_MAP: Record<
   TypeCategory,

@@ -48,7 +48,7 @@ function formatInlineDiffCell(
  * Extract columns and rows from a DataFrame
  */
 function extractDataFrame(df: DataFrame | undefined): CSVData | null {
-  if (!df || !df.columns || !df.data) {
+  if (!df?.columns || !df.data) {
     return null;
   }
   return {

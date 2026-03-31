@@ -21,6 +21,7 @@ import {
   createCllData,
   createCllLineageGraph,
   diamondLayout,
+  jaffleShopLineageGraph,
   largeGraph,
   simpleLinearLayout,
 } from "./fixtures";
@@ -165,31 +166,20 @@ export const LargeGraph: Story = {
 };
 
 // =============================================================================
-// COLUMN-LEVEL LINEAGE (CLL)
+// SHARED ADAPTER: LineageGraph -> LineageCanvas
 // =============================================================================
 
 /**
- * Helper to generate CLL nodes and edges using toReactFlow
- *
- * toReactFlow produces LineageGraphNode (type: "lineageGraphNode") and
- * LineageGraphColumnNode (type: "lineageGraphColumnNode").
- *
- * LineageCanvas expects:
- * - lineageNode (for model nodes) with data.label
- * - lineageGraphColumnNode (for column nodes) - already compatible
- *
- * This adapter converts the output to be compatible with LineageCanvas.
+ * Adapt toReactFlow output for LineageCanvas.
+ * lineageGraphNode -> lineageNode, lineageGraphEdge -> lineageEdge.
  */
-function createCllLayout() {
-  const lineageGraph = createCllLineageGraph();
-  const cllData = createCllData();
-  const [rawNodes, rawEdges] = toReactFlow(lineageGraph, { cll: cllData });
-
-  // Adapt nodes: convert lineageGraphNode -> lineageNode with label
+function adaptForCanvas(
+  rawNodes: LineageGraphNodes[],
+  rawEdges: LineageGraphEdge[],
+) {
   const nodes = rawNodes.map((node: LineageGraphNodes) => {
     if (node.type === "lineageGraphNode") {
-      // Extract data from LineageGraphNode and convert to LineageNodeData
-      const graphData = node.data as {
+      const d = node.data as {
         name: string;
         resourceType?: string;
         changeStatus?: string;
@@ -199,18 +189,16 @@ function createCllLayout() {
         ...node,
         type: "lineageNode" as const,
         data: {
-          label: graphData.name,
-          resourceType: graphData.resourceType,
-          changeStatus: graphData.changeStatus,
-          packageName: graphData.packageName,
+          label: d.name,
+          resourceType: d.resourceType,
+          changeStatus: d.changeStatus,
+          packageName: d.packageName,
         },
       };
     }
-    // Column nodes are already compatible
     return node;
   });
 
-  // Adapt edges: convert lineageGraphEdge -> lineageEdge
   const edges = rawEdges.map((edge: LineageGraphEdge) => ({
     ...edge,
     type: edge.type === "lineageGraphEdge" ? "lineageEdge" : edge.type,
@@ -220,6 +208,49 @@ function createCllLayout() {
     nodes: nodes as LineageCanvasProps["nodes"],
     edges: edges as LineageCanvasProps["edges"],
   };
+}
+
+/** Convert a LineageGraph to LineageCanvas props */
+function lineageGraphToCanvas(
+  graph: Parameters<typeof toReactFlow>[0],
+  options?: Parameters<typeof toReactFlow>[1],
+) {
+  const [nodes, edges] = toReactFlow(graph, options);
+  return adaptForCanvas(nodes, edges);
+}
+
+// =============================================================================
+// JAFFLE SHOP MEGA
+// =============================================================================
+
+export const JaffleShopDuckDB: Story = {
+  name: "Jaffle Shop Mega",
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Large mock lineage graph with topology from jaffle_shop_duckdb. 99 nodes (12 seeds, 12 staging, 25 intermediate, 35 marts, 15 metrics), 142 edges. stg_orders and 49 downstream models marked modified. Tests layout, performance, and navigation at scale.",
+      },
+    },
+  },
+  args: {
+    ...lineageGraphToCanvas(jaffleShopLineageGraph()),
+    showMiniMap: true,
+    showControls: true,
+    showBackground: true,
+    height: 600,
+    interactive: true,
+  },
+};
+
+// =============================================================================
+// COLUMN-LEVEL LINEAGE (CLL)
+// =============================================================================
+
+function createCllLayout() {
+  return lineageGraphToCanvas(createCllLineageGraph(), {
+    cll: createCllData(),
+  });
 }
 
 export const ColumnLevelLineage: Story = {
@@ -292,38 +323,7 @@ function CllToggleDemo() {
       }
     }
 
-    // Adapt nodes for LineageCanvas
-    const adaptedNodes = rawNodes.map((node: LineageGraphNodes) => {
-      if (node.type === "lineageGraphNode") {
-        const graphData = node.data as {
-          name: string;
-          resourceType?: string;
-          changeStatus?: string;
-          packageName?: string;
-        };
-        return {
-          ...node,
-          type: "lineageNode" as const,
-          data: {
-            label: graphData.name,
-            resourceType: graphData.resourceType,
-            changeStatus: graphData.changeStatus,
-            packageName: graphData.packageName,
-          },
-        };
-      }
-      return node;
-    });
-
-    const adaptedEdges = rawEdges.map((edge: LineageGraphEdge) => ({
-      ...edge,
-      type: edge.type === "lineageGraphEdge" ? "lineageEdge" : edge.type,
-    }));
-
-    return {
-      nodes: adaptedNodes as LineageCanvasProps["nodes"],
-      edges: adaptedEdges as LineageCanvasProps["edges"],
-    };
+    return adaptForCanvas(rawNodes, rawEdges);
   }, [cllEnabled, lineageGraph, cllData]);
 
   const handleToggle = useCallback(() => {
@@ -490,38 +490,7 @@ function ColumnClickingReflowDemo() {
       setReflowCount((c) => c + 1);
     }
 
-    // Adapt nodes for LineageCanvas
-    const adaptedNodes = rawNodes.map((node: LineageGraphNodes) => {
-      if (node.type === "lineageGraphNode") {
-        const graphData = node.data as {
-          name: string;
-          resourceType?: string;
-          changeStatus?: string;
-          packageName?: string;
-        };
-        return {
-          ...node,
-          type: "lineageNode" as const,
-          data: {
-            label: graphData.name,
-            resourceType: graphData.resourceType,
-            changeStatus: graphData.changeStatus,
-            packageName: graphData.packageName,
-          },
-        };
-      }
-      return node;
-    });
-
-    const adaptedEdges = rawEdges.map((edge: LineageGraphEdge) => ({
-      ...edge,
-      type: edge.type === "lineageGraphEdge" ? "lineageEdge" : edge.type,
-    }));
-
-    return {
-      nodes: adaptedNodes as LineageCanvasProps["nodes"],
-      edges: adaptedEdges as LineageCanvasProps["edges"],
-    };
+    return adaptForCanvas(rawNodes, rawEdges);
   }, [selectedColumn, previousColumn, lineageGraph]);
 
   const handleColumnClick = useCallback(
@@ -797,38 +766,7 @@ function LargeGraphReflowDemo() {
       setReflowCount((c) => c + 1);
     }
 
-    // Adapt nodes for LineageCanvas
-    const adaptedNodes = rawNodes.map((node: LineageGraphNodes) => {
-      if (node.type === "lineageGraphNode") {
-        const graphData = node.data as {
-          name: string;
-          resourceType?: string;
-          changeStatus?: string;
-          packageName?: string;
-        };
-        return {
-          ...node,
-          type: "lineageNode" as const,
-          data: {
-            label: graphData.name,
-            resourceType: graphData.resourceType,
-            changeStatus: graphData.changeStatus,
-            packageName: graphData.packageName,
-          },
-        };
-      }
-      return node;
-    });
-
-    const adaptedEdges = rawEdges.map((edge: LineageGraphEdge) => ({
-      ...edge,
-      type: edge.type === "lineageGraphEdge" ? "lineageEdge" : edge.type,
-    }));
-
-    return {
-      nodes: adaptedNodes as LineageCanvasProps["nodes"],
-      edges: adaptedEdges as LineageCanvasProps["edges"],
-    };
+    return adaptForCanvas(rawNodes, rawEdges);
   }, [selectedColumn, previousColumn, lineageGraph]);
 
   const handleColumnClick = useCallback(

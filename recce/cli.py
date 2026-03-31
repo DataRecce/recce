@@ -1,6 +1,5 @@
 import asyncio
 import os
-import sys
 from pathlib import Path
 from typing import List
 
@@ -303,13 +302,6 @@ def cli(ctx, **kwargs):
         )
         error_console.print("Please update using the command: 'pip install --upgrade recce'.", end="\n\n")
 
-    if sys.version_info < (3, 10):
-        warn_console = Console(stderr=True, style="bold")
-        warn_console.print(
-            "[[yellow]Deprecation Warning[/yellow]] Python 3.9 support will be removed in a future release of Recce.",
-        )
-        warn_console.print("Please upgrade to Python 3.10 or later.", end="\n\n")
-
 
 @cli.command(cls=TrackCommand)
 def version():
@@ -495,6 +487,12 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 )
 @click.option("--review", is_flag=True, help="Open the state file in the review mode.")
 @click.option("--single-env", is_flag=True, help="Launch in single environment mode directly.")
+@click.option(
+    "--enable-cll-cache",
+    is_flag=True,
+    help="Enable the pre-cached full column-level lineage map.",
+    envvar="ENABLE_CLL_CACHE",
+)
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -555,6 +553,7 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         "show_relaunch_hint": False,
         "preview": False,
         "read_only": False,
+        "disable_cll_cache": True,
     }
     console = Console()
 
@@ -590,6 +589,9 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         flag["preview"] = True
     elif server_mode == RecceServerMode.read_only:
         flag["read_only"] = True
+
+    if kwargs.get("enable_cll_cache", False):
+        flag["disable_cll_cache"] = False
 
     # Create state loader using shared function
     from recce.util.startup_perf import get_startup_tracker
