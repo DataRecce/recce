@@ -84,6 +84,19 @@ describe("isHttpError", () => {
     expect(isHttpError(undefined)).toBe(false);
   });
 
+  it("works with brand property (cross-module compat)", () => {
+    // Simulate cross-module scenario: object has brand but different prototype
+    const fakeCrossModuleError = {
+      __isHttpError: true,
+      status: 500,
+      data: null,
+      message: "fail",
+      name: "HttpError",
+      response: { status: 500, data: null },
+    };
+    expect(isHttpError(fakeCrossModuleError)).toBe(true);
+  });
+
   it("narrows generic type", () => {
     const err: unknown = new HttpError<{ code: number }>(
       400,
@@ -337,6 +350,44 @@ describe("createFetchClient", () => {
       const [, init] = mockFetch.mock.calls[0];
       expect(init.signal).toBeDefined();
       expect(init.signal).toBeInstanceOf(AbortSignal);
+    });
+  });
+
+  describe("empty baseURL (OSS mode)", () => {
+    it("works with empty baseURL", async () => {
+      const ossClient = createFetchClient({ baseURL: "" });
+      mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }));
+
+      const result = await ossClient.get("/api/info");
+
+      expect(mockFetch).toHaveBeenCalledWith("/api/info", expect.any(Object));
+      expect(result.data).toEqual({ ok: true });
+    });
+
+    it("works with empty baseURL and params", async () => {
+      const ossClient = createFetchClient({ baseURL: "" });
+      mockFetch.mockResolvedValueOnce(jsonResponse({}));
+
+      await ossClient.get("/api/test", { params: { a: "1" } });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/test?a=1",
+        expect.any(Object),
+      );
+    });
+  });
+
+  describe("malformed response", () => {
+    it("throws HttpError for malformed JSON response", async () => {
+      const ossClient = createFetchClient({ baseURL: "" });
+      mockFetch.mockResolvedValueOnce(
+        new Response("not json", {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+      await expect(ossClient.get("/test")).rejects.toThrow(HttpError);
     });
   });
 });
