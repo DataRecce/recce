@@ -100,10 +100,10 @@
       "import": "./dist/lib/api/user.js",
       "default": "./dist/lib/api/user.js"
     },
-    "./lib/api/axiosClient": {
-      "types": "./dist/lib/api/axiosClient.d.ts",
-      "import": "./dist/lib/api/axiosClient.js",
-      "default": "./dist/lib/api/axiosClient.js"
+    "./lib/api/queryClient": {
+      "types": "./dist/lib/api/queryClient.d.ts",
+      "import": "./dist/lib/api/queryClient.js",
+      "default": "./dist/lib/api/queryClient.js"
     },
     "./lib/result/ResultErrorFallback": {
       "types": "./dist/lib/result/ResultErrorFallback.d.ts",
@@ -148,7 +148,6 @@
     "@xyflow/react": "^12.10.1",
     "ag-grid-community": "^35.1.0",
     "ag-grid-react": "^35.1.0",
-    "axios": "^1.0.0",
     "chart.js": "^4.5.0",
     "common-tags": "^1.8.0",
     "date-fns": "^4.1.0",

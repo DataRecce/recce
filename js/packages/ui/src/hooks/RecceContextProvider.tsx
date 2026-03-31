@@ -28,7 +28,7 @@ interface RecceContextProps {
  * ```
  *
  * When used without ApiConfigProvider (OSS mode), hooks will use
- * the default axios client with standard /api/* endpoints.
+ * the default API client with standard /api/* endpoints.
  */
 export default function RecceContextProvider({ children }: RecceContextProps) {
   return (

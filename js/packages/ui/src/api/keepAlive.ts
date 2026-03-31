@@ -17,7 +17,7 @@ function isDebugEnabled(): boolean {
 const MIN_KEEP_ALIVE_INTERVAL_MS = 3 * 1000;
 
 /**
- * State for axios-layer throttling
+ * State for API-layer throttling
  * - lastKeepAliveTime: timestamp of last SUCCESSFUL keep-alive sent to server
  * - isSending: lock to prevent concurrent API calls
  */
@@ -40,11 +40,11 @@ export function setKeepAliveCallback(callback: KeepAliveCallback | null): void {
  * Send a keep-alive signal to the server to reset the idle timeout timer.
  * This prevents the server from shutting down due to inactivity.
  *
- * Includes built-in throttling at the axios layer:
+ * Includes built-in throttling at the API layer:
  * - Minimum 3 seconds between API calls
  * - Prevents concurrent API calls with a lock
  *
- * @param client - Axios instance for API configuration (required)
+ * @param client - API client instance (required)
  * @returns true if keep-alive was sent, false if throttled/skipped
  */
 export async function sendKeepAlive(client: ApiClient): Promise<boolean> {

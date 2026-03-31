@@ -9,14 +9,14 @@ import {
 import { createFetchClient } from "../../lib/fetchClient";
 import { useApiConfigOptional } from "../../providers/contexts/ApiContext";
 
-// Default axios client for use outside RecceProvider (OSS mode)
+// Default API client for use outside RecceProvider (OSS mode)
 const defaultApiClient = createFetchClient({ baseURL: "" });
 
 /**
  * Hook to fetch Recce instance information from the server.
  *
  * Uses TanStack Query to cache the response and the configured API client.
- * Works both inside RecceProvider (uses configured client) and outside (uses default axios).
+ * Works both inside RecceProvider (uses configured client) and outside (uses default API client).
  *
  * @returns Query result with RecceInstanceInfo data
  *
