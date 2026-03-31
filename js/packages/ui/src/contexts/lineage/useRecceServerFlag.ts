@@ -1,13 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
 import { cacheKeys } from "../../api/cacheKeys";
 import { getServerFlag, type RecceServerFlags } from "../../api/flag";
+import { createFetchClient } from "../../lib/fetchClient";
 import { useApiConfigOptional } from "../../providers/contexts/ApiContext";
 
 // Default axios client for use outside RecceProvider (OSS mode)
-const defaultApiClient = axios.create();
+const defaultApiClient = createFetchClient({ baseURL: "" });
 
 /**
  * Hook to fetch server-side feature flags.
