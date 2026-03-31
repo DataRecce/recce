@@ -308,7 +308,39 @@ class TestImpactAnalysisE2E:
         users = next(m for m in result["confirmed_impacted_models"] if m["name"] == "users")
         assert users["next_action"] is not None
         assert users["next_action"]["tool"] == "profile_diff"
+        assert users["next_action"]["priority"] == "high"
         assert "email" in (users["next_action"].get("columns") or [])
+
+    @pytest.mark.asyncio
+    async def test_next_action_downstream_view_low_priority(self, mcp_e2e):
+        """Downstream view → next_action with priority=low."""
+        server, helper = mcp_e2e
+
+        helper.create_model(
+            "orders",
+            base_csv="id,amount\n1,100",
+            curr_csv="id,amount\n1,200",
+            unique_id="model.recce_test.orders",
+            base_columns={"id": "INTEGER", "amount": "INTEGER"},
+            curr_columns={"id": "INTEGER", "amount": "INTEGER"},
+        )
+        # downstream view of orders
+        helper.create_model(
+            "orders_view",
+            base_csv="id,amount\n1,100",
+            curr_csv="id,amount\n1,100",
+            unique_id="model.recce_test.orders_view",
+            depends_on=["model.recce_test.orders"],
+            base_columns={"id": "INTEGER", "amount": "INTEGER"},
+            curr_columns={"id": "INTEGER", "amount": "INTEGER"},
+            patch_func=lambda d: d["config"].update({"materialized": "view"}),
+        )
+        result = await server._tool_impact_analysis({"skip_downstream_value_diff": True})
+
+        view = next(m for m in result["confirmed_impacted_models"] if m["name"] == "orders_view")
+        assert view["data_impact"] == "potential"
+        assert view["next_action"] is not None
+        assert view["next_action"]["priority"] == "low"
 
     @pytest.mark.asyncio
     async def test_next_action_null_value_diff_on_view(self, mcp_e2e):

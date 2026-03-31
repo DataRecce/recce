@@ -2138,3 +2138,71 @@ class TestImpactAnalysisBehavior:
             assert (
                 model["data_impact"] == "potential"
             ), f"model {model['name']} should have data_impact='potential' when skip_value_diff=True"
+
+    @pytest.mark.asyncio
+    async def test_confirmed_low_change_ratio_has_null_next_action(self, setup_impact_mocks):
+        """Confirmed model with low change ratio → next_action=None."""
+        server, mock_context = setup_impact_mocks
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value={}),
+        ):
+            result = await self._call_impact_analysis(server)
+
+        models_by_name = {m["name"]: m for m in result["confirmed_impacted_models"]}
+        modified = models_by_name["modified_model"]
+        assert modified["data_impact"] == "confirmed"
+        # Mock has 5 rows_changed out of many — not high ratio → null next_action
+        assert modified["next_action"] is None
+
+    @pytest.mark.asyncio
+    async def test_none_data_impact_has_null_next_action(self, setup_impact_mocks):
+        """data_impact='none' (zero changes) → next_action=None."""
+        server, mock_context = setup_impact_mocks
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value={}),
+        ):
+            result = await self._call_impact_analysis(server)
+
+        models_by_name = {m["name"]: m for m in result["confirmed_impacted_models"]}
+        downstream = models_by_name["downstream_model"]
+        assert downstream["data_impact"] == "none"
+        assert downstream["next_action"] is None
+
+    @pytest.mark.asyncio
+    async def test_next_action_has_all_required_fields(self, setup_impact_mocks):
+        """next_action when present must have tool, columns, reason, priority."""
+        server, mock_context = setup_impact_mocks
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value={}),
+        ):
+            result = await self._call_impact_analysis(server)
+
+        for model in result["confirmed_impacted_models"]:
+            if model["next_action"] is not None:
+                na = model["next_action"]
+                assert "tool" in na, f"{model['name']}: missing tool"
+                assert "reason" in na, f"{model['name']}: missing reason"
+                assert "priority" in na, f"{model['name']}: missing priority"
+                assert na["priority"] in ("high", "medium", "low"), f"{model['name']}: invalid priority"
+                assert "columns" in na, f"{model['name']}: missing columns key"
+
+    @pytest.mark.asyncio
+    async def test_response_uses_new_field_names(self, setup_impact_mocks):
+        """Response must use max_affected_row_count, not total_affected or suggested_deep_dives."""
+        server, mock_context = setup_impact_mocks
+
+        with (
+            patch("recce.mcp_server.sentry_metrics", None),
+            patch.object(RowCountDiffTask, "execute", return_value={}),
+        ):
+            result = await self._call_impact_analysis(server)
+
+        assert "max_affected_row_count" in result
+        assert "total_affected_row_count" not in result
+        assert "suggested_deep_dives" not in result
