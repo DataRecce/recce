@@ -432,3 +432,32 @@ class RecceCloud:
             )
         data = response.json()
         return data.get("sessions", [])
+
+    def create_session(self, org_id: str, project_id: str, name: str, adapter_type: str = None) -> dict:
+        """Create a new session in a project."""
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions"
+        data = {"name": name}
+        if adapter_type:
+            data["adapter_type"] = adapter_type
+        response = self._request("POST", api_url, json=data)
+        if response.status_code not in [200, 201]:
+            raise RecceCloudException(
+                message="Failed to create session in Recce Cloud.",
+                reason=response.text,
+                status_code=response.status_code,
+            )
+        result = response.json()
+        if "session" in result:
+            return result["session"]
+        return result
+
+    def upload_completed(self, session_id: str):
+        """Notify Recce Cloud that artifact upload is complete."""
+        api_url = f"{self.base_url_v2}/sessions/{session_id}/upload-completed"
+        response = self._request("POST", api_url)
+        if response.status_code not in [200, 204]:
+            raise RecceCloudException(
+                message="Failed to notify upload completion.",
+                reason=response.text,
+                status_code=response.status_code,
+            )

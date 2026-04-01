@@ -13,14 +13,16 @@ import { useRecceInstanceContext } from "../../contexts";
 import { useApiConfig } from "../../hooks/useApiConfig";
 import { connectToCloud } from "../../lib/api/connectToCloud";
 import { fetchUser } from "../../lib/api/user";
+import { CloudUploadDialogOss } from "./CloudUploadDialogOss";
 
 type PopoverState = "signup" | "waiting" | "reload";
 
-export function CloudShareButton() {
+export function CloudShareButtonOss() {
   const { authed } = useRecceInstanceContext();
   const { apiClient } = useApiConfig();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [popoverState, setPopoverState] = useState<PopoverState>("signup");
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const waitingRef = useRef(false);
 
   const checkAuth = useCallback(async () => {
@@ -46,11 +48,37 @@ export function CloudShareButton() {
       document.removeEventListener("visibilitychange", handleVisibility);
   }, [checkAuth]);
 
-  // PR2 will handle the authed path (upload confirmation dialog)
+  // Authed path: show upload button + dialog
   if (authed) {
-    return null;
+    return (
+      <>
+        <Button
+          variant="contained"
+          color="primary"
+          size="small"
+          startIcon={<PiUserPlus />}
+          onClick={() => setShowUploadDialog(true)}
+          sx={{
+            borderRadius: "100px",
+            textTransform: "none",
+            fontWeight: 600,
+            px: 2,
+            py: 0.5,
+            mr: 1,
+            whiteSpace: "nowrap",
+          }}
+        >
+          Share
+        </Button>
+        <CloudUploadDialogOss
+          open={showUploadDialog}
+          onClose={() => setShowUploadDialog(false)}
+        />
+      </>
+    );
   }
 
+  // Not authed path: signup flow
   const handleShareClick = (event: React.MouseEvent<HTMLElement>) => {
     setPopoverState("signup");
     waitingRef.current = false;

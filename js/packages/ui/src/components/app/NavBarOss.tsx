@@ -13,7 +13,7 @@ import { type Check, cacheKeys, listChecks } from "../../api";
 import { useLineageGraphContext, useRecceServerFlag } from "../../contexts";
 import { useApiConfig } from "../../hooks/useApiConfig";
 import { trackNavigation } from "../../lib/api/track";
-import { CloudShareButton } from "./CloudShareButton";
+import { CloudShareButtonOss } from "./CloudShareButtonOss";
 import { EnvInfo } from "./EnvInfo";
 import { Filename } from "./Filename";
 import { StateExporter } from "./StateExporter";
@@ -213,7 +213,7 @@ export const NavBarOss = () => {
               mr: "8px",
             }}
           >
-            {!isDemoSite && <CloudShareButton />}
+            {!isDemoSite && <CloudShareButtonOss />}
             <EnvInfo />
             {cloudMode && <StateSynchronizer />}
             <StateExporter />
