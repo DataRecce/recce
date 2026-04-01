@@ -120,7 +120,7 @@ export interface SchemaDiffParams {
   /** Package names to include */
   packages?: string[];
   /** View mode - show all models or only changed ones */
-  view_mode?: "all" | "changed_models";
+  view_mode?: "all" | "changed_models" | "body_changes";
 }
 
 /**
@@ -135,7 +135,7 @@ export interface LineageDiffParams {
   /** Package names to include */
   packages?: string[];
   /** View mode - show all models or only changed ones */
-  view_mode?: "all" | "changed_models";
+  view_mode?: "all" | "changed_models" | "body_changes";
 }
 
 // ============================================================================

@@ -370,6 +370,20 @@ describe("LineageViewTopBar", () => {
       expect(modeButton).toBeDefined();
     });
 
+    it("shows Body Changes when view mode is body_changes", () => {
+      mockUseLineageViewContextSafe.mockReturnValue(
+        createMockLineageViewContext({
+          viewOptions: { view_mode: "body_changes" },
+        }),
+      );
+
+      render(<LineageViewTopBar />);
+
+      expect(
+        screen.getByRole("button", { name: /Body Changes/i }),
+      ).toBeInTheDocument();
+    });
+
     it("opens mode menu when clicked", async () => {
       render(<LineageViewTopBar />);
 

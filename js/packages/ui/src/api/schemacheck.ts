@@ -15,7 +15,7 @@ export interface SchemaDiffViewParams {
   node_id?: string | string[];
   select?: string;
   exclude?: string;
-  view_mode?: "all" | "changed_models";
+  view_mode?: "all" | "changed_models" | "body_changes";
   packages?: string[];
 }
 
