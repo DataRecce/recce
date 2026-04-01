@@ -508,12 +508,12 @@ class TestImpactAnalysisErrorResilience:
         assert any(e["step"] == "schema_diff" for e in result["errors"])
 
         # Function returned successfully (no UnboundLocalError)
-        assert "impacted_models" in result
-        orders = next(m for m in result["impacted_models"] if m["name"] == "orders")
+        assert "confirmed_impacted_models" in result
+        orders = next(m for m in result["confirmed_impacted_models"] if m["name"] == "orders")
 
         # Value-diff still ran (the whole point of the fix)
         assert orders["value_diff"] is not None
-        assert orders["value_diff"]["rows_changed"] >= 0
+        assert orders["value_diff"]["affected_row_count"] >= 0
 
 
 class TestImpactAnalysisValueDiff:
