@@ -443,7 +443,7 @@ def init(cache_db, **kwargs):
                     fail += 1
                     if fail <= 3:
                         console.print(f"  [dim red]  skip: {nid}: {e}[/dim red]")
-                    logger.warning("[recce init] CLL computation failed for %s: %s", nid, e)
+                    logger.debug("[recce init] CLL computation failed for %s: %s", nid, e)
                 progress.advance(task)
 
             if batch_to_store:
