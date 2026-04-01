@@ -467,6 +467,42 @@ class TestImpactAnalysisErrorResilience:
         assert "errors" in result
 
     @pytest.mark.asyncio
+    async def test_value_diff_error_captured_not_fatal(self, mcp_e2e):
+        """If value_diff query fails, error is captured and model still appears."""
+        server, helper = mcp_e2e
+
+        helper.create_model(
+            "orders",
+            base_csv="id,amount\n1,100",
+            curr_csv="id,amount\n1,150",
+            unique_id="model.recce_test.orders",
+            base_columns={"id": "INTEGER", "amount": "INTEGER"},
+            curr_columns={"id": "INTEGER", "amount": "INTEGER"},
+        )
+        helper.add_unique_test("model.recce_test.orders", "orders", "id")
+
+        # Patch adapter.execute to raise during value_diff SQL execution
+        original_execute = server.context.adapter.execute
+
+        def failing_execute(sql, fetch=False):
+            if "FULL OUTER JOIN" in sql:
+                raise RuntimeError("simulated value_diff failure")
+            return original_execute(sql, fetch=fetch)
+
+        with patch.object(server.context.adapter, "execute", side_effect=failing_execute):
+            result = await server._tool_impact_analysis({})
+
+        # Model still appears
+        orders = next(m for m in result["confirmed_impacted_models"] if m["name"] == "orders")
+        assert orders["value_diff"] is None
+        assert orders["data_impact"] == "potential"
+
+        # Error captured
+        vd_errors = [e for e in result["errors"] if e["step"] == "value_diff"]
+        assert len(vd_errors) == 1
+        assert "simulated value_diff failure" in vd_errors[0]["message"]
+
+    @pytest.mark.asyncio
     async def test_schema_diff_error_does_not_block_value_diff(self, mcp_e2e):
         """Regression: schema-diff failure must not prevent value-diff from running.
 
