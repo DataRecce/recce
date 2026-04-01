@@ -76,7 +76,10 @@ class TrackCommand(Command):
         if not _event_initialized:
             with _event_init_lock:
                 if not _event_initialized:
-                    event.init()
+                    try:
+                        event.init()
+                    except Exception:
+                        logger.debug("Failed to initialize event tracking", exc_info=True)
                     _event_initialized = True
 
         from rich.console import Console
@@ -116,65 +119,66 @@ class TrackCommand(Command):
             event.flush_exceptions()
             sys.exit(1)
         finally:
-            from recce import get_runner
-            from recce.git import current_branch, hosting_repo
-
-            end_time = time.time()
-            runner = get_runner()
-            repo = hosting_repo()
-            branch = current_branch()
-            command = ctx.command.name
-            duration = end_time - start_time
-            target_path = ctx.params.get("target_path", None)
-            target_base_path = ctx.params.get("target_base_path", None)
-            props = dict(
-                command=command,
-                status=status,
-                reason=reason,
-                duration=duration,
-                cloud=ctx.params.get("cloud", False),
-                review=ctx.params.get("review", False),
-                debug=ctx.params.get("debug", False),
-            )
-
-            if runner is not None:
-                props["runner_type"] = runner
-
-            if repo is not None:
-                props["repository"] = sha256(repo.encode()).hexdigest()
-
-            if branch is not None:
-                props["branch"] = sha256(branch.encode()).hexdigest()
-
-            if target_path is not None:
-                props["target_path"] = sha256(target_path.encode()).hexdigest()
-
-            if target_base_path is not None:
-                props["target_base_path"] = sha256(target_base_path.encode()).hexdigest()
-
             try:
-                from recce.core import load_context
+                from recce import get_runner
+                from recce.git import current_branch, hosting_repo
 
-                recce_context = load_context()
+                end_time = time.time()
+                runner = get_runner()
+                repo = hosting_repo()
+                branch = current_branch()
+                command = ctx.command.name
+                duration = end_time - start_time
+                target_path = ctx.params.get("target_path", None)
+                target_base_path = ctx.params.get("target_base_path", None)
+                props = dict(
+                    command=command,
+                    status=status,
+                    reason=reason,
+                    duration=duration,
+                    cloud=ctx.params.get("cloud", False),
+                    review=ctx.params.get("review", False),
+                    debug=ctx.params.get("debug", False),
+                )
+
+                if runner is not None:
+                    props["runner_type"] = runner
+
+                if repo is not None:
+                    props["repository"] = sha256(repo.encode()).hexdigest()
+
+                if branch is not None:
+                    props["branch"] = sha256(branch.encode()).hexdigest()
+
+                if target_path is not None:
+                    props["target_path"] = sha256(target_path.encode()).hexdigest()
+
+                if target_base_path is not None:
+                    props["target_base_path"] = sha256(target_base_path.encode()).hexdigest()
+
+                try:
+                    from recce.core import load_context
+
+                    recce_context = load_context()
+                except Exception:
+                    # it's not a ready-for-use project
+                    recce_context = None
+
+                if recce_context is not None:
+                    if recce_context.adapter_type == "dbt":
+                        props["adapter_type"] = "DBT"
+                        try:
+                            from recce.adapter.dbt_adapter import DbtAdapter
+
+                            dbt_adapter: DbtAdapter = recce_context.adapter
+                            warehouse_type = dbt_adapter.adapter.type()
+                            props["warehouse_type"] = warehouse_type
+                        except Exception:
+                            pass
+                    elif recce_context.adapter_type == "sqlmesh":
+                        props["adapter_type"] = "SQLMesh"
+
+                event.log_event(props, "command", params=ctx.params)
+                event.flush_events()
             except Exception:
-                # it's not a ready-for-use project
-                recce_context = None
-
-            if recce_context is not None:
-                if recce_context.adapter_type == "dbt":
-                    props["adapter_type"] = "DBT"
-                    # Add dbt warehouse type only for dbt adapter
-                    try:
-                        from recce.adapter.dbt_adapter import DbtAdapter
-
-                        dbt_adapter: DbtAdapter = recce_context.adapter
-                        warehouse_type = dbt_adapter.adapter.type()
-                        props["warehouse_type"] = warehouse_type
-                    except Exception:
-                        # If we can't get the warehouse type, skip it
-                        pass
-                elif recce_context.adapter_type == "sqlmesh":
-                    props["adapter_type"] = "SQLMesh"
-
-            event.log_event(props, "command", params=ctx.params)
-            event.flush_events()
+                logger.debug("Failed to send command telemetry", exc_info=True)

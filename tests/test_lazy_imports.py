@@ -129,6 +129,121 @@ class TestEventInitOnceGuard:
         mock_init.assert_called_once()
 
 
+class TestEventInitErrorHandling:
+    """Test that event.init() failures don't crash the CLI."""
+
+    def setup_method(self):
+        import recce.track as track_module
+
+        self._original_flag = track_module._event_initialized
+        track_module._event_initialized = False
+
+    def teardown_method(self):
+        import recce.track as track_module
+
+        track_module._event_initialized = self._original_flag
+
+    @patch("recce.event.init", side_effect=Exception("sentry init failed"))
+    @patch("recce.event.flush_events")
+    @patch("recce.event.log_event")
+    @patch("recce.event.set_exception_tag")
+    @patch("recce.event.log_codespaces_events")
+    def test_event_init_failure_does_not_crash_command(
+        self, mock_log_cs, mock_set_tag, mock_log, mock_flush, mock_init
+    ):
+        """If event.init() raises, the command should still run successfully."""
+        from recce.track import TrackCommand
+
+        executed = []
+
+        @click.command(cls=TrackCommand)
+        def dummy_cmd():
+            executed.append(True)
+
+        runner = CliRunner()
+        result = runner.invoke(dummy_cmd, [])
+
+        assert len(executed) == 1, "Command body should have executed"
+        assert result.exit_code == 0
+
+    @patch("recce.event.init", side_effect=Exception("sentry init failed"))
+    @patch("recce.event.flush_events")
+    @patch("recce.event.log_event")
+    @patch("recce.event.set_exception_tag")
+    @patch("recce.event.log_codespaces_events")
+    def test_event_init_failure_still_sets_initialized_flag(
+        self, mock_log_cs, mock_set_tag, mock_log, mock_flush, mock_init
+    ):
+        """Even if event.init() fails, the flag should be set to avoid retrying."""
+        import recce.track as track_module
+        from recce.track import TrackCommand
+
+        @click.command(cls=TrackCommand)
+        def dummy_cmd():
+            pass
+
+        runner = CliRunner()
+        runner.invoke(dummy_cmd, [])
+
+        assert track_module._event_initialized is True
+
+
+class TestTelemetryFinallyBlock:
+    """Test that telemetry failures in finally block don't mask command errors."""
+
+    def setup_method(self):
+        import recce.track as track_module
+
+        self._original_flag = track_module._event_initialized
+        track_module._event_initialized = True  # Skip event.init()
+
+    def teardown_method(self):
+        import recce.track as track_module
+
+        track_module._event_initialized = self._original_flag
+
+    @patch("recce.event.set_exception_tag")
+    @patch("recce.event.log_codespaces_events")
+    @patch("recce.git.current_branch", side_effect=ImportError("git module broken"))
+    def test_finally_import_failure_does_not_mask_command_error(self, mock_branch, mock_log_cs, mock_set_tag):
+        """If imports in finally fail, the original command error should still propagate."""
+        from recce.track import TrackCommand
+
+        @click.command(cls=TrackCommand)
+        def failing_cmd():
+            raise RuntimeError("original error")
+
+        runner = CliRunner()
+        result = runner.invoke(failing_cmd, [])
+
+        # Command should exit with error (not crash with ImportError)
+        assert result.exit_code != 0
+        # Should NOT see ImportError in output — it should be caught
+        assert "ImportError" not in (result.output or "")
+
+    @patch("recce.event.flush_events")
+    @patch("recce.event.log_event")
+    @patch("recce.event.set_exception_tag")
+    @patch("recce.event.log_codespaces_events")
+    def test_successful_command_with_telemetry_failure(self, mock_log_cs, mock_set_tag, mock_log, mock_flush):
+        """A successful command should not be affected by telemetry failure in finally."""
+        mock_flush.side_effect = Exception("network error")
+
+        from recce.track import TrackCommand
+
+        executed = []
+
+        @click.command(cls=TrackCommand)
+        def dummy_cmd():
+            executed.append(True)
+
+        runner = CliRunner()
+        result = runner.invoke(dummy_cmd, [])
+
+        assert len(executed) == 1
+        assert result.exit_code == 0
+
+
 class TestShouldLogEvent:
     """Test should_log_event() handles missing profile gracefully."""
 
