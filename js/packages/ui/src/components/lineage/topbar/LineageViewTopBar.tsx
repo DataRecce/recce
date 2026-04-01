@@ -572,7 +572,7 @@ const DefaultSetupConnectionPopover = ({
  * LineageViewTopBar Component
  *
  * Top toolbar for the lineage view providing:
- * - View mode selection (Changed Models vs All)
+ * - View mode selection (Changed Models, Body Changes, All)
  * - Package filtering
  * - Node selector filters (Select, Exclude)
  * - Actions menu for diff operations and checklist additions

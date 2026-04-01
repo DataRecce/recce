@@ -119,7 +119,7 @@ export interface SchemaDiffParams {
   exclude?: string;
   /** Package names to include */
   packages?: string[];
-  /** View mode - show all models or only changed ones */
+  /** View mode - 'all', 'changed_models', or 'body_changes' (SQL body/macro/contract only) */
   view_mode?: "all" | "changed_models" | "body_changes";
 }
 
@@ -134,7 +134,7 @@ export interface LineageDiffParams {
   exclude?: string;
   /** Package names to include */
   packages?: string[];
-  /** View mode - show all models or only changed ones */
+  /** View mode - 'all', 'changed_models', or 'body_changes' (SQL body/macro/contract only) */
   view_mode?: "all" | "changed_models" | "body_changes";
 }
 

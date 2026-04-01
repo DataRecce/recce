@@ -56,7 +56,7 @@ def test_validator():
             }
         )
 
-    # view_mode should be 'all' or 'changed_models'
+    # view_mode should be 'all', 'changed_models', or 'body_changes'
     validate(
         {
             "view_mode": None,
