@@ -307,15 +307,13 @@ def init(cache_db, **kwargs):
 
     import logging
     import time
-    from copy import deepcopy
 
     from rich.console import Console
     from rich.progress import Progress
 
-    import recce.util.cll as cll_module
     from recce.adapter.dbt_adapter import DbtAdapter
     from recce.core import load_context
-    from recce.util.cll import _DEFAULT_DB_PATH, CllCache, get_cll_cache
+    from recce.util.cll import _DEFAULT_DB_PATH, CllCache, get_cll_cache, set_cll_cache
 
     logger = logging.getLogger("recce")
     console = Console()
@@ -325,8 +323,7 @@ def init(cache_db, **kwargs):
         cache_db = _DEFAULT_DB_PATH
 
     # Set up cache with SQLite persistence
-    cll_module._cll_cache = CllCache(db_path=cache_db)
-    os.environ["ENABLE_CLL_CACHE"] = "1"
+    set_cll_cache(CllCache(db_path=cache_db))
 
     cache = get_cll_cache()
     evicted = cache.evict_stale()
@@ -420,7 +417,7 @@ def init(cache_db, **kwargs):
                     continue
 
                 try:
-                    cll_data = deepcopy(dbt_adapter.get_cll_cached(nid, base=is_base))
+                    cll_data = dbt_adapter.get_cll_cached(nid, base=is_base)
                     if cll_data is None:
                         fail += 1
                         progress.advance(task)
