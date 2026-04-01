@@ -155,8 +155,11 @@ def flush_events(command=None):
 
 
 def should_log_event():
-    with open(RECCE_USER_PROFILE, "r", encoding="utf-8") as f:
-        user_profile = pyml.load(f)
+    try:
+        with open(RECCE_USER_PROFILE, "r", encoding="utf-8") as f:
+            user_profile = pyml.load(f)
+    except FileNotFoundError:
+        return False
     # TODO: default anonymous_tracking to false if field is not present
     tracking = user_profile.get("anonymous_tracking", False)
     tracking = tracking and isinstance(tracking, bool)

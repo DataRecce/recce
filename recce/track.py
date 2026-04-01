@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+import threading
 import time
 import traceback
 import typing as t
@@ -14,6 +15,7 @@ from recce.exceptions import RecceException
 _enable_traceback: bool = os.environ.get("RECCE_PRINT_TRACEBACK") == "1"
 logger = logging.getLogger("uvicorn")
 
+_event_init_lock = threading.Lock()
 _event_initialized = False
 
 
@@ -72,8 +74,10 @@ class TrackCommand(Command):
 
         global _event_initialized
         if not _event_initialized:
-            event.init()
-            _event_initialized = True
+            with _event_init_lock:
+                if not _event_initialized:
+                    event.init()
+                    _event_initialized = True
 
         from rich.console import Console
 
