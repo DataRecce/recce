@@ -194,7 +194,7 @@ class TestInit:
 
         assert result.exit_code == 0
         assert "2 ok" in result.output
-        assert "0 skipped" in result.output
+        assert "2 computed" in result.output
         # Verify cache was populated
         cache = CllCache(db_path=tmp_db)
         assert cache.stats["entries"] == 2
@@ -234,8 +234,7 @@ class TestInit:
             )
 
         assert result.exit_code == 0
-        assert "2 hits" in result.output
-        assert "0 new" in result.output
+        assert "All 2 cached" in result.output
 
     @patch("recce.core.load_context")
     def test_init_computation_failure(self, mock_load_context, runner, tmp_path, tmp_db):

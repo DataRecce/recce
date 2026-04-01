@@ -414,7 +414,7 @@ def init(cache_db, **kwargs):
         ]
         envs.append(("base", base_ids, True))
 
-    with Progress(console=console) as progress:
+    with Progress(console=console, transient=True) as progress:
         for env_name, node_ids, is_base in envs:
             console.print(f"\n[bold]{env_name}[/bold] environment: {len(node_ids)} models")
             t_start = time.perf_counter()
@@ -471,10 +471,19 @@ def init(cache_db, **kwargs):
                     )
 
             elapsed = time.perf_counter() - t_start
-            new_entries = len(batch_to_store)
-            console.print(
-                f"  {success} ok, {fail} skipped, {elapsed:.1f}s" f" | cache: {cache_hits} hits, {new_entries} new"
-            )
+            computed = len(batch_to_store)
+            if cache_hits == len(node_ids) and fail == 0:
+                console.print(f"  All {cache_hits} cached, {elapsed:.1f}s")
+            else:
+                parts = [f"{success} ok"]
+                if fail:
+                    parts.append(f"{fail} skipped")
+                parts.append(f"{elapsed:.1f}s")
+                if cache_hits:
+                    parts.append(f"{cache_hits} cached")
+                if computed:
+                    parts.append(f"{computed} computed")
+                console.print(f"  {', '.join(parts)}")
 
             dbt_adapter.get_cll_cached.cache_clear()
             if fail > 3:
