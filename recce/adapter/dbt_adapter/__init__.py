@@ -1106,7 +1106,11 @@ class DbtAdapter(BaseAdapter):
 
             if not cached_json:
                 node_cache_misses += 1
-                cll_data_one = deepcopy(self.get_cll_cached(node_id, base=False))
+                try:
+                    cll_data_one = deepcopy(self.get_cll_cached(node_id, base=False))
+                except Exception as e:
+                    logger.debug("[cll cache] computation failed for %s, skipping: %s", node_id, e)
+                    continue
                 if cll_data_one is None:
                     continue
                 try:
