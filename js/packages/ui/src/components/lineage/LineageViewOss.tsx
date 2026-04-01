@@ -21,6 +21,7 @@ import {
   useLineageGraphContext,
   useRecceActionContext,
   useRecceInstanceContext,
+  useRecceServerFlag,
 } from "../../contexts";
 import {
   isLineageGraphColumnNode,
@@ -162,6 +163,7 @@ export function PrivateLineageView(
   } = useLineageGraphContext();
 
   const { featureToggles, singleEnv } = useRecceInstanceContext();
+  const { data: serverFlags } = useRecceServerFlag();
   const { runId, showRunId, closeRunResult, runAction, isRunResultOpen } =
     useRecceActionContext();
   const { run } = useRun(runId);
@@ -364,6 +366,9 @@ export function PrivateLineageView(
     lineageViewContextMenu.closeContextMenu();
   };
 
+  // Guard: auto-trigger impact analysis only once per mount
+  const impactAtStartupFired = useRef(false);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only run when lineageGraph changes (initial load/refetch).
   useLayoutEffect(() => {
     const t = async () => {
@@ -415,8 +420,10 @@ export function PrivateLineageView(
         setViewOptions(newViewOptions);
       }
 
+      const cllInput = viewOptions.column_level_lineage;
+
       let cll: ColumnLineageData | undefined;
-      if (viewOptions.column_level_lineage) {
+      if (cllInput) {
         if (cllCachePatchRef.current.pending) {
           // Effect re-fired because our setQueryData updated lineageGraph.
           // Reuse the previous CLL result; skip the API call and re-patch.
@@ -424,10 +431,9 @@ export function PrivateLineageView(
           cllCachePatchRef.current = { pending: false };
         } else {
           const cllApiInput: CllInput = {
-            ...viewOptions.column_level_lineage,
+            ...cllInput,
             change_analysis:
-              viewOptions.column_level_lineage.change_analysis ??
-              changeAnalysisModeRef.current,
+              cllInput.change_analysis ?? changeAnalysisModeRef.current,
           };
           try {
             cll = await actionGetCll.mutateAsync(cllApiInput);
@@ -489,7 +495,7 @@ export function PrivateLineageView(
         nodes,
         viewOptions.view_mode ?? "changed_models",
         changeAnalysisModeRef.current,
-        !!viewOptions.column_level_lineage?.column,
+        !!cllInput?.column,
         !!focusedNodeId || !!run,
       );
     };
@@ -583,6 +589,25 @@ export function PrivateLineageView(
       setFocusedNodeId(undefined);
     }
   };
+
+  // Auto-trigger impact analysis once when flag is set and lineage is loaded
+  // Separate from the main useLayoutEffect to avoid race with async serverFlags
+  // biome-ignore lint/correctness/useExhaustiveDependencies: showColumnLevelLineage is not memoized; ref guard ensures single execution.
+  useEffect(() => {
+    if (
+      serverFlags?.impact_at_startup &&
+      lineageGraph &&
+      !impactAtStartupFired.current
+    ) {
+      impactAtStartupFired.current = true;
+      changeAnalysisModeRef.current = true;
+      setChangeAnalysisMode(true);
+      showColumnLevelLineage({
+        change_analysis: true,
+        no_upstream: true,
+      });
+    }
+  }, [serverFlags, lineageGraph]);
 
   const resetColumnLevelLineage = async (previous?: boolean) => {
     if (previous) {

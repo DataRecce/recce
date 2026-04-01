@@ -136,6 +136,7 @@ vi.mock("@datarecce/ui/contexts", async () => {
     useRouteConfig: vi.fn(() => ({ basePath: "" })),
     useLineageGraphContext: vi.fn(() => mockLineageGraphContext),
     useRecceInstanceContext: vi.fn(() => mockRecceInstanceContext),
+    useRecceServerFlag: vi.fn(() => ({ data: {} })),
     useRecceActionContext: vi.fn(() => ({
       runId: undefined,
       showRunId: mockShowRunId,

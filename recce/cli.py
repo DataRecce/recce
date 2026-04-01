@@ -645,6 +645,13 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
     help="Enable the pre-cached full column-level lineage map.",
     envvar="ENABLE_CLL_CACHE",
 )
+@click.option(
+    "--impact-at-startup",
+    is_flag=True,
+    help="Automatically run impact analysis when the UI loads.",
+    envvar="RECCE_IMPACT_AT_STARTUP",
+    hidden=True,
+)
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -712,6 +719,7 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         "preview": False,
         "read_only": False,
         "disable_cll_cache": True,
+        "impact_at_startup": False,
     }
     console = Console()
 
@@ -750,6 +758,9 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
 
     if kwargs.get("enable_cll_cache", False):
         flag["disable_cll_cache"] = False
+
+    if kwargs.get("impact_at_startup", False):
+        flag["impact_at_startup"] = True
 
     # Create state loader using shared function
     from recce.util.startup_perf import get_startup_tracker
