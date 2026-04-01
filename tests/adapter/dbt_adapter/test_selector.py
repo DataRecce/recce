@@ -190,6 +190,10 @@ def test_select_with_pacakage_mode_include_exclude(dbt_test_helper):
     node_ids = adapter.select_nodes(view_mode="changed_models")
     assert len(node_ids) == 3
 
+    # body_changes: only body/macros/contract changes (same result here since the change is a body change)
+    node_ids = adapter.select_nodes(view_mode="body_changes")
+    assert len(node_ids) == 3
+
     node_ids = adapter.select_nodes(view_mode="changed_models", packages=["other_package"])
     assert len(node_ids) == 1
 
