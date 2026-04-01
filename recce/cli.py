@@ -312,6 +312,7 @@ def init(cache_db, **kwargs):
     from rich.console import Console
     from rich.progress import Progress
 
+    import recce.util.cll as cll_module
     from recce.adapter.dbt_adapter import DbtAdapter
     from recce.core import load_context
     from recce.util.cll import _DEFAULT_DB_PATH, CllCache, get_cll_cache
@@ -324,8 +325,6 @@ def init(cache_db, **kwargs):
         cache_db = _DEFAULT_DB_PATH
 
     # Set up cache with SQLite persistence
-    import recce.util.cll as cll_module
-
     cll_module._cll_cache = CllCache(db_path=cache_db)
     os.environ["ENABLE_CLL_CACHE"] = "1"
 
