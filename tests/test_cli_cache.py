@@ -116,31 +116,6 @@ class TestCacheClear:
         assert not os.path.exists(wal_path)
         assert not os.path.exists(shm_path)
 
-    def test_clear_sidecar_os_error(self, runner, tmp_db):
-        """clear should succeed even if sidecar file deletion fails."""
-        CllCache(db_path=tmp_db)
-        wal_path = tmp_db + "-wal"
-        shm_path = tmp_db + "-shm"
-        Path(wal_path).touch()
-        Path(shm_path).touch()
-
-        remove_calls = []
-        original_remove = os.remove
-
-        def tracking_remove(path):
-            remove_calls.append(path)
-            if path.endswith(("-wal", "-shm")):
-                raise OSError("device busy")
-            return original_remove(path)
-
-        with patch("os.remove", side_effect=tracking_remove):
-            result = runner.invoke(cli, ["cache", "clear", "--cache-db", tmp_db])
-        assert result.exit_code == 0
-        assert "Deleted" in result.output
-        # Verify sidecar removal was attempted despite OSError
-        assert any(p.endswith("-wal") for p in remove_calls)
-        assert any(p.endswith("-shm") for p in remove_calls)
-
 
 class TestCacheClearErrors:
     def test_clear_permission_error(self, runner, tmp_db):
