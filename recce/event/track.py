@@ -8,18 +8,13 @@ from hashlib import sha256
 
 from click import Context
 from click.core import Command
-from rich.console import Console
-from rich.markup import escape
 
-from recce import event, get_runner
-from recce.core import load_context
 from recce.exceptions import RecceException
-from recce.git import current_branch, hosting_repo
-
-console = Console()
 
 _enable_traceback: bool = os.environ.get("RECCE_PRINT_TRACEBACK") == "1"
 logger = logging.getLogger("uvicorn")
+
+_event_initialized = False
 
 
 class TrackCommand(Command):
@@ -55,6 +50,9 @@ class TrackCommand(Command):
         )
 
     def _show_error_message(self, msg, params):
+        from rich.console import Console
+
+        console = Console()
         if params.get("debug"):
             console.print_exception(show_locals=True)
         else:
@@ -63,9 +61,24 @@ class TrackCommand(Command):
             # console.out(msg, highlight=False)
 
     def _show_hint_message(self, hint):
+        from rich.console import Console
+        from rich.markup import escape
+
+        console = Console()
         console.print(f"[bold yellow]Hint[/bold yellow]:\n  {escape(hint)}")
 
     def invoke(self, ctx: Context) -> t.Any:
+        from recce import event
+
+        global _event_initialized
+        if not _event_initialized:
+            event.init()
+            _event_initialized = True
+
+        from rich.console import Console
+
+        console = Console()
+
         status = False
         start_time = time.time()
         reason = "error"
@@ -99,6 +112,9 @@ class TrackCommand(Command):
             event.flush_exceptions()
             sys.exit(1)
         finally:
+            from recce import get_runner
+            from recce.git import current_branch, hosting_repo
+
             end_time = time.time()
             runner = get_runner()
             repo = hosting_repo()
@@ -133,6 +149,8 @@ class TrackCommand(Command):
                 props["target_base_path"] = sha256(target_base_path.encode()).hexdigest()
 
             try:
+                from recce.core import load_context
+
                 recce_context = load_context()
             except Exception:
                 # it's not a ready-for-use project
