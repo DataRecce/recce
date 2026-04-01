@@ -347,6 +347,7 @@ class TestRecceMCPServer:
             RunType.ROW_COUNT_DIFF,
             params={"node_names": ["orders"]},
             check_id=check_id,
+            triggered_by="user",
         )
 
     @pytest.mark.asyncio
@@ -396,21 +397,36 @@ class TestRecceMCPServer:
         assert patch_in.is_checked is None  # Not touching approval
 
     @pytest.mark.asyncio
-    async def test_tool_create_check_skips_run_for_schema_diff(self, mcp_server):
-        """create_check with schema_diff type does not submit a run."""
-        server, _ = mcp_server
+    async def test_tool_create_check_metadata_run_for_schema_diff(self, mcp_server):
+        """create_check with schema_diff creates a metadata run (no submit_run)."""
+        server, mock_context = mcp_server
+        from uuid import uuid4
 
+        check_id = uuid4()
         mock_check = MagicMock()
-        mock_check.check_id = MagicMock()
+        mock_check.check_id = check_id
 
         mock_check_dao = MagicMock()
         mock_check_dao.list.return_value = []
+
+        # Mock lineage diff for schema_diff tool
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": {}, "parent_map": {}},
+            "current": {"nodes": {}, "parent_map": {}},
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+        mock_context.adapter.select_nodes.return_value = set()
+
+        # Mock RunDAO to avoid default_context() call in _create_metadata_run
+        mock_run_dao = MagicMock()
 
         with (
             patch("recce.models.CheckDAO", return_value=mock_check_dao),
             patch("recce.apis.check_func.create_check_without_run", return_value=mock_check),
             patch("recce.apis.run_func.submit_run") as mock_submit,
             patch("recce.apis.check_func.export_persistent_state"),
+            patch("recce.models.RunDAO", return_value=mock_run_dao),
         ):
             result = await server._tool_create_check(
                 {
@@ -420,8 +436,10 @@ class TestRecceMCPServer:
                 }
             )
 
-        assert result["run_executed"] is False
+        assert result["run_executed"] is True
         mock_submit.assert_not_called()
+        # Verify a metadata run was created via RunDAO
+        mock_run_dao.create.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_tool_create_check_run_failure(self, mcp_server):
@@ -571,16 +589,22 @@ class TestRecceMCPServer:
         mock_context.get_lineage_diff.return_value = mock_lineage_diff
         mock_context.adapter.select_nodes.return_value = set()
 
-        # Mock CheckDAO
+        # Mock CheckDAO and RunDAO (for _create_metadata_run)
         mock_check_dao = MagicMock()
         mock_check_dao.find_check_by_id.return_value = mock_check
+        mock_run_dao = MagicMock()
 
-        with patch("recce.models.CheckDAO", return_value=mock_check_dao):
+        with (
+            patch("recce.models.CheckDAO", return_value=mock_check_dao),
+            patch("recce.models.RunDAO", return_value=mock_run_dao),
+        ):
             result = await server._tool_run_check({"check_id": str(check_id)})
 
-        # Verify the result is from lineage_diff tool (has nodes and edges)
-        assert "nodes" in result
-        assert "edges" in result
+        # Result is now a Run.model_dump() dict (not raw lineage_diff result)
+        assert "type" in result
+        assert "check_id" in result
+        # Verify a metadata run was persisted
+        mock_run_dao.create.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_tool_run_check_with_schema_diff(self, mcp_server):
@@ -609,18 +633,22 @@ class TestRecceMCPServer:
         mock_context.get_lineage_diff.return_value = mock_lineage_diff
         mock_context.adapter.select_nodes.return_value = set()
 
-        # Mock CheckDAO
+        # Mock CheckDAO and RunDAO (for _create_metadata_run)
         mock_check_dao = MagicMock()
         mock_check_dao.find_check_by_id.return_value = mock_check
+        mock_run_dao = MagicMock()
 
-        with patch("recce.models.CheckDAO", return_value=mock_check_dao):
+        with (
+            patch("recce.models.CheckDAO", return_value=mock_check_dao),
+            patch("recce.models.RunDAO", return_value=mock_run_dao),
+        ):
             result = await server._tool_run_check({"check_id": str(check_id)})
 
-        # Verify the result is from schema_diff tool (has columns, data, limit, more)
-        assert "columns" in result
-        assert "data" in result
-        assert "limit" in result
-        assert "more" in result
+        # Result is now a Run.model_dump() dict (not raw schema_diff result)
+        assert "type" in result
+        assert "check_id" in result
+        # Verify a metadata run was persisted
+        mock_run_dao.create.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_tool_value_diff(self, mcp_server):
@@ -921,6 +949,295 @@ class TestRecceMCPServer:
         # The method should raise the exception
         with pytest.raises(Exception, match="Test error"):
             await server._tool_lineage_diff({})
+
+
+class TestCreateMetadataRun:
+    """Test cases for the _create_metadata_run helper method."""
+
+    @pytest.fixture
+    def mcp_server(self):
+        mock_context = MagicMock(spec=RecceContext)
+        return RecceMCPServer(mock_context), mock_context
+
+    @pytest.mark.asyncio
+    async def test_creates_run_with_correct_fields(self, mcp_server):
+        """_create_metadata_run creates a Run with correct type, params, check_id, and result."""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import RunStatus, RunType
+
+        check_id = uuid4()
+        params = {"select": "model_a"}
+        result_data = {"columns": ["col1"], "data": [["val1"]]}
+
+        mock_run_dao = MagicMock()
+        with patch("recce.models.RunDAO", return_value=mock_run_dao):
+            run = server._create_metadata_run(
+                check_type=RunType.SCHEMA_DIFF,
+                params=params,
+                check_id=check_id,
+                result=result_data,
+                triggered_by="recce_ai",
+            )
+
+        assert run.type == RunType.SCHEMA_DIFF
+        assert run.params == params
+        assert run.check_id == check_id
+        assert run.result == result_data
+        assert run.status == RunStatus.FINISHED
+        assert run.triggered_by == "recce_ai"
+        assert run.name is not None  # generate_run_name should set it
+        mock_run_dao.create.assert_called_once_with(run)
+
+    @pytest.mark.asyncio
+    async def test_creates_run_for_lineage_diff(self, mcp_server):
+        """_create_metadata_run works for lineage_diff type."""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import RunType
+
+        check_id = uuid4()
+        result_data = {"nodes": {}, "edges": {}}
+
+        mock_run_dao = MagicMock()
+        with patch("recce.models.RunDAO", return_value=mock_run_dao):
+            run = server._create_metadata_run(
+                check_type=RunType.LINEAGE_DIFF,
+                params={},
+                check_id=check_id,
+                result=result_data,
+                triggered_by="user",
+            )
+
+        assert run.type == RunType.LINEAGE_DIFF
+        assert run.triggered_by == "user"
+        assert run.name == "Lineage diff"
+        mock_run_dao.create.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_triggered_by_none_allowed(self, mcp_server):
+        """_create_metadata_run accepts triggered_by=None."""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import RunType
+
+        check_id = uuid4()
+
+        mock_run_dao = MagicMock()
+        with patch("recce.models.RunDAO", return_value=mock_run_dao):
+            run = server._create_metadata_run(
+                check_type=RunType.LINEAGE_DIFF,
+                params={},
+                check_id=check_id,
+                result={},
+                triggered_by=None,
+            )
+
+        assert run.triggered_by is None
+
+
+class TestCreateCheckTriggeredBy:
+    """Test cases for triggered_by propagation in create_check and run_check."""
+
+    @pytest.fixture
+    def mcp_server(self):
+        mock_context = MagicMock(spec=RecceContext)
+        return RecceMCPServer(mock_context), mock_context
+
+    @pytest.mark.asyncio
+    async def test_create_check_passes_triggered_by_to_submit_run(self, mcp_server):
+        """create_check passes triggered_by from arguments to submit_run."""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import Check, RunStatus, RunType
+
+        check_id = uuid4()
+        mock_check = MagicMock(spec=Check)
+        mock_check.check_id = check_id
+
+        mock_run = MagicMock()
+        mock_run.status = RunStatus.FINISHED
+        mock_run.error = None
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.list.return_value = []
+
+        with (
+            patch("recce.models.CheckDAO", return_value=mock_check_dao),
+            patch("recce.apis.check_func.create_check_without_run", return_value=mock_check),
+            patch("recce.apis.run_func.submit_run", return_value=(mock_run, asyncio.sleep(0))) as mock_submit,
+            patch("recce.apis.check_func.export_persistent_state"),
+        ):
+            await server._tool_create_check(
+                {
+                    "type": "row_count_diff",
+                    "params": {"node_names": ["orders"]},
+                    "name": "Row Count Diff",
+                    "triggered_by": "recce_ai",
+                }
+            )
+
+        mock_submit.assert_called_once_with(
+            RunType.ROW_COUNT_DIFF,
+            params={"node_names": ["orders"]},
+            check_id=check_id,
+            triggered_by="recce_ai",
+        )
+
+    @pytest.mark.asyncio
+    async def test_create_check_triggered_by_defaults_to_user(self, mcp_server):
+        """create_check defaults triggered_by to 'user' when not specified."""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import Check, RunStatus, RunType
+
+        check_id = uuid4()
+        mock_check = MagicMock(spec=Check)
+        mock_check.check_id = check_id
+
+        mock_run = MagicMock()
+        mock_run.status = RunStatus.FINISHED
+        mock_run.error = None
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.list.return_value = []
+
+        with (
+            patch("recce.models.CheckDAO", return_value=mock_check_dao),
+            patch("recce.apis.check_func.create_check_without_run", return_value=mock_check),
+            patch("recce.apis.run_func.submit_run", return_value=(mock_run, asyncio.sleep(0))) as mock_submit,
+            patch("recce.apis.check_func.export_persistent_state"),
+        ):
+            await server._tool_create_check(
+                {
+                    "type": "row_count_diff",
+                    "params": {"node_names": ["orders"]},
+                    "name": "Row Count Diff",
+                }
+            )
+
+        mock_submit.assert_called_once_with(
+            RunType.ROW_COUNT_DIFF,
+            params={"node_names": ["orders"]},
+            check_id=check_id,
+            triggered_by="user",
+        )
+
+    @pytest.mark.asyncio
+    async def test_create_check_metadata_run_passes_triggered_by(self, mcp_server):
+        """create_check passes triggered_by to _create_metadata_run for schema_diff."""
+        server, mock_context = mcp_server
+        from uuid import uuid4
+
+        check_id = uuid4()
+        mock_check = MagicMock()
+        mock_check.check_id = check_id
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.list.return_value = []
+
+        # Mock schema_diff dependencies
+        mock_lineage_diff = MagicMock(spec=LineageDiff)
+        mock_lineage_diff.model_dump.return_value = {
+            "base": {"nodes": {}, "parent_map": {}},
+            "current": {"nodes": {}, "parent_map": {}},
+        }
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
+        mock_context.adapter.select_nodes.return_value = set()
+
+        mock_run_dao = MagicMock()
+
+        with (
+            patch("recce.models.CheckDAO", return_value=mock_check_dao),
+            patch("recce.apis.check_func.create_check_without_run", return_value=mock_check),
+            patch("recce.apis.check_func.export_persistent_state"),
+            patch("recce.models.RunDAO", return_value=mock_run_dao),
+        ):
+            await server._tool_create_check(
+                {
+                    "type": "schema_diff",
+                    "params": {},
+                    "name": "Schema Diff",
+                    "triggered_by": "recce_ai",
+                }
+            )
+
+        # Verify the Run created via RunDAO has triggered_by="recce_ai"
+        created_run = mock_run_dao.create.call_args[0][0]
+        assert created_run.triggered_by == "recce_ai"
+
+    @pytest.mark.asyncio
+    async def test_run_check_passes_triggered_by(self, mcp_server):
+        """run_check passes triggered_by from arguments to submit_run."""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import RunStatus, RunType
+
+        check_id = uuid4()
+        mock_check = MagicMock()
+        mock_check.check_id = check_id
+        mock_check.type = RunType.ROW_COUNT_DIFF
+        mock_check.params = {"node_names": ["orders"]}
+
+        mock_run = MagicMock()
+        mock_run.status = RunStatus.FINISHED
+        mock_run.model_dump.return_value = {"run_id": "fake", "type": "row_count_diff"}
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.find_check_by_id.return_value = mock_check
+
+        with (
+            patch("recce.models.CheckDAO", return_value=mock_check_dao),
+            patch("recce.apis.run_func.submit_run", return_value=(mock_run, asyncio.sleep(0))) as mock_submit,
+        ):
+            await server._tool_run_check({"check_id": str(check_id), "triggered_by": "recce_ai"})
+
+        mock_submit.assert_called_once_with(
+            RunType.ROW_COUNT_DIFF,
+            params={"node_names": ["orders"]},
+            check_id=str(check_id),
+            triggered_by="recce_ai",
+        )
+
+    @pytest.mark.asyncio
+    async def test_run_check_triggered_by_defaults_to_user(self, mcp_server):
+        """run_check defaults triggered_by to 'user' when not specified."""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.models.types import RunStatus, RunType
+
+        check_id = uuid4()
+        mock_check = MagicMock()
+        mock_check.check_id = check_id
+        mock_check.type = RunType.ROW_COUNT_DIFF
+        mock_check.params = {"node_names": ["orders"]}
+
+        mock_run = MagicMock()
+        mock_run.status = RunStatus.FINISHED
+        mock_run.model_dump.return_value = {"run_id": "fake", "type": "row_count_diff"}
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.find_check_by_id.return_value = mock_check
+
+        with (
+            patch("recce.models.CheckDAO", return_value=mock_check_dao),
+            patch("recce.apis.run_func.submit_run", return_value=(mock_run, asyncio.sleep(0))) as mock_submit,
+        ):
+            await server._tool_run_check({"check_id": str(check_id)})
+
+        mock_submit.assert_called_once_with(
+            RunType.ROW_COUNT_DIFF,
+            params={"node_names": ["orders"]},
+            check_id=str(check_id),
+            triggered_by="user",
+        )
 
 
 class TestRunMCPServer:
@@ -1456,7 +1773,11 @@ class TestCallToolHandler:
 
         mock_check_dao2 = MagicMock()
         mock_check_dao2.find_check_by_id.return_value = mock_check
-        with patch("recce.models.CheckDAO", return_value=mock_check_dao2):
+        mock_run_dao = MagicMock()
+        with (
+            patch("recce.models.CheckDAO", return_value=mock_check_dao2),
+            patch("recce.models.RunDAO", return_value=mock_run_dao),
+        ):
             r = await self._invoke_call_tool(server, "run_check", {"check_id": str(check_id)})
         assert r.root.isError is not True
 
@@ -1722,6 +2043,29 @@ class TestRunCheckEdgeCases:
         with patch("recce.models.CheckDAO", return_value=mock_check_dao):
             with patch("recce.apis.run_func.submit_run", side_effect=RecceException("Task execution failed")):
                 with pytest.raises(ValueError, match="Task execution failed"):
+                    await server._tool_run_check({"check_id": str(check_id)})
+
+    @pytest.mark.asyncio
+    async def test_run_check_metadata_branch_recce_exception(self, mcp_server):
+        """RecceException from _tool_lineage_diff in metadata branch should be wrapped in ValueError."""
+        server, _ = mcp_server
+        from uuid import uuid4
+
+        from recce.exceptions import RecceException
+        from recce.models.types import RunType
+
+        check_id = uuid4()
+        mock_check = MagicMock()
+        mock_check.check_id = check_id
+        mock_check.type = RunType.LINEAGE_DIFF
+        mock_check.params = {}
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.find_check_by_id.return_value = mock_check
+
+        with patch("recce.models.CheckDAO", return_value=mock_check_dao):
+            with patch.object(server, "_tool_lineage_diff", side_effect=RecceException("Lineage data unavailable")):
+                with pytest.raises(ValueError, match="Lineage data unavailable"):
                     await server._tool_run_check({"check_id": str(check_id)})
 
 

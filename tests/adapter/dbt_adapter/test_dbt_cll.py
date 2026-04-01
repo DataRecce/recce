@@ -352,11 +352,15 @@ def test_cll_with_compiled_code_alias_collision_falls_back(dbt_test_helper):
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     # Even with compiled_code set, the collision should trigger Jinja fallback
-    _set_compiled_code(adapter, "model.final", 'select a.id from "main"."orders" a join "main"."orders" b on a.id = b.id')
+    _set_compiled_code(
+        adapter, "model.final", 'select a.id from "main"."orders" a join "main"."orders" b on a.id = b.id'
+    )
 
     # Should still produce correct CLL via Jinja fallback
     result = adapter.get_cll("model.final")
-    assert_column(result, "model.final", "id", transformation_type="passthrough", parents=[("model.pkg1.stg_orders", "id")])
+    assert_column(
+        result, "model.final", "id", transformation_type="passthrough", parents=[("model.pkg1.stg_orders", "id")]
+    )
 
 
 def test_seed(dbt_test_helper, disable_cll_cache):

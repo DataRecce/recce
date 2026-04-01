@@ -1,5 +1,10 @@
+import hashlib
+import logging
+import os
+import sqlite3
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import sqlglot.expressions as exp
@@ -11,10 +16,191 @@ from sqlglot.optimizer.qualify import qualify
 from recce.exceptions import RecceException
 from recce.models.types import CllColumn, CllColumnDep
 
+logger = logging.getLogger("recce")
+
 CllResult = Tuple[
     List[CllColumnDep],  # Model to column dependencies
     Dict[str, CllColumn],  # Column to column dependencies
 ]
+
+_DEFAULT_DB_PATH = os.path.join(os.path.expanduser("~"), ".recce", "cll_cache.db")
+_CACHE_SCHEMA_VERSION = 2
+_DEFAULT_TTL_SECONDS = 7 * 24 * 3600  # 7 days
+
+
+class CllCache:
+    """Per-node CllData cache backed by SQLite.
+
+    Stores a serialized per-node CllData (excluding change_status/change_category)
+    keyed by a content hash of the node's inputs (node_id, raw_code, parent_list,
+    column_names). Because keys are derived from content, identical models in
+    base and current environments naturally share cache entries.
+
+    - SQLite with WAL mode for concurrent readers.
+    - TTL eviction: entries not accessed within ``ttl_seconds`` are deleted.
+      Eviction is not automatic; callers must invoke ``evict_stale()`` explicitly.
+    - Single file at ``~/.recce/cll_cache.db`` (configurable).
+    """
+
+    def __init__(
+        self,
+        db_path: Optional[str] = None,
+        ttl_seconds: int = _DEFAULT_TTL_SECONDS,
+    ):
+        self._db_path: Optional[str] = None
+        self._ttl_seconds = ttl_seconds
+        if db_path:
+            self._db_path = db_path
+            Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+            self._init_db()
+
+    def _init_db(self) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS cll_node_cache ("
+                "  key TEXT PRIMARY KEY,"
+                "  value TEXT NOT NULL,"
+                "  last_accessed REAL NOT NULL DEFAULT 0"
+                ")"
+            )
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS cache_meta (" "  key TEXT PRIMARY KEY," "  value TEXT NOT NULL" ")"
+            )
+            conn.execute(
+                "INSERT OR REPLACE INTO cache_meta (key, value) VALUES ('schema_version', ?)",
+                (str(_CACHE_SCHEMA_VERSION),),
+            )
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self._db_path, timeout=10)
+        conn.execute("PRAGMA journal_mode=WAL")
+        return conn
+
+    def evict_stale(self) -> int:
+        """Delete entries not accessed within the TTL. Returns count of deleted rows.
+
+        Not called automatically; must be invoked explicitly (e.g., at startup
+        or from ``build_full_cll_map``).
+        """
+        if not self._db_path:
+            return 0
+        cutoff = time.time() - self._ttl_seconds
+        try:
+            with self._connect() as conn:
+                deleted = conn.execute(
+                    "DELETE FROM cll_node_cache WHERE last_accessed > 0 AND last_accessed < ?",
+                    (cutoff,),
+                ).rowcount
+                if deleted:
+                    logger.info(
+                        "[cll cache] evicted %d stale entries (TTL %dd)",
+                        deleted,
+                        self._ttl_seconds // 86400,
+                    )
+                return deleted
+        except Exception as e:
+            logger.warning("[cll cache] evict_stale failed: %s", e, exc_info=True)
+            return 0
+
+    @staticmethod
+    def make_node_key(node_id: str, content_key: str) -> str:
+        """Build a cache key for a per-node CllData entry."""
+        h = hashlib.sha256()
+        h.update(node_id.encode("utf-8"))
+        h.update(content_key.encode("utf-8"))
+        return h.hexdigest()
+
+    def get_node(self, node_id: str, content_key: str) -> Optional[str]:
+        """Get cached CllData JSON for a node.
+
+        On hit, updates ``last_accessed`` timestamp (for TTL eviction).
+        Returns JSON string or None.
+        """
+        if not self._db_path:
+            return None
+        key = self.make_node_key(node_id, content_key)
+        try:
+            with self._connect() as conn:
+                row = conn.execute("SELECT value FROM cll_node_cache WHERE key = ?", (key,)).fetchone()
+                if row:
+                    conn.execute(
+                        "UPDATE cll_node_cache SET last_accessed = ? WHERE key = ?",
+                        (time.time(), key),
+                    )
+                    return row[0]
+        except Exception as e:
+            logger.debug("[cll cache] get_node failed for %s: %s", node_id, e)
+        return None
+
+    def put_node(self, node_id: str, content_key: str, value_json: str) -> None:
+        """Store a per-node CllData JSON entry."""
+        if not self._db_path:
+            return
+        key = self.make_node_key(node_id, content_key)
+        try:
+            now = time.time()
+            with self._connect() as conn:
+                conn.execute(
+                    "INSERT OR REPLACE INTO cll_node_cache (key, value, last_accessed)" " VALUES (?, ?, ?)",
+                    (key, value_json, now),
+                )
+        except Exception as e:
+            logger.debug("[cll cache] put_node failed for %s: %s", node_id, e)
+
+    def put_nodes_batch(self, entries: List[Tuple[str, str, str]]) -> bool:
+        """Batch-insert per-node CllData entries.
+
+        Each entry: (node_id, content_key, value_json).
+        Returns True if the write succeeded, False otherwise.
+        """
+        if not self._db_path or not entries:
+            return True
+        now = time.time()
+        try:
+            with self._connect() as conn:
+                conn.executemany(
+                    "INSERT OR REPLACE INTO cll_node_cache (key, value, last_accessed)" " VALUES (?, ?, ?)",
+                    [(self.make_node_key(nid, ck), val, now) for nid, ck, val in entries],
+                )
+            return True
+        except Exception as e:
+            logger.warning("[cll cache] batch write failed for %d entries: %s", len(entries), e)
+            return False
+
+    def clear(self) -> None:
+        """No-op. The file cache uses content-addressed keys that auto-invalidate."""
+
+    @property
+    def stats(self) -> Dict[str, int]:
+        """Return count of entries in the SQLite cache."""
+        if not self._db_path:
+            return {"entries": 0}
+        try:
+            with self._connect() as conn:
+                count = conn.execute("SELECT COUNT(*) FROM cll_node_cache").fetchone()[0]
+            return {"entries": count}
+        except Exception:
+            return {"entries": 0}
+
+
+def _init_cll_cache() -> CllCache:
+    """Initialize the module-level CLL node cache.
+
+    Off by default. Enable with ENABLE_CLL_CACHE=1
+    to persist per-node CllData in SQLite (~/.recce/cll_cache.db).
+    Set CLL_CACHE_DB to override the default path.
+    """
+    if os.environ.get("ENABLE_CLL_CACHE", "0") != "1":
+        return CllCache()
+    db_path = os.environ.get("CLL_CACHE_DB", _DEFAULT_DB_PATH)
+    return CllCache(db_path=db_path)
+
+
+_cll_cache = _init_cll_cache()
+
+
+def get_cll_cache() -> CllCache:
+    return _cll_cache
 
 
 @dataclass

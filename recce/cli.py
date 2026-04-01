@@ -1,51 +1,20 @@
-import asyncio
 import os
 from pathlib import Path
 from typing import List
 
 import click
-import uvicorn
-from click import Abort
 
-from recce import event
-from recce.artifact import (
-    delete_dbt_artifacts,
-    download_dbt_artifacts,
-    upload_artifacts_to_session,
-    upload_dbt_artifacts,
-)
-from recce.config import RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE, RecceConfig
-from recce.connect_to_cloud import (
-    generate_key_pair,
-    prepare_connection_url,
-    run_one_time_http_server,
-)
-from recce.exceptions import RecceConfigException
-from recce.git import current_branch, current_default_branch
-from recce.run import check_github_ci_env, cli_run
-from recce.server import RecceServerMode
-from recce.state import (
-    CloudStateLoader,
-    FileStateLoader,
-    RecceCloudStateManager,
-    RecceShareStateManager,
-)
-from recce.summary import generate_markdown_summary
-from recce.util.api_token import prepare_api_token, show_invalid_api_token_message
-from recce.util.logger import CustomFormatter
-from recce.util.recce_cloud import (
-    RecceCloudException,
-)
+from recce.constants import RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
 from recce.util.startup_perf import track_timing
 
-from .core import RecceContext
-from .event.track import TrackCommand
-
-event.init()
+from .track import TrackCommand
 
 
 def create_state_loader(review_mode, cloud_mode, state_file, cloud_options):
     from rich.console import Console
+
+    from recce.state import CloudStateLoader, FileStateLoader
+    from recce.util.recce_cloud import RecceCloudException
 
     console = Console()
 
@@ -139,6 +108,8 @@ def create_state_loader_by_args(state_file=None, **kwargs):
 def handle_debug_flag(**kwargs):
     if kwargs.get("debug"):
         import logging
+
+        from recce.util.logger import CustomFormatter
 
         ch = logging.StreamHandler()
         ch.setFormatter(CustomFormatter())
@@ -249,7 +220,7 @@ recce_hidden_options = [
     click.option(
         "--mode",
         envvar="RECCE_SERVER_MODE",
-        type=click.Choice(RecceServerMode.available_members(), case_sensitive=False),
+        type=click.Choice(["server", "preview", "read-only"], case_sensitive=False),
         hidden=True,
     ),
     click.option(
@@ -426,6 +397,8 @@ def query(sql, base: bool = False, **kwargs):
     - run an adhoc query on base environment\n
         recce query --base --sql 'select * from {{ ref("mymodel") }} order by 1'
     """
+    from .core import RecceContext
+
     context = RecceContext.load(**kwargs)
     result = _execute_sql(context, sql, base=base)
     print(result.to_string(na_rep="-", index=False))
@@ -457,6 +430,8 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
     - run adhoc queries and diff the results\n
         recce diff --sql 'select * from {{ ref("mymodel") }} order by 1'
     """
+
+    from .core import RecceContext
 
     context = RecceContext.load(**kwargs)
     before = _execute_sql(context, sql, base=True)
@@ -528,8 +503,14 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
 
     """
 
+    import uvicorn
     from rich.console import Console
     from rich.prompt import Confirm
+
+    from recce.config import RecceConfig
+    from recce.exceptions import RecceConfigException
+    from recce.server import RecceServerMode
+    from recce.util.api_token import prepare_api_token, show_invalid_api_token_message
 
     from .server import AppState, app
 
@@ -716,7 +697,16 @@ def run(output, **kwargs):
     recce run --cloud --cloud-token <token> --password <password>
 
     """
+    import asyncio
+
     from rich.console import Console
+
+    from recce.config import RecceConfig
+    from recce.exceptions import RecceConfigException
+    from recce.run import check_github_ci_env, cli_run
+    from recce.util.api_token import prepare_api_token, show_invalid_api_token_message
+
+    from .core import RecceContext
 
     handle_debug_flag(**kwargs)
     console = Console()
@@ -799,6 +789,8 @@ def summary(state_file, **kwargs):
     """
     from rich.console import Console
 
+    from recce.summary import generate_markdown_summary
+
     from .core import load_context
 
     handle_debug_flag(**kwargs)
@@ -844,6 +836,12 @@ def connect_to_cloud():
     import webbrowser
 
     from rich.console import Console
+
+    from recce.connect_to_cloud import (
+        generate_key_pair,
+        prepare_connection_url,
+        run_one_time_http_server,
+    )
 
     console = Console()
 
@@ -891,6 +889,8 @@ def purge(**kwargs):
     Purge the state file from cloud
     """
     from rich.console import Console
+
+    from recce.state import RecceCloudStateManager
 
     handle_debug_flag(**kwargs)
     console = Console()
@@ -976,6 +976,8 @@ def upload(state_file, **kwargs):
     """
     from rich.console import Console
 
+    from recce.state import RecceCloudStateManager
+
     handle_debug_flag(**kwargs)
     cloud_options = {
         "host": kwargs.get("state_file_host"),
@@ -1045,6 +1047,8 @@ def download(**kwargs):
     """
     from rich.console import Console
 
+    from recce.state import RecceCloudStateManager
+
     handle_debug_flag(**kwargs)
     filepath = kwargs.get("output")
     cloud_options = {
@@ -1078,11 +1082,9 @@ def download(**kwargs):
 @click.option(
     "--branch",
     "-b",
-    help="The branch of the provided artifacts.",
+    help="The branch of the provided artifacts. Defaults to current branch.",
     type=click.STRING,
     envvar="GITHUB_HEAD_REF",
-    default=current_branch(),
-    show_default=True,
 )
 @click.option(
     "--target-path",
@@ -1112,11 +1114,14 @@ def upload_artifacts(**kwargs):
     """
     from rich.console import Console
 
+    from recce.artifact import upload_dbt_artifacts
+    from recce.git import current_branch
+
     console = Console()
     cloud_token = kwargs.get("cloud_token")
     password = kwargs.get("password")
     target_path = kwargs.get("target_path")
-    branch = kwargs.get("branch")
+    branch = kwargs.get("branch") or current_branch()
 
     try:
         rc = upload_dbt_artifacts(
@@ -1135,6 +1140,8 @@ def upload_artifacts(**kwargs):
 
 
 def _download_artifacts(branch, cloud_token, console, kwargs, password, target_path):
+    from recce.artifact import download_dbt_artifacts
+
     try:
         rc = download_dbt_artifacts(
             target_path,
@@ -1175,11 +1182,9 @@ def _download_artifacts(branch, cloud_token, console, kwargs, password, target_p
 @click.option(
     "--branch",
     "-b",
-    help="The branch of the selected artifacts.",
+    help="The branch of the selected artifacts. Defaults to current branch.",
     type=click.STRING,
     envvar="GITHUB_BASE_REF",
-    default=current_branch(),
-    show_default=True,
 )
 @click.option(
     "--target-path",
@@ -1210,11 +1215,13 @@ def download_artifacts(**kwargs):
     """
     from rich.console import Console
 
+    from recce.git import current_branch
+
     console = Console()
     cloud_token = kwargs.get("cloud_token")
     password = kwargs.get("password")
     target_path = kwargs.get("target_path")
-    branch = kwargs.get("branch")
+    branch = kwargs.get("branch") or current_branch()
     return _download_artifacts(branch, cloud_token, console, kwargs, password, target_path)
 
 
@@ -1223,11 +1230,9 @@ def download_artifacts(**kwargs):
 @click.option(
     "--branch",
     "-b",
-    help="The branch of the selected artifacts.",
+    help="The branch of the selected artifacts. Defaults to default branch.",
     type=click.STRING,
     envvar="GITHUB_BASE_REF",
-    default=current_default_branch(),
-    show_default=True,
 )
 @click.option(
     "--target-path",
@@ -1257,11 +1262,13 @@ def download_base_artifacts(**kwargs):
     """
     from rich.console import Console
 
+    from recce.git import current_default_branch
+
     console = Console()
     cloud_token = kwargs.get("cloud_token")
     password = kwargs.get("password")
     target_path = kwargs.get("target_path")
-    branch = kwargs.get("branch")
+    branch = kwargs.get("branch") or current_default_branch()
     # If recce can't infer default branch from "GITHUB_BASE_REF" and current_default_branch()
     if branch is None:
         console.print(
@@ -1277,11 +1284,9 @@ def download_base_artifacts(**kwargs):
 @click.option(
     "--branch",
     "-b",
-    help="The branch to delete artifacts from.",
+    help="The branch to delete artifacts from. Defaults to current branch.",
     type=click.STRING,
     envvar="GITHUB_HEAD_REF",
-    default=current_branch(),
-    show_default=True,
 )
 @click.option("--force", "-f", help="Bypasses the confirmation prompt. Delete the artifacts directly.", is_flag=True)
 @add_options(recce_options)
@@ -1296,9 +1301,13 @@ def delete_artifacts(**kwargs):
     """
     from rich.console import Console
 
+    from recce.artifact import delete_dbt_artifacts
+    from recce.git import current_branch
+    from recce.util.recce_cloud import RecceCloudException
+
     console = Console()
     cloud_token = kwargs.get("cloud_token")
-    branch = kwargs.get("branch")
+    branch = kwargs.get("branch") or current_branch()
     force = kwargs.get("force", False)
 
     if not force:
@@ -1333,6 +1342,10 @@ def list_organizations(**kwargs):
     """
     from rich.console import Console
     from rich.table import Table
+
+    from recce.exceptions import RecceConfigException
+    from recce.util.api_token import prepare_api_token, show_invalid_api_token_message
+    from recce.util.recce_cloud import RecceCloudException
 
     console = Console()
     handle_debug_flag(**kwargs)
@@ -1402,6 +1415,10 @@ def list_projects(**kwargs):
     """
     from rich.console import Console
     from rich.table import Table
+
+    from recce.exceptions import RecceConfigException
+    from recce.util.api_token import prepare_api_token, show_invalid_api_token_message
+    from recce.util.recce_cloud import RecceCloudException
 
     console = Console()
     handle_debug_flag(**kwargs)
@@ -1490,6 +1507,10 @@ def list_sessions(**kwargs):
     """
     from rich.console import Console
     from rich.table import Table
+
+    from recce.exceptions import RecceConfigException
+    from recce.util.api_token import prepare_api_token, show_invalid_api_token_message
+    from recce.util.recce_cloud import RecceCloudException
 
     console = Console()
     handle_debug_flag(**kwargs)
@@ -1581,7 +1602,13 @@ def share(state_file, **kwargs):
     """
     Share the state file
     """
+    from click import Abort
     from rich.console import Console
+
+    from recce.exceptions import RecceConfigException
+    from recce.state import RecceShareStateManager
+    from recce.util.api_token import prepare_api_token, show_invalid_api_token_message
+    from recce.util.recce_cloud import RecceCloudException
 
     console = Console()
     handle_debug_flag(**kwargs)
@@ -1682,6 +1709,11 @@ def upload_session(**kwargs):
     """
     from rich.console import Console
 
+    from recce.artifact import upload_artifacts_to_session
+    from recce.config import RecceConfig
+    from recce.exceptions import RecceConfigException
+    from recce.util.api_token import prepare_api_token, show_invalid_api_token_message
+
     console = Console()
     handle_debug_flag(**kwargs)
 
@@ -1736,6 +1768,8 @@ def snapshot(**kwargs):
 @click.option("--share-url", help="The share URL triggers this instance.", type=click.STRING, envvar="RECCE_SHARE_URL")
 @click.pass_context
 def read_only(ctx, state_file=None, **kwargs):
+    from recce.server import RecceServerMode
+
     # Invoke `recce server --mode read-only <state_file> ...
     kwargs["mode"] = RecceServerMode.read_only
     ctx.invoke(server, state_file=state_file, **kwargs)
@@ -1801,7 +1835,13 @@ def mcp_server(state_file, sse, host, port, **kwargs):
 
     SSE Connection URL (when using --sse): http://<host>:<port>/sse
     """
+    import asyncio
+
     from rich.console import Console
+
+    from recce.config import RecceConfig
+    from recce.exceptions import RecceConfigException
+    from recce.util.api_token import prepare_api_token, show_invalid_api_token_message
 
     # In stdio mode, stdout is the JSON-RPC transport — all human-readable
     # output must go to stderr to avoid MCP client parse errors.

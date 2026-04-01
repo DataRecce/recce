@@ -57,6 +57,8 @@ export interface CheckCardData {
    * dbt manifest or related artifacts are regenerated (shown in outdated tooltip).
    */
   lastRunAt?: string;
+  /** Who created this check: "recce_ai" | "user" | "preset_system" */
+  actorType?: string;
 }
 
 /**
@@ -175,6 +177,23 @@ function formatOutdatedTooltip(lastRunAt?: string): string {
     return "Check may be outdated";
   }
 }
+
+/**
+ * Badge config for actor type display.
+ * Exported so downstream components (e.g. CheckDetailOss) can reuse it.
+ */
+export const ACTOR_BADGE_CONFIG: Record<
+  string,
+  { label: string; color: string; bg: string }
+> = {
+  recce_ai: { label: "AI", color: "#7c3aed", bg: "rgb(124 58 237 / 0.12)" },
+  user: { label: "User", color: "#059669", bg: "rgb(5 150 105 / 0.12)" },
+  preset_system: {
+    label: "Preset",
+    color: "#2563eb",
+    bg: "rgb(37 99 235 / 0.12)",
+  },
+};
 
 /**
  * CheckCard Component
@@ -331,6 +350,25 @@ function CheckCardComponent({
           />
         </Tooltip>
       )}
+
+      {/* Actor badge — skip for presets (already shown by Preset chip) */}
+      {check.actorType &&
+        !check.isPreset &&
+        ACTOR_BADGE_CONFIG[check.actorType] && (
+          <Chip
+            label={ACTOR_BADGE_CONFIG[check.actorType].label}
+            size="small"
+            sx={{
+              height: 20,
+              fontSize: "0.65rem",
+              fontWeight: 500,
+              backgroundColor: ACTOR_BADGE_CONFIG[check.actorType].bg,
+              color: ACTOR_BADGE_CONFIG[check.actorType].color,
+              flexShrink: 0,
+              "& .MuiChip-label": { px: 0.75 },
+            }}
+          />
+        )}
 
       {/* Preset badge */}
       {check.isPreset && (
