@@ -420,7 +420,24 @@ export function PrivateLineageView(
         setViewOptions(newViewOptions);
       }
 
-      const cllInput = viewOptions.column_level_lineage;
+      // Auto-trigger impact analysis on first load when flag is set
+      let cllInput = viewOptions.column_level_lineage;
+      if (
+        serverFlags?.impact_at_startup &&
+        !impactAtStartupFired.current &&
+        !cllInput
+      ) {
+        impactAtStartupFired.current = true;
+        changeAnalysisModeRef.current = true;
+        setChangeAnalysisMode(true);
+        cllInput = { change_analysis: true, no_upstream: true };
+        // Persist to viewOptions so the CLL survives effect re-fires
+        // (e.g. when the lineageGraph cache is patched with change data)
+        setViewOptions((prev) => ({
+          ...prev,
+          column_level_lineage: cllInput,
+        }));
+      }
 
       let cll: ColumnLineageData | undefined;
       if (cllInput) {
@@ -501,12 +518,13 @@ export function PrivateLineageView(
     };
 
     void t();
-    // Intentionally only run when lineageGraph changes (initial load/refetch).
+    // Runs when lineageGraph changes (initial load/refetch), and also when
+    // impact_at_startup flag arrives (may load after lineageGraph).
     // viewOptions changes are handled separately by handleViewOptionsChanged.
     // Other dependencies (setNodes, setEdges, actionGetCll) are stable.
     // changeAnalysisModeRef is a ref to avoid stale closure issues.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lineageGraph]);
+  }, [lineageGraph, serverFlags?.impact_at_startup]);
 
   const onNodeViewClosed = () => {
     setFocusedNodeId(undefined);
@@ -589,25 +607,6 @@ export function PrivateLineageView(
       setFocusedNodeId(undefined);
     }
   };
-
-  // Auto-trigger impact analysis once when flag is set and lineage is loaded
-  // Separate from the main useLayoutEffect to avoid race with async serverFlags
-  // biome-ignore lint/correctness/useExhaustiveDependencies: showColumnLevelLineage is not memoized; ref guard ensures single execution.
-  useEffect(() => {
-    if (
-      serverFlags?.impact_at_startup &&
-      lineageGraph &&
-      !impactAtStartupFired.current
-    ) {
-      impactAtStartupFired.current = true;
-      changeAnalysisModeRef.current = true;
-      setChangeAnalysisMode(true);
-      showColumnLevelLineage({
-        change_analysis: true,
-        no_upstream: true,
-      });
-    }
-  }, [serverFlags, lineageGraph]);
 
   const resetColumnLevelLineage = async (previous?: boolean) => {
     if (previous) {
