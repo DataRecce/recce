@@ -4,14 +4,10 @@ from typing import List
 
 import click
 
+from recce.constants import RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
 from recce.util.startup_perf import track_timing
 
 from .track import TrackCommand
-
-# Inline constants to avoid importing recce.config at module level.
-# Keep in sync with recce.config.RECCE_CONFIG_FILE / RECCE_ERROR_LOG_FILE.
-RECCE_CONFIG_FILE = "recce.yml"
-RECCE_ERROR_LOG_FILE = "recce_error.log"
 
 
 def create_state_loader(review_mode, cloud_mode, state_file, cloud_options):

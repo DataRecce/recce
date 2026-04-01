@@ -297,19 +297,23 @@ class TestShouldLogEvent:
 
 
 class TestConstantSync:
-    """Verify inlined constants in cli.py match canonical values in config.py."""
+    """Verify cli.py and config.py both use constants from recce.constants."""
 
-    def test_config_file_constant_matches(self):
+    def test_cli_and_config_share_same_config_file_constant(self):
         from recce.cli import RECCE_CONFIG_FILE as cli_val
         from recce.config import RECCE_CONFIG_FILE as config_val
+        from recce.constants import RECCE_CONFIG_FILE as const_val
 
-        assert cli_val == config_val
+        assert cli_val is const_val
+        assert config_val is const_val
 
-    def test_error_log_constant_matches(self):
+    def test_cli_and_config_share_same_error_log_constant(self):
         from recce.cli import RECCE_ERROR_LOG_FILE as cli_val
         from recce.config import RECCE_ERROR_LOG_FILE as config_val
+        from recce.constants import RECCE_ERROR_LOG_FILE as const_val
 
-        assert cli_val == config_val
+        assert cli_val is const_val
+        assert config_val is const_val
 
 
 class TestServerModeValuesSync:
