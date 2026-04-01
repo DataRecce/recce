@@ -789,6 +789,8 @@ def summary(state_file, **kwargs):
     """
     from rich.console import Console
 
+    from recce.summary import generate_markdown_summary
+
     from .core import load_context
 
     handle_debug_flag(**kwargs)
@@ -821,8 +823,6 @@ def summary(state_file, **kwargs):
         console.print("[[red]Error[/red]] Failed to generate summary")
         console.print(f"{e}")
         exit(1)
-
-    from recce.summary import generate_markdown_summary
 
     output = generate_markdown_summary(ctx, summary_format=kwargs.get("format"))
     print(output)
