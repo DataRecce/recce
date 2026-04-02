@@ -8,7 +8,7 @@
  * NOTE: This feature is only available when connected to Recce Cloud.
  */
 
-import type { AxiosInstance, AxiosResponse } from "axios";
+import type { ApiClient, ApiResponse } from "../lib/fetchClient";
 
 // ============================================================================
 // Event Types
@@ -82,9 +82,9 @@ export interface CheckEventsListResponse {
  */
 export async function listCheckEvents(
   checkId: string,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<CheckEvent[]> {
-  const response = await client.get<never, AxiosResponse<CheckEvent[]>>(
+  const response = await client.get<never, ApiResponse<CheckEvent[]>>(
     `/api/checks/${checkId}/events`,
   );
   return response.data;
@@ -101,9 +101,9 @@ export async function listCheckEvents(
 export async function getCheckEvent(
   checkId: string,
   eventId: string,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<CheckEvent> {
-  const response = await client.get<never, AxiosResponse<CheckEvent>>(
+  const response = await client.get<never, ApiResponse<CheckEvent>>(
     `/api/checks/${checkId}/events/${eventId}`,
   );
   return response.data;
@@ -120,11 +120,11 @@ export async function getCheckEvent(
 export async function createComment(
   checkId: string,
   content: string,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<CheckEvent> {
   const response = await client.post<
     CreateCommentRequest,
-    AxiosResponse<CheckEvent>
+    ApiResponse<CheckEvent>
   >(`/api/checks/${checkId}/events`, { content });
   return response.data;
 }
@@ -143,11 +143,11 @@ export async function updateComment(
   checkId: string,
   eventId: string,
   content: string,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<CheckEvent> {
   const response = await client.patch<
     UpdateCommentRequest,
-    AxiosResponse<CheckEvent>
+    ApiResponse<CheckEvent>
   >(`/api/checks/${checkId}/events/${eventId}`, { content });
   return response.data;
 }
@@ -164,7 +164,7 @@ export async function updateComment(
 export async function deleteComment(
   checkId: string,
   eventId: string,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<void> {
   await client.delete(`/api/checks/${checkId}/events/${eventId}`);
 }

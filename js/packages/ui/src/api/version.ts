@@ -1,20 +1,22 @@
 "use client";
 
-import axios, { type AxiosInstance, type AxiosResponse } from "axios";
 import { useEffect, useState } from "react";
+import {
+  type ApiClient,
+  type ApiResponse,
+  createFetchClient,
+} from "../lib/fetchClient";
 import { useApiConfigOptional } from "../providers/contexts/ApiContext";
 
-const defaultApiClient = axios.create();
+const defaultApiClient = createFetchClient({ baseURL: "" });
 
 export interface VersionResponse {
   version: string;
   latestVersion: string;
 }
 
-export async function getVersion(
-  client: AxiosInstance,
-): Promise<VersionResponse> {
-  const response = await client.get<never, AxiosResponse<VersionResponse>>(
+export async function getVersion(client: ApiClient): Promise<VersionResponse> {
+  const response = await client.get<never, ApiResponse<VersionResponse>>(
     "/api/version",
   );
   return response.data;

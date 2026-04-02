@@ -4,7 +4,6 @@
  * Combines data from lineage graph context with API calls for column details.
  */
 
-import type { AxiosInstance } from "axios";
 import _ from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getModelInfo, type NodeColumnData } from "../api";
@@ -12,6 +11,7 @@ import {
   type LineageGraphNode,
   useLineageGraphContext,
 } from "../contexts/lineage";
+import type { ApiClient } from "../lib/fetchClient";
 import { useApiConfigOptional } from "../providers";
 
 /**
@@ -92,13 +92,13 @@ export interface UseModelColumnsReturn {
  */
 export function useModelColumns(
   model: string | undefined,
-  client?: AxiosInstance,
+  client?: ApiClient,
 ): UseModelColumnsReturn {
   const { lineageGraph } = useLineageGraphContext();
   const apiConfig = useApiConfigOptional();
 
   // Use provided client or fall back to context client
-  const axiosClient = client ?? apiConfig?.apiClient;
+  const apiClient = client ?? apiConfig?.apiClient;
 
   const node = _.find(lineageGraph?.nodes, {
     data: {
@@ -120,11 +120,11 @@ export function useModelColumns(
   const nodePrimaryKey = node ? node.data.data.current?.primary_key : undefined;
 
   const fetchData = useCallback(async () => {
-    if (!node || !axiosClient) {
+    if (!node || !apiClient) {
       return;
     }
     try {
-      const data = await getModelInfo(node.id, axiosClient);
+      const data = await getModelInfo(node.id, apiClient);
       const modelInfo = data.model;
       if (!modelInfo.base.columns || !modelInfo.current.columns) {
         setColumns([]);
@@ -137,7 +137,7 @@ export function useModelColumns(
     } catch (err) {
       setError(err as Error);
     }
-  }, [node, axiosClient]);
+  }, [node, apiClient]);
 
   // Adjust state during render when node changes
   if (nodeColumns !== prevNodeColumns || node?.id !== prevNodeId) {

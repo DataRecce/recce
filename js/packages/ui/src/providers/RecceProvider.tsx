@@ -1,15 +1,14 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { AxiosInstance } from "axios";
 import { type ReactNode, useMemo } from "react";
-
 import type { RecceActionProviderProps } from "../contexts/action";
 import { RecceActionProvider } from "../contexts/action";
 import { IdleTimeoutProvider } from "../contexts/idle";
 import { RecceInstanceInfoProvider } from "../contexts/instance";
 import type { LineageGraphProviderProps } from "../contexts/lineage";
 import { LineageGraphProvider } from "../contexts/lineage";
+import type { ApiClient } from "../lib/fetchClient";
 import { ApiProvider } from "./contexts/ApiContext";
 import type { Check, CheckProviderProps } from "./contexts/CheckContext";
 import { CheckProvider } from "./contexts/CheckContext";
@@ -39,7 +38,7 @@ interface RecceProviderProps {
         timeout?: number;
       }
     | {
-        client: AxiosInstance;
+        client: ApiClient;
       };
 
   /**

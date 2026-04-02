@@ -1,4 +1,4 @@
-import type { AxiosInstance, AxiosResponse } from "axios";
+import type { ApiClient, ApiResponse } from "../lib/fetchClient";
 
 /**
  * Server-side feature flags
@@ -13,9 +13,9 @@ export interface RecceServerFlags {
  * Fetch server flags from API
  */
 export async function getServerFlag(
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<RecceServerFlags> {
-  const response = await client.get<never, AxiosResponse<RecceServerFlags>>(
+  const response = await client.get<never, ApiResponse<RecceServerFlags>>(
     "/api/flag",
   );
   return response.data;
@@ -25,10 +25,10 @@ export async function getServerFlag(
  * Mark relaunch hint as completed
  */
 export async function markRelaunchHintCompleted(
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<void> {
   try {
-    await client.post<never, AxiosResponse<never>>(
+    await client.post<never, ApiResponse<never>>(
       "/api/relaunch-hint/completed",
     );
   } catch {

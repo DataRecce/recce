@@ -73,7 +73,7 @@ import type { RunResultViewProps } from "./types";
 // ============================================================================
 
 /**
- * API error shape for extracting error messages from axios responses.
+ * API error shape for extracting error messages from fetch responses.
  */
 interface ApiError {
   response?: {

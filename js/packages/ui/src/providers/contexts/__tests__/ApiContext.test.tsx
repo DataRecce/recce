@@ -1,6 +1,6 @@
 import { render, renderHook, screen } from "@testing-library/react";
-import axios from "axios";
 import { vi } from "vitest";
+import { createFetchClient } from "../../../lib/fetchClient";
 import {
   ApiProvider,
   useApiClient,
@@ -8,41 +8,33 @@ import {
   useApiConfigOptional,
 } from "../ApiContext";
 
-// Mock axios.create to track interceptor registration
-vi.mock("axios", async () => {
-  const actualAxios = await vi.importActual<typeof axios>("axios");
-  const mockCreate = vi.fn((config) => {
-    const instance = actualAxios.create(config);
-    // Track interceptors for testing - use type assertion for test-only property
-    const testInstance = instance as typeof instance & {
-      __requestInterceptors: unknown[];
-    };
-    testInstance.__requestInterceptors = [];
-    const originalUse = instance.interceptors.request.use.bind(
-      instance.interceptors.request,
-    );
-    // Override interceptor use to track calls - cast to any for test mock flexibility
-    // biome-ignore lint/suspicious/noExplicitAny: test mock needs flexible typing
-    (instance.interceptors.request as any).use = (
-      onFulfilled: unknown,
-      onRejected: unknown,
-    ) => {
-      testInstance.__requestInterceptors.push({ onFulfilled, onRejected });
-      // biome-ignore lint/suspicious/noExplicitAny: test mock needs flexible typing
-      return originalUse(onFulfilled as any, onRejected as any);
-    };
-    return instance;
-  });
-  return {
-    ...actualAxios,
-    default: { ...actualAxios, create: mockCreate },
-    create: mockCreate,
-  };
-});
+function mockFetchResponse(data: unknown = {}, status = 200) {
+  (globalThis.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+    new Response(JSON.stringify(data), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+}
 
 describe("ApiContext (@datarecce/ui)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({}), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        ),
+      ),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe("Provider Basics", () => {
@@ -81,7 +73,7 @@ describe("ApiContext (@datarecce/ui)", () => {
   });
 
   describe("API Config Values", () => {
-    it("provides apiClient as an axios instance", () => {
+    it("provides apiClient with HTTP methods", () => {
       const { result } = renderHook(() => useApiConfig(), {
         wrapper: ({ children }) => (
           <ApiProvider config={{ baseUrl: "https://api.example.com" }}>
@@ -91,10 +83,8 @@ describe("ApiContext (@datarecce/ui)", () => {
       });
 
       expect(result.current.apiClient).toBeDefined();
-      // Check it has axios-like properties
       expect(typeof result.current.apiClient.get).toBe("function");
       expect(typeof result.current.apiClient.post).toBe("function");
-      expect(typeof result.current.apiClient.interceptors).toBe("object");
     });
 
     it("provides default apiPrefix as empty string when not specified", () => {
@@ -232,7 +222,7 @@ describe("ApiContext (@datarecce/ui)", () => {
       expect(result.current.baseUrl).toBe("https://api.example.com");
     });
 
-    it("useApiClient returns axios instance inside provider", () => {
+    it("useApiClient returns client with HTTP methods inside provider", () => {
       const { result } = renderHook(() => useApiClient(), {
         wrapper: ({ children }) => (
           <ApiProvider config={{ baseUrl: "https://api.example.com" }}>
@@ -303,8 +293,8 @@ describe("ApiContext (@datarecce/ui)", () => {
   });
 
   describe("Custom Client Support", () => {
-    it("accepts a pre-configured axios client", () => {
-      const customClient = axios.create({
+    it("accepts a pre-configured fetch client", () => {
+      const customClient = createFetchClient({
         baseURL: "https://custom-client.example.com",
       });
 
@@ -325,7 +315,9 @@ describe("ApiContext (@datarecce/ui)", () => {
     });
 
     it("uses custom client apiPrefix and authToken", () => {
-      const customClient = axios.create();
+      const customClient = createFetchClient({
+        baseURL: "https://example.com",
+      });
 
       const { result } = renderHook(() => useApiConfig(), {
         wrapper: ({ children }) => (
@@ -433,6 +425,169 @@ describe("ApiContext (@datarecce/ui)", () => {
       expect(result.current.apiPrefix).toBe("/inner");
       expect(result.current.authToken).toBe("inner-token");
       expect(result.current.baseUrl).toBe("https://inner.example.com");
+    });
+  });
+
+  describe("Middleware behavior", () => {
+    it("rewrites /api/... URLs with apiPrefix", async () => {
+      const { result } = renderHook(() => useApiClient(), {
+        wrapper: ({ children }) => (
+          <ApiProvider
+            config={{
+              baseUrl: "https://api.example.com",
+              apiPrefix: "/sessions/abc123",
+            }}
+          >
+            {children}
+          </ApiProvider>
+        ),
+      });
+
+      mockFetchResponse({ ok: true });
+      await result.current.get("/api/info");
+
+      const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+      const calledUrl = fetchMock.mock.calls[0][0];
+      expect(calledUrl).toContain("/sessions/abc123/info");
+      expect(calledUrl).not.toContain("/api/");
+    });
+
+    it("rewrites exact /api URL with apiPrefix", async () => {
+      const { result } = renderHook(() => useApiClient(), {
+        wrapper: ({ children }) => (
+          <ApiProvider
+            config={{
+              baseUrl: "https://api.example.com",
+              apiPrefix: "/sessions/abc123",
+            }}
+          >
+            {children}
+          </ApiProvider>
+        ),
+      });
+
+      mockFetchResponse({ ok: true });
+      await result.current.get("/api");
+
+      const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+      const calledUrl = fetchMock.mock.calls[0][0];
+      expect(calledUrl).toContain("/sessions/abc123");
+      expect(calledUrl).not.toMatch(/\/api(?:\/|$)/);
+    });
+
+    it("does not rewrite URLs that don't start with /api", async () => {
+      const { result } = renderHook(() => useApiClient(), {
+        wrapper: ({ children }) => (
+          <ApiProvider
+            config={{
+              baseUrl: "https://api.example.com",
+              apiPrefix: "/sessions/abc123",
+            }}
+          >
+            {children}
+          </ApiProvider>
+        ),
+      });
+
+      mockFetchResponse({ ok: true });
+      await result.current.get("/health");
+
+      const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+      const calledUrl = fetchMock.mock.calls[0][0];
+      expect(calledUrl).toContain("/health");
+      expect(calledUrl).not.toContain("/sessions/abc123");
+    });
+
+    it("injects auth token as Bearer header", async () => {
+      const { result } = renderHook(() => useApiClient(), {
+        wrapper: ({ children }) => (
+          <ApiProvider
+            config={{
+              baseUrl: "https://api.example.com",
+              authToken: "my-secret-token",
+            }}
+          >
+            {children}
+          </ApiProvider>
+        ),
+      });
+
+      mockFetchResponse({ ok: true });
+      await result.current.get("/api/info");
+
+      const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+      const calledInit = fetchMock.mock.calls[0][1] as RequestInit;
+      const headers = calledInit.headers as Headers;
+      expect(headers.get("Authorization")).toBe("Bearer my-secret-token");
+    });
+
+    it("applies both apiPrefix and authToken together", async () => {
+      const { result } = renderHook(() => useApiClient(), {
+        wrapper: ({ children }) => (
+          <ApiProvider
+            config={{
+              baseUrl: "https://api.example.com",
+              apiPrefix: "/v2/sessions/xyz",
+              authToken: "combo-token",
+            }}
+          >
+            {children}
+          </ApiProvider>
+        ),
+      });
+
+      mockFetchResponse({ ok: true });
+      await result.current.get("/api/checks");
+
+      const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+      const calledUrl = fetchMock.mock.calls[0][0];
+      expect(calledUrl).toContain("/v2/sessions/xyz/checks");
+      const calledInit = fetchMock.mock.calls[0][1] as RequestInit;
+      const headers = calledInit.headers as Headers;
+      expect(headers.get("Authorization")).toBe("Bearer combo-token");
+    });
+
+    it("works with empty baseUrl (OSS mode with authToken)", async () => {
+      const { result } = renderHook(() => useApiClient(), {
+        wrapper: ({ children }) => (
+          <ApiProvider
+            config={{
+              baseUrl: "",
+              authToken: "oss-token",
+            }}
+          >
+            {children}
+          </ApiProvider>
+        ),
+      });
+
+      mockFetchResponse({ ok: true });
+      await result.current.get("/api/info");
+
+      const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+      // URL should be the relative path (no baseUrl)
+      expect(fetchMock.mock.calls[0][0]).toBe("/api/info");
+      // Auth header should still be injected
+      const calledInit = fetchMock.mock.calls[0][1] as RequestInit;
+      const headers = calledInit.headers as Headers;
+      expect(headers.get("Authorization")).toBe("Bearer oss-token");
+    });
+
+    it("skips middleware when neither apiPrefix nor authToken is set", async () => {
+      const { result } = renderHook(() => useApiClient(), {
+        wrapper: ({ children }) => (
+          <ApiProvider config={{ baseUrl: "https://api.example.com" }}>
+            {children}
+          </ApiProvider>
+        ),
+      });
+
+      mockFetchResponse({ ok: true });
+      await result.current.get("/api/info");
+
+      const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+      // URL should have /api intact — no rewriting
+      expect(fetchMock.mock.calls[0][0]).toContain("/api/info");
     });
   });
 });

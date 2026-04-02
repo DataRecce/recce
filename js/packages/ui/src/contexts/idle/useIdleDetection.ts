@@ -1,16 +1,16 @@
 "use client";
 
-import axios from "axios";
 import throttle from "lodash/throttle";
 import { useCallback, useEffect, useMemo } from "react";
 import { sendKeepAlive } from "../../api/keepAlive";
+import { createFetchClient } from "../../lib/fetchClient";
 import { useApiConfigOptional } from "../../providers/contexts/ApiContext";
 
 import { useRecceInstanceInfo } from "../instance";
 import { useIdleTimeoutSafe } from "./types";
 
-// Default axios client for use outside RecceProvider (OSS mode)
-const defaultApiClient = axios.create();
+// Default API client for use outside RecceProvider (OSS mode)
+const defaultApiClient = createFetchClient({ baseURL: "" });
 
 /**
  * Check if debug logging is enabled via window.RECCE_DEBUG_IDLE
@@ -55,7 +55,7 @@ const IDLE_DETECTION_CONFIG = {
  *
  * This hook:
  * - Listens for user activities (focus, mouse, keyboard, scroll)
- * - Sends keep-alive requests (throttled at axios layer to minimum 3 seconds)
+ * - Sends keep-alive requests (throttled at API layer to minimum 3 seconds)
  * - Pauses when the tab is inactive (using Page Visibility API)
  * - Immediately sends a keep-alive when tab becomes active
  * - Only activates when idle_timeout is configured on the server
@@ -88,7 +88,7 @@ export function useIdleDetection() {
 
   /**
    * Send keep-alive signal to server
-   * Throttling is handled at the axios layer (minimum 3 seconds between API calls)
+   * Throttling is handled at the API layer (minimum 3 seconds between API calls)
    * The successful send will notify IdleTimeoutContext to reset countdown
    */
   const sendKeepAliveNow = useCallback(async () => {
@@ -105,7 +105,7 @@ export function useIdleDetection() {
 
   /**
    * Handle any user activity event
-   * Attempts to send keep-alive (axios layer handles throttling)
+   * Attempts to send keep-alive (API layer handles throttling)
    */
   const handleActivity = useCallback(
     (event: Event) => {
@@ -115,7 +115,7 @@ export function useIdleDetection() {
           tabActive: !document.hidden,
         });
 
-        // Send keep-alive API call (axios layer handles throttling)
+        // Send keep-alive API call (API layer handles throttling)
         void sendKeepAliveNow();
       }
     },
@@ -134,7 +134,7 @@ export function useIdleDetection() {
         timestamp: new Date().toISOString(),
       });
 
-      // Send keep-alive (axios layer handles throttling)
+      // Send keep-alive (API layer handles throttling)
       void sendKeepAliveNow();
     }
   }, [isEnabled, sendKeepAliveNow]);
@@ -168,7 +168,7 @@ export function useIdleDetection() {
       enabled: true,
       idleTimeout: `${idleTimeout}s`,
       eventThrottle: `${IDLE_DETECTION_CONFIG.EVENT_THROTTLE_MS}ms`,
-      apiThrottle: "3s (axios layer)",
+      apiThrottle: "3s (API layer)",
       monitoredEvents: IDLE_DETECTION_CONFIG.ACTIVITY_EVENTS.join(", "),
     });
 

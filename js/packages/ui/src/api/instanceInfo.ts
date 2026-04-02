@@ -1,6 +1,6 @@
 "use client";
 
-import type { AxiosInstance, AxiosResponse } from "axios";
+import type { ApiClient, ApiResponse } from "../lib/fetchClient";
 
 /**
  * Server mode for the Recce instance.
@@ -34,10 +34,10 @@ export interface RecceInstanceInfo {
  * @returns Promise resolving to RecceInstanceInfo
  */
 export async function getRecceInstanceInfo(
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<RecceInstanceInfo> {
   return (
-    await client.get<never, AxiosResponse<RecceInstanceInfo>>(
+    await client.get<never, ApiResponse<RecceInstanceInfo>>(
       "/api/instance-info",
     )
   ).data;
