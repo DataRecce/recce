@@ -1,17 +1,21 @@
-import axios, { type AxiosInstance } from "axios";
 import { PUBLIC_API_URL } from "../const";
+import {
+  type ApiClient,
+  type ApiResponse,
+  createFetchClient,
+} from "../fetchClient";
 
 export interface ConnectToCloud {
   connection_url: string;
 }
 
-const defaultApiClient = axios.create({
-  baseURL: PUBLIC_API_URL,
-});
+const defaultApiClient = createFetchClient({ baseURL: PUBLIC_API_URL ?? "" });
 
 export async function connectToCloud(
-  client: AxiosInstance = defaultApiClient,
+  client: ApiClient = defaultApiClient,
 ): Promise<ConnectToCloud> {
-  const data = await client.post<ConnectToCloud>("/api/connect");
-  return data.data;
+  const response = await client.post<unknown, ApiResponse<ConnectToCloud>>(
+    "/api/connect",
+  );
+  return response.data;
 }

@@ -1,4 +1,4 @@
-import type { AxiosInstance } from "axios";
+import type { ApiClient } from "../lib/fetchClient";
 import { type SubmitOptions, submitRun } from "./runs";
 
 // ============================================================================
@@ -39,7 +39,7 @@ export type RowCountDiffResult = Record<string, RowCountDiff>;
 export async function submitRowCountDiff(
   params: RowCountDiffParams,
   options: SubmitOptions | undefined,
-  client: AxiosInstance,
+  client: ApiClient,
 ) {
   return await submitRun("row_count_diff", params, options, client);
 }

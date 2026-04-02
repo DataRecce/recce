@@ -2,14 +2,13 @@
 from rich.console import Console
 
 from recce import is_recce_cloud_instance, yaml
+from recce.constants import RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE  # noqa: F401
 from recce.exceptions import RecceConfigException
 from recce.util import SingletonMeta
 
-RECCE_CONFIG_FILE = "recce.yml"
 RECCE_PRESET_CHECK_COMMENT = """Preset Checks
 Please see https://docs.reccehq.com/features/preset-checks/
 """
-RECCE_ERROR_LOG_FILE = "recce_error.log"
 console = Console(stderr=True)
 
 

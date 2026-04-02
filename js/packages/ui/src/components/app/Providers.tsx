@@ -16,7 +16,7 @@ import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { type ReactNode } from "react";
 import { ApiProvider, IdleTimeoutProvider } from "../../contexts";
 import { RecceContextProvider } from "../../hooks";
-import { reactQueryClient } from "../../lib/api/axiosClient";
+import { reactQueryClient } from "../../lib/api/queryClient";
 import { PUBLIC_API_URL } from "../../lib/const";
 import { MuiProvider, Toaster } from "../ui";
 import { MainLayout } from "./MainLayout";

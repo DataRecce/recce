@@ -1,4 +1,4 @@
-import type { AxiosInstance } from "axios";
+import type { ApiClient } from "../lib/fetchClient";
 import { type SubmitOptions, submitRun } from "./runs";
 import { type ColumnRenderMode, type DataFrame } from "./types";
 
@@ -63,7 +63,7 @@ export interface QueryParams
 export async function submitQuery(
   params: QueryRunParams,
   options: SubmitOptions | undefined,
-  client: AxiosInstance,
+  client: ApiClient,
 ) {
   return await submitRun("query", params, options, client);
 }
@@ -71,7 +71,7 @@ export async function submitQuery(
 export async function submitQueryBase(
   params: QueryRunParams,
   options: SubmitOptions | undefined,
-  client: AxiosInstance,
+  client: ApiClient,
 ) {
   return await submitRun("query_base", params, options, client);
 }
@@ -79,7 +79,7 @@ export async function submitQueryBase(
 export async function submitQueryDiff(
   params: QueryDiffParams,
   options: SubmitOptions | undefined,
-  client: AxiosInstance,
+  client: ApiClient,
 ) {
   return await submitRun("query_diff", params, options, client);
 }

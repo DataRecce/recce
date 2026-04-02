@@ -203,6 +203,12 @@ def get_cll_cache() -> CllCache:
     return _cll_cache
 
 
+def set_cll_cache(cache: CllCache) -> None:
+    """Replace the module-level CLL cache instance."""
+    global _cll_cache
+    _cll_cache = cache
+
+
 @dataclass
 class CLLPerformanceTracking:
     lineage_start = None

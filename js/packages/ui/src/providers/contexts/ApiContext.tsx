@@ -1,6 +1,5 @@
 "use client";
 
-import axios, { type AxiosInstance } from "axios";
 import {
   createContext,
   type ReactNode,
@@ -8,6 +7,7 @@ import {
   useMemo,
   useRef,
 } from "react";
+import { type ApiClient, createFetchClient } from "../../lib/fetchClient";
 
 /**
  * API Configuration
@@ -33,7 +33,7 @@ interface ApiConfig {
  * Resolved API context values exposed by {@link useApiConfig}.
  */
 interface ApiContextValue {
-  apiClient: AxiosInstance;
+  apiClient: ApiClient;
   apiPrefix: string;
   authToken?: string;
   baseUrl: string;
@@ -43,7 +43,7 @@ const ApiContext = createContext<ApiContextValue | null>(null);
 ApiContext.displayName = "RecceApiContext";
 
 /**
- * Access the API configuration, including the configured axios client.
+ * Access the API configuration, including the configured API client.
  *
  * @returns The API context values (client, baseUrl, apiPrefix, authToken).
  * @throws Error if used outside {@link RecceProvider}.
@@ -66,24 +66,24 @@ export function useApiConfigOptional(): ApiContextValue | null {
 }
 
 /**
- * Convenience hook for the configured axios client.
+ * Convenience hook for the configured API client.
  *
- * @returns AxiosInstance configured with API prefix and auth token.
+ * @returns ApiClient configured with API prefix and auth token.
  * @throws Error if used outside {@link RecceProvider}.
  */
-export function useApiClient(): AxiosInstance {
+export function useApiClient() {
   return useApiConfig().apiClient;
 }
 
 /**
- * Custom client config that allows passing a pre-configured axios instance
+ * Custom client config that allows passing a pre-configured API client
  * along with the API configuration values for context.
  */
 /**
  * Custom client configuration for {@link ApiProvider}.
  */
 interface CustomClientConfig {
-  client: AxiosInstance;
+  client: ApiClient;
   apiPrefix?: string;
   authToken?: string;
   baseUrl?: string;
@@ -114,9 +114,9 @@ function useStableHeaders(
 }
 
 /**
- * Creates an axios instance configured with the given API config.
+ * Creates an ApiClient configured with the given API config.
  *
- * The instance has interceptors that:
+ * Uses middleware to:
  * 1. Replace /api prefix with the configured apiPrefix (if provided)
  * 2. Add Authorization header with Bearer token (if authToken provided)
  */
@@ -126,60 +126,63 @@ function createApiClient(
   authToken: string | undefined,
   headers: Record<string, string> | undefined,
   timeout: number,
-): AxiosInstance {
-  const client = axios.create({
+): ApiClient {
+  return createFetchClient({
     baseURL: baseUrl,
     headers: headers,
     timeout: timeout,
-  });
+    middleware:
+      apiPrefix || authToken
+        ? (url, init) => {
+            try {
+              let resolvedUrl = url;
 
-  // Only add interceptor if apiPrefix or authToken are provided
-  if (apiPrefix || authToken) {
-    client.interceptors.request.use(
-      (requestConfig) => {
-        try {
-          // Replace /api prefix with configured apiPrefix (only if apiPrefix is non-empty)
-          if (apiPrefix && requestConfig.url) {
-            // Handle exact "/api" and "/api/*" URLs explicitly
-            if (requestConfig.url === "/api") {
-              requestConfig.url = apiPrefix;
-            } else if (requestConfig.url.startsWith("/api/")) {
-              // "/api".length === 4; keep everything after that
-              requestConfig.url = apiPrefix + requestConfig.url.slice(4);
+              // Replace /api prefix with configured apiPrefix (only if apiPrefix is non-empty).
+              // Middleware runs on the relative path (before baseURL is prepended),
+              // matching Axios interceptor ordering.
+              if (apiPrefix) {
+                const apiExact = resolvedUrl.endsWith("/api")
+                  ? resolvedUrl.lastIndexOf("/api")
+                  : -1;
+                const apiSlash = resolvedUrl.indexOf("/api/");
+
+                if (apiExact >= 0) {
+                  // Exact "/api" at end of URL
+                  resolvedUrl = resolvedUrl.slice(0, apiExact) + apiPrefix;
+                } else if (apiSlash >= 0) {
+                  // "/api/..." — replace /api with apiPrefix, keep the rest
+                  resolvedUrl =
+                    resolvedUrl.slice(0, apiSlash) +
+                    apiPrefix +
+                    resolvedUrl.slice(apiSlash + 4);
+                }
+              }
+
+              // Add auth header if token is provided
+              if (authToken) {
+                init.headers.set("Authorization", `Bearer ${authToken}`);
+              }
+
+              return { url: resolvedUrl, init };
+            } catch (error) {
+              // If anything goes wrong in the middleware, fall back to the original config
+              // to avoid breaking all API requests.
+              console.warn(
+                "API request middleware error, proceeding with unmodified request:",
+                error,
+              );
+              return { url, init };
             }
           }
-
-          // Add auth header if token is provided
-          if (authToken) {
-            requestConfig.headers.Authorization = `Bearer ${authToken}`;
-          }
-
-          return requestConfig;
-        } catch (error) {
-          // If anything goes wrong in the interceptor, fall back to the original config
-          // to avoid breaking all API requests.
-          console.warn(
-            "API request interceptor error, proceeding with unmodified request:",
-            error,
-          );
-          return requestConfig;
-        }
-      },
-      (error) => {
-        // Preserve default axios behavior for request errors
-        return Promise.reject(error);
-      },
-    );
-  }
-
-  return client;
+        : undefined,
+  });
 }
 
 /**
- * Provides API configuration and an axios client to the subtree.
+ * Provides API configuration and an API client to the subtree.
  */
 export function ApiProvider({ children, config }: ApiProviderProps) {
-  // Extract primitive values to stabilize dependency - prevents axios instance recreation
+  // Extract primitive values to stabilize dependency - prevents client recreation
   // when parent re-renders with new object reference but same values
   const isCustomClient = "client" in config;
   const customClient = isCustomClient ? config.client : null;

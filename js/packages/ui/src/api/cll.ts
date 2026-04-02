@@ -4,7 +4,7 @@
  * Provides column-level lineage analysis functionality for data models.
  */
 
-import type { AxiosInstance, AxiosResponse } from "axios";
+import type { ApiClient, ApiResponse } from "../lib/fetchClient";
 import type { NodeColumnData } from "./info";
 
 // ============================================================================
@@ -68,12 +68,12 @@ export interface ColumnLineageData {
  */
 export async function getCll(
   input: CllInput,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<ColumnLineageData> {
-  const response = await client.post<
-    CllInput,
-    AxiosResponse<ColumnLineageData>
-  >("/api/cll", input);
+  const response = await client.post<CllInput, ApiResponse<ColumnLineageData>>(
+    "/api/cll",
+    input,
+  );
 
   return response.data;
 }
