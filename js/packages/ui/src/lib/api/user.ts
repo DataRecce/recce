@@ -1,4 +1,8 @@
-import axios, { AxiosInstance, AxiosResponse } from "axios";
+import {
+  type ApiClient,
+  type ApiResponse,
+  createFetchClient,
+} from "../fetchClient";
 
 export interface User {
   id: string;
@@ -14,9 +18,14 @@ interface GitHubUser {
   avatar_url: string;
 }
 
-export async function fetchUser(client: AxiosInstance = axios): Promise<User> {
+const defaultClient = createFetchClient({ baseURL: "" });
+const githubClient = createFetchClient({ baseURL: "https://api.github.com" });
+
+export async function fetchUser(
+  client: ApiClient = defaultClient,
+): Promise<User> {
   try {
-    const response = await client.get<never, AxiosResponse<User>>("/api/users");
+    const response = await client.get<never, ApiResponse<User>>("/api/users");
     return response.data;
   } catch (error) {
     if (process.env.NODE_ENV !== "test") {
@@ -30,8 +39,8 @@ export async function fetchGitHubAvatar(
   userId: string,
 ): Promise<string | null> {
   try {
-    const response = await axios.get<GitHubUser>(
-      `https://api.github.com/user/${userId}`,
+    const response = await githubClient.get<never, ApiResponse<GitHubUser>>(
+      `/user/${userId}`,
     );
     return response.data.avatar_url;
   } catch (error) {

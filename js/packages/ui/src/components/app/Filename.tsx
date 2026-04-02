@@ -12,7 +12,6 @@ import TextField from "@mui/material/TextField";
 import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useQueryClient } from "@tanstack/react-query";
-import { isAxiosError } from "axios";
 import React, { useEffect, useRef, useState } from "react";
 import { IoClose } from "react-icons/io5";
 import { LuSave } from "react-icons/lu";
@@ -29,6 +28,7 @@ import {
   useRecceInstanceContext,
 } from "../../contexts";
 import { useApiConfig } from "../../hooks";
+import { isHttpError } from "../../lib/fetchClient";
 import { formatRunDateTime } from "../run";
 import { toaster } from "../ui";
 
@@ -45,8 +45,8 @@ const useRecceToast = () => {
   const toastError = (message: string, error?: Error) => {
     let errorMessage = message;
     if (error != null) {
-      if (isAxiosError<{ detail?: string }>(error)) {
-        errorMessage = `${message}. ${String(error.response?.data?.detail)}`;
+      if (isHttpError<{ detail?: string }>(error)) {
+        errorMessage = `${message}. ${String(error.data?.detail)}`;
       } else {
         errorMessage = `${message}. ${error}`;
       }
@@ -166,8 +166,8 @@ export const Filename = () => {
         localStorage.setItem(LOCAL_STORAGE_KEYS.bypassSaveOverwrite, "true");
       }
     } catch (error: unknown) {
-      if (isAxiosError(error)) {
-        if (error.response?.status === 409) {
+      if (isHttpError(error)) {
+        if (error.status === 409) {
           setState((s) => ({
             ...s,
             overwriteWithMethod: method,

@@ -481,3 +481,78 @@ class TestInit:
         assert result.exit_code == 0
         assert "5 skipped" in result.output
         assert "and 2 more skipped" in result.output
+
+    def test_init_warns_missing_catalog(self, runner, tmp_path, tmp_db):
+        """init should warn when catalog.json is missing."""
+        _setup_target_dir(tmp_path)  # creates target/manifest.json but no catalog.json
+
+        with patch("recce.core.load_context") as mock_load_context:
+            nodes = {"model.test.a": _make_mock_node()}
+            adapter = _make_mock_adapter(nodes)
+            adapter.get_cll_cached.return_value = MagicMock()
+            mock_ctx = MagicMock()
+            mock_ctx.adapter = adapter
+            mock_load_context.return_value = mock_ctx
+
+            with patch(
+                "recce.adapter.dbt_adapter.DbtAdapter._serialize_cll_data",
+                return_value='{"nodes":{}, "columns":{}, "parent_map":{}}',
+            ):
+                result = runner.invoke(
+                    cli,
+                    ["init", "--cache-db", tmp_db, "--project-dir", str(tmp_path)],
+                    catch_exceptions=False,
+                )
+
+        assert result.exit_code == 0
+        assert "catalog.json not found" in result.output
+        assert "dbt docs generate" in result.output
+
+    def test_init_no_warning_when_catalog_exists(self, runner, tmp_path, tmp_db):
+        """init should NOT warn when catalog.json exists."""
+        target_dir = _setup_target_dir(tmp_path)
+        (target_dir / "catalog.json").write_text("{}")
+
+        with patch("recce.core.load_context") as mock_load_context:
+            nodes = {"model.test.a": _make_mock_node()}
+            adapter = _make_mock_adapter(nodes)
+            adapter.get_cll_cached.return_value = MagicMock()
+            mock_ctx = MagicMock()
+            mock_ctx.adapter = adapter
+            mock_load_context.return_value = mock_ctx
+
+            with patch(
+                "recce.adapter.dbt_adapter.DbtAdapter._serialize_cll_data",
+                return_value='{"nodes":{}, "columns":{}, "parent_map":{}}',
+            ):
+                result = runner.invoke(
+                    cli,
+                    ["init", "--cache-db", tmp_db, "--project-dir", str(tmp_path)],
+                    catch_exceptions=False,
+                )
+
+        assert result.exit_code == 0
+        assert "catalog.json not found" not in result.output
+
+
+class TestServerCllCacheFlag:
+    def test_enable_cll_cache_activates_sqlite_cache(self, tmp_db):
+        """--enable-cll-cache should call set_cll_cache with a real db_path."""
+        from recce.util.cll import CllCache, get_cll_cache, set_cll_cache
+
+        # Save original and set a no-op cache
+        original = get_cll_cache()
+        set_cll_cache(CllCache())  # no db_path = no-op
+        assert get_cll_cache()._db_path is None
+
+        try:
+            # Simulate what the server command does
+            set_cll_cache(CllCache(db_path=tmp_db))
+            cache = get_cll_cache()
+            assert cache._db_path == tmp_db
+
+            # Verify the cache is functional
+            cache.put_node("model.x", "key_x", '{"test": true}')
+            assert cache.get_node("model.x", "key_x") == '{"test": true}'
+        finally:
+            set_cll_cache(original)

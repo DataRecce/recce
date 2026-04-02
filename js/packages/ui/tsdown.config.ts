@@ -23,7 +23,7 @@ export default defineConfig({
     "lib/result/ResultErrorFallback": "src/lib/result/ResultErrorFallback.tsx",
     "lib/api/track": "src/lib/api/track.ts",
     "lib/api/user": "src/lib/api/user.ts",
-    "lib/api/axiosClient": "src/lib/api/axiosClient.ts",
+    "lib/api/queryClient": "src/lib/api/queryClient.ts",
   },
   format: ["esm"],
   dts: true,
@@ -47,7 +47,6 @@ export default defineConfig({
     "@tanstack/react-query",
     "@xyflow/react",
     "next-themes",
-    "axios",
     // Amplitude packages contain Node.js-specific code (node:module)
     // and must be provided by the consuming application
     /^@amplitude\//,

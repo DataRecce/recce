@@ -1,6 +1,6 @@
 "use client";
 
-import type { AxiosInstance, AxiosResponse } from "axios";
+import type { ApiClient, ApiResponse } from "../lib/fetchClient";
 
 export interface SelectInput {
   select?: string;
@@ -15,10 +15,10 @@ export interface SelectOutput {
 
 export async function select(
   input: SelectInput,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<SelectOutput> {
   return (
-    await client.post<SelectInput, AxiosResponse<SelectOutput>>(
+    await client.post<SelectInput, ApiResponse<SelectOutput>>(
       `/api/select`,
       input,
     )

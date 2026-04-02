@@ -87,8 +87,8 @@ vi.mock("@datarecce/ui/primitives", () => ({
 import { Filename } from "@datarecce/ui/components/app";
 import { toaster } from "@datarecce/ui/components/ui";
 import { useApiConfig } from "@datarecce/ui/hooks";
+import { HttpError } from "@datarecce/ui/lib/fetchClient";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import React from "react";
 
 // ============================================================================
@@ -711,14 +711,11 @@ describe("Filename", () => {
 
   describe("overwrite confirmation", () => {
     beforeEach(() => {
-      const conflictError = new AxiosError("Conflict");
-      conflictError.response = {
-        status: 409,
-        data: { detail: "File already exists" },
-        statusText: "Conflict",
-        headers: {},
-        config: {} as InternalAxiosRequestConfig<unknown>,
-      };
+      const conflictError = new HttpError(
+        409,
+        { detail: "File already exists" },
+        "Conflict",
+      );
       mockSaveAs.mockRejectedValue(conflictError);
       mockRename.mockRejectedValue(conflictError);
     });
@@ -778,14 +775,11 @@ describe("Filename", () => {
 
     it("saves bypass preference to localStorage when checked", async () => {
       // First call: conflict, second call: success
-      const conflictError = new AxiosError("Conflict");
-      conflictError.response = {
-        status: 409,
-        data: { detail: "File already exists" },
-        statusText: "Conflict",
-        headers: {},
-        config: {} as InternalAxiosRequestConfig<unknown>,
-      };
+      const conflictError = new HttpError(
+        409,
+        { detail: "File already exists" },
+        "Conflict",
+      );
       mockSaveAs
         .mockRejectedValueOnce(conflictError)
         .mockResolvedValueOnce(undefined);
@@ -841,14 +835,11 @@ describe("Filename", () => {
     });
 
     it("calls saveAs with overwrite=true when Overwrite is clicked", async () => {
-      const conflictError = new AxiosError("Conflict");
-      conflictError.response = {
-        status: 409,
-        data: { detail: "File already exists" },
-        statusText: "Conflict",
-        headers: {},
-        config: {} as InternalAxiosRequestConfig<unknown>,
-      };
+      const conflictError = new HttpError(
+        409,
+        { detail: "File already exists" },
+        "Conflict",
+      );
       mockSaveAs
         .mockRejectedValueOnce(conflictError)
         .mockResolvedValue(undefined);
@@ -946,16 +937,13 @@ describe("Filename", () => {
       });
     });
 
-    it("includes error detail from AxiosError", async () => {
-      const axiosError = new AxiosError("Request failed");
-      axiosError.response = {
-        status: 500,
-        data: { detail: "Internal server error" },
-        statusText: "Error",
-        headers: {},
-        config: {} as InternalAxiosRequestConfig<unknown>,
-      };
-      mockSaveAs.mockRejectedValue(axiosError);
+    it("includes error detail from HttpError", async () => {
+      const serverError = new HttpError(
+        500,
+        { detail: "Internal server error" },
+        "Request failed",
+      );
+      mockSaveAs.mockRejectedValue(serverError);
 
       render(<Filename />);
 

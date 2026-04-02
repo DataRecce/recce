@@ -276,6 +276,10 @@ export default defineConfig({
         __dirname,
         "./packages/ui/src/lib/api/track.ts",
       ),
+      "@datarecce/ui/lib/fetchClient": path.resolve(
+        __dirname,
+        "./packages/ui/src/lib/fetchClient.ts",
+      ),
       "@datarecce/ui/components/ui": path.resolve(
         __dirname,
         "./packages/ui/src/components/ui/index.ts",

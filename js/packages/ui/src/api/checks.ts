@@ -1,7 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import axios, { type AxiosInstance, type AxiosResponse } from "axios";
+import {
+  type ApiClient,
+  type ApiResponse,
+  createFetchClient,
+} from "../lib/fetchClient";
 import { useApiConfigOptional } from "../providers/contexts/ApiContext";
 import { cacheKeys } from "./cacheKeys";
 import type { Run, RunType } from "./types";
@@ -47,10 +51,10 @@ export interface CreateCheckBody {
 // ============================================================================
 
 /**
- * Default axios client for hooks that may be used outside RecceProvider.
+ * Default API client for hooks that may be used outside RecceProvider.
  * This is a fallback - components inside RecceProvider will use the configured client.
  */
-const defaultApiClient = axios.create();
+const defaultApiClient = createFetchClient({ baseURL: "" });
 
 // ============================================================================
 // API Functions
@@ -58,11 +62,11 @@ const defaultApiClient = axios.create();
 
 /**
  * Create a simple check (no run association).
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The created check
  */
-export async function createSimpleCheck(client: AxiosInstance): Promise<Check> {
-  const response = await client.post<CreateCheckBody, AxiosResponse<Check>>(
+export async function createSimpleCheck(client: ApiClient): Promise<Check> {
+  const response = await client.post<CreateCheckBody, ApiResponse<Check>>(
     "/api/checks",
     {
       type: "simple",
@@ -75,16 +79,16 @@ export async function createSimpleCheck(client: AxiosInstance): Promise<Check> {
  * Create a check from an existing run.
  * @param runId - The ID of the run to create a check from
  * @param viewOptions - Optional view options for the check
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The created check
  */
 export async function createCheckByRun(
   runId: string,
   viewOptions: Record<string, unknown> | undefined,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<Check> {
   // NOTE: Removed getExperimentTrackingBreakingChangeEnabled() - OSS-specific
-  const response = await client.post<CreateCheckBody, AxiosResponse<Check>>(
+  const response = await client.post<CreateCheckBody, ApiResponse<Check>>(
     "/api/checks",
     {
       run_id: runId,
@@ -96,24 +100,24 @@ export async function createCheckByRun(
 
 /**
  * List all checks.
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns Array of all checks
  */
-export async function listChecks(client: AxiosInstance): Promise<Check[]> {
-  return (await client.get<never, AxiosResponse<Check[]>>("/api/checks")).data;
+export async function listChecks(client: ApiClient): Promise<Check[]> {
+  return (await client.get<never, ApiResponse<Check[]>>("/api/checks")).data;
 }
 
 /**
  * Get a check by ID.
  * @param checkId - The ID of the check to retrieve
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The check object
  */
 export async function getCheck(
   checkId: string,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<Check> {
-  const response = await client.get<never, AxiosResponse<Check>>(
+  const response = await client.get<never, ApiResponse<Check>>(
     `/api/checks/${checkId}`,
   );
   return response.data;
@@ -123,15 +127,15 @@ export async function getCheck(
  * Update an existing check.
  * @param checkId - The ID of the check to update
  * @param payload - Partial check data to update
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The updated check
  */
 export async function updateCheck(
   checkId: string,
   payload: Partial<Check>,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<Check> {
-  const response = await client.patch<Partial<Check>, AxiosResponse<Check>>(
+  const response = await client.patch<Partial<Check>, ApiResponse<Check>>(
     `/api/checks/${checkId}`,
     payload,
   );
@@ -141,16 +145,16 @@ export async function updateCheck(
 /**
  * Delete a check.
  * @param checkId - The ID of the check to delete
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The deleted check ID
  */
 export async function deleteCheck(
   checkId: string,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<Pick<Check, "check_id">> {
   const response = await client.delete<
     never,
-    AxiosResponse<Pick<Check, "check_id">>
+    ApiResponse<Pick<Check, "check_id">>
   >(`/api/checks/${checkId}`);
   return response.data;
 }
@@ -158,14 +162,14 @@ export async function deleteCheck(
 /**
  * Reorder checks.
  * @param order - Source and destination indices
- * @param client - Required axios instance
+ * @param client - Required API client instance
  */
 export async function reorderChecks(
   order: {
     source: number;
     destination: number;
   },
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<void> {
   await client.post("/api/checks/reorder", order);
 }
@@ -173,11 +177,11 @@ export async function reorderChecks(
 /**
  * Mark a check as a preset check.
  * @param checkId - The ID of the check to mark as preset
- * @param client - Required axios instance
+ * @param client - Required API client instance
  */
 export async function markAsPresetCheck(
   checkId: string,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<void> {
   await client.post(`/api/checks/${checkId}/mark-as-preset`);
 }
@@ -188,7 +192,7 @@ export async function markAsPresetCheck(
 
 /**
  * Hook to fetch and cache the list of checks.
- * Can be used outside RecceProvider with a fallback to default axios client.
+ * Can be used outside RecceProvider with a fallback to default API client.
  *
  * @param enabled - Whether the query should be enabled
  * @returns TanStack Query result with checks data

@@ -71,7 +71,6 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { AxiosError } from "axios";
 import React, {
   forwardRef,
   Ref,
@@ -84,6 +83,7 @@ import React, {
   useState,
 } from "react";
 import { FiCopy } from "react-icons/fi";
+import { HttpError } from "../../lib/fetchClient";
 import { colors } from "../../theme";
 import { LineageViewNotification } from "../notifications";
 import { HSplit, toaster } from "../ui";
@@ -489,11 +489,11 @@ export function PrivateLineageView(
               }));
               cllInput = undefined;
             }
-            if (e instanceof AxiosError) {
-              const e2 = e as AxiosError<{ detail?: string }>;
+            if (e instanceof HttpError) {
               toaster.create({
                 title: "Column Level Lineage error",
-                description: e2.response?.data.detail ?? e.message,
+                description:
+                  (e.data as { detail?: string })?.detail ?? e.message,
                 type: "error",
                 closable: true,
               });
@@ -720,11 +720,10 @@ export function PrivateLineageView(
         newViewOptions = { ...newViewOptions, column_level_lineage: undefined };
         selectedNodes = result.nodes;
       } catch (e) {
-        if (e instanceof AxiosError) {
-          const e2 = e as AxiosError<{ detail?: string }>;
+        if (e instanceof HttpError) {
           toaster.create({
             title: "Select node error",
-            description: e2.response?.data.detail ?? e.message,
+            description: (e.data as { detail?: string })?.detail ?? e.message,
             type: "error",
             closable: true,
           });
@@ -767,11 +766,10 @@ export function PrivateLineageView(
           );
         }
       } catch (e) {
-        if (e instanceof AxiosError) {
-          const e2 = e as AxiosError<{ detail?: string }>;
+        if (e instanceof HttpError) {
           toaster.create({
             title: "Column Level Lineage error",
-            description: e2.response?.data.detail ?? e.message,
+            description: (e.data as { detail?: string })?.detail ?? e.message,
             type: "error",
             closable: true,
           });
