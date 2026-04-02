@@ -1204,8 +1204,9 @@ class DbtAdapter(BaseAdapter):
         # Full map mode: return the complete pre-computed CLL map.
         # Note: change_analysis flag is ignored — full map always includes
         # change metadata since build_full_cll_map() computes it unconditionally.
+        # No deepcopy needed — the caller (FastAPI) only serializes the result.
         if full_map:
-            result = deepcopy(self.build_full_cll_map())
+            result = self.build_full_cll_map()
             cll_tracker.end_column_lineage()
             cll_tracker.set_total_nodes(len(result.nodes) + len(result.columns))
             log_performance("column level lineage [full_map]", cll_tracker.to_dict())
