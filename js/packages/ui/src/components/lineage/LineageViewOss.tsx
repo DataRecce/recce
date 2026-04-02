@@ -21,6 +21,7 @@ import {
   useLineageGraphContext,
   useRecceActionContext,
   useRecceInstanceContext,
+  useRecceServerFlag,
 } from "../../contexts";
 import {
   isLineageGraphColumnNode,
@@ -162,6 +163,7 @@ export function PrivateLineageView(
   } = useLineageGraphContext();
 
   const { featureToggles, singleEnv } = useRecceInstanceContext();
+  const { data: serverFlags } = useRecceServerFlag();
   const { runId, showRunId, closeRunResult, runAction, isRunResultOpen } =
     useRecceActionContext();
   const { run } = useRun(runId);
@@ -364,6 +366,9 @@ export function PrivateLineageView(
     lineageViewContextMenu.closeContextMenu();
   };
 
+  // Guard: auto-trigger impact analysis only once per mount
+  const impactAtStartupFired = useRef(false);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only run when lineageGraph changes (initial load/refetch).
   useLayoutEffect(() => {
     const t = async () => {
@@ -415,8 +420,29 @@ export function PrivateLineageView(
         setViewOptions(newViewOptions);
       }
 
+      // Auto-trigger impact analysis on first load when flag is set
+      let cllInput = viewOptions.column_level_lineage;
+      let autoTriggered = false;
+      if (
+        serverFlags?.impact_at_startup &&
+        !impactAtStartupFired.current &&
+        !cllInput
+      ) {
+        impactAtStartupFired.current = true;
+        autoTriggered = true;
+        changeAnalysisModeRef.current = true;
+        setChangeAnalysisMode(true);
+        cllInput = { change_analysis: true, no_upstream: true };
+        // Persist to viewOptions so the CLL survives effect re-fires
+        // (e.g. when the lineageGraph cache is patched with change data)
+        setViewOptions((prev) => ({
+          ...prev,
+          column_level_lineage: cllInput,
+        }));
+      }
+
       let cll: ColumnLineageData | undefined;
-      if (viewOptions.column_level_lineage) {
+      if (cllInput) {
         if (cllCachePatchRef.current.pending) {
           // Effect re-fired because our setQueryData updated lineageGraph.
           // Reuse the previous CLL result; skip the API call and re-patch.
@@ -424,10 +450,9 @@ export function PrivateLineageView(
           cllCachePatchRef.current = { pending: false };
         } else {
           const cllApiInput: CllInput = {
-            ...viewOptions.column_level_lineage,
+            ...cllInput,
             change_analysis:
-              viewOptions.column_level_lineage.change_analysis ??
-              changeAnalysisModeRef.current,
+              cllInput.change_analysis ?? changeAnalysisModeRef.current,
           };
           try {
             cll = await actionGetCll.mutateAsync(cllApiInput);
@@ -453,6 +478,17 @@ export function PrivateLineageView(
               );
             }
           } catch (e) {
+            if (autoTriggered) {
+              // Roll back the CLL state so the UI isn't stuck in a
+              // half-initialized "CLL on, no data" state.
+              changeAnalysisModeRef.current = false;
+              setChangeAnalysisMode(false);
+              setViewOptions((prev) => ({
+                ...prev,
+                column_level_lineage: undefined,
+              }));
+              cllInput = undefined;
+            }
             if (e instanceof HttpError) {
               toaster.create({
                 title: "Column Level Lineage error",
@@ -489,18 +525,19 @@ export function PrivateLineageView(
         nodes,
         viewOptions.view_mode ?? "changed_models",
         changeAnalysisModeRef.current,
-        !!viewOptions.column_level_lineage?.column,
+        !!cllInput?.column,
         !!focusedNodeId || !!run,
       );
     };
 
     void t();
-    // Intentionally only run when lineageGraph changes (initial load/refetch).
+    // Runs when lineageGraph changes (initial load/refetch), and also when
+    // impact_at_startup flag arrives (may load after lineageGraph).
     // viewOptions changes are handled separately by handleViewOptionsChanged.
     // Other dependencies (setNodes, setEdges, actionGetCll) are stable.
     // changeAnalysisModeRef is a ref to avoid stale closure issues.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lineageGraph]);
+  }, [lineageGraph, serverFlags?.impact_at_startup]);
 
   const onNodeViewClosed = () => {
     setFocusedNodeId(undefined);
