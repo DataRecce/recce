@@ -125,6 +125,25 @@ function buildURL(
     return params ? `${path}${serializeParams(params)}` : path;
   }
 
+  // Absolute URLs bypass baseURL entirely (matching Axios behavior).
+  if (/^https?:\/\//.test(path)) {
+    if (params) {
+      const url = new URL(path);
+      for (const [key, value] of Object.entries(params)) {
+        if (value === undefined) continue;
+        if (Array.isArray(value)) {
+          for (const item of value) {
+            url.searchParams.append(key, String(item));
+          }
+        } else {
+          url.searchParams.set(key, String(value));
+        }
+      }
+      return url.toString();
+    }
+    return path;
+  }
+
   // Concatenate baseURL + path (matching Axios behavior).
   // new URL(path, base) drops the base path for absolute paths, so we
   // use simple string concatenation instead.

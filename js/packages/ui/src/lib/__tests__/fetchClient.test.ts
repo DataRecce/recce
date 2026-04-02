@@ -398,6 +398,34 @@ describe("createFetchClient", () => {
       );
     });
 
+    it("leaves absolute URLs unchanged (bypasses baseURL)", async () => {
+      const mwClient = createFetchClient({
+        baseURL: "https://cloud.example.com/api",
+        middleware: (url, init) => ({ url, init }),
+      });
+      mockFetch.mockResolvedValueOnce(jsonResponse({}));
+
+      await mwClient.get("https://other-service.example.com/health");
+
+      const [url] = mockFetch.mock.calls[0];
+      expect(url).toBe("https://other-service.example.com/health");
+    });
+
+    it("leaves absolute URLs unchanged with params", async () => {
+      const mwClient = createFetchClient({
+        baseURL: "https://cloud.example.com/api",
+        middleware: (url, init) => ({ url, init }),
+      });
+      mockFetch.mockResolvedValueOnce(jsonResponse({}));
+
+      await mwClient.get("https://other-service.example.com/search", {
+        params: { q: "test" },
+      });
+
+      const [url] = mockFetch.mock.calls[0];
+      expect(url).toBe("https://other-service.example.com/search?q=test");
+    });
+
     it("injects headers via middleware", async () => {
       const mwClient = createFetchClient({
         baseURL: "http://localhost:8000",
