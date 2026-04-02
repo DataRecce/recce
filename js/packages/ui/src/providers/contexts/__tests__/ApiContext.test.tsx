@@ -573,6 +573,32 @@ describe("ApiContext (@datarecce/ui)", () => {
       expect(headers.get("Authorization")).toBe("Bearer oss-token");
     });
 
+    it("preserves /api in baseUrl path when rewriting with apiPrefix (DRC-3160)", async () => {
+      const { result } = renderHook(() => useApiClient(), {
+        wrapper: ({ children }) => (
+          <ApiProvider
+            config={{
+              baseUrl: "https://staging.cloud.reccehq.com/api",
+              apiPrefix: "/v2/sessions/abc123",
+              authToken: "cloud-token",
+            }}
+          >
+            {children}
+          </ApiProvider>
+        ),
+      });
+
+      mockFetchResponse({ ok: true });
+      await result.current.get("/api/instance-info");
+
+      const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;
+      const calledUrl = fetchMock.mock.calls[0][0];
+      // /api from baseUrl must be preserved — this was the DRC-3160 bug
+      expect(calledUrl).toBe(
+        "https://staging.cloud.reccehq.com/api/v2/sessions/abc123/instance-info",
+      );
+    });
+
     it("skips middleware when neither apiPrefix nor authToken is set", async () => {
       const { result } = renderHook(() => useApiClient(), {
         wrapper: ({ children }) => (

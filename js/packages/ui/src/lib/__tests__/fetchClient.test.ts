@@ -376,6 +376,28 @@ describe("createFetchClient", () => {
       expect(url).toBe("http://localhost:8000/v2/api/test");
     });
 
+    it("middleware receives relative path (before baseURL is applied)", async () => {
+      const receivedUrls: string[] = [];
+      const mwClient = createFetchClient({
+        baseURL: "https://cloud.example.com/api",
+        middleware: (url, init) => {
+          receivedUrls.push(url);
+          return { url: url.replace("/api/", "/v2/sessions/abc/"), init };
+        },
+      });
+      mockFetch.mockResolvedValueOnce(jsonResponse({}));
+
+      await mwClient.get("/api/instance-info");
+
+      // Middleware should receive the relative path, not the full URL
+      expect(receivedUrls[0]).toBe("/api/instance-info");
+      // Final URL should preserve baseURL path (/api) + middleware-transformed path
+      const [url] = mockFetch.mock.calls[0];
+      expect(url).toBe(
+        "https://cloud.example.com/api/v2/sessions/abc/instance-info",
+      );
+    });
+
     it("injects headers via middleware", async () => {
       const mwClient = createFetchClient({
         baseURL: "http://localhost:8000",
