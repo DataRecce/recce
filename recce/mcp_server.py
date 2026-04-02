@@ -1554,6 +1554,7 @@ class RecceMCPServer:
             node_id=arguments.get("node_id"),
             column=arguments.get("column"),
             change_analysis=arguments.get("change_analysis", False),
+            disable_cll_cache=True,
         )
         return cll.model_dump(mode="json")
 

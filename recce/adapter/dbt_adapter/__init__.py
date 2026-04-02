@@ -1205,7 +1205,7 @@ class DbtAdapter(BaseAdapter):
         # Note: change_analysis flag is ignored — full map always includes
         # change metadata since build_full_cll_map() computes it unconditionally.
         # No deepcopy needed — the caller (FastAPI) only serializes the result.
-        if full_map:
+        if full_map and not disable_cll_cache:
             result = self.build_full_cll_map()
             cll_tracker.end_column_lineage()
             cll_tracker.set_total_nodes(len(result.nodes) + len(result.columns))
@@ -1651,8 +1651,11 @@ class DbtAdapter(BaseAdapter):
         # parent map for node
         depends_on = set(parent_list)
         for d in m2c:
-            parent_key = f"{table_id_map[d.node.lower()]}_{d.column}"
-            depends_on.add(parent_key)
+            resolved = table_id_map.get(d.node.lower())
+            if resolved is None:
+                logger.debug("[cll] unmapped alias %r in node %s, skipping dependency", d.node, node_id)
+                continue
+            depends_on.add(f"{resolved}_{d.column}")
         cll_data.parent_map[node_id] = depends_on
 
         # parent map for columns
@@ -1661,8 +1664,11 @@ class DbtAdapter(BaseAdapter):
             column_id = f"{node.id}_{name}"
             if name in c2c_map:
                 for d in c2c_map[name].depends_on:
-                    parent_key = f"{table_id_map[d.node.lower()]}_{d.column}"
-                    depends_on.add(parent_key)
+                    resolved = table_id_map.get(d.node.lower())
+                    if resolved is None:
+                        logger.debug("[cll] unmapped alias %r in column %s.%s, skipping", d.node, node_id, name)
+                        continue
+                    depends_on.add(f"{resolved}_{d.column}")
                 column.transformation_type = c2c_map[name].transformation_type
             cll_data.parent_map[column_id] = set(depends_on)
 
