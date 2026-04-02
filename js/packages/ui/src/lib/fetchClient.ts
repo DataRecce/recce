@@ -125,9 +125,34 @@ function buildURL(
     return params ? `${path}${serializeParams(params)}` : path;
   }
 
-  const url = new URL(path, baseURL);
+  // Absolute URLs bypass baseURL entirely (matching Axios behavior).
+  if (/^https?:\/\//.test(path)) {
+    if (params) {
+      const url = new URL(path);
+      for (const [key, value] of Object.entries(params)) {
+        if (value === undefined) continue;
+        if (Array.isArray(value)) {
+          for (const item of value) {
+            url.searchParams.append(key, String(item));
+          }
+        } else {
+          url.searchParams.set(key, String(value));
+        }
+      }
+      return url.toString();
+    }
+    return path;
+  }
+
+  // Concatenate baseURL + path (matching Axios behavior).
+  // new URL(path, base) drops the base path for absolute paths, so we
+  // use simple string concatenation instead.
+  const base = baseURL.endsWith("/") ? baseURL.slice(0, -1) : baseURL;
+  const suffix = path.startsWith("/") ? path : `/${path}`;
+  const fullUrl = `${base}${suffix}`;
 
   if (params) {
+    const url = new URL(fullUrl);
     for (const [key, value] of Object.entries(params)) {
       if (value === undefined) continue;
       if (Array.isArray(value)) {
@@ -138,9 +163,10 @@ function buildURL(
         url.searchParams.set(key, String(value));
       }
     }
+    return url.toString();
   }
 
-  return url.toString();
+  return fullUrl;
 }
 
 function parseResponseBody(res: Response): Promise<unknown> | null {
@@ -166,8 +192,6 @@ export function createFetchClient(config: FetchClientConfig): ApiClient {
     body?: unknown,
     reqConfig?: RequestConfig,
   ): Promise<TResponse> {
-    const fullURL = buildURL(baseURL, url, reqConfig?.params);
-
     const headers = new Headers(defaultHeaders);
 
     const init: Record<string, unknown> = { method, headers };
@@ -187,14 +211,19 @@ export function createFetchClient(config: FetchClientConfig): ApiClient {
       init.signal = AbortSignal.timeout(timeout);
     }
 
-    let resolvedURL = fullURL;
+    // Run middleware on the relative path FIRST (matches Axios interceptor
+    // ordering where interceptors ran before baseURL was prepended).
+    let resolvedPath = url;
     let resolvedInit = init as { headers: Headers; [key: string]: unknown };
 
     if (middleware) {
-      const result = middleware(resolvedURL, resolvedInit);
-      resolvedURL = result.url;
+      const result = middleware(resolvedPath, resolvedInit);
+      resolvedPath = result.url;
       resolvedInit = result.init;
     }
+
+    // Then build the full URL with baseURL
+    const resolvedURL = buildURL(baseURL, resolvedPath, reqConfig?.params);
 
     let res: Response;
     try {
