@@ -400,7 +400,10 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                 transformation_type = "derived"
 
         # Resolve dependencies from subqueries within projections.
+        # A subquery is never a simple column reference — even a scalar subquery
+        # involves filtering logic to resolve which row to return.
         for sq in proj_subqueries:
+            transformation_type = "derived"
             sub_cll = subquery_cll(sq)
             if sub_cll is not None:
                 sub_m2c, sub_c2c_map = sub_cll
