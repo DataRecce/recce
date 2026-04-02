@@ -422,12 +422,14 @@ export function PrivateLineageView(
 
       // Auto-trigger impact analysis on first load when flag is set
       let cllInput = viewOptions.column_level_lineage;
+      let autoTriggered = false;
       if (
         serverFlags?.impact_at_startup &&
         !impactAtStartupFired.current &&
         !cllInput
       ) {
         impactAtStartupFired.current = true;
+        autoTriggered = true;
         changeAnalysisModeRef.current = true;
         setChangeAnalysisMode(true);
         cllInput = { change_analysis: true, no_upstream: true };
@@ -476,6 +478,17 @@ export function PrivateLineageView(
               );
             }
           } catch (e) {
+            if (autoTriggered) {
+              // Roll back the CLL state so the UI isn't stuck in a
+              // half-initialized "CLL on, no data" state.
+              changeAnalysisModeRef.current = false;
+              setChangeAnalysisMode(false);
+              setViewOptions((prev) => ({
+                ...prev,
+                column_level_lineage: undefined,
+              }));
+              cllInput = undefined;
+            }
             if (e instanceof AxiosError) {
               const e2 = e as AxiosError<{ detail?: string }>;
               toaster.create({
