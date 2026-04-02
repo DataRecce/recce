@@ -138,11 +138,9 @@ function createApiClient(
               let resolvedUrl = url;
 
               // Replace /api prefix with configured apiPrefix (only if apiPrefix is non-empty).
-              // Uses string ops instead of new URL() to handle both absolute URLs
-              // (cloud mode with baseURL) and relative paths (OSS mode with baseURL="").
+              // Middleware runs on the relative path (before baseURL is prepended),
+              // matching Axios interceptor ordering.
               if (apiPrefix) {
-                // Find the /api path segment — could be at start of path (relative)
-                // or after the origin (absolute). We match both patterns.
                 const apiExact = resolvedUrl.endsWith("/api")
                   ? resolvedUrl.lastIndexOf("/api")
                   : -1;

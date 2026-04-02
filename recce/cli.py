@@ -364,6 +364,21 @@ def init(cache_db, **kwargs):
 
     dbt_adapter: DbtAdapter = ctx.adapter
 
+    # Warn if catalog.json is missing — cache keys include column names from
+    # the catalog, so entries built without it will mismatch at server time.
+    catalog_missing = []
+    if has_target and not (target_path / "catalog.json").is_file():
+        catalog_missing.append(f"  {target_path}/catalog.json")
+    if has_base and not (target_base_path / "catalog.json").is_file():
+        catalog_missing.append(f"  {target_base_path}/catalog.json")
+    if catalog_missing:
+        console.print(
+            "[[yellow]Warning[/yellow]] catalog.json not found:\n"
+            + "\n".join(catalog_missing)
+            + "\n\nWithout it, cache entries will not match when the server loads a catalog.\n"
+            "Run [bold]dbt docs generate[/bold] before [bold]recce init[/bold] for best results."
+        )
+
     envs = []
     if has_target and dbt_adapter.curr_manifest:
         curr_ids = [
@@ -428,7 +443,7 @@ def init(cache_db, **kwargs):
                     fail += 1
                     if fail <= 3:
                         console.print(f"  [dim red]  skip: {nid}: {e}[/dim red]")
-                    logger.warning("[recce init] CLL computation failed for %s: %s", nid, e)
+                    logger.debug("[recce init] CLL computation failed for %s: %s", nid, e)
                 progress.advance(task)
 
             if batch_to_store:
@@ -750,6 +765,14 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
 
     if kwargs.get("enable_cll_cache", False):
         flag["disable_cll_cache"] = False
+        from recce.util.cll import CllCache, set_cll_cache
+
+        cache_db = os.environ.get("CLL_CACHE_DB", None)
+        if cache_db is None:
+            from recce.util.cll import _DEFAULT_DB_PATH
+
+            cache_db = _DEFAULT_DB_PATH
+        set_cll_cache(CllCache(db_path=cache_db))
 
     # Create state loader using shared function
     from recce.util.startup_perf import get_startup_tracker

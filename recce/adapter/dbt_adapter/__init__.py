@@ -1106,7 +1106,11 @@ class DbtAdapter(BaseAdapter):
 
             if not cached_json:
                 node_cache_misses += 1
-                cll_data_one = deepcopy(self.get_cll_cached(node_id, base=False))
+                try:
+                    cll_data_one = deepcopy(self.get_cll_cached(node_id, base=False))
+                except Exception as e:
+                    logger.debug("[cll cache] computation failed for %s, skipping: %s", node_id, e)
+                    continue
                 if cll_data_one is None:
                     continue
                 try:
@@ -1200,8 +1204,9 @@ class DbtAdapter(BaseAdapter):
         # Full map mode: return the complete pre-computed CLL map.
         # Note: change_analysis flag is ignored — full map always includes
         # change metadata since build_full_cll_map() computes it unconditionally.
+        # No deepcopy needed — the caller (FastAPI) only serializes the result.
         if full_map:
-            result = deepcopy(self.build_full_cll_map())
+            result = self.build_full_cll_map()
             cll_tracker.end_column_lineage()
             cll_tracker.set_total_nodes(len(result.nodes) + len(result.columns))
             log_performance("column level lineage [full_map]", cll_tracker.to_dict())
