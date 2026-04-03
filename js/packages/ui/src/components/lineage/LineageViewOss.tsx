@@ -21,6 +21,7 @@ import {
   useLineageGraphContext,
   useRecceActionContext,
   useRecceInstanceContext,
+  useRecceServerFlag,
 } from "../../contexts";
 import {
   isLineageGraphColumnNode,
@@ -161,6 +162,8 @@ export function PrivateLineageView(
     refetchRunsAggregated,
   } = useLineageGraphContext();
 
+  const { data: flags } = useRecceServerFlag();
+  const newCllExperience = flags?.new_cll_experience ?? false;
   const { featureToggles, singleEnv } = useRecceInstanceContext();
   const { data: serverFlags } = useRecceServerFlag();
   const { runId, showRunId, closeRunResult, runAction, isRunResultOpen } =
@@ -509,6 +512,7 @@ export function PrivateLineageView(
       const [nodes, edges, nodeColumnSetMap] = await toReactFlow(lineageGraph, {
         selectedNodes: filteredNodeIds,
         cll: cll,
+        newCllExperience,
       });
       setNodes(nodes);
       setEdges(edges);
@@ -783,7 +787,7 @@ export function PrivateLineageView(
 
     // Capture positions if preservePositions is true
     let existingPositions: Map<string, { x: number; y: number }> | undefined;
-    if (preservePositions) {
+    if (preservePositions || newCllExperience) {
       existingPositions = getNodePositions();
     }
 
@@ -793,6 +797,7 @@ export function PrivateLineageView(
         selectedNodes,
         cll,
         existingPositions,
+        newCllExperience,
       },
     );
     setNodes(newNodes);
