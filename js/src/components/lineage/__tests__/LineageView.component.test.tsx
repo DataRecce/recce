@@ -134,6 +134,7 @@ vi.mock("@datarecce/ui/contexts", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
   return {
     useRouteConfig: vi.fn(() => ({ basePath: "" })),
+    useRecceServerFlag: vi.fn(() => ({ data: undefined })),
     useLineageGraphContext: vi.fn(() => mockLineageGraphContext),
     useRecceInstanceContext: vi.fn(() => mockRecceInstanceContext),
     useRecceServerFlag: vi.fn(() => ({ data: {} })),
