@@ -667,6 +667,12 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
     envvar="RECCE_IMPACT_AT_STARTUP",
     hidden=True,
 )
+@click.option(
+    "--new-cll-experience",
+    is_flag=True,
+    help="Enable the new column-level lineage visual experience.",
+    envvar="RECCE_NEW_CLL_EXPERIENCE",
+)
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -735,6 +741,7 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         "read_only": False,
         "disable_cll_cache": True,
         "impact_at_startup": False,
+        "new_cll_experience": False,
     }
     console = Console()
 
@@ -784,6 +791,9 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
 
     if kwargs.get("impact_at_startup", False):
         flag["impact_at_startup"] = True
+
+    if kwargs.get("new_cll_experience", False):
+        flag["new_cll_experience"] = True
 
     # Create state loader using shared function
     from recce.util.startup_perf import get_startup_tracker
