@@ -773,7 +773,8 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert_column(result, "id", "passthrough", [("t1", "id")])
         assert_column(result, "name", "passthrough", [("t1", "name")])
         # child_count resolves correctly — correlated subquery doesn't crash the model
-        assert_column(result, "child_count", "derived", [("t2", "fk"), ("t1", "id")])
+        # Correlated ref (t1.id) comes first, then subquery internal deps (t2.fk)
+        assert_column(result, "child_count", "derived", [("t1", "id"), ("t2", "fk")])
 
     def test_where_in_subquery(self):
         sql = """
@@ -791,3 +792,80 @@ class ColumnLevelLineageTest(unittest.TestCase):
             """
         result = cll(sql)
         assert_model(result, [("table1", "a"), ("table1", "user_id"), ("table2", "user_id")])
+
+    def test_correlated_subquery_in_select(self):
+        """Correlated subquery in SELECT should resolve table aliases (o2 -> orders)."""
+        sql = """
+        select
+            o.order_id,
+            o.location_id,
+            o.order_total,
+            (
+                select avg(o2.order_total)
+                from orders as o2
+                where o2.location_id = o.location_id
+            ) as store_avg_order_total
+        from orders as o
+        """
+        schema = {"orders": {"order_id": "int", "location_id": "int", "order_total": "decimal"}}
+        result = cll(sql, schema=schema)
+        assert_column(result, "order_id", "passthrough", [("orders", "order_id")])
+        assert_column(result, "location_id", "passthrough", [("orders", "location_id")])
+        assert_column(result, "order_total", "passthrough", [("orders", "order_total")])
+        # o2 alias must resolve to the real table name "orders"
+        # Correlated ref (o.location_id) comes first, then subquery internal deps
+        assert_column(
+            result, "store_avg_order_total", "derived", [("orders", "location_id"), ("orders", "order_total")]
+        )
+
+    def test_correlated_subquery_in_where(self):
+        """Correlated subquery in WHERE with aliased self-join should resolve aliases."""
+        sql = """
+        select
+            o.order_id,
+            o.order_total
+        from orders as o
+        where o.order_total > (
+            select avg(o2.order_total)
+            from orders as o2
+            where o2.location_id = o.location_id
+        )
+        """
+        schema = {"orders": {"order_id": "int", "location_id": "int", "order_total": "decimal"}}
+        result = cll(sql, schema=schema)
+        assert_column(result, "order_id", "passthrough", [("orders", "order_id")])
+        assert_column(result, "order_total", "passthrough", [("orders", "order_total")])
+        # m2c should reference "orders" not "o" or "o2"
+        m2c, _ = result
+        m2c_set = {(d.node, d.column) for d in m2c}
+        assert ("orders", "order_total") in m2c_set
+        assert ("orders", "location_id") in m2c_set
+        # Alias names should not leak into dependencies
+        assert all(d.node == "orders" for d in m2c), f"Alias leaked into m2c: {[(d.node, d.column) for d in m2c]}"
+
+    def test_correlated_subquery_in_join_condition(self):
+        """Correlated subquery in JOIN ON clause (first-purchase pattern)."""
+        sql = """
+        select
+            c.customer_id,
+            c.customer_name,
+            o.order_id as first_order_id,
+            o.ordered_at as first_order_date
+        from customers as c
+        inner join orders as o
+            on c.customer_id = o.customer_id
+            and o.ordered_at = (
+                select min(o2.ordered_at)
+                from orders as o2
+                where o2.customer_id = c.customer_id
+            )
+        """
+        schema = {
+            "customers": {"customer_id": "int", "customer_name": "varchar"},
+            "orders": {"order_id": "int", "customer_id": "int", "ordered_at": "timestamp"},
+        }
+        result = cll(sql, schema=schema)
+        assert_column(result, "customer_id", "passthrough", [("customers", "customer_id")])
+        assert_column(result, "customer_name", "passthrough", [("customers", "customer_name")])
+        assert_column(result, "first_order_id", "renamed", [("orders", "order_id")])
+        assert_column(result, "first_order_date", "renamed", [("orders", "ordered_at")])
