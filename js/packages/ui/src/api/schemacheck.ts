@@ -4,7 +4,7 @@
  * Provides functionality for creating schema diff checks.
  */
 
-import type { AxiosInstance, AxiosResponse } from "axios";
+import type { ApiClient, ApiResponse } from "../lib/fetchClient";
 import type { Check } from "./checks";
 
 // ============================================================================
@@ -37,11 +37,11 @@ interface CreateSchemaDiffCheckBody {
  */
 export async function createSchemaDiffCheck(
   params: SchemaDiffViewParams,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<Check> {
   const response = await client.post<
     CreateSchemaDiffCheckBody,
-    AxiosResponse<Check>
+    ApiResponse<Check>
   >("/api/checks", {
     type: "schema_diff",
     params: params,

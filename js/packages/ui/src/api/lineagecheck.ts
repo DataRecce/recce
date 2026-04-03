@@ -4,7 +4,7 @@
  * Provides functionality for creating lineage diff checks.
  */
 
-import type { AxiosInstance, AxiosResponse } from "axios";
+import type { ApiClient, ApiResponse } from "../lib/fetchClient";
 import type { Check } from "./checks";
 import type { CllInput } from "./cll";
 
@@ -40,11 +40,11 @@ interface CreateLineageDiffCheckBody {
  */
 export async function createLineageDiffCheck(
   viewOptions: LineageDiffViewOptions,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<Check> {
   const response = await client.post<
     CreateLineageDiffCheckBody,
-    AxiosResponse<Check>
+    ApiResponse<Check>
   >("/api/checks", {
     type: "lineage_diff",
     params: {},

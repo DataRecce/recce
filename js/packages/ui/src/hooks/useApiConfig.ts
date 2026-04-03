@@ -1,5 +1,5 @@
-import axios, { type AxiosInstance } from "axios";
 import { PUBLIC_API_URL } from "../lib/const";
+import { type ApiClient, createFetchClient } from "../lib/fetchClient";
 import { useApiConfigOptional } from "../providers";
 
 /**
@@ -30,10 +30,10 @@ export interface ApiConfigContextType {
    */
   baseUrl?: string;
   /**
-   * Pre-configured axios instance with interceptors for
+   * Pre-configured API client with middleware for
    * API prefix replacement and auth token injection.
    */
-  apiClient: AxiosInstance;
+  apiClient: ApiClient;
 }
 
 // Default config used when ApiConfigProvider is not present (OSS mode)
@@ -41,11 +41,11 @@ const defaultApiConfigContext: ApiConfigContextType = {
   apiPrefix: "",
   authToken: undefined,
   baseUrl: undefined,
-  apiClient: axios.create({ baseURL: PUBLIC_API_URL }),
+  apiClient: createFetchClient({ baseURL: PUBLIC_API_URL ?? "" }),
 };
 
 /**
- * Access the API configuration and configured axios client.
+ * Access the API configuration and configured API client.
  *
  * @remarks
  * Priority order:

@@ -1,4 +1,4 @@
-import type { AxiosInstance, AxiosResponse } from "axios";
+import type { ApiClient, ApiResponse } from "../lib/fetchClient";
 
 /**
  * Column-level data for a node
@@ -162,9 +162,9 @@ export interface ServerInfoResult {
  * Fetch server info from API
  */
 export async function getServerInfo(
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<ServerInfoResult> {
-  const response = await client.get<never, AxiosResponse<ServerInfoResult>>(
+  const response = await client.get<never, ApiResponse<ServerInfoResult>>(
     "/api/info",
   );
   return response.data;
@@ -191,9 +191,9 @@ export interface ModelInfoResult {
  */
 export async function getModelInfo(
   model: string,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<ModelInfoResult> {
-  const response = await client.get<never, AxiosResponse<ModelInfoResult>>(
+  const response = await client.get<never, ApiResponse<ModelInfoResult>>(
     `/api/model/${model}`,
   );
   return response.data;

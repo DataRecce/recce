@@ -1,4 +1,4 @@
-import type { AxiosInstance } from "axios";
+import type { ApiClient, ApiResponse } from "../lib/fetchClient";
 import type { RowCountDiff, RowCountDiffResult } from "./rowcount";
 import { submitRowCountDiff } from "./rowcount";
 import { waitRun } from "./runs";
@@ -22,14 +22,14 @@ export interface QueryRowCountResult {
 /**
  * Fetch model row count from the API (cached value).
  * @param modelName - The name of the model
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The row count diff for the model
  */
 export async function fetchModelRowCount(
   modelName: string,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<RowCountDiff> {
-  const response = await client.get<RowCountDiff>(
+  const response = await client.get<never, ApiResponse<RowCountDiff>>(
     `/api/models/${modelName}/row_count`,
   );
   return response.data;
@@ -38,12 +38,12 @@ export async function fetchModelRowCount(
 /**
  * Query model row count by executing a row count diff run.
  * @param modelName - The name of the model
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The row count diff for the model
  */
 export async function queryModelRowCount(
   modelName: string,
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<RowCountDiff> {
   const { result } = await queryRowCount([modelName], client);
   return result[modelName];
@@ -52,12 +52,12 @@ export async function queryModelRowCount(
 /**
  * Query row counts for multiple models.
  * @param modelNames - Array of model names to query
- * @param client - Required axios instance
+ * @param client - Required API client instance
  * @returns The run ID and row count diff results for all models
  */
 export async function queryRowCount(
   modelNames: string[],
-  client: AxiosInstance,
+  client: ApiClient,
 ): Promise<QueryRowCountResult> {
   if (modelNames.length === 0) {
     throw new Error("No model names provided");
