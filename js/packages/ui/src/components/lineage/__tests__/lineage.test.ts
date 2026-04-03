@@ -143,6 +143,36 @@ describe("toReactFlow", () => {
     expect(node3?.position).toEqual({ x: -50, y: 70 });
   });
 
+  it("should skip column nodes when newCllExperience is true", () => {
+    const graph = createMockLineageGraph(["model.test.a"]);
+    graph.nodes["model.test.a"].data.data.current!.columns = {
+      id: { name: "id", type: "integer", index: 0 },
+      name: { name: "name", type: "string", index: 1 },
+    };
+
+    const cll = {
+      current: {
+        nodes: { "model.test.a": { impacted: true } },
+        columns: {
+          "model.test.a_id": { name: "id", type: "integer", transformation_type: "passthrough", change_status: undefined },
+        },
+        parent_map: { "model.test.a": new Set<string>() },
+      },
+    };
+
+    const [nodes] = toReactFlow(graph, {
+      cll: cll as any,
+      newCllExperience: true,
+    });
+
+    const columnNodes = nodes.filter((n) => n.type === "lineageGraphColumnNode");
+    expect(columnNodes).toHaveLength(0);
+
+    // Parent node should still be at base height (60)
+    const parentNode = nodes.find((n) => n.id === "model.test.a");
+    expect(parentNode?.height).toBe(60);
+  });
+
   it("preserves column node positions relative to parent", () => {
     const lineageGraph = createMockLineageGraph(["node1"]);
     // Add columns to the node
