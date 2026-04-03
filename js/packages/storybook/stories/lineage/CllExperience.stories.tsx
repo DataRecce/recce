@@ -5,6 +5,7 @@ import type {
 } from "@datarecce/ui/advanced";
 import {
   buildLineageGraph,
+  computeIsImpacted,
   LineageCanvas,
   selectDownstream,
   toReactFlow,
@@ -259,9 +260,103 @@ function buildRealLineageGraph() {
   );
 }
 
+/**
+ * Build mock CLL data simulating a column change in stg_orders.
+ *
+ * Scenario: the `ordered_at` column in stg_orders was fixed (date_trunc removed).
+ * - stg_orders itself is modified (changeStatus handles this via signal 3)
+ * - Downstream time-based models are marked impacted (signal 1: node.impacted)
+ * - Downstream models that only use amount/product columns have columns but
+ *   none with change_status (signal 2 does NOT fire → not impacted)
+ * - Unrelated models aren't in the CLL data at all
+ */
+function buildMockCllData(graph: ReturnType<typeof buildRealLineageGraph>) {
+  const modified = "model.jaffle_shop.stg_orders";
+  const downstreamSet = selectDownstream(graph, [modified]);
+
+  // Time-based models that would touch ordered_at → CLL marks them impacted
+  const impactedNodeIds = new Set([
+    "model.jaffle_shop.orders",
+    "model.jaffle_shop.int_daily_revenue",
+    "model.jaffle_shop.int_daily_orders_by_store",
+    "model.jaffle_shop.int_daily_orders_by_product",
+    "model.jaffle_shop.int_store_daily_summary",
+    "model.jaffle_shop.inc_met_daily_orders",
+    "model.jaffle_shop.int_daily_customer_activity",
+    "model.jaffle_shop.rpt_daily_revenue_kpis",
+  ]);
+
+  // Amount/product models that are downstream but don't touch ordered_at
+  const notImpactedNodeIds = new Set([
+    "model.jaffle_shop.cmp_weekday_vs_weekend",
+    "model.jaffle_shop.dist_basket_size",
+    "model.jaffle_shop.dist_order_value",
+    "model.jaffle_shop.kpi_avg_basket_size",
+    "model.jaffle_shop.kpi_refund_rate",
+    "model.jaffle_shop.prod_daypart_product_mix",
+  ]);
+
+  // Build CLL nodes: impacted nodes get impacted=true, non-impacted get impacted=false
+  const cllNodes: Record<string, { impacted: boolean }> = {};
+  for (const id of impactedNodeIds) {
+    if (id in graph.nodes) cllNodes[id] = { impacted: true };
+  }
+  for (const id of notImpactedNodeIds) {
+    if (id in graph.nodes) cllNodes[id] = { impacted: false };
+  }
+  // Modified node is in CLL but impacted is driven by changeStatus (signal 3)
+  cllNodes[modified] = { impacted: false };
+
+  // Build CLL columns: impacted nodes have columns with change_status,
+  // non-impacted nodes have columns but no change_status
+  const cllColumns: Record<string, { name: string; change_status: string | null }> = {};
+  for (const id of impactedNodeIds) {
+    if (id in graph.nodes) {
+      cllColumns[`${id}_ordered_at`] = { name: "ordered_at", change_status: "modified" };
+    }
+  }
+  for (const id of notImpactedNodeIds) {
+    if (id in graph.nodes) {
+      cllColumns[`${id}_amount`] = { name: "amount", change_status: null };
+    }
+  }
+
+  // Select ~25 nodes: modified + impacted + not-impacted + unrelated
+  const allNodeIds = Object.keys(graph.nodes);
+  const unrelated: string[] = [];
+  for (const id of allNodeIds) {
+    if (unrelated.length >= 8) break;
+    if (!downstreamSet.has(id) && id !== modified) {
+      unrelated.push(id);
+    }
+  }
+
+  const selectedIds = [
+    modified,
+    ...[...impactedNodeIds].filter((id) => id in graph.nodes),
+    ...[...notImpactedNodeIds].filter((id) => id in graph.nodes),
+    ...unrelated,
+  ];
+
+  const cll = {
+    current: {
+      nodes: cllNodes,
+      columns: cllColumns,
+      parent_map: {},
+    },
+  };
+
+  return { selectedIds, cll };
+}
+
+/**
+ * Convert toReactFlow output to LineageCanvas format, using computeIsImpacted
+ * to determine amber highlight per node.
+ */
 function adaptForCanvas(
   rawNodes: LineageGraphNodes[],
   rawEdges: LineageGraphEdge[],
+  cll: ReturnType<typeof buildMockCllData>["cll"],
 ): { nodes: LineageCanvasProps["nodes"]; edges: LineageCanvasProps["edges"] } {
   const nodes = rawNodes.map((node: LineageGraphNodes) => {
     if (node.type === "lineageGraphNode") {
@@ -279,6 +374,12 @@ function adaptForCanvas(
           resourceType: graphData.resourceType,
           changeStatus: graphData.changeStatus,
           packageName: graphData.packageName,
+          newCllExperience: true,
+          isImpacted: computeIsImpacted(
+            node.id,
+            cll as any,
+            graphData.changeStatus as any,
+          ),
         },
       };
     }
@@ -296,29 +397,24 @@ function adaptForCanvas(
   };
 }
 
-/**
- * Full lineage canvas showing the impacted subgraph from jaffle-shop-expand.
- *
- * Note: The amber highlight requires app-level wiring (GraphNodeOss) which
- * is not available in the pure LineageCanvas. This story verifies the layout
- * and node rendering of the impacted subgraph. Use the NodeComparison story
- * above for color tuning.
- */
 function FullCanvasDemo() {
-  const { nodes, edges, impactedCount, modifiedNames } = useMemo(() => {
+  const { nodes, edges, impactedCount, totalCount, modifiedNames } = useMemo(() => {
     const graph = buildRealLineageGraph();
-
-    const downstreamSet = selectDownstream(graph, graph.modifiedSet);
-    const impactedIds = [...new Set([...graph.modifiedSet, ...downstreamSet])];
+    const { selectedIds, cll } = buildMockCllData(graph);
 
     const [rawNodes, rawEdges] = toReactFlow(graph, {
-      selectedNodes: impactedIds,
+      selectedNodes: selectedIds,
     });
-    const adapted = adaptForCanvas(rawNodes, rawEdges);
+    const adapted = adaptForCanvas(rawNodes, rawEdges, cll);
+
+    const impactedCount = adapted.nodes.filter(
+      (n) => (n.data as any)?.isImpacted,
+    ).length;
 
     return {
       ...adapted,
-      impactedCount: impactedIds.length,
+      impactedCount,
+      totalCount: selectedIds.length,
       modifiedNames: graph.modifiedSet.map(
         (id) => graph.nodes[id]?.data.name ?? id,
       ),
@@ -342,7 +438,7 @@ function FullCanvasDemo() {
           New CLL Experience — jaffle-shop-expand
         </Typography>
         <Chip
-          label={`${impactedCount} impacted nodes`}
+          label={`${impactedCount}/${totalCount} nodes impacted`}
           size="small"
           color="warning"
           variant="outlined"

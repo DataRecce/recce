@@ -75,6 +75,10 @@ export interface LineageNodeData extends Record<string, unknown> {
   materialized?: string;
   /** Package name */
   packageName?: string;
+  /** Whether new CLL experience is active (data-level, for ReactFlow passthrough) */
+  newCllExperience?: boolean;
+  /** Whether this node is impacted by CLL analysis (data-level, for ReactFlow passthrough) */
+  isImpacted?: boolean;
   /** Whether to show column-level details */
   showColumns?: boolean;
   /** Column data if showing columns */
@@ -310,9 +314,9 @@ function LineageNodeComponent({
   columnHeight = DEFAULT_COLUMN_HEIGHT,
   // Theme props
   isDark = false,
-  // New CLL experience props
-  newCllExperience = false,
-  isImpacted = false,
+  // New CLL experience props (fall back to data for ReactFlow passthrough)
+  newCllExperience: newCllExperienceProp,
+  isImpacted: isImpactedProp,
   // Callbacks
   onNodeClick,
   onNodeDoubleClick,
@@ -329,6 +333,10 @@ function LineageNodeComponent({
     resourceType,
     materialized,
   } = data;
+
+  // Fall back to data-level values for ReactFlow passthrough
+  const newCllExperience = newCllExperienceProp ?? data.newCllExperience ?? false;
+  const isImpacted = isImpactedProp ?? data.isImpacted ?? false;
 
   // Use isNodeSelected prop, fall back to data.isSelected, then to selected
   const isSelected = isNodeSelected || dataIsSelected || selected || false;

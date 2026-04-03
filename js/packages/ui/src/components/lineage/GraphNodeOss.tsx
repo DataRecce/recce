@@ -308,7 +308,7 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
   const { data: flags } = useRecceServerFlag();
   const newCllExperience = flags?.new_cll_experience ?? false;
   const isImpacted = newCllExperience
-    ? computeIsImpacted(id, cll, changeStatus as NodeChangeStatus | undefined)
+    ? computeIsImpacted(id, cll ?? null, changeStatus as NodeChangeStatus | undefined)
     : false;
 
   // Computed state
