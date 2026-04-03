@@ -27,7 +27,9 @@ import { isRowCountDiffRun, type RowCountDiff } from "../../api";
 import {
   useLineageGraphContext,
   useLineageViewContextSafe,
+  useRecceServerFlag,
 } from "../../contexts";
+import { computeIsImpacted } from "./computeIsImpacted";
 import { useThemeColors } from "../../hooks";
 import { deltaPercentageString } from "../../utils";
 import { findByRunType } from "../run";
@@ -302,6 +304,13 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
   } = useLineageViewContextSafe();
   const { isActionAvailable } = useLineageGraphContext();
 
+  // New CLL experience
+  const { data: flags } = useRecceServerFlag();
+  const newCllExperience = flags?.new_cll_experience ?? false;
+  const isImpacted = newCllExperience
+    ? computeIsImpacted(id, cll, changeStatus as NodeChangeStatus | undefined)
+    : false;
+
   // Computed state
   const changeCategory = cll?.current.nodes[id]
     ?.change_category as ChangeCategory;
@@ -366,6 +375,9 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
           data.data?.current?.config?.materialized ??
           data.data?.base?.config?.materialized,
       }}
+      // New CLL experience props
+      newCllExperience={newCllExperience}
+      isImpacted={isImpacted}
       // Interactive props
       interactive={interactive}
       selectMode={nodeSelectMode}
