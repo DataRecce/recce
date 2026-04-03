@@ -14,6 +14,7 @@ import {
   changeStatusColors,
   getIconForChangeStatus,
   getIconForResourceType,
+  getStyleForImpacted,
   IconAdded,
   IconExposure,
   IconMetric,
@@ -25,6 +26,22 @@ import {
   IconSnapshot,
   IconSource,
 } from "../styles";
+
+// =============================================================================
+// getStyleForImpacted Tests
+// =============================================================================
+
+describe("getStyleForImpacted", () => {
+  it("returns amber 200 background in light mode", () => {
+    const style = getStyleForImpacted(false);
+    expect(style.backgroundColor).toBe("#FDE68A");
+  });
+
+  it("returns amber 900 background in dark mode", () => {
+    const style = getStyleForImpacted(true);
+    expect(style.backgroundColor).toBe("#78350F");
+  });
+});
 
 // =============================================================================
 // getIconForChangeStatus Tests
