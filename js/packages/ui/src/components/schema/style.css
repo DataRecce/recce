@@ -28,6 +28,9 @@
   --schema-badge-added-fg: rgb(22 110 40);
   --schema-badge-removed-bg: rgb(248 81 73 / 0.2);
   --schema-badge-removed-fg: rgb(180 40 35);
+  --schema-color-impacted: rgb(255 243 200);
+  --schema-color-impacted-hover: rgb(255 237 175);
+  --schema-color-impacted-active: rgb(255 229 145);
 }
 
 /* Dark mode */
@@ -54,6 +57,9 @@
   --schema-badge-added-fg: rgb(80 200 100);
   --schema-badge-removed-bg: rgb(248 81 73 / 0.2);
   --schema-badge-removed-fg: rgb(255 120 115);
+  --schema-color-impacted: rgb(60 52 28);
+  --schema-color-impacted-hover: rgb(75 65 33);
+  --schema-color-impacted-active: rgb(90 78 38);
 }
 
 /* Row backgrounds must be applied to cells because rows use display:contents */
@@ -118,6 +124,21 @@
 .row-changed[aria-selected="true"]:hover,
 .row-changed.ag-row-selected:hover {
   background-color: var(--schema-color-changed-active);
+}
+
+.row-impacted {
+  background-color: var(--schema-color-impacted);
+}
+
+.row-impacted:hover,
+.row-impacted[aria-selected="true"],
+.row-impacted.ag-row-selected {
+  background-color: var(--schema-color-impacted-hover);
+}
+
+.row-impacted[aria-selected="true"]:hover,
+.row-impacted.ag-row-selected:hover {
+  background-color: var(--schema-color-impacted-active);
 }
 
 .row-selectable {

@@ -33,6 +33,8 @@ export interface SchemaDiffRow extends RowObjectType {
   baseType?: string;
   /** True when the column's SQL definition changed but name/type stayed the same */
   definitionChanged?: boolean;
+  /** True when the column traces upstream to a changed column via CLL parent_map */
+  isImpacted?: boolean;
 }
 
 export interface SchemaRow extends RowObjectType {
@@ -54,6 +56,10 @@ export interface SchemaDataGridOptions {
   columnChanges?: Record<string, "added" | "removed" | "modified"> | null;
   /** Callback when user clicks a definition-changed badge to view SQL diff */
   onViewCode?: () => void;
+  /** Set of impacted column IDs from CLL parent_map walk (e.g. "model.jaffle_shop.orders_STATUS") */
+  impactedColumns?: Set<string>;
+  /** Node unique_id, used to build column IDs for impacted lookup */
+  nodeId?: string;
 }
 
 export interface SchemaDataGridResult {
@@ -122,7 +128,15 @@ export function toSchemaDataGrid(
   schemaDiff: SchemaDiff,
   options: SchemaDataGridOptions = {},
 ): SchemaDataGridResult {
-  const { node, cllRunningMap, showMenu, columnChanges, onViewCode } = options;
+  const {
+    node,
+    cllRunningMap,
+    showMenu,
+    columnChanges,
+    onViewCode,
+    impactedColumns,
+    nodeId,
+  } = options;
 
   const columns: ColDef<SchemaDiffRow>[] = [
     {
@@ -147,11 +161,13 @@ export function toSchemaDataGrid(
           )
         : undefined,
       cellClass: "schema-column",
-      // Include definitionChanged in the value so ag-grid re-renders the cell
-      // when the badge state changes (e.g., after Impact Radius completes)
+      // Include definitionChanged and isImpacted in the value so ag-grid
+      // re-renders the cell when the badge/background state changes
       valueGetter: (params) => {
         const row = params.data;
-        return row ? `${row.name}|${row.definitionChanged ?? false}` : "";
+        return row
+          ? `${row.name}|${row.definitionChanged ?? false}|${row.isImpacted ?? false}`
+          : "";
       },
     },
   ];
@@ -175,6 +191,16 @@ export function toSchemaDataGrid(
         !row.reordered
       ) {
         row.definitionChanged = true;
+      }
+    }
+  }
+
+  // Mark columns that trace upstream to a changed column via CLL parent_map
+  if (impactedColumns && nodeId) {
+    for (const row of rows) {
+      const columnId = `${nodeId}_${row.name}`;
+      if (impactedColumns.has(columnId)) {
+        row.isImpacted = true;
       }
     }
   }
