@@ -74,4 +74,42 @@ describe("computeIsImpacted", () => {
     };
     expect(computeIsImpacted("model.a", cll as any, "added")).toBe(true);
   });
+
+  it("returns true when node has columns with change_status on the node object", () => {
+    const cll = {
+      current: {
+        nodes: {
+          "model.a": {
+            impacted: false,
+            columns: {
+              amount: { name: "amount", type: "integer", change_status: "modified" },
+              id: { name: "id", type: "integer", change_status: undefined },
+            },
+          },
+        },
+        columns: {},
+        parent_map: {},
+      },
+    };
+    expect(computeIsImpacted("model.a", cll as any, undefined)).toBe(true);
+  });
+
+  it("returns false when node has columns but none with change_status", () => {
+    const cll = {
+      current: {
+        nodes: {
+          "model.a": {
+            impacted: false,
+            columns: {
+              amount: { name: "amount", type: "integer" },
+              id: { name: "id", type: "integer" },
+            },
+          },
+        },
+        columns: {},
+        parent_map: {},
+      },
+    };
+    expect(computeIsImpacted("model.a", cll as any, undefined)).toBe(false);
+  });
 });

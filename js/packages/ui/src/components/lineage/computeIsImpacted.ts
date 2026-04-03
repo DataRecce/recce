@@ -29,11 +29,20 @@ export function computeIsImpacted(
     return true;
   }
 
-  // Signal 2: any column with a change_status
+  // Signal 2a: any column in the flat columns dict with a change_status
   const prefix = `${nodeId}_`;
   for (const [columnId, column] of Object.entries(cll.current.columns)) {
     if (columnId.startsWith(prefix) && column.change_status) {
       return true;
+    }
+  }
+
+  // Signal 2b: any column on the node itself with a change_status
+  if (cllNode?.columns) {
+    for (const column of Object.values(cllNode.columns)) {
+      if (column?.change_status) {
+        return true;
+      }
     }
   }
 
