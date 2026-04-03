@@ -1,49 +1,29 @@
 import type { ColumnLineageData } from "../../api";
 import type { NodeChangeStatus } from "./nodes/LineageNode";
+import { computeImpactedColumns } from "./computeImpactedColumns";
 
 /**
  * Determine whether a model node is "impacted" for the new CLL experience.
  *
- * A node is impacted if ANY of:
- * 1. CLL analysis marks the node as impacted (node.impacted !== false)
- * 2. Any column belonging to this node has a non-null change_status
- * 3. The model itself has a non-null changeStatus (added/removed/modified)
+ * A node is impacted if:
+ * 1. The model itself has a non-null changeStatus (added/removed/modified)
+ * 2. Any column belonging to this node traces upstream to a changed column
+ *    (determined by walking the CLL parent_map)
  */
 export function computeIsImpacted(
   nodeId: string,
   cll: ColumnLineageData | null,
   changeStatus: NodeChangeStatus | undefined,
 ): boolean {
-  // Signal 3: model-level change
-  if (changeStatus) {
-    return true;
-  }
+  // Model-level change
+  if (changeStatus) return true;
+  if (!cll) return false;
 
-  if (!cll) {
-    return false;
-  }
-
-  // Signal 1: CLL node-level impact
-  const cllNode = cll.current.nodes[nodeId];
-  if (cllNode && cllNode.impacted !== false) {
-    return true;
-  }
-
-  // Signal 2a: any column in the flat columns dict with a change_status
+  // Check if any column on this node is impacted via parent_map walk
+  const impactedColumns = computeImpactedColumns(cll);
   const prefix = `${nodeId}_`;
-  for (const [columnId, column] of Object.entries(cll.current.columns)) {
-    if (columnId.startsWith(prefix) && column.change_status) {
-      return true;
-    }
-  }
-
-  // Signal 2b: any column on the node itself with a change_status
-  if (cllNode?.columns) {
-    for (const column of Object.values(cllNode.columns)) {
-      if (column?.change_status) {
-        return true;
-      }
-    }
+  for (const colId of impactedColumns) {
+    if (colId.startsWith(prefix)) return true;
   }
 
   return false;
