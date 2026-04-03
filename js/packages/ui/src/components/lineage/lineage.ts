@@ -41,12 +41,11 @@ export function toReactFlow(
     selectedNodes?: string[];
     cll?: ColumnLineageData;
     existingPositions?: Map<string, { x: number; y: number }>;
-    newCllExperience?: boolean;
   },
 ): [LineageGraphNodes[], LineageGraphEdge[], NodeColumnSetMap] {
   const nodes: LineageGraphNodes[] = [];
   const edges: LineageGraphEdge[] = [];
-  const { selectedNodes, cll, existingPositions, newCllExperience } =
+  const { selectedNodes, cll, existingPositions } =
     options ?? {};
 
   const nodeColumnSetMap: NodeColumnSetMap = {};
@@ -87,7 +86,7 @@ export function toReactFlow(
     // add column nodes
     const nodeColumnSet = new Set<string>();
     let columnIndex = 0;
-    if (cll && !newCllExperience) {
+    if (cll) {
       const maybeCurrent = cll.current as unknown as
         | ColumnLineageData["current"]
         | undefined;
