@@ -45,8 +45,7 @@ export function toReactFlow(
 ): [LineageGraphNodes[], LineageGraphEdge[], NodeColumnSetMap] {
   const nodes: LineageGraphNodes[] = [];
   const edges: LineageGraphEdge[] = [];
-  const { selectedNodes, cll, existingPositions } =
-    options ?? {};
+  const { selectedNodes, cll, existingPositions } = options ?? {};
 
   const nodeColumnSetMap: NodeColumnSetMap = {};
 

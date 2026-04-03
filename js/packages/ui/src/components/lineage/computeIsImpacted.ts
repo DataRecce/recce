@@ -1,6 +1,6 @@
 import type { ColumnLineageData } from "../../api";
-import type { NodeChangeStatus } from "./nodes/LineageNode";
 import { computeImpactedColumns } from "./computeImpactedColumns";
+import type { NodeChangeStatus } from "./nodes/LineageNode";
 
 /**
  * Determine whether a model node is "impacted" for the new CLL experience.

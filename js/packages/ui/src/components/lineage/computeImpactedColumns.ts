@@ -14,7 +14,8 @@ export function computeImpactedColumns(cll: ColumnLineageData): Set<string> {
   const memo = new Map<string, boolean>();
 
   function isImpacted(columnId: string, visited: Set<string>): boolean {
-    if (memo.has(columnId)) return memo.get(columnId)!;
+    const cached = memo.get(columnId);
+    if (cached !== undefined) return cached;
     if (visited.has(columnId)) {
       memo.set(columnId, false);
       return false; // cycle

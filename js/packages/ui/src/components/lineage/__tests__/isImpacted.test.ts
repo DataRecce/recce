@@ -70,7 +70,10 @@ describe("computeIsImpacted", () => {
       current: {
         nodes: {},
         columns: {
-          "model.upstream_STATUS": { name: "STATUS", change_status: "modified" },
+          "model.upstream_STATUS": {
+            name: "STATUS",
+            change_status: "modified",
+          },
           "model.a_STATUS": { name: "STATUS", change_status: null },
         },
         parent_map: {
