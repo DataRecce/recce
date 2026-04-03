@@ -29,10 +29,10 @@ import {
   useLineageViewContextSafe,
   useRecceServerFlag,
 } from "../../contexts";
-import { computeIsImpacted } from "./computeIsImpacted";
 import { useThemeColors } from "../../hooks";
 import { deltaPercentageString } from "../../utils";
 import { findByRunType } from "../run";
+import { computeIsImpacted } from "./computeIsImpacted";
 import {
   ActionTag,
   type ChangeCategory,
@@ -308,7 +308,11 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
   const { data: flags } = useRecceServerFlag();
   const newCllExperience = flags?.new_cll_experience ?? false;
   const isImpacted = newCllExperience
-    ? computeIsImpacted(id, cll ?? null, changeStatus as NodeChangeStatus | undefined)
+    ? computeIsImpacted(
+        id,
+        cll ?? null,
+        changeStatus as NodeChangeStatus | undefined,
+      )
     : false;
 
   // Computed state

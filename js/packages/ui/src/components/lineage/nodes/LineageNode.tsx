@@ -335,7 +335,8 @@ function LineageNodeComponent({
   } = data;
 
   // Fall back to data-level values for ReactFlow passthrough
-  const newCllExperience = newCllExperienceProp ?? data.newCllExperience ?? false;
+  const newCllExperience =
+    newCllExperienceProp ?? data.newCllExperience ?? false;
   const isImpacted = isImpactedProp ?? data.isImpacted ?? false;
 
   // Use isNodeSelected prop, fall back to data.isSelected, then to selected

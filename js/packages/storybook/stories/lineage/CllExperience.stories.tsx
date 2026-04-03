@@ -10,7 +10,11 @@ import {
   selectDownstream,
   toReactFlow,
 } from "@datarecce/ui/advanced";
-import type { LineageNodeProps } from "@datarecce/ui/primitives";
+import type { ColumnLineageData } from "@datarecce/ui/api";
+import type {
+  LineageNodeProps,
+  NodeChangeStatus,
+} from "@datarecce/ui/primitives";
 import { LineageNode } from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
@@ -309,10 +313,16 @@ function buildMockCllData(graph: ReturnType<typeof buildRealLineageGraph>) {
 
   // Build CLL columns: impacted nodes have columns with change_status,
   // non-impacted nodes have columns but no change_status
-  const cllColumns: Record<string, { name: string; change_status: string | null }> = {};
+  const cllColumns: Record<
+    string,
+    { name: string; change_status: string | null }
+  > = {};
   for (const id of impactedNodeIds) {
     if (id in graph.nodes) {
-      cllColumns[`${id}_ordered_at`] = { name: "ordered_at", change_status: "modified" };
+      cllColumns[`${id}_ordered_at`] = {
+        name: "ordered_at",
+        change_status: "modified",
+      };
     }
   }
   for (const id of notImpactedNodeIds) {
@@ -377,8 +387,8 @@ function adaptForCanvas(
           newCllExperience: true,
           isImpacted: computeIsImpacted(
             node.id,
-            cll as any,
-            graphData.changeStatus as any,
+            cll as unknown as ColumnLineageData,
+            graphData.changeStatus as NodeChangeStatus | undefined,
           ),
         },
       };
@@ -398,28 +408,29 @@ function adaptForCanvas(
 }
 
 function FullCanvasDemo() {
-  const { nodes, edges, impactedCount, totalCount, modifiedNames } = useMemo(() => {
-    const graph = buildRealLineageGraph();
-    const { selectedIds, cll } = buildMockCllData(graph);
+  const { nodes, edges, impactedCount, totalCount, modifiedNames } =
+    useMemo(() => {
+      const graph = buildRealLineageGraph();
+      const { selectedIds, cll } = buildMockCllData(graph);
 
-    const [rawNodes, rawEdges] = toReactFlow(graph, {
-      selectedNodes: selectedIds,
-    });
-    const adapted = adaptForCanvas(rawNodes, rawEdges, cll);
+      const [rawNodes, rawEdges] = toReactFlow(graph, {
+        selectedNodes: selectedIds,
+      });
+      const adapted = adaptForCanvas(rawNodes, rawEdges, cll);
 
-    const impactedCount = adapted.nodes.filter(
-      (n) => (n.data as any)?.isImpacted,
-    ).length;
+      const impactedCount = adapted.nodes.filter(
+        (n) => (n.data as Record<string, unknown>)?.isImpacted,
+      ).length;
 
-    return {
-      ...adapted,
-      impactedCount,
-      totalCount: selectedIds.length,
-      modifiedNames: graph.modifiedSet.map(
-        (id) => graph.nodes[id]?.data.name ?? id,
-      ),
-    };
-  }, []);
+      return {
+        ...adapted,
+        impactedCount,
+        totalCount: selectedIds.length,
+        modifiedNames: graph.modifiedSet.map(
+          (id) => graph.nodes[id]?.data.name ?? id,
+        ),
+      };
+    }, []);
 
   return (
     <Box sx={{ height: "100vh", display: "flex", flexDirection: "column" }}>

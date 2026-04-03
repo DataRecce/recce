@@ -146,15 +146,20 @@ describe("toReactFlow", () => {
   it("should skip column nodes when newCllExperience is true", () => {
     const graph = createMockLineageGraph(["model.test.a"]);
     graph.nodes["model.test.a"].data.data.current!.columns = {
-      id: { name: "id", type: "integer", index: 0 },
-      name: { name: "name", type: "string", index: 1 },
+      id: { name: "id", type: "integer" },
+      name: { name: "name", type: "string" },
     };
 
     const cll = {
       current: {
         nodes: { "model.test.a": { impacted: true } },
         columns: {
-          "model.test.a_id": { name: "id", type: "integer", transformation_type: "passthrough", change_status: undefined },
+          "model.test.a_id": {
+            name: "id",
+            type: "integer",
+            transformation_type: "passthrough",
+            change_status: undefined,
+          },
         },
         parent_map: { "model.test.a": new Set<string>() },
       },
@@ -165,7 +170,9 @@ describe("toReactFlow", () => {
       newCllExperience: true,
     });
 
-    const columnNodes = nodes.filter((n) => n.type === "lineageGraphColumnNode");
+    const columnNodes = nodes.filter(
+      (n) => n.type === "lineageGraphColumnNode",
+    );
     expect(columnNodes).toHaveLength(0);
 
     // Parent node should still be at base height (60)
