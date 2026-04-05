@@ -230,6 +230,9 @@ export function toReactFlow(
     const ancestryColumnIds = new Set<string>();
     const columnIdToModelId = new Map<string, string>();
     for (const [modelId, annotation] of columnAncestry) {
+      // Skip columns whose model isn't in the current graph view
+      if (filterSet && !filterSet.has(modelId)) continue;
+
       const columnKey = `${modelId}_${annotation.column}`;
       ancestryColumnIds.add(columnKey);
       columnIdToModelId.set(columnKey, modelId);
