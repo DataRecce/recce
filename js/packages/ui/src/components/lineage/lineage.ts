@@ -42,12 +42,26 @@ export function toReactFlow(
     cll?: ColumnLineageData;
     existingPositions?: Map<string, { x: number; y: number }>;
     newCllExperience?: boolean;
+    columnAncestry?: Map<
+      string,
+      {
+        column: string;
+        isImpacted: boolean;
+        transformationType?: string;
+        changeStatus?: string;
+      }
+    >;
   },
 ): [LineageGraphNodes[], LineageGraphEdge[], NodeColumnSetMap] {
   const nodes: LineageGraphNodes[] = [];
   const edges: LineageGraphEdge[] = [];
-  const { selectedNodes, cll, existingPositions, newCllExperience } =
-    options ?? {};
+  const {
+    selectedNodes,
+    cll,
+    existingPositions,
+    newCllExperience,
+    columnAncestry,
+  } = options ?? {};
 
   const nodeColumnSetMap: NodeColumnSetMap = {};
 
@@ -208,6 +222,68 @@ export function toReactFlow(
         ...edge.data,
       },
     } as LineageGraphEdge);
+  }
+
+  // Add column ancestry annotation nodes for new CLL experience column mode
+  if (newCllExperience && columnAncestry && cll) {
+    // Build columnId -> modelId lookup and set of ancestry column IDs
+    const ancestryColumnIds = new Set<string>();
+    const columnIdToModelId = new Map<string, string>();
+    for (const [modelId, annotation] of columnAncestry) {
+      const columnKey = `${modelId}_${annotation.column}`;
+      ancestryColumnIds.add(columnKey);
+      columnIdToModelId.set(columnKey, modelId);
+      const col = cll.current.columns[columnKey];
+
+      nodes.push({
+        id: columnKey,
+        position: { x: 10, y: 64 },
+        parentId: modelId,
+        draggable: false,
+        className: "no-track-pii-safe",
+        data: {
+          node: { id: modelId } as never,
+          column: annotation.column,
+          type: col?.type,
+          transformationType: annotation.transformationType,
+          changeStatus: annotation.changeStatus,
+          isHighlighted: true,
+          isFocused: false,
+          isImpacted: annotation.isImpacted,
+        },
+        style: {
+          zIndex: 9999,
+        },
+        type: "lineageGraphColumnNode",
+        targetPosition: Position.Left,
+        sourcePosition: Position.Right,
+      } as LineageGraphColumnNode);
+    }
+
+    // Add edges between ancestry column nodes
+    for (const columnId of ancestryColumnIds) {
+      const parents = cll.current.parent_map[columnId] ?? [];
+      for (const parentColumnId of parents) {
+        if (ancestryColumnIds.has(parentColumnId)) {
+          const sourceModelId = columnIdToModelId.get(parentColumnId);
+          const sourceAnnotation = sourceModelId
+            ? columnAncestry.get(sourceModelId)
+            : undefined;
+          // Amber edge if source column is impacted
+          const isSourceImpacted = sourceAnnotation?.isImpacted ?? false;
+          edges.push({
+            id: `ancestry_${parentColumnId}_${columnId}`,
+            source: parentColumnId,
+            target: columnId,
+            style: {
+              zIndex: 9999,
+              strokeWidth: 2,
+              stroke: isSourceImpacted ? "#fbbf24" : "#9ca3af",
+            },
+          });
+        }
+      }
+    }
   }
 
   // Only run layout if any parent node is missing a position

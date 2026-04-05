@@ -89,6 +89,7 @@ import { LineageViewNotification } from "../notifications";
 import { HSplit, toaster } from "../ui";
 import { ActionControlOss } from "./ActionControlOss";
 import { ColumnLevelLineageControlOss } from "./ColumnLevelLineageControlOss";
+import { computeColumnAncestry } from "./computeColumnAncestry";
 import {
   EXPLORE_MIN_ZOOM,
   edgeTypes,
@@ -509,10 +510,16 @@ export function PrivateLineageView(
         cllCachePatchRef.current = { pending: false };
       }
 
+      const ancestry =
+        newCllExperience && cll && cllInput?.node_id && cllInput?.column
+          ? computeColumnAncestry(cll, cllInput.node_id, cllInput.column)
+          : undefined;
+
       const [nodes, edges, nodeColumnSetMap] = await toReactFlow(lineageGraph, {
         selectedNodes: filteredNodeIds,
         cll: cll,
         newCllExperience,
+        columnAncestry: ancestry,
       });
       setNodes(nodes);
       setEdges(edges);
@@ -791,6 +798,12 @@ export function PrivateLineageView(
       existingPositions = getNodePositions();
     }
 
+    const cllInput2 = newViewOptions.column_level_lineage;
+    const ancestry2 =
+      newCllExperience && cll && cllInput2?.node_id && cllInput2?.column
+        ? computeColumnAncestry(cll, cllInput2.node_id, cllInput2.column)
+        : undefined;
+
     const [newNodes, newEdges, newNodeColumnSetMap] = await toReactFlow(
       lineageGraph,
       {
@@ -798,6 +811,7 @@ export function PrivateLineageView(
         cll,
         existingPositions,
         newCllExperience,
+        columnAncestry: ancestry2,
       },
     );
     setNodes(newNodes);

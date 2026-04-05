@@ -7,6 +7,7 @@ import type { MouseEvent } from "react";
 import { memo, useState } from "react";
 import { DataTypeIcon } from "../../ui/DataTypeIcon";
 import { DIM_FILTER } from "../config/zoomConstants";
+import { getStyleForImpacted } from "../styles";
 
 /**
  * Transformation type for column-level lineage
@@ -41,6 +42,8 @@ export interface LineageColumnNodeData extends Record<string, unknown> {
   isHighlighted?: boolean;
   /** Whether the column is selected/focused */
   isFocused?: boolean;
+  /** Whether this column is impacted (new CLL experience) */
+  isImpacted?: boolean;
 }
 
 /**
@@ -277,6 +280,7 @@ function LineageColumnNodeComponent({
     changeStatus,
     isHighlighted = true,
     isFocused = false,
+    isImpacted = false,
   } = data;
 
   const [isHovered, setIsHovered] = useState(false);
@@ -298,11 +302,13 @@ function LineageColumnNodeComponent({
         padding: "0px 10px",
         border: "1px solid",
         borderColor: "divider",
-        backgroundColor: isFocused
-          ? "action.selected"
-          : isHovered
-            ? "action.hover"
-            : "background.paper",
+        backgroundColor: isImpacted
+          ? getStyleForImpacted(isDark).backgroundColor
+          : isFocused
+            ? "action.selected"
+            : isHovered
+              ? "action.hover"
+              : "background.paper",
         filter: isHighlighted ? "none" : DIM_FILTER,
         cursor: "pointer",
         transition: "background-color 0.15s ease",

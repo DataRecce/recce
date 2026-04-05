@@ -143,7 +143,6 @@ export interface LineageNodeProps {
   newCllExperience?: boolean;
   /** Whether this node is impacted by CLL analysis */
   isImpacted?: boolean;
-
   // === Callbacks ===
   /** Callback when node is clicked */
   onNodeClick?: (nodeId: string) => void;
