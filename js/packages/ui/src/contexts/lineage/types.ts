@@ -69,6 +69,7 @@ export type LineageGraphColumnNode = Node<
     type: string;
     transformationType?: string;
     changeStatus?: "added" | "removed" | "modified";
+    isImpacted?: boolean;
   },
   "lineageGraphColumnNode"
 >;
