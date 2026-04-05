@@ -32,7 +32,6 @@ import {
 import { useThemeColors } from "../../hooks";
 import { deltaPercentageString } from "../../utils";
 import { findByRunType } from "../run";
-import { computeIsImpacted } from "./computeIsImpacted";
 import {
   ActionTag,
   type ChangeCategory,
@@ -299,21 +298,17 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     showContextMenu,
     viewOptions,
     cll,
+    impactedNodeIds,
     showColumnLevelLineage,
     setChangeAnalysisMode,
   } = useLineageViewContextSafe();
   const { isActionAvailable } = useLineageGraphContext();
 
-  // New CLL experience
+  // New CLL experience — use the frozen impacted set from impact analysis
+  // so model backgrounds stay stable when switching to column focus mode.
   const { data: flags } = useRecceServerFlag();
   const newCllExperience = flags?.new_cll_experience ?? false;
-  const isImpacted = newCllExperience
-    ? computeIsImpacted(
-        id,
-        cll ?? null,
-        changeStatus as NodeChangeStatus | undefined,
-      )
-    : false;
+  const isImpacted = newCllExperience ? impactedNodeIds.has(id) : false;
 
   // Computed state
   const changeCategory = cll?.current.nodes[id]

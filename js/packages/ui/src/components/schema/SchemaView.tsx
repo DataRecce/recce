@@ -31,7 +31,7 @@ import {
   EmptyRowsRenderer,
   ScreenshotDataGrid,
 } from "../../primitives";
-import { computeImpactedColumns } from "../lineage/computeImpactedColumns";
+
 import { createDataGridFromData } from "../ui/dataGrid";
 
 export function SchemaLegend() {
@@ -227,11 +227,13 @@ export function PrivateSchemaView(
     new Map(),
   );
 
-  const cllData = lineageViewContext?.cll;
+  // Use the frozen impacted column set from impact analysis so sidebar
+  // highlights stay stable when navigating between models/columns.
   const impactedColumns = useMemo(() => {
-    if (!newCllExperience || !cllData) return undefined;
-    return computeImpactedColumns(cllData);
-  }, [newCllExperience, cllData]);
+    if (!newCllExperience) return undefined;
+    const frozen = lineageViewContext?.impactedColumnIds;
+    return frozen?.size ? frozen : undefined;
+  }, [newCllExperience, lineageViewContext?.impactedColumnIds]);
 
   const { columns, rows } = useMemo(() => {
     const resourceType = current?.resource_type ?? base?.resource_type;

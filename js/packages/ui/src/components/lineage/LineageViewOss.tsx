@@ -90,6 +90,8 @@ import { HSplit, toaster } from "../ui";
 import { ActionControlOss } from "./ActionControlOss";
 import { ColumnLevelLineageControlOss } from "./ColumnLevelLineageControlOss";
 import { computeColumnAncestry } from "./computeColumnAncestry";
+import { computeImpactedColumns } from "./computeImpactedColumns";
+import { computeIsImpacted } from "./computeIsImpacted";
 import {
   EXPLORE_MIN_ZOOM,
   edgeTypes,
@@ -371,6 +373,8 @@ export function PrivateLineageView(
 
   // Guard: auto-trigger impact analysis only once per mount
   const impactAtStartupFired = useRef(false);
+  const impactedNodeIdsRef = useRef<Set<string>>(new Set());
+  const impactedColumnIdsRef = useRef<Set<string>>(new Set());
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only run when lineageGraph changes (initial load/refetch).
   useLayoutEffect(() => {
@@ -525,6 +529,26 @@ export function PrivateLineageView(
       setEdges(edges);
       setNodeColumSetMap(nodeColumnSetMap);
       setCll(cll);
+
+      // Snapshot impacted node IDs during impact analysis so they stay stable
+      // when the user clicks a column (which returns column-scoped CLL data).
+      if (newCllExperience && cll && cllInput?.change_analysis && !cllInput?.column) {
+        const impacted = new Set<string>();
+        for (const nodeId of Object.keys(lineageGraph.nodes)) {
+          const node = lineageGraph.nodes[nodeId];
+          if (
+            computeIsImpacted(
+              nodeId,
+              cll,
+              node.data.changeStatus as Parameters<typeof computeIsImpacted>[2],
+            )
+          ) {
+            impacted.add(nodeId);
+          }
+        }
+        impactedNodeIdsRef.current = impacted;
+        impactedColumnIdsRef.current = computeImpactedColumns(cll);
+      }
 
       // Track lineage view render
       // Note: this call is intentionally duplicated in refreshLayout. The two
@@ -819,6 +843,24 @@ export function PrivateLineageView(
     setNodeColumSetMap(newNodeColumnSetMap);
     setCll(cll);
 
+    // Snapshot impacted node IDs during impact analysis (see layout effect).
+    if (newCllExperience && cll && !cllInput2?.column) {
+      const impacted = new Set<string>();
+      for (const nodeId of Object.keys(lineageGraph.nodes)) {
+        const node = lineageGraph.nodes[nodeId];
+        if (
+          computeIsImpacted(
+            nodeId,
+            cll,
+            node.data.changeStatus as Parameters<typeof computeIsImpacted>[2],
+          )
+        ) {
+          impacted.add(nodeId);
+        }
+      }
+      impactedNodeIdsRef.current = impacted;
+    }
+
     // Track lineage view render
     trackLineageRender(
       newNodes,
@@ -1045,6 +1087,8 @@ export function PrivateLineageView(
     selectParentNodes,
     selectChildNodes,
     deselect,
+    impactedNodeIds: impactedNodeIdsRef.current,
+    impactedColumnIds: impactedColumnIdsRef.current,
     isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
     isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),
     isEdgeHighlighted: (source, target) => {
