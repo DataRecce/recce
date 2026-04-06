@@ -201,7 +201,9 @@ export interface LineageViewRef {
 async function fetchCllAndPatchCache(
   cllInput: CllInput,
   changeAnalysis: boolean,
-  actionGetCll: { mutateAsync: (input: CllInput) => Promise<ColumnLineageData> },
+  actionGetCll: {
+    mutateAsync: (input: CllInput) => Promise<ColumnLineageData>;
+  },
   cllCachePatchRef: React.MutableRefObject<{
     pending: boolean;
     cllData?: ColumnLineageData;

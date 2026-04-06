@@ -370,7 +370,9 @@ function adaptForCanvas(
   rawEdges: LineageGraphEdge[],
   cll: ReturnType<typeof buildMockCllData>["cll"],
 ): { nodes: LineageCanvasProps["nodes"]; edges: LineageCanvasProps["edges"] } {
-  const impactedCols = computeImpactedColumns(cll as unknown as ColumnLineageData);
+  const impactedCols = computeImpactedColumns(
+    cll as unknown as ColumnLineageData,
+  );
   const nodes = rawNodes.map((node: LineageGraphNodes) => {
     if (node.type === "lineageGraphNode") {
       const graphData = node.data as {
@@ -744,7 +746,9 @@ function ColumnAncestryCanvasDemo() {
     });
 
     // Adapt for LineageCanvas: remap node types
-    const impactedCols = computeImpactedColumns(cll as unknown as ColumnLineageData);
+    const impactedCols = computeImpactedColumns(
+      cll as unknown as ColumnLineageData,
+    );
     const nodes = rawNodes.map((node: LineageGraphNodes) => {
       if (node.type === "lineageGraphNode") {
         const graphData = node.data as {

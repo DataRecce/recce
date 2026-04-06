@@ -13,7 +13,14 @@ describe("computeIsImpacted", () => {
         parent_map: {},
       },
     };
-    expect(computeIsImpacted("model.a", cll as any, undefined, computeImpactedColumns(cll as any))).toBe(true);
+    expect(
+      computeIsImpacted(
+        "model.a",
+        cll as any,
+        undefined,
+        computeImpactedColumns(cll as any),
+      ),
+    ).toBe(true);
   });
 
   it("returns false when node columns have no change_status and no parent_map links", () => {
@@ -26,7 +33,14 @@ describe("computeIsImpacted", () => {
         parent_map: {},
       },
     };
-    expect(computeIsImpacted("model.a", cll as any, undefined, computeImpactedColumns(cll as any))).toBe(false);
+    expect(
+      computeIsImpacted(
+        "model.a",
+        cll as any,
+        undefined,
+        computeImpactedColumns(cll as any),
+      ),
+    ).toBe(false);
   });
 
   it("returns true when model has a changeStatus", () => {
@@ -37,7 +51,14 @@ describe("computeIsImpacted", () => {
         parent_map: {},
       },
     };
-    expect(computeIsImpacted("model.a", cll as any, "modified", computeImpactedColumns(cll as any))).toBe(true);
+    expect(
+      computeIsImpacted(
+        "model.a",
+        cll as any,
+        "modified",
+        computeImpactedColumns(cll as any),
+      ),
+    ).toBe(true);
   });
 
   it("returns false when node is not in CLL data at all and no changeStatus", () => {
@@ -48,11 +69,20 @@ describe("computeIsImpacted", () => {
         parent_map: {},
       },
     };
-    expect(computeIsImpacted("model.a", cll as any, undefined, computeImpactedColumns(cll as any))).toBe(false);
+    expect(
+      computeIsImpacted(
+        "model.a",
+        cll as any,
+        undefined,
+        computeImpactedColumns(cll as any),
+      ),
+    ).toBe(false);
   });
 
   it("returns false when cll is null", () => {
-    expect(computeIsImpacted("model.a", null, undefined, new Set<string>())).toBe(false);
+    expect(
+      computeIsImpacted("model.a", null, undefined, new Set<string>()),
+    ).toBe(false);
   });
 
   it("returns true when node not in CLL but has changeStatus", () => {
@@ -63,7 +93,14 @@ describe("computeIsImpacted", () => {
         parent_map: {},
       },
     };
-    expect(computeIsImpacted("model.a", cll as any, "added", computeImpactedColumns(cll as any))).toBe(true);
+    expect(
+      computeIsImpacted(
+        "model.a",
+        cll as any,
+        "added",
+        computeImpactedColumns(cll as any),
+      ),
+    ).toBe(true);
   });
 
   it("returns true when node has a column impacted via parent_map walk", () => {
@@ -82,7 +119,14 @@ describe("computeIsImpacted", () => {
         },
       },
     };
-    expect(computeIsImpacted("model.a", cll as any, undefined, computeImpactedColumns(cll as any))).toBe(true);
+    expect(
+      computeIsImpacted(
+        "model.a",
+        cll as any,
+        undefined,
+        computeImpactedColumns(cll as any),
+      ),
+    ).toBe(true);
   });
 
   it("returns false when node columns have no upstream change in parent_map", () => {
@@ -95,6 +139,13 @@ describe("computeIsImpacted", () => {
         parent_map: {},
       },
     };
-    expect(computeIsImpacted("model.a", cll as any, undefined, computeImpactedColumns(cll as any))).toBe(false);
+    expect(
+      computeIsImpacted(
+        "model.a",
+        cll as any,
+        undefined,
+        computeImpactedColumns(cll as any),
+      ),
+    ).toBe(false);
   });
 });
