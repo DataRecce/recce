@@ -159,6 +159,31 @@ class TestUploadArtifactsToSession(unittest.TestCase):
             )
         self.assertIn("Failed to upload manifest", str(ctx.exception))
 
+    @patch("requests.put")
+    def test_upload_catalog_failure_raises(self, mock_put):
+        """If catalog upload returns non-200/204, raise."""
+        with open(self.catalog_path, "w") as f:
+            json.dump({"nodes": {}}, f)
+
+        cloud = Mock()
+        cloud.get_upload_urls_by_session_id.return_value = {
+            "manifest_url": "https://s3/manifest",
+            "catalog_url": "https://s3/catalog",
+        }
+        manifest_resp = Mock()
+        manifest_resp.status_code = 200
+        catalog_resp = Mock()
+        catalog_resp.status_code = 500
+        catalog_resp.text = "Server error"
+        mock_put.side_effect = [manifest_resp, catalog_resp]
+
+        with self.assertRaises(Exception) as ctx:
+            _upload_artifacts_to_session(
+                cloud, "org1", "proj1", "sess1",
+                self.manifest_path, self.catalog_path, "postgres",
+            )
+        self.assertIn("Failed to upload catalog", str(ctx.exception))
+
 
 class TestMaybeUploadBaseSession(unittest.TestCase):
     """Test _maybe_upload_base_session helper."""
