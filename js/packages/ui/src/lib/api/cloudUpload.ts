@@ -12,7 +12,10 @@ export interface CloudProject {
   name: string;
   display_name?: string;
   slug?: string;
-  base_needs_upload?: boolean;
+}
+
+export interface CloudProjectBaseStatus {
+  base_needs_upload: boolean;
 }
 
 export interface CloudUploadInput {
@@ -26,7 +29,6 @@ export interface CloudUploadOutput {
   session_id?: string;
   session_url?: string;
   message?: string;
-  base_uploaded?: boolean;
 }
 
 export async function listCloudOrganizations(
@@ -48,6 +50,17 @@ export async function listCloudProjects(
     ApiResponse<{ projects: CloudProject[] }>
   >(`/api/cloud/organizations/${orgId}/projects`);
   return response.data.projects;
+}
+
+export async function getCloudProjectBaseStatus(
+  client: ApiClient,
+  orgId: string,
+  projectId: string,
+): Promise<CloudProjectBaseStatus> {
+  const response = await client.get<never, ApiResponse<CloudProjectBaseStatus>>(
+    `/api/cloud/organizations/${orgId}/projects/${projectId}/base-status`,
+  );
+  return response.data;
 }
 
 export async function uploadToCloud(

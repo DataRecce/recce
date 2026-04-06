@@ -23,6 +23,7 @@ import { useApiConfig } from "../../hooks/useApiConfig";
 import {
   type CloudOrganization,
   type CloudProject,
+  getCloudProjectBaseStatus,
   listCloudOrganizations,
   listCloudProjects,
   uploadToCloud,
@@ -53,7 +54,7 @@ export function CloudUploadDialogOss({
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(false);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [sessionUrl, setSessionUrl] = useState("");
-  const [baseUploaded, setBaseUploaded] = useState(false);
+  const [baseNeedsUpload, setBaseNeedsUpload] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   // Load organizations when dialog opens
@@ -92,6 +93,17 @@ export function CloudUploadDialogOss({
       .finally(() => setIsLoadingProjects(false));
   }, [selectedOrg, apiClient]);
 
+  // Check base status when project changes
+  useEffect(() => {
+    if (!selectedOrg || !selectedProject) {
+      setBaseNeedsUpload(false);
+      return;
+    }
+    getCloudProjectBaseStatus(apiClient, selectedOrg, selectedProject)
+      .then((status) => setBaseNeedsUpload(status.base_needs_upload))
+      .catch(() => setBaseNeedsUpload(false));
+  }, [selectedOrg, selectedProject, apiClient]);
+
   const handleUpload = async () => {
     if (!selectedOrg || !selectedProject || !sessionName.trim()) return;
 
@@ -104,7 +116,6 @@ export function CloudUploadDialogOss({
       });
       if (result.status === "success" && result.session_url) {
         setSessionUrl(result.session_url);
-        setBaseUploaded(result.base_uploaded ?? false);
         setDialogState("success");
         window.open(result.session_url, "_blank");
       } else {
@@ -123,7 +134,6 @@ export function CloudUploadDialogOss({
   const selectedProjectData = projects.find(
     (p) => String(p.id) === selectedProject,
   );
-  const baseNeedsUpload = selectedProjectData?.base_needs_upload ?? false;
   const projectPageUrl =
     selectedOrgData && selectedProjectData
       ? `${PUBLIC_CLOUD_WEB_URL}/${selectedOrgData.name}/${selectedProjectData.name}`
@@ -257,7 +267,7 @@ export function CloudUploadDialogOss({
               sx={{ color: "text.secondary", textAlign: "center" }}
             >
               Your artifacts have been uploaded to Recce Cloud.
-              {baseUploaded &&
+              {baseNeedsUpload &&
                 " Base (production) artifacts were also uploaded."}
             </Typography>
             <Typography

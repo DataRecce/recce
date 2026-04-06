@@ -1087,11 +1087,7 @@ async def list_cloud_organizations():
 
 @app.get("/api/cloud/organizations/{org_id}/projects")
 async def list_cloud_projects(org_id: str):
-    """List all projects in an organization.
-
-    Each project includes a `base_needs_upload` flag indicating whether
-    the base session exists but has no artifacts uploaded yet.
-    """
+    """List all projects in an organization."""
     from recce.util.recce_cloud import RecceCloud
 
     context = default_context()
@@ -1101,10 +1097,24 @@ async def list_cloud_projects(org_id: str):
 
     cloud = RecceCloud(user_token)
     try:
-        projects = cloud.list_projects(org_id)
-        for project in projects:
-            project["base_needs_upload"] = _check_base_needs_upload(cloud, org_id, str(project.get("id", "")))
-        return {"projects": projects}
+        return {"projects": cloud.list_projects(org_id)}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/cloud/organizations/{org_id}/projects/{project_id}/base-status")
+async def get_cloud_project_base_status(org_id: str, project_id: str):
+    """Check if the project's base session needs artifact upload."""
+    from recce.util.recce_cloud import RecceCloud
+
+    context = default_context()
+    user_token = get_recce_api_token() or context.state_loader.token
+    if not user_token:
+        raise HTTPException(status_code=401, detail="Not authenticated with Recce Cloud")
+
+    cloud = RecceCloud(user_token)
+    try:
+        return {"base_needs_upload": _check_base_needs_upload(cloud, org_id, project_id)}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -1132,7 +1142,6 @@ class CloudUploadOutput(BaseModel):
     session_id: Optional[str] = None
     session_url: Optional[str] = None
     message: Optional[str] = None
-    base_uploaded: bool = False
 
 
 def _upload_artifacts_to_session(
@@ -1238,8 +1247,7 @@ async def upload_to_cloud(input: CloudUploadInput):
 
     try:
         # Upload base artifacts if the project's base session lacks metadata.
-        # Base sessions don't need upload_completed — no post-processing is triggered.
-        base_uploaded = _maybe_upload_base_session(
+        _maybe_upload_base_session(
             cloud, input.org_id, input.project_id, base_target, adapter_type,
         )
 
@@ -1262,7 +1270,6 @@ async def upload_to_cloud(input: CloudUploadInput):
             status="success",
             session_id=session_id,
             session_url=session_url,
-            base_uploaded=base_uploaded,
         )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
