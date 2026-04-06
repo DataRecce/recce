@@ -16,6 +16,7 @@ export function computeIsImpacted(
   nodeId: string,
   cll: ColumnLineageData | null,
   changeStatus: NodeChangeStatus | undefined,
+  impactedColumns?: Set<string>,
 ): boolean {
   // Model-level change
   if (changeStatus) return true;
@@ -26,9 +27,9 @@ export function computeIsImpacted(
   if (cllNode?.impacted) return true;
 
   // Check if any column on this node is impacted via parent_map walk
-  const impactedColumns = computeImpactedColumns(cll);
+  const cols = impactedColumns ?? computeImpactedColumns(cll);
   const prefix = `${nodeId}_`;
-  for (const colId of impactedColumns) {
+  for (const colId of cols) {
     if (colId.startsWith(prefix)) return true;
   }
 

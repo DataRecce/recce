@@ -16,14 +16,19 @@ export interface ColumnAnnotation {
  * chain. A model can have multiple ancestor columns (e.g., a downstream
  * column may depend on several columns from the same upstream model).
  * The selected column itself is included.
+ *
+ * @param impactedColumns - Pre-computed set of impacted column IDs. If omitted,
+ *   computed internally via computeImpactedColumns. Pass this when you already
+ *   have the set to avoid redundant DFS walks over the same CLL data.
  */
 export function computeColumnAncestry(
   cll: ColumnLineageData,
   nodeId: string,
   column: string,
+  impactedColumns?: Set<string>,
 ): Map<string, ColumnAnnotation[]> {
   const { parent_map, columns } = cll.current;
-  const impactedColumns = computeImpactedColumns(cll);
+  const impacted = impactedColumns ?? computeImpactedColumns(cll);
 
   const result = new Map<string, ColumnAnnotation[]>();
   const visited = new Set<string>();
@@ -40,7 +45,7 @@ export function computeColumnAncestry(
         const annotations = result.get(modelId) ?? [];
         annotations.push({
           column: col.name,
-          isImpacted: impactedColumns.has(columnId),
+          isImpacted: impacted.has(columnId),
           transformationType: col.transformation_type,
           changeStatus: col.change_status as ColumnAnnotation["changeStatus"],
         });

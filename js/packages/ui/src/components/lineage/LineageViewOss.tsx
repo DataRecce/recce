@@ -26,6 +26,7 @@ import {
 import {
   isLineageGraphColumnNode,
   isLineageGraphNode,
+  type LineageGraph,
   type LineageGraphColumnNode,
   type LineageGraphEdge,
   type LineageGraphNode,
@@ -92,6 +93,7 @@ import { ColumnLevelLineageControlOss } from "./ColumnLevelLineageControlOss";
 import { computeColumnAncestry } from "./computeColumnAncestry";
 import { computeImpactedColumns } from "./computeImpactedColumns";
 import { computeIsImpacted } from "./computeIsImpacted";
+import type { NodeChangeStatus } from "./nodes/LineageNode";
 import {
   EXPLORE_MIN_ZOOM,
   edgeTypes,
@@ -123,6 +125,51 @@ import {
   LineageViewNoChanges,
 } from "./states";
 import { LineageViewTopBarOss as LineageViewTopBar } from "./topbar/LineageViewTopBarOss";
+
+/**
+ * Compute impacted node IDs and column IDs in a single pass over the CLL data.
+ *
+ * The expensive part is `computeImpactedColumns` (DFS over parent_map), so we
+ * run it once and thread the result into per-node checks.
+ */
+function computeImpactedSets(
+  lineageGraph: LineageGraph,
+  cll: ColumnLineageData,
+): { nodeIds: Set<string>; columnIds: Set<string> } {
+  const columnIds = computeImpactedColumns(cll);
+  const nodeIds = new Set<string>();
+  for (const nodeId of Object.keys(lineageGraph.nodes)) {
+    const node = lineageGraph.nodes[nodeId];
+    if (
+      computeIsImpacted(
+        nodeId,
+        cll,
+        node.data.changeStatus as NodeChangeStatus,
+        columnIds,
+      )
+    ) {
+      nodeIds.add(nodeId);
+    }
+  }
+  return { nodeIds, columnIds };
+}
+
+/**
+ * Compute column ancestry if we're in column mode with valid input.
+ *
+ * @param impactedColumns - Pre-computed impacted column set. Avoids a
+ *   redundant DFS when the caller already has it (e.g. from computeImpactedSets).
+ */
+function maybeComputeAncestry(
+  newCllExperience: boolean,
+  cll: ColumnLineageData | undefined,
+  cllInput: CllInput | undefined,
+  impactedColumns?: Set<string>,
+) {
+  return newCllExperience && cll && cllInput?.node_id && cllInput?.column
+    ? computeColumnAncestry(cll, cllInput.node_id, cllInput.column, impactedColumns)
+    : undefined;
+}
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -314,8 +361,16 @@ export function PrivateLineageView(
   }, [reactFlow]);
 
   /**
-   * Highlighted nodes: the nodes that are highlighted. The behavior of highlighting depends on the select mode
+   * Highlighted nodes — controls which nodes are fully opaque vs dimmed.
+   * "Is this node part of the current CLL response / selection at all?"
    *
+   * This is distinct from impactedNodeIds, which answers a narrower question:
+   * "Does this node trace upstream to a *changed* column?" A node can be
+   * highlighted (it participates in the CLL graph) but not impacted (none of
+   * its columns have upstream changes). impactedNodeIds drives the amber
+   * border; highlighted drives the opacity.
+   *
+   * Behavior by mode:
    * - Default: nodes in the impact radius, or all nodes if the impact radius is not available
    * - Focus: upstream/downstream nodes of the focused node
    * - Multi-select: nodes in the impact radius, or all nodes if the impact radius is not available
@@ -514,40 +569,29 @@ export function PrivateLineageView(
         cllCachePatchRef.current = { pending: false };
       }
 
-      const ancestry =
-        newCllExperience && cll && cllInput?.node_id && cllInput?.column
-          ? computeColumnAncestry(cll, cllInput.node_id, cllInput.column)
-          : undefined;
+      // Compute impacted sets once; thread into ancestry to avoid redundant DFS.
+      const impacted = newCllExperience && cll
+        ? computeImpactedSets(lineageGraph, cll)
+        : undefined;
 
       const [nodes, edges, nodeColumnSetMap] = await toReactFlow(lineageGraph, {
         selectedNodes: filteredNodeIds,
         cll: cll,
         newCllExperience,
-        columnAncestry: ancestry,
+        columnAncestry: maybeComputeAncestry(
+          newCllExperience, cll, cllInput, impacted?.columnIds,
+        ),
       });
       setNodes(nodes);
       setEdges(edges);
       setNodeColumSetMap(nodeColumnSetMap);
       setCll(cll);
 
-      // Snapshot impacted node IDs during impact analysis so they stay stable
+      // Snapshot impacted sets during impact analysis so they stay stable
       // when the user clicks a column (which returns column-scoped CLL data).
-      if (newCllExperience && cll && cllInput?.change_analysis && !cllInput?.column) {
-        const impacted = new Set<string>();
-        for (const nodeId of Object.keys(lineageGraph.nodes)) {
-          const node = lineageGraph.nodes[nodeId];
-          if (
-            computeIsImpacted(
-              nodeId,
-              cll,
-              node.data.changeStatus as Parameters<typeof computeIsImpacted>[2],
-            )
-          ) {
-            impacted.add(nodeId);
-          }
-        }
-        impactedNodeIdsRef.current = impacted;
-        impactedColumnIdsRef.current = computeImpactedColumns(cll);
+      if (impacted && cllInput?.change_analysis && !cllInput?.column) {
+        impactedNodeIdsRef.current = impacted.nodeIds;
+        impactedColumnIdsRef.current = impacted.columnIds;
       }
 
       // Track lineage view render
@@ -823,10 +867,10 @@ export function PrivateLineageView(
     }
 
     const cllInput2 = newViewOptions.column_level_lineage;
-    const ancestry2 =
-      newCllExperience && cll && cllInput2?.node_id && cllInput2?.column
-        ? computeColumnAncestry(cll, cllInput2.node_id, cllInput2.column)
-        : undefined;
+
+    const impacted = newCllExperience && cll
+      ? computeImpactedSets(lineageGraph, cll)
+      : undefined;
 
     const [newNodes, newEdges, newNodeColumnSetMap] = await toReactFlow(
       lineageGraph,
@@ -835,7 +879,9 @@ export function PrivateLineageView(
         cll,
         existingPositions,
         newCllExperience,
-        columnAncestry: ancestry2,
+        columnAncestry: maybeComputeAncestry(
+          newCllExperience, cll, cllInput2, impacted?.columnIds,
+        ),
       },
     );
     setNodes(newNodes);
@@ -844,21 +890,8 @@ export function PrivateLineageView(
     setCll(cll);
 
     // Snapshot impacted node IDs during impact analysis (see layout effect).
-    if (newCllExperience && cll && !cllInput2?.column) {
-      const impacted = new Set<string>();
-      for (const nodeId of Object.keys(lineageGraph.nodes)) {
-        const node = lineageGraph.nodes[nodeId];
-        if (
-          computeIsImpacted(
-            nodeId,
-            cll,
-            node.data.changeStatus as Parameters<typeof computeIsImpacted>[2],
-          )
-        ) {
-          impacted.add(nodeId);
-        }
-      }
-      impactedNodeIdsRef.current = impacted;
+    if (impacted && !cllInput2?.column) {
+      impactedNodeIdsRef.current = impacted.nodeIds;
     }
 
     // Track lineage view render
