@@ -267,12 +267,10 @@ export function CloudUploadDialogOss({
               sx={{ color: "text.secondary", textAlign: "center" }}
             >
               Your artifacts have been uploaded to Recce Cloud.
-              {baseNeedsUpload &&
-                " Base (production) artifacts were also uploaded."}
             </Typography>
             <Typography
               variant="caption"
-              sx={{ color: "text.disabled", textAlign: "center" }}
+              sx={{ color: "text.secondary", textAlign: "center" }}
             >
               Recce Cloud Web has been opened in another tab.
               <br />
