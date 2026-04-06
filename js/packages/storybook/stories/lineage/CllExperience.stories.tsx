@@ -6,6 +6,7 @@ import type {
 } from "@datarecce/ui/advanced";
 import {
   buildLineageGraph,
+  computeImpactedColumns,
   computeIsImpacted,
   LineageCanvas,
   selectDownstream,
@@ -369,6 +370,7 @@ function adaptForCanvas(
   rawEdges: LineageGraphEdge[],
   cll: ReturnType<typeof buildMockCllData>["cll"],
 ): { nodes: LineageCanvasProps["nodes"]; edges: LineageCanvasProps["edges"] } {
+  const impactedCols = computeImpactedColumns(cll as unknown as ColumnLineageData);
   const nodes = rawNodes.map((node: LineageGraphNodes) => {
     if (node.type === "lineageGraphNode") {
       const graphData = node.data as {
@@ -390,6 +392,7 @@ function adaptForCanvas(
             node.id,
             cll as unknown as ColumnLineageData,
             graphData.changeStatus as NodeChangeStatus | undefined,
+            impactedCols,
           ),
         },
       };
@@ -741,6 +744,7 @@ function ColumnAncestryCanvasDemo() {
     });
 
     // Adapt for LineageCanvas: remap node types
+    const impactedCols = computeImpactedColumns(cll as unknown as ColumnLineageData);
     const nodes = rawNodes.map((node: LineageGraphNodes) => {
       if (node.type === "lineageGraphNode") {
         const graphData = node.data as {
@@ -762,6 +766,7 @@ function ColumnAncestryCanvasDemo() {
               node.id,
               cll as unknown as ColumnLineageData,
               graphData.changeStatus as NodeChangeStatus | undefined,
+              impactedCols,
             ),
           },
         };

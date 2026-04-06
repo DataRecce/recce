@@ -260,6 +260,8 @@ export interface LineageViewContextType {
   isNodeShowingChangeAnalysis: (nodeId: string) => boolean;
   /** Whether impact radius (change analysis) mode is active */
   changeAnalysisMode: boolean;
+  /** Whether the new CLL experience flag is enabled on the server */
+  newCllExperience: boolean;
   // TODO: Move isImpacted to be a per-model state on node data instead of
   // a lookup set, so impact status is part of the graph model rather than
   // a side-channel computed separately.

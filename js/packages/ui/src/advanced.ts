@@ -64,6 +64,7 @@ export {
  * 3. The model itself has a non-null changeStatus (added/removed/modified)
  */
 export { type ColumnAnnotation } from "./components/lineage/computeColumnAncestry";
+export { computeImpactedColumns } from "./components/lineage/computeImpactedColumns";
 export { computeIsImpacted } from "./components/lineage/computeIsImpacted";
 /**
  * Zoom and display constants for the lineage view.

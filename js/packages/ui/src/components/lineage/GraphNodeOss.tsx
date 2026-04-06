@@ -27,7 +27,6 @@ import { isRowCountDiffRun, type RowCountDiff } from "../../api";
 import {
   useLineageGraphContext,
   useLineageViewContextSafe,
-  useRecceServerFlag,
 } from "../../contexts";
 import { useThemeColors } from "../../hooks";
 import { deltaPercentageString } from "../../utils";
@@ -299,15 +298,11 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     viewOptions,
     cll,
     impactedNodeIds,
+    newCllExperience,
     showColumnLevelLineage,
     setChangeAnalysisMode,
   } = useLineageViewContextSafe();
   const { isActionAvailable } = useLineageGraphContext();
-
-  // New CLL experience — use the frozen impacted set from impact analysis
-  // so model backgrounds stay stable when switching to column focus mode.
-  const { data: flags } = useRecceServerFlag();
-  const newCllExperience = flags?.new_cll_experience ?? false;
   const isImpacted = newCllExperience ? impactedNodeIds.has(id) : false;
 
   // Computed state

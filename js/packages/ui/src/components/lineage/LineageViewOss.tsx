@@ -171,7 +171,7 @@ function maybeComputeAncestry(
         cll,
         cllInput.node_id,
         cllInput.column,
-        impactedColumns,
+        impactedColumns ?? new Set<string>(),
       )
     : undefined;
 }
@@ -189,6 +189,47 @@ export interface LineageViewProps {
 
 export interface LineageViewRef {
   copyToClipboard: () => void;
+}
+
+/**
+ * Fetch CLL data and patch the lineage diff cache with change data.
+ *
+ * This is the shared core of CLL fetching used by both the initial layout
+ * effect and refreshLayout. The caller provides the resolved changeAnalysis
+ * value (from ref or state) so this function has no closure concerns.
+ */
+async function fetchCllAndPatchCache(
+  cllInput: CllInput,
+  changeAnalysis: boolean,
+  actionGetCll: { mutateAsync: (input: CllInput) => Promise<ColumnLineageData> },
+  cllCachePatchRef: React.MutableRefObject<{
+    pending: boolean;
+    cllData?: ColumnLineageData;
+  }>,
+  queryClient: ReturnType<typeof useQueryClient>,
+): Promise<ColumnLineageData> {
+  const cllApiInput: CllInput = {
+    ...cllInput,
+    change_analysis: cllInput.change_analysis ?? changeAnalysis,
+  };
+  const cll = await actionGetCll.mutateAsync(cllApiInput);
+  if (cllApiInput.change_analysis && cll) {
+    cllCachePatchRef.current = { pending: true, cllData: cll };
+    queryClient.setQueryData(
+      cacheKeys.lineage(),
+      (old: ServerInfoResult | undefined) => {
+        if (!old) return old;
+        return {
+          ...old,
+          lineage: {
+            ...old.lineage,
+            diff: patchLineageDiffFromCll(old.lineage.diff, cll),
+          },
+        };
+      },
+    );
+  }
+  return cll;
 }
 
 export function PrivateLineageView(
@@ -516,34 +557,14 @@ export function PrivateLineageView(
           cll = cllCachePatchRef.current.cllData;
           cllCachePatchRef.current = { pending: false };
         } else {
-          const cllApiInput: CllInput = {
-            ...cllInput,
-            change_analysis:
-              cllInput.change_analysis ?? changeAnalysisModeRef.current,
-          };
           try {
-            cll = await actionGetCll.mutateAsync(cllApiInput);
-            // Patch the lineage diff cache with change data from CLL
-            const cllResult = cll;
-            if (cllApiInput.change_analysis && cllResult) {
-              cllCachePatchRef.current = { pending: true, cllData: cllResult };
-              queryClient.setQueryData(
-                cacheKeys.lineage(),
-                (old: ServerInfoResult | undefined) => {
-                  if (!old) return old;
-                  return {
-                    ...old,
-                    lineage: {
-                      ...old.lineage,
-                      diff: patchLineageDiffFromCll(
-                        old.lineage.diff,
-                        cllResult,
-                      ),
-                    },
-                  };
-                },
-              );
-            }
+            cll = await fetchCllAndPatchCache(
+              cllInput,
+              changeAnalysisModeRef.current,
+              actionGetCll,
+              cllCachePatchRef,
+              queryClient,
+            );
           } catch (e) {
             if (autoTriggered) {
               // Roll back the CLL state so the UI isn't stuck in a
@@ -604,10 +625,6 @@ export function PrivateLineageView(
       }
 
       // Track lineage view render
-      // Note: this call is intentionally duplicated in refreshLayout. The two
-      // sites read changeAnalysisMode differently (ref here vs. state there)
-      // due to the useLayoutEffect closure, so they can't share a helper
-      // without reintroducing stale-closure risks.
       trackLineageRender(
         nodes,
         viewOptions.view_mode ?? "changed_models",
@@ -824,34 +841,14 @@ export function PrivateLineageView(
 
     let cll: ColumnLineageData | undefined;
     if (newViewOptions.column_level_lineage) {
-      const cllApiInput: CllInput = {
-        ...newViewOptions.column_level_lineage,
-        change_analysis:
-          newViewOptions.column_level_lineage.change_analysis ??
-          changeAnalysisMode,
-      };
       try {
-        cll = await actionGetCll.mutateAsync(cllApiInput);
-        // Patch the lineage diff cache with change data from CLL.
-        // Also set the guard ref so the useLayoutEffect that re-fires
-        // (due to lineageGraph recomputing) skips the redundant CLL call.
-        const cllResult = cll;
-        if (cllApiInput.change_analysis && cllResult) {
-          cllCachePatchRef.current = { pending: true, cllData: cllResult };
-          queryClient.setQueryData(
-            cacheKeys.lineage(),
-            (old: ServerInfoResult | undefined) => {
-              if (!old) return old;
-              return {
-                ...old,
-                lineage: {
-                  ...old.lineage,
-                  diff: patchLineageDiffFromCll(old.lineage.diff, cllResult),
-                },
-              };
-            },
-          );
-        }
+        cll = await fetchCllAndPatchCache(
+          newViewOptions.column_level_lineage,
+          changeAnalysisMode,
+          actionGetCll,
+          cllCachePatchRef,
+          queryClient,
+        );
       } catch (e) {
         if (e instanceof HttpError) {
           toaster.create({
@@ -1162,6 +1159,7 @@ export function PrivateLineageView(
       return !!node?.data.changeStatus;
     },
     changeAnalysisMode,
+    newCllExperience,
     setChangeAnalysisMode,
     getNodeAction: (nodeId: string) => {
       return multiNodeAction.actionState.actions[nodeId];

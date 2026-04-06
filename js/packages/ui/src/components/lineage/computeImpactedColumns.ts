@@ -11,16 +11,14 @@ import type { ColumnLineageData } from "../../api";
 export function computeImpactedColumns(cll: ColumnLineageData): Set<string> {
   const { columns, parent_map } = cll.current;
 
-  const memo = new Map<string, boolean>();
+  const memo = new Map<string, boolean | "pending">();
 
-  function isImpacted(columnId: string, visited: Set<string>): boolean {
+  function isImpacted(columnId: string): boolean {
     const cached = memo.get(columnId);
+    if (cached === "pending") return false; // cycle
     if (cached !== undefined) return cached;
-    if (visited.has(columnId)) {
-      memo.set(columnId, false);
-      return false; // cycle
-    }
-    visited.add(columnId);
+
+    memo.set(columnId, "pending");
 
     // Directly changed
     const col = columns[columnId];
@@ -32,7 +30,7 @@ export function computeImpactedColumns(cll: ColumnLineageData): Set<string> {
     // Check upstream
     const parents = parent_map[columnId] ?? [];
     for (const parent of parents) {
-      if (isImpacted(parent, visited)) {
+      if (isImpacted(parent)) {
         memo.set(columnId, true);
         return true;
       }
@@ -44,7 +42,7 @@ export function computeImpactedColumns(cll: ColumnLineageData): Set<string> {
 
   const impacted = new Set<string>();
   for (const columnId of Object.keys(columns)) {
-    if (isImpacted(columnId, new Set())) {
+    if (isImpacted(columnId)) {
       impacted.add(columnId);
     }
   }

@@ -395,18 +395,7 @@ function LineageNodeComponent({
     return primaryText;
   })();
 
-  const iconColor = (() => {
-    const primaryText = isDark ? "#ffffff" : "#000000";
-    const invertedText = isDark ? "#000000" : "#ffffff";
-
-    if (selectMode === "selecting") {
-      return isSelected ? invertedText : primaryText;
-    }
-    if (selectMode === "action_result") {
-      return hasAction && !isSelected ? invertedText : primaryText;
-    }
-    return primaryText;
-  })();
+  const iconColor = titleColor;
 
   const changeStatusIconColor = (() => {
     const primaryText = isDark ? "#ffffff" : "#000000";

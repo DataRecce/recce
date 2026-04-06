@@ -1,5 +1,4 @@
 import type { ColumnLineageData } from "../../api";
-import { computeImpactedColumns } from "./computeImpactedColumns";
 
 export interface ColumnAnnotation {
   column: string;
@@ -17,18 +16,16 @@ export interface ColumnAnnotation {
  * column may depend on several columns from the same upstream model).
  * The selected column itself is included.
  *
- * @param impactedColumns - Pre-computed set of impacted column IDs. If omitted,
- *   computed internally via computeImpactedColumns. Pass this when you already
- *   have the set to avoid redundant DFS walks over the same CLL data.
+ * @param impactedColumns - Pre-computed set of impacted column IDs.
  */
 export function computeColumnAncestry(
   cll: ColumnLineageData,
   nodeId: string,
   column: string,
-  impactedColumns?: Set<string>,
+  impactedColumns: Set<string>,
 ): Map<string, ColumnAnnotation[]> {
   const { parent_map, columns } = cll.current;
-  const impacted = impactedColumns ?? computeImpactedColumns(cll);
+  const impacted = impactedColumns;
 
   const result = new Map<string, ColumnAnnotation[]>();
   const visited = new Set<string>();
@@ -39,18 +36,15 @@ export function computeColumnAncestry(
 
     const col = columns[columnId];
     if (col) {
-      const suffix = `_${col.name}`;
-      if (columnId.endsWith(suffix)) {
-        const modelId = columnId.slice(0, -suffix.length);
-        const annotations = result.get(modelId) ?? [];
-        annotations.push({
-          column: col.name,
-          isImpacted: impacted.has(columnId),
-          transformationType: col.transformation_type,
-          changeStatus: col.change_status as ColumnAnnotation["changeStatus"],
-        });
-        result.set(modelId, annotations);
-      }
+      const modelId = columnId.slice(0, -(col.name.length + 1));
+      const annotations = result.get(modelId) ?? [];
+      annotations.push({
+        column: col.name,
+        isImpacted: impacted.has(columnId),
+        transformationType: col.transformation_type,
+        changeStatus: col.change_status as ColumnAnnotation["changeStatus"],
+      });
+      result.set(modelId, annotations);
     }
 
     // Walk upstream
