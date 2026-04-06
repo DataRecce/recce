@@ -8,14 +8,17 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import FormControl from "@mui/material/FormControl";
+import IconButton from "@mui/material/IconButton";
 import InputLabel from "@mui/material/InputLabel";
+import Link from "@mui/material/Link";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useEffect, useState } from "react";
-import { PiCheckCircle } from "react-icons/pi";
+import { LuExternalLink } from "react-icons/lu";
+import { PiCheckCircle, PiX } from "react-icons/pi";
 import { useApiConfig } from "../../hooks/useApiConfig";
 import {
   type CloudOrganization,
@@ -24,6 +27,7 @@ import {
   listCloudProjects,
   uploadToCloud,
 } from "../../lib/api/cloudUpload";
+import { PUBLIC_CLOUD_WEB_URL } from "../../lib/const";
 
 type DialogState = "select" | "uploading" | "success" | "error";
 
@@ -102,6 +106,7 @@ export function CloudUploadDialogOss({
         setSessionUrl(result.session_url);
         setBaseUploaded(result.base_uploaded ?? false);
         setDialogState("success");
+        window.open(result.session_url, "_blank");
       } else {
         setErrorMessage(result.message || "Upload failed");
         setDialogState("error");
@@ -114,10 +119,15 @@ export function CloudUploadDialogOss({
     }
   };
 
+  const selectedOrgData = orgs.find((o) => String(o.id) === selectedOrg);
   const selectedProjectData = projects.find(
     (p) => String(p.id) === selectedProject,
   );
   const baseNeedsUpload = selectedProjectData?.base_needs_upload ?? false;
+  const projectPageUrl =
+    selectedOrgData && selectedProjectData
+      ? `${PUBLIC_CLOUD_WEB_URL}/${selectedOrgData.name}/${selectedProjectData.name}`
+      : undefined;
 
   const canUpload =
     selectedOrg && selectedProject && sessionName.trim() && !isLoadingOrgs;
@@ -225,41 +235,64 @@ export function CloudUploadDialogOss({
       )}
 
       {dialogState === "success" && (
-        <>
-          <DialogContent>
-            <Stack spacing={2} alignItems="center" sx={{ py: 3 }}>
-              <Box
-                component={PiCheckCircle}
-                sx={{ fontSize: 48, color: "success.main" }}
-              />
-              <Typography sx={{ fontWeight: 500, fontSize: "1.1rem" }}>
-                Upload Complete
-              </Typography>
-              <Typography sx={{ color: "text.secondary", textAlign: "center" }}>
-                Your artifacts have been uploaded to Recce Cloud.
-              </Typography>
-              {baseUploaded && (
-                <Typography
-                  variant="body2"
-                  sx={{ color: "text.secondary", textAlign: "center" }}
-                >
-                  Base (production) artifacts were also uploaded.
-                </Typography>
-              )}
-            </Stack>
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 3 }}>
-            <Button
-              fullWidth
-              variant="contained"
-              color="primary"
-              onClick={() => window.open(sessionUrl, "_blank")}
-              sx={{ borderRadius: 2, fontWeight: 500 }}
+        <DialogContent sx={{ position: "relative" }}>
+          <IconButton
+            size="small"
+            onClick={onClose}
+            sx={{ position: "absolute", top: 8, right: 8 }}
+            aria-label="Close"
+          >
+            <PiX />
+          </IconButton>
+          <Stack spacing={1.5} alignItems="center" sx={{ pt: 3, pb: 1 }}>
+            <Box
+              component={PiCheckCircle}
+              sx={{ fontSize: 40, color: "success.main" }}
+            />
+            <Typography sx={{ fontWeight: 600, fontSize: "1.1rem" }}>
+              Upload Complete
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{ color: "text.secondary", textAlign: "center" }}
             >
-              Go to Cloud Session
-            </Button>
-          </DialogActions>
-        </>
+              Your artifacts have been uploaded to Recce Cloud.
+              {baseUploaded &&
+                " Base (production) artifacts were also uploaded."}
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{ color: "text.disabled", textAlign: "center" }}
+            >
+              Recce Cloud Web has been opened in another tab.
+              <br />
+              If you don&apos;t see it, click{" "}
+              <Link
+                href={sessionUrl}
+                target="_blank"
+                sx={{ fontSize: "inherit" }}
+              >
+                open instance directly
+              </Link>
+              .
+            </Typography>
+            {projectPageUrl && (
+              <Link
+                href={projectPageUrl}
+                target="_blank"
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  fontSize: "0.8125rem",
+                  mt: 1,
+                }}
+              >
+                Go to project page <LuExternalLink size={12} />
+              </Link>
+            )}
+          </Stack>
+        </DialogContent>
       )}
 
       {dialogState === "error" && (

@@ -1256,7 +1256,7 @@ async def upload_to_cloud(input: CloudUploadInput):
             curr_manifest, curr_catalog, adapter_type,
         )
 
-        session_url = f"{RECCE_CLOUD_BASE_URL}/session/{session_id}"
+        session_url = f"{RECCE_CLOUD_BASE_URL}/launch/{session_id}"
 
         return CloudUploadOutput(
             status="success",
