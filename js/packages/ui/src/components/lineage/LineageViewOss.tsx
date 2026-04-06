@@ -93,7 +93,6 @@ import { ColumnLevelLineageControlOss } from "./ColumnLevelLineageControlOss";
 import { computeColumnAncestry } from "./computeColumnAncestry";
 import { computeImpactedColumns } from "./computeImpactedColumns";
 import { computeIsImpacted } from "./computeIsImpacted";
-import type { NodeChangeStatus } from "./nodes/LineageNode";
 import {
   EXPLORE_MIN_ZOOM,
   edgeTypes,
@@ -116,6 +115,7 @@ import {
 import { LineageLegend } from "./legend";
 import { toReactFlow } from "./lineage";
 import { NodeViewOss as NodeView } from "./NodeViewOss";
+import type { NodeChangeStatus } from "./nodes/LineageNode";
 import { patchLineageDiffFromCll } from "./patchLineageDiffFromCll";
 import SetupConnectionBanner from "./SetupConnectionBannerOss";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
@@ -167,7 +167,12 @@ function maybeComputeAncestry(
   impactedColumns?: Set<string>,
 ) {
   return newCllExperience && cll && cllInput?.node_id && cllInput?.column
-    ? computeColumnAncestry(cll, cllInput.node_id, cllInput.column, impactedColumns)
+    ? computeColumnAncestry(
+        cll,
+        cllInput.node_id,
+        cllInput.column,
+        impactedColumns,
+      )
     : undefined;
 }
 
@@ -570,16 +575,20 @@ export function PrivateLineageView(
       }
 
       // Compute impacted sets once; thread into ancestry to avoid redundant DFS.
-      const impacted = newCllExperience && cll
-        ? computeImpactedSets(lineageGraph, cll)
-        : undefined;
+      const impacted =
+        newCllExperience && cll
+          ? computeImpactedSets(lineageGraph, cll)
+          : undefined;
 
       const [nodes, edges, nodeColumnSetMap] = await toReactFlow(lineageGraph, {
         selectedNodes: filteredNodeIds,
         cll: cll,
         newCllExperience,
         columnAncestry: maybeComputeAncestry(
-          newCllExperience, cll, cllInput, impacted?.columnIds,
+          newCllExperience,
+          cll,
+          cllInput,
+          impacted?.columnIds,
         ),
       });
       setNodes(nodes);
@@ -868,9 +877,10 @@ export function PrivateLineageView(
 
     const cllInput2 = newViewOptions.column_level_lineage;
 
-    const impacted = newCllExperience && cll
-      ? computeImpactedSets(lineageGraph, cll)
-      : undefined;
+    const impacted =
+      newCllExperience && cll
+        ? computeImpactedSets(lineageGraph, cll)
+        : undefined;
 
     const [newNodes, newEdges, newNodeColumnSetMap] = await toReactFlow(
       lineageGraph,
@@ -880,7 +890,10 @@ export function PrivateLineageView(
         existingPositions,
         newCllExperience,
         columnAncestry: maybeComputeAncestry(
-          newCllExperience, cll, cllInput2, impacted?.columnIds,
+          newCllExperience,
+          cll,
+          cllInput2,
+          impacted?.columnIds,
         ),
       },
     );
