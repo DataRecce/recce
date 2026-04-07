@@ -145,8 +145,11 @@ export function CloudUploadDialogOss({
           baseUploaded: baseNeedsUpload,
         });
 
-        // Check if adapter supports DW setup
-        const connInfo = await getConnectionInfo(apiClient);
+        // Skip DW setup if the project already has a warehouse connection
+        const projectHasWarehouse = !!selectedProjectData?.warehouse_connection;
+        const connInfo = projectHasWarehouse
+          ? null
+          : await getConnectionInfo(apiClient);
         if (connInfo && isSupportedAdapter(connInfo.type)) {
           setConnectionInfo(connInfo);
           setDwFormValues(buildPrefillValues(connInfo.type, connInfo));

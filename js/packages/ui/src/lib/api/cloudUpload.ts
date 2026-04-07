@@ -12,6 +12,7 @@ export interface CloudProject {
   name: string;
   display_name?: string;
   slug?: string;
+  warehouse_connection?: { id: string } | null;
 }
 
 export interface CloudProjectBaseStatus {
