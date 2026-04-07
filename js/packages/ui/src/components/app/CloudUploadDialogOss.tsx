@@ -23,14 +23,28 @@ import { useApiConfig } from "../../hooks/useApiConfig";
 import {
   type CloudOrganization,
   type CloudProject,
+  type ConnectionInfo,
   getCloudProjectBaseStatus,
+  getConnectionInfo,
   listCloudOrganizations,
   listCloudProjects,
+  setupWarehouse,
   uploadToCloud,
 } from "../../lib/api/cloudUpload";
 import { PUBLIC_CLOUD_WEB_URL } from "../../lib/const";
+import {
+  buildPrefillValues,
+  isSupportedAdapter,
+  SUPPORTED_ADAPTERS,
+} from "../../lib/warehouseAdapters";
 
-type DialogState = "select" | "uploading" | "success" | "error";
+type DialogState =
+  | "select"
+  | "uploading"
+  | "dw_setup"
+  | "dw_saving"
+  | "success"
+  | "error";
 
 interface CloudUploadDialogProps {
   open: boolean;
@@ -53,6 +67,14 @@ export function CloudUploadDialogOss({
   const [sessionUrl, setSessionUrl] = useState("");
   const [baseNeedsUpload, setBaseNeedsUpload] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(
+    null,
+  );
+  const [dwFormValues, setDwFormValues] = useState<Record<string, string>>({});
+  const [uploadResult, setUploadResult] = useState<{
+    sessionUrl: string;
+    baseUploaded: boolean;
+  } | null>(null);
 
   // Load organizations when dialog opens
   useEffect(() => {
@@ -115,8 +137,23 @@ export function CloudUploadDialogOss({
         session_name: sessionName.trim(),
       });
       if (result.status === "success" && result.session_url) {
-        setSessionUrl(result.session_url);
-        setDialogState("success");
+        setUploadResult({
+          sessionUrl: result.session_url,
+          baseUploaded: baseNeedsUpload,
+        });
+
+        // Check if adapter supports DW setup
+        const connInfo = await getConnectionInfo(apiClient);
+        if (connInfo && isSupportedAdapter(connInfo.type)) {
+          setConnectionInfo(connInfo);
+          setDwFormValues(buildPrefillValues(connInfo.type, connInfo));
+          setDialogState("dw_setup");
+        } else {
+          // Unsupported adapter — skip DW setup
+          setSessionUrl(result.session_url);
+          setDialogState("success");
+          window.open(result.session_url, "_blank");
+        }
       } else {
         setErrorMessage(result.message || "Upload failed");
         setDialogState("error");
@@ -127,6 +164,47 @@ export function CloudUploadDialogOss({
       );
       setDialogState("error");
     }
+  };
+
+  const handleDwSetup = async () => {
+    if (!connectionInfo || !uploadResult) return;
+
+    setDialogState("dw_saving");
+    try {
+      const config: Record<string, unknown> = { type: connectionInfo.type };
+      const adapter = SUPPORTED_ADAPTERS[connectionInfo.type];
+      for (const field of adapter.fields) {
+        const value = dwFormValues[field.name];
+        if (value) {
+          config[field.name] = field.type === "number" ? Number(value) : value;
+        }
+      }
+
+      await setupWarehouse(apiClient, {
+        org_id: selectedOrg,
+        project_id: selectedProject,
+        connection_name: `${selectedProjectData?.display_name || selectedProjectData?.name || "Project"} DW`,
+        config,
+      });
+
+      setSessionUrl(uploadResult.sessionUrl);
+      setDialogState("success");
+      window.open(uploadResult.sessionUrl, "_blank");
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : "Failed to set up warehouse connection",
+      );
+      setDialogState("error");
+    }
+  };
+
+  const handleSkipDw = () => {
+    if (!uploadResult) return;
+    setSessionUrl(uploadResult.sessionUrl);
+    setDialogState("success");
+    window.open(uploadResult.sessionUrl, "_blank");
   };
 
   const selectedOrgData = orgs.find((o) => String(o.id) === selectedOrg);
@@ -144,7 +222,11 @@ export function CloudUploadDialogOss({
   return (
     <MuiDialog
       open={open}
-      onClose={dialogState === "uploading" ? undefined : onClose}
+      onClose={
+        dialogState === "uploading" || dialogState === "dw_saving"
+          ? undefined
+          : onClose
+      }
       maxWidth="sm"
       fullWidth
       slotProps={{
@@ -238,6 +320,74 @@ export function CloudUploadDialogOss({
               {baseNeedsUpload
                 ? "Uploading base and current artifacts. This may take a moment."
                 : "This may take a moment."}
+            </Typography>
+          </Stack>
+        </DialogContent>
+      )}
+
+      {dialogState === "dw_setup" && connectionInfo && (
+        <>
+          <DialogTitle sx={{ textAlign: "center", fontSize: "1.5rem" }}>
+            Set Up Data Warehouse
+          </DialogTitle>
+          <DialogContent>
+            <Stack spacing={2.5} sx={{ pt: 1 }}>
+              <Typography sx={{ color: "text.secondary" }}>
+                Connect your {SUPPORTED_ADAPTERS[connectionInfo.type]?.label}{" "}
+                warehouse so Recce Cloud can query your data. You can skip this
+                and set it up later.
+              </Typography>
+              {SUPPORTED_ADAPTERS[connectionInfo.type]?.fields.map((field) => (
+                <TextField
+                  key={field.name}
+                  fullWidth
+                  size="small"
+                  label={field.label}
+                  type={field.type === "textarea" ? "text" : field.type}
+                  multiline={field.type === "textarea"}
+                  minRows={field.type === "textarea" ? 3 : undefined}
+                  required={field.required}
+                  placeholder={field.placeholder}
+                  value={dwFormValues[field.name] ?? ""}
+                  onChange={(e) =>
+                    setDwFormValues((prev) => ({
+                      ...prev,
+                      [field.name]: e.target.value,
+                    }))
+                  }
+                />
+              ))}
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              color="neutral"
+              onClick={handleSkipDw}
+              sx={{ borderRadius: 2, fontWeight: 500 }}
+            >
+              Skip
+            </Button>
+            <Button
+              fullWidth
+              variant="contained"
+              color="primary"
+              onClick={handleDwSetup}
+              sx={{ borderRadius: 2, fontWeight: 500 }}
+            >
+              Setup & Continue
+            </Button>
+          </DialogActions>
+        </>
+      )}
+
+      {dialogState === "dw_saving" && (
+        <DialogContent>
+          <Stack spacing={2} alignItems="center" sx={{ py: 4 }}>
+            <CircularProgress size={48} />
+            <Typography sx={{ fontWeight: 500, fontSize: "1.1rem" }}>
+              Setting up warehouse connection...
             </Typography>
           </Stack>
         </DialogContent>
