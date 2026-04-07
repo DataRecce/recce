@@ -1326,6 +1326,52 @@ def upload_to_cloud(input: CloudUploadInput):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+class WarehouseSetupInput(BaseModel):
+    org_id: str
+    project_id: str
+    connection_name: str
+    config: dict
+
+
+class WarehouseSetupOutput(BaseModel):
+    status: str
+    warehouse_connection_id: Optional[str] = None
+    message: Optional[str] = None
+
+
+@app.post("/api/cloud/warehouse-setup", response_model=WarehouseSetupOutput)
+async def setup_warehouse(input: WarehouseSetupInput):
+    """Create a warehouse connection in Cloud and bind it to the project."""
+    from recce.util.recce_cloud import RecceCloud
+
+    context = default_context()
+    user_token = get_recce_api_token() or context.state_loader.token
+    if not user_token:
+        raise HTTPException(status_code=401, detail="Not authenticated with Recce Cloud")
+
+    cloud = RecceCloud(user_token)
+    try:
+        connection = cloud.create_warehouse_connection(
+            org_id=input.org_id,
+            name=input.connection_name,
+            config=input.config,
+        )
+        connection_id = str(connection.get("id", ""))
+
+        cloud.bind_warehouse_connection_to_project(
+            org_id=input.org_id,
+            project_id=input.project_id,
+            warehouse_connection_id=connection_id,
+        )
+
+        return WarehouseSetupOutput(
+            status="success",
+            warehouse_connection_id=connection_id,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 api_prefix = "/api"
 app.include_router(check_router, prefix=api_prefix)
 app.include_router(check_events_router, prefix=api_prefix)
