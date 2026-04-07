@@ -818,6 +818,22 @@ class ColumnLevelLineageTest(unittest.TestCase):
             result, "store_avg_order_total", "derived", [("orders", "location_id"), ("orders", "order_total")]
         )
 
+    def test_uncorrelated_subquery_in_select(self):
+        """Uncorrelated subquery in SELECT should resolve via subquery_cll."""
+        sql = """
+        select
+            o.order_id,
+            (select max(p.price) from products as p) as max_price
+        from orders as o
+        """
+        schema = {
+            "orders": {"order_id": "int"},
+            "products": {"price": "decimal"},
+        }
+        result = cll(sql, schema=schema)
+        assert_column(result, "order_id", "passthrough", [("orders", "order_id")])
+        assert_column(result, "max_price", "derived", [("products", "price")])
+
     def test_correlated_subquery_in_where(self):
         """Correlated subquery in WHERE with aliased self-join should resolve aliases."""
         sql = """
