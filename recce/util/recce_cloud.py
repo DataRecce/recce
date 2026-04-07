@@ -461,3 +461,44 @@ class RecceCloud:
                 reason=response.text,
                 status_code=response.status_code,
             )
+
+    def create_warehouse_connection(self, org_id: str, name: str, config: dict) -> dict:
+        """Create a warehouse connection in an organization.
+
+        Cloud API: POST /v2/organizations/{org_id}/warehouse-connections
+        Request body: { name: str, config: dict }
+        Config must contain a 'type' field (e.g., 'snowflake', 'bigquery').
+        """
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/warehouse-connections"
+        data = {"name": name, "config": config}
+        response = self._request("POST", api_url, json=data)
+        if response.status_code not in [200, 201]:
+            raise RecceCloudException(
+                message="Failed to create warehouse connection in Recce Cloud.",
+                reason=response.text,
+                status_code=response.status_code,
+            )
+        result = response.json()
+        return result.get("warehouse_connection", result)
+
+    def bind_warehouse_connection_to_project(
+        self,
+        org_id: str,
+        project_id: str,
+        warehouse_connection_id: str,
+    ) -> dict:
+        """Bind a warehouse connection to a project.
+
+        Cloud API: PUT /v2/organizations/{org_id}/projects/{project_id}/warehouse-connection
+        Request body: { warehouse_connection_id: UUID }
+        """
+        api_url = f"{self.base_url_v2}/organizations/{org_id}" f"/projects/{project_id}/warehouse-connection"
+        data = {"warehouse_connection_id": warehouse_connection_id}
+        response = self._request("PUT", api_url, json=data)
+        if response.status_code not in [200, 201]:
+            raise RecceCloudException(
+                message="Failed to bind warehouse connection to project.",
+                reason=response.text,
+                status_code=response.status_code,
+            )
+        return response.json()
