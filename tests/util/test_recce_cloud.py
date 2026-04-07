@@ -294,5 +294,117 @@ class TestRecceCloudBaseSessionDownloadUrls(unittest.TestCase):
         mock_request.assert_called_once_with("GET", expected_url)
 
 
+class TestRecceCloudCreateSession(unittest.TestCase):
+    """Test cases for create_session method."""
+
+    def setUp(self):
+        self.token = "test-api-token"
+        self.cloud = RecceCloud(self.token)
+
+    @patch("recce.util.recce_cloud.RecceCloud._request")
+    def test_create_session_success_with_session_key(self, mock_request):
+        """Test create_session when response wraps in 'session' key."""
+        mock_response = Mock()
+        mock_response.status_code = 201
+        mock_response.json.return_value = {
+            "session": {"id": "sess-123", "name": "PR-42"}
+        }
+        mock_request.return_value = mock_response
+
+        result = self.cloud.create_session("org1", "proj1", "PR-42", adapter_type="postgres")
+
+        self.assertEqual(result["id"], "sess-123")
+        self.assertEqual(result["name"], "PR-42")
+        expected_url = f"{self.cloud.base_url_v2}/organizations/org1/projects/proj1/sessions"
+        mock_request.assert_called_once_with(
+            "POST", expected_url, json={"name": "PR-42", "adapter_type": "postgres"}
+        )
+
+    @patch("recce.util.recce_cloud.RecceCloud._request")
+    def test_create_session_success_without_session_key(self, mock_request):
+        """Test create_session when response has no 'session' wrapper."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"id": "sess-456", "name": "dev"}
+        mock_request.return_value = mock_response
+
+        result = self.cloud.create_session("org1", "proj1", "dev")
+
+        self.assertEqual(result["id"], "sess-456")
+
+    @patch("recce.util.recce_cloud.RecceCloud._request")
+    def test_create_session_without_adapter_type(self, mock_request):
+        """Test create_session omits adapter_type when not provided."""
+        mock_response = Mock()
+        mock_response.status_code = 201
+        mock_response.json.return_value = {"session": {"id": "sess-789"}}
+        mock_request.return_value = mock_response
+
+        self.cloud.create_session("org1", "proj1", "test-session")
+
+        expected_url = f"{self.cloud.base_url_v2}/organizations/org1/projects/proj1/sessions"
+        mock_request.assert_called_once_with(
+            "POST", expected_url, json={"name": "test-session"}
+        )
+
+    @patch("recce.util.recce_cloud.RecceCloud._request")
+    def test_create_session_error(self, mock_request):
+        """Test create_session with API error."""
+        mock_response = Mock()
+        mock_response.status_code = 400
+        mock_response.text = "Bad request"
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as ctx:
+            self.cloud.create_session("org1", "proj1", "bad")
+
+        self.assertIn("Failed to create session", str(ctx.exception))
+        self.assertEqual(ctx.exception.status_code, 400)
+
+
+class TestRecceCloudUploadCompleted(unittest.TestCase):
+    """Test cases for upload_completed method."""
+
+    def setUp(self):
+        self.token = "test-api-token"
+        self.cloud = RecceCloud(self.token)
+
+    @patch("recce.util.recce_cloud.RecceCloud._request")
+    def test_upload_completed_success_200(self, mock_request):
+        """Test upload_completed with 200 response."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_request.return_value = mock_response
+
+        # Should not raise
+        self.cloud.upload_completed("sess-123")
+
+        expected_url = f"{self.cloud.base_url_v2}/sessions/sess-123/upload-completed"
+        mock_request.assert_called_once_with("POST", expected_url)
+
+    @patch("recce.util.recce_cloud.RecceCloud._request")
+    def test_upload_completed_success_204(self, mock_request):
+        """Test upload_completed with 204 response."""
+        mock_response = Mock()
+        mock_response.status_code = 204
+        mock_request.return_value = mock_response
+
+        self.cloud.upload_completed("sess-456")
+
+    @patch("recce.util.recce_cloud.RecceCloud._request")
+    def test_upload_completed_error(self, mock_request):
+        """Test upload_completed with API error."""
+        mock_response = Mock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal error"
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as ctx:
+            self.cloud.upload_completed("sess-789")
+
+        self.assertIn("Failed to notify upload completion", str(ctx.exception))
+        self.assertEqual(ctx.exception.status_code, 500)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -102,7 +102,7 @@ function MockRunResultPane({
 
   // Get data from hoisted mocks (mimics real component calling hooks)
   const { run, error, isRunning } = hoistedMocks.useRun();
-  const { featureToggles, authed } = hoistedMocks.useRecceInstanceContext();
+  const { featureToggles } = hoistedMocks.useRecceInstanceContext();
   const { runAction } = hoistedMocks.useRecceActionContext();
 
   const disableDatabaseQuery = featureToggles?.disableDatabaseQuery ?? false;
@@ -238,18 +238,6 @@ function MockRunResultPane({
             },
             "Download as CSV",
           ),
-          !disableShare &&
-            (authed
-              ? React.createElement(
-                  "div",
-                  { key: "share-cloud", role: "menuitem" },
-                  "Share to Cloud",
-                )
-              : React.createElement(
-                  "div",
-                  { key: "share-item", role: "menuitem" },
-                  "Share",
-                )),
         ]),
       // Add to Checklist button
       !disableUpdateChecklist &&
@@ -851,7 +839,7 @@ describe("RunResultPane", () => {
       });
     });
 
-    it("shows Share to Cloud option when authenticated", async () => {
+    it("shows standard menu items regardless of auth status", async () => {
       hoistedMocks.useRecceInstanceContext.mockReturnValue({
         featureToggles: {
           disableShare: false,
@@ -866,23 +854,11 @@ describe("RunResultPane", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole("menuitem", { name: /Share to Cloud/i }),
+          screen.getByRole("menuitem", { name: /Copy as Image/i }),
         ).toBeInTheDocument();
-      });
-    });
-
-    it("shows Share option when not authenticated", async () => {
-      renderWithQueryClient(<RunResultPane />);
-
-      const shareButton = screen.getByRole("button", { name: /Share/i });
-      fireEvent.click(shareButton);
-
-      await waitFor(() => {
-        const shareItems = screen.getAllByRole("menuitem", {
-          name: /Share/i,
-        });
-        // Should have at least one Share menu item
-        expect(shareItems.length).toBeGreaterThan(0);
+        expect(
+          screen.getByRole("menuitem", { name: /Copy as CSV/i }),
+        ).toBeInTheDocument();
       });
     });
   });
