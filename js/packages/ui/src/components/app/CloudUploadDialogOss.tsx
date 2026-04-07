@@ -247,12 +247,14 @@ export function CloudUploadDialogOss({
     >
       {dialogState === "select" && (
         <>
-          <DialogTitle sx={{ textAlign: "center", fontSize: "1.5rem" }}>
+          <DialogTitle
+            sx={{ textAlign: "center", fontSize: "1.25rem", pb: 0.5 }}
+          >
             Upload to Recce Cloud
           </DialogTitle>
           <DialogContent>
-            <Stack spacing={3} sx={{ pt: 1 }}>
-              <Typography sx={{ color: "text.secondary" }}>
+            <Stack spacing={2} sx={{ pt: 0.5 }}>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
                 Upload your local artifacts to Recce Cloud so your team can
                 review and query the data.
               </Typography>
@@ -323,12 +325,15 @@ export function CloudUploadDialogOss({
 
       {dialogState === "uploading" && (
         <DialogContent>
-          <Stack spacing={2} alignItems="center" sx={{ py: 4 }}>
-            <CircularProgress size={48} />
-            <Typography sx={{ fontWeight: 500, fontSize: "1.1rem" }}>
+          <Stack spacing={1.5} alignItems="center" sx={{ py: 3 }}>
+            <CircularProgress size={36} />
+            <Typography sx={{ fontWeight: 500, fontSize: "1rem" }}>
               Uploading artifacts...
             </Typography>
-            <Typography sx={{ color: "text.secondary", textAlign: "center" }}>
+            <Typography
+              variant="body2"
+              sx={{ color: "text.secondary", textAlign: "center" }}
+            >
               {baseNeedsUpload
                 ? "Uploading base and current artifacts. This may take a moment."
                 : "This may take a moment."}
@@ -349,12 +354,14 @@ export function CloudUploadDialogOss({
 
           return (
             <>
-              <DialogTitle sx={{ textAlign: "center", fontSize: "1.5rem" }}>
+              <DialogTitle
+                sx={{ textAlign: "center", fontSize: "1.25rem", pb: 0.5 }}
+              >
                 Set Up Data Warehouse
               </DialogTitle>
               <DialogContent>
-                <Stack spacing={2.5} sx={{ pt: 1 }}>
-                  <Typography sx={{ color: "text.secondary" }}>
+                <Stack spacing={2} sx={{ pt: 0.5 }}>
+                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
                     Connect your {adapterDef.label} warehouse so Recce Cloud can
                     query your data. You can skip this and set it up later.
                   </Typography>
@@ -457,9 +464,9 @@ export function CloudUploadDialogOss({
 
       {dialogState === "dw_saving" && (
         <DialogContent>
-          <Stack spacing={2} alignItems="center" sx={{ py: 4 }}>
-            <CircularProgress size={48} />
-            <Typography sx={{ fontWeight: 500, fontSize: "1.1rem" }}>
+          <Stack spacing={1.5} alignItems="center" sx={{ py: 3 }}>
+            <CircularProgress size={36} />
+            <Typography sx={{ fontWeight: 500, fontSize: "1rem" }}>
               Setting up warehouse connection...
             </Typography>
           </Stack>
@@ -476,12 +483,12 @@ export function CloudUploadDialogOss({
           >
             <PiX />
           </IconButton>
-          <Stack spacing={1.5} alignItems="center" sx={{ pt: 3, pb: 1 }}>
+          <Stack spacing={1.5} alignItems="center" sx={{ pt: 2, pb: 1 }}>
             <Box
               component={PiCheckCircle}
-              sx={{ fontSize: 40, color: "success.main" }}
+              sx={{ fontSize: 36, color: "success.main" }}
             />
-            <Typography sx={{ fontWeight: 600, fontSize: "1.1rem" }}>
+            <Typography sx={{ fontWeight: 600, fontSize: "1rem" }}>
               Upload Complete
             </Typography>
             <Typography
@@ -527,16 +534,19 @@ export function CloudUploadDialogOss({
       {dialogState === "error" && (
         <>
           <DialogContent>
-            <Stack spacing={2} alignItems="center" sx={{ py: 3 }}>
-              <Typography sx={{ fontWeight: 500, fontSize: "1.1rem" }}>
+            <Stack spacing={1.5} alignItems="center" sx={{ py: 2 }}>
+              <Typography sx={{ fontWeight: 500, fontSize: "1rem" }}>
                 Upload Failed
               </Typography>
-              <Typography sx={{ color: "text.secondary", textAlign: "center" }}>
+              <Typography
+                variant="body2"
+                sx={{ color: "text.secondary", textAlign: "center" }}
+              >
                 {errorMessage}
               </Typography>
             </Stack>
           </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 3 }}>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
             <Button
               fullWidth
               variant="outlined"
