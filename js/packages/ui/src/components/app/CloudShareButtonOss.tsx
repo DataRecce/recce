@@ -15,7 +15,7 @@ import { connectToCloud } from "../../lib/api/connectToCloud";
 import { fetchUser } from "../../lib/api/user";
 import { CloudUploadDialogOss } from "./CloudUploadDialogOss";
 
-type PopoverState = "signup" | "waiting" | "reload";
+type PopoverState = "signup" | "waiting" | "reload" | "error";
 
 export function CloudShareButtonOss() {
   const { authed } = useRecceInstanceContext();
@@ -91,13 +91,19 @@ export function CloudShareButtonOss() {
   };
 
   const handleSignup = async () => {
+    const popup = window.open("", "_blank");
     try {
       const { connection_url } = await connectToCloud(apiClient);
-      window.open(connection_url, "_blank");
+      if (popup && !popup.closed) {
+        popup.location.href = connection_url;
+      } else {
+        window.open(connection_url, "_blank");
+      }
       waitingRef.current = true;
       setPopoverState("waiting");
     } catch {
-      // Stay on signup state if connection fails
+      popup?.close();
+      setPopoverState("error");
     }
   };
 
@@ -222,6 +228,30 @@ export function CloudShareButtonOss() {
                 }}
               >
                 Reload
+              </Button>
+            </Stack>
+          )}
+
+          {popoverState === "error" && (
+            <Stack spacing={2} alignItems="center" sx={{ py: 1 }}>
+              <Typography sx={{ fontWeight: 500, fontSize: "1.1rem" }}>
+                Connection Failed
+              </Typography>
+              <Typography sx={{ color: "text.secondary", textAlign: "center" }}>
+                Could not connect to Recce Cloud. Please try again.
+              </Typography>
+              <Button
+                fullWidth
+                variant="contained"
+                color="primary"
+                onClick={handleSignup}
+                sx={{
+                  borderRadius: "8px",
+                  textTransform: "none",
+                  fontWeight: 600,
+                }}
+              >
+                Retry
               </Button>
             </Stack>
           )}

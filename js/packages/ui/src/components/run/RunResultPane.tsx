@@ -533,7 +533,7 @@ const DefaultShareMenu = memo(
     onMouseEnter,
     onMouseLeave,
     csvExport,
-  }: RunResultShareMenuProps) => {
+  }: RunResultExportMenuProps) => {
     const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
     const open = Boolean(anchorEl);
     const [showWarning, setShowWarning] = useState(false);
@@ -877,14 +877,6 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
     }
   }, [onCopyAsImage, onTrackCopyToClipboard, run?.type]);
 
-  const handleShowAuthModal = useCallback(() => {
-    if (onShowAuthModal) {
-      onShowAuthModal();
-    } else {
-      setShowAuthModal(true);
-    }
-  }, [onShowAuthModal]);
-
   // Determine if we should show query tab content
   const isQueryDiff = run?.type === "query_diff";
   const queryParams = run?.params as
@@ -968,9 +960,6 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
               onMouseEnter={onCopyMouseEnter}
               onMouseLeave={onCopyMouseLeave}
               csvExport={csvExport}
-              authed={authed}
-              onShareToCloud={onShareToCloud}
-              onShowAuthModal={handleShowAuthModal}
             />
           )}
 

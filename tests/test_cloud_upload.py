@@ -74,6 +74,7 @@ class TestUploadArtifactsToSession(unittest.TestCase):
 
     def tearDown(self):
         import shutil
+
         shutil.rmtree(self.tmp_dir)
 
     @patch("requests.put")
@@ -92,8 +93,13 @@ class TestUploadArtifactsToSession(unittest.TestCase):
         mock_put.return_value = mock_resp
 
         _upload_artifacts_to_session(
-            cloud, "org1", "proj1", "sess1",
-            self.manifest_path, self.catalog_path, "postgres",
+            cloud,
+            "org1",
+            "proj1",
+            "sess1",
+            self.manifest_path,
+            self.catalog_path,
+            "postgres",
         )
 
         self.assertEqual(mock_put.call_count, 2)
@@ -113,8 +119,13 @@ class TestUploadArtifactsToSession(unittest.TestCase):
         mock_put.return_value = mock_resp
 
         _upload_artifacts_to_session(
-            cloud, "org1", "proj1", "sess1",
-            self.manifest_path, self.catalog_path, "postgres",
+            cloud,
+            "org1",
+            "proj1",
+            "sess1",
+            self.manifest_path,
+            self.catalog_path,
+            "postgres",
         )
 
         # Only manifest uploaded (catalog doesn't exist)
@@ -135,8 +146,13 @@ class TestUploadArtifactsToSession(unittest.TestCase):
         mock_put.return_value = mock_resp
 
         _upload_artifacts_to_session(
-            cloud, "org1", "proj1", "sess1",
-            self.manifest_path, self.catalog_path, "postgres",
+            cloud,
+            "org1",
+            "proj1",
+            "sess1",
+            self.manifest_path,
+            self.catalog_path,
+            "postgres",
             notify_completed=False,
         )
 
@@ -158,8 +174,13 @@ class TestUploadArtifactsToSession(unittest.TestCase):
 
         with self.assertRaises(Exception) as ctx:
             _upload_artifacts_to_session(
-                cloud, "org1", "proj1", "sess1",
-                self.manifest_path, self.catalog_path, "postgres",
+                cloud,
+                "org1",
+                "proj1",
+                "sess1",
+                self.manifest_path,
+                self.catalog_path,
+                "postgres",
             )
         self.assertIn("Failed to upload manifest", str(ctx.exception))
 
@@ -183,8 +204,13 @@ class TestUploadArtifactsToSession(unittest.TestCase):
 
         with self.assertRaises(Exception) as ctx:
             _upload_artifacts_to_session(
-                cloud, "org1", "proj1", "sess1",
-                self.manifest_path, self.catalog_path, "postgres",
+                cloud,
+                "org1",
+                "proj1",
+                "sess1",
+                self.manifest_path,
+                self.catalog_path,
+                "postgres",
             )
         self.assertIn("Failed to upload catalog", str(ctx.exception))
 
@@ -200,25 +226,23 @@ class TestMaybeUploadBaseSession(unittest.TestCase):
 
     def tearDown(self):
         import shutil
+
         shutil.rmtree(self.tmp_dir)
 
     def test_no_base_target(self):
         """Returns False when base_target is None."""
         cloud = Mock()
-        self.assertFalse(
-            _maybe_upload_base_session(cloud, "org1", "proj1", None, "postgres")
-        )
+        self.assertFalse(_maybe_upload_base_session(cloud, "org1", "proj1", None, "postgres"))
 
     def test_no_base_manifest(self):
         """Returns False when manifest.json doesn't exist in base_target."""
         cloud = Mock()
         empty_dir = tempfile.mkdtemp()
         try:
-            self.assertFalse(
-                _maybe_upload_base_session(cloud, "org1", "proj1", empty_dir, "postgres")
-            )
+            self.assertFalse(_maybe_upload_base_session(cloud, "org1", "proj1", empty_dir, "postgres"))
         finally:
             import shutil
+
             shutil.rmtree(empty_dir)
 
     def test_no_base_session_in_project(self):
@@ -227,9 +251,7 @@ class TestMaybeUploadBaseSession(unittest.TestCase):
         cloud.list_sessions.return_value = [
             {"id": "s1", "is_base": False},
         ]
-        self.assertFalse(
-            _maybe_upload_base_session(cloud, "org1", "proj1", self.tmp_dir, "postgres")
-        )
+        self.assertFalse(_maybe_upload_base_session(cloud, "org1", "proj1", self.tmp_dir, "postgres"))
 
     def test_base_session_already_has_artifacts(self):
         """Returns False when base session already has adapter_type."""
@@ -237,9 +259,7 @@ class TestMaybeUploadBaseSession(unittest.TestCase):
         cloud.list_sessions.return_value = [
             {"id": "s1", "is_base": True, "adapter_type": "postgres"},
         ]
-        self.assertFalse(
-            _maybe_upload_base_session(cloud, "org1", "proj1", self.tmp_dir, "postgres")
-        )
+        self.assertFalse(_maybe_upload_base_session(cloud, "org1", "proj1", self.tmp_dir, "postgres"))
 
     @patch("recce.server._upload_artifacts_to_session")
     def test_uploads_when_base_session_needs_artifacts(self, mock_upload):
@@ -249,13 +269,14 @@ class TestMaybeUploadBaseSession(unittest.TestCase):
             {"id": "base-sess-1", "is_base": True, "adapter_type": None},
         ]
 
-        result = _maybe_upload_base_session(
-            cloud, "org1", "proj1", self.tmp_dir, "postgres"
-        )
+        result = _maybe_upload_base_session(cloud, "org1", "proj1", self.tmp_dir, "postgres")
 
         self.assertTrue(result)
         mock_upload.assert_called_once_with(
-            cloud, "org1", "proj1", "base-sess-1",
+            cloud,
+            "org1",
+            "proj1",
+            "base-sess-1",
             self.manifest_path,
             os.path.join(self.tmp_dir, "catalog.json"),
             "postgres",
@@ -387,9 +408,14 @@ class TestCloudUploadEndpoint(_EndpointTestBase):
     def test_401_when_no_token(self, mock_ctx, mock_token):
         mock_ctx.return_value = _mock_context_no_token()
         client = TestClient(app)
-        resp = client.post("/api/cloud/upload", json={
-            "org_id": "org1", "project_id": "proj1", "session_name": "test",
-        })
+        resp = client.post(
+            "/api/cloud/upload",
+            json={
+                "org_id": "org1",
+                "project_id": "proj1",
+                "session_name": "test",
+            },
+        )
         assert resp.status_code == 401
 
     @patch("recce.server.get_recce_api_token", return_value="tok")
@@ -399,9 +425,14 @@ class TestCloudUploadEndpoint(_EndpointTestBase):
         ctx.adapter = None
         mock_ctx.return_value = ctx
         client = TestClient(app)
-        resp = client.post("/api/cloud/upload", json={
-            "org_id": "org1", "project_id": "proj1", "session_name": "test",
-        })
+        resp = client.post(
+            "/api/cloud/upload",
+            json={
+                "org_id": "org1",
+                "project_id": "proj1",
+                "session_name": "test",
+            },
+        )
         assert resp.status_code == 400
         assert "No adapter" in resp.json()["detail"]
 
@@ -412,9 +443,14 @@ class TestCloudUploadEndpoint(_EndpointTestBase):
         ctx.adapter = Mock(spec=[])  # No target_path attribute
         mock_ctx.return_value = ctx
         client = TestClient(app)
-        resp = client.post("/api/cloud/upload", json={
-            "org_id": "org1", "project_id": "proj1", "session_name": "test",
-        })
+        resp = client.post(
+            "/api/cloud/upload",
+            json={
+                "org_id": "org1",
+                "project_id": "proj1",
+                "session_name": "test",
+            },
+        )
         assert resp.status_code == 400
         assert "target path" in resp.json()["detail"]
 
@@ -440,9 +476,14 @@ class TestCloudUploadEndpoint(_EndpointTestBase):
             mock_create.return_value = {"id": "sess-123"}
 
             client = TestClient(app)
-            resp = client.post("/api/cloud/upload", json={
-                "org_id": "org1", "project_id": "proj1", "session_name": "my-session",
-            })
+            resp = client.post(
+                "/api/cloud/upload",
+                json={
+                    "org_id": "org1",
+                    "project_id": "proj1",
+                    "session_name": "my-session",
+                },
+            )
             assert resp.status_code == 200
             data = resp.json()
             assert data["status"] == "success"
@@ -452,6 +493,7 @@ class TestCloudUploadEndpoint(_EndpointTestBase):
             mock_upload.assert_called_once()
         finally:
             import shutil
+
             shutil.rmtree(tmp_dir)
 
     @patch("recce.server.get_recce_api_token", return_value="tok")
@@ -465,14 +507,117 @@ class TestCloudUploadEndpoint(_EndpointTestBase):
             mock_ctx.return_value = ctx
 
             client = TestClient(app)
-            resp = client.post("/api/cloud/upload", json={
-                "org_id": "org1", "project_id": "proj1", "session_name": "test",
-            })
+            resp = client.post(
+                "/api/cloud/upload",
+                json={
+                    "org_id": "org1",
+                    "project_id": "proj1",
+                    "session_name": "test",
+                },
+            )
             assert resp.status_code == 400
             assert "manifest.json" in resp.json()["detail"]
         finally:
             import shutil
+
             shutil.rmtree(tmp_dir)
+
+
+class TestAdapterTypeValidation(_EndpointTestBase):
+    """Test adapter_type validation in upload endpoint."""
+
+    @patch("recce.server.get_recce_api_token", return_value="tok")
+    @patch("recce.server.default_context")
+    def test_400_when_adapter_type_missing(self, mock_ctx, mock_token):
+        """Manifest without metadata.adapter_type should return 400."""
+        tmp_dir = tempfile.mkdtemp()
+        try:
+            manifest_path = os.path.join(tmp_dir, "manifest.json")
+            with open(manifest_path, "w") as f:
+                json.dump({"metadata": {}}, f)
+
+            ctx = _mock_context_with_token()
+            ctx.adapter = Mock()
+            ctx.adapter.target_path = tmp_dir
+            mock_ctx.return_value = ctx
+
+            client = TestClient(app)
+            resp = client.post(
+                "/api/cloud/upload",
+                json={
+                    "org_id": "org1",
+                    "project_id": "proj1",
+                    "session_name": "test",
+                },
+            )
+            assert resp.status_code == 400
+            assert "adapter_type" in resp.json()["detail"]
+        finally:
+            import shutil
+
+            shutil.rmtree(tmp_dir)
+
+    @patch("recce.server.get_recce_api_token", return_value="tok")
+    @patch("recce.server.default_context")
+    def test_400_when_adapter_type_null(self, mock_ctx, mock_token):
+        """Manifest with null adapter_type should return 400."""
+        tmp_dir = tempfile.mkdtemp()
+        try:
+            manifest_path = os.path.join(tmp_dir, "manifest.json")
+            with open(manifest_path, "w") as f:
+                json.dump({"metadata": {"adapter_type": None}}, f)
+
+            ctx = _mock_context_with_token()
+            ctx.adapter = Mock()
+            ctx.adapter.target_path = tmp_dir
+            mock_ctx.return_value = ctx
+
+            client = TestClient(app)
+            resp = client.post(
+                "/api/cloud/upload",
+                json={
+                    "org_id": "org1",
+                    "project_id": "proj1",
+                    "session_name": "test",
+                },
+            )
+            assert resp.status_code == 400
+            assert "adapter_type" in resp.json()["detail"]
+        finally:
+            import shutil
+
+            shutil.rmtree(tmp_dir)
+
+
+class TestMaybeUploadBaseSessionIdValidation(unittest.TestCase):
+    """Test _maybe_upload_base_session handles missing/empty session IDs."""
+
+    def setUp(self):
+        self.tmp_dir = tempfile.mkdtemp()
+        self.manifest_path = os.path.join(self.tmp_dir, "manifest.json")
+        with open(self.manifest_path, "w") as f:
+            json.dump({"metadata": {}}, f)
+
+    def tearDown(self):
+        import shutil
+
+        shutil.rmtree(self.tmp_dir)
+
+    def test_returns_false_when_base_session_has_no_id(self):
+        """Base session without 'id' field should return False, not crash."""
+        cloud = Mock()
+        cloud.list_sessions.return_value = [
+            {"is_base": True, "adapter_type": None},  # No 'id' key
+        ]
+        self.assertFalse(_maybe_upload_base_session(cloud, "org1", "proj1", self.tmp_dir, "postgres"))
+
+    def test_returns_false_when_base_session_id_is_none(self):
+        """Base session with id=None should return False."""
+        cloud = Mock()
+        cloud.list_sessions.return_value = [
+            {"id": None, "is_base": True, "adapter_type": None},
+        ]
+        self.assertFalse(_maybe_upload_base_session(cloud, "org1", "proj1", self.tmp_dir, "postgres"))
 
 
 if __name__ == "__main__":

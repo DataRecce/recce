@@ -211,7 +211,9 @@ export const NavBarOss = () => {
               mr: "8px",
             }}
           >
-            {!isDemoSite && <CloudShareButtonOss />}
+            {!isDemoSite && !flag?.single_env_onboarding && (
+              <CloudShareButtonOss />
+            )}
             <EnvInfo />
             {cloudMode && <StateSynchronizer />}
             <StateExporter />

@@ -1069,7 +1069,7 @@ async def get_user_info():
 
 
 @app.get("/api/cloud/organizations")
-async def list_cloud_organizations():
+def list_cloud_organizations():
     """List all organizations the authenticated user has access to."""
     from recce.util.recce_cloud import RecceCloud
 
@@ -1086,7 +1086,7 @@ async def list_cloud_organizations():
 
 
 @app.get("/api/cloud/organizations/{org_id}/projects")
-async def list_cloud_projects(org_id: str):
+def list_cloud_projects(org_id: str):
     """List all projects in an organization."""
     from recce.util.recce_cloud import RecceCloud
 
@@ -1103,7 +1103,7 @@ async def list_cloud_projects(org_id: str):
 
 
 @app.get("/api/cloud/organizations/{org_id}/projects/{project_id}/base-status")
-async def get_cloud_project_base_status(org_id: str, project_id: str):
+def get_cloud_project_base_status(org_id: str, project_id: str):
     """Check if the project's base session needs artifact upload."""
     from recce.util.recce_cloud import RecceCloud
 
@@ -1127,7 +1127,8 @@ def _check_base_needs_upload(cloud, org_id: str, project_id: str) -> bool:
         if not base_session:
             return False
         return not base_session.get("adapter_type")
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Failed to check base upload status: {e}")
         return False
 
 
@@ -1145,7 +1146,13 @@ class CloudUploadOutput(BaseModel):
 
 
 def _upload_artifacts_to_session(
-    cloud, org_id, project_id, session_id, manifest_path, catalog_path, adapter_type,
+    cloud,
+    org_id,
+    project_id,
+    session_id,
+    manifest_path,
+    catalog_path,
+    adapter_type,
     notify_completed=True,
 ):
     """Upload manifest + catalog to a session via presigned URLs.
@@ -1160,13 +1167,13 @@ def _upload_artifacts_to_session(
     presigned_urls = cloud.get_upload_urls_by_session_id(org_id, project_id, session_id)
 
     with open(manifest_path, "rb") as f:
-        resp = http_requests.put(presigned_urls["manifest_url"], data=f.read())
+        resp = http_requests.put(presigned_urls["manifest_url"], data=f)
         if resp.status_code not in [200, 204]:
             raise Exception(f"Failed to upload manifest: {resp.text}")
 
     if os.path.exists(catalog_path):
         with open(catalog_path, "rb") as f:
-            resp = http_requests.put(presigned_urls["catalog_url"], data=f.read())
+            resp = http_requests.put(presigned_urls["catalog_url"], data=f)
             if resp.status_code not in [200, 204]:
                 raise Exception(f"Failed to upload catalog: {resp.text}")
 
@@ -1202,17 +1209,29 @@ def _maybe_upload_base_session(cloud, org_id, project_id, base_target, adapter_t
 
     # Base session has no artifacts — upload them.
     # notify_completed=False: base sessions don't need post-upload processing.
-    base_session_id = str(base_session.get("id"))
+    base_session_id_raw = base_session.get("id")
+    if base_session_id_raw is None:
+        logger.warning("Base session has no 'id' field, skipping base upload")
+        return False
+    base_session_id = str(base_session_id_raw).strip()
+    if not base_session_id:
+        logger.warning("Base session has empty 'id' field, skipping base upload")
+        return False
     _upload_artifacts_to_session(
-        cloud, org_id, project_id, base_session_id,
-        base_manifest, base_catalog, adapter_type,
+        cloud,
+        org_id,
+        project_id,
+        base_session_id,
+        base_manifest,
+        base_catalog,
+        adapter_type,
         notify_completed=False,
     )
     return True
 
 
 @app.post("/api/cloud/upload", response_model=CloudUploadOutput)
-async def upload_to_cloud(input: CloudUploadInput):
+def upload_to_cloud(input: CloudUploadInput):
     """Create Cloud sessions and upload local artifacts (base + current)."""
     from recce.util.recce_cloud import RECCE_CLOUD_BASE_URL, RecceCloud
 
@@ -1242,13 +1261,22 @@ async def upload_to_cloud(input: CloudUploadInput):
     with open(curr_manifest, "r", encoding="utf-8") as f:
         manifest_data = json.load(f)
     adapter_type = manifest_data.get("metadata", {}).get("adapter_type")
+    if not isinstance(adapter_type, str) or not adapter_type.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="manifest.json is missing required metadata.adapter_type",
+        )
 
     cloud = RecceCloud(user_token)
 
     try:
         # Upload base artifacts if the project's base session lacks metadata.
         _maybe_upload_base_session(
-            cloud, input.org_id, input.project_id, base_target, adapter_type,
+            cloud,
+            input.org_id,
+            input.project_id,
+            base_target,
+            adapter_type,
         )
 
         # Create current session and upload artifacts
@@ -1258,10 +1286,18 @@ async def upload_to_cloud(input: CloudUploadInput):
             name=input.session_name,
             adapter_type=adapter_type,
         )
-        session_id = str(session.get("id") or session.get("session_id", ""))
+        session_id_raw = session.get("id") or session.get("session_id")
+        session_id = str(session_id_raw).strip() if session_id_raw is not None else ""
+        if not session_id:
+            raise HTTPException(status_code=400, detail="Cloud returned a session with no ID")
         _upload_artifacts_to_session(
-            cloud, input.org_id, input.project_id, session_id,
-            curr_manifest, curr_catalog, adapter_type,
+            cloud,
+            input.org_id,
+            input.project_id,
+            session_id,
+            curr_manifest,
+            curr_catalog,
+            adapter_type,
         )
 
         session_url = f"{RECCE_CLOUD_BASE_URL}/launch/{session_id}"

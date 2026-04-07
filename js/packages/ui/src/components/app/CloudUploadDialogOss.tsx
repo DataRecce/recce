@@ -47,10 +47,7 @@ export function CloudUploadDialogOss({
   const [projects, setProjects] = useState<CloudProject[]>([]);
   const [selectedOrg, setSelectedOrg] = useState("");
   const [selectedProject, setSelectedProject] = useState("");
-  const [sessionName, setSessionName] = useState(
-    () =>
-      `dev-${new Date().toISOString().slice(0, 16).replace("T", "-").replace(":", "")}`,
-  );
+  const [sessionName, setSessionName] = useState("");
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(false);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [sessionUrl, setSessionUrl] = useState("");
@@ -61,6 +58,9 @@ export function CloudUploadDialogOss({
   useEffect(() => {
     if (!open) return;
     setDialogState("select");
+    setSessionName(
+      `dev-${new Date().toISOString().slice(0, 16).replace("T", "-").replace(":", "")}`,
+    );
     setIsLoadingOrgs(true);
     listCloudOrganizations(apiClient)
       .then((orgs) => {
@@ -117,7 +117,6 @@ export function CloudUploadDialogOss({
       if (result.status === "success" && result.session_url) {
         setSessionUrl(result.session_url);
         setDialogState("success");
-        window.open(result.session_url, "_blank");
       } else {
         setErrorMessage(result.message || "Upload failed");
         setDialogState("error");
@@ -268,22 +267,21 @@ export function CloudUploadDialogOss({
             >
               Your artifacts have been uploaded to Recce Cloud.
             </Typography>
-            <Typography
-              variant="caption"
-              sx={{ color: "text.secondary", textAlign: "center" }}
+            <Button
+              variant="contained"
+              color="primary"
+              href={sessionUrl}
+              target="_blank"
+              component="a"
+              sx={{
+                borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 600,
+                mt: 1,
+              }}
             >
-              Recce Cloud Web has been opened in another tab.
-              <br />
-              If you don&apos;t see it, click{" "}
-              <Link
-                href={sessionUrl}
-                target="_blank"
-                sx={{ fontSize: "inherit" }}
-              >
-                open instance directly
-              </Link>
-              .
-            </Typography>
+              Open in Recce Cloud
+            </Button>
             {projectPageUrl && (
               <Link
                 href={projectPageUrl}
