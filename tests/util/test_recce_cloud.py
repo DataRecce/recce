@@ -400,5 +400,102 @@ class TestRecceCloudUploadCompleted(unittest.TestCase):
         self.assertEqual(ctx.exception.status_code, 500)
 
 
+class TestRecceCloudWarehouseConnection(unittest.TestCase):
+    """Test cases for warehouse connection create + bind methods."""
+
+    def setUp(self):
+        self.token = "test-api-token"
+        self.cloud = RecceCloud(self.token)
+
+    @patch("recce.util.recce_cloud.RecceCloud._request")
+    def test_create_warehouse_connection_success_with_wrapper(self, mock_request):
+        """Test successful create when response wraps in 'warehouse_connection' key."""
+        mock_response = Mock()
+        mock_response.status_code = 201
+        mock_response.json.return_value = {"warehouse_connection": {"id": "wc-123", "name": "My DW"}}
+        mock_request.return_value = mock_response
+
+        result = self.cloud.create_warehouse_connection("org1", "My DW", {"type": "snowflake", "account": "abc"})
+
+        self.assertEqual(result["id"], "wc-123")
+        self.assertEqual(result["name"], "My DW")
+        expected_url = f"{self.cloud.base_url_v2}/organizations/org1/warehouse-connections"
+        mock_request.assert_called_once_with(
+            "POST",
+            expected_url,
+            json={"name": "My DW", "config": {"type": "snowflake", "account": "abc"}},
+        )
+
+    @patch("recce.util.recce_cloud.RecceCloud._request")
+    def test_create_warehouse_connection_success_without_wrapper(self, mock_request):
+        """Test successful create when response has no wrapper key."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"id": "wc-456", "name": "DW2"}
+        mock_request.return_value = mock_response
+
+        result = self.cloud.create_warehouse_connection("org1", "DW2", {"type": "bigquery"})
+
+        self.assertEqual(result["id"], "wc-456")
+
+    @patch("recce.util.recce_cloud.RecceCloud._request")
+    def test_create_warehouse_connection_error(self, mock_request):
+        """Test create_warehouse_connection with API error."""
+        mock_response = Mock()
+        mock_response.status_code = 400
+        mock_response.text = "Invalid config"
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as ctx:
+            self.cloud.create_warehouse_connection("org1", "Bad", {"type": "snowflake"})
+
+        self.assertIn("Failed to create warehouse connection", str(ctx.exception))
+        self.assertEqual(ctx.exception.status_code, 400)
+
+    @patch("recce.util.recce_cloud.RecceCloud._request")
+    def test_bind_warehouse_connection_success(self, mock_request):
+        """Test successful bind_warehouse_connection_to_project."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"status": "ok"}
+        mock_request.return_value = mock_response
+
+        result = self.cloud.bind_warehouse_connection_to_project("org1", "proj1", "wc-123")
+
+        self.assertEqual(result["status"], "ok")
+        expected_url = f"{self.cloud.base_url_v2}/organizations/org1" f"/projects/proj1/warehouse-connection"
+        mock_request.assert_called_once_with(
+            "PUT",
+            expected_url,
+            json={"warehouse_connection_id": "wc-123"},
+        )
+
+    @patch("recce.util.recce_cloud.RecceCloud._request")
+    def test_bind_warehouse_connection_201(self, mock_request):
+        """Test bind returns 201 (also accepted)."""
+        mock_response = Mock()
+        mock_response.status_code = 201
+        mock_response.json.return_value = {"status": "created"}
+        mock_request.return_value = mock_response
+
+        result = self.cloud.bind_warehouse_connection_to_project("org1", "proj1", "wc-456")
+
+        self.assertEqual(result["status"], "created")
+
+    @patch("recce.util.recce_cloud.RecceCloud._request")
+    def test_bind_warehouse_connection_error(self, mock_request):
+        """Test bind_warehouse_connection_to_project with API error."""
+        mock_response = Mock()
+        mock_response.status_code = 404
+        mock_response.text = "Project not found"
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as ctx:
+            self.cloud.bind_warehouse_connection_to_project("org1", "proj-bad", "wc-123")
+
+        self.assertIn("Failed to bind warehouse connection", str(ctx.exception))
+        self.assertEqual(ctx.exception.status_code, 404)
+
+
 if __name__ == "__main__":
     unittest.main()

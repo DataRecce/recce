@@ -620,5 +620,154 @@ class TestMaybeUploadBaseSessionIdValidation(unittest.TestCase):
         self.assertFalse(_maybe_upload_base_session(cloud, "org1", "proj1", self.tmp_dir, "postgres"))
 
 
+class TestConnectionInfoEndpoint(_EndpointTestBase):
+    """Test GET /api/connection-info endpoint."""
+
+    @patch("recce.server.default_context")
+    def test_returns_connection_info(self, mock_ctx):
+        ctx = Mock()
+        creds = Mock()
+        creds.type = "snowflake"
+        creds.connection_info.return_value = [
+            ("account", "abc.us-east-1"),
+            ("database", "MY_DB"),
+            ("schema", "PUBLIC"),
+        ]
+        runtime_config = Mock()
+        runtime_config.credentials = creds
+        ctx.adapter = Mock()
+        ctx.adapter.runtime_config = runtime_config
+        mock_ctx.return_value = ctx
+
+        client = TestClient(app)
+        resp = client.get("/api/connection-info")
+        assert resp.status_code == 200
+        data = resp.json()["connection_info"]
+        assert data["type"] == "snowflake"
+        assert data["account"] == "abc.us-east-1"
+        assert data["database"] == "MY_DB"
+        assert data["schema"] == "PUBLIC"
+
+    @patch("recce.server.default_context")
+    def test_returns_null_when_no_runtime_config(self, mock_ctx):
+        ctx = Mock()
+        ctx.adapter = Mock(spec=[])  # No runtime_config
+        mock_ctx.return_value = ctx
+
+        client = TestClient(app)
+        resp = client.get("/api/connection-info")
+        assert resp.status_code == 200
+        assert resp.json()["connection_info"] is None
+
+    @patch("recce.server.default_context")
+    def test_returns_null_when_runtime_config_is_none(self, mock_ctx):
+        ctx = Mock()
+        ctx.adapter = Mock()
+        ctx.adapter.runtime_config = None
+        mock_ctx.return_value = ctx
+
+        client = TestClient(app)
+        resp = client.get("/api/connection-info")
+        assert resp.status_code == 200
+        assert resp.json()["connection_info"] is None
+
+
+class TestWarehouseSetupEndpoint(_EndpointTestBase):
+    """Test POST /api/cloud/warehouse-setup endpoint."""
+
+    @patch("recce.server.get_recce_api_token", return_value=None)
+    @patch("recce.server.default_context")
+    def test_401_when_no_token(self, mock_ctx, mock_token):
+        mock_ctx.return_value = _mock_context_no_token()
+        client = TestClient(app)
+        resp = client.post(
+            "/api/cloud/warehouse-setup",
+            json={
+                "org_id": "org1",
+                "project_id": "proj1",
+                "connection_name": "DW",
+                "config": {"type": "snowflake"},
+            },
+        )
+        assert resp.status_code == 401
+
+    @patch("recce.util.recce_cloud.RecceCloud.bind_warehouse_connection_to_project")
+    @patch("recce.util.recce_cloud.RecceCloud.create_warehouse_connection")
+    @patch("recce.server.get_recce_api_token", return_value="tok")
+    @patch("recce.server.default_context")
+    def test_successful_setup(self, mock_ctx, mock_token, mock_create, mock_bind):
+        mock_ctx.return_value = _mock_context_with_token()
+        mock_create.return_value = {"id": "wc-123", "name": "My DW"}
+        mock_bind.return_value = {"status": "ok"}
+
+        client = TestClient(app)
+        resp = client.post(
+            "/api/cloud/warehouse-setup",
+            json={
+                "org_id": "org1",
+                "project_id": "proj1",
+                "connection_name": "My DW",
+                "config": {"type": "snowflake", "account": "abc", "password": "secret"},
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["status"] == "success"
+        assert data["warehouse_connection_id"] == "wc-123"
+
+        mock_create.assert_called_once_with(
+            org_id="org1",
+            name="My DW",
+            config={"type": "snowflake", "account": "abc", "password": "secret"},
+        )
+        mock_bind.assert_called_once_with(
+            org_id="org1",
+            project_id="proj1",
+            warehouse_connection_id="wc-123",
+        )
+
+    @patch("recce.util.recce_cloud.RecceCloud.create_warehouse_connection")
+    @patch("recce.server.get_recce_api_token", return_value="tok")
+    @patch("recce.server.default_context")
+    def test_400_on_create_failure(self, mock_ctx, mock_token, mock_create):
+        mock_ctx.return_value = _mock_context_with_token()
+        mock_create.side_effect = Exception("Invalid config")
+
+        client = TestClient(app)
+        resp = client.post(
+            "/api/cloud/warehouse-setup",
+            json={
+                "org_id": "org1",
+                "project_id": "proj1",
+                "connection_name": "Bad",
+                "config": {"type": "snowflake"},
+            },
+        )
+        assert resp.status_code == 400
+        assert "Invalid config" in resp.json()["detail"]
+
+    @patch("recce.util.recce_cloud.RecceCloud.bind_warehouse_connection_to_project")
+    @patch("recce.util.recce_cloud.RecceCloud.create_warehouse_connection")
+    @patch("recce.server.get_recce_api_token", return_value="tok")
+    @patch("recce.server.default_context")
+    def test_400_on_bind_failure(self, mock_ctx, mock_token, mock_create, mock_bind):
+        mock_ctx.return_value = _mock_context_with_token()
+        mock_create.return_value = {"id": "wc-123"}
+        mock_bind.side_effect = Exception("Bind failed")
+
+        client = TestClient(app)
+        resp = client.post(
+            "/api/cloud/warehouse-setup",
+            json={
+                "org_id": "org1",
+                "project_id": "proj1",
+                "connection_name": "DW",
+                "config": {"type": "snowflake"},
+            },
+        )
+        assert resp.status_code == 400
+        assert "Bind failed" in resp.json()["detail"]
+
+
 if __name__ == "__main__":
     unittest.main()
