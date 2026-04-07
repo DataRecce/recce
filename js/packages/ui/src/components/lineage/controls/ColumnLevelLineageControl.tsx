@@ -241,7 +241,10 @@ export const ColumnLevelLineageControl = ({
                   bgcolor: "background.paper",
                 }}
                 disabled={
-                  !interactive || noCatalogCurrent || !changeAnalysisAvailable
+                  !interactive ||
+                  noCatalogCurrent ||
+                  !changeAnalysisAvailable ||
+                  action.isPending
                 }
                 startIcon={<FaRegDotCircle />}
                 onClick={() => {
