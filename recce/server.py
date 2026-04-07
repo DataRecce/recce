@@ -1068,6 +1068,21 @@ async def get_user_info():
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.get("/api/connection-info")
+async def get_connection_info():
+    """Return non-sensitive connection parameters from the loaded dbt profile."""
+    context = default_context()
+    adapter = context.adapter
+    runtime_config = getattr(adapter, "runtime_config", None)
+    if runtime_config is None:
+        return {"connection_info": None}
+
+    creds = runtime_config.credentials
+    info = dict(creds.connection_info())
+    info["type"] = creds.type
+    return {"connection_info": info}
+
+
 @app.get("/api/cloud/organizations")
 def list_cloud_organizations():
     """List all organizations the authenticated user has access to."""
