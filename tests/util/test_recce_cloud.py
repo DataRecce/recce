@@ -306,9 +306,7 @@ class TestRecceCloudCreateSession(unittest.TestCase):
         """Test create_session when response wraps in 'session' key."""
         mock_response = Mock()
         mock_response.status_code = 201
-        mock_response.json.return_value = {
-            "session": {"id": "sess-123", "name": "PR-42"}
-        }
+        mock_response.json.return_value = {"session": {"id": "sess-123", "name": "PR-42"}}
         mock_request.return_value = mock_response
 
         result = self.cloud.create_session("org1", "proj1", "PR-42", adapter_type="postgres")
@@ -316,9 +314,7 @@ class TestRecceCloudCreateSession(unittest.TestCase):
         self.assertEqual(result["id"], "sess-123")
         self.assertEqual(result["name"], "PR-42")
         expected_url = f"{self.cloud.base_url_v2}/organizations/org1/projects/proj1/sessions"
-        mock_request.assert_called_once_with(
-            "POST", expected_url, json={"name": "PR-42", "adapter_type": "postgres"}
-        )
+        mock_request.assert_called_once_with("POST", expected_url, json={"name": "PR-42", "adapter_type": "postgres"})
 
     @patch("recce.util.recce_cloud.RecceCloud._request")
     def test_create_session_success_without_session_key(self, mock_request):
@@ -343,9 +339,7 @@ class TestRecceCloudCreateSession(unittest.TestCase):
         self.cloud.create_session("org1", "proj1", "test-session")
 
         expected_url = f"{self.cloud.base_url_v2}/organizations/org1/projects/proj1/sessions"
-        mock_request.assert_called_once_with(
-            "POST", expected_url, json={"name": "test-session"}
-        )
+        mock_request.assert_called_once_with("POST", expected_url, json={"name": "test-session"})
 
     @patch("recce.util.recce_cloud.RecceCloud._request")
     def test_create_session_error(self, mock_request):

@@ -15,10 +15,22 @@ export interface AdapterField {
   placeholder?: string;
 }
 
+export interface AuthMethod {
+  /** Auth method key (e.g., "user-password", "key-pair") */
+  value: string;
+  /** Display label for the selector */
+  label: string;
+  /** Fields specific to this auth method */
+  fields: AdapterField[];
+}
+
 export interface AdapterDefinition {
   type: string;
   label: string;
-  fields: AdapterField[];
+  /** Common fields shown regardless of auth method */
+  commonFields: AdapterField[];
+  /** Auth methods — if length === 1, no selector is shown */
+  authMethods: AuthMethod[];
 }
 
 /**
@@ -30,7 +42,7 @@ export const SUPPORTED_ADAPTERS: Record<string, AdapterDefinition> = {
   snowflake: {
     type: "snowflake",
     label: "Snowflake",
-    fields: [
+    commonFields: [
       {
         name: "account",
         label: "Account",
@@ -66,35 +78,48 @@ export const SUPPORTED_ADAPTERS: Record<string, AdapterDefinition> = {
         isCredential: false,
         required: true,
       },
+    ],
+    authMethods: [
       {
-        name: "password",
-        label: "Password",
-        type: "password",
-        isCredential: true,
-        required: true,
-        placeholder: "Or use private key below",
+        value: "user-password",
+        label: "User & Password",
+        fields: [
+          {
+            name: "password",
+            label: "Password",
+            type: "password",
+            isCredential: true,
+            required: true,
+          },
+        ],
       },
       {
-        name: "private_key",
-        label: "Private Key",
-        type: "textarea",
-        isCredential: true,
-        required: false,
-        placeholder: "Paste PEM-encoded private key",
-      },
-      {
-        name: "private_key_passphrase",
-        label: "Private Key Passphrase",
-        type: "password",
-        isCredential: true,
-        required: false,
+        value: "key-pair",
+        label: "Key Pair",
+        fields: [
+          {
+            name: "private_key",
+            label: "Private Key",
+            type: "textarea",
+            isCredential: true,
+            required: true,
+            placeholder: "Paste PEM-encoded private key",
+          },
+          {
+            name: "private_key_passphrase",
+            label: "Private Key Passphrase",
+            type: "password",
+            isCredential: true,
+            required: false,
+          },
+        ],
       },
     ],
   },
   databricks: {
     type: "databricks",
     label: "Databricks",
-    fields: [
+    commonFields: [
       {
         name: "host",
         label: "Host",
@@ -124,19 +149,47 @@ export const SUPPORTED_ADAPTERS: Record<string, AdapterDefinition> = {
         isCredential: false,
         required: true,
       },
+    ],
+    authMethods: [
       {
-        name: "token",
-        label: "Access Token",
-        type: "password",
-        isCredential: true,
-        required: true,
+        value: "token",
+        label: "Token",
+        fields: [
+          {
+            name: "token",
+            label: "Access Token",
+            type: "password",
+            isCredential: true,
+            required: true,
+          },
+        ],
+      },
+      {
+        value: "oauth",
+        label: "OAuth (M2M)",
+        fields: [
+          {
+            name: "client_id",
+            label: "Client ID",
+            type: "text",
+            isCredential: true,
+            required: true,
+          },
+          {
+            name: "client_secret",
+            label: "Client Secret",
+            type: "password",
+            isCredential: true,
+            required: true,
+          },
+        ],
       },
     ],
   },
   bigquery: {
     type: "bigquery",
     label: "BigQuery",
-    fields: [
+    commonFields: [
       {
         name: "project",
         label: "Project",
@@ -153,20 +206,28 @@ export const SUPPORTED_ADAPTERS: Record<string, AdapterDefinition> = {
         required: true,
         prefillFrom: "schema",
       },
+    ],
+    authMethods: [
       {
-        name: "keyfile_json",
-        label: "Service Account Key (JSON)",
-        type: "textarea",
-        isCredential: true,
-        required: true,
-        placeholder: "Paste service account JSON",
+        value: "service-account-json",
+        label: "Service Account JSON",
+        fields: [
+          {
+            name: "keyfile_json",
+            label: "Service Account Key (JSON)",
+            type: "textarea",
+            isCredential: true,
+            required: true,
+            placeholder: "Paste service account JSON",
+          },
+        ],
       },
     ],
   },
   redshift: {
     type: "redshift",
     label: "Redshift",
-    fields: [
+    commonFields: [
       {
         name: "host",
         label: "Host",
@@ -203,12 +264,20 @@ export const SUPPORTED_ADAPTERS: Record<string, AdapterDefinition> = {
         isCredential: false,
         required: true,
       },
+    ],
+    authMethods: [
       {
-        name: "password",
+        value: "password",
         label: "Password",
-        type: "password",
-        isCredential: true,
-        required: true,
+        fields: [
+          {
+            name: "password",
+            label: "Password",
+            type: "password",
+            isCredential: true,
+            required: true,
+          },
+        ],
       },
     ],
   },
@@ -222,8 +291,30 @@ export function isSupportedAdapter(adapterType: string): boolean {
 }
 
 /**
+ * Get the default auth method for an adapter.
+ */
+export function getDefaultAuthMethod(adapterType: string): string {
+  const adapter = SUPPORTED_ADAPTERS[adapterType];
+  return adapter?.authMethods[0]?.value ?? "";
+}
+
+/**
+ * Get all fields (common + auth-method-specific) for the given adapter and auth method.
+ */
+export function getFieldsForAuthMethod(
+  adapterType: string,
+  authMethod: string,
+): AdapterField[] {
+  const adapter = SUPPORTED_ADAPTERS[adapterType];
+  if (!adapter) return [];
+  const auth = adapter.authMethods.find((m) => m.value === authMethod);
+  return [...adapter.commonFields, ...(auth?.fields ?? [])];
+}
+
+/**
  * Build prefilled form values from connection_info() data.
  * Maps dbt field names to Cloud field names using `prefillFrom`.
+ * Only prefills common (non-credential) fields.
  */
 export function buildPrefillValues(
   adapterType: string,
@@ -233,7 +324,7 @@ export function buildPrefillValues(
   if (!adapter) return {};
 
   const values: Record<string, string> = {};
-  for (const field of adapter.fields) {
+  for (const field of adapter.commonFields) {
     if (field.isCredential) continue;
     const sourceField = field.prefillFrom ?? field.name;
     const value = connectionInfo[sourceField];

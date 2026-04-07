@@ -34,6 +34,8 @@ import {
 import { PUBLIC_CLOUD_WEB_URL } from "../../lib/const";
 import {
   buildPrefillValues,
+  getDefaultAuthMethod,
+  getFieldsForAuthMethod,
   isSupportedAdapter,
   SUPPORTED_ADAPTERS,
 } from "../../lib/warehouseAdapters";
@@ -71,6 +73,7 @@ export function CloudUploadDialogOss({
     null,
   );
   const [dwFormValues, setDwFormValues] = useState<Record<string, string>>({});
+  const [dwAuthMethod, setDwAuthMethod] = useState("");
   const [uploadResult, setUploadResult] = useState<{
     sessionUrl: string;
     baseUploaded: boolean;
@@ -147,6 +150,7 @@ export function CloudUploadDialogOss({
         if (connInfo && isSupportedAdapter(connInfo.type)) {
           setConnectionInfo(connInfo);
           setDwFormValues(buildPrefillValues(connInfo.type, connInfo));
+          setDwAuthMethod(getDefaultAuthMethod(connInfo.type));
           setDialogState("dw_setup");
         } else {
           // Unsupported adapter — skip DW setup
@@ -172,8 +176,16 @@ export function CloudUploadDialogOss({
     setDialogState("dw_saving");
     try {
       const config: Record<string, unknown> = { type: connectionInfo.type };
-      const adapter = SUPPORTED_ADAPTERS[connectionInfo.type];
-      for (const field of adapter.fields) {
+      // For Databricks OAuth, Cloud expects auth_type field
+      if (connectionInfo.type === "databricks" && dwAuthMethod === "oauth") {
+        config.auth_type = "oauth";
+      }
+      // For BigQuery, Cloud expects method field
+      if (connectionInfo.type === "bigquery") {
+        config.method = "service-account-json";
+      }
+      const fields = getFieldsForAuthMethod(connectionInfo.type, dwAuthMethod);
+      for (const field of fields) {
         const value = dwFormValues[field.name];
         if (value) {
           config[field.name] = field.type === "number" ? Number(value) : value;
@@ -325,62 +337,123 @@ export function CloudUploadDialogOss({
         </DialogContent>
       )}
 
-      {dialogState === "dw_setup" && connectionInfo && (
-        <>
-          <DialogTitle sx={{ textAlign: "center", fontSize: "1.5rem" }}>
-            Set Up Data Warehouse
-          </DialogTitle>
-          <DialogContent>
-            <Stack spacing={2.5} sx={{ pt: 1 }}>
-              <Typography sx={{ color: "text.secondary" }}>
-                Connect your {SUPPORTED_ADAPTERS[connectionInfo.type]?.label}{" "}
-                warehouse so Recce Cloud can query your data. You can skip this
-                and set it up later.
-              </Typography>
-              {SUPPORTED_ADAPTERS[connectionInfo.type]?.fields.map((field) => (
-                <TextField
-                  key={field.name}
+      {dialogState === "dw_setup" &&
+        connectionInfo &&
+        (() => {
+          const adapterDef = SUPPORTED_ADAPTERS[connectionInfo.type];
+          if (!adapterDef) return null;
+          const hasMultipleAuthMethods = adapterDef.authMethods.length > 1;
+          const activeAuthMethod = adapterDef.authMethods.find(
+            (m) => m.value === dwAuthMethod,
+          );
+
+          return (
+            <>
+              <DialogTitle sx={{ textAlign: "center", fontSize: "1.5rem" }}>
+                Set Up Data Warehouse
+              </DialogTitle>
+              <DialogContent>
+                <Stack spacing={2.5} sx={{ pt: 1 }}>
+                  <Typography sx={{ color: "text.secondary" }}>
+                    Connect your {adapterDef.label} warehouse so Recce Cloud can
+                    query your data. You can skip this and set it up later.
+                  </Typography>
+
+                  {adapterDef.commonFields.map((field) => (
+                    <TextField
+                      key={field.name}
+                      fullWidth
+                      size="small"
+                      label={field.label}
+                      type={field.type === "textarea" ? "text" : field.type}
+                      multiline={field.type === "textarea"}
+                      minRows={field.type === "textarea" ? 3 : undefined}
+                      required={field.required}
+                      placeholder={field.placeholder}
+                      value={dwFormValues[field.name] ?? ""}
+                      onChange={(e) =>
+                        setDwFormValues((prev) => ({
+                          ...prev,
+                          [field.name]: e.target.value,
+                        }))
+                      }
+                    />
+                  ))}
+
+                  {hasMultipleAuthMethods && (
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Authentication</InputLabel>
+                      <Select
+                        value={dwAuthMethod}
+                        label="Authentication"
+                        onChange={(e) => {
+                          setDwAuthMethod(e.target.value);
+                          // Clear auth-specific field values when switching
+                          setDwFormValues((prev) => {
+                            const next = { ...prev };
+                            for (const method of adapterDef.authMethods) {
+                              for (const field of method.fields) {
+                                delete next[field.name];
+                              }
+                            }
+                            return next;
+                          });
+                        }}
+                      >
+                        {adapterDef.authMethods.map((method) => (
+                          <MenuItem key={method.value} value={method.value}>
+                            {method.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+
+                  {activeAuthMethod?.fields.map((field) => (
+                    <TextField
+                      key={field.name}
+                      fullWidth
+                      size="small"
+                      label={field.label}
+                      type={field.type === "textarea" ? "text" : field.type}
+                      multiline={field.type === "textarea"}
+                      minRows={field.type === "textarea" ? 3 : undefined}
+                      required={field.required}
+                      placeholder={field.placeholder}
+                      value={dwFormValues[field.name] ?? ""}
+                      onChange={(e) =>
+                        setDwFormValues((prev) => ({
+                          ...prev,
+                          [field.name]: e.target.value,
+                        }))
+                      }
+                    />
+                  ))}
+                </Stack>
+              </DialogContent>
+              <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+                <Button
                   fullWidth
-                  size="small"
-                  label={field.label}
-                  type={field.type === "textarea" ? "text" : field.type}
-                  multiline={field.type === "textarea"}
-                  minRows={field.type === "textarea" ? 3 : undefined}
-                  required={field.required}
-                  placeholder={field.placeholder}
-                  value={dwFormValues[field.name] ?? ""}
-                  onChange={(e) =>
-                    setDwFormValues((prev) => ({
-                      ...prev,
-                      [field.name]: e.target.value,
-                    }))
-                  }
-                />
-              ))}
-            </Stack>
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-            <Button
-              fullWidth
-              variant="outlined"
-              color="neutral"
-              onClick={handleSkipDw}
-              sx={{ borderRadius: 2, fontWeight: 500 }}
-            >
-              Skip
-            </Button>
-            <Button
-              fullWidth
-              variant="contained"
-              color="primary"
-              onClick={handleDwSetup}
-              sx={{ borderRadius: 2, fontWeight: 500 }}
-            >
-              Setup & Continue
-            </Button>
-          </DialogActions>
-        </>
-      )}
+                  variant="outlined"
+                  color="neutral"
+                  onClick={handleSkipDw}
+                  sx={{ borderRadius: 2, fontWeight: 500 }}
+                >
+                  Skip
+                </Button>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  color="primary"
+                  onClick={handleDwSetup}
+                  sx={{ borderRadius: 2, fontWeight: 500 }}
+                >
+                  Setup & Continue
+                </Button>
+              </DialogActions>
+            </>
+          );
+        })()}
 
       {dialogState === "dw_saving" && (
         <DialogContent>
