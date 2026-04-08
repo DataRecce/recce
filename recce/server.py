@@ -1360,7 +1360,13 @@ async def setup_warehouse(input: WarehouseSetupInput):
             name=input.connection_name,
             config=input.config,
         )
-        connection_id = str(connection.get("id", ""))
+        connection_id_raw = connection.get("id")
+        if connection_id_raw is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Cloud returned a warehouse connection with no ID",
+            )
+        connection_id = str(connection_id_raw).strip()
         if not connection_id:
             raise HTTPException(
                 status_code=400,

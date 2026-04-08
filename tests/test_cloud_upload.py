@@ -800,6 +800,27 @@ class TestWarehouseSetupEndpoint(_EndpointTestBase):
         assert resp.status_code == 400
         assert "no ID" in resp.json()["detail"]
 
+    @patch("recce.util.recce_cloud.RecceCloud.create_warehouse_connection")
+    @patch("recce.server.get_recce_api_token", return_value="tok")
+    @patch("recce.server.default_context")
+    def test_400_when_connection_id_is_none(self, mock_ctx, mock_token, mock_create):
+        """Cloud returns a connection with id=None."""
+        mock_ctx.return_value = _mock_context_with_token()
+        mock_create.return_value = {"id": None, "name": "DW"}
+
+        client = TestClient(app)
+        resp = client.post(
+            "/api/cloud/warehouse-setup",
+            json={
+                "org_id": "org1",
+                "project_id": "proj1",
+                "connection_name": "DW",
+                "config": {"type": "snowflake"},
+            },
+        )
+        assert resp.status_code == 400
+        assert "no ID" in resp.json()["detail"]
+
 
 if __name__ == "__main__":
     unittest.main()

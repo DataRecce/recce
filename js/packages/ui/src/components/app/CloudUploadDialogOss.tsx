@@ -179,13 +179,20 @@ export function CloudUploadDialogOss({
 
     // Validate required fields before submitting
     const fields = getFieldsForAuthMethod(connectionInfo.type, dwAuthMethod);
-    const missingFields = fields.filter(
-      (f) => f.required && !dwFormValues[f.name]?.trim(),
-    );
-    if (missingFields.length > 0) {
-      setErrorMessage(
-        `Please fill in: ${missingFields.map((f) => f.label).join(", ")}`,
-      );
+    const validationErrors: string[] = [];
+    for (const f of fields) {
+      const value = dwFormValues[f.name]?.trim();
+      if (f.required && !value) {
+        validationErrors.push(`${f.label} is required`);
+      } else if (f.type === "number" && value) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) {
+          validationErrors.push(`${f.label} must be a valid number`);
+        }
+      }
+    }
+    if (validationErrors.length > 0) {
+      setErrorMessage(validationErrors.join(". "));
       setDialogState("dw_error");
       return;
     }
@@ -204,13 +211,7 @@ export function CloudUploadDialogOss({
       for (const field of fields) {
         const value = dwFormValues[field.name];
         if (value) {
-          if (field.type === "number") {
-            const num = Number(value);
-            if (Number.isNaN(num)) continue;
-            config[field.name] = num;
-          } else {
-            config[field.name] = value;
-          }
+          config[field.name] = field.type === "number" ? Number(value) : value;
         }
       }
 
