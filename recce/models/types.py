@@ -136,6 +136,7 @@ ChangeStatus = Literal[
     "added",
     "removed",
     "modified",
+    "renamed",
 ]
 ChangeCategory = Literal[
     "breaking",
@@ -148,6 +149,7 @@ ChangeCategory = Literal[
 class NodeChange(BaseModel):
     category: ChangeCategory
     columns: Optional[dict[str, ChangeStatus]] = None
+    rename_map: Optional[dict[str, str]] = None  # new_name → old_name
 
 
 class NodeDiff(BaseModel):
