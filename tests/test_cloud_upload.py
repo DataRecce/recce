@@ -623,9 +623,18 @@ class TestMaybeUploadBaseSessionIdValidation(unittest.TestCase):
 class TestConnectionInfoEndpoint(_EndpointTestBase):
     """Test GET /api/connection-info endpoint."""
 
+    @patch("recce.server.get_recce_api_token", return_value=None)
     @patch("recce.server.default_context")
-    def test_returns_connection_info(self, mock_ctx):
-        ctx = Mock()
+    def test_401_when_no_token(self, mock_ctx, mock_token):
+        mock_ctx.return_value = _mock_context_no_token()
+        client = TestClient(app)
+        resp = client.get("/api/connection-info")
+        assert resp.status_code == 401
+
+    @patch("recce.server.get_recce_api_token", return_value="tok")
+    @patch("recce.server.default_context")
+    def test_returns_connection_info(self, mock_ctx, mock_token):
+        ctx = _mock_context_with_token()
         creds = Mock()
         creds.type = "snowflake"
         creds.connection_info.return_value = [
@@ -648,9 +657,10 @@ class TestConnectionInfoEndpoint(_EndpointTestBase):
         assert data["database"] == "MY_DB"
         assert data["schema"] == "PUBLIC"
 
+    @patch("recce.server.get_recce_api_token", return_value="tok")
     @patch("recce.server.default_context")
-    def test_returns_null_when_no_runtime_config(self, mock_ctx):
-        ctx = Mock()
+    def test_returns_null_when_no_runtime_config(self, mock_ctx, mock_token):
+        ctx = _mock_context_with_token()
         ctx.adapter = Mock(spec=[])  # No runtime_config
         mock_ctx.return_value = ctx
 
@@ -659,9 +669,10 @@ class TestConnectionInfoEndpoint(_EndpointTestBase):
         assert resp.status_code == 200
         assert resp.json()["connection_info"] is None
 
+    @patch("recce.server.get_recce_api_token", return_value="tok")
     @patch("recce.server.default_context")
-    def test_returns_null_when_runtime_config_is_none(self, mock_ctx):
-        ctx = Mock()
+    def test_returns_null_when_runtime_config_is_none(self, mock_ctx, mock_token):
+        ctx = _mock_context_with_token()
         ctx.adapter = Mock()
         ctx.adapter.runtime_config = None
         mock_ctx.return_value = ctx
@@ -767,6 +778,27 @@ class TestWarehouseSetupEndpoint(_EndpointTestBase):
         )
         assert resp.status_code == 400
         assert "Bind failed" in resp.json()["detail"]
+
+    @patch("recce.util.recce_cloud.RecceCloud.create_warehouse_connection")
+    @patch("recce.server.get_recce_api_token", return_value="tok")
+    @patch("recce.server.default_context")
+    def test_400_when_connection_has_no_id(self, mock_ctx, mock_token, mock_create):
+        """Cloud returns a connection without an 'id' field."""
+        mock_ctx.return_value = _mock_context_with_token()
+        mock_create.return_value = {"name": "DW"}  # No 'id' key
+
+        client = TestClient(app)
+        resp = client.post(
+            "/api/cloud/warehouse-setup",
+            json={
+                "org_id": "org1",
+                "project_id": "proj1",
+                "connection_name": "DW",
+                "config": {"type": "snowflake"},
+            },
+        )
+        assert resp.status_code == 400
+        assert "no ID" in resp.json()["detail"]
 
 
 if __name__ == "__main__":

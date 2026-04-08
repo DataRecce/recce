@@ -1072,6 +1072,10 @@ async def get_user_info():
 async def get_connection_info():
     """Return non-sensitive connection parameters from the loaded dbt profile."""
     context = default_context()
+    user_token = get_recce_api_token() or context.state_loader.token
+    if not user_token:
+        raise HTTPException(status_code=401, detail="Not authenticated with Recce Cloud")
+
     adapter = context.adapter
     runtime_config = getattr(adapter, "runtime_config", None)
     if runtime_config is None:
@@ -1357,17 +1361,31 @@ async def setup_warehouse(input: WarehouseSetupInput):
             config=input.config,
         )
         connection_id = str(connection.get("id", ""))
+        if not connection_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Cloud returned a warehouse connection with no ID",
+            )
 
-        cloud.bind_warehouse_connection_to_project(
-            org_id=input.org_id,
-            project_id=input.project_id,
-            warehouse_connection_id=connection_id,
-        )
+        try:
+            cloud.bind_warehouse_connection_to_project(
+                org_id=input.org_id,
+                project_id=input.project_id,
+                warehouse_connection_id=connection_id,
+            )
+        except Exception as bind_err:
+            logger.error(
+                f"Failed to bind warehouse connection {connection_id} to project "
+                f"{input.project_id}: {bind_err}. Orphaned connection may need manual cleanup."
+            )
+            raise
 
         return WarehouseSetupOutput(
             status="success",
             warehouse_connection_id=connection_id,
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

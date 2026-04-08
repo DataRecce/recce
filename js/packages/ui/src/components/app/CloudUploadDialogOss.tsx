@@ -46,7 +46,8 @@ type DialogState =
   | "dw_setup"
   | "dw_saving"
   | "success"
-  | "error";
+  | "error"
+  | "dw_error";
 
 interface CloudUploadDialogProps {
   open: boolean;
@@ -176,6 +177,19 @@ export function CloudUploadDialogOss({
   const handleDwSetup = async () => {
     if (!connectionInfo || !uploadResult) return;
 
+    // Validate required fields before submitting
+    const fields = getFieldsForAuthMethod(connectionInfo.type, dwAuthMethod);
+    const missingFields = fields.filter(
+      (f) => f.required && !dwFormValues[f.name]?.trim(),
+    );
+    if (missingFields.length > 0) {
+      setErrorMessage(
+        `Please fill in: ${missingFields.map((f) => f.label).join(", ")}`,
+      );
+      setDialogState("dw_error");
+      return;
+    }
+
     setDialogState("dw_saving");
     try {
       const config: Record<string, unknown> = { type: connectionInfo.type };
@@ -187,11 +201,16 @@ export function CloudUploadDialogOss({
       if (connectionInfo.type === "bigquery") {
         config.method = "service-account-json";
       }
-      const fields = getFieldsForAuthMethod(connectionInfo.type, dwAuthMethod);
       for (const field of fields) {
         const value = dwFormValues[field.name];
         if (value) {
-          config[field.name] = field.type === "number" ? Number(value) : value;
+          if (field.type === "number") {
+            const num = Number(value);
+            if (Number.isNaN(num)) continue;
+            config[field.name] = num;
+          } else {
+            config[field.name] = value;
+          }
         }
       }
 
@@ -211,7 +230,7 @@ export function CloudUploadDialogOss({
           ? err.message
           : "Failed to set up warehouse connection",
       );
-      setDialogState("error");
+      setDialogState("dw_error");
     }
   };
 
@@ -532,6 +551,44 @@ export function CloudUploadDialogOss({
             )}
           </Stack>
         </DialogContent>
+      )}
+
+      {dialogState === "dw_error" && (
+        <>
+          <DialogContent>
+            <Stack spacing={1.5} alignItems="center" sx={{ py: 2 }}>
+              <Typography sx={{ fontWeight: 500, fontSize: "1rem" }}>
+                Warehouse Setup Failed
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{ color: "text.secondary", textAlign: "center" }}
+              >
+                {errorMessage}
+              </Typography>
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              color="neutral"
+              onClick={handleSkipDw}
+              sx={{ borderRadius: 2, fontWeight: 500 }}
+            >
+              Skip
+            </Button>
+            <Button
+              fullWidth
+              variant="contained"
+              color="primary"
+              onClick={() => setDialogState("dw_setup")}
+              sx={{ borderRadius: 2, fontWeight: 500 }}
+            >
+              Retry Setup
+            </Button>
+          </DialogActions>
+        </>
       )}
 
       {dialogState === "error" && (

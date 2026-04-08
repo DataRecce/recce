@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import typing
-from typing import IO, Dict
+from typing import IO, Dict, Optional
 
 import requests
 
@@ -433,7 +433,7 @@ class RecceCloud:
         data = response.json()
         return data.get("sessions", [])
 
-    def create_session(self, org_id: str, project_id: str, name: str, adapter_type: str = None) -> dict:
+    def create_session(self, org_id: str, project_id: str, name: str, adapter_type: Optional[str] = None) -> dict:
         """Create a new session in a project."""
         api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions"
         data = {"name": name}
