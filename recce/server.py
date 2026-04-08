@@ -1068,6 +1068,25 @@ async def get_user_info():
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.get("/api/connection-info")
+async def get_connection_info():
+    """Return non-sensitive connection parameters from the loaded dbt profile."""
+    context = default_context()
+    user_token = get_recce_api_token() or context.state_loader.token
+    if not user_token:
+        raise HTTPException(status_code=401, detail="Not authenticated with Recce Cloud")
+
+    adapter = context.adapter
+    runtime_config = getattr(adapter, "runtime_config", None)
+    if runtime_config is None:
+        return {"connection_info": None}
+
+    creds = runtime_config.credentials
+    info = dict(creds.connection_info())
+    info["type"] = creds.type
+    return {"connection_info": info}
+
+
 @app.get("/api/cloud/organizations")
 def list_cloud_organizations():
     """List all organizations the authenticated user has access to."""
@@ -1307,6 +1326,72 @@ def upload_to_cloud(input: CloudUploadInput):
             session_id=session_id,
             session_url=session_url,
         )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+class WarehouseSetupInput(BaseModel):
+    org_id: str
+    project_id: str
+    connection_name: str
+    config: dict
+
+
+class WarehouseSetupOutput(BaseModel):
+    status: str
+    warehouse_connection_id: Optional[str] = None
+    message: Optional[str] = None
+
+
+@app.post("/api/cloud/warehouse-setup", response_model=WarehouseSetupOutput)
+async def setup_warehouse(input: WarehouseSetupInput):
+    """Create a warehouse connection in Cloud and bind it to the project."""
+    from recce.util.recce_cloud import RecceCloud
+
+    context = default_context()
+    user_token = get_recce_api_token() or context.state_loader.token
+    if not user_token:
+        raise HTTPException(status_code=401, detail="Not authenticated with Recce Cloud")
+
+    cloud = RecceCloud(user_token)
+    try:
+        connection = cloud.create_warehouse_connection(
+            org_id=input.org_id,
+            name=input.connection_name,
+            config=input.config,
+        )
+        connection_id_raw = connection.get("id")
+        if connection_id_raw is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Cloud returned a warehouse connection with no ID",
+            )
+        connection_id = str(connection_id_raw).strip()
+        if not connection_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Cloud returned a warehouse connection with no ID",
+            )
+
+        try:
+            cloud.bind_warehouse_connection_to_project(
+                org_id=input.org_id,
+                project_id=input.project_id,
+                warehouse_connection_id=connection_id,
+            )
+        except Exception as bind_err:
+            logger.error(
+                f"Failed to bind warehouse connection {connection_id} to project "
+                f"{input.project_id}: {bind_err}. Orphaned connection may need manual cleanup."
+            )
+            raise
+
+        return WarehouseSetupOutput(
+            status="success",
+            warehouse_connection_id=connection_id,
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

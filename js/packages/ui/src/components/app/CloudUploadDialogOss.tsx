@@ -23,14 +23,31 @@ import { useApiConfig } from "../../hooks/useApiConfig";
 import {
   type CloudOrganization,
   type CloudProject,
+  type ConnectionInfo,
   getCloudProjectBaseStatus,
+  getConnectionInfo,
   listCloudOrganizations,
   listCloudProjects,
+  setupWarehouse,
   uploadToCloud,
 } from "../../lib/api/cloudUpload";
 import { PUBLIC_CLOUD_WEB_URL } from "../../lib/const";
+import {
+  buildPrefillValues,
+  getDefaultAuthMethod,
+  getFieldsForAuthMethod,
+  isSupportedAdapter,
+  SUPPORTED_ADAPTERS,
+} from "../../lib/warehouseAdapters";
 
-type DialogState = "select" | "uploading" | "success" | "error";
+type DialogState =
+  | "select"
+  | "uploading"
+  | "dw_setup"
+  | "dw_saving"
+  | "success"
+  | "error"
+  | "dw_error";
 
 interface CloudUploadDialogProps {
   open: boolean;
@@ -53,6 +70,15 @@ export function CloudUploadDialogOss({
   const [sessionUrl, setSessionUrl] = useState("");
   const [baseNeedsUpload, setBaseNeedsUpload] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [connectionInfo, setConnectionInfo] = useState<ConnectionInfo | null>(
+    null,
+  );
+  const [dwFormValues, setDwFormValues] = useState<Record<string, string>>({});
+  const [dwAuthMethod, setDwAuthMethod] = useState("");
+  const [uploadResult, setUploadResult] = useState<{
+    sessionUrl: string;
+    baseUploaded: boolean;
+  } | null>(null);
 
   // Load organizations when dialog opens
   useEffect(() => {
@@ -115,8 +141,27 @@ export function CloudUploadDialogOss({
         session_name: sessionName.trim(),
       });
       if (result.status === "success" && result.session_url) {
-        setSessionUrl(result.session_url);
-        setDialogState("success");
+        setUploadResult({
+          sessionUrl: result.session_url,
+          baseUploaded: baseNeedsUpload,
+        });
+
+        // Skip DW setup if the project already has a warehouse connection
+        const projectHasWarehouse = !!selectedProjectData?.warehouse_connection;
+        const connInfo = projectHasWarehouse
+          ? null
+          : await getConnectionInfo(apiClient);
+        if (connInfo && isSupportedAdapter(connInfo.type)) {
+          setConnectionInfo(connInfo);
+          setDwFormValues(buildPrefillValues(connInfo.type, connInfo));
+          setDwAuthMethod(getDefaultAuthMethod(connInfo.type));
+          setDialogState("dw_setup");
+        } else {
+          // Unsupported adapter — skip DW setup
+          setSessionUrl(result.session_url);
+          setDialogState("success");
+          window.open(result.session_url, "_blank");
+        }
       } else {
         setErrorMessage(result.message || "Upload failed");
         setDialogState("error");
@@ -127,6 +172,74 @@ export function CloudUploadDialogOss({
       );
       setDialogState("error");
     }
+  };
+
+  const handleDwSetup = async () => {
+    if (!connectionInfo || !uploadResult) return;
+
+    // Validate required fields before submitting
+    const fields = getFieldsForAuthMethod(connectionInfo.type, dwAuthMethod);
+    const validationErrors: string[] = [];
+    for (const f of fields) {
+      const value = dwFormValues[f.name]?.trim();
+      if (f.required && !value) {
+        validationErrors.push(`${f.label} is required`);
+      } else if (f.type === "number" && value) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) {
+          validationErrors.push(`${f.label} must be a valid number`);
+        }
+      }
+    }
+    if (validationErrors.length > 0) {
+      setErrorMessage(validationErrors.join(". "));
+      setDialogState("dw_error");
+      return;
+    }
+
+    setDialogState("dw_saving");
+    try {
+      const config: Record<string, unknown> = { type: connectionInfo.type };
+      // For Databricks OAuth, Cloud expects auth_type field
+      if (connectionInfo.type === "databricks" && dwAuthMethod === "oauth") {
+        config.auth_type = "oauth";
+      }
+      // For BigQuery, Cloud expects method field
+      if (connectionInfo.type === "bigquery") {
+        config.method = "service-account-json";
+      }
+      for (const field of fields) {
+        const value = dwFormValues[field.name];
+        if (value) {
+          config[field.name] = field.type === "number" ? Number(value) : value;
+        }
+      }
+
+      await setupWarehouse(apiClient, {
+        org_id: selectedOrg,
+        project_id: selectedProject,
+        connection_name: `${selectedProjectData?.display_name || selectedProjectData?.name || "Project"} DW`,
+        config,
+      });
+
+      setSessionUrl(uploadResult.sessionUrl);
+      setDialogState("success");
+      window.open(uploadResult.sessionUrl, "_blank");
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : "Failed to set up warehouse connection",
+      );
+      setDialogState("dw_error");
+    }
+  };
+
+  const handleSkipDw = () => {
+    if (!uploadResult) return;
+    setSessionUrl(uploadResult.sessionUrl);
+    setDialogState("success");
+    window.open(uploadResult.sessionUrl, "_blank");
   };
 
   const selectedOrgData = orgs.find((o) => String(o.id) === selectedOrg);
@@ -144,7 +257,11 @@ export function CloudUploadDialogOss({
   return (
     <MuiDialog
       open={open}
-      onClose={dialogState === "uploading" ? undefined : onClose}
+      onClose={
+        dialogState === "uploading" || dialogState === "dw_saving"
+          ? undefined
+          : onClose
+      }
       maxWidth="sm"
       fullWidth
       slotProps={{
@@ -153,12 +270,14 @@ export function CloudUploadDialogOss({
     >
       {dialogState === "select" && (
         <>
-          <DialogTitle sx={{ textAlign: "center", fontSize: "1.5rem" }}>
+          <DialogTitle
+            sx={{ textAlign: "center", fontSize: "1.25rem", pb: 0.5 }}
+          >
             Upload to Recce Cloud
           </DialogTitle>
           <DialogContent>
-            <Stack spacing={3} sx={{ pt: 1 }}>
-              <Typography sx={{ color: "text.secondary" }}>
+            <Stack spacing={2} sx={{ pt: 0.5 }}>
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
                 Upload your local artifacts to Recce Cloud so your team can
                 review and query the data.
               </Typography>
@@ -229,15 +348,149 @@ export function CloudUploadDialogOss({
 
       {dialogState === "uploading" && (
         <DialogContent>
-          <Stack spacing={2} alignItems="center" sx={{ py: 4 }}>
-            <CircularProgress size={48} />
-            <Typography sx={{ fontWeight: 500, fontSize: "1.1rem" }}>
+          <Stack spacing={1.5} alignItems="center" sx={{ py: 3 }}>
+            <CircularProgress size={36} />
+            <Typography sx={{ fontWeight: 500, fontSize: "1rem" }}>
               Uploading artifacts...
             </Typography>
-            <Typography sx={{ color: "text.secondary", textAlign: "center" }}>
+            <Typography
+              variant="body2"
+              sx={{ color: "text.secondary", textAlign: "center" }}
+            >
               {baseNeedsUpload
                 ? "Uploading base and current artifacts. This may take a moment."
                 : "This may take a moment."}
+            </Typography>
+          </Stack>
+        </DialogContent>
+      )}
+
+      {dialogState === "dw_setup" &&
+        connectionInfo &&
+        (() => {
+          const adapterDef = SUPPORTED_ADAPTERS[connectionInfo.type];
+          if (!adapterDef) return null;
+          const hasMultipleAuthMethods = adapterDef.authMethods.length > 1;
+          const activeAuthMethod = adapterDef.authMethods.find(
+            (m) => m.value === dwAuthMethod,
+          );
+
+          return (
+            <>
+              <DialogTitle
+                sx={{ textAlign: "center", fontSize: "1.25rem", pb: 0.5 }}
+              >
+                Set Up Data Warehouse
+              </DialogTitle>
+              <DialogContent>
+                <Stack spacing={2} sx={{ pt: 0.5 }}>
+                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                    Connect your {adapterDef.label} warehouse so Recce Cloud can
+                    query your data. You can skip this and set it up later.
+                  </Typography>
+
+                  {adapterDef.commonFields.map((field) => (
+                    <TextField
+                      key={field.name}
+                      fullWidth
+                      size="small"
+                      label={field.label}
+                      type={field.type === "textarea" ? "text" : field.type}
+                      multiline={field.type === "textarea"}
+                      minRows={field.type === "textarea" ? 3 : undefined}
+                      required={field.required}
+                      placeholder={field.placeholder}
+                      value={dwFormValues[field.name] ?? ""}
+                      onChange={(e) =>
+                        setDwFormValues((prev) => ({
+                          ...prev,
+                          [field.name]: e.target.value,
+                        }))
+                      }
+                    />
+                  ))}
+
+                  {hasMultipleAuthMethods && (
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Authentication</InputLabel>
+                      <Select
+                        value={dwAuthMethod}
+                        label="Authentication"
+                        onChange={(e) => {
+                          setDwAuthMethod(e.target.value);
+                          // Clear auth-specific field values when switching
+                          setDwFormValues((prev) => {
+                            const next = { ...prev };
+                            for (const method of adapterDef.authMethods) {
+                              for (const field of method.fields) {
+                                delete next[field.name];
+                              }
+                            }
+                            return next;
+                          });
+                        }}
+                      >
+                        {adapterDef.authMethods.map((method) => (
+                          <MenuItem key={method.value} value={method.value}>
+                            {method.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+
+                  {activeAuthMethod?.fields.map((field) => (
+                    <TextField
+                      key={field.name}
+                      fullWidth
+                      size="small"
+                      label={field.label}
+                      type={field.type === "textarea" ? "text" : field.type}
+                      multiline={field.type === "textarea"}
+                      minRows={field.type === "textarea" ? 3 : undefined}
+                      required={field.required}
+                      placeholder={field.placeholder}
+                      value={dwFormValues[field.name] ?? ""}
+                      onChange={(e) =>
+                        setDwFormValues((prev) => ({
+                          ...prev,
+                          [field.name]: e.target.value,
+                        }))
+                      }
+                    />
+                  ))}
+                </Stack>
+              </DialogContent>
+              <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  color="neutral"
+                  onClick={handleSkipDw}
+                  sx={{ borderRadius: 2, fontWeight: 500 }}
+                >
+                  Skip
+                </Button>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  color="primary"
+                  onClick={handleDwSetup}
+                  sx={{ borderRadius: 2, fontWeight: 500 }}
+                >
+                  Setup & Continue
+                </Button>
+              </DialogActions>
+            </>
+          );
+        })()}
+
+      {dialogState === "dw_saving" && (
+        <DialogContent>
+          <Stack spacing={1.5} alignItems="center" sx={{ py: 3 }}>
+            <CircularProgress size={36} />
+            <Typography sx={{ fontWeight: 500, fontSize: "1rem" }}>
+              Setting up warehouse connection...
             </Typography>
           </Stack>
         </DialogContent>
@@ -253,12 +506,12 @@ export function CloudUploadDialogOss({
           >
             <PiX />
           </IconButton>
-          <Stack spacing={1.5} alignItems="center" sx={{ pt: 3, pb: 1 }}>
+          <Stack spacing={1.5} alignItems="center" sx={{ pt: 2, pb: 1 }}>
             <Box
               component={PiCheckCircle}
-              sx={{ fontSize: 40, color: "success.main" }}
+              sx={{ fontSize: 36, color: "success.main" }}
             />
-            <Typography sx={{ fontWeight: 600, fontSize: "1.1rem" }}>
+            <Typography sx={{ fontWeight: 600, fontSize: "1rem" }}>
               Upload Complete
             </Typography>
             <Typography
@@ -301,19 +554,60 @@ export function CloudUploadDialogOss({
         </DialogContent>
       )}
 
-      {dialogState === "error" && (
+      {dialogState === "dw_error" && (
         <>
           <DialogContent>
-            <Stack spacing={2} alignItems="center" sx={{ py: 3 }}>
-              <Typography sx={{ fontWeight: 500, fontSize: "1.1rem" }}>
-                Upload Failed
+            <Stack spacing={1.5} alignItems="center" sx={{ py: 2 }}>
+              <Typography sx={{ fontWeight: 500, fontSize: "1rem" }}>
+                Warehouse Setup Failed
               </Typography>
-              <Typography sx={{ color: "text.secondary", textAlign: "center" }}>
+              <Typography
+                variant="body2"
+                sx={{ color: "text.secondary", textAlign: "center" }}
+              >
                 {errorMessage}
               </Typography>
             </Stack>
           </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 3 }}>
+          <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              color="neutral"
+              onClick={handleSkipDw}
+              sx={{ borderRadius: 2, fontWeight: 500 }}
+            >
+              Skip
+            </Button>
+            <Button
+              fullWidth
+              variant="contained"
+              color="primary"
+              onClick={() => setDialogState("dw_setup")}
+              sx={{ borderRadius: 2, fontWeight: 500 }}
+            >
+              Retry Setup
+            </Button>
+          </DialogActions>
+        </>
+      )}
+
+      {dialogState === "error" && (
+        <>
+          <DialogContent>
+            <Stack spacing={1.5} alignItems="center" sx={{ py: 2 }}>
+              <Typography sx={{ fontWeight: 500, fontSize: "1rem" }}>
+                Upload Failed
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{ color: "text.secondary", textAlign: "center" }}
+              >
+                {errorMessage}
+              </Typography>
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
             <Button
               fullWidth
               variant="outlined"
