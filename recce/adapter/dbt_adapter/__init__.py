@@ -1581,8 +1581,7 @@ class DbtAdapter(BaseAdapter):
             # This path is fragile: the Jinja context only provides ref() and source(),
             # so models using config(), is_incremental(), etc. will fail silently.
             logger.warning(
-                "[cll] node %s has no compiled_code in manifest; "
-                "falling back to Jinja rendering (lineage may be incomplete)",
+                "[cll] node %s: falling back to Jinja rendering " "(lineage may be incomplete)",
                 node_id,
             )
 
