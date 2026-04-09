@@ -69,6 +69,7 @@ export type LineageGraphColumnNode = Node<
     type: string;
     transformationType?: string;
     changeStatus?: "added" | "removed" | "modified";
+    isImpacted?: boolean;
   },
   "lineageGraphColumnNode"
 >;
@@ -259,6 +260,16 @@ export interface LineageViewContextType {
   isNodeShowingChangeAnalysis: (nodeId: string) => boolean;
   /** Whether impact radius (change analysis) mode is active */
   changeAnalysisMode: boolean;
+  /** Whether the new CLL experience flag is enabled on the server */
+  newCllExperience: boolean;
+  // TODO: Move isImpacted to be a per-model state on node data instead of
+  // a lookup set, so impact status is part of the graph model rather than
+  // a side-channel computed separately.
+  /** Frozen set of node IDs that are impacted, computed once during impact
+   *  analysis and stable across column selections in new CLL experience. */
+  impactedNodeIds: Set<string>;
+  /** Frozen set of column IDs that are impacted, same lifecycle as impactedNodeIds. */
+  impactedColumnIds: Set<string>;
   /** Set change analysis mode on/off */
   setChangeAnalysisMode: (active: boolean) => void;
 
