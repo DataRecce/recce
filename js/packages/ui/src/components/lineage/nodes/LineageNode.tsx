@@ -143,6 +143,7 @@ export interface LineageNodeProps {
   newCllExperience?: boolean;
   /** Whether this node is impacted by CLL analysis */
   isImpacted?: boolean;
+
   // === Callbacks ===
   /** Callback when node is clicked */
   onNodeClick?: (nodeId: string) => void;
@@ -395,7 +396,18 @@ function LineageNodeComponent({
     return primaryText;
   })();
 
-  const iconColor = titleColor;
+  const iconColor = (() => {
+    const primaryText = isDark ? "#ffffff" : "#000000";
+    const invertedText = isDark ? "#000000" : "#ffffff";
+
+    if (selectMode === "selecting") {
+      return isSelected ? invertedText : primaryText;
+    }
+    if (selectMode === "action_result") {
+      return hasAction && !isSelected ? invertedText : primaryText;
+    }
+    return primaryText;
+  })();
 
   const changeStatusIconColor = (() => {
     const primaryText = isDark ? "#ffffff" : "#000000";

@@ -260,10 +260,9 @@ export function PrivateLineageView(
     refetchRunsAggregated,
   } = useLineageGraphContext();
 
-  const { data: flags } = useRecceServerFlag();
-  const newCllExperience = flags?.new_cll_experience ?? false;
   const { featureToggles, singleEnv } = useRecceInstanceContext();
   const { data: serverFlags } = useRecceServerFlag();
+  const newCllExperience = serverFlags?.new_cll_experience ?? false;
   const { runId, showRunId, closeRunResult, runAction, isRunResultOpen } =
     useRecceActionContext();
   const { run } = useRun(runId);
@@ -901,9 +900,10 @@ export function PrivateLineageView(
     setNodeColumSetMap(newNodeColumnSetMap);
     setCll(cll);
 
-    // Snapshot impacted node IDs during impact analysis (see layout effect).
+    // Snapshot impacted node and column IDs during impact analysis (see layout effect).
     if (impacted && !cllInput2?.column) {
       impactedNodeIdsRef.current = impacted.nodeIds;
+      impactedColumnIdsRef.current = impacted.columnIds;
     }
 
     // Track lineage view render
