@@ -1,7 +1,5 @@
 "use client";
 
-"use client";
-
 import Box from "@mui/material/Box";
 import Tab from "@mui/material/Tab";
 import MuiTabs from "@mui/material/Tabs";
@@ -213,6 +211,7 @@ export const NavBarOss = () => {
         </Box>
 
         {/* Right section: EnvInfo, StateSynchronizer, StateExporter */}
+        {/* CloudShareButtonOss is hidden until the cloud share feature is ready for public release */}
         {!isLoading && (
           <Box
             sx={{

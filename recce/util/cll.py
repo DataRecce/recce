@@ -365,8 +365,25 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
         transformation_type = "source"
         column_depends_on: List[CllColumnDep] = []
         root = proj.this if isinstance(proj, exp.Alias) else proj
+
+        # Identify columns inside subqueries so they are handled via
+        # subquery_cll instead of the outer scope's source_column_dependency.
+        proj_subqueries = list(root.find_all(exp.Subquery))
+        subquery_column_ids: set[int] = set()
+        for sq in proj_subqueries:
+            for col in sq.find_all(exp.Column):
+                subquery_column_ids.add(id(col))
+
         for expression in root.walk(bfs=False):
             if isinstance(expression, exp.Column):
+                if id(expression) in subquery_column_ids:
+                    # Column belongs to an inline subquery.  Only keep it
+                    # if it's a correlated reference resolvable in the outer scope.
+                    ref_column_dependency = source_column_dependency(expression)
+                    if ref_column_dependency is not None:
+                        column_depends_on.extend(ref_column_dependency.depends_on)
+                    continue
+
                 ref_column_dependency = source_column_dependency(expression)
                 if ref_column_dependency is not None:
                     column_depends_on.extend(ref_column_dependency.depends_on)
@@ -387,6 +404,18 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                 pass
             else:
                 transformation_type = "derived"
+
+        # Resolve dependencies from subqueries within projections.
+        # A subquery is never a simple column reference — even a scalar subquery
+        # involves filtering logic to resolve which row to return.
+        for sq in proj_subqueries:
+            transformation_type = "derived"
+            sub_cll = subquery_cll(sq)
+            if sub_cll is not None:
+                sub_m2c, sub_c2c_map = sub_cll
+                for sub_c in sub_c2c_map.values():
+                    column_depends_on.extend(sub_c.depends_on)
+                column_depends_on.extend(sub_m2c)
 
         column_depends_on = _dedeup_depends_on(column_depends_on)
 
