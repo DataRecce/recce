@@ -338,7 +338,9 @@ def init(cache_db, **kwargs):
     cloud_project_id = None
 
     if is_cloud:
-        from recce.util.recce_cloud import RecceCloud
+        import requests
+
+        from recce.util.recce_cloud import RecceCloud, RecceCloudException
 
         cloud_token = kwargs.get("cloud_token") or kwargs.get("api_token")
         if not cloud_token:
@@ -350,12 +352,17 @@ def init(cache_db, **kwargs):
 
         cloud_client = RecceCloud(token=cloud_token)
         if kwargs.get("state_file_host"):
-            cloud_client.host = kwargs["state_file_host"]
+            host = kwargs["state_file_host"]
+            cloud_client.base_url = f"{host}/api/v1"
+            cloud_client.base_url_v2 = f"{host}/api/v2"
 
         console.print(f"[bold]Cloud mode[/bold]: session {session_id}")
 
         # Get session info
         session_info = cloud_client.get_session(session_id)
+        if session_info.get("status") == "error":
+            console.print(f"[[red]Error[/red]] Failed to get session: {session_info.get('message', 'Access denied')}")
+            exit(1)
         cloud_org_id = session_info.get("org_id")
         cloud_project_id = session_info.get("project_id")
         if not cloud_org_id or not cloud_project_id:
@@ -363,10 +370,12 @@ def init(cache_db, **kwargs):
             exit(1)
 
         # Download artifacts to local target directories
-        import requests
-
         console.print("Downloading artifacts from Cloud...")
-        download_urls = cloud_client.get_download_urls_by_session_id(cloud_org_id, cloud_project_id, session_id)
+        try:
+            download_urls = cloud_client.get_download_urls_by_session_id(cloud_org_id, cloud_project_id, session_id)
+        except RecceCloudException as e:
+            console.print(f"[[red]Error[/red]] Failed to get download URLs: {e}")
+            exit(1)
 
         project_dir_path = Path(kwargs.get("project_dir") or "./")
         target_path = project_dir_path / kwargs.get("target_path", "target")
@@ -386,9 +395,13 @@ def init(cache_db, **kwargs):
                     console.print(f"  [[yellow]Warning[/yellow]] Failed to download {filename}: HTTP {resp.status_code}")
 
         # Download base session artifacts
-        base_download_urls = cloud_client.get_base_session_download_urls(
-            cloud_org_id, cloud_project_id, session_id=session_id
-        )
+        try:
+            base_download_urls = cloud_client.get_base_session_download_urls(
+                cloud_org_id, cloud_project_id, session_id=session_id
+            )
+        except RecceCloudException as e:
+            console.print(f"  [[yellow]Warning[/yellow]] Failed to get base session URLs: {e}")
+            base_download_urls = {}
         for artifact_key, filename in [("manifest_url", "manifest.json"), ("catalog_url", "catalog.json")]:
             url = base_download_urls.get(artifact_key)
             if url:
@@ -610,8 +623,6 @@ def init(cache_db, **kwargs):
 
     # Upload results to Cloud if in cloud mode
     if is_cloud and cloud_client:
-        import requests
-
         console.print("\n[bold]Uploading results to Cloud...[/bold]")
         try:
             upload_urls = cloud_client.get_upload_urls_by_session_id(cloud_org_id, cloud_project_id, session_id)
