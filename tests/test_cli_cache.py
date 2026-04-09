@@ -33,10 +33,14 @@ def _make_mock_adapter(nodes: dict, base_manifest=None, curr_catalog=None, base_
     adapter = MagicMock()
     manifest = MagicMock()
     manifest.nodes = nodes
+    manifest.metadata.adapter_type = "duckdb"
     adapter.curr_manifest = manifest
     adapter.base_manifest = base_manifest
+    if base_manifest is not None:
+        base_manifest.metadata.adapter_type = "duckdb"
     adapter.curr_catalog = curr_catalog
     adapter.base_catalog = base_catalog
+    adapter.adapter.type.return_value = "duckdb"
     return adapter
 
 

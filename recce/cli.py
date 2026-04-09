@@ -403,6 +403,7 @@ def init(cache_db, **kwargs):
 
             manifest = dbt_adapter.base_manifest if is_base else dbt_adapter.curr_manifest
             catalog = dbt_adapter.base_catalog if is_base else dbt_adapter.curr_catalog
+            adapter_type = getattr(manifest.metadata, "adapter_type", None) or dbt_adapter.adapter.type()
 
             success = 0
             fail = 0
@@ -423,7 +424,7 @@ def init(cache_db, **kwargs):
                     if catalog and nid in catalog.nodes:
                         col_names = list(catalog.nodes[nid].columns.keys())
 
-                content_key = DbtAdapter._make_node_content_key(nid, raw_code, p_list, col_names)
+                content_key = DbtAdapter._make_node_content_key(nid, raw_code, p_list, col_names, adapter_type)
                 cached_json = cache.get_node(nid, content_key)
                 if cached_json:
                     cache_hits += 1

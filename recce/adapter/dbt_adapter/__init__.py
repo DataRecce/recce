@@ -996,13 +996,19 @@ class DbtAdapter(BaseAdapter):
         raw_code: Optional[str],
         parent_list: List[str],
         column_names: List[str],
+        adapter_type: str = "",
     ) -> str:
         """Content-based cache key for per-node CllData.
 
         Uses null byte separators between fields to prevent hash collisions
         from concatenation ambiguity (e.g., id="ab"+code="cd" vs id="abc"+code="d").
+
+        ``adapter_type`` (e.g. "duckdb", "snowflake") is included so that
+        lineage computed under one dialect is never returned for another.
         """
         h = hashlib.sha256()
+        h.update(adapter_type.encode("utf-8"))
+        h.update(b"\x00")
         h.update(node_id.encode("utf-8"))
         h.update(b"\x00")
         h.update((raw_code or "").encode("utf-8"))
@@ -1047,6 +1053,9 @@ class DbtAdapter(BaseAdapter):
         catalog = self.curr_catalog
         cache = get_cll_cache()
         cache.evict_stale()
+
+        # Include adapter type in cache keys so different dialects never collide
+        adapter_type = getattr(manifest.metadata, "adapter_type", None) or self.adapter.type()
 
         # Collect all node IDs from all resource types
         all_node_ids = set()
@@ -1093,7 +1102,7 @@ class DbtAdapter(BaseAdapter):
                 if hasattr(n.depends_on, "nodes"):
                     p_list = n.depends_on.nodes
 
-            content_key = self._make_node_content_key(node_id, raw_code, p_list, col_names)
+            content_key = self._make_node_content_key(node_id, raw_code, p_list, col_names, adapter_type)
 
             cached_json = cache.get_node(node_id, content_key)
             if cached_json:
@@ -1568,7 +1577,15 @@ class DbtAdapter(BaseAdapter):
             schema = self._build_schema_from_aliases(manifest, catalog, parent_list)
 
         if not pre_compiled:
-            # Fall back to Jinja rendering with custom ref/source functions
+            # Fall back to Jinja rendering with custom ref/source functions.
+            # This path is fragile: the Jinja context only provides ref() and source(),
+            # so models using config(), is_incremental(), etc. will fail silently.
+            logger.warning(
+                "[cll] node %s has no compiled_code in manifest; "
+                "falling back to Jinja rendering (lineage may be incomplete)",
+                node_id,
+            )
+
             def ref_func(*args):
                 node_name: str = None
                 project_or_package: str = None

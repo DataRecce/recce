@@ -205,11 +205,12 @@ class TestContentKeyCorrectness(unittest.TestCase):
         raw_code: Optional[str],
         parent_list: List[str],
         column_names: List[str],
+        adapter_type: str = "",
     ) -> str:
         """Replicate the content key algorithm from the adapter."""
         from recce.adapter.dbt_adapter import DbtAdapter
 
-        return DbtAdapter._make_node_content_key(node_id, raw_code, parent_list, column_names)
+        return DbtAdapter._make_node_content_key(node_id, raw_code, parent_list, column_names, adapter_type)
 
     def test_same_inputs_same_key(self):
         """Identical inputs must produce the same key every time."""
@@ -259,6 +260,18 @@ class TestContentKeyCorrectness(unittest.TestCase):
         k = self._make_key("model.a", "", [], [])
         assert isinstance(k, str)
         assert len(k) == 64
+
+    def test_different_adapter_type_different_key(self):
+        """Switching adapter (e.g. duckdb → snowflake) must produce a different key."""
+        k_duck = self._make_key("model.a", "SELECT 1", ["model.b"], ["col1"], adapter_type="duckdb")
+        k_snow = self._make_key("model.a", "SELECT 1", ["model.b"], ["col1"], adapter_type="snowflake")
+        assert k_duck != k_snow
+
+    def test_empty_adapter_type_differs_from_named(self):
+        """An empty adapter_type (legacy) must differ from a named adapter."""
+        k_empty = self._make_key("model.a", "SELECT 1", [], [], adapter_type="")
+        k_named = self._make_key("model.a", "SELECT 1", [], [], adapter_type="duckdb")
+        assert k_empty != k_named
 
 
 # ---------------------------------------------------------------------------
