@@ -31,6 +31,13 @@ import {
   setupWarehouse,
   uploadToCloud,
 } from "../../lib/api/cloudUpload";
+import {
+  trackArtifactUploadStarted,
+  trackDwSetupCompleted,
+  trackDwSetupShown,
+  trackDwSetupSkipped,
+  trackRedirectToCloudSession,
+} from "../../lib/api/track";
 import { PUBLIC_CLOUD_WEB_URL } from "../../lib/const";
 import {
   buildPrefillValues,
@@ -133,6 +140,7 @@ export function CloudUploadDialogOss({
   const handleUpload = async () => {
     if (!selectedOrg || !selectedProject || !sessionName.trim()) return;
 
+    trackArtifactUploadStarted();
     setDialogState("uploading");
     try {
       const result = await uploadToCloud(apiClient, {
@@ -155,11 +163,13 @@ export function CloudUploadDialogOss({
           setConnectionInfo(connInfo);
           setDwFormValues(buildPrefillValues(connInfo.type, connInfo));
           setDwAuthMethod(getDefaultAuthMethod(connInfo.type));
+          trackDwSetupShown();
           setDialogState("dw_setup");
         } else {
           // Unsupported adapter — skip DW setup
           setSessionUrl(result.session_url);
           setDialogState("success");
+          trackRedirectToCloudSession();
           window.open(result.session_url, "_blank");
         }
       } else {
@@ -222,8 +232,10 @@ export function CloudUploadDialogOss({
         config,
       });
 
+      trackDwSetupCompleted();
       setSessionUrl(uploadResult.sessionUrl);
       setDialogState("success");
+      trackRedirectToCloudSession();
       window.open(uploadResult.sessionUrl, "_blank");
     } catch (err) {
       setErrorMessage(
@@ -237,8 +249,10 @@ export function CloudUploadDialogOss({
 
   const handleSkipDw = () => {
     if (!uploadResult) return;
+    trackDwSetupSkipped();
     setSessionUrl(uploadResult.sessionUrl);
     setDialogState("success");
+    trackRedirectToCloudSession();
     window.open(uploadResult.sessionUrl, "_blank");
   };
 

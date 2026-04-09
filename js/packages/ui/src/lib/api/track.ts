@@ -260,6 +260,39 @@ export function isExploreAction(type: string): type is ExploreActionType {
   return Object.values(EXPLORE_ACTION).includes(type as ExploreActionType);
 }
 
+// Onboarding flow events
+export function trackOssShareButtonClicked() {
+  track("[CLI Onboarding] oss_share_button_clicked");
+}
+
+export function trackSignupRedirectInitiated() {
+  track("[CLI Onboarding] signup_redirect_initiated");
+}
+
+export function trackSignupCompleted() {
+  track("[CLI Onboarding] signup_completed");
+}
+
+export function trackArtifactUploadStarted() {
+  track("[CLI Onboarding] artifact_upload_started");
+}
+
+export function trackRedirectToCloudSession() {
+  track("[CLI Onboarding] redirect_to_cloud_session");
+}
+
+export function trackDwSetupShown() {
+  track("[CLI Onboarding] dw_setup_shown");
+}
+
+export function trackDwSetupCompleted() {
+  track("[CLI Onboarding] dw_setup_completed");
+}
+
+export function trackDwSetupSkipped() {
+  track("[CLI Onboarding] dw_setup_skipped");
+}
+
 // Lineage selection action types
 export const LINEAGE_SELECTION_ACTION = {
   SELECT_PARENT_NODES: "select_parent_nodes",
