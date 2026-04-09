@@ -18,6 +18,7 @@ export interface CllInput {
   no_cll?: boolean;
   no_upstream?: boolean;
   no_downstream?: boolean;
+  column_impact?: boolean;
 }
 
 export interface ImpactRadiusParams {

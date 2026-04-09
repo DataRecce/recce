@@ -26,7 +26,6 @@ import {
 import {
   isLineageGraphColumnNode,
   isLineageGraphNode,
-  type LineageGraph,
   type LineageGraphColumnNode,
   type LineageGraphEdge,
   type LineageGraphNode,
@@ -91,8 +90,6 @@ import { HSplit, toaster } from "../ui";
 import { ActionControlOss } from "./ActionControlOss";
 import { ColumnLevelLineageControlOss } from "./ColumnLevelLineageControlOss";
 import { computeColumnAncestry } from "./computeColumnAncestry";
-import { computeImpactedColumns } from "./computeImpactedColumns";
-import { computeIsImpacted } from "./computeIsImpacted";
 import {
   EXPLORE_MIN_ZOOM,
   edgeTypes,
@@ -115,7 +112,6 @@ import {
 import { LineageLegend } from "./legend";
 import { toReactFlow } from "./lineage";
 import { NodeViewOss as NodeView } from "./NodeViewOss";
-import type { NodeChangeStatus } from "./nodes/LineageNode";
 import { patchLineageDiffFromCll } from "./patchLineageDiffFromCll";
 import SetupConnectionBanner from "./SetupConnectionBannerOss";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
@@ -127,27 +123,20 @@ import {
 import { LineageViewTopBarOss as LineageViewTopBar } from "./topbar/LineageViewTopBarOss";
 
 /**
- * Compute impacted node IDs and column IDs in a single pass over the CLL data.
+ * Read impacted node IDs and column IDs directly from the CLL response.
  *
- * The expensive part is `computeImpactedColumns` (DFS over parent_map), so we
- * run it once and thread the result into per-node checks.
+ * When column_impact=true is passed to get_cll(), the backend expands columns
+ * to include all transitively impacted columns. So column presence in the
+ * response = impacted. For nodes, we read the pre-computed node.impacted flag.
  */
-function computeImpactedSets(
-  lineageGraph: LineageGraph,
-  cll: ColumnLineageData,
-): { nodeIds: Set<string>; columnIds: Set<string> } {
-  const columnIds = computeImpactedColumns(cll);
+function readImpactedSets(cll: ColumnLineageData): {
+  nodeIds: Set<string>;
+  columnIds: Set<string>;
+} {
+  const columnIds = new Set(Object.keys(cll.current.columns));
   const nodeIds = new Set<string>();
-  for (const nodeId of Object.keys(lineageGraph.nodes)) {
-    const node = lineageGraph.nodes[nodeId];
-    if (
-      computeIsImpacted(
-        nodeId,
-        cll,
-        node.data.changeStatus as NodeChangeStatus,
-        columnIds,
-      )
-    ) {
+  for (const [nodeId, node] of Object.entries(cll.current.nodes)) {
+    if (node.impacted || node.change_status) {
       nodeIds.add(nodeId);
     }
   }
@@ -158,7 +147,7 @@ function computeImpactedSets(
  * Compute column ancestry if we're in column mode with valid input.
  *
  * @param impactedColumns - Pre-computed impacted column set. Avoids a
- *   redundant DFS when the caller already has it (e.g. from computeImpactedSets).
+ *   redundant DFS when the caller already has it (e.g. from readImpactedSets).
  */
 function maybeComputeAncestry(
   newCllExperience: boolean,
@@ -209,10 +198,12 @@ async function fetchCllAndPatchCache(
     cllData?: ColumnLineageData;
   }>,
   queryClient: ReturnType<typeof useQueryClient>,
+  columnImpact?: boolean,
 ): Promise<ColumnLineageData> {
   const cllApiInput: CllInput = {
     ...cllInput,
     change_analysis: cllInput.change_analysis ?? changeAnalysis,
+    ...(columnImpact && { column_impact: true }),
   };
   const cll = await actionGetCll.mutateAsync(cllApiInput);
   if (cllApiInput.change_analysis && cll) {
@@ -566,6 +557,7 @@ export function PrivateLineageView(
               actionGetCll,
               cllCachePatchRef,
               queryClient,
+              newCllExperience,
             );
           } catch (e) {
             if (autoTriggered) {
@@ -599,9 +591,7 @@ export function PrivateLineageView(
 
       // Compute impacted sets once; thread into ancestry to avoid redundant DFS.
       const impacted =
-        newCllExperience && cll
-          ? computeImpactedSets(lineageGraph, cll)
-          : undefined;
+        newCllExperience && cll ? readImpactedSets(cll) : undefined;
 
       const [nodes, edges, nodeColumnSetMap] = await toReactFlow(lineageGraph, {
         selectedNodes: filteredNodeIds,
@@ -850,6 +840,7 @@ export function PrivateLineageView(
           actionGetCll,
           cllCachePatchRef,
           queryClient,
+          newCllExperience,
         );
       } catch (e) {
         if (e instanceof HttpError) {
@@ -877,9 +868,7 @@ export function PrivateLineageView(
     const cllInput2 = newViewOptions.column_level_lineage;
 
     const impacted =
-      newCllExperience && cll
-        ? computeImpactedSets(lineageGraph, cll)
-        : undefined;
+      newCllExperience && cll ? readImpactedSets(cll) : undefined;
 
     const [newNodes, newEdges, newNodeColumnSetMap] = await toReactFlow(
       lineageGraph,

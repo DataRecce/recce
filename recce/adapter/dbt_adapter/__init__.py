@@ -1189,6 +1189,7 @@ class DbtAdapter(BaseAdapter):
         no_filter: Optional[bool] = False,
         full_map: Optional[bool] = False,
         disable_cll_cache: Optional[bool] = False,
+        column_impact: Optional[bool] = False,
     ) -> CllData:
         cll_tracker = LineagePerfTracker()
         cll_tracker.set_params(
@@ -1439,6 +1440,14 @@ class DbtAdapter(BaseAdapter):
 
         # Filter the nodes and columns based on the anchor nodes
         if not no_filter:
+            # When column_impact is requested, expand result to include all
+            # transitively impacted columns via child_map walk from seed columns.
+            if column_impact and change_analysis:
+                seed_columns = {k for k, v in columns.items() if v.change_status}
+                impacted_column_ids = find_downstream(seed_columns, child_map)
+                impacted_column_ids.update(seed_columns)
+                result_node_ids = result_node_ids.union(impacted_column_ids)
+
             nodes = {k: v for k, v in nodes.items() if k in result_node_ids or k in extra_node_ids}
             columns = {k: v for k, v in columns.items() if k in result_node_ids or k in extra_node_ids}
 

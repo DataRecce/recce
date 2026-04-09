@@ -55,17 +55,7 @@ export {
 // LINEAGE CANVAS
 // =============================================================================
 
-/**
- * Determine whether a model node is "impacted" for the new CLL experience.
- *
- * A node is impacted if ANY of:
- * 1. CLL analysis marks the node as impacted (node.impacted !== false)
- * 2. Any column belonging to this node has a non-null change_status
- * 3. The model itself has a non-null changeStatus (added/removed/modified)
- */
 export { type ColumnAnnotation } from "./components/lineage/computeColumnAncestry";
-export { computeImpactedColumns } from "./components/lineage/computeImpactedColumns";
-export { computeIsImpacted } from "./components/lineage/computeIsImpacted";
 /**
  * Zoom and display constants for the lineage view.
  *

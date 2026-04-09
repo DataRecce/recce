@@ -6,17 +6,12 @@ import type {
 } from "@datarecce/ui/advanced";
 import {
   buildLineageGraph,
-  computeImpactedColumns,
-  computeIsImpacted,
   LineageCanvas,
   selectDownstream,
   toReactFlow,
 } from "@datarecce/ui/advanced";
 import type { ColumnLineageData } from "@datarecce/ui/api";
-import type {
-  LineageNodeProps,
-  NodeChangeStatus,
-} from "@datarecce/ui/primitives";
+import type { LineageNodeProps } from "@datarecce/ui/primitives";
 import { LineageNode } from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
@@ -362,17 +357,15 @@ function buildMockCllData(graph: ReturnType<typeof buildRealLineageGraph>) {
 }
 
 /**
- * Convert toReactFlow output to LineageCanvas format, using computeIsImpacted
- * to determine amber highlight per node.
+ * Convert toReactFlow output to LineageCanvas format.
+ * Node impact is read directly from CLL data (matching backend behavior).
  */
 function adaptForCanvas(
   rawNodes: LineageGraphNodes[],
   rawEdges: LineageGraphEdge[],
   cll: ReturnType<typeof buildMockCllData>["cll"],
 ): { nodes: LineageCanvasProps["nodes"]; edges: LineageCanvasProps["edges"] } {
-  const impactedCols = computeImpactedColumns(
-    cll as unknown as ColumnLineageData,
-  );
+  const cllData = cll as unknown as ColumnLineageData;
   const nodes = rawNodes.map((node: LineageGraphNodes) => {
     if (node.type === "lineageGraphNode") {
       const graphData = node.data as {
@@ -381,6 +374,7 @@ function adaptForCanvas(
         changeStatus?: string;
         packageName?: string;
       };
+      const cllNode = cllData.current.nodes[node.id];
       return {
         ...node,
         type: "lineageNode" as const,
@@ -390,12 +384,7 @@ function adaptForCanvas(
           changeStatus: graphData.changeStatus,
           packageName: graphData.packageName,
           newCllExperience: true,
-          isImpacted: computeIsImpacted(
-            node.id,
-            cll as unknown as ColumnLineageData,
-            graphData.changeStatus as NodeChangeStatus | undefined,
-            impactedCols,
-          ),
+          isImpacted: !!graphData.changeStatus || !!cllNode?.impacted,
         },
       };
     }
@@ -746,9 +735,7 @@ function ColumnAncestryCanvasDemo() {
     });
 
     // Adapt for LineageCanvas: remap node types
-    const impactedCols = computeImpactedColumns(
-      cll as unknown as ColumnLineageData,
-    );
+    const cllData = cll as unknown as ColumnLineageData;
     const nodes = rawNodes.map((node: LineageGraphNodes) => {
       if (node.type === "lineageGraphNode") {
         const graphData = node.data as {
@@ -757,6 +744,7 @@ function ColumnAncestryCanvasDemo() {
           changeStatus?: string;
           packageName?: string;
         };
+        const cllNode = cllData.current.nodes[node.id];
         return {
           ...node,
           type: "lineageNode" as const,
@@ -766,12 +754,7 @@ function ColumnAncestryCanvasDemo() {
             changeStatus: graphData.changeStatus,
             packageName: graphData.packageName,
             newCllExperience: true,
-            isImpacted: computeIsImpacted(
-              node.id,
-              cll as unknown as ColumnLineageData,
-              graphData.changeStatus as NodeChangeStatus | undefined,
-              impactedCols,
-            ),
+            isImpacted: !!graphData.changeStatus || !!cllNode?.impacted,
           },
         };
       }
