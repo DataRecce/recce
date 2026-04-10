@@ -1021,10 +1021,20 @@ class DbtAdapter(BaseAdapter):
         for p in sorted(parent_checksums):
             h.update(p.encode("utf-8"))
             h.update(b"\x00")
+        h.update(b"\x01")  # sentinel between parent_checksums and column_names lists
         for c in sorted(column_names):
             h.update(c.encode("utf-8"))
             h.update(b"\x00")
         return h.hexdigest()
+
+    @staticmethod
+    def _get_node_checksum(manifest, nid: str) -> str:
+        """Get dbt checksum for a node. Sources/exposures/metrics have no SQL, so use their node ID."""
+        if nid in manifest.nodes:
+            cs = getattr(manifest.nodes[nid], "checksum", None)
+            if cs and getattr(cs, "checksum", None):
+                return str(cs.checksum)
+        return nid
 
     @staticmethod
     def _serialize_cll_data(cll_data: CllData) -> str:
@@ -1062,14 +1072,6 @@ class DbtAdapter(BaseAdapter):
         # Include adapter type in cache keys so different dialects never collide
         adapter_type = getattr(manifest.metadata, "adapter_type", None) or self.adapter.type()
 
-        def _get_checksum(nid: str) -> str:
-            """Get dbt checksum for a node. Sources/exposures/metrics have no SQL, so use their ID."""
-            if nid in manifest.nodes:
-                cs = getattr(manifest.nodes[nid], "checksum", None)
-                if cs and getattr(cs, "checksum", None):
-                    return str(cs.checksum)
-            return nid
-
         # Collect all node IDs from all resource types
         all_node_ids = set()
         for key in ["sources", "nodes", "exposures", "metrics"]:
@@ -1087,7 +1089,7 @@ class DbtAdapter(BaseAdapter):
         batch_to_store = []
 
         for node_id in all_node_ids:
-            checksum = _get_checksum(node_id)
+            checksum = self._get_node_checksum(manifest, node_id)
             p_list: List[str] = []
             col_names: List[str] = []
 
@@ -1114,7 +1116,7 @@ class DbtAdapter(BaseAdapter):
                 if hasattr(n.depends_on, "nodes"):
                     p_list = n.depends_on.nodes
 
-            parent_checksums = [_get_checksum(pid) for pid in p_list]
+            parent_checksums = [self._get_node_checksum(manifest, pid) for pid in p_list]
             content_key = self._make_node_content_key(checksum, parent_checksums, col_names, adapter_type)
 
             cached_json = cache.get_node(node_id, content_key)

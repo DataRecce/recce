@@ -573,13 +573,6 @@ def init(cache_db, **kwargs):
             catalog = dbt_adapter.base_catalog if is_base else dbt_adapter.curr_catalog
             adapter_type = getattr(manifest.metadata, "adapter_type", None) or dbt_adapter.adapter.type()
 
-            def _get_checksum(nid_: str) -> str:
-                if nid_ in manifest.nodes:
-                    cs = getattr(manifest.nodes[nid_], "checksum", None)
-                    if cs and getattr(cs, "checksum", None):
-                        return str(cs.checksum)
-                return nid_
-
             success = 0
             fail = 0
             cache_hits = 0
@@ -597,8 +590,8 @@ def init(cache_db, **kwargs):
                     if catalog and nid in catalog.nodes:
                         col_names = list(catalog.nodes[nid].columns.keys())
 
-                checksum = _get_checksum(nid)
-                parent_checksums = [_get_checksum(pid) for pid in p_list]
+                checksum = DbtAdapter._get_node_checksum(manifest, nid)
+                parent_checksums = [DbtAdapter._get_node_checksum(manifest, pid) for pid in p_list]
                 content_key = DbtAdapter._make_node_content_key(checksum, parent_checksums, col_names, adapter_type)
                 cached_json = cache.get_node(nid, content_key)
                 if cached_json:

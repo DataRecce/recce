@@ -278,6 +278,12 @@ class TestContentKeyCorrectness(unittest.TestCase):
         k_named = self._make_key("cs_a", [], [], adapter_type="duckdb")
         assert k_empty != k_named
 
+    def test_parent_vs_column_list_boundary(self):
+        """Moving a value from parent_checksums to column_names must produce a different key."""
+        k1 = self._make_key("cs_a", ["a", "b"], [])
+        k2 = self._make_key("cs_a", ["a"], ["b"])
+        assert k1 != k2
+
 
 # ---------------------------------------------------------------------------
 # Category 3: Serialization Round-trip
