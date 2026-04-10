@@ -12,6 +12,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from recce.apis.cloud_utils import log_cloud_exception
 from recce.core import default_context
 from recce.event import get_recce_api_token
 from recce.exceptions import RecceException
@@ -22,24 +23,6 @@ from recce.websocket import get_current_cloud_user
 logger = logging.getLogger("uvicorn")
 
 check_events_router = APIRouter(tags=["check_events"])
-
-
-# ============================================================================
-# Helper Functions
-# ============================================================================
-
-
-def _log_cloud_exception(msg: str, exc: RecceCloudException):
-    """Log cloud API errors at appropriate severity based on HTTP status code.
-
-    4xx errors (client errors like 403 Forbidden, 404 Not Found) are logged as
-    warnings since they represent expected outcomes. 5xx errors (server failures)
-    are logged as errors since they indicate unexpected system issues.
-    """
-    if exc.status_code is not None and exc.status_code >= 500:
-        logger.error(msg)
-    else:
-        logger.warning(msg)
 
 
 def _is_cloud_user() -> bool:
@@ -103,7 +86,7 @@ def _get_session_info() -> tuple:
         return org_id, project_id, session_id
 
     except RecceCloudException as e:
-        _log_cloud_exception(f"Failed to get session info: {e}", e)
+        log_cloud_exception(f"Failed to get session info: {e}", e)
         raise HTTPException(status_code=e.status_code, detail=str(e.reason))
 
 
@@ -207,7 +190,7 @@ async def list_check_events(check_id: UUID):
         return events
 
     except RecceCloudException as e:
-        _log_cloud_exception(f"Failed to list check events: {e}", e)
+        log_cloud_exception(f"Failed to list check events: {e}", e)
         raise HTTPException(status_code=e.status_code, detail=str(e.reason))
     except RecceException as e:
         logger.error(f"Failed to list check events: {e}")
@@ -243,7 +226,7 @@ async def get_check_event(check_id: UUID, event_id: UUID):
         return event
 
     except RecceCloudException as e:
-        _log_cloud_exception(f"Failed to get check event: {e}", e)
+        log_cloud_exception(f"Failed to get check event: {e}", e)
         raise HTTPException(status_code=e.status_code, detail=str(e.reason))
     except RecceException as e:
         logger.error(f"Failed to get check event: {e}")
@@ -288,7 +271,7 @@ async def create_comment(check_id: UUID, body: CreateCommentIn):
         return event
 
     except RecceCloudException as e:
-        _log_cloud_exception(f"Failed to create comment: {e}", e)
+        log_cloud_exception(f"Failed to create comment: {e}", e)
         raise HTTPException(status_code=e.status_code, detail=str(e.reason))
     except RecceException as e:
         logger.error(f"Failed to create comment: {e}")
@@ -337,7 +320,7 @@ async def update_comment(check_id: UUID, event_id: UUID, body: UpdateCommentIn):
         return event
 
     except RecceCloudException as e:
-        _log_cloud_exception(f"Failed to update comment: {e}", e)
+        log_cloud_exception(f"Failed to update comment: {e}", e)
         raise HTTPException(status_code=e.status_code, detail=str(e.reason))
     except RecceException as e:
         logger.error(f"Failed to update comment: {e}")
@@ -372,7 +355,7 @@ async def delete_comment(check_id: UUID, event_id: UUID):
         client.delete_comment(org_id, project_id, session_id, str(check_id), str(event_id))
 
     except RecceCloudException as e:
-        _log_cloud_exception(f"Failed to delete comment: {e}", e)
+        log_cloud_exception(f"Failed to delete comment: {e}", e)
         raise HTTPException(status_code=e.status_code, detail=str(e.reason))
     except RecceException as e:
         logger.error(f"Failed to delete comment: {e}")
