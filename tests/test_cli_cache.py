@@ -535,6 +535,371 @@ class TestInit:
         assert "catalog.json not found" not in result.output
 
 
+def _make_mock_cloud_client(
+    session_info: dict | None = None,
+    download_urls: dict | None = None,
+    base_download_urls: dict | None = None,
+    upload_urls: dict | None = None,
+):
+    """Create a mock RecceCloud client with sensible defaults."""
+    client = MagicMock()
+    client.get_session.return_value = session_info or {
+        "org_id": "org-1",
+        "project_id": "proj-1",
+        "status": "active",
+    }
+    client.get_download_urls_by_session_id.return_value = download_urls or {}
+    client.get_base_session_download_urls.return_value = base_download_urls or {}
+    client.get_upload_urls_by_session_id.return_value = upload_urls or {}
+    return client
+
+
+def _make_mock_response(status_code: int = 200, content: bytes = b"{}"):
+    """Create a mock requests.Response."""
+    resp = MagicMock()
+    resp.status_code = status_code
+    resp.content = content
+    return resp
+
+
+class TestInitCloud:
+    """Tests for `recce init --cloud` mode."""
+
+    def test_init_cloud_missing_token(self, runner, tmp_path, tmp_db):
+        """--cloud without --cloud-token or --api-token should error."""
+        result = runner.invoke(
+            cli,
+            [
+                "init",
+                "--cloud",
+                "--session-id", "sess-1",
+                "--cache-db", tmp_db,
+                "--project-dir", str(tmp_path),
+            ],
+        )
+        assert result.exit_code == 1
+        assert "requires --cloud-token" in result.output
+
+    def test_init_cloud_missing_session_id(self, runner, tmp_path, tmp_db):
+        """--cloud with token but no --session-id should error."""
+        result = runner.invoke(
+            cli,
+            [
+                "init",
+                "--cloud",
+                "--cloud-token", "ghp_testtoken",
+                "--cache-db", tmp_db,
+                "--project-dir", str(tmp_path),
+            ],
+        )
+        assert result.exit_code == 1
+        assert "requires --session-id" in result.output
+
+    @patch("recce.cli.RecceCloud", create=True)
+    def test_init_cloud_session_error(self, mock_cloud_cls, runner, tmp_path, tmp_db):
+        """Session info returning error status should exit 1."""
+        mock_client = _make_mock_cloud_client(
+            session_info={"status": "error", "message": "Access denied"},
+        )
+        mock_cloud_cls.return_value = mock_client
+
+        with patch("recce.util.recce_cloud.RecceCloud", mock_cloud_cls):
+            result = runner.invoke(
+                cli,
+                [
+                    "init",
+                    "--cloud",
+                    "--cloud-token", "ghp_testtoken",
+                    "--session-id", "sess-1",
+                    "--cache-db", tmp_db,
+                    "--project-dir", str(tmp_path),
+                ],
+            )
+        assert result.exit_code == 1
+        assert "Failed to get session" in result.output
+
+    @patch("recce.cli.RecceCloud", create=True)
+    def test_init_cloud_missing_org_project(self, mock_cloud_cls, runner, tmp_path, tmp_db):
+        """Session info without org_id/project_id should exit 1."""
+        mock_client = _make_mock_cloud_client(
+            session_info={"org_id": None, "project_id": None, "status": "active"},
+        )
+        mock_cloud_cls.return_value = mock_client
+
+        with patch("recce.util.recce_cloud.RecceCloud", mock_cloud_cls):
+            result = runner.invoke(
+                cli,
+                [
+                    "init",
+                    "--cloud",
+                    "--cloud-token", "ghp_testtoken",
+                    "--session-id", "sess-1",
+                    "--cache-db", tmp_db,
+                    "--project-dir", str(tmp_path),
+                ],
+            )
+        assert result.exit_code == 1
+        assert "missing org_id or project_id" in result.output
+
+    @patch("recce.core.load_context")
+    def test_init_cloud_downloads_artifacts(self, mock_load_context, runner, tmp_path, tmp_db):
+        """Happy path: cloud mode downloads artifacts, computes CLL, uploads results."""
+        manifest_bytes = b'{"nodes": {}}'
+        catalog_bytes = b'{"nodes": {}}'
+        cache_bytes = b""  # Empty cache = no warm start
+
+        mock_client = _make_mock_cloud_client(
+            download_urls={
+                "manifest_url": "https://s3.example.com/manifest.json",
+                "catalog_url": "https://s3.example.com/catalog.json",
+                "cll_cache_url": "https://s3.example.com/cll_cache.db",
+            },
+            base_download_urls={
+                "manifest_url": "https://s3.example.com/base-manifest.json",
+                "catalog_url": "https://s3.example.com/base-catalog.json",
+                "cll_cache_url": "https://s3.example.com/base-cll_cache.db",
+            },
+            upload_urls={
+                "cll_map_url": "https://s3.example.com/upload/cll_map.json",
+                "cll_cache_url": "https://s3.example.com/upload/cll_cache.db",
+            },
+        )
+
+        # Mock requests.get for artifact downloads
+        def mock_get(url, **kwargs):
+            if "manifest" in url:
+                return _make_mock_response(200, manifest_bytes)
+            elif "catalog" in url:
+                return _make_mock_response(200, catalog_bytes)
+            elif "cll_cache" in url:
+                return _make_mock_response(200, cache_bytes)
+            return _make_mock_response(404)
+
+        # Mock requests.put for uploads
+        def mock_put(url, **kwargs):
+            return _make_mock_response(200)
+
+        nodes = {"model.test.a": _make_mock_node(raw_code="SELECT a FROM src")}
+        adapter = _make_mock_adapter(nodes)
+        mock_cll = MagicMock()
+        adapter.get_cll_cached.return_value = mock_cll
+
+        # build_full_cll_map returns a CllData-like object
+        mock_cll_map = MagicMock()
+        mock_cll_map.nodes = {"model.test.a": MagicMock()}
+        mock_cll_map.columns = {}
+        mock_cll_map.model_dump.return_value = {"nodes": {}, "columns": {}}
+        adapter.build_full_cll_map.return_value = mock_cll_map
+
+        mock_ctx = MagicMock()
+        mock_ctx.adapter = adapter
+        mock_load_context.return_value = mock_ctx
+
+        with (
+            patch("recce.util.recce_cloud.RecceCloud", return_value=mock_client),
+            patch("requests.get", side_effect=mock_get),
+            patch("requests.put", side_effect=mock_put),
+            patch(
+                "recce.adapter.dbt_adapter.DbtAdapter._serialize_cll_data",
+                return_value='{"nodes":{}, "columns":{}, "parent_map":{}}',
+            ),
+        ):
+            result = runner.invoke(
+                cli,
+                [
+                    "init",
+                    "--cloud",
+                    "--cloud-token", "ghp_testtoken",
+                    "--session-id", "sess-1",
+                    "--cache-db", tmp_db,
+                    "--project-dir", str(tmp_path),
+                ],
+                catch_exceptions=False,
+            )
+
+        assert result.exit_code == 0
+        assert "Cloud upload complete" in result.output
+
+    @patch("recce.core.load_context")
+    def test_init_cloud_download_failure_warns(self, mock_load_context, runner, tmp_path, tmp_db):
+        """HTTP 404 on artifact download should warn but continue."""
+        mock_client = _make_mock_cloud_client(
+            download_urls={
+                "manifest_url": "https://s3.example.com/manifest.json",
+                "catalog_url": "https://s3.example.com/catalog.json",
+            },
+            base_download_urls={},
+        )
+
+        nodes = {"model.test.a": _make_mock_node(raw_code="SELECT a FROM src")}
+        adapter = _make_mock_adapter(nodes)
+        mock_cll = MagicMock()
+        adapter.get_cll_cached.return_value = mock_cll
+
+        mock_cll_map = MagicMock()
+        mock_cll_map.nodes = {}
+        mock_cll_map.columns = {}
+        mock_cll_map.model_dump.return_value = {"nodes": {}, "columns": {}}
+        adapter.build_full_cll_map.return_value = mock_cll_map
+
+        mock_ctx = MagicMock()
+        mock_ctx.adapter = adapter
+        mock_load_context.return_value = mock_ctx
+
+        # All downloads return 404
+        def mock_get(url, **kwargs):
+            return _make_mock_response(404)
+
+        with (
+            patch("recce.util.recce_cloud.RecceCloud", return_value=mock_client),
+            patch("requests.get", side_effect=mock_get),
+            patch("requests.put", side_effect=lambda *a, **kw: _make_mock_response(200)),
+            patch(
+                "recce.adapter.dbt_adapter.DbtAdapter._serialize_cll_data",
+                return_value='{"nodes":{}, "columns":{}, "parent_map":{}}',
+            ),
+        ):
+            result = runner.invoke(
+                cli,
+                [
+                    "init",
+                    "--cloud",
+                    "--cloud-token", "ghp_testtoken",
+                    "--session-id", "sess-1",
+                    "--cache-db", tmp_db,
+                    "--project-dir", str(tmp_path),
+                ],
+                catch_exceptions=False,
+            )
+
+        assert result.exit_code == 0
+        assert "Failed to download" in result.output or "No dbt artifacts found" in result.output
+
+    @patch("recce.core.load_context")
+    def test_init_cloud_upload_failure_warns(self, mock_load_context, runner, tmp_path, tmp_db):
+        """Upload returning HTTP 500 should warn but still exit 0."""
+        manifest_bytes = b'{"nodes": {}}'
+
+        mock_client = _make_mock_cloud_client(
+            download_urls={
+                "manifest_url": "https://s3.example.com/manifest.json",
+            },
+            base_download_urls={
+                "manifest_url": "https://s3.example.com/base-manifest.json",
+            },
+            upload_urls={
+                "cll_map_url": "https://s3.example.com/upload/cll_map.json",
+                "cll_cache_url": "https://s3.example.com/upload/cll_cache.db",
+            },
+        )
+
+        nodes = {"model.test.a": _make_mock_node(raw_code="SELECT a FROM src")}
+        adapter = _make_mock_adapter(nodes)
+        mock_cll = MagicMock()
+        adapter.get_cll_cached.return_value = mock_cll
+
+        mock_cll_map = MagicMock()
+        mock_cll_map.nodes = {"model.test.a": MagicMock()}
+        mock_cll_map.columns = {}
+        mock_cll_map.model_dump.return_value = {"nodes": {}, "columns": {}}
+        adapter.build_full_cll_map.return_value = mock_cll_map
+
+        mock_ctx = MagicMock()
+        mock_ctx.adapter = adapter
+        mock_load_context.return_value = mock_ctx
+
+        def mock_get(url, **kwargs):
+            return _make_mock_response(200, manifest_bytes)
+
+        # Uploads return 500
+        def mock_put(url, **kwargs):
+            return _make_mock_response(500)
+
+        with (
+            patch("recce.util.recce_cloud.RecceCloud", return_value=mock_client),
+            patch("requests.get", side_effect=mock_get),
+            patch("requests.put", side_effect=mock_put),
+            patch(
+                "recce.adapter.dbt_adapter.DbtAdapter._serialize_cll_data",
+                return_value='{"nodes":{}, "columns":{}, "parent_map":{}}',
+            ),
+        ):
+            result = runner.invoke(
+                cli,
+                [
+                    "init",
+                    "--cloud",
+                    "--cloud-token", "ghp_testtoken",
+                    "--session-id", "sess-1",
+                    "--cache-db", tmp_db,
+                    "--project-dir", str(tmp_path),
+                ],
+                catch_exceptions=False,
+            )
+
+        assert result.exit_code == 0
+        assert "Failed to upload" in result.output
+
+    @patch("recce.core.load_context")
+    def test_init_cloud_cll_map_build_failure(self, mock_load_context, runner, tmp_path, tmp_db):
+        """build_full_cll_map raising exception should warn but still complete."""
+        manifest_bytes = b'{"nodes": {}}'
+
+        mock_client = _make_mock_cloud_client(
+            download_urls={
+                "manifest_url": "https://s3.example.com/manifest.json",
+            },
+            base_download_urls={
+                "manifest_url": "https://s3.example.com/base-manifest.json",
+            },
+            upload_urls={
+                "cll_map_url": "https://s3.example.com/upload/cll_map.json",
+                "cll_cache_url": "https://s3.example.com/upload/cll_cache.db",
+            },
+        )
+
+        nodes = {"model.test.a": _make_mock_node(raw_code="SELECT a FROM src")}
+        adapter = _make_mock_adapter(nodes)
+        mock_cll = MagicMock()
+        adapter.get_cll_cached.return_value = mock_cll
+        adapter.build_full_cll_map.side_effect = RuntimeError("CLL map computation failed")
+
+        mock_ctx = MagicMock()
+        mock_ctx.adapter = adapter
+        mock_load_context.return_value = mock_ctx
+
+        def mock_get(url, **kwargs):
+            return _make_mock_response(200, manifest_bytes)
+
+        def mock_put(url, **kwargs):
+            return _make_mock_response(200)
+
+        with (
+            patch("recce.util.recce_cloud.RecceCloud", return_value=mock_client),
+            patch("requests.get", side_effect=mock_get),
+            patch("requests.put", side_effect=mock_put),
+            patch(
+                "recce.adapter.dbt_adapter.DbtAdapter._serialize_cll_data",
+                return_value='{"nodes":{}, "columns":{}, "parent_map":{}}',
+            ),
+        ):
+            result = runner.invoke(
+                cli,
+                [
+                    "init",
+                    "--cloud",
+                    "--cloud-token", "ghp_testtoken",
+                    "--session-id", "sess-1",
+                    "--cache-db", tmp_db,
+                    "--project-dir", str(tmp_path),
+                ],
+                catch_exceptions=False,
+            )
+
+        assert result.exit_code == 0
+        assert "Failed to build CLL map" in result.output
+
+
 class TestServerCllCacheFlag:
     def test_enable_cll_cache_activates_sqlite_cache(self, tmp_db):
         """--enable-cll-cache should call set_cll_cache with a real db_path."""
