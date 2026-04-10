@@ -103,6 +103,10 @@ export function RecceInstanceInfoProvider({
     if (instanceInfo.cloud_instance) {
       toggles.disableShare = true;
     }
+    if (instanceInfo.user_role === "viewer") {
+      toggles.disableUpdateChecklist = true;
+      toggles.checklistPermissionDenied = true;
+    }
     setFeatureToggles(toggles);
   }
 
