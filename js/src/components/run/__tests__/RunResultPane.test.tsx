@@ -253,20 +253,20 @@ function MockRunResultPane({
                   "Share",
                 )),
         ]),
-      // Add to Checklist button
-      // Hide when disabled for non-permission reasons; show disabled with tooltip for permission denial
-      disableUpdateChecklist && !checklistPermissionDenied
-        ? null
-        : checkId && !checklistPermissionDenied
-          ? React.createElement(
-              "button",
-              {
-                key: "go-to-check",
-                disabled: !run?.run_id || !run?.result || !!error,
-                onClick: () => onGoToCheck?.(checkId),
-              },
-              "Go to Check",
-            )
+      // Go to Check — always available (viewers can navigate to existing checks)
+      checkId
+        ? React.createElement(
+            "button",
+            {
+              key: "go-to-check",
+              disabled: !run?.run_id || !run?.result || !!error,
+              onClick: () => onGoToCheck?.(checkId),
+            },
+            "Go to Check",
+          )
+        : // Add to Checklist — hide for non-permission reasons; show disabled for permission denial
+          disableUpdateChecklist && !checklistPermissionDenied
+          ? null
           : React.createElement(
               "button",
               {
@@ -1093,6 +1093,40 @@ describe("RunResultPane", () => {
       });
       expect(addButton).toBeInTheDocument();
       expect(addButton).toBeDisabled();
+    });
+
+    it("shows Go to Check for viewer when run is linked to existing check", () => {
+      hoistedMocks.useRecceInstanceContext.mockReturnValue({
+        featureToggles: {
+          disableUpdateChecklist: true,
+          checklistPermissionDenied: true,
+        },
+      });
+
+      hoistedMocks.useRun.mockReturnValue({
+        error: null,
+        run: {
+          run_id: "test-run-id",
+          type: "query",
+          params: {},
+          result: { data: [] },
+          check_id: "existing-check-123",
+        },
+        onCancel: hoistedMocks.mockOnCancel,
+        isRunning: false,
+      });
+
+      renderWithQueryClient(<RunResultPane />);
+
+      const goToCheckButton = screen.getByRole("button", {
+        name: /Go to Check/i,
+      });
+      expect(goToCheckButton).toBeInTheDocument();
+      expect(goToCheckButton).not.toBeDisabled();
+
+      expect(
+        screen.queryByRole("button", { name: /Add to Checklist/i }),
+      ).not.toBeInTheDocument();
     });
   });
 

@@ -733,7 +733,8 @@ const DefaultAddToCheckButton = memo(
       return null;
     }
 
-    if (checkId && !checklistPermissionDenied) {
+    // "Go to Check" is always available — viewers can navigate to existing checks
+    if (checkId) {
       return (
         <Button
           disabled={disabled}
