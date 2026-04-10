@@ -39,6 +39,8 @@ export const ColumnLevelLineageControlOss = ({
     viewOptions,
     centerNode,
     setChangeAnalysisMode,
+    newCllExperience,
+    changeAnalysisMode,
   } = useLineageViewContextSafe();
   const { data: flagData } = useRecceServerFlag();
   const singleEnv = flagData?.single_env_onboarding ?? false;
@@ -56,6 +58,8 @@ export const ColumnLevelLineageControlOss = ({
       onResetCll={() => resetColumnLevelLineage()}
       onCenterNode={centerNode}
       setChangeAnalysisMode={setChangeAnalysisMode}
+      newCllExperience={newCllExperience}
+      changeAnalysisMode={changeAnalysisMode}
     />
   );
 };
