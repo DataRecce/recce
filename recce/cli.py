@@ -409,7 +409,7 @@ def init(cache_db, **kwargs):
                 if nid_ in manifest.nodes:
                     cs = getattr(manifest.nodes[nid_], "checksum", None)
                     if cs and getattr(cs, "checksum", None):
-                        return cs.checksum
+                        return str(cs.checksum)
                 return nid_
 
             success = 0

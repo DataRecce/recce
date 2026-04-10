@@ -1067,7 +1067,7 @@ class DbtAdapter(BaseAdapter):
             if nid in manifest.nodes:
                 cs = getattr(manifest.nodes[nid], "checksum", None)
                 if cs and getattr(cs, "checksum", None):
-                    return cs.checksum
+                    return str(cs.checksum)
             return nid
 
         # Collect all node IDs from all resource types
