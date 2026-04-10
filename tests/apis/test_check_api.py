@@ -256,6 +256,7 @@ class TestCheckApiCloudExceptionPassthrough(unittest.TestCase):
             run_async(create_check(check_in, background_tasks))
 
         self.assertEqual(ctx.exception.status_code, 403)
+        self.assertIn("Viewer cannot create checks", ctx.exception.detail)
 
     @patch("recce.apis.check_api.export_persistent_state")
     @patch("recce.apis.check_api.CheckDAO")
@@ -274,6 +275,7 @@ class TestCheckApiCloudExceptionPassthrough(unittest.TestCase):
             run_async(update_check_handler(uuid4(), patch_in, background_tasks))
 
         self.assertEqual(ctx.exception.status_code, 403)
+        self.assertIn("Viewer cannot update checks", ctx.exception.detail)
 
     @patch("recce.apis.check_api.export_persistent_state")
     @patch("recce.apis.check_api.CheckDAO")
@@ -291,6 +293,7 @@ class TestCheckApiCloudExceptionPassthrough(unittest.TestCase):
             run_async(delete_handler(uuid4(), background_tasks))
 
         self.assertEqual(ctx.exception.status_code, 403)
+        self.assertIn("Viewer cannot delete checks", ctx.exception.detail)
 
     @patch("recce.apis.check_api.export_persistent_state")
     @patch("recce.apis.check_api.CheckDAO")
@@ -308,6 +311,7 @@ class TestCheckApiCloudExceptionPassthrough(unittest.TestCase):
             run_async(mark_as_preset_check_handler(uuid4(), background_tasks))
 
         self.assertEqual(ctx.exception.status_code, 403)
+        self.assertIn("Viewer cannot create presets", ctx.exception.detail)
 
     @patch("recce.apis.check_api.CheckDAO")
     def test_get_check_returns_403_on_cloud_forbidden(self, mock_dao_cls):
@@ -322,6 +326,7 @@ class TestCheckApiCloudExceptionPassthrough(unittest.TestCase):
             run_async(get_check_handler(uuid4()))
 
         self.assertEqual(ctx.exception.status_code, 403)
+        self.assertIn("Viewer cannot access check", ctx.exception.detail)
 
     @patch("recce.apis.check_api.CheckDAO")
     def test_list_checks_returns_403_on_cloud_forbidden(self, mock_dao_cls):
@@ -336,6 +341,7 @@ class TestCheckApiCloudExceptionPassthrough(unittest.TestCase):
             run_async(list_checks_handler())
 
         self.assertEqual(ctx.exception.status_code, 403)
+        self.assertIn("Viewer cannot list checks", ctx.exception.detail)
 
     @patch("recce.apis.check_api.CheckDAO")
     def test_run_check_returns_403_on_cloud_forbidden(self, mock_dao_cls):
@@ -352,3 +358,4 @@ class TestCheckApiCloudExceptionPassthrough(unittest.TestCase):
             run_async(run_check_handler(uuid4(), run_in))
 
         self.assertEqual(ctx.exception.status_code, 403)
+        self.assertIn("Viewer cannot access check", ctx.exception.detail)

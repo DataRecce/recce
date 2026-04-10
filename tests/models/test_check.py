@@ -771,6 +771,7 @@ class TestCheckDAOCloudExceptionPassthrough(unittest.TestCase):
             dao.create(sample_check)
 
         self.assertEqual(ctx.exception.status_code, 403)
+        self.assertIn("Viewer cannot create checks", ctx.exception.reason)
 
     @patch("recce.util.recce_cloud.RecceCloud")
     @patch("recce.event.get_recce_api_token", return_value="test-token")
@@ -790,6 +791,7 @@ class TestCheckDAOCloudExceptionPassthrough(unittest.TestCase):
             dao.update_check_by_id(uuid4(), patch)
 
         self.assertEqual(ctx.exception.status_code, 403)
+        self.assertIn("Viewer cannot update checks", ctx.exception.reason)
 
     @patch("recce.util.recce_cloud.RecceCloud")
     @patch("recce.event.get_recce_api_token", return_value="test-token")
@@ -805,6 +807,7 @@ class TestCheckDAOCloudExceptionPassthrough(unittest.TestCase):
             dao.delete(uuid4())
 
         self.assertEqual(ctx.exception.status_code, 403)
+        self.assertIn("Viewer cannot delete checks", ctx.exception.reason)
 
     @patch("recce.util.recce_cloud.RecceCloud")
     @patch("recce.event.get_recce_api_token", return_value="test-token")
@@ -840,6 +843,7 @@ class TestCheckDAOCloudExceptionPassthrough(unittest.TestCase):
             dao.mark_as_preset_check(check_id)
 
         self.assertEqual(ctx.exception.status_code, 403)
+        self.assertIn("Viewer cannot create presets", ctx.exception.reason)
 
     @patch("recce.util.recce_cloud.RecceCloud")
     @patch("recce.event.get_recce_api_token", return_value="test-token")
@@ -855,6 +859,7 @@ class TestCheckDAOCloudExceptionPassthrough(unittest.TestCase):
             dao.find_check_by_id(uuid4())
 
         self.assertEqual(ctx.exception.status_code, 403)
+        self.assertIn("Viewer cannot access check", ctx.exception.reason)
 
     @patch("recce.util.recce_cloud.RecceCloud")
     @patch("recce.event.get_recce_api_token", return_value="test-token")
@@ -870,6 +875,7 @@ class TestCheckDAOCloudExceptionPassthrough(unittest.TestCase):
             dao.list()
 
         self.assertEqual(ctx.exception.status_code, 403)
+        self.assertIn("Viewer cannot list checks", ctx.exception.reason)
 
 
 if __name__ == "__main__":

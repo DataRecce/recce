@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
@@ -11,6 +10,7 @@ from recce.apis.check_func import (
     create_check_without_run,
     export_persistent_state,
 )
+from recce.apis.cloud_utils import log_cloud_exception
 from recce.apis.run_func import submit_run
 from recce.core import default_context
 from recce.event import log_api_event
@@ -18,22 +18,7 @@ from recce.exceptions import RecceException
 from recce.models import Check, CheckDAO, Run, RunDAO, RunType
 from recce.util.recce_cloud import RecceCloudException
 
-logger = logging.getLogger("uvicorn")
-
 check_router = APIRouter(tags=["check"])
-
-
-def _log_cloud_exception(msg: str, exc: RecceCloudException):
-    """Log cloud API errors at appropriate severity based on HTTP status code.
-
-    4xx errors (client errors like 403 Forbidden, 404 Not Found) are logged as
-    warnings since they represent expected outcomes. 5xx errors (server failures)
-    are logged as errors since they indicate unexpected system issues.
-    """
-    if exc.status_code is not None and exc.status_code >= 500:
-        logger.error(msg)
-    else:
-        logger.warning(msg)
 
 
 class CreateCheckIn(BaseModel):
@@ -153,7 +138,7 @@ async def create_check(check_in: CreateCheckIn, background_tasks: BackgroundTask
             ),
         )
     except RecceCloudException as e:
-        _log_cloud_exception(f"Failed to create check: {e}", e)
+        log_cloud_exception(f"Failed to create check: {e}", e)
         raise HTTPException(status_code=e.status_code, detail=str(e.reason))
     except NameError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -173,7 +158,7 @@ async def run_check_handler(check_id: UUID, input: RunCheckIn):
     try:
         check = CheckDAO().find_check_by_id(check_id)
     except RecceCloudException as e:
-        _log_cloud_exception(f"Failed to get check {check_id} for run: {e}", e)
+        log_cloud_exception(f"Failed to get check {check_id} for run: {e}", e)
         raise HTTPException(status_code=e.status_code, detail=str(e.reason))
 
     if not check:
@@ -208,7 +193,7 @@ async def list_checks_handler():
     try:
         check_list = CheckDAO().list()
     except RecceCloudException as e:
-        _log_cloud_exception(f"Failed to list checks: {e}", e)
+        log_cloud_exception(f"Failed to list checks: {e}", e)
         raise HTTPException(status_code=e.status_code, detail=str(e.reason))
 
     artifact_time = _get_latest_artifact_time()
@@ -224,7 +209,7 @@ async def get_check_handler(check_id: UUID):
     try:
         check = CheckDAO().find_check_by_id(check_id)
     except RecceCloudException as e:
-        _log_cloud_exception(f"Failed to get check {check_id}: {e}", e)
+        log_cloud_exception(f"Failed to get check {check_id}: {e}", e)
         raise HTTPException(status_code=e.status_code, detail=str(e.reason))
 
     if check is None:
@@ -252,7 +237,7 @@ async def update_check_handler(check_id: UUID, patch: PatchCheckIn, background_t
     try:
         check = CheckDAO().update_check_by_id(check_id, patch)
     except RecceCloudException as e:
-        _log_cloud_exception(f"Failed to update check {check_id}: {e}", e)
+        log_cloud_exception(f"Failed to update check {check_id}: {e}", e)
         raise HTTPException(status_code=e.status_code, detail=str(e.reason))
 
     if check is None:
@@ -271,7 +256,7 @@ async def delete_handler(check_id: UUID, background_tasks: BackgroundTasks):
     try:
         CheckDAO().delete(check_id)
     except RecceCloudException as e:
-        _log_cloud_exception(f"Failed to delete check {check_id}: {e}", e)
+        log_cloud_exception(f"Failed to delete check {check_id}: {e}", e)
         raise HTTPException(status_code=e.status_code, detail=str(e.reason))
 
     background_tasks.add_task(export_persistent_state)
@@ -307,7 +292,7 @@ async def mark_as_preset_check_handler(check_id: UUID, background_tasks: Backgro
         CheckDAO().mark_as_preset_check(check_id)
         background_tasks.add_task(export_persistent_state)
     except RecceCloudException as e:
-        _log_cloud_exception(f"Failed to mark check {check_id} as preset: {e}", e)
+        log_cloud_exception(f"Failed to mark check {check_id} as preset: {e}", e)
         raise HTTPException(status_code=e.status_code, detail=str(e.reason))
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
