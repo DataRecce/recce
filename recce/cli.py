@@ -318,8 +318,10 @@ def init(cache_db, **kwargs):
 
     import json
     import logging
+    import tempfile
     import time
 
+    import requests
     from rich.console import Console
     from rich.progress import Progress
 
@@ -331,6 +333,11 @@ def init(cache_db, **kwargs):
     console = Console()
     console.rule("Recce Init — Building column-level lineage cache", style="orange3")
 
+    # Timeouts for HTTP requests (seconds): short for metadata, long for large files
+    _METADATA_TIMEOUT = 30
+    _DOWNLOAD_TIMEOUT = 300
+    _UPLOAD_TIMEOUT = 600
+
     is_cloud = kwargs.get("cloud", False)
     session_id = kwargs.get("session_id")
     cloud_client = None
@@ -338,8 +345,6 @@ def init(cache_db, **kwargs):
     cloud_project_id = None
 
     if is_cloud:
-        import requests
-
         from recce.util.recce_cloud import RecceCloud, RecceCloudException
 
         cloud_token = kwargs.get("cloud_token") or kwargs.get("api_token")
@@ -359,7 +364,11 @@ def init(cache_db, **kwargs):
         console.print(f"[bold]Cloud mode[/bold]: session {session_id}")
 
         # Get session info
-        session_info = cloud_client.get_session(session_id)
+        try:
+            session_info = cloud_client.get_session(session_id)
+        except RecceCloudException as e:
+            console.print(f"[[red]Error[/red]] Failed to get session: {e}")
+            exit(1)
         if session_info.get("status") == "error":
             console.print(f"[[red]Error[/red]] Failed to get session: {session_info.get('message', 'Access denied')}")
             exit(1)
@@ -387,12 +396,17 @@ def init(cache_db, **kwargs):
         for artifact_key, filename in [("manifest_url", "manifest.json"), ("catalog_url", "catalog.json")]:
             url = download_urls.get(artifact_key)
             if url:
-                resp = requests.get(url)
-                if resp.status_code == 200:
-                    (target_path / filename).write_bytes(resp.content)
-                    console.print(f"  Downloaded {filename} to {target_path}")
-                else:
-                    console.print(f"  [[yellow]Warning[/yellow]] Failed to download {filename}: HTTP {resp.status_code}")
+                try:
+                    resp = requests.get(url, timeout=_METADATA_TIMEOUT)
+                    if resp.status_code == 200:
+                        (target_path / filename).write_bytes(resp.content)
+                        console.print(f"  Downloaded {filename} to {target_path}")
+                    else:
+                        console.print(
+                            f"  [[yellow]Warning[/yellow]] Failed to download {filename}: HTTP {resp.status_code}"
+                        )
+                except requests.RequestException as e:
+                    console.print(f"  [[yellow]Warning[/yellow]] Failed to download {filename}: {e}")
 
         # Download base session artifacts
         try:
@@ -405,41 +419,69 @@ def init(cache_db, **kwargs):
         for artifact_key, filename in [("manifest_url", "manifest.json"), ("catalog_url", "catalog.json")]:
             url = base_download_urls.get(artifact_key)
             if url:
-                resp = requests.get(url)
-                if resp.status_code == 200:
-                    (target_base_path / filename).write_bytes(resp.content)
-                    console.print(f"  Downloaded base {filename} to {target_base_path}")
-                else:
-                    console.print(
-                        f"  [[yellow]Warning[/yellow]] Failed to download base {filename}: HTTP {resp.status_code}"
-                    )
+                try:
+                    resp = requests.get(url, timeout=_METADATA_TIMEOUT)
+                    if resp.status_code == 200:
+                        (target_base_path / filename).write_bytes(resp.content)
+                        console.print(f"  Downloaded base {filename} to {target_base_path}")
+                    else:
+                        console.print(
+                            f"  [[yellow]Warning[/yellow]] Failed to download base {filename}: HTTP {resp.status_code}"
+                        )
+                except requests.RequestException as e:
+                    console.print(f"  [[yellow]Warning[/yellow]] Failed to download base {filename}: {e}")
 
         # Download existing CLL cache for warm start.
         # Try current session first, then fall back to production (base) session.
+        # Use streaming to avoid loading large cache files entirely into memory.
         if cache_db is None:
             cache_db = _DEFAULT_DB_PATH
         Path(cache_db).parent.mkdir(parents=True, exist_ok=True)
 
+        def _stream_download_to_file(url: str, dest: Path) -> int:
+            """Stream a URL to a file, returning bytes written. Raises on failure."""
+            resp = requests.get(url, stream=True, timeout=_DOWNLOAD_TIMEOUT)
+            if resp.status_code != 200:
+                return 0
+            total = 0
+            with tempfile.NamedTemporaryFile(dir=dest.parent, delete=False, suffix=".tmp") as tmp:
+                tmp_path = Path(tmp.name)
+                try:
+                    for chunk in resp.iter_content(chunk_size=8192):
+                        tmp.write(chunk)
+                        total += len(chunk)
+                    tmp.flush()
+                except Exception:
+                    tmp_path.unlink(missing_ok=True)
+                    raise
+            if total > 0:
+                tmp_path.rename(dest)
+            else:
+                tmp_path.unlink(missing_ok=True)
+            return total
+
         cache_downloaded = False
         cll_cache_url = download_urls.get("cll_cache_url")
         if cll_cache_url:
-            resp = requests.get(cll_cache_url)
-            if resp.status_code == 200 and len(resp.content) > 0:
-                Path(cache_db).write_bytes(resp.content)
-                console.print(f"  Downloaded CLL cache from session ({len(resp.content) / 1024 / 1024:.1f} MB)")
-                cache_downloaded = True
+            try:
+                nbytes = _stream_download_to_file(cll_cache_url, Path(cache_db))
+                if nbytes > 0:
+                    console.print(f"  Downloaded CLL cache from session ({nbytes / 1024 / 1024:.1f} MB)")
+                    cache_downloaded = True
+            except requests.RequestException as e:
+                console.print(f"  [[yellow]Warning[/yellow]] Failed to download CLL cache: {e}")
 
         if not cache_downloaded:
             # Fall back to production (base) session cache
             base_cache_url = base_download_urls.get("cll_cache_url")
             if base_cache_url:
-                resp = requests.get(base_cache_url)
-                if resp.status_code == 200 and len(resp.content) > 0:
-                    Path(cache_db).write_bytes(resp.content)
-                    console.print(
-                        f"  Downloaded CLL cache from base session ({len(resp.content) / 1024 / 1024:.1f} MB)"
-                    )
-                    cache_downloaded = True
+                try:
+                    nbytes = _stream_download_to_file(base_cache_url, Path(cache_db))
+                    if nbytes > 0:
+                        console.print(f"  Downloaded CLL cache from base session ({nbytes / 1024 / 1024:.1f} MB)")
+                        cache_downloaded = True
+                except requests.RequestException as e:
+                    console.print(f"  [[yellow]Warning[/yellow]] Failed to download base CLL cache: {e}")
 
         if not cache_downloaded:
             console.print("  [dim]No existing CLL cache found — will compute from scratch[/dim]")
@@ -601,12 +643,19 @@ def init(cache_db, **kwargs):
     # The per-node SQLite cache is warm from the loop above, so this is fast.
     console.print("\n[bold]Building full CLL map...[/bold]")
     t_map_start = time.perf_counter()
+    cll_map_path = Path(cache_db).parent / "cll_map.json"
     try:
         full_cll_map = dbt_adapter.build_full_cll_map()
-        cll_map_path = Path(cache_db).parent / "cll_map.json"
         cll_map_data = full_cll_map.model_dump(mode="json")
-        with open(cll_map_path, "w") as f:
-            json.dump(cll_map_data, f)
+        # Write to temp file first to avoid corrupted JSON on partial write
+        tmp_fd, tmp_name = tempfile.mkstemp(dir=cll_map_path.parent, suffix=".tmp")
+        try:
+            with os.fdopen(tmp_fd, "w") as f:
+                json.dump(cll_map_data, f)
+            Path(tmp_name).rename(cll_map_path)
+        except Exception:
+            Path(tmp_name).unlink(missing_ok=True)
+            raise
         map_elapsed = time.perf_counter() - t_map_start
         map_size_mb = cll_map_path.stat().st_size / 1024 / 1024
         console.print(
@@ -624,37 +673,67 @@ def init(cache_db, **kwargs):
     # Upload results to Cloud if in cloud mode
     if is_cloud and cloud_client:
         console.print("\n[bold]Uploading results to Cloud...[/bold]")
+        upload_failures = []
         try:
             upload_urls = cloud_client.get_upload_urls_by_session_id(cloud_org_id, cloud_project_id, session_id)
 
             # Upload CLL map
-            cll_map_path = Path(cache_db).parent / "cll_map.json"
             cll_map_upload_url = upload_urls.get("cll_map_url")
             if cll_map_upload_url and cll_map_path.is_file():
-                with open(cll_map_path, "rb") as f:
-                    resp = requests.put(cll_map_upload_url, data=f, headers={"Content-Type": "application/json"})
-                if resp.status_code in (200, 204):
-                    console.print(f"  Uploaded cll_map.json ({cll_map_path.stat().st_size / 1024 / 1024:.1f} MB)")
-                else:
-                    console.print(f"  [[yellow]Warning[/yellow]] Failed to upload cll_map.json: HTTP {resp.status_code}")
+                try:
+                    with open(cll_map_path, "rb") as f:
+                        resp = requests.put(
+                            cll_map_upload_url,
+                            data=f,
+                            headers={"Content-Type": "application/json"},
+                            timeout=_UPLOAD_TIMEOUT,
+                        )
+                    if resp.status_code in (200, 204):
+                        console.print(f"  Uploaded cll_map.json ({cll_map_path.stat().st_size / 1024 / 1024:.1f} MB)")
+                    else:
+                        upload_failures.append("cll_map.json")
+                        console.print(
+                            f"  [[yellow]Warning[/yellow]] Failed to upload cll_map.json: HTTP {resp.status_code}"
+                        )
+                except requests.RequestException as e:
+                    upload_failures.append("cll_map.json")
+                    console.print(f"  [[yellow]Warning[/yellow]] Failed to upload cll_map.json: {e}")
             elif not cll_map_upload_url:
-                console.print("  [[yellow]Warning[/yellow]] No cll_map_url in upload URLs (Cloud server may need update)")
+                console.print(
+                    "  [[yellow]Warning[/yellow]] No cll_map_url in upload URLs (Cloud server may need update)"
+                )
 
             # Upload CLL cache
             cll_cache_upload_url = upload_urls.get("cll_cache_url")
             if cll_cache_upload_url and Path(cache_db).is_file():
-                with open(cache_db, "rb") as f:
-                    resp = requests.put(
-                        cll_cache_upload_url, data=f, headers={"Content-Type": "application/octet-stream"}
-                    )
-                if resp.status_code in (200, 204):
-                    console.print(f"  Uploaded cll_cache.db ({Path(cache_db).stat().st_size / 1024 / 1024:.1f} MB)")
-                else:
-                    console.print(f"  [[yellow]Warning[/yellow]] Failed to upload cll_cache.db: HTTP {resp.status_code}")
+                try:
+                    with open(cache_db, "rb") as f:
+                        resp = requests.put(
+                            cll_cache_upload_url,
+                            data=f,
+                            headers={"Content-Type": "application/octet-stream"},
+                            timeout=_UPLOAD_TIMEOUT,
+                        )
+                    if resp.status_code in (200, 204):
+                        console.print(f"  Uploaded cll_cache.db ({Path(cache_db).stat().st_size / 1024 / 1024:.1f} MB)")
+                    else:
+                        upload_failures.append("cll_cache.db")
+                        console.print(
+                            f"  [[yellow]Warning[/yellow]] Failed to upload cll_cache.db: HTTP {resp.status_code}"
+                        )
+                except requests.RequestException as e:
+                    upload_failures.append("cll_cache.db")
+                    console.print(f"  [[yellow]Warning[/yellow]] Failed to upload cll_cache.db: {e}")
             elif not cll_cache_upload_url:
                 logger.debug("No cll_cache_url in upload URLs — cache upload not supported yet")
 
-            console.print("[bold green]Cloud upload complete.[/bold green]")
+            if upload_failures:
+                console.print(
+                    f"[bold yellow]Cloud upload completed with warnings[/bold yellow] "
+                    f"(failed: {', '.join(upload_failures)})"
+                )
+            else:
+                console.print("[bold green]Cloud upload complete.[/bold green]")
         except Exception as e:
             logger.warning("[recce init] Cloud upload failed: %s", e)
             console.print(f"  [[yellow]Warning[/yellow]] Cloud upload failed: {e}")
