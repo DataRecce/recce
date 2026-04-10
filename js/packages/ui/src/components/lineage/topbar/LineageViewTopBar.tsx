@@ -796,6 +796,8 @@ export const LineageViewTopBar = ({
                         <MenuItem
                           disabled={featureToggles.checklistPermissionDenied}
                           onClick={() => {
+                            if (featureToggles.checklistPermissionDenied)
+                              return;
                             onAddLineageDiffCheck?.(viewOptions.view_mode);
                             handleActionsClose();
                           }}
@@ -819,6 +821,8 @@ export const LineageViewTopBar = ({
                         <MenuItem
                           disabled={featureToggles.checklistPermissionDenied}
                           onClick={() => {
+                            if (featureToggles.checklistPermissionDenied)
+                              return;
                             onAddSchemaDiffCheck?.();
                             handleActionsClose();
                           }}

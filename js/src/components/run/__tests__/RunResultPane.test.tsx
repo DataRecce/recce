@@ -109,6 +109,8 @@ function MockRunResultPane({
   const disableShare = featureToggles?.disableShare ?? false;
   const disableUpdateChecklist =
     featureToggles?.disableUpdateChecklist ?? false;
+  const checklistPermissionDenied =
+    featureToggles?.checklistPermissionDenied ?? false;
   const csvExport = { canExportCSV: true };
 
   const isQuery =
@@ -252,8 +254,10 @@ function MockRunResultPane({
                 )),
         ]),
       // Add to Checklist button
-      !disableUpdateChecklist &&
-        (checkId
+      // Hide when disabled for non-permission reasons; show disabled with tooltip for permission denial
+      disableUpdateChecklist && !checklistPermissionDenied
+        ? null
+        : checkId && !checklistPermissionDenied
           ? React.createElement(
               "button",
               {
@@ -267,11 +271,15 @@ function MockRunResultPane({
               "button",
               {
                 key: "add-to-checklist",
-                disabled: !run?.run_id || !run?.result || !!error,
+                disabled:
+                  !run?.run_id ||
+                  !run?.result ||
+                  !!error ||
+                  checklistPermissionDenied,
                 onClick: onAddToChecklist,
               },
               "Add to Checklist",
-            )),
+            ),
       // Close button
       React.createElement(
         "button",
@@ -1068,6 +1076,23 @@ describe("RunResultPane", () => {
       expect(
         screen.queryByRole("button", { name: /Add to Checklist/i }),
       ).not.toBeInTheDocument();
+    });
+
+    it("shows disabled button with tooltip when checklistPermissionDenied", () => {
+      hoistedMocks.useRecceInstanceContext.mockReturnValue({
+        featureToggles: {
+          disableUpdateChecklist: true,
+          checklistPermissionDenied: true,
+        },
+      });
+
+      renderWithQueryClient(<RunResultPane />);
+
+      const addButton = screen.getByRole("button", {
+        name: /Add to Checklist/i,
+      });
+      expect(addButton).toBeInTheDocument();
+      expect(addButton).toBeDisabled();
     });
   });
 

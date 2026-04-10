@@ -41,6 +41,7 @@ import {
   useRun,
 } from "../../hooks";
 import { trackCopyToClipboard, trackShareState } from "../../lib/api/track";
+import { isHttpError } from "../../lib/fetchClient";
 import AuthModal from "../app/AuthModal";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide";
 import { DualSqlEditor, SqlEditor } from "../query";
@@ -225,7 +226,6 @@ export const PrivateLoadableRunView = ({
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       router.push(`${basePath}/checks/?id=${check.check_id}`);
     } catch (error) {
-      const { isHttpError } = await import("../../lib/fetchClient");
       if (isHttpError(error) && error.status === 403) {
         toaster.error({
           title: "Permission denied",

@@ -104,8 +104,12 @@ export function RecceInstanceInfoProvider({
       toggles.disableShare = true;
     }
     if (instanceInfo.user_role === "viewer") {
+      // Only show permission-denied tooltip when checklist isn't already disabled
+      // by mode (read-only) or env (single_env) — in those cases, hide entirely
+      if (!toggles.disableUpdateChecklist) {
+        toggles.checklistPermissionDenied = true;
+      }
       toggles.disableUpdateChecklist = true;
-      toggles.checklistPermissionDenied = true;
     }
     setFeatureToggles(toggles);
   }
