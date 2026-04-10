@@ -992,28 +992,33 @@ class DbtAdapter(BaseAdapter):
 
     @staticmethod
     def _make_node_content_key(
-        node_id: str,
-        raw_code: Optional[str],
-        parent_list: List[str],
+        checksum: str,
+        parent_checksums: List[str],
         column_names: List[str],
         adapter_type: str = "",
     ) -> str:
         """Content-based cache key for per-node CllData.
 
         Uses null byte separators between fields to prevent hash collisions
-        from concatenation ambiguity (e.g., id="ab"+code="cd" vs id="abc"+code="d").
+        from concatenation ambiguity.
 
-        ``adapter_type`` (e.g. "duckdb", "snowflake") is included so that
-        lineage computed under one dialect is never returned for another.
+        - ``checksum``: dbt-computed sha256 of raw_code (from manifest).
+        - ``parent_checksums``: checksums of parent nodes (sorted). Cascading
+          invalidation — if any parent's SQL changes, the child recomputes.
+          Sources (no SQL) use their node ID as a stable placeholder.
+        - ``column_names``: output columns from catalog (sorted).
+        - ``adapter_type``: e.g. "duckdb", "snowflake" — ensures lineage
+          computed under one dialect is never returned for another.
+
+        ``node_id`` is intentionally omitted here because
+        ``CllCache.make_node_key`` already includes it in the DB lookup key.
         """
         h = hashlib.sha256()
         h.update(adapter_type.encode("utf-8"))
         h.update(b"\x00")
-        h.update(node_id.encode("utf-8"))
+        h.update(checksum.encode("utf-8"))
         h.update(b"\x00")
-        h.update((raw_code or "").encode("utf-8"))
-        h.update(b"\x00")
-        for p in sorted(parent_list):
+        for p in sorted(parent_checksums):
             h.update(p.encode("utf-8"))
             h.update(b"\x00")
         for c in sorted(column_names):
@@ -1057,6 +1062,14 @@ class DbtAdapter(BaseAdapter):
         # Include adapter type in cache keys so different dialects never collide
         adapter_type = getattr(manifest.metadata, "adapter_type", None) or self.adapter.type()
 
+        def _get_checksum(nid: str) -> str:
+            """Get dbt checksum for a node. Sources/exposures/metrics have no SQL, so use their ID."""
+            if nid in manifest.nodes:
+                cs = getattr(manifest.nodes[nid], "checksum", None)
+                if cs and getattr(cs, "checksum", None):
+                    return cs.checksum
+            return nid
+
         # Collect all node IDs from all resource types
         all_node_ids = set()
         for key in ["sources", "nodes", "exposures", "metrics"]:
@@ -1074,13 +1087,12 @@ class DbtAdapter(BaseAdapter):
         batch_to_store = []
 
         for node_id in all_node_ids:
-            raw_code = None
+            checksum = _get_checksum(node_id)
             p_list: List[str] = []
             col_names: List[str] = []
 
             if node_id in manifest.nodes:
                 n = manifest.nodes[node_id]
-                raw_code = n.raw_code
                 if hasattr(n.depends_on, "nodes"):
                     p_list = n.depends_on.nodes
                 if catalog and node_id in catalog.nodes:
@@ -1102,7 +1114,8 @@ class DbtAdapter(BaseAdapter):
                 if hasattr(n.depends_on, "nodes"):
                     p_list = n.depends_on.nodes
 
-            content_key = self._make_node_content_key(node_id, raw_code, p_list, col_names, adapter_type)
+            parent_checksums = [_get_checksum(pid) for pid in p_list]
+            content_key = self._make_node_content_key(checksum, parent_checksums, col_names, adapter_type)
 
             cached_json = cache.get_node(node_id, content_key)
             if cached_json:

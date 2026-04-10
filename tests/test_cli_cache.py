@@ -19,12 +19,20 @@ def tmp_db(tmp_path):
     return str(tmp_path / "test_cll_cache.db")
 
 
-def _make_mock_node(resource_type: str = "model", raw_code: str = "SELECT 1", dep_nodes: list | None = None):
+def _make_mock_node(
+    resource_type: str = "model",
+    raw_code: str = "SELECT 1",
+    dep_nodes: list | None = None,
+    checksum_value: str | None = None,
+):
     """Create a mock dbt manifest node."""
+    import hashlib
+
     node = MagicMock()
     node.resource_type = resource_type
     node.raw_code = raw_code
     node.depends_on.nodes = dep_nodes or []
+    node.checksum.checksum = checksum_value or hashlib.sha256(raw_code.encode()).hexdigest()
     return node
 
 
