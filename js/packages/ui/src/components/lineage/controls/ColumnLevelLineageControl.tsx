@@ -235,8 +235,7 @@ export const ColumnLevelLineageControl = ({
   const hideImpactButton = newCllExperience && changeAnalysisMode;
 
   // In new CLL experience, only show mode message for column-specific CLL (Layer 3)
-  const showModeMessage =
-    cllInput && !(newCllExperience && !cllInput.column);
+  const showModeMessage = cllInput && !(newCllExperience && !cllInput.column);
 
   return (
     <Stack direction="row" spacing="5px">
