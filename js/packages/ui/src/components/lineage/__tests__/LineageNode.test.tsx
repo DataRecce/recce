@@ -602,6 +602,46 @@ describe("LineageNode", () => {
   });
 
   // ==========================================================================
+  // New CLL Experience Tests
+  // ==========================================================================
+
+  describe("new CLL experience", () => {
+    it("does not apply DIM_FILTER when newCllExperience is true", () => {
+      const { container } = render(
+        <LineageNode
+          {...createMockNodeProps({
+            isHighlighted: false,
+            isFocused: false,
+            newCllExperience: true,
+          })}
+        />,
+      );
+      const nodeEl = container.firstChild as HTMLElement;
+      const style = window.getComputedStyle(nodeEl);
+      expect(style.filter).not.toContain("grayscale");
+    });
+
+    it("applies amber background when isImpacted is true", () => {
+      const { container } = render(
+        <LineageNode
+          {...createMockNodeProps({
+            newCllExperience: true,
+            isImpacted: true,
+          })}
+        />,
+      );
+      const nodeEl = container.firstChild as HTMLElement;
+      expect(nodeEl).toBeTruthy();
+      // The main node container is the second child (first child of nodeEl is the main box)
+      // We check that the node's inner container has a background color set
+      const innerContainer = nodeEl.querySelector("div > div") as HTMLElement;
+      expect(innerContainer).toBeTruthy();
+      const style = window.getComputedStyle(innerContainer);
+      expect(style.backgroundColor).toBeTruthy();
+    });
+  });
+
+  // ==========================================================================
   // Integration Tests
   // ==========================================================================
 
