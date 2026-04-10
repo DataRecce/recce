@@ -261,8 +261,8 @@ export function isExploreAction(type: string): type is ExploreActionType {
 }
 
 // Onboarding flow events
-export function trackOssShareButtonClicked() {
-  track("[CLI Onboarding] oss_share_button_clicked");
+export function trackOssShareButtonClicked({ authed }: { authed: boolean }) {
+  track("[CLI Onboarding] oss_share_button_clicked", { authed });
 }
 
 export function trackSignupRedirectInitiated() {

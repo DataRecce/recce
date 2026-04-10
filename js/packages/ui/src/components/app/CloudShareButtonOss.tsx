@@ -64,7 +64,7 @@ export function CloudShareButtonOss() {
           size="small"
           startIcon={<PiUserPlus />}
           onClick={() => {
-            trackOssShareButtonClicked();
+            trackOssShareButtonClicked({ authed: true });
             setShowUploadDialog(true);
           }}
           sx={{
@@ -89,7 +89,7 @@ export function CloudShareButtonOss() {
 
   // Not authed path: signup flow
   const handleShareClick = (event: React.MouseEvent<HTMLElement>) => {
-    trackOssShareButtonClicked();
+    trackOssShareButtonClicked({ authed: false });
     setPopoverState("signup");
     waitingRef.current = false;
     setAnchorEl(event.currentTarget);
