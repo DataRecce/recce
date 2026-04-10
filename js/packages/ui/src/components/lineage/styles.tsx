@@ -494,6 +494,18 @@ export function getIconForChangeStatus(
 }
 
 /**
+ * Get background style for impacted nodes in new CLL experience.
+ * Uses a light amber that is less intense than "modified" (amber[500]).
+ */
+export function getStyleForImpacted(isDark?: boolean): {
+  backgroundColor: string;
+} {
+  return {
+    backgroundColor: isDark ? colors.amber[900] : colors.amber[200],
+  };
+}
+
+/**
  * Get icon and color for a resource type
  *
  * @param resourceType - The resource type (model, source, seed, etc.)

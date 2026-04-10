@@ -583,11 +583,9 @@ export function createDataGridFromData(
       );
 
     case "schema_diff": {
+      const schemaOptions = (options ?? {}) as SchemaDataGridOptions;
       const schemaDiff = mergeColumns(input.base, input.current);
-      return toSchemaDataGrid(
-        schemaDiff,
-        (options ?? {}) as SchemaDataGridOptions,
-      );
+      return toSchemaDataGrid(schemaDiff, schemaOptions);
     }
 
     case "schema_single":

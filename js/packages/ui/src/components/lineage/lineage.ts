@@ -11,6 +11,7 @@ import {
   type NodeColumnSetMap,
 } from "../..";
 import type { ColumnLineageData } from "../../api";
+import type { ColumnAnnotation } from "./computeColumnAncestry";
 
 /**
  * Convert a LineageGraph to React Flow nodes and edges with column-level lineage support
@@ -41,11 +42,19 @@ export function toReactFlow(
     selectedNodes?: string[];
     cll?: ColumnLineageData;
     existingPositions?: Map<string, { x: number; y: number }>;
+    newCllExperience?: boolean;
+    columnAncestry?: Map<string, ColumnAnnotation[]>;
   },
 ): [LineageGraphNodes[], LineageGraphEdge[], NodeColumnSetMap] {
   const nodes: LineageGraphNodes[] = [];
   const edges: LineageGraphEdge[] = [];
-  const { selectedNodes, cll, existingPositions } = options ?? {};
+  const {
+    selectedNodes,
+    cll,
+    existingPositions,
+    newCllExperience,
+    columnAncestry,
+  } = options ?? {};
 
   const nodeColumnSetMap: NodeColumnSetMap = {};
 
@@ -85,7 +94,7 @@ export function toReactFlow(
     // add column nodes
     const nodeColumnSet = new Set<string>();
     let columnIndex = 0;
-    if (cll) {
+    if (cll && !newCllExperience) {
       const maybeCurrent = cll.current as unknown as
         | ColumnLineageData["current"]
         | undefined;
@@ -208,6 +217,11 @@ export function toReactFlow(
     } as LineageGraphEdge);
   }
 
+  // Add column ancestry annotation nodes for new CLL experience column mode
+  if (newCllExperience && columnAncestry && cll) {
+    addColumnAncestryNodes(nodes, edges, columnAncestry, cll, filterSet);
+  }
+
   // Only run layout if any parent node is missing a position
   const needsLayout = nodes.some(
     (node) =>
@@ -219,6 +233,99 @@ export function toReactFlow(
   }
 
   return [nodes, edges, nodeColumnSetMap];
+}
+
+/**
+ * Add column ancestry annotation nodes and edges to the graph.
+ *
+ * For each model in the ancestry map, creates child column nodes positioned
+ * inside the model node, edges between ancestor columns that follow the
+ * parent_map, and expands model node heights to fit their columns.
+ */
+function addColumnAncestryNodes(
+  nodes: LineageGraphNodes[],
+  edges: LineageGraphEdge[],
+  columnAncestry: Map<string, ColumnAnnotation[]>,
+  cll: ColumnLineageData,
+  filterSet: Set<string> | undefined,
+) {
+  // Build columnId -> annotation lookup and set of ancestry column IDs
+  const ancestryColumnIds = new Set<string>();
+  const columnIdToAnnotation = new Map<
+    string,
+    { modelId: string; isImpacted: boolean }
+  >();
+  for (const [modelId, annotations] of columnAncestry) {
+    // Skip columns whose model isn't in the current graph view
+    if (filterSet && !filterSet.has(modelId)) continue;
+
+    for (let i = 0; i < annotations.length; i++) {
+      const annotation = annotations[i];
+      const columnKey = `${modelId}_${annotation.column}`;
+      ancestryColumnIds.add(columnKey);
+      columnIdToAnnotation.set(columnKey, {
+        modelId,
+        isImpacted: annotation.isImpacted,
+      });
+      const col = cll.current.columns[columnKey];
+
+      nodes.push({
+        id: columnKey,
+        position: { x: 10, y: 64 + i * COLUMN_HEIGHT },
+        parentId: modelId,
+        draggable: false,
+        className: "no-track-pii-safe",
+        data: {
+          node: { id: modelId } as never,
+          column: annotation.column,
+          type: col?.type,
+          transformationType: annotation.transformationType,
+          changeStatus: annotation.changeStatus,
+          isHighlighted: true,
+          isFocused: false,
+          isImpacted: annotation.isImpacted,
+        },
+        style: {
+          zIndex: 9999,
+        },
+        type: "lineageGraphColumnNode",
+        targetPosition: Position.Left,
+        sourcePosition: Position.Right,
+      } as LineageGraphColumnNode);
+    }
+
+    // Expand model node to fit its ancestry columns
+    if (annotations.length > 0) {
+      const modelNode = nodes.find(
+        (n) => n.id === modelId && n.type === "lineageGraphNode",
+      );
+      if (modelNode) {
+        modelNode.height = 60 + 20 + annotations.length * COLUMN_HEIGHT;
+      }
+    }
+  }
+
+  // Add edges between ancestry column nodes
+  for (const columnId of ancestryColumnIds) {
+    const parents = cll.current.parent_map[columnId] ?? [];
+    for (const parentColumnId of parents) {
+      if (ancestryColumnIds.has(parentColumnId)) {
+        const sourceInfo = columnIdToAnnotation.get(parentColumnId);
+        // Amber edge if source column is impacted
+        const isSourceImpacted = sourceInfo?.isImpacted ?? false;
+        edges.push({
+          id: `ancestry_${parentColumnId}_${columnId}`,
+          source: parentColumnId,
+          target: columnId,
+          style: {
+            zIndex: 9999,
+            strokeWidth: 2,
+            stroke: isSourceImpacted ? "#fbbf24" : "#9ca3af",
+          },
+        });
+      }
+    }
+  }
 }
 
 /**

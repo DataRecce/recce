@@ -31,6 +31,7 @@ import {
   getIconForChangeStatus,
   getIconForMaterialization,
   getIconForResourceType,
+  getStyleForImpacted,
 } from "../styles";
 
 // =============================================================================
@@ -74,6 +75,10 @@ export interface LineageNodeData extends Record<string, unknown> {
   materialized?: string;
   /** Package name */
   packageName?: string;
+  /** Whether new CLL experience is active (data-level, for ReactFlow passthrough) */
+  newCllExperience?: boolean;
+  /** Whether this node is impacted by CLL analysis (data-level, for ReactFlow passthrough) */
+  isImpacted?: boolean;
   /** Whether to show column-level details */
   showColumns?: boolean;
   /** Column data if showing columns */
@@ -132,6 +137,12 @@ export interface LineageNodeProps {
   // === Theme Props ===
   /** Whether dark mode is active */
   isDark?: boolean;
+
+  // === New CLL Experience Props ===
+  /** Whether new CLL experience is active */
+  newCllExperience?: boolean;
+  /** Whether this node is impacted by CLL analysis */
+  isImpacted?: boolean;
 
   // === Callbacks ===
   /** Callback when node is clicked */
@@ -303,6 +314,9 @@ function LineageNodeComponent({
   columnHeight = DEFAULT_COLUMN_HEIGHT,
   // Theme props
   isDark = false,
+  // New CLL experience props (fall back to data for ReactFlow passthrough)
+  newCllExperience: newCllExperienceProp,
+  isImpacted: isImpactedProp,
   // Callbacks
   onNodeClick,
   onNodeDoubleClick,
@@ -319,6 +333,11 @@ function LineageNodeComponent({
     resourceType,
     materialized,
   } = data;
+
+  // Fall back to data-level values for ReactFlow passthrough
+  const newCllExperience =
+    newCllExperienceProp ?? data.newCllExperience ?? false;
+  const isImpacted = isImpactedProp ?? data.isImpacted ?? false;
 
   // Use isNodeSelected prop, fall back to data.isSelected, then to selected
   const isSelected = isNodeSelected || dataIsSelected || selected || false;
@@ -403,8 +422,17 @@ function LineageNodeComponent({
     return colorChangeStatus;
   })();
 
+  // Amber background for impacted nodes in new CLL experience
+  const impactedBackground =
+    newCllExperience && isImpacted
+      ? getStyleForImpacted(isDark).backgroundColor
+      : undefined;
+
   // Filter for dimming
   const nodeFilter = (() => {
+    if (newCllExperience) {
+      return "none"; // Never dim in new CLL experience
+    }
     if (selectMode === "action_result") {
       return hasAction ? "none" : DIM_FILTER;
     }
@@ -458,7 +486,7 @@ function LineageNodeComponent({
           borderTopRightRadius: 8,
           borderBottomLeftRadius: showColumns ? 0 : 8,
           borderBottomRightRadius: showColumns ? 0 : 8,
-          backgroundColor: nodeBackgroundColor,
+          backgroundColor: impactedBackground ?? nodeBackgroundColor,
           height: 60,
         }}
       >

@@ -53,6 +53,7 @@ vi.mock("@datarecce/ui/contexts", () => ({
   useRouteConfig: vi.fn(() => ({ basePath: "" })),
   useLineageGraphContext: vi.fn(),
   useLineageViewContextSafe: vi.fn(),
+  useRecceServerFlag: vi.fn(() => ({ data: undefined })),
 }));
 
 // Mock @datarecce/ui/components/lineage
