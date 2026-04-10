@@ -12,6 +12,7 @@ from uuid import uuid4
 from recce.exceptions import RecceException
 from recce.models.check import CheckDAO
 from recce.models.types import Check, RunType
+from recce.util.recce_cloud import RecceCloudException
 
 
 class TestCheckDAOLocalMode(unittest.TestCase):
@@ -725,6 +726,120 @@ class TestCheckDAODataTransformation(unittest.TestCase):
         self.assertFalse(check.is_preset)
         self.assertIsNotNone(check.created_at)
         self.assertIsNotNone(check.updated_at)
+
+
+class TestCheckDAOCloudExceptionPassthrough(unittest.TestCase):
+    """Tests that RecceCloudException propagates through CheckDAO methods.
+
+    DRC-3200: The DAO layer must not swallow RecceCloudException inside
+    a generic 'except Exception' — it must re-raise so the API layer
+    can map the HTTP status code to the response.
+    """
+
+    def _make_cloud_dao(self, mock_default_context, mock_recce_cloud_class):
+        """Helper to set up a cloud-mode DAO with mocked cloud client."""
+        mock_loader = Mock()
+        mock_loader.session_id = "test-session-123"
+        mock_loader.org_id = "org-456"
+        mock_loader.project_id = "proj-789"
+
+        mock_context = Mock()
+        mock_context.state_loader = mock_loader
+        mock_context.checks = []
+        mock_default_context.return_value = mock_context
+
+        mock_cloud_client = Mock()
+        mock_recce_cloud = Mock()
+        mock_recce_cloud.checks = mock_cloud_client
+        mock_recce_cloud_class.return_value = mock_recce_cloud
+
+        return CheckDAO(), mock_cloud_client
+
+    @patch("recce.util.recce_cloud.RecceCloud")
+    @patch("recce.event.get_recce_api_token", return_value="test-token")
+    @patch("recce.core.default_context")
+    def test_create_reraises_cloud_403(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
+        """Test that create() re-raises RecceCloudException (e.g. 403 Forbidden)."""
+        dao, mock_cloud_client = self._make_cloud_dao(mock_default_context, mock_recce_cloud_class)
+        mock_cloud_client.create_check.side_effect = RecceCloudException(
+            message="Forbidden", reason="Viewer cannot create checks", status_code=403
+        )
+
+        sample_check = Check(name="Test", type=RunType.SCHEMA_DIFF, params={})
+
+        with self.assertRaises(RecceCloudException) as ctx:
+            dao.create(sample_check)
+
+        self.assertEqual(ctx.exception.status_code, 403)
+
+    @patch("recce.util.recce_cloud.RecceCloud")
+    @patch("recce.event.get_recce_api_token", return_value="test-token")
+    @patch("recce.core.default_context")
+    def test_update_reraises_cloud_403(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
+        """Test that update_check_by_id() re-raises RecceCloudException."""
+        dao, mock_cloud_client = self._make_cloud_dao(mock_default_context, mock_recce_cloud_class)
+        mock_cloud_client.update_check.side_effect = RecceCloudException(
+            message="Forbidden", reason="Viewer cannot update checks", status_code=403
+        )
+
+        from recce.apis.check_api import PatchCheckIn
+
+        patch = PatchCheckIn(name="Updated")
+
+        with self.assertRaises(RecceCloudException) as ctx:
+            dao.update_check_by_id(uuid4(), patch)
+
+        self.assertEqual(ctx.exception.status_code, 403)
+
+    @patch("recce.util.recce_cloud.RecceCloud")
+    @patch("recce.event.get_recce_api_token", return_value="test-token")
+    @patch("recce.core.default_context")
+    def test_delete_reraises_cloud_403(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
+        """Test that delete() re-raises RecceCloudException."""
+        dao, mock_cloud_client = self._make_cloud_dao(mock_default_context, mock_recce_cloud_class)
+        mock_cloud_client.delete_check.side_effect = RecceCloudException(
+            message="Forbidden", reason="Viewer cannot delete checks", status_code=403
+        )
+
+        with self.assertRaises(RecceCloudException) as ctx:
+            dao.delete(uuid4())
+
+        self.assertEqual(ctx.exception.status_code, 403)
+
+    @patch("recce.util.recce_cloud.RecceCloud")
+    @patch("recce.event.get_recce_api_token", return_value="test-token")
+    @patch("recce.core.default_context")
+    def test_mark_as_preset_reraises_cloud_403(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
+        """Test that mark_as_preset_check() re-raises RecceCloudException."""
+        dao, mock_cloud_client = self._make_cloud_dao(mock_default_context, mock_recce_cloud_class)
+
+        # mark_as_preset_check calls find_check_by_id first, so mock that too
+        check_id = uuid4()
+        session_id = uuid4()
+        cloud_check_data = {
+            "id": str(check_id),
+            "session_id": str(session_id),
+            "name": "Test",
+            "description": "",
+            "type": "schema_diff",
+            "params": {},
+            "view_options": {},
+            "is_checked": False,
+            "is_preset": False,
+            "created_by": {"email": "test@test.com"},
+            "updated_by": {"email": "test@test.com"},
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        mock_cloud_client.get_check.return_value = cloud_check_data
+        mock_cloud_client.create_preset_check.side_effect = RecceCloudException(
+            message="Forbidden", reason="Viewer cannot create presets", status_code=403
+        )
+
+        with self.assertRaises(RecceCloudException) as ctx:
+            dao.mark_as_preset_check(check_id)
+
+        self.assertEqual(ctx.exception.status_code, 403)
 
 
 if __name__ == "__main__":

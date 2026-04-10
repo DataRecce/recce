@@ -15,6 +15,7 @@ from recce.core import default_context
 from recce.event import log_api_event
 from recce.exceptions import RecceException
 from recce.models import Check, CheckDAO, Run, RunDAO, RunType
+from recce.util.recce_cloud import RecceCloudException
 
 check_router = APIRouter(tags=["check"])
 
@@ -135,6 +136,8 @@ async def create_check(check_in: CreateCheckIn, background_tasks: BackgroundTask
                 track_props=check_in.track_props,
             ),
         )
+    except RecceCloudException as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e.reason))
     except NameError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:
@@ -214,7 +217,11 @@ class PatchCheckIn(BaseModel):
     response_model_exclude_none=True,
 )
 async def update_check_handler(check_id: UUID, patch: PatchCheckIn, background_tasks: BackgroundTasks):
-    check = CheckDAO().update_check_by_id(check_id, patch)
+    try:
+        check = CheckDAO().update_check_by_id(check_id, patch)
+    except RecceCloudException as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e.reason))
+
     if check is None:
         raise HTTPException(status_code=404, detail="Not Found")
 
@@ -228,7 +235,11 @@ class DeleteCheckOut(BaseModel):
 
 @check_router.delete("/checks/{check_id}", status_code=200, response_model=DeleteCheckOut)
 async def delete_handler(check_id: UUID, background_tasks: BackgroundTasks):
-    CheckDAO().delete(check_id)
+    try:
+        CheckDAO().delete(check_id)
+    except RecceCloudException as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e.reason))
+
     background_tasks.add_task(export_persistent_state)
     return DeleteCheckOut(check_id=check_id)
 
@@ -261,5 +272,7 @@ async def mark_as_preset_check_handler(check_id: UUID, background_tasks: Backgro
     try:
         CheckDAO().mark_as_preset_check(check_id)
         background_tasks.add_task(export_persistent_state)
+    except RecceCloudException as e:
+        raise HTTPException(status_code=e.status_code, detail=str(e.reason))
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
