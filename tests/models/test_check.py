@@ -841,6 +841,36 @@ class TestCheckDAOCloudExceptionPassthrough(unittest.TestCase):
 
         self.assertEqual(ctx.exception.status_code, 403)
 
+    @patch("recce.util.recce_cloud.RecceCloud")
+    @patch("recce.event.get_recce_api_token", return_value="test-token")
+    @patch("recce.core.default_context")
+    def test_find_check_by_id_reraises_cloud_403(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
+        """Test that find_check_by_id() re-raises RecceCloudException."""
+        dao, mock_cloud_client = self._make_cloud_dao(mock_default_context, mock_recce_cloud_class)
+        mock_cloud_client.get_check.side_effect = RecceCloudException(
+            message="Forbidden", reason="Viewer cannot access check", status_code=403
+        )
+
+        with self.assertRaises(RecceCloudException) as ctx:
+            dao.find_check_by_id(uuid4())
+
+        self.assertEqual(ctx.exception.status_code, 403)
+
+    @patch("recce.util.recce_cloud.RecceCloud")
+    @patch("recce.event.get_recce_api_token", return_value="test-token")
+    @patch("recce.core.default_context")
+    def test_list_reraises_cloud_403(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
+        """Test that list() re-raises RecceCloudException."""
+        dao, mock_cloud_client = self._make_cloud_dao(mock_default_context, mock_recce_cloud_class)
+        mock_cloud_client.list_checks.side_effect = RecceCloudException(
+            message="Forbidden", reason="Viewer cannot list checks", status_code=403
+        )
+
+        with self.assertRaises(RecceCloudException) as ctx:
+            dao.list()
+
+        self.assertEqual(ctx.exception.status_code, 403)
+
 
 if __name__ == "__main__":
     unittest.main()

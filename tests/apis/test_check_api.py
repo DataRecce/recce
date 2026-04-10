@@ -9,15 +9,21 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+from fastapi import HTTPException
+
 from recce.apis.check_api import (
     CheckOut,
     CreateCheckIn,
     PatchCheckIn,
+    RunCheckIn,
     _get_latest_artifact_time,
     _is_check_outdated,
     create_check,
     delete_handler,
+    get_check_handler,
+    list_checks_handler,
     mark_as_preset_check_handler,
+    run_check_handler,
     update_check_handler,
 )
 from recce.models.types import Check, Run, RunType
@@ -246,8 +252,6 @@ class TestCheckApiCloudExceptionPassthrough(unittest.TestCase):
         )
         background_tasks = MagicMock()
 
-        from fastapi import HTTPException
-
         with self.assertRaises(HTTPException) as ctx:
             run_async(create_check(check_in, background_tasks))
 
@@ -266,8 +270,6 @@ class TestCheckApiCloudExceptionPassthrough(unittest.TestCase):
         patch_in = PatchCheckIn(name="Updated")
         background_tasks = MagicMock()
 
-        from fastapi import HTTPException
-
         with self.assertRaises(HTTPException) as ctx:
             run_async(update_check_handler(uuid4(), patch_in, background_tasks))
 
@@ -284,8 +286,6 @@ class TestCheckApiCloudExceptionPassthrough(unittest.TestCase):
         mock_dao_cls.return_value = mock_dao_instance
 
         background_tasks = MagicMock()
-
-        from fastapi import HTTPException
 
         with self.assertRaises(HTTPException) as ctx:
             run_async(delete_handler(uuid4(), background_tasks))
@@ -304,9 +304,51 @@ class TestCheckApiCloudExceptionPassthrough(unittest.TestCase):
 
         background_tasks = MagicMock()
 
-        from fastapi import HTTPException
-
         with self.assertRaises(HTTPException) as ctx:
             run_async(mark_as_preset_check_handler(uuid4(), background_tasks))
+
+        self.assertEqual(ctx.exception.status_code, 403)
+
+    @patch("recce.apis.check_api.CheckDAO")
+    def test_get_check_returns_403_on_cloud_forbidden(self, mock_dao_cls):
+        """GET /checks/{id} should return 403 when cloud API returns 403."""
+        mock_dao_instance = MagicMock()
+        mock_dao_instance.find_check_by_id.side_effect = RecceCloudException(
+            message="Forbidden", reason="Viewer cannot access check", status_code=403
+        )
+        mock_dao_cls.return_value = mock_dao_instance
+
+        with self.assertRaises(HTTPException) as ctx:
+            run_async(get_check_handler(uuid4()))
+
+        self.assertEqual(ctx.exception.status_code, 403)
+
+    @patch("recce.apis.check_api.CheckDAO")
+    def test_list_checks_returns_403_on_cloud_forbidden(self, mock_dao_cls):
+        """GET /checks should return 403 when cloud API returns 403."""
+        mock_dao_instance = MagicMock()
+        mock_dao_instance.list.side_effect = RecceCloudException(
+            message="Forbidden", reason="Viewer cannot list checks", status_code=403
+        )
+        mock_dao_cls.return_value = mock_dao_instance
+
+        with self.assertRaises(HTTPException) as ctx:
+            run_async(list_checks_handler())
+
+        self.assertEqual(ctx.exception.status_code, 403)
+
+    @patch("recce.apis.check_api.CheckDAO")
+    def test_run_check_returns_403_on_cloud_forbidden(self, mock_dao_cls):
+        """POST /checks/{id}/run should return 403 when cloud API returns 403 on find."""
+        mock_dao_instance = MagicMock()
+        mock_dao_instance.find_check_by_id.side_effect = RecceCloudException(
+            message="Forbidden", reason="Viewer cannot access check", status_code=403
+        )
+        mock_dao_cls.return_value = mock_dao_instance
+
+        run_in = RunCheckIn(nowait=True)
+
+        with self.assertRaises(HTTPException) as ctx:
+            run_async(run_check_handler(uuid4(), run_in))
 
         self.assertEqual(ctx.exception.status_code, 403)

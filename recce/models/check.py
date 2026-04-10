@@ -277,6 +277,8 @@ class CheckDAO:
 
                 cloud_data = cloud_client.get_check(org_id, project_id, session_id, str(check_id))
                 return self._cloud_to_check(cloud_data)
+            except RecceCloudException:
+                raise
             except Exception as e:
                 logger.error(f"Failed to get check {check_id} from cloud: {e}")
                 return None
@@ -401,6 +403,8 @@ class CheckDAO:
 
                 cloud_checks = cloud_client.list_checks(org_id, project_id, session_id)
                 return [self._cloud_to_check(check_data) for check_data in cloud_checks]
+            except RecceCloudException:
+                raise
             except AttributeError as e:
                 logger.error(f"Attribute error while listing checks from cloud: {e}")
                 return []
