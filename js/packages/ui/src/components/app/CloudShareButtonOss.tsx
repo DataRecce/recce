@@ -12,6 +12,11 @@ import { PiUserPlus, PiX } from "react-icons/pi";
 import { useRecceInstanceContext } from "../../contexts";
 import { useApiConfig } from "../../hooks/useApiConfig";
 import { connectToCloud } from "../../lib/api/connectToCloud";
+import {
+  trackOssShareButtonClicked,
+  trackSignupCompleted,
+  trackSignupRedirectInitiated,
+} from "../../lib/api/track";
 import { fetchUser } from "../../lib/api/user";
 import { CloudUploadDialogOss } from "./CloudUploadDialogOss";
 
@@ -30,6 +35,7 @@ export function CloudShareButtonOss() {
     try {
       await fetchUser(apiClient);
       waitingRef.current = false;
+      trackSignupCompleted();
       setPopoverState("reload");
     } catch {
       // Not authenticated yet
@@ -57,7 +63,10 @@ export function CloudShareButtonOss() {
           color="primary"
           size="small"
           startIcon={<PiUserPlus />}
-          onClick={() => setShowUploadDialog(true)}
+          onClick={() => {
+            trackOssShareButtonClicked({ authed: true });
+            setShowUploadDialog(true);
+          }}
           sx={{
             borderRadius: "100px",
             textTransform: "none",
@@ -80,6 +89,7 @@ export function CloudShareButtonOss() {
 
   // Not authed path: signup flow
   const handleShareClick = (event: React.MouseEvent<HTMLElement>) => {
+    trackOssShareButtonClicked({ authed: false });
     setPopoverState("signup");
     waitingRef.current = false;
     setAnchorEl(event.currentTarget);
@@ -91,6 +101,7 @@ export function CloudShareButtonOss() {
   };
 
   const handleSignup = async () => {
+    trackSignupRedirectInitiated();
     const popup = window.open("", "_blank");
     try {
       const { connection_url } = await connectToCloud(apiClient);
