@@ -11,8 +11,8 @@ import { render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 
 import type { LineageGraph } from "../../../../contexts/lineage/types";
-import { ColumnLevelLineageControl } from "../ColumnLevelLineageControl";
 import type { ColumnLevelLineageControlProps } from "../ColumnLevelLineageControl";
+import { ColumnLevelLineageControl } from "../ColumnLevelLineageControl";
 
 function createMinimalProps(
   overrides: Partial<ColumnLevelLineageControlProps> = {},
