@@ -20,7 +20,6 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogTitle from "@mui/material/DialogTitle";
-import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
@@ -53,7 +52,6 @@ import {
   PiRepeat,
   PiTable,
 } from "react-icons/pi";
-import { TbCloudUpload } from "react-icons/tb";
 import YAML from "yaml";
 import type { Run, RunParamTypes } from "../../api";
 import { useIsDark } from "../../hooks/useIsDark";
@@ -541,10 +539,7 @@ const DefaultShareMenu = memo(
     onMouseEnter,
     onMouseLeave,
     csvExport,
-    authed,
-    onShareToCloud,
-    onShowAuthModal,
-  }: RunResultShareMenuProps) => {
+  }: RunResultExportMenuProps) => {
     const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
     const open = Boolean(anchorEl);
     const [showWarning, setShowWarning] = useState(false);
@@ -671,32 +666,6 @@ const DefaultShareMenu = memo(
               <ListItemText>
                 {downloadLabel("Download as Excel", csvExport?.totalRowCount)}
               </ListItemText>
-            </MenuItem>
-          )}
-          <Divider />
-          {authed ? (
-            <MenuItem
-              onClick={async () => {
-                await onShareToCloud?.();
-                handleClose();
-              }}
-            >
-              <ListItemIcon>
-                <TbCloudUpload />
-              </ListItemIcon>
-              <ListItemText>Share to Cloud</ListItemText>
-            </MenuItem>
-          ) : (
-            <MenuItem
-              onClick={() => {
-                onShowAuthModal?.();
-                handleClose();
-              }}
-            >
-              <ListItemIcon>
-                <TbCloudUpload />
-              </ListItemIcon>
-              <ListItemText>Share</ListItemText>
             </MenuItem>
           )}
         </Menu>
@@ -928,14 +897,6 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
     }
   }, [onCopyAsImage, onTrackCopyToClipboard, run?.type]);
 
-  const handleShowAuthModal = useCallback(() => {
-    if (onShowAuthModal) {
-      onShowAuthModal();
-    } else {
-      setShowAuthModal(true);
-    }
-  }, [onShowAuthModal]);
-
   // Determine if we should show query tab content
   const isQueryDiff = run?.type === "query_diff";
   const queryParams = run?.params as
@@ -1019,9 +980,6 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
               onMouseEnter={onCopyMouseEnter}
               onMouseLeave={onCopyMouseLeave}
               csvExport={csvExport}
-              authed={authed}
-              onShareToCloud={onShareToCloud}
-              onShowAuthModal={handleShowAuthModal}
             />
           )}
 
