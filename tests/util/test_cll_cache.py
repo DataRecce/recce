@@ -201,64 +201,88 @@ class TestContentKeyCorrectness(unittest.TestCase):
 
     def _make_key(
         self,
-        node_id: str,
-        raw_code: Optional[str],
-        parent_list: List[str],
-        column_names: List[str],
+        checksum: str = "abc123",
+        parent_checksums: Optional[List[str]] = None,
+        column_names: Optional[List[str]] = None,
+        adapter_type: str = "",
     ) -> str:
         """Replicate the content key algorithm from the adapter."""
         from recce.adapter.dbt_adapter import DbtAdapter
 
-        return DbtAdapter._make_node_content_key(node_id, raw_code, parent_list, column_names)
+        return DbtAdapter._make_node_content_key(checksum, parent_checksums or [], column_names or [], adapter_type)
 
     def test_same_inputs_same_key(self):
         """Identical inputs must produce the same key every time."""
-        k1 = self._make_key("model.a", "SELECT 1", ["model.b"], ["col1"])
-        k2 = self._make_key("model.a", "SELECT 1", ["model.b"], ["col1"])
+        k1 = self._make_key("cs_a", ["cs_b"], ["col1"])
+        k2 = self._make_key("cs_a", ["cs_b"], ["col1"])
         assert k1 == k2
 
-    def test_different_sql_different_key(self):
-        """Changing raw SQL must produce a different key."""
-        k1 = self._make_key("model.a", "SELECT 1", ["model.b"], ["col1"])
-        k2 = self._make_key("model.a", "SELECT 2", ["model.b"], ["col1"])
+    def test_different_checksum_different_key(self):
+        """Changing the node checksum must produce a different key."""
+        k1 = self._make_key("cs_v1", ["cs_b"], ["col1"])
+        k2 = self._make_key("cs_v2", ["cs_b"], ["col1"])
         assert k1 != k2
 
-    def test_different_parent_list_different_key(self):
-        """Adding or removing a parent must produce a different key."""
-        k1 = self._make_key("model.a", "SELECT 1", ["model.b"], ["col1"])
-        k2 = self._make_key("model.a", "SELECT 1", ["model.b", "model.c"], ["col1"])
+    def test_different_parent_checksums_different_key(self):
+        """Changing a parent's checksum must produce a different key."""
+        k1 = self._make_key("cs_a", ["parent_v1"], ["col1"])
+        k2 = self._make_key("cs_a", ["parent_v2"], ["col1"])
+        assert k1 != k2
+
+    def test_adding_parent_different_key(self):
+        """Adding a parent must produce a different key."""
+        k1 = self._make_key("cs_a", ["cs_b"], ["col1"])
+        k2 = self._make_key("cs_a", ["cs_b", "cs_c"], ["col1"])
         assert k1 != k2
 
     def test_different_column_names_different_key(self):
         """Changing column names must produce a different key."""
-        k1 = self._make_key("model.a", "SELECT 1", ["model.b"], ["col1"])
-        k2 = self._make_key("model.a", "SELECT 1", ["model.b"], ["col1", "col2"])
+        k1 = self._make_key("cs_a", ["cs_b"], ["col1"])
+        k2 = self._make_key("cs_a", ["cs_b"], ["col1", "col2"])
         assert k1 != k2
 
     def test_parent_order_independence(self):
-        """Parent list ordering must not affect the key (sorted internally)."""
-        k1 = self._make_key("model.a", "SELECT 1", ["model.c", "model.b"], ["x"])
-        k2 = self._make_key("model.a", "SELECT 1", ["model.b", "model.c"], ["x"])
+        """Parent checksum ordering must not affect the key (sorted internally)."""
+        k1 = self._make_key("cs_a", ["cs_c", "cs_b"], ["x"])
+        k2 = self._make_key("cs_a", ["cs_b", "cs_c"], ["x"])
         assert k1 == k2
 
     def test_column_order_independence(self):
         """Column name ordering must not affect the key (sorted internally)."""
-        k1 = self._make_key("model.a", "SELECT 1", ["model.b"], ["z", "a"])
-        k2 = self._make_key("model.a", "SELECT 1", ["model.b"], ["a", "z"])
+        k1 = self._make_key("cs_a", ["cs_b"], ["z", "a"])
+        k2 = self._make_key("cs_a", ["cs_b"], ["a", "z"])
         assert k1 == k2
 
-    def test_none_raw_code(self):
-        """None raw_code (e.g. sources) must produce a valid, deterministic key."""
-        k1 = self._make_key("source.s.t", None, [], ["id", "name"])
-        k2 = self._make_key("source.s.t", None, [], ["id", "name"])
+    def test_source_checksum_is_node_id(self):
+        """Sources use node ID as checksum placeholder — must be deterministic."""
+        k1 = self._make_key("source.s.t", [], ["id", "name"])
+        k2 = self._make_key("source.s.t", [], ["id", "name"])
         assert k1 == k2
         assert len(k1) == 64  # sha256 hex digest
 
     def test_empty_inputs(self):
         """All-empty inputs still produce a valid key."""
-        k = self._make_key("model.a", "", [], [])
+        k = self._make_key("", [], [])
         assert isinstance(k, str)
         assert len(k) == 64
+
+    def test_different_adapter_type_different_key(self):
+        """Switching adapter (e.g. duckdb → snowflake) must produce a different key."""
+        k_duck = self._make_key("cs_a", ["cs_b"], ["col1"], adapter_type="duckdb")
+        k_snow = self._make_key("cs_a", ["cs_b"], ["col1"], adapter_type="snowflake")
+        assert k_duck != k_snow
+
+    def test_empty_adapter_type_differs_from_named(self):
+        """An empty adapter_type (legacy) must differ from a named adapter."""
+        k_empty = self._make_key("cs_a", [], [], adapter_type="")
+        k_named = self._make_key("cs_a", [], [], adapter_type="duckdb")
+        assert k_empty != k_named
+
+    def test_parent_vs_column_list_boundary(self):
+        """Moving a value from parent_checksums to column_names must produce a different key."""
+        k1 = self._make_key("cs_a", ["a", "b"], [])
+        k2 = self._make_key("cs_a", ["a"], ["b"])
+        assert k1 != k2
 
 
 # ---------------------------------------------------------------------------
@@ -778,7 +802,7 @@ class TestBuildFullCllMapIntegration(unittest.TestCase):
             from recce.adapter.dbt_adapter import DbtAdapter
 
             json_str = DbtAdapter._serialize_cll_data(fresh_data)
-            content_key = DbtAdapter._make_node_content_key("model.a", "SELECT 1 AS c", [], [])
+            content_key = DbtAdapter._make_node_content_key("cs_a", [], [])
             cache.put_node("model.a", content_key, json_str)
 
             # Warm read
@@ -821,7 +845,7 @@ class TestBuildFullCllMapIntegration(unittest.TestCase):
             cache = CllCache(db_path=db_path)
 
             json_str = DbtAdapter._serialize_cll_data(fresh)
-            content_key = DbtAdapter._make_node_content_key("model.b", "SELECT x FROM a", ["model.a"], ["x"])
+            content_key = DbtAdapter._make_node_content_key("cs_b", ["cs_a"], ["x"])
             cache.put_node("model.b", content_key, json_str)
 
             # Read back from cache
@@ -856,11 +880,11 @@ class TestBuildFullCllMapIntegration(unittest.TestCase):
                 columns={},
                 parent_map={},
             )
-            key_a = DbtAdapter._make_node_content_key("model.a", "SELECT 1", [], [])
+            key_a = DbtAdapter._make_node_content_key("cs_a", [], [])
             cache.put_node("model.a", key_a, DbtAdapter._serialize_cll_data(data_a))
 
             # model.b is NOT cached
-            key_b = DbtAdapter._make_node_content_key("model.b", "SELECT x FROM a", ["model.a"], ["x"])
+            key_b = DbtAdapter._make_node_content_key("cs_b", ["cs_a"], ["x"])
 
             # Verify hit and miss
             assert cache.get_node("model.a", key_a) is not None  # hit
@@ -875,11 +899,8 @@ class TestBuildFullCllMapIntegration(unittest.TestCase):
             db_path = os.path.join(tmpdir, "cll_cache.db")
             cache = CllCache(db_path=db_path)
 
-            old_sql = "SELECT id FROM source"
-            new_sql = "SELECT id, name FROM source"
-
-            old_key = DbtAdapter._make_node_content_key("model.m", old_sql, ["source.s.t"], ["id"])
-            new_key = DbtAdapter._make_node_content_key("model.m", new_sql, ["source.s.t"], ["id", "name"])
+            old_key = DbtAdapter._make_node_content_key("cs_old", ["source.s.t"], ["id"])
+            new_key = DbtAdapter._make_node_content_key("cs_new", ["source.s.t"], ["id", "name"])
 
             # Store with old SQL
             data = CllData(
@@ -889,7 +910,7 @@ class TestBuildFullCllMapIntegration(unittest.TestCase):
                         name="m",
                         package_name="p",
                         resource_type="model",
-                        raw_code=old_sql,
+                        raw_code="SELECT id FROM source",
                     ),
                 },
                 columns={},
@@ -915,11 +936,11 @@ class TestBuildFullCllMapIntegration(unittest.TestCase):
             cache = CllCache(db_path=db_path)
 
             # Same inputs for base and current (model unchanged)
-            sql = "SELECT id, name FROM raw_customers"
-            parents = ["source.raw.customers"]
+            checksum = "cs_customers"
+            parent_checksums = ["source.raw.customers"]  # source uses ID as checksum
             columns = ["id", "name"]
 
-            content_key = DbtAdapter._make_node_content_key("model.customers", sql, parents, columns)
+            content_key = DbtAdapter._make_node_content_key(checksum, parent_checksums, columns)
 
             data = CllData(
                 nodes={
@@ -928,7 +949,7 @@ class TestBuildFullCllMapIntegration(unittest.TestCase):
                         name="customers",
                         package_name="shop",
                         resource_type="model",
-                        raw_code=sql,
+                        raw_code="SELECT id, name FROM raw_customers",
                     ),
                 },
                 columns={
@@ -946,7 +967,7 @@ class TestBuildFullCllMapIntegration(unittest.TestCase):
             cache.put_node("model.customers", content_key, DbtAdapter._serialize_cll_data(data))
 
             # Current env generates the same content_key and gets a hit
-            current_key = DbtAdapter._make_node_content_key("model.customers", sql, parents, columns)
+            current_key = DbtAdapter._make_node_content_key(checksum, parent_checksums, columns)
             assert content_key == current_key
             assert cache.get_node("model.customers", current_key) is not None
             assert cache.stats["entries"] == 1  # single entry, shared

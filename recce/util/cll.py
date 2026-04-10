@@ -32,9 +32,9 @@ class CllCache:
     """Per-node CllData cache backed by SQLite.
 
     Stores a serialized per-node CllData (excluding change_status/change_category)
-    keyed by a content hash of the node's inputs (node_id, raw_code, parent_list,
-    column_names). Because keys are derived from content, identical models in
-    base and current environments naturally share cache entries.
+    keyed by a content hash of the node's inputs (adapter_type, checksum,
+    parent_checksums, column_names). Because keys are derived from content,
+    identical models in base and current environments naturally share cache entries.
 
     - SQLite with WAL mode for concurrent readers.
     - TTL eviction: entries not accessed within ``ttl_seconds`` are deleted.

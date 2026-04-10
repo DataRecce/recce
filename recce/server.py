@@ -525,6 +525,7 @@ class RecceInstanceInfoOut(BaseModel):
     session_id: Optional[str] = None
     organization_name: Optional[str] = None
     web_url: Optional[str] = None
+    user_role: Optional[str] = None
 
 
 @app.get("/api/instance-info", response_model=RecceInstanceInfoOut, response_model_exclude_none=True)

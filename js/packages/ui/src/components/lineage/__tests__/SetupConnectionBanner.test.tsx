@@ -19,6 +19,7 @@ describe("SetupConnectionBanner", () => {
     disableViewActionDropdown: false,
     disableNodeActionDropdown: false,
     disableShare: false,
+    checklistPermissionDenied: false,
   };
 
   const defaultProps: SetupConnectionBannerProps = {

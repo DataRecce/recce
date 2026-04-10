@@ -53,6 +53,8 @@ export interface RunListItemProps {
   goToCheckIcon?: ReactNode;
   /** Hide add to checklist action */
   hideAddToChecklist?: boolean;
+  /** Disable add to checklist due to insufficient permissions — shows disabled icon with tooltip */
+  disableAddToChecklist?: boolean;
   /** Optional CSS class */
   className?: string;
 }
@@ -83,12 +85,15 @@ function RunListItemComponent({
   addToChecklistIcon,
   goToCheckIcon,
   hideAddToChecklist = false,
+  disableAddToChecklist = false,
   className,
 }: RunListItemProps) {
   const isDark = useIsDark();
   const hasCheckLink = run.checkId != null;
   const showAddToChecklist =
-    !hideAddToChecklist && !hasCheckLink && onAddToChecklist;
+    !hideAddToChecklist &&
+    !hasCheckLink &&
+    (onAddToChecklist || disableAddToChecklist);
 
   return (
     <Box
@@ -162,21 +167,30 @@ function RunListItemComponent({
           </Tooltip>
         )}
         {showAddToChecklist && (
-          <Tooltip title="Add to Checklist">
-            <IconButton
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToChecklist(run.id);
-              }}
-              sx={{ p: 0.5 }}
-            >
-              {addToChecklistIcon || (
-                <Box component="span" sx={{ fontSize: 14 }}>
-                  ○
-                </Box>
-              )}
-            </IconButton>
+          <Tooltip
+            title={
+              disableAddToChecklist
+                ? "You don't have permission to add checks"
+                : "Add to Checklist"
+            }
+          >
+            <span>
+              <IconButton
+                size="small"
+                disabled={disableAddToChecklist}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddToChecklist?.(run.id);
+                }}
+                sx={{ p: 0.5 }}
+              >
+                {addToChecklistIcon || (
+                  <Box component="span" sx={{ fontSize: 14 }}>
+                    ○
+                  </Box>
+                )}
+              </IconButton>
+            </span>
           </Tooltip>
         )}
       </Box>
@@ -210,6 +224,8 @@ export interface RunListProps {
   getRunIcon?: (runType: string) => ReactNode;
   /** Hide add to checklist action */
   hideAddToChecklist?: boolean;
+  /** Disable add to checklist due to insufficient permissions — shows disabled icon with tooltip */
+  disableAddToChecklist?: boolean;
   /** List title */
   title?: string;
   /** Header action buttons */
@@ -304,6 +320,7 @@ function RunListComponent({
   onGoToCheck,
   getRunIcon,
   hideAddToChecklist = false,
+  disableAddToChecklist = false,
   title = "Runs",
   headerActions,
   emptyMessage = "No runs",
@@ -350,6 +367,7 @@ function RunListComponent({
             onAddToChecklist={onAddToChecklist}
             onGoToCheck={onGoToCheck}
             hideAddToChecklist={hideAddToChecklist}
+            disableAddToChecklist={disableAddToChecklist}
             addToChecklistIcon={addToChecklistIcon}
             goToCheckIcon={goToCheckIcon}
           />
