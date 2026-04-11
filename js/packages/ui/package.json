@@ -60,6 +60,9 @@
     "./styles": {
       "default": "./dist/styles.css"
     },
+    "./dist/style.css": {
+      "default": "./dist/style.css"
+    },
     "./utils": {
       "types": "./dist/utils.d.ts",
       "import": "./dist/utils.js",
