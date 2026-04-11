@@ -209,7 +209,12 @@ const ViewModeSelectMenu = ({
   const open = Boolean(anchorEl);
 
   const viewMode = viewOptions.view_mode ?? "changed_models";
-  const label = viewMode === "changed_models" ? "Changed Models" : "All";
+  const label =
+    viewMode === "body_changes"
+      ? "Body Changes"
+      : viewMode === "changed_models"
+        ? "Changed Models"
+        : "All";
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -253,6 +258,14 @@ const ViewModeSelectMenu = ({
               value="changed_models"
               control={<Radio size="small" sx={{ py: 0 }} />}
               label="Changed Models"
+              sx={{ m: 0 }}
+            />
+          </MenuItem>
+          <MenuItem onClick={() => handleSelect("body_changes")}>
+            <FormControlLabel
+              value="body_changes"
+              control={<Radio size="small" sx={{ py: 0 }} />}
+              label="Body Changes"
               sx={{ m: 0 }}
             />
           </MenuItem>
@@ -559,7 +572,7 @@ const DefaultSetupConnectionPopover = ({
  * LineageViewTopBar Component
  *
  * Top toolbar for the lineage view providing:
- * - View mode selection (Changed Models vs All)
+ * - View mode selection (Changed Models, Body Changes, All)
  * - Package filtering
  * - Node selector filters (Select, Exclude)
  * - Actions menu for diff operations and checklist additions

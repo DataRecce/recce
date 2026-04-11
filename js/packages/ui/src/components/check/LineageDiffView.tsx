@@ -10,7 +10,7 @@ import { LineageView, type LineageViewRef } from "../lineage/LineageView";
  * View options for lineage diff checks
  */
 export interface LineageDiffViewOptions {
-  view_mode?: "changed_models" | "all";
+  view_mode?: "changed_models" | "all" | "body_changes";
   node_ids?: string[];
   select?: string;
   exclude?: string;
