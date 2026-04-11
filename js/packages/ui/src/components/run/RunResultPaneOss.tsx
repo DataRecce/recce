@@ -41,9 +41,11 @@ import {
   useRun,
 } from "../../hooks";
 import { trackCopyToClipboard, trackShareState } from "../../lib/api/track";
+import { isHttpError } from "../../lib/fetchClient";
 import AuthModal from "../app/AuthModal";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide";
 import { DualSqlEditor, SqlEditor } from "../query";
+import { toaster } from "../ui/Toaster";
 import { RunResultPane as BaseRunResultPane } from "./RunResultPane";
 import { findByRunType } from "./registry";
 import { RefTypes, RegistryEntry, ViewOptionTypes } from "./types";
@@ -215,13 +217,31 @@ export const PrivateLoadableRunView = ({
     if (!runId) {
       return;
     }
-    const check = await createCheckByRun(
-      runId,
-      viewOptions as Record<string, unknown>,
-      apiClient,
-    );
-    await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    router.push(`${basePath}/checks/?id=${check.check_id}`);
+    try {
+      const check = await createCheckByRun(
+        runId,
+        viewOptions as Record<string, unknown>,
+        apiClient,
+      );
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+      router.push(`${basePath}/checks/?id=${check.check_id}`);
+    } catch (error) {
+      if (isHttpError(error) && error.status === 403) {
+        toaster.error({
+          title: "Permission denied",
+          description:
+            "You don't have permission to add checks. Contact your org admin for access.",
+        });
+      } else {
+        toaster.error({
+          title: "Failed to create check",
+          description:
+            error instanceof Error
+              ? error.message
+              : "An unexpected error occurred",
+        });
+      }
+    }
   }, [runId, viewOptions, apiClient, queryClient, router.push, basePath]);
 
   return (
@@ -239,6 +259,7 @@ export const PrivateLoadableRunView = ({
       disableDatabaseQuery={featureToggles.disableDatabaseQuery}
       disableShare={featureToggles.disableShare}
       disableUpdateChecklist={featureToggles.disableUpdateChecklist}
+      checklistPermissionDenied={featureToggles.checklistPermissionDenied}
       // Event handlers
       onClose={onClose}
       onCancel={onCancel}

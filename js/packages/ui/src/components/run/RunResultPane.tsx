@@ -29,6 +29,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Stack from "@mui/material/Stack";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -130,6 +131,8 @@ export interface AddToCheckButtonProps {
   run?: Run;
   /** Whether the button is disabled due to feature toggle */
   disableUpdateChecklist?: boolean;
+  /** Whether the checklist is disabled specifically due to permission denial (viewer role) — shows tooltip */
+  checklistPermissionDenied?: boolean;
   /** Whether there's an error */
   hasError?: boolean;
   /** Handler for navigating to existing check */
@@ -209,6 +212,9 @@ export interface RunResultPaneProps<VO = unknown, RefType = unknown> {
 
   /** Disable update checklist functionality */
   disableUpdateChecklist?: boolean;
+
+  /** Whether checklist is disabled due to permission denial (viewer role) — shows disabled button with tooltip instead of hiding */
+  checklistPermissionDenied?: boolean;
 
   // ============================================================================
   // Event Handlers
@@ -714,6 +720,7 @@ const DefaultAddToCheckButton = memo(
     runId,
     run,
     disableUpdateChecklist,
+    checklistPermissionDenied,
     hasError,
     onGoToCheck,
     onAddToChecklist,
@@ -721,10 +728,12 @@ const DefaultAddToCheckButton = memo(
     const checkId = run?.check_id;
     const disabled = !runId || !run?.result || hasError;
 
-    if (disableUpdateChecklist) {
+    // Hide entirely when disabled for non-permission reasons (single_env, read-only)
+    if (disableUpdateChecklist && !checklistPermissionDenied) {
       return null;
     }
 
+    // "Go to Check" is always available — viewers can navigate to existing checks
     if (checkId) {
       return (
         <Button
@@ -741,16 +750,26 @@ const DefaultAddToCheckButton = memo(
     }
 
     return (
-      <Button
-        disabled={disabled}
-        size="small"
-        variant="contained"
-        onClick={onAddToChecklist}
-        startIcon={<PiCheck />}
-        sx={{ textTransform: "none" }}
+      <Tooltip
+        title={
+          checklistPermissionDenied
+            ? "You don't have permission to add checks"
+            : ""
+        }
       >
-        Add to Checklist
-      </Button>
+        <span>
+          <Button
+            disabled={disabled || checklistPermissionDenied}
+            size="small"
+            variant="contained"
+            onClick={onAddToChecklist}
+            startIcon={<PiCheck />}
+            sx={{ textTransform: "none" }}
+          >
+            Add to Checklist
+          </Button>
+        </span>
+      </Tooltip>
     );
   },
 );
@@ -856,6 +875,7 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
   disableDatabaseQuery,
   disableShare,
   disableUpdateChecklist,
+  checklistPermissionDenied,
 
   // Event handlers
   onClose,
@@ -1010,6 +1030,7 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
             runId={runId}
             run={run}
             disableUpdateChecklist={disableUpdateChecklist}
+            checklistPermissionDenied={checklistPermissionDenied}
             hasError={!!error}
             onGoToCheck={onGoToCheck}
             onAddToChecklist={onAddToChecklist}

@@ -775,35 +775,67 @@ export const LineageViewTopBar = ({
                   </MenuItem>
                 </SetupConnectionPopoverSlot>
 
-                <Divider />
-
-                <ListSubheader
-                  sx={{ lineHeight: "32px", bgcolor: "transparent" }}
-                >
-                  Add to Checklist
-                </ListSubheader>
-                <MenuItem
-                  onClick={() => {
-                    onAddLineageDiffCheck?.(viewOptions.view_mode);
-                    handleActionsClose();
-                  }}
-                >
-                  <ListItemIcon>
-                    <LineageDiffIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText>Lineage Diff</ListItemText>
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    onAddSchemaDiffCheck?.();
-                    handleActionsClose();
-                  }}
-                >
-                  <ListItemIcon>
-                    <SchemaDiffIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText>Schema Diff</ListItemText>
-                </MenuItem>
+                {!featureToggles.disableUpdateChecklist ||
+                featureToggles.checklistPermissionDenied ? (
+                  <>
+                    <Divider />
+                    <ListSubheader
+                      sx={{ lineHeight: "32px", bgcolor: "transparent" }}
+                    >
+                      Add to Checklist
+                    </ListSubheader>
+                    <MuiTooltip
+                      title={
+                        featureToggles.checklistPermissionDenied
+                          ? "You don't have permission to add checks"
+                          : ""
+                      }
+                      placement="left"
+                    >
+                      <span>
+                        <MenuItem
+                          disabled={featureToggles.checklistPermissionDenied}
+                          onClick={() => {
+                            if (featureToggles.checklistPermissionDenied)
+                              return;
+                            onAddLineageDiffCheck?.(viewOptions.view_mode);
+                            handleActionsClose();
+                          }}
+                        >
+                          <ListItemIcon>
+                            <LineageDiffIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText>Lineage Diff</ListItemText>
+                        </MenuItem>
+                      </span>
+                    </MuiTooltip>
+                    <MuiTooltip
+                      title={
+                        featureToggles.checklistPermissionDenied
+                          ? "You don't have permission to add checks"
+                          : ""
+                      }
+                      placement="left"
+                    >
+                      <span>
+                        <MenuItem
+                          disabled={featureToggles.checklistPermissionDenied}
+                          onClick={() => {
+                            if (featureToggles.checklistPermissionDenied)
+                              return;
+                            onAddSchemaDiffCheck?.();
+                            handleActionsClose();
+                          }}
+                        >
+                          <ListItemIcon>
+                            <SchemaDiffIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText>Schema Diff</ListItemText>
+                        </MenuItem>
+                      </span>
+                    </MuiTooltip>
+                  </>
+                ) : null}
               </Menu>
             </Box>
           </ControlItem>

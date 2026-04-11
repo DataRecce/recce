@@ -78,6 +78,9 @@ function TestConsumer() {
       <span data-testid="disable-checklist">
         {String(context.featureToggles.disableUpdateChecklist)}
       </span>
+      <span data-testid="checklist-permission-denied">
+        {String(context.featureToggles.checklistPermissionDenied)}
+      </span>
       <span data-testid="lifetime-expired">
         {context.lifetimeExpiredAt?.toISOString() ?? "none"}
       </span>
@@ -535,6 +538,174 @@ describe("RecceInstanceContext (@datarecce/ui)", () => {
       expect(screen.getByTestId("authed")).toHaveTextContent("true");
       // Cloud instance also disables share (in addition to preview mode)
       expect(screen.getByTestId("disable-share")).toHaveTextContent("true");
+    });
+  });
+
+  describe("viewer role gating", () => {
+    it("sets checklistPermissionDenied for viewer role in normal mode", async () => {
+      const instanceData: RecceInstanceInfo = {
+        server_mode: "server",
+        single_env: false,
+        authed: true,
+        cloud_instance: true,
+        user_role: "viewer",
+      };
+
+      const loadingReturn = createMockReturnValue(undefined, true);
+      const loadedReturn = createMockReturnValue(instanceData, false);
+      mockUseRecceInstanceInfo.mockReturnValue(loadingReturn);
+
+      const queryClient = createTestQueryClient();
+      const { rerender } = render(
+        <QueryClientProvider client={queryClient}>
+          <RecceInstanceInfoProvider>
+            <TestConsumer />
+          </RecceInstanceInfoProvider>
+        </QueryClientProvider>,
+      );
+
+      mockUseRecceInstanceInfo.mockReturnValue(loadedReturn);
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <RecceInstanceInfoProvider>
+            <TestConsumer />
+          </RecceInstanceInfoProvider>
+        </QueryClientProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("disable-checklist")).toHaveTextContent(
+          "true",
+        );
+      });
+      expect(
+        screen.getByTestId("checklist-permission-denied"),
+      ).toHaveTextContent("true");
+    });
+
+    it("does not set checklistPermissionDenied for viewer in read-only mode", async () => {
+      const instanceData: RecceInstanceInfo = {
+        server_mode: "read-only",
+        single_env: false,
+        authed: true,
+        cloud_instance: false,
+        user_role: "viewer",
+      };
+
+      const loadingReturn = createMockReturnValue(undefined, true);
+      const loadedReturn = createMockReturnValue(instanceData, false);
+      mockUseRecceInstanceInfo.mockReturnValue(loadingReturn);
+
+      const queryClient = createTestQueryClient();
+      const { rerender } = render(
+        <QueryClientProvider client={queryClient}>
+          <RecceInstanceInfoProvider>
+            <TestConsumer />
+          </RecceInstanceInfoProvider>
+        </QueryClientProvider>,
+      );
+
+      mockUseRecceInstanceInfo.mockReturnValue(loadedReturn);
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <RecceInstanceInfoProvider>
+            <TestConsumer />
+          </RecceInstanceInfoProvider>
+        </QueryClientProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("disable-checklist")).toHaveTextContent(
+          "true",
+        );
+      });
+      // read-only takes precedence — hide entirely, no permission tooltip
+      expect(
+        screen.getByTestId("checklist-permission-denied"),
+      ).toHaveTextContent("false");
+    });
+
+    it("does not set checklistPermissionDenied for viewer in single_env mode", async () => {
+      const instanceData: RecceInstanceInfo = {
+        server_mode: "server",
+        single_env: true,
+        authed: true,
+        cloud_instance: false,
+        user_role: "viewer",
+      };
+
+      const loadingReturn = createMockReturnValue(undefined, true);
+      const loadedReturn = createMockReturnValue(instanceData, false);
+      mockUseRecceInstanceInfo.mockReturnValue(loadingReturn);
+
+      const queryClient = createTestQueryClient();
+      const { rerender } = render(
+        <QueryClientProvider client={queryClient}>
+          <RecceInstanceInfoProvider>
+            <TestConsumer />
+          </RecceInstanceInfoProvider>
+        </QueryClientProvider>,
+      );
+
+      mockUseRecceInstanceInfo.mockReturnValue(loadedReturn);
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <RecceInstanceInfoProvider>
+            <TestConsumer />
+          </RecceInstanceInfoProvider>
+        </QueryClientProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("disable-checklist")).toHaveTextContent(
+          "true",
+        );
+      });
+      // single_env takes precedence — hide entirely, no permission tooltip
+      expect(
+        screen.getByTestId("checklist-permission-denied"),
+      ).toHaveTextContent("false");
+    });
+
+    it("does not set checklistPermissionDenied for non-viewer roles", async () => {
+      const instanceData: RecceInstanceInfo = {
+        server_mode: "server",
+        single_env: false,
+        authed: true,
+        cloud_instance: true,
+        user_role: "member",
+      };
+
+      const loadingReturn = createMockReturnValue(undefined, true);
+      const loadedReturn = createMockReturnValue(instanceData, false);
+      mockUseRecceInstanceInfo.mockReturnValue(loadingReturn);
+
+      const queryClient = createTestQueryClient();
+      const { rerender } = render(
+        <QueryClientProvider client={queryClient}>
+          <RecceInstanceInfoProvider>
+            <TestConsumer />
+          </RecceInstanceInfoProvider>
+        </QueryClientProvider>,
+      );
+
+      mockUseRecceInstanceInfo.mockReturnValue(loadedReturn);
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <RecceInstanceInfoProvider>
+            <TestConsumer />
+          </RecceInstanceInfoProvider>
+        </QueryClientProvider>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("disable-checklist")).toHaveTextContent(
+          "false",
+        );
+      });
+      expect(
+        screen.getByTestId("checklist-permission-denied"),
+      ).toHaveTextContent("false");
     });
   });
 });

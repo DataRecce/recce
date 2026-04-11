@@ -695,8 +695,9 @@ export function PrivateLineageView(
   ) => {
     const previousColumnLevelLineage = viewOptions.column_level_lineage;
 
-    // Clear change analysis mode when CLL is turned off entirely
-    if (!columnLevelLineage) {
+    // Clear change analysis mode when CLL is turned off entirely.
+    // In new CLL experience, impact is a one-way ratchet — never disable it.
+    if (!columnLevelLineage && !newCllExperience) {
       setChangeAnalysisMode(false);
     }
 
@@ -737,6 +738,13 @@ export function PrivateLineageView(
       } else {
         await showColumnLevelLineage(undefined, true);
       }
+    } else if (newCllExperience && changeAnalysisMode) {
+      // In new CLL experience, reset returns to Layer 2 (global impact)
+      // instead of clearing CLL entirely.
+      await showColumnLevelLineage(
+        { change_analysis: true, no_upstream: true },
+        true,
+      );
     } else {
       await showColumnLevelLineage(undefined, true);
     }
@@ -861,9 +869,10 @@ export function PrivateLineageView(
           return;
         }
       }
-    } else {
+    } else if (!newCllExperience) {
       // Clear change analysis mode when CLL is cleared by any path
       // (reselect, selectParentNodes, selectChildNodes, etc.)
+      // In new CLL experience, impact is a one-way ratchet.
       setChangeAnalysisMode(false);
     }
 
