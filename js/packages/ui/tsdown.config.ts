@@ -71,11 +71,6 @@ export default defineConfig({
     // Next.js packages are provided by the consuming application
     /^next\//,
     "next",
-    // Font packages — app-level concern, not bundled in library CSS.
-    // Without this, tsdown collects @font-face declarations into dist/style.css
-    // with relative url() paths to .woff2 files that don't exist in dist/,
-    // breaking downstream Next.js builds that import the CSS.
-    /^@fontsource\//,
     // CodeMirror packages
     /^@codemirror\//,
     // react-markdown and remark/unified ecosystem use Node.js built-ins (vfile uses path, process, url)
