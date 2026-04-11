@@ -379,6 +379,9 @@ importers:
       '@emotion/styled':
         specifier: ^11.14.1
         version: 11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.5))(@types/react@19.2.14)(react@19.2.5)
+      '@fontsource/montserrat':
+        specifier: ^5.0.0
+        version: 5.2.8
       '@hello-pangea/dnd':
         specifier: ^18.0.0
         version: 18.0.1(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
