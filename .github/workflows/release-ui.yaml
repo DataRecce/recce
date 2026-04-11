@@ -193,11 +193,13 @@ jobs:
               echo "npm_tag=latest" >> $GITHUB_OUTPUT
             fi
           else
-            # Manual dispatch - use input version or package.json
+            # Manual dispatch - use input version or recce/VERSION
             if [[ -n "${{ inputs.version }}" ]]; then
               npm_version="${{ inputs.version }}"
             else
-              npm_version=$(node -p "require('./package.json').version")
+              # Read base version from recce/VERSION (e.g., "1.44.0.dev0" -> "1.44.0")
+              python_version=$(cat "${GITHUB_WORKSPACE}/recce/VERSION")
+              npm_version=$(echo "$python_version" | sed -E 's/\.dev[0-9]*$//')
             fi
 
             if [[ "${{ steps.release_type.outputs.type }}" == "nightly" ]]; then
