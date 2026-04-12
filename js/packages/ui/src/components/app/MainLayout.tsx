@@ -7,7 +7,6 @@
 
 "use client";
 
-import "@fontsource/montserrat/800.css";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import { usePathname } from "next/navigation";
