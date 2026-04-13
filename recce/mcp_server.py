@@ -15,7 +15,6 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from mcp.server import Server
-from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 from recce.core import RecceContext, load_context
@@ -1801,31 +1800,14 @@ class RecceMCPServer:
         return result
 
     async def run(self):
-        """Run the MCP server in stdio mode"""
-        try:
-            async with stdio_server() as (read_stream, write_stream):
-                await self.server.run(read_stream, write_stream, self.server.create_initialization_options())
-        finally:
-            # Export state on shutdown if state_loader is available
-            if self.state_loader and self.context:
-                try:
-                    from rich.console import Console
+        """Run the MCP server in stdio mode.
 
-                    console = Console(stderr=True)
+        Deprecated: prefer `recce.mcp_transport.run_mcp_stdio(self)`.
+        Retained as a thin delegating shim until callers migrate.
+        """
+        from recce.mcp_transport import run_mcp_stdio
 
-                    # Export the state
-                    msg = self.state_loader.export(self.context.export_state())
-                    if msg is not None:
-                        console.print(f"[yellow]On shutdown:[/yellow] {msg}")
-                    else:
-                        if hasattr(self.state_loader, "state_file") and self.state_loader.state_file:
-                            console.print(
-                                f"[yellow]On shutdown:[/yellow] State exported to '{self.state_loader.state_file}'"
-                            )
-                        else:
-                            console.print("[yellow]On shutdown:[/yellow] State exported successfully")
-                except Exception as e:
-                    logger.exception(f"Failed to export state on shutdown: {e}")
+        await run_mcp_stdio(self)
 
     async def run_sse(self, host: str = "localhost", port: int = 8000):
         """Run the MCP server in HTTP mode using Server-Sent Events (SSE)
