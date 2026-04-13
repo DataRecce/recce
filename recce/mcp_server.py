@@ -1902,6 +1902,31 @@ class RecceMCPServer:
         await server.serve()
 
 
+def build_mcp_server(
+    context: RecceContext,
+    mode: Optional[RecceServerMode] = None,
+    single_env: bool = False,
+    debug: bool = False,
+    state_loader=None,
+    log_file: str = "logs/recce-mcp.json",
+) -> "RecceMCPServer":
+    """Build a configured RecceMCPServer.
+
+    Single source of truth for MCP server construction. All transport
+    adapters in recce.mcp_transport (attach_mcp_to_fastapi, run_mcp_stdio,
+    run_mcp_sse_legacy) consume the result of this function so that tool
+    registration logic lives in one place.
+    """
+    return RecceMCPServer(
+        context,
+        mode=mode,
+        debug=debug,
+        log_file=log_file,
+        state_loader=state_loader,
+        single_env=single_env,
+    )
+
+
 async def run_mcp_server(
     sse: bool = False,
     host: str = "localhost",
