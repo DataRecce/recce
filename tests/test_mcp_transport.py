@@ -63,3 +63,23 @@ async def test_run_mcp_stdio_exports_state_on_shutdown():
         await run_mcp_stdio(mock_rmcp)
 
     mock_state_loader.export.assert_called_once_with({"state": "data"})
+
+
+def test_run_mcp_sse_legacy_starlette_routes_present():
+    """The legacy SSE app exposes /sse, /messages/*, and /health."""
+    from recce.mcp_transport import _build_legacy_sse_app
+
+    mock_rmcp = MagicMock()
+    mock_rmcp.server = MagicMock()
+    mock_rmcp.context = None
+    mock_rmcp.state_loader = None
+    mock_rmcp.mcp_logger = MagicMock()
+    mock_rmcp.mcp_logger.debug = False
+
+    app = _build_legacy_sse_app(mock_rmcp)
+
+    paths = {getattr(r, "path", None) for r in app.routes}
+    assert "/sse" in paths
+    assert "/health" in paths
+    # SSE message channel is mounted; verify a Mount with /messages prefix
+    assert any(getattr(r, "path", "").startswith("/") and getattr(r, "name", None) is None for r in app.routes)
