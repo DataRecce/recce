@@ -225,3 +225,36 @@ Produced a concrete design note for merging the MCP server lifecycle into `recce
 ### Summary
 
 Implemented the MCP server lifecycle merge per the design note. Extracted `mount_sse()` and `handle_sse_connection()` from the existing `run_sse()` method. The `lifespan()` background loader now conditionally mounts MCP routes after context loading, with error isolation (ImportError and general exceptions logged as warnings, never fatal). Updated the readiness gate middleware to also block `/mcp/` paths. All 6 test scenarios pass, existing tests unaffected, standalone `recce mcp-server` remains fully functional.
+
+## Stage Report: verified
+
+- [x] Read Design Note and Implementation Stage Report. Confirm implementation matches design intent.
+  Implementation matches design. `mount_sse()`, `handle_sse_connection()` extracted per design. `AppState` extended with `mcp_enabled`, `mcp_server`, `mcp_sse_transport`. `lifespan()` mounts MCP after context load with ImportError/Exception guards. Readiness gate updated. Minor deviation: tests consolidated into one new file instead of spreading across 4 files as designed -- coverage is equivalent.
+- [x] Run `make test` from worktree root.
+  `make test` failed at `install-dev` due to uv permissions (`Operation not permitted`). Ran `python -m pytest tests/` directly: 877 passed, 34 failed (all pre-existing duckdb `python_scan_all_frames` errors), 2 warnings. No regressions from this change.
+- [x] Run new test file `tests/test_server_mcp_lifecycle.py -v`.
+  6/6 passed in 1.93s: `test_mcp_routes_mounted_when_enabled`, `test_mcp_routes_not_mounted_when_disabled`, `test_mcp_routes_not_mounted_when_import_fails`, `test_mcp_init_failure_does_not_set_startup_error`, `test_mcp_sse_gated_by_readiness`, `test_mcp_messages_gated_by_readiness`.
+- [x] Run `make flake8` and `make format`.
+  flake8: clean (zero warnings). black: "140 files left unchanged". isort: clean.
+- [ ] SKIP: Run `cd js && pnpm type:check`.
+  No frontend files changed (`git diff --name-only -- js/` is empty). Worktree lacks `node_modules`. Verified no JS/TS files were touched.
+- [ ] SKIP: Run `cd js && pnpm lint`.
+  Same rationale as type:check -- no frontend changes, no `node_modules` in worktree.
+- [x] Integration check: `recce --help`, `recce server --help`, `recce mcp-server --help`.
+  All three run without crash. `recce --help` shows all commands including `mcp-server` and `server`. `recce server --help` shows `Usage: recce server [OPTIONS] [STATE_FILE]`. `recce mcp-server --help` shows usage with stdio/SSE mode documentation.
+- [ ] SKIP: Integration check: start `recce server` against a test dbt project.
+  Worktree lacks dbt artifacts (`integration_tests/dbt/target/` does not exist, gitignored). Cannot run live integration test without generating artifacts. Recommend: captain can test in main checkout where artifacts exist, or generate with `cd integration_tests/dbt && dbt docs generate`.
+- [x] Run backward compatibility import test.
+  `python -c "from recce.mcp_server import RecceMCPServer, run_mcp_server; print('ok')"` outputs `ok`.
+- [x] Check acceptance criteria: (a) both HTTP + MCP start by default.
+  EVIDENCE: `mcp_enabled=True` set in `cli.py` `server()` function. `lifespan()` mounts MCP when `mcp_enabled` is True and context loads. `test_mcp_routes_mounted_when_enabled` confirms routes at `/mcp/sse` and `/mcp/messages`.
+- [x] Check acceptance criteria: (b) deterministic startup ordering.
+  EVIDENCE: MCP init is sequential inside `background_load()`, after `_do_lifespan_setup()` returns `ctx`. No parallel init.
+- [x] Check acceptance criteria: (c) clean shutdown.
+  EVIDENCE: Design uses existing `teardown_server()` for state export. No separate MCP teardown needed -- `RecceMCPServer` holds no background tasks or sockets. SSE connections closed by uvicorn.
+- [x] Check acceptance criteria: (d) no regressions.
+  EVIDENCE: 877 tests pass (same as baseline). All 34 failures are pre-existing duckdb issues (confirmed by running same tests on main). `recce mcp-server --help` unchanged. Backward compat import works.
+
+### Summary
+
+Independent verification **PASSED**. The implementation faithfully follows the design note. Core changes are minimal and well-isolated: 3 production files modified (`cli.py` +1 line, `server.py` +38 lines, `mcp_server.py` +55 lines), 1 new test file with 6 scenarios (all passing). No regressions detected. The only deviations from design are cosmetic (test file consolidation) and do not affect coverage. Live integration test was not possible due to missing dbt artifacts in the worktree, but unit tests cover the critical paths (route mounting, error isolation, readiness gating). Recommend captain approve.
