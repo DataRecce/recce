@@ -196,3 +196,32 @@ The design does not change the `BaseAdapter` interface. `RecceMCPServer` accesse
 ### Summary
 
 Produced a concrete design note for merging the MCP server lifecycle into `recce server`. The core approach mounts MCP SSE routes (`/mcp/sse`, `/mcp/messages`) on the existing FastAPI app during `lifespan()`, after `RecceContext` is loaded. MCP is treated as optional: if the `mcp` package is not installed, the HTTP server starts normally with a warning. A new `RecceMCPServer.mount_sse()` method is extracted from the existing `run_sse()` to enable route registration on an external app. No changes to CLI flags, adapter interfaces, state-loader abstraction, or the standalone `recce mcp-server` command.
+
+## Stage Report: implemented
+
+- [x] Extract `RecceMCPServer.mount_sse(app, path_prefix)` and `handle_sse_connection()` helper in `recce/mcp_server.py`
+  Commit 775ca6a5 -- added `mount_sse()` and `handle_sse_connection()` methods; `run()` / `run_sse()` / `run_mcp_server()` unchanged.
+- [x] Add `mcp_server` and `mcp_sse_transport` fields to `AppState` in `recce/server.py`
+  Added `mcp_enabled: bool = True`, `mcp_server: Optional[Any] = None`, `mcp_sse_transport: Optional[Any] = None`.
+- [x] Modify `lifespan()` in `recce/server.py` to mount MCP SSE routes after `RecceContext` is ready, guarded by `mcp_enabled` and `try/except ImportError`
+  Inside `background_load()`, after `_do_lifespan_setup` returns ctx, conditional block imports `RecceMCPServer`, instantiates, and calls `mount_sse()`.
+- [x] Set `app.state.mcp_enabled = True` default in `recce/cli.py` `server()` function
+  Added `mcp_enabled=True` to the `AppState(...)` constructor call.
+- [x] Verify MCP errors during startup log as warnings but do not set `startup_error`
+  `test_mcp_init_failure_does_not_set_startup_error` confirms this. MCP exceptions caught separately from context-loading exceptions.
+- [x] Run `make format` and `make flake8` -- clean
+  Both passed with zero warnings/errors.
+- [x] Add new test file `tests/test_server_mcp_lifecycle.py` with 6 scenarios
+  All 6 scenarios are real tests (not stubs): routes mounted, disabled, ImportError, init failure, readiness gate for /mcp/sse and /mcp/messages.
+- [x] Run the new test file -- 6/6 passed
+  `python -m pytest tests/test_server_mcp_lifecycle.py -v` -- 6 passed in 2.21s.
+- [x] Run sanity: `recce server --help` -- no crash, existing options shown
+  Output starts with `Usage: recce server [OPTIONS] [STATE_FILE]` and lists all existing flags.
+- [x] Verify `recce mcp-server --help` and import test
+  `recce mcp-server --help` renders correctly. `python -c "from recce.mcp_server import RecceMCPServer, run_mcp_server; print('ok')"` prints `ok`.
+- [x] Commit each logical change atomically with `git commit -s`
+  Two commits: 775ca6a5 (implementation) and cea362fe (tests). Worktree clean.
+
+### Summary
+
+Implemented the MCP server lifecycle merge per the design note. Extracted `mount_sse()` and `handle_sse_connection()` from the existing `run_sse()` method. The `lifespan()` background loader now conditionally mounts MCP routes after context loading, with error isolation (ImportError and general exceptions logged as warnings, never fatal). Updated the readiness gate middleware to also block `/mcp/` paths. All 6 test scenarios pass, existing tests unaffected, standalone `recce mcp-server` remains fully functional.
