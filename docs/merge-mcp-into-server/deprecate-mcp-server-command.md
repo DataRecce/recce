@@ -1,9 +1,9 @@
 ---
 id: 003
 title: Deprecate `recce mcp-server` command with warning
-status: scoped
+status: designed
 source: commission seed
-started:
+started: 2026-04-13T07:01:57Z
 completed:
 verdict:
 score: 0.6
