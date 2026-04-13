@@ -74,3 +74,40 @@ def test_mcp_falls_back_to_503_when_startup_fails(monkeypatch):
         body = r.json()
         assert body.get("error", {}).get("code") == -32603
         assert "MCP" in body.get("error", {}).get("message", "")
+
+
+def test_mcp_loading_returns_503_code_32002():
+    """Direct call to _mcp_fallback: loading state returns JSON-RPC -32002."""
+    import asyncio
+    import json as _json
+
+    from starlette.requests import Request
+
+    from recce.server import AppState, _mcp_fallback, app
+
+    # Simulate: MCP is enabled, but not yet mounted and no startup error.
+    # This is the brief window during context load.
+    app.state = AppState(
+        command="server",
+        state_loader=MagicMock(),
+        kwargs={"mcp_enabled": True},
+        flag={"single_env_onboarding": False},
+        auth_options={},
+    )
+    # mcp_session_manager=None, mcp_startup_error=None, mcp_enabled=True
+
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": [],
+        "query_string": b"",
+    }
+    request = Request(scope)
+
+    response = asyncio.run(_mcp_fallback(request, path=""))
+
+    assert response.status_code == 503
+    body = _json.loads(response.body)
+    assert body["error"]["code"] == -32002
+    assert "loading" in body["error"]["message"].lower()

@@ -310,11 +310,14 @@ async def lifespan(fastapi: FastAPI):
                         app_state.mcp_server = rmcp
                         app_state.mcp_session_manager = session_manager
 
-                        log_mcp_startup(
-                            enabled=True,
-                            transports="streamable_http+sse",
-                            command=app_state.command or "server",
-                        )
+                        try:
+                            log_mcp_startup(
+                                enabled=True,
+                                transports="streamable_http+sse",
+                                command=app_state.command or "server",
+                            )
+                        except Exception:
+                            logger.exception("[MCP] log_mcp_startup failed; continuing")
                     except Exception as e:
                         logger.exception("[MCP] Failed to build/mount MCP server; REST will continue")
                         app_state.mcp_startup_error = str(e)
@@ -1470,6 +1473,7 @@ async def _mcp_fallback(request: Request, path: str = ""):
             status_code=503,
             content={
                 "jsonrpc": "2.0",
+                "id": None,
                 "error": {
                     "code": -32603,
                     "message": ("MCP server failed to start. Check server logs. " f"Error: {state.mcp_startup_error}"),
@@ -1483,6 +1487,7 @@ async def _mcp_fallback(request: Request, path: str = ""):
         status_code=503,
         content={
             "jsonrpc": "2.0",
+            "id": None,
             "error": {
                 "code": -32002,
                 "message": "Recce context still loading; retry shortly",
