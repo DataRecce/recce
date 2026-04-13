@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING
 from mcp.server.stdio import stdio_server
 
 if TYPE_CHECKING:
+    from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
     from starlette.applications import Starlette
 
     from recce.mcp_server import RecceMCPServer
@@ -131,3 +132,65 @@ async def run_mcp_sse_legacy(rmcp: "RecceMCPServer", host: str = "localhost", po
     config = uvicorn.Config(app, host=host, port=port, log_level="info")
     server = uvicorn.Server(config)
     await server.serve()
+
+
+def attach_mcp_to_fastapi(app, rmcp: "RecceMCPServer", prefix: str = "/mcp") -> "StreamableHTTPSessionManager":
+    """Mount the MCP transport surface onto an existing FastAPI app.
+
+    Exposes:
+        POST/GET {prefix}                — Streamable HTTP (modern transport)
+        GET      {prefix}/sse            — legacy SSE stream
+        POST     {prefix}/messages/      — legacy SSE message channel
+
+    Both transports share the same mcp.Server instance (rmcp.server), so
+    every tool is reachable on either transport.
+
+    Returns:
+        StreamableHTTPSessionManager — the caller MUST drive its lifecycle
+        from a context manager (typically the FastAPI lifespan): wrap the
+        `yield` in `async with session_manager.run(): ...`.
+
+    Routing order matters: the more-specific /sse and /messages routes
+    are listed BEFORE the catch-all Mount("/") for Streamable HTTP.
+    """
+    from mcp.server.sse import SseServerTransport
+    from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+    from starlette.applications import Starlette
+    from starlette.requests import Request
+    from starlette.responses import Response
+    from starlette.routing import Mount, Route
+
+    session_manager = StreamableHTTPSessionManager(
+        app=rmcp.server,
+        event_store=None,
+        json_response=False,
+        stateless=False,
+    )
+
+    sse = SseServerTransport(f"{prefix}/messages/")
+
+    async def handle_sse_request(request: Request) -> Response:
+        client_info = f"{request.client.host}:{request.client.port}" if request.client else "unknown"
+        logger.info(f"[MCP HTTP] SSE connection established from {client_info}")
+        try:
+            async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
+                await rmcp.server.run(streams[0], streams[1], rmcp.server.create_initialization_options())
+        finally:
+            logger.info(f"[MCP HTTP] SSE connection closed from {client_info}")
+        return Response()
+
+    async def handle_streamable_http(scope, receive, send) -> None:
+        await session_manager.handle_request(scope, receive, send)
+
+    sub_app = Starlette(
+        debug=rmcp.mcp_logger.debug,
+        routes=[
+            # Order matters: specific routes BEFORE the catch-all Mount("/")
+            Route("/sse", endpoint=handle_sse_request, methods=["GET"]),
+            Mount("/messages/", app=sse.handle_post_message),
+            Mount("/", app=handle_streamable_http),
+        ],
+    )
+
+    app.mount(prefix, sub_app)
+    return session_manager

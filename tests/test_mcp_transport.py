@@ -84,3 +84,53 @@ def test_run_mcp_sse_legacy_starlette_routes_present():
     # Starlette normalizes Mount("/messages/", ...) to .path == "/messages"
     mount_paths = {getattr(r, "path", None) for r in app.routes if getattr(r, "name", None) is None}
     assert "/messages" in mount_paths
+
+
+def test_attach_mcp_to_fastapi_mounts_prefix_and_returns_session_manager():
+    """attach_mcp_to_fastapi mounts /mcp and returns the session manager."""
+    from fastapi import FastAPI
+
+    from recce.mcp_transport import attach_mcp_to_fastapi
+
+    mock_rmcp = MagicMock()
+    mock_rmcp.server = MagicMock()
+    mock_rmcp.context = None
+    mock_rmcp.state_loader = None
+    mock_rmcp.mcp_logger = MagicMock()
+    mock_rmcp.mcp_logger.debug = False
+
+    app = FastAPI()
+    session_manager = attach_mcp_to_fastapi(app, mock_rmcp, prefix="/mcp")
+
+    # The session manager comes back so the caller can drive its lifecycle.
+    assert session_manager is not None
+    assert hasattr(session_manager, "run")  # async context manager method
+
+    # /mcp Mount is wired
+    paths = {getattr(r, "path", None) for r in app.routes}
+    assert "/mcp" in paths
+
+
+def test_attach_mcp_to_fastapi_inner_routes_present():
+    """Inside the /mcp mount, the streamable, sse, and messages routes exist."""
+    from fastapi import FastAPI
+
+    from recce.mcp_transport import attach_mcp_to_fastapi
+
+    mock_rmcp = MagicMock()
+    mock_rmcp.server = MagicMock()
+    mock_rmcp.context = None
+    mock_rmcp.state_loader = None
+    mock_rmcp.mcp_logger = MagicMock()
+    mock_rmcp.mcp_logger.debug = False
+
+    app = FastAPI()
+    attach_mcp_to_fastapi(app, mock_rmcp, prefix="/mcp")
+
+    # Find the /mcp Mount and inspect inner routes
+    mcp_mount = next(r for r in app.routes if getattr(r, "path", None) == "/mcp")
+    inner_paths = {getattr(r, "path", None) for r in mcp_mount.app.routes}
+    assert "/sse" in inner_paths
+    # Streamable HTTP is at the root of the sub-app — Mount("/", ...)
+    # SSE messages mounted at /messages/
+    assert any(getattr(r, "path", "").startswith("/messages") for r in mcp_mount.app.routes)
