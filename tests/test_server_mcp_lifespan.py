@@ -73,7 +73,11 @@ def test_mcp_falls_back_to_503_when_startup_fails(monkeypatch):
         assert r.status_code == 503
         body = r.json()
         assert body.get("error", {}).get("code") == -32603
-        assert "MCP" in body.get("error", {}).get("message", "")
+        message = body.get("error", {}).get("message", "")
+        assert "MCP" in message
+        # Exception details (the raw "simulated MCP build failure" string)
+        # must NOT leak to remote clients — they belong only in server logs.
+        assert "simulated MCP build failure" not in message
 
 
 def test_mcp_loading_returns_503_code_32002():

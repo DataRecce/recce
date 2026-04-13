@@ -2412,9 +2412,10 @@ def mcp_server(state_file, sse, host, port, **kwargs):
             pass
     debug = kwargs.get("debug", False)
 
-    # load_context expects only its own kwargs — don't leak unrelated entries
-    load_kwargs = {k: v for k, v in kwargs.items() if k != "state_loader"}
-    context = load_context(**load_kwargs)
+    # Pass state_loader through so RecceContext.load() imports state from the
+    # state file / cloud as expected for `recce mcp-server <state_file>` and
+    # --cloud modes. Mirrors the pattern used by `setup_server` in server.py.
+    context = load_context(**kwargs, state_loader=state_loader)
 
     rmcp = build_mcp_server(
         context,

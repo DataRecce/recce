@@ -86,15 +86,22 @@ def _build_legacy_sse_app(rmcp: "RecceMCPServer") -> "Starlette":
     # POST channel matches the spec-required path (old run_sse used "/" which was non-standard).
     sse = SseServerTransport("/messages/")
 
-    async def handle_sse_request(request: Request):
-        client_info = f"{request.client.host}:{request.client.port}" if request.client else "unknown"
+    async def handle_sse_asgi(scope, receive, send):
+        """Raw ASGI handler — avoids touching Starlette's private Request._send."""
+        if scope.get("type") != "http":
+            return
+        if scope.get("method") != "GET":
+            await send({"type": "http.response.start", "status": 405, "headers": []})
+            await send({"type": "http.response.body", "body": b""})
+            return
+        client = scope.get("client")
+        client_info = f"{client[0]}:{client[1]}" if client else "unknown"
         logger.info(f"[MCP HTTP] SSE connection established from {client_info}")
         try:
-            async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
+            async with sse.connect_sse(scope, receive, send) as streams:
                 await rmcp.server.run(streams[0], streams[1], rmcp.server.create_initialization_options())
         finally:
             logger.info(f"[MCP HTTP] SSE connection closed from {client_info}")
-        return Response()
 
     async def handle_health_check(_request: Request):
         return Response(content='{"status":"ok"}', media_type="application/json")
@@ -116,7 +123,7 @@ def _build_legacy_sse_app(rmcp: "RecceMCPServer") -> "Starlette":
         debug=rmcp.mcp_logger.debug,
         routes=[
             Route("/health", endpoint=handle_health_check, methods=["GET"]),
-            Route("/sse", endpoint=handle_sse_request, methods=["GET"]),
+            Mount("/sse", app=handle_sse_asgi),
             Mount("/messages/", app=sse.handle_post_message),
         ],
         lifespan=lifespan,
@@ -159,9 +166,7 @@ def attach_mcp_to_fastapi(
     from mcp.server.sse import SseServerTransport
     from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
     from starlette.applications import Starlette
-    from starlette.requests import Request
-    from starlette.responses import Response
-    from starlette.routing import Mount, Route
+    from starlette.routing import Mount
 
     session_manager = StreamableHTTPSessionManager(
         app=rmcp.server,
@@ -172,15 +177,22 @@ def attach_mcp_to_fastapi(
 
     sse = SseServerTransport(f"{prefix}/messages/")
 
-    async def handle_sse_request(request: Request) -> Response:
-        client_info = f"{request.client.host}:{request.client.port}" if request.client else "unknown"
+    async def handle_sse_asgi(scope, receive, send):
+        """Raw ASGI handler — avoids touching Starlette's private Request._send."""
+        if scope.get("type") != "http":
+            return
+        if scope.get("method") != "GET":
+            await send({"type": "http.response.start", "status": 405, "headers": []})
+            await send({"type": "http.response.body", "body": b""})
+            return
+        client = scope.get("client")
+        client_info = f"{client[0]}:{client[1]}" if client else "unknown"
         logger.info(f"[MCP HTTP] SSE connection established from {client_info}")
         try:
-            async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
+            async with sse.connect_sse(scope, receive, send) as streams:
                 await rmcp.server.run(streams[0], streams[1], rmcp.server.create_initialization_options())
         finally:
             logger.info(f"[MCP HTTP] SSE connection closed from {client_info}")
-        return Response()
 
     async def handle_streamable_http(scope, receive, send) -> None:
         await session_manager.handle_request(scope, receive, send)
@@ -189,7 +201,7 @@ def attach_mcp_to_fastapi(
         debug=rmcp.mcp_logger.debug,
         routes=[
             # Order matters: specific routes BEFORE the catch-all Mount("/")
-            Route("/sse", endpoint=handle_sse_request, methods=["GET"]),
+            Mount("/sse", app=handle_sse_asgi),
             Mount("/messages/", app=sse.handle_post_message),
             Mount("/", app=handle_streamable_http),
         ],

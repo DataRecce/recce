@@ -1502,6 +1502,8 @@ async def _mcp_fallback(request: Request, path: str = ""):
         # is at app.routes[0]. Defensive 404.
         return JSONResponse(status_code=404, content={"detail": "Not Found"})
     if state.mcp_startup_error:
+        # The full exception string lives in the server logs; do not echo it
+        # to remote clients (it can leak paths, config values, etc.).
         return JSONResponse(
             status_code=503,
             content={
@@ -1509,7 +1511,7 @@ async def _mcp_fallback(request: Request, path: str = ""):
                 "id": None,
                 "error": {
                     "code": -32603,
-                    "message": ("MCP server failed to start. Check server logs. " f"Error: {state.mcp_startup_error}"),
+                    "message": "MCP server failed to start. Check server logs for details.",
                 },
             },
         )
