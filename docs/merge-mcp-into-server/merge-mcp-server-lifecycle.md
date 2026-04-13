@@ -1,9 +1,9 @@
 ---
 id: 001
 title: Merge MCP server lifecycle into `recce server` startup
-status: scoped
+status: designed
 source: commission seed
-started:
+started: 2026-04-13T06:47:02Z
 completed:
 verdict:
 score: 0.9
