@@ -59,5 +59,5 @@ async def run_mcp_stdio(rmcp: "RecceMCPServer") -> None:
                         console.print(f"[yellow]On shutdown:[/yellow] State exported to '{state_file}'")
                     else:
                         console.print("[yellow]On shutdown:[/yellow] State exported successfully")
-            except Exception as e:
-                logger.exception(f"Failed to export state on shutdown: {e}")
+            except Exception:
+                logger.exception("Failed to export state on shutdown")
