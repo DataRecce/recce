@@ -253,8 +253,6 @@ def _do_lifespan_setup(app_state: AppState):
 
 @asynccontextmanager
 async def lifespan(fastapi: FastAPI):
-    from contextlib import AsyncExitStack
-
     from recce.core import default_context
     from recce.event import log_performance
     from recce.util.startup_perf import clear_startup_tracker, get_startup_tracker
@@ -272,96 +270,131 @@ async def lifespan(fastapi: FastAPI):
     app_state.startup_error = None
     app_state.startup_ctx = None
 
-    async with AsyncExitStack() as stack:
+    # Coordination for MCP lifecycle task.
+    # Must live on the lifespan coroutine's own task scope — anyio scope
+    # inside StreamableHTTPSessionManager.run() cannot be entered in one
+    # task and exited in another.
+    ctx_ready_event = asyncio.Event()
+    mcp_shutdown_event = asyncio.Event()
 
-        async def background_load():
+    async def background_load():
+        try:
+            ctx = await asyncio.to_thread(_do_lifespan_setup, app_state)
+            app_state.startup_ctx = ctx
+
+            # Schedule async timers on the event loop (must be in async context)
+            if app_state.lifetime is not None and app_state.lifetime > 0:
+                schedule_lifetime_termination(app_state)
+            if app_state.idle_timeout is not None and app_state.idle_timeout > 0:
+                logger.debug(f"[Idle Timeout] Scheduling idle timeout check with {app_state.idle_timeout} seconds")
+                schedule_idle_timeout_check(app_state)
+
+            # Log startup performance metrics
+            if tracker := get_startup_tracker():
+                tracker.command = app_state.command
+                recce_ctx = default_context()
+                if recce_ctx and recce_ctx.adapter:
+                    tracker.adapter_type = type(recce_ctx.adapter).__name__
+                    if hasattr(recce_ctx.adapter, "curr_manifest") and recce_ctx.adapter.curr_manifest:
+                        tracker.node_count = len(recce_ctx.adapter.curr_manifest.nodes)
+                log_performance("server_startup", tracker.to_dict())
+        except Exception as e:
+            logger.exception("Failed to load server context during startup")
+            app_state.startup_error = e
+        finally:
+            clear_startup_tracker()
+            ready_event.set()
+            ctx_ready_event.set()  # release MCP lifecycle task
+
+    async def mcp_lifecycle():
+        """Build, mount, and hold open the MCP session in a single task scope.
+
+        All steps in this function run in the same asyncio task to respect
+        the task-affinity of anyio cancel scopes inside
+        StreamableHTTPSessionManager.run().
+        """
+        await ctx_ready_event.wait()
+
+        # If context failed to load, skip MCP.
+        if app_state.startup_error:
+            return
+        # If MCP is disabled, skip.
+        if not app_state.kwargs or not app_state.kwargs.get("mcp_enabled", True):
+            logger.info("[MCP] Disabled via --no-mcp / RECCE_DISABLE_MCP")
+            return
+
+        ctx = app_state.startup_ctx
+        if ctx is None:
+            return
+
+        try:
+            from recce.event import log_mcp_startup
+            from recce.mcp_server import build_mcp_server
+            from recce.mcp_transport import attach_mcp_to_fastapi
+
+            mode = None
+            mode_str = app_state.kwargs.get("mode")
+            if mode_str:
+                try:
+                    mode = RecceServerMode(mode_str)
+                except ValueError:
+                    pass
+
+            single_env = app_state.flag.get("single_env_onboarding", False) if app_state.flag else False
+            debug = app_state.kwargs.get("debug", False)
+
+            rmcp = build_mcp_server(
+                ctx,
+                mode=mode,
+                single_env=single_env,
+                debug=debug,
+                state_loader=app_state.state_loader,
+            )
+            session_manager = attach_mcp_to_fastapi(app, rmcp, prefix="/mcp")
+
+            app_state.mcp_server = rmcp
+            app_state.mcp_session_manager = session_manager
+
+            # Telemetry is non-fatal — a failure here must not mark MCP as broken.
             try:
-                ctx = await asyncio.to_thread(_do_lifespan_setup, app_state)
-                app_state.startup_ctx = ctx
+                log_mcp_startup(
+                    enabled=True,
+                    transports="streamable_http+sse",
+                    command=app_state.command or "server",
+                )
+            except Exception:
+                logger.exception("[MCP] log_mcp_startup failed; continuing")
 
-                # Build & mount MCP after context is ready
-                if app_state.kwargs and app_state.kwargs.get("mcp_enabled", True):
-                    try:
-                        from recce.event import log_mcp_startup
-                        from recce.mcp_server import build_mcp_server
-                        from recce.mcp_transport import attach_mcp_to_fastapi
+            # Hold the session manager open until the lifespan signals shutdown.
+            async with session_manager.run():
+                await mcp_shutdown_event.wait()
+        except Exception as e:
+            logger.exception("[MCP] Failed to build/mount MCP server; REST will continue")
+            app_state.mcp_startup_error = str(e)
 
-                        mode = None
-                        mode_str = app_state.kwargs.get("mode")
-                        if mode_str:
-                            try:
-                                mode = RecceServerMode(mode_str)
-                            except ValueError:
-                                pass
+    task = asyncio.create_task(background_load())
+    mcp_task = asyncio.create_task(mcp_lifecycle())
 
-                        single_env = app_state.flag.get("single_env_onboarding", False) if app_state.flag else False
-                        debug = app_state.kwargs.get("debug", False)
+    yield  # Server starts accepting connections immediately
 
-                        rmcp = build_mcp_server(
-                            ctx,
-                            mode=mode,
-                            single_env=single_env,
-                            debug=debug,
-                            state_loader=app_state.state_loader,
-                        )
-                        session_manager = attach_mcp_to_fastapi(app, rmcp, prefix="/mcp")
-                        await stack.enter_async_context(session_manager.run())
+    # Signal MCP shutdown and wait for clean exit — same task scope as its entry.
+    mcp_shutdown_event.set()
+    try:
+        await mcp_task
+    except Exception:
+        logger.exception("[MCP] mcp_lifecycle task errored during shutdown")
 
-                        app_state.mcp_server = rmcp
-                        app_state.mcp_session_manager = session_manager
+    # Wait for background loading to complete before teardown
+    await task
 
-                        try:
-                            log_mcp_startup(
-                                enabled=True,
-                                transports="streamable_http+sse",
-                                command=app_state.command or "server",
-                            )
-                        except Exception:
-                            logger.exception("[MCP] log_mcp_startup failed; continuing")
-                    except Exception as e:
-                        logger.exception("[MCP] Failed to build/mount MCP server; REST will continue")
-                        app_state.mcp_startup_error = str(e)
-                else:
-                    logger.info("[MCP] Disabled via --no-mcp / RECCE_DISABLE_MCP")
-
-                # Schedule async timers on the event loop (must be in async context)
-                if app_state.lifetime is not None and app_state.lifetime > 0:
-                    schedule_lifetime_termination(app_state)
-                if app_state.idle_timeout is not None and app_state.idle_timeout > 0:
-                    logger.debug(f"[Idle Timeout] Scheduling idle timeout check with {app_state.idle_timeout} seconds")
-                    schedule_idle_timeout_check(app_state)
-
-                # Log startup performance metrics
-                if tracker := get_startup_tracker():
-                    tracker.command = app_state.command
-                    recce_ctx = default_context()
-                    if recce_ctx and recce_ctx.adapter:
-                        tracker.adapter_type = type(recce_ctx.adapter).__name__
-                        if hasattr(recce_ctx.adapter, "curr_manifest") and recce_ctx.adapter.curr_manifest:
-                            tracker.node_count = len(recce_ctx.adapter.curr_manifest.nodes)
-                    log_performance("server_startup", tracker.to_dict())
-            except Exception as e:
-                logger.exception("Failed to load server context during startup")
-                app_state.startup_error = e
-            finally:
-                clear_startup_tracker()
-                ready_event.set()
-
-        task = asyncio.create_task(background_load())
-
-        yield  # Server starts accepting connections immediately
-
-        # Wait for background loading to complete before teardown
-        await task
-
-        if not app_state.startup_error:
-            ctx = app_state.startup_ctx
-            if app_state.command == "server" and ctx:
-                teardown_server(app_state, ctx)
-            elif app_state.command == "read-only" and ctx:
-                teardown_ready_only(app_state, ctx)
-            elif app_state.command == "preview" and ctx:
-                teardown_preview(app_state, ctx)
+    if not app_state.startup_error:
+        ctx = app_state.startup_ctx
+        if app_state.command == "server" and ctx:
+            teardown_server(app_state, ctx)
+        elif app_state.command == "read-only" and ctx:
+            teardown_ready_only(app_state, ctx)
+        elif app_state.command == "preview" and ctx:
+            teardown_preview(app_state, ctx)
 
 
 app = FastAPI(lifespan=lifespan)
