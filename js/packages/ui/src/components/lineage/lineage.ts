@@ -11,7 +11,7 @@ import {
   type NodeColumnSetMap,
 } from "../..";
 import type { ColumnLineageData } from "../../api";
-import type { ColumnAnnotation } from "./computeColumnAncestry";
+import type { ColumnAnnotation } from "./computeColumnLineage";
 
 /**
  * Convert a LineageGraph to React Flow nodes and edges with column-level lineage support

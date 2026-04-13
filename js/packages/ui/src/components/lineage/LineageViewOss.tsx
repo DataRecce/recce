@@ -90,7 +90,7 @@ import { LineageViewNotification } from "../notifications";
 import { HSplit, toaster } from "../ui";
 import { ActionControlOss } from "./ActionControlOss";
 import { ColumnLevelLineageControlOss } from "./ColumnLevelLineageControlOss";
-import { computeColumnAncestry } from "./computeColumnAncestry";
+import { computeColumnLineage } from "./computeColumnLineage";
 import { computeImpactedColumns } from "./computeImpactedColumns";
 import { computeIsImpacted } from "./computeIsImpacted";
 import {
@@ -160,14 +160,14 @@ function computeImpactedSets(
  * @param impactedColumns - Pre-computed impacted column set. Avoids a
  *   redundant DFS when the caller already has it (e.g. from computeImpactedSets).
  */
-function maybeComputeAncestry(
+function maybeComputeLineage(
   newCllExperience: boolean,
   cll: ColumnLineageData | undefined,
   cllInput: CllInput | undefined,
   impactedColumns?: Set<string>,
 ) {
   return newCllExperience && cll && cllInput?.node_id && cllInput?.column
-    ? computeColumnAncestry(
+    ? computeColumnLineage(
         cll,
         cllInput.node_id,
         cllInput.column,
@@ -606,7 +606,7 @@ export function PrivateLineageView(
         selectedNodes: filteredNodeIds,
         cll: cll,
         newCllExperience,
-        columnAncestry: maybeComputeAncestry(
+        columnAncestry: maybeComputeLineage(
           newCllExperience,
           cll,
           cllInput,
@@ -896,7 +896,7 @@ export function PrivateLineageView(
         cll,
         existingPositions,
         newCllExperience,
-        columnAncestry: maybeComputeAncestry(
+        columnAncestry: maybeComputeLineage(
           newCllExperience,
           cll,
           cllInput2,
