@@ -81,5 +81,6 @@ def test_run_mcp_sse_legacy_starlette_routes_present():
     paths = {getattr(r, "path", None) for r in app.routes}
     assert "/sse" in paths
     assert "/health" in paths
-    # SSE message channel is mounted; verify a Mount with /messages prefix
-    assert any(getattr(r, "path", "").startswith("/") and getattr(r, "name", None) is None for r in app.routes)
+    # Starlette normalizes Mount("/messages/", ...) to .path == "/messages"
+    mount_paths = {getattr(r, "path", None) for r in app.routes if getattr(r, "name", None) is None}
+    assert "/messages" in mount_paths

@@ -25,6 +25,8 @@ from typing import TYPE_CHECKING
 from mcp.server.stdio import stdio_server
 
 if TYPE_CHECKING:
+    from starlette.applications import Starlette
+
     from recce.mcp_server import RecceMCPServer
 
 logger = logging.getLogger(__name__)
@@ -63,7 +65,7 @@ async def run_mcp_stdio(rmcp: "RecceMCPServer") -> None:
                 logger.exception("Failed to export state on shutdown")
 
 
-def _build_legacy_sse_app(rmcp: "RecceMCPServer"):
+def _build_legacy_sse_app(rmcp: "RecceMCPServer") -> "Starlette":
     """Build a stand-alone Starlette app exposing the legacy SSE surface.
 
     Routes: GET /sse, POST /messages/, GET /health.
@@ -79,6 +81,7 @@ def _build_legacy_sse_app(rmcp: "RecceMCPServer"):
     from starlette.responses import Response
     from starlette.routing import Mount, Route
 
+    # POST channel matches the spec-required path (old run_sse used "/" which was non-standard).
     sse = SseServerTransport("/messages/")
 
     async def handle_sse_request(request: Request):
