@@ -129,8 +129,14 @@ def test_attach_mcp_to_fastapi_inner_routes_present():
 
     # Find the /mcp Mount and inspect inner routes
     mcp_mount = next(r for r in app.routes if getattr(r, "path", None) == "/mcp")
-    inner_paths = {getattr(r, "path", None) for r in mcp_mount.app.routes}
+    inner_paths = [getattr(r, "path", None) for r in mcp_mount.app.routes]
+    # All three transports must be present:
+    #   /sse       — legacy SSE stream (Route)
+    #   /messages  — legacy SSE message channel (Mount; Starlette strips the trailing slash)
+    #   ""         — Streamable HTTP catch-all (Mount("/") normalizes to "")
     assert "/sse" in inner_paths
-    # Streamable HTTP is at the root of the sub-app — Mount("/", ...)
-    # SSE messages mounted at /messages/
-    assert any(getattr(r, "path", "").startswith("/messages") for r in mcp_mount.app.routes)
+    assert "/messages" in inner_paths
+    assert "" in inner_paths, "Streamable HTTP catch-all Mount('/') is missing"
+    # Order matters for first-match routing: specific paths BEFORE the catch-all.
+    assert inner_paths.index("/sse") < inner_paths.index("")
+    assert inner_paths.index("/messages") < inner_paths.index("")

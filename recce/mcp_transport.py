@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING
 from mcp.server.stdio import stdio_server
 
 if TYPE_CHECKING:
+    from fastapi import FastAPI
     from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
     from starlette.applications import Starlette
 
@@ -134,7 +135,9 @@ async def run_mcp_sse_legacy(rmcp: "RecceMCPServer", host: str = "localhost", po
     await server.serve()
 
 
-def attach_mcp_to_fastapi(app, rmcp: "RecceMCPServer", prefix: str = "/mcp") -> "StreamableHTTPSessionManager":
+def attach_mcp_to_fastapi(
+    app: "FastAPI", rmcp: "RecceMCPServer", prefix: str = "/mcp"
+) -> "StreamableHTTPSessionManager":
     """Mount the MCP transport surface onto an existing FastAPI app.
 
     Exposes:
