@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import click
 
@@ -131,6 +131,17 @@ def add_options(options):
         return func
 
     return _add_options
+
+
+def _resolve_mcp_enabled(mcp_flag: Optional[bool]) -> bool:
+    """Resolve --mcp / --no-mcp / RECCE_DISABLE_MCP precedence.
+
+    Explicit CLI flag wins over env var. Default is enabled.
+    """
+    if mcp_flag is not None:
+        return mcp_flag
+    env_disable = os.environ.get("RECCE_DISABLE_MCP", "").strip().lower()
+    return env_disable not in ("1", "true", "yes")
 
 
 dbt_related_options = [
@@ -918,6 +929,13 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
     help="The idle timeout in seconds. If 0, idle timeout is disabled. Maximum value is capped by lifetime.",
     type=int,
 )
+@click.option(
+    "--mcp/--no-mcp",
+    "mcp_flag",
+    default=None,  # tri-state: None = use env var fallback, True/False = explicit
+    show_default=False,
+    help="Enable/disable the MCP endpoint at /mcp. Default: enabled. " "Override default with RECCE_DISABLE_MCP=1.",
+)
 @click.option("--review", is_flag=True, help="Open the state file in the review mode.")
 @click.option("--single-env", is_flag=True, help="Launch in single environment mode directly.")
 @click.option(
@@ -946,7 +964,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @add_options(recce_cloud_options)
 @add_options(recce_cloud_auth_options)
 @add_options(recce_hidden_options)
-def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
+def server(host, port, lifetime, idle_timeout=0, state_file=None, mcp_flag=None, **kwargs):
     """
     Launch the recce server
 
@@ -995,6 +1013,7 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
 
     handle_debug_flag(**kwargs)
     patch_derived_args(kwargs)
+    kwargs["mcp_enabled"] = _resolve_mcp_enabled(mcp_flag)
 
     server_mode = kwargs.get("mode") if kwargs.get("mode") else RecceServerMode.server
     is_review = kwargs.get("review", False)
