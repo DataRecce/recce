@@ -1,9 +1,9 @@
 ---
 id: 005
 title: E2E test the merged server
-status: scoped
+status: designed
 source: commission seed
-started:
+started: 2026-04-13T06:52:21Z
 completed:
 verdict:
 score: 0.8
