@@ -1,9 +1,9 @@
 ---
 id: 002
 title: Add `--mcp` / `--no-mcp` CLI flags to `recce server`
-status: scoped
+status: designed
 source: commission seed
-started:
+started: 2026-04-13T06:58:28Z
 completed:
 verdict:
 score: 0.7
