@@ -94,6 +94,9 @@ class AppState:
     web_url: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
+    mcp_server: Optional[Any] = None
+    mcp_session_manager: Optional[Any] = None
+    mcp_startup_error: Optional[str] = None
 
 
 def schedule_lifetime_termination(app_state):
@@ -250,6 +253,8 @@ def _do_lifespan_setup(app_state: AppState):
 
 @asynccontextmanager
 async def lifespan(fastapi: FastAPI):
+    from contextlib import AsyncExitStack
+
     from recce.core import default_context
     from recce.event import log_performance
     from recce.util.startup_perf import clear_startup_tracker, get_startup_tracker
@@ -267,49 +272,93 @@ async def lifespan(fastapi: FastAPI):
     app_state.startup_error = None
     app_state.startup_ctx = None
 
-    async def background_load():
-        try:
-            ctx = await asyncio.to_thread(_do_lifespan_setup, app_state)
-            app_state.startup_ctx = ctx
+    async with AsyncExitStack() as stack:
 
-            # Schedule async timers on the event loop (must be in async context)
-            if app_state.lifetime is not None and app_state.lifetime > 0:
-                schedule_lifetime_termination(app_state)
-            if app_state.idle_timeout is not None and app_state.idle_timeout > 0:
-                logger.debug(f"[Idle Timeout] Scheduling idle timeout check with {app_state.idle_timeout} seconds")
-                schedule_idle_timeout_check(app_state)
+        async def background_load():
+            try:
+                ctx = await asyncio.to_thread(_do_lifespan_setup, app_state)
+                app_state.startup_ctx = ctx
 
-            # Log startup performance metrics
-            if tracker := get_startup_tracker():
-                tracker.command = app_state.command
-                recce_ctx = default_context()
-                if recce_ctx and recce_ctx.adapter:
-                    tracker.adapter_type = type(recce_ctx.adapter).__name__
-                    if hasattr(recce_ctx.adapter, "curr_manifest") and recce_ctx.adapter.curr_manifest:
-                        tracker.node_count = len(recce_ctx.adapter.curr_manifest.nodes)
-                log_performance("server_startup", tracker.to_dict())
-        except Exception as e:
-            logger.exception("Failed to load server context during startup")
-            app_state.startup_error = e
-        finally:
-            clear_startup_tracker()
-            ready_event.set()
+                # Build & mount MCP after context is ready
+                if app_state.kwargs and app_state.kwargs.get("mcp_enabled", True):
+                    try:
+                        from recce.event import log_mcp_startup
+                        from recce.mcp_server import build_mcp_server
+                        from recce.mcp_transport import attach_mcp_to_fastapi
 
-    task = asyncio.create_task(background_load())
+                        mode = None
+                        mode_str = app_state.kwargs.get("mode")
+                        if mode_str:
+                            try:
+                                mode = RecceServerMode(mode_str)
+                            except ValueError:
+                                pass
 
-    yield  # Server starts accepting connections immediately
+                        single_env = app_state.flag.get("single_env_onboarding", False) if app_state.flag else False
+                        debug = app_state.kwargs.get("debug", False)
 
-    # Wait for background loading to complete before teardown
-    await task
+                        rmcp = build_mcp_server(
+                            ctx,
+                            mode=mode,
+                            single_env=single_env,
+                            debug=debug,
+                            state_loader=app_state.state_loader,
+                        )
+                        session_manager = attach_mcp_to_fastapi(app, rmcp, prefix="/mcp")
+                        await stack.enter_async_context(session_manager.run())
 
-    if not app_state.startup_error:
-        ctx = app_state.startup_ctx
-        if app_state.command == "server" and ctx:
-            teardown_server(app_state, ctx)
-        elif app_state.command == "read-only" and ctx:
-            teardown_ready_only(app_state, ctx)
-        elif app_state.command == "preview" and ctx:
-            teardown_preview(app_state, ctx)
+                        app_state.mcp_server = rmcp
+                        app_state.mcp_session_manager = session_manager
+
+                        log_mcp_startup(
+                            enabled=True,
+                            transports="streamable_http+sse",
+                            command=app_state.command or "server",
+                        )
+                    except Exception as e:
+                        logger.exception("[MCP] Failed to build/mount MCP server; REST will continue")
+                        app_state.mcp_startup_error = str(e)
+                else:
+                    logger.info("[MCP] Disabled via --no-mcp / RECCE_DISABLE_MCP")
+
+                # Schedule async timers on the event loop (must be in async context)
+                if app_state.lifetime is not None and app_state.lifetime > 0:
+                    schedule_lifetime_termination(app_state)
+                if app_state.idle_timeout is not None and app_state.idle_timeout > 0:
+                    logger.debug(f"[Idle Timeout] Scheduling idle timeout check with {app_state.idle_timeout} seconds")
+                    schedule_idle_timeout_check(app_state)
+
+                # Log startup performance metrics
+                if tracker := get_startup_tracker():
+                    tracker.command = app_state.command
+                    recce_ctx = default_context()
+                    if recce_ctx and recce_ctx.adapter:
+                        tracker.adapter_type = type(recce_ctx.adapter).__name__
+                        if hasattr(recce_ctx.adapter, "curr_manifest") and recce_ctx.adapter.curr_manifest:
+                            tracker.node_count = len(recce_ctx.adapter.curr_manifest.nodes)
+                    log_performance("server_startup", tracker.to_dict())
+            except Exception as e:
+                logger.exception("Failed to load server context during startup")
+                app_state.startup_error = e
+            finally:
+                clear_startup_tracker()
+                ready_event.set()
+
+        task = asyncio.create_task(background_load())
+
+        yield  # Server starts accepting connections immediately
+
+        # Wait for background loading to complete before teardown
+        await task
+
+        if not app_state.startup_error:
+            ctx = app_state.startup_ctx
+            if app_state.command == "server" and ctx:
+                teardown_server(app_state, ctx)
+            elif app_state.command == "read-only" and ctx:
+                teardown_ready_only(app_state, ctx)
+            elif app_state.command == "preview" and ctx:
+                teardown_preview(app_state, ctx)
 
 
 app = FastAPI(lifespan=lifespan)
@@ -1401,6 +1450,46 @@ api_prefix = "/api"
 app.include_router(check_router, prefix=api_prefix)
 app.include_router(check_events_router, prefix=api_prefix)
 app.include_router(run_router, prefix=api_prefix)
+
+# Fallback handler for /mcp* when MCP is unmounted (disabled, failed, or still loading).
+# This MUST be added BEFORE the SPA static-files catch-all so /mcp* doesn't return SPA HTML.
+# At runtime, attach_mcp_to_fastapi() inserts the real /mcp Mount at position 0 in
+# app.routes, which shadows this fallback when MCP is up.
+
+
+@app.api_route("/mcp", methods=["GET", "POST", "DELETE"])
+@app.api_route("/mcp/{path:path}", methods=["GET", "POST", "DELETE"])
+async def _mcp_fallback(request: Request, path: str = ""):
+    state: AppState = app.state
+    if state.mcp_session_manager is not None:
+        # MCP is mounted; this fallback should not be hit because the mount
+        # is at app.routes[0]. Defensive 404.
+        return JSONResponse(status_code=404, content={"detail": "Not Found"})
+    if state.mcp_startup_error:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32603,
+                    "message": ("MCP server failed to start. Check server logs. " f"Error: {state.mcp_startup_error}"),
+                },
+            },
+        )
+    if not state.kwargs or not state.kwargs.get("mcp_enabled", True):
+        return JSONResponse(status_code=404, content={"detail": "MCP disabled"})
+    # Context still loading — typical during the very first second of startup
+    return JSONResponse(
+        status_code=503,
+        content={
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32002,
+                "message": "Recce context still loading; retry shortly",
+            },
+        },
+    )
+
 
 static_folder_path = Path(__file__).parent / "data"
 

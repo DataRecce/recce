@@ -195,5 +195,9 @@ def attach_mcp_to_fastapi(
         ],
     )
 
-    app.mount(prefix, sub_app)
+    # Insert at the front of app.routes so this Mount shadows the /mcp
+    # 503-fallback handler that recce/server.py registers at module-import
+    # time. Without this insert, the fallback would be matched first because
+    # FastAPI uses first-match-wins routing.
+    app.routes.insert(0, Mount(prefix, app=sub_app))
     return session_manager
