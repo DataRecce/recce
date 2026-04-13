@@ -94,6 +94,9 @@ class AppState:
     web_url: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
+    mcp_enabled: bool = True
+    mcp_server: Optional[Any] = None  # Optional[RecceMCPServer] -- lazy import
+    mcp_sse_transport: Optional[Any] = None
 
 
 def schedule_lifetime_termination(app_state):
@@ -279,6 +282,42 @@ async def lifespan(fastapi: FastAPI):
                 logger.debug(f"[Idle Timeout] Scheduling idle timeout check with {app_state.idle_timeout} seconds")
                 schedule_idle_timeout_check(app_state)
 
+            # Mount MCP SSE routes if enabled and the mcp package is available
+            if getattr(app_state, "mcp_enabled", False) and ctx is not None:
+                try:
+                    from recce.mcp_server import RecceMCPServer
+
+                    single_env = app_state.flag.get("single_env_onboarding", False) if app_state.flag else False
+                    debug = app_state.kwargs.get("debug", False) if app_state.kwargs else False
+                    mode_val = app_state.command  # RecceServerMode string
+                    mode = None
+                    if mode_val:
+                        try:
+                            mode = RecceServerMode(mode_val)
+                        except ValueError:
+                            pass
+
+                    mcp_srv = RecceMCPServer(
+                        context=ctx,
+                        mode=mode,
+                        debug=debug,
+                        state_loader=app_state.state_loader,
+                        single_env=single_env,
+                    )
+                    transport = mcp_srv.mount_sse(app, path_prefix="/mcp")
+                    app_state.mcp_server = mcp_srv
+                    app_state.mcp_sse_transport = transport
+                except ImportError:
+                    logger.warning(
+                        "MCP package not installed -- MCP endpoint will not be available. "
+                        "Install with: pip install 'recce[mcp]'"
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to initialize MCP server -- MCP endpoint will not be available",
+                        exc_info=True,
+                    )
+
             # Log startup performance metrics
             if tracker := get_startup_tracker():
                 tracker.command = app_state.command
@@ -450,7 +489,7 @@ async def readiness_gate(request: Request, call_next):
     If loading failed, return 503.
     """
     path = request.url.path
-    if path == "/api/health" or not path.startswith("/api/"):
+    if path == "/api/health" or not (path.startswith("/api/") or path.startswith("/mcp/")):
         return await call_next(request)
 
     ready_event = getattr(request.app.state, "ready_event", None)

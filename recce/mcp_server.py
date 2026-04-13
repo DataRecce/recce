@@ -1800,6 +1800,61 @@ class RecceMCPServer:
             result["run_error"] = run_error
         return result
 
+    def mount_sse(self, app, path_prefix: str = "/mcp"):
+        """Mount MCP SSE routes on an externally-provided FastAPI/Starlette app.
+
+        Registers:
+          - GET  {path_prefix}/sse       (SSE connection endpoint)
+          - POST {path_prefix}/messages   (message posting endpoint)
+
+        Args:
+            app: A FastAPI or Starlette application instance.
+            path_prefix: URL prefix for MCP routes (default: "/mcp").
+
+        Returns:
+            The SseServerTransport instance (stored as self.sse_transport).
+        """
+        from mcp.server.sse import SseServerTransport
+        from starlette.routing import Mount, Route
+
+        # Create SSE transport - endpoint where clients POST messages
+        self.sse_transport = SseServerTransport(f"{path_prefix}/messages")
+
+        sse_route = Route(
+            f"{path_prefix}/sse",
+            endpoint=self.handle_sse_connection,
+            methods=["GET"],
+        )
+        message_route = Mount(
+            f"{path_prefix}/messages",
+            app=self.sse_transport.handle_post_message,
+        )
+
+        # Insert routes before the catch-all StaticFiles mount (last route)
+        # so they take precedence over the static file serving.
+        app.routes.insert(-1, sse_route)
+        app.routes.insert(-1, message_route)
+
+        logger.info(f"MCP endpoint available at {path_prefix}/sse")
+        return self.sse_transport
+
+    async def handle_sse_connection(self, request):
+        """Handle an SSE connection from an MCP client.
+
+        This is the GET handler for the SSE endpoint. Extracted from run_sse()
+        so it can be reused when MCP is mounted on the main recce server app.
+        """
+        from starlette.responses import Response
+
+        client_info = f"{request.client.host}:{request.client.port}" if request.client else "unknown"
+        logger.info(f"[MCP HTTP] SSE connection established from {client_info}")
+        try:
+            async with self.sse_transport.connect_sse(request.scope, request.receive, request._send) as streams:
+                await self.server.run(streams[0], streams[1], self.server.create_initialization_options())
+        finally:
+            logger.info(f"[MCP HTTP] SSE connection closed from {client_info}")
+        return Response()  # Required to avoid NoneType error
+
     async def run(self):
         """Run the MCP server in stdio mode"""
         try:
