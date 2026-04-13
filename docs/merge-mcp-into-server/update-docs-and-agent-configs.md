@@ -1,9 +1,9 @@
 ---
 id: 004
 title: Update docs, examples, and agent configs
-status: scoped
+status: designed
 source: commission seed
-started:
+started: 2026-04-13T07:06:28Z
 completed:
 verdict:
 score: 0.5
