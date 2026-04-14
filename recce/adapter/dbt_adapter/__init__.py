@@ -887,7 +887,6 @@ class DbtAdapter(BaseAdapter):
         base = lineage_diff.base
         current = lineage_diff.current
 
-        base_manifest = self.previous_state.manifest
         curr_manifest = self.manifest
         breaking_perf_tracker.record_checkpoint("manifest")
 
@@ -940,13 +939,13 @@ class DbtAdapter(BaseAdapter):
 
                 base_sql = self.generate_sql(
                     base_node.get("raw_code"),
+                    base=True,
                     context=jinja_context,
-                    provided_manifest=base_manifest,
                 )
                 curr_sql = self.generate_sql(
                     curr_node.get("raw_code"),
+                    base=False,
                     context=jinja_context,
-                    provided_manifest=curr_manifest,
                 )
                 base_schema = _get_schema(base)
                 curr_schema = _get_schema(current)
