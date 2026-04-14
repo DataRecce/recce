@@ -326,3 +326,31 @@ jobs:
             echo "npm install @datarecce/ui@${version}" >> $GITHUB_STEP_SUMMARY
           fi
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        if: steps.check_artifact.outputs.skip != 'true' && steps.patch_version.outputs.npm_tag == 'latest'
+        continue-on-error: true
+        with:
+          app-id: ${{ secrets.RECCE_ACTION_BOT_APP_ID }}
+          private-key: ${{ secrets.RECCE_ACTION_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Trigger Bump @datarecce/ui in recce-cloud-infra
+        id: dispatch
+        if: steps.check_artifact.outputs.skip != 'true' && steps.patch_version.outputs.npm_tag == 'latest' && steps.app-token.outcome == 'success'
+        continue-on-error: true
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: 'bump-recce-ui.yml'
+          repo: 'DataRecce/recce-cloud-infra'
+          ref: 'main'
+          inputs: '{ "version": "${{ steps.patch_version.outputs.version }}" }'
+          token: '${{ steps.app-token.outputs.token }}'
+
+      - name: Handle dispatch failure
+        if: steps.app-token.outcome == 'failure' || steps.dispatch.outcome == 'failure'
+        run: |
+          echo "::warning::Failed to trigger Bump @datarecce/ui workflow in recce-cloud-infra"
+          echo "::warning::Please manually trigger the bump at: https://github.com/DataRecce/recce-cloud-infra/actions/workflows/bump-recce-ui.yml"
+          echo "::warning::Use version: ${{ steps.patch_version.outputs.version }}"
