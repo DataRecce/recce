@@ -13,6 +13,18 @@ on:
     paths-ignore:
       - "js/**"
       - "recce/data/**"
+  schedule:
+    - cron: '0 19 * * 0,1,2,3,4' # run at 3 AM (UTC + 8) every working day, after nightly build
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Cloud environment to test against'
+        type: choice
+        required: true
+        options:
+          - production
+          - staging
+        default: production
 
 # Explicitly limit permissions for pull_request_target
 permissions:
@@ -20,10 +32,27 @@ permissions:
   pull-requests: read
 
 jobs:
-  # First job: Check if the PR author has write permission
+  resolve-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.resolve.outputs.environment }}
+    steps:
+      - name: Resolve target environment
+        id: resolve
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "environment=staging"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ inputs.environment }}"
+          else
+            echo "environment=production"
+          fi >> $GITHUB_OUTPUT
+
+  # Check if the PR author has write permission
   # This job runs in the privileged context but doesn't checkout untrusted code
   authorize:
-    if: github.actor != 'dependabot[bot]'
+    needs: resolve-environment
+    if: needs.resolve-environment.outputs.environment == 'production' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     outputs:
       authorized: ${{ steps.check.outputs.authorized }}
@@ -46,10 +75,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Second job: Run the actual tests only if authorized
+  # Production cloud smoke test
   smoke-test-cloud:
-    needs: authorize
-    if: needs.authorize.outputs.authorized == 'true'
+    needs: [resolve-environment, authorize]
+    if: needs.resolve-environment.outputs.environment == 'production' && needs.authorize.outputs.authorized == 'true'
     concurrency:
       group: smoke-test-cloud
       cancel-in-progress: false
@@ -91,3 +120,48 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.RECCE_CLOUD_TOKEN }}
           RECCE_STATE_PASSWORD: ${{ vars.RECCE_STATE_PASSWORD }}
+
+  # Staging cloud smoke test - runs daily after nightly build
+  smoke-test-cloud-staging:
+    needs: resolve-environment
+    if: needs.resolve-environment.outputs.environment == 'staging'
+    concurrency:
+      group: smoke-test-cloud-staging
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        include:
+          - python-version: "3.11"
+            dbt-version: "1.8"
+          - python-version: "3.13"
+            dbt-version: "latest"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install Recce and dbt
+        run: |
+          uv venv
+          uv sync --no-dev --python ${{ matrix.python-version }}
+          if [ "${{ matrix.dbt-version }}" == "latest" ]; then
+            uv pip install dbt-core dbt-duckdb
+          else
+            uv pip install dbt-core~=${{ matrix.dbt-version }}.0 dbt-duckdb~=${{ matrix.dbt-version }}.0
+          fi
+
+      - name: Run smoke test - dbt (staging)
+        run: |
+          source .venv/bin/activate
+          ./integration_tests/dbt/smoke_test_cloud.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.RECCE_CLOUD_TOKEN_STAGING }}
+          RECCE_STATE_PASSWORD: ${{ vars.RECCE_STATE_PASSWORD }}
+          RECCE_CLOUD_API_HOST: ${{ vars.RECCE_CLOUD_API_HOST_STAGING }}
