@@ -2,6 +2,7 @@ from .cloud import (
     CloudStateLoader,
     RecceCloudStateManager,
     RecceShareStateManager,
+    s3_metadata_headers,
     s3_sse_c_headers,
 )
 from .const import ErrorMessage
@@ -25,6 +26,7 @@ __all__ = [
     "CloudStateLoader",
     "FileStateLoader",
     "RecceStateMetadata",
+    "s3_metadata_headers",
     "s3_sse_c_headers",
     "GitRepoInfo",
     "PullRequestInfo",
