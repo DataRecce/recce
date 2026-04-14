@@ -4,12 +4,13 @@ import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import { changeStatusColors } from "../styles";
 
 /**
  * Legend item for change status
  */
 export interface ChangeStatusLegendItem {
-  status: "added" | "removed" | "modified";
+  status: "added" | "removed" | "modified" | "impacted";
   label: string;
   description?: string;
 }
@@ -56,6 +57,11 @@ const defaultChangeStatusItems: ChangeStatusLegendItem[] = [
   { status: "added", label: "Added", description: "Newly added resource" },
   { status: "removed", label: "Removed", description: "Removed resource" },
   { status: "modified", label: "Modified", description: "Modified resource" },
+  {
+    status: "impacted",
+    label: "Impacted",
+    description: "Downstream of a modified resource",
+  },
 ];
 
 /**
@@ -86,12 +92,13 @@ const defaultTransformationItems: TransformationLegendItem[] = [
 ];
 
 /**
- * Colors for change status indicators
+ * Colors and symbols for change status indicators
  */
 const changeStatusStyles: Record<string, { color: string; symbol: string }> = {
-  added: { color: "#22c55e", symbol: "+" },
-  removed: { color: "#ef4444", symbol: "-" },
-  modified: { color: "#f59e0b", symbol: "~" },
+  added: { color: changeStatusColors.added, symbol: "+" },
+  removed: { color: changeStatusColors.removed, symbol: "-" },
+  modified: { color: changeStatusColors.modified, symbol: "~" },
+  impacted: { color: changeStatusColors.impacted, symbol: "!" },
 };
 
 /**
@@ -114,7 +121,7 @@ const transformationStyles: Record<
 function ChangeStatusIcon({
   status,
 }: {
-  status: "added" | "removed" | "modified";
+  status: "added" | "removed" | "modified" | "impacted";
 }) {
   const style = changeStatusStyles[status];
   return (

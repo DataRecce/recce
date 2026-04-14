@@ -60,6 +60,8 @@ export interface ColumnNameCellProps {
   showMenu?: boolean;
   /** Callback when user clicks a definition-changed badge to view SQL diff */
   onViewCode?: () => void;
+  /** Whether this column is impacted by upstream changes */
+  isImpacted?: boolean;
 }
 
 // ============================================================================
@@ -86,6 +88,7 @@ export function ColumnNameCell({
   cllRunning,
   showMenu = true,
   onViewCode,
+  isImpacted,
 }: ColumnNameCellProps) {
   const lineageViewContext = useLineageViewContext();
   const { isActionAvailable } = useLineageGraphContext();
@@ -226,6 +229,15 @@ export function ColumnNameCell({
             -
           </span>
         )}
+        {isImpacted &&
+          !isAdded &&
+          !isRemoved &&
+          !hasStructuralChange &&
+          !definitionChanged && (
+            <span className="schema-change-badge schema-change-badge-impacted">
+              !
+            </span>
+          )}
         {definitionChanged && (
           <Tooltip
             title="Definition changed — click to view code"

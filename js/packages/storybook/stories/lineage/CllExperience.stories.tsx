@@ -94,58 +94,55 @@ function NodeComparisonDemo() {
       <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
         <Box>
           <Typography variant="caption" color="text.secondary" gutterBottom>
-            Impacted + Modified (amber bg)
+            Modified (changed)
           </Typography>
           <StandaloneNode
-            id="model.impacted_modified"
+            id="model.modified"
             data={{
-              label: "int_order_metrics",
+              label: "stg_orders",
               resourceType: "model",
               changeStatus: "modified",
             }}
             newCllExperience
-            isImpacted
           />
         </Box>
 
         <Box>
           <Typography variant="caption" color="text.secondary" gutterBottom>
-            Impacted + Added (amber bg)
+            Added
           </Typography>
           <StandaloneNode
-            id="model.impacted_added"
+            id="model.added"
             data={{
               label: "stg_new_payments",
               resourceType: "model",
               changeStatus: "added",
             }}
             newCllExperience
-            isImpacted
           />
         </Box>
 
         <Box>
           <Typography variant="caption" color="text.secondary" gutterBottom>
-            Not Impacted (normal)
+            Removed
           </Typography>
           <StandaloneNode
-            id="model.not_impacted"
+            id="model.removed"
             data={{
-              label: "dim_customers",
+              label: "stg_old_shipping",
               resourceType: "model",
-              changeStatus: "unchanged",
+              changeStatus: "removed",
             }}
             newCllExperience
-            isImpacted={false}
           />
         </Box>
 
         <Box>
           <Typography variant="caption" color="text.secondary" gutterBottom>
-            Impacted + Unchanged (amber bg, no change icon)
+            Impacted (downstream)
           </Typography>
           <StandaloneNode
-            id="model.impacted_unchanged"
+            id="model.impacted"
             data={{
               label: "fct_orders",
               resourceType: "model",
@@ -153,6 +150,22 @@ function NodeComparisonDemo() {
             }}
             newCllExperience
             isImpacted
+          />
+        </Box>
+
+        <Box>
+          <Typography variant="caption" color="text.secondary" gutterBottom>
+            Unchanged
+          </Typography>
+          <StandaloneNode
+            id="model.unchanged"
+            data={{
+              label: "dim_customers",
+              resourceType: "model",
+              changeStatus: "unchanged",
+            }}
+            newCllExperience
+            isImpacted={false}
           />
         </Box>
       </Box>
@@ -172,44 +185,58 @@ function NodeComparisonDemo() {
       >
         <Box>
           <Typography variant="caption" sx={{ color: "#aaa" }} gutterBottom>
-            Impacted + Modified (dark amber)
+            Modified (changed)
           </Typography>
           <StandaloneNode
-            id="model.dark_impacted"
+            id="model.dark_modified"
             data={{
-              label: "int_order_metrics",
+              label: "stg_orders",
               resourceType: "model",
               changeStatus: "modified",
             }}
             newCllExperience
-            isImpacted
             isDark
           />
         </Box>
 
         <Box>
           <Typography variant="caption" sx={{ color: "#aaa" }} gutterBottom>
-            Not Impacted (dark normal)
+            Added
           </Typography>
           <StandaloneNode
-            id="model.dark_not_impacted"
+            id="model.dark_added"
             data={{
-              label: "dim_customers",
+              label: "stg_new_payments",
               resourceType: "model",
-              changeStatus: "unchanged",
+              changeStatus: "added",
             }}
             newCllExperience
-            isImpacted={false}
             isDark
           />
         </Box>
 
         <Box>
           <Typography variant="caption" sx={{ color: "#aaa" }} gutterBottom>
-            Impacted + Unchanged (dark amber)
+            Removed
           </Typography>
           <StandaloneNode
-            id="model.dark_impacted_unchanged"
+            id="model.dark_removed"
+            data={{
+              label: "stg_old_shipping",
+              resourceType: "model",
+              changeStatus: "removed",
+            }}
+            newCllExperience
+            isDark
+          />
+        </Box>
+
+        <Box>
+          <Typography variant="caption" sx={{ color: "#aaa" }} gutterBottom>
+            Impacted (downstream)
+          </Typography>
+          <StandaloneNode
+            id="model.dark_impacted"
             data={{
               label: "fct_orders",
               resourceType: "model",
@@ -217,6 +244,23 @@ function NodeComparisonDemo() {
             }}
             newCllExperience
             isImpacted
+            isDark
+          />
+        </Box>
+
+        <Box>
+          <Typography variant="caption" sx={{ color: "#aaa" }} gutterBottom>
+            Unchanged
+          </Typography>
+          <StandaloneNode
+            id="model.dark_unchanged"
+            data={{
+              label: "dim_customers",
+              resourceType: "model",
+              changeStatus: "unchanged",
+            }}
+            newCllExperience
+            isImpacted={false}
             isDark
           />
         </Box>

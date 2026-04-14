@@ -1,6 +1,7 @@
 /**
  * Schema diff color palette
- * Uses CSS custom properties for theme-aware colors
+ * Uses CSS custom properties for theme-aware colors.
+ * JS consumers use changeStatusColors in ../lineage/styles.tsx — keep in sync.
  */
 
 /* Light mode (default) */
@@ -17,10 +18,10 @@
   --schema-color-normal: #ffffff;
   --schema-color-normal-hover: rgb(241 241 241);
   --schema-color-normal-active: rgb(230 230 230);
-  --schema-color-changed: rgb(255 247 222);
-  --schema-color-changed-hover: rgb(255 241 200);
-  --schema-color-changed-active: rgb(255 233 170);
-  --schema-color-changed-accent: rgb(255 173 21);
+  --schema-color-changed: rgb(255 237 175);
+  --schema-color-changed-hover: rgb(255 229 145);
+  --schema-color-changed-active: rgb(255 220 115);
+  --schema-color-changed-accent: rgb(212 133 11);
   --schema-color-muted: rgb(0 0 0 / 0.45);
   --schema-badge-changed-bg: rgb(255 173 21 / 0.25);
   --schema-badge-changed-fg: rgb(160 100 0);
@@ -28,9 +29,12 @@
   --schema-badge-added-fg: rgb(22 110 40);
   --schema-badge-removed-bg: rgb(248 81 73 / 0.2);
   --schema-badge-removed-fg: rgb(180 40 35);
-  --schema-color-impacted: rgb(255 243 200);
-  --schema-color-impacted-hover: rgb(255 237 175);
-  --schema-color-impacted-active: rgb(255 229 145);
+  --schema-color-impacted: rgb(254 249 227);
+  --schema-color-impacted-hover: rgb(254 243 199);
+  --schema-color-impacted-active: rgb(253 237 175);
+  --schema-color-impacted-accent: rgb(252 211 77);
+  --schema-badge-impacted-bg: rgb(252 211 77 / 0.35);
+  --schema-badge-impacted-fg: rgb(146 64 14);
 }
 
 /* Dark mode */
@@ -46,10 +50,10 @@
   --schema-color-normal: #262626;
   --schema-color-normal-hover: rgb(64 64 64);
   --schema-color-normal-active: rgb(82 82 82);
-  --schema-color-changed: rgb(60 52 28);
-  --schema-color-changed-hover: rgb(75 65 33);
-  --schema-color-changed-active: rgb(90 78 38);
-  --schema-color-changed-accent: rgb(255 173 21);
+  --schema-color-changed: rgb(75 65 33);
+  --schema-color-changed-hover: rgb(90 78 38);
+  --schema-color-changed-active: rgb(105 91 43);
+  --schema-color-changed-accent: rgb(212 133 11);
   --schema-color-muted: rgb(255 255 255 / 0.5);
   --schema-badge-changed-bg: rgb(255 173 21 / 0.2);
   --schema-badge-changed-fg: rgb(255 200 80);
@@ -57,9 +61,12 @@
   --schema-badge-added-fg: rgb(80 200 100);
   --schema-badge-removed-bg: rgb(248 81 73 / 0.2);
   --schema-badge-removed-fg: rgb(255 120 115);
-  --schema-color-impacted: rgb(60 52 28);
-  --schema-color-impacted-hover: rgb(75 65 33);
-  --schema-color-impacted-active: rgb(90 78 38);
+  --schema-color-impacted: rgb(50 44 24);
+  --schema-color-impacted-hover: rgb(60 52 28);
+  --schema-color-impacted-active: rgb(70 61 32);
+  --schema-color-impacted-accent: rgb(180 83 9);
+  --schema-badge-impacted-bg: rgb(180 83 9 / 0.25);
+  --schema-badge-impacted-fg: rgb(252 211 77);
 }
 
 /* Row backgrounds must be applied to cells because rows use display:contents */
@@ -128,6 +135,7 @@
 
 .row-impacted {
   background-color: var(--schema-color-impacted);
+  box-shadow: inset 3px 0 0 var(--schema-color-impacted-accent);
 }
 
 .row-impacted:hover,
@@ -196,6 +204,11 @@
 .schema-change-badge-removed {
   background-color: var(--schema-badge-removed-bg);
   color: var(--schema-badge-removed-fg);
+}
+
+.schema-change-badge-impacted {
+  background-color: var(--schema-badge-impacted-bg);
+  color: var(--schema-badge-impacted-fg);
 }
 
 /* Index change styling for reordered columns */

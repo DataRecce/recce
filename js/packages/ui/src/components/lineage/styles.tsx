@@ -185,6 +185,29 @@ export const IconModifiedDownstream: IconComponent = (props) => (
   </svg>
 );
 
+/**
+ * Exclamation icon for "impacted" status (downstream of a change)
+ */
+export const IconImpacted: IconComponent = (props) => (
+  <svg
+    stroke="currentColor"
+    fill="currentColor"
+    strokeWidth="0"
+    viewBox="0 0 16 16"
+    height="1em"
+    width="1em"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M1.5 1h13l.5.5v13l-.5.5h-13l-.5-.5v-13l.5-.5zM2 2v12h12V2H2z"
+    />
+    <path d="M7.5 4h1v5h-1V4zm0 6h1v1.5h-1V10z" />
+  </svg>
+);
+
 // =============================================================================
 // RESOURCE TYPE ICONS (inline SVGs to avoid react-icons dependency)
 // =============================================================================
@@ -449,59 +472,50 @@ export const IconMaterializedView: IconComponent = (props) => (
  * return <Icon style={{ color }} />;
  * ```
  */
+/**
+ * Icon lookup for change statuses
+ */
+const changeStatusIcons: Record<string, IconComponent | undefined> = {
+  added: IconAdded,
+  removed: IconRemoved,
+  modified: IconModified,
+};
+
 export function getIconForChangeStatus(
   changeStatus?: ChangeStatus,
   isDark?: boolean,
 ): ChangeStatusStyle {
-  if (changeStatus === "added") {
-    return {
-      color: colors.green[500],
-      hexColor: colors.green[500],
-      backgroundColor: isDark ? colors.green[900] : colors.green[100],
-      hexBackgroundColor: isDark ? colors.green[900] : colors.green[100],
-      icon: IconAdded,
-    };
-  }
+  const status = changeStatus ?? "unchanged";
+  const color = changeStatusColors[status];
+  const bg = isDark
+    ? changeStatusBackgroundsDark[status]
+    : changeStatusBackgroundsLight[status];
 
-  if (changeStatus === "removed") {
-    return {
-      color: colors.red[500],
-      hexColor: colors.red[500],
-      backgroundColor: isDark ? colors.red[950] : colors.red[200],
-      hexBackgroundColor: isDark ? colors.red[950] : colors.red[200],
-      icon: IconRemoved,
-    };
-  }
-
-  if (changeStatus === "modified") {
-    return {
-      color: colors.amber[500],
-      hexColor: colors.amber[500],
-      backgroundColor: isDark ? colors.amber[900] : colors.amber[100],
-      hexBackgroundColor: isDark ? colors.amber[900] : colors.amber[100],
-      icon: IconModified,
-    };
-  }
-
-  // Default: no change
   return {
-    color: colors.neutral[500],
-    hexColor: colors.neutral[500],
-    backgroundColor: isDark ? colors.neutral[700] : colors.white,
-    hexBackgroundColor: isDark ? colors.neutral[700] : colors.white,
-    icon: undefined,
+    color,
+    hexColor: color,
+    backgroundColor: bg,
+    hexBackgroundColor: bg,
+    icon: changeStatusIcons[status],
   };
 }
 
 /**
- * Get background style for impacted nodes in new CLL experience.
- * Uses a light amber that is less intense than "modified" (amber[500]).
+ * Get style for impacted nodes — a full peer status alongside added/removed/modified.
+ * Reads from the centralized changeStatusColors/backgrounds constants.
  */
-export function getStyleForImpacted(isDark?: boolean): {
-  backgroundColor: string;
-} {
+export function getStyleForImpacted(isDark?: boolean): ChangeStatusStyle {
+  const color = changeStatusColors.impacted;
+  const bg = isDark
+    ? changeStatusBackgroundsDark.impacted
+    : changeStatusBackgroundsLight.impacted;
+
   return {
-    backgroundColor: isDark ? colors.amber[900] : colors.amber[200],
+    color,
+    hexColor: color,
+    backgroundColor: bg,
+    hexBackgroundColor: bg,
+    icon: IconImpacted,
   };
 }
 
@@ -602,12 +616,18 @@ export function getIconForMaterialization(
 // =============================================================================
 
 /**
- * Pre-defined colors for change status (for direct usage without function call)
+ * Pre-defined colors for change status (for direct usage without function call).
+ * Single source of truth for JS consumers (lineage graph, legend, edges, minimap).
+ * Schema sidebar uses CSS custom properties in ../schema/style.css — keep in sync.
  */
-export const changeStatusColors: Record<ChangeStatus | "unchanged", string> = {
+export const changeStatusColors: Record<
+  ChangeStatus | "unchanged" | "impacted",
+  string
+> = {
   added: colors.green[500],
   removed: colors.red[500],
-  modified: colors.amber[500],
+  modified: "#D4850B",
+  impacted: colors.amber[300], // Accent color for impacted nodes (downstream of changes)
   unchanged: colors.neutral[500],
 };
 
@@ -615,12 +635,13 @@ export const changeStatusColors: Record<ChangeStatus | "unchanged", string> = {
  * Pre-defined background colors for change status (light mode)
  */
 export const changeStatusBackgroundsLight: Record<
-  ChangeStatus | "unchanged",
+  ChangeStatus | "unchanged" | "impacted",
   string
 > = {
   added: colors.green[100],
   removed: colors.red[200],
   modified: colors.amber[100],
+  impacted: "#FEF9E3", // light yellow (lighter than modified bg)
   unchanged: colors.white,
 };
 
@@ -628,11 +649,12 @@ export const changeStatusBackgroundsLight: Record<
  * Pre-defined background colors for change status (dark mode)
  */
 export const changeStatusBackgroundsDark: Record<
-  ChangeStatus | "unchanged",
+  ChangeStatus | "unchanged" | "impacted",
   string
 > = {
   added: colors.green[900],
   removed: colors.red[950],
   modified: colors.amber[900],
+  impacted: "#322C18", // dark warm brown-yellow (subtle dark mode fill)
   unchanged: colors.neutral[700],
 };

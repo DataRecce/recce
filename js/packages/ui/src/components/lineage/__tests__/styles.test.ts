@@ -17,6 +17,7 @@ import {
   getStyleForImpacted,
   IconAdded,
   IconExposure,
+  IconImpacted,
   IconMetric,
   IconModel,
   IconModified,
@@ -32,14 +33,30 @@ import {
 // =============================================================================
 
 describe("getStyleForImpacted", () => {
-  it("returns amber 200 background in light mode", () => {
+  it("uses changeStatusColors.impacted as accent color", () => {
     const style = getStyleForImpacted(false);
-    expect(style.backgroundColor).toBe("#FDE68A");
+    expect(style.color).toBe(changeStatusColors.impacted);
+    expect(style.hexColor).toBe(changeStatusColors.impacted);
   });
 
-  it("returns amber 900 background in dark mode", () => {
+  it("uses same accent color in dark mode", () => {
     const style = getStyleForImpacted(true);
-    expect(style.backgroundColor).toBe("#78350F");
+    expect(style.color).toBe(changeStatusColors.impacted);
+  });
+
+  it("returns a background color in light mode", () => {
+    const style = getStyleForImpacted(false);
+    expect(style.backgroundColor).toBeDefined();
+  });
+
+  it("returns a background color in dark mode", () => {
+    const style = getStyleForImpacted(true);
+    expect(style.backgroundColor).toBeDefined();
+  });
+
+  it("returns IconImpacted icon", () => {
+    const style = getStyleForImpacted(false);
+    expect(style.icon).toBe(IconImpacted);
   });
 });
 
@@ -95,10 +112,10 @@ describe("getIconForChangeStatus", () => {
   });
 
   describe("modified status", () => {
-    it("returns amber color for modified status", () => {
+    it("returns brown color for modified status", () => {
       const result = getIconForChangeStatus("modified");
-      expect(result.color).toBe("#F59E0B"); // colors.amber[500]
-      expect(result.hexColor).toBe("#F59E0B");
+      expect(result.color).toBe("#D4850B"); // brown — distinct from impacted yellow
+      expect(result.hexColor).toBe("#D4850B");
     });
 
     it("returns IconModified icon for modified status", () => {
@@ -216,7 +233,11 @@ describe("style constants", () => {
     });
 
     it("has correct color for modified", () => {
-      expect(changeStatusColors.modified).toBe("#F59E0B");
+      expect(changeStatusColors.modified).toBe("#D4850B");
+    });
+
+    it("has correct color for impacted", () => {
+      expect(changeStatusColors.impacted).toBe("#FCD34D"); // amber[300] yellow
     });
 
     it("has correct color for unchanged", () => {
@@ -237,6 +258,10 @@ describe("style constants", () => {
       expect(changeStatusBackgroundsLight.modified).toBe("#FEF3C7");
     });
 
+    it("has correct background for impacted", () => {
+      expect(changeStatusBackgroundsLight.impacted).toBe("#FEF9E3");
+    });
+
     it("has correct background for unchanged", () => {
       expect(changeStatusBackgroundsLight.unchanged).toBe("#FFFFFF");
     });
@@ -253,6 +278,10 @@ describe("style constants", () => {
 
     it("has correct background for modified", () => {
       expect(changeStatusBackgroundsDark.modified).toBe("#78350F");
+    });
+
+    it("has correct background for impacted", () => {
+      expect(changeStatusBackgroundsDark.impacted).toBe("#322C18");
     });
 
     it("has correct background for unchanged", () => {
@@ -305,4 +334,18 @@ describe("icon components", () => {
   it("IconSemanticModel is a function component", () => {
     expect(typeof IconSemanticModel).toBe("function");
   });
+
+  it("IconImpacted is a function component", () => {
+    expect(typeof IconImpacted).toBe("function");
+  });
 });
+
+// =============================================================================
+// CSS ↔ JS Color Sync
+// =============================================================================
+// The schema sidebar (style.css) uses CSS custom properties for row colors.
+// The JS constants (changeStatusColors, changeStatusBackgrounds*) are the
+// single source of truth for lineage nodes, edges, legend, and minimap.
+// The CSS accents for added/removed use GitHub-style diff colors (not Tailwind),
+// while changed/impacted use Tailwind amber shades that match the JS constants.
+// TODO: Unify CSS and JS palettes, then add a sync test here.

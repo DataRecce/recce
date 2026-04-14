@@ -7,7 +7,7 @@ import type { MouseEvent } from "react";
 import { memo, useState } from "react";
 import { DataTypeIcon } from "../../ui/DataTypeIcon";
 import { DIM_FILTER } from "../config/zoomConstants";
-import { getStyleForImpacted } from "../styles";
+import { changeStatusColors, getStyleForImpacted } from "../styles";
 
 /**
  * Transformation type for column-level lineage
@@ -101,15 +101,6 @@ export const COLUMN_NODE_HEIGHT = 24;
  * Default column width in pixels
  */
 export const COLUMN_NODE_WIDTH = 280;
-
-/**
- * Colors for change status indicators
- */
-const changeStatusColors: Record<ColumnChangeStatus, string> = {
-  added: "#22c55e",
-  removed: "#ef4444",
-  modified: "#f59e0b",
-};
 
 /**
  * Colors for transformation type chips
@@ -302,13 +293,18 @@ function LineageColumnNodeComponent({
         padding: "0px 10px",
         border: "1px solid",
         borderColor: "divider",
-        backgroundColor: isImpacted
-          ? getStyleForImpacted(isDark).backgroundColor
-          : isFocused
-            ? "action.selected"
-            : isHovered
-              ? "action.hover"
-              : "background.paper",
+        backgroundColor:
+          isImpacted && !changeStatus
+            ? getStyleForImpacted(isDark).backgroundColor
+            : isFocused
+              ? "action.selected"
+              : isHovered
+                ? "action.hover"
+                : "background.paper",
+        borderLeft:
+          isImpacted && !changeStatus
+            ? `3px solid ${getStyleForImpacted(isDark).color}`
+            : undefined,
         filter: isHighlighted ? "none" : DIM_FILTER,
         cursor: "pointer",
         transition: "background-color 0.15s ease",
