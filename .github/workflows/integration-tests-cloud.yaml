@@ -165,3 +165,27 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RECCE_CLOUD_TOKEN_STAGING }}
           RECCE_STATE_PASSWORD: ${{ vars.RECCE_STATE_PASSWORD }}
           RECCE_CLOUD_API_HOST: ${{ vars.RECCE_CLOUD_API_HOST_STAGING }}
+
+  notify-staging-failure:
+    needs: smoke-test-cloud-staging
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack
+        run: |
+          curl -s -X POST "$SLACK_WEBHOOK_URL_DEV" \
+            -H 'Content-type: application/json' \
+            -d "{
+              \"text\": \":red_circle: Staging cloud smoke test failed\",
+              \"blocks\": [
+                {
+                  \"type\": \"section\",
+                  \"text\": {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \":red_circle: *Staging Cloud Smoke Test Failed*\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View workflow run>\"
+                  }
+                }
+              ]
+            }"
+        env:
+          SLACK_WEBHOOK_URL_DEV: ${{ secrets.SLACK_WEBHOOK_URL_DEV }}
