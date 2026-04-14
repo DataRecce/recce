@@ -7,7 +7,12 @@ import type { MouseEvent } from "react";
 import { memo, useState } from "react";
 import { DataTypeIcon } from "../../ui/DataTypeIcon";
 import { DIM_FILTER } from "../config/zoomConstants";
-import { changeStatusColors, getStyleForImpacted } from "../styles";
+import {
+  changeStatusBackgroundsDark,
+  changeStatusBackgroundsLight,
+  changeStatusColors,
+  getStyleForImpacted,
+} from "../styles";
 
 /**
  * Transformation type for column-level lineage
@@ -284,6 +289,28 @@ function LineageColumnNodeComponent({
   // Determine what indicator to show based on showChangeAnalysis mode
   const shouldShowChangeStatus = showChangeAnalysis && changeStatus;
 
+  // Resolve tinted background + left accent for this row.
+  // Precedence: changeStatus → impacted → plain.
+  const statusBg = changeStatus
+    ? (isDark ? changeStatusBackgroundsDark : changeStatusBackgroundsLight)[
+        changeStatus
+      ]
+    : undefined;
+  const statusAccent = changeStatus
+    ? changeStatusColors[changeStatus]
+    : undefined;
+  const impactedStyle =
+    isImpacted && !changeStatus ? getStyleForImpacted(isDark) : undefined;
+
+  const tintedBg = statusBg ?? impactedStyle?.backgroundColor;
+  const accentColor = statusAccent ?? impactedStyle?.color;
+
+  // Dark-mode fallbacks when no tint applies (column should read as dark paper
+  // with light text, not fall through to MUI's light default).
+  const defaultBg = isDark ? "#262626" : "background.paper";
+  const hoverBg = isDark ? "#333333" : "action.hover";
+  const selectedBg = isDark ? "#404040" : "action.selected";
+
   return (
     <Box
       onClick={() => onColumnClick?.(id)}
@@ -293,18 +320,14 @@ function LineageColumnNodeComponent({
         padding: "0px 10px",
         border: "1px solid",
         borderColor: "divider",
-        backgroundColor:
-          isImpacted && !changeStatus
-            ? getStyleForImpacted(isDark).backgroundColor
-            : isFocused
-              ? "action.selected"
-              : isHovered
-                ? "action.hover"
-                : "background.paper",
-        borderLeft:
-          isImpacted && !changeStatus
-            ? `3px solid ${getStyleForImpacted(isDark).color}`
-            : undefined,
+        backgroundColor: tintedBg
+          ? tintedBg
+          : isFocused
+            ? selectedBg
+            : isHovered
+              ? hoverBg
+              : defaultBg,
+        borderLeft: accentColor ? `3px solid ${accentColor}` : undefined,
         filter: isHighlighted ? "none" : DIM_FILTER,
         cursor: "pointer",
         transition: "background-color 0.15s ease",
@@ -316,7 +339,7 @@ function LineageColumnNodeComponent({
         sx={{
           display: "flex",
           fontSize: "11px",
-          color: "text.primary",
+          color: isDark ? "#ffffff" : "text.primary",
           width: "100%",
           gap: "6px",
           alignItems: "center",

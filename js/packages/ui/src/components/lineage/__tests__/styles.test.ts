@@ -66,10 +66,10 @@ describe("getStyleForImpacted", () => {
 
 describe("getIconForChangeStatus", () => {
   describe("added status", () => {
-    it("returns green color for added status", () => {
+    it("returns muted green accent for added status", () => {
       const result = getIconForChangeStatus("added");
-      expect(result.color).toBe("#22C55E"); // colors.green[500]
-      expect(result.hexColor).toBe("#22C55E");
+      expect(result.color).toBe("rgb(46 160 67)");
+      expect(result.hexColor).toBe("rgb(46 160 67)");
     });
 
     it("returns IconAdded icon for added status", () => {
@@ -79,20 +79,20 @@ describe("getIconForChangeStatus", () => {
 
     it("returns light background in light mode", () => {
       const result = getIconForChangeStatus("added", false);
-      expect(result.backgroundColor).toBe("#DCFCE7"); // colors.green[100]
+      expect(result.backgroundColor).toBe("rgb(222 248 227)");
     });
 
     it("returns dark background in dark mode", () => {
       const result = getIconForChangeStatus("added", true);
-      expect(result.backgroundColor).toBe("#14532D"); // colors.green[900]
+      expect(result.backgroundColor).toBe("rgb(30 58 30)");
     });
   });
 
   describe("removed status", () => {
-    it("returns red color for removed status", () => {
+    it("returns muted red accent for removed status", () => {
       const result = getIconForChangeStatus("removed");
-      expect(result.color).toBe("#EF4444"); // colors.red[500]
-      expect(result.hexColor).toBe("#EF4444");
+      expect(result.color).toBe("rgb(248 81 73)");
+      expect(result.hexColor).toBe("rgb(248 81 73)");
     });
 
     it("returns IconRemoved icon for removed status", () => {
@@ -102,20 +102,20 @@ describe("getIconForChangeStatus", () => {
 
     it("returns light background in light mode", () => {
       const result = getIconForChangeStatus("removed", false);
-      expect(result.backgroundColor).toBe("#FECACA"); // colors.red[200]
+      expect(result.backgroundColor).toBe("rgb(252 225 224)");
     });
 
     it("returns dark background in dark mode", () => {
       const result = getIconForChangeStatus("removed", true);
-      expect(result.backgroundColor).toBe("#450A0A"); // colors.red[950]
+      expect(result.backgroundColor).toBe("rgb(68 35 35)");
     });
   });
 
   describe("modified status", () => {
-    it("returns brown color for modified status", () => {
+    it("returns brown accent for modified status", () => {
       const result = getIconForChangeStatus("modified");
-      expect(result.color).toBe("#D4850B"); // brown — distinct from impacted yellow
-      expect(result.hexColor).toBe("#D4850B");
+      expect(result.color).toBe("rgb(212 133 11)"); // brown — distinct from impacted yellow
+      expect(result.hexColor).toBe("rgb(212 133 11)");
     });
 
     it("returns IconModified icon for modified status", () => {
@@ -125,12 +125,12 @@ describe("getIconForChangeStatus", () => {
 
     it("returns light background in light mode", () => {
       const result = getIconForChangeStatus("modified", false);
-      expect(result.backgroundColor).toBe("#FEF3C7"); // colors.amber[100]
+      expect(result.backgroundColor).toBe("rgb(255 237 175)");
     });
 
     it("returns dark background in dark mode", () => {
       const result = getIconForChangeStatus("modified", true);
-      expect(result.backgroundColor).toBe("#78350F"); // colors.amber[900]
+      expect(result.backgroundColor).toBe("rgb(75 65 33)");
     });
   });
 
@@ -153,7 +153,7 @@ describe("getIconForChangeStatus", () => {
 
     it("returns dark background in dark mode when no status", () => {
       const result = getIconForChangeStatus(undefined, true);
-      expect(result.backgroundColor).toBe("#404040"); // colors.neutral[700]
+      expect(result.backgroundColor).toBe("rgb(38 38 38)");
     });
   });
 });
@@ -224,42 +224,42 @@ describe("getIconForResourceType", () => {
 
 describe("style constants", () => {
   describe("changeStatusColors", () => {
-    it("has correct color for added", () => {
-      expect(changeStatusColors.added).toBe("#22C55E");
+    it("has muted green for added", () => {
+      expect(changeStatusColors.added).toBe("rgb(46 160 67)");
     });
 
-    it("has correct color for removed", () => {
-      expect(changeStatusColors.removed).toBe("#EF4444");
+    it("has muted red for removed", () => {
+      expect(changeStatusColors.removed).toBe("rgb(248 81 73)");
     });
 
-    it("has correct color for modified", () => {
-      expect(changeStatusColors.modified).toBe("#D4850B");
+    it("has brown for modified", () => {
+      expect(changeStatusColors.modified).toBe("rgb(212 133 11)");
     });
 
-    it("has correct color for impacted", () => {
-      expect(changeStatusColors.impacted).toBe("#FCD34D"); // amber[300] yellow
+    it("has yellow for impacted", () => {
+      expect(changeStatusColors.impacted).toBe("rgb(252 211 77)");
     });
 
-    it("has correct color for unchanged", () => {
+    it("has neutral gray for unchanged", () => {
       expect(changeStatusColors.unchanged).toBe("#737373");
     });
   });
 
   describe("changeStatusBackgroundsLight", () => {
     it("has correct background for added", () => {
-      expect(changeStatusBackgroundsLight.added).toBe("#DCFCE7");
+      expect(changeStatusBackgroundsLight.added).toBe("rgb(222 248 227)");
     });
 
     it("has correct background for removed", () => {
-      expect(changeStatusBackgroundsLight.removed).toBe("#FECACA");
+      expect(changeStatusBackgroundsLight.removed).toBe("rgb(252 225 224)");
     });
 
     it("has correct background for modified", () => {
-      expect(changeStatusBackgroundsLight.modified).toBe("#FEF3C7");
+      expect(changeStatusBackgroundsLight.modified).toBe("rgb(255 237 175)");
     });
 
     it("has correct background for impacted", () => {
-      expect(changeStatusBackgroundsLight.impacted).toBe("#FEF9E3");
+      expect(changeStatusBackgroundsLight.impacted).toBe("rgb(254 249 227)");
     });
 
     it("has correct background for unchanged", () => {
@@ -269,23 +269,23 @@ describe("style constants", () => {
 
   describe("changeStatusBackgroundsDark", () => {
     it("has correct background for added", () => {
-      expect(changeStatusBackgroundsDark.added).toBe("#14532D");
+      expect(changeStatusBackgroundsDark.added).toBe("rgb(30 58 30)");
     });
 
     it("has correct background for removed", () => {
-      expect(changeStatusBackgroundsDark.removed).toBe("#450A0A");
+      expect(changeStatusBackgroundsDark.removed).toBe("rgb(68 35 35)");
     });
 
     it("has correct background for modified", () => {
-      expect(changeStatusBackgroundsDark.modified).toBe("#78350F");
+      expect(changeStatusBackgroundsDark.modified).toBe("rgb(75 65 33)");
     });
 
     it("has correct background for impacted", () => {
-      expect(changeStatusBackgroundsDark.impacted).toBe("#322C18");
+      expect(changeStatusBackgroundsDark.impacted).toBe("rgb(50 44 24)");
     });
 
     it("has correct background for unchanged", () => {
-      expect(changeStatusBackgroundsDark.unchanged).toBe("#404040");
+      expect(changeStatusBackgroundsDark.unchanged).toBe("rgb(38 38 38)");
     });
   });
 });
@@ -343,9 +343,8 @@ describe("icon components", () => {
 // =============================================================================
 // CSS ↔ JS Color Sync
 // =============================================================================
-// The schema sidebar (style.css) uses CSS custom properties for row colors.
-// The JS constants (changeStatusColors, changeStatusBackgrounds*) are the
-// single source of truth for lineage nodes, edges, legend, and minimap.
-// The CSS accents for added/removed use GitHub-style diff colors (not Tailwind),
-// while changed/impacted use Tailwind amber shades that match the JS constants.
-// TODO: Unify CSS and JS palettes, then add a sync test here.
+// The JS constants above are hand-synced with the --schema-color-* custom
+// properties in ../../schema/style.css. Both sides use the same muted
+// palette so the lineage graph, legend, edges, column nodes, and sidebar
+// render as one visual system. When updating a color, update both files
+// and the expected values in this test — there is no build-time check.

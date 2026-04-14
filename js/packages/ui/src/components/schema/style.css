@@ -1,7 +1,14 @@
 /**
- * Schema diff color palette
- * Uses CSS custom properties for theme-aware colors.
- * JS consumers use changeStatusColors in ../lineage/styles.tsx — keep in sync.
+ * Schema diff color palette — canonical muted palette for change-status rows.
+ *
+ * PAIRED WITH: ../lineage/styles.tsx (changeStatusColors,
+ * changeStatusBackgroundsLight, changeStatusBackgroundsDark).
+ *
+ * These CSS custom properties are the source of truth for the sidebar;
+ * the JS constants mirror the same rgb() values so the lineage graph,
+ * legend, edges, and column nodes render with the same hues. If you
+ * change a color here, change the matching entry in styles.tsx and vice
+ * versa — there is no build-time check that keeps them aligned.
  */
 
 /* Light mode (default) */

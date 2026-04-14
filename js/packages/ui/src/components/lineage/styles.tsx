@@ -616,18 +616,27 @@ export function getIconForMaterialization(
 // =============================================================================
 
 /**
- * Pre-defined colors for change status (for direct usage without function call).
- * Single source of truth for JS consumers (lineage graph, legend, edges, minimap).
- * Schema sidebar uses CSS custom properties in ../schema/style.css — keep in sync.
+ * Change-status palette for JS consumers (lineage graph, legend, edges,
+ * minimap, column nodes).
+ *
+ * PAIRED WITH: ../schema/style.css (--schema-color-* / --schema-color-*-accent
+ * custom properties). The schema sidebar uses CSS variables; JS uses these
+ * constants. Both are hand-synced — if you change a color in one, change
+ * the matching entry in the other. There is no build-time check.
+ *
+ * Both maps use the muted sidebar palette (brown for "changed", yellow for
+ * "impacted") so the lineage view and the schema sidebar read as the same
+ * visual system.
  */
 export const changeStatusColors: Record<
   ChangeStatus | "unchanged" | "impacted",
   string
 > = {
-  added: colors.green[500],
-  removed: colors.red[500],
-  modified: "#D4850B",
-  impacted: colors.amber[300], // Accent color for impacted nodes (downstream of changes)
+  // Values mirror --schema-color-*-accent in ../schema/style.css (muted sidebar palette).
+  added: "rgb(46 160 67)",
+  removed: "rgb(248 81 73)",
+  modified: "rgb(212 133 11)",
+  impacted: "rgb(252 211 77)",
   unchanged: colors.neutral[500],
 };
 
@@ -638,10 +647,11 @@ export const changeStatusBackgroundsLight: Record<
   ChangeStatus | "unchanged" | "impacted",
   string
 > = {
-  added: colors.green[100],
-  removed: colors.red[200],
-  modified: colors.amber[100],
-  impacted: "#FEF9E3", // light yellow (lighter than modified bg)
+  // Values mirror --schema-color-* (light) in ../schema/style.css (muted sidebar palette).
+  added: "rgb(222 248 227)",
+  removed: "rgb(252 225 224)",
+  modified: "rgb(255 237 175)",
+  impacted: "rgb(254 249 227)",
   unchanged: colors.white,
 };
 
@@ -652,9 +662,10 @@ export const changeStatusBackgroundsDark: Record<
   ChangeStatus | "unchanged" | "impacted",
   string
 > = {
-  added: colors.green[900],
-  removed: colors.red[950],
-  modified: colors.amber[900],
-  impacted: "#322C18", // dark warm brown-yellow (subtle dark mode fill)
-  unchanged: colors.neutral[700],
+  // Values mirror --schema-color-* (dark) in ../schema/style.css (muted sidebar palette).
+  added: "rgb(30 58 30)",
+  removed: "rgb(68 35 35)",
+  modified: "rgb(75 65 33)",
+  impacted: "rgb(50 44 24)",
+  unchanged: "rgb(38 38 38)",
 };
