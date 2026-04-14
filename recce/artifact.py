@@ -185,7 +185,7 @@ def upload_dbt_artifacts(target_path: str, branch: str, token: str, password: st
         headers.update(s3_metadata_headers(metadata))
     response = requests.put(presigned_url, data=open(compress_file_path, "rb").read(), headers=headers)
     if response.status_code not in (200, 204):
-        raise Exception({response.text})
+        raise Exception(response.text)
 
     # Clean up the compressed artifacts
     try:
