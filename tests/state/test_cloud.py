@@ -788,5 +788,96 @@ class TestCloudStateLoader(unittest.TestCase):
         self.assertIs(result_state.pull_request, loader.pr_info)
 
 
+class TestS3HeaderHelpers(unittest.TestCase):
+
+    def test_normalize_s3_metadata_basic(self):
+        from recce.state.cloud import normalize_s3_metadata
+
+        result = normalize_s3_metadata({"commit": "abc123", "dbt_version": "1.8.9"})
+        self.assertEqual(result, {"commit": "abc123", "dbt_version": "1.8.9"})
+
+    def test_normalize_s3_metadata_none_values(self):
+        from recce.state.cloud import normalize_s3_metadata
+
+        result = normalize_s3_metadata({"commit": None, "dbt_version": "1.8.9"})
+        self.assertEqual(result, {"commit": "", "dbt_version": "1.8.9"})
+
+    def test_normalize_s3_metadata_int_values(self):
+        from recce.state.cloud import normalize_s3_metadata
+
+        result = normalize_s3_metadata({"total_checks": 5, "approved_checks": 3})
+        self.assertEqual(result, {"total_checks": "5", "approved_checks": "3"})
+
+    def test_normalize_s3_metadata_empty(self):
+        from recce.state.cloud import normalize_s3_metadata
+
+        self.assertEqual(normalize_s3_metadata({}), {})
+
+    def test_s3_metadata_headers_basic(self):
+        from recce.state.cloud import s3_metadata_headers
+
+        result = s3_metadata_headers({"commit": "abc123", "dbt_version": "1.8.9"})
+        self.assertEqual(
+            result,
+            {
+                "x-amz-meta-commit": "abc123",
+                "x-amz-meta-dbt_version": "1.8.9",
+            },
+        )
+
+    def test_s3_metadata_headers_none_values(self):
+        from recce.state.cloud import s3_metadata_headers
+
+        result = s3_metadata_headers({"commit": None, "dbt_version": "1.8.9"})
+        self.assertEqual(
+            result,
+            {
+                "x-amz-meta-commit": "",
+                "x-amz-meta-dbt_version": "1.8.9",
+            },
+        )
+
+    def test_s3_metadata_headers_empty(self):
+        from recce.state.cloud import s3_metadata_headers
+
+        self.assertEqual(s3_metadata_headers({}), {})
+
+
+class TestUploadIncludesMetaHeaders(unittest.TestCase):
+
+    @patch("recce.state.cloud.CheckDAO")
+    @patch("requests.put")
+    def test_export_state_to_github_sends_meta_headers(self, mock_put, mock_check_dao):
+        """Verify _upload_state_to_url includes x-amz-meta-* headers when metadata is provided."""
+        mock_pr_info = Mock()
+        mock_pr_info.id = "123"
+        mock_pr_info.repository = "owner/repo"
+
+        loader = CloudStateLoader(cloud_options={"api_token": "token"})
+        loader.catalog = "github"
+        loader.pr_info = mock_pr_info
+        loader.cloud_options = {"password": "test_pass"}
+        loader.state = RecceState()
+
+        mock_check_dao.return_value.status.return_value = {"total": 5, "approved": 3}
+
+        loader.recce_cloud = Mock()
+        loader.recce_cloud.get_presigned_url_by_github_repo.return_value = "http://presigned.url"
+        loader.recce_cloud.get_artifact_metadata.return_value = {"etag": "test_etag"}
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_put.return_value = mock_response
+
+        loader._export_state_to_github()
+
+        # Verify x-amz-meta-* headers were included in the PUT request
+        call_kwargs = mock_put.call_args
+        headers = call_kwargs.kwargs.get("headers") or call_kwargs[1].get("headers")
+        self.assertEqual(headers["x-amz-meta-total_checks"], "5")
+        self.assertEqual(headers["x-amz-meta-approved_checks"], "3")
+        self.assertIn("x-amz-tagging", headers)
+
+
 if __name__ == "__main__":
     unittest.main()
