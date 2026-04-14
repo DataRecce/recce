@@ -3,15 +3,20 @@
  * @description Tests for lineage styles utilities
  *
  * Tests verify:
- * - getIconForChangeStatus returns correct colors and icons
+ * - getIconForChangeStatus returns correct colors and icons (default palette)
+ * - getCllIconForChangeStatus / getStyleForImpacted use the CLL palette
  * - getIconForResourceType returns correct colors and icons
- * - Style constants are defined correctly
+ * - Style constants are defined correctly for both palettes
  */
 
 import {
   changeStatusBackgroundsDark,
   changeStatusBackgroundsLight,
   changeStatusColors,
+  cllChangeStatusBackgroundsDark,
+  cllChangeStatusBackgroundsLight,
+  cllChangeStatusColors,
+  getCllIconForChangeStatus,
   getIconForChangeStatus,
   getIconForResourceType,
   getStyleForImpacted,
@@ -29,19 +34,19 @@ import {
 } from "../styles";
 
 // =============================================================================
-// getStyleForImpacted Tests
+// getStyleForImpacted Tests (CLL-only)
 // =============================================================================
 
 describe("getStyleForImpacted", () => {
-  it("uses changeStatusColors.impacted as accent color", () => {
+  it("uses cllChangeStatusColors.impacted as accent color", () => {
     const style = getStyleForImpacted(false);
-    expect(style.color).toBe(changeStatusColors.impacted);
-    expect(style.hexColor).toBe(changeStatusColors.impacted);
+    expect(style.color).toBe(cllChangeStatusColors.impacted);
+    expect(style.hexColor).toBe(cllChangeStatusColors.impacted);
   });
 
   it("uses same accent color in dark mode", () => {
     const style = getStyleForImpacted(true);
-    expect(style.color).toBe(changeStatusColors.impacted);
+    expect(style.color).toBe(cllChangeStatusColors.impacted);
   });
 
   it("returns a background color in light mode", () => {
@@ -61,15 +66,15 @@ describe("getStyleForImpacted", () => {
 });
 
 // =============================================================================
-// getIconForChangeStatus Tests
+// getIconForChangeStatus Tests (default Tailwind palette)
 // =============================================================================
 
-describe("getIconForChangeStatus", () => {
+describe("getIconForChangeStatus (default palette)", () => {
   describe("added status", () => {
-    it("returns muted green accent for added status", () => {
+    it("returns Tailwind green for added status", () => {
       const result = getIconForChangeStatus("added");
-      expect(result.color).toBe("rgb(46 160 67)");
-      expect(result.hexColor).toBe("rgb(46 160 67)");
+      expect(result.color).toBe("#22C55E"); // colors.green[500]
+      expect(result.hexColor).toBe("#22C55E");
     });
 
     it("returns IconAdded icon for added status", () => {
@@ -79,58 +84,36 @@ describe("getIconForChangeStatus", () => {
 
     it("returns light background in light mode", () => {
       const result = getIconForChangeStatus("added", false);
-      expect(result.backgroundColor).toBe("rgb(222 248 227)");
+      expect(result.backgroundColor).toBe("#DCFCE7"); // colors.green[100]
     });
 
     it("returns dark background in dark mode", () => {
       const result = getIconForChangeStatus("added", true);
-      expect(result.backgroundColor).toBe("rgb(30 58 30)");
+      expect(result.backgroundColor).toBe("#14532D"); // colors.green[900]
     });
   });
 
   describe("removed status", () => {
-    it("returns muted red accent for removed status", () => {
+    it("returns Tailwind red for removed status", () => {
       const result = getIconForChangeStatus("removed");
-      expect(result.color).toBe("rgb(248 81 73)");
-      expect(result.hexColor).toBe("rgb(248 81 73)");
+      expect(result.color).toBe("#EF4444"); // colors.red[500]
     });
 
     it("returns IconRemoved icon for removed status", () => {
       const result = getIconForChangeStatus("removed");
       expect(result.icon).toBe(IconRemoved);
     });
-
-    it("returns light background in light mode", () => {
-      const result = getIconForChangeStatus("removed", false);
-      expect(result.backgroundColor).toBe("rgb(252 225 224)");
-    });
-
-    it("returns dark background in dark mode", () => {
-      const result = getIconForChangeStatus("removed", true);
-      expect(result.backgroundColor).toBe("rgb(68 35 35)");
-    });
   });
 
   describe("modified status", () => {
-    it("returns brown accent for modified status", () => {
+    it("returns Tailwind amber for modified status", () => {
       const result = getIconForChangeStatus("modified");
-      expect(result.color).toBe("rgb(212 133 11)"); // brown — distinct from impacted yellow
-      expect(result.hexColor).toBe("rgb(212 133 11)");
+      expect(result.color).toBe("#F59E0B"); // colors.amber[500]
     });
 
     it("returns IconModified icon for modified status", () => {
       const result = getIconForChangeStatus("modified");
       expect(result.icon).toBe(IconModified);
-    });
-
-    it("returns light background in light mode", () => {
-      const result = getIconForChangeStatus("modified", false);
-      expect(result.backgroundColor).toBe("rgb(255 237 175)");
-    });
-
-    it("returns dark background in dark mode", () => {
-      const result = getIconForChangeStatus("modified", true);
-      expect(result.backgroundColor).toBe("rgb(75 65 33)");
     });
   });
 
@@ -153,8 +136,39 @@ describe("getIconForChangeStatus", () => {
 
     it("returns dark background in dark mode when no status", () => {
       const result = getIconForChangeStatus(undefined, true);
-      expect(result.backgroundColor).toBe("rgb(38 38 38)");
+      expect(result.backgroundColor).toBe("#404040"); // colors.neutral[700]
     });
+  });
+});
+
+// =============================================================================
+// getCllIconForChangeStatus Tests (muted CLL palette)
+// =============================================================================
+
+describe("getCllIconForChangeStatus (CLL palette)", () => {
+  it("returns muted green for added", () => {
+    const result = getCllIconForChangeStatus("added");
+    expect(result.color).toBe("rgb(46 160 67)");
+  });
+
+  it("returns muted red for removed", () => {
+    const result = getCllIconForChangeStatus("removed");
+    expect(result.color).toBe("rgb(248 81 73)");
+  });
+
+  it("returns brown for modified (distinct from impacted yellow)", () => {
+    const result = getCllIconForChangeStatus("modified");
+    expect(result.color).toBe("rgb(212 133 11)");
+  });
+
+  it("returns light background in light mode for added", () => {
+    const result = getCllIconForChangeStatus("added", false);
+    expect(result.backgroundColor).toBe("rgb(222 248 227)");
+  });
+
+  it("returns dark background in dark mode for modified", () => {
+    const result = getCllIconForChangeStatus("modified", true);
+    expect(result.backgroundColor).toBe("rgb(75 65 33)");
   });
 });
 
@@ -223,21 +237,17 @@ describe("getIconForResourceType", () => {
 // =============================================================================
 
 describe("style constants", () => {
-  describe("changeStatusColors", () => {
-    it("has muted green for added", () => {
-      expect(changeStatusColors.added).toBe("rgb(46 160 67)");
+  describe("changeStatusColors (default palette)", () => {
+    it("has Tailwind green for added", () => {
+      expect(changeStatusColors.added).toBe("#22C55E");
     });
 
-    it("has muted red for removed", () => {
-      expect(changeStatusColors.removed).toBe("rgb(248 81 73)");
+    it("has Tailwind red for removed", () => {
+      expect(changeStatusColors.removed).toBe("#EF4444");
     });
 
-    it("has brown for modified", () => {
-      expect(changeStatusColors.modified).toBe("rgb(212 133 11)");
-    });
-
-    it("has yellow for impacted", () => {
-      expect(changeStatusColors.impacted).toBe("rgb(252 211 77)");
+    it("has Tailwind amber for modified", () => {
+      expect(changeStatusColors.modified).toBe("#F59E0B");
     });
 
     it("has neutral gray for unchanged", () => {
@@ -245,47 +255,65 @@ describe("style constants", () => {
     });
   });
 
-  describe("changeStatusBackgroundsLight", () => {
-    it("has correct background for added", () => {
-      expect(changeStatusBackgroundsLight.added).toBe("rgb(222 248 227)");
+  describe("cllChangeStatusColors (CLL palette)", () => {
+    it("has muted green for added", () => {
+      expect(cllChangeStatusColors.added).toBe("rgb(46 160 67)");
     });
 
-    it("has correct background for removed", () => {
-      expect(changeStatusBackgroundsLight.removed).toBe("rgb(252 225 224)");
+    it("has muted red for removed", () => {
+      expect(cllChangeStatusColors.removed).toBe("rgb(248 81 73)");
     });
 
-    it("has correct background for modified", () => {
-      expect(changeStatusBackgroundsLight.modified).toBe("rgb(255 237 175)");
+    it("has brown for modified", () => {
+      expect(cllChangeStatusColors.modified).toBe("rgb(212 133 11)");
     });
 
-    it("has correct background for impacted", () => {
-      expect(changeStatusBackgroundsLight.impacted).toBe("rgb(254 249 227)");
+    it("has yellow for impacted", () => {
+      expect(cllChangeStatusColors.impacted).toBe("rgb(252 211 77)");
     });
 
-    it("has correct background for unchanged", () => {
-      expect(changeStatusBackgroundsLight.unchanged).toBe("#FFFFFF");
+    it("has neutral gray for unchanged", () => {
+      expect(cllChangeStatusColors.unchanged).toBe("#737373");
     });
   });
 
-  describe("changeStatusBackgroundsDark", () => {
-    it("has correct background for added", () => {
-      expect(changeStatusBackgroundsDark.added).toBe("rgb(30 58 30)");
+  describe("changeStatusBackgroundsLight (default palette)", () => {
+    it("uses Tailwind green-100 for added", () => {
+      expect(changeStatusBackgroundsLight.added).toBe("#DCFCE7");
     });
 
-    it("has correct background for removed", () => {
-      expect(changeStatusBackgroundsDark.removed).toBe("rgb(68 35 35)");
+    it("uses Tailwind amber-100 for modified", () => {
+      expect(changeStatusBackgroundsLight.modified).toBe("#FEF3C7");
+    });
+  });
+
+  describe("changeStatusBackgroundsDark (default palette)", () => {
+    it("uses Tailwind green-900 for added", () => {
+      expect(changeStatusBackgroundsDark.added).toBe("#14532D");
+    });
+
+    it("uses Tailwind amber-900 for modified", () => {
+      expect(changeStatusBackgroundsDark.modified).toBe("#78350F");
+    });
+  });
+
+  describe("cllChangeStatusBackgroundsLight", () => {
+    it("has correct background for impacted", () => {
+      expect(cllChangeStatusBackgroundsLight.impacted).toBe("rgb(254 249 227)");
     });
 
     it("has correct background for modified", () => {
-      expect(changeStatusBackgroundsDark.modified).toBe("rgb(75 65 33)");
+      expect(cllChangeStatusBackgroundsLight.modified).toBe("rgb(255 237 175)");
     });
+  });
 
+  describe("cllChangeStatusBackgroundsDark", () => {
     it("has correct background for impacted", () => {
-      expect(changeStatusBackgroundsDark.impacted).toBe("rgb(50 44 24)");
+      expect(cllChangeStatusBackgroundsDark.impacted).toBe("rgb(50 44 24)");
     });
 
-    it("has correct background for unchanged", () => {
-      expect(changeStatusBackgroundsDark.unchanged).toBe("rgb(38 38 38)");
+    it("has correct background for modified", () => {
+      expect(cllChangeStatusBackgroundsDark.modified).toBe("rgb(75 65 33)");
     });
   });
 });
@@ -339,12 +367,3 @@ describe("icon components", () => {
     expect(typeof IconImpacted).toBe("function");
   });
 });
-
-// =============================================================================
-// CSS ↔ JS Color Sync
-// =============================================================================
-// The JS constants above are hand-synced with the --schema-color-* custom
-// properties in ../../schema/style.css. Both sides use the same muted
-// palette so the lineage graph, legend, edges, column nodes, and sidebar
-// render as one visual system. When updating a color, update both files
-// and the expected values in this test — there is no build-time check.

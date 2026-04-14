@@ -12,7 +12,7 @@ import {
 } from "../..";
 import type { ColumnLineageData } from "../../api";
 import type { ColumnAnnotation } from "./computeColumnLineage";
-import { changeStatusColors } from "./styles";
+import { cllChangeStatusColors } from "./styles";
 
 /**
  * Convert a LineageGraph to React Flow nodes and edges with column-level lineage support
@@ -322,8 +322,8 @@ function addColumnAncestryNodes(
             zIndex: 9999,
             strokeWidth: 2,
             stroke: isSourceImpacted
-              ? changeStatusColors.impacted
-              : changeStatusColors.unchanged,
+              ? cllChangeStatusColors.impacted
+              : cllChangeStatusColors.unchanged,
           },
         });
       }

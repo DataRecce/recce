@@ -501,14 +501,37 @@ export function getIconForChangeStatus(
 }
 
 /**
- * Get style for impacted nodes — a full peer status alongside added/removed/modified.
- * Reads from the centralized changeStatusColors/backgrounds constants.
+ * CLL variant of getIconForChangeStatus — returns the muted brown/yellow palette
+ * used inside the new CLL experience. Same shape as getIconForChangeStatus.
+ */
+export function getCllIconForChangeStatus(
+  changeStatus?: ChangeStatus,
+  isDark?: boolean,
+): ChangeStatusStyle {
+  const status = changeStatus ?? "unchanged";
+  const color = cllChangeStatusColors[status];
+  const bg = isDark
+    ? cllChangeStatusBackgroundsDark[status]
+    : cllChangeStatusBackgroundsLight[status];
+
+  return {
+    color,
+    hexColor: color,
+    backgroundColor: bg,
+    hexBackgroundColor: bg,
+    icon: changeStatusIcons[status],
+  };
+}
+
+/**
+ * Get style for impacted nodes — a peer status alongside added/removed/modified
+ * inside the new CLL experience. Reads from cllChangeStatus* constants.
  */
 export function getStyleForImpacted(isDark?: boolean): ChangeStatusStyle {
-  const color = changeStatusColors.impacted;
+  const color = cllChangeStatusColors.impacted;
   const bg = isDark
-    ? changeStatusBackgroundsDark.impacted
-    : changeStatusBackgroundsLight.impacted;
+    ? cllChangeStatusBackgroundsDark.impacted
+    : cllChangeStatusBackgroundsLight.impacted;
 
   return {
     color,
@@ -616,23 +639,52 @@ export function getIconForMaterialization(
 // =============================================================================
 
 /**
- * Change-status palette for JS consumers (lineage graph, legend, edges,
- * minimap, column nodes).
- *
- * PAIRED WITH: ../schema/style.css (--schema-color-* / --schema-color-*-accent
- * custom properties). The schema sidebar uses CSS variables; JS uses these
- * constants. Both are hand-synced — if you change a color in one, change
- * the matching entry in the other. There is no build-time check.
- *
- * Both maps use the muted sidebar palette (brown for "changed", yellow for
- * "impacted") so the lineage view and the schema sidebar read as the same
- * visual system.
+ * Pre-defined colors for change status (default palette — used by OSS lineage,
+ * schema diff checks, summary, and any non-CLL consumer).
  */
-export const changeStatusColors: Record<
+export const changeStatusColors: Record<ChangeStatus | "unchanged", string> = {
+  added: colors.green[500],
+  removed: colors.red[500],
+  modified: colors.amber[500],
+  unchanged: colors.neutral[500],
+};
+
+/**
+ * Pre-defined background colors for change status (light mode, default palette)
+ */
+export const changeStatusBackgroundsLight: Record<
+  ChangeStatus | "unchanged",
+  string
+> = {
+  added: colors.green[100],
+  removed: colors.red[200],
+  modified: colors.amber[100],
+  unchanged: colors.white,
+};
+
+/**
+ * Pre-defined background colors for change status (dark mode, default palette)
+ */
+export const changeStatusBackgroundsDark: Record<
+  ChangeStatus | "unchanged",
+  string
+> = {
+  added: colors.green[900],
+  removed: colors.red[950],
+  modified: colors.amber[900],
+  unchanged: colors.neutral[700],
+};
+
+/**
+ * CLL palette — muted brown/yellow variant used only inside the new CLL
+ * experience (LineageNode, LineageColumnNode, LineageEdge, LineageCanvas
+ * minimap, LineageLegend). Mirrors the `.cll-experience` overrides in
+ * ../schema/style.css; keep both sides in sync (no build-time check).
+ */
+export const cllChangeStatusColors: Record<
   ChangeStatus | "unchanged" | "impacted",
   string
 > = {
-  // Values mirror --schema-color-*-accent in ../schema/style.css (muted sidebar palette).
   added: "rgb(46 160 67)",
   removed: "rgb(248 81 73)",
   modified: "rgb(212 133 11)",
@@ -640,14 +692,10 @@ export const changeStatusColors: Record<
   unchanged: colors.neutral[500],
 };
 
-/**
- * Pre-defined background colors for change status (light mode)
- */
-export const changeStatusBackgroundsLight: Record<
+export const cllChangeStatusBackgroundsLight: Record<
   ChangeStatus | "unchanged" | "impacted",
   string
 > = {
-  // Values mirror --schema-color-* (light) in ../schema/style.css (muted sidebar palette).
   added: "rgb(222 248 227)",
   removed: "rgb(252 225 224)",
   modified: "rgb(255 237 175)",
@@ -655,14 +703,10 @@ export const changeStatusBackgroundsLight: Record<
   unchanged: colors.white,
 };
 
-/**
- * Pre-defined background colors for change status (dark mode)
- */
-export const changeStatusBackgroundsDark: Record<
+export const cllChangeStatusBackgroundsDark: Record<
   ChangeStatus | "unchanged" | "impacted",
   string
 > = {
-  // Values mirror --schema-color-* (dark) in ../schema/style.css (muted sidebar palette).
   added: "rgb(30 58 30)",
   removed: "rgb(68 35 35)",
   modified: "rgb(75 65 33)",

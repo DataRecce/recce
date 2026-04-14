@@ -19,14 +19,27 @@ export default meta;
 type Story = StoryObj<typeof LineageLegend>;
 
 /**
- * Change status legend showing all four statuses:
- * Added, Removed, Modified, and Impacted.
+ * Default change status legend (OSS lineage view).
+ * Tailwind palette, no "Impacted" entry.
  */
 export const ChangeStatus: Story = {
   args: {
     variant: "changeStatus",
     title: "Changes",
     showTooltips: true,
+  },
+};
+
+/**
+ * Change status legend inside the new CLL experience.
+ * Muted brown/yellow palette, includes "Impacted".
+ */
+export const ChangeStatusCll: Story = {
+  args: {
+    variant: "changeStatus",
+    title: "Changes",
+    showTooltips: true,
+    newCllExperience: true,
   },
 };
 

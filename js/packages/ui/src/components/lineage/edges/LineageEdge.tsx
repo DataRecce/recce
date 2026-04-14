@@ -8,7 +8,7 @@ import {
   getBezierPath,
 } from "@xyflow/react";
 import { memo } from "react";
-import { changeStatusColors } from "../styles";
+import { cllChangeStatusColors } from "../styles";
 
 export type EdgeChangeStatus = "added" | "removed" | "modified" | "unchanged";
 
@@ -49,7 +49,7 @@ function LineageEdgeComponent({
     targetPosition,
   });
 
-  const strokeColor = changeStatusColors[changeStatus];
+  const strokeColor = cllChangeStatusColors[changeStatus];
   const strokeWidth = isHighlighted || selected ? 2.5 : 1.5;
   const strokeOpacity = isHighlighted || selected ? 1 : 0.6;
 

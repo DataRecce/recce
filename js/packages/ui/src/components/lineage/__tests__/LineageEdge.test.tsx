@@ -52,7 +52,7 @@ import {
   type LineageEdgeData,
   type LineageEdgeProps,
 } from "../edges/LineageEdge";
-import { changeStatusColors } from "../styles";
+import { cllChangeStatusColors } from "../styles";
 
 // ============================================================================
 // Test Fixtures
@@ -148,10 +148,10 @@ describe("LineageEdge", () => {
 
   describe("change status styling", () => {
     const statusColors: Record<EdgeChangeStatus, string> = {
-      added: changeStatusColors.added,
-      removed: changeStatusColors.removed,
-      modified: changeStatusColors.modified,
-      unchanged: changeStatusColors.unchanged,
+      added: cllChangeStatusColors.added,
+      removed: cllChangeStatusColors.removed,
+      modified: cllChangeStatusColors.modified,
+      unchanged: cllChangeStatusColors.unchanged,
     };
 
     it.each(
@@ -323,7 +323,7 @@ describe("LineageEdge", () => {
       render(<LineageEdge {...props} />);
 
       const edge = screen.getByTestId("base-edge");
-      expect(edge.style.stroke).toBe(changeStatusColors.added); // green for added
+      expect(edge.style.stroke).toBe(cllChangeStatusColors.added); // green for added
       expect(edge.style.strokeWidth).toBe("2.5"); // highlighted
       expect(edge.style.opacity).toBe("1"); // highlighted
       expect(screen.getByText("new dependency")).toBeInTheDocument();
@@ -341,7 +341,7 @@ describe("LineageEdge", () => {
       render(<LineageEdge {...props} />);
 
       const edge = screen.getByTestId("base-edge");
-      expect(edge.style.stroke).toBe(changeStatusColors.removed); // red for removed
+      expect(edge.style.stroke).toBe(cllChangeStatusColors.removed); // red for removed
       expect(edge.style.strokeWidth).toBe("1.5"); // not highlighted
       expect(edge.style.opacity).toBe("0.6"); // not highlighted
     });

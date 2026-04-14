@@ -8,9 +8,9 @@ import { memo, useState } from "react";
 import { DataTypeIcon } from "../../ui/DataTypeIcon";
 import { DIM_FILTER } from "../config/zoomConstants";
 import {
-  changeStatusBackgroundsDark,
-  changeStatusBackgroundsLight,
-  changeStatusColors,
+  cllChangeStatusBackgroundsDark,
+  cllChangeStatusBackgroundsLight,
+  cllChangeStatusColors,
   getStyleForImpacted,
 } from "../styles";
 
@@ -152,7 +152,7 @@ function ChangeStatusIndicator({
     return null;
   }
 
-  const color = changeStatusColors[changeStatus];
+  const color = cllChangeStatusColors[changeStatus];
   const symbols: Record<ColumnChangeStatus, string> = {
     added: "+",
     removed: "-",
@@ -292,12 +292,12 @@ function LineageColumnNodeComponent({
   // Resolve tinted background + left accent for this row.
   // Precedence: changeStatus → impacted → plain.
   const statusBg = changeStatus
-    ? (isDark ? changeStatusBackgroundsDark : changeStatusBackgroundsLight)[
-        changeStatus
-      ]
+    ? (isDark
+        ? cllChangeStatusBackgroundsDark
+        : cllChangeStatusBackgroundsLight)[changeStatus]
     : undefined;
   const statusAccent = changeStatus
-    ? changeStatusColors[changeStatus]
+    ? cllChangeStatusColors[changeStatus]
     : undefined;
   const impactedStyle =
     isImpacted && !changeStatus ? getStyleForImpacted(isDark) : undefined;
