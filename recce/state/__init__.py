@@ -2,6 +2,7 @@ from .cloud import (
     CloudStateLoader,
     RecceCloudStateManager,
     RecceShareStateManager,
+    normalize_s3_metadata,
     s3_metadata_headers,
     s3_sse_c_headers,
 )
@@ -26,6 +27,7 @@ __all__ = [
     "CloudStateLoader",
     "FileStateLoader",
     "RecceStateMetadata",
+    "normalize_s3_metadata",
     "s3_metadata_headers",
     "s3_sse_c_headers",
     "GitRepoInfo",

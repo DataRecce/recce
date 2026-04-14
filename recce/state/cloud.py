@@ -39,13 +39,23 @@ def s3_sse_c_headers(password: str) -> Dict[str, str]:
     }
 
 
+def normalize_s3_metadata(metadata: dict) -> Dict[str, str]:
+    """Normalize metadata values to strings for S3 headers.
+
+    Converts None to empty string and other values to str so that
+    x-amz-tagging and x-amz-meta-* headers use consistent values.
+    """
+    return {key: str(value) if value is not None else "" for key, value in metadata.items()}
+
+
 def s3_metadata_headers(metadata: dict) -> Dict[str, str]:
     """Build S3 x-amz-meta-* headers from metadata dict.
 
     S3v4 presigned URLs may include these in SignedHeaders,
     so the client must send them with matching values.
     """
-    return {f"x-amz-meta-{key}": str(value) if value is not None else "" for key, value in metadata.items()}
+    normalized = normalize_s3_metadata(metadata)
+    return {f"x-amz-meta-{key}": value for key, value in normalized.items()}
 
 
 class CloudStateLoader(RecceStateLoader):
@@ -473,7 +483,8 @@ class CloudStateLoader(RecceStateLoader):
         if password:
             headers.update(s3_sse_c_headers(password))
         if metadata:
-            headers["x-amz-tagging"] = urlencode(metadata)
+            normalized = normalize_s3_metadata(metadata)
+            headers["x-amz-tagging"] = urlencode(normalized)
             headers.update(s3_metadata_headers(metadata))
 
         with tempfile.NamedTemporaryFile() as tmp:
@@ -559,7 +570,8 @@ class RecceCloudStateManager:
         compress_passwd = self.cloud_options.get("password")
         headers = s3_sse_c_headers(compress_passwd)
         if metadata:
-            headers["x-amz-tagging"] = urlencode(metadata)
+            normalized = normalize_s3_metadata(metadata)
+            headers["x-amz-tagging"] = urlencode(normalized)
             headers.update(s3_metadata_headers(metadata))
         with tempfile.NamedTemporaryFile() as tmp:
             state.to_file(tmp.name, file_type=SupportedFileTypes.GZIP)
