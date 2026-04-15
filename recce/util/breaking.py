@@ -181,6 +181,34 @@ def _diff_select_scope(old_scope: Scope, new_scope: Scope, scope_changes_map: di
                         change_category = "partial_breaking"
                     changed_columns[column_name] = "modified"
 
+    # Detect renames: removed + added columns with identical AST expression
+    def _unalias(projection: exp.Expression) -> str:
+        """Extract the underlying expression SQL, stripping the alias wrapper."""
+        inner = projection.this if isinstance(projection, exp.Alias) else projection
+        return inner.sql()
+
+    rename_map: dict[str, str] = {}  # new_name → old_name
+    removed_cols = {
+        name: old_column_map[name]
+        for name, status in changed_columns.items()
+        if status == "removed" and name in old_column_map
+    }
+    added_cols = {
+        name: new_column_map[name]
+        for name, status in changed_columns.items()
+        if status == "added" and name in new_column_map
+    }
+    for add_name, add_expr in added_cols.items():
+        for rm_name, rm_expr in removed_cols.items():
+            if rm_name in rename_map.values():
+                continue
+            if _unalias(add_expr) == _unalias(rm_expr):
+                rename_map[add_name] = rm_name
+                break
+    for new_name, old_name in rename_map.items():
+        del changed_columns[old_name]  # Remove the "removed" entry
+        changed_columns[new_name] = "renamed"  # Replace "added" with "renamed"
+
     def selected_column_change_status(ref_column: exp.Column) -> Optional[ChangeStatus]:
         column_name = ref_column.name
         return changed_columns.get(column_name)
@@ -230,7 +258,7 @@ def _diff_select_scope(old_scope: Scope, new_scope: Scope, scope_changes_map: di
                 elif selected_column_change_status(ref_column) is not None:
                     change_category = "breaking"
 
-    return NodeChange(category=change_category, columns=changed_columns)
+    return NodeChange(category=change_category, columns=changed_columns, rename_map=rename_map or None)
 
 
 def _diff_union_scope(old_scope: Scope, new_scope: Scope, scope_changes_map: dict[Scope, NodeChange]) -> NodeChange:

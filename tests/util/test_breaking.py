@@ -190,16 +190,14 @@ class BreakingChangeTest(unittest.TestCase):
             a as a1
         from Customers
         """
-        assert is_partial_breaking_change(
-            original_sql,
-            modified_sql,
-            {
-                "a": "removed",
-                "a1": "added",
-            },
-        )
+        # Simple rename: same expression, different alias → detected as rename
+        result = _parse_change_catgory(original_sql, modified_sql)
+        assert result.category == "partial_breaking"
+        assert result.columns == {"a1": "renamed"}
+        assert result.rename_map == {"a1": "a"}
 
-        # by cte
+        # by cte: the outer select references different CTE column names,
+        # so expressions differ (cte.a vs cte.a1) — NOT a rename at root scope
         original_sql = """
         with cte as (
             select
@@ -656,7 +654,7 @@ class BreakingChangeTest(unittest.TestCase):
         from Customers
         where a > 100
         """
-        assert is_breaking_change(no_where, with_where, {"a": "modified", "b": "removed", "b2": "added"})
+        assert is_breaking_change(no_where, with_where, {"a": "modified", "b2": "renamed"})
 
     def test_where_source_column_change(self):
         original_sql = """
@@ -1425,3 +1423,116 @@ class BreakingChangeTest(unittest.TestCase):
         select * from renamed
         """
         assert is_non_breaking_change(original_sql, modified_sql, {"is_promotion": "added"})
+
+
+class RenameDetectionTest(unittest.TestCase):
+    """Tests for rename detection in breaking change analysis."""
+
+    def test_simple_rename(self):
+        """Column alias changes but expression is identical → renamed."""
+        original = "select a as col1 from Customers"
+        modified = "select a as col2 from Customers"
+        result = _parse_change_catgory(original, modified)
+        assert result.category == "partial_breaking"
+        assert result.columns == {"col2": "renamed"}
+        assert result.rename_map == {"col2": "col1"}
+
+    def test_rename_bare_column_to_alias(self):
+        """Bare column → aliased with same expression → renamed."""
+        original = "select a from Customers"
+        modified = "select a as alpha from Customers"
+        result = _parse_change_catgory(original, modified)
+        assert result.category == "partial_breaking"
+        assert result.columns == {"alpha": "renamed"}
+        assert result.rename_map == {"alpha": "a"}
+
+    def test_multiple_renames(self):
+        """Multiple columns renamed simultaneously."""
+        original = "select a as x, b as y from Customers"
+        modified = "select a as x2, b as y2 from Customers"
+        result = _parse_change_catgory(original, modified)
+        assert result.category == "partial_breaking"
+        assert result.columns == {"x2": "renamed", "y2": "renamed"}
+        assert result.rename_map == {"x2": "x", "y2": "y"}
+
+    def test_rename_with_expression_change_is_not_rename(self):
+        """Different expression + different name → removed + added, NOT rename."""
+        original = "select a as col1 from Customers"
+        modified = "select a + 1 as col2 from Customers"
+        result = _parse_change_catgory(original, modified)
+        assert result.category == "partial_breaking"
+        assert result.columns == {"col1": "removed", "col2": "added"}
+        assert result.rename_map is None
+
+    def test_rename_plus_added_column(self):
+        """Rename one column and add another → mixed changes."""
+        original = "select a as x from Customers"
+        modified = "select a as x2, b from Customers"
+        result = _parse_change_catgory(original, modified)
+        assert result.columns.get("x2") == "renamed"
+        assert result.columns.get("b") == "added"
+        assert "x" not in result.columns  # old name should be gone
+        assert result.rename_map == {"x2": "x"}
+
+    def test_rename_plus_removed_column(self):
+        """Rename one column and remove another."""
+        original = "select a as x, b as y from Customers"
+        modified = "select a as x2 from Customers"
+        result = _parse_change_catgory(original, modified)
+        assert result.columns.get("x2") == "renamed"
+        assert result.columns.get("y") == "removed"
+        assert "x" not in result.columns
+        assert result.rename_map == {"x2": "x"}
+
+    def test_rename_plus_modified_column(self):
+        """Rename one column and modify another."""
+        original = "select a as x, b as y from Customers"
+        modified = "select a as x2, b + 1 as y from Customers"
+        result = _parse_change_catgory(original, modified)
+        assert result.columns.get("x2") == "renamed"
+        assert result.columns.get("y") == "modified"
+        assert "x" not in result.columns
+        assert result.rename_map == {"x2": "x"}
+
+    def test_no_false_positive_different_expressions(self):
+        """Removed + added with DIFFERENT expressions → no rename."""
+        original = "select a as x from Customers"
+        modified = "select b as y from Customers"
+        result = _parse_change_catgory(original, modified)
+        assert result.columns == {"x": "removed", "y": "added"}
+        assert result.rename_map is None
+
+    def test_no_rename_when_only_added(self):
+        """Pure add → no rename detection triggered."""
+        original = "select a from Customers"
+        modified = "select a, b from Customers"
+        result = _parse_change_catgory(original, modified)
+        assert result.columns == {"b": "added"}
+        assert result.rename_map is None
+
+    def test_no_rename_when_only_removed(self):
+        """Pure remove → no rename detection triggered."""
+        original = "select a, b from Customers"
+        modified = "select a from Customers"
+        result = _parse_change_catgory(original, modified)
+        assert result.columns == {"b": "removed"}
+        assert result.rename_map is None
+
+    def test_rename_with_derived_expression(self):
+        """Derived expression renamed → detected as rename."""
+        original = "select a + b as total from Customers"
+        modified = "select a + b as sum_ab from Customers"
+        result = _parse_change_catgory(original, modified)
+        assert result.category == "partial_breaking"
+        assert result.columns == {"sum_ab": "renamed"}
+        assert result.rename_map == {"sum_ab": "total"}
+
+    def test_ambiguous_rename_greedy_match(self):
+        """Two removed and two added with same expr → greedy first-match."""
+        original = "select a as x, a as y from Customers"
+        modified = "select a as p, a as q from Customers"
+        result = _parse_change_catgory(original, modified)
+        # Both pairs have same expression (Customers.a), greedy match pairs them
+        assert result.columns.get("p") == "renamed"
+        assert result.columns.get("q") == "renamed"
+        assert len(result.rename_map) == 2
