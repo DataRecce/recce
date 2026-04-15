@@ -52,6 +52,7 @@ function GraphColumnNodeComponent(nodeProps: GraphColumnNodeProps) {
     showContextMenu,
     isNodeHighlighted,
     isNodeShowingChangeAnalysis,
+    newCllExperience,
   } = useLineageViewContextSafe();
 
   // Computed state
@@ -86,6 +87,7 @@ function GraphColumnNodeComponent(nodeProps: GraphColumnNodeProps) {
       showContent={showContent}
       showChangeAnalysis={isShowingChangeAnalysis}
       isDark={isDark}
+      newCllExperience={newCllExperience}
       onContextMenu={handleContextMenu}
     />
   );

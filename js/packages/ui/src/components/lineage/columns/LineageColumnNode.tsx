@@ -8,6 +8,7 @@ import { memo, useState } from "react";
 import { DataTypeIcon } from "../../ui/DataTypeIcon";
 import { DIM_FILTER } from "../config/zoomConstants";
 import {
+  changeStatusColors,
   cllChangeStatusBackgroundsDark,
   cllChangeStatusBackgroundsLight,
   cllChangeStatusColors,
@@ -49,6 +50,8 @@ export interface LineageColumnNodeData extends Record<string, unknown> {
   isFocused?: boolean;
   /** Whether this column is impacted (new CLL experience) */
   isImpacted?: boolean;
+  /** Whether to use the new CLL experience palette (muted bg + left accent) */
+  newCllExperience?: boolean;
 }
 
 /**
@@ -84,6 +87,15 @@ export interface LineageColumnNodeProps {
    * @default false
    */
   isDark?: boolean;
+
+  /**
+   * Whether to use the new CLL experience palette (muted bg + left accent
+   * for changed columns, dark hex fallbacks). When false, renders the
+   * original behavior: only `isImpacted` triggers a tinted bg.
+   * Falls back to `data.newCllExperience` when prop is omitted.
+   * @default false
+   */
+  newCllExperience?: boolean;
 
   // === Callbacks ===
 
@@ -145,14 +157,17 @@ function KebabMenuIcon({ size = 14 }: { size?: number }) {
  */
 function ChangeStatusIndicator({
   changeStatus,
+  newCllExperience,
 }: {
   changeStatus?: ColumnChangeStatus;
+  newCllExperience: boolean;
 }) {
   if (!changeStatus) {
     return null;
   }
 
-  const color = cllChangeStatusColors[changeStatus];
+  const palette = newCllExperience ? cllChangeStatusColors : changeStatusColors;
+  const color = palette[changeStatus];
   const symbols: Record<ColumnChangeStatus, string> = {
     added: "+",
     removed: "-",
@@ -266,6 +281,7 @@ function LineageColumnNodeComponent({
   showContent = true,
   showChangeAnalysis = false,
   isDark = false,
+  newCllExperience: newCllExperienceProp,
   onColumnClick,
   onContextMenu,
 }: LineageColumnNodeProps) {
@@ -278,6 +294,8 @@ function LineageColumnNodeComponent({
     isFocused = false,
     isImpacted = false,
   } = data;
+  const newCllExperience =
+    newCllExperienceProp ?? data.newCllExperience ?? false;
 
   const [isHovered, setIsHovered] = useState(false);
 
@@ -290,26 +308,32 @@ function LineageColumnNodeComponent({
   const shouldShowChangeStatus = showChangeAnalysis && changeStatus;
 
   // Resolve tinted background + left accent for this row.
-  // Precedence: changeStatus → impacted → plain.
-  const statusBg = changeStatus
-    ? (isDark
-        ? cllChangeStatusBackgroundsDark
-        : cllChangeStatusBackgroundsLight)[changeStatus]
-    : undefined;
-  const statusAccent = changeStatus
-    ? cllChangeStatusColors[changeStatus]
-    : undefined;
+  // In new CLL experience: changeStatus → tinted bg + accent; impacted →
+  // amber bg (only when no changeStatus). Outside the flag: only impacted
+  // gets a tinted bg (original behavior); no accent border.
+  const statusBg =
+    newCllExperience && changeStatus
+      ? (isDark
+          ? cllChangeStatusBackgroundsDark
+          : cllChangeStatusBackgroundsLight)[changeStatus]
+      : undefined;
+  const statusAccent =
+    newCllExperience && changeStatus
+      ? cllChangeStatusColors[changeStatus]
+      : undefined;
   const impactedStyle =
     isImpacted && !changeStatus ? getStyleForImpacted(isDark) : undefined;
 
   const tintedBg = statusBg ?? impactedStyle?.backgroundColor;
   const accentColor = statusAccent ?? impactedStyle?.color;
 
-  // Dark-mode fallbacks when no tint applies (column should read as dark paper
-  // with light text, not fall through to MUI's light default).
-  const defaultBg = isDark ? "#262626" : "background.paper";
-  const hoverBg = isDark ? "#333333" : "action.hover";
-  const selectedBg = isDark ? "#404040" : "action.selected";
+  // Dark-mode fallbacks for the new CLL experience only — the muted palette
+  // needs a dark counterpart so columns don't fall through to MUI's light
+  // default. Outside the flag, keep the original MUI tokens.
+  const defaultBg = newCllExperience && isDark ? "#262626" : "background.paper";
+  const hoverBg = newCllExperience && isDark ? "#333333" : "action.hover";
+  const selectedBg = newCllExperience && isDark ? "#404040" : "action.selected";
+  const textColor = newCllExperience && isDark ? "#ffffff" : "text.primary";
 
   return (
     <Box
@@ -339,7 +363,7 @@ function LineageColumnNodeComponent({
         sx={{
           display: "flex",
           fontSize: "11px",
-          color: isDark ? "#ffffff" : "text.primary",
+          color: textColor,
           width: "100%",
           gap: "6px",
           alignItems: "center",
@@ -348,7 +372,10 @@ function LineageColumnNodeComponent({
       >
         {/* Status indicator - based on showChangeAnalysis mode */}
         {shouldShowChangeStatus ? (
-          <ChangeStatusIndicator changeStatus={changeStatus} />
+          <ChangeStatusIndicator
+            changeStatus={changeStatus}
+            newCllExperience={newCllExperience}
+          />
         ) : (
           <TransformationIndicator transformationType={transformationType} />
         )}
