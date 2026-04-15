@@ -879,5 +879,230 @@ class TestUploadIncludesMetaHeaders(unittest.TestCase):
         self.assertIn("x-amz-tagging", headers)
 
 
+class TestGetSignedHeaders(unittest.TestCase):
+
+    def test_extracts_signed_headers_from_presigned_url(self):
+        from recce.state.cloud import get_signed_headers
+
+        url = (
+            "https://s3.amazonaws.com/bucket/key"
+            "?X-Amz-Algorithm=AWS4-HMAC-SHA256"
+            "&X-Amz-SignedHeaders=host%3Bx-amz-meta-commit%3Bx-amz-meta-dbt_version%3Bx-amz-tagging"
+        )
+        result = get_signed_headers(url)
+        self.assertEqual(result, {"host", "x-amz-meta-commit", "x-amz-meta-dbt_version", "x-amz-tagging"})
+
+    def test_returns_empty_set_when_no_signed_headers_param(self):
+        from recce.state.cloud import get_signed_headers
+
+        url = "https://s3.amazonaws.com/bucket/key?X-Amz-Algorithm=AWS4-HMAC-SHA256"
+        result = get_signed_headers(url)
+        self.assertEqual(result, set())
+
+    def test_case_insensitive_param_name(self):
+        from recce.state.cloud import get_signed_headers
+
+        url = "https://s3.amazonaws.com/bucket/key?x-amz-signedheaders=host%3Bx-amz-tagging"
+        result = get_signed_headers(url)
+        self.assertEqual(result, {"host", "x-amz-tagging"})
+
+
+class TestFilterHeadersForPresignedUrl(unittest.TestCase):
+
+    def test_filters_out_unsigned_headers(self):
+        from recce.state.cloud import filter_headers_for_presigned_url
+
+        url = (
+            "https://s3.amazonaws.com/bucket/key"
+            "?X-Amz-SignedHeaders=host%3Bx-amz-server-side-encryption-customer-algorithm"
+            "%3Bx-amz-server-side-encryption-customer-key"
+            "%3Bx-amz-server-side-encryption-customer-key-md5"
+        )
+        headers = {
+            "x-amz-server-side-encryption-customer-algorithm": "AES256",
+            "x-amz-server-side-encryption-customer-key": "abc",
+            "x-amz-server-side-encryption-customer-key-MD5": "def",
+            "x-amz-tagging": "commit=abc&dbt_version=1.0",
+            "x-amz-meta-commit": "abc",
+            "x-amz-meta-dbt_version": "1.0",
+        }
+        result = filter_headers_for_presigned_url(url, headers)
+        self.assertIn("x-amz-server-side-encryption-customer-algorithm", result)
+        self.assertIn("x-amz-server-side-encryption-customer-key", result)
+        self.assertIn("x-amz-server-side-encryption-customer-key-MD5", result)
+        self.assertNotIn("x-amz-tagging", result)
+        self.assertNotIn("x-amz-meta-commit", result)
+        self.assertNotIn("x-amz-meta-dbt_version", result)
+
+    def test_keeps_all_headers_when_all_are_signed(self):
+        from recce.state.cloud import filter_headers_for_presigned_url
+
+        url = "https://s3.amazonaws.com/bucket/key" "?X-Amz-SignedHeaders=host%3Bx-amz-tagging%3Bx-amz-meta-commit"
+        headers = {
+            "x-amz-tagging": "commit=abc",
+            "x-amz-meta-commit": "abc",
+        }
+        result = filter_headers_for_presigned_url(url, headers)
+        self.assertEqual(result, headers)
+
+    def test_fallback_when_no_signed_headers_param(self):
+        from recce.state.cloud import filter_headers_for_presigned_url
+
+        url = "https://s3.amazonaws.com/bucket/key"
+        headers = {
+            "x-amz-tagging": "commit=abc",
+            "x-amz-meta-commit": "abc",
+        }
+        result = filter_headers_for_presigned_url(url, headers)
+        self.assertEqual(result, headers)
+
+    def test_ssec_headers_always_preserved_even_when_unsigned(self):
+        """SSE-C headers must never be partially filtered — that causes
+        'InvalidArgument: must provide an appropriate secret key'."""
+        from recce.state.cloud import filter_headers_for_presigned_url
+
+        # Presigned URL only signs 'host' — no SSE-C and no metadata headers signed.
+        url = "https://s3.amazonaws.com/bucket/key?X-Amz-SignedHeaders=host"
+        headers = {
+            "x-amz-server-side-encryption-customer-algorithm": "AES256",
+            "x-amz-server-side-encryption-customer-key": "abc",
+            "x-amz-server-side-encryption-customer-key-MD5": "def",
+            "x-amz-tagging": "commit=abc&dbt_version=1.0",
+            "x-amz-meta-commit": "abc",
+            "x-amz-meta-dbt_version": "1.0",
+        }
+        result = filter_headers_for_presigned_url(url, headers)
+        # SSE-C headers kept
+        self.assertIn("x-amz-server-side-encryption-customer-algorithm", result)
+        self.assertIn("x-amz-server-side-encryption-customer-key", result)
+        self.assertIn("x-amz-server-side-encryption-customer-key-MD5", result)
+        # Metadata headers stripped
+        self.assertNotIn("x-amz-tagging", result)
+        self.assertNotIn("x-amz-meta-commit", result)
+        self.assertNotIn("x-amz-meta-dbt_version", result)
+
+    def test_only_metadata_headers_filtered_not_arbitrary_headers(self):
+        """Non-metadata, non-SSE-C headers should also be preserved."""
+        from recce.state.cloud import filter_headers_for_presigned_url
+
+        url = "https://s3.amazonaws.com/bucket/key?X-Amz-SignedHeaders=host%3Bcontent-type"
+        headers = {
+            "Content-Type": "application/gzip",
+            "x-amz-tagging": "commit=abc",
+            "x-amz-meta-commit": "abc",
+        }
+        result = filter_headers_for_presigned_url(url, headers)
+        self.assertIn("Content-Type", result)
+        self.assertNotIn("x-amz-tagging", result)
+        self.assertNotIn("x-amz-meta-commit", result)
+
+
+class TestRecceCloudStateManagerUploadFiltersHeaders(unittest.TestCase):
+    """Verify _upload_state_to_recce_cloud applies filter_headers_for_presigned_url."""
+
+    @patch("recce.state.cloud.fetch_pr_metadata")
+    @patch("recce.state.cloud.RecceCloud")
+    @patch("requests.put")
+    def test_upload_drops_unsigned_metadata_headers(self, mock_put, mock_cloud_cls, mock_fetch_pr):
+        from recce.state.cloud import RecceCloudStateManager
+
+        mock_pr_info = Mock()
+        mock_pr_info.id = "42"
+        mock_pr_info.repository = "owner/repo"
+        mock_fetch_pr.return_value = mock_pr_info
+
+        # Presigned URL that only signs host + SSE-C headers (no metadata)
+        signed = (
+            "https://s3.amazonaws.com/bucket/key"
+            "?X-Amz-SignedHeaders=host"
+            "%3Bx-amz-server-side-encryption-customer-algorithm"
+            "%3Bx-amz-server-side-encryption-customer-key"
+            "%3Bx-amz-server-side-encryption-customer-key-md5"
+        )
+        mock_cloud_cls.return_value.get_presigned_url_by_github_repo.return_value = signed
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_put.return_value = mock_response
+
+        mgr = RecceCloudStateManager(cloud_options={"github_token": "ghp_test", "password": "pw"})
+        state = RecceState()
+        metadata = {"total_checks": "5", "approved_checks": "3"}
+        mgr._upload_state_to_recce_cloud(state, metadata)
+
+        call_kwargs = mock_put.call_args
+        headers = call_kwargs.kwargs.get("headers") or call_kwargs[1].get("headers")
+        # SSE-C headers present
+        self.assertIn("x-amz-server-side-encryption-customer-algorithm", headers)
+        # Metadata headers filtered out (not signed)
+        self.assertNotIn("x-amz-tagging", headers)
+        self.assertNotIn("x-amz-meta-total_checks", headers)
+
+
+class TestUploadDbtArtifactsFiltersHeaders(unittest.TestCase):
+    """Verify upload_dbt_artifacts applies filter_headers_for_presigned_url."""
+
+    @patch("recce.artifact.requests.put")
+    @patch("recce.artifact.RecceCloud")
+    @patch("recce.artifact.commit_hash_from_branch", return_value="abc123")
+    @patch("recce.artifact.hosting_repo", return_value="owner/repo")
+    @patch("recce.artifact.current_branch", return_value="test-branch")
+    @patch("recce.artifact.archive_artifacts")
+    def test_upload_drops_unsigned_metadata_headers(
+        self, mock_archive, mock_branch, mock_repo, mock_sha, mock_cloud_cls, mock_put
+    ):
+        import json
+        import os
+        import tempfile
+
+        from recce.artifact import upload_dbt_artifacts
+
+        # Create a valid artifacts directory
+        tmp_dir = tempfile.mkdtemp()
+        manifest_path = os.path.join(tmp_dir, "manifest.json")
+        catalog_path = os.path.join(tmp_dir, "catalog.json")
+        with open(manifest_path, "w") as f:
+            json.dump({"metadata": {"dbt_version": "1.5.0"}}, f)
+        with open(catalog_path, "w") as f:
+            json.dump({}, f)
+
+        # archive_artifacts returns a temp file in a SEPARATE dir (matches real behavior)
+        gz_dir = tempfile.mkdtemp()
+        gz_path = os.path.join(gz_dir, "dbt_artifacts.tar.gz")
+        with open(gz_path, "wb") as f:
+            f.write(b"fake")
+        mock_archive.return_value = (gz_path, "1.5.0")
+
+        # Presigned URL that only signs host + SSE-C (no metadata)
+        signed = (
+            "https://s3.amazonaws.com/bucket/key"
+            "?X-Amz-SignedHeaders=host"
+            "%3Bx-amz-server-side-encryption-customer-algorithm"
+            "%3Bx-amz-server-side-encryption-customer-key"
+            "%3Bx-amz-server-side-encryption-customer-key-md5"
+        )
+        mock_cloud_cls.return_value.get_presigned_url_by_github_repo.return_value = signed
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_put.return_value = mock_response
+
+        try:
+            upload_dbt_artifacts(tmp_dir, "test-branch", "ghp_tok", "password")
+        finally:
+            import shutil
+
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+        call_kwargs = mock_put.call_args
+        headers = call_kwargs.kwargs.get("headers") or call_kwargs[1].get("headers")
+        # SSE-C headers present
+        self.assertIn("x-amz-server-side-encryption-customer-algorithm", headers)
+        # Metadata headers filtered out
+        self.assertNotIn("x-amz-tagging", headers)
+        self.assertNotIn("x-amz-meta-commit", headers)
+        self.assertNotIn("x-amz-meta-dbt_version", headers)
+
+
 if __name__ == "__main__":
     unittest.main()
