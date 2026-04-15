@@ -127,6 +127,9 @@ import {
 } from "./states";
 import { LineageViewTopBarOss as LineageViewTopBar } from "./topbar/LineageViewTopBarOss";
 
+/** Hide MiniMap when node count exceeds this threshold to reduce DOM pressure */
+export const MINIMAP_NODE_THRESHOLD = 500;
+
 /**
  * Compute impacted node IDs and column IDs in a single pass over the CLL data.
  *
@@ -1472,16 +1475,20 @@ export function PrivateLineageView(
                 )}
               </Stack>
             </Panel>
-            <MiniMap
-              nodeColor={getNodeColor}
-              nodeStrokeWidth={3}
-              zoomable
-              pannable
-              bgColor={isDark ? colors.neutral[800] : undefined}
-              maskColor={
-                isDark ? `${colors.neutral[900]}99` : `${colors.neutral[100]}99`
-              }
-            />
+            {nodes.length <= MINIMAP_NODE_THRESHOLD && (
+              <MiniMap
+                nodeColor={getNodeColor}
+                nodeStrokeWidth={3}
+                zoomable
+                pannable
+                bgColor={isDark ? colors.neutral[800] : undefined}
+                maskColor={
+                  isDark
+                    ? `${colors.neutral[900]}99`
+                    : `${colors.neutral[100]}99`
+                }
+              />
+            )}
             {selectMode === "action_result" && (
               <Panel
                 position="bottom-center"
