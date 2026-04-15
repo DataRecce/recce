@@ -997,5 +997,112 @@ class TestFilterHeadersForPresignedUrl(unittest.TestCase):
         self.assertNotIn("x-amz-meta-commit", result)
 
 
+class TestRecceCloudStateManagerUploadFiltersHeaders(unittest.TestCase):
+    """Verify _upload_state_to_recce_cloud applies filter_headers_for_presigned_url."""
+
+    @patch("recce.state.cloud.fetch_pr_metadata")
+    @patch("recce.state.cloud.RecceCloud")
+    @patch("requests.put")
+    def test_upload_drops_unsigned_metadata_headers(self, mock_put, mock_cloud_cls, mock_fetch_pr):
+        from recce.state.cloud import RecceCloudStateManager
+
+        mock_pr_info = Mock()
+        mock_pr_info.id = "42"
+        mock_pr_info.repository = "owner/repo"
+        mock_fetch_pr.return_value = mock_pr_info
+
+        # Presigned URL that only signs host + SSE-C headers (no metadata)
+        signed = (
+            "https://s3.amazonaws.com/bucket/key"
+            "?X-Amz-SignedHeaders=host"
+            "%3Bx-amz-server-side-encryption-customer-algorithm"
+            "%3Bx-amz-server-side-encryption-customer-key"
+            "%3Bx-amz-server-side-encryption-customer-key-md5"
+        )
+        mock_cloud_cls.return_value.get_presigned_url_by_github_repo.return_value = signed
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_put.return_value = mock_response
+
+        mgr = RecceCloudStateManager(cloud_options={"github_token": "ghp_test", "password": "pw"})
+        state = RecceState()
+        metadata = {"total_checks": "5", "approved_checks": "3"}
+        mgr._upload_state_to_recce_cloud(state, metadata)
+
+        call_kwargs = mock_put.call_args
+        headers = call_kwargs.kwargs.get("headers") or call_kwargs[1].get("headers")
+        # SSE-C headers present
+        self.assertIn("x-amz-server-side-encryption-customer-algorithm", headers)
+        # Metadata headers filtered out (not signed)
+        self.assertNotIn("x-amz-tagging", headers)
+        self.assertNotIn("x-amz-meta-total_checks", headers)
+
+
+class TestUploadDbtArtifactsFiltersHeaders(unittest.TestCase):
+    """Verify upload_dbt_artifacts applies filter_headers_for_presigned_url."""
+
+    @patch("recce.artifact.requests.put")
+    @patch("recce.artifact.RecceCloud")
+    @patch("recce.artifact.commit_hash_from_branch", return_value="abc123")
+    @patch("recce.artifact.hosting_repo", return_value="owner/repo")
+    @patch("recce.artifact.current_branch", return_value="test-branch")
+    @patch("recce.artifact.archive_artifacts")
+    def test_upload_drops_unsigned_metadata_headers(
+        self, mock_archive, mock_branch, mock_repo, mock_sha, mock_cloud_cls, mock_put
+    ):
+        import json
+        import os
+        import tempfile
+
+        from recce.artifact import upload_dbt_artifacts
+
+        # Create a valid artifacts directory
+        tmp_dir = tempfile.mkdtemp()
+        manifest_path = os.path.join(tmp_dir, "manifest.json")
+        catalog_path = os.path.join(tmp_dir, "catalog.json")
+        with open(manifest_path, "w") as f:
+            json.dump({"metadata": {"dbt_version": "1.5.0"}}, f)
+        with open(catalog_path, "w") as f:
+            json.dump({}, f)
+
+        # archive_artifacts returns a temp file in a SEPARATE dir (matches real behavior)
+        gz_dir = tempfile.mkdtemp()
+        gz_path = os.path.join(gz_dir, "dbt_artifacts.tar.gz")
+        with open(gz_path, "wb") as f:
+            f.write(b"fake")
+        mock_archive.return_value = (gz_path, "1.5.0")
+
+        # Presigned URL that only signs host + SSE-C (no metadata)
+        signed = (
+            "https://s3.amazonaws.com/bucket/key"
+            "?X-Amz-SignedHeaders=host"
+            "%3Bx-amz-server-side-encryption-customer-algorithm"
+            "%3Bx-amz-server-side-encryption-customer-key"
+            "%3Bx-amz-server-side-encryption-customer-key-md5"
+        )
+        mock_cloud_cls.return_value.get_presigned_url_by_github_repo.return_value = signed
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_put.return_value = mock_response
+
+        try:
+            upload_dbt_artifacts(tmp_dir, "test-branch", "ghp_tok", "password")
+        finally:
+            import shutil
+
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+        call_kwargs = mock_put.call_args
+        headers = call_kwargs.kwargs.get("headers") or call_kwargs[1].get("headers")
+        # SSE-C headers present
+        self.assertIn("x-amz-server-side-encryption-customer-algorithm", headers)
+        # Metadata headers filtered out
+        self.assertNotIn("x-amz-tagging", headers)
+        self.assertNotIn("x-amz-meta-commit", headers)
+        self.assertNotIn("x-amz-meta-dbt_version", headers)
+
+
 if __name__ == "__main__":
     unittest.main()
