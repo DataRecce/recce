@@ -105,6 +105,7 @@ import {
 import {
   useLineageCopyToClipboard,
   useNavToCheck,
+  usePublishedImpactSets,
   useResizeObserver,
   useTrackLineageRender,
 } from "./hooks";
@@ -475,8 +476,11 @@ export function PrivateLineageView(
 
   // Guard: auto-trigger impact analysis only once per mount
   const impactAtStartupFired = useRef(false);
-  const impactedNodeIdsRef = useRef<Set<string>>(new Set());
-  const impactedColumnIdsRef = useRef<Set<string>>(new Set());
+  const {
+    impactedNodeIds,
+    impactedColumnIds,
+    publish: publishImpactSets,
+  } = usePublishedImpactSets();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only run when lineageGraph changes (initial load/refetch).
   useLayoutEffect(() => {
@@ -621,8 +625,7 @@ export function PrivateLineageView(
       // Snapshot impacted sets during impact analysis so they stay stable
       // when the user clicks a column (which returns column-scoped CLL data).
       if (impacted && cllInput?.change_analysis && !cllInput?.column) {
-        impactedNodeIdsRef.current = impacted.nodeIds;
-        impactedColumnIdsRef.current = impacted.columnIds;
+        publishImpactSets(impacted);
       }
 
       // Track lineage view render
@@ -911,8 +914,7 @@ export function PrivateLineageView(
 
     // Snapshot impacted node and column IDs during impact analysis (see layout effect).
     if (impacted && !cllInput2?.column) {
-      impactedNodeIdsRef.current = impacted.nodeIds;
-      impactedColumnIdsRef.current = impacted.columnIds;
+      publishImpactSets(impacted);
     }
 
     // Track lineage view render
@@ -1141,8 +1143,8 @@ export function PrivateLineageView(
     selectParentNodes,
     selectChildNodes,
     deselect,
-    impactedNodeIds: impactedNodeIdsRef.current,
-    impactedColumnIds: impactedColumnIdsRef.current,
+    impactedNodeIds,
+    impactedColumnIds,
     isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
     isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),
     isEdgeHighlighted: (source, target) => {
