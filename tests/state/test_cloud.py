@@ -879,5 +879,123 @@ class TestUploadIncludesMetaHeaders(unittest.TestCase):
         self.assertIn("x-amz-tagging", headers)
 
 
+class TestGetSignedHeaders(unittest.TestCase):
+
+    def test_extracts_signed_headers_from_presigned_url(self):
+        from recce.state.cloud import get_signed_headers
+
+        url = (
+            "https://s3.amazonaws.com/bucket/key"
+            "?X-Amz-Algorithm=AWS4-HMAC-SHA256"
+            "&X-Amz-SignedHeaders=host%3Bx-amz-meta-commit%3Bx-amz-meta-dbt_version%3Bx-amz-tagging"
+        )
+        result = get_signed_headers(url)
+        self.assertEqual(result, {"host", "x-amz-meta-commit", "x-amz-meta-dbt_version", "x-amz-tagging"})
+
+    def test_returns_empty_set_when_no_signed_headers_param(self):
+        from recce.state.cloud import get_signed_headers
+
+        url = "https://s3.amazonaws.com/bucket/key?X-Amz-Algorithm=AWS4-HMAC-SHA256"
+        result = get_signed_headers(url)
+        self.assertEqual(result, set())
+
+    def test_case_insensitive_param_name(self):
+        from recce.state.cloud import get_signed_headers
+
+        url = "https://s3.amazonaws.com/bucket/key?x-amz-signedheaders=host%3Bx-amz-tagging"
+        result = get_signed_headers(url)
+        self.assertEqual(result, {"host", "x-amz-tagging"})
+
+
+class TestFilterHeadersForPresignedUrl(unittest.TestCase):
+
+    def test_filters_out_unsigned_headers(self):
+        from recce.state.cloud import filter_headers_for_presigned_url
+
+        url = (
+            "https://s3.amazonaws.com/bucket/key"
+            "?X-Amz-SignedHeaders=host%3Bx-amz-server-side-encryption-customer-algorithm"
+            "%3Bx-amz-server-side-encryption-customer-key"
+            "%3Bx-amz-server-side-encryption-customer-key-md5"
+        )
+        headers = {
+            "x-amz-server-side-encryption-customer-algorithm": "AES256",
+            "x-amz-server-side-encryption-customer-key": "abc",
+            "x-amz-server-side-encryption-customer-key-MD5": "def",
+            "x-amz-tagging": "commit=abc&dbt_version=1.0",
+            "x-amz-meta-commit": "abc",
+            "x-amz-meta-dbt_version": "1.0",
+        }
+        result = filter_headers_for_presigned_url(url, headers)
+        self.assertIn("x-amz-server-side-encryption-customer-algorithm", result)
+        self.assertIn("x-amz-server-side-encryption-customer-key", result)
+        self.assertIn("x-amz-server-side-encryption-customer-key-MD5", result)
+        self.assertNotIn("x-amz-tagging", result)
+        self.assertNotIn("x-amz-meta-commit", result)
+        self.assertNotIn("x-amz-meta-dbt_version", result)
+
+    def test_keeps_all_headers_when_all_are_signed(self):
+        from recce.state.cloud import filter_headers_for_presigned_url
+
+        url = "https://s3.amazonaws.com/bucket/key" "?X-Amz-SignedHeaders=host%3Bx-amz-tagging%3Bx-amz-meta-commit"
+        headers = {
+            "x-amz-tagging": "commit=abc",
+            "x-amz-meta-commit": "abc",
+        }
+        result = filter_headers_for_presigned_url(url, headers)
+        self.assertEqual(result, headers)
+
+    def test_fallback_when_no_signed_headers_param(self):
+        from recce.state.cloud import filter_headers_for_presigned_url
+
+        url = "https://s3.amazonaws.com/bucket/key"
+        headers = {
+            "x-amz-tagging": "commit=abc",
+            "x-amz-meta-commit": "abc",
+        }
+        result = filter_headers_for_presigned_url(url, headers)
+        self.assertEqual(result, headers)
+
+    def test_ssec_headers_always_preserved_even_when_unsigned(self):
+        """SSE-C headers must never be partially filtered — that causes
+        'InvalidArgument: must provide an appropriate secret key'."""
+        from recce.state.cloud import filter_headers_for_presigned_url
+
+        # Presigned URL only signs 'host' — no SSE-C and no metadata headers signed.
+        url = "https://s3.amazonaws.com/bucket/key?X-Amz-SignedHeaders=host"
+        headers = {
+            "x-amz-server-side-encryption-customer-algorithm": "AES256",
+            "x-amz-server-side-encryption-customer-key": "abc",
+            "x-amz-server-side-encryption-customer-key-MD5": "def",
+            "x-amz-tagging": "commit=abc&dbt_version=1.0",
+            "x-amz-meta-commit": "abc",
+            "x-amz-meta-dbt_version": "1.0",
+        }
+        result = filter_headers_for_presigned_url(url, headers)
+        # SSE-C headers kept
+        self.assertIn("x-amz-server-side-encryption-customer-algorithm", result)
+        self.assertIn("x-amz-server-side-encryption-customer-key", result)
+        self.assertIn("x-amz-server-side-encryption-customer-key-MD5", result)
+        # Metadata headers stripped
+        self.assertNotIn("x-amz-tagging", result)
+        self.assertNotIn("x-amz-meta-commit", result)
+        self.assertNotIn("x-amz-meta-dbt_version", result)
+
+    def test_only_metadata_headers_filtered_not_arbitrary_headers(self):
+        """Non-metadata, non-SSE-C headers should also be preserved."""
+        from recce.state.cloud import filter_headers_for_presigned_url
+
+        url = "https://s3.amazonaws.com/bucket/key?X-Amz-SignedHeaders=host%3Bcontent-type"
+        headers = {
+            "Content-Type": "application/gzip",
+            "x-amz-tagging": "commit=abc",
+            "x-amz-meta-commit": "abc",
+        }
+        result = filter_headers_for_presigned_url(url, headers)
+        self.assertIn("Content-Type", result)
+        self.assertNotIn("x-amz-tagging", result)
+        self.assertNotIn("x-amz-meta-commit", result)
+
+
 if __name__ == "__main__":
     unittest.main()
