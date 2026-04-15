@@ -15,7 +15,6 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from mcp.server import Server
-from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 from recce.core import RecceContext, load_context
@@ -1801,105 +1800,49 @@ class RecceMCPServer:
         return result
 
     async def run(self):
-        """Run the MCP server in stdio mode"""
-        try:
-            async with stdio_server() as (read_stream, write_stream):
-                await self.server.run(read_stream, write_stream, self.server.create_initialization_options())
-        finally:
-            # Export state on shutdown if state_loader is available
-            if self.state_loader and self.context:
-                try:
-                    from rich.console import Console
+        """Run the MCP server in stdio mode.
 
-                    console = Console(stderr=True)
+        Deprecated: prefer `recce.mcp_transport.run_mcp_stdio(self)`.
+        Retained as a thin delegating shim until callers migrate.
+        """
+        from recce.mcp_transport import run_mcp_stdio
 
-                    # Export the state
-                    msg = self.state_loader.export(self.context.export_state())
-                    if msg is not None:
-                        console.print(f"[yellow]On shutdown:[/yellow] {msg}")
-                    else:
-                        if hasattr(self.state_loader, "state_file") and self.state_loader.state_file:
-                            console.print(
-                                f"[yellow]On shutdown:[/yellow] State exported to '{self.state_loader.state_file}'"
-                            )
-                        else:
-                            console.print("[yellow]On shutdown:[/yellow] State exported successfully")
-                except Exception as e:
-                    logger.exception(f"Failed to export state on shutdown: {e}")
+        await run_mcp_stdio(self)
 
     async def run_sse(self, host: str = "localhost", port: int = 8000):
-        """Run the MCP server in HTTP mode using Server-Sent Events (SSE)
+        """Run legacy stand-alone SSE server.
 
-        Args:
-            host: Host to bind to (default: localhost)
-            port: Port to bind to (default: 8000)
+        Deprecated: prefer `recce.mcp_transport.run_mcp_sse_legacy(self, host, port)`.
+        Retained as a thin delegating shim until callers migrate.
         """
-        from contextlib import asynccontextmanager
+        from recce.mcp_transport import run_mcp_sse_legacy
 
-        import uvicorn
-        from mcp.server.sse import SseServerTransport
-        from starlette.applications import Starlette
-        from starlette.requests import Request
-        from starlette.responses import Response
-        from starlette.routing import Mount, Route
+        await run_mcp_sse_legacy(self, host=host, port=port)
 
-        # Create SSE transport - endpoint where clients POST messages
-        sse = SseServerTransport("/")
 
-        async def handle_sse_request(request: Request):
-            """Handle SSE connection (GET /sse) following official MCP example"""
-            client_info = f"{request.client.host}:{request.client.port}" if request.client else "unknown"
-            logger.info(f"[MCP HTTP] SSE connection established from {client_info}")
-            try:
-                async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
-                    await self.server.run(streams[0], streams[1], self.server.create_initialization_options())
-            finally:
-                logger.info(f"[MCP HTTP] SSE connection closed from {client_info}")
-            return Response()  # Required to avoid NoneType error
+def build_mcp_server(
+    context: RecceContext,
+    mode: Optional[RecceServerMode] = None,
+    single_env: bool = False,
+    debug: bool = False,
+    state_loader=None,
+    log_file: str = "logs/recce-mcp.json",
+) -> "RecceMCPServer":
+    """Build a configured RecceMCPServer.
 
-        async def handle_post_message(scope, receive, send):
-            """Handle POST messages (POST /) for MCP protocol"""
-            # Log POST message (session_id will be in query params)
-            query_string = scope.get("query_string", b"").decode("utf-8")
-            logger.debug(f"[MCP HTTP] POST message received with query: {query_string}")
-            await sse.handle_post_message(scope, receive, send)
-
-        async def handle_health_check(request: Request):
-            """Handle health check endpoint (GET /health)"""
-            return Response(content='{"status":"ok"}', media_type="application/json")
-
-        @asynccontextmanager
-        async def lifespan(app):
-            """Handle startup and shutdown events"""
-            # Startup
-            yield
-            # Shutdown - this runs when server exits (SIGINT, SIGTERM, etc.)
-            if self.state_loader and self.context:
-                try:
-                    logger.info("Exporting state on shutdown...")
-                    msg = self.state_loader.export(self.context.export_state())
-                    if msg:
-                        logger.info(f"State export: {msg}")
-                except Exception as e:
-                    logger.exception(f"Failed to export state on shutdown: {e}")
-
-        # Create Starlette app with lifespan
-        app = Starlette(
-            debug=self.mcp_logger.debug,
-            routes=[
-                Route("/health", endpoint=handle_health_check, methods=["GET"]),
-                Route("/sse", endpoint=handle_sse_request, methods=["GET"]),
-                Mount("/", app=handle_post_message),
-            ],
-            lifespan=lifespan,
-        )
-
-        # Run with uvicorn
-        logger.info(f"Starting Recce MCP Server in HTTP mode on {host}:{port}")
-        logger.info(f"Connection URL: http://{host}:{port}/sse")
-        config = uvicorn.Config(app, host=host, port=port, log_level="info")
-        server = uvicorn.Server(config)
-        await server.serve()
+    Single source of truth for MCP server construction. All transport
+    adapters in recce.mcp_transport (attach_mcp_to_fastapi, run_mcp_stdio,
+    run_mcp_sse_legacy) consume the result of this function so that tool
+    registration logic lives in one place.
+    """
+    return RecceMCPServer(
+        context,
+        mode=mode,
+        debug=debug,
+        log_file=log_file,
+        state_loader=state_loader,
+        single_env=single_env,
+    )
 
 
 async def run_mcp_server(
