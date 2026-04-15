@@ -118,7 +118,7 @@ jobs:
           source .venv/bin/activate
           ./integration_tests/dbt/smoke_test_cloud.sh
         env:
-          GITHUB_TOKEN: ${{ secrets.RECCE_CLOUD_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.DEV_INFUSEAI_GITHUB_TOKEN }}
           RECCE_STATE_PASSWORD: ${{ vars.RECCE_STATE_PASSWORD }}
 
   # Staging cloud smoke test - runs daily after nightly build
@@ -162,7 +162,7 @@ jobs:
           source .venv/bin/activate
           ./integration_tests/dbt/smoke_test_cloud.sh
         env:
-          GITHUB_TOKEN: ${{ secrets.RECCE_CLOUD_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.DEV_INFUSEAI_GITHUB_TOKEN }}
           RECCE_STATE_PASSWORD: ${{ vars.RECCE_STATE_PASSWORD }}
           RECCE_CLOUD_API_HOST: ${{ vars.RECCE_CLOUD_API_HOST_STAGING }}
 
