@@ -475,8 +475,14 @@ export function PrivateLineageView(
 
   // Guard: auto-trigger impact analysis only once per mount
   const impactAtStartupFired = useRef(false);
-  const impactedNodeIdsRef = useRef<Set<string>>(new Set());
-  const impactedColumnIdsRef = useRef<Set<string>>(new Set());
+  // State (not refs) so downstream memos re-render when impact CLL populates the
+  // snapshot; a ref mutation would leave SchemaView latched on the initial empty Set.
+  const [impactedNodeIds, setImpactedNodeIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [impactedColumnIds, setImpactedColumnIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only run when lineageGraph changes (initial load/refetch).
   useLayoutEffect(() => {
@@ -621,8 +627,8 @@ export function PrivateLineageView(
       // Snapshot impacted sets during impact analysis so they stay stable
       // when the user clicks a column (which returns column-scoped CLL data).
       if (impacted && cllInput?.change_analysis && !cllInput?.column) {
-        impactedNodeIdsRef.current = impacted.nodeIds;
-        impactedColumnIdsRef.current = impacted.columnIds;
+        setImpactedNodeIds(impacted.nodeIds);
+        setImpactedColumnIds(impacted.columnIds);
       }
 
       // Track lineage view render
@@ -911,8 +917,8 @@ export function PrivateLineageView(
 
     // Snapshot impacted node and column IDs during impact analysis (see layout effect).
     if (impacted && !cllInput2?.column) {
-      impactedNodeIdsRef.current = impacted.nodeIds;
-      impactedColumnIdsRef.current = impacted.columnIds;
+      setImpactedNodeIds(impacted.nodeIds);
+      setImpactedColumnIds(impacted.columnIds);
     }
 
     // Track lineage view render
@@ -1141,8 +1147,8 @@ export function PrivateLineageView(
     selectParentNodes,
     selectChildNodes,
     deselect,
-    impactedNodeIds: impactedNodeIdsRef.current,
-    impactedColumnIds: impactedColumnIdsRef.current,
+    impactedNodeIds,
+    impactedColumnIds,
     isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
     isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),
     isEdgeHighlighted: (source, target) => {
