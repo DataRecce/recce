@@ -1441,7 +1441,12 @@ export function PrivateLineageView(
             <ImageDownloadModal />
             <Panel position="bottom-left">
               <Stack spacing="5px">
-                {isModelsChanged && <LineageLegend variant="changeStatus" />}
+                {isModelsChanged && (
+                  <LineageLegend
+                    variant="changeStatus"
+                    newCllExperience={newCllExperience}
+                  />
+                )}
                 {viewOptions.column_level_lineage && (
                   <LineageLegend variant="transformation" />
                 )}

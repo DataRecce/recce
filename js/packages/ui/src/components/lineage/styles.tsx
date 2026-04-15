@@ -185,6 +185,29 @@ export const IconModifiedDownstream: IconComponent = (props) => (
   </svg>
 );
 
+/**
+ * Exclamation icon for "impacted" status (downstream of a change)
+ */
+export const IconImpacted: IconComponent = (props) => (
+  <svg
+    stroke="currentColor"
+    fill="currentColor"
+    strokeWidth="0"
+    viewBox="0 0 16 16"
+    height="1em"
+    width="1em"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M1.5 1h13l.5.5v13l-.5.5h-13l-.5-.5v-13l.5-.5zM2 2v12h12V2H2z"
+    />
+    <path d="M7.5 4h1v5h-1V4zm0 6h1v1.5h-1V10z" />
+  </svg>
+);
+
 // =============================================================================
 // RESOURCE TYPE ICONS (inline SVGs to avoid react-icons dependency)
 // =============================================================================
@@ -437,72 +460,70 @@ export const IconMaterializedView: IconComponent = (props) => (
 // =============================================================================
 
 /**
- * Get icon and colors for a change status
- *
- * @param changeStatus - The change status (added, removed, modified)
- * @param isDark - Whether dark mode is active
- * @returns Object containing color values and icon component
- *
- * @example
- * ```tsx
- * const { color, icon: Icon } = getIconForChangeStatus("added");
- * return <Icon style={{ color }} />;
- * ```
+ * Icon lookup for change statuses
  */
-export function getIconForChangeStatus(
-  changeStatus?: ChangeStatus,
+const changeStatusIcons: Record<string, IconComponent | undefined> = {
+  added: IconAdded,
+  removed: IconRemoved,
+  modified: IconModified,
+  impacted: IconImpacted,
+};
+
+type PaletteKey = "default" | "cll";
+
+function paletteFor(
+  key: PaletteKey,
   isDark?: boolean,
-): ChangeStatusStyle {
-  if (changeStatus === "added") {
+): { colors: Record<string, string>; bg: Record<string, string> } {
+  if (key === "cll") {
     return {
-      color: colors.green[500],
-      hexColor: colors.green[500],
-      backgroundColor: isDark ? colors.green[900] : colors.green[100],
-      hexBackgroundColor: isDark ? colors.green[900] : colors.green[100],
-      icon: IconAdded,
+      colors: cllChangeStatusColors,
+      bg: isDark
+        ? cllChangeStatusBackgroundsDark
+        : cllChangeStatusBackgroundsLight,
     };
   }
-
-  if (changeStatus === "removed") {
-    return {
-      color: colors.red[500],
-      hexColor: colors.red[500],
-      backgroundColor: isDark ? colors.red[950] : colors.red[200],
-      hexBackgroundColor: isDark ? colors.red[950] : colors.red[200],
-      icon: IconRemoved,
-    };
-  }
-
-  if (changeStatus === "modified") {
-    return {
-      color: colors.amber[500],
-      hexColor: colors.amber[500],
-      backgroundColor: isDark ? colors.amber[900] : colors.amber[100],
-      hexBackgroundColor: isDark ? colors.amber[900] : colors.amber[100],
-      icon: IconModified,
-    };
-  }
-
-  // Default: no change
   return {
-    color: colors.neutral[500],
-    hexColor: colors.neutral[500],
-    backgroundColor: isDark ? colors.neutral[700] : colors.white,
-    hexBackgroundColor: isDark ? colors.neutral[700] : colors.white,
-    icon: undefined,
+    colors: changeStatusColors,
+    bg: isDark ? changeStatusBackgroundsDark : changeStatusBackgroundsLight,
   };
 }
 
 /**
- * Get background style for impacted nodes in new CLL experience.
- * Uses a light amber that is less intense than "modified" (amber[500]).
+ * Get icon and colors for a change status. Pass `palette: "cll"` for the
+ * muted brown/yellow palette used inside the new CLL experience.
+ *
+ * @example
+ * ```tsx
+ * const { color, icon: Icon } = getIconForChangeStatus("added");
+ * const cll = getIconForChangeStatus("impacted", isDark, "cll");
+ * ```
  */
-export function getStyleForImpacted(isDark?: boolean): {
-  backgroundColor: string;
-} {
+export function getIconForChangeStatus(
+  changeStatus?: ChangeStatus | "impacted",
+  isDark?: boolean,
+  palette: PaletteKey = "default",
+): ChangeStatusStyle {
+  const status = changeStatus ?? "unchanged";
+  const { colors: colorMap, bg: bgMap } = paletteFor(palette, isDark);
+  const color = colorMap[status];
+  const bg = bgMap[status];
+
   return {
-    backgroundColor: isDark ? colors.amber[900] : colors.amber[200],
+    color,
+    hexColor: color,
+    backgroundColor: bg,
+    hexBackgroundColor: bg,
+    icon: changeStatusIcons[status],
   };
+}
+
+/**
+ * Get style for impacted nodes — a peer status alongside added/removed/modified
+ * inside the new CLL experience.
+ */
+export function getStyleForImpacted(isDark?: boolean): ChangeStatusStyle {
+  return getIconForChangeStatus("impacted", isDark, "cll");
 }
 
 /**
@@ -602,7 +623,8 @@ export function getIconForMaterialization(
 // =============================================================================
 
 /**
- * Pre-defined colors for change status (for direct usage without function call)
+ * Pre-defined colors for change status (default palette — used by OSS lineage,
+ * schema diff checks, summary, and any non-CLL consumer).
  */
 export const changeStatusColors: Record<ChangeStatus | "unchanged", string> = {
   added: colors.green[500],
@@ -612,7 +634,7 @@ export const changeStatusColors: Record<ChangeStatus | "unchanged", string> = {
 };
 
 /**
- * Pre-defined background colors for change status (light mode)
+ * Pre-defined background colors for change status (light mode, default palette)
  */
 export const changeStatusBackgroundsLight: Record<
   ChangeStatus | "unchanged",
@@ -625,7 +647,7 @@ export const changeStatusBackgroundsLight: Record<
 };
 
 /**
- * Pre-defined background colors for change status (dark mode)
+ * Pre-defined background colors for change status (dark mode, default palette)
  */
 export const changeStatusBackgroundsDark: Record<
   ChangeStatus | "unchanged",
@@ -635,4 +657,43 @@ export const changeStatusBackgroundsDark: Record<
   removed: colors.red[950],
   modified: colors.amber[900],
   unchanged: colors.neutral[700],
+};
+
+/**
+ * CLL palette — muted brown/yellow variant used only inside the new CLL
+ * experience (LineageNode, LineageColumnNode, LineageEdge, LineageCanvas
+ * minimap, LineageLegend). Mirrors the `.cll-experience` overrides in
+ * ../schema/style.css; keep both sides in sync (no build-time check).
+ */
+export const cllChangeStatusColors: Record<
+  ChangeStatus | "unchanged" | "impacted",
+  string
+> = {
+  added: "rgb(46 160 67)",
+  removed: "rgb(248 81 73)",
+  modified: "rgb(212 133 11)",
+  impacted: "rgb(252 211 77)",
+  unchanged: colors.neutral[500],
+};
+
+export const cllChangeStatusBackgroundsLight: Record<
+  ChangeStatus | "unchanged" | "impacted",
+  string
+> = {
+  added: "rgb(222 248 227)",
+  removed: "rgb(252 225 224)",
+  modified: "rgb(255 237 175)",
+  impacted: "rgb(254 249 227)",
+  unchanged: colors.white,
+};
+
+export const cllChangeStatusBackgroundsDark: Record<
+  ChangeStatus | "unchanged" | "impacted",
+  string
+> = {
+  added: "rgb(30 58 30)",
+  removed: "rgb(68 35 35)",
+  modified: "rgb(75 65 33)",
+  impacted: "rgb(50 44 24)",
+  unchanged: "rgb(38 38 38)",
 };

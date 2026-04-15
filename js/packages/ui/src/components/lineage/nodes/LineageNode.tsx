@@ -344,12 +344,19 @@ function LineageNodeComponent({
   const showColumns = columnCount > 0;
   const hasAction = selectMode === "action_result" && actionTag;
 
-  // Get icons and colors
+  // Get icons and colors — impacted only when not already changed
+  const isUnchanged = !changeStatus || changeStatus === "unchanged";
   const {
     icon: IconChangeStatus,
     color: colorChangeStatus,
     backgroundColor: backgroundColorChangeStatus,
-  } = getIconForChangeStatus(changeStatus, isDark);
+  } = newCllExperience && isImpacted && isUnchanged
+    ? getStyleForImpacted(isDark)
+    : getIconForChangeStatus(
+        changeStatus,
+        isDark,
+        newCllExperience ? "cll" : "default",
+      );
   const { icon: ResourceIcon } =
     resourceType === "model" && materialized
       ? getIconForMaterialization(materialized)
@@ -422,12 +429,6 @@ function LineageNodeComponent({
     return colorChangeStatus;
   })();
 
-  // Amber background for impacted nodes in new CLL experience
-  const impactedBackground =
-    newCllExperience && isImpacted
-      ? getStyleForImpacted(isDark).backgroundColor
-      : undefined;
-
   // Filter for dimming
   const nodeFilter = (() => {
     if (newCllExperience) {
@@ -486,7 +487,7 @@ function LineageNodeComponent({
           borderTopRightRadius: 8,
           borderBottomLeftRadius: showColumns ? 0 : 8,
           borderBottomRightRadius: showColumns ? 0 : 8,
-          backgroundColor: impactedBackground ?? nodeBackgroundColor,
+          backgroundColor: nodeBackgroundColor,
           height: 60,
         }}
       >

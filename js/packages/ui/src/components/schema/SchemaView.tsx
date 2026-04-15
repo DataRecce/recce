@@ -410,7 +410,7 @@ export function PrivateSchemaView(
           rows={rows}
           rowHeight={35}
           renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
-          className="rdg-light no-track-pii-safe"
+          className={`rdg-light no-track-pii-safe${newCllExperience ? " cll-experience" : ""}`}
           ref={ref}
           getRowId={getRowId}
           getRowClass={getRowClass}
