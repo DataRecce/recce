@@ -3,8 +3,8 @@
  * @description Tests for lineage styles utilities
  *
  * Tests verify:
- * - getIconForChangeStatus returns correct colors and icons (default palette)
- * - getCllIconForChangeStatus / getStyleForImpacted use the CLL palette
+ * - getIconForChangeStatus returns correct colors and icons for both palettes
+ * - getStyleForImpacted uses the CLL palette
  * - getIconForResourceType returns correct colors and icons
  * - Style constants are defined correctly for both palettes
  */
@@ -16,7 +16,6 @@ import {
   cllChangeStatusBackgroundsDark,
   cllChangeStatusBackgroundsLight,
   cllChangeStatusColors,
-  getCllIconForChangeStatus,
   getIconForChangeStatus,
   getIconForResourceType,
   getStyleForImpacted,
@@ -142,32 +141,32 @@ describe("getIconForChangeStatus (default palette)", () => {
 });
 
 // =============================================================================
-// getCllIconForChangeStatus Tests (muted CLL palette)
+// getIconForChangeStatus with palette: "cll" (muted CLL palette)
 // =============================================================================
 
-describe("getCllIconForChangeStatus (CLL palette)", () => {
+describe('getIconForChangeStatus (palette: "cll")', () => {
   it("returns muted green for added", () => {
-    const result = getCllIconForChangeStatus("added");
+    const result = getIconForChangeStatus("added", false, "cll");
     expect(result.color).toBe("rgb(46 160 67)");
   });
 
   it("returns muted red for removed", () => {
-    const result = getCllIconForChangeStatus("removed");
+    const result = getIconForChangeStatus("removed", false, "cll");
     expect(result.color).toBe("rgb(248 81 73)");
   });
 
   it("returns brown for modified (distinct from impacted yellow)", () => {
-    const result = getCllIconForChangeStatus("modified");
+    const result = getIconForChangeStatus("modified", false, "cll");
     expect(result.color).toBe("rgb(212 133 11)");
   });
 
   it("returns light background in light mode for added", () => {
-    const result = getCllIconForChangeStatus("added", false);
+    const result = getIconForChangeStatus("added", false, "cll");
     expect(result.backgroundColor).toBe("rgb(222 248 227)");
   });
 
   it("returns dark background in dark mode for modified", () => {
-    const result = getCllIconForChangeStatus("modified", true);
+    const result = getIconForChangeStatus("modified", true, "cll");
     expect(result.backgroundColor).toBe("rgb(75 65 33)");
   });
 });

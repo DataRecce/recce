@@ -460,59 +460,54 @@ export const IconMaterializedView: IconComponent = (props) => (
 // =============================================================================
 
 /**
- * Get icon and colors for a change status
- *
- * @param changeStatus - The change status (added, removed, modified)
- * @param isDark - Whether dark mode is active
- * @returns Object containing color values and icon component
- *
- * @example
- * ```tsx
- * const { color, icon: Icon } = getIconForChangeStatus("added");
- * return <Icon style={{ color }} />;
- * ```
- */
-/**
  * Icon lookup for change statuses
  */
 const changeStatusIcons: Record<string, IconComponent | undefined> = {
   added: IconAdded,
   removed: IconRemoved,
   modified: IconModified,
+  impacted: IconImpacted,
 };
 
-export function getIconForChangeStatus(
-  changeStatus?: ChangeStatus,
-  isDark?: boolean,
-): ChangeStatusStyle {
-  const status = changeStatus ?? "unchanged";
-  const color = changeStatusColors[status];
-  const bg = isDark
-    ? changeStatusBackgroundsDark[status]
-    : changeStatusBackgroundsLight[status];
+type PaletteKey = "default" | "cll";
 
+function paletteFor(
+  key: PaletteKey,
+  isDark?: boolean,
+): { colors: Record<string, string>; bg: Record<string, string> } {
+  if (key === "cll") {
+    return {
+      colors: cllChangeStatusColors,
+      bg: isDark
+        ? cllChangeStatusBackgroundsDark
+        : cllChangeStatusBackgroundsLight,
+    };
+  }
   return {
-    color,
-    hexColor: color,
-    backgroundColor: bg,
-    hexBackgroundColor: bg,
-    icon: changeStatusIcons[status],
+    colors: changeStatusColors,
+    bg: isDark ? changeStatusBackgroundsDark : changeStatusBackgroundsLight,
   };
 }
 
 /**
- * CLL variant of getIconForChangeStatus — returns the muted brown/yellow palette
- * used inside the new CLL experience. Same shape as getIconForChangeStatus.
+ * Get icon and colors for a change status. Pass `palette: "cll"` for the
+ * muted brown/yellow palette used inside the new CLL experience.
+ *
+ * @example
+ * ```tsx
+ * const { color, icon: Icon } = getIconForChangeStatus("added");
+ * const cll = getIconForChangeStatus("impacted", isDark, "cll");
+ * ```
  */
-export function getCllIconForChangeStatus(
-  changeStatus?: ChangeStatus,
+export function getIconForChangeStatus(
+  changeStatus?: ChangeStatus | "impacted",
   isDark?: boolean,
+  palette: PaletteKey = "default",
 ): ChangeStatusStyle {
   const status = changeStatus ?? "unchanged";
-  const color = cllChangeStatusColors[status];
-  const bg = isDark
-    ? cllChangeStatusBackgroundsDark[status]
-    : cllChangeStatusBackgroundsLight[status];
+  const { colors: colorMap, bg: bgMap } = paletteFor(palette, isDark);
+  const color = colorMap[status];
+  const bg = bgMap[status];
 
   return {
     color,
@@ -525,21 +520,10 @@ export function getCllIconForChangeStatus(
 
 /**
  * Get style for impacted nodes — a peer status alongside added/removed/modified
- * inside the new CLL experience. Reads from cllChangeStatus* constants.
+ * inside the new CLL experience.
  */
 export function getStyleForImpacted(isDark?: boolean): ChangeStatusStyle {
-  const color = cllChangeStatusColors.impacted;
-  const bg = isDark
-    ? cllChangeStatusBackgroundsDark.impacted
-    : cllChangeStatusBackgroundsLight.impacted;
-
-  return {
-    color,
-    hexColor: color,
-    backgroundColor: bg,
-    hexBackgroundColor: bg,
-    icon: IconImpacted,
-  };
+  return getIconForChangeStatus("impacted", isDark, "cll");
 }
 
 /**

@@ -28,7 +28,6 @@ import { Handle, Position } from "@xyflow/react";
 import { type MouseEvent, memo, type ReactNode, useState } from "react";
 import { DIM_FILTER } from "../config/zoomConstants";
 import {
-  getCllIconForChangeStatus,
   getIconForChangeStatus,
   getIconForMaterialization,
   getIconForResourceType,
@@ -353,9 +352,11 @@ function LineageNodeComponent({
     backgroundColor: backgroundColorChangeStatus,
   } = newCllExperience && isImpacted && isUnchanged
     ? getStyleForImpacted(isDark)
-    : newCllExperience
-      ? getCllIconForChangeStatus(changeStatus, isDark)
-      : getIconForChangeStatus(changeStatus, isDark);
+    : getIconForChangeStatus(
+        changeStatus,
+        isDark,
+        newCllExperience ? "cll" : "default",
+      );
   const { icon: ResourceIcon } =
     resourceType === "model" && materialized
       ? getIconForMaterialization(materialized)
