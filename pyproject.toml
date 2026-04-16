@@ -107,3 +107,4 @@ markers = [
     "asyncio: mark test as an async test (used by pytest-asyncio)",
 ]
 asyncio_default_fixture_loop_scope = "function"
+addopts = "--ignore=tests/adapter/dbt_adapter/test_proj/dbt_packages"
