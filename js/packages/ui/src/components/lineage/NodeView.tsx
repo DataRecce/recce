@@ -601,11 +601,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
   const { base, current } = node.data.data;
   const hasSchemaChanges =
     !isSingleEnv && isSchemaChanged(base?.columns, current?.columns) === true;
-  const hasCodeChanges =
-    !isSingleEnv &&
-    base?.raw_code != null &&
-    current?.raw_code != null &&
-    base.raw_code !== current.raw_code;
+  const hasCodeChanges = !isSingleEnv && node.data.changeStatus === "modified";
 
   const isModelSeedOrSnapshot =
     node.data.resourceType === "model" ||
