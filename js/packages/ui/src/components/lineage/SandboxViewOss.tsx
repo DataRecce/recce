@@ -49,7 +49,7 @@ interface SandboxViewProps {
  */
 export function SandboxViewOss({ isOpen, onClose, current }: SandboxViewProps) {
   const [modifiedCode, setModifiedCode] = useState<string>(
-    current?.raw_code ?? "",
+    current?.raw_code ?? "-- No code available",
   );
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   const { showRunId, clearRunResult } = useRecceActionContext();
@@ -62,7 +62,7 @@ export function SandboxViewOss({ isOpen, onClose, current }: SandboxViewProps) {
   if (isOpen !== prevIsOpen) {
     setPrevIsOpen(isOpen);
     if (isOpen) {
-      setModifiedCode(current?.raw_code ?? "");
+      setModifiedCode(current?.raw_code ?? "-- No code available");
     }
   }
 

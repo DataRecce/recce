@@ -343,8 +343,8 @@ function SqlPreview({
 }: SqlPreviewProps) {
   return (
     <DiffEditor
-      original={current?.raw_code ?? ""}
-      modified={current?.raw_code ?? ""}
+      original={current?.raw_code ?? "-- No code available"}
+      modified={current?.raw_code ?? "-- No code available"}
       language="sql"
       readOnly={false}
       lineNumbers={true}

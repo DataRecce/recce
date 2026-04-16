@@ -242,6 +242,8 @@ export function buildLineageGraph(
       node.data.changeStatus = "added";
       modifiedSet.push(node.id);
     } else {
+      // TODO(DRC-3254): Remove this client-side checksum fallback once DRC-3254
+      // is deployed and the server always provides complete diff data.
       const checksum1 = node.data.data.base?.checksum?.checksum;
       const checksum2 = node.data.data.current?.checksum?.checksum;
 
