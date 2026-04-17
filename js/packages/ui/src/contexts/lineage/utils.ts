@@ -242,8 +242,9 @@ export function buildLineageGraph(
       node.data.changeStatus = "added";
       modifiedSet.push(node.id);
     } else {
-      // TODO(DRC-3254): Remove this client-side checksum fallback once DRC-3254
-      // is deployed and the server always provides complete diff data.
+      // TODO(DRC-3263): Remove this client-side checksum fallback once the OSS
+      // backend serves a complete NodeDiff (change.category/columns). The cloud
+      // path already does via DRC-3254; OSS fallback stays until DRC-3263.
       const checksum1 = node.data.data.base?.checksum?.checksum;
       const checksum2 = node.data.data.current?.checksum?.checksum;
 
