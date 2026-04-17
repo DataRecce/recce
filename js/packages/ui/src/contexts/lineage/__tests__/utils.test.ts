@@ -154,7 +154,16 @@ describe("buildLineageGraph", () => {
       catalog_metadata: null,
     };
 
-    const { nodes, edges } = buildLineageGraph(base, current);
+    // DRC-3263: NodeChange is now always computed server-side, so
+    // "modified" status comes from the `diff` map — no client-side
+    // checksum fallback.
+    const diff = {
+      c: {
+        change_status: "modified" as const,
+        change: null,
+      },
+    };
+    const { nodes, edges } = buildLineageGraph(base, current, diff);
 
     expect(Object.keys(nodes).length).toBe(5);
     expect(Object.keys(edges).length).toBe(4);
