@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   getModelInfo,
   LOCAL_STORAGE_KEYS,
@@ -101,16 +101,25 @@ export function SandboxViewOss({ isOpen, onClose, current }: SandboxViewProps) {
     string | undefined
   >(resolvedRawCode);
 
+  // Track whether the user has manually edited the buffer since the dialog
+  // opened. Prevents overwriting a deliberate clear with fetched code.
+  const userHasEdited = useRef(false);
+  const handleUserEdit = useCallback((code: string) => {
+    userHasEdited.current = true;
+    setModifiedCode(code);
+  }, []);
+
   if (isOpen !== prevIsOpen) {
     setPrevIsOpen(isOpen);
     if (isOpen) {
+      userHasEdited.current = false;
       setModifiedCode(resolvedRawCode ?? "");
       setPrevResolvedRawCode(resolvedRawCode);
     }
   } else if (
     isOpen &&
     resolvedRawCode !== prevResolvedRawCode &&
-    (modifiedCode === "" || modifiedCode === prevResolvedRawCode)
+    !userHasEdited.current
   ) {
     // Fetch resolved after the dialog was already open — seed the editor
     // with the freshly resolved raw_code, but only if the user hasn't
@@ -225,7 +234,7 @@ export function SandboxViewOss({ isOpen, onClose, current }: SandboxViewProps) {
       isPending={isPending}
       isCodeLoading={needsFetch && isModelDetailLoading}
       onRunQuery={runQuery}
-      onModifiedCodeChange={setModifiedCode}
+      onModifiedCodeChange={handleUserEdit}
       onShowFeedback={() => feedbackToast(true)}
       tracking={{
         onPreviewChange: trackPreviewChange,

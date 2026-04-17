@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from recce.core import default_context
-from recce.server import app
+from recce.server import _strip_outbound_lineage, _strip_outbound_node, app
 
 # noinspection PyUnresolvedReferences
 from tests.adapter.dbt_adapter.conftest import dbt_test_helper  # noqa: F401
@@ -300,3 +300,93 @@ class TestReadinessGate:
         client = TestClient(app)
         response = client.get("/api/health")
         assert response.status_code == 200
+
+
+class TestStripOutboundNode:
+    """Tests for _strip_outbound_node / _strip_outbound_lineage (DRC-3263)."""
+
+    def test_strips_raw_code_checksum_config(self):
+        node = {
+            "name": "my_model",
+            "raw_code": "SELECT 1",
+            "checksum": {"name": "sha256", "checksum": "abc123"},
+            "config": {"materialized": "table", "tags": ["daily"], "schema": "public"},
+            "columns": {"id": {"name": "id", "type": "integer"}},
+        }
+        result = _strip_outbound_node(node)
+
+        assert "raw_code" not in result
+        assert "checksum" not in result
+        assert result["name"] == "my_model"
+        assert result["columns"] == {"id": {"name": "id", "type": "integer"}}
+        assert result["config"] == {"materialized": "table"}
+
+    def test_preserves_materialized_from_config(self):
+        node = {"config": {"materialized": "view", "extra": "drop_me"}}
+        result = _strip_outbound_node(node)
+        assert result["config"] == {"materialized": "view"}
+
+    def test_missing_config_key(self):
+        """Sources and other nodes may not have a config key at all."""
+        node = {"name": "my_source", "columns": {}}
+        result = _strip_outbound_node(node)
+        assert result["config"] == {"materialized": None}
+        assert result["name"] == "my_source"
+
+    def test_config_none(self):
+        """config: None should not raise."""
+        node = {"name": "n", "config": None}
+        result = _strip_outbound_node(node)
+        assert result["config"] == {"materialized": None}
+
+    def test_config_empty_dict(self):
+        node = {"name": "n", "config": {}}
+        result = _strip_outbound_node(node)
+        assert result["config"] == {"materialized": None}
+
+    def test_node_without_stripped_fields(self):
+        """A node missing raw_code/checksum should still work."""
+        node = {"name": "minimal", "unique_id": "model.pkg.minimal"}
+        result = _strip_outbound_node(node)
+        assert result["name"] == "minimal"
+        assert result["unique_id"] == "model.pkg.minimal"
+        assert "raw_code" not in result
+        assert "checksum" not in result
+
+    def test_does_not_mutate_original(self):
+        node = {"name": "n", "raw_code": "SELECT 1", "config": {"materialized": "table"}}
+        _strip_outbound_node(node)
+        assert "raw_code" in node
+        assert node["config"]["materialized"] == "table"
+
+
+class TestStripOutboundLineage:
+
+    def test_strips_all_nodes(self):
+        lineage = {
+            "nodes": {
+                "model.a": {"name": "a", "raw_code": "SELECT 1", "config": {"materialized": "table"}},
+                "model.b": {"name": "b", "raw_code": "SELECT 2", "config": {"materialized": "view"}},
+            },
+            "parent_map": {"model.a": [], "model.b": ["model.a"]},
+        }
+        result = _strip_outbound_lineage(lineage)
+
+        assert "raw_code" not in result["nodes"]["model.a"]
+        assert "raw_code" not in result["nodes"]["model.b"]
+        assert result["parent_map"] == lineage["parent_map"]
+
+    def test_empty_lineage_dict(self):
+        assert _strip_outbound_lineage({}) == {}
+
+    def test_lineage_with_empty_nodes(self):
+        result = _strip_outbound_lineage({"nodes": {}, "parent_map": {}})
+        assert result["nodes"] == {}
+        assert result["parent_map"] == {}
+
+    def test_does_not_mutate_original(self):
+        lineage = {
+            "nodes": {"model.a": {"name": "a", "raw_code": "SELECT 1", "config": {"materialized": "table"}}},
+        }
+        _strip_outbound_lineage(lineage)
+        assert "raw_code" in lineage["nodes"]["model.a"]

@@ -601,6 +601,11 @@ export function NodeView<TNode extends NodeViewNodeData>({
   const { base, current } = node.data.data;
   const hasSchemaChanges =
     !isSingleEnv && isSchemaChanged(base?.columns, current?.columns) === true;
+  // DRC-3263: uses server-computed changeStatus instead of comparing raw_code
+  // strings. This is intentionally broader — state:modified includes config and
+  // description changes, not just code. Verified equivalent on jaffle-shop-expand
+  // (1060 nodes). If a project has config-only changes, the dot may appear even
+  // though raw_code is identical — acceptable since the node IS modified.
   const hasCodeChanges = !isSingleEnv && node.data.changeStatus === "modified";
 
   const isModelSeedOrSnapshot =
