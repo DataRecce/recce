@@ -489,6 +489,12 @@ class DbtAdapter(BaseAdapter):
         if primary_key:
             result["primary_key"] = primary_key
 
+        # DRC-3263: include raw_code so the frontend can fetch it on demand
+        # when it is stripped from the bulk /info lineage payload.
+        raw_code = node.get("raw_code")
+        if raw_code is not None:
+            result["raw_code"] = raw_code
+
         return result
 
     @track_timing("artifact_load")

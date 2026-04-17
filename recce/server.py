@@ -571,6 +571,31 @@ async def mark_relaunch_hint_completed():
     app.state.flag["show_relaunch_hint"] = False
 
 
+def _strip_outbound_node(node: dict) -> dict:
+    """Strip large/redundant fields from a lineage node before sending to client.
+
+    DRC-3263: ``raw_code`` is served on-demand via ``/api/model/{id}``;
+    ``checksum`` is redundant now that ``NodeChange`` is computed server-side
+    (NodeDiff.change); and only the ``materialized`` config key is used by the
+    frontend, so the rest of ``config`` is dropped. ``columns`` are kept inline
+    because the NodeView schema tab still reads them from the lineage payload
+    (columns on-demand fetch is a follow-up).
+    """
+    stripped = {k: v for k, v in node.items() if k not in ("raw_code", "checksum", "config")}
+    node_config = node.get("config") or {}
+    stripped["config"] = {"materialized": node_config.get("materialized")}
+    return stripped
+
+
+def _strip_outbound_lineage(lineage: dict) -> dict:
+    """Return a shallow copy of a lineage dict with outbound nodes stripped."""
+    if not lineage:
+        return lineage
+    nodes = lineage.get("nodes") or {}
+    stripped_nodes = {node_id: _strip_outbound_node(node) for node_id, node in nodes.items()}
+    return {**lineage, "nodes": stripped_nodes}
+
+
 @app.get("/api/info")
 async def get_info():
     """
@@ -593,6 +618,14 @@ async def get_info():
 
     state_metadata = context.state_loader.state.metadata if context.state_loader.state else None
     lineage_diff = context.get_lineage_diff()
+    # DRC-3263: strip large/redundant fields from outbound lineage nodes.
+    # The underlying cached dicts are not mutated; _strip_outbound_lineage
+    # returns a shallow copy with stripped node dicts.
+    outbound_lineage = type(lineage_diff)(
+        base=_strip_outbound_lineage(lineage_diff.base),
+        current=_strip_outbound_lineage(lineage_diff.current),
+        diff=lineage_diff.diff,
+    )
 
     try:
         info = {
@@ -601,7 +634,7 @@ async def get_info():
             "review_mode": context.review_mode,
             "git": state.git.to_dict() if state.git else None,
             "pull_request": state.pull_request.to_dict() if state.pull_request else None,
-            "lineage": lineage_diff,
+            "lineage": outbound_lineage,
             "demo": bool(demo),
             "codespace": bool(is_codespace),
             "cloud_mode": context.state_loader.cloud_mode,
