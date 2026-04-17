@@ -621,10 +621,11 @@ async def get_info():
     # DRC-3263: strip large/redundant fields from outbound lineage nodes.
     # The underlying cached dicts are not mutated; _strip_outbound_lineage
     # returns a shallow copy with stripped node dicts.
-    outbound_lineage = type(lineage_diff)(
-        base=_strip_outbound_lineage(lineage_diff.base),
-        current=_strip_outbound_lineage(lineage_diff.current),
-        diff=lineage_diff.diff,
+    outbound_lineage = lineage_diff.model_copy(
+        update={
+            "base": _strip_outbound_lineage(lineage_diff.base),
+            "current": _strip_outbound_lineage(lineage_diff.current),
+        }
     )
 
     try:

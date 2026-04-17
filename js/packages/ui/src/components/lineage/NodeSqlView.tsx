@@ -127,7 +127,7 @@ export const NodeSqlView = ({
 
   // Defensive: show "No code available" only when raw_code is missing from
   // all sources (forward-compatibility for when backend strips raw_code).
-  const hasCode = original !== undefined || modified !== undefined;
+  const hasCode = original != null || modified != null;
 
   return (
     <Box
