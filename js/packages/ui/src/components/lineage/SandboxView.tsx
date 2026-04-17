@@ -6,6 +6,7 @@ import Chip from "@mui/material/Chip";
 import MuiDialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
+import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import { alpha } from "@mui/material/styles";
 import MuiTooltip from "@mui/material/Tooltip";
@@ -185,6 +186,13 @@ export interface SandboxViewProps {
    * @default "RECCE"
    */
   brandName?: string;
+
+  /**
+   * Whether the raw_code is still being fetched on-demand.
+   * When true, the editor area shows a loading skeleton and the
+   * Run button is disabled (DRC-3263).
+   */
+  isCodeLoading?: boolean;
 }
 
 /**
@@ -202,6 +210,7 @@ interface SandboxTopBarProps {
   onRunResultOpen: () => void;
   runQuery: () => void;
   isPending: boolean;
+  isCodeLoading?: boolean;
   // biome-ignore lint/suspicious/noExplicitAny: DI pattern requires flexible component types
   QueryForm: ComponentType<any>;
 }
@@ -213,8 +222,16 @@ function SandboxTopBar({
   onRunResultOpen,
   runQuery,
   isPending,
+  isCodeLoading = false,
   QueryForm,
 }: SandboxTopBarProps) {
+  const hasCode = !!current?.raw_code;
+  const runDisabled = isPending || isCodeLoading || !hasCode;
+  const runTooltip = isCodeLoading
+    ? "Loading model code..."
+    : !hasCode
+      ? "No code available for this model"
+      : "Run diff to see the changes";
   return (
     <Stack
       direction="row"
@@ -248,20 +265,22 @@ function SandboxTopBar({
         defaultPrimaryKeys={primaryKeys}
         onPrimaryKeysChange={onPrimaryKeysChange}
       />
-      <MuiTooltip title="Run diff to see the changes">
-        <Button
-          size="small"
-          sx={{ mt: "16px", fontSize: "14px" }}
-          onClick={() => {
-            onRunResultOpen();
-            runQuery();
-          }}
-          color="iochmara"
-          variant="contained"
-          disabled={isPending}
-        >
-          {isPending ? "Running..." : "Run Diff"}
-        </Button>
+      <MuiTooltip title={runTooltip}>
+        <span>
+          <Button
+            size="small"
+            sx={{ mt: "16px", fontSize: "14px" }}
+            onClick={() => {
+              onRunResultOpen();
+              runQuery();
+            }}
+            color="iochmara"
+            variant="contained"
+            disabled={runDisabled}
+          >
+            {isPending ? "Running..." : "Run Diff"}
+          </Button>
+        </span>
       </MuiTooltip>
     </Stack>
   );
@@ -331,6 +350,7 @@ interface SqlPreviewProps {
   current?: SandboxNodeData;
   onChange: (value: string) => void;
   isDark?: boolean;
+  isCodeLoading?: boolean;
   // biome-ignore lint/suspicious/noExplicitAny: DI pattern requires flexible component types
   DiffEditor: ComponentType<any>;
 }
@@ -339,12 +359,43 @@ function SqlPreview({
   current,
   onChange,
   isDark,
+  isCodeLoading = false,
   DiffEditor,
 }: SqlPreviewProps) {
+  // DRC-3263: avoid injecting placeholder text into the editor state — if
+  // raw_code is unavailable, show a skeleton (while fetching) or an empty
+  // state message (after fetch resolves empty). Placeholder text as editor
+  // content becomes the Run query, which is user-hostile.
+  if (isCodeLoading) {
+    return (
+      <Box
+        sx={{ flex: 1, p: 2 }}
+        data-testid="sandbox-sql-preview-loading"
+        aria-label="Loading model code"
+      >
+        <Skeleton variant="rectangular" height="100%" animation="wave" />
+      </Box>
+    );
+  }
+  if (!current?.raw_code) {
+    return (
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "text.secondary",
+        }}
+      >
+        No code available for this model.
+      </Box>
+    );
+  }
   return (
     <DiffEditor
-      original={current?.raw_code ?? "-- No code available"}
-      modified={current?.raw_code ?? "-- No code available"}
+      original={current.raw_code}
+      modified={current.raw_code}
       language="sql"
       readOnly={false}
       lineNumbers={true}
@@ -383,6 +434,7 @@ export function SandboxView({
   tracking,
   logoUrl = "/logo/recce-logo-white.png",
   brandName = "RECCE",
+  isCodeLoading = false,
 }: SandboxViewProps) {
   const [isRunResultOpen, setIsRunResultOpen] = useState(false);
 
@@ -504,6 +556,7 @@ export function SandboxView({
               onRunResultOpen={handleRunResultOpen}
               runQuery={handleRunQuery}
               isPending={isPending}
+              isCodeLoading={isCodeLoading}
               QueryForm={QueryForm}
             />
             <SandboxEditorLabels
@@ -516,6 +569,7 @@ export function SandboxView({
               current={current}
               onChange={handleModifiedCodeChange}
               isDark={isDark}
+              isCodeLoading={isCodeLoading}
               DiffEditor={DiffEditor}
             />
           </Stack>
