@@ -183,6 +183,8 @@ describe("LineageView - buildLineageGraph", () => {
   });
 
   it("tracks modified nodes in modifiedSet", () => {
+    // DRC-3263: "modified" status comes from server-computed diff now that
+    // the client-side checksum fallback has been removed.
     const base = createMockLineageDataFromMetadata();
     const baseData = createMockLineageDataFromMetadata();
     const current = {
@@ -195,8 +197,14 @@ describe("LineageView - buildLineageGraph", () => {
         },
       },
     } as LineageDataFromMetadata;
+    const diff = {
+      "model.test.node1": {
+        change_status: "modified" as const,
+        change: null,
+      },
+    };
 
-    const graph = buildLineageGraph(base, current);
+    const graph = buildLineageGraph(base, current, diff);
 
     expect(graph.modifiedSet).toContain("model.test.node1");
     expect(graph.nodes["model.test.node1"].data.changeStatus).toBe("modified");

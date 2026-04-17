@@ -34,8 +34,7 @@ vi.mock("@datarecce/ui/hooks", () => ({
 // Mock useQuery so on-demand raw_code fetch never actually runs in these tests
 // (raw_code is always supplied inline by the test fixtures).
 vi.mock("@tanstack/react-query", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@tanstack/react-query")>();
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
   return {
     ...actual,
     useQuery: vi.fn(() => ({ data: undefined, isLoading: false })),

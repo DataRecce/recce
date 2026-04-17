@@ -56,8 +56,7 @@ vi.mock("@datarecce/ui/primitives", () => ({
 }));
 
 vi.mock("@tanstack/react-query", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@tanstack/react-query")>();
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
   return {
     ...actual,
     useQuery: vi.fn(() => mockUseQueryReturn),
@@ -70,12 +69,14 @@ import { NodeSqlViewOss as NodeSqlView } from "@datarecce/ui/components/lineage"
 import { useQuery } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 
-function createNode(overrides: {
-  resourceType?: string;
-  // undefined => field absent, null => JSON null, string => has code
-  baseRawCode?: string | null;
-  currentRawCode?: string | null;
-} = {}): LineageGraphNode {
+function createNode(
+  overrides: {
+    resourceType?: string;
+    // undefined => field absent, null => JSON null, string => has code
+    baseRawCode?: string | null;
+    currentRawCode?: string | null;
+  } = {},
+): LineageGraphNode {
   const resourceType = overrides.resourceType ?? "model";
   const base =
     overrides.baseRawCode !== undefined

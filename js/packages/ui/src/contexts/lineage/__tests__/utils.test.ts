@@ -158,7 +158,10 @@ describe("buildLineageGraph", () => {
     // "modified" status comes from the `diff` map — no client-side
     // checksum fallback.
     const diff = {
-      c: { change_status: "modified" as const },
+      c: {
+        change_status: "modified" as const,
+        change: null,
+      },
     };
     const { nodes, edges } = buildLineageGraph(base, current, diff);
 
