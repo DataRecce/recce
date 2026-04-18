@@ -1788,6 +1788,12 @@ class RecceMCPServer:
             if run.status == RunStatus.FAILED:
                 run_error = run.error
 
+        # Auto-approve check when run succeeded without errors.
+        # In the PR summary, Passed = Approved (PM decision): a check that
+        # ran successfully is considered reviewed by the agent.
+        if run_executed and not run_error:
+            check_dao.update_check_by_id(check_id, PatchCheckIn(is_checked=True))
+
         # Persist state to cloud/disk (matches REST endpoint pattern)
         await asyncio.get_event_loop().run_in_executor(None, export_persistent_state)
 
