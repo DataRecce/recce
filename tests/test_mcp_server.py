@@ -349,6 +349,11 @@ class TestRecceMCPServer:
             check_id=check_id,
             triggered_by="user",
         )
+        # Auto-approve: successful run → is_checked=True
+        mock_check_dao.update_check_by_id.assert_called_once()
+        approve_call = mock_check_dao.update_check_by_id.call_args
+        assert approve_call[0][0] == check_id
+        assert approve_call[0][1].is_checked is True
 
     @pytest.mark.asyncio
     async def test_tool_create_check_idempotent_update(self, mcp_server):
@@ -444,6 +449,11 @@ class TestRecceMCPServer:
         mock_submit.assert_not_called()
         # Verify a metadata run was created via RunDAO
         mock_run_dao.create.assert_called_once()
+        # Auto-approve: metadata run succeeded → is_checked=True
+        mock_check_dao.update_check_by_id.assert_called_once()
+        approve_call = mock_check_dao.update_check_by_id.call_args
+        assert approve_call[0][0] == check_id
+        assert approve_call[0][1].is_checked is True
 
     @pytest.mark.asyncio
     async def test_tool_create_check_run_failure(self, mcp_server):
