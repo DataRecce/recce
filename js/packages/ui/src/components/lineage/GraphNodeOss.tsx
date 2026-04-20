@@ -22,7 +22,7 @@ import MuiTooltip from "@mui/material/Tooltip";
 import { type NodeProps, useStore } from "@xyflow/react";
 import { memo } from "react";
 import type { LineageGraphNode } from "../..";
-import { COLUMN_HEIGHT, isSchemaChanged } from "../..";
+import { COLUMN_HEIGHT } from "../..";
 import { isRowCountDiffRun, type RowCountDiff } from "../../api";
 import {
   useLineageGraphContext,
@@ -110,10 +110,8 @@ function NodeRunsAggregatedDisplay({
   }
 
   let schemaChanged: boolean | undefined;
-  if (node?.data.data.base && node.data.data.current) {
-    const baseColumns = node.data.data.base.columns;
-    const currColumns = node.data.data.current.columns;
-    schemaChanged = isSchemaChanged(baseColumns, currColumns);
+  if (node?.data.change?.columns) {
+    schemaChanged = Object.keys(node.data.change.columns).length > 0;
   }
 
   let rowCountChanged: boolean | undefined;
