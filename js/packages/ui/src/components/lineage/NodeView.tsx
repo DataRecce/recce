@@ -18,7 +18,6 @@ import { IoClose } from "react-icons/io5";
 
 import type { NodeData } from "../../api/info";
 import { DisableTooltipMessages } from "../../constants";
-import { isSchemaChanged } from "../../utils/schemaDiff";
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -34,11 +33,8 @@ export interface NodeViewNodeData {
     name: string;
     resourceType?: string;
     changeStatus?: string;
-    from?: string;
-    data: {
-      base?: NodeData;
-      current?: NodeData;
-    };
+    schema?: string;
+    materialized?: string;
     change?: {
       category: string;
       columns: Record<string, "added" | "removed" | "modified"> | null;
@@ -158,6 +154,11 @@ export interface NodeViewProps<
   featureToggles?: {
     mode?: string | null;
     disableDatabaseQuery?: boolean;
+  };
+  /** On-demand model detail (columns, raw_code) fetched by the wrapper */
+  modelDetail?: {
+    base?: NodeData;
+    current?: NodeData;
   };
 
   // =========================================================================
@@ -572,6 +573,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
   onCloseNode,
   isSingleEnv,
   featureToggles,
+  modelDetail,
   // Injected components
   SchemaView,
   SingleEnvSchemaView,
@@ -598,9 +600,11 @@ export function NodeView<TNode extends NodeViewNodeData>({
   const [isNotificationOpen, setIsNotificationOpen] = useState(true);
   const [tabValue, setTabValue] = useState(0);
 
-  const { base, current } = node.data.data;
+  const { base, current } = modelDetail ?? {};
   const hasSchemaChanges =
-    !isSingleEnv && isSchemaChanged(base?.columns, current?.columns) === true;
+    !isSingleEnv &&
+    node.data.change?.columns != null &&
+    Object.keys(node.data.change.columns).length > 0;
   // DRC-3263: uses server-computed changeStatus instead of comparing raw_code
   // strings. This is intentionally broader — state:modified includes config and
   // description changes, not just code. Verified equivalent on jaffle-shop-expand
@@ -785,12 +789,12 @@ export function NodeView<TNode extends NodeViewNodeData>({
               <Box sx={{ overflowY: "auto", height: "100%" }}>
                 {isSingleEnv
                   ? SingleEnvSchemaView && (
-                      <SingleEnvSchemaView current={node.data.data.current} />
+                      <SingleEnvSchemaView current={current} />
                     )
                   : SchemaView && (
                       <SchemaView
-                        base={node.data.data.base}
-                        current={node.data.data.current}
+                        base={base}
+                        current={current}
                         columnChanges={node.data.change?.columns}
                         onViewCode={() => setTabValue(1)}
                       />
@@ -811,7 +815,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
         <SandboxDialog
           isOpen={isSandboxOpen}
           onClose={() => setIsSandboxOpen(false)}
-          current={node.data.data.current}
+          current={current}
         />
       )}
     </Box>
