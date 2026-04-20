@@ -1,180 +1,140 @@
-import type { LineageData } from "../../../api";
+import type { MergedLineageResponse } from "../../../api/info";
 import { buildLineageGraph } from "../utils";
 
 describe("buildLineageGraph", () => {
   test("builds graph with correct node and edge counts", () => {
-    const base: LineageData = {
-      metadata: { pr_url: "" },
+    const lineage: MergedLineageResponse = {
       nodes: {
-        a: {
-          id: "a",
-          unique_id: "a",
-          name: "a",
-        },
-        b: {
-          id: "b",
-          unique_id: "b",
-          name: "b",
-        },
-        c: {
-          id: "c",
-          unique_id: "c",
-          name: "c",
-        },
-        d: {
-          id: "d",
-          unique_id: "d",
-          name: "d",
-        },
+        a: { name: "a", resource_type: "model", package_name: "test" },
+        b: { name: "b", resource_type: "model", package_name: "test" },
+        c: { name: "c", resource_type: "model", package_name: "test" },
+        d: { name: "d", resource_type: "model", package_name: "test" },
       },
-      parent_map: {
-        a: [],
-        b: ["a"],
-        c: ["a"],
-        d: ["b"],
-      },
-      catalog_metadata: null,
+      edges: [
+        { source: "a", target: "b" },
+        { source: "a", target: "c" },
+        { source: "b", target: "d" },
+        { source: "c", target: "d", change_status: "added" },
+      ],
+      metadata: { base: {}, current: {} },
     };
 
-    const current: LineageData = {
-      metadata: { pr_url: "" },
-      nodes: {
-        a: {
-          id: "a",
-          unique_id: "a",
-          name: "a",
-        },
-        b: {
-          id: "b",
-          unique_id: "b",
-          name: "b",
-        },
-        c: {
-          id: "c",
-          unique_id: "c",
-          name: "c",
-        },
-        d: {
-          id: "d",
-          unique_id: "d",
-          name: "d",
-        },
-      },
-      parent_map: {
-        a: [],
-        b: ["a"],
-        c: ["a"],
-        d: ["b", "c"],
-      },
-      catalog_metadata: null,
-    };
+    const { nodes, edges } = buildLineageGraph(lineage);
 
-    const { nodes, edges } = buildLineageGraph(base, current);
-
-    expect(Object.keys(nodes).length).toBe(4);
-    expect(Object.keys(edges).length).toBe(4);
-    expect(nodes.d.data.from).toBe("both");
-    expect(nodes.c.data.children.d.data?.from).toBe("current");
-    expect(nodes.d.data.parents.c.data?.from).toBe("current");
-    expect(edges.c_d.data?.from).toBe("current");
+    expect(Object.keys(nodes)).toHaveLength(4);
+    expect(Object.keys(edges)).toHaveLength(4);
+    expect(edges.c_d.data?.changeStatus).toBe("added");
+    expect(Object.keys(nodes.d.data.parents)).toEqual(
+      expect.arrayContaining(["b", "c"]),
+    );
+    expect(Object.keys(nodes.b.data.children)).toContain("d");
   });
 
-  test("detects added, removed, and modified nodes", () => {
-    const base: LineageData = {
-      metadata: { pr_url: "" },
+  test("maps node fields from merged response", () => {
+    const lineage: MergedLineageResponse = {
+      nodes: {
+        "model.proj.orders": {
+          name: "orders",
+          resource_type: "model",
+          package_name: "proj",
+          schema: "public",
+          materialized: "table",
+          tags: ["finance"],
+        },
+      },
+      edges: [],
+      metadata: { base: {}, current: {} },
+    };
+
+    const { nodes } = buildLineageGraph(lineage);
+    const node = nodes["model.proj.orders"];
+
+    expect(node.data.name).toBe("orders");
+    expect(node.data.resourceType).toBe("model");
+    expect(node.data.packageName).toBe("proj");
+    expect(node.data.schema).toBe("public");
+    expect(node.data.materialized).toBe("table");
+  });
+
+  test("detects added, removed, and modified nodes via change_status", () => {
+    const lineage: MergedLineageResponse = {
       nodes: {
         a: {
-          id: "a",
-          unique_id: "a",
           name: "a",
+          resource_type: "model",
+          package_name: "test",
+          change_status: "removed",
         },
-        b: {
-          id: "b",
-          unique_id: "b",
-          name: "b",
-        },
-        c: {
-          id: "c",
-          unique_id: "c",
-          name: "c",
-          checksum: {
-            name: "sha1",
-            checksum: "c#v1",
-          },
-        },
-        d: {
-          id: "d",
-          unique_id: "d",
-          name: "d",
-        },
-      },
-      parent_map: {
-        a: [],
-        b: ["a"],
-        c: ["b"],
-        d: ["c"],
-      },
-      catalog_metadata: null,
-    };
-
-    const current: LineageData = {
-      metadata: { pr_url: "" },
-      nodes: {
         a2: {
-          id: "a2",
-          unique_id: "a2",
           name: "a2",
+          resource_type: "model",
+          package_name: "test",
+          change_status: "added",
         },
-        b: {
-          id: "b",
-          unique_id: "b",
-          name: "b",
-        },
+        b: { name: "b", resource_type: "model", package_name: "test" },
         c: {
-          id: "c",
-          unique_id: "c",
           name: "c",
-          checksum: {
-            name: "sha1",
-            checksum: "c#v2",
-          },
+          resource_type: "model",
+          package_name: "test",
+          change_status: "modified",
+          change: { category: "breaking", columns: { col1: "added" } },
         },
-        d: {
-          id: "d",
-          unique_id: "d",
-          name: "d",
-        },
+        d: { name: "d", resource_type: "model", package_name: "test" },
       },
-      parent_map: {
-        a2: [],
-        b: ["a2"],
-        c: ["b"],
-        d: ["c"],
-      },
-      catalog_metadata: null,
+      edges: [
+        { source: "a", target: "b", change_status: "removed" },
+        { source: "a2", target: "b", change_status: "added" },
+        { source: "b", target: "c" },
+        { source: "c", target: "d" },
+      ],
+      metadata: { base: {}, current: {} },
     };
 
-    // DRC-3263: NodeChange is now always computed server-side, so
-    // "modified" status comes from the `diff` map — no client-side
-    // checksum fallback.
-    const diff = {
-      c: {
-        change_status: "modified" as const,
-        change: null,
-      },
-    };
-    const { nodes, edges } = buildLineageGraph(base, current, diff);
+    const { nodes, edges, modifiedSet } = buildLineageGraph(lineage);
 
-    expect(Object.keys(nodes).length).toBe(5);
-    expect(Object.keys(edges).length).toBe(4);
+    expect(Object.keys(nodes)).toHaveLength(5);
     expect(nodes.a.data.changeStatus).toBe("removed");
     expect(nodes.a2.data.changeStatus).toBe("added");
     expect(nodes.b.data.changeStatus).toBeUndefined();
     expect(nodes.c.data.changeStatus).toBe("modified");
+    expect(nodes.c.data.change?.columns).toEqual({ col1: "added" });
     expect(nodes.d.data.changeStatus).toBeUndefined();
 
-    expect(nodes.b.data.parents.a.data?.changeStatus).toBe("removed");
-    expect(nodes.b.data.parents.a2.data?.changeStatus).toBe("added");
-    expect(nodes.b.data.children.c.data?.changeStatus).toBeUndefined();
+    expect(edges.a_b.data?.changeStatus).toBe("removed");
+    expect(edges.a2_b.data?.changeStatus).toBe("added");
+    expect(edges.b_c.data?.changeStatus).toBeUndefined();
+
+    expect(modifiedSet).toEqual(
+      expect.arrayContaining(["a", "a2", "c"]),
+    );
+    expect(modifiedSet).not.toContain("b");
+    expect(modifiedSet).not.toContain("d");
+  });
+
+  test("extracts metadata from merged response", () => {
+    const lineage: MergedLineageResponse = {
+      nodes: {},
+      edges: [],
+      metadata: {
+        base: {
+          manifest_metadata: {
+            dbt_version: "1.7.0",
+            project_name: "test",
+          } as any,
+        },
+        current: {
+          manifest_metadata: {
+            dbt_version: "1.8.0",
+            project_name: "test",
+          } as any,
+        },
+      },
+    };
+
+    const { manifestMetadata, catalogMetadata } = buildLineageGraph(lineage);
+
+    expect(manifestMetadata.base?.dbt_version).toBe("1.7.0");
+    expect(manifestMetadata.current?.dbt_version).toBe("1.8.0");
+    expect(catalogMetadata.base).toBeUndefined();
   });
 });
