@@ -93,11 +93,16 @@ class TestMergedNodeSerialization:
         data = node.model_dump(exclude_none=True, by_alias=True)
         assert data["source_name"] == "external"
 
-    def test_tags_default_to_empty_list(self):
+    def test_tags_default_to_none_omitted(self):
         node = MergedNode(name="n", resource_type="model", package_name="pkg")
-        assert node.tags == []
+        assert node.tags is None
         data = node.model_dump(exclude_none=True, by_alias=True)
-        assert data["tags"] == []
+        assert "tags" not in data
+
+    def test_tags_present_when_provided(self):
+        node = MergedNode(name="n", resource_type="model", package_name="pkg", tags=["finance"])
+        data = node.model_dump(exclude_none=True, by_alias=True)
+        assert data["tags"] == ["finance"]
 
 
 class TestMergedEdgeSerialization:
@@ -232,6 +237,48 @@ class TestBuildMergedLineageNodes:
         )
         result = build_merged_lineage(ld)
         assert result.nodes["model.pkg.a"].name == "a"
+
+    def test_materialized_extracted_from_config(self):
+        """materialized lives inside config in dbt manifest; build_merged_lineage must extract it."""
+        node = {
+            "name": "orders",
+            "resource_type": "model",
+            "package_name": "pkg",
+            "config": {"materialized": "incremental"},
+        }
+        ld = _make_lineage_diff(
+            current_nodes={"model.pkg.orders": node},
+        )
+        result = build_merged_lineage(ld)
+        assert result.nodes["model.pkg.orders"].materialized == "incremental"
+
+    def test_materialized_not_overwritten_if_top_level(self):
+        """If a future adapter provides top-level materialized, config should not override."""
+        node = {
+            "name": "orders",
+            "resource_type": "model",
+            "package_name": "pkg",
+            "materialized": "view",
+            "config": {"materialized": "table"},
+        }
+        ld = _make_lineage_diff(
+            current_nodes={"model.pkg.orders": node},
+        )
+        result = build_merged_lineage(ld)
+        assert result.nodes["model.pkg.orders"].materialized == "view"
+
+    def test_materialized_none_when_config_missing(self):
+        """Nodes without config (e.g., sources) should not crash."""
+        node = {
+            "name": "raw_events",
+            "resource_type": "source",
+            "package_name": "pkg",
+        }
+        ld = _make_lineage_diff(
+            current_nodes={"source.pkg.raw_events": node},
+        )
+        result = build_merged_lineage(ld)
+        assert result.nodes["source.pkg.raw_events"].materialized is None
 
 
 class TestBuildMergedLineageEdges:

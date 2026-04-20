@@ -58,7 +58,7 @@ function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
           ) : (
             <SchemaView
               base={
-                modelDetail?.base
+                modelDetail?.base && Object.keys(modelDetail.base).length > 0
                   ? {
                       id: node.id,
                       unique_id: node.id,
@@ -68,7 +68,8 @@ function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
                   : undefined
               }
               current={
-                modelDetail?.current
+                modelDetail?.current &&
+                Object.keys(modelDetail.current).length > 0
                   ? {
                       id: node.id,
                       unique_id: node.id,

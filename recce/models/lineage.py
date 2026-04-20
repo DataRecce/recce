@@ -32,6 +32,15 @@ def build_merged_lineage(lineage_diff: LineageDiff) -> MergedLineage:
         source = current_node if current_node is not None else base_node
         merged = MergedNode(**source)  # extra="ignore" handles unknown keys
 
+        # dbt stores materialized inside config; extract it since MergedNode
+        # ignores nested dicts via extra="ignore".
+        if merged.materialized is None:
+            config = source.get("config")
+            if isinstance(config, dict):
+                mat = config.get("materialized")
+                if isinstance(mat, str):
+                    merged.materialized = mat
+
         node_diff = diff.get(node_id)
         if node_diff:
             merged.change_status = node_diff.change_status

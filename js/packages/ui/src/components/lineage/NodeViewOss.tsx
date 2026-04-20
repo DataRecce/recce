@@ -304,28 +304,36 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
       onCloseNode={onCloseNode}
       isSingleEnv={isSingleEnvOnboarding ?? false}
       featureToggles={featureToggles}
-      modelDetail={
-        modelDetail
-          ? {
-              base: {
+      modelDetail={(() => {
+        if (!modelDetail) return undefined;
+        const hasBase =
+          !!modelDetail.base && Object.keys(modelDetail.base).length > 0;
+        const hasCurrent =
+          !!modelDetail.current && Object.keys(modelDetail.current).length > 0;
+        if (!hasBase && !hasCurrent) return undefined;
+        return {
+          base: hasBase
+            ? {
                 id: node.id,
                 unique_id: node.id,
                 name: node.data.name,
                 resource_type: node.data.resourceType,
                 package_name: node.data.packageName,
                 ...modelDetail.base,
-              },
-              current: {
+              }
+            : undefined,
+          current: hasCurrent
+            ? {
                 id: node.id,
                 unique_id: node.id,
                 name: node.data.name,
                 resource_type: node.data.resourceType,
                 package_name: node.data.packageName,
                 ...modelDetail.current,
-              },
-            }
-          : undefined
-      }
+              }
+            : undefined,
+        };
+      })()}
       // Schema components
       SchemaView={SchemaView}
       SingleEnvSchemaView={SingleEnvSchemaView}

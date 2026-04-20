@@ -203,7 +203,7 @@ export function PrivateSchemaDiffView(
   const selectedNode = selected < nodes.length ? nodes[selected] : undefined;
   const { data: selectedModelDetail } = useQuery({
     queryKey: ["modelDetail", selectedNode?.id],
-    queryFn: () => getModelInfo(selectedNode!.id, apiClient),
+    queryFn: () => getModelInfo(selectedNode?.id ?? "", apiClient),
     enabled: !!selectedNode && !!apiClient,
     staleTime: 5 * 60 * 1000,
   });
@@ -257,7 +257,8 @@ export function PrivateSchemaDiffView(
       <HSplit sizes={[80, 20]} minSize={30} style={{ height: "100%" }}>
         <SchemaView
           base={
-            selectedModelDetail?.model?.base
+            selectedModelDetail?.model?.base &&
+            Object.keys(selectedModelDetail.model.base).length > 0
               ? {
                   id: node.id,
                   unique_id: node.id,
@@ -267,7 +268,8 @@ export function PrivateSchemaDiffView(
               : undefined
           }
           current={
-            selectedModelDetail?.model?.current
+            selectedModelDetail?.model?.current &&
+            Object.keys(selectedModelDetail.model.current).length > 0
               ? {
                   id: node.id,
                   unique_id: node.id,

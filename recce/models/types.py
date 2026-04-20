@@ -174,7 +174,7 @@ class MergedNode(BaseModel):
     package_name: str
     schema_name: str | None = Field(None, alias="schema")
     materialized: str | None = None
-    tags: list[str] = Field(default_factory=list)
+    tags: list[str] | None = None
     source_name: str | None = None
     change_status: ChangeStatus | None = None
     change: NodeChange | None = None
