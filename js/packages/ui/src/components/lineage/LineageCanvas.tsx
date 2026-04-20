@@ -4,6 +4,7 @@ import {
   Background,
   Controls,
   type Edge,
+  type FitViewOptions,
   MiniMap,
   type Node,
   ReactFlow,
@@ -17,6 +18,7 @@ import { useCallback } from "react";
 import { LineageColumnNode } from "./columns";
 import { LineageEdge, type LineageEdgeData } from "./edges";
 import { LineageNode, type LineageNodeData } from "./nodes";
+import { cllChangeStatusColors } from "./styles";
 
 export interface LineageCanvasProps {
   /** Nodes to display */
@@ -37,6 +39,12 @@ export interface LineageCanvasProps {
   height?: number | string;
   /** Whether the graph is interactive */
   interactive?: boolean;
+  /** Minimum zoom level (passed to ReactFlow) */
+  minZoom?: number;
+  /** Maximum zoom level (passed to ReactFlow) */
+  maxZoom?: number;
+  /** Options passed to fitView on initial render */
+  fitViewOptions?: FitViewOptions;
 }
 
 const nodeTypes = {
@@ -58,6 +66,9 @@ export function LineageCanvas({
   showBackground = true,
   height = 600,
   interactive = true,
+  minZoom,
+  maxZoom,
+  fitViewOptions,
 }: LineageCanvasProps) {
   const [nodes, _setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, _setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -93,6 +104,9 @@ export function LineageCanvas({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
+        fitViewOptions={fitViewOptions}
+        minZoom={minZoom}
+        maxZoom={maxZoom}
         nodesDraggable={interactive}
         nodesConnectable={false}
         elementsSelectable={interactive}
@@ -103,16 +117,7 @@ export function LineageCanvas({
           <MiniMap
             nodeColor={(node) => {
               const data = node.data as LineageNodeData;
-              switch (data.changeStatus) {
-                case "added":
-                  return "#22c55e";
-                case "removed":
-                  return "#ef4444";
-                case "modified":
-                  return "#f59e0b";
-                default:
-                  return "#94a3b8";
-              }
+              return cllChangeStatusColors[data.changeStatus ?? "unchanged"];
             }}
           />
         )}

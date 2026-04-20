@@ -1,6 +1,6 @@
 "use client";
 
-// API context - axios client and configuration
+// API context - fetch client and configuration
 export { ApiProvider } from "../providers/contexts/ApiContext";
 
 // Route configuration context - path prefixing for cloud routing

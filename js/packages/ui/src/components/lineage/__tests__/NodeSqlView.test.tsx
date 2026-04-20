@@ -77,19 +77,21 @@ const createMockNode = (
 ): NodeSqlViewProps["node"] => ({
   data: {
     resourceType: "model",
-    data: {
-      base: { raw_code: "SELECT * FROM base_table", name: "test_model" },
-      current: { raw_code: "SELECT * FROM current_table", name: "test_model" },
-    },
     name: "test_model",
     ...overrides,
   },
 });
 
+const defaultModelDetail: NodeSqlViewProps["modelDetail"] = {
+  base: { raw_code: "SELECT * FROM base_table", name: "test_model" },
+  current: { raw_code: "SELECT * FROM current_table", name: "test_model" },
+};
+
 const createMockProps = (
   overrides: Partial<NodeSqlViewProps> = {},
 ): NodeSqlViewProps => ({
   node: createMockNode(),
+  modelDetail: defaultModelDetail,
   isSingleEnv: false,
   CodeEditor: MockCodeEditor,
   DiffEditor: MockDiffEditor,
@@ -191,12 +193,10 @@ describe("NodeSqlView", () => {
     it("uses base code when in single-env mode", () => {
       const props = createMockProps({
         isSingleEnv: true,
-        node: createMockNode({
-          data: {
-            base: { raw_code: "SELECT base", name: "model" },
-            current: { raw_code: "SELECT current", name: "model" },
-          },
-        }),
+        modelDetail: {
+          base: { raw_code: "SELECT base", name: "model" },
+          current: { raw_code: "SELECT current", name: "model" },
+        },
       });
 
       render(<NodeSqlView {...props} />);
@@ -209,12 +209,10 @@ describe("NodeSqlView", () => {
     it("shows 'Model Code' in dialog title for single-env", () => {
       const props = createMockProps({
         isSingleEnv: true,
-        node: createMockNode({
-          data: {
-            base: { raw_code: "SELECT 1", name: "my_model" },
-            current: { raw_code: "SELECT 2", name: "my_model" },
-          },
-        }),
+        modelDetail: {
+          base: { raw_code: "SELECT 1", name: "my_model" },
+          current: { raw_code: "SELECT 2", name: "my_model" },
+        },
       });
 
       render(<NodeSqlView {...props} />);
@@ -246,12 +244,10 @@ describe("NodeSqlView", () => {
     it("passes original and modified code to DiffEditor", () => {
       const props = createMockProps({
         isSingleEnv: false,
-        node: createMockNode({
-          data: {
-            base: { raw_code: "SELECT old", name: "model" },
-            current: { raw_code: "SELECT new", name: "model" },
-          },
-        }),
+        modelDetail: {
+          base: { raw_code: "SELECT old", name: "model" },
+          current: { raw_code: "SELECT new", name: "model" },
+        },
       });
 
       render(<NodeSqlView {...props} />);
@@ -276,12 +272,10 @@ describe("NodeSqlView", () => {
     it("shows 'Model Code Diff' in dialog title for diff mode", () => {
       const props = createMockProps({
         isSingleEnv: false,
-        node: createMockNode({
-          data: {
-            base: { raw_code: "SELECT 1", name: "my_model" },
-            current: { raw_code: "SELECT 2", name: "my_model" },
-          },
-        }),
+        modelDetail: {
+          base: { raw_code: "SELECT 1", name: "my_model" },
+          current: { raw_code: "SELECT 2", name: "my_model" },
+        },
       });
 
       render(<NodeSqlView {...props} />);
@@ -460,12 +454,10 @@ describe("NodeSqlView", () => {
     it("handles missing base code gracefully", () => {
       const props = createMockProps({
         isSingleEnv: true,
-        node: createMockNode({
-          data: {
-            base: undefined,
-            current: { raw_code: "SELECT current", name: "model" },
-          },
-        }),
+        modelDetail: {
+          base: undefined,
+          current: { raw_code: "SELECT current", name: "model" },
+        },
       });
 
       render(<NodeSqlView {...props} />);
@@ -477,12 +469,10 @@ describe("NodeSqlView", () => {
     it("handles missing current code gracefully", () => {
       const props = createMockProps({
         isSingleEnv: false,
-        node: createMockNode({
-          data: {
-            base: { raw_code: "SELECT base", name: "model" },
-            current: undefined,
-          },
-        }),
+        modelDetail: {
+          base: { raw_code: "SELECT base", name: "model" },
+          current: undefined,
+        },
       });
 
       render(<NodeSqlView {...props} />);
@@ -492,12 +482,10 @@ describe("NodeSqlView", () => {
 
     it("uses base name when current name is not available", () => {
       const props = createMockProps({
-        node: createMockNode({
-          data: {
-            base: { raw_code: "SELECT 1", name: "base_model" },
-            current: undefined,
-          },
-        }),
+        modelDetail: {
+          base: { raw_code: "SELECT 1", name: "base_model" },
+          current: undefined,
+        },
       });
 
       render(<NodeSqlView {...props} />);
@@ -510,12 +498,10 @@ describe("NodeSqlView", () => {
 
     it("uses current name when base name is not available", () => {
       const props = createMockProps({
-        node: createMockNode({
-          data: {
-            base: undefined,
-            current: { raw_code: "SELECT 1", name: "current_model" },
-          },
-        }),
+        modelDetail: {
+          base: undefined,
+          current: { raw_code: "SELECT 1", name: "current_model" },
+        },
       });
 
       render(<NodeSqlView {...props} />);
@@ -529,18 +515,16 @@ describe("NodeSqlView", () => {
     it("handles both base and current missing gracefully", () => {
       const props = createMockProps({
         isSingleEnv: true,
-        node: createMockNode({
-          data: {
-            base: undefined,
-            current: undefined,
-          },
-        }),
+        modelDetail: {
+          base: undefined,
+          current: undefined,
+        },
       });
 
       render(<NodeSqlView {...props} />);
 
-      // Should render empty editor
-      expect(screen.getByTestId("mock-code-editor")).toHaveTextContent("");
+      // Should show "No code available" when raw_code is missing from all sources
+      expect(screen.getByText("No code available")).toBeInTheDocument();
     });
   });
 

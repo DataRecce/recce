@@ -4,12 +4,15 @@ import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import CardHeader from "@mui/material/CardHeader";
+import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { getModelInfo } from "../..";
 import type { LineageGraph, LineageGraphNode } from "../../contexts";
-import { mergeKeysWithStatus } from "../../utils";
-import { ResourceTypeTag, RowCountDiffTag } from "../lineage";
+import { useApiConfig } from "../../hooks";
+import { NodeTag, RowCountDiffTag } from "../lineage";
 import { SchemaView } from "../schema";
 
 interface SchemaDiffCardProps {
@@ -18,6 +21,16 @@ interface SchemaDiffCardProps {
 }
 
 function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
+  const { apiClient } = useApiConfig();
+
+  const { data: modelDetailData, isLoading } = useQuery({
+    queryKey: ["modelDetail", node.id],
+    queryFn: () => getModelInfo(node.id, apiClient),
+    enabled: !!apiClient,
+    staleTime: 5 * 60 * 1000,
+  });
+  const modelDetail = modelDetailData?.model;
+
   return (
     <Card sx={{ maxWidth: 500 }}>
       <CardHeader
@@ -28,7 +41,10 @@ function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
         }
         subheader={
           <Stack direction="row" spacing="8px" sx={{ p: "16px" }}>
-            <ResourceTypeTag data={{ resourceType: node.data.resourceType }} />
+            <NodeTag
+              resourceType={node.data.resourceType}
+              materialized={node.data.materialized}
+            />
             {node.data.resourceType === "model" && (
               <RowCountDiffTag node={node} />
             )}
@@ -37,10 +53,34 @@ function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
       />
       <CardContent>
         <Box sx={{ display: "flex" }}>
-          <SchemaView
-            base={node.data.data.base}
-            current={node.data.data.current}
-          />
+          {isLoading ? (
+            <Skeleton variant="rectangular" width="100%" height={100} />
+          ) : (
+            <SchemaView
+              base={
+                modelDetail?.base && Object.keys(modelDetail.base).length > 0
+                  ? {
+                      id: node.id,
+                      unique_id: node.id,
+                      name: node.data.name,
+                      ...modelDetail.base,
+                    }
+                  : undefined
+              }
+              current={
+                modelDetail?.current &&
+                Object.keys(modelDetail.current).length > 0
+                  ? {
+                      id: node.id,
+                      unique_id: node.id,
+                      name: node.data.name,
+                      ...modelDetail.current,
+                    }
+                  : undefined
+              }
+              columnChanges={node.data.change?.columns}
+            />
+          )}
         </Box>
       </CardContent>
     </Card>
@@ -52,17 +92,12 @@ function listChangedNodes(lineageGraph: LineageGraph) {
   const allNodes = lineageGraph.nodes;
   lineageGraph.modifiedSet.forEach((nodeId) => {
     const node = allNodes[nodeId];
-    const columnDiffStatus = mergeKeysWithStatus(
-      Object.keys(node.data.data.base?.columns ?? {}),
-      Object.keys(node.data.data.current?.columns ?? {}),
-    );
-    const isSchemaChanged = !Object.values(columnDiffStatus).every(
-      (el) => el === undefined,
-    );
-    // We only want to show nodes that have real schema changes.
-    // It doesn't include added or deleted model.
-    if (isSchemaChanged && node.data.data.base && node.data.data.current)
+    if (
+      node.data.change?.columns &&
+      Object.keys(node.data.change.columns).length > 0
+    ) {
       changedNodes.push(node);
+    }
   });
   return changedNodes;
 }

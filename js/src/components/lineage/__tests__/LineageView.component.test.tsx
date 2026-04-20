@@ -114,12 +114,12 @@ vi.mock("@xyflow/react", () => ({
 }));
 
 // Mock @datarecce/ui contexts
-const mockRetchLineageGraph = vi.fn();
+const mockRefetchLineageGraph = vi.fn();
 const mockRefetchRunsAggregated = vi.fn();
 
 const mockLineageGraphContext = {
   lineageGraph: undefined as LineageGraph | undefined,
-  retchLineageGraph: mockRetchLineageGraph,
+  refetchLineageGraph: mockRefetchLineageGraph,
   isLoading: false,
   error: undefined as string | undefined,
   refetchRunsAggregated: mockRefetchRunsAggregated,
@@ -136,6 +136,7 @@ vi.mock("@datarecce/ui/contexts", async () => {
     useRouteConfig: vi.fn(() => ({ basePath: "" })),
     useLineageGraphContext: vi.fn(() => mockLineageGraphContext),
     useRecceInstanceContext: vi.fn(() => mockRecceInstanceContext),
+    useRecceServerFlag: vi.fn(() => ({ data: {} })),
     useRecceActionContext: vi.fn(() => ({
       runId: undefined,
       showRunId: mockShowRunId,
@@ -451,6 +452,7 @@ import {
   type LineageViewRef,
   PrivateLineageView,
 } from "@datarecce/ui/components/lineage/LineageViewOss";
+import { useRecceServerFlag } from "@datarecce/ui/contexts";
 
 // Wrap PrivateLineageView with forwardRef for testing purposes
 // This is needed because PrivateLineageView is a function that takes (props, ref)
@@ -462,6 +464,7 @@ const TestablePrivateLineageView = React.forwardRef<
 
 import { toReactFlow } from "@datarecce/ui/components/lineage/lineage";
 import { useMultiNodesActionOss as useMultiNodesAction } from "@datarecce/ui/hooks/useMultiNodesActionOss";
+import { useMutation } from "@tanstack/react-query";
 
 // ============================================================================
 // Test Fixtures
@@ -511,8 +514,6 @@ function createMockLineageGraphNode(
     data: {
       id,
       name,
-      from: "both",
-      data: { base: undefined, current: undefined },
       resourceType: "model",
       packageName: "test",
       parents: {},
@@ -764,7 +765,7 @@ describe("LineageView Component", () => {
       expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
     });
 
-    it("calls retchLineageGraph when retry button is clicked", () => {
+    it("calls refetchLineageGraph when retry button is clicked", () => {
       mockLineageGraphContext.error = "Network error";
 
       render(
@@ -776,7 +777,7 @@ describe("LineageView Component", () => {
       const retryButton = screen.getByRole("button", { name: "Retry" });
       fireEvent.click(retryButton);
 
-      expect(mockRetchLineageGraph).toHaveBeenCalledTimes(1);
+      expect(mockRefetchLineageGraph).toHaveBeenCalledTimes(1);
     });
 
     it("does not render ReactFlow when error", () => {
@@ -1260,6 +1261,89 @@ describe("LineageView Component", () => {
       await waitFor(() => {
         expect(screen.getByTestId("context-menu")).toBeInTheDocument();
       });
+    });
+  });
+
+  // ==========================================================================
+  // Impact-at-Startup Auto-Trigger Tests
+  // ==========================================================================
+
+  describe("impact-at-startup auto-trigger", () => {
+    let mockMutateAsync: Mock;
+
+    beforeEach(() => {
+      mockMutateAsync = vi.fn().mockResolvedValue(undefined);
+      (useMutation as Mock).mockReturnValue({
+        mutateAsync: mockMutateAsync,
+      });
+    });
+
+    afterEach(() => {
+      // Restore default mock
+      (useRecceServerFlag as Mock).mockReturnValue({ data: {} });
+      (useMutation as Mock).mockReturnValue({
+        mutateAsync: vi.fn().mockResolvedValue(undefined),
+      });
+    });
+
+    it("triggers CLL when impact_at_startup flag is true", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      (useRecceServerFlag as Mock).mockReturnValue({
+        data: { impact_at_startup: true },
+      });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+
+      await waitFor(() => {
+        expect(mockMutateAsync).toHaveBeenCalledWith(
+          expect.objectContaining({
+            change_analysis: true,
+            no_upstream: true,
+          }),
+        );
+      });
+    });
+
+    it("does not trigger CLL when flag is false", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      (useRecceServerFlag as Mock).mockReturnValue({
+        data: { impact_at_startup: false },
+      });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+
+      // Wait for the effect to settle, then verify no CLL call
+      await waitFor(() => {
+        expect(select).toHaveBeenCalled();
+      });
+      expect(mockMutateAsync).not.toHaveBeenCalled();
+    });
+
+    it("does not trigger CLL when flag is absent", async () => {
+      const lineageGraph = createMockLineageGraph();
+      setupWithLineageGraph(lineageGraph);
+      (useRecceServerFlag as Mock).mockReturnValue({ data: {} });
+
+      render(
+        <TestWrapper>
+          <TestablePrivateLineageView interactive={true} ref={null} />
+        </TestWrapper>,
+      );
+
+      await waitFor(() => {
+        expect(select).toHaveBeenCalled();
+      });
+      expect(mockMutateAsync).not.toHaveBeenCalled();
     });
   });
 });

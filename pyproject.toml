@@ -4,7 +4,7 @@ dynamic = ["version"]
 description = "Environment diff tool for dbt"
 readme = "README.md"
 authors = [{name = "InfuseAI Dev Team", email = "dev@infuseai.io"}]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = {text = "Apache-2.0"}
 
 dependencies = [
@@ -12,7 +12,7 @@ dependencies = [
     "requests>=2.28.1",
     "ruamel.yaml>=0.18.6",
     "click>=7.1",
-    "deepdiff>=8.6.1,<9.0",
+    "deepdiff>=8.6.1,<10.0",
     "portalocker",
     "fastapi",
     "itsdangerous",
@@ -20,7 +20,7 @@ dependencies = [
     "pydantic",
     "jinja2",
     "rich>=12.0.0",
-    "sentry-sdk",
+    "sentry-sdk>=2.44.0",
     "watchdog",
     "websockets",
     "py-markdown-table",
@@ -28,13 +28,13 @@ dependencies = [
     "python-multipart",
     "GitPython",
     "PyGithub",
-    "sqlglot>=27.29.0,<30.0",
+    "sqlglot>=27.29.0,<31.0",
     "pytz",
     "packaging",
+    "openpyxl>=3.1.0",
 ]
 
 classifiers = [
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -45,7 +45,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-mcp = ["mcp>=1.0.0; python_version >= '3.10'"]
+mcp = ["mcp>=1.0.0"]
 dev = [
     "pytest>=4.6",
     "pytest-asyncio>=0.23,<2.0",
@@ -107,3 +107,4 @@ markers = [
     "asyncio: mark test as an async test (used by pytest-asyncio)",
 ]
 asyncio_default_fixture_loop_scope = "function"
+addopts = "--ignore=tests/adapter/dbt_adapter/test_proj/dbt_packages"

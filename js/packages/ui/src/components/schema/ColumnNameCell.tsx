@@ -37,6 +37,7 @@ import {
   useRecceInstanceContext,
 } from "../../contexts";
 import { supportsHistogramDiff } from "../histogram";
+import { buildColumnTooltip, DataTypeIcon } from "../ui/DataTypeIcon";
 import type { SchemaDiffRow } from "./types";
 
 // ============================================================================
@@ -57,6 +58,10 @@ export interface ColumnNameCellProps {
   cllRunning?: boolean;
   /** Whether to show the context menu (defaults to true) */
   showMenu?: boolean;
+  /** Callback when user clicks a definition-changed badge to view SQL diff */
+  onViewCode?: () => void;
+  /** Whether this column is impacted by upstream changes */
+  isImpacted?: boolean;
 }
 
 // ============================================================================
@@ -82,13 +87,44 @@ export function ColumnNameCell({
   singleEnv,
   cllRunning,
   showMenu = true,
+  onViewCode,
+  isImpacted,
 }: ColumnNameCellProps) {
   const lineageViewContext = useLineageViewContext();
   const { isActionAvailable } = useLineageGraphContext();
   const { runAction } = useRecceActionContext();
   const { featureToggles } = useRecceInstanceContext();
-  const { name, baseType, currentType, baseIndex, currentIndex } = row;
-  const columnType = currentType ?? baseType;
+  const {
+    name,
+    baseType,
+    currentType,
+    baseIndex,
+    currentIndex,
+    reordered,
+    definitionChanged,
+  } = row;
+  const columnType =
+    currentType ??
+    baseType ??
+    ((row as Record<string, unknown>).type as string | undefined);
+  const isAdded = baseIndex === undefined && currentIndex !== undefined;
+  const isRemoved = baseIndex !== undefined && currentIndex === undefined;
+  const isTypeChanged = !isAdded && !isRemoved && baseType !== currentType;
+  const hasStructuralChange =
+    !isAdded && !isRemoved && (baseType !== currentType || reordered === true);
+
+  const columnStatus = singleEnv
+    ? "unchanged"
+    : isAdded
+      ? "added"
+      : isRemoved
+        ? "removed"
+        : isTypeChanged
+          ? "type_changed"
+          : definitionChanged
+            ? "definition_changed"
+            : "unchanged";
+
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
 
@@ -167,13 +203,65 @@ export function ColumnNameCell({
     !isActionAvailable("change_analysis") ||
     (baseIndex !== undefined && currentIndex === undefined);
 
+  const tooltipTitle = buildColumnTooltip({
+    name,
+    status: columnStatus,
+    baseType,
+    currentType,
+    cllAvailable: !isCllDisabled,
+  });
+
   return (
-    <Tooltip
-      title="View column lineage"
-      placement="top"
-      disableHoverListener={isCllDisabled}
-    >
+    <Tooltip title={tooltipTitle} placement="top">
       <Box sx={{ display: "flex", alignItems: "center", gap: "3px" }}>
+        {hasStructuralChange && (
+          <span className="schema-change-badge schema-change-badge-changed">
+            ~
+          </span>
+        )}
+        {isAdded && (
+          <span className="schema-change-badge schema-change-badge-added">
+            +
+          </span>
+        )}
+        {isRemoved && (
+          <span className="schema-change-badge schema-change-badge-removed">
+            -
+          </span>
+        )}
+        {isImpacted &&
+          !isAdded &&
+          !isRemoved &&
+          !hasStructuralChange &&
+          !definitionChanged && (
+            <span className="schema-change-badge schema-change-badge-impacted">
+              !
+            </span>
+          )}
+        {definitionChanged && (
+          <Tooltip
+            title="Definition changed — click to view code"
+            placement="top"
+            onMouseOver={(e) => e.stopPropagation()}
+          >
+            {onViewCode ? (
+              <button
+                type="button"
+                className="schema-change-badge schema-change-badge-changed schema-change-badge-clickable"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewCode();
+                }}
+              >
+                ~
+              </button>
+            ) : (
+              <span className="schema-change-badge schema-change-badge-changed">
+                ~
+              </span>
+            )}
+          </Tooltip>
+        )}
         <Box
           sx={{
             overflow: "hidden",
@@ -183,6 +271,37 @@ export function ColumnNameCell({
         >
           {name}
         </Box>
+        {isTypeChanged ? (
+          <Box
+            component="span"
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.125rem",
+              ml: "0.25rem",
+              fontSize: "1.6rem",
+            }}
+          >
+            {baseType && (
+              <Box
+                component="span"
+                sx={{ textDecoration: "line-through", opacity: 0.6 }}
+              >
+                <DataTypeIcon type={baseType} disableTooltip />
+              </Box>
+            )}
+            <Box component="span" sx={{ fontSize: "0.7em", opacity: 0.5 }}>
+              →
+            </Box>
+            {currentType && <DataTypeIcon type={currentType} disableTooltip />}
+          </Box>
+        ) : (
+          columnType && (
+            <Box component="span" sx={{ ml: "0.25rem", fontSize: "1.6rem" }}>
+              <DataTypeIcon type={columnType} disableTooltip />
+            </Box>
+          )
+        )}
         <Box sx={{ flex: 1 }} />
         {cllRunning && <CircularProgress size={12} color="inherit" />}
         {showMenu && !singleEnv && model.resource_type !== "source" && (

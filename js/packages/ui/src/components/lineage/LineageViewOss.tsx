@@ -1,6 +1,6 @@
 "use client";
 
-import type { Check } from "../../api";
+import type { Check, ServerInfoResult } from "../../api";
 import {
   type CllInput,
   type ColumnLineageData,
@@ -21,10 +21,12 @@ import {
   useLineageGraphContext,
   useRecceActionContext,
   useRecceInstanceContext,
+  useRecceServerFlag,
 } from "../../contexts";
 import {
   isLineageGraphColumnNode,
   isLineageGraphNode,
+  type LineageGraph,
   type LineageGraphColumnNode,
   type LineageGraphEdge,
   type LineageGraphNode,
@@ -70,7 +72,6 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { AxiosError } from "axios";
 import React, {
   forwardRef,
   Ref,
@@ -83,15 +84,28 @@ import React, {
   useState,
 } from "react";
 import { FiCopy } from "react-icons/fi";
+import { HttpError } from "../../lib/fetchClient";
 import { colors } from "../../theme";
 import { LineageViewNotification } from "../notifications";
 import { HSplit, toaster } from "../ui";
 import { ActionControlOss } from "./ActionControlOss";
 import { ColumnLevelLineageControlOss } from "./ColumnLevelLineageControlOss";
-import { edgeTypes, getNodeColor, initialNodes, nodeTypes } from "./config";
+import { computeColumnLineage } from "./computeColumnLineage";
+import { computeImpactedColumns } from "./computeImpactedColumns";
+import { computeIsImpacted } from "./computeIsImpacted";
+import {
+  EXPLORE_MIN_ZOOM,
+  edgeTypes,
+  FIT_VIEW_PADDING,
+  getNodeColor,
+  initialNodes,
+  LEGIBLE_MIN_ZOOM,
+  nodeTypes,
+} from "./config";
 import {
   useLineageCopyToClipboard,
   useNavToCheck,
+  usePublishedImpactSets,
   useResizeObserver,
   useTrackLineageRender,
 } from "./hooks";
@@ -102,6 +116,8 @@ import {
 import { LineageLegend } from "./legend";
 import { toReactFlow } from "./lineage";
 import { NodeViewOss as NodeView } from "./NodeViewOss";
+import type { NodeChangeStatus } from "./nodes/LineageNode";
+import { patchLineageFromCll } from "./patchLineageDiffFromCll";
 import SetupConnectionBanner from "./SetupConnectionBannerOss";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
 import {
@@ -110,6 +126,59 @@ import {
   LineageViewNoChanges,
 } from "./states";
 import { LineageViewTopBarOss as LineageViewTopBar } from "./topbar/LineageViewTopBarOss";
+
+/** Hide MiniMap when node count exceeds this threshold to reduce DOM pressure */
+export const MINIMAP_NODE_THRESHOLD = 500;
+
+/**
+ * Compute impacted node IDs and column IDs in a single pass over the CLL data.
+ *
+ * The expensive part is `computeImpactedColumns` (DFS over parent_map), so we
+ * run it once and thread the result into per-node checks.
+ */
+function computeImpactedSets(
+  lineageGraph: LineageGraph,
+  cll: ColumnLineageData,
+): { nodeIds: Set<string>; columnIds: Set<string> } {
+  const columnIds = computeImpactedColumns(cll);
+  const nodeIds = new Set<string>();
+  for (const nodeId of Object.keys(lineageGraph.nodes)) {
+    const node = lineageGraph.nodes[nodeId];
+    if (
+      computeIsImpacted(
+        nodeId,
+        cll,
+        node.data.changeStatus as NodeChangeStatus,
+        columnIds,
+      )
+    ) {
+      nodeIds.add(nodeId);
+    }
+  }
+  return { nodeIds, columnIds };
+}
+
+/**
+ * Compute column ancestry if we're in column mode with valid input.
+ *
+ * @param impactedColumns - Pre-computed impacted column set. Avoids a
+ *   redundant DFS when the caller already has it (e.g. from computeImpactedSets).
+ */
+function maybeComputeLineage(
+  newCllExperience: boolean,
+  cll: ColumnLineageData | undefined,
+  cllInput: CllInput | undefined,
+  impactedColumns?: Set<string>,
+) {
+  return newCllExperience && cll && cllInput?.node_id && cllInput?.column
+    ? computeColumnLineage(
+        cll,
+        cllInput.node_id,
+        cllInput.column,
+        impactedColumns ?? new Set<string>(),
+      )
+    : undefined;
+}
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -124,6 +193,46 @@ export interface LineageViewProps {
 
 export interface LineageViewRef {
   copyToClipboard: () => void;
+}
+
+/**
+ * Fetch CLL data and patch the lineage diff cache with change data.
+ *
+ * This is the shared core of CLL fetching used by both the initial layout
+ * effect and refreshLayout. The caller provides the resolved changeAnalysis
+ * value (from ref or state) so this function has no closure concerns.
+ */
+async function fetchCllAndPatchCache(
+  cllInput: CllInput,
+  changeAnalysis: boolean,
+  actionGetCll: {
+    mutateAsync: (input: CllInput) => Promise<ColumnLineageData>;
+  },
+  cllCachePatchRef: React.MutableRefObject<{
+    pending: boolean;
+    cllData?: ColumnLineageData;
+  }>,
+  queryClient: ReturnType<typeof useQueryClient>,
+): Promise<ColumnLineageData> {
+  const cllApiInput: CllInput = {
+    ...cllInput,
+    change_analysis: cllInput.change_analysis ?? changeAnalysis,
+  };
+  const cll = await actionGetCll.mutateAsync(cllApiInput);
+  if (cllApiInput.change_analysis && cll) {
+    cllCachePatchRef.current = { pending: true, cllData: cll };
+    queryClient.setQueryData(
+      cacheKeys.lineage(),
+      (old: ServerInfoResult | undefined) => {
+        if (!old) return old;
+        return {
+          ...old,
+          lineage: patchLineageFromCll(old.lineage, cll),
+        };
+      },
+    );
+  }
+  return cll;
 }
 
 export function PrivateLineageView(
@@ -146,13 +255,15 @@ export function PrivateLineageView(
 
   const {
     lineageGraph,
-    retchLineageGraph,
+    refetchLineageGraph,
     isLoading,
     error,
     refetchRunsAggregated,
   } = useLineageGraphContext();
 
   const { featureToggles, singleEnv } = useRecceInstanceContext();
+  const { data: serverFlags } = useRecceServerFlag();
+  const newCllExperience = serverFlags?.new_cll_experience ?? false;
   const { runId, showRunId, closeRunResult, runAction, isRunResultOpen } =
     useRecceActionContext();
   const { run } = useRun(runId);
@@ -166,9 +277,23 @@ export function PrivateLineageView(
   const cllHistory = useRef<(CllInput | undefined)[]>([]).current;
 
   const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
+  const [changeAnalysisMode, setChangeAnalysisMode] = useState(false);
+  // Ref mirror of changeAnalysisMode for reading inside useLayoutEffect
+  // without adding it as a dependency (avoids re-running layout on toggle).
+  const changeAnalysisModeRef = useRef(false);
+  changeAnalysisModeRef.current = changeAnalysisMode;
   const actionGetCll = useMutation({
     mutationFn: (input: CllInput) => getCll(input, apiClient),
   });
+  // Guard against useLayoutEffect re-entry after cache patching.
+  // When setQueryData patches lineage.diff, queryServerInfo.data changes,
+  // lineageGraph recomputes via useMemo, and the effect re-fires. This ref
+  // tells the effect to reuse the previous CLL result instead of re-calling
+  // the API and re-patching (which would loop infinitely).
+  const cllCachePatchRef = useRef<{
+    pending: boolean;
+    cllData?: ColumnLineageData;
+  }>({ pending: false });
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
 
   const findNodeByName = useCallback(
@@ -267,7 +392,7 @@ export function PrivateLineageView(
    * - Node measuring/resizing
    * - Internal React Flow position updates
    *
-   * This fixes DRC-2623 where clicking between columns caused graph reflow
+   * This fixes where clicking between columns caused graph reflow
    * because React state positions were stale relative to what React Flow rendered.
    */
   const getNodePositions = useCallback(() => {
@@ -284,8 +409,16 @@ export function PrivateLineageView(
   }, [reactFlow]);
 
   /**
-   * Highlighted nodes: the nodes that are highlighted. The behavior of highlighting depends on the select mode
+   * Highlighted nodes — controls which nodes are fully opaque vs dimmed.
+   * "Is this node part of the current CLL response / selection at all?"
    *
+   * This is distinct from impactedNodeIds, which answers a narrower question:
+   * "Does this node trace upstream to a *changed* column?" A node can be
+   * highlighted (it participates in the CLL graph) but not impacted (none of
+   * its columns have upstream changes). impactedNodeIds drives the amber
+   * border; highlighted drives the opacity.
+   *
+   * Behavior by mode:
    * - Default: nodes in the impact radius, or all nodes if the impact radius is not available
    * - Focus: upstream/downstream nodes of the focused node
    * - Multi-select: nodes in the impact radius, or all nodes if the impact radius is not available
@@ -341,6 +474,14 @@ export function PrivateLineageView(
     lineageViewContextMenu.closeContextMenu();
   };
 
+  // Guard: auto-trigger impact analysis only once per mount
+  const impactAtStartupFired = useRef(false);
+  const {
+    impactedNodeIds,
+    impactedColumnIds,
+    publish: publishImpactSets,
+  } = usePublishedImpactSets();
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only run when lineageGraph changes (initial load/refetch).
   useLayoutEffect(() => {
     const t = async () => {
@@ -392,53 +533,119 @@ export function PrivateLineageView(
         setViewOptions(newViewOptions);
       }
 
+      // Auto-trigger impact analysis on first load when flag is set
+      let cllInput = viewOptions.column_level_lineage;
+      let autoTriggered = false;
+      if (
+        serverFlags?.impact_at_startup &&
+        !impactAtStartupFired.current &&
+        !cllInput
+      ) {
+        impactAtStartupFired.current = true;
+        autoTriggered = true;
+        changeAnalysisModeRef.current = true;
+        setChangeAnalysisMode(true);
+        cllInput = { change_analysis: true, no_upstream: true };
+        // Persist to viewOptions so the CLL survives effect re-fires
+        // (e.g. when the lineageGraph cache is patched with change data)
+        setViewOptions((prev) => ({
+          ...prev,
+          column_level_lineage: cllInput,
+        }));
+      }
+
       let cll: ColumnLineageData | undefined;
-      if (viewOptions.column_level_lineage) {
-        try {
-          cll = await actionGetCll.mutateAsync(
-            viewOptions.column_level_lineage,
-          );
-        } catch (e) {
-          if (e instanceof AxiosError) {
-            const e2 = e as AxiosError<{ detail?: string }>;
-            toaster.create({
-              title: "Column Level Lineage error",
-              description: e2.response?.data.detail ?? e.message,
-              type: "error",
-              closable: true,
-            });
-            return;
+      if (cllInput) {
+        if (cllCachePatchRef.current.pending) {
+          // Effect re-fired because our setQueryData updated lineageGraph.
+          // Reuse the previous CLL result; skip the API call and re-patch.
+          cll = cllCachePatchRef.current.cllData;
+          cllCachePatchRef.current = { pending: false };
+        } else {
+          try {
+            cll = await fetchCllAndPatchCache(
+              cllInput,
+              changeAnalysisModeRef.current,
+              actionGetCll,
+              cllCachePatchRef,
+              queryClient,
+            );
+          } catch (e) {
+            if (autoTriggered) {
+              // Roll back the CLL state so the UI isn't stuck in a
+              // half-initialized "CLL on, no data" state.
+              changeAnalysisModeRef.current = false;
+              setChangeAnalysisMode(false);
+              setViewOptions((prev) => ({
+                ...prev,
+                column_level_lineage: undefined,
+              }));
+              cllInput = undefined;
+            }
+            if (e instanceof HttpError) {
+              toaster.create({
+                title: "Column Level Lineage error",
+                description:
+                  (e.data as { detail?: string })?.detail ?? e.message,
+                type: "error",
+                closable: true,
+              });
+              return;
+            }
           }
         }
+      } else {
+        // CLL disabled — clear any pending guard so stale data isn't reused
+        // if CLL is re-enabled after a toggle-off.
+        cllCachePatchRef.current = { pending: false };
       }
+
+      // Compute impacted sets once; thread into ancestry to avoid redundant DFS.
+      const impacted =
+        newCllExperience && cll
+          ? computeImpactedSets(lineageGraph, cll)
+          : undefined;
 
       const [nodes, edges, nodeColumnSetMap] = await toReactFlow(lineageGraph, {
         selectedNodes: filteredNodeIds,
         cll: cll,
+        newCllExperience,
+        columnAncestry: maybeComputeLineage(
+          newCllExperience,
+          cll,
+          cllInput,
+          impacted?.columnIds,
+        ),
       });
       setNodes(nodes);
       setEdges(edges);
       setNodeColumSetMap(nodeColumnSetMap);
       setCll(cll);
 
-      // TODO : code smell: vioates DRY. This really shouldn't hit both here and below
+      // Snapshot impacted sets during impact analysis so they stay stable
+      // when the user clicks a column (which returns column-scoped CLL data).
+      if (impacted && cllInput?.change_analysis && !cllInput?.column) {
+        publishImpactSets(impacted);
+      }
 
       // Track lineage view render
       trackLineageRender(
         nodes,
         viewOptions.view_mode ?? "changed_models",
-        viewOptions.column_level_lineage?.change_analysis ?? false,
-        !!viewOptions.column_level_lineage?.column,
+        changeAnalysisModeRef.current,
+        !!cllInput?.column,
         !!focusedNodeId || !!run,
       );
     };
 
     void t();
-    // Intentionally only run when lineageGraph changes (initial load/refetch).
+    // Runs when lineageGraph changes (initial load/refetch), and also when
+    // impact_at_startup flag arrives (may load after lineageGraph).
     // viewOptions changes are handled separately by handleViewOptionsChanged.
     // Other dependencies (setNodes, setEdges, actionGetCll) are stable.
+    // changeAnalysisModeRef is a ref to avoid stale closure issues.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lineageGraph]);
+  }, [lineageGraph, serverFlags?.impact_at_startup]);
 
   const onNodeViewClosed = () => {
     setFocusedNodeId(undefined);
@@ -472,7 +679,13 @@ export function PrivateLineageView(
   useResizeObserver(refResize, async () => {
     if (selectMode !== "selecting") {
       if (!focusedNodeId) {
-        await reactFlow.fitView({ nodes, duration: 200 });
+        await reactFlow.fitView({
+          nodes,
+          duration: 200,
+          padding: FIT_VIEW_PADDING,
+          minZoom: LEGIBLE_MIN_ZOOM,
+          maxZoom: 1,
+        });
       } else {
         await centerNode(focusedNodeId);
       }
@@ -485,9 +698,15 @@ export function PrivateLineageView(
   ) => {
     const previousColumnLevelLineage = viewOptions.column_level_lineage;
 
+    // Clear change analysis mode when CLL is turned off entirely.
+    // In new CLL experience, impact is a one-way ratchet — never disable it.
+    if (!columnLevelLineage && !newCllExperience) {
+      setChangeAnalysisMode(false);
+    }
+
     // Preserve positions when:
     // 1. CLL is being turned OFF (previous exists but new one is undefined)
-    // 2. Switching between columns (both previous and new have CLL) - DRC-2623 fix
+    // 2. Switching between columns (both previous and new have CLL)
     // This prevents jarring graph reflow when the user clicks between columns
     const shouldPreservePositions = previousColumnLevelLineage !== undefined;
 
@@ -505,7 +724,8 @@ export function PrivateLineageView(
     }
     if (columnLevelLineage?.node_id) {
       setFocusedNodeId(columnLevelLineage.node_id);
-    } else {
+    } else if (!columnLevelLineage) {
+      // Only clear focus when CLL is turned off, not for Impact Radius
       setFocusedNodeId(undefined);
     }
   };
@@ -521,6 +741,13 @@ export function PrivateLineageView(
       } else {
         await showColumnLevelLineage(undefined, true);
       }
+    } else if (newCllExperience && changeAnalysisMode) {
+      // In new CLL experience, reset returns to Layer 2 (global impact)
+      // instead of clearing CLL entirely.
+      await showColumnLevelLineage(
+        { change_analysis: true, no_upstream: true },
+        true,
+      );
     } else {
       await showColumnLevelLineage(undefined, true);
     }
@@ -609,11 +836,10 @@ export function PrivateLineageView(
         newViewOptions = { ...newViewOptions, column_level_lineage: undefined };
         selectedNodes = result.nodes;
       } catch (e) {
-        if (e instanceof AxiosError) {
-          const e2 = e as AxiosError<{ detail?: string }>;
+        if (e instanceof HttpError) {
           toaster.create({
             title: "Select node error",
-            description: e2.response?.data.detail ?? e.message,
+            description: (e.data as { detail?: string })?.detail ?? e.message,
             type: "error",
             closable: true,
           });
@@ -628,28 +854,43 @@ export function PrivateLineageView(
     let cll: ColumnLineageData | undefined;
     if (newViewOptions.column_level_lineage) {
       try {
-        cll = await actionGetCll.mutateAsync(
+        cll = await fetchCllAndPatchCache(
           newViewOptions.column_level_lineage,
+          changeAnalysisMode,
+          actionGetCll,
+          cllCachePatchRef,
+          queryClient,
         );
       } catch (e) {
-        if (e instanceof AxiosError) {
-          const e2 = e as AxiosError<{ detail?: string }>;
+        if (e instanceof HttpError) {
           toaster.create({
             title: "Column Level Lineage error",
-            description: e2.response?.data.detail ?? e.message,
+            description: (e.data as { detail?: string })?.detail ?? e.message,
             type: "error",
             closable: true,
           });
           return;
         }
       }
+    } else if (!newCllExperience) {
+      // Clear change analysis mode when CLL is cleared by any path
+      // (reselect, selectParentNodes, selectChildNodes, etc.)
+      // In new CLL experience, impact is a one-way ratchet.
+      setChangeAnalysisMode(false);
     }
 
     // Capture positions if preservePositions is true
     let existingPositions: Map<string, { x: number; y: number }> | undefined;
-    if (preservePositions) {
+    if (preservePositions || newCllExperience) {
       existingPositions = getNodePositions();
     }
+
+    const cllInput2 = newViewOptions.column_level_lineage;
+
+    const impacted =
+      newCllExperience && cll
+        ? computeImpactedSets(lineageGraph, cll)
+        : undefined;
 
     const [newNodes, newEdges, newNodeColumnSetMap] = await toReactFlow(
       lineageGraph,
@@ -657,6 +898,13 @@ export function PrivateLineageView(
         selectedNodes,
         cll,
         existingPositions,
+        newCllExperience,
+        columnAncestry: maybeComputeLineage(
+          newCllExperience,
+          cll,
+          cllInput2,
+          impacted?.columnIds,
+        ),
       },
     );
     setNodes(newNodes);
@@ -664,11 +912,16 @@ export function PrivateLineageView(
     setNodeColumSetMap(newNodeColumnSetMap);
     setCll(cll);
 
+    // Snapshot impacted node and column IDs during impact analysis (see layout effect).
+    if (impacted && !cllInput2?.column) {
+      publishImpactSets(impacted);
+    }
+
     // Track lineage view render
     trackLineageRender(
       newNodes,
       newViewOptions.view_mode ?? "changed_models",
-      newViewOptions.column_level_lineage?.change_analysis ?? false,
+      changeAnalysisMode,
       !!newViewOptions.column_level_lineage?.column,
       !!focusedNodeId || !!run,
     );
@@ -690,7 +943,13 @@ export function PrivateLineageView(
     if (fitView) {
       await new Promise((resolve) => setTimeout(resolve, 1));
       (() => {
-        void reactFlow.fitView({ nodes: newNodes, duration: 200 });
+        void reactFlow.fitView({
+          nodes: newNodes,
+          duration: 200,
+          padding: FIT_VIEW_PADDING,
+          minZoom: LEGIBLE_MIN_ZOOM,
+          maxZoom: 1,
+        });
       })();
     }
   };
@@ -723,7 +982,9 @@ export function PrivateLineageView(
     }
     if (
       !runResultType ||
-      ["query_diff", "query", "row_count"].includes(runResultType)
+      ["query_diff", "query", "row_count", "row_count_diff"].includes(
+        runResultType,
+      )
     ) {
       // Skip the following logic if the run result type is not related to a node
       return;
@@ -758,7 +1019,7 @@ export function PrivateLineageView(
             ...viewOptions,
             view_mode: "all",
           });
-        } else if (isLineageGraphNode(node) && focusedNode !== node.data.data) {
+        } else if (isLineageGraphNode(node) && focusedNode?.id !== node.id) {
           // Only select the node if it is not already selected
           onNodeClick(mockEvent, node);
         }
@@ -882,6 +1143,8 @@ export function PrivateLineageView(
     selectParentNodes,
     selectChildNodes,
     deselect,
+    impactedNodeIds,
+    impactedColumnIds,
     isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
     isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),
     isEdgeHighlighted: (source, target) => {
@@ -895,25 +1158,22 @@ export function PrivateLineageView(
       }
     },
     isNodeShowingChangeAnalysis: (nodeId: string) => {
-      if (!lineageGraph) {
+      if (!lineageGraph || !changeAnalysisMode) {
         return false;
       }
 
       const node =
         nodeId in lineageGraph.nodes ? lineageGraph.nodes[nodeId] : undefined;
 
-      if (viewOptions.column_level_lineage?.change_analysis) {
-        const cll = viewOptions.column_level_lineage;
-
-        if (cll.node_id && !cll.column) {
-          return cll.node_id === nodeId && !!node?.data.changeStatus;
-        } else {
-          return !!node?.data.changeStatus;
-        }
+      const cll = viewOptions.column_level_lineage;
+      if (cll?.node_id && !cll.column) {
+        return cll.node_id === nodeId && !!node?.data.changeStatus;
       }
-
-      return false;
+      return !!node?.data.changeStatus;
     },
+    changeAnalysisMode,
+    newCllExperience,
+    setChangeAnalysisMode,
     getNodeAction: (nodeId: string) => {
       return multiNodeAction.actionState.actions[nodeId];
     },
@@ -1059,7 +1319,7 @@ export function PrivateLineageView(
   }
 
   if (error) {
-    return <LineageViewError error={error} onRetry={retchLineageGraph} />;
+    return <LineageViewError error={error} onRetry={refetchLineageGraph} />;
   }
 
   if (!lineageGraph || nodes == initialNodes) {
@@ -1076,10 +1336,14 @@ export function PrivateLineageView(
   }
   return (
     <LineageViewContext.Provider value={contextValue}>
+      {/* Constant props to avoid react-split destroy/recreate.
+           minSize={0} (was 400) lets users drag the panel smaller; the default
+           snapOffset (30px) prevents it from reaching 0px in practice. */}
       <HSplit
         sizes={focusedNode ? [70, 30] : [100, 0]}
-        minSize={focusedNode ? 400 : 0}
-        gutterSize={focusedNode ? 5 : 0}
+        minSize={0}
+        gutterSize={5}
+        className={focusedNode ? undefined : "split-gutter-hidden"}
         style={{ height: "100%", width: "100%" }}
       >
         <Stack
@@ -1111,7 +1375,19 @@ export function PrivateLineageView(
             onClick={closeContextMenu}
             onInit={async () => {
               if (isModelsChanged) {
-                await reactFlow.fitView();
+                const changedNodes = nodes.filter(
+                  (n) =>
+                    isLineageGraphNode(n) && n.data.changeStatus !== undefined,
+                );
+                const fitTarget =
+                  changedNodes.length > 0 ? changedNodes : nodes;
+                await reactFlow.fitView({
+                  nodes: fitTarget,
+                  duration: 200,
+                  padding: FIT_VIEW_PADDING,
+                  minZoom: LEGIBLE_MIN_ZOOM,
+                  maxZoom: 1,
+                });
               } else {
                 const bounds = getNodesBounds(nodes, {});
                 await reactFlow.setCenter(
@@ -1124,7 +1400,7 @@ export function PrivateLineageView(
               }
             }}
             maxZoom={1}
-            minZoom={0.1}
+            minZoom={EXPLORE_MIN_ZOOM}
             nodesDraggable={interactive}
             ref={refReactFlow as unknown as Ref<HTMLDivElement>}
             colorMode={isDark ? "dark" : "light"}
@@ -1165,7 +1441,12 @@ export function PrivateLineageView(
             <ImageDownloadModal />
             <Panel position="bottom-left">
               <Stack spacing="5px">
-                {isModelsChanged && <LineageLegend variant="changeStatus" />}
+                {isModelsChanged && (
+                  <LineageLegend
+                    variant="changeStatus"
+                    newCllExperience={newCllExperience}
+                  />
+                )}
                 {viewOptions.column_level_lineage && (
                   <LineageLegend variant="transformation" />
                 )}
@@ -1191,16 +1472,20 @@ export function PrivateLineageView(
                 )}
               </Stack>
             </Panel>
-            <MiniMap
-              nodeColor={getNodeColor}
-              nodeStrokeWidth={3}
-              zoomable
-              pannable
-              bgColor={isDark ? colors.neutral[800] : undefined}
-              maskColor={
-                isDark ? `${colors.neutral[900]}99` : `${colors.neutral[100]}99`
-              }
-            />
+            {nodes.length <= MINIMAP_NODE_THRESHOLD && (
+              <MiniMap
+                nodeColor={getNodeColor}
+                nodeStrokeWidth={3}
+                zoomable
+                pannable
+                bgColor={isDark ? colors.neutral[800] : undefined}
+                maskColor={
+                  isDark
+                    ? `${colors.neutral[900]}99`
+                    : `${colors.neutral[100]}99`
+                }
+              />
+            )}
             {selectMode === "action_result" && (
               <Panel
                 position="bottom-center"

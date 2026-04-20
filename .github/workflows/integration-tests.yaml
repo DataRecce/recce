@@ -16,12 +16,11 @@ on:
 
 jobs:
   smoke-test:
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
-          - python-version: "3.9"
-            dbt-version: "1.6"
           - python-version: "3.11"
             dbt-version: "1.7"
           - python-version: "3.12"

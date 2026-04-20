@@ -78,6 +78,9 @@ const ChecklistItem = ({
     isApproved: check.is_checked,
     runStatus: getRunStatus(),
     isPreset: check.is_preset,
+    isOutdated: check.is_outdated,
+    lastRunAt: check.last_run?.run_at,
+    actorType: check.actor_type,
   };
 
   return (

@@ -75,21 +75,6 @@ vi.mock("@tanstack/react-query", () => ({
   useQueryClient: () => mockQueryClient,
 }));
 
-// Mock react-icons
-vi.mock("react-icons/io5", () => ({
-  IoClose: () => <span data-testid="close-icon">X</span>,
-}));
-
-vi.mock("react-icons/lu", () => ({
-  LuSave: () => <span data-testid="save-icon">Save</span>,
-  LuChartBarBig: () => <span data-testid="chart-icon">Chart</span>,
-  LuExternalLink: () => <span data-testid="external-link-icon">Link</span>,
-}));
-
-vi.mock("react-icons/pi", () => ({
-  PiPencil: () => <span data-testid="edit-icon">Edit</span>,
-}));
-
 // Mock primitives for formatRunDateTime
 vi.mock("@datarecce/ui/primitives", () => ({
   formatRunDateTime: vi.fn((date) => date.toISOString()),
@@ -102,8 +87,8 @@ vi.mock("@datarecce/ui/primitives", () => ({
 import { Filename } from "@datarecce/ui/components/app";
 import { toaster } from "@datarecce/ui/components/ui";
 import { useApiConfig } from "@datarecce/ui/hooks";
+import { HttpError } from "@datarecce/ui/lib/fetchClient";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import React from "react";
 
 // ============================================================================
@@ -189,7 +174,8 @@ describe("Filename", () => {
     it("displays save icon when no filename exists", () => {
       render(<Filename />);
 
-      expect(screen.getByTestId("save-icon")).toBeInTheDocument();
+      const saveButton = screen.getByRole("button", { name: /Save/i });
+      expect(saveButton).toBeInTheDocument();
     });
 
     it("displays edit icon when filename exists", () => {
@@ -202,7 +188,10 @@ describe("Filename", () => {
 
       render(<Filename />);
 
-      expect(screen.getByTestId("edit-icon")).toBeInTheDocument();
+      const editButton = screen.getByRole("button", {
+        name: /Change Filename/i,
+      });
+      expect(editButton.querySelector("svg")).toBeInTheDocument();
     });
 
     it("hides component in cloud mode", () => {
@@ -271,8 +260,12 @@ describe("Filename", () => {
 
       render(<Filename />);
 
-      expect(screen.queryByTestId("edit-icon")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("save-icon")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Change Filename/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Save/i }),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -343,10 +336,13 @@ describe("Filename", () => {
       const saveButton = screen.getByRole("button", { name: /Save/i });
       fireEvent.click(saveButton);
 
-      const closeButton = screen.getByTestId("close-icon").closest("button");
-      if (closeButton) {
-        fireEvent.click(closeButton);
-      }
+      // The close button is an IconButton inside the DialogTitle, next to the title text
+      const dialogTitle =
+        screen.getByText("Save File").closest("[class*='DialogTitle']") ??
+        screen.getByText("Save File").parentElement;
+      const closeButton = dialogTitle?.querySelector("button:last-of-type");
+      expect(closeButton).toBeTruthy();
+      fireEvent.click(closeButton!);
 
       await waitFor(() => {
         expect(screen.queryByText("Save File")).not.toBeInTheDocument();
@@ -715,14 +711,11 @@ describe("Filename", () => {
 
   describe("overwrite confirmation", () => {
     beforeEach(() => {
-      const conflictError = new AxiosError("Conflict");
-      conflictError.response = {
-        status: 409,
-        data: { detail: "File already exists" },
-        statusText: "Conflict",
-        headers: {},
-        config: {} as InternalAxiosRequestConfig<unknown>,
-      };
+      const conflictError = new HttpError(
+        409,
+        { detail: "File already exists" },
+        "Conflict",
+      );
       mockSaveAs.mockRejectedValue(conflictError);
       mockRename.mockRejectedValue(conflictError);
     });
@@ -782,14 +775,11 @@ describe("Filename", () => {
 
     it("saves bypass preference to localStorage when checked", async () => {
       // First call: conflict, second call: success
-      const conflictError = new AxiosError("Conflict");
-      conflictError.response = {
-        status: 409,
-        data: { detail: "File already exists" },
-        statusText: "Conflict",
-        headers: {},
-        config: {} as InternalAxiosRequestConfig<unknown>,
-      };
+      const conflictError = new HttpError(
+        409,
+        { detail: "File already exists" },
+        "Conflict",
+      );
       mockSaveAs
         .mockRejectedValueOnce(conflictError)
         .mockResolvedValueOnce(undefined);
@@ -845,14 +835,11 @@ describe("Filename", () => {
     });
 
     it("calls saveAs with overwrite=true when Overwrite is clicked", async () => {
-      const conflictError = new AxiosError("Conflict");
-      conflictError.response = {
-        status: 409,
-        data: { detail: "File already exists" },
-        statusText: "Conflict",
-        headers: {},
-        config: {} as InternalAxiosRequestConfig<unknown>,
-      };
+      const conflictError = new HttpError(
+        409,
+        { detail: "File already exists" },
+        "Conflict",
+      );
       mockSaveAs
         .mockRejectedValueOnce(conflictError)
         .mockResolvedValue(undefined);
@@ -950,16 +937,13 @@ describe("Filename", () => {
       });
     });
 
-    it("includes error detail from AxiosError", async () => {
-      const axiosError = new AxiosError("Request failed");
-      axiosError.response = {
-        status: 500,
-        data: { detail: "Internal server error" },
-        statusText: "Error",
-        headers: {},
-        config: {} as InternalAxiosRequestConfig<unknown>,
-      };
-      mockSaveAs.mockRejectedValue(axiosError);
+    it("includes error detail from HttpError", async () => {
+      const serverError = new HttpError(
+        500,
+        { detail: "Internal server error" },
+        "Request failed",
+      );
+      mockSaveAs.mockRejectedValue(serverError);
 
       render(<Filename />);
 

@@ -5,7 +5,6 @@ import type {
   CatalogMetadata,
   GitInfo,
   ManifestMetadata,
-  NodeData,
   PullRequestInfo,
   SQLMeshInfo,
   StateMetadata,
@@ -30,29 +29,21 @@ export interface EnvInfo {
 }
 
 /**
- * Which environment the node/edge comes from
- */
-type LineageFrom = "both" | "base" | "current";
-
-/**
  * Lineage graph node type for React Flow
  */
 export type LineageGraphNode = Node<
   {
     id: string;
     name: string;
-    from: LineageFrom;
-    data: {
-      base?: NodeData;
-      current?: NodeData;
-    };
+    resourceType?: string;
+    packageName?: string;
+    schema?: string;
+    materialized?: string;
     changeStatus?: "added" | "removed" | "modified";
     change?: {
       category: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
-      columns: Record<string, "added" | "removed" | "modified"> | null;
+      columns?: Record<string, "added" | "removed" | "modified">;
     };
-    resourceType?: string;
-    packageName?: string;
     parents: Record<string, LineageGraphEdge>;
     children: Record<string, LineageGraphEdge>;
   },
@@ -69,6 +60,7 @@ export type LineageGraphColumnNode = Node<
     type: string;
     transformationType?: string;
     changeStatus?: "added" | "removed" | "modified";
+    isImpacted?: boolean;
   },
   "lineageGraphColumnNode"
 >;
@@ -78,7 +70,6 @@ export type LineageGraphColumnNode = Node<
  */
 export type LineageGraphEdge = Edge<
   {
-    from: LineageFrom;
     changeStatus?: "added" | "removed";
   },
   "lineageGraphEdge"
@@ -151,7 +142,7 @@ export interface LineageGraphContextType {
   /** Supported task types from server */
   supportTasks?: Record<string, boolean>;
   /** Refetch the lineage graph data */
-  retchLineageGraph?: () => void;
+  refetchLineageGraph?: () => void;
   /** Check if an action is available */
   isActionAvailable: (actionName: string) => boolean;
   /** Pre-aggregated run results by model */
@@ -257,6 +248,20 @@ export interface LineageViewContextType {
   getNodeColumnSet: (nodeId: string) => Set<string>;
   /** Check if a node is showing change analysis */
   isNodeShowingChangeAnalysis: (nodeId: string) => boolean;
+  /** Whether impact radius (change analysis) mode is active */
+  changeAnalysisMode: boolean;
+  /** Whether the new CLL experience flag is enabled on the server */
+  newCllExperience: boolean;
+  // TODO: Move isImpacted to be a per-model state on node data instead of
+  // a lookup set, so impact status is part of the graph model rather than
+  // a side-channel computed separately.
+  /** Frozen set of node IDs that are impacted, computed once during impact
+   *  analysis and stable across column selections in new CLL experience. */
+  impactedNodeIds: Set<string>;
+  /** Frozen set of column IDs that are impacted, same lifecycle as impactedNodeIds. */
+  impactedColumnIds: Set<string>;
+  /** Set change analysis mode on/off */
+  setChangeAnalysisMode: (active: boolean) => void;
 
   // Actions
   /** Run row count on selected nodes */

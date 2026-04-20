@@ -12,6 +12,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from recce.exceptions import RecceException
+from recce.util.recce_cloud import RecceCloudException
 
 from .types import Check, RunType
 
@@ -212,7 +213,8 @@ class CheckDAO:
         Create a new check.
 
         In local mode: Appends check to in-memory list
-        In cloud mode: Creates check via Recce Cloud API
+        In cloud mode: Write-through — creates check via Recce Cloud API AND
+        keeps in local state so runs can reference it and state export includes it.
 
         Args:
             check: Check object to create
@@ -237,8 +239,16 @@ class CheckDAO:
                 )
                 new_check = self._cloud_to_check(cloud_check)
 
-                logger.debug(f"Created check {new_check.check_id} in cloud")
+                # Write-through: also keep in local state so that:
+                # 1. Runs created after this check can reference it
+                # 2. export_persistent_state() includes checks in recce_state.json
+                # 3. Preview instance gets checks + runs together from S3 sync
+                self._checks.append(new_check)
+
+                logger.debug(f"Created check {new_check.check_id} in cloud and local state")
                 return new_check
+            except RecceCloudException:
+                raise
             except Exception as e:
                 logger.error(f"Failed to create check in cloud: {e}")
                 raise RecceException(f"Failed to create check in Recce Cloud: {e}")
@@ -267,6 +277,8 @@ class CheckDAO:
 
                 cloud_data = cloud_client.get_check(org_id, project_id, session_id, str(check_id))
                 return self._cloud_to_check(cloud_data)
+            except RecceCloudException:
+                raise
             except Exception as e:
                 logger.error(f"Failed to get check {check_id} from cloud: {e}")
                 return None
@@ -314,6 +326,8 @@ class CheckDAO:
 
                 logger.debug(f"Updated check {check_id} in cloud")
                 return self._cloud_to_check(cloud_data)
+            except RecceCloudException:
+                raise
             except Exception as e:
                 logger.error(f"Failed to update check {check_id} in cloud: {e}")
                 return None
@@ -358,6 +372,8 @@ class CheckDAO:
                 cloud_client.delete_check(org_id, project_id, session_id, str(check_id))
                 logger.debug(f"Deleted check {check_id} from cloud")
                 return True
+            except RecceCloudException:
+                raise
             except Exception as e:
                 logger.error(f"Failed to delete check {check_id} from cloud: {e}")
                 return False
@@ -387,6 +403,8 @@ class CheckDAO:
 
                 cloud_checks = cloud_client.list_checks(org_id, project_id, session_id)
                 return [self._cloud_to_check(check_data) for check_data in cloud_checks]
+            except RecceCloudException:
+                raise
             except AttributeError as e:
                 logger.error(f"Attribute error while listing checks from cloud: {e}")
                 return []
@@ -485,6 +503,8 @@ class CheckDAO:
             cloud_client.create_preset_check(org_id, project_id, preset_data)
 
             logger.debug(f"Created preset check from check {check_id}")
+        except RecceCloudException:
+            raise
         except Exception as e:
             logger.error(f"Failed to mark check {check_id} as preset: {e}")
             raise RecceException(f"Failed to create preset check: {e}")

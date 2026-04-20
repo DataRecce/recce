@@ -56,6 +56,29 @@ export {
 // =============================================================================
 
 /**
+ * Determine whether a model node is "impacted" for the new CLL experience.
+ *
+ * A node is impacted if ANY of:
+ * 1. CLL analysis marks the node as impacted (node.impacted is truthy)
+ * 2. Any column belonging to this node has a non-null change_status
+ * 3. The model itself has a non-null changeStatus (added/removed/modified)
+ */
+export { type ColumnAnnotation } from "./components/lineage/computeColumnLineage";
+export { computeImpactedColumns } from "./components/lineage/computeImpactedColumns";
+export { computeIsImpacted } from "./components/lineage/computeIsImpacted";
+/**
+ * Zoom and display constants for the lineage view.
+ *
+ * @remarks
+ * Use with LineageCanvas fitViewOptions to match production behavior.
+ */
+export {
+  DIM_FILTER,
+  EXPLORE_MIN_ZOOM,
+  FIT_VIEW_PADDING,
+  LEGIBLE_MIN_ZOOM,
+} from "./components/lineage/config/zoomConstants";
+/**
  * Low-level lineage canvas component for custom graph rendering.
  *
  * @remarks
@@ -65,7 +88,6 @@ export {
   LineageCanvas,
   type LineageCanvasProps,
 } from "./components/lineage/LineageCanvas";
-
 /**
  * OSS-specific toReactFlow with Column-Level Lineage (CLL) support.
  *
@@ -90,6 +112,7 @@ export {
   NodeView,
   type NodeViewNodeData,
   type NodeViewProps,
+  type SchemaViewProps,
 } from "./components/lineage/NodeView";
 
 // =============================================================================

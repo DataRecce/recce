@@ -1,4 +1,3 @@
-import os
 import sys
 from typing import Dict, List, Optional, Set, Type, Union
 from uuid import UUID
@@ -19,8 +18,7 @@ from recce.tasks.valuediff import (
     ValueDiffDetailTaskResultDiffer,
     ValueDiffTaskResultDiffer,
 )
-
-RECCE_CLOUD_HOST = os.environ.get("RECCE_CLOUD_HOST", "https://cloud.datarecce.io")
+from recce.util.recce_cloud import RECCE_CLOUD_BASE_URL
 
 ADD_COLOR = "#1dce00"
 MODIFIED_COLOR = "#ffa502"
@@ -110,6 +108,23 @@ class Node:
             base = run_result.get("base")
             current = run_result.get("curr")
             if base is None or current is None:
+                # Check if unavailability is due to table_not_found or permission_denied
+                base_meta = run_result.get("base_meta", {})
+                curr_meta = run_result.get("curr_meta", {})
+                base_status = base_meta.get("status") if isinstance(base_meta, dict) else None
+                curr_status = curr_meta.get("status") if isinstance(curr_meta, dict) else None
+                # Must match non-OK values in RowCountStatus (recce/tasks/rowcount.py)
+                unavailable_statuses = {
+                    "table_not_found",
+                    "permission_denied",
+                    "not_in_manifest",
+                    "unsupported_resource_type",
+                    "unsupported_materialization",
+                }
+                if (base_status in unavailable_statuses) or (curr_status in unavailable_statuses):
+                    # Show which status caused unavailability
+                    reason = base_status if base_status in unavailable_statuses else curr_status
+                    return f"N/A ({reason})"
                 return None
             base = int(base)
             current = int(current)
@@ -544,7 +559,7 @@ No changed module was detected.
             pr_info = ctx.state_loader.pr_info
             if pr_info.repository is not None and pr_info.id is not None:
                 # the classic route will be deprecated soon
-                content += f"\nSee PR page: {RECCE_CLOUD_HOST}/classic/{pr_info.repository}/pulls/{pr_info.id}\n"
+                content += f"\nSee PR page: {RECCE_CLOUD_BASE_URL}/classic/{pr_info.repository}/pulls/{pr_info.id}\n"
 
         return content
 

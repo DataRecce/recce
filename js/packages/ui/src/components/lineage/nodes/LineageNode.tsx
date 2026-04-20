@@ -26,7 +26,13 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { Handle, Position } from "@xyflow/react";
 import { type MouseEvent, memo, type ReactNode, useState } from "react";
-import { getIconForChangeStatus, getIconForResourceType } from "../styles";
+import { DIM_FILTER } from "../config/zoomConstants";
+import {
+  getIconForChangeStatus,
+  getIconForMaterialization,
+  getIconForResourceType,
+  getStyleForImpacted,
+} from "../styles";
 
 // =============================================================================
 // TYPES
@@ -65,8 +71,14 @@ export interface LineageNodeData extends Record<string, unknown> {
   isSelected?: boolean;
   /** Resource type for icon display */
   resourceType?: string;
+  /** Materialization strategy (table, view, incremental, etc.) */
+  materialized?: string;
   /** Package name */
   packageName?: string;
+  /** Whether new CLL experience is active (data-level, for ReactFlow passthrough) */
+  newCllExperience?: boolean;
+  /** Whether this node is impacted by CLL analysis (data-level, for ReactFlow passthrough) */
+  isImpacted?: boolean;
   /** Whether to show column-level details */
   showColumns?: boolean;
   /** Column data if showing columns */
@@ -125,6 +137,12 @@ export interface LineageNodeProps {
   // === Theme Props ===
   /** Whether dark mode is active */
   isDark?: boolean;
+
+  // === New CLL Experience Props ===
+  /** Whether new CLL experience is active */
+  newCllExperience?: boolean;
+  /** Whether this node is impacted by CLL analysis */
+  isImpacted?: boolean;
 
   // === Callbacks ===
   /** Callback when node is clicked */
@@ -296,6 +314,9 @@ function LineageNodeComponent({
   columnHeight = DEFAULT_COLUMN_HEIGHT,
   // Theme props
   isDark = false,
+  // New CLL experience props (fall back to data for ReactFlow passthrough)
+  newCllExperience: newCllExperienceProp,
+  isImpacted: isImpactedProp,
   // Callbacks
   onNodeClick,
   onNodeDoubleClick,
@@ -310,20 +331,36 @@ function LineageNodeComponent({
     changeStatus = "unchanged",
     isSelected: dataIsSelected,
     resourceType,
+    materialized,
   } = data;
+
+  // Fall back to data-level values for ReactFlow passthrough
+  const newCllExperience =
+    newCllExperienceProp ?? data.newCllExperience ?? false;
+  const isImpacted = isImpactedProp ?? data.isImpacted ?? false;
 
   // Use isNodeSelected prop, fall back to data.isSelected, then to selected
   const isSelected = isNodeSelected || dataIsSelected || selected || false;
   const showColumns = columnCount > 0;
   const hasAction = selectMode === "action_result" && actionTag;
 
-  // Get icons and colors
+  // Get icons and colors — impacted only when not already changed
+  const isUnchanged = !changeStatus || changeStatus === "unchanged";
   const {
     icon: IconChangeStatus,
     color: colorChangeStatus,
     backgroundColor: backgroundColorChangeStatus,
-  } = getIconForChangeStatus(changeStatus, isDark);
-  const { icon: ResourceIcon } = getIconForResourceType(resourceType);
+  } = newCllExperience && isImpacted && isUnchanged
+    ? getStyleForImpacted(isDark)
+    : getIconForChangeStatus(
+        changeStatus,
+        isDark,
+        newCllExperience ? "cll" : "default",
+      );
+  const { icon: ResourceIcon } =
+    resourceType === "model" && materialized
+      ? getIconForMaterialization(materialized)
+      : getIconForResourceType(resourceType);
 
   // Calculate styles based on state
   const borderWidth = "2px";
@@ -394,12 +431,15 @@ function LineageNodeComponent({
 
   // Filter for dimming
   const nodeFilter = (() => {
+    if (newCllExperience) {
+      return "none"; // Never dim in new CLL experience
+    }
     if (selectMode === "action_result") {
-      return hasAction ? "none" : "opacity(0.2) grayscale(50%)";
+      return hasAction ? "none" : DIM_FILTER;
     }
     return isHighlighted || isFocused || isSelected || isHovered
       ? "none"
-      : "opacity(0.2) grayscale(50%)";
+      : DIM_FILTER;
   })();
 
   const handleCheckboxClick = (e: MouseEvent) => {
@@ -549,12 +589,12 @@ function LineageNodeComponent({
               <>
                 {ResourceIcon && (
                   <Box sx={{ fontSize: 16, color: iconColor }}>
-                    <ResourceIcon />
+                    <ResourceIcon aria-hidden="true" />
                   </Box>
                 )}
                 {changeStatus && IconChangeStatus && (
                   <Box sx={{ color: changeStatusIconColor }}>
-                    <IconChangeStatus />
+                    <IconChangeStatus aria-hidden="true" />
                   </Box>
                 )}
               </>

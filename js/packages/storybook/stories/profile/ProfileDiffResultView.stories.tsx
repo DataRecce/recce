@@ -2,7 +2,10 @@
 import { ProfileDiffResultView } from "@datarecce/ui/components";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
-import { createProfileDiffRun } from "./fixtures";
+import {
+  createProfileDiffRun,
+  createProfileDiffRunUppercase,
+} from "./fixtures";
 
 // ============================================
 // ProfileDiffResultView (Base vs Current)
@@ -106,6 +109,41 @@ export const DecimalDisplay: Story = {
       description: {
         story:
           "Profile diff with proportion columns displayed as raw decimals (0.997) instead of the default percentage format (99.7%). This overrides the default percentage display.",
+      },
+    },
+  },
+};
+
+export const UppercaseColumnKeys: Story = {
+  name: "Uppercase Column Keys (Real Backend Data)",
+  args: {
+    run: createProfileDiffRunUppercase(),
+    onViewOptionsChanged: fn(),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Profile diff with UPPERCASE column keys matching real backend data (BigQuery, Snowflake). Verifies column name rendering works regardless of key casing.",
+      },
+    },
+  },
+};
+
+export const UppercaseColumnKeysSideBySide: Story = {
+  name: "Uppercase Column Keys (Side-by-Side)",
+  args: {
+    run: createProfileDiffRunUppercase(),
+    viewOptions: {
+      display_mode: "side_by_side",
+    },
+    onViewOptionsChanged: fn(),
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Profile diff with UPPERCASE column keys in side-by-side display mode. Ensures both display modes handle real backend casing correctly.",
       },
     },
   },

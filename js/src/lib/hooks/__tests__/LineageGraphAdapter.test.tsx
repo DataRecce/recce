@@ -15,30 +15,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { type MockedFunction, vi } from "vitest";
 
-// Mock axios to prevent real network requests
-vi.mock("axios", async () => {
-  const actual = await vi.importActual("axios");
-  const mockAxiosInstance = {
-    get: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
-    post: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
-    put: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
-    delete: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
-    patch: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
-    interceptors: {
-      request: { use: vi.fn(), eject: vi.fn() },
-      response: { use: vi.fn(), eject: vi.fn() },
-    },
-  };
-  return {
-    ...actual,
-    default: {
-      ...(actual as { default: object }).default,
-      create: vi.fn(() => mockAxiosInstance),
-      get: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
-      post: vi.fn().mockRejectedValue(new Error("Network request not mocked")),
-    },
-  };
-});
+// Mock fetch to prevent real network requests
+vi.stubGlobal(
+  "fetch",
+  vi.fn().mockRejectedValue(new Error("Network request not mocked")),
+);
 
 // Mock dependencies BEFORE importing the component
 // Mock @datarecce/ui/api for functions that the component imports directly
@@ -212,14 +193,6 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
 function createServerInfoResult(
   overrides: Partial<ServerInfoResult> = {},
 ): ServerInfoResult {
-  const defaultLineageData = {
-    metadata: { pr_url: "" },
-    nodes: {},
-    parent_map: {},
-    manifest_metadata: null,
-    catalog_metadata: null,
-  };
-
   return {
     state_metadata: {
       schema_version: "1.0",
@@ -234,9 +207,9 @@ function createServerInfoResult(
     codespace: false,
     support_tasks: {},
     lineage: {
-      base: defaultLineageData,
-      current: defaultLineageData,
-      diff: {},
+      nodes: {},
+      edges: [],
+      metadata: { base: {}, current: {} },
     },
     ...overrides,
   };
@@ -274,7 +247,7 @@ function TestConsumer() {
         {String(context.runsAggregated !== undefined)}
       </span>
       <span data-testid="has-refetch">
-        {String(typeof context.retchLineageGraph === "function")}
+        {String(typeof context.refetchLineageGraph === "function")}
       </span>
       <span data-testid="action-available">
         {String(context.isActionAvailable("test_action"))}
@@ -625,7 +598,7 @@ describe("LineageGraphAdapter", () => {
   });
 
   describe("refetch functionality", () => {
-    it("provides retchLineageGraph function", async () => {
+    it("provides refetchLineageGraph function", async () => {
       mockGetServerInfo.mockResolvedValue(createServerInfoResult());
       mockAggregateRuns.mockResolvedValue({});
 
@@ -804,37 +777,32 @@ describe("LineageGraphAdapter", () => {
     it("provides dbt manifest metadata from lineage", async () => {
       const serverInfo = createServerInfoResult({
         lineage: {
-          base: {
-            metadata: { pr_url: "" },
-            nodes: {},
-            parent_map: {},
-            manifest_metadata: {
-              dbt_version: "1.7.0",
-              dbt_schema_version: "v11",
-              generated_at: "2024-01-01T00:00:00Z",
-              adapter_type: "snowflake",
-              env: {},
-              invocation_id: "inv-123",
-              project_name: "my_project",
+          nodes: {},
+          edges: [],
+          metadata: {
+            base: {
+              manifest_metadata: {
+                dbt_version: "1.7.0",
+                dbt_schema_version: "v11",
+                generated_at: "2024-01-01T00:00:00Z",
+                adapter_type: "snowflake",
+                env: {},
+                invocation_id: "inv-123",
+                project_name: "my_project",
+              },
             },
-            catalog_metadata: null,
-          },
-          current: {
-            metadata: { pr_url: "" },
-            nodes: {},
-            parent_map: {},
-            manifest_metadata: {
-              dbt_version: "1.8.0",
-              dbt_schema_version: "v11",
-              generated_at: "2024-01-02T00:00:00Z",
-              adapter_type: "snowflake",
-              env: {},
-              invocation_id: "inv-456",
-              project_name: "my_project",
+            current: {
+              manifest_metadata: {
+                dbt_version: "1.8.0",
+                dbt_schema_version: "v11",
+                generated_at: "2024-01-02T00:00:00Z",
+                adapter_type: "snowflake",
+                env: {},
+                invocation_id: "inv-456",
+                project_name: "my_project",
+              },
             },
-            catalog_metadata: null,
           },
-          diff: {},
         },
       });
 

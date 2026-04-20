@@ -9,8 +9,7 @@
  * 2. Injects OSS-specific context and behavior (tracking, clipboard, API client)
  *
  * OSS-specific behaviors injected:
- * - Analytics tracking (Amplitude via trackCopyToClipboard, trackShareState)
- * - Share state context (RecceShareStateContext)
+ * - Analytics tracking (Amplitude via trackCopyToClipboard)
  * - API client configuration (useApiConfig)
  * - Screenshot/clipboard functionality (useCopyToClipboardButton)
  * - CSV export functionality (useCSVExport)
@@ -37,13 +36,13 @@ import {
   useApiConfig,
   useCopyToClipboardButton,
   useCSVExport,
-  useRecceShareStateContext,
   useRun,
 } from "../../hooks";
-import { trackCopyToClipboard, trackShareState } from "../../lib/api/track";
-import AuthModal from "../app/AuthModal";
+import { trackCopyToClipboard } from "../../lib/api/track";
+import { isHttpError } from "../../lib/fetchClient";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide";
 import { DualSqlEditor, SqlEditor } from "../query";
+import { toaster } from "../ui/Toaster";
 import { RunResultPane as BaseRunResultPane } from "./RunResultPane";
 import { findByRunType } from "./registry";
 import { RefTypes, RegistryEntry, ViewOptionTypes } from "./types";
@@ -117,25 +116,6 @@ const DualSqlEditorAdapter = ({
 );
 
 // ============================================================================
-// Auth Modal Adapter Component
-// ============================================================================
-
-const AuthModalAdapter = ({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) => (
-  <AuthModal
-    parentOpen={open}
-    handleParentClose={() => onClose()}
-    ignoreCookie
-    variant="enable-share"
-  />
-);
-
-// ============================================================================
 // PrivateLoadableRunView - Main Implementation (OSS Wrapper)
 // ============================================================================
 
@@ -152,7 +132,7 @@ export const PrivateLoadableRunView = ({
   onClose?: () => void;
   isSingleEnvironment?: boolean;
 }) => {
-  const { featureToggles, authed } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
   const { runAction } = useRecceActionContext();
   const { error, run, onCancel, isRunning } = useRun(runId);
   const [viewOptions, setViewOptions] = useState<ViewOptionTypes>();
@@ -160,7 +140,6 @@ export const PrivateLoadableRunView = ({
   const router = useRouter();
   const { apiClient } = useApiConfig();
   const { basePath } = useRouteConfig();
-  const { handleShareClick } = useRecceShareStateContext();
 
   // Get the result view component from registry
   let RunResultView: RegistryEntry["RunResultView"] | undefined;
@@ -176,6 +155,7 @@ export const PrivateLoadableRunView = ({
   // CSV export functionality
   const csvExport = useCSVExport({
     run,
+    runId,
     viewOptions: viewOptions as Record<string, unknown>,
   });
 
@@ -185,12 +165,6 @@ export const PrivateLoadableRunView = ({
       runAction(run.type, run.params as unknown as AxiosQueryParams);
     }
   }, [run, runAction]);
-
-  // Share to cloud handler
-  const handleShareToCloud = useCallback(async () => {
-    await handleShareClick();
-    trackShareState({ name: "create" });
-  }, [handleShareClick]);
 
   // Copy to clipboard handler with tracking
   const handleCopyAsImage = useCallback(async () => {
@@ -214,13 +188,31 @@ export const PrivateLoadableRunView = ({
     if (!runId) {
       return;
     }
-    const check = await createCheckByRun(
-      runId,
-      viewOptions as Record<string, unknown>,
-      apiClient,
-    );
-    await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    router.push(`${basePath}/checks/?id=${check.check_id}`);
+    try {
+      const check = await createCheckByRun(
+        runId,
+        viewOptions as Record<string, unknown>,
+        apiClient,
+      );
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+      router.push(`${basePath}/checks/?id=${check.check_id}`);
+    } catch (error) {
+      if (isHttpError(error) && error.status === 403) {
+        toaster.error({
+          title: "Permission denied",
+          description:
+            "You don't have permission to add checks. Contact your org admin for access.",
+        });
+      } else {
+        toaster.error({
+          title: "Failed to create check",
+          description:
+            error instanceof Error
+              ? error.message
+              : "An unexpected error occurred",
+        });
+      }
+    }
   }, [runId, viewOptions, apiClient, queryClient, router.push, basePath]);
 
   return (
@@ -238,6 +230,7 @@ export const PrivateLoadableRunView = ({
       disableDatabaseQuery={featureToggles.disableDatabaseQuery}
       disableShare={featureToggles.disableShare}
       disableUpdateChecklist={featureToggles.disableUpdateChecklist}
+      checklistPermissionDenied={featureToggles.checklistPermissionDenied}
       // Event handlers
       onClose={onClose}
       onCancel={onCancel}
@@ -247,8 +240,6 @@ export const PrivateLoadableRunView = ({
       onCopyMouseEnter={onMouseEnter}
       onCopyMouseLeave={onMouseLeave}
       csvExport={csvExport}
-      authed={authed}
-      onShareToCloud={handleShareToCloud}
       // Checklist handlers
       onGoToCheck={handleGoToCheck}
       onAddToChecklist={handleAddToChecklist}
@@ -256,7 +247,6 @@ export const PrivateLoadableRunView = ({
       SingleEnvironmentNotification={SingleEnvironmentSetupNotification}
       SqlEditorComponent={SqlEditorAdapter}
       DualSqlEditorComponent={DualSqlEditorAdapter}
-      AuthModalComponent={AuthModalAdapter}
       RunResultView={RunResultView}
       resultViewRef={ref as Ref<RefTypes>}
     />

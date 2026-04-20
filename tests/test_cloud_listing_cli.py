@@ -15,7 +15,7 @@ class TestCloudListingCLI(unittest.TestCase):
         """Set up test fixtures."""
         self.runner = CliRunner()
 
-    @patch("recce.cli.prepare_api_token")
+    @patch("recce.util.api_token.prepare_api_token")
     @patch("recce.util.recce_cloud.RecceCloud")
     def test_list_organizations_success(self, mock_recce_cloud, mock_prepare_token):
         """Test successful list-organizations command."""
@@ -40,7 +40,7 @@ class TestCloudListingCLI(unittest.TestCase):
         self.assertIn("Organization 2", result.output)
         mock_cloud_instance.list_organizations.assert_called_once()
 
-    @patch("recce.cli.prepare_api_token")
+    @patch("recce.util.api_token.prepare_api_token")
     @patch("recce.util.recce_cloud.RecceCloud")
     def test_list_organizations_empty(self, mock_recce_cloud, mock_prepare_token):
         """Test list-organizations command with no organizations."""
@@ -57,7 +57,7 @@ class TestCloudListingCLI(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("No organizations found", result.output)
 
-    @patch("recce.cli.prepare_api_token")
+    @patch("recce.util.api_token.prepare_api_token")
     def test_list_organizations_invalid_token(self, mock_prepare_token):
         """Test list-organizations command with invalid token."""
         # Setup mock to raise exception
@@ -69,7 +69,7 @@ class TestCloudListingCLI(unittest.TestCase):
         # Assertions
         self.assertEqual(result.exit_code, 1)
 
-    @patch("recce.cli.prepare_api_token")
+    @patch("recce.util.api_token.prepare_api_token")
     @patch("recce.util.recce_cloud.RecceCloud")
     def test_list_projects_with_cli_arg(self, mock_recce_cloud, mock_prepare_token):
         """Test list-projects command with CLI argument."""
@@ -92,7 +92,7 @@ class TestCloudListingCLI(unittest.TestCase):
         self.assertIn("Project 1", result.output)
         mock_cloud_instance.list_projects.assert_called_once_with("8")
 
-    @patch("recce.cli.prepare_api_token")
+    @patch("recce.util.api_token.prepare_api_token")
     @patch("recce.util.recce_cloud.RecceCloud")
     def test_list_projects_with_env_var(self, mock_recce_cloud, mock_prepare_token):
         """Test list-projects command with environment variable."""
@@ -111,7 +111,7 @@ class TestCloudListingCLI(unittest.TestCase):
         self.assertIn("project1", result.output)
         mock_cloud_instance.list_projects.assert_called_once_with("8")
 
-    @patch("recce.cli.prepare_api_token")
+    @patch("recce.util.api_token.prepare_api_token")
     @patch("recce.util.recce_cloud.RecceCloud")
     def test_list_projects_cli_overrides_env(self, mock_recce_cloud, mock_prepare_token):
         """Test list-projects command where CLI argument overrides environment variable."""
@@ -130,7 +130,7 @@ class TestCloudListingCLI(unittest.TestCase):
         # Verify CLI argument (10) was used, not env var (8)
         mock_cloud_instance.list_projects.assert_called_once_with("10")
 
-    @patch("recce.cli.prepare_api_token")
+    @patch("recce.util.api_token.prepare_api_token")
     def test_list_projects_missing_organization(self, mock_prepare_token):
         """Test list-projects command with missing organization ID."""
         # Setup mocks
@@ -145,7 +145,7 @@ class TestCloudListingCLI(unittest.TestCase):
         self.assertIn("--organization", result.output)
         self.assertIn("RECCE_ORGANIZATION_ID", result.output)
 
-    @patch("recce.cli.prepare_api_token")
+    @patch("recce.util.api_token.prepare_api_token")
     @patch("recce.util.recce_cloud.RecceCloud")
     def test_list_projects_empty(self, mock_recce_cloud, mock_prepare_token):
         """Test list-projects command with no projects."""
@@ -162,7 +162,7 @@ class TestCloudListingCLI(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("No projects found in organization 8", result.output)
 
-    @patch("recce.cli.prepare_api_token")
+    @patch("recce.util.api_token.prepare_api_token")
     @patch("recce.util.recce_cloud.RecceCloud")
     def test_list_sessions_with_cli_args(self, mock_recce_cloud, mock_prepare_token):
         """Test list-sessions command with CLI arguments."""
@@ -186,7 +186,7 @@ class TestCloudListingCLI(unittest.TestCase):
         self.assertIn("✓", result.output)  # Base session marker
         mock_cloud_instance.list_sessions.assert_called_once_with("8", "7")
 
-    @patch("recce.cli.prepare_api_token")
+    @patch("recce.util.api_token.prepare_api_token")
     @patch("recce.util.recce_cloud.RecceCloud")
     def test_list_sessions_with_env_vars(self, mock_recce_cloud, mock_prepare_token):
         """Test list-sessions command with environment variables."""
@@ -205,7 +205,7 @@ class TestCloudListingCLI(unittest.TestCase):
         self.assertIn("Session 1", result.output)
         mock_cloud_instance.list_sessions.assert_called_once_with("8", "7")
 
-    @patch("recce.cli.prepare_api_token")
+    @patch("recce.util.api_token.prepare_api_token")
     @patch("recce.util.recce_cloud.RecceCloud")
     def test_list_sessions_mixed_env_and_cli(self, mock_recce_cloud, mock_prepare_token):
         """Test list-sessions command with mixed environment variables and CLI args."""
@@ -224,7 +224,7 @@ class TestCloudListingCLI(unittest.TestCase):
         # Verify it used env var for org (8) and CLI arg for project (9)
         mock_cloud_instance.list_sessions.assert_called_once_with("8", "9")
 
-    @patch("recce.cli.prepare_api_token")
+    @patch("recce.util.api_token.prepare_api_token")
     def test_list_sessions_missing_organization(self, mock_prepare_token):
         """Test list-sessions command with missing organization ID."""
         # Setup mocks
@@ -239,7 +239,7 @@ class TestCloudListingCLI(unittest.TestCase):
         self.assertIn("--organization", result.output)
         self.assertIn("RECCE_ORGANIZATION_ID", result.output)
 
-    @patch("recce.cli.prepare_api_token")
+    @patch("recce.util.api_token.prepare_api_token")
     def test_list_sessions_missing_project(self, mock_prepare_token):
         """Test list-sessions command with missing project ID."""
         # Setup mocks
@@ -254,7 +254,7 @@ class TestCloudListingCLI(unittest.TestCase):
         self.assertIn("--project", result.output)
         self.assertIn("RECCE_PROJECT_ID", result.output)
 
-    @patch("recce.cli.prepare_api_token")
+    @patch("recce.util.api_token.prepare_api_token")
     @patch("recce.util.recce_cloud.RecceCloud")
     def test_list_sessions_empty(self, mock_recce_cloud, mock_prepare_token):
         """Test list-sessions command with no sessions."""
@@ -271,7 +271,7 @@ class TestCloudListingCLI(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("No sessions found in project 7", result.output)
 
-    @patch("recce.cli.prepare_api_token")
+    @patch("recce.util.api_token.prepare_api_token")
     @patch("recce.util.recce_cloud.RecceCloud")
     def test_list_sessions_api_error(self, mock_recce_cloud, mock_prepare_token):
         """Test list-sessions command with API error."""
@@ -288,7 +288,7 @@ class TestCloudListingCLI(unittest.TestCase):
         self.assertEqual(result.exit_code, 1)
         self.assertIn("Error", result.output)
 
-    @patch("recce.cli.prepare_api_token")
+    @patch("recce.util.api_token.prepare_api_token")
     @patch("recce.util.recce_cloud.RecceCloud")
     def test_sessions_base_session_display(self, mock_recce_cloud, mock_prepare_token):
         """Test that base sessions are properly marked with checkmark."""

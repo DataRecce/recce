@@ -52,15 +52,20 @@ def generate_run_name(run):
         model = params.get("model")
         return f"profile diff of {model}".capitalize()
     elif run_type == RunType.ROW_COUNT_DIFF:
+        # MCP uses node_names (array) or node_ids (array of fully-qualified IDs)
         nodes = params.get("node_names")
         if nodes:
             if len(nodes) == 1:
-                node = nodes[0]
-                return f"row count diff of {node}".capitalize()
+                return f"row count diff of {nodes[0]}".capitalize()
             else:
                 return f"row count of {len(nodes)} nodes".capitalize()
-        else:
-            return "row count of multiple nodes".capitalize()
+        node_ids = params.get("node_ids")
+        if node_ids:
+            if len(node_ids) == 1:
+                return f"row count diff of {node_ids[0].split('.')[-1]}".capitalize()
+            else:
+                return f"row count of {len(node_ids)} nodes".capitalize()
+        return "row count of multiple nodes".capitalize()
     elif run_type == RunType.TOP_K_DIFF:
         model = params.get("model")
         column = params.get("column_name")
@@ -69,6 +74,24 @@ def generate_run_name(run):
         model = params.get("model")
         column = params.get("column_name")
         return f"histogram diff of {model}.{column} ".capitalize()
+    elif run_type == RunType.LINEAGE_DIFF:
+        return "Lineage diff"
+    elif run_type == RunType.SCHEMA_DIFF:
+        # REST API uses node_id (single), MCP uses node_names/node_ids (arrays)
+        node_id = params.get("node_id")
+        if node_id:
+            return f"Schema diff of {node_id.split('.')[-1]}"
+        node_names = params.get("node_names")
+        if node_names and len(node_names) == 1:
+            return f"Schema diff of {node_names[0]}"
+        elif node_names:
+            return f"Schema diff of {len(node_names)} nodes"
+        node_ids = params.get("node_ids")
+        if node_ids and len(node_ids) == 1:
+            return f"Schema diff of {node_ids[0].split('.')[-1]}"
+        elif node_ids:
+            return f"Schema diff of {len(node_ids)} nodes"
+        return "Schema diff"
     else:
         return f"{'run'.capitalize()} - {now}"
 
@@ -92,7 +115,7 @@ def create_task(run_type: RunType, params: dict):
     return taskClz(params)
 
 
-def submit_run(type, params, check_id=None):
+def submit_run(type, params, check_id=None, triggered_by=None):
     try:
         run_type = RunType(type)
     except ValueError:
@@ -111,7 +134,7 @@ def submit_run(type, params, check_id=None):
         if dbt_adaptor.adapter is None:
             raise RecceException("Recce Server is not launched under DBT project folder.")
 
-    run = Run(type=run_type, params=params, check_id=check_id, status=RunStatus.RUNNING)
+    run = Run(type=run_type, params=params, check_id=check_id, status=RunStatus.RUNNING, triggered_by=triggered_by)
     run.name = generate_run_name(run)
     RunDAO().create(run)
 

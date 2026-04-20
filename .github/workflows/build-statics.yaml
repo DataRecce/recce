@@ -34,7 +34,7 @@ jobs:
       - uses: actions/create-github-app-token@v2
         id: app-token
         with:
-          app-id: 2343362 # App ID of Recce Action Bot
+          app-id: ${{ secrets.RECCE_ACTION_BOT_APP_ID }}
           private-key: ${{ secrets.RECCE_ACTION_BOT_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
       - uses: actions/checkout@v6

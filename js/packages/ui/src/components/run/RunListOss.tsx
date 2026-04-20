@@ -137,7 +137,11 @@ export function RunListOss() {
       onAddToChecklist={handleAddToChecklist}
       onGoToCheck={handleGoToCheck}
       getRunIcon={getRunIcon}
-      hideAddToChecklist={featureToggles.disableUpdateChecklist}
+      hideAddToChecklist={
+        featureToggles.disableUpdateChecklist &&
+        !featureToggles.checklistPermissionDenied
+      }
+      disableAddToChecklist={featureToggles.checklistPermissionDenied}
       title="History"
       headerActions={headerActions}
       emptyMessage="No runs"

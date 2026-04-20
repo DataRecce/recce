@@ -50,7 +50,7 @@ class TestPRMetricsDataclasses(unittest.TestCase):
             commits_after_summary=1,
             commits_fetch_failed=False,
             has_recce_session=True,
-            recce_session_url="https://cloud.datarecce.io/session/abc123",
+            recce_session_url="https://cloud.reccehq.com/session/abc123",
             recce_checks_count=5,
             recce_check_types=["row_count_diff", "value_diff"],
             recce_summary_generated=True,
@@ -145,7 +145,7 @@ class TestPRMetricsDataclasses(unittest.TestCase):
             commits_after_summary=0,
             commits_fetch_failed=False,
             has_recce_session=True,
-            recce_session_url="https://cloud.datarecce.io/session/test",
+            recce_session_url="https://cloud.reccehq.com/session/test",
             recce_checks_count=3,
             recce_check_types=["row_count_diff"],
             recce_summary_generated=True,
@@ -177,7 +177,7 @@ class TestReportClient(unittest.TestCase):
         reload(client_module)
         client = client_module.ReportClient(token="test_token")
         self.assertEqual(client.token, "test_token")
-        self.assertIn("cloud.datarecce.io", client.base_url_v2)
+        self.assertIn("cloud.reccehq.com", client.base_url_v2)
 
     def test_init_with_none_token_raises_error(self):
         """Test ReportClient initialization with None token raises ValueError."""
@@ -307,7 +307,7 @@ class TestReportClientGetPRMetrics(unittest.TestCase):
                     "commits_after_pr_open": 2,
                     "commits_after_summary": 1,
                     "has_recce_session": True,
-                    "recce_session_url": "https://cloud.datarecce.io/session/abc",
+                    "recce_session_url": "https://cloud.reccehq.com/session/abc",
                     "recce_checks_count": 5,
                     "recce_check_types": ["row_count_diff", "value_diff"],
                     "recce_summary_generated": True,
@@ -579,7 +579,7 @@ class TestFormatReportAsCsv(unittest.TestCase):
                 commits_after_summary=0 if i % 2 == 0 else None,
                 commits_fetch_failed=False,
                 has_recce_session=i % 2 == 0,
-                recce_session_url=f"https://cloud.datarecce.io/session/{i}" if i % 2 == 0 else None,
+                recce_session_url=f"https://cloud.reccehq.com/session/{i}" if i % 2 == 0 else None,
                 recce_checks_count=3 if i % 2 == 0 else None,
                 recce_check_types=["row_count_diff", "value_diff"] if i % 2 == 0 else None,
                 recce_summary_generated=True if i % 2 == 0 else None,
@@ -764,7 +764,7 @@ class TestDisplayReportSummary(unittest.TestCase):
                 commits_after_summary=0 if i % 2 == 0 else None,
                 commits_fetch_failed=False,
                 has_recce_session=i % 2 == 0,
-                recce_session_url=f"https://cloud.datarecce.io/session/{i}" if i % 2 == 0 else None,
+                recce_session_url=f"https://cloud.reccehq.com/session/{i}" if i % 2 == 0 else None,
                 recce_checks_count=3 if i % 2 == 0 else None,
                 recce_check_types=["row_count_diff"] if i % 2 == 0 else None,
                 recce_summary_generated=True if i % 3 == 0 else False,
@@ -890,7 +890,7 @@ class TestFetchAndGenerateReport(unittest.TestCase):
             commits_after_summary=0,
             commits_fetch_failed=False,
             has_recce_session=True,
-            recce_session_url="https://cloud.datarecce.io/session/test",
+            recce_session_url="https://cloud.reccehq.com/session/test",
             recce_checks_count=3,
             recce_check_types=["row_count_diff"],
             recce_summary_generated=True,
@@ -1097,7 +1097,7 @@ class TestReportCLICommand(unittest.TestCase):
                     "commits_after_pr_open": 1,
                     "commits_after_summary": 0,
                     "has_recce_session": True,
-                    "recce_session_url": "https://cloud.datarecce.io/session/abc",
+                    "recce_session_url": "https://cloud.reccehq.com/session/abc",
                     "recce_checks_count": 3,
                     "recce_check_types": ["row_count_diff"],
                     "recce_summary_generated": True,

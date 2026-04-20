@@ -24,7 +24,7 @@ make test-coverage
 # Test across dbt versions (1.6-1.9)
 make test-tox
 
-# Test across Python versions (3.9-3.13)
+# Test across Python versions (3.10-3.13)
 make test-tox-python-versions
 ```
 
@@ -89,7 +89,7 @@ pnpm test:visual
 
 | Workflow | Trigger | Tests |
 |----------|---------|-------|
-| `tests-python.yaml` | PR/push | Python unit tests (3.9-3.13) |
+| `tests-python.yaml` | PR/push | Python unit tests (3.10-3.13) |
 | `tests-js.yaml` | PR/push | Frontend lint + tests |
 | `integration-tests.yaml` | PR/push | Full dbt project tests |
 | `nightly.yaml` | Schedule | Full matrix |

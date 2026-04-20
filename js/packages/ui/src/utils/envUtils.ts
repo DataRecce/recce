@@ -32,11 +32,13 @@ export function extractSchemas(
   if (lineageGraph?.nodes) {
     const nodes: LineageGraphNode[] = Object.values(lineageGraph.nodes);
     for (const node of nodes) {
-      if (node.data.data.base?.schema) {
-        baseSchemas.add(node.data.data.base.schema);
-      }
-      if (node.data.data.current?.schema) {
-        currentSchemas.add(node.data.data.current.schema);
+      if (node.data.schema) {
+        if (node.data.changeStatus !== "added") {
+          baseSchemas.add(node.data.schema);
+        }
+        if (node.data.changeStatus !== "removed") {
+          currentSchemas.add(node.data.schema);
+        }
       }
     }
   }

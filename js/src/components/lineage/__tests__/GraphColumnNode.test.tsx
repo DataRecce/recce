@@ -110,13 +110,6 @@ const mockThemeColors = {
   isDark: false,
 };
 
-const createMockNodeData = () => ({
-  id: "node1",
-  unique_id: "model.test.test_model",
-  name: "test_model",
-  columns: {},
-});
-
 const createMockColumnNode = (
   overrides: Partial<LineageGraphColumnNode["data"]> = {},
 ): LineageGraphColumnNode => ({
@@ -128,8 +121,6 @@ const createMockColumnNode = (
     node: {
       id: "node1",
       name: "test_model",
-      from: "both",
-      data: { base: createMockNodeData(), current: createMockNodeData() },
       resourceType: "model",
       packageName: "test_package",
       parents: {},
@@ -439,7 +430,7 @@ describe("GraphColumnNode", () => {
 
       render(<GraphColumnNode {...props} />);
 
-      // Component applies filter: "opacity(0.2) grayscale(50%)" when not highlighted
+      // Component applies DIM_FILTER when not highlighted
       // We verify the logic path is exercised
     });
   });

@@ -7,7 +7,6 @@
 
 "use client";
 
-import "@fontsource/montserrat/800.css";
 import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import { usePathname } from "next/navigation";
@@ -124,11 +123,16 @@ export function Main({
     ? false
     : isHistoryOpen && !pathname.startsWith(`${basePath}/checks`);
 
+  // Keep gutterSize and minSize constant to avoid react-split's destroy/recreate
+  // path (triggered when these props change). Only changing `sizes` uses the
+  // simpler `setSizes()` code path, which avoids DOM measurement race conditions
+  // that can cause the result pane to appear at the top of the page.
   return (
     <HSplit
-      sizes={[0, 100]}
-      minSize={_isHistoryOpen ? 300 : 0}
-      gutterSize={_isHistoryOpen ? 5 : 0}
+      sizes={_isHistoryOpen ? [20, 80] : [0, 100]}
+      minSize={0}
+      gutterSize={5}
+      className={_isHistoryOpen ? undefined : "split-gutter-hidden"}
       style={{ height: "100%" }}
     >
       {/* suppressHydrationWarning: react-split adds inline styles after mount */}
@@ -137,8 +141,9 @@ export function Main({
       </Box>
       <VSplit
         sizes={_isRunResultOpen ? [50, 50] : [100, 0]}
-        minSize={_isRunResultOpen ? 100 : 0}
-        gutterSize={_isRunResultOpen ? 5 : 0}
+        minSize={0}
+        gutterSize={5}
+        className={_isRunResultOpen ? undefined : "split-gutter-hidden"}
         style={{ flex: "1", contain: "size" }}
       >
         <Suspense fallback={<MainContentLoading />}>

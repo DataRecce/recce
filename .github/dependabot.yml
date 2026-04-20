@@ -8,26 +8,16 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "python"
     commit-message:
       prefix: "chore(deps)"
     groups:
-      # Group Python dev dependencies together
-      dev-dependencies:
-        patterns:
-          - "pytest*"
-          - "black"
-          - "isort"
-          - "flake8"
-          - "mypy"
-          - "tox*"
-          - "pre-commit"
-        update-types:
-          - "minor"
-          - "patch"
+      all-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   # JavaScript/Node dependencies
   # Note: This project uses pnpm, but Dependabot uses "npm" ecosystem
@@ -36,7 +26,7 @@ updates:
     directory: "/js"
     schedule:
       interval: "weekly"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "javascript"
@@ -48,19 +38,6 @@ updates:
       # Pinned: breaking API changes in v2
       - dependency-name: "html2canvas-pro"
     groups:
-      # Group related frontend dependencies
-      testing-libraries:
-        patterns:
-          - "@testing-library/*"
-          - "vitest"
-        update-types:
-          - "minor"
-          - "patch"
-      dev-tools:
-        patterns:
-          - "@biomejs/*"
-          - "typescript"
-          - "eslint*"
-        update-types:
-          - "minor"
-          - "patch"
+      all-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

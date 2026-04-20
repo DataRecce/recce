@@ -11,7 +11,7 @@
  * Source: Ported from OSS js/src/components/lineage/styles.tsx
  */
 
-import type { ComponentType, SVGProps } from "react";
+import { type ComponentType, type SVGProps, useId } from "react";
 import { colors } from "../../theme/colors";
 
 // =============================================================================
@@ -185,6 +185,29 @@ export const IconModifiedDownstream: IconComponent = (props) => (
   </svg>
 );
 
+/**
+ * Exclamation icon for "impacted" status (downstream of a change)
+ */
+export const IconImpacted: IconComponent = (props) => (
+  <svg
+    stroke="currentColor"
+    fill="currentColor"
+    strokeWidth="0"
+    viewBox="0 0 16 16"
+    height="1em"
+    width="1em"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M1.5 1h13l.5.5v13l-.5.5h-13l-.5-.5v-13l.5-.5zM2 2v12h12V2H2z"
+    />
+    <path d="M7.5 4h1v5h-1V4zm0 6h1v1.5h-1V10z" />
+  </svg>
+);
+
 // =============================================================================
 // RESOURCE TYPE ICONS (inline SVGs to avoid react-icons dependency)
 // =============================================================================
@@ -316,64 +339,191 @@ export const IconSemanticModel: IconComponent = (props) => (
 );
 
 // =============================================================================
+// MATERIALIZATION ICONS
+// =============================================================================
+
+/**
+ * Eye icon for "view" materialization type
+ */
+export const IconViewMat: IconComponent = (props) => (
+  <svg
+    stroke="currentColor"
+    fill="currentColor"
+    strokeWidth="0"
+    viewBox="0 0 512 512"
+    height="1em"
+    width="1em"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path d="M256 128C141.4 128 37.5 193.3 1.6 246.1c-2.1 3.2-2.1 7.5 0 10.7C37.5 309.7 141.4 384 256 384s218.5-74.3 254.4-127.2c2.1-3.2 2.1-7.5 0-10.7C474.5 193.3 370.6 128 256 128zm0 208c-53 0-96-43-96-96s43-96 96-96 96 43 96 96-43 96-96 96zm0-144c-26.5 0-48 21.5-48 48s21.5 48 48 48 48-21.5 48-48-21.5-48-48-48z" />
+  </svg>
+);
+
+/**
+ * Cube icon with dashed top portion for "incremental" materialization type
+ * Bottom 2/3 is solid fill, top 1/3 is dashed strokes
+ */
+export const IconIncremental: IconComponent = (props) => {
+  const id = useId();
+  const bottomId = `inc-bottom-${id}`;
+  const topId = `inc-top-${id}`;
+
+  return (
+    <svg
+      stroke="currentColor"
+      fill="currentColor"
+      strokeWidth="0"
+      viewBox="0 0 512 512"
+      height="1em"
+      width="1em"
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+    >
+      <defs>
+        <clipPath id={bottomId}>
+          <rect x="0" y="200" width="512" height="312" />
+        </clipPath>
+        <clipPath id={topId}>
+          <rect x="0" y="0" width="512" height="200" />
+        </clipPath>
+      </defs>
+      {/* Bottom 2/3: solid fill */}
+      <path
+        clipPath={`url(#${bottomId})`}
+        d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z"
+      />
+      {/* Top 1/3: dashed strokes */}
+      <path
+        clipPath={`url(#${topId})`}
+        d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="12"
+        strokeDasharray="20 12"
+      />
+    </svg>
+  );
+};
+
+/**
+ * Fully dashed cube icon for "ephemeral" materialization type
+ */
+export const IconEphemeral: IconComponent = (props) => (
+  <svg
+    stroke="currentColor"
+    fill="none"
+    strokeWidth="0"
+    viewBox="0 0 512 512"
+    height="1em"
+    width="1em"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <path
+      d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="12"
+      strokeDasharray="20 12"
+    />
+  </svg>
+);
+
+/**
+ * Solid cube with small eye overlay for "materialized_view" materialization type
+ */
+export const IconMaterializedView: IconComponent = (props) => (
+  <svg
+    stroke="currentColor"
+    fill="currentColor"
+    strokeWidth="0"
+    viewBox="0 0 512 512"
+    height="1em"
+    width="1em"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    {/* Scaled-down cube at ~75% */}
+    <g transform="translate(0, 0) scale(0.75)">
+      <path d="M239.1 6.3l-208 78c-18.7 7-31.1 25-31.1 45v225.1c0 18.2 10.3 34.8 26.5 42.9l208 104c13.5 6.8 29.4 6.8 42.9 0l208-104c16.3-8.1 26.5-24.8 26.5-42.9V129.3c0-20-12.4-37.9-31.1-44.9l-208-78C262 2.2 250 2.2 239.1 6.3zM256 68.4l192 72v1.1l-192 78-192-78v-1.1l192-72zm32 356V275.5l160-65v133.9l-160 80z" />
+    </g>
+    {/* Eye icon overlay in bottom-right (~50% size) */}
+    <g transform="translate(250, 260) scale(0.5)">
+      <path d="M256 128C141.4 128 37.5 193.3 1.6 246.1c-2.1 3.2-2.1 7.5 0 10.7C37.5 309.7 141.4 384 256 384s218.5-74.3 254.4-127.2c2.1-3.2 2.1-7.5 0-10.7C474.5 193.3 370.6 128 256 128zm0 208c-53 0-96-43-96-96s43-96 96-96 96 43 96 96-43 96-96 96zm0-144c-26.5 0-48 21.5-48 48s21.5 48 48 48 48-21.5 48-48-21.5-48-48-48z" />
+    </g>
+  </svg>
+);
+
+// =============================================================================
 // STYLING FUNCTIONS
 // =============================================================================
 
 /**
- * Get icon and colors for a change status
- *
- * @param changeStatus - The change status (added, removed, modified)
- * @param isDark - Whether dark mode is active
- * @returns Object containing color values and icon component
+ * Icon lookup for change statuses
+ */
+const changeStatusIcons: Record<string, IconComponent | undefined> = {
+  added: IconAdded,
+  removed: IconRemoved,
+  modified: IconModified,
+  impacted: IconImpacted,
+};
+
+type PaletteKey = "default" | "cll";
+
+function paletteFor(
+  key: PaletteKey,
+  isDark?: boolean,
+): { colors: Record<string, string>; bg: Record<string, string> } {
+  if (key === "cll") {
+    return {
+      colors: cllChangeStatusColors,
+      bg: isDark
+        ? cllChangeStatusBackgroundsDark
+        : cllChangeStatusBackgroundsLight,
+    };
+  }
+  return {
+    colors: changeStatusColors,
+    bg: isDark ? changeStatusBackgroundsDark : changeStatusBackgroundsLight,
+  };
+}
+
+/**
+ * Get icon and colors for a change status. Pass `palette: "cll"` for the
+ * muted brown/yellow palette used inside the new CLL experience.
  *
  * @example
  * ```tsx
  * const { color, icon: Icon } = getIconForChangeStatus("added");
- * return <Icon style={{ color }} />;
+ * const cll = getIconForChangeStatus("impacted", isDark, "cll");
  * ```
  */
 export function getIconForChangeStatus(
-  changeStatus?: ChangeStatus,
+  changeStatus?: ChangeStatus | "impacted",
   isDark?: boolean,
+  palette: PaletteKey = "default",
 ): ChangeStatusStyle {
-  if (changeStatus === "added") {
-    return {
-      color: colors.green[500],
-      hexColor: colors.green[500],
-      backgroundColor: isDark ? colors.green[900] : colors.green[100],
-      hexBackgroundColor: isDark ? colors.green[900] : colors.green[100],
-      icon: IconAdded,
-    };
-  }
+  const status = changeStatus ?? "unchanged";
+  const { colors: colorMap, bg: bgMap } = paletteFor(palette, isDark);
+  const color = colorMap[status];
+  const bg = bgMap[status];
 
-  if (changeStatus === "removed") {
-    return {
-      color: colors.red[500],
-      hexColor: colors.red[500],
-      backgroundColor: isDark ? colors.red[950] : colors.red[200],
-      hexBackgroundColor: isDark ? colors.red[950] : colors.red[200],
-      icon: IconRemoved,
-    };
-  }
-
-  if (changeStatus === "modified") {
-    return {
-      color: colors.amber[500],
-      hexColor: colors.amber[500],
-      backgroundColor: isDark ? colors.amber[900] : colors.amber[100],
-      hexBackgroundColor: isDark ? colors.amber[900] : colors.amber[100],
-      icon: IconModified,
-    };
-  }
-
-  // Default: no change
   return {
-    color: colors.neutral[500],
-    hexColor: colors.neutral[500],
-    backgroundColor: isDark ? colors.neutral[700] : colors.white,
-    hexBackgroundColor: isDark ? colors.neutral[700] : colors.white,
-    icon: undefined,
+    color,
+    hexColor: color,
+    backgroundColor: bg,
+    hexBackgroundColor: bg,
+    icon: changeStatusIcons[status],
   };
+}
+
+/**
+ * Get style for impacted nodes — a peer status alongside added/removed/modified
+ * inside the new CLL experience.
+ */
+export function getStyleForImpacted(isDark?: boolean): ChangeStatusStyle {
+  return getIconForChangeStatus("impacted", isDark, "cll");
 }
 
 /**
@@ -435,12 +585,46 @@ export function getIconForResourceType(
   }
 }
 
+/**
+ * Get icon and color for a materialization type
+ *
+ * @param materialization - The materialization type (table, view, incremental, etc.)
+ * @returns Object containing color and icon component
+ *
+ * @example
+ * ```tsx
+ * const { color, icon: Icon } = getIconForMaterialization("view");
+ * return Icon ? <Icon style={{ color }} /> : null;
+ * ```
+ */
+export function getIconForMaterialization(
+  materialization?: string,
+): ResourceTypeStyle {
+  switch (materialization) {
+    case "table":
+      return { color: colors.cyan[200], icon: IconModel };
+    case "view":
+      return { color: colors.fuchsia[300], icon: IconViewMat };
+    case "incremental":
+      return { color: colors.iochmara[300], icon: IconIncremental };
+    case "ephemeral":
+      return { color: colors.neutral[400], icon: IconEphemeral };
+    case "materialized_view":
+    case "dynamic_table":
+    case "streaming_table":
+      return { color: colors.fuchsia[200], icon: IconMaterializedView };
+    default:
+      return { color: "inherit", icon: undefined };
+  }
+}
+
 // =============================================================================
 // STYLE CONSTANTS
 // =============================================================================
 
 /**
- * Pre-defined colors for change status (for direct usage without function call)
+ * Pre-defined colors for change status (default palette — used by OSS lineage,
+ * schema diff checks, summary, and any non-CLL consumer).
  */
 export const changeStatusColors: Record<ChangeStatus | "unchanged", string> = {
   added: colors.green[500],
@@ -450,7 +634,7 @@ export const changeStatusColors: Record<ChangeStatus | "unchanged", string> = {
 };
 
 /**
- * Pre-defined background colors for change status (light mode)
+ * Pre-defined background colors for change status (light mode, default palette)
  */
 export const changeStatusBackgroundsLight: Record<
   ChangeStatus | "unchanged",
@@ -463,7 +647,7 @@ export const changeStatusBackgroundsLight: Record<
 };
 
 /**
- * Pre-defined background colors for change status (dark mode)
+ * Pre-defined background colors for change status (dark mode, default palette)
  */
 export const changeStatusBackgroundsDark: Record<
   ChangeStatus | "unchanged",
@@ -473,4 +657,43 @@ export const changeStatusBackgroundsDark: Record<
   removed: colors.red[950],
   modified: colors.amber[900],
   unchanged: colors.neutral[700],
+};
+
+/**
+ * CLL palette — muted brown/yellow variant used only inside the new CLL
+ * experience (LineageNode, LineageColumnNode, LineageEdge, LineageCanvas
+ * minimap, LineageLegend). Mirrors the `.cll-experience` overrides in
+ * ../schema/style.css; keep both sides in sync (no build-time check).
+ */
+export const cllChangeStatusColors: Record<
+  ChangeStatus | "unchanged" | "impacted",
+  string
+> = {
+  added: "rgb(46 160 67)",
+  removed: "rgb(248 81 73)",
+  modified: "rgb(212 133 11)",
+  impacted: "rgb(252 211 77)",
+  unchanged: colors.neutral[500],
+};
+
+export const cllChangeStatusBackgroundsLight: Record<
+  ChangeStatus | "unchanged" | "impacted",
+  string
+> = {
+  added: "rgb(222 248 227)",
+  removed: "rgb(252 225 224)",
+  modified: "rgb(255 237 175)",
+  impacted: "rgb(254 249 227)",
+  unchanged: colors.white,
+};
+
+export const cllChangeStatusBackgroundsDark: Record<
+  ChangeStatus | "unchanged" | "impacted",
+  string
+> = {
+  added: "rgb(30 58 30)",
+  removed: "rgb(68 35 35)",
+  modified: "rgb(75 65 33)",
+  impacted: "rgb(50 44 24)",
+  unchanged: "rgb(38 38 38)",
 };

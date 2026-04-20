@@ -73,3 +73,31 @@ export function toTSV(columns: string[], rows: unknown[][]): string {
 
   return [headerRow, ...dataRows].join("\r\n");
 }
+
+/**
+ * Format a row count as a human-readable string
+ * - < 1,000: exact number ("450 rows")
+ * - 1,000–999,999: thousands ("12k rows", "450k rows")
+ * - >= 1,000,000: millions ("1.2M rows", "3.5M rows")
+ */
+export function formatRowCount(n: number): string {
+  const label = n === 1 ? "row" : "rows";
+
+  if (n < 1000) {
+    return `${n} ${label}`;
+  }
+
+  if (n < 1_000_000) {
+    const k = n / 1000;
+    // Round up to M if k would display as 1000
+    if (k >= 999.95) {
+      return `1M ${label}`;
+    }
+    const formatted = k % 1 === 0 ? String(k) : k.toFixed(1);
+    return `${formatted}k ${label}`;
+  }
+
+  const m = n / 1_000_000;
+  const formatted = m % 1 === 0 ? String(m) : m.toFixed(1);
+  return `${formatted}M ${label}`;
+}

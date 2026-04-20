@@ -16,10 +16,8 @@ import {
 } from "react";
 import { IoClose } from "react-icons/io5";
 
-import type { NodeColumnData } from "../../api/info";
+import type { NodeData } from "../../api/info";
 import { DisableTooltipMessages } from "../../constants";
-import { isSchemaChanged } from "../../utils/schemaDiff";
-import type { NodeSqlViewProps } from "./NodeSqlView";
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -35,18 +33,11 @@ export interface NodeViewNodeData {
     name: string;
     resourceType?: string;
     changeStatus?: string;
-    from?: string;
-    data: {
-      base?: {
-        raw_code?: string;
-        name?: string;
-        columns?: Record<string, NodeColumnData | undefined>;
-      };
-      current?: {
-        raw_code?: string;
-        name?: string;
-        columns?: Record<string, NodeColumnData | undefined>;
-      };
+    schema?: string;
+    materialized?: string;
+    change?: {
+      category: string;
+      columns?: Record<string, "added" | "removed" | "modified">;
     };
   };
 }
@@ -67,6 +58,48 @@ export interface RunTypeIconMap {
   histogram_diff?: ComponentType<{ fontSize?: string }>;
   schema_diff?: ComponentType<{ fontSize?: string }>;
   sandbox?: ComponentType<{ fontSize?: string }>;
+}
+
+/**
+ * Props for the SchemaView component (diff mode).
+ */
+export interface SchemaViewProps {
+  base?: NodeData;
+  current?: NodeData;
+  columnChanges?: Record<string, "added" | "removed" | "modified"> | null;
+  onViewCode?: () => void;
+}
+
+/**
+ * Props for the SingleEnvSchemaView component.
+ */
+export interface SingleEnvSchemaViewProps {
+  current?: NodeData;
+}
+
+/**
+ * Props for the NotificationComponent.
+ */
+export interface NotificationComponentProps {
+  onClose: () => void;
+  children?: ReactNode;
+}
+
+/**
+ * Props for the ConnectionPopoverWrapper.
+ */
+export interface ConnectionPopoverWrapperProps {
+  display: boolean;
+  children: ReactNode;
+}
+
+/**
+ * Props for the SandboxDialog component.
+ */
+export interface SandboxDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  current?: NodeData;
 }
 
 /**
@@ -107,14 +140,12 @@ export interface NodeViewActionCallbacks {
  * - Action button icons
  * - Notification components
  * - Connection popover wrapper
- *
- * Note: Injected component types use `any` to allow consumers to provide
- * components with more specific prop types than the base interface requires.
- * The consumer is responsible for ensuring type compatibility.
  */
-export interface NodeViewProps {
+export interface NodeViewProps<
+  TNode extends NodeViewNodeData = NodeViewNodeData,
+> {
   /** The node to display */
-  node: NodeViewNodeData;
+  node: TNode;
   /** Callback when close button is clicked */
   onCloseNode: () => void;
   /** Whether in single environment mode */
@@ -124,66 +155,34 @@ export interface NodeViewProps {
     mode?: string | null;
     disableDatabaseQuery?: boolean;
   };
+  /** On-demand model detail (columns, raw_code) fetched by the wrapper */
+  modelDetail?: {
+    base?: NodeData;
+    current?: NodeData;
+  };
 
   // =========================================================================
   // DEPENDENCY INJECTION: Components
   // =========================================================================
-  // Using ComponentType<any> for flexibility - consumers provide their own types
 
-  /**
-   * Schema view component for diff mode.
-   * Should accept: { base?: NodeData, current?: NodeData }
-   */
-  // biome-ignore lint/suspicious/noExplicitAny: DI pattern requires flexible component types
-  SchemaView?: ComponentType<any>;
-  /**
-   * Schema view component for single env mode.
-   * Should accept: { current?: NodeData }
-   */
-  // biome-ignore lint/suspicious/noExplicitAny: DI pattern requires flexible component types
-  SingleEnvSchemaView?: ComponentType<any>;
-  /**
-   * Node SQL view component.
-   * Should accept: { node: LineageGraphNode }
-   */
-  // biome-ignore lint/suspicious/noExplicitAny: DI pattern requires flexible component types
-  NodeSqlView?: ComponentType<any>;
-  /**
-   * Row count diff tag component.
-   * Should accept: { node: LineageGraphNode, onRefresh?: () => void }
-   */
-  // biome-ignore lint/suspicious/noExplicitAny: DI pattern requires flexible component types
-  RowCountDiffTag?: ComponentType<any>;
-  /**
-   * Row count tag component (single env).
-   * Should accept: { node: LineageGraphNode, onRefresh?: () => void }
-   */
-  // biome-ignore lint/suspicious/noExplicitAny: DI pattern requires flexible component types
-  RowCountTag?: ComponentType<any>;
-  /**
-   * Resource type tag component.
-   * Should accept: { node: LineageGraphNode }
-   */
-  // biome-ignore lint/suspicious/noExplicitAny: DI pattern requires flexible component types
-  ResourceTypeTag?: ComponentType<any>;
-  /**
-   * Notification component for single env mode.
-   * Should accept: { onClose: () => void, children: ReactNode }
-   */
-  // biome-ignore lint/suspicious/noExplicitAny: DI pattern requires flexible component types
-  NotificationComponent?: ComponentType<any>;
-  /**
-   * Wrapper component for buttons that need connection popover.
-   * Should accept: { display: boolean, children: ReactNode }
-   */
-  // biome-ignore lint/suspicious/noExplicitAny: DI pattern requires flexible component types
-  ConnectionPopoverWrapper?: ComponentType<any>;
-  /**
-   * Sandbox dialog component.
-   * Should accept: { isOpen: boolean, onClose: () => void, current?: NodeData }
-   */
-  // biome-ignore lint/suspicious/noExplicitAny: DI pattern requires flexible component types
-  SandboxDialog?: ComponentType<any>;
+  /** Schema view component for diff mode */
+  SchemaView?: ComponentType<SchemaViewProps>;
+  /** Schema view component for single env mode */
+  SingleEnvSchemaView?: ComponentType<SingleEnvSchemaViewProps>;
+  /** Node SQL view component */
+  NodeSqlView?: ComponentType<{ node: TNode }>;
+  /** Row count diff tag component */
+  RowCountDiffTag?: ComponentType<{ node: TNode; onRefresh?: () => void }>;
+  /** Row count tag component (single env) */
+  RowCountTag?: ComponentType<{ node: TNode; onRefresh?: () => void }>;
+  /** Resource type tag component */
+  ResourceTypeTag?: ComponentType<{ node: TNode }>;
+  /** Notification component for single env mode */
+  NotificationComponent?: ComponentType<NotificationComponentProps>;
+  /** Wrapper component for buttons that need connection popover */
+  ConnectionPopoverWrapper?: ComponentType<ConnectionPopoverWrapperProps>;
+  /** Sandbox dialog component */
+  SandboxDialog?: ComponentType<SandboxDialogProps>;
 
   // =========================================================================
   // DEPENDENCY INJECTION: Icons
@@ -224,12 +223,9 @@ function TabPanel({ children, value, index }: TabPanelProps) {
 const DefaultIcon = () => <span />;
 
 /** Default connection wrapper that just renders children */
-const DefaultConnectionWrapper = ({
-  children,
-}: {
-  display: boolean;
-  children: ReactNode;
-}) => <>{children}</>;
+const DefaultConnectionWrapper: ComponentType<
+  ConnectionPopoverWrapperProps
+> = ({ children }) => <>{children}</>;
 
 /** Default check for action availability - always available */
 const defaultIsActionAvailable = () => true;
@@ -572,11 +568,12 @@ function DiffActionButtons({
  * />
  * ```
  */
-export function NodeView({
+export function NodeView<TNode extends NodeViewNodeData>({
   node,
   onCloseNode,
   isSingleEnv,
   featureToggles,
+  modelDetail,
   // Injected components
   SchemaView,
   SingleEnvSchemaView,
@@ -592,7 +589,7 @@ export function NodeView({
   // Injected callbacks
   actionCallbacks,
   isActionAvailable = defaultIsActionAvailable,
-}: NodeViewProps) {
+}: NodeViewProps<TNode>) {
   const withColumns =
     node.data.resourceType === "model" ||
     node.data.resourceType === "seed" ||
@@ -603,14 +600,17 @@ export function NodeView({
   const [isNotificationOpen, setIsNotificationOpen] = useState(true);
   const [tabValue, setTabValue] = useState(0);
 
-  const { base, current } = node.data.data;
+  const { base, current } = modelDetail ?? {};
   const hasSchemaChanges =
-    !isSingleEnv && isSchemaChanged(base?.columns, current?.columns) === true;
-  const hasCodeChanges =
     !isSingleEnv &&
-    base?.raw_code != null &&
-    current?.raw_code != null &&
-    base.raw_code !== current.raw_code;
+    node.data.change?.columns != null &&
+    Object.keys(node.data.change.columns).length > 0;
+  // DRC-3263: uses server-computed changeStatus instead of comparing raw_code
+  // strings. This is intentionally broader — state:modified includes config and
+  // description changes, not just code. Verified equivalent on jaffle-shop-expand
+  // (1060 nodes). If a project has config-only changes, the dot may appear even
+  // though raw_code is identical — acceptable since the node IS modified.
+  const hasCodeChanges = !isSingleEnv && node.data.changeStatus === "modified";
 
   const isModelSeedOrSnapshot =
     node.data.resourceType === "model" ||
@@ -630,8 +630,8 @@ export function NodeView({
     <Box
       sx={{
         height: "100%",
-        display: "grid",
-        gridTemplateRows: "auto auto auto 1fr",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       {/* Header row: name + close button */}
@@ -709,7 +709,13 @@ export function NodeView({
       {/* Content area: tabs for columns and code */}
       {withColumns && (
         <Box
-          sx={{ overflow: "auto", display: "flex", flexDirection: "column" }}
+          sx={{
+            overflow: "auto",
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+            minHeight: 0,
+          }}
         >
           {/* Notification for single env mode */}
           {isSingleEnv && isNotificationOpen && NotificationComponent && (
@@ -783,12 +789,14 @@ export function NodeView({
               <Box sx={{ overflowY: "auto", height: "100%" }}>
                 {isSingleEnv
                   ? SingleEnvSchemaView && (
-                      <SingleEnvSchemaView current={node.data.data.current} />
+                      <SingleEnvSchemaView current={current} />
                     )
                   : SchemaView && (
                       <SchemaView
-                        base={node.data.data.base}
-                        current={node.data.data.current}
+                        base={base}
+                        current={current}
+                        columnChanges={node.data.change?.columns}
+                        onViewCode={() => setTabValue(1)}
                       />
                     )}
               </Box>
@@ -807,7 +815,7 @@ export function NodeView({
         <SandboxDialog
           isOpen={isSandboxOpen}
           onClose={() => setIsSandboxOpen(false)}
-          current={node.data.data.current}
+          current={current}
         />
       )}
     </Box>

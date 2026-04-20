@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import signal
+import sys
 import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -46,6 +47,7 @@ from .core import RecceContext, default_context, load_context
 from .event import get_recce_api_token, log_api_event, log_single_env_event
 from .exceptions import RecceException
 from .github import is_github_codespace
+from .models.lineage import build_merged_lineage
 from .models.types import CllData
 from .models.websocket import CloudUserContextMessage
 from .run import load_preset_checks
@@ -235,17 +237,6 @@ def _do_lifespan_setup(app_state: AppState):
     (create_task, get_running_loop, etc.) here — schedule them in the async
     caller after this returns.
     """
-    # Update onboarding state in background (non-fatal)
-    try:
-        api_token = app_state.auth_options.get("api_token") if app_state.auth_options else None
-        single_env = app_state.flag.get("single_env_onboarding", False) if app_state.flag else False
-        if api_token:
-            from recce.util.onboarding_state import update_onboarding_state
-
-            update_onboarding_state(api_token, single_env)
-    except Exception:
-        logger.debug("Failed to update onboarding state (non-fatal)", exc_info=True)
-
     if app_state.command == "server":
         ctx = setup_server(app_state)
     elif app_state.command == "read-only":
@@ -528,12 +519,14 @@ class RecceInstanceInfoOut(BaseModel):
     single_env: bool
     authed: bool
     cloud_instance: bool
+    python_version: str
     lifetime_expired_at: Optional[datetime] = None
     idle_timeout: Optional[int] = None
     share_url: Optional[str] = None
     session_id: Optional[str] = None
     organization_name: Optional[str] = None
     web_url: Optional[str] = None
+    user_role: Optional[str] = None
 
 
 @app.get("/api/instance-info", response_model=RecceInstanceInfoOut, response_model_exclude_none=True)
@@ -552,6 +545,7 @@ async def recce_instance_info():
         "single_env": single_env,
         "authed": True if api_token else False,
         "cloud_instance": is_recce_cloud_instance(),
+        "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         "lifetime_expired_at": app_state.lifetime_expired_at,  # UTC timezone
         "idle_timeout": app_state.idle_timeout,
         "share_url": app_state.share_url,
@@ -600,6 +594,7 @@ async def get_info():
 
     state_metadata = context.state_loader.state.metadata if context.state_loader.state else None
     lineage_diff = context.get_lineage_diff()
+    merged_lineage = build_merged_lineage(lineage_diff)
 
     try:
         info = {
@@ -608,7 +603,7 @@ async def get_info():
             "review_mode": context.review_mode,
             "git": state.git.to_dict() if state.git else None,
             "pull_request": state.pull_request.to_dict() if state.pull_request else None,
-            "lineage": lineage_diff,
+            "lineage": merged_lineage.model_dump(exclude_none=True, by_alias=True),
             "demo": bool(demo),
             "codespace": bool(is_codespace),
             "cloud_mode": context.state_loader.cloud_mode,
@@ -638,6 +633,7 @@ class CllIn(BaseModel):
     no_cll: Optional[bool] = False
     no_upstream: Optional[bool] = False
     no_downstream: Optional[bool] = False
+    full_map: Optional[bool] = False
 
 
 class CllOutput(BaseModel):
@@ -648,6 +644,9 @@ class CllOutput(BaseModel):
 async def column_level_lineage_by_node(cll_input: CllIn):
     from recce.adapter.dbt_adapter import DbtAdapter
 
+    app_state: AppState = app.state
+    disable_cll_cache = app_state.flag.get("disable_cll_cache", False) if app_state.flag else False
+
     dbt_adapter: DbtAdapter = default_context().adapter
     cll = dbt_adapter.get_cll(
         node_id=cll_input.node_id,
@@ -656,6 +655,8 @@ async def column_level_lineage_by_node(cll_input: CllIn):
         no_upstream=cll_input.no_upstream,
         no_downstream=cll_input.no_downstream,
         no_cll=cll_input.no_cll,
+        full_map=cll_input.full_map,
+        disable_cll_cache=disable_cll_cache,
     )
 
     return CllOutput(current=cll)
@@ -1066,6 +1067,334 @@ async def get_user_info():
     try:
         user_info = cloud.get_user_info()
         return user_info
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/connection-info")
+async def get_connection_info():
+    """Return non-sensitive connection parameters from the loaded dbt profile."""
+    context = default_context()
+    user_token = get_recce_api_token() or context.state_loader.token
+    if not user_token:
+        raise HTTPException(status_code=401, detail="Not authenticated with Recce Cloud")
+
+    adapter = context.adapter
+    runtime_config = getattr(adapter, "runtime_config", None)
+    if runtime_config is None:
+        return {"connection_info": None}
+
+    creds = runtime_config.credentials
+    info = dict(creds.connection_info())
+    info["type"] = creds.type
+    return {"connection_info": info}
+
+
+@app.get("/api/cloud/organizations")
+def list_cloud_organizations():
+    """List all organizations the authenticated user has access to."""
+    from recce.util.recce_cloud import RecceCloud
+
+    context = default_context()
+    user_token = get_recce_api_token() or context.state_loader.token
+    if not user_token:
+        raise HTTPException(status_code=401, detail="Not authenticated with Recce Cloud")
+
+    cloud = RecceCloud(user_token)
+    try:
+        return {"organizations": cloud.list_organizations()}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/cloud/organizations/{org_id}/projects")
+def list_cloud_projects(org_id: str):
+    """List all projects in an organization."""
+    from recce.util.recce_cloud import RecceCloud
+
+    context = default_context()
+    user_token = get_recce_api_token() or context.state_loader.token
+    if not user_token:
+        raise HTTPException(status_code=401, detail="Not authenticated with Recce Cloud")
+
+    cloud = RecceCloud(user_token)
+    try:
+        return {"projects": cloud.list_projects(org_id)}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/cloud/organizations/{org_id}/projects/{project_id}/base-status")
+def get_cloud_project_base_status(org_id: str, project_id: str):
+    """Check if the project's base session needs artifact upload."""
+    from recce.util.recce_cloud import RecceCloud
+
+    context = default_context()
+    user_token = get_recce_api_token() or context.state_loader.token
+    if not user_token:
+        raise HTTPException(status_code=401, detail="Not authenticated with Recce Cloud")
+
+    cloud = RecceCloud(user_token)
+    try:
+        return {"base_needs_upload": _check_base_needs_upload(cloud, org_id, project_id)}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+def _check_base_needs_upload(cloud, org_id: str, project_id: str) -> bool:
+    """Check if the project's base session exists but has no artifacts."""
+    try:
+        sessions = cloud.list_sessions(org_id, project_id)
+        base_session = next((s for s in sessions if s.get("is_base")), None)
+        if not base_session:
+            return False
+        return not base_session.get("adapter_type")
+    except Exception as e:
+        logger.warning(f"Failed to check base upload status: {e}")
+        return False
+
+
+class CloudUploadInput(BaseModel):
+    org_id: str
+    project_id: str
+    session_name: str
+
+
+class CloudUploadOutput(BaseModel):
+    status: str
+    session_id: Optional[str] = None
+    session_url: Optional[str] = None
+    message: Optional[str] = None
+
+
+def _upload_artifacts_to_session(
+    cloud,
+    org_id,
+    project_id,
+    session_id,
+    manifest_path,
+    catalog_path,
+    adapter_type,
+    notify_completed=True,
+):
+    """Upload manifest + catalog to a session via presigned URLs.
+
+    Args:
+        notify_completed: Whether to call upload_completed after uploading.
+            Set to False for base sessions — they don't need completion notification
+            because no post-upload processing (summary, PR comment) is needed.
+    """
+    import requests as http_requests
+
+    presigned_urls = cloud.get_upload_urls_by_session_id(org_id, project_id, session_id)
+
+    with open(manifest_path, "rb") as f:
+        resp = http_requests.put(presigned_urls["manifest_url"], data=f)
+        if resp.status_code not in [200, 204]:
+            raise Exception(f"Failed to upload manifest: {resp.text}")
+
+    if os.path.exists(catalog_path):
+        with open(catalog_path, "rb") as f:
+            resp = http_requests.put(presigned_urls["catalog_url"], data=f)
+            if resp.status_code not in [200, 204]:
+                raise Exception(f"Failed to upload catalog: {resp.text}")
+
+    cloud.update_session(org_id, project_id, session_id, adapter_type)
+    if notify_completed:
+        cloud.upload_completed(session_id)
+
+
+def _maybe_upload_base_session(cloud, org_id, project_id, base_target, adapter_type) -> bool:
+    """Upload base artifacts to the project's base session if it has no metadata yet.
+
+    The base session is created when the project is created, but may not have
+    artifacts uploaded. We find it via list_sessions (is_base=True) and check
+    adapter_type to determine if artifacts exist.
+
+    Returns True if base artifacts were uploaded, False otherwise.
+    """
+    if not base_target:
+        return False
+
+    base_manifest = os.path.join(base_target, "manifest.json")
+    base_catalog = os.path.join(base_target, "catalog.json")
+    if not os.path.exists(base_manifest):
+        return False
+
+    sessions = cloud.list_sessions(org_id, project_id)
+    base_session = next((s for s in sessions if s.get("is_base")), None)
+    if not base_session:
+        return False
+
+    if base_session.get("adapter_type"):
+        return False  # Base session already has artifacts
+
+    # Base session has no artifacts — upload them.
+    # notify_completed=False: base sessions don't need post-upload processing.
+    base_session_id_raw = base_session.get("id")
+    if base_session_id_raw is None:
+        logger.warning("Base session has no 'id' field, skipping base upload")
+        return False
+    base_session_id = str(base_session_id_raw).strip()
+    if not base_session_id:
+        logger.warning("Base session has empty 'id' field, skipping base upload")
+        return False
+    _upload_artifacts_to_session(
+        cloud,
+        org_id,
+        project_id,
+        base_session_id,
+        base_manifest,
+        base_catalog,
+        adapter_type,
+        notify_completed=False,
+    )
+    return True
+
+
+@app.post("/api/cloud/upload", response_model=CloudUploadOutput)
+def upload_to_cloud(input: CloudUploadInput):
+    """Create Cloud sessions and upload local artifacts (base + current)."""
+    from recce.util.recce_cloud import RECCE_CLOUD_BASE_URL, RecceCloud
+
+    context = default_context()
+    user_token = get_recce_api_token() or context.state_loader.token
+    if not user_token:
+        raise HTTPException(status_code=401, detail="Not authenticated with Recce Cloud")
+
+    adapter = context.adapter
+    if adapter is None:
+        raise HTTPException(status_code=400, detail="No adapter available")
+
+    # Get artifact paths from the adapter
+    curr_target = getattr(adapter, "target_path", None)
+    if not curr_target:
+        raise HTTPException(status_code=400, detail="Current target path not available")
+
+    curr_manifest = os.path.join(curr_target, "manifest.json")
+    curr_catalog = os.path.join(curr_target, "catalog.json")
+    if not os.path.exists(curr_manifest):
+        raise HTTPException(status_code=400, detail="manifest.json not found in current target")
+
+    base_target = getattr(adapter, "base_path", None)
+
+    # Read the warehouse adapter type (e.g., "postgres", "snowflake") from manifest metadata.
+    # context.adapter_type is the framework type ("dbt"/"sqlmesh"), not what Cloud expects.
+    with open(curr_manifest, "r", encoding="utf-8") as f:
+        manifest_data = json.load(f)
+    adapter_type = manifest_data.get("metadata", {}).get("adapter_type")
+    if not isinstance(adapter_type, str) or not adapter_type.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="manifest.json is missing required metadata.adapter_type",
+        )
+
+    cloud = RecceCloud(user_token)
+
+    try:
+        # Upload base artifacts if the project's base session lacks metadata.
+        _maybe_upload_base_session(
+            cloud,
+            input.org_id,
+            input.project_id,
+            base_target,
+            adapter_type,
+        )
+
+        # Create current session and upload artifacts
+        session = cloud.create_session(
+            org_id=input.org_id,
+            project_id=input.project_id,
+            name=input.session_name,
+            adapter_type=adapter_type,
+        )
+        session_id_raw = session.get("id") or session.get("session_id")
+        session_id = str(session_id_raw).strip() if session_id_raw is not None else ""
+        if not session_id:
+            raise HTTPException(status_code=400, detail="Cloud returned a session with no ID")
+        _upload_artifacts_to_session(
+            cloud,
+            input.org_id,
+            input.project_id,
+            session_id,
+            curr_manifest,
+            curr_catalog,
+            adapter_type,
+        )
+
+        session_url = f"{RECCE_CLOUD_BASE_URL}/launch/{session_id}"
+
+        return CloudUploadOutput(
+            status="success",
+            session_id=session_id,
+            session_url=session_url,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+class WarehouseSetupInput(BaseModel):
+    org_id: str
+    project_id: str
+    connection_name: str
+    config: dict
+
+
+class WarehouseSetupOutput(BaseModel):
+    status: str
+    warehouse_connection_id: Optional[str] = None
+    message: Optional[str] = None
+
+
+@app.post("/api/cloud/warehouse-setup", response_model=WarehouseSetupOutput)
+async def setup_warehouse(input: WarehouseSetupInput):
+    """Create a warehouse connection in Cloud and bind it to the project."""
+    from recce.util.recce_cloud import RecceCloud
+
+    context = default_context()
+    user_token = get_recce_api_token() or context.state_loader.token
+    if not user_token:
+        raise HTTPException(status_code=401, detail="Not authenticated with Recce Cloud")
+
+    cloud = RecceCloud(user_token)
+    try:
+        connection = cloud.create_warehouse_connection(
+            org_id=input.org_id,
+            name=input.connection_name,
+            config=input.config,
+        )
+        connection_id_raw = connection.get("id")
+        if connection_id_raw is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Cloud returned a warehouse connection with no ID",
+            )
+        connection_id = str(connection_id_raw).strip()
+        if not connection_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Cloud returned a warehouse connection with no ID",
+            )
+
+        try:
+            cloud.bind_warehouse_connection_to_project(
+                org_id=input.org_id,
+                project_id=input.project_id,
+                warehouse_connection_id=connection_id,
+            )
+        except Exception as bind_err:
+            logger.error(
+                f"Failed to bind warehouse connection {connection_id} to project "
+                f"{input.project_id}: {bind_err}. Orphaned connection may need manual cleanup."
+            )
+            raise
+
+        return WarehouseSetupOutput(
+            status="success",
+            warehouse_connection_id=connection_id,
+        )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

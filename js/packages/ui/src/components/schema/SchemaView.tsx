@@ -1,5 +1,6 @@
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import "./style.css";
 import type {
   CellClickedEvent,
   GridApi,
@@ -15,7 +16,11 @@ import {
   useState,
 } from "react";
 import type { NodeData } from "../../api";
-import { useLineageGraphContext, useLineageViewContext } from "../../contexts";
+import {
+  useLineageGraphContext,
+  useLineageViewContext,
+  useRecceServerFlag,
+} from "../../contexts";
 import { trackColumnLevelLineage } from "../../lib/api/track";
 import type {
   SchemaDiffRow,
@@ -26,13 +31,50 @@ import {
   EmptyRowsRenderer,
   ScreenshotDataGrid,
 } from "../../primitives";
+
 import { createDataGridFromData } from "../ui/dataGrid";
+
+export function SchemaLegend() {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        gap: 2,
+        px: 1,
+        py: 0.5,
+        fontSize: "0.75rem",
+        color: "text.secondary",
+      }}
+    >
+      <span>
+        <span className="schema-change-badge schema-change-badge-added">+</span>{" "}
+        added
+      </span>
+      <span>
+        <span className="schema-change-badge schema-change-badge-removed">
+          -
+        </span>{" "}
+        removed
+      </span>
+      <span>
+        <span className="schema-change-badge schema-change-badge-changed">
+          ~
+        </span>{" "}
+        changed
+      </span>
+    </Box>
+  );
+}
 
 interface SchemaViewProps {
   base?: NodeData;
   current?: NodeData;
   enableScreenshot?: boolean;
   showMenu?: boolean;
+  /** Per-column change status from breaking change analysis */
+  columnChanges?: Record<string, "added" | "removed" | "modified"> | null;
+  /** Callback when user clicks a definition-changed badge to view SQL diff */
+  onViewCode?: () => void;
 }
 
 function PrivateSingleEnvSchemaView(
@@ -168,14 +210,31 @@ function PrivateSingleEnvSchemaView(
 }
 
 export function PrivateSchemaView(
-  { base, current, showMenu = true }: SchemaViewProps,
+  {
+    base,
+    current,
+    showMenu = true,
+    columnChanges,
+    onViewCode,
+  }: SchemaViewProps,
   ref: Ref<DataGridHandle>,
 ) {
   const lineageViewContext = useLineageViewContext();
+  const { data: serverFlags } = useRecceServerFlag();
+  const newCllExperience = serverFlags?.new_cll_experience ?? false;
   const [gridApi, setGridApi] = useState<GridApi<SchemaDiffRow> | null>(null);
   const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(
     new Map(),
   );
+
+  // Use the frozen impacted column set from impact analysis so sidebar
+  // highlights stay stable when navigating between models/columns.
+  const impactedColumns = useMemo(() => {
+    if (!newCllExperience) return undefined;
+    const frozen = lineageViewContext?.impactedColumnIds;
+    return frozen?.size ? frozen : undefined;
+  }, [newCllExperience, lineageViewContext?.impactedColumnIds]);
+
   const { columns, rows } = useMemo(() => {
     const resourceType = current?.resource_type ?? base?.resource_type;
     const node =
@@ -183,12 +242,29 @@ export function PrivateSchemaView(
       ["model", "seed", "snapshot", "source"].includes(resourceType)
         ? (current ?? base)
         : undefined;
+    const nodeId = current?.id ?? base?.id;
 
     return createDataGridFromData(
       { type: "schema_diff", base: base?.columns, current: current?.columns },
-      { node, cllRunningMap, showMenu },
+      {
+        node,
+        cllRunningMap,
+        showMenu,
+        columnChanges,
+        onViewCode,
+        impactedColumns,
+        nodeId,
+      },
     );
-  }, [base, current, cllRunningMap, showMenu]);
+  }, [
+    base,
+    current,
+    cllRunningMap,
+    showMenu,
+    columnChanges,
+    onViewCode,
+    impactedColumns,
+  ]);
 
   const { lineageGraph, isActionAvailable } = useLineageGraphContext();
   const changeAnalysisAvailable = isActionAvailable("change_analysis");
@@ -268,11 +344,20 @@ export function PrivateSchemaView(
     const row = params.data;
     if (!row) return "row-normal";
 
-    let className;
+    let className: string;
     if (row.baseIndex === undefined) {
       className = "row-added";
     } else if (row.currentIndex === undefined) {
       return "row-removed"; // removed column isn't selectable
+    } else if (
+      row.baseType !== row.currentType ||
+      row.reordered === true ||
+      row.definitionChanged === true
+    ) {
+      // Any change (structural or definition-only) gets the changed row background
+      className = "row-changed";
+    } else if (row.isImpacted) {
+      className = "row-impacted";
     } else {
       className = "row-normal";
     }
@@ -311,6 +396,7 @@ export function PrivateSchemaView(
         <></>
       )}
 
+      <SchemaLegend />
       {rows.length > 0 && (
         <ScreenshotDataGrid
           style={{
@@ -324,7 +410,7 @@ export function PrivateSchemaView(
           rows={rows}
           rowHeight={35}
           renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
-          className="rdg-light no-track-pii-safe"
+          className={`rdg-light no-track-pii-safe${newCllExperience ? " cll-experience" : ""}`}
           ref={ref}
           getRowId={getRowId}
           getRowClass={getRowClass}

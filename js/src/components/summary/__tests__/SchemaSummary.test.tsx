@@ -62,49 +62,68 @@ vi.mock("@datarecce/ui/components/schema", () => ({
 }));
 
 vi.mock("@datarecce/ui/components/lineage", () => ({
-  ResourceTypeTag: ({ data }: { data: { resourceType: string } }) => (
-    <span data-testid="resource-type-tag">{data.resourceType}</span>
+  NodeTag: ({ resourceType }: { resourceType: string }) => (
+    <span>{resourceType}</span>
   ),
   RowCountDiffTag: () => <span data-testid="row-count-diff-tag">RowCount</span>,
 }));
+
+vi.mock("@datarecce/ui/hooks", () => ({
+  useApiConfig: vi.fn(() => ({ apiClient: { get: vi.fn() } })),
+}));
+
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
+  };
+});
 
 // ============================================================================
 // Imports
 // ============================================================================
 
 import type { LineageGraph, LineageGraphNode } from "@datarecce/ui";
-import type { NodeData } from "@datarecce/ui/api";
 import { SchemaSummary } from "@datarecce/ui/components/summary";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+
+function Wrapper({ children }: { children: ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+}
 
 // ============================================================================
 // Test Fixtures
 // ============================================================================
 
-// Helper to convert simple column definitions to proper NodeColumnData format
-const toNodeColumns = (
-  cols: Record<string, { type: string }>,
-): Record<string, { name: string; type: string }> => {
-  const result: Record<string, { name: string; type: string }> = {};
-  for (const [name, col] of Object.entries(cols)) {
-    result[name] = { name, type: col.type };
+/**
+ * Compute a simple column diff to populate node.data.change.columns
+ */
+function computeColumnChanges(
+  baseColumns: Record<string, { type: string }> | undefined,
+  currentColumns: Record<string, { type: string }> | undefined,
+): Record<string, "added" | "removed" | "modified"> | null {
+  if (!baseColumns && !currentColumns) return null;
+  const base = baseColumns ?? {};
+  const current = currentColumns ?? {};
+  const changes: Record<string, "added" | "removed" | "modified"> = {};
+  for (const col of Object.keys(current)) {
+    if (!(col in base)) changes[col] = "added";
+    else if (base[col].type !== current[col].type) changes[col] = "modified";
   }
-  return result;
-};
-
-const createMockNodeData = (
-  columns: Record<string, { type: string }> = {},
-  overrides: Partial<NodeData> = {},
-): NodeData => ({
-  id: "model.test.test_model",
-  unique_id: "model.test.test_model",
-  name: "test_model",
-  resource_type: "model",
-  package_name: "test",
-  columns: toNodeColumns(columns),
-  checksum: { name: "sha256", checksum: "abc123" },
-  ...overrides,
-});
+  for (const col of Object.keys(base)) {
+    if (!(col in current)) changes[col] = "removed";
+  }
+  return Object.keys(changes).length > 0 ? changes : null;
+}
 
 const createMockNode = (
   id: string,
@@ -112,41 +131,31 @@ const createMockNode = (
   baseColumns: Record<string, { type: string }> | undefined,
   currentColumns: Record<string, { type: string }> | undefined,
   resourceType: "model" | "source" | "seed" | "snapshot" = "model",
-): LineageGraphNode => ({
-  id,
-  type: "lineageGraphNode",
-  position: { x: 0, y: 0 },
-  data: {
+): LineageGraphNode => {
+  const columnChanges = computeColumnChanges(baseColumns, currentColumns);
+  return {
     id,
-    name,
-    from: "both",
-    changeStatus: "modified",
+    type: "lineageGraphNode",
+    position: { x: 0, y: 0 },
     data: {
-      base:
-        baseColumns !== undefined
-          ? createMockNodeData(baseColumns, {
-              id,
-              unique_id: id,
-              name,
-              resource_type: resourceType,
-            })
-          : undefined,
-      current:
-        currentColumns !== undefined
-          ? createMockNodeData(currentColumns, {
-              id,
-              unique_id: id,
-              name,
-              resource_type: resourceType,
-            })
-          : undefined,
+      id,
+      name,
+      changeStatus: "modified",
+      resourceType,
+      packageName: "test",
+      parents: {},
+      children: {},
+      ...(columnChanges
+        ? {
+            change: {
+              category: "non_breaking" as const,
+              columns: columnChanges,
+            },
+          }
+        : {}),
     },
-    resourceType,
-    packageName: "test",
-    parents: {},
-    children: {},
-  },
-});
+  };
+};
 
 const createMockLineageGraph = (
   nodes: LineageGraphNode[] = [],
@@ -178,14 +187,18 @@ describe("SchemaSummary (Simplified)", () => {
   describe("rendering", () => {
     it("renders section title", () => {
       const lineageGraph = createMockLineageGraph([]);
-      render(<SchemaSummary lineageGraph={lineageGraph} />);
+      render(<SchemaSummary lineageGraph={lineageGraph} />, {
+        wrapper: Wrapper,
+      });
 
       expect(screen.getByText("Schema Summary")).toBeInTheDocument();
     });
 
     it('displays "No schema changes detected" when no changes', async () => {
       const lineageGraph = createMockLineageGraph([]);
-      render(<SchemaSummary lineageGraph={lineageGraph} />);
+      render(<SchemaSummary lineageGraph={lineageGraph} />, {
+        wrapper: Wrapper,
+      });
 
       await waitFor(() => {
         expect(
@@ -204,7 +217,9 @@ describe("SchemaSummary (Simplified)", () => {
         ),
       ]);
 
-      render(<SchemaSummary lineageGraph={lineageGraph} />);
+      render(<SchemaSummary lineageGraph={lineageGraph} />, {
+        wrapper: Wrapper,
+      });
 
       await waitFor(() => {
         expect(screen.getByText("test_model")).toBeInTheDocument();
@@ -224,7 +239,9 @@ describe("SchemaSummary (Simplified)", () => {
         ),
       ]);
 
-      render(<SchemaSummary lineageGraph={lineageGraph} />);
+      render(<SchemaSummary lineageGraph={lineageGraph} />, {
+        wrapper: Wrapper,
+      });
 
       await waitFor(() => {
         expect(screen.getByText("test_model")).toBeInTheDocument();
@@ -241,7 +258,9 @@ describe("SchemaSummary (Simplified)", () => {
         ),
       ]);
 
-      render(<SchemaSummary lineageGraph={lineageGraph} />);
+      render(<SchemaSummary lineageGraph={lineageGraph} />, {
+        wrapper: Wrapper,
+      });
 
       await waitFor(() => {
         expect(screen.getByText("test_model")).toBeInTheDocument();
@@ -258,7 +277,9 @@ describe("SchemaSummary (Simplified)", () => {
         ),
       ]);
 
-      render(<SchemaSummary lineageGraph={lineageGraph} />);
+      render(<SchemaSummary lineageGraph={lineageGraph} />, {
+        wrapper: Wrapper,
+      });
 
       await waitFor(() => {
         expect(
@@ -269,7 +290,7 @@ describe("SchemaSummary (Simplified)", () => {
   });
 
   describe("integration", () => {
-    it("displays ResourceTypeTag", async () => {
+    it("displays NodeTag with resource type", async () => {
       const lineageGraph = createMockLineageGraph([
         createMockNode(
           "node1",
@@ -279,10 +300,12 @@ describe("SchemaSummary (Simplified)", () => {
         ),
       ]);
 
-      render(<SchemaSummary lineageGraph={lineageGraph} />);
+      render(<SchemaSummary lineageGraph={lineageGraph} />, {
+        wrapper: Wrapper,
+      });
 
       await waitFor(() => {
-        expect(screen.getByTestId("resource-type-tag")).toBeInTheDocument();
+        expect(screen.getByText("model")).toBeInTheDocument();
       });
     });
 
@@ -297,7 +320,9 @@ describe("SchemaSummary (Simplified)", () => {
         ),
       ]);
 
-      render(<SchemaSummary lineageGraph={lineageGraph} />);
+      render(<SchemaSummary lineageGraph={lineageGraph} />, {
+        wrapper: Wrapper,
+      });
 
       await waitFor(() => {
         expect(screen.getByTestId("row-count-diff-tag")).toBeInTheDocument();
@@ -316,12 +341,7 @@ describe("SchemaSummary (Simplified)", () => {
             data: {
               id: "node1",
               name: "test_model",
-              from: "both",
               changeStatus: "modified",
-              data: {
-                base: createMockNodeData({}, { columns: undefined }),
-                current: createMockNodeData({ col1: { type: "STRING" } }),
-              },
               resourceType: "model",
               packageName: "test",
               parents: {},
@@ -335,17 +355,24 @@ describe("SchemaSummary (Simplified)", () => {
         catalogMetadata: { base: undefined, current: undefined },
       };
 
-      render(<SchemaSummary lineageGraph={lineageGraph} />);
+      render(<SchemaSummary lineageGraph={lineageGraph} />, {
+        wrapper: Wrapper,
+      });
 
+      // Without change.columns, the node is not considered a schema change
       await waitFor(() => {
-        expect(screen.getByText("test_model")).toBeInTheDocument();
+        expect(
+          screen.getByText("No schema changes detected."),
+        ).toBeInTheDocument();
       });
     });
 
     it("handles empty modifiedSet", async () => {
       const lineageGraph = createMockLineageGraph([]);
 
-      render(<SchemaSummary lineageGraph={lineageGraph} />);
+      render(<SchemaSummary lineageGraph={lineageGraph} />, {
+        wrapper: Wrapper,
+      });
 
       await waitFor(() => {
         expect(

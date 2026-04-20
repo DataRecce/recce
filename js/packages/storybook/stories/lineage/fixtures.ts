@@ -1,5 +1,9 @@
 import type { ColumnLineageData } from "@datarecce/ui/api";
-import type { LineageGraph, LineageGraphNode } from "@datarecce/ui/contexts";
+import {
+  buildLineageGraph,
+  type LineageGraph,
+  type LineageGraphNode,
+} from "@datarecce/ui/contexts";
 import type { Edge, Node } from "@xyflow/react";
 
 /**
@@ -27,6 +31,7 @@ export interface LineageNodeData extends Record<string, unknown> {
   changeStatus?: NodeChangeStatus;
   isSelected?: boolean;
   resourceType?: string;
+  materialized?: string;
   packageName?: string;
   showColumns?: boolean;
   columns?: Array<{
@@ -51,6 +56,7 @@ interface CreateNodeOptions {
   position: { x: number; y: number };
   changeStatus?: NodeChangeStatus;
   resourceType?: string;
+  materialized?: string;
   showColumns?: boolean;
   columnCount?: number;
   data?: Partial<LineageNodeData>;
@@ -79,6 +85,7 @@ export function createNode({
   position,
   changeStatus = "unchanged",
   resourceType = "model",
+  materialized,
   showColumns = false,
   columnCount = 0,
   data = {},
@@ -92,6 +99,7 @@ export function createNode({
       nodeType: resourceType,
       changeStatus,
       resourceType,
+      materialized,
       showColumns,
       ...data,
     },
@@ -140,18 +148,21 @@ export function createDiamondNodes(): Node<LineageNodeData>[] {
       label: "Model A",
       position: { x: 400, y: 150 },
       changeStatus: "modified",
+      materialized: "view",
     }),
     createNode({
       id: "model_b",
       label: "Model B",
       position: { x: 400, y: 350 },
       changeStatus: "added",
+      materialized: "incremental",
     }),
     createNode({
       id: "final",
       label: "Final Model",
       position: { x: 800, y: 250 },
       changeStatus: "unchanged",
+      materialized: "table",
     }),
   ];
 }
@@ -278,14 +289,50 @@ export function largeGraph() {
     "unchanged",
   ];
 
-  // Layer configuration: x position, node count, prefix
+  // Layer configuration: x position, node count, prefix, materialization
   const layers = [
-    { x: 0, count: 8, prefix: "src", resourceType: "source" },
-    { x: 400, count: 12, prefix: "stg", resourceType: "model" },
-    { x: 800, count: 15, prefix: "int", resourceType: "model" },
-    { x: 1200, count: 18, prefix: "fct", resourceType: "model" },
-    { x: 1600, count: 12, prefix: "dim", resourceType: "model" },
-    { x: 2000, count: 5, prefix: "mart", resourceType: "model" },
+    {
+      x: 0,
+      count: 8,
+      prefix: "src",
+      resourceType: "source",
+      materialized: undefined,
+    },
+    {
+      x: 400,
+      count: 12,
+      prefix: "stg",
+      resourceType: "model",
+      materialized: "view" as const,
+    },
+    {
+      x: 800,
+      count: 15,
+      prefix: "int",
+      resourceType: "model",
+      materialized: "ephemeral" as const,
+    },
+    {
+      x: 1200,
+      count: 18,
+      prefix: "fct",
+      resourceType: "model",
+      materialized: "incremental" as const,
+    },
+    {
+      x: 1600,
+      count: 12,
+      prefix: "dim",
+      resourceType: "model",
+      materialized: "table" as const,
+    },
+    {
+      x: 2000,
+      count: 5,
+      prefix: "mart",
+      resourceType: "model",
+      materialized: "materialized_view" as const,
+    },
   ];
 
   let nodeIndex = 0;
@@ -304,6 +351,7 @@ export function largeGraph() {
           position: { x: layer.x, y: startY + i * verticalSpacing },
           changeStatus: statuses[nodeIndex % statuses.length],
           resourceType: layer.resourceType,
+          materialized: layer.materialized,
         }),
       );
       nodeIndex++;
@@ -376,6 +424,7 @@ function createLineageGraphNode(
   resourceType: string,
   columns: ColumnDef[],
   changeStatus?: "added" | "removed" | "modified",
+  materialized?: string,
 ): LineageGraphNode {
   const columnData: Record<string, { name: string; type: string }> = {};
   for (const col of columns) {
@@ -389,28 +438,9 @@ function createLineageGraphNode(
     data: {
       id,
       name,
-      from: "both",
       changeStatus,
       resourceType,
       packageName: "demo",
-      data: {
-        base: {
-          id,
-          name,
-          unique_id: id,
-          resource_type: resourceType,
-          package_name: "demo",
-          columns: columnData,
-        },
-        current: {
-          id,
-          name,
-          unique_id: id,
-          resource_type: resourceType,
-          package_name: "demo",
-          columns: columnData,
-        },
-      },
       parents: {},
       children: {},
     },
@@ -456,7 +486,7 @@ export function createCllLineageGraph(): LineageGraph {
       ],
     ),
 
-    // Staging
+    // Staging (views — lightweight transformations)
     "model.demo.stg_users": createLineageGraphNode(
       "model.demo.stg_users",
       "stg_users",
@@ -477,6 +507,7 @@ export function createCllLineageGraph(): LineageGraph {
         },
       ],
       "modified",
+      "view",
     ),
     "model.demo.stg_orders": createLineageGraphNode(
       "model.demo.stg_orders",
@@ -505,9 +536,11 @@ export function createCllLineageGraph(): LineageGraph {
           transformationType: "passthrough",
         },
       ],
+      undefined,
+      "view",
     ),
 
-    // Dimension
+    // Dimension (table — pre-built for fast joins)
     "model.demo.dim_users": createLineageGraphNode(
       "model.demo.dim_users",
       "dim_users",
@@ -528,9 +561,11 @@ export function createCllLineageGraph(): LineageGraph {
           changeStatus: "added",
         },
       ],
+      undefined,
+      "table",
     ),
 
-    // Fact
+    // Fact (incremental — append new orders)
     "model.demo.fct_orders": createLineageGraphNode(
       "model.demo.fct_orders",
       "fct_orders",
@@ -559,9 +594,11 @@ export function createCllLineageGraph(): LineageGraph {
           transformationType: "passthrough",
         },
       ],
+      undefined,
+      "incremental",
     ),
 
-    // Mart
+    // Mart (materialized view — refreshed by the warehouse)
     "model.demo.mart_customer_orders": createLineageGraphNode(
       "model.demo.mart_customer_orders",
       "mart_customer_orders",
@@ -594,6 +631,8 @@ export function createCllLineageGraph(): LineageGraph {
           transformationType: "derived",
         },
       ],
+      undefined,
+      "materialized_view",
     ),
   };
 
@@ -622,49 +661,49 @@ export function createCllLineageGraph(): LineageGraph {
       type: "lineageGraphEdge",
       source: "source.demo.raw_users",
       target: "model.demo.stg_users",
-      data: { from: "both" },
+      data: {},
     },
     "source.demo.raw_orders->model.demo.stg_orders": {
       id: "source.demo.raw_orders->model.demo.stg_orders",
       type: "lineageGraphEdge",
       source: "source.demo.raw_orders",
       target: "model.demo.stg_orders",
-      data: { from: "both" },
+      data: {},
     },
     "model.demo.stg_users->model.demo.dim_users": {
       id: "model.demo.stg_users->model.demo.dim_users",
       type: "lineageGraphEdge",
       source: "model.demo.stg_users",
       target: "model.demo.dim_users",
-      data: { from: "both" },
+      data: {},
     },
     "model.demo.stg_orders->model.demo.fct_orders": {
       id: "model.demo.stg_orders->model.demo.fct_orders",
       type: "lineageGraphEdge",
       source: "model.demo.stg_orders",
       target: "model.demo.fct_orders",
-      data: { from: "both" },
+      data: {},
     },
     "model.demo.dim_users->model.demo.fct_orders": {
       id: "model.demo.dim_users->model.demo.fct_orders",
       type: "lineageGraphEdge",
       source: "model.demo.dim_users",
       target: "model.demo.fct_orders",
-      data: { from: "both" },
+      data: {},
     },
     "model.demo.dim_users->model.demo.mart_customer_orders": {
       id: "model.demo.dim_users->model.demo.mart_customer_orders",
       type: "lineageGraphEdge",
       source: "model.demo.dim_users",
       target: "model.demo.mart_customer_orders",
-      data: { from: "both" },
+      data: {},
     },
     "model.demo.fct_orders->model.demo.mart_customer_orders": {
       id: "model.demo.fct_orders->model.demo.mart_customer_orders",
       type: "lineageGraphEdge",
       source: "model.demo.fct_orders",
       target: "model.demo.mart_customer_orders",
-      data: { from: "both" },
+      data: {},
     },
   };
 
@@ -1059,4 +1098,53 @@ export function createCllData(): ColumnLineageData {
       child_map,
     },
   };
+}
+
+// =============================================================================
+// JAFFLE SHOP DUCKDB (LARGE MOCK GRAPH)
+// =============================================================================
+
+import type { MergedLineageResponse, NodeData } from "@datarecce/ui/api";
+import jaffleData from "./jaffle.json";
+
+/**
+ * Jaffle Shop DuckDB — 99-node mock lineage graph
+ * Topology extracted from the jaffle_shop_duckdb dbt manifest, loaded from jaffle.json.
+ * stg_orders and its 49 downstream models are marked modified to simulate a PR diff.
+ *
+ * Layers: 12 seeds, 12 staging, 25 intermediate, 35 marts, 15 metrics
+ */
+export function jaffleShopLineageGraph(): LineageGraph {
+  const oldNodes = jaffleData.nodes as Record<string, NodeData>;
+  const diff = jaffleData.diff as Record<
+    string,
+    { change_status: "added" | "removed" | "modified"; change: unknown }
+  >;
+
+  // Convert old-format nodes + diff into MergedLineageResponse
+  const mergedNodes: MergedLineageResponse["nodes"] = {};
+  for (const [id, node] of Object.entries(oldNodes)) {
+    const diffEntry = diff[id];
+    mergedNodes[id] = {
+      name: node.name,
+      resource_type: node.resource_type ?? "model",
+      package_name: node.package_name ?? "jaffle_shop",
+      change_status: diffEntry?.change_status,
+      change:
+        diffEntry?.change as MergedLineageResponse["nodes"][string]["change"],
+    };
+  }
+
+  const mergedEdges: MergedLineageResponse["edges"] = [];
+  for (const [childId, parentIds] of Object.entries(jaffleData.parent_map)) {
+    for (const parentId of parentIds as string[]) {
+      mergedEdges.push({ source: parentId, target: childId });
+    }
+  }
+
+  return buildLineageGraph({
+    nodes: mergedNodes,
+    edges: mergedEdges,
+    metadata: { base: {}, current: {} },
+  });
 }

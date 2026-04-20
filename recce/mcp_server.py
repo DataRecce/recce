@@ -22,11 +22,29 @@ from recce.core import RecceContext, load_context
 from recce.exceptions import RecceException
 from recce.server import RecceServerMode
 from recce.tasks.dataframe import DataFrame
+from recce.tasks.histogram import HistogramDiffTask
 from recce.tasks.profile import ProfileDiffTask
 from recce.tasks.query import QueryDiffTask, QueryTask
-from recce.tasks.rowcount import RowCountDiffTask
+from recce.tasks.rowcount import (
+    PERMISSION_DENIED_INDICATORS,
+    SYNTAX_ERROR_INDICATORS,
+    TABLE_NOT_FOUND_INDICATORS,
+    RowCountDiffTask,
+)
+from recce.tasks.top_k import TopKDiffTask
+from recce.tasks.valuediff import ValueDiffDetailTask, ValueDiffTask
 
 logger = logging.getLogger(__name__)
+
+try:
+    from sentry_sdk import metrics as sentry_metrics
+except ImportError:  # pragma: no cover
+    sentry_metrics = None
+
+SINGLE_ENV_WARNING = (
+    "Base environment not configured \u2014 comparisons show no changes. "
+    "Run `dbt docs generate --target-path target-base` to enable diffing."
+)
 
 
 def _truncate_strings(obj: Any, max_length: int = 200) -> Any:
@@ -116,13 +134,53 @@ class RecceMCPServer:
         debug: bool = False,
         log_file: str = "logs/recce-mcp.json",
         state_loader=None,
+        single_env: bool = False,
     ):
         self.context = context
         self.state_loader = state_loader
         self.mode = mode or RecceServerMode.server
-        self.server = Server("recce")
+        self.single_env = single_env
+        self.server = Server("recce", instructions=self._build_instructions())
         self.mcp_logger = MCPLogger(debug=debug, log_file=log_file)
         self._setup_handlers()
+
+    def _build_instructions(self) -> Optional[str]:
+        """Build MCP server instructions sent during initialize handshake."""
+        if not self.single_env:
+            return None
+        return (
+            "IMPORTANT: This Recce server is running in single-environment mode. "
+            "Base environment (target-base/) is not configured, so all diff tools "
+            "(row_count_diff, query_diff, profile_diff, value_diff, value_diff_detail, top_k_diff, histogram_diff) compare the current environment "
+            "against itself and will show no changes. "
+            "To enable meaningful diffs, the user needs to run: "
+            "dbt docs generate --target-path target-base"
+        )
+
+    @staticmethod
+    def _classify_db_error(error_msg: str) -> Optional[str]:
+        """Classify a database error message into a known category.
+
+        Checks permission_denied first, then table_not_found, then syntax_error
+        (first match wins). Returns the category string or None.
+        """
+        upper_msg = error_msg.upper()
+        for indicator in PERMISSION_DENIED_INDICATORS:
+            if indicator in upper_msg:
+                return "permission_denied"
+        for indicator in TABLE_NOT_FOUND_INDICATORS:
+            if indicator in upper_msg:
+                return "table_not_found"
+        for indicator in SYNTAX_ERROR_INDICATORS:
+            if indicator in upper_msg:
+                return "syntax_error"
+        return None
+
+    def _maybe_add_single_env_warning(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Add _warning to diff results when in single-env mode."""
+        if self.single_env:
+            return {**result, "_warning": SINGLE_ENV_WARNING}
+        return result
 
     def _setup_handlers(self):
         """Register all tool handlers"""
@@ -144,6 +202,11 @@ class RecceMCPServer:
 
                         Nodes dataframe includes: idx, id, name, resource_type, materialized, change_status, impacted.
                         Edges dataframe includes: from (parent node idx), to (child node idx).
+
+                        The 'impacted' column is authoritative for impact analysis:
+                        - impacted=true: model is modified or downstream of a modified model (connected via ref()).
+                        - impacted=false: model is NOT in the impact path, even if it shares upstream sources.
+                        Always check the 'impacted' column before reporting which models are affected by a change.
 
                         Rendering guidance for Mermaid diagram:
                         Use graph LR and apply these styles based on change_status and impacted:
@@ -216,6 +279,97 @@ class RecceMCPServer:
                 )
             )
 
+            tools.append(
+                Tool(
+                    name="get_model",
+                    description="Get column details for a model from both base and current environments. "
+                    "Returns column names, types, and constraints. Useful for understanding model schema "
+                    "before running diff tools.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "model_id": {
+                                "type": "string",
+                                "description": "The unique ID of the model (e.g., 'model.project.model_name')",
+                            },
+                        },
+                        "required": ["model_id"],
+                    },
+                )
+            )
+            tools.append(
+                Tool(
+                    name="get_cll",
+                    description="Get column-level lineage data. Traces which downstream columns are affected "
+                    "by column changes. Only available with dbt adapter.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "node_id": {
+                                "type": "string",
+                                "description": "Node unique ID to get column lineage for (optional)",
+                            },
+                            "column": {
+                                "type": "string",
+                                "description": "Column name to trace lineage for (optional)",
+                            },
+                            "change_analysis": {
+                                "type": "boolean",
+                                "description": "Whether to include change analysis (default: false)",
+                                "default": False,
+                            },
+                        },
+                    },
+                )
+            )
+            tools.append(
+                Tool(
+                    name="get_server_info",
+                    description="Get server context information including adapter type, git branch, "
+                    "supported tasks, and review mode status. Useful for diagnostics and "
+                    "understanding which diff tools are available.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {},
+                    },
+                )
+            )
+            tools.append(
+                Tool(
+                    name="select_nodes",
+                    description="Resolve dbt selector expressions to a list of node unique IDs. "
+                    "Use this to plan which models to investigate before running expensive diff operations. "
+                    "Only available with dbt adapter.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "select": {
+                                "type": "string",
+                                "description": (
+                                    "dbt selector syntax to filter models. "
+                                    "Valid state selectors: state:new, state:old, state:modified, state:unmodified. "
+                                    "NOTE: 'state:added' is INVALID - use 'state:new'."
+                                ),
+                            },
+                            "exclude": {
+                                "type": "string",
+                                "description": "dbt selector syntax to exclude models (optional)",
+                            },
+                            "packages": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "List of packages to filter (optional)",
+                            },
+                            "view_mode": {
+                                "type": "string",
+                                "enum": ["all", "changed_models"],
+                                "description": "View mode: 'all' for all models, 'changed_models' for only changed models (optional)",
+                            },
+                        },
+                    },
+                )
+            )
+
             # Diff tools only available in server mode, not in preview or read-only mode
             if self.mode == RecceServerMode.server:
                 tools.extend(
@@ -238,6 +392,12 @@ class RecceMCPServer:
                                 "This indicates stale dbt artifacts or environment misconfiguration. "
                                 "Report this to users as it requires rebuilding dbt artifacts or checking environment setup.\n"
                                 "- 'permission_denied': User lacks permission to access the table"
+                            )
+                            + (
+                                "\n\nNote: When base environment is not configured, this tool compares "
+                                "the current environment against itself (no changes expected)."
+                                if self.single_env
+                                else ""
                             ),
                             inputSchema={
                                 "type": "object",
@@ -295,8 +455,16 @@ class RecceMCPServer:
                         ),
                         Tool(
                             name="query_diff",
-                            description="Execute SQL queries on both base and current environments and compare results. "
-                            "Supports primary keys for row-level comparison.",
+                            description=(
+                                "Execute SQL queries on both base and current environments and compare results. "
+                                "Supports primary keys for row-level comparison."
+                            )
+                            + (
+                                "\n\nNote: When base environment is not configured, this tool compares "
+                                "the current environment against itself (no changes expected)."
+                                if self.single_env
+                                else ""
+                            ),
                             inputSchema={
                                 "type": "object",
                                 "properties": {
@@ -319,8 +487,16 @@ class RecceMCPServer:
                         ),
                         Tool(
                             name="profile_diff",
-                            description="Generate and compare statistical profiles (min, max, avg, distinct count, etc.) "
-                            "for columns in a model between base and current environments.",
+                            description=(
+                                "Generate and compare statistical profiles (min, max, avg, distinct count, etc.) "
+                                "for columns in a model between base and current environments."
+                            )
+                            + (
+                                "\n\nNote: When base environment is not configured, this tool compares "
+                                "the current environment against itself (no changes expected)."
+                                if self.single_env
+                                else ""
+                            ),
                             inputSchema={
                                 "type": "object",
                                 "properties": {
@@ -338,6 +514,143 @@ class RecceMCPServer:
                             },
                         ),
                         Tool(
+                            name="value_diff",
+                            description=(
+                                "Compare row-level values between base and current environments using primary key join. "
+                                "Returns per-column match rates showing data quality impact. "
+                                "Use this to understand which columns changed and how many rows are affected."
+                            )
+                            + (
+                                "\n\nNote: When base environment is not configured, this tool compares "
+                                "the current environment against itself (no changes expected)."
+                                if self.single_env
+                                else ""
+                            ),
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "model": {
+                                        "type": "string",
+                                        "description": "Model name to compare",
+                                    },
+                                    "primary_key": {
+                                        "oneOf": [
+                                            {"type": "string"},
+                                            {"type": "array", "items": {"type": "string"}},
+                                        ],
+                                        "description": "Primary key column(s) for joining base and current",
+                                    },
+                                    "columns": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                        "description": "Columns to compare (optional, compares all if not specified)",
+                                    },
+                                },
+                                "required": ["model", "primary_key"],
+                            },
+                        ),
+                        Tool(
+                            name="value_diff_detail",
+                            description=(
+                                "Get detailed row-level diff showing actual changed, added, and removed values. "
+                                "Use after value_diff flags mismatches to see the actual data differences."
+                            )
+                            + (
+                                "\n\nNote: When base environment is not configured, this tool compares "
+                                "the current environment against itself (no changes expected)."
+                                if self.single_env
+                                else ""
+                            ),
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "model": {
+                                        "type": "string",
+                                        "description": "Model name to compare",
+                                    },
+                                    "primary_key": {
+                                        "oneOf": [
+                                            {"type": "string"},
+                                            {"type": "array", "items": {"type": "string"}},
+                                        ],
+                                        "description": "Primary key column(s) for joining base and current",
+                                    },
+                                    "columns": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                        "description": "Columns to compare (optional, compares all if not specified)",
+                                    },
+                                },
+                                "required": ["model", "primary_key"],
+                            },
+                        ),
+                        Tool(
+                            name="top_k_diff",
+                            description=(
+                                "Compare top-K categorical values between base and current environments. "
+                                "Detects distribution shifts in categorical columns (e.g., new status values, "
+                                "disappeared categories)."
+                            )
+                            + (
+                                "\n\nNote: When base environment is not configured, this tool compares "
+                                "the current environment against itself (no changes expected)."
+                                if self.single_env
+                                else ""
+                            ),
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "model": {
+                                        "type": "string",
+                                        "description": "Model name to compare",
+                                    },
+                                    "column_name": {
+                                        "type": "string",
+                                        "description": "Column name to get top-K values for",
+                                    },
+                                    "k": {
+                                        "type": "integer",
+                                        "description": "Number of top values to return (default: 10)",
+                                        "default": 10,
+                                    },
+                                },
+                                "required": ["model", "column_name"],
+                            },
+                        ),
+                        Tool(
+                            name="histogram_diff",
+                            description=(
+                                "Compare numeric or datetime column distributions between base and current environments. "
+                                "Returns histogram bin counts for both environments. Column type is auto-detected "
+                                "from the model catalog."
+                            )
+                            + (
+                                "\n\nNote: When base environment is not configured, this tool compares "
+                                "the current environment against itself (no changes expected)."
+                                if self.single_env
+                                else ""
+                            ),
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "model": {
+                                        "type": "string",
+                                        "description": "Model name to compare",
+                                    },
+                                    "column_name": {
+                                        "type": "string",
+                                        "description": "Column name to generate histogram for",
+                                    },
+                                    "num_bins": {
+                                        "type": "integer",
+                                        "description": "Number of histogram bins (default: 50)",
+                                        "default": 50,
+                                    },
+                                },
+                                "required": ["model", "column_name"],
+                            },
+                        ),
+                        Tool(
                             name="list_checks",
                             description="List all checks in the current session. Returns check metadata including check IDs, names, types, parameters, and approval status.",
                             inputSchema={
@@ -347,7 +660,7 @@ class RecceMCPServer:
                         ),
                         Tool(
                             name="run_check",
-                            description="Run a single check by ID and wait for completion. Returns execution status, results, and approval status.",
+                            description="Run a single check by ID and wait for completion. Returns a Run object with fields: run_id, type, check_id, status, result, error, run_at, triggered_by.",
                             inputSchema={
                                 "type": "object",
                                 "properties": {
@@ -355,11 +668,117 @@ class RecceMCPServer:
                                         "type": "string",
                                         "description": "The ID of the check to run",
                                     },
+                                    "triggered_by": {
+                                        "type": "string",
+                                        "enum": ["user", "recce_ai"],
+                                        "description": "Who triggered this run. Defaults to 'user'.",
+                                    },
                                 },
                                 "required": ["check_id"],
                             },
                         ),
+                        Tool(
+                            name="create_check",
+                            description=(
+                                "Create a persistent checklist item from analysis findings. "
+                                "The check is saved to the session and a run is automatically executed "
+                                "to produce verifiable evidence. Use this after completing analysis "
+                                "to persist important findings as reviewable checklist items.\n\n"
+                                "Idempotent: if a check with the same (type, params) already exists "
+                                "in this session, its name and description are updated instead of "
+                                "creating a duplicate."
+                            ),
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "type": {
+                                        "type": "string",
+                                        "enum": [
+                                            "row_count_diff",
+                                            "schema_diff",
+                                            "query_diff",
+                                            "profile_diff",
+                                            "value_diff",
+                                            "value_diff_detail",
+                                            "top_k_diff",
+                                            "histogram_diff",
+                                        ],
+                                        "description": "The check type (must match a diff tool type)",
+                                    },
+                                    "params": {
+                                        "type": "object",
+                                        "description": "Parameters for the check (same format as the corresponding diff tool)",
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "description": "Human-readable check name (e.g., 'Row Count Diff of orders')",
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "description": "Analysis summary explaining what was found and why it matters",
+                                    },
+                                    "triggered_by": {
+                                        "type": "string",
+                                        "enum": ["user", "recce_ai"],
+                                        "description": "Who triggered this run. Defaults to 'user'.",
+                                    },
+                                },
+                                "required": ["type", "params", "name"],
+                            },
+                        ),
                     ]
+                )
+
+                # Discovery tool — requires server mode (calls row_count_diff internally)
+                tools.append(
+                    Tool(
+                        name="impact_analysis",
+                        description=textwrap.dedent(
+                            """
+                            Discover the impact of dbt model changes. Returns which models are
+                            modified or downstream-impacted, with row count and value-level signals
+                            for non-view models.
+
+                            IMPORTANT: You MUST call this tool BEFORE reporting which models are
+                            impacted by a code change. Do NOT determine impact by reading code,
+                            inferring from ref() calls, or guessing from model names — these
+                            approaches confuse upstream dependencies with downstream impact and
+                            produce false positives. This tool uses the lineage DAG to
+                            deterministically classify models.
+
+                            This is a starting point for investigation, not a complete analysis.
+                            Use the results to identify anomalies, then follow up with profile_diff,
+                            query_diff, or other tools until you have confidence in the root cause.
+
+                            Models with data_impact: 'potential' have unknown data impact — follow
+                            the model's next_action field to investigate with profile_diff/query_diff.
+                        """
+                        ).strip(),
+                        inputSchema={
+                            "type": "object",
+                            "properties": {
+                                "select": {
+                                    "type": "string",
+                                    "description": (
+                                        "dbt selector syntax. Default: data-affecting changes only "
+                                        "(body + macros + contract and their downstream). "
+                                        "Use 'state:modified+' to include all changes including config."
+                                    ),
+                                },
+                                "skip_value_diff": {
+                                    "type": "boolean",
+                                    "description": "Skip row-level value comparison on modified models. Default: false",
+                                },
+                                "skip_downstream_value_diff": {
+                                    "type": "boolean",
+                                    "description": (
+                                        "Skip value comparison on downstream models "
+                                        "(faster for large DAGs). Default: false"
+                                    ),
+                                },
+                            },
+                        },
+                    )
                 )
 
             self.mcp_logger.log_list_tools(tools)
@@ -386,13 +805,23 @@ class RecceMCPServer:
                     "query",
                     "query_diff",
                     "profile_diff",
+                    "value_diff",
+                    "value_diff_detail",
+                    "top_k_diff",
+                    "histogram_diff",
                     "list_checks",
                     "run_check",
+                    "create_check",
+                    "impact_analysis",
                 }
                 if self.mode != RecceServerMode.server and name in blocked_tools_in_non_server:
+                    # Allowed tools = all registered minus blocked
+                    allowed_tools = sorted(
+                        {"lineage_diff", "schema_diff", "get_model", "get_cll", "get_server_info", "select_nodes"}
+                    )
                     raise ValueError(
                         f"Tool '{name}' is not available in {self.mode.value} mode. "
-                        "Only 'lineage_diff' and 'schema_diff' are available in this mode."
+                        f"Only {', '.join(repr(t) for t in allowed_tools)} are available in this mode."
                     )
 
                 if name == "lineage_diff":
@@ -407,10 +836,30 @@ class RecceMCPServer:
                     result = await self._tool_query_diff(arguments)
                 elif name == "profile_diff":
                     result = await self._tool_profile_diff(arguments)
+                elif name == "value_diff":
+                    result = await self._tool_value_diff(arguments)
+                elif name == "value_diff_detail":
+                    result = await self._tool_value_diff_detail(arguments)
+                elif name == "top_k_diff":
+                    result = await self._tool_top_k_diff(arguments)
+                elif name == "histogram_diff":
+                    result = await self._tool_histogram_diff(arguments)
+                elif name == "impact_analysis":
+                    result = await self._tool_impact_analysis(arguments)
+                elif name == "get_model":
+                    result = await self._tool_get_model(arguments)
+                elif name == "get_cll":
+                    result = await self._tool_get_cll(arguments)
+                elif name == "get_server_info":
+                    result = await self._tool_get_server_info(arguments)
+                elif name == "select_nodes":
+                    result = await self._tool_select_nodes(arguments)
                 elif name == "list_checks":
                     result = await self._tool_list_checks(arguments)
                 elif name == "run_check":
                     result = await self._tool_run_check(arguments)
+                elif name == "create_check":
+                    result = await self._tool_create_check(arguments)
                 else:
                     raise ValueError(f"Unknown tool: {name}")
 
@@ -429,345 +878,927 @@ class RecceMCPServer:
                 return [TextContent(type="text", text=response_json)]
             except Exception as e:
                 duration_ms = (time.perf_counter() - start_time) * 1000
-                self.mcp_logger.log_tool_call(name, arguments, {}, duration_ms, error=str(e))
-                logger.error(f"[MCP] Error executing tool {name} ({duration_ms:.2f}ms): {str(e)}")
-                logger.exception("[MCP] Full traceback:")
-                error_response = json.dumps({"error": str(e)}, indent=2)
-                return [TextContent(type="text", text=error_response)]
+                error_msg = str(e)
+                self.mcp_logger.log_tool_call(name, arguments, {}, duration_ms, error=error_msg)
+
+                classification = self._classify_db_error(error_msg)
+                if classification:
+                    logger.warning(
+                        f"[MCP] Expected {classification} error in tool {name} ({duration_ms:.2f}ms): {error_msg}"
+                    )
+                    if sentry_metrics:
+                        sentry_metrics.count(
+                            "mcp.expected_error",
+                            1,
+                            attributes={"tool": name, "error_type": classification},
+                        )
+                else:
+                    logger.error(f"[MCP] Error executing tool {name} ({duration_ms:.2f}ms): {error_msg}")
+                    logger.exception("[MCP] Full traceback:")
+
+                # Re-raise so MCP SDK sets isError=True in the protocol response
+                raise
 
     async def _tool_lineage_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get lineage diff between base and current"""
-        try:
-            # Extract filter arguments
-            select = arguments.get("select")
-            exclude = arguments.get("exclude")
-            packages = arguments.get("packages")
-            view_mode = arguments.get("view_mode", "changed_models")
+        # Extract filter arguments
+        select = arguments.get("select")
+        exclude = arguments.get("exclude")
+        packages = arguments.get("packages")
+        view_mode = arguments.get("view_mode", "changed_models")
 
-            # Get lineage diff from adapter (returns a Pydantic LineageDiff model)
-            lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
+        # Get lineage diff from adapter (returns a Pydantic LineageDiff model)
+        lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
 
-            # Apply node selection filtering if arguments provided
+        # Apply node selection filtering if arguments provided
+        selected_node_ids = self.context.adapter.select_nodes(
+            select=select,
+            exclude=exclude,
+            packages=packages,
+            view_mode=view_mode,
+        )
+        impacted_node_ids = self.context.adapter.select_nodes(
+            select="state:modified+",
+        )
+
+        # Get diff information for change_status
+        diff_info = lineage_diff.get("diff", {})
+
+        # Extract parent_map and simplified nodes from both base and current
+        parent_map = {}
+        nodes = {}
+
+        # Merge parent_map and nodes: base first, then current overrides
+        for env_key in ["base", "current"]:
+            if env_key not in lineage_diff:
+                continue
+
+            env_data = lineage_diff[env_key]
+
+            # Merge parent_map (filtering by selected nodes)
+            if "parent_map" in env_data:
+                for node_id, parents in env_data["parent_map"].items():
+                    if node_id in selected_node_ids:
+                        parent_map[node_id] = parents
+
+            # Merge nodes (filtering by selected nodes)
+            if "nodes" in env_data:
+                for node_id, node_info in env_data["nodes"].items():
+                    if node_id in selected_node_ids:
+                        nodes[node_id] = {
+                            "name": node_info.get("name"),
+                            "resource_type": node_info.get("resource_type"),
+                        }
+
+                        materialized = node_info.get("config", {}).get("materialized")
+                        if materialized is not None:
+                            nodes[node_id]["materialized"] = materialized
+
+        # Create id to idx mapping
+        id_to_idx = {node_id: idx for idx, node_id in enumerate(nodes.keys())}
+
+        # Prepare node data for DataFrame
+        nodes_data = [
+            (
+                id_to_idx[node_id],
+                node_id,
+                node_info.get("name"),
+                node_info.get("resource_type"),
+                node_info.get("materialized"),
+                diff_info.get(node_id, {}).get("change_status"),
+                node_id in impacted_node_ids,
+            )
+            for node_id, node_info in nodes.items()
+        ]
+
+        # Create nodes DataFrame using from_data with simple dict format
+        nodes_df = DataFrame.from_data(
+            columns={
+                "idx": "integer",
+                "id": "text",
+                "name": "text",
+                "resource_type": "text",
+                "materialized": "text",
+                "change_status": "text",
+                "impacted": "boolean",
+            },
+            data=nodes_data,
+        )
+
+        # Build edges from parent_map
+        edges_data = []
+        for node_id, parents in parent_map.items():
+            if node_id in id_to_idx:
+                for parent_id in parents:
+                    if parent_id in id_to_idx:
+                        edges_data.append((id_to_idx[parent_id], id_to_idx[node_id]))
+
+        # Create edges DataFrame
+        edges_df = DataFrame.from_data(
+            columns={
+                "from": "integer",
+                "to": "integer",
+            },
+            data=edges_data,
+        )
+
+        # Build simplified result
+        result = {"nodes": nodes_df.model_dump(mode="json"), "edges": edges_df.model_dump(mode="json")}
+
+        return result
+
+    async def _tool_schema_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Get schema diff (column changes) between base and current"""
+        # Extract filter arguments
+        select = arguments.get("select")
+        exclude = arguments.get("exclude")
+        packages = arguments.get("packages")
+
+        # Get lineage diff from adapter
+        lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
+
+        # Get all nodes from current environment
+        current_nodes = {}
+        if "current" in lineage_diff and "nodes" in lineage_diff["current"]:
+            current_nodes = lineage_diff["current"]["nodes"]
+
+        # Filter to only nodes that exist in both base and current (exclude added nodes)
+        base_nodes = lineage_diff.get("base", {}).get("nodes", {})
+        nodes_to_compare = set(current_nodes.keys()) & set(base_nodes.keys())
+
+        # Apply filtering if arguments provided
+        if select or exclude or packages:
             selected_node_ids = self.context.adapter.select_nodes(
                 select=select,
                 exclude=exclude,
                 packages=packages,
-                view_mode=view_mode,
             )
-            impacted_node_ids = self.context.adapter.select_nodes(
-                select="state:modified+",
-            )
+            nodes_to_compare = nodes_to_compare & selected_node_ids
 
-            # Get diff information for change_status
-            diff_info = lineage_diff.get("diff", {})
+        # Build schema changes
+        schema_changes = []
 
-            # Extract parent_map and simplified nodes from both base and current
-            parent_map = {}
-            nodes = {}
+        for node_id in nodes_to_compare:
+            base_node = base_nodes.get(node_id, {})
+            current_node = current_nodes.get(node_id, {})
 
-            # Merge parent_map and nodes: base first, then current overrides
-            for env_key in ["base", "current"]:
-                if env_key not in lineage_diff:
-                    continue
+            base_columns = base_node.get("columns", {})
+            current_columns = current_node.get("columns", {})
 
-                env_data = lineage_diff[env_key]
+            # Get column names in base and current
+            base_col_names = set(base_columns.keys())
+            current_col_names = set(current_columns.keys())
 
-                # Merge parent_map (filtering by selected nodes)
-                if "parent_map" in env_data:
-                    for node_id, parents in env_data["parent_map"].items():
-                        if node_id in selected_node_ids:
-                            parent_map[node_id] = parents
+            # Find added columns (in current but not in base)
+            for col_name in current_col_names - base_col_names:
+                schema_changes.append((node_id, col_name, "added"))
 
-                # Merge nodes (filtering by selected nodes)
-                if "nodes" in env_data:
-                    for node_id, node_info in env_data["nodes"].items():
-                        if node_id in selected_node_ids:
-                            nodes[node_id] = {
-                                "name": node_info.get("name"),
-                                "resource_type": node_info.get("resource_type"),
-                            }
+            # Find removed columns (in base but not in current)
+            for col_name in base_col_names - current_col_names:
+                schema_changes.append((node_id, col_name, "removed"))
 
-                            materialized = node_info.get("config", {}).get("materialized")
-                            if materialized is not None:
-                                nodes[node_id]["materialized"] = materialized
+            # Find modified columns (in both but with different types)
+            for col_name in base_col_names & current_col_names:
+                base_col_type = base_columns[col_name].get("type")
+                current_col_type = current_columns[col_name].get("type")
+                if base_col_type != current_col_type:
+                    schema_changes.append((node_id, col_name, "modified"))
 
-            # Create id to idx mapping
-            id_to_idx = {node_id: idx for idx, node_id in enumerate(nodes.keys())}
+        # Check if there are more than 100 rows
+        limit = 100
+        has_more = len(schema_changes) > limit
+        limited_schema_changes = schema_changes[:limit]
 
-            # Prepare node data for DataFrame
-            nodes_data = [
-                (
-                    id_to_idx[node_id],
-                    node_id,
-                    node_info.get("name"),
-                    node_info.get("resource_type"),
-                    node_info.get("materialized"),
-                    diff_info.get(node_id, {}).get("change_status"),
-                    node_id in impacted_node_ids,
-                )
-                for node_id, node_info in nodes.items()
-            ]
-
-            # Create nodes DataFrame using from_data with simple dict format
-            nodes_df = DataFrame.from_data(
-                columns={
-                    "idx": "integer",
-                    "id": "text",
-                    "name": "text",
-                    "resource_type": "text",
-                    "materialized": "text",
-                    "change_status": "text",
-                    "impacted": "boolean",
-                },
-                data=nodes_data,
-            )
-
-            # Build edges from parent_map
-            edges_data = []
-            for node_id, parents in parent_map.items():
-                if node_id in id_to_idx:
-                    for parent_id in parents:
-                        if parent_id in id_to_idx:
-                            edges_data.append((id_to_idx[parent_id], id_to_idx[node_id]))
-
-            # Create edges DataFrame
-            edges_df = DataFrame.from_data(
-                columns={
-                    "from": "integer",
-                    "to": "integer",
-                },
-                data=edges_data,
-            )
-
-            # Build simplified result
-            result = {"nodes": nodes_df.model_dump(mode="json"), "edges": edges_df.model_dump(mode="json")}
-
-            return result
-
-        except Exception:
-            logger.exception("Error getting lineage diff")
-            raise
-
-    async def _tool_schema_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """Get schema diff (column changes) between base and current"""
-        try:
-            # Extract filter arguments
-            select = arguments.get("select")
-            exclude = arguments.get("exclude")
-            packages = arguments.get("packages")
-
-            # Get lineage diff from adapter
-            lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
-
-            # Get all nodes from current environment
-            current_nodes = {}
-            if "current" in lineage_diff and "nodes" in lineage_diff["current"]:
-                current_nodes = lineage_diff["current"]["nodes"]
-
-            # Filter to only nodes that exist in both base and current (exclude added nodes)
-            base_nodes = lineage_diff.get("base", {}).get("nodes", {})
-            nodes_to_compare = set(current_nodes.keys()) & set(base_nodes.keys())
-
-            # Apply filtering if arguments provided
-            if select or exclude or packages:
-                selected_node_ids = self.context.adapter.select_nodes(
-                    select=select,
-                    exclude=exclude,
-                    packages=packages,
-                )
-                nodes_to_compare = nodes_to_compare & selected_node_ids
-
-            # Build schema changes
-            schema_changes = []
-
-            for node_id in nodes_to_compare:
-                base_node = base_nodes.get(node_id, {})
-                current_node = current_nodes.get(node_id, {})
-
-                base_columns = base_node.get("columns", {})
-                current_columns = current_node.get("columns", {})
-
-                # Get column names in base and current
-                base_col_names = set(base_columns.keys())
-                current_col_names = set(current_columns.keys())
-
-                # Find added columns (in current but not in base)
-                for col_name in current_col_names - base_col_names:
-                    schema_changes.append((node_id, col_name, "added"))
-
-                # Find removed columns (in base but not in current)
-                for col_name in base_col_names - current_col_names:
-                    schema_changes.append((node_id, col_name, "removed"))
-
-                # Find modified columns (in both but with different types)
-                for col_name in base_col_names & current_col_names:
-                    base_col_type = base_columns[col_name].get("type")
-                    current_col_type = current_columns[col_name].get("type")
-                    if base_col_type != current_col_type:
-                        schema_changes.append((node_id, col_name, "modified"))
-
-            # Check if there are more than 100 rows
-            limit = 100
-            has_more = len(schema_changes) > limit
-            limited_schema_changes = schema_changes[:limit]
-
-            # Convert schema changes to dataframe format using DataFrame.from_data()
-            diff_df = DataFrame.from_data(
-                columns={
-                    "node_id": "text",
-                    "column": "text",
-                    "change_status": "text",
-                },
-                data=limited_schema_changes,
-                limit=limit,
-                more=has_more,
-            )
-            return diff_df.model_dump(mode="json")
-
-        except Exception:
-            logger.exception("Error getting schema diff")
-            raise
+        # Convert schema changes to dataframe format using DataFrame.from_data()
+        diff_df = DataFrame.from_data(
+            columns={
+                "node_id": "text",
+                "column": "text",
+                "change_status": "text",
+            },
+            data=limited_schema_changes,
+            limit=limit,
+            more=has_more,
+        )
+        return diff_df.model_dump(mode="json")
 
     async def _tool_row_count_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute row count diff task"""
-        try:
-            task = RowCountDiffTask(params=arguments)
+        task = RowCountDiffTask(params=arguments)
 
-            # Execute task synchronously (it's already sync)
-            result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+        # Offload sync task to thread pool to avoid blocking the event loop
+        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
 
-            return result
-        except Exception:
-            logger.exception("Error executing row count diff")
-            raise
+        return self._maybe_add_single_env_warning(result)
 
     async def _tool_query(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a query"""
-        try:
-            sql_template = arguments.get("sql_template")
-            is_base = arguments.get("base", False)
+        sql_template = arguments.get("sql_template")
+        is_base = arguments.get("base", False)
 
-            params = {"sql_template": sql_template}
-            task = QueryTask(params=params)
-            task.is_base = is_base
+        params = {"sql_template": sql_template}
+        task = QueryTask(params=params)
+        task.is_base = is_base
 
-            # Execute task
-            result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+        # Execute task
+        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
 
-            # Convert to dict if it's a model
-            if hasattr(result, "model_dump"):
-                return result.model_dump(mode="json")
-            return result
-        except Exception:
-            logger.exception("Error executing query")
-            raise
+        # Convert to dict if it's a model
+        if hasattr(result, "model_dump"):
+            return result.model_dump(mode="json")
+        return result
 
     async def _tool_query_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute query diff task"""
-        try:
-            task = QueryDiffTask(params=arguments)
+        task = QueryDiffTask(params=arguments)
 
-            # Execute task
-            result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+        # Execute task
+        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
 
-            # Convert to dict if it's a model
-            if hasattr(result, "model_dump"):
-                return result.model_dump(mode="json")
-            return result
-        except Exception:
-            logger.exception("Error executing query diff")
-            raise
+        # Convert to dict if it's a model
+        if hasattr(result, "model_dump"):
+            result = result.model_dump(mode="json")
+        return self._maybe_add_single_env_warning(result)
 
     async def _tool_profile_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute profile diff task"""
+        task = ProfileDiffTask(params=arguments)
+
+        # Execute task
+        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+
+        # Convert to dict if it's a model
+        if hasattr(result, "model_dump"):
+            result = result.model_dump(mode="json")
+        return self._maybe_add_single_env_warning(result)
+
+    async def _tool_value_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute value diff task"""
+        task = ValueDiffTask(params=arguments)
+        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+        if hasattr(result, "model_dump"):
+            result = result.model_dump(mode="json")
+        return self._maybe_add_single_env_warning(result)
+
+    async def _tool_value_diff_detail(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute value diff detail task"""
+        task = ValueDiffDetailTask(params=arguments)
+        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+        if hasattr(result, "model_dump"):
+            result = result.model_dump(mode="json")
+        return self._maybe_add_single_env_warning(result)
+
+    async def _tool_top_k_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute top-K diff task"""
+        task = TopKDiffTask(params=arguments)
+        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+        if hasattr(result, "model_dump"):
+            result = result.model_dump(mode="json")
+        return self._maybe_add_single_env_warning(result)
+
+    async def _tool_histogram_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute histogram diff task with auto-detected column type"""
+        model = arguments.get("model")
+        column_name = arguments.get("column_name")
+        if not model:
+            raise ValueError("model is required")
+        if not column_name:
+            raise ValueError("column_name is required")
+
+        # Auto-detect column_type from model metadata
+        name_to_id = self.context.build_name_to_unique_id_index()
+        model_id = name_to_id.get(model, model)
+        model_info = self.context.get_model(model_id, base=False)
+        columns = model_info.get("columns", {}) if model_info else {}
+
+        # Try exact match, then case-insensitive
+        col_info = columns.get(column_name)
+        if not col_info:
+            col_info = columns.get(column_name.upper())
+        if not col_info:
+            col_info = columns.get(column_name.lower())
+        if not col_info or not col_info.get("type"):
+            raise ValueError(f"Cannot determine column type for '{column_name}' in model '{model}'")
+
+        params = {**arguments, "column_type": col_info["type"]}
+        task = HistogramDiffTask(params=params)
+        result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+        if hasattr(result, "model_dump"):
+            result = result.model_dump(mode="json")
+        return self._maybe_add_single_env_warning(result)
+
+    async def _tool_impact_analysis(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Discover the impact of dbt model changes."""
+        start_time = time.time()
+        # Default: only body/macros/contract changes (data-affecting).
+        # Excludes config, relation, and persisted_descriptions changes.
+        select = arguments.get(
+            "select",
+            "state:modified.body+ state:modified.macros+ state:modified.contract+",
+        )
+        skip_value_diff = arguments.get("skip_value_diff", False)
+        skip_downstream_value_diff = arguments.get("skip_downstream_value_diff", False)
+        errors = []
+
+        # Step 1: Lineage classification
+        lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
+        diff_info = lineage_diff.get("diff", {})
+
+        # Get impacted node IDs (modified + downstream)
+        impacted_node_ids = self.context.adapter.select_nodes(select=select)
+        # Get only modified nodes (not downstream)
+        modified_node_ids = self.context.adapter.select_nodes(select="state:modified")
+
+        # Build node info from current (or base for removed)
+        all_nodes = {}
+        for env_key in ["base", "current"]:
+            if env_key in lineage_diff and "nodes" in lineage_diff[env_key]:
+                for node_id, node_info in lineage_diff[env_key]["nodes"].items():
+                    if node_id not in all_nodes:
+                        all_nodes[node_id] = node_info
+                    elif env_key == "current":
+                        all_nodes[node_id] = node_info  # current overrides base
+
+        # Classify nodes
+        impacted_models = []
+        not_impacted_models = []
+
+        for node_id, node_info in all_nodes.items():
+            # Only process models (not sources, tests, etc.)
+            if not node_id.startswith("model."):
+                continue
+
+            name = node_info.get("name")
+            materialized = node_info.get("config", {}).get("materialized")
+            change_status = diff_info.get(node_id, {}).get("change_status")
+
+            if node_id in impacted_node_ids:
+                model_entry = {
+                    "name": name,
+                    "change_status": (
+                        change_status if node_id in modified_node_ids or change_status in ("added", "removed") else None
+                    ),
+                    "materialized": materialized,
+                    "row_count": None,
+                    "schema_changes": [],
+                    "value_diff": None,
+                }
+                impacted_models.append(model_entry)
+            else:
+                not_impacted_models.append(name)
+
+        # Step 2a: Row count diff (skip removed models; include views for delta detection)
+        countable_models = [m for m in impacted_models if m["change_status"] != "removed"]
+        if countable_models:
+            countable_names = [m["name"] for m in countable_models]
+            try:
+                task = RowCountDiffTask(params={"node_names": countable_names})
+                row_count_result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+
+                for model in countable_models:
+                    name = model["name"]
+                    if name in row_count_result:
+                        rc = row_count_result[name]
+                        base = rc.get("base")
+                        curr = rc.get("curr")
+                        if base is not None and curr is not None:
+                            delta = curr - base
+                            delta_pct = (delta / base * 100) if base != 0 else None
+                            model["row_count"] = {
+                                "base": base,
+                                "current": curr,
+                                "delta": delta,
+                                "delta_pct": round(delta_pct, 1) if delta_pct is not None else None,
+                            }
+                        elif curr is not None:
+                            # Added model (no base)
+                            model["row_count"] = {
+                                "base": None,
+                                "current": curr,
+                                "delta": None,
+                                "delta_pct": None,
+                            }
+            except Exception as e:
+                errors.append({"step": "row_count_diff", "message": str(e)})
+
+        # Build node_id lookup for impacted models (used by schema diff and value diff)
+        node_id_by_name = {}
+        for node_id in impacted_node_ids:
+            node_info = all_nodes.get(node_id, {})
+            if node_info.get("name"):
+                node_id_by_name[node_info["name"]] = node_id
+
+        # Step 2b: Schema diff (compare columns between base and current)
         try:
-            task = ProfileDiffTask(params=arguments)
+            base_nodes = lineage_diff.get("base", {}).get("nodes", {})
+            current_nodes = lineage_diff.get("current", {}).get("nodes", {})
 
-            # Execute task
-            result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
+            for model in impacted_models:
+                node_id = node_id_by_name.get(model["name"])
+                if not node_id:
+                    continue
 
-            # Convert to dict if it's a model
-            if hasattr(result, "model_dump"):
-                return result.model_dump(mode="json")
-            return result
-        except Exception:
-            logger.exception("Error executing profile diff")
-            raise
+                base_cols = set(base_nodes.get(node_id, {}).get("columns", {}).keys())
+                curr_cols = set(current_nodes.get(node_id, {}).get("columns", {}).keys())
+
+                changes = []
+                for col in curr_cols - base_cols:
+                    changes.append({"column": col, "change_status": "added"})
+                for col in base_cols - curr_cols:
+                    changes.append({"column": col, "change_status": "removed"})
+                for col in base_cols & curr_cols:
+                    base_type = base_nodes[node_id]["columns"][col].get("type")
+                    curr_type = current_nodes[node_id]["columns"][col].get("type")
+                    if base_type != curr_type:
+                        changes.append({"column": col, "change_status": "modified"})
+
+                model["schema_changes"] = changes
+        except Exception as e:
+            errors.append({"step": "schema_diff", "message": str(e)})
+
+        # Step 3: Value diff (PK Join on non-view impacted models)
+        if not skip_value_diff:
+            for model in impacted_models:
+                if model["materialized"] == "view":
+                    continue  # skip views (no PK, ambiguous semantics)
+                if skip_downstream_value_diff and model["change_status"] is None:
+                    continue  # opt-out for large DAGs
+                node_id = node_id_by_name.get(model["name"])
+                if not node_id:
+                    continue
+                try:
+                    model_info = self.context.adapter.get_model(node_id)
+                    pk = model_info.get("primary_key")
+                    if not pk:
+                        continue  # no PK → value_diff stays null
+
+                    # Get column info for building SQL
+                    columns_info = model_info.get("columns", {})
+                    non_pk_cols = [c for c in columns_info if c != pk]
+                    if not non_pk_cols:
+                        continue  # only PK column, no value diff to compute
+
+                    # Build relations for base and current schemas
+                    base_rel = self.context.adapter.create_relation(model["name"], base=True)
+                    curr_rel = self.context.adapter.create_relation(model["name"], base=False)
+                    if not base_rel or not curr_rel:
+                        continue
+
+                    # Build column diff expression: any non-PK column changed
+                    col_diff_parts = []
+                    for col in non_pk_cols:
+                        col_diff_parts.append(f'b."{col}" IS DISTINCT FROM c."{col}"')
+                    col_diff_expr = " OR ".join(col_diff_parts)
+
+                    # Build per-column stats: count of changed rows + mean for numeric columns
+                    numeric_types = {
+                        "TINYINT",
+                        "SMALLINT",
+                        "INTEGER",
+                        "BIGINT",
+                        "INT",
+                        "FLOAT",
+                        "DOUBLE",
+                        "DECIMAL",
+                        "NUMERIC",
+                        "REAL",
+                        "HUGEINT",
+                        "INT1",
+                        "INT2",
+                        "INT4",
+                        "INT8",
+                        "FLOAT4",
+                        "FLOAT8",
+                    }
+                    per_col_parts = []
+                    for col in non_pk_cols:
+                        per_col_parts.append(
+                            f'COUNT(CASE WHEN b."{pk}" IS NOT NULL AND c."{pk}" IS NOT NULL '
+                            f'AND b."{col}" IS DISTINCT FROM c."{col}" THEN 1 END) AS "{col}__changed"'
+                        )
+                        col_type = columns_info[col].get("type", "").upper().split("(")[0].strip()
+                        if col_type in numeric_types:
+                            per_col_parts.append(f'AVG(b."{col}") AS "{col}__base_mean"')
+                            per_col_parts.append(f'AVG(c."{col}") AS "{col}__curr_mean"')
+
+                    per_col_sql = ",\n  ".join(per_col_parts)
+
+                    sql = (
+                        f"SELECT\n"
+                        f'  COUNT(CASE WHEN b."{pk}" IS NULL THEN 1 END) AS rows_added,\n'
+                        f'  COUNT(CASE WHEN c."{pk}" IS NULL THEN 1 END) AS rows_removed,\n'
+                        f'  COUNT(CASE WHEN b."{pk}" IS NOT NULL AND c."{pk}" IS NOT NULL\n'
+                        f"             AND ({col_diff_expr}) THEN 1 END) AS rows_changed,\n"
+                        f"  {per_col_sql}\n"
+                        f"FROM {curr_rel} c\n"
+                        f'FULL OUTER JOIN {base_rel} b ON c."{pk}" = b."{pk}"'
+                    )
+
+                    def _run_value_diff_query(adapter, query):
+                        with adapter.connection_named("value_diff"):
+                            _, table = adapter.execute(query, fetch=True)
+                            return table
+
+                    table = await asyncio.get_event_loop().run_in_executor(
+                        None, _run_value_diff_query, self.context.adapter, sql
+                    )
+
+                    if table and len(table) > 0:
+                        row = table[0]
+                        rows_added = int(row[0])
+                        rows_removed = int(row[1])
+                        rows_changed = int(row[2])
+
+                        # Parse per-column stats from remaining columns
+                        col_idx = 3
+                        columns_result = {}
+                        for col in non_pk_cols:
+                            col_changed = int(row[col_idx])
+                            col_idx += 1
+                            col_type = columns_info[col].get("type", "").upper().split("(")[0].strip()
+                            base_mean = None
+                            current_mean = None
+                            if col_type in numeric_types:
+                                raw_base = row[col_idx]
+                                raw_curr = row[col_idx + 1]
+                                base_mean = float(raw_base) if raw_base is not None else None
+                                current_mean = float(raw_curr) if raw_curr is not None else None
+                                col_idx += 2
+                            columns_result[col] = {
+                                "affected_row_count": col_changed,
+                                "base_mean": base_mean,
+                                "current_mean": current_mean,
+                            }
+
+                        total_affected = rows_added + rows_removed + rows_changed
+                        model["value_diff"] = {
+                            "affected_row_count": total_affected,
+                            "rows_added": rows_added,
+                            "rows_removed": rows_removed,
+                            "rows_changed": rows_changed,
+                            "columns": columns_result,
+                        }
+                except Exception as e:
+                    errors.append({"step": "value_diff", "model": model["name"], "message": str(e)})
+
+        # Step 4: Compute per-model affected_row_count, data_impact, and next_action
+        max_affected = 0
+        for model in impacted_models:
+            # affected_row_count: value_diff total (priority) or abs(row_count.delta) (fallback)
+            if model["value_diff"] is not None:
+                model["affected_row_count"] = model["value_diff"]["affected_row_count"]
+            elif model["row_count"] is not None and model["row_count"].get("delta") is not None:
+                model["affected_row_count"] = abs(model["row_count"]["delta"])
+            else:
+                model["affected_row_count"] = None
+
+            # data_impact: evidence level from value_diff
+            if model["value_diff"] is not None:
+                if model["value_diff"]["affected_row_count"] > 0:
+                    model["data_impact"] = "confirmed"
+                else:
+                    model["data_impact"] = "none"
+            else:
+                model["data_impact"] = "potential"
+
+            # When data_impact is "potential", force affected_row_count to null
+            # to avoid confusion from row_count fallback showing 0
+            if model["data_impact"] == "potential":
+                model["affected_row_count"] = None
+
+            if model["affected_row_count"] is not None and model["affected_row_count"] > max_affected:
+                max_affected = model["affected_row_count"]
+
+            # next_action: only for "potential" models — confirmed/none need no follow-up
+            model["next_action"] = None
+            if model["data_impact"] == "potential":
+                is_modified = model["change_status"] in ("modified", "added")
+                is_downstream = model["change_status"] is None
+
+                if model["schema_changes"]:
+                    # Schema changed — profile the changed columns
+                    changed_cols = [c["column"] for c in model["schema_changes"]]
+                    model["next_action"] = {
+                        "tool": "profile_diff",
+                        "columns": changed_cols,
+                        "reason": "schema changed, value_diff unavailable",
+                        "priority": "high" if is_modified else "medium",
+                    }
+                elif is_modified:
+                    # Modified but no value_diff (view, no PK, or error)
+                    model["next_action"] = {
+                        "tool": "profile_diff",
+                        "columns": None,
+                        "reason": "modified model, value_diff unavailable (view or no PK)",
+                        "priority": "high",
+                    }
+                elif is_downstream and model["materialized"] == "view":
+                    # Downstream view — low priority
+                    model["next_action"] = {
+                        "tool": "profile_diff",
+                        "columns": None,
+                        "reason": "downstream view, value_diff skipped",
+                        "priority": "low",
+                    }
+                elif is_downstream:
+                    # Downstream table — medium priority
+                    model["next_action"] = {
+                        "tool": "profile_diff",
+                        "columns": None,
+                        "reason": "downstream model, value_diff skipped",
+                        "priority": "medium",
+                    }
+            elif model["data_impact"] == "confirmed":
+                # Confirmed changes — suggest profile_diff only if high change ratio
+                vd = model["value_diff"]
+                if (
+                    model["row_count"] is not None
+                    and model["row_count"]["delta_pct"] is not None
+                    and abs(model["row_count"]["delta_pct"]) <= 5
+                ):
+                    total_matched = (model["row_count"]["current"] or 0) - vd["rows_added"]
+                    if total_matched > 0 and vd["rows_changed"] / total_matched > 0.2:
+                        top_cols = [
+                            col
+                            for col, stats in (vd.get("columns") or {}).items()
+                            if stats.get("affected_row_count", 0) > 0
+                        ]
+                        model["next_action"] = {
+                            "tool": "profile_diff",
+                            "columns": top_cols if top_cols else None,
+                            "reason": "high change ratio with stable row count — investigate value shifts",
+                            "priority": "medium",
+                        }
+
+        if sentry_metrics:
+            duration = time.time() - start_time
+            sentry_metrics.distribution("mcp.impact_analysis.duration", duration, unit="second")
+            sentry_metrics.distribution("mcp.impact_analysis.impacted_count", len(impacted_models))
+
+        result = {
+            "_guidance": (
+                "confirmed_impacted_models lists all models in the DAG blast radius "
+                "(modified + downstream). Use data_impact to triage: "
+                "'confirmed' = value_diff verified data changes exist — report directly. "
+                "'none' = value_diff verified zero data changes — report directly. "
+                "'potential' = no value_diff available (views, no PK, or skipped) "
+                "— follow the model's next_action to investigate. "
+                "Only models with next_action != null need further tool calls. "
+                "Note: incremental model value_diff may reflect "
+                "build window artifacts if not fully refreshed."
+            ),
+            "classification_source": "lineage_dag",
+            "max_affected_row_count": max_affected,
+            "confirmed_impacted_models": impacted_models,
+            "confirmed_not_impacted_models": not_impacted_models,
+            "errors": errors,
+        }
+        return self._maybe_add_single_env_warning(result)
+
+    async def _tool_get_model(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Get model column details from both environments"""
+        model_id = arguments.get("model_id")
+        if not model_id:
+            raise ValueError("model_id is required")
+        base = self.context.get_model(model_id, base=True)
+        current = self.context.get_model(model_id, base=False)
+        if not base and not current:
+            raise ValueError(
+                f"Model '{model_id}' not found in either environment. "
+                "Use the full unique ID (e.g., 'model.project.model_name')."
+            )
+        return {"model": {"base": base, "current": current}}
+
+    async def _tool_get_cll(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Get column-level lineage data"""
+        if self.context.adapter_type != "dbt":
+            raise ValueError("Column-level lineage is only available with dbt adapter")
+        from recce.adapter.dbt_adapter import DbtAdapter
+
+        dbt_adapter: DbtAdapter = self.context.adapter
+        cll = dbt_adapter.get_cll(
+            node_id=arguments.get("node_id"),
+            column=arguments.get("column"),
+            change_analysis=arguments.get("change_analysis", False),
+        )
+        return cll.model_dump(mode="json")
+
+    async def _tool_get_server_info(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Get server context information"""
+        context = self.context
+        result = {
+            "adapter_type": context.adapter_type,
+            "review_mode": context.review_mode,
+            "support_tasks": context.support_tasks(),
+        }
+
+        # Add git and pull_request info if state_loader is available
+        if context.state_loader:
+            try:
+                state = context.export_state()
+                if state.git:
+                    result["git"] = state.git.model_dump(mode="json")
+                if state.pull_request:
+                    result["pull_request"] = state.pull_request.model_dump(mode="json")
+            except Exception as e:
+                logger.warning(f"[MCP] Failed to load git/PR info: {e}")
+
+        return result
+
+    async def _tool_select_nodes(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Resolve dbt selector to node IDs"""
+        if self.context.adapter_type != "dbt":
+            raise ValueError("select_nodes is only available with dbt adapter")
+        nodes = self.context.adapter.select_nodes(
+            select=arguments.get("select"),
+            exclude=arguments.get("exclude"),
+            packages=arguments.get("packages"),
+            view_mode=arguments.get("view_mode"),
+        )
+        # Filter out test nodes
+        nodes = [n for n in nodes if not n.startswith("test.")]
+        return {"nodes": sorted(nodes)}
 
     async def _tool_list_checks(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """List all checks in the current session"""
-        try:
-            from recce.models import CheckDAO
+        from recce.models import CheckDAO
 
-            # Get all checks
-            checks_dao = CheckDAO()
-            checks = checks_dao.list()
+        # Get all checks
+        checks_dao = CheckDAO()
+        checks = checks_dao.list()
 
-            # Build checks list with relevant metadata
-            checks_list = []
-            for check in checks:
-                checks_list.append(
-                    {
-                        "check_id": str(check.check_id),
-                        "name": check.name,
-                        "type": check.type.value,
-                        "description": check.description or "",
-                        "params": check.params or {},
-                        "is_checked": check.is_checked,
-                        "is_preset": check.is_preset,
-                    }
-                )
+        # Build checks list with relevant metadata
+        checks_list = []
+        for check in checks:
+            checks_list.append(
+                {
+                    "check_id": str(check.check_id),
+                    "name": check.name,
+                    "type": check.type.value,
+                    "description": check.description or "",
+                    "params": check.params or {},
+                    "is_checked": check.is_checked,
+                    "is_preset": check.is_preset,
+                }
+            )
 
-            # Get statistics
-            stats = checks_dao.status()
+        # Get statistics
+        stats = checks_dao.status()
 
-            result = {
-                "checks": checks_list,
-                "total": stats["total"],
-                "approved": stats["approved"],
-            }
+        result = {
+            "checks": checks_list,
+            "total": stats["total"],
+            "approved": stats["approved"],
+        }
 
-            return result
-        except Exception:
-            logger.exception("Error listing checks")
-            raise
+        return result
+
+    def _create_metadata_run(self, check_type, params, check_id, result, triggered_by):
+        """Create a Run record for metadata-only check types (no DB query).
+
+        These types (lineage_diff, schema_diff) read from dbt manifest, not from
+        database queries. We still create a Run record so they appear in Activity.
+        """
+        from recce.apis.run_func import generate_run_name
+        from recce.models import Run, RunDAO
+        from recce.models.types import RunStatus
+
+        run = Run(
+            type=check_type,
+            params=params,
+            check_id=check_id,
+            status=RunStatus.FINISHED,
+            result=result,
+            triggered_by=triggered_by,
+        )
+        run.name = generate_run_name(run)
+        RunDAO().create(run)
+        return run
 
     async def _tool_run_check(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Run a single check by ID"""
-        try:
-            from recce.apis.run_func import submit_run
-            from recce.models import CheckDAO
-            from recce.models.types import RunType
+        from recce.apis.run_func import submit_run
+        from recce.models import CheckDAO
+        from recce.models.types import RunType
 
-            check_id = arguments.get("check_id")
-            if not check_id:
-                raise ValueError("check_id is required")
+        check_id = arguments.get("check_id")
+        if not check_id:
+            raise ValueError("check_id is required")
 
-            # Get the check from database
-            check = CheckDAO().find_check_by_id(check_id)
-            if not check:
-                raise ValueError(f"Check with ID {check_id} not found")
+        check = CheckDAO().find_check_by_id(check_id)
+        if not check:
+            raise ValueError(f"Check with ID {check_id} not found")
 
-            # For lineage_diff and schema_diff, call the corresponding diff tools
-            if check.type == RunType.LINEAGE_DIFF:
-                return await self._tool_lineage_diff(check.params or {})
+        triggered_by = arguments.get("triggered_by", "user")
 
-            if check.type == RunType.SCHEMA_DIFF:
-                return await self._tool_schema_diff(check.params or {})
-
+        if check.type in (RunType.LINEAGE_DIFF, RunType.SCHEMA_DIFF):
             try:
-                # Submit and execute the run for other check types
-                run, future = submit_run(check.type, params=check.params or {}, check_id=check_id)
-                run.result = await future
-
-                # Return run object in JSON format (same as run_check_handler in check_api.py)
+                if check.type == RunType.LINEAGE_DIFF:
+                    result = await self._tool_lineage_diff(check.params or {})
+                else:
+                    result = await self._tool_schema_diff(check.params or {})
+                run = self._create_metadata_run(
+                    check_type=check.type,
+                    params=check.params or {},
+                    check_id=check_id,
+                    result=result,
+                    triggered_by=triggered_by,
+                )
                 return run.model_dump(mode="json")
             except RecceException as e:
-                raise ValueError(str(e))
+                raise ValueError(str(e)) from e
 
-        except Exception:
-            logger.exception("Error running check")
-            raise
+        try:
+            run, future = submit_run(
+                check.type, params=check.params or {}, check_id=check_id, triggered_by=triggered_by
+            )
+            run.result = await future
+            return run.model_dump(mode="json")
+        except RecceException as e:
+            raise ValueError(str(e)) from e
+
+    async def _tool_create_check(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Create a persistent check from analysis findings."""
+        from recce.apis.check_api import PatchCheckIn
+        from recce.apis.check_func import (
+            create_check_without_run,
+            export_persistent_state,
+        )
+        from recce.apis.run_func import submit_run
+        from recce.models import CheckDAO
+        from recce.models.types import RunStatus, RunType
+
+        check_type = RunType(arguments["type"])
+        params = arguments.get("params", {})
+        name = arguments["name"]
+        description = arguments.get("description", "")
+
+        # Idempotency: find existing check with same (type, params)
+        check_dao = CheckDAO()
+        existing_checks = check_dao.list()
+        existing = None
+        for c in existing_checks:
+            if c.type == check_type and c.params == params:
+                existing = c
+                break
+
+        if existing:
+            patch = PatchCheckIn(name=name, description=description)
+            check_dao.update_check_by_id(existing.check_id, patch)
+            check_id = existing.check_id
+            created = False
+        else:
+            check = create_check_without_run(
+                check_name=name,
+                check_description=description,
+                check_type=check_type,
+                params=params,
+                check_view_options={},
+            )
+            check_id = check.check_id
+            created = True
+
+        # Auto-run for evidence
+        run_executed = False
+        run_error = None
+        triggered_by = arguments.get("triggered_by", "user")
+        if check_type in (RunType.LINEAGE_DIFF, RunType.SCHEMA_DIFF):
+            # Metadata-only: read from manifest, create Run record for Activity
+            try:
+                if check_type == RunType.LINEAGE_DIFF:
+                    result = await self._tool_lineage_diff(params)
+                else:
+                    result = await self._tool_schema_diff(params)
+                self._create_metadata_run(
+                    check_type=check_type,
+                    params=params,
+                    check_id=check_id,
+                    result=result,
+                    triggered_by=triggered_by,
+                )
+                run_executed = True
+            except Exception as e:
+                run_error = str(e)
+        else:
+            run, future = submit_run(check_type, params=params, check_id=check_id, triggered_by=triggered_by)
+            await future
+            # submit_run's future always resolves (errors caught internally).
+            # Check run.status, not the return value.
+            run_executed = run.status == RunStatus.FINISHED
+            if run.status == RunStatus.FAILED:
+                run_error = run.error
+
+        # Persist state to cloud/disk (matches REST endpoint pattern)
+        await asyncio.get_event_loop().run_in_executor(None, export_persistent_state)
+
+        result = {
+            "check_id": str(check_id),
+            "created": created,
+            "run_executed": run_executed,
+        }
+        if run_error:
+            result["run_error"] = run_error
+        return result
 
     async def run(self):
         """Run the MCP server in stdio mode"""
@@ -780,7 +1811,7 @@ class RecceMCPServer:
                 try:
                     from rich.console import Console
 
-                    console = Console()
+                    console = Console(stderr=True)
 
                     # Export the state
                     msg = self.state_loader.export(self.context.export_state())
@@ -890,6 +1921,9 @@ async def run_mcp_server(
                Optionally includes 'debug' flag for enabling MCP logging
     """
     state_loader = kwargs.get("state_loader", None)
+    # Extract single_env flag before load_context (not a dbt kwarg)
+    single_env = kwargs.pop("single_env", False)
+
     # Setup logging
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
@@ -910,7 +1944,7 @@ async def run_mcp_server(
     debug = kwargs.get("debug", False)
 
     # Create MCP server with state_loader for graceful shutdown
-    server = RecceMCPServer(context, mode=mode, debug=debug, state_loader=state_loader)
+    server = RecceMCPServer(context, mode=mode, debug=debug, state_loader=state_loader, single_env=single_env)
 
     # Run in either stdio or SSE mode
     if sse:

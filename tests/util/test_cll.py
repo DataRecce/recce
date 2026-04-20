@@ -688,6 +688,94 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert_model(result, [("table1", "b")])
         assert_column(result, "a", "passthrough", [("table1", "a")])
 
+    def test_recursive_cte(self):
+        sql = """
+        with recursive category_tree as (
+            select
+                category_id,
+                category_name,
+                parent_category_id,
+                category_name as root_category,
+                category_name as full_path,
+                0 as depth
+            from stg_categories
+            where parent_category_id is null
+
+            union all
+
+            select
+                c.category_id,
+                c.category_name,
+                c.parent_category_id,
+                ct.root_category,
+                ct.full_path || ' > ' || c.category_name as full_path,
+                ct.depth + 1 as depth
+            from stg_categories c
+            inner join category_tree ct on c.parent_category_id = ct.category_id
+        )
+        select * from category_tree
+        """
+        schema = {
+            "stg_categories": {
+                "category_id": "int",
+                "category_name": "varchar",
+                "parent_category_id": "int",
+            }
+        }
+        result = cll(sql, schema=schema)
+        # All columns should trace back to stg_categories, not to the CTE alias.
+        # UNION ALL marks columns as "derived" when they have deps in both branches.
+        # Exception: depth has no column deps (literal 0), so stays "source".
+        assert_column(result, "category_id", "derived", [("stg_categories", "category_id")])
+        assert_column(result, "category_name", "derived", [("stg_categories", "category_name")])
+        assert_column(result, "parent_category_id", "derived", [("stg_categories", "parent_category_id")])
+        assert_column(result, "root_category", "derived", [("stg_categories", "category_name")])
+        assert_column(result, "full_path", "derived", [("stg_categories", "category_name")])
+        # depth: base case is `0` (source literal), recursive case is `ct.depth + 1`
+        # which resolves through the base case to no upstream deps.
+        # _cll_set_scope keeps "source" when no column deps exist.
+        assert_column(result, "depth", "source", [])
+
+    def test_recursive_cte_m2c_propagation(self):
+        """Model-to-column deps from the base case's WHERE clause should propagate
+        through the recursive branch to the outer query."""
+        sql = """
+        with recursive nums as (
+            select id, val from t1 where active = true
+            union all
+            select n.id, n.val from t1 n inner join nums on n.parent_id = nums.id
+        )
+        select * from nums
+        """
+        schema = {
+            "t1": {"id": "int", "val": "int", "active": "bool", "parent_id": "int"},
+        }
+        result = cll(sql, schema=schema)
+        m2c, _ = result
+        m2c_set = {(d.node, d.column) for d in m2c}
+        # The base case WHERE active = true should appear in model deps
+        assert ("t1", "active") in m2c_set
+        # The join condition parent_id = nums.id should appear
+        assert ("t1", "parent_id") in m2c_set
+
+    def test_unresolvable_column_does_not_crash_entire_model(self):
+        """When one column can't be resolved (e.g. correlated scalar subquery),
+        only that column should degrade — other columns should still trace correctly."""
+        sql = """
+        select
+            id,
+            name,
+            (select count(*) from t2 where t2.fk = t1.id) as child_count
+        from t1
+        """
+        result = cll(sql, schema={"t1": {"id": "int", "name": "varchar"}, "t2": {"fk": "int"}})
+        # Resolvable columns still trace correctly
+        assert_column(result, "id", "passthrough", [("t1", "id")])
+        assert_column(result, "name", "passthrough", [("t1", "name")])
+        # child_count resolves correctly — correlated subquery doesn't crash the model
+        # Correlated ref (t1.id) comes first, then subquery internal deps (t2.fk)
+        assert_column(result, "child_count", "derived", [("t1", "id"), ("t2", "fk")])
+
     def test_where_in_subquery(self):
         sql = """
         select a from table1 where user_id in (
@@ -704,3 +792,96 @@ class ColumnLevelLineageTest(unittest.TestCase):
             """
         result = cll(sql)
         assert_model(result, [("table1", "a"), ("table1", "user_id"), ("table2", "user_id")])
+
+    def test_correlated_subquery_in_select(self):
+        """Correlated subquery in SELECT should resolve table aliases (o2 -> orders)."""
+        sql = """
+        select
+            o.order_id,
+            o.location_id,
+            o.order_total,
+            (
+                select avg(o2.order_total)
+                from orders as o2
+                where o2.location_id = o.location_id
+            ) as store_avg_order_total
+        from orders as o
+        """
+        schema = {"orders": {"order_id": "int", "location_id": "int", "order_total": "decimal"}}
+        result = cll(sql, schema=schema)
+        assert_column(result, "order_id", "passthrough", [("orders", "order_id")])
+        assert_column(result, "location_id", "passthrough", [("orders", "location_id")])
+        assert_column(result, "order_total", "passthrough", [("orders", "order_total")])
+        # o2 alias must resolve to the real table name "orders"
+        # Correlated ref (o.location_id) comes first, then subquery internal deps
+        assert_column(
+            result, "store_avg_order_total", "derived", [("orders", "location_id"), ("orders", "order_total")]
+        )
+
+    def test_uncorrelated_subquery_in_select(self):
+        """Uncorrelated subquery in SELECT should resolve via subquery_cll."""
+        sql = """
+        select
+            o.order_id,
+            (select max(p.price) from products as p) as max_price
+        from orders as o
+        """
+        schema = {
+            "orders": {"order_id": "int"},
+            "products": {"price": "decimal"},
+        }
+        result = cll(sql, schema=schema)
+        assert_column(result, "order_id", "passthrough", [("orders", "order_id")])
+        assert_column(result, "max_price", "derived", [("products", "price")])
+
+    def test_correlated_subquery_in_where(self):
+        """Correlated subquery in WHERE with aliased self-join should resolve aliases."""
+        sql = """
+        select
+            o.order_id,
+            o.order_total
+        from orders as o
+        where o.order_total > (
+            select avg(o2.order_total)
+            from orders as o2
+            where o2.location_id = o.location_id
+        )
+        """
+        schema = {"orders": {"order_id": "int", "location_id": "int", "order_total": "decimal"}}
+        result = cll(sql, schema=schema)
+        assert_column(result, "order_id", "passthrough", [("orders", "order_id")])
+        assert_column(result, "order_total", "passthrough", [("orders", "order_total")])
+        # m2c should reference "orders" not "o" or "o2"
+        m2c, _ = result
+        m2c_set = {(d.node, d.column) for d in m2c}
+        assert ("orders", "order_total") in m2c_set
+        assert ("orders", "location_id") in m2c_set
+        # Alias names should not leak into dependencies
+        assert all(d.node == "orders" for d in m2c), f"Alias leaked into m2c: {[(d.node, d.column) for d in m2c]}"
+
+    def test_correlated_subquery_in_join_condition(self):
+        """Correlated subquery in JOIN ON clause (first-purchase pattern)."""
+        sql = """
+        select
+            c.customer_id,
+            c.customer_name,
+            o.order_id as first_order_id,
+            o.ordered_at as first_order_date
+        from customers as c
+        inner join orders as o
+            on c.customer_id = o.customer_id
+            and o.ordered_at = (
+                select min(o2.ordered_at)
+                from orders as o2
+                where o2.customer_id = c.customer_id
+            )
+        """
+        schema = {
+            "customers": {"customer_id": "int", "customer_name": "varchar"},
+            "orders": {"order_id": "int", "customer_id": "int", "ordered_at": "timestamp"},
+        }
+        result = cll(sql, schema=schema)
+        assert_column(result, "customer_id", "passthrough", [("customers", "customer_id")])
+        assert_column(result, "customer_name", "passthrough", [("customers", "customer_name")])
+        assert_column(result, "first_order_id", "renamed", [("orders", "order_id")])
+        assert_column(result, "first_order_date", "renamed", [("orders", "ordered_at")])

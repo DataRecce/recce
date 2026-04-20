@@ -4,12 +4,13 @@ import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
+import { changeStatusColors, cllChangeStatusColors } from "../styles";
 
 /**
  * Legend item for change status
  */
 export interface ChangeStatusLegendItem {
-  status: "added" | "removed" | "modified";
+  status: "added" | "removed" | "modified" | "impacted";
   label: string;
   description?: string;
 }
@@ -47,6 +48,14 @@ export interface LineageLegendProps {
    * CSS class name for additional styling
    */
   className?: string;
+
+  /**
+   * When true, render the muted CLL palette and include the "Impacted" entry.
+   * When false (default), render the original Tailwind palette and omit
+   * "Impacted" — matching the legend OSS users have always seen.
+   * @default false
+   */
+  newCllExperience?: boolean;
 }
 
 /**
@@ -56,6 +65,11 @@ const defaultChangeStatusItems: ChangeStatusLegendItem[] = [
   { status: "added", label: "Added", description: "Newly added resource" },
   { status: "removed", label: "Removed", description: "Removed resource" },
   { status: "modified", label: "Modified", description: "Modified resource" },
+  {
+    status: "impacted",
+    label: "Impacted",
+    description: "Downstream of a modified resource",
+  },
 ];
 
 /**
@@ -86,13 +100,24 @@ const defaultTransformationItems: TransformationLegendItem[] = [
 ];
 
 /**
- * Colors for change status indicators
+ * Colors and symbols for change status indicators (default Tailwind palette).
  */
 const changeStatusStyles: Record<string, { color: string; symbol: string }> = {
-  added: { color: "#22c55e", symbol: "+" },
-  removed: { color: "#ef4444", symbol: "-" },
-  modified: { color: "#f59e0b", symbol: "~" },
+  added: { color: changeStatusColors.added, symbol: "+" },
+  removed: { color: changeStatusColors.removed, symbol: "-" },
+  modified: { color: changeStatusColors.modified, symbol: "~" },
 };
+
+/**
+ * Colors and symbols for change status indicators (CLL muted palette).
+ */
+const cllChangeStatusStyles: Record<string, { color: string; symbol: string }> =
+  {
+    added: { color: cllChangeStatusColors.added, symbol: "+" },
+    removed: { color: cllChangeStatusColors.removed, symbol: "-" },
+    modified: { color: cllChangeStatusColors.modified, symbol: "~" },
+    impacted: { color: cllChangeStatusColors.impacted, symbol: "!" },
+  };
 
 /**
  * Colors for transformation type chips
@@ -113,10 +138,14 @@ const transformationStyles: Record<
  */
 function ChangeStatusIcon({
   status,
+  newCllExperience,
 }: {
-  status: "added" | "removed" | "modified";
+  status: "added" | "removed" | "modified" | "impacted";
+  newCllExperience: boolean;
 }) {
-  const style = changeStatusStyles[status];
+  const style = (newCllExperience ? cllChangeStatusStyles : changeStatusStyles)[
+    status
+  ];
   return (
     <Box
       sx={{
@@ -206,11 +235,13 @@ export function LineageLegend({
   showTooltips = true,
   title,
   className,
+  newCllExperience = false,
 }: LineageLegendProps) {
+  const changeStatusItems = newCllExperience
+    ? defaultChangeStatusItems
+    : defaultChangeStatusItems.filter((item) => item.status !== "impacted");
   const items =
-    variant === "changeStatus"
-      ? defaultChangeStatusItems
-      : defaultTransformationItems;
+    variant === "changeStatus" ? changeStatusItems : defaultTransformationItems;
 
   return (
     <Box
@@ -251,7 +282,10 @@ export function LineageLegend({
                 "&:last-child": { mb: 0 },
               }}
             >
-              <ChangeStatusIcon status={item.status} />
+              <ChangeStatusIcon
+                status={item.status}
+                newCllExperience={newCllExperience}
+              />
               <Typography variant="body2">{item.label}</Typography>
             </Box>
           );

@@ -44,16 +44,14 @@ vi.mock("@datarecce/ui/hooks", () => ({
   useApiConfig: vi.fn(),
 }));
 
-// Mock react-icons
-vi.mock("react-icons/fa", () => ({
-  FaCloud: () => <span data-testid="cloud-icon">Cloud</span>,
-  FaUser: () => <span data-testid="user-icon">User</span>,
-}));
-
 // Mock constants
-vi.mock("@datarecce/ui/lib/const", () => ({
-  RECCE_SUPPORT_CALENDAR_URL: "https://cal.com/team/recce/chat",
-}));
+vi.mock("@datarecce/ui/lib/const", async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    RECCE_SUPPORT_CALENDAR_URL: "https://cal.com/team/recce/chat",
+  };
+});
 
 // ============================================================================
 // Imports
@@ -61,6 +59,7 @@ vi.mock("@datarecce/ui/lib/const", () => ({
 
 import { AvatarDropdown } from "@datarecce/ui/components/app";
 import { useApiConfig } from "@datarecce/ui/hooks";
+import { PUBLIC_CLOUD_WEB_URL } from "@datarecce/ui/lib/const";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 
@@ -438,7 +437,8 @@ describe("AvatarDropdown", () => {
       fireEvent.click(avatar);
 
       expect(screen.getByText("Recce Cloud")).toBeInTheDocument();
-      expect(screen.getByTestId("cloud-icon")).toBeInTheDocument();
+      const menuItem = screen.getByText("Recce Cloud").closest("li");
+      expect(menuItem?.querySelector("svg")).toBeInTheDocument();
     });
 
     it("renders Get live support menu item with icon", () => {
@@ -448,7 +448,8 @@ describe("AvatarDropdown", () => {
       fireEvent.click(avatar);
 
       expect(screen.getByText("Get live support")).toBeInTheDocument();
-      expect(screen.getByTestId("user-icon")).toBeInTheDocument();
+      const menuItem = screen.getByText("Get live support").closest("li");
+      expect(menuItem?.querySelector("svg")).toBeInTheDocument();
     });
 
     it("opens Recce Cloud in new tab when clicked", () => {
@@ -461,7 +462,7 @@ describe("AvatarDropdown", () => {
       fireEvent.click(recceCloudItem);
 
       expect(windowOpenSpy).toHaveBeenCalledWith(
-        "https://cloud.datarecce.io/",
+        PUBLIC_CLOUD_WEB_URL,
         "_blank",
       );
     });

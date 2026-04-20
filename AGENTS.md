@@ -16,7 +16,7 @@ Recce is a data validation and review tool for dbt projects. It helps data teams
 - Commit state files (`recce_state.json`, `state.json`)
 - Edit files in `recce/data/` (auto-generated from frontend build)
 - Break adapter interface (all adapters must implement ALL `BaseAdapter` methods)
-- Skip Python 3.9+ compatibility for dependencies
+- Skip Python 3.10+ compatibility for dependencies
 - Bypass frontend build (run `cd js && pnpm run build` before testing with `recce server`)
 - Use interactive git commands (`git rebase -i`, `git add -i`)
 - Create worktrees in subdirectories (only at repo root)
@@ -49,6 +49,7 @@ Recce is a data validation and review tool for dbt projects. It helps data teams
 | **Deps Check (Python)** | `make deps-check-python` |
 | **Deps Check (Frontend)** | `make deps-check-frontend` |
 | **Deps Check (All)** | `make deps-check` |
+| **Coverage (targeted)** | `python -m pytest tests/test_foo.py --cov=recce.module --cov-report=term-missing` |
 
 ---
 
@@ -64,6 +65,7 @@ Recce is a data validation and review tool for dbt projects. It helps data teams
 | `js/packages/storybook/` | Component stories and visual tests |
 | `tests/` | Python unit tests |
 | `integration_tests/` | dbt/SQLMesh integration tests |
+| `.claude/skills/` | Project-level Claude Code skills |
 
 ## Where to Add Code
 
@@ -121,8 +123,8 @@ git commit -s -m "feat(check): add timeline component"
 
 | Layer | Stack |
 |-------|-------|
-| Backend | Python 3.9-3.13, FastAPI, Click, Pydantic, dbt adapters |
-| Frontend | Node.js 20+, Next.js 16, React 19, TypeScript 5.9, MUI 7, Biome 2.3, Tailwind 4 |
+| Backend | Python 3.10-3.13, FastAPI, Click, Pydantic, dbt adapters, uv (package manager) |
+| Frontend | Node.js 20+, Next.js 16, React 19, TypeScript 5.9, MUI 7, Biome 2.4, Tailwind 4 |
 | Testing | pytest, Vitest, React Testing Library, Playwright |
 
 ---
@@ -132,7 +134,7 @@ git commit -s -m "feat(check): add timeline component"
 | Problem | Fix |
 |---------|-----|
 | Frontend changes not appearing | `cd js && pnpm run build` then restart `recce server` |
-| Python import errors | `pip install -e .[dev]` |
+| Python import errors | `make install-dev` (uses uv) |
 | Biome lint failures | `pnpm lint:fix` |
 | Type errors | `pnpm type:check` for details |
 | dbt artifact issues | Check `integration_tests/dbt/target` |

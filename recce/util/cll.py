@@ -1,5 +1,10 @@
+import hashlib
+import logging
+import os
+import sqlite3
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import sqlglot.expressions as exp
@@ -11,10 +16,197 @@ from sqlglot.optimizer.qualify import qualify
 from recce.exceptions import RecceException
 from recce.models.types import CllColumn, CllColumnDep
 
+logger = logging.getLogger("recce")
+
 CllResult = Tuple[
     List[CllColumnDep],  # Model to column dependencies
     Dict[str, CllColumn],  # Column to column dependencies
 ]
+
+_DEFAULT_DB_PATH = os.path.join(os.path.expanduser("~"), ".recce", "cll_cache.db")
+_CACHE_SCHEMA_VERSION = 2
+_DEFAULT_TTL_SECONDS = 7 * 24 * 3600  # 7 days
+
+
+class CllCache:
+    """Per-node CllData cache backed by SQLite.
+
+    Stores a serialized per-node CllData (excluding change_status/change_category)
+    keyed by a content hash of the node's inputs (adapter_type, checksum,
+    parent_checksums, column_names). Because keys are derived from content,
+    identical models in base and current environments naturally share cache entries.
+
+    - SQLite with WAL mode for concurrent readers.
+    - TTL eviction: entries not accessed within ``ttl_seconds`` are deleted.
+      Eviction is not automatic; callers must invoke ``evict_stale()`` explicitly.
+    - Single file at ``~/.recce/cll_cache.db`` (configurable).
+    """
+
+    def __init__(
+        self,
+        db_path: Optional[str] = None,
+        ttl_seconds: int = _DEFAULT_TTL_SECONDS,
+    ):
+        self._db_path: Optional[str] = None
+        self._ttl_seconds = ttl_seconds
+        if db_path:
+            self._db_path = db_path
+            Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+            self._init_db()
+
+    def _init_db(self) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS cll_node_cache ("
+                "  key TEXT PRIMARY KEY,"
+                "  value TEXT NOT NULL,"
+                "  last_accessed REAL NOT NULL DEFAULT 0"
+                ")"
+            )
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS cache_meta (" "  key TEXT PRIMARY KEY," "  value TEXT NOT NULL" ")"
+            )
+            conn.execute(
+                "INSERT OR REPLACE INTO cache_meta (key, value) VALUES ('schema_version', ?)",
+                (str(_CACHE_SCHEMA_VERSION),),
+            )
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self._db_path, timeout=10)
+        conn.execute("PRAGMA journal_mode=WAL")
+        return conn
+
+    def evict_stale(self) -> int:
+        """Delete entries not accessed within the TTL. Returns count of deleted rows.
+
+        Not called automatically; must be invoked explicitly (e.g., at startup
+        or from ``build_full_cll_map``).
+        """
+        if not self._db_path:
+            return 0
+        cutoff = time.time() - self._ttl_seconds
+        try:
+            with self._connect() as conn:
+                deleted = conn.execute(
+                    "DELETE FROM cll_node_cache WHERE last_accessed > 0 AND last_accessed < ?",
+                    (cutoff,),
+                ).rowcount
+                if deleted:
+                    logger.info(
+                        "[cll cache] evicted %d stale entries (TTL %dd)",
+                        deleted,
+                        self._ttl_seconds // 86400,
+                    )
+                return deleted
+        except Exception as e:
+            logger.warning("[cll cache] evict_stale failed: %s", e, exc_info=True)
+            return 0
+
+    @staticmethod
+    def make_node_key(node_id: str, content_key: str) -> str:
+        """Build a cache key for a per-node CllData entry."""
+        h = hashlib.sha256()
+        h.update(node_id.encode("utf-8"))
+        h.update(content_key.encode("utf-8"))
+        return h.hexdigest()
+
+    def get_node(self, node_id: str, content_key: str) -> Optional[str]:
+        """Get cached CllData JSON for a node.
+
+        On hit, updates ``last_accessed`` timestamp (for TTL eviction).
+        Returns JSON string or None.
+        """
+        if not self._db_path:
+            return None
+        key = self.make_node_key(node_id, content_key)
+        try:
+            with self._connect() as conn:
+                row = conn.execute("SELECT value FROM cll_node_cache WHERE key = ?", (key,)).fetchone()
+                if row:
+                    conn.execute(
+                        "UPDATE cll_node_cache SET last_accessed = ? WHERE key = ?",
+                        (time.time(), key),
+                    )
+                    return row[0]
+        except Exception as e:
+            logger.debug("[cll cache] get_node failed for %s: %s", node_id, e)
+        return None
+
+    def put_node(self, node_id: str, content_key: str, value_json: str) -> None:
+        """Store a per-node CllData JSON entry."""
+        if not self._db_path:
+            return
+        key = self.make_node_key(node_id, content_key)
+        try:
+            now = time.time()
+            with self._connect() as conn:
+                conn.execute(
+                    "INSERT OR REPLACE INTO cll_node_cache (key, value, last_accessed)" " VALUES (?, ?, ?)",
+                    (key, value_json, now),
+                )
+        except Exception as e:
+            logger.debug("[cll cache] put_node failed for %s: %s", node_id, e)
+
+    def put_nodes_batch(self, entries: List[Tuple[str, str, str]]) -> bool:
+        """Batch-insert per-node CllData entries.
+
+        Each entry: (node_id, content_key, value_json).
+        Returns True if the write succeeded, False otherwise.
+        """
+        if not self._db_path or not entries:
+            return True
+        now = time.time()
+        try:
+            with self._connect() as conn:
+                conn.executemany(
+                    "INSERT OR REPLACE INTO cll_node_cache (key, value, last_accessed)" " VALUES (?, ?, ?)",
+                    [(self.make_node_key(nid, ck), val, now) for nid, ck, val in entries],
+                )
+            return True
+        except Exception as e:
+            logger.warning("[cll cache] batch write failed for %d entries: %s", len(entries), e)
+            return False
+
+    def clear(self) -> None:
+        """No-op. The file cache uses content-addressed keys that auto-invalidate."""
+
+    @property
+    def stats(self) -> Dict[str, int]:
+        """Return count of entries in the SQLite cache."""
+        if not self._db_path:
+            return {"entries": 0}
+        try:
+            with self._connect() as conn:
+                count = conn.execute("SELECT COUNT(*) FROM cll_node_cache").fetchone()[0]
+            return {"entries": count}
+        except Exception:
+            return {"entries": 0}
+
+
+def _init_cll_cache() -> CllCache:
+    """Initialize the module-level CLL node cache.
+
+    Off by default. Enable with ENABLE_CLL_CACHE=1
+    to persist per-node CllData in SQLite (~/.recce/cll_cache.db).
+    Set CLL_CACHE_DB to override the default path.
+    """
+    if os.environ.get("ENABLE_CLL_CACHE", "0") != "1":
+        return CllCache()
+    db_path = os.environ.get("CLL_CACHE_DB", _DEFAULT_DB_PATH)
+    return CllCache(db_path=db_path)
+
+
+_cll_cache = _init_cll_cache()
+
+
+def get_cll_cache() -> CllCache:
+    return _cll_cache
+
+
+def set_cll_cache(cache: CllCache) -> None:
+    """Replace the module-level CLL cache instance."""
+    global _cll_cache
+    _cll_cache = cache
 
 
 @dataclass
@@ -73,48 +265,6 @@ class CLLPerformanceTracking:
         self.other_error_nodes = 0
 
 
-def _cll_column(proj, table_alias_map) -> CllColumn:
-    # given an expression, return the columns depends on
-    # [{node: table, column: column}, ...]
-    type = "source"
-    depends_on: List[CllColumnDep] = []
-
-    # instance of Column
-    if isinstance(proj, exp.Alias):
-        # 'select a as b'
-        # 'select CURRENT_TIMESTAMP() as create_at'
-        root = proj.this
-
-    for expression in root.walk(bfs=False):
-        if isinstance(expression, exp.Column):
-            column = expression
-            alias = column.table
-
-            if alias is None:
-                table = next(iter(table_alias_map.values()))
-            else:
-                table = table_alias_map.get(alias, alias)
-            depends_on.append(CllColumnDep(table, column.name))
-            if type == "source":
-                type = "passthrough"
-        elif isinstance(expression, (exp.Paren, exp.Identifier)):
-            pass
-        else:
-            type = "derived"
-
-    depends_on = _dedeup_depends_on(depends_on)
-
-    if len(depends_on) == 0:
-        type = "source"
-
-    if isinstance(proj, exp.Alias):
-        alias = proj
-        if type == "passthrough" and depends_on[0].column != alias.alias_or_name:
-            type = "renamed"
-
-    return CllColumn(type=type, depends_on=depends_on)
-
-
 def _dedeup_depends_on(depends_on: List[CllColumnDep]) -> List[CllColumnDep]:
     # deduplicate the depends_on list
     dedup_set = set()
@@ -150,6 +300,22 @@ def _cll_set_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> CllRe
     return m2c, c2c_map
 
 
+def _resolve_scope_cll(source: Scope, scope_cll_map: dict[Scope, CllResult]) -> Optional[CllResult]:
+    """Look up CLL results for a scope, falling back to expression identity matching.
+
+    For recursive CTEs, sqlglot creates a stub Scope for the self-referential
+    CTE that isn't yielded by traverse_scope. This fallback matches the stub
+    to the real processed scope by comparing expression objects.
+    """
+    result = scope_cll_map.get(source)
+    if result is None:
+        for processed_scope, r in scope_cll_map.items():
+            if processed_scope.expression is source.expression:
+                result = r
+                break
+    return result
+
+
 def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> CllResult:
     assert scope.expression.key == "select"
 
@@ -166,7 +332,7 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
         table_name = ref_column.table if ref_column.table != "" else next(iter(table_alias_map.values()))
         source = scope.sources.get(table_name, None)  # transformation_type: exp.Table | Scope
         if isinstance(source, Scope):
-            ref_cll_result = scope_cll_map.get(source)
+            ref_cll_result = _resolve_scope_cll(source, scope_cll_map)
             if ref_cll_result is None:
                 return None
             _, sub_c2c_map = ref_cll_result
@@ -199,8 +365,25 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
         transformation_type = "source"
         column_depends_on: List[CllColumnDep] = []
         root = proj.this if isinstance(proj, exp.Alias) else proj
+
+        # Identify columns inside subqueries so they are handled via
+        # subquery_cll instead of the outer scope's source_column_dependency.
+        proj_subqueries = list(root.find_all(exp.Subquery))
+        subquery_column_ids: set[int] = set()
+        for sq in proj_subqueries:
+            for col in sq.find_all(exp.Column):
+                subquery_column_ids.add(id(col))
+
         for expression in root.walk(bfs=False):
             if isinstance(expression, exp.Column):
+                if id(expression) in subquery_column_ids:
+                    # Column belongs to an inline subquery.  Only keep it
+                    # if it's a correlated reference resolvable in the outer scope.
+                    ref_column_dependency = source_column_dependency(expression)
+                    if ref_column_dependency is not None:
+                        column_depends_on.extend(ref_column_dependency.depends_on)
+                    continue
+
                 ref_column_dependency = source_column_dependency(expression)
                 if ref_column_dependency is not None:
                     column_depends_on.extend(ref_column_dependency.depends_on)
@@ -213,7 +396,7 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                         if transformation_type == "source":
                             transformation_type = "passthrough"
                 else:
-                    column_depends_on.append(CllColumnDep(expression.table, expression.name))
+                    column_depends_on.append(CllColumnDep(node=expression.table, column=expression.name))
                     if transformation_type == "source":
                         transformation_type = "passthrough"
 
@@ -221,6 +404,18 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                 pass
             else:
                 transformation_type = "derived"
+
+        # Resolve dependencies from subqueries within projections.
+        # A subquery is never a simple column reference — even a scalar subquery
+        # involves filtering logic to resolve which row to return.
+        for sq in proj_subqueries:
+            transformation_type = "derived"
+            sub_cll = subquery_cll(sq)
+            if sub_cll is not None:
+                sub_m2c, sub_c2c_map = sub_cll
+                for sub_c in sub_c2c_map.values():
+                    column_depends_on.extend(sub_c.depends_on)
+                column_depends_on.extend(sub_m2c)
 
         column_depends_on = _dedeup_depends_on(column_depends_on)
 
@@ -300,7 +495,9 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                     m2c.extend(selected_column_dependency(ref_column).depends_on)
 
     for source in scope.sources.values():
-        scope_cll_result = scope_cll_map.get(source)
+        if not isinstance(source, Scope):
+            continue
+        scope_cll_result = _resolve_scope_cll(source, scope_cll_map)
         if scope_cll_result is None:
             continue
         sub_m2c, _ = scope_cll_result

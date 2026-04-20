@@ -183,9 +183,15 @@ export function RecceActionAdapter({ children }: RecceActionAdapterProps) {
             showRunIdRef.current(run_id);
           }
 
-          // Navigate to lineage base if we're on a lineage subpath
-          if (pathname.startsWith("/lineage")) {
-            router.push(`${basePath}/lineage`);
+          // Navigate to lineage base only if we're on a lineage subpath
+          // (e.g., /lineage/node/test → /lineage). Skip when already on base
+          // to avoid unnecessary re-renders that reset zoom and node focus.
+          const lineagePath = `${basePath}/lineage`;
+          if (
+            pathname.startsWith(`${lineagePath}/`) &&
+            pathname !== lineagePath
+          ) {
+            router.push(lineagePath);
           }
 
           // Return undefined since we already called showRunId via ref

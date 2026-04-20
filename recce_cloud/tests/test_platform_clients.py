@@ -2,12 +2,15 @@
 Tests for platform-specific Recce Cloud API clients.
 """
 
+import json
 import os
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from urllib.parse import urlparse
 
 import pytest
+import requests
 
+from recce_cloud.api.exceptions import RecceCloudException
 from recce_cloud.api.factory import create_platform_client
 from recce_cloud.api.github import GitHubRecceCloudClient
 from recce_cloud.api.gitlab import GitLabRecceCloudClient
@@ -24,8 +27,8 @@ class TestGitHubRecceCloudClient:
         assert client.repository == "owner/repo"
         parsed = urlparse(client.api_host)
         # Accept main domain or subdomains:
-        assert parsed.hostname == "cloud.datarecce.io" or (
-            parsed.hostname and parsed.hostname.endswith(".cloud.datarecce.io")
+        assert parsed.hostname == "cloud.reccehq.com" or (
+            parsed.hostname and parsed.hostname.endswith(".cloud.reccehq.com")
         )
 
     def test_touch_recce_session_pr(self):
@@ -40,7 +43,10 @@ class TestGitHubRecceCloudClient:
             }
 
             response = client.touch_recce_session(
-                branch="feature-branch", adapter_type="postgres", pr_number=123, session_type="pr"
+                branch="feature-branch",
+                adapter_type="postgres",
+                pr_number=123,
+                session_type="pr",
             )
 
             assert response["session_id"] == "test_session_id"
@@ -85,13 +91,42 @@ class TestGitHubRecceCloudClient:
             }
 
             # Even with cr_number detected, session_type="prod" should omit pr_number
-            client.touch_recce_session(branch="main", adapter_type="postgres", pr_number=123, session_type="prod")
+            client.touch_recce_session(
+                branch="main",
+                adapter_type="postgres",
+                pr_number=123,
+                session_type="prod",
+            )
 
             # Verify pr_number is NOT in the payload when session_type is "prod"
             call_args = mock_request.call_args
             assert "pr_number" not in call_args[1]["json"]
             assert call_args[1]["json"]["branch"] == "main"
             assert call_args[1]["json"]["adapter_type"] == "postgres"
+
+    def test_touch_recce_session_non_main_default_branch(self):
+        """Test touch_recce_session with non-main default branch (DRC-2654).
+
+        Scenario: Customer has 'stage' as default branch, CD pushes to 'stage',
+        uses --type prod. The branch sent should be 'stage' with no pr_number.
+        """
+        client = GitHubRecceCloudClient(token="test_token", repository="owner/repo")
+
+        with patch.object(client, "_make_request") as mock_request:
+            mock_request.return_value = {
+                "session_id": "stage_session_id",
+                "manifest_upload_url": "https://s3.aws.com/manifest",
+                "catalog_upload_url": "https://s3.aws.com/catalog",
+            }
+
+            response = client.touch_recce_session(
+                branch="stage", adapter_type="postgres", session_type="prod"
+            )
+
+            assert response["session_id"] == "stage_session_id"
+            call_args = mock_request.call_args
+            assert call_args[1]["json"]["branch"] == "stage"
+            assert "pr_number" not in call_args[1]["json"]
 
     def test_upload_completed(self):
         """Test upload_completed notification."""
@@ -119,7 +154,9 @@ class TestGitHubRecceCloudClient:
                 "catalog_url": "https://s3.aws.com/catalog",
             }
 
-            response = client.get_session_download_urls(pr_number=123, session_type="pr")
+            response = client.get_session_download_urls(
+                pr_number=123, session_type="pr"
+            )
 
             assert response["session_id"] == "pr_session_id"
             assert response["manifest_url"] == "https://s3.aws.com/manifest"
@@ -264,7 +301,9 @@ class TestGitLabRecceCloudClient:
                 "catalog_upload_url": "https://s3.aws.com/catalog",
             }
 
-            client.touch_recce_session(branch="main", adapter_type="bigquery", commit_sha="base123")
+            client.touch_recce_session(
+                branch="main", adapter_type="bigquery", commit_sha="base123"
+            )
 
             # Verify mr_iid is not in the payload when pr_number is None
             call_args = mock_request.call_args
@@ -312,7 +351,9 @@ class TestGitLabRecceCloudClient:
         with patch.object(client, "_make_request") as mock_request:
             mock_request.return_value = {}
 
-            client.upload_completed(session_id="test_session_id", commit_sha="commit456")
+            client.upload_completed(
+                session_id="test_session_id", commit_sha="commit456"
+            )
 
             mock_request.assert_called_once()
             call_args = mock_request.call_args
@@ -337,7 +378,9 @@ class TestGitLabRecceCloudClient:
                 "catalog_url": "https://s3.aws.com/catalog",
             }
 
-            response = client.get_session_download_urls(pr_number=456, session_type="pr")
+            response = client.get_session_download_urls(
+                pr_number=456, session_type="pr"
+            )
 
             assert response["session_id"] == "mr_session_id"
             assert response["manifest_url"] == "https://s3.aws.com/manifest"
@@ -456,7 +499,9 @@ class TestFactoryCreatePlatformClient:
         ci_info = CIInfo(platform="github-actions")
 
         with patch.dict(os.environ, {}, clear=True):
-            with pytest.raises(ValueError, match="GitHub repository information is required"):
+            with pytest.raises(
+                ValueError, match="GitHub repository information is required"
+            ):
                 create_platform_client(token="test_token", ci_info=ci_info)
 
     def test_create_gitlab_client(self):
@@ -527,3 +572,84 @@ class TestFactoryCreatePlatformClient:
 
             assert isinstance(client, GitHubRecceCloudClient)
             assert client.repository == "owner/repo"
+
+
+class TestMakeRequestErrorDetail:
+    """Tests for _make_request error detail extraction (DRC-2654).
+
+    FastAPI returns error details as {"detail": "..."}, not {"message": "..."}.
+    The client must extract 'detail' to surface meaningful error messages.
+    """
+
+    def _make_mock_response(self, status_code, json_body):
+        """Create a mock HTTP response with the given status and JSON body."""
+        mock_resp = MagicMock(spec=requests.Response)
+        mock_resp.status_code = status_code
+        mock_resp.content = json.dumps(json_body).encode()
+        mock_resp.text = json.dumps(json_body)
+        mock_resp.json.return_value = json_body
+
+        http_error = requests.exceptions.HTTPError(
+            f"{status_code} Client Error", response=mock_resp
+        )
+        mock_resp.raise_for_status.side_effect = http_error
+        return mock_resp
+
+    def test_extracts_fastapi_detail_field(self):
+        """Test that FastAPI 'detail' field is extracted from error responses."""
+        client = GitHubRecceCloudClient(
+            token="test_token", repository="owner/repo", api_host="http://localhost"
+        )
+        mock_resp = self._make_mock_response(
+            400, {"detail": "Either pr_number or branch must be provided"}
+        )
+
+        with patch("requests.request", return_value=mock_resp):
+            with pytest.raises(RecceCloudException) as exc_info:
+                client.touch_recce_session(branch="main", adapter_type="postgres")
+
+            assert (
+                "Either pr_number or branch must be provided" in exc_info.value.reason
+            )
+            assert exc_info.value.status_code == 400
+
+    def test_extracts_message_field_as_fallback(self):
+        """Test that 'message' field is used when 'detail' is absent."""
+        client = GitHubRecceCloudClient(
+            token="test_token", repository="owner/repo", api_host="http://localhost"
+        )
+        mock_resp = self._make_mock_response(500, {"message": "Internal server error"})
+
+        with patch("requests.request", return_value=mock_resp):
+            with pytest.raises(RecceCloudException) as exc_info:
+                client.touch_recce_session(branch="main", adapter_type="postgres")
+
+            assert "Internal server error" in exc_info.value.reason
+
+    def test_extracts_detail_over_message(self):
+        """Test that 'detail' takes precedence over 'message'."""
+        client = GitHubRecceCloudClient(
+            token="test_token", repository="owner/repo", api_host="http://localhost"
+        )
+        mock_resp = self._make_mock_response(
+            400, {"detail": "Specific detail", "message": "Generic message"}
+        )
+
+        with patch("requests.request", return_value=mock_resp):
+            with pytest.raises(RecceCloudException) as exc_info:
+                client.touch_recce_session(branch="main", adapter_type="postgres")
+
+            assert "Specific detail" in exc_info.value.reason
+
+    def test_falls_back_to_http_error_string(self):
+        """Test fallback when response JSON has neither 'detail' nor 'message'."""
+        client = GitHubRecceCloudClient(
+            token="test_token", repository="owner/repo", api_host="http://localhost"
+        )
+        mock_resp = self._make_mock_response(400, {"error": "some other format"})
+
+        with patch("requests.request", return_value=mock_resp):
+            with pytest.raises(RecceCloudException) as exc_info:
+                client.touch_recce_session(branch="main", adapter_type="postgres")
+
+            assert "400 Client Error" in exc_info.value.reason

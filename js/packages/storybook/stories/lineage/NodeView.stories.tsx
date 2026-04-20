@@ -1,5 +1,10 @@
-import type { NodeViewNodeData, NodeViewProps } from "@datarecce/ui/advanced";
+import type {
+  NodeViewNodeData,
+  NodeViewProps,
+  SchemaViewProps,
+} from "@datarecce/ui/advanced";
 import { NodeView } from "@datarecce/ui/advanced";
+import { NodeTag } from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -15,26 +20,26 @@ import { fn } from "storybook/test";
 // STUB COMPONENTS
 // =============================================================================
 
-function StubSchemaView({
-  base,
-  current,
-}: {
-  base?: Record<string, unknown>;
-  current?: Record<string, unknown>;
-}) {
+function StubSchemaView({ base, current }: SchemaViewProps) {
   return (
     <Box sx={{ p: 2 }}>
       <Typography variant="body2" color="text.secondary">
-        Schema diff view — base has {base ? Object.keys(base).length : 0}{" "}
-        columns, current has {current ? Object.keys(current).length : 0} columns
+        Schema diff view — base has{" "}
+        {base?.columns ? Object.keys(base.columns).length : 0} columns, current
+        has {current?.columns ? Object.keys(current.columns).length : 0} columns
       </Typography>
     </Box>
   );
 }
 
-function StubNodeSqlView({ node }: { node: NodeViewNodeData }) {
-  const base = node.data.data.base?.raw_code ?? "(none)";
-  const current = node.data.data.current?.raw_code ?? "(none)";
+function StubNodeSqlView({
+  modelDetail,
+}: {
+  node: NodeViewNodeData;
+  modelDetail?: NodeViewProps["modelDetail"];
+}) {
+  const base = modelDetail?.base?.raw_code ?? "(none)";
+  const current = modelDetail?.current?.raw_code ?? "(none)";
   return (
     <Box sx={{ p: 2, fontFamily: "monospace", fontSize: "0.85rem" }}>
       <Typography variant="subtitle2" gutterBottom>
@@ -49,11 +54,20 @@ function StubNodeSqlView({ node }: { node: NodeViewNodeData }) {
   );
 }
 
+function ResourceTypeTag({ node }: { node: NodeViewNodeData }) {
+  return (
+    <NodeTag
+      resourceType={node.data.resourceType}
+      materialized={node.data.materialized}
+    />
+  );
+}
+
 // =============================================================================
 // FIXTURE FACTORIES
 // =============================================================================
 
-function createNode(
+function createStoryArgs(
   overrides: {
     baseColumns?: Record<string, { name: string; type: string }>;
     currentColumns?: Record<string, { name: string; type: string }>;
@@ -62,36 +76,54 @@ function createNode(
     name?: string;
     resourceType?: string;
     changeStatus?: string;
+    materialized?: string;
+    baseMaterialized?: string;
   } = {},
-): NodeViewNodeData {
-  return {
+): { node: NodeViewNodeData; modelDetail: NodeViewProps["modelDetail"] } {
+  const baseMat = overrides.baseMaterialized ?? overrides.materialized;
+  const baseConfig = baseMat ? { materialized: baseMat } : undefined;
+  const currentConfig = overrides.materialized
+    ? { materialized: overrides.materialized }
+    : undefined;
+
+  const node: NodeViewNodeData = {
     id: "model.jaffle_shop.stg_orders",
     data: {
       name: overrides.name ?? "stg_orders",
       resourceType: overrides.resourceType ?? "model",
       changeStatus: overrides.changeStatus,
-      data: {
-        base: {
-          name: "stg_orders",
-          raw_code: overrides.baseCode ?? "SELECT * FROM raw.orders",
-          columns: overrides.baseColumns ?? {
-            order_id: { name: "order_id", type: "integer" },
-            customer_id: { name: "customer_id", type: "integer" },
-            order_date: { name: "order_date", type: "date" },
-          },
-        },
-        current: {
-          name: "stg_orders",
-          raw_code: overrides.currentCode ?? "SELECT * FROM raw.orders",
-          columns: overrides.currentColumns ?? {
-            order_id: { name: "order_id", type: "integer" },
-            customer_id: { name: "customer_id", type: "integer" },
-            order_date: { name: "order_date", type: "date" },
-          },
-        },
-      },
+      materialized: overrides.materialized,
     },
   };
+
+  const modelDetail: NodeViewProps["modelDetail"] = {
+    base: {
+      id: "stg_orders",
+      unique_id: "model.jaffle_shop.stg_orders",
+      name: "stg_orders",
+      raw_code: overrides.baseCode ?? "SELECT * FROM raw.orders",
+      columns: overrides.baseColumns ?? {
+        order_id: { name: "order_id", type: "integer" },
+        customer_id: { name: "customer_id", type: "integer" },
+        order_date: { name: "order_date", type: "date" },
+      },
+      config: baseConfig,
+    },
+    current: {
+      id: "stg_orders",
+      unique_id: "model.jaffle_shop.stg_orders",
+      name: "stg_orders",
+      raw_code: overrides.currentCode ?? "SELECT * FROM raw.orders",
+      columns: overrides.currentColumns ?? {
+        order_id: { name: "order_id", type: "integer" },
+        customer_id: { name: "customer_id", type: "integer" },
+        order_date: { name: "order_date", type: "date" },
+      },
+      config: currentConfig,
+    },
+  };
+
+  return { node, modelDetail };
 }
 
 // =============================================================================
@@ -122,6 +154,7 @@ const meta: Meta<typeof NodeView> = {
     isSingleEnv: false,
     SchemaView: StubSchemaView,
     NodeSqlView: StubNodeSqlView,
+    ResourceTypeTag,
   },
 };
 
@@ -135,14 +168,14 @@ type Story = StoryObj<typeof NodeView>;
 /** No differences in schema or code — no dots shown on either tab. */
 export const NoDifferences: Story = {
   args: {
-    node: createNode(),
+    ...createStoryArgs({ materialized: "view" }),
   },
 };
 
 /** Both schema and code have changed — dots on both tabs. */
 export const BothChanged: Story = {
   args: {
-    node: createNode({
+    ...createStoryArgs({
       baseColumns: {
         order_id: { name: "order_id", type: "integer" },
         customer_id: { name: "customer_id", type: "integer" },
@@ -161,7 +194,7 @@ export const BothChanged: Story = {
 /** Only schema changed (column added) — dot on Columns tab only. */
 export const SchemaChangedOnly: Story = {
   args: {
-    node: createNode({
+    ...createStoryArgs({
       baseColumns: {
         order_id: { name: "order_id", type: "integer" },
       },
@@ -176,7 +209,7 @@ export const SchemaChangedOnly: Story = {
 /** Only code changed — dot on Code tab only. */
 export const CodeChangedOnly: Story = {
   args: {
-    node: createNode({
+    ...createStoryArgs({
       baseCode: "SELECT * FROM raw.orders",
       currentCode: "SELECT * FROM raw.orders WHERE status != 'deleted'",
     }),
@@ -186,7 +219,7 @@ export const CodeChangedOnly: Story = {
 /** Column type modification — dot on Columns tab. */
 export const ColumnTypeModified: Story = {
   args: {
-    node: createNode({
+    ...createStoryArgs({
       baseColumns: {
         order_id: { name: "order_id", type: "integer" },
         amount: { name: "amount", type: "integer" },
@@ -203,7 +236,8 @@ export const ColumnTypeModified: Story = {
 export const SingleEnvMode: Story = {
   args: {
     isSingleEnv: true,
-    node: createNode({
+    ...createStoryArgs({
+      materialized: "table",
       baseCode: "SELECT 1",
       currentCode: "SELECT 2",
       baseColumns: {
@@ -213,6 +247,21 @@ export const SingleEnvMode: Story = {
         a: { name: "a", type: "varchar" },
         b: { name: "b", type: "integer" },
       },
+    }),
+  },
+};
+
+// =============================================================================
+// MATERIALIZATION CHANGE STORY
+// =============================================================================
+
+/** Materialization changed from view to table between base and current. */
+export const MaterializationChanged: Story = {
+  args: {
+    ...createStoryArgs({
+      baseMaterialized: "view",
+      materialized: "table",
+      changeStatus: "modified",
     }),
   },
 };

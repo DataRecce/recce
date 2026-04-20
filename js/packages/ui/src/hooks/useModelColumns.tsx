@@ -4,37 +4,36 @@
  * Combines data from lineage graph context with API calls for column details.
  */
 
-import type { AxiosInstance } from "axios";
 import _ from "lodash";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getModelInfo, type NodeColumnData } from "../api";
 import {
   type LineageGraphNode,
   useLineageGraphContext,
 } from "../contexts/lineage";
+import type { ApiClient } from "../lib/fetchClient";
 import { useApiConfigOptional } from "../providers";
 
 /**
- * Extract columns from a lineage graph node.
- * Combines base and current columns using union logic.
+ * Stable empty array used when inline column data is unavailable.
+ * Must be a module-level constant — a `[]` literal inside a hook body
+ * creates a new reference every render, breaking the `prevNodeColumns`
+ * identity check and causing an infinite re-render loop.
  */
-export function extractColumns(node: LineageGraphNode): NodeColumnData[] {
-  function getColumns(
-    nodeData:
-      | { columns?: Record<string, NodeColumnData | undefined> }
-      | undefined,
-  ): NodeColumnData[] {
-    return nodeData?.columns
-      ? Object.values(nodeData.columns).filter(
-          (c): c is NodeColumnData => c != null,
-        )
-      : [];
-  }
+const EMPTY_COLUMNS: NodeColumnData[] = [];
 
-  const baseColumns = getColumns(node.data.data.base);
-  const currentColumns = getColumns(node.data.data.current);
-
-  return unionColumns(baseColumns, currentColumns);
+/**
+ * Extract columns from a lineage graph node.
+ *
+ * After DRC-3260, inline column data is no longer available on the graph node.
+ * This function always returns an empty array; the API fetch path in
+ * useModelColumns provides the actual column data.
+ *
+ * @deprecated Kept for backward compatibility. Will be removed once all
+ * callers migrate to on-demand API fetch.
+ */
+export function extractColumns(_node: LineageGraphNode): NodeColumnData[] {
+  return EMPTY_COLUMNS;
 }
 
 /**
@@ -92,13 +91,13 @@ export interface UseModelColumnsReturn {
  */
 export function useModelColumns(
   model: string | undefined,
-  client?: AxiosInstance,
+  client?: ApiClient,
 ): UseModelColumnsReturn {
   const { lineageGraph } = useLineageGraphContext();
   const apiConfig = useApiConfigOptional();
 
   // Use provided client or fall back to context client
-  const axiosClient = client ?? apiConfig?.apiClient;
+  const apiClient = client ?? apiConfig?.apiClient;
 
   const node = _.find(lineageGraph?.nodes, {
     data: {
@@ -106,9 +105,11 @@ export function useModelColumns(
     },
   });
 
-  const nodeColumns = useMemo(() => {
-    return node ? extractColumns(node) : [];
-  }, [node]);
+  // After DRC-3260, inline column data is no longer on the graph node.
+  // Always use the API fetch path below.
+  // IMPORTANT: uses module-level EMPTY_COLUMNS for referential stability —
+  // a `[]` literal here caused infinite re-render (new ref every render).
+  const nodeColumns = EMPTY_COLUMNS;
 
   const [columns, setColumns] = useState<NodeColumnData[]>([]);
   const [primaryKey, setPrimaryKey] = useState<string>();
@@ -117,27 +118,32 @@ export function useModelColumns(
   const [prevNodeColumns, setPrevNodeColumns] = useState<NodeColumnData[]>([]);
   const [prevNodeId, setPrevNodeId] = useState(node?.id);
 
-  const nodePrimaryKey = node ? node.data.data.current?.primary_key : undefined;
+  // After DRC-3260, primary_key is no longer inline on the graph node.
+  // The API fetch path below provides it.
+  const nodePrimaryKey = undefined;
 
   const fetchData = useCallback(async () => {
-    if (!node || !axiosClient) {
+    if (!node || !apiClient) {
       return;
     }
     try {
-      const data = await getModelInfo(node.id, axiosClient);
+      const data = await getModelInfo(node.id, apiClient);
       const modelInfo = data.model;
       if (!modelInfo.base.columns || !modelInfo.current.columns) {
         setColumns([]);
+        setIsLoading(false);
         return;
       }
       setPrimaryKey(modelInfo.current.primary_key);
       const baseColumns = Object.values(modelInfo.base.columns);
       const currentColumns = Object.values(modelInfo.current.columns);
       setColumns(unionColumns(baseColumns, currentColumns));
+      setIsLoading(false);
     } catch (err) {
       setError(err as Error);
+      setIsLoading(false);
     }
-  }, [node, axiosClient]);
+  }, [node, apiClient]);
 
   // Adjust state during render when node changes
   if (nodeColumns !== prevNodeColumns || node?.id !== prevNodeId) {
@@ -162,9 +168,8 @@ export function useModelColumns(
         // error is already handled in fetchData()
         console.error(e);
       });
-      setIsLoading(false);
     }
-  }, [fetchData, node?.id, nodeColumns]);
+  }, [fetchData, node?.id]);
 
   return { columns, primaryKey, isLoading, error };
 }

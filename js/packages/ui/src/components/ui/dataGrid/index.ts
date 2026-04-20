@@ -46,10 +46,7 @@ export {
 export {
   createSchemaColumnNameRenderer,
   createSingleEnvColumnNameRenderer,
-  MemoizedRenderIndexCell,
-  MemoizedRenderTypeCell,
   renderIndexCell,
-  renderTypeCell,
 } from "./schemaCells";
 // Value diff cell components and render functions
 export type {

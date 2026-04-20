@@ -15,7 +15,6 @@ from rich.console import Console
 
 from recce.event import update_recce_api_token
 from recce.exceptions import RecceConfigException
-from recce.util.onboarding_state import update_onboarding_state
 from recce.util.recce_cloud import RECCE_CLOUD_BASE_URL, RecceCloud
 
 console = Console()
@@ -49,7 +48,6 @@ def handle_callback_request(query_string: str, private_key: RSAPrivateKey):
         raise RecceConfigException("Invalid Recce Cloud API token")
 
     update_recce_api_token(api_token)
-    update_onboarding_state(api_token, False)
 
     return api_token  # for testability/debugging
 

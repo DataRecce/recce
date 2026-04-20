@@ -102,7 +102,7 @@ export default defineConfig({
         ),
       "@datarecce/ui/components/ui/dataGrid/dataGridFactory": path.resolve(
         __dirname,
-        "./packages/ui/src/components/ui/dataGrid/dataGridFactory.ts",
+        "./packages/ui/src/components/ui/dataGrid/dataGridFactory.tsx",
       ),
       "@datarecce/ui/components/ui/dataGrid/defaultRenderCell": path.resolve(
         __dirname,
@@ -268,9 +268,17 @@ export default defineConfig({
         __dirname,
         "./packages/ui/src/components/rowcount/index.ts",
       ),
+      "@datarecce/ui/lib/const": path.resolve(
+        __dirname,
+        "./packages/ui/src/lib/const.ts",
+      ),
       "@datarecce/ui/lib/api/track": path.resolve(
         __dirname,
         "./packages/ui/src/lib/api/track.ts",
+      ),
+      "@datarecce/ui/lib/fetchClient": path.resolve(
+        __dirname,
+        "./packages/ui/src/lib/fetchClient.ts",
       ),
       "@datarecce/ui/components/ui": path.resolve(
         __dirname,
@@ -363,6 +371,10 @@ export default defineConfig({
             "html-url-attributes",
             // React icons is ESM-only
             "react-icons",
+            // Excel packages use subpath-only exports (no root export),
+            // causing intermittent resolveDeepImport failures in Vite optimizer
+            "write-excel-file",
+            "read-excel-file",
           ],
         },
       },

@@ -172,6 +172,7 @@ export interface ContextMenuViewOptions {
   selectMode?: "selecting" | "action_result" | undefined;
   cll?: unknown;
   showColumnLevelLineage?: (params: CllInput) => Promise<void>;
+  setChangeAnalysisMode?: (active: boolean) => void;
   selectParentNodes?: (nodeId: string, degree?: number) => void;
   selectChildNodes?: (nodeId: string, degree?: number) => void;
   getNodeColumnSet?: (nodeId: string) => Set<string>;
@@ -423,6 +424,7 @@ export const ModelNodeContextMenu = ({
     selectMode,
     cll,
     showColumnLevelLineage,
+    setChangeAnalysisMode,
     selectParentNodes,
     selectChildNodes,
     getNodeColumnSet,
@@ -451,6 +453,7 @@ export const ModelNodeContextMenu = ({
       itemIcon: <FaRegDotCircle />,
       isDisabled: noCatalogCurrent || !isActionAvailable("change_analysis"),
       action: () => {
+        setChangeAnalysisMode?.(true);
         void showColumnLevelLineage?.({
           node_id: node.id,
           change_analysis: true,
@@ -476,9 +479,11 @@ export const ModelNodeContextMenu = ({
     // Query action
     const queryRunType = singleEnv ? "query" : "query_diff";
     const queryRun = findByRunType?.(queryRunType);
-    const baseColumns = Object.keys(modelNode.data.base?.columns ?? {});
-    const currentColumns = Object.keys(modelNode.data.current?.columns ?? {});
-    const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
+    // Column data is now fetched on-demand; use change?.columns keys if available
+    const changeColumns = modelNode.change?.columns
+      ? Object.keys(modelNode.change.columns)
+      : [];
+    const formattedColumns = formatSelectColumns(changeColumns, changeColumns);
     let query = `select * from {{ ref("${modelNode.name}") }}`;
     if (formattedColumns.length) {
       query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
@@ -817,8 +822,8 @@ export const ColumnNodeContextMenu = ({
   };
 
   const addedOrRemoved =
-    modelNode.data.base?.columns?.[column] === undefined ||
-    modelNode.data.current?.columns?.[column] === undefined;
+    columnNode.changeStatus === "added" ||
+    columnNode.changeStatus === "removed";
 
   // Profile / Profile Diff
   const profileRunType = singleEnv ? "profile" : "profile_diff";

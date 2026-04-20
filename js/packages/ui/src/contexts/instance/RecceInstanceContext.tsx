@@ -55,6 +55,7 @@ export function RecceInstanceInfoProvider({
   const [lifetimeExpiredAt, setLifetimeExpiredAt] = useState<Date>();
   const [shareUrl, setShareUrl] = useState<string>();
   const [sessionId, setSessionId] = useState<string>();
+  const [pythonVersion, setPythonVersion] = useState<string>();
   const [prevInstanceInfo, setPrevInstanceInfo] = useState(instanceInfo);
 
   // Adjust state during render when instanceInfo changes
@@ -65,6 +66,7 @@ export function RecceInstanceInfoProvider({
     setAuthed(instanceInfo.authed);
     setShareUrl(instanceInfo.share_url);
     setSessionId(instanceInfo.session_id);
+    setPythonVersion(instanceInfo.python_version);
 
     if (instanceInfo.lifetime_expired_at) {
       setLifetimeExpiredAt(new Date(instanceInfo.lifetime_expired_at));
@@ -101,6 +103,14 @@ export function RecceInstanceInfoProvider({
     if (instanceInfo.cloud_instance) {
       toggles.disableShare = true;
     }
+    if (instanceInfo.user_role === "viewer") {
+      // Only show permission-denied tooltip when checklist isn't already disabled
+      // by mode (read-only) or env (single_env) — in those cases, hide entirely
+      if (!toggles.disableUpdateChecklist) {
+        toggles.checklistPermissionDenied = true;
+      }
+      toggles.disableUpdateChecklist = true;
+    }
     setFeatureToggles(toggles);
   }
 
@@ -113,6 +123,7 @@ export function RecceInstanceInfoProvider({
         lifetimeExpiredAt,
         shareUrl,
         sessionId,
+        pythonVersion,
       }}
     >
       {children}

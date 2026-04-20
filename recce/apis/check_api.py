@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -9,10 +10,13 @@ from recce.apis.check_func import (
     create_check_without_run,
     export_persistent_state,
 )
+from recce.apis.cloud_utils import log_cloud_exception
 from recce.apis.run_func import submit_run
+from recce.core import default_context
 from recce.event import log_api_event
 from recce.exceptions import RecceException
 from recce.models import Check, CheckDAO, Run, RunDAO, RunType
+from recce.util.recce_cloud import RecceCloudException
 
 check_router = APIRouter(tags=["check"])
 
@@ -37,11 +41,15 @@ class CheckOut(BaseModel):
     is_checked: bool = False
     is_preset: bool = False
     last_run: Optional[Run] = None
+    is_outdated: bool = False
 
     @classmethod
-    def from_check(cls, check: Check):
+    def from_check(cls, check: Check, artifact_time: Optional[datetime] = None):
         check_related_runs = RunDAO().list_by_check_id(check.check_id)
         last_run = check_related_runs[-1] if len(check_related_runs) > 0 else None
+        if artifact_time is None:
+            artifact_time = _get_latest_artifact_time()
+        is_outdated = _is_check_outdated(last_run, artifact_time)
         return CheckOut(
             check_id=check.check_id,
             name=check.name,
@@ -52,7 +60,56 @@ class CheckOut(BaseModel):
             is_checked=check.is_checked,
             is_preset=check.is_preset,
             last_run=last_run,
+            is_outdated=is_outdated,
         )
+
+
+def _get_latest_artifact_time() -> Optional[datetime]:
+    """Get the latest manifest generated_at timestamp across base and current environments."""
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    try:
+        ctx = default_context()
+        if ctx is None:
+            return None
+        adapter = ctx.adapter
+
+        timestamps = []
+        for manifest in [
+            getattr(adapter, "base_manifest", None),
+            getattr(adapter, "curr_manifest", None),
+        ]:
+            if manifest is not None and hasattr(manifest, "metadata") and hasattr(manifest.metadata, "generated_at"):
+                ts = manifest.metadata.generated_at
+                if isinstance(ts, datetime):
+                    timestamps.append(ts)
+
+        return max(timestamps) if timestamps else None
+    except (AttributeError, TypeError) as e:
+        logger.debug("Could not determine artifact time: %s", e)
+        return None
+
+
+def _is_check_outdated(last_run: Optional[Run], artifact_time: Optional[datetime]) -> bool:
+    """A check is outdated when dbt artifacts were regenerated after the check's last run."""
+    if last_run is None:
+        return False
+
+    if artifact_time is None:
+        return False
+
+    try:
+        run_at = datetime.strptime(last_run.run_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except (ValueError, AttributeError):
+        return False
+
+    # Normalize artifact_time to UTC for comparison
+    if artifact_time.tzinfo is None:
+        artifact_time = artifact_time.replace(tzinfo=timezone.utc)
+
+    return artifact_time > run_at
 
 
 @check_router.post("/checks", status_code=201, response_model=CheckOut)
@@ -80,6 +137,9 @@ async def create_check(check_in: CreateCheckIn, background_tasks: BackgroundTask
                 track_props=check_in.track_props,
             ),
         )
+    except RecceCloudException as e:
+        log_cloud_exception(f"Failed to create check: {e}", e)
+        raise HTTPException(status_code=e.status_code, detail=str(e.reason))
     except NameError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:
@@ -95,7 +155,12 @@ class RunCheckIn(BaseModel):
 
 @check_router.post("/checks/{check_id}/run", status_code=201, response_model=Run)
 async def run_check_handler(check_id: UUID, input: RunCheckIn):
-    check = CheckDAO().find_check_by_id(check_id)
+    try:
+        check = CheckDAO().find_check_by_id(check_id)
+    except RecceCloudException as e:
+        log_cloud_exception(f"Failed to get check {check_id} for run: {e}", e)
+        raise HTTPException(status_code=e.status_code, detail=str(e.reason))
+
     if not check:
         raise HTTPException(status_code=404, detail=f"Check ID '{check_id}' not found")
 
@@ -107,7 +172,7 @@ async def run_check_handler(check_id: UUID, input: RunCheckIn):
                 rerun=True,
             ),
         )
-        run, future = submit_run(check.type, check.params, check_id=check_id)
+        run, future = submit_run(check.type, check.params, check_id=check_id, triggered_by="user")
     except RecceException as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -118,28 +183,40 @@ async def run_check_handler(check_id: UUID, input: RunCheckIn):
         return run
 
 
-@check_router.get("/checks", status_code=200, response_model=list[CheckOut], response_model_exclude_none=True)
+@check_router.get(
+    "/checks",
+    status_code=200,
+    response_model=list[CheckOut],
+    response_model_exclude_none=True,
+)
 async def list_checks_handler():
-    checks = []
+    try:
+        check_list = CheckDAO().list()
+    except RecceCloudException as e:
+        log_cloud_exception(f"Failed to list checks: {e}", e)
+        raise HTTPException(status_code=e.status_code, detail=str(e.reason))
 
-    for check in CheckDAO().list():
-        checks.append(CheckOut.from_check(check))
+    artifact_time = _get_latest_artifact_time()
+    checks = []
+    for check in check_list:
+        checks.append(CheckOut.from_check(check, artifact_time=artifact_time))
 
     return checks
 
 
 @check_router.get("/checks/{check_id}", status_code=200, response_model=CheckOut)
 async def get_check_handler(check_id: UUID):
-    check = CheckDAO().find_check_by_id(check_id)
+    try:
+        check = CheckDAO().find_check_by_id(check_id)
+    except RecceCloudException as e:
+        log_cloud_exception(f"Failed to get check {check_id}: {e}", e)
+        raise HTTPException(status_code=e.status_code, detail=str(e.reason))
+
     if check is None:
         raise HTTPException(status_code=404, detail="Not Found")
 
-    runs = RunDAO().list_by_check_id(check_id)
-    last_run = runs[-1] if len(runs) > 0 else None
-
-    out = CheckOut.from_check(check)
-    out.last_run = last_run
-    return out
+    artifact_time = _get_latest_artifact_time()
+    return CheckOut.from_check(check, artifact_time=artifact_time)
 
 
 class PatchCheckIn(BaseModel):
@@ -150,9 +227,19 @@ class PatchCheckIn(BaseModel):
     is_checked: Optional[bool] = None
 
 
-@check_router.patch("/checks/{check_id}", status_code=200, response_model=CheckOut, response_model_exclude_none=True)
+@check_router.patch(
+    "/checks/{check_id}",
+    status_code=200,
+    response_model=CheckOut,
+    response_model_exclude_none=True,
+)
 async def update_check_handler(check_id: UUID, patch: PatchCheckIn, background_tasks: BackgroundTasks):
-    check = CheckDAO().update_check_by_id(check_id, patch)
+    try:
+        check = CheckDAO().update_check_by_id(check_id, patch)
+    except RecceCloudException as e:
+        log_cloud_exception(f"Failed to update check {check_id}: {e}", e)
+        raise HTTPException(status_code=e.status_code, detail=str(e.reason))
+
     if check is None:
         raise HTTPException(status_code=404, detail="Not Found")
 
@@ -166,7 +253,12 @@ class DeleteCheckOut(BaseModel):
 
 @check_router.delete("/checks/{check_id}", status_code=200, response_model=DeleteCheckOut)
 async def delete_handler(check_id: UUID, background_tasks: BackgroundTasks):
-    CheckDAO().delete(check_id)
+    try:
+        CheckDAO().delete(check_id)
+    except RecceCloudException as e:
+        log_cloud_exception(f"Failed to delete check {check_id}: {e}", e)
+        raise HTTPException(status_code=e.status_code, detail=str(e.reason))
+
     background_tasks.add_task(export_persistent_state)
     return DeleteCheckOut(check_id=check_id)
 
@@ -199,5 +291,8 @@ async def mark_as_preset_check_handler(check_id: UUID, background_tasks: Backgro
     try:
         CheckDAO().mark_as_preset_check(check_id)
         background_tasks.add_task(export_persistent_state)
+    except RecceCloudException as e:
+        log_cloud_exception(f"Failed to mark check {check_id} as preset: {e}", e)
+        raise HTTPException(status_code=e.status_code, detail=str(e.reason))
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)

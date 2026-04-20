@@ -1,0 +1,47 @@
+#!/bin/bash
+set -e
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+export GIT_WORK_TREE="$REPO_ROOT"
+
+# Determine which commits are being pushed by comparing local ref to remote ref.
+# This reads the standard pre-push stdin format: <local ref> <local sha> <remote ref> <remote sha>
+BASE_SHA=""
+LOCAL_SHA=""
+while read -r LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
+	if [ "$LOCAL_SHA" = "0000000000000000000000000000000000000000" ]; then
+		# Deleting a branch, nothing to check
+		continue
+	fi
+	if [ "$REMOTE_SHA" = "0000000000000000000000000000000000000000" ]; then
+		# New branch — compare against main (with fallbacks for shallow clones and forks)
+		BASE_SHA=$(git merge-base "$LOCAL_SHA" main 2>/dev/null \
+			|| git merge-base "$LOCAL_SHA" origin/main 2>/dev/null \
+			|| git rev-parse main 2>/dev/null \
+			|| echo "")
+	else
+		BASE_SHA="$REMOTE_SHA"
+	fi
+	break  # Process first pushable ref only
+done
+
+if [ -z "$BASE_SHA" ]; then
+	echo "No commits to push, skipping pre-push checks."
+	exit 0
+fi
+
+# Check if any TypeScript/JavaScript source files were changed in the commits being pushed
+PUSHED_JS_FILES=$(git diff --name-only --diff-filter=ACM "$BASE_SHA".."$LOCAL_SHA" | grep -E "^js/.*\.(ts|tsx|js|jsx|mjs)$" || true)
+
+if [ -n "$PUSHED_JS_FILES" ]; then
+	RELATIVE_FILES=$(echo "$PUSHED_JS_FILES" | sed 's|^js/||')
+
+	echo "TypeScript/JavaScript source files changed, running type check..."
+	cd "$REPO_ROOT/js"
+	pnpm type:check
+
+	echo "Running tests related to changed files..."
+	echo "$RELATIVE_FILES" | xargs pnpm exec vitest related --run --passWithNoTests
+else
+	echo "No TypeScript/JavaScript source files changed, skipping type check and tests."
+fi

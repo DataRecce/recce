@@ -38,7 +38,7 @@ export type GraphColumnNodeProps = NodeProps<LineageGraphColumnNode>;
 function GraphColumnNodeComponent(nodeProps: GraphColumnNodeProps) {
   const { id: columnNodeId, data } = nodeProps;
   const { id: nodeId } = data.node;
-  const { column, type, transformationType, changeStatus } = data;
+  const { column, type, transformationType, changeStatus, isImpacted } = data;
 
   // Get zoom level for content visibility
   const showContent = useStore((s) => s.transform[2] > 0.3);
@@ -52,6 +52,7 @@ function GraphColumnNodeComponent(nodeProps: GraphColumnNodeProps) {
     showContextMenu,
     isNodeHighlighted,
     isNodeShowingChangeAnalysis,
+    newCllExperience,
   } = useLineageViewContextSafe();
 
   // Computed state
@@ -71,6 +72,7 @@ function GraphColumnNodeComponent(nodeProps: GraphColumnNodeProps) {
     changeStatus: changeStatus as LineageColumnNodeData["changeStatus"],
     isHighlighted,
     isFocused,
+    isImpacted,
   };
 
   // Callbacks
@@ -85,6 +87,7 @@ function GraphColumnNodeComponent(nodeProps: GraphColumnNodeProps) {
       showContent={showContent}
       showChangeAnalysis={isShowingChangeAnalysis}
       isDark={isDark}
+      newCllExperience={newCllExperience}
       onContextMenu={handleContextMenu}
     />
   );

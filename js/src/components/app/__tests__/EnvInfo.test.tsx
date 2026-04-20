@@ -43,21 +43,6 @@ vi.mock("@datarecce/ui/lib/api/track", () => ({
   trackExploreAction: vi.fn(),
 }));
 
-// Mock react-icons
-vi.mock("react-icons/io5", () => ({
-  IoClose: () => <span data-testid="close-icon">X</span>,
-}));
-
-vi.mock("react-icons/lu", () => ({
-  LuExternalLink: () => <span data-testid="external-link-icon">↗</span>,
-  LuChartBarBig: () => <span data-testid="chart-icon">Chart</span>,
-  LuSave: () => <span data-testid="save-icon">Save</span>,
-}));
-
-vi.mock("react-icons/pi", () => ({
-  PiInfo: () => <span data-testid="info-icon">i</span>,
-}));
-
 // ============================================================================
 // Imports
 // ============================================================================
@@ -111,21 +96,7 @@ const createMockLineageGraph = (): LineageGraph => ({
       data: {
         id: "node1",
         name: "node1",
-        from: "both",
-        data: {
-          base: {
-            id: "node1",
-            unique_id: "node1",
-            name: "node1",
-            schema: "schema_a",
-          },
-          current: {
-            id: "node1",
-            unique_id: "node1",
-            name: "node1",
-            schema: "schema_a",
-          },
-        },
+        schema: "schema_a",
         resourceType: "model",
         packageName: "test",
         parents: {},
@@ -139,21 +110,7 @@ const createMockLineageGraph = (): LineageGraph => ({
       data: {
         id: "node2",
         name: "node2",
-        from: "both",
-        data: {
-          base: {
-            id: "node2",
-            unique_id: "node2",
-            name: "node2",
-            schema: "schema_b",
-          },
-          current: {
-            id: "node2",
-            unique_id: "node2",
-            name: "node2",
-            schema: "schema_c",
-          },
-        },
+        schema: "schema_c",
         resourceType: "model",
         packageName: "test",
         parents: {},
@@ -197,14 +154,18 @@ describe("EnvInfo", () => {
     it("renders environment info button", () => {
       render(<EnvInfo />);
 
-      expect(screen.getByTestId("info-icon")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Environment Info/i }),
+      ).toBeInTheDocument();
     });
 
     it("displays schema names for base and current", () => {
       render(<EnvInfo />);
 
-      expect(screen.getByText("schema_a, schema_b")).toBeInTheDocument();
-      expect(screen.getByText("schema_a, schema_c")).toBeInTheDocument();
+      // With merged lineage, both nodes have no changeStatus so schemas
+      // appear in both base and current sets
+      const schemaElements = screen.getAllByText("schema_a, schema_c");
+      expect(schemaElements.length).toBeGreaterThanOrEqual(2);
     });
 
     it("displays relative time for base and current", () => {
@@ -247,12 +208,11 @@ describe("EnvInfo", () => {
       // Verify dialog is open
       expect(screen.getByText("Environment Information")).toBeInTheDocument();
 
-      // Close dialog
-      const closeButton = screen
-        .getAllByTestId("close-icon")[0]
-        .closest("button");
-      if (closeButton) {
-        fireEvent.click(closeButton);
+      // Close dialog via the icon button in the dialog title
+      const dialogTitle = document.querySelector(".MuiDialogTitle-root");
+      const dialogTitleCloseButton = dialogTitle?.querySelector("button");
+      if (dialogTitleCloseButton) {
+        fireEvent.click(dialogTitleCloseButton);
       }
 
       // Wait for MUI transition to complete (default is ~225ms)
@@ -648,7 +608,9 @@ describe("EnvInfo", () => {
 
       render(<EnvInfo />);
 
-      expect(screen.getByTestId("info-icon")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Environment Info/i }),
+      ).toBeInTheDocument();
     });
 
     it("handles empty schemas", () => {
@@ -661,7 +623,9 @@ describe("EnvInfo", () => {
       render(<EnvInfo />);
 
       // Should render without crashing
-      expect(screen.getByTestId("info-icon")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Environment Info/i }),
+      ).toBeInTheDocument();
     });
 
     it("handles null dbt info", () => {
@@ -762,9 +726,11 @@ describe("extractSchemas", () => {
     const lineageGraph = createMockLineageGraph();
     const [baseSchemas, currentSchemas] = extractSchemas(lineageGraph);
 
+    // With merged lineage, both nodes have no changeStatus so schemas
+    // appear in both base and current sets
     expect(baseSchemas.size).toBe(2);
     expect(baseSchemas.has("schema_a")).toBe(true);
-    expect(baseSchemas.has("schema_b")).toBe(true);
+    expect(baseSchemas.has("schema_c")).toBe(true);
 
     expect(currentSchemas.size).toBe(2);
     expect(currentSchemas.has("schema_a")).toBe(true);
@@ -835,21 +801,7 @@ describe("extractSchemas", () => {
           data: {
             id: "node1",
             name: "node1",
-            from: "both",
-            data: {
-              base: {
-                id: "node1",
-                unique_id: "node1",
-                name: "node1",
-                schema: "schema_a",
-              },
-              current: {
-                id: "node1",
-                unique_id: "node1",
-                name: "node1",
-                schema: "schema_a",
-              },
-            },
+            schema: "schema_a",
             resourceType: "model",
             packageName: "test",
             parents: {},
@@ -863,21 +815,7 @@ describe("extractSchemas", () => {
           data: {
             id: "node2",
             name: "node2",
-            from: "both",
-            data: {
-              base: {
-                id: "node2",
-                unique_id: "node2",
-                name: "node2",
-                schema: "schema_a",
-              },
-              current: {
-                id: "node2",
-                unique_id: "node2",
-                name: "node2",
-                schema: "schema_a",
-              },
-            },
+            schema: "schema_a",
             resourceType: "model",
             packageName: "test",
             parents: {},

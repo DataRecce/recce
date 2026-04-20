@@ -29,12 +29,12 @@ make install-dev
 
 ## Python Version Support
 
-**Supported versions:** Python 3.9, 3.10, 3.11, 3.12, 3.13
+**Supported versions:** Python 3.10, 3.11, 3.12, 3.13
 
 **Testing strategy:**
 - Primary development: Python 3.10 or 3.11
 - CI tests all versions via tox
-- Any new dependencies MUST support Python 3.9+
+- Any new dependencies MUST support Python 3.10+
 
 **Check your version:**
 ```bash
@@ -48,26 +48,26 @@ python3 --version
 This repository contains TWO separate Python packages:
 
 ### 1. Main Package (recce)
-**Installation:** `setup.py`
+**Config:** `pyproject.toml` (hatchling build, uv workspace)
 **Command:** `recce`
 **Dependencies:** 20+ (FastAPI, dbt parsing, etc.)
 **Purpose:** Full dbt/SQLMesh validation tool with web UI
 
 ### 2. Cloud CLI (recce-cloud)
-**Installation:** `setup_cloud.py`
+**Config:** `recce_cloud/pyproject.toml`
 **Command:** `recce-cloud`
 **Dependencies:** 3 only (click, requests, rich)
 **Purpose:** Lightweight CI/CD artifact upload tool
 
-**CRITICAL: These are separate packages with separate installations:**
+**CRITICAL: These are separate packages managed via uv workspace:**
 ```bash
 # Main package
-pip install -e .[dev]        # Development
-pip install .                # Production
+make install-dev                        # Development (uv + pre-commit)
+uv pip install --system .               # Production
 
 # Cloud CLI
-python setup_cloud.py develop    # Development
-python setup_cloud.py install    # Production
+uv pip install --system -e ./recce_cloud        # Development
+uv pip install --system ./recce_cloud           # Production
 ```
 
 ## Development Setup
@@ -76,7 +76,7 @@ python setup_cloud.py install    # Production
 ```bash
 make install-dev
 # This does:
-# 1. pip install -e .[dev] - Installs package in editable mode with dev dependencies
+# 1. uv pip install --system -e .[dev,mcp] - Installs package in editable mode with dev dependencies
 # 2. pre-commit install - Sets up git hooks for Black, isort, flake8
 ```
 
@@ -187,14 +187,14 @@ make test-tox
 # Runs in parallel
 
 make test-tox-python-versions
-# Tests across Python 3.9, 3.10, 3.11, 3.12, 3.13
+# Tests across Python 3.10, 3.11, 3.12, 3.13
 # Uses latest dbt
 # Takes ~10-15 minutes
 ```
 
 **Tox configuration (tox.ini):**
 - Environments: `dbt1.6`, `dbt1.7`, `dbt1.8`, `dbt1.9`, `dbtlatest`
-- Python versions: `3.9`, `3.10`, `3.11`, `3.12`, `3.13`
+- Python versions: `3.10`, `3.11`, `3.12`, `3.13`
 - Base Python for dbt tests: 3.10
 - Dependencies: pytest, pytest-asyncio, pytest-cov, pandas, duckdb, httpx, dbt-duckdb
 - Only latest dbt tests include mcp>=1.0.0
@@ -203,7 +203,7 @@ make test-tox-python-versions
 
 **Error: "ModuleNotFoundError" after adding dependency**
 - **Cause:** Forgot to reinstall package
-- **Fix:** `pip install -e .[dev]` or `make install-dev`
+- **Fix:** `make install-dev` or `make install-dev`
 
 **Error: "flake8 errors" on commit**
 - **Cause:** Forgot to format code first
@@ -227,7 +227,7 @@ make test-tox-python-versions
 
 **Error: "No module named 'recce'" when running tests**
 - **Cause:** Package not installed in editable mode
-- **Fix:** `pip install -e .[dev]`
+- **Fix:** `make install-dev`
 
 ## Architecture - Key Modules
 
@@ -347,7 +347,7 @@ cd integration_tests/sqlmesh
    - Codecov upload
 
 2. **integration-tests.yaml** - Full smoke tests
-   - Matrix: Python 3.9-3.13 × dbt 1.6-latest
+   - Matrix: Python 3.10-3.13 × dbt 1.6-latest
    - Runs: `integration_tests/dbt/smoke_test.sh`
 
 3. **integration-tests-sqlmesh.yaml**
@@ -361,7 +361,7 @@ cd integration_tests/sqlmesh
 **Replicate CI locally:**
 ```bash
 # Style check
-pip install flake8 && make flake8
+make flake8
 
 # Basic tests
 make test
@@ -537,7 +537,7 @@ make deps-check                  # Check all deps (Docker required)
 2. **Pre-commit hooks are required** - Auto-installed with `make install-dev`
 3. **Never skip `make test` before committing** - Catches regressions early
 4. **All adapters must implement ALL BaseAdapter methods** - Partial implementations fail
-5. **Support Python 3.9+** - Check dependencies are compatible
+5. **Support Python 3.10+** - Check dependencies are compatible
 6. **State files are user-specific** - Never commit `recce_state.json`
 7. **Two separate packages** - Main (`setup.py`) and Cloud (`setup_cloud.py`)
 8. **Line length is 120** - Not 80, not 100, exactly 120
@@ -549,11 +549,11 @@ make deps-check                  # Check all deps (Docker required)
 **Server won't start:**
 - Check `recce debug` for artifact/connection issues
 - Verify dbt artifacts in `target/` and `target-base/`
-- Check Python version is 3.9+
+- Check Python version is 3.10+
 
 **Tests failing:**
 - Run with `-v` flag: `pytest tests/test_x.py -v`
-- Check test dependencies installed: `pip install -e .[dev]`
+- Check test dependencies installed: `make install-dev`
 - Try fresh install: `pip uninstall recce && make install-dev`
 
 **Import errors:**

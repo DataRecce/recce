@@ -23,7 +23,7 @@ class ExitCode(IntEnum):
 
 
 # URL constants
-DEFAULT_CLOUD_HOST = "https://cloud.datarecce.io"
+DEFAULT_CLOUD_HOST = "https://cloud.reccehq.com"
 
 # Docker URL constants (for local dev presigned URL rewriting)
 DOCKER_INTERNAL_URL_PREFIX = "http://host.docker.internal"

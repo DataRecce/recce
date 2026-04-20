@@ -37,25 +37,8 @@ function createMockLineageGraph(nodeIds: string[]): LineageGraph {
       data: {
         id,
         name: id,
-        from: "both",
-        data: {
-          base: {
-            id,
-            name: id,
-            unique_id: id,
-            resource_type: "model",
-            package_name: "test",
-            columns: {},
-          },
-          current: {
-            id,
-            name: id,
-            unique_id: id,
-            resource_type: "model",
-            package_name: "test",
-            columns: {},
-          },
-        },
+        resourceType: "model",
+        packageName: "test",
         parents: {},
         children: {},
       },
@@ -143,18 +126,40 @@ describe("toReactFlow", () => {
     expect(node3?.position).toEqual({ x: -50, y: 70 });
   });
 
-  it("preserves column node positions relative to parent", () => {
-    const lineageGraph = createMockLineageGraph(["node1"]);
-    // Add columns to the node
-    lineageGraph.nodes.node1.data.data.current = {
-      ...lineageGraph.nodes.node1.data.data.current!,
-      columns: {
-        col1: {
-          name: "col1",
-          type: "varchar",
+  it("should skip column nodes when newCllExperience is true", () => {
+    const graph = createMockLineageGraph(["model.test.a"]);
+
+    const cll = {
+      current: {
+        nodes: { "model.test.a": { impacted: true } },
+        columns: {
+          "model.test.a_id": {
+            name: "id",
+            type: "integer",
+            transformation_type: "passthrough",
+            change_status: undefined,
+          },
         },
+        parent_map: { "model.test.a": new Set<string>() },
       },
     };
+
+    const [nodes] = toReactFlow(graph, {
+      cll: cll as any,
+      newCllExperience: true,
+    });
+
+    const columnNodes = nodes.filter(
+      (n) => n.type === "lineageGraphColumnNode",
+    );
+    expect(columnNodes).toHaveLength(0);
+
+    const parentNode = nodes.find((n) => n.id === "model.test.a");
+    expect(parentNode?.height).toBe(60);
+  });
+
+  it("preserves column node positions relative to parent", () => {
+    const lineageGraph = createMockLineageGraph(["node1"]);
 
     const existingPositions = new Map([["node1", { x: 200, y: 300 }]]);
 

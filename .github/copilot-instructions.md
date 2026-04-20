@@ -8,7 +8,7 @@ tools and a web UI for comparing data environments, performing diffs, and collab
 **Key Info:**
 
 - **Type:** Python package (main) + TypeScript/React frontend + lightweight recce-cloud CLI
-- **Languages:** Python 3.9-3.13, TypeScript/React 19, Next.js 16
+- **Languages:** Python 3.10-3.13, TypeScript/React 19, Next.js 16
 - **Size:** ~50K lines (Python: 30K, TypeScript: 20K)
 - **Main Commands:** `recce server`, `recce run`, `recce-cloud upload`
 - **Frameworks:** FastAPI, Next.js, React 19, MUI, pnpm
@@ -23,7 +23,7 @@ tools and a web UI for comparing data environments, performing diffs, and collab
 # Always run these together - pre-commit hooks are required
 make install-dev
 # OR
-pip install -e .[dev]
+uv pip install --system -e .[dev,mcp]
 pre-commit install
 ```
 
@@ -51,7 +51,7 @@ pytest tests
 # With coverage report (htmlcov/index.html)
 make test-coverage
 
-# Multi-version testing (dbt 1.6-1.9, Python 3.9-3.13)
+# Multi-version testing (dbt 1.6-1.9, Python 3.10-3.13)
 make test-tox                    # ~5-10 minutes
 make test-tox-python-versions    # ~10-15 minutes
 ```
@@ -67,7 +67,7 @@ make deps-check            # Both ecosystems
 
 **Common Errors & Fixes:**
 
-- `ImportError` after adding dependencies: Run `pip install -e .[dev]` again
+- `ImportError` after adding dependencies: Run `make install-dev` again
 - `flake8` failures: Run `make format` first, then check `.flake8` config
 - Test failures: Check if dbt artifacts exist in `integration_tests/dbt/target` and `integration_tests/dbt/target-base`
 
@@ -144,7 +144,7 @@ pnpm type:check    # TypeScript compiler
 
 3. **integration-tests.yaml** - Full dbt smoke tests
 
-- Matrix: Python 3.9-3.13 × dbt 1.6-latest
+- Matrix: Python 3.10-3.13 × dbt 1.6-latest
 - Runs `integration_tests/dbt/smoke_test.sh`
 - Tests: `recce run`, `recce summary`, `recce server`
 
@@ -157,7 +157,7 @@ pnpm type:check    # TypeScript compiler
 
 ```bash
 # Python style check
-pip install flake8 && make flake8
+make flake8
 
 # Python tests (single version)
 make test
@@ -182,8 +182,8 @@ make deps-check
 
 ### Root Files
 
-- `setup.py` - Main package (recce), installs `recce` command
-- `setup_cloud.py` - Cloud CLI (recce-cloud), installs `recce-cloud` command
+- `pyproject.toml` - Main package config (recce), managed by uv + hatchling
+- `uv.lock` - Python dependency lockfile (uv workspace)
 - `Makefile` - All build/test commands
 - `tox.ini` - Multi-version testing (dbt 1.6-1.9)
 - `pyproject.toml` - Black/isort config (line-length: 120)
