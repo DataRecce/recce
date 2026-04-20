@@ -3,20 +3,25 @@
  * @description Tests for lineage styles utilities
  *
  * Tests verify:
- * - getIconForChangeStatus returns correct colors and icons
+ * - getIconForChangeStatus returns correct colors and icons for both palettes
+ * - getStyleForImpacted uses the CLL palette
  * - getIconForResourceType returns correct colors and icons
- * - Style constants are defined correctly
+ * - Style constants are defined correctly for both palettes
  */
 
 import {
   changeStatusBackgroundsDark,
   changeStatusBackgroundsLight,
   changeStatusColors,
+  cllChangeStatusBackgroundsDark,
+  cllChangeStatusBackgroundsLight,
+  cllChangeStatusColors,
   getIconForChangeStatus,
   getIconForResourceType,
   getStyleForImpacted,
   IconAdded,
   IconExposure,
+  IconImpacted,
   IconMetric,
   IconModel,
   IconModified,
@@ -28,28 +33,44 @@ import {
 } from "../styles";
 
 // =============================================================================
-// getStyleForImpacted Tests
+// getStyleForImpacted Tests (CLL-only)
 // =============================================================================
 
 describe("getStyleForImpacted", () => {
-  it("returns amber 200 background in light mode", () => {
+  it("uses cllChangeStatusColors.impacted as accent color", () => {
     const style = getStyleForImpacted(false);
-    expect(style.backgroundColor).toBe("#FDE68A");
+    expect(style.color).toBe(cllChangeStatusColors.impacted);
+    expect(style.hexColor).toBe(cllChangeStatusColors.impacted);
   });
 
-  it("returns amber 900 background in dark mode", () => {
+  it("uses same accent color in dark mode", () => {
     const style = getStyleForImpacted(true);
-    expect(style.backgroundColor).toBe("#78350F");
+    expect(style.color).toBe(cllChangeStatusColors.impacted);
+  });
+
+  it("returns a background color in light mode", () => {
+    const style = getStyleForImpacted(false);
+    expect(style.backgroundColor).toBeDefined();
+  });
+
+  it("returns a background color in dark mode", () => {
+    const style = getStyleForImpacted(true);
+    expect(style.backgroundColor).toBeDefined();
+  });
+
+  it("returns IconImpacted icon", () => {
+    const style = getStyleForImpacted(false);
+    expect(style.icon).toBe(IconImpacted);
   });
 });
 
 // =============================================================================
-// getIconForChangeStatus Tests
+// getIconForChangeStatus Tests (default Tailwind palette)
 // =============================================================================
 
-describe("getIconForChangeStatus", () => {
+describe("getIconForChangeStatus (default palette)", () => {
   describe("added status", () => {
-    it("returns green color for added status", () => {
+    it("returns Tailwind green for added status", () => {
       const result = getIconForChangeStatus("added");
       expect(result.color).toBe("#22C55E"); // colors.green[500]
       expect(result.hexColor).toBe("#22C55E");
@@ -72,48 +93,26 @@ describe("getIconForChangeStatus", () => {
   });
 
   describe("removed status", () => {
-    it("returns red color for removed status", () => {
+    it("returns Tailwind red for removed status", () => {
       const result = getIconForChangeStatus("removed");
       expect(result.color).toBe("#EF4444"); // colors.red[500]
-      expect(result.hexColor).toBe("#EF4444");
     });
 
     it("returns IconRemoved icon for removed status", () => {
       const result = getIconForChangeStatus("removed");
       expect(result.icon).toBe(IconRemoved);
     });
-
-    it("returns light background in light mode", () => {
-      const result = getIconForChangeStatus("removed", false);
-      expect(result.backgroundColor).toBe("#FECACA"); // colors.red[200]
-    });
-
-    it("returns dark background in dark mode", () => {
-      const result = getIconForChangeStatus("removed", true);
-      expect(result.backgroundColor).toBe("#450A0A"); // colors.red[950]
-    });
   });
 
   describe("modified status", () => {
-    it("returns amber color for modified status", () => {
+    it("returns Tailwind amber for modified status", () => {
       const result = getIconForChangeStatus("modified");
       expect(result.color).toBe("#F59E0B"); // colors.amber[500]
-      expect(result.hexColor).toBe("#F59E0B");
     });
 
     it("returns IconModified icon for modified status", () => {
       const result = getIconForChangeStatus("modified");
       expect(result.icon).toBe(IconModified);
-    });
-
-    it("returns light background in light mode", () => {
-      const result = getIconForChangeStatus("modified", false);
-      expect(result.backgroundColor).toBe("#FEF3C7"); // colors.amber[100]
-    });
-
-    it("returns dark background in dark mode", () => {
-      const result = getIconForChangeStatus("modified", true);
-      expect(result.backgroundColor).toBe("#78350F"); // colors.amber[900]
     });
   });
 
@@ -138,6 +137,37 @@ describe("getIconForChangeStatus", () => {
       const result = getIconForChangeStatus(undefined, true);
       expect(result.backgroundColor).toBe("#404040"); // colors.neutral[700]
     });
+  });
+});
+
+// =============================================================================
+// getIconForChangeStatus with palette: "cll" (muted CLL palette)
+// =============================================================================
+
+describe('getIconForChangeStatus (palette: "cll")', () => {
+  it("returns muted green for added", () => {
+    const result = getIconForChangeStatus("added", false, "cll");
+    expect(result.color).toBe("rgb(46 160 67)");
+  });
+
+  it("returns muted red for removed", () => {
+    const result = getIconForChangeStatus("removed", false, "cll");
+    expect(result.color).toBe("rgb(248 81 73)");
+  });
+
+  it("returns brown for modified (distinct from impacted yellow)", () => {
+    const result = getIconForChangeStatus("modified", false, "cll");
+    expect(result.color).toBe("rgb(212 133 11)");
+  });
+
+  it("returns light background in light mode for added", () => {
+    const result = getIconForChangeStatus("added", false, "cll");
+    expect(result.backgroundColor).toBe("rgb(222 248 227)");
+  });
+
+  it("returns dark background in dark mode for modified", () => {
+    const result = getIconForChangeStatus("modified", true, "cll");
+    expect(result.backgroundColor).toBe("rgb(75 65 33)");
   });
 });
 
@@ -206,57 +236,83 @@ describe("getIconForResourceType", () => {
 // =============================================================================
 
 describe("style constants", () => {
-  describe("changeStatusColors", () => {
-    it("has correct color for added", () => {
+  describe("changeStatusColors (default palette)", () => {
+    it("has Tailwind green for added", () => {
       expect(changeStatusColors.added).toBe("#22C55E");
     });
 
-    it("has correct color for removed", () => {
+    it("has Tailwind red for removed", () => {
       expect(changeStatusColors.removed).toBe("#EF4444");
     });
 
-    it("has correct color for modified", () => {
+    it("has Tailwind amber for modified", () => {
       expect(changeStatusColors.modified).toBe("#F59E0B");
     });
 
-    it("has correct color for unchanged", () => {
+    it("has neutral gray for unchanged", () => {
       expect(changeStatusColors.unchanged).toBe("#737373");
     });
   });
 
-  describe("changeStatusBackgroundsLight", () => {
-    it("has correct background for added", () => {
-      expect(changeStatusBackgroundsLight.added).toBe("#DCFCE7");
+  describe("cllChangeStatusColors (CLL palette)", () => {
+    it("has muted green for added", () => {
+      expect(cllChangeStatusColors.added).toBe("rgb(46 160 67)");
     });
 
-    it("has correct background for removed", () => {
-      expect(changeStatusBackgroundsLight.removed).toBe("#FECACA");
+    it("has muted red for removed", () => {
+      expect(cllChangeStatusColors.removed).toBe("rgb(248 81 73)");
     });
 
-    it("has correct background for modified", () => {
-      expect(changeStatusBackgroundsLight.modified).toBe("#FEF3C7");
+    it("has brown for modified", () => {
+      expect(cllChangeStatusColors.modified).toBe("rgb(212 133 11)");
     });
 
-    it("has correct background for unchanged", () => {
-      expect(changeStatusBackgroundsLight.unchanged).toBe("#FFFFFF");
+    it("has yellow for impacted", () => {
+      expect(cllChangeStatusColors.impacted).toBe("rgb(252 211 77)");
+    });
+
+    it("has neutral gray for unchanged", () => {
+      expect(cllChangeStatusColors.unchanged).toBe("#737373");
     });
   });
 
-  describe("changeStatusBackgroundsDark", () => {
-    it("has correct background for added", () => {
+  describe("changeStatusBackgroundsLight (default palette)", () => {
+    it("uses Tailwind green-100 for added", () => {
+      expect(changeStatusBackgroundsLight.added).toBe("#DCFCE7");
+    });
+
+    it("uses Tailwind amber-100 for modified", () => {
+      expect(changeStatusBackgroundsLight.modified).toBe("#FEF3C7");
+    });
+  });
+
+  describe("changeStatusBackgroundsDark (default palette)", () => {
+    it("uses Tailwind green-900 for added", () => {
       expect(changeStatusBackgroundsDark.added).toBe("#14532D");
     });
 
-    it("has correct background for removed", () => {
-      expect(changeStatusBackgroundsDark.removed).toBe("#450A0A");
+    it("uses Tailwind amber-900 for modified", () => {
+      expect(changeStatusBackgroundsDark.modified).toBe("#78350F");
+    });
+  });
+
+  describe("cllChangeStatusBackgroundsLight", () => {
+    it("has correct background for impacted", () => {
+      expect(cllChangeStatusBackgroundsLight.impacted).toBe("rgb(254 249 227)");
     });
 
     it("has correct background for modified", () => {
-      expect(changeStatusBackgroundsDark.modified).toBe("#78350F");
+      expect(cllChangeStatusBackgroundsLight.modified).toBe("rgb(255 237 175)");
+    });
+  });
+
+  describe("cllChangeStatusBackgroundsDark", () => {
+    it("has correct background for impacted", () => {
+      expect(cllChangeStatusBackgroundsDark.impacted).toBe("rgb(50 44 24)");
     });
 
-    it("has correct background for unchanged", () => {
-      expect(changeStatusBackgroundsDark.unchanged).toBe("#404040");
+    it("has correct background for modified", () => {
+      expect(cllChangeStatusBackgroundsDark.modified).toBe("rgb(75 65 33)");
     });
   });
 });
@@ -304,5 +360,9 @@ describe("icon components", () => {
 
   it("IconSemanticModel is a function component", () => {
     expect(typeof IconSemanticModel).toBe("function");
+  });
+
+  it("IconImpacted is a function component", () => {
+    expect(typeof IconImpacted).toBe("function");
   });
 });

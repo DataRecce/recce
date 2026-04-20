@@ -489,6 +489,12 @@ class DbtAdapter(BaseAdapter):
         if primary_key:
             result["primary_key"] = primary_key
 
+        # DRC-3263: include raw_code so the frontend can fetch it on demand
+        # when it is stripped from the bulk /info lineage payload.
+        raw_code = node.get("raw_code")
+        if raw_code is not None:
+            result["raw_code"] = raw_code
+
         return result
 
     @track_timing("artifact_load")
@@ -887,8 +893,7 @@ class DbtAdapter(BaseAdapter):
         base = lineage_diff.base
         current = lineage_diff.current
 
-        base_manifest = as_manifest(self.get_manifest(True))
-        curr_manifest = as_manifest(self.get_manifest(False))
+        curr_manifest = self.manifest
         breaking_perf_tracker.record_checkpoint("manifest")
 
         def ref_func(*args):
@@ -940,13 +945,13 @@ class DbtAdapter(BaseAdapter):
 
                 base_sql = self.generate_sql(
                     base_node.get("raw_code"),
+                    base=True,
                     context=jinja_context,
-                    provided_manifest=base_manifest,
                 )
                 curr_sql = self.generate_sql(
                     curr_node.get("raw_code"),
+                    base=False,
                     context=jinja_context,
-                    provided_manifest=curr_manifest,
                 )
                 base_schema = _get_schema(base)
                 curr_schema = _get_schema(current)
@@ -1125,7 +1130,11 @@ class DbtAdapter(BaseAdapter):
                     cll_data_one = self._deserialize_cll_data(cached_json)
                     node_cache_hits += 1
                 except Exception as e:
-                    logger.debug("[cll cache] corrupted entry for %s, recomputing: %s", node_id, e)
+                    logger.debug(
+                        "[cll cache] corrupted entry for %s, recomputing: %s",
+                        node_id,
+                        e,
+                    )
                     cached_json = None
 
             if not cached_json:
@@ -1133,7 +1142,11 @@ class DbtAdapter(BaseAdapter):
                 try:
                     cll_data_one = deepcopy(self.get_cll_cached(node_id, base=False))
                 except Exception as e:
-                    logger.debug("[cll cache] computation failed for %s, skipping: %s", node_id, e)
+                    logger.debug(
+                        "[cll cache] computation failed for %s, skipping: %s",
+                        node_id,
+                        e,
+                    )
                     continue
                 if cll_data_one is None:
                     continue
@@ -1415,7 +1428,11 @@ class DbtAdapter(BaseAdapter):
                     if node_diff is not None and node_diff.change is not None:
                         extra_node_ids.add(nid)
                         if no_cll:
-                            if node_diff.change.category in ["breaking", "partial_breaking", "unknown"]:
+                            if node_diff.change.category in [
+                                "breaking",
+                                "partial_breaking",
+                                "unknown",
+                            ]:
                                 anchor_node_ids.add(nid)
                         else:
                             if node_diff.change.category in ["breaking", "unknown"]:
@@ -1433,7 +1450,11 @@ class DbtAdapter(BaseAdapter):
                 if node_diff is not None and node_diff.change is not None:
                     extra_node_ids.add(node_id)
                     if no_cll:
-                        if node_diff.change.category in ["breaking", "partial_breaking", "unknown"]:
+                        if node_diff.change.category in [
+                            "breaking",
+                            "partial_breaking",
+                            "unknown",
+                        ]:
                             anchor_node_ids.add(node_id)
                     else:
                         if node_diff.change.category in ["breaking", "unknown"]:
@@ -1543,7 +1564,7 @@ class DbtAdapter(BaseAdapter):
                 cll_data.parent_map[column_id] = set()
             return cll_data
 
-        manifest = as_manifest(self.get_manifest(base))
+        manifest = self.manifest if base is False else self.previous_state.manifest
         catalog = self.curr_catalog if base is False else self.base_catalog
         resource_type = node.resource_type
         if resource_type not in {"model", "seed", "source", "snapshot"}:
@@ -1662,7 +1683,7 @@ class DbtAdapter(BaseAdapter):
             if pre_compiled:
                 compiled_sql = pre_compiled
             else:
-                compiled_sql = self.generate_sql(raw_code, base=base, context=jinja_context, provided_manifest=manifest)
+                compiled_sql = self.generate_sql(raw_code, base=base, context=jinja_context)
             dialect = self.adapter.type()
             if self.get_manifest(base).metadata.adapter_type is not None:
                 dialect = self.get_manifest(base).metadata.adapter_type
@@ -1720,7 +1741,12 @@ class DbtAdapter(BaseAdapter):
                 columns = {}
                 for col_name, col_metadata in catalog.nodes[unique_id].columns.items():
                     column_id = f"{unique_id}_{col_name}"
-                    col = CllColumn(id=column_id, name=col_name, table_id=unique_id, type=col_metadata.type)
+                    col = CllColumn(
+                        id=column_id,
+                        name=col_name,
+                        table_id=unique_id,
+                        type=col_metadata.type,
+                    )
                     columns[col_name] = col
                 node.columns = columns
 
@@ -1735,7 +1761,12 @@ class DbtAdapter(BaseAdapter):
                 columns = {}
                 for col_name, col_metadata in catalog.sources[unique_id].columns.items():
                     column_id = f"{unique_id}_{col_name}"
-                    col = CllColumn(id=column_id, name=col_name, table_id=unique_id, type=col_metadata.type)
+                    col = CllColumn(
+                        id=column_id,
+                        name=col_name,
+                        table_id=unique_id,
+                        type=col_metadata.type,
+                    )
                     columns[col_name] = col
                 node.columns = columns
 

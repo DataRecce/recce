@@ -28,7 +28,18 @@ vi.mock("@datarecce/ui/contexts", () => ({
 // Mock @datarecce/ui/hooks
 vi.mock("@datarecce/ui/hooks", () => ({
   useIsDark: vi.fn(() => false),
+  useApiConfig: vi.fn(() => ({ apiClient: { get: vi.fn() } })),
 }));
+
+// Mock useQuery so on-demand raw_code fetch never actually runs in these tests
+// (raw_code is always supplied inline by the test fixtures).
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
+  };
+});
 
 // Mock editor components from @datarecce/ui/primitives
 vi.mock("@datarecce/ui/primitives", () => ({

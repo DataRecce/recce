@@ -201,12 +201,17 @@ def _set_compiled_code(adapter, node_id, compiled_code, base=False):
 
     The test helper's set_artifacts round-trips through writable_manifest() which
     strips compiled_code. This helper patches it back directly on both the
-    WritableManifest and the Manifest used by the adapter.
+    WritableManifest and the resolved Manifest used by the adapter.
     """
     writable = adapter.curr_manifest if not base else adapter.base_manifest
     if node_id in writable.nodes:
         writable.nodes[node_id].compiled_code = compiled_code
         writable.nodes[node_id].compiled = True
+
+    resolved = adapter.manifest if not base else adapter.previous_state.manifest
+    if node_id in resolved.nodes:
+        resolved.nodes[node_id].compiled_code = compiled_code
+        resolved.nodes[node_id].compiled = True
 
 
 def test_cll_with_compiled_code(dbt_test_helper):

@@ -171,18 +171,24 @@ export async function getServerInfo(
 }
 
 /**
+ * Per-environment model detail returned by /api/model/:model
+ *
+ * `raw_code` is served on-demand here so it can be stripped from the bulk
+ * /api/info lineage payload (DRC-3263).
+ */
+export interface ModelEnvDetail {
+  columns?: Record<string, NodeColumnData>;
+  primary_key?: string;
+  raw_code?: string;
+}
+
+/**
  * Model info result from /api/model/:model endpoint
  */
 export interface ModelInfoResult {
   model: {
-    base: {
-      columns?: Record<string, NodeColumnData>;
-      primary_key?: string;
-    };
-    current: {
-      columns?: Record<string, NodeColumnData>;
-      primary_key?: string;
-    };
+    base: ModelEnvDetail;
+    current: ModelEnvDetail;
   };
 }
 

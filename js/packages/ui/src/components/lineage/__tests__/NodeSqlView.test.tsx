@@ -539,8 +539,8 @@ describe("NodeSqlView", () => {
 
       render(<NodeSqlView {...props} />);
 
-      // Should render empty editor
-      expect(screen.getByTestId("mock-code-editor")).toHaveTextContent("");
+      // Should show "No code available" when raw_code is missing from all sources
+      expect(screen.getByText("No code available")).toBeInTheDocument();
     });
   });
 

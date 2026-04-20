@@ -105,6 +105,7 @@ import {
 import {
   useLineageCopyToClipboard,
   useNavToCheck,
+  usePublishedImpactSets,
   useResizeObserver,
   useTrackLineageRender,
 } from "./hooks";
@@ -125,6 +126,9 @@ import {
   LineageViewNoChanges,
 } from "./states";
 import { LineageViewTopBarOss as LineageViewTopBar } from "./topbar/LineageViewTopBarOss";
+
+/** Hide MiniMap when node count exceeds this threshold to reduce DOM pressure */
+export const MINIMAP_NODE_THRESHOLD = 500;
 
 /**
  * Compute impacted node IDs and column IDs in a single pass over the CLL data.
@@ -475,8 +479,11 @@ export function PrivateLineageView(
 
   // Guard: auto-trigger impact analysis only once per mount
   const impactAtStartupFired = useRef(false);
-  const impactedNodeIdsRef = useRef<Set<string>>(new Set());
-  const impactedColumnIdsRef = useRef<Set<string>>(new Set());
+  const {
+    impactedNodeIds,
+    impactedColumnIds,
+    publish: publishImpactSets,
+  } = usePublishedImpactSets();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only run when lineageGraph changes (initial load/refetch).
   useLayoutEffect(() => {
@@ -621,8 +628,7 @@ export function PrivateLineageView(
       // Snapshot impacted sets during impact analysis so they stay stable
       // when the user clicks a column (which returns column-scoped CLL data).
       if (impacted && cllInput?.change_analysis && !cllInput?.column) {
-        impactedNodeIdsRef.current = impacted.nodeIds;
-        impactedColumnIdsRef.current = impacted.columnIds;
+        publishImpactSets(impacted);
       }
 
       // Track lineage view render
@@ -911,8 +917,7 @@ export function PrivateLineageView(
 
     // Snapshot impacted node and column IDs during impact analysis (see layout effect).
     if (impacted && !cllInput2?.column) {
-      impactedNodeIdsRef.current = impacted.nodeIds;
-      impactedColumnIdsRef.current = impacted.columnIds;
+      publishImpactSets(impacted);
     }
 
     // Track lineage view render
@@ -1141,8 +1146,8 @@ export function PrivateLineageView(
     selectParentNodes,
     selectChildNodes,
     deselect,
-    impactedNodeIds: impactedNodeIdsRef.current,
-    impactedColumnIds: impactedColumnIdsRef.current,
+    impactedNodeIds,
+    impactedColumnIds,
     isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
     isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),
     isEdgeHighlighted: (source, target) => {
@@ -1439,7 +1444,12 @@ export function PrivateLineageView(
             <ImageDownloadModal />
             <Panel position="bottom-left">
               <Stack spacing="5px">
-                {isModelsChanged && <LineageLegend variant="changeStatus" />}
+                {isModelsChanged && (
+                  <LineageLegend
+                    variant="changeStatus"
+                    newCllExperience={newCllExperience}
+                  />
+                )}
                 {viewOptions.column_level_lineage && (
                   <LineageLegend variant="transformation" />
                 )}
@@ -1465,16 +1475,20 @@ export function PrivateLineageView(
                 )}
               </Stack>
             </Panel>
-            <MiniMap
-              nodeColor={getNodeColor}
-              nodeStrokeWidth={3}
-              zoomable
-              pannable
-              bgColor={isDark ? colors.neutral[800] : undefined}
-              maskColor={
-                isDark ? `${colors.neutral[900]}99` : `${colors.neutral[100]}99`
-              }
-            />
+            {nodes.length <= MINIMAP_NODE_THRESHOLD && (
+              <MiniMap
+                nodeColor={getNodeColor}
+                nodeStrokeWidth={3}
+                zoomable
+                pannable
+                bgColor={isDark ? colors.neutral[800] : undefined}
+                maskColor={
+                  isDark
+                    ? `${colors.neutral[900]}99`
+                    : `${colors.neutral[100]}99`
+                }
+              />
+            )}
             {selectMode === "action_result" && (
               <Panel
                 position="bottom-center"
