@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import React, { forwardRef, useMemo, useState } from "react";
 import type { IconType } from "react-icons";
 import type { LineageGraphNode } from "../..";
-import { HSplit, isSchemaChanged } from "../..";
+import { HSplit, getModelInfo } from "../..";
 import { type Check, cacheKeys, select } from "../../api";
 import { useLineageGraphContext } from "../../contexts";
 import { useApiConfig, useIsDark } from "../../hooks";
@@ -46,7 +46,6 @@ const NodelistItem = ({
   isDark: boolean;
 }) => {
   const { icon } = getIconForResourceType(node.data.resourceType);
-  const { base, current } = node.data.data;
 
   let statusIcon: IconComponent | IconType | undefined;
   let statusColor: string | undefined;
@@ -54,10 +53,10 @@ const NodelistItem = ({
   if (schemaChanged) {
     statusIcon = findByRunType("schema_diff").icon;
     statusColor = getIconForChangeStatus("modified").color;
-  } else if (!base && current) {
+  } else if (node.data.changeStatus === "added") {
     statusIcon = getIconForChangeStatus("added").icon;
     statusColor = getIconForChangeStatus("added").color;
-  } else if (base && !current) {
+  } else if (node.data.changeStatus === "removed") {
     statusIcon = getIconForChangeStatus("removed").icon;
     statusColor = getIconForChangeStatus("removed").color;
   }
@@ -162,15 +161,13 @@ export function PrivateSchemaDiffView(
 
     for (const node of filteredNodes) {
       if (
-        isSchemaChanged(
-          node.data.data.base?.columns,
-          node.data.data.current?.columns,
-        )
+        node.data.change?.columns &&
+        Object.keys(node.data.change.columns).length > 0
       ) {
         changedNodes.push(node.id);
-      } else if (!node.data.data.base && node.data.data.current) {
+      } else if (node.data.changeStatus === "added") {
         addedNodes.push(node.id);
-      } else if (node.data.data.base && !node.data.data.current) {
+      } else if (node.data.changeStatus === "removed") {
         removedNodes.push(node.id);
       }
     }
@@ -202,6 +199,14 @@ export function PrivateSchemaDiffView(
   }, [params.node_id, data?.nodes, lineageGraph]);
 
   const [selected, setSelected] = useState<number>(0);
+
+  const selectedNode = selected < nodes.length ? nodes[selected] : undefined;
+  const { data: selectedModelDetail } = useQuery({
+    queryKey: ["modelDetail", selectedNode?.id],
+    queryFn: () => getModelInfo(selectedNode!.id, apiClient),
+    enabled: !!selectedNode && !!apiClient,
+    staleTime: 5 * 60 * 1000,
+  });
 
   if (isLoading) {
     return (
@@ -251,8 +256,8 @@ export function PrivateSchemaDiffView(
     return (
       <HSplit sizes={[80, 20]} minSize={30} style={{ height: "100%" }}>
         <SchemaView
-          base={node.data.data.base}
-          current={node.data.data.current}
+          base={selectedModelDetail?.model?.base}
+          current={selectedModelDetail?.model?.current}
           columnChanges={node.data.change?.columns}
           enableScreenshot={true}
           showMenu={false}
