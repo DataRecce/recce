@@ -21,6 +21,7 @@ import {
   useLineageViewContext,
   useRecceServerFlag,
 } from "../../contexts";
+import { useInlineProfile } from "../../hooks";
 import { trackColumnLevelLineage } from "../../lib/api/track";
 import type {
   SchemaDiffRow,
@@ -222,6 +223,51 @@ export function PrivateSchemaView(
   const lineageViewContext = useLineageViewContext();
   const { data: serverFlags } = useRecceServerFlag();
   const newCllExperience = serverFlags?.new_cll_experience ?? false;
+  const inlineProfileFlag = serverFlags?.inline_profile ?? false;
+  const inlineProfileActive = newCllExperience && inlineProfileFlag;
+
+  const nodeResourceType = current?.resource_type ?? base?.resource_type;
+  const isProfilable =
+    nodeResourceType === "model" ||
+    nodeResourceType === "seed" ||
+    nodeResourceType === "snapshot" ||
+    nodeResourceType === "source";
+
+  const columnsInBothEnvs = useMemo(() => {
+    if (!base?.columns || !current?.columns) return [] as string[];
+    const baseSet = new Set(Object.keys(base.columns));
+    return Object.keys(current.columns).filter((c) => baseSet.has(c));
+  }, [base?.columns, current?.columns]);
+
+  const impactedColumnsForProfile = useMemo(() => {
+    if (!inlineProfileActive) return [] as string[];
+    const nodeId = current?.id ?? base?.id;
+    const impactedSet = lineageViewContext?.impactedColumnIds;
+    if (!nodeId || !impactedSet) return [] as string[];
+    return columnsInBothEnvs.filter((c) => impactedSet.has(`${nodeId}_${c}`));
+  }, [
+    inlineProfileActive,
+    current?.id,
+    base?.id,
+    lineageViewContext?.impactedColumnIds,
+    columnsInBothEnvs,
+  ]);
+
+  const modelName = current?.name ?? base?.name;
+
+  const {
+    profileByColumn,
+    isLoading: _profileLoading,
+    error: profileError,
+  } = useInlineProfile({
+    modelName,
+    columns: impactedColumnsForProfile,
+    enabled:
+      inlineProfileActive &&
+      isProfilable &&
+      impactedColumnsForProfile.length > 0,
+  });
+
   const [gridApi, setGridApi] = useState<GridApi<SchemaDiffRow> | null>(null);
   const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(
     new Map(),
@@ -254,6 +300,16 @@ export function PrivateSchemaView(
         onViewCode,
         impactedColumns,
         nodeId,
+        profileByColumn:
+          profileByColumn.size > 0
+            ? (profileByColumn as Map<
+                string,
+                {
+                  base?: Record<string, unknown>;
+                  current?: Record<string, unknown>;
+                }
+              >)
+            : undefined,
       },
     );
   }, [
@@ -264,6 +320,7 @@ export function PrivateSchemaView(
     columnChanges,
     onViewCode,
     impactedColumns,
+    profileByColumn,
   ]);
 
   const { lineageGraph, isActionAvailable } = useLineageGraphContext();
@@ -396,6 +453,11 @@ export function PrivateSchemaView(
         <></>
       )}
 
+      {profileError ? (
+        <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
+          Couldn&apos;t load column profile
+        </MuiAlert>
+      ) : null}
       <SchemaLegend />
       {rows.length > 0 && (
         <ScreenshotDataGrid
