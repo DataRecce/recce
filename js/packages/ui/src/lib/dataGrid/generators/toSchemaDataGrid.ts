@@ -19,6 +19,7 @@ import {
   renderIndexCell,
 } from "../../../components/ui/dataGrid/schemaCells";
 import { mergeKeysWithStatus } from "../../../utils";
+import { toDiffColumnConfigured } from "../../../utils/dataGrid/configured";
 
 // ============================================================================
 // Types
@@ -60,6 +61,18 @@ export interface SchemaDataGridOptions {
   impactedColumns?: Set<string>;
   /** Node unique_id, used to build column IDs for impacted lookup */
   nodeId?: string;
+  /**
+   * Per-column profile stats keyed by lower-cased column name. When provided,
+   * toSchemaDataGrid appends five stat column defs and populates base__* /
+   * current__* fields on each row.
+   */
+  profileByColumn?: Map<
+    string,
+    {
+      base?: Record<string, unknown>;
+      current?: Record<string, unknown>;
+    }
+  >;
 }
 
 export interface SchemaDataGridResult {
@@ -201,6 +214,68 @@ export function toSchemaDataGrid(
       const columnId = `${nodeId}_${row.name}`;
       if (impactedColumns.has(columnId)) {
         row.isImpacted = true;
+      }
+    }
+  }
+
+  // Append profile stat columns when profileByColumn is provided.
+  if (options.profileByColumn) {
+    const statSpecs = [
+      {
+        field: "not_null_proportion",
+        header: "% non-null",
+        columnType: "number" as const,
+        columnRenderMode: "percent" as const,
+      },
+      {
+        field: "min",
+        header: "min",
+        columnType: "text" as const,
+      },
+      {
+        field: "max",
+        header: "max",
+        columnType: "text" as const,
+      },
+      {
+        field: "avg",
+        header: "avg",
+        columnType: "number" as const,
+      },
+      {
+        field: "is_unique",
+        header: "unique",
+        columnType: "boolean" as const,
+      },
+    ];
+
+    for (const spec of statSpecs) {
+      const col = toDiffColumnConfigured({
+        name: spec.field,
+        columnStatus: "",
+        columnType: spec.columnType,
+        columnRenderMode: spec.columnRenderMode,
+        displayMode: "inline",
+      });
+      columns.push({
+        ...(col as ColDef<SchemaDiffRow>),
+        headerName: spec.header,
+      });
+    }
+
+    for (const row of rows) {
+      const entry = options.profileByColumn.get(row.name.toLowerCase());
+      if (!entry) continue;
+      for (const spec of statSpecs) {
+        const baseVal = entry.base?.[spec.field];
+        const currentVal = entry.current?.[spec.field];
+        if (baseVal !== undefined) {
+          (row as Record<string, unknown>)[`base__${spec.field}`] = baseVal;
+        }
+        if (currentVal !== undefined) {
+          (row as Record<string, unknown>)[`current__${spec.field}`] =
+            currentVal;
+        }
       }
     }
   }

@@ -866,3 +866,145 @@ describe("toSingleEnvDataGrid - Cell Classes", () => {
     });
   });
 });
+
+describe("toSchemaDataGrid — profileByColumn", () => {
+  function baseColumns() {
+    return {
+      status: { type: "text", name: "status", index: 0 },
+      amount: { type: "number", name: "amount", index: 1 },
+    } as unknown as NodeData["columns"];
+  }
+
+  function currentColumns() {
+    return {
+      status: { type: "text", name: "status", index: 0 },
+      amount: { type: "number", name: "amount", index: 1 },
+    } as unknown as NodeData["columns"];
+  }
+
+  it("does not append stat columns when profileByColumn is undefined", () => {
+    const { columns } = toSchemaDataGrid(
+      mergeColumns(baseColumns(), currentColumns()),
+    );
+    // Existing index + name columns only.
+    expect(columns).toHaveLength(2);
+    expect(asColumn(columns[0]).field).toBe("index");
+    expect(asColumn(columns[1]).field).toBe("name");
+  });
+
+  it("appends five stat columns when profileByColumn is provided", () => {
+    const profileByColumn = new Map<
+      string,
+      {
+        base?: Record<string, unknown>;
+        current?: Record<string, unknown>;
+      }
+    >([
+      [
+        "status",
+        {
+          base: { not_null_proportion: 1.0, is_unique: false },
+          current: { not_null_proportion: 0.98, is_unique: false },
+        },
+      ],
+    ]);
+    const { columns } = toSchemaDataGrid(
+      mergeColumns(baseColumns(), currentColumns()),
+      { profileByColumn: profileByColumn as never },
+    );
+    expect(columns).toHaveLength(7);
+    const fields = columns.map((c) => asColumn(c).field);
+    expect(fields).toEqual([
+      "index",
+      "name",
+      "not_null_proportion",
+      "min",
+      "max",
+      "avg",
+      "is_unique",
+    ]);
+  });
+
+  it("populates base__ and current__ fields on rows with profile data", () => {
+    const profileByColumn = new Map<
+      string,
+      {
+        base?: Record<string, unknown>;
+        current?: Record<string, unknown>;
+      }
+    >([
+      [
+        "status",
+        {
+          base: {
+            not_null_proportion: 1.0,
+            min: "a",
+            max: "z",
+            is_unique: false,
+          },
+          current: {
+            not_null_proportion: 0.98,
+            min: "a",
+            max: "z",
+            is_unique: false,
+          },
+        },
+      ],
+    ]);
+    const { rows } = toSchemaDataGrid(
+      mergeColumns(baseColumns(), currentColumns()),
+      { profileByColumn: profileByColumn as never },
+    );
+    const statusRow = rows.find((r) => r.name === "status") as RowObjectType;
+    expect(statusRow.base__not_null_proportion).toBe(1.0);
+    expect(statusRow.current__not_null_proportion).toBe(0.98);
+    expect(statusRow.base__min).toBe("a");
+    expect(statusRow.current__max).toBe("z");
+    expect(statusRow.current__is_unique).toBe(false);
+  });
+
+  it("leaves rows without profile data with undefined stat fields", () => {
+    const profileByColumn = new Map<
+      string,
+      {
+        base?: Record<string, unknown>;
+        current?: Record<string, unknown>;
+      }
+    >([
+      [
+        "status",
+        {
+          base: { not_null_proportion: 1.0 },
+          current: { not_null_proportion: 1.0 },
+        },
+      ],
+    ]);
+    const { rows } = toSchemaDataGrid(
+      mergeColumns(baseColumns(), currentColumns()),
+      { profileByColumn: profileByColumn as never },
+    );
+    const amountRow = rows.find((r) => r.name === "amount") as RowObjectType;
+    expect(amountRow.base__not_null_proportion).toBeUndefined();
+    expect(amountRow.current__not_null_proportion).toBeUndefined();
+  });
+
+  it("matches column names case-insensitively", () => {
+    const profileByColumn = new Map<
+      string,
+      {
+        base?: Record<string, unknown>;
+        current?: Record<string, unknown>;
+      }
+    >([["status", { current: { not_null_proportion: 0.5 } }]]);
+    // Model columns keyed by UPPERCASE name (Snowflake-style catalog)
+    const upperColumns = {
+      STATUS: { type: "text", name: "STATUS", index: 0 },
+    } as unknown as NodeData["columns"];
+    const { rows } = toSchemaDataGrid(
+      mergeColumns(upperColumns, upperColumns),
+      { profileByColumn: profileByColumn as never },
+    );
+    const statusRow = rows.find((r) => r.name === "STATUS") as RowObjectType;
+    expect(statusRow.current__not_null_proportion).toBe(0.5);
+  });
+});
