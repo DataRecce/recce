@@ -255,10 +255,10 @@ export function toReactFlowBasic(
   const nodes: LineageGraphNode[] = [];
   const edges: LineageGraphEdge[] = [];
 
-  function getWeight(from?: string) {
-    if (from === "base") {
+  function getWeight(changeStatus?: string) {
+    if (changeStatus === "removed") {
       return 0;
-    } else if (from === "current") {
+    } else if (changeStatus === "added") {
       return 2;
     }
     return 1;
@@ -268,8 +268,8 @@ export function toReactFlowBasic(
     a: LineageGraphNode | LineageGraphEdge,
     b: LineageGraphNode | LineageGraphEdge,
   ) {
-    const weightA = getWeight(a.data?.from);
-    const weightB = getWeight(b.data?.from);
+    const weightA = getWeight(a.data?.changeStatus);
+    const weightB = getWeight(b.data?.changeStatus);
     return weightA - weightB;
   }
 
