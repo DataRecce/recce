@@ -12,9 +12,10 @@
  */
 
 import Typography from "@mui/material/Typography";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
-import type { LineageGraphNode } from "../..";
+import { getModelInfo, type LineageGraphNode } from "../..";
 import { createSchemaDiffCheck } from "../../api";
 import {
   useLineageGraphContext,
@@ -58,14 +59,10 @@ interface NodeViewProps {
 }
 
 const ResourceTypeTag = ({ node }: { node: LineageGraphNode }) => {
-  const materialized =
-    node.data.data.current?.config?.materialized ??
-    node.data.data.base?.config?.materialized;
-
   return (
     <NodeTag
       resourceType={node.data.resourceType}
-      materialized={materialized}
+      materialized={node.data.materialized}
     />
   );
 };
@@ -115,6 +112,15 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
   const { apiClient } = useApiConfig();
   const { basePath } = useRouteConfig();
 
+  // Fetch model detail (columns, raw_code, primary_key) on demand
+  const { data: modelDetailData } = useQuery({
+    queryKey: ["modelDetail", node.id],
+    queryFn: () => getModelInfo(node.id, apiClient),
+    enabled: !!apiClient,
+    staleTime: 5 * 60 * 1000,
+  });
+  const modelDetail = modelDetailData?.model;
+
   // Build run type icons map from OSS registry
   const runTypeIcons: RunTypeIconMap = useMemo(
     () => ({
@@ -134,8 +140,8 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
   );
 
   // Build query string for this node
-  const baseColumns = Object.keys(node.data.data.base?.columns ?? {});
-  const currentColumns = Object.keys(node.data.data.current?.columns ?? {});
+  const baseColumns = Object.keys(modelDetail?.base?.columns ?? {});
+  const currentColumns = Object.keys(modelDetail?.current?.columns ?? {});
   const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
   const query = useMemo(() => {
     if (formattedColumns.length) {
@@ -298,6 +304,7 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
       onCloseNode={onCloseNode}
       isSingleEnv={isSingleEnvOnboarding ?? false}
       featureToggles={featureToggles}
+      modelDetail={modelDetail}
       // Schema components
       SchemaView={SchemaView}
       SingleEnvSchemaView={SingleEnvSchemaView}
