@@ -285,11 +285,11 @@ export function LineageGraphAdapter({ children }: LineageGraphAdapterProps) {
 
   const lineageGraph = useMemo(() => {
     const lineage = queryServerInfo.data?.lineage;
-    if (!lineage?.base) {
+    if (!lineage?.nodes) {
       return undefined;
     }
 
-    return buildLineageGraph(lineage.base, lineage.current, lineage.diff);
+    return buildLineageGraph(lineage);
   }, [queryServerInfo.data]);
 
   const errorMessage = queryServerInfo.error?.message;
@@ -311,8 +311,8 @@ export function LineageGraphAdapter({ children }: LineageGraphAdapterProps) {
     demo: false,
   };
 
-  const dbtBase = lineage?.base.manifest_metadata;
-  const dbtCurrent = lineage?.current.manifest_metadata;
+  const dbtBase = lineage?.metadata?.base?.manifest_metadata;
+  const dbtCurrent = lineage?.metadata?.current?.manifest_metadata;
 
   const envInfo: EnvInfo = {
     stateMetadata,

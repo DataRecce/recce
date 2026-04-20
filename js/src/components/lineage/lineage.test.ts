@@ -1,167 +1,71 @@
 import { buildLineageGraph } from "@datarecce/ui";
-import { type LineageData } from "@datarecce/ui/api";
+import type { MergedLineageResponse } from "@datarecce/ui/api";
 
-test("lineage diff", () => {
-  const base: LineageData = {
-    metadata: { pr_url: "" },
+test("lineage diff - edge added between existing nodes", () => {
+  // Scenario: nodes a, b, c, d exist in both envs
+  // In base: d depends on [b] only
+  // In current: d depends on [b, c] — edge c->d was added
+  const lineage: MergedLineageResponse = {
     nodes: {
-      a: {
-        id: "a",
-        unique_id: "a",
-        name: "a",
-      },
-      b: {
-        id: "b",
-        unique_id: "b",
-        name: "b",
-      },
-      c: {
-        id: "c",
-        unique_id: "c",
-        name: "c",
-      },
-      d: {
-        id: "d",
-        unique_id: "d",
-        name: "d",
-      },
+      a: { name: "a", resource_type: "model", package_name: "test" },
+      b: { name: "b", resource_type: "model", package_name: "test" },
+      c: { name: "c", resource_type: "model", package_name: "test" },
+      d: { name: "d", resource_type: "model", package_name: "test" },
     },
-    parent_map: {
-      a: [],
-      b: ["a"],
-      c: ["a"],
-      d: ["b"],
-    },
-    catalog_metadata: null,
+    edges: [
+      { source: "a", target: "b" },
+      { source: "a", target: "c" },
+      { source: "b", target: "d" },
+      { source: "c", target: "d", change_status: "added" },
+    ],
+    metadata: { base: {}, current: {} },
   };
 
-  const current: LineageData = {
-    metadata: { pr_url: "" },
-    nodes: {
-      a: {
-        id: "a",
-        unique_id: "a",
-        name: "a",
-      },
-      b: {
-        id: "b",
-        unique_id: "b",
-        name: "b",
-      },
-      c: {
-        id: "c",
-        unique_id: "c",
-        name: "c",
-      },
-      d: {
-        id: "d",
-        unique_id: "d",
-        name: "d",
-      },
-    },
-    parent_map: {
-      a: [],
-      b: ["a"],
-      c: ["a"],
-      d: ["b", "c"],
-    },
-    catalog_metadata: null,
-  };
-
-  const { nodes, edges } = buildLineageGraph(base, current);
+  const { nodes, edges } = buildLineageGraph(lineage);
 
   expect(Object.keys(nodes).length).toBe(4);
   expect(Object.keys(edges).length).toBe(4);
-  expect(nodes.d.data.from).toBe("both");
-  expect(nodes.c.data.children.d.data?.from).toBe("current");
-  expect(nodes.d.data.parents.c.data?.from).toBe("current");
-  expect(edges.c_d.data?.from).toBe("current");
+  // The c->d edge was added
+  expect(edges.c_d.data?.changeStatus).toBe("added");
+  // The a->b edge has no change
+  expect(edges.a_b.data?.changeStatus).toBeUndefined();
 });
 
-test("lineage diff 2", () => {
-  const base: LineageData = {
-    metadata: { pr_url: "" },
+test("lineage diff 2 - node renamed, node modified", () => {
+  // Scenario: a was removed, a2 was added, c was modified
+  const lineage: MergedLineageResponse = {
     nodes: {
       a: {
-        id: "a",
-        unique_id: "a",
         name: "a",
+        resource_type: "model",
+        package_name: "test",
+        change_status: "removed",
       },
-      b: {
-        id: "b",
-        unique_id: "b",
-        name: "b",
-      },
-      c: {
-        id: "c",
-        unique_id: "c",
-        name: "c",
-        checksum: {
-          name: "sha1",
-          checksum: "c#v1",
-        },
-      },
-      d: {
-        id: "d",
-        unique_id: "d",
-        name: "d",
-      },
-    },
-    parent_map: {
-      a: [],
-      b: ["a"],
-      c: ["b"],
-      d: ["c"],
-    },
-    catalog_metadata: null,
-  };
-
-  const current: LineageData = {
-    metadata: { pr_url: "" },
-    nodes: {
       a2: {
-        id: "a2",
-        unique_id: "a2",
         name: "a2",
+        resource_type: "model",
+        package_name: "test",
+        change_status: "added",
       },
-      b: {
-        id: "b",
-        unique_id: "b",
-        name: "b",
-      },
+      b: { name: "b", resource_type: "model", package_name: "test" },
       c: {
-        id: "c",
-        unique_id: "c",
         name: "c",
-        checksum: {
-          name: "sha1",
-          checksum: "c#v2",
-        },
+        resource_type: "model",
+        package_name: "test",
+        change_status: "modified",
       },
-      d: {
-        id: "d",
-        unique_id: "d",
-        name: "d",
-      },
+      d: { name: "d", resource_type: "model", package_name: "test" },
     },
-    parent_map: {
-      a2: [],
-      b: ["a2"],
-      c: ["b"],
-      d: ["c"],
-    },
-    catalog_metadata: null,
+    edges: [
+      { source: "a", target: "b", change_status: "removed" },
+      { source: "a2", target: "b", change_status: "added" },
+      { source: "b", target: "c" },
+      { source: "c", target: "d" },
+    ],
+    metadata: { base: {}, current: {} },
   };
 
-  // DRC-3263: pass a server-computed diff for the modified node now that
-  // the client-side checksum fallback has been removed.
-  const diff = {
-    c: {
-      change_status: "modified" as const,
-      change: null,
-    },
-  };
-  const { nodes, edges } = buildLineageGraph(base, current, diff);
+  const { nodes, edges } = buildLineageGraph(lineage);
 
   expect(Object.keys(nodes).length).toBe(5);
   expect(Object.keys(edges).length).toBe(4);

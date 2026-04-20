@@ -321,6 +321,10 @@ describe("toSchemaDataGrid - Row Generation", () => {
 // ============================================================================
 
 describe("toSchemaDataGrid - Options", () => {
+  // Regression: DRC-3260 — modelDetail constructed in NodeViewOss must
+  // include resource_type so SchemaView can derive a non-undefined node
+  // for toSchemaDataGrid. Without it, cellRenderer is undefined and
+  // ag-grid renders the valueGetter string ("COL|false|false") directly.
   test("includes renderCell for name column when node provided", () => {
     const schemaDiff = mergeColumns(
       createColumns({ id: "INT" }),
@@ -344,6 +348,33 @@ describe("toSchemaDataGrid - Options", () => {
 
     const nameColumn = getColumn(columns, 1);
     expect(nameColumn.cellRenderer).toBeUndefined();
+  });
+
+  // Regression: DRC-3260 — when cellRenderer is undefined (no node),
+  // ag-grid falls back to displaying the valueGetter string directly,
+  // producing garbled column names like "PAYMENT_ID|false|false".
+  // Callers MUST provide options.node (with resource_type) to get the
+  // proper ColumnNameCell renderer. This test documents the invariant.
+  test("name column valueGetter includes pipe-separated flags for ag-grid change detection", () => {
+    const schemaDiff = mergeColumns(
+      createColumns({ id: "INT" }),
+      createColumns({ id: "INT" }),
+    );
+
+    const { columns } = toSchemaDataGrid(schemaDiff);
+
+    const nameColumn = columns[1] as unknown as {
+      valueGetter: (params: { data: unknown }) => string;
+    };
+    const value = nameColumn.valueGetter({
+      data: { name: "id", definitionChanged: false, isImpacted: false },
+    });
+
+    // The valueGetter is ONLY for ag-grid change detection, not display.
+    // When cellRenderer is present (node provided), ag-grid renders the
+    // ColumnNameCell component. When cellRenderer is absent, ag-grid
+    // renders this string directly — which is a bug. Always provide node.
+    expect(value).toBe("id|false|false");
   });
 
   test("accepts cllRunningMap option", () => {

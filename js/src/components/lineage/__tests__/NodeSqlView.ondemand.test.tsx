@@ -72,34 +72,13 @@ import { render, screen } from "@testing-library/react";
 function createNode(
   overrides: {
     resourceType?: string;
-    // undefined => field absent, null => JSON null, string => has code
+    // These overrides are unused in the merged model — raw_code
+    // is always served via useQuery (modelDetail).
     baseRawCode?: string | null;
     currentRawCode?: string | null;
   } = {},
 ): LineageGraphNode {
   const resourceType = overrides.resourceType ?? "model";
-  const base =
-    overrides.baseRawCode !== undefined
-      ? {
-          id: "model.test.my_model",
-          unique_id: "model.test.my_model",
-          name: "my_model",
-          resource_type: resourceType,
-          package_name: "test",
-          raw_code: overrides.baseRawCode as string | undefined,
-        }
-      : undefined;
-  const current =
-    overrides.currentRawCode !== undefined
-      ? {
-          id: "model.test.my_model",
-          unique_id: "model.test.my_model",
-          name: "my_model",
-          resource_type: resourceType,
-          package_name: "test",
-          raw_code: overrides.currentRawCode as string | undefined,
-        }
-      : undefined;
 
   return {
     id: "model.test.my_model",
@@ -108,8 +87,6 @@ function createNode(
     data: {
       id: "model.test.my_model",
       name: "my_model",
-      from: "both",
-      data: { base, current },
       resourceType,
       packageName: "test",
       parents: {},
@@ -186,7 +163,9 @@ describe("NodeSqlViewOss on-demand raw_code fetch", () => {
     expect(editor).toHaveAttribute("data-modified", "SELECT current");
   });
 
-  it("uses inline raw_code and ignores fetched data when both present", () => {
+  it("always uses fetched model detail for raw_code", () => {
+    // After DRC-3260, raw_code is no longer inline on the node.
+    // The component always uses the fetched modelDetail from useQuery.
     mockUseQueryReturn = {
       data: {
         model: {
@@ -197,14 +176,11 @@ describe("NodeSqlViewOss on-demand raw_code fetch", () => {
       isLoading: false,
     };
 
-    const node = createNode({
-      baseRawCode: "INLINE base",
-      currentRawCode: "INLINE current",
-    });
+    const node = createNode();
     render(<NodeSqlView node={node} />);
 
     const editor = screen.getByTestId("diff-editor");
-    expect(editor).toHaveAttribute("data-original", "INLINE base");
-    expect(editor).toHaveAttribute("data-modified", "INLINE current");
+    expect(editor).toHaveAttribute("data-original", "FETCHED base");
+    expect(editor).toHaveAttribute("data-modified", "FETCHED current");
   });
 });

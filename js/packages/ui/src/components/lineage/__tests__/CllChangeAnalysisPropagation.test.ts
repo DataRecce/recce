@@ -159,8 +159,6 @@ function createLineageGraph(
       data: {
         id,
         name: id.split(".").pop() ?? id,
-        from: "both",
-        data: { base: undefined, current: undefined },
         resourceType: "model",
         packageName: "test",
         parents: {},
