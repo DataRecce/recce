@@ -81,7 +81,7 @@ export interface MergedNodeData {
   change_status?: "added" | "removed" | "modified";
   change?: {
     category: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
-    columns: Record<string, "added" | "removed" | "modified"> | null;
+    columns?: Record<string, "added" | "removed" | "modified">;
   };
 }
 

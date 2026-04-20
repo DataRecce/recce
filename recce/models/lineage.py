@@ -25,7 +25,7 @@ def build_merged_lineage(lineage_diff: LineageDiff) -> MergedLineage:
     # 1. Merge nodes — prefer current metadata, fall back to base for removed
     nodes: dict[str, MergedNode] = {}
     all_ids = set(base.get("nodes", {})) | set(current.get("nodes", {}))
-    for node_id in all_ids:
+    for node_id in sorted(all_ids):
         base_node = base.get("nodes", {}).get(node_id)
         current_node = current.get("nodes", {}).get(node_id)
 
@@ -74,6 +74,9 @@ def build_merged_lineage(lineage_diff: LineageDiff) -> MergedLineage:
             change_status = "removed"
 
         edges.append(MergedEdge(source=source_id, target=target_id, change_status=change_status))
+
+    # Sort edges for deterministic output (set iteration order is nondeterministic)
+    edges.sort(key=lambda e: (e.source, e.target))
 
     # 4. Metadata
     metadata: dict[str, Any] = {
