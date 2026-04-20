@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Dict, List, Literal, Optional, Set
+from typing import Any, Dict, List, Literal, Optional, Set
 
-from pydantic import UUID4, BaseModel, Field
+from pydantic import UUID4, BaseModel, ConfigDict, Field
 
 from recce.util.pydantic_model import pydantic_model_dump
 
@@ -159,6 +159,46 @@ class LineageDiff(BaseModel):
     base: dict
     current: dict
     diff: dict[str, NodeDiff]
+
+
+class MergedNode(BaseModel):
+    """A single node in the merged lineage wire-format response.
+
+    Uses exclude_none so unchanged nodes omit change_status/change.
+    Uses by_alias so schema_name serializes as "schema".
+    Uses extra="ignore" so **source unpacking from lineage dicts works.
+    """
+
+    name: str
+    resource_type: str
+    package_name: str = ""
+    schema_name: str | None = Field(None, alias="schema")
+    materialized: str | None = None
+    tags: list[str] | None = None
+    source_name: str | None = None
+    change_status: ChangeStatus | None = None
+    change: NodeChange | None = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        extra="ignore",
+    )
+
+
+class MergedEdge(BaseModel):
+    """A single edge in the merged lineage wire-format response."""
+
+    source: str
+    target: str
+    change_status: Literal["added", "removed"] | None = None  # edges are never "modified"
+
+
+class MergedLineage(BaseModel):
+    """Top-level merged lineage object returned by /api/info."""
+
+    nodes: dict[str, MergedNode]
+    edges: list[MergedEdge]
+    metadata: dict[str, Any]
 
 
 # Column Level Linage

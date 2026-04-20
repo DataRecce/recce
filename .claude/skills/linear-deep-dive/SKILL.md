@@ -48,7 +48,7 @@ Once the entry type is determined, follow the appropriate flow:
 Use the Linear MCP server to retrieve the full issue with relations:
 
 ```
-Tool: mcp__linear-server__get_issue
+Tool: mcp__claude_ai_Linear_2__get_issue
   id: <identifier>
   includeRelations: true
 ```
@@ -66,7 +66,7 @@ Extract and note:
 Also fetch comments for additional context:
 
 ```
-Tool: mcp__linear-server__list_comments
+Tool: mcp__claude_ai_Linear_2__list_comments
   issueId: <issue UUID>
 ```
 
@@ -210,7 +210,7 @@ Based on classification and user confirmation, invoke the appropriate skill chai
 **Before invoking any skill, update the issue status to "In Progress":**
 
 ```
-Tool: mcp__linear-server__save_issue
+Tool: mcp__claude_ai_Linear_2__save_issue
   id: <issue identifier>
   state: "In Progress"
 ```
@@ -327,7 +327,7 @@ Use this flow when the input is a Linear **project** (not a single issue). A pro
 Retrieve the project with its full context:
 
 ```
-Tool: mcp__linear-server__get_project
+Tool: mcp__claude_ai_Linear_2__get_project
   query: <project name, slug, or ID>
   includeMilestones: true
   includeMembers: true
@@ -349,7 +349,7 @@ Extract and note:
 Also fetch recent status updates for additional context:
 
 ```
-Tool: mcp__linear-server__get_status_updates
+Tool: mcp__claude_ai_Linear_2__get_status_updates
   type: "project"
   project: <project name or ID>
   limit: 5
@@ -362,14 +362,14 @@ Tool: mcp__linear-server__get_status_updates
 Retrieve the project's milestones to understand the phased structure:
 
 ```
-Tool: mcp__linear-server__list_milestones
+Tool: mcp__claude_ai_Linear_2__list_milestones
   project: <project name from get_project>   # e.g., "MyPy Cleanup", NOT the URL slug
 ```
 
 Then fetch **all issues** in the project (can run in parallel with milestones):
 
 ```
-Tool: mcp__linear-server__list_issues
+Tool: mcp__claude_ai_Linear_2__list_issues
   project: <project name from get_project>   # e.g., "MyPy Cleanup", NOT the URL slug
   limit: 250
 ```
@@ -527,10 +527,10 @@ If resuming work on a project across sessions, re-fetch the project state to pic
 
 | Event | Action | Tool Call |
 |-------|--------|-----------|
-| Starting work on an issue (after user confirms approach in Step 6) | Set **In Progress** | `mcp__linear-server__save_issue` with `state: "In Progress"` |
-| Creating a PR for the issue | Set **In Review** | `mcp__linear-server__save_issue` with `state: "In Review"` |
-| PR merged to `main` | Set **Done** | `mcp__linear-server__save_issue` with `state: "Done"` |
-| PR closed without merge | Set **In Progress** | `mcp__linear-server__save_issue` with `state: "In Progress"` |
+| Starting work on an issue (after user confirms approach in Step 6) | Set **In Progress** | `mcp__claude_ai_Linear_2__save_issue` with `state: "In Progress"` |
+| Creating a PR for the issue | Set **In Review** | `mcp__claude_ai_Linear_2__save_issue` with `state: "In Review"` |
+| PR merged to `main` | Set **Done** | `mcp__claude_ai_Linear_2__save_issue` with `state: "Done"` |
+| PR closed without merge | Set **In Progress** | `mcp__claude_ai_Linear_2__save_issue` with `state: "In Progress"` |
 
 ### When to Transition
 
@@ -538,7 +538,7 @@ If resuming work on a project across sessions, re-fetch the project state to pic
 Immediately after the user confirms the approach and before invoking any implementation skill, update the issue:
 
 ```
-Tool: mcp__linear-server__save_issue
+Tool: mcp__claude_ai_Linear_2__save_issue
   id: <issue identifier, e.g., "DRC-2893">
   state: "In Progress"
 ```
@@ -547,7 +547,7 @@ Tool: mcp__linear-server__save_issue
 When using the `create-pr` skill or running `gh pr create`, update the issue immediately after the PR is successfully created:
 
 ```
-Tool: mcp__linear-server__save_issue
+Tool: mcp__claude_ai_Linear_2__save_issue
   id: <issue identifier>
   state: "In Review"
 ```
@@ -563,7 +563,7 @@ gh pr view <PR-number> --json state --jq '.state'
 ```
 
 ```
-Tool: mcp__linear-server__save_issue
+Tool: mcp__claude_ai_Linear_2__save_issue
   id: <issue identifier>
   state: "Done"
 ```

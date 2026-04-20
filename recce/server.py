@@ -47,6 +47,7 @@ from .core import RecceContext, default_context, load_context
 from .event import get_recce_api_token, log_api_event, log_single_env_event
 from .exceptions import RecceException
 from .github import is_github_codespace
+from .models.lineage import build_merged_lineage
 from .models.types import CllData
 from .models.websocket import CloudUserContextMessage
 from .run import load_preset_checks
@@ -593,6 +594,7 @@ async def get_info():
 
     state_metadata = context.state_loader.state.metadata if context.state_loader.state else None
     lineage_diff = context.get_lineage_diff()
+    merged_lineage = build_merged_lineage(lineage_diff)
 
     try:
         info = {
@@ -601,7 +603,7 @@ async def get_info():
             "review_mode": context.review_mode,
             "git": state.git.to_dict() if state.git else None,
             "pull_request": state.pull_request.to_dict() if state.pull_request else None,
-            "lineage": lineage_diff,
+            "lineage": merged_lineage.model_dump(exclude_none=True, by_alias=True),
             "demo": bool(demo),
             "codespace": bool(is_codespace),
             "cloud_mode": context.state_loader.cloud_mode,

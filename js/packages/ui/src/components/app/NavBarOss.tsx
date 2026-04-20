@@ -15,10 +15,10 @@ import {
 } from "../../contexts";
 import { useApiConfig } from "../../hooks/useApiConfig";
 import { trackNavigation } from "../../lib/api/track";
+import { CloudShareButtonOss } from "./CloudShareButtonOss";
 import { EnvInfo } from "./EnvInfo";
 import { Filename } from "./Filename";
 import { StateExporter } from "./StateExporter";
-import { TopLevelShare } from "./StateSharing";
 import { StateSynchronizer } from "./StateSynchronizer";
 
 /**
@@ -194,7 +194,7 @@ export const NavBarOss = () => {
           })}
         </MuiTabs>
 
-        {/* Center section: Filename and TopLevelShare */}
+        {/* Center section: Filename */}
         <Box
           sx={{
             display: "flex",
@@ -204,14 +204,9 @@ export const NavBarOss = () => {
           }}
         >
           {!isLoading && !isDemoSite && <Filename />}
-          {!isLoading &&
-            !isDemoSite &&
-            !flag?.single_env_onboarding &&
-            !featureToggles.disableShare && <TopLevelShare />}
         </Box>
 
-        {/* Right section: EnvInfo, StateSynchronizer, StateExporter */}
-        {/* CloudShareButtonOss is hidden until the cloud share feature is ready for public release */}
+        {/* Right section: CloudShareButton, EnvInfo, StateSynchronizer, StateExporter */}
         {!isLoading && (
           <Box
             sx={{
@@ -221,6 +216,9 @@ export const NavBarOss = () => {
               mr: "8px",
             }}
           >
+            {!isDemoSite &&
+              !flag?.single_env_onboarding &&
+              !featureToggles.disableShare && <CloudShareButtonOss />}
             <EnvInfo />
             {cloudMode && <StateSynchronizer />}
             <StateExporter />

@@ -63,7 +63,7 @@ import {
   selectDownstream,
   selectUpstream,
 } from "@datarecce/ui";
-import type { LineageDataFromMetadata } from "@datarecce/ui/api";
+import type { MergedLineageResponse } from "@datarecce/ui/api";
 import { toReactFlow } from "@datarecce/ui/components/lineage/lineage";
 import React from "react";
 
@@ -71,61 +71,41 @@ import React from "react";
 // Test Fixtures
 // ============================================================================
 
-const createMockLineageDataFromMetadata = (): LineageDataFromMetadata =>
-  ({
-    metadata: {
-      pr_url: "https://github.com/test/test/pull/1",
+const createMockMergedLineage = (): MergedLineageResponse => ({
+  nodes: {
+    "model.test.node1": {
+      name: "node1",
+      resource_type: "model",
+      package_name: "test",
     },
-    nodes: {
-      "model.test.node1": {
-        id: "model.test.node1",
-        unique_id: "model.test.node1",
-        name: "node1",
-        resource_type: "model",
-        package_name: "test",
-        columns: {},
-        checksum: { name: "sha256", checksum: "abc123" },
-      },
-      "model.test.node2": {
-        id: "model.test.node2",
-        unique_id: "model.test.node2",
-        name: "node2",
-        resource_type: "model",
-        package_name: "test",
-        columns: {},
-        checksum: { name: "sha256", checksum: "def456" },
-      },
-      "model.test.node3": {
-        id: "model.test.node3",
-        unique_id: "model.test.node3",
-        name: "node3",
-        resource_type: "model",
-        package_name: "test",
-        columns: {},
-        checksum: { name: "sha256", checksum: "ghi789" },
-      },
+    "model.test.node2": {
+      name: "node2",
+      resource_type: "model",
+      package_name: "test",
     },
-    parent_map: {
-      "model.test.node2": ["model.test.node1"],
-      "model.test.node3": ["model.test.node2"],
+    "model.test.node3": {
+      name: "node3",
+      resource_type: "model",
+      package_name: "test",
     },
-    // Using minimal mock data - full ManifestMetadata properties not needed for tests
-    manifest_metadata: {
-      project_name: "test",
-    },
-    catalog_metadata: {},
-  }) as unknown as LineageDataFromMetadata;
+  },
+  edges: [
+    { source: "model.test.node1", target: "model.test.node2" },
+    { source: "model.test.node2", target: "model.test.node3" },
+  ],
+  metadata: {
+    base: { manifest_metadata: { project_name: "test" } as any },
+    current: { manifest_metadata: { project_name: "test" } as any },
+  },
+});
 
 // ============================================================================
 // Lineage Graph Building Tests
 // ============================================================================
 
 describe("LineageView - buildLineageGraph", () => {
-  it("builds graph with nodes from base and current", () => {
-    const base = createMockLineageDataFromMetadata();
-    const current = createMockLineageDataFromMetadata();
-
-    const graph = buildLineageGraph(base, current);
+  it("builds graph with nodes from merged lineage", () => {
+    const graph = buildLineageGraph(createMockMergedLineage());
 
     expect(Object.keys(graph.nodes)).toHaveLength(3);
     expect(graph.nodes["model.test.node1"]).toBeDefined();
@@ -133,89 +113,56 @@ describe("LineageView - buildLineageGraph", () => {
     expect(graph.nodes["model.test.node3"]).toBeDefined();
   });
 
-  it("builds graph with edges from parent_map", () => {
-    const base = createMockLineageDataFromMetadata();
-    const current = createMockLineageDataFromMetadata();
-
-    const graph = buildLineageGraph(base, current);
+  it("builds graph with edges from merged lineage", () => {
+    const graph = buildLineageGraph(createMockMergedLineage());
 
     expect(Object.keys(graph.edges)).toHaveLength(2);
   });
 
-  it("marks nodes as from=both when in both base and current", () => {
-    const base = createMockLineageDataFromMetadata();
-    const current = createMockLineageDataFromMetadata();
+  it("nodes have no changeStatus when not in diff", () => {
+    const graph = buildLineageGraph(createMockMergedLineage());
 
-    const graph = buildLineageGraph(base, current);
-
-    expect(graph.nodes["model.test.node1"].data.from).toBe("both");
+    expect(graph.nodes["model.test.node1"].data.changeStatus).toBeUndefined();
   });
 
-  it("marks nodes as from=base when only in base", () => {
-    const base = createMockLineageDataFromMetadata();
-    const current = {
-      ...createMockLineageDataFromMetadata(),
-      nodes: {
-        "model.test.node2":
-          createMockLineageDataFromMetadata().nodes["model.test.node2"],
-      },
-      parent_map: {},
-    };
+  it("marks nodes as removed when change_status is removed", () => {
+    const lineage = createMockMergedLineage();
+    // Remove node1 and node3, keep only node2 with "removed" status on node1
+    lineage.nodes["model.test.node1"].change_status = "removed";
 
-    const graph = buildLineageGraph(base, current);
+    const graph = buildLineageGraph(lineage);
 
-    expect(graph.nodes["model.test.node1"].data.from).toBe("base");
     expect(graph.nodes["model.test.node1"].data.changeStatus).toBe("removed");
   });
 
-  it("marks nodes as from=current when only in current", () => {
-    const base = {
-      ...createMockLineageDataFromMetadata(),
-      nodes: {},
-      parent_map: {},
-    };
-    const current = createMockLineageDataFromMetadata();
+  it("marks nodes as added when change_status is added", () => {
+    const lineage = createMockMergedLineage();
+    lineage.nodes["model.test.node1"].change_status = "added";
 
-    const graph = buildLineageGraph(base, current);
+    const graph = buildLineageGraph(lineage);
 
-    expect(graph.nodes["model.test.node1"].data.from).toBe("current");
     expect(graph.nodes["model.test.node1"].data.changeStatus).toBe("added");
   });
 
   it("tracks modified nodes in modifiedSet", () => {
-    const base = createMockLineageDataFromMetadata();
-    const baseData = createMockLineageDataFromMetadata();
-    const current = {
-      ...baseData,
-      nodes: {
-        ...baseData.nodes,
-        "model.test.node1": {
-          ...baseData.nodes["model.test.node1"],
-          checksum: { name: "sha256", checksum: "modified123" },
-        },
-      },
-    } as LineageDataFromMetadata;
+    const lineage = createMockMergedLineage();
+    lineage.nodes["model.test.node1"].change_status = "modified";
 
-    const graph = buildLineageGraph(base, current);
+    const graph = buildLineageGraph(lineage);
 
     expect(graph.modifiedSet).toContain("model.test.node1");
     expect(graph.nodes["model.test.node1"].data.changeStatus).toBe("modified");
   });
 
   it("applies diff data for change status", () => {
-    const base = createMockLineageDataFromMetadata();
-    const current = createMockLineageDataFromMetadata();
-    const diff = {
-      "model.test.node1": {
-        change_status: "modified" as const,
-        change: {
-          category: "breaking" as const,
-          columns: { col1: "added" as const },
-        },
-      },
+    const lineage = createMockMergedLineage();
+    lineage.nodes["model.test.node1"].change_status = "modified";
+    lineage.nodes["model.test.node1"].change = {
+      category: "breaking",
+      columns: { col1: "added" },
     };
 
-    const graph = buildLineageGraph(base, current, diff);
+    const graph = buildLineageGraph(lineage);
 
     expect(graph.nodes["model.test.node1"].data.changeStatus).toBe("modified");
     expect(graph.nodes["model.test.node1"].data.change?.category).toBe(
@@ -230,9 +177,7 @@ describe("LineageView - buildLineageGraph", () => {
 
 describe("LineageView - selectUpstream", () => {
   it("selects upstream nodes within degree", () => {
-    const base = createMockLineageDataFromMetadata();
-    const current = createMockLineageDataFromMetadata();
-    const graph = buildLineageGraph(base, current);
+    const graph = buildLineageGraph(createMockMergedLineage());
 
     const upstream = selectUpstream(graph, ["model.test.node3"]);
 
@@ -242,9 +187,7 @@ describe("LineageView - selectUpstream", () => {
   });
 
   it("limits selection to specified degree", () => {
-    const base = createMockLineageDataFromMetadata();
-    const current = createMockLineageDataFromMetadata();
-    const graph = buildLineageGraph(base, current);
+    const graph = buildLineageGraph(createMockMergedLineage());
 
     const upstream = selectUpstream(graph, ["model.test.node3"], 1);
 
@@ -256,9 +199,7 @@ describe("LineageView - selectUpstream", () => {
 
 describe("LineageView - selectDownstream", () => {
   it("selects downstream nodes within degree", () => {
-    const base = createMockLineageDataFromMetadata();
-    const current = createMockLineageDataFromMetadata();
-    const graph = buildLineageGraph(base, current);
+    const graph = buildLineageGraph(createMockMergedLineage());
 
     const downstream = selectDownstream(graph, ["model.test.node1"]);
 
@@ -268,9 +209,7 @@ describe("LineageView - selectDownstream", () => {
   });
 
   it("limits selection to specified degree", () => {
-    const base = createMockLineageDataFromMetadata();
-    const current = createMockLineageDataFromMetadata();
-    const graph = buildLineageGraph(base, current);
+    const graph = buildLineageGraph(createMockMergedLineage());
 
     const downstream = selectDownstream(graph, ["model.test.node1"], 1);
 
@@ -286,17 +225,13 @@ describe("LineageView - selectDownstream", () => {
 
 describe("LineageView - type guards", () => {
   it("isLineageGraphNode returns true for graph nodes", () => {
-    const base = createMockLineageDataFromMetadata();
-    const current = createMockLineageDataFromMetadata();
-    const graph = buildLineageGraph(base, current);
+    const graph = buildLineageGraph(createMockMergedLineage());
 
     expect(isLineageGraphNode(graph.nodes["model.test.node1"])).toBe(true);
   });
 
   it("isLineageGraphColumnNode returns false for graph nodes", () => {
-    const base = createMockLineageDataFromMetadata();
-    const current = createMockLineageDataFromMetadata();
-    const graph = buildLineageGraph(base, current);
+    const graph = buildLineageGraph(createMockMergedLineage());
 
     expect(isLineageGraphColumnNode(graph.nodes["model.test.node1"])).toBe(
       false,
@@ -310,9 +245,7 @@ describe("LineageView - type guards", () => {
 
 describe("LineageView - toReactFlow", () => {
   it("converts lineage graph to ReactFlow format", async () => {
-    const base = createMockLineageDataFromMetadata();
-    const current = createMockLineageDataFromMetadata();
-    const graph = buildLineageGraph(base, current);
+    const graph = buildLineageGraph(createMockMergedLineage());
 
     const [nodes, edges, columnSetMap] = await toReactFlow(graph);
 
@@ -322,9 +255,7 @@ describe("LineageView - toReactFlow", () => {
   });
 
   it("filters nodes based on selectedNodes option", async () => {
-    const base = createMockLineageDataFromMetadata();
-    const current = createMockLineageDataFromMetadata();
-    const graph = buildLineageGraph(base, current);
+    const graph = buildLineageGraph(createMockMergedLineage());
 
     const [nodes, edges] = await toReactFlow(graph, {
       selectedNodes: ["model.test.node1"],
@@ -336,9 +267,7 @@ describe("LineageView - toReactFlow", () => {
   });
 
   it("assigns positions to nodes via dagre layout", async () => {
-    const base = createMockLineageDataFromMetadata();
-    const current = createMockLineageDataFromMetadata();
-    const graph = buildLineageGraph(base, current);
+    const graph = buildLineageGraph(createMockMergedLineage());
 
     const [nodes] = await toReactFlow(graph);
 

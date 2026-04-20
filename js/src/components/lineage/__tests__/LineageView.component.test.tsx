@@ -514,8 +514,6 @@ function createMockLineageGraphNode(
     data: {
       id,
       name,
-      from: "both",
-      data: { base: undefined, current: undefined },
       resourceType: "model",
       packageName: "test",
       parents: {},

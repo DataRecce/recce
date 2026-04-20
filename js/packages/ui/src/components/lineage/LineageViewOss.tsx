@@ -117,7 +117,7 @@ import { LineageLegend } from "./legend";
 import { toReactFlow } from "./lineage";
 import { NodeViewOss as NodeView } from "./NodeViewOss";
 import type { NodeChangeStatus } from "./nodes/LineageNode";
-import { patchLineageDiffFromCll } from "./patchLineageDiffFromCll";
+import { patchLineageFromCll } from "./patchLineageDiffFromCll";
 import SetupConnectionBanner from "./SetupConnectionBannerOss";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
 import {
@@ -227,10 +227,7 @@ async function fetchCllAndPatchCache(
         if (!old) return old;
         return {
           ...old,
-          lineage: {
-            ...old.lineage,
-            diff: patchLineageDiffFromCll(old.lineage.diff, cll),
-          },
+          lineage: patchLineageFromCll(old.lineage, cll),
         };
       },
     );
@@ -1022,7 +1019,7 @@ export function PrivateLineageView(
             ...viewOptions,
             view_mode: "all",
           });
-        } else if (isLineageGraphNode(node) && focusedNode !== node.data.data) {
+        } else if (isLineageGraphNode(node) && focusedNode?.id !== node.id) {
           // Only select the node if it is not already selected
           onNodeClick(mockEvent, node);
         }
