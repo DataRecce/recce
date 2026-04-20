@@ -125,6 +125,10 @@ export const NodeSqlView = ({
   const modelName =
     node.data.data.base?.name ?? node.data.data.current?.name ?? "";
 
+  // Defensive: show "No code available" only when raw_code is missing from
+  // all sources (forward-compatibility for when backend strips raw_code).
+  const hasCode = original != null || modified != null;
+
   return (
     <Box
       className="no-track-pii-safe"
@@ -136,7 +140,19 @@ export const NodeSqlView = ({
         setIsHovered(false);
       }}
     >
-      {isSingleEnv ? (
+      {!hasCode ? (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100%",
+            color: "text.secondary",
+          }}
+        >
+          No code available
+        </Box>
+      ) : isSingleEnv ? (
         <CodeEditor
           language="sql"
           value={original ?? ""}
@@ -196,7 +212,19 @@ export const NodeSqlView = ({
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          {isSingleEnv ? (
+          {!hasCode ? (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100%",
+                color: "text.secondary",
+              }}
+            >
+              No code available
+            </Box>
+          ) : isSingleEnv ? (
             <CodeEditor
               language="sql"
               value={original ?? ""}

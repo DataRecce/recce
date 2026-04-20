@@ -241,15 +241,13 @@ export function buildLineageGraph(
     } else if (node.data.from === "current") {
       node.data.changeStatus = "added";
       modifiedSet.push(node.id);
-    } else {
-      const checksum1 = node.data.data.base?.checksum?.checksum;
-      const checksum2 = node.data.data.current?.checksum?.checksum;
-
-      if (checksum1 && checksum2 && checksum1 !== checksum2) {
-        node.data.changeStatus = "modified";
-        modifiedSet.push(node.id);
-      }
     }
+    // DRC-3263: client-side checksum fallback removed. NodeChange is now
+    // always computed server-side (cloud via DRC-3254, OSS via
+    // DbtAdapter.get_change_analysis_cached), so node.data.from === "both"
+    // with a NodeDiff in `diffNodes` covers the modified case above. When
+    // the node exists in both envs without an explicit diff entry, it is
+    // unmodified — no client fallback needed.
   }
 
   // Set edge change status

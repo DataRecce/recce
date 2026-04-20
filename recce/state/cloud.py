@@ -3,7 +3,7 @@ import os
 from base64 import b64encode
 from hashlib import md5, sha256
 from typing import Dict, Optional, Tuple, Union
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode, urlparse
 
 from recce.exceptions import RecceException
 from recce.pull_request import PullRequestInfo, fetch_pr_metadata
@@ -25,6 +25,43 @@ from .state_loader import RecceStateLoader
 logger = logging.getLogger("uvicorn")
 
 
+def get_signed_headers(presigned_url: str) -> set:
+    """Extract the set of signed header names from a presigned S3 URL.
+
+    S3v4 presigned URLs include an ``X-Amz-SignedHeaders`` query parameter
+    listing the headers that were included in the signature.  Any extra
+    header sent with the request that is *not* in this set causes S3 to
+    reject the upload with ``AccessDenied – headers not signed``.
+    """
+    qs = parse_qs(urlparse(presigned_url).query)
+    raw = qs.get("X-Amz-SignedHeaders", qs.get("x-amz-signedheaders", [""]))[0]
+    return {h.strip().lower() for h in raw.split(";") if h.strip()}
+
+
+# Header prefixes for optional S3 metadata that the client adds on top of
+# what the presigned URL may or may not have been signed for.  SSE-C headers
+# are intentionally excluded – they are critical encryption headers that must
+# always be sent as a complete group and should never be partially filtered.
+_METADATA_HEADER_PREFIXES = ("x-amz-tagging", "x-amz-meta-")
+
+
+def filter_headers_for_presigned_url(presigned_url: str, headers: Dict[str, str]) -> Dict[str, str]:
+    """Drop unsigned *metadata* headers; keep everything else.
+
+    Only ``x-amz-tagging`` and ``x-amz-meta-*`` headers are subject to
+    filtering.  SSE-C and other non-metadata headers are always passed
+    through, because stripping them partially causes S3 errors such as
+    ``InvalidArgument – must provide an appropriate secret key``.
+    """
+    signed = get_signed_headers(presigned_url)
+    if not signed:
+        # Cannot determine signed headers – send everything (legacy behavior).
+        return headers
+    return {
+        k: v for k, v in headers.items() if not k.lower().startswith(_METADATA_HEADER_PREFIXES) or k.lower() in signed
+    }
+
+
 def s3_sse_c_headers(password: str) -> Dict[str, str]:
     hashed_password = sha256()
     md5_hash = md5()
@@ -37,6 +74,25 @@ def s3_sse_c_headers(password: str) -> Dict[str, str]:
         "x-amz-server-side-encryption-customer-key": encoded_passwd,
         "x-amz-server-side-encryption-customer-key-MD5": encoded_md5,
     }
+
+
+def normalize_s3_metadata(metadata: dict) -> Dict[str, str]:
+    """Normalize metadata values to strings for S3 headers.
+
+    Converts None to empty string and other values to str so that
+    x-amz-tagging and x-amz-meta-* headers use consistent values.
+    """
+    return {key: str(value) if value is not None else "" for key, value in metadata.items()}
+
+
+def s3_metadata_headers(metadata: dict) -> Dict[str, str]:
+    """Build S3 x-amz-meta-* headers from metadata dict.
+
+    S3v4 presigned URLs may include these in SignedHeaders,
+    so the client must send them with matching values.
+    """
+    normalized = normalize_s3_metadata(metadata)
+    return {f"x-amz-meta-{key}": value for key, value in normalized.items()}
 
 
 class CloudStateLoader(RecceStateLoader):
@@ -464,7 +520,10 @@ class CloudStateLoader(RecceStateLoader):
         if password:
             headers.update(s3_sse_c_headers(password))
         if metadata:
-            headers["x-amz-tagging"] = urlencode(metadata)
+            normalized = normalize_s3_metadata(metadata)
+            headers["x-amz-tagging"] = urlencode(normalized)
+            headers.update(s3_metadata_headers(metadata))
+        headers = filter_headers_for_presigned_url(presigned_url, headers)
 
         with tempfile.NamedTemporaryFile() as tmp:
             # Use the specified state to export to file
@@ -548,6 +607,11 @@ class RecceCloudStateManager:
 
         compress_passwd = self.cloud_options.get("password")
         headers = s3_sse_c_headers(compress_passwd)
+        if metadata:
+            normalized = normalize_s3_metadata(metadata)
+            headers["x-amz-tagging"] = urlencode(normalized)
+            headers.update(s3_metadata_headers(metadata))
+        headers = filter_headers_for_presigned_url(presigned_url, headers)
         with tempfile.NamedTemporaryFile() as tmp:
             state.to_file(tmp.name, file_type=SupportedFileTypes.GZIP)
             response = requests.put(presigned_url, data=open(tmp.name, "rb").read(), headers=headers)

@@ -18,6 +18,7 @@ import { useCallback } from "react";
 import { LineageColumnNode } from "./columns";
 import { LineageEdge, type LineageEdgeData } from "./edges";
 import { LineageNode, type LineageNodeData } from "./nodes";
+import { cllChangeStatusColors } from "./styles";
 
 export interface LineageCanvasProps {
   /** Nodes to display */
@@ -116,16 +117,7 @@ export function LineageCanvas({
           <MiniMap
             nodeColor={(node) => {
               const data = node.data as LineageNodeData;
-              switch (data.changeStatus) {
-                case "added":
-                  return "#22c55e";
-                case "removed":
-                  return "#ef4444";
-                case "modified":
-                  return "#f59e0b";
-                default:
-                  return "#94a3b8";
-              }
+              return cllChangeStatusColors[data.changeStatus ?? "unchanged"];
             }}
           />
         )}

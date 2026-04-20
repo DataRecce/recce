@@ -153,7 +153,15 @@ test("lineage diff 2", () => {
     catalog_metadata: null,
   };
 
-  const { nodes, edges } = buildLineageGraph(base, current);
+  // DRC-3263: pass a server-computed diff for the modified node now that
+  // the client-side checksum fallback has been removed.
+  const diff = {
+    c: {
+      change_status: "modified" as const,
+      change: null,
+    },
+  };
+  const { nodes, edges } = buildLineageGraph(base, current, diff);
 
   expect(Object.keys(nodes).length).toBe(5);
   expect(Object.keys(edges).length).toBe(4);

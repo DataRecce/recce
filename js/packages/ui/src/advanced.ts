@@ -63,7 +63,7 @@ export {
  * 2. Any column belonging to this node has a non-null change_status
  * 3. The model itself has a non-null changeStatus (added/removed/modified)
  */
-export { type ColumnAnnotation } from "./components/lineage/computeColumnAncestry";
+export { type ColumnAnnotation } from "./components/lineage/computeColumnLineage";
 export { computeImpactedColumns } from "./components/lineage/computeImpactedColumns";
 export { computeIsImpacted } from "./components/lineage/computeIsImpacted";
 /**

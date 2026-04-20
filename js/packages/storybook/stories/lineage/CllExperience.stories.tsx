@@ -1,3 +1,4 @@
+import { DataTypeIcon } from "@datarecce/ui";
 import type {
   ColumnAnnotation,
   LineageCanvasProps,
@@ -14,10 +15,11 @@ import {
 } from "@datarecce/ui/advanced";
 import type { ColumnLineageData } from "@datarecce/ui/api";
 import type {
+  LineageColumnNodeData,
   LineageNodeProps,
   NodeChangeStatus,
 } from "@datarecce/ui/primitives";
-import { LineageNode } from "@datarecce/ui/primitives";
+import { LineageColumnNode, LineageNode } from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import Typography from "@mui/material/Typography";
@@ -62,22 +64,52 @@ export default meta;
 // VARIANT A: Node-level stories for color tuning
 // =============================================================================
 
+type DemoColumn = Pick<
+  LineageColumnNodeData,
+  "column" | "type" | "changeStatus" | "isImpacted"
+>;
+
 /**
- * Wrapper to render a LineageNode outside of a full ReactFlow graph.
- * ReactFlowProvider is required because LineageNode uses Handle components.
+ * Render a model node with a stacked list of columns beneath it.
+ * Used in the color-tuning demo so we can see how column colors
+ * interact with their parent node's status.
  */
-function StandaloneNode(props: LineageNodeProps) {
+function NodeWithColumns({
+  nodeProps,
+  columns,
+  isDark,
+}: {
+  nodeProps: LineageNodeProps;
+  columns: DemoColumn[];
+  isDark?: boolean;
+}) {
   return (
     <ReactFlowProvider>
       <Box
         sx={{
           position: "relative",
           width: 320,
-          // Hide the handles since they render as dots outside a flow
           "& .react-flow__handle": { display: "none" },
         }}
       >
-        <LineageNode {...props} />
+        <LineageNode {...nodeProps} />
+        <Box sx={{ mt: 0.5, display: "flex", flexDirection: "column" }}>
+          {columns.map((col) => (
+            <LineageColumnNode
+              key={col.column}
+              id={`${nodeProps.id}-${col.column}`}
+              data={{
+                column: col.column,
+                type: col.type,
+                nodeId: nodeProps.id,
+                changeStatus: col.changeStatus,
+                isImpacted: col.isImpacted,
+              }}
+              showChangeAnalysis
+              isDark={isDark}
+            />
+          ))}
+        </Box>
       </Box>
     </ReactFlowProvider>
   );
@@ -88,74 +120,131 @@ function StandaloneNode(props: LineageNodeProps) {
  * Useful for tuning the amber highlight color.
  */
 function NodeComparisonDemo() {
+  const modifiedCols: DemoColumn[] = [
+    { column: "id", type: "INTEGER" },
+    { column: "ordered_at", type: "TIMESTAMP", changeStatus: "modified" },
+    { column: "status", type: "VARCHAR", changeStatus: "added" },
+  ];
+  const addedCols: DemoColumn[] = [
+    { column: "id", type: "INTEGER", changeStatus: "added" },
+    { column: "amount", type: "NUMERIC", changeStatus: "added" },
+  ];
+  const removedCols: DemoColumn[] = [
+    { column: "carrier", type: "VARCHAR", changeStatus: "removed" },
+    { column: "tracking", type: "VARCHAR", changeStatus: "removed" },
+  ];
+  const impactedCols: DemoColumn[] = [
+    { column: "id", type: "INTEGER" },
+    { column: "ordered_at", type: "TIMESTAMP", isImpacted: true },
+    { column: "total", type: "NUMERIC", isImpacted: true },
+  ];
+  const unchangedCols: DemoColumn[] = [
+    { column: "id", type: "INTEGER" },
+    { column: "email", type: "VARCHAR" },
+    { column: "name", type: "VARCHAR" },
+  ];
+
   return (
     <Box sx={{ p: 3, display: "flex", flexDirection: "column", gap: 4 }}>
       <Typography variant="h6">Light Mode</Typography>
       <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
         <Box>
           <Typography variant="caption" color="text.secondary" gutterBottom>
-            Impacted + Modified (amber bg)
+            Modified (changed)
           </Typography>
-          <StandaloneNode
-            id="model.impacted_modified"
-            data={{
-              label: "int_order_metrics",
-              resourceType: "model",
-              changeStatus: "modified",
+          <NodeWithColumns
+            nodeProps={{
+              id: "model.modified",
+              data: {
+                label: "stg_orders",
+                resourceType: "model",
+                changeStatus: "modified",
+              },
+              newCllExperience: true,
             }}
-            newCllExperience
-            isImpacted
+            columns={modifiedCols}
           />
         </Box>
 
         <Box>
           <Typography variant="caption" color="text.secondary" gutterBottom>
-            Impacted + Added (amber bg)
+            Added
           </Typography>
-          <StandaloneNode
-            id="model.impacted_added"
-            data={{
-              label: "stg_new_payments",
-              resourceType: "model",
-              changeStatus: "added",
+          <NodeWithColumns
+            nodeProps={{
+              id: "model.added",
+              data: {
+                label: "stg_new_payments",
+                resourceType: "model",
+                changeStatus: "added",
+              },
+              newCllExperience: true,
             }}
-            newCllExperience
-            isImpacted
+            columns={addedCols}
           />
         </Box>
 
         <Box>
           <Typography variant="caption" color="text.secondary" gutterBottom>
-            Not Impacted (normal)
+            Removed
           </Typography>
-          <StandaloneNode
-            id="model.not_impacted"
-            data={{
-              label: "dim_customers",
-              resourceType: "model",
-              changeStatus: "unchanged",
+          <NodeWithColumns
+            nodeProps={{
+              id: "model.removed",
+              data: {
+                label: "stg_old_shipping",
+                resourceType: "model",
+                changeStatus: "removed",
+              },
+              newCllExperience: true,
             }}
-            newCllExperience
-            isImpacted={false}
+            columns={removedCols}
           />
         </Box>
 
         <Box>
           <Typography variant="caption" color="text.secondary" gutterBottom>
-            Impacted + Unchanged (amber bg, no change icon)
+            Impacted (downstream)
           </Typography>
-          <StandaloneNode
-            id="model.impacted_unchanged"
-            data={{
-              label: "fct_orders",
-              resourceType: "model",
-              changeStatus: "unchanged",
+          <NodeWithColumns
+            nodeProps={{
+              id: "model.impacted",
+              data: {
+                label: "fct_orders",
+                resourceType: "model",
+                changeStatus: "unchanged",
+              },
+              newCllExperience: true,
+              isImpacted: true,
             }}
-            newCllExperience
-            isImpacted
+            columns={impactedCols}
+          />
+        </Box>
+
+        <Box>
+          <Typography variant="caption" color="text.secondary" gutterBottom>
+            Unchanged
+          </Typography>
+          <NodeWithColumns
+            nodeProps={{
+              id: "model.unchanged",
+              data: {
+                label: "dim_customers",
+                resourceType: "model",
+                changeStatus: "unchanged",
+              },
+              newCllExperience: true,
+              isImpacted: false,
+            }}
+            columns={unchangedCols}
           />
         </Box>
       </Box>
+
+      <Typography variant="h6" sx={{ mt: 2 }}>
+        Schema Sidebar — Light Mode
+      </Typography>
+      <SidebarRowsDemo />
 
       <Typography variant="h6" sx={{ mt: 2 }}>
         Dark Mode
@@ -172,55 +261,208 @@ function NodeComparisonDemo() {
       >
         <Box>
           <Typography variant="caption" sx={{ color: "#aaa" }} gutterBottom>
-            Impacted + Modified (dark amber)
+            Modified (changed)
           </Typography>
-          <StandaloneNode
-            id="model.dark_impacted"
-            data={{
-              label: "int_order_metrics",
-              resourceType: "model",
-              changeStatus: "modified",
+          <NodeWithColumns
+            nodeProps={{
+              id: "model.dark_modified",
+              data: {
+                label: "stg_orders",
+                resourceType: "model",
+                changeStatus: "modified",
+              },
+              newCllExperience: true,
+              isDark: true,
             }}
-            newCllExperience
-            isImpacted
+            columns={modifiedCols}
             isDark
           />
         </Box>
 
         <Box>
           <Typography variant="caption" sx={{ color: "#aaa" }} gutterBottom>
-            Not Impacted (dark normal)
+            Added
           </Typography>
-          <StandaloneNode
-            id="model.dark_not_impacted"
-            data={{
-              label: "dim_customers",
-              resourceType: "model",
-              changeStatus: "unchanged",
+          <NodeWithColumns
+            nodeProps={{
+              id: "model.dark_added",
+              data: {
+                label: "stg_new_payments",
+                resourceType: "model",
+                changeStatus: "added",
+              },
+              newCllExperience: true,
+              isDark: true,
             }}
-            newCllExperience
-            isImpacted={false}
+            columns={addedCols}
             isDark
           />
         </Box>
 
         <Box>
           <Typography variant="caption" sx={{ color: "#aaa" }} gutterBottom>
-            Impacted + Unchanged (dark amber)
+            Removed
           </Typography>
-          <StandaloneNode
-            id="model.dark_impacted_unchanged"
-            data={{
-              label: "fct_orders",
-              resourceType: "model",
-              changeStatus: "unchanged",
+          <NodeWithColumns
+            nodeProps={{
+              id: "model.dark_removed",
+              data: {
+                label: "stg_old_shipping",
+                resourceType: "model",
+                changeStatus: "removed",
+              },
+              newCllExperience: true,
+              isDark: true,
             }}
-            newCllExperience
-            isImpacted
+            columns={removedCols}
+            isDark
+          />
+        </Box>
+
+        <Box>
+          <Typography variant="caption" sx={{ color: "#aaa" }} gutterBottom>
+            Impacted (downstream)
+          </Typography>
+          <NodeWithColumns
+            nodeProps={{
+              id: "model.dark_impacted",
+              data: {
+                label: "fct_orders",
+                resourceType: "model",
+                changeStatus: "unchanged",
+              },
+              newCllExperience: true,
+              isImpacted: true,
+              isDark: true,
+            }}
+            columns={impactedCols}
+            isDark
+          />
+        </Box>
+
+        <Box>
+          <Typography variant="caption" sx={{ color: "#aaa" }} gutterBottom>
+            Unchanged
+          </Typography>
+          <NodeWithColumns
+            nodeProps={{
+              id: "model.dark_unchanged",
+              data: {
+                label: "dim_customers",
+                resourceType: "model",
+                changeStatus: "unchanged",
+              },
+              newCllExperience: true,
+              isImpacted: false,
+              isDark: true,
+            }}
+            columns={unchangedCols}
             isDark
           />
         </Box>
       </Box>
+
+      <Typography variant="h6" sx={{ mt: 2 }}>
+        Schema Sidebar — Dark Mode
+      </Typography>
+      <Box
+        className="dark"
+        sx={{
+          bgcolor: "#121212",
+          color: "#ffffff",
+          p: 3,
+          borderRadius: 2,
+        }}
+      >
+        <SidebarRowsDemo />
+      </Box>
+    </Box>
+  );
+}
+
+interface SidebarRow {
+  name: string;
+  type: string;
+  rowClass:
+    | "row-normal"
+    | "row-added"
+    | "row-removed"
+    | "row-changed"
+    | "row-impacted";
+  badge?: "added" | "removed" | "changed" | "impacted";
+}
+
+const sidebarRows: SidebarRow[] = [
+  { name: "id", type: "INTEGER", rowClass: "row-normal" },
+  { name: "email", type: "VARCHAR", rowClass: "row-added", badge: "added" },
+  {
+    name: "legacy_id",
+    type: "INTEGER",
+    rowClass: "row-removed",
+    badge: "removed",
+  },
+  {
+    name: "ordered_at",
+    type: "TIMESTAMP",
+    rowClass: "row-changed",
+    badge: "changed",
+  },
+  {
+    name: "total",
+    type: "NUMERIC",
+    rowClass: "row-impacted",
+    badge: "impacted",
+  },
+];
+
+function SidebarRowsDemo() {
+  return (
+    <Box
+      sx={{
+        width: 320,
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: 1,
+        overflow: "hidden",
+        fontFamily: "system-ui, sans-serif",
+        fontSize: 13,
+      }}
+    >
+      {sidebarRows.map((row) => (
+        <Box
+          key={row.name}
+          className={row.rowClass}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            px: 1.5,
+            py: 0.75,
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            "&:last-child": { borderBottom: "none" },
+          }}
+        >
+          {row.badge && (
+            <span
+              className={`schema-change-badge schema-change-badge-${row.badge}`}
+            >
+              {row.badge === "added"
+                ? "+"
+                : row.badge === "removed"
+                  ? "−"
+                  : row.badge === "changed"
+                    ? "~"
+                    : "!"}
+            </span>
+          )}
+          <Box sx={{ flexGrow: 1 }}>{row.name}</Box>
+          <DataTypeIcon
+            type={row.type}
+            style={{ flexShrink: 0, opacity: 0.7, fontSize: "1rem" }}
+          />
+        </Box>
+      ))}
     </Box>
   );
 }
