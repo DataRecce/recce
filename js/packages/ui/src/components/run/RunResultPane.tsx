@@ -195,7 +195,7 @@ export interface RunResultPaneProps<VO = unknown, RefType = unknown> {
   /** Disable database query execution */
   disableDatabaseQuery?: boolean;
 
-  /** Disable share functionality (show export menu instead) */
+  /** When true, labels the menu button "Export" instead of "Share" */
   disableShare?: boolean;
 
   /** Disable update checklist functionality */
@@ -779,7 +779,7 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
             Rerun
           </Button>
 
-          {/* Export or Share menu */}
+          {/* Export/Share menu — same items, label varies by disableShare */}
           <DefaultExportMenu
             run={run}
             disableExport={disableCopyToClipboard}
