@@ -42,6 +42,13 @@ export { useCountdownToast } from "./useCountdownToast";
 export { useCSVExport } from "./useCSVExport";
 export { useFeedbackCollectionToast } from "./useFeedbackCollectionToast";
 export { useGuideToast } from "./useGuideToast";
+export {
+  type ColumnProfileStats,
+  type ProfileByColumn,
+  type UseInlineProfileArgs,
+  type UseInlineProfileResult,
+  useInlineProfile,
+} from "./useInlineProfile";
 export { useIsDark } from "./useIsDark";
 export {
   extractColumns,
