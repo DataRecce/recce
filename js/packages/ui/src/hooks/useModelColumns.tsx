@@ -15,6 +15,14 @@ import type { ApiClient } from "../lib/fetchClient";
 import { useApiConfigOptional } from "../providers";
 
 /**
+ * Stable empty array used when inline column data is unavailable.
+ * Must be a module-level constant — a `[]` literal inside a hook body
+ * creates a new reference every render, breaking the `prevNodeColumns`
+ * identity check and causing an infinite re-render loop.
+ */
+const EMPTY_COLUMNS: NodeColumnData[] = [];
+
+/**
  * Extract columns from a lineage graph node.
  *
  * After DRC-3260, inline column data is no longer available on the graph node.
@@ -25,7 +33,7 @@ import { useApiConfigOptional } from "../providers";
  * callers migrate to on-demand API fetch.
  */
 export function extractColumns(_node: LineageGraphNode): NodeColumnData[] {
-  return [];
+  return EMPTY_COLUMNS;
 }
 
 /**
@@ -99,7 +107,9 @@ export function useModelColumns(
 
   // After DRC-3260, inline column data is no longer on the graph node.
   // Always use the API fetch path below.
-  const nodeColumns: NodeColumnData[] = [];
+  // IMPORTANT: uses module-level EMPTY_COLUMNS for referential stability —
+  // a `[]` literal here caused infinite re-render (new ref every render).
+  const nodeColumns = EMPTY_COLUMNS;
 
   const [columns, setColumns] = useState<NodeColumnData[]>([]);
   const [primaryKey, setPrimaryKey] = useState<string>();
@@ -157,7 +167,7 @@ export function useModelColumns(
       });
       setIsLoading(false);
     }
-  }, [fetchData, node?.id, nodeColumns]);
+  }, [fetchData, node?.id]);
 
   return { columns, primaryKey, isLoading, error };
 }
