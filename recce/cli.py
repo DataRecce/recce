@@ -939,6 +939,12 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
     help="Enable the new column-level lineage visual experience.",
     envvar="RECCE_NEW_CLL_EXPERIENCE",
 )
+@click.option(
+    "--inline-profile",
+    is_flag=True,
+    help="Enable inline column profile stats in the schema view (requires --new-cll-experience).",
+    envvar="RECCE_INLINE_PROFILE",
+)
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -1008,6 +1014,7 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         "disable_cll_cache": True,
         "impact_at_startup": False,
         "new_cll_experience": False,
+        "inline_profile": False,
     }
     console = Console()
 
@@ -1060,6 +1067,9 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
 
     if kwargs.get("new_cll_experience", False):
         flag["new_cll_experience"] = True
+
+    if kwargs.get("inline_profile", False):
+        flag["inline_profile"] = True
 
     # Create state loader using shared function
     from recce.util.startup_perf import get_startup_tracker

@@ -9,6 +9,7 @@ export interface RecceServerFlags {
   disable_cll_cache: boolean;
   impact_at_startup: boolean;
   new_cll_experience: boolean;
+  inline_profile: boolean;
 }
 
 /**
