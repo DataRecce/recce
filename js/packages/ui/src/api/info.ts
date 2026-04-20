@@ -67,6 +67,55 @@ export interface SQLMeshInfo {
 export type CatalogMetadata = ArtifactMetadata;
 
 /**
+ * Merged node from server-side lineage merge (DRC-3258).
+ * Contains unified metadata from base+current with baked-in diff.
+ */
+export interface MergedNodeData {
+  name: string;
+  resource_type: string;
+  package_name: string;
+  schema?: string;
+  materialized?: string;
+  tags?: string[];
+  source_name?: string;
+  change_status?: "added" | "removed" | "modified";
+  change?: {
+    category: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
+    columns: Record<string, "added" | "removed" | "modified"> | null;
+  };
+}
+
+/**
+ * Merged edge from server-side lineage merge (DRC-3258).
+ */
+export interface MergedEdgeData {
+  source: string;
+  target: string;
+  change_status?: "added" | "removed";
+}
+
+/**
+ * Per-environment metadata in merged lineage response.
+ */
+export interface MergedLineageEnvMetadata {
+  manifest_metadata?: ManifestMetadata;
+  catalog_metadata?: CatalogMetadata;
+}
+
+/**
+ * Server-side merged lineage response from /api/info.
+ * Replaces the old {base, current, diff} triple.
+ */
+export interface MergedLineageResponse {
+  nodes: Record<string, MergedNodeData>;
+  edges: MergedEdgeData[];
+  metadata: {
+    base: MergedLineageEnvMetadata;
+    current: MergedLineageEnvMetadata;
+  };
+}
+
+/**
  * Lineage data structure
  */
 export interface LineageData {
@@ -83,20 +132,6 @@ export interface LineageData {
 export interface LineageDataFromMetadata extends Omit<LineageData, "nodes"> {
   nodes: Record<string, NodeData | undefined>;
 }
-
-/**
- * Lineage diff data
- */
-export type LineageDiffData = Record<
-  string,
-  {
-    change_status: "added" | "removed" | "modified";
-    change: {
-      category: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
-      columns: Record<string, "added" | "removed" | "modified"> | null;
-    } | null;
-  }
->;
 
 /**
  * Lineage diff result from lineage_diff run type
@@ -148,11 +183,7 @@ export interface ServerInfoResult {
   git?: GitInfo;
   pull_request?: PullRequestInfo;
   sqlmesh?: SQLMeshInfo;
-  lineage: {
-    base: LineageData;
-    current: LineageData;
-    diff: LineageDiffData;
-  };
+  lineage: MergedLineageResponse;
   demo: boolean;
   codespace: boolean;
   support_tasks: Record<string, boolean>;
