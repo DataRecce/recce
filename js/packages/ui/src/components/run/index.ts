@@ -41,7 +41,6 @@ export {
   RunResultPane,
   type RunResultPaneProps,
   type RunResultPaneTabValue,
-  type RunResultShareMenuProps,
   type SingleEnvironmentNotificationProps,
   type SqlEditorProps,
 } from "./RunResultPane";

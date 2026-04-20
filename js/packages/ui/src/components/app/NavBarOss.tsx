@@ -8,7 +8,11 @@ import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import React, { type ReactNode, useEffect, useMemo, useRef } from "react";
 import { type Check, cacheKeys, listChecks } from "../../api";
-import { useLineageGraphContext, useRecceServerFlag } from "../../contexts";
+import {
+  useLineageGraphContext,
+  useRecceInstanceContext,
+  useRecceServerFlag,
+} from "../../contexts";
 import { useApiConfig } from "../../hooks/useApiConfig";
 import { trackNavigation } from "../../lib/api/track";
 import { CloudShareButtonOss } from "./CloudShareButtonOss";
@@ -85,6 +89,7 @@ function ChecklistBadge(): ReactNode {
 export const NavBarOss = () => {
   const pathname = usePathname();
   const { isDemoSite, isLoading, cloudMode } = useLineageGraphContext();
+  const { featureToggles } = useRecceInstanceContext();
   const { data: flag, isLoading: isFlagLoading } = useRecceServerFlag();
 
   // Track navigation changes with previous pathname
@@ -211,9 +216,9 @@ export const NavBarOss = () => {
               mr: "8px",
             }}
           >
-            {!isDemoSite && !flag?.single_env_onboarding && (
-              <CloudShareButtonOss />
-            )}
+            {!isDemoSite &&
+              !flag?.single_env_onboarding &&
+              !featureToggles.disableShare && <CloudShareButtonOss />}
             <EnvInfo />
             {cloudMode && <StateSynchronizer />}
             <StateExporter />

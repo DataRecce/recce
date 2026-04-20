@@ -105,18 +105,8 @@ export interface RunResultExportMenuProps {
   onMouseLeave?: () => void;
   /** CSV export functionality */
   csvExport?: CSVExportProps;
-}
-
-/**
- * Props for the share menu component
- */
-export interface RunResultShareMenuProps extends RunResultExportMenuProps {
-  /** Whether user is authenticated */
-  authed?: boolean;
-  /** Handler for share to cloud */
-  onShareToCloud?: () => Promise<void>;
-  /** Handler for showing auth modal when not authenticated */
-  onShowAuthModal?: () => void;
+  /** Button label — defaults to "Export" */
+  label?: string;
 }
 
 /**
@@ -243,15 +233,6 @@ export interface RunResultPaneProps<VO = unknown, RefType = unknown> {
   /** CSV export functionality */
   csvExport?: CSVExportProps;
 
-  /** Whether user is authenticated (for share menu) */
-  authed?: boolean;
-
-  /** Handler for share to cloud */
-  onShareToCloud?: () => Promise<void>;
-
-  /** Handler for showing auth modal */
-  onShowAuthModal?: () => void;
-
   /** Optional tracking callback for copy to clipboard */
   onTrackCopyToClipboard?: (type: string, from: string) => void;
 
@@ -280,12 +261,6 @@ export interface RunResultPaneProps<VO = unknown, RefType = unknown> {
 
   /** Custom dual SQL editor component (for query diff) */
   DualSqlEditorComponent?: ComponentType<SqlEditorProps>;
-
-  /** Custom auth modal component */
-  AuthModalComponent?: ComponentType<{
-    open: boolean;
-    onClose: () => void;
-  }>;
 
   /** Result view component from registry */
   RunResultView?: ForwardRefExoticComponent<
@@ -387,6 +362,7 @@ const DefaultExportMenu = memo(
     onMouseEnter,
     onMouseLeave,
     csvExport,
+    label = "Export",
   }: RunResultExportMenuProps) => {
     const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
     const open = Boolean(anchorEl);
@@ -438,7 +414,7 @@ const DefaultExportMenu = memo(
           endIcon={<PiCaretDown />}
           sx={{ textTransform: "none" }}
         >
-          Export
+          {label}
         </Button>
         <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
           <MenuItem
@@ -528,158 +504,6 @@ const DefaultExportMenu = memo(
   },
 );
 DefaultExportMenu.displayName = "DefaultExportMenu";
-
-/**
- * Default share menu component
- */
-const DefaultShareMenu = memo(
-  ({
-    disableExport,
-    onCopyAsImage,
-    onMouseEnter,
-    onMouseLeave,
-    csvExport,
-  }: RunResultExportMenuProps) => {
-    const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-    const open = Boolean(anchorEl);
-    const [showWarning, setShowWarning] = useState(false);
-    const [pendingAction, setPendingAction] = useState<(() => void) | null>(
-      null,
-    );
-
-    const totalRowCount = csvExport?.totalRowCount ?? 0;
-    const needsWarning = totalRowCount > LARGE_EXPORT_THRESHOLD;
-
-    const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
-      setAnchorEl(event.currentTarget);
-    };
-
-    const handleClose = () => {
-      setAnchorEl(null);
-    };
-
-    const handleDownload = (action: () => void) => {
-      if (needsWarning) {
-        setPendingAction(() => action);
-        setShowWarning(true);
-      } else {
-        action();
-        handleClose();
-      }
-    };
-
-    const handleWarningContinue = () => {
-      setShowWarning(false);
-      pendingAction?.();
-      setPendingAction(null);
-      handleClose();
-    };
-
-    const handleWarningCancel = () => {
-      setShowWarning(false);
-      setPendingAction(null);
-    };
-
-    return (
-      <>
-        <Button
-          size="small"
-          variant="outlined"
-          color="neutral"
-          onClick={handleClick}
-          endIcon={<PiCaretDown />}
-          sx={{ textTransform: "none" }}
-        >
-          Share
-        </Button>
-        <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
-          <MenuItem
-            onClick={async () => {
-              await onCopyAsImage();
-              handleClose();
-            }}
-            onMouseEnter={onMouseEnter}
-            onMouseLeave={onMouseLeave}
-            disabled={disableExport}
-          >
-            <ListItemIcon>
-              <PiImage />
-            </ListItemIcon>
-            <ListItemText>Copy as Image</ListItemText>
-          </MenuItem>
-          <MenuItem
-            onClick={async () => {
-              await csvExport?.copyAsTSV?.();
-              handleClose();
-            }}
-            disabled={disableExport || !csvExport?.canExportCSV}
-          >
-            <ListItemIcon>
-              <PiClipboardText />
-            </ListItemIcon>
-            <ListItemText>Copy as Text</ListItemText>
-          </MenuItem>
-          <MenuItem
-            onClick={async () => {
-              await csvExport?.copyAsCSV();
-              handleClose();
-            }}
-            disabled={disableExport || !csvExport?.canExportCSV}
-          >
-            <ListItemIcon>
-              <PiTable />
-            </ListItemIcon>
-            <ListItemText>Copy as CSV</ListItemText>
-          </MenuItem>
-          <MenuItem
-            onClick={() => handleDownload(() => csvExport?.downloadAsCSV())}
-            disabled={disableExport || !csvExport?.canExportCSV}
-          >
-            <ListItemIcon>
-              <PiDownloadSimple />
-            </ListItemIcon>
-            <ListItemText>
-              {downloadLabel("Download as CSV", csvExport?.totalRowCount)}
-            </ListItemText>
-          </MenuItem>
-          <MenuItem
-            onClick={() => handleDownload(() => csvExport?.downloadAsTSV?.())}
-            disabled={disableExport || !csvExport?.canExportCSV}
-          >
-            <ListItemIcon>
-              <PiDownloadSimple />
-            </ListItemIcon>
-            <ListItemText>
-              {downloadLabel("Download as TSV", csvExport?.totalRowCount)}
-            </ListItemText>
-          </MenuItem>
-          {csvExport?.downloadAsExcel && (
-            <MenuItem
-              onClick={() =>
-                handleDownload(() => csvExport?.downloadAsExcel?.())
-              }
-              disabled={disableExport || !csvExport?.canExportCSV}
-            >
-              <ListItemIcon>
-                <PiDownloadSimple />
-              </ListItemIcon>
-              <ListItemText>
-                {downloadLabel("Download as Excel", csvExport?.totalRowCount)}
-              </ListItemText>
-            </MenuItem>
-          )}
-        </Menu>
-        <LargeExportWarningDialog
-          open={showWarning}
-          rowCount={totalRowCount}
-          onContinue={handleWarningContinue}
-          onCancel={handleWarningCancel}
-        />
-      </>
-    );
-  },
-);
-DefaultShareMenu.displayName = "DefaultShareMenu";
 
 /**
  * Default Add to Check button component
@@ -820,10 +644,8 @@ RunStatusAndDateDisplay.displayName = "RunStatusAndDateDisplay";
  *   runId={run.run_id}
  *   onCopyAsImage={handleCopyAsImage}
  *   csvExport={{ canExportCSV: true, copyAsCSV, downloadAsCSV }}
- *   onShareToCloud={handleShare}
  *   onTrackCopyToClipboard={(type, from) => trackCopyToClipboard({ type, from })}
  *   onAddToChecklist={handleAddToChecklist}
- *   authed={isAuthenticated}
  *   RunResultView={QueryResultView}
  * />
  * ```
@@ -856,9 +678,6 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
   onCopyMouseEnter,
   onCopyMouseLeave,
   csvExport,
-  authed,
-  onShareToCloud,
-  onShowAuthModal,
   onTrackCopyToClipboard,
 
   // Checklist handlers
@@ -869,7 +688,6 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
   SingleEnvironmentNotification,
   SqlEditorComponent,
   DualSqlEditorComponent,
-  AuthModalComponent,
   RunResultView,
   resultViewRef,
 
@@ -880,7 +698,6 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
   const [tabValue, setTabValue] = useState<RunResultPaneTabValue>("result");
   const [showSingleEnvNotification, setShowSingleEnvNotification] =
     useState(true);
-  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const isQuery =
     run?.type === "query" ||
@@ -963,25 +780,15 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
           </Button>
 
           {/* Export or Share menu */}
-          {disableShare ? (
-            <DefaultExportMenu
-              run={run}
-              disableExport={disableCopyToClipboard}
-              onCopyAsImage={handleCopyAsImage}
-              onMouseEnter={onCopyMouseEnter}
-              onMouseLeave={onCopyMouseLeave}
-              csvExport={csvExport}
-            />
-          ) : (
-            <DefaultShareMenu
-              run={run}
-              disableExport={disableCopyToClipboard}
-              onCopyAsImage={handleCopyAsImage}
-              onMouseEnter={onCopyMouseEnter}
-              onMouseLeave={onCopyMouseLeave}
-              csvExport={csvExport}
-            />
-          )}
+          <DefaultExportMenu
+            run={run}
+            disableExport={disableCopyToClipboard}
+            onCopyAsImage={handleCopyAsImage}
+            onMouseEnter={onCopyMouseEnter}
+            onMouseLeave={onCopyMouseLeave}
+            csvExport={csvExport}
+            label={disableShare ? "Export" : "Share"}
+          />
 
           {/* Add to Check button */}
           <DefaultAddToCheckButton
@@ -1044,14 +851,6 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
             />
           )}
         </>
-      )}
-
-      {/* Auth modal */}
-      {AuthModalComponent && showAuthModal && (
-        <AuthModalComponent
-          open={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-        />
       )}
     </Box>
   );
