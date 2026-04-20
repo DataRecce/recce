@@ -22,7 +22,6 @@
 // ============================================================================
 
 import type { LineageGraph, LineageGraphNode } from "@datarecce/ui";
-import type { NodeData } from "@datarecce/ui/api";
 import { ChangeSummary } from "@datarecce/ui/components/summary";
 import { render, screen } from "@testing-library/react";
 
@@ -30,33 +29,11 @@ import { render, screen } from "@testing-library/react";
 // Test Fixtures
 // ============================================================================
 
-const createMockNodeData = (overrides: Partial<NodeData> = {}): NodeData => ({
-  id: "model.test.test_model",
-  unique_id: "model.test.test_model",
-  name: "test_model",
-  resource_type: "model",
-  package_name: "test",
-  columns: {},
-  checksum: { name: "sha256", checksum: "abc123" },
-  ...overrides,
-});
-
-// Helper to convert simple column definitions to proper NodeColumnData format
-const toNodeColumns = (
-  cols: Record<string, { type: string }>,
-): Record<string, { name: string; type: string }> => {
-  const result: Record<string, { name: string; type: string }> = {};
-  for (const [name, col] of Object.entries(cols)) {
-    result[name] = { name, type: col.type };
-  }
-  return result;
-};
-
 const createMockNode = (
   id: string,
   changeStatus: "added" | "removed" | "modified" | undefined,
-  baseColumns: Record<string, { type: string }> = {},
-  currentColumns: Record<string, { type: string }> = {},
+  _baseColumns: Record<string, { type: string }> = {},
+  _currentColumns: Record<string, { type: string }> = {},
 ): LineageGraphNode => ({
   id,
   type: "lineageGraphNode",
@@ -64,27 +41,7 @@ const createMockNode = (
   data: {
     id,
     name: id.split(".").pop() || id,
-    from:
-      changeStatus === "added"
-        ? "current"
-        : changeStatus === "removed"
-          ? "base"
-          : "both",
     changeStatus,
-    data: {
-      base:
-        changeStatus === "removed" || changeStatus === "modified"
-          ? createMockNodeData({ columns: toNodeColumns(baseColumns) })
-          : changeStatus === "added"
-            ? undefined
-            : createMockNodeData({ columns: toNodeColumns(baseColumns) }),
-      current:
-        changeStatus === "added" || changeStatus === "modified"
-          ? createMockNodeData({ columns: toNodeColumns(currentColumns) })
-          : changeStatus === "removed"
-            ? undefined
-            : createMockNodeData({ columns: toNodeColumns(currentColumns) }),
-    },
     resourceType: "model",
     packageName: "test",
     parents: {},
@@ -218,12 +175,7 @@ describe("ChangeSummary (Simplified)", () => {
             data: {
               id: "node1",
               name: "node1",
-              from: "both",
               changeStatus: "modified",
-              data: {
-                base: createMockNodeData({ columns: undefined }),
-                current: createMockNodeData({ columns: undefined }),
-              },
               resourceType: "model",
               packageName: "test",
               parents: {},

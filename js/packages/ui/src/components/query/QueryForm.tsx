@@ -6,7 +6,6 @@ import MuiTooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMemo } from "react";
 import { PiInfo } from "react-icons/pi";
-import type { NodeColumnData } from "../../api";
 import { useLineageGraphContext } from "../../contexts";
 import { DropdownValuesInput } from "../ui/DropdownValuesInput";
 
@@ -20,31 +19,15 @@ export const QueryForm = ({
   onPrimaryKeysChange,
   ...props
 }: QueryFormProps) => {
-  const { lineageGraph, isActionAvailable } = useLineageGraphContext();
+  const { isActionAvailable } = useLineageGraphContext();
 
   const labelInfo =
     "Provide a primary key to perform query diff in data warehouse and only return changed rows.";
 
-  const availableColumns = useMemo(() => {
-    if (!lineageGraph) {
-      return [];
-    }
-    const columnSet = new Set<string>();
-    for (const modelName in lineageGraph.nodes) {
-      const model = lineageGraph.nodes[modelName];
-      const combinedColumns: Record<string, NodeColumnData | undefined> = {
-        ...(model.data.data.base?.columns ?? {}),
-        ...(model.data.data.current?.columns ?? {}),
-      };
-
-      Object.entries(combinedColumns).forEach(([columnName, col]) => {
-        if (col?.unique) {
-          columnSet.add(columnName);
-        }
-      });
-    }
-    return Array.from(columnSet).sort();
-  }, [lineageGraph]);
+  // After DRC-3260, inline column data is no longer on graph nodes.
+  // Cross-model column scanning would require fetching detail for every node.
+  // The primary key dropdown still works via user input / useModelColumns.
+  const availableColumns = useMemo<string[]>(() => [], []);
 
   return (
     <Box sx={{ display: "flex" }} {...props}>

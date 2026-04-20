@@ -59,10 +59,10 @@ export function toReactFlow(
 
   const nodeColumnSetMap: NodeColumnSetMap = {};
 
-  function getWeight(from?: string) {
-    if (from === "base") {
+  function getWeight(changeStatus?: string) {
+    if (changeStatus === "removed") {
       return 0;
-    } else if (from === "current") {
+    } else if (changeStatus === "added") {
       return 2;
     } else {
       return 1;
@@ -73,8 +73,8 @@ export function toReactFlow(
     a: LineageGraphNode | LineageGraphEdge,
     b: LineageGraphNode | LineageGraphEdge,
   ) {
-    const weightA = getWeight(a.data?.from);
-    const weightB = getWeight(b.data?.from);
+    const weightA = getWeight(a.data?.changeStatus);
+    const weightB = getWeight(b.data?.changeStatus);
 
     if (weightA < weightB) {
       return -1;
@@ -115,9 +115,11 @@ export function toReactFlow(
         });
       }
 
-      for (const columnName of Object.keys(
-        node.data.data.current?.columns ?? {},
-      )) {
+      const cllColumnNames = Object.entries(maybeCurrent?.columns ?? {})
+        .filter(([key]) => key.startsWith(`${node.id}_`))
+        .map(([key]) => key.slice(node.id.length + 1));
+
+      for (const columnName of cllColumnNames) {
         const columnKey = `${node.id}_${columnName}`;
         const maybeCurrent = cll.current as unknown as
           | ColumnLineageData["current"]

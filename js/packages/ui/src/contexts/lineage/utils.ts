@@ -1,5 +1,5 @@
 import type { Position } from "@xyflow/react";
-import type { LineageDataFromMetadata, LineageDiffData } from "../../api/info";
+import type { MergedLineageResponse } from "../../api/info";
 import type {
   LineageGraph,
   LineageGraphColumnNode,
@@ -95,183 +95,81 @@ export function getNeighborSet(
 // =============================================================================
 
 /**
- * Build a LineageGraph from base and current lineage data
+ * Build a LineageGraph from a merged lineage response.
  *
- * @param base - Base lineage data (before changes)
- * @param current - Current lineage data (after changes)
- * @param diff - Optional diff data for change status
+ * The server merges base + current and bakes in diff data (DRC-3258),
+ * so this is now a trivial mapping — no client-side diffing.
+ *
+ * @param lineage - Merged lineage from /api/info
  * @returns Processed LineageGraph structure
- *
- * @example
- * ```tsx
- * const lineageGraph = buildLineageGraph(
- *   serverInfo.lineage.base,
- *   serverInfo.lineage.current,
- *   serverInfo.lineage.diff
- * );
- * ```
  */
 export function buildLineageGraph(
-  base: LineageDataFromMetadata,
-  current: LineageDataFromMetadata,
-  diff?: LineageDiffData,
+  lineage: MergedLineageResponse,
 ): LineageGraph {
   const nodes: Record<string, LineageGraphNode> = {};
   const edges: Record<string, LineageGraphEdge> = {};
+  const modifiedSet: string[] = [];
 
-  const buildNode = (
-    key: string,
-    from: "base" | "current",
-  ): LineageGraphNode => {
-    return {
-      id: key,
+  // 1. Map nodes
+  for (const [id, merged] of Object.entries(lineage.nodes)) {
+    nodes[id] = {
+      id,
       data: {
-        id: key,
-        name: key,
-        from,
-        data: {
-          base: undefined,
-          current: undefined,
-        },
+        id,
+        name: merged.name,
+        resourceType: merged.resource_type,
+        packageName: merged.package_name,
+        schema: merged.schema,
+        materialized: merged.materialized,
+        changeStatus: merged.change_status,
+        change: merged.change ?? undefined,
         parents: {},
         children: {},
       },
       type: "lineageGraphNode",
     } as LineageGraphNode;
-  };
 
-  // Process base nodes
-  for (const [key, nodeData] of Object.entries(base.nodes)) {
-    nodes[key] = buildNode(key, "base");
-    if (nodeData) {
-      nodes[key].data.data.base = nodeData;
-      nodes[key].data.name = nodeData.name;
-      nodes[key].data.resourceType = nodeData.resource_type;
-      nodes[key].data.packageName = nodeData.package_name;
+    if (merged.change_status) {
+      modifiedSet.push(id);
     }
   }
 
-  // Process current nodes
-  for (const [key, nodeData] of Object.entries(current.nodes)) {
-    if (nodes[key] as LineageGraphNode | undefined) {
-      nodes[key].data.from = "both";
-    } else {
-      nodes[key] = buildNode(key, "current");
-    }
-    if (nodeData) {
-      nodes[key].data.data.current = current.nodes[key];
-      nodes[key].data.name = nodeData.name;
-      nodes[key].data.resourceType = nodeData.resource_type;
-      nodes[key].data.packageName = nodeData.package_name;
-    }
+  // 2. Map edges and build bidirectional parent/child refs
+  for (const edge of lineage.edges) {
+    const id = `${edge.source}_${edge.target}`;
+    const parentNode = nodes[edge.source];
+    const childNode = nodes[edge.target];
+
+    if (!parentNode || !childNode) continue;
+
+    edges[id] = {
+      id,
+      source: edge.source,
+      target: edge.target,
+      data: {
+        changeStatus: edge.change_status ?? undefined,
+      },
+    };
+
+    childNode.data.parents[edge.source] = edges[id];
+    parentNode.data.children[edge.target] = edges[id];
   }
 
-  // Process base edges
-  for (const [child, parents] of Object.entries(base.parent_map)) {
-    for (const parent of parents) {
-      const childNode = nodes[child] as LineageGraphNode | undefined;
-      const parentNode = nodes[parent] as LineageGraphNode | undefined;
-      const id = `${parent}_${child}`;
-
-      if (!childNode || !parentNode) {
-        continue;
-      }
-      edges[id] = {
-        id,
-        source: parentNode.id,
-        target: childNode.id,
-        data: {
-          from: "base",
-        },
-      };
-      const edge = edges[id];
-
-      childNode.data.parents[parent] = edge;
-      parentNode.data.children[child] = edge;
-    }
-  }
-
-  // Process current edges
-  for (const [child, parents] of Object.entries(current.parent_map)) {
-    for (const parent of parents) {
-      const childNode = nodes[child] as LineageGraphNode | undefined;
-      const parentNode = nodes[parent] as LineageGraphNode | undefined;
-      const id = `${parent}_${child}`;
-
-      if (!childNode || !parentNode) {
-        continue;
-      }
-      const existingEdge = edges[id] as LineageGraphEdge | undefined;
-      if (existingEdge?.data && edges[id].data) {
-        edges[id].data.from = "both";
-      } else {
-        edges[id] = {
-          id,
-          source: parentNode.id,
-          target: childNode.id,
-          data: {
-            from: "current",
-          },
-        };
-      }
-      const edge = edges[id];
-
-      childNode.data.parents[parent] = edge;
-      parentNode.data.children[child] = edge;
-    }
-  }
-
-  // Process diff and calculate modified set
-  const modifiedSet: string[] = [];
-
-  for (const [key, node] of Object.entries(nodes)) {
-    const diffNode = diff?.[key];
-    if (diffNode) {
-      node.data.changeStatus = diffNode.change_status;
-      if (diffNode.change) {
-        node.data.change = {
-          category: diffNode.change.category,
-          columns: diffNode.change.columns,
-        };
-      }
-      modifiedSet.push(key);
-    } else if (node.data.from === "base") {
-      node.data.changeStatus = "removed";
-      modifiedSet.push(node.id);
-    } else if (node.data.from === "current") {
-      node.data.changeStatus = "added";
-      modifiedSet.push(node.id);
-    }
-    // DRC-3263: client-side checksum fallback removed. NodeChange is now
-    // always computed server-side (cloud via DRC-3254, OSS via
-    // DbtAdapter.get_change_analysis_cached), so node.data.from === "both"
-    // with a NodeDiff in `diffNodes` covers the modified case above. When
-    // the node exists in both envs without an explicit diff entry, it is
-    // unmodified — no client fallback needed.
-  }
-
-  // Set edge change status
-  for (const edge of Object.values(edges)) {
-    if (edge.data) {
-      if (edge.data.from === "base") {
-        edge.data.changeStatus = "removed";
-      } else if (edge.data.from === "current") {
-        edge.data.changeStatus = "added";
-      }
-    }
-  }
+  // 3. Extract metadata
+  const baseMeta = lineage.metadata?.base;
+  const currentMeta = lineage.metadata?.current;
 
   return {
     nodes,
     edges,
     modifiedSet,
     manifestMetadata: {
-      base: base.manifest_metadata ?? undefined,
-      current: current.manifest_metadata ?? undefined,
+      base: baseMeta?.manifest_metadata ?? undefined,
+      current: currentMeta?.manifest_metadata ?? undefined,
     },
     catalogMetadata: {
-      base: base.catalog_metadata ?? undefined,
-      current: current.catalog_metadata ?? undefined,
+      base: baseMeta?.catalog_metadata ?? undefined,
+      current: currentMeta?.catalog_metadata ?? undefined,
     },
   };
 }
@@ -357,10 +255,10 @@ export function toReactFlowBasic(
   const nodes: LineageGraphNode[] = [];
   const edges: LineageGraphEdge[] = [];
 
-  function getWeight(from?: string) {
-    if (from === "base") {
+  function getWeight(changeStatus?: string) {
+    if (changeStatus === "removed") {
       return 0;
-    } else if (from === "current") {
+    } else if (changeStatus === "added") {
       return 2;
     }
     return 1;
@@ -370,8 +268,8 @@ export function toReactFlowBasic(
     a: LineageGraphNode | LineageGraphEdge,
     b: LineageGraphNode | LineageGraphEdge,
   ) {
-    const weightA = getWeight(a.data?.from);
-    const weightB = getWeight(b.data?.from);
+    const weightA = getWeight(a.data?.changeStatus);
+    const weightB = getWeight(b.data?.changeStatus);
     return weightA - weightB;
   }
 

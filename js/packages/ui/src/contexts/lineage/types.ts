@@ -5,7 +5,6 @@ import type {
   CatalogMetadata,
   GitInfo,
   ManifestMetadata,
-  NodeData,
   PullRequestInfo,
   SQLMeshInfo,
   StateMetadata,
@@ -30,29 +29,21 @@ export interface EnvInfo {
 }
 
 /**
- * Which environment the node/edge comes from
- */
-type LineageFrom = "both" | "base" | "current";
-
-/**
  * Lineage graph node type for React Flow
  */
 export type LineageGraphNode = Node<
   {
     id: string;
     name: string;
-    from: LineageFrom;
-    data: {
-      base?: NodeData;
-      current?: NodeData;
-    };
+    resourceType?: string;
+    packageName?: string;
+    schema?: string;
+    materialized?: string;
     changeStatus?: "added" | "removed" | "modified";
     change?: {
       category: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
-      columns: Record<string, "added" | "removed" | "modified"> | null;
+      columns?: Record<string, "added" | "removed" | "modified">;
     };
-    resourceType?: string;
-    packageName?: string;
     parents: Record<string, LineageGraphEdge>;
     children: Record<string, LineageGraphEdge>;
   },
@@ -79,7 +70,6 @@ export type LineageGraphColumnNode = Node<
  */
 export type LineageGraphEdge = Edge<
   {
-    from: LineageFrom;
     changeStatus?: "added" | "removed";
   },
   "lineageGraphEdge"
