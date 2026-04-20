@@ -177,7 +177,7 @@ class MergedNode(BaseModel):
     tags: list[str] = Field(default_factory=list)
     source_name: str | None = None
     change_status: ChangeStatus | None = None
-    change: Optional[NodeChange] = None
+    change: NodeChange | None = None
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -190,7 +190,7 @@ class MergedEdge(BaseModel):
 
     source: str
     target: str
-    change_status: Literal["added", "removed"] | None = None
+    change_status: Literal["added", "removed"] | None = None  # edges are never "modified"
 
 
 class MergedLineage(BaseModel):
