@@ -3,7 +3,6 @@
 import Box from "@mui/material/Box";
 import Skeleton from "@mui/material/Skeleton";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
 import { getModelInfo, type LineageGraphNode } from "../..";
 import { useRecceServerFlag } from "../../contexts";
 import { useApiConfig, useIsDark } from "../../hooks";
@@ -19,8 +18,7 @@ interface NodeSqlViewProps {
  *
  * This wrapper:
  * 1. Handles loading state from useRecceServerFlag
- * 2. Fetches raw_code on demand via /api/model/{model_id} when the inline
- *    raw_code is absent from the /info lineage payload (DRC-3263). Uses
+ * 2. Fetches raw_code on demand via /api/model/{model_id}. Uses
  *    React Query with a 5-minute cache.
  * 3. Injects editor components (CodeEditor, DiffEditor)
  * 4. Provides dark mode detection via useIsDark hook
@@ -37,13 +35,7 @@ export const NodeSqlViewOss = ({ node }: NodeSqlViewProps) => {
   const isCodeResource =
     resourceType === "model" || resourceType === "snapshot";
 
-  const inlineBase = node.data.data.base?.raw_code;
-  const inlineCurrent = node.data.data.current?.raw_code;
-
-  // Use loose equality (== null) so both undefined (field absent) and null
-  // (JSON null from backend / Pydantic serialization) trigger the fetch.
-  const needsFetch =
-    isCodeResource && inlineBase == null && inlineCurrent == null;
+  const needsFetch = isCodeResource;
 
   const { data: modelDetail, isLoading: isModelDetailLoading } = useQuery({
     queryKey: ["modelDetail", node.id],
@@ -52,37 +44,6 @@ export const NodeSqlViewOss = ({ node }: NodeSqlViewProps) => {
     staleTime: 5 * 60 * 1000, // 5 minutes — raw_code rarely changes in-session
     retry: 1,
   });
-
-  // Merge fetched raw_code into the node so the base view renders without
-  // knowing about the on-demand fetch. Inline raw_code wins when present.
-  const nodeWithRawCode = useMemo(() => {
-    if (!needsFetch || !modelDetail) {
-      return node;
-    }
-    const fetchedBase = modelDetail.model.base?.raw_code;
-    const fetchedCurrent = modelDetail.model.current?.raw_code;
-    return {
-      ...node,
-      data: {
-        ...node.data,
-        data: {
-          base: node.data.data.base
-            ? { ...node.data.data.base, raw_code: inlineBase ?? fetchedBase }
-            : fetchedBase
-              ? { raw_code: fetchedBase }
-              : undefined,
-          current: node.data.data.current
-            ? {
-                ...node.data.data.current,
-                raw_code: inlineCurrent ?? fetchedCurrent,
-              }
-            : fetchedCurrent
-              ? { raw_code: fetchedCurrent }
-              : undefined,
-        },
-      },
-    } as LineageGraphNode;
-  }, [node, needsFetch, modelDetail, inlineBase, inlineCurrent]);
 
   if (isLoading) {
     return <></>;
@@ -103,7 +64,8 @@ export const NodeSqlViewOss = ({ node }: NodeSqlViewProps) => {
 
   return (
     <BaseNodeSqlView
-      node={nodeWithRawCode}
+      node={node}
+      modelDetail={modelDetail?.model}
       isSingleEnv={flags?.single_env_onboarding ?? false}
       CodeEditor={CodeEditor}
       DiffEditor={DiffEditor}
