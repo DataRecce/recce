@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import React, { forwardRef, useMemo, useState } from "react";
 import type { IconType } from "react-icons";
 import type { LineageGraphNode } from "../..";
-import { HSplit, getModelInfo } from "../..";
+import { getModelInfo, HSplit } from "../..";
 import { type Check, cacheKeys, select } from "../../api";
 import { useLineageGraphContext } from "../../contexts";
 import { useApiConfig, useIsDark } from "../../hooks";
@@ -256,8 +256,26 @@ export function PrivateSchemaDiffView(
     return (
       <HSplit sizes={[80, 20]} minSize={30} style={{ height: "100%" }}>
         <SchemaView
-          base={selectedModelDetail?.model?.base}
-          current={selectedModelDetail?.model?.current}
+          base={
+            selectedModelDetail?.model?.base
+              ? {
+                  id: node.id,
+                  unique_id: node.id,
+                  name: node.data.name,
+                  ...selectedModelDetail.model.base,
+                }
+              : undefined
+          }
+          current={
+            selectedModelDetail?.model?.current
+              ? {
+                  id: node.id,
+                  unique_id: node.id,
+                  name: node.data.name,
+                  ...selectedModelDetail.model.current,
+                }
+              : undefined
+          }
           columnChanges={node.data.change?.columns}
           enableScreenshot={true}
           showMenu={false}

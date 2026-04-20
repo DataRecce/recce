@@ -48,10 +48,6 @@ export interface DiffEditorProps {
  */
 export interface NodeSqlViewNodeData {
   resourceType?: string;
-  data: {
-    base?: { raw_code?: string; name?: string };
-    current?: { raw_code?: string; name?: string };
-  };
   name?: string;
 }
 
@@ -131,7 +127,10 @@ export const NodeSqlView = ({
   const original = modelDetail?.base?.raw_code;
   const modified = modelDetail?.current?.raw_code;
   const modelName =
-    modelDetail?.base?.name ?? modelDetail?.current?.name ?? node.data.name ?? "";
+    modelDetail?.base?.name ??
+    modelDetail?.current?.name ??
+    node.data.name ??
+    "";
 
   // Defensive: show "No code available" only when raw_code is missing from
   // all sources (forward-compatibility for when backend strips raw_code).

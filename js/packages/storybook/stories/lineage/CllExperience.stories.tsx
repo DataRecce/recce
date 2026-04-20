@@ -13,7 +13,10 @@ import {
   selectDownstream,
   toReactFlow,
 } from "@datarecce/ui/advanced";
-import type { ColumnLineageData } from "@datarecce/ui/api";
+import type {
+  ColumnLineageData,
+  MergedLineageResponse,
+} from "@datarecce/ui/api";
 import type {
   LineageColumnNodeData,
   LineageNodeProps,
@@ -494,18 +497,64 @@ Nodes shown: impacted+modified, impacted+added, not-impacted, impacted+unchanged
 function buildRealLineageGraph() {
   const { base, current_delta: delta, diff } = lineageData;
 
-  const current = {
-    nodes: { ...base.nodes, ...delta.nodes },
-    parent_map: { ...base.parent_map, ...delta.parent_map },
-    manifest_metadata: delta.manifest_metadata,
-    catalog_metadata: delta.catalog_metadata,
-  };
+  // Reconstruct current by overlaying delta onto base
+  const baseNodes = base.nodes as Record<
+    string,
+    { name: string; resource_type?: string; package_name?: string }
+  >;
+  const deltaNodes = delta.nodes as Record<
+    string,
+    { name: string; resource_type?: string; package_name?: string }
+  >;
+  const currentNodes = { ...baseNodes, ...deltaNodes };
+  const currentParentMap = { ...base.parent_map, ...delta.parent_map };
 
-  return buildLineageGraph(
-    base as unknown as Parameters<typeof buildLineageGraph>[0],
-    current as unknown as Parameters<typeof buildLineageGraph>[1],
-    diff as unknown as Parameters<typeof buildLineageGraph>[2],
-  );
+  // Convert old format to MergedLineageResponse
+  const mergedNodes: MergedLineageResponse["nodes"] = {};
+  const allNodeIds = new Set([
+    ...Object.keys(baseNodes),
+    ...Object.keys(currentNodes),
+  ]);
+  for (const id of allNodeIds) {
+    const node = currentNodes[id] ?? baseNodes[id];
+    const diffEntry = (
+      diff as Record<string, { change_status: string; change: unknown }>
+    )[id];
+    mergedNodes[id] = {
+      name: node.name,
+      resource_type: node.resource_type ?? "model",
+      package_name: node.package_name ?? "",
+      change_status: diffEntry?.change_status as
+        | "added"
+        | "removed"
+        | "modified"
+        | undefined,
+      change:
+        diffEntry?.change as MergedLineageResponse["nodes"][string]["change"],
+    };
+  }
+
+  const mergedEdges: MergedLineageResponse["edges"] = [];
+  for (const [childId, parentIds] of Object.entries(currentParentMap)) {
+    for (const parentId of parentIds as string[]) {
+      mergedEdges.push({ source: parentId, target: childId });
+    }
+  }
+
+  return buildLineageGraph({
+    nodes: mergedNodes,
+    edges: mergedEdges,
+    metadata: {
+      base: {
+        manifest_metadata:
+          base.manifest_metadata as MergedLineageResponse["metadata"]["base"]["manifest_metadata"],
+      },
+      current: {
+        manifest_metadata:
+          delta.manifest_metadata as MergedLineageResponse["metadata"]["current"]["manifest_metadata"],
+      },
+    },
+  });
 }
 
 /**

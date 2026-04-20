@@ -104,9 +104,7 @@ describe("buildLineageGraph", () => {
     expect(edges.a2_b.data?.changeStatus).toBe("added");
     expect(edges.b_c.data?.changeStatus).toBeUndefined();
 
-    expect(modifiedSet).toEqual(
-      expect.arrayContaining(["a", "a2", "c"]),
-    );
+    expect(modifiedSet).toEqual(expect.arrayContaining(["a", "a2", "c"]));
     expect(modifiedSet).not.toContain("b");
     expect(modifiedSet).not.toContain("d");
   });

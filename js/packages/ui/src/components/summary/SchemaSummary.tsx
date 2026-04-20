@@ -57,8 +57,26 @@ function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
             <Skeleton variant="rectangular" width="100%" height={100} />
           ) : (
             <SchemaView
-              base={modelDetail?.base}
-              current={modelDetail?.current}
+              base={
+                modelDetail?.base
+                  ? {
+                      id: node.id,
+                      unique_id: node.id,
+                      name: node.data.name,
+                      ...modelDetail.base,
+                    }
+                  : undefined
+              }
+              current={
+                modelDetail?.current
+                  ? {
+                      id: node.id,
+                      unique_id: node.id,
+                      name: node.data.name,
+                      ...modelDetail.current,
+                    }
+                  : undefined
+              }
               columnChanges={node.data.change?.columns}
             />
           )}

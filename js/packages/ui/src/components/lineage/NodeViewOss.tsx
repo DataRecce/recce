@@ -304,7 +304,24 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
       onCloseNode={onCloseNode}
       isSingleEnv={isSingleEnvOnboarding ?? false}
       featureToggles={featureToggles}
-      modelDetail={modelDetail}
+      modelDetail={
+        modelDetail
+          ? {
+              base: {
+                id: node.id,
+                unique_id: node.id,
+                name: node.data.name,
+                ...modelDetail.base,
+              },
+              current: {
+                id: node.id,
+                unique_id: node.id,
+                name: node.data.name,
+                ...modelDetail.current,
+              },
+            }
+          : undefined
+      }
       // Schema components
       SchemaView={SchemaView}
       SingleEnvSchemaView={SingleEnvSchemaView}

@@ -14,6 +14,7 @@ export type {
   MergedLineageEnvMetadata,
   MergedLineageResponse,
   MergedNodeData,
+  ModelEnvDetail,
   ModelInfoResult,
   NodeColumnData,
   NodeData,

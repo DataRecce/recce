@@ -363,9 +363,7 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
         label: name,
         changeStatus: nodeChangeStatus,
         resourceType,
-        materialized:
-          data.data?.current?.config?.materialized ??
-          data.data?.base?.config?.materialized,
+        materialized: data.materialized,
       }}
       // New CLL experience props
       newCllExperience={newCllExperience}
