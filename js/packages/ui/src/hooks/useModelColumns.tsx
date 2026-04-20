@@ -5,7 +5,7 @@
  */
 
 import _ from "lodash";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getModelInfo, type NodeColumnData } from "../api";
 import {
   type LineageGraphNode,
@@ -16,25 +16,16 @@ import { useApiConfigOptional } from "../providers";
 
 /**
  * Extract columns from a lineage graph node.
- * Combines base and current columns using union logic.
+ *
+ * After DRC-3260, inline column data is no longer available on the graph node.
+ * This function always returns an empty array; the API fetch path in
+ * useModelColumns provides the actual column data.
+ *
+ * @deprecated Kept for backward compatibility. Will be removed once all
+ * callers migrate to on-demand API fetch.
  */
-export function extractColumns(node: LineageGraphNode): NodeColumnData[] {
-  function getColumns(
-    nodeData:
-      | { columns?: Record<string, NodeColumnData | undefined> }
-      | undefined,
-  ): NodeColumnData[] {
-    return nodeData?.columns
-      ? Object.values(nodeData.columns).filter(
-          (c): c is NodeColumnData => c != null,
-        )
-      : [];
-  }
-
-  const baseColumns = getColumns(node.data.data.base);
-  const currentColumns = getColumns(node.data.data.current);
-
-  return unionColumns(baseColumns, currentColumns);
+export function extractColumns(_node: LineageGraphNode): NodeColumnData[] {
+  return [];
 }
 
 /**
@@ -106,9 +97,9 @@ export function useModelColumns(
     },
   });
 
-  const nodeColumns = useMemo(() => {
-    return node ? extractColumns(node) : [];
-  }, [node]);
+  // After DRC-3260, inline column data is no longer on the graph node.
+  // Always use the API fetch path below.
+  const nodeColumns: NodeColumnData[] = [];
 
   const [columns, setColumns] = useState<NodeColumnData[]>([]);
   const [primaryKey, setPrimaryKey] = useState<string>();
@@ -117,7 +108,9 @@ export function useModelColumns(
   const [prevNodeColumns, setPrevNodeColumns] = useState<NodeColumnData[]>([]);
   const [prevNodeId, setPrevNodeId] = useState(node?.id);
 
-  const nodePrimaryKey = node ? node.data.data.current?.primary_key : undefined;
+  // After DRC-3260, primary_key is no longer inline on the graph node.
+  // The API fetch path below provides it.
+  const nodePrimaryKey = undefined;
 
   const fetchData = useCallback(async () => {
     if (!node || !apiClient) {
