@@ -131,14 +131,17 @@ export function useModelColumns(
       const modelInfo = data.model;
       if (!modelInfo.base.columns || !modelInfo.current.columns) {
         setColumns([]);
+        setIsLoading(false);
         return;
       }
       setPrimaryKey(modelInfo.current.primary_key);
       const baseColumns = Object.values(modelInfo.base.columns);
       const currentColumns = Object.values(modelInfo.current.columns);
       setColumns(unionColumns(baseColumns, currentColumns));
+      setIsLoading(false);
     } catch (err) {
       setError(err as Error);
+      setIsLoading(false);
     }
   }, [node, apiClient]);
 
@@ -165,7 +168,6 @@ export function useModelColumns(
         // error is already handled in fetchData()
         console.error(e);
       });
-      setIsLoading(false);
     }
   }, [fetchData, node?.id]);
 

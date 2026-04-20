@@ -81,12 +81,12 @@ def build_merged_lineage(lineage_diff: LineageDiff) -> MergedLineage:
     # 4. Metadata
     metadata: dict[str, Any] = {
         "base": {
-            "manifest_metadata": base.get("manifest_metadata", {}),
-            "catalog_metadata": base.get("catalog_metadata", {}),
+            "manifest_metadata": base.get("manifest_metadata") or {},
+            "catalog_metadata": base.get("catalog_metadata") or {},
         },
         "current": {
-            "manifest_metadata": current.get("manifest_metadata", {}),
-            "catalog_metadata": current.get("catalog_metadata", {}),
+            "manifest_metadata": current.get("manifest_metadata") or {},
+            "catalog_metadata": current.get("catalog_metadata") or {},
         },
     }
 

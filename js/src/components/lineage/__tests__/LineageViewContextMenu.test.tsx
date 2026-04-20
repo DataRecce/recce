@@ -170,7 +170,7 @@ const createMockModelNode = (
     }>;
     change: {
       category?: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
-      columns?: Record<string, "modified" | "added" | "removed"> | null;
+      columns?: Record<string, "modified" | "added" | "removed">;
     };
   }> = {},
 ): LineageGraphNode => ({
@@ -186,7 +186,7 @@ const createMockModelNode = (
     children: {},
     change: {
       category: "unknown" as const,
-      columns: null,
+      columns: undefined,
       ...overrides.change,
     },
   },

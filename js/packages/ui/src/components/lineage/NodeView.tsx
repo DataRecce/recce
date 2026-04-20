@@ -37,7 +37,7 @@ export interface NodeViewNodeData {
     materialized?: string;
     change?: {
       category: string;
-      columns: Record<string, "added" | "removed" | "modified"> | null;
+      columns?: Record<string, "added" | "removed" | "modified">;
     };
   };
 }

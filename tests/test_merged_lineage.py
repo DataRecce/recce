@@ -104,6 +104,13 @@ class TestMergedNodeSerialization:
         data = node.model_dump(exclude_none=True, by_alias=True)
         assert data["tags"] == ["finance"]
 
+    def test_package_name_defaults_to_empty_string(self):
+        """SqlMesh adapters may omit package_name; default prevents ValidationError."""
+        node = MergedNode(name="n", resource_type="model")
+        assert node.package_name == ""
+        data = node.model_dump(exclude_none=True, by_alias=True)
+        assert data["package_name"] == ""
+
 
 class TestMergedEdgeSerialization:
 
@@ -349,6 +356,19 @@ class TestBuildMergedLineageMetadata:
         ld = _make_lineage_diff()
         result = build_merged_lineage(ld)
         assert result.metadata["base"]["manifest_metadata"] == {}
+        assert result.metadata["current"]["catalog_metadata"] == {}
+
+    def test_explicit_none_metadata_normalized_to_empty(self):
+        """Adapters may set manifest_metadata/catalog_metadata to None explicitly."""
+        ld = LineageDiff(
+            base={"nodes": {}, "parent_map": {}, "manifest_metadata": None, "catalog_metadata": None},
+            current={"nodes": {}, "parent_map": {}, "manifest_metadata": None, "catalog_metadata": None},
+            diff={},
+        )
+        result = build_merged_lineage(ld)
+        assert result.metadata["base"]["manifest_metadata"] == {}
+        assert result.metadata["base"]["catalog_metadata"] == {}
+        assert result.metadata["current"]["manifest_metadata"] == {}
         assert result.metadata["current"]["catalog_metadata"] == {}
 
 

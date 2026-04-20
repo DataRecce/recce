@@ -171,7 +171,7 @@ class MergedNode(BaseModel):
 
     name: str
     resource_type: str
-    package_name: str
+    package_name: str = ""
     schema_name: str | None = Field(None, alias="schema")
     materialized: str | None = None
     tags: list[str] | None = None

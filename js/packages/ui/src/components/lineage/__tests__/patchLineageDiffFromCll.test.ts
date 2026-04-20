@@ -196,7 +196,7 @@ describe("patchLineageFromCll", () => {
         package_name: "test",
         change: {
           category: "unknown",
-          columns: null,
+          columns: undefined,
         },
       },
     });
@@ -223,7 +223,7 @@ describe("patchLineageFromCll", () => {
     // Preserves existing change when CLL has no change_category
     expect(result.nodes[NODE_ID].change).toEqual({
       category: "unknown",
-      columns: null,
+      columns: undefined,
     });
   });
 });
