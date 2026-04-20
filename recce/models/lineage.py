@@ -29,7 +29,7 @@ def build_merged_lineage(lineage_diff: LineageDiff) -> MergedLineage:
         base_node = base.get("nodes", {}).get(node_id)
         current_node = current.get("nodes", {}).get(node_id)
 
-        source = current_node or base_node
+        source = current_node if current_node is not None else base_node
         merged = MergedNode(**source)  # extra="ignore" handles unknown keys
 
         node_diff = diff.get(node_id)
