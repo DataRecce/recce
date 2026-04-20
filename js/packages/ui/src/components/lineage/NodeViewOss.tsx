@@ -311,12 +311,16 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
                 id: node.id,
                 unique_id: node.id,
                 name: node.data.name,
+                resource_type: node.data.resourceType,
+                package_name: node.data.packageName,
                 ...modelDetail.base,
               },
               current: {
                 id: node.id,
                 unique_id: node.id,
                 name: node.data.name,
+                resource_type: node.data.resourceType,
+                package_name: node.data.packageName,
                 ...modelDetail.current,
               },
             }
