@@ -17,6 +17,7 @@ vi.mock("../../ui/dataGrid/schemaCells", () => ({
   createSchemaColumnNameRenderer: vi.fn(() => vi.fn()),
   createSingleEnvColumnNameRenderer: vi.fn(() => vi.fn()),
   renderIndexCell: vi.fn(),
+  createProfileStripRenderer: vi.fn(() => vi.fn()),
 }));
 
 // Mock the ScreenshotDataGrid primitive — we inspect props, not DOM
@@ -36,10 +37,23 @@ vi.mock("../../../contexts", () => ({
   useLineageGraphContext: () => mockUseLineageGraphContext(),
 }));
 
-// Mock the inline profile hook
+// Mock the inline profile hook + profile mode hook
 const mockUseInlineProfile = vi.fn();
+const mockUseProfileMode = vi.fn();
 vi.mock("../../../hooks", () => ({
   useInlineProfile: (args: unknown) => mockUseInlineProfile(args),
+  useProfileMode: () => mockUseProfileMode(),
+}));
+
+// Mock the gallery view + toggle so we can detect which branch renders
+const mockSchemaGalleryView = vi.fn((_props: unknown) => null);
+vi.mock("../SchemaGalleryView", () => ({
+  SchemaGalleryView: (props: unknown) => mockSchemaGalleryView(props),
+}));
+
+const mockProfileModeToggle = vi.fn((_props: unknown) => null);
+vi.mock("../ProfileModeToggle", () => ({
+  ProfileModeToggle: (props: unknown) => mockProfileModeToggle(props),
 }));
 
 // Stub trackColumnLevelLineage
@@ -71,6 +85,8 @@ function setup(overrides: {
   profileByColumn?: Map<string, unknown>;
   isLoading?: boolean;
   error?: unknown;
+  profileMode?: "wide" | "strip" | "grid";
+  setProfileMode?: (mode: string) => void;
 }) {
   mockUseRecceServerFlag.mockReturnValue({
     data: {
@@ -92,6 +108,10 @@ function setup(overrides: {
     isLoading: overrides.isLoading ?? false,
     error: overrides.error ?? null,
   });
+  mockUseProfileMode.mockReturnValue([
+    overrides.profileMode ?? "wide",
+    overrides.setProfileMode ?? vi.fn(),
+  ]);
 }
 
 describe("PrivateSchemaView inline profile", () => {
@@ -314,5 +334,104 @@ describe("PrivateSchemaView expand button", () => {
     );
     const lastArgs = mockUseInlineProfile.mock.calls.at(-1)?.[0];
     expect(lastArgs.columns).toEqual(["status"]);
+  });
+});
+
+describe("PrivateSchemaView render mode routing", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockScreenshotDataGrid.mockClear();
+    mockSchemaGalleryView.mockClear();
+    mockProfileModeToggle.mockClear();
+  });
+
+  it("does not render the toggle when inline profile is disabled", () => {
+    setup({ inlineProfile: false });
+    render(
+      <SchemaView
+        ref={createRef<DataGridHandle>()}
+        base={baseNode()}
+        current={baseNode()}
+      />,
+    );
+    expect(mockProfileModeToggle).not.toHaveBeenCalled();
+  });
+
+  it("renders the toggle when inline profile is active", () => {
+    setup({
+      impactedColumnIds: new Set(["model.jaffle.orders_status"]),
+    });
+    render(
+      <SchemaView
+        ref={createRef<DataGridHandle>()}
+        base={baseNode()}
+        current={baseNode()}
+      />,
+    );
+    expect(mockProfileModeToggle).toHaveBeenCalled();
+  });
+
+  it("renders ag-grid (not gallery) in wide mode", () => {
+    setup({ profileMode: "wide" });
+    render(
+      <SchemaView
+        ref={createRef<DataGridHandle>()}
+        base={baseNode()}
+        current={baseNode()}
+      />,
+    );
+    expect(mockScreenshotDataGrid).toHaveBeenCalled();
+    expect(mockSchemaGalleryView).not.toHaveBeenCalled();
+  });
+
+  it("renders ag-grid (not gallery) in strip mode", () => {
+    setup({ profileMode: "strip" });
+    render(
+      <SchemaView
+        ref={createRef<DataGridHandle>()}
+        base={baseNode()}
+        current={baseNode()}
+      />,
+    );
+    expect(mockScreenshotDataGrid).toHaveBeenCalled();
+    expect(mockSchemaGalleryView).not.toHaveBeenCalled();
+  });
+
+  it("renders SchemaGalleryView (not ag-grid) in grid mode", () => {
+    setup({
+      profileMode: "grid",
+      impactedColumnIds: new Set(["model.jaffle.orders_status"]),
+    });
+    render(
+      <SchemaView
+        ref={createRef<DataGridHandle>()}
+        base={baseNode()}
+        current={baseNode()}
+      />,
+    );
+    expect(mockSchemaGalleryView).toHaveBeenCalled();
+    expect(mockScreenshotDataGrid).not.toHaveBeenCalled();
+  });
+
+  it("passes strip profileMode through to the grid columns", () => {
+    setup({
+      profileMode: "strip",
+      impactedColumnIds: new Set(["model.jaffle.orders_status"]),
+      profileByColumn: new Map([["status", { base: {}, current: {} }]]),
+    });
+    render(
+      <SchemaView
+        ref={createRef<DataGridHandle>()}
+        base={baseNode()}
+        current={baseNode()}
+      />,
+    );
+    const lastCall = mockScreenshotDataGrid.mock.calls.at(-1);
+    const gridProps = (lastCall ? lastCall[0] : undefined) as unknown as {
+      columns: { field?: string }[];
+    };
+    const fields = gridProps.columns.map((c) => c.field).filter(Boolean);
+    expect(fields).toContain("__profile_strip");
+    expect(fields).not.toContain("not_null_proportion");
   });
 });

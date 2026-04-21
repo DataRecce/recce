@@ -75,11 +75,14 @@ export interface SchemaDataGridOptions {
     }
   >;
   /**
-   * How to render inline-profile data. Wide (default) appends 5 base/current
-   * stat diff columns. Strip appends one compact "profile" column with a
-   * 5-square indicator + popover. Ignored when profileByColumn is undefined.
+   * How to render inline-profile data within the grid. Wide (default) appends
+   * 5 base/current stat diff columns. Strip appends one compact "profile"
+   * column with a 5-square indicator + popover. "grid" is treated the same
+   * as "wide" here — the caller renders SchemaGalleryView instead of the
+   * grid output, but still passes the mode through for type transparency.
+   * Ignored when profileByColumn is undefined.
    */
-  profileMode?: "wide" | "strip";
+  profileMode?: "wide" | "strip" | "grid";
 }
 
 export interface SchemaDataGridResult {

@@ -22,7 +22,7 @@ import {
   useLineageViewContext,
   useRecceServerFlag,
 } from "../../contexts";
-import { useInlineProfile } from "../../hooks";
+import { useInlineProfile, useProfileMode } from "../../hooks";
 import { trackColumnLevelLineage } from "../../lib/api/track";
 import type {
   SchemaDiffRow,
@@ -35,6 +35,8 @@ import {
 } from "../../primitives";
 
 import { createDataGridFromData } from "../ui/dataGrid";
+import { ProfileModeToggle } from "./ProfileModeToggle";
+import { SchemaGalleryView } from "./SchemaGalleryView";
 
 export function SchemaLegend() {
   return (
@@ -227,6 +229,8 @@ export function PrivateSchemaView(
   const inlineProfileFlag = serverFlags?.inline_profile ?? false;
   const inlineProfileActive = newCllExperience && inlineProfileFlag;
 
+  const [profileMode, setProfileMode] = useProfileMode();
+
   const nodeResourceType = current?.resource_type ?? base?.resource_type;
   const isProfilable =
     nodeResourceType === "model" ||
@@ -322,6 +326,7 @@ export function PrivateSchemaView(
                 }
               >)
             : undefined,
+        profileMode,
       },
     );
   }, [
@@ -333,6 +338,7 @@ export function PrivateSchemaView(
     onViewCode,
     impactedColumns,
     profileByColumn,
+    profileMode,
   ]);
 
   const { lineageGraph, isActionAvailable } = useLineageGraphContext();
@@ -471,8 +477,18 @@ export function PrivateSchemaView(
         </MuiAlert>
       ) : null}
       <SchemaLegend />
-      {inlineProfileActive && isProfilable
-        ? (() => {
+      {inlineProfileActive && isProfilable ? (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            px: 1,
+            py: 0.5,
+          }}
+        >
+          <ProfileModeToggle value={profileMode} onChange={setProfileMode} />
+          {(() => {
             const uncoveredCount = columnsInBothEnvs.filter(
               (c) => !profileByColumn.has(c.toLowerCase()),
             ).length;
@@ -482,43 +498,46 @@ export function PrivateSchemaView(
                 ? "Profile all columns"
                 : "Profile remaining columns";
             return (
-              <Box sx={{ px: 1, py: 0.5 }}>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => setExpanded(true)}
-                  disabled={profileLoading}
-                >
-                  {profileLoading ? "Profiling…" : label}
-                </Button>
-              </Box>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setExpanded(true)}
+                disabled={profileLoading}
+              >
+                {profileLoading ? "Profiling…" : label}
+              </Button>
             );
-          })()
-        : null}
-      {rows.length > 0 && (
-        <ScreenshotDataGrid
-          style={{
-            blockSize: "auto",
-            maxHeight: "100%",
-            overflow: "auto",
-            fontSize: "0.8rem",
-            borderWidth: 1,
-          }}
-          columns={columns}
-          rows={rows}
-          rowHeight={35}
-          renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
-          className={`rdg-light no-track-pii-safe${newCllExperience ? " cll-experience" : ""}`}
-          ref={ref}
-          getRowId={getRowId}
-          getRowClass={getRowClass}
-          onCellClicked={handleCellClicked}
-          onGridReady={handleGridReady}
-          rowSelection={{ mode: "singleRow", checkboxes: false }}
-          containerClassName="no-track-pii-safe"
-          rowClassName="no-track-pii-safe"
-        />
-      )}
+          })()}
+        </Box>
+      ) : null}
+      {rows.length > 0 && profileMode === "grid" && inlineProfileActive ? (
+        <SchemaGalleryView rows={rows} />
+      ) : null}
+      {rows.length > 0 &&
+        !(profileMode === "grid" && inlineProfileActive) && (
+          <ScreenshotDataGrid
+            style={{
+              blockSize: "auto",
+              maxHeight: "100%",
+              overflow: "auto",
+              fontSize: "0.8rem",
+              borderWidth: 1,
+            }}
+            columns={columns}
+            rows={rows}
+            rowHeight={35}
+            renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
+            className={`rdg-light no-track-pii-safe${newCllExperience ? " cll-experience" : ""}`}
+            ref={ref}
+            getRowId={getRowId}
+            getRowClass={getRowClass}
+            onCellClicked={handleCellClicked}
+            onGridReady={handleGridReady}
+            rowSelection={{ mode: "singleRow", checkboxes: false }}
+            containerClassName="no-track-pii-safe"
+            rowClassName="no-track-pii-safe"
+          />
+        )}
     </Box>
   );
 }
