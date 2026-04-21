@@ -73,7 +73,7 @@ describe("createProfileStripRenderer", () => {
     expect(squares[0]).toHaveAttribute("data-state", "empty");
   });
 
-  it("opens a popover on click showing base → current per stat", async () => {
+  it("opens a hover card showing base → current per stat", async () => {
     const renderer = createProfileStripRenderer();
     const user = userEvent.setup();
     render(
@@ -89,9 +89,9 @@ describe("createProfileStripRenderer", () => {
         )}
       </>,
     );
-    await user.click(screen.getByTestId("strip-button"));
+    await user.hover(screen.getByTestId("strip-button"));
     expect(await screen.findByText(/null%/i)).toBeInTheDocument();
-    expect(screen.getByText(/0.98/)).toBeInTheDocument();
-    expect(screen.getByText(/0.96/)).toBeInTheDocument();
+    expect(screen.getByText(/98\.00%/)).toBeInTheDocument();
+    expect(screen.getByText(/96\.00%/)).toBeInTheDocument();
   });
 });

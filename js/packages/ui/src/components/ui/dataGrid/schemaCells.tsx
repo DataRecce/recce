@@ -5,13 +5,13 @@
  * @description Cell components and render functions for Schema grid views
  */
 
-import MuiPopover from "@mui/material/Popover";
 import Tooltip from "@mui/material/Tooltip";
 import type { ICellRendererParams } from "ag-grid-community";
-import React, { useState } from "react";
+import type React from "react";
 import type { NodeData, RowObjectType } from "../../../api";
 import type { SchemaDiffRow, SchemaRow } from "../../schema";
 import { ColumnNameCell } from "../../schema/ColumnNameCell";
+import { formatProfileValue, toNumeric } from "../../schema/profileFormat";
 
 // ============================================================================
 // Render Functions for toSchemaDataGrid.ts
@@ -108,96 +108,114 @@ export function renderIndexCell(
 // ============================================================================
 
 const STRIP_STATS = [
-  { field: "not_null_proportion", label: "null%" },
-  { field: "min", label: "min" },
-  { field: "max", label: "max" },
-  { field: "avg", label: "avg" },
-  { field: "is_unique", label: "unique" },
+  { field: "not_null_proportion", label: "null%", pct: true },
+  { field: "min", label: "min", pct: false },
+  { field: "max", label: "max", pct: false },
+  { field: "avg", label: "avg", pct: false },
+  { field: "is_unique", label: "unique", pct: false },
 ] as const;
 
 type StripState = "changed" | "same" | "empty";
+
+const absent = (v: unknown) => v === undefined || v === null;
 
 function statState(row: SchemaDiffRow, field: string): StripState {
   const rec = row as unknown as Record<string, unknown>;
   const b = rec[`base__${field}`];
   const c = rec[`current__${field}`];
-  const absent = (v: unknown) => v === undefined || v === null;
   if (absent(b) && absent(c)) return "empty";
   if (absent(b) || absent(c)) return "changed";
+  // Compare numerically when both are numeric strings — avoids false diffs
+  // from inconsistent trailing zeros like "69.370000" vs "69.37".
+  const bn = toNumeric(b);
+  const cn = toNumeric(c);
+  if (bn !== null && cn !== null) return bn === cn ? "same" : "changed";
   return b === c ? "same" : "changed";
 }
 
-function formatStat(v: unknown): string {
-  if (v === undefined || v === null) return "—";
-  if (typeof v === "number") {
-    // percentages are stored as 0..1
-    if (Math.abs(v) < 1 && !Number.isInteger(v)) return v.toFixed(3);
-    return String(v);
-  }
-  return String(v);
+function ProfileStripCard({ row }: { row: SchemaDiffRow }) {
+  const rec = row as unknown as Record<string, unknown>;
+  const renderValue = (field: string, pct: boolean): React.ReactNode => {
+    const b = rec[`base__${field}`];
+    const c = rec[`current__${field}`];
+    if (absent(b) && absent(c)) return "—";
+    if (absent(b)) return formatProfileValue(c, pct);
+    if (absent(c)) return formatProfileValue(b, pct);
+    const bn = toNumeric(b);
+    const cn = toNumeric(c);
+    if (bn !== null && cn !== null && bn === cn) {
+      return formatProfileValue(c, pct);
+    }
+    if (!bn && !cn && b === c) return formatProfileValue(c, pct);
+    return (
+      <>
+        <span className="schema-profile-hover-card-base">
+          {formatProfileValue(b, pct)}
+        </span>
+        <span className="schema-profile-hover-card-arrow">→</span>
+        <span>{formatProfileValue(c, pct)}</span>
+      </>
+    );
+  };
+  return (
+    <div className="schema-profile-hover-card">
+      <div className="schema-profile-hover-card-head">
+        <span className="schema-profile-hover-card-name">{row.name}</span>
+      </div>
+      <div className="schema-profile-hover-card-stats">
+        {STRIP_STATS.map(({ field, label, pct }) => {
+          const state = statState(row, field);
+          return (
+            <div
+              key={field}
+              className="schema-profile-hover-card-stat"
+              data-state={state}
+            >
+              <span className="schema-profile-hover-card-stat-lbl">
+                {label}
+              </span>
+              <span className="schema-profile-hover-card-stat-val">
+                {renderValue(field, pct)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function ProfileStripCell({ row }: { row: SchemaDiffRow }) {
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-  // Stop propagation so the click doesn't bubble to ag-grid's cell handler,
-  // which would trigger CLL navigation + re-render and dismiss the popover.
-  const handleOpen = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    setAnchor(e.currentTarget);
-  };
-  const handleClose = () => setAnchor(null);
-
   return (
-    <>
-      <button
-        type="button"
+    <Tooltip
+      title={<ProfileStripCard row={row} />}
+      arrow
+      placement="right"
+      enterDelay={150}
+      leaveDelay={50}
+      slotProps={{
+        tooltip: { className: "schema-profile-hover-tooltip" },
+      }}
+    >
+      <span
         className="schema-profile-strip"
         data-testid="strip-button"
-        onClick={handleOpen}
         aria-label={`Profile for ${row.name}`}
       >
         {STRIP_STATS.map(({ field, label }) => {
           const state = statState(row, field);
           return (
-            <Tooltip key={field} title={label} arrow placement="top">
-              <span
-                data-testid="strip-square"
-                data-state={state}
-                className={`schema-profile-strip-square schema-profile-strip-square-${state}`}
-              />
-            </Tooltip>
+            <span
+              key={field}
+              data-testid="strip-square"
+              data-state={state}
+              className={`schema-profile-strip-square schema-profile-strip-square-${state}`}
+              aria-label={label}
+            />
           );
         })}
-      </button>
-      <MuiPopover
-        open={anchor !== null}
-        anchorEl={anchor}
-        onClose={handleClose}
-        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-      >
-        <div className="schema-profile-strip-popover">
-          <div className="schema-profile-strip-popover-title">{row.name}</div>
-          <table>
-            <tbody>
-              {STRIP_STATS.map(({ field, label }) => {
-                const rec = row as unknown as Record<string, unknown>;
-                const b = rec[`base__${field}`];
-                const c = rec[`current__${field}`];
-                const state = statState(row, field);
-                return (
-                  <tr key={field} data-state={state}>
-                    <td className="lbl">{label}</td>
-                    <td>{formatStat(b)}</td>
-                    <td>→</td>
-                    <td>{formatStat(c)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </MuiPopover>
-    </>
+      </span>
+    </Tooltip>
   );
 }
 

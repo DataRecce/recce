@@ -272,10 +272,7 @@
   display: inline-flex;
   gap: 2px;
   align-items: center;
-  background: transparent;
-  border: none;
   padding: 2px 4px;
-  cursor: pointer;
 }
 
 .schema-profile-strip-square {
@@ -301,40 +298,85 @@
   opacity: 0.35;
 }
 
-.schema-profile-strip-popover {
-  padding: 8px 12px;
+/* MUI Tooltip content — override default padding to host a card */
+.schema-profile-hover-tooltip {
+  background-color: var(--schema-color-normal) !important;
+  color: inherit !important;
+  padding: 0 !important;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.18) !important;
+  max-width: 280px !important;
+}
+
+.schema-profile-hover-tooltip .MuiTooltip-arrow {
+  color: var(--schema-color-normal) !important;
+}
+
+.schema-profile-hover-card {
+  font-family: inherit;
+  border: 1px solid var(--schema-color-muted);
+  border-radius: 6px;
   min-width: 200px;
-  font-size: 0.8rem;
+  overflow: hidden;
+  background-color: var(--schema-color-normal);
 }
 
-.schema-profile-strip-popover-title {
-  font-weight: 600;
-  font-size: 0.85rem;
-  padding-bottom: 6px;
-  margin-bottom: 6px;
+.schema-profile-hover-card-head {
+  padding: 8px 10px;
   border-bottom: 1px solid var(--schema-color-muted);
-  opacity: 0.9;
+  background-color: var(--schema-color-normal-hover);
 }
 
-.schema-profile-strip-popover table {
-  border-collapse: collapse;
-  width: 100%;
+.schema-profile-hover-card-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--schema-badge-changed-fg);
 }
 
-.schema-profile-strip-popover td {
-  padding: 2px 6px;
+.schema-profile-hover-card-stats {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.schema-profile-hover-card-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--schema-color-muted);
   font-variant-numeric: tabular-nums;
 }
 
-.schema-profile-strip-popover td.lbl {
-  color: var(--schema-color-muted);
+.schema-profile-hover-card-stat:last-child {
+  border-bottom: none;
+}
+
+.schema-profile-hover-card-stat[data-state="changed"] {
+  background-color: var(--schema-color-changed);
+}
+
+.schema-profile-hover-card-stat-lbl {
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.3px;
+  color: var(--schema-color-muted);
 }
 
-.schema-profile-strip-popover tr[data-state="changed"] td {
-  background-color: var(--schema-color-changed);
+.schema-profile-hover-card-stat-val {
+  font-size: 0.85rem;
+  display: inline-flex;
+  gap: 4px;
+  align-items: baseline;
+}
+
+.schema-profile-hover-card-base {
+  color: var(--schema-color-muted);
+  font-size: 0.75rem;
+}
+
+.schema-profile-hover-card-arrow {
+  color: var(--schema-color-muted);
+  font-size: 0.75rem;
 }
 
 /* ============================================================================

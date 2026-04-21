@@ -2,6 +2,7 @@
 
 import Box from "@mui/material/Box";
 import type { SchemaDiffRow } from "../../lib/dataGrid/generators/toSchemaDataGrid";
+import { formatProfileValue, toNumeric } from "./profileFormat";
 
 export type CardStatus = "impacted" | "typechg" | "defchg" | "added";
 
@@ -34,28 +35,7 @@ function classifyInteresting(row: SchemaDiffRow): CardStatus | null {
   return null;
 }
 
-function toNumeric(v: unknown): number | null {
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  if (typeof v === "string") {
-    // The profile backend returns numbers as strings (e.g., "69.370000").
-    const n = Number(v);
-    if (Number.isFinite(n) && v.trim() !== "") return n;
-  }
-  return null;
-}
-
-function formatQuadValue(v: unknown, pct = false): string {
-  if (v === undefined || v === null) return "—";
-  if (typeof v === "boolean") return v ? "✓" : "✗";
-  const n = toNumeric(v);
-  if (n !== null) {
-    if (pct) return `${(n * 100).toFixed(2)}%`;
-    if (Number.isInteger(n)) return String(n);
-    // Trim trailing zeros so 69.37 stays 69.37, not 69.3700
-    return Number(n.toFixed(2)).toString();
-  }
-  return String(v);
-}
+const formatQuadValue = formatProfileValue;
 
 function isQuadChanged(row: SchemaDiffRow, field: string): boolean {
   const rec = row as unknown as Record<string, unknown>;
