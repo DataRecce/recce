@@ -461,6 +461,20 @@
   font-size: 0.85rem;
   margin-top: 2px;
   font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  gap: 4px;
+  align-items: baseline;
+  white-space: nowrap;
+}
+
+.schema-card-quad-base {
+  color: var(--schema-color-muted);
+  font-size: 0.75rem;
+}
+
+.schema-card-quad-arrow {
+  color: var(--schema-color-muted);
+  font-size: 0.75rem;
 }
 
 /* Card statuses */

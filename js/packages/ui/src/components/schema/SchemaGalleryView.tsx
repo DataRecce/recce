@@ -54,15 +54,28 @@ function isQuadChanged(row: SchemaDiffRow, field: string): boolean {
 
 function Card({ row, status }: { row: SchemaDiffRow; status: CardStatus }) {
   const rec = row as unknown as Record<string, unknown>;
-  const showQuadValue =
-    status === "added"
-      ? (field: string, pct: boolean) =>
-          formatQuadValue(rec[`current__${field}`], pct)
-      : (field: string, pct: boolean) =>
-          formatQuadValue(
-            rec[`current__${field}`] ?? rec[`base__${field}`],
-            pct,
-          );
+  const absent = (v: unknown) => v === undefined || v === null;
+  const renderQuadValue = (field: string, pct: boolean) => {
+    const b = rec[`base__${field}`];
+    const c = rec[`current__${field}`];
+    // Added cards: no base to show, just render current.
+    if (status === "added") return formatQuadValue(c, pct);
+    // Both missing: single dash placeholder.
+    if (absent(b) && absent(c)) return formatQuadValue(undefined, pct);
+    // Only one side present: render whichever exists.
+    if (absent(b)) return formatQuadValue(c, pct);
+    if (absent(c)) return formatQuadValue(b, pct);
+    // Unchanged: one number.
+    if (b === c) return formatQuadValue(c, pct);
+    // Changed: show both as base → current.
+    return (
+      <>
+        <span className="schema-card-quad-base">{formatQuadValue(b, pct)}</span>
+        <span className="schema-card-quad-arrow">→</span>
+        <span>{formatQuadValue(c, pct)}</span>
+      </>
+    );
+  };
   return (
     <div
       className={`schema-card schema-card-${status}`}
@@ -98,7 +111,7 @@ function Card({ row, status }: { row: SchemaDiffRow; status: CardStatus }) {
             >
               <span className="schema-card-quad-lbl">{label}</span>
               <span className="schema-card-quad-val">
-                {showQuadValue(field, pct)}
+                {renderQuadValue(field, pct)}
               </span>
             </div>
           );

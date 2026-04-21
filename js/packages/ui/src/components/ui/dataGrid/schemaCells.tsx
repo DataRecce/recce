@@ -138,8 +138,12 @@ function formatStat(v: unknown): string {
 
 function ProfileStripCell({ row }: { row: SchemaDiffRow }) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
-  const handleOpen = (e: React.MouseEvent<HTMLButtonElement>) =>
+  // Stop propagation so the click doesn't bubble to ag-grid's cell handler,
+  // which would trigger CLL navigation + re-render and dismiss the popover.
+  const handleOpen = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
     setAnchor(e.currentTarget);
+  };
   const handleClose = () => setAnchor(null);
 
   return (

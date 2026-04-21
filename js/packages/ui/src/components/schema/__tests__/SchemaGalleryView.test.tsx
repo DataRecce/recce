@@ -137,6 +137,24 @@ describe("SchemaGalleryView card rendering", () => {
     expect(minQuad).toHaveAttribute("data-changed", "false");
   });
 
+  it("shows base → current inside a changed quadrant", () => {
+    const rows = [
+      row({
+        name: "amount",
+        isImpacted: true,
+        base__not_null_proportion: 0.98,
+        current__not_null_proportion: 0.96,
+      } as Partial<SchemaDiffRow>),
+    ];
+    render(<SchemaGalleryView rows={rows} />);
+    const nullQuad = within(screen.getByTestId("card-amount")).getByTestId(
+      "quad-not_null_proportion",
+    );
+    expect(within(nullQuad).getByText("98.0%")).toBeInTheDocument();
+    expect(within(nullQuad).getByText("96.0%")).toBeInTheDocument();
+    expect(within(nullQuad).getByText("→")).toBeInTheDocument();
+  });
+
   it("renders added cards without base values in quadrants", () => {
     const rows = [
       row({
