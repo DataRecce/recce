@@ -92,6 +92,26 @@ export interface SingleEnvSchemaDataGridResult {
   rows: SchemaRow[];
 }
 
+// Single source of truth for which inline-profile stats appear in both
+// row-level hydration (base__*/current__* fields) and wide-mode column defs.
+const PROFILE_STAT_SPECS: readonly {
+  field: string;
+  header: string;
+  columnType: "number" | "text" | "boolean";
+  columnRenderMode?: "percent";
+}[] = [
+  {
+    field: "not_null_proportion",
+    header: "% non-null",
+    columnType: "number",
+    columnRenderMode: "percent",
+  },
+  { field: "min", header: "min", columnType: "text" },
+  { field: "max", header: "max", columnType: "text" },
+  { field: "avg", header: "avg", columnType: "number" },
+  { field: "is_unique", header: "unique", columnType: "boolean" },
+];
+
 // ============================================================================
 // Data Transformation
 // ============================================================================
@@ -227,25 +247,19 @@ export function toSchemaDataGrid(
 
   // Populate row-level stat fields regardless of mode — strip cell renderer
   // reads the same base__*/current__* fields the wide columns would use.
+  // PROFILE_STAT_SPECS is the single source of truth for which stats we show.
   if (options.profileByColumn) {
-    const STAT_FIELDS = [
-      "not_null_proportion",
-      "min",
-      "max",
-      "avg",
-      "is_unique",
-    ] as const;
     for (const row of rows) {
       const entry = options.profileByColumn.get(row.name.toLowerCase());
       if (!entry) continue;
-      for (const field of STAT_FIELDS) {
-        const baseVal = entry.base?.[field];
-        const currentVal = entry.current?.[field];
+      for (const spec of PROFILE_STAT_SPECS) {
+        const baseVal = entry.base?.[spec.field];
+        const currentVal = entry.current?.[spec.field];
         if (baseVal !== undefined) {
-          (row as Record<string, unknown>)[`base__${field}`] = baseVal;
+          (row as Record<string, unknown>)[`base__${spec.field}`] = baseVal;
         }
         if (currentVal !== undefined) {
-          (row as Record<string, unknown>)[`current__${field}`] = currentVal;
+          (row as Record<string, unknown>)[`current__${spec.field}`] = currentVal;
         }
       }
     }
@@ -264,20 +278,7 @@ export function toSchemaDataGrid(
       });
     } else {
       // Wide (default) — keep existing 5-column diff layout
-      const statSpecs = [
-        {
-          field: "not_null_proportion",
-          header: "% non-null",
-          columnType: "number" as const,
-          columnRenderMode: "percent" as const,
-        },
-        { field: "min", header: "min", columnType: "text" as const },
-        { field: "max", header: "max", columnType: "text" as const },
-        { field: "avg", header: "avg", columnType: "number" as const },
-        { field: "is_unique", header: "unique", columnType: "boolean" as const },
-      ];
-
-      for (const spec of statSpecs) {
+      for (const spec of PROFILE_STAT_SPECS) {
         const col = toDiffColumnConfigured({
           name: spec.field,
           columnStatus: "",
