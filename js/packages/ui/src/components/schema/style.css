@@ -38,6 +38,11 @@
   --schema-color-impacted: rgb(255 243 200);
   --schema-color-impacted-hover: rgb(255 237 175);
   --schema-color-impacted-active: rgb(255 229 145);
+  /* Fallback impacted accent + badge for contexts outside .cll-experience
+   * (e.g. the schema gallery view). .cll-experience overrides these. */
+  --schema-color-impacted-accent: rgb(252 211 77);
+  --schema-badge-impacted-bg: rgb(252 211 77 / 0.35);
+  --schema-badge-impacted-fg: rgb(146 64 14);
 }
 
 /* Dark mode */
@@ -67,6 +72,11 @@
   --schema-color-impacted: rgb(60 52 28);
   --schema-color-impacted-hover: rgb(75 65 33);
   --schema-color-impacted-active: rgb(90 78 38);
+  /* Fallback impacted accent + badge for dark-mode contexts outside
+   * .cll-experience. .cll-experience overrides these. */
+  --schema-color-impacted-accent: rgb(180 83 9);
+  --schema-badge-impacted-bg: rgb(180 83 9 / 0.25);
+  --schema-badge-impacted-fg: rgb(252 211 77);
 }
 
 /*
