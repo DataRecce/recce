@@ -152,3 +152,27 @@ describe("SchemaGalleryView card rendering", () => {
     expect(within(card).getByText(/0.4/)).toBeInTheDocument();
   });
 });
+
+describe("SchemaGalleryView chip variants", () => {
+  it("removed chips get the removed class", () => {
+    const rows = [row({ name: "old", currentIndex: undefined })];
+    const { container } = render(<SchemaGalleryView rows={rows} />);
+    const chip = container.querySelector(".schema-gallery-chip-removed");
+    expect(chip).not.toBeNull();
+    expect(chip).toHaveTextContent("old");
+  });
+
+  it("reordered chips get the reordered class", () => {
+    const rows = [row({ name: "date", reordered: true })];
+    const { container } = render(<SchemaGalleryView rows={rows} />);
+    const chip = container.querySelector(".schema-gallery-chip-reordered");
+    expect(chip).not.toBeNull();
+  });
+
+  it("unchanged chips have neither modifier", () => {
+    const rows = [row({ name: "id" })];
+    const { container } = render(<SchemaGalleryView rows={rows} />);
+    expect(container.querySelector(".schema-gallery-chip-removed")).toBeNull();
+    expect(container.querySelector(".schema-gallery-chip-reordered")).toBeNull();
+  });
+});
