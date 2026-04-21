@@ -41,18 +41,25 @@ PROFILE_COLUMN_JINJA_TEMPLATE = r"""
 
 {# General Agg ------------------------------------------- #}
 {%- set agg_row_count = 'cast(count(*) as ' ~ dbt.type_bigint() ~ ')' -%}
+{# Wrap count(*) denominators in nullif so empty tables yield NULL proportions
+   instead of raising a database "division by zero" error. #}
 {%- set agg_not_null_proportion =
         'sum(case when ' ~ adapter.quote(column_name) ~ ' is null '
         ~ 'then 0 '
         ~ 'else 1 end) / '
-        ~ 'cast(count(*) as ' ~ dbt.type_numeric() ~ ')'
+        ~ 'nullif(cast(count(*) as ' ~ dbt.type_numeric() ~ '), 0)'
 -%}
 {%- set agg_distinct_proportion =
         'count(distinct ' ~ adapter.quote(column_name) ~') / '
-        ~ 'cast(count(*) as ' ~ dbt.type_numeric() ~ ')'
+        ~ 'nullif(cast(count(*) as ' ~ dbt.type_numeric() ~ '), 0)'
 -%}
 {%- set agg_distinct_count = 'count(distinct ' ~ adapter.quote(column_name) ~ ')' -%}
-{%- set agg_is_unique =      'count(distinct ' ~ adapter.quote(column_name) ~ ') = count(*)' -%}
+{# is_unique is undefined on an empty table — emit null rather than vacuously
+   "0 = 0 = true". #}
+{%- set agg_is_unique =
+        'case when count(*) = 0 then null '
+        ~ 'else count(distinct ' ~ adapter.quote(column_name) ~ ') = count(*) end'
+-%}
 {%- set agg_min =            'cast(null as ' ~ dbt.type_string() ~ ')' -%}
 {%- set agg_max =            'cast(null as ' ~ dbt.type_string() ~ ')' -%}
 {%- set agg_avg =            'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
