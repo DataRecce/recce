@@ -253,3 +253,76 @@
 .schema-index-new {
   font-weight: 700;
 }
+
+/* ============================================================================
+   Profile strip (inline-profile strip mode)
+   ============================================================================ */
+
+.schema-profile-strip {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+.schema-profile-strip-square {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  display: inline-block;
+}
+
+.schema-profile-strip-square-same {
+  background-color: var(--schema-color-muted);
+  opacity: 0.25;
+}
+
+.schema-profile-strip-square-changed {
+  background-color: var(--schema-color-changed-accent);
+}
+
+.schema-profile-strip-square-empty {
+  background-color: transparent;
+  border-color: var(--schema-color-muted);
+  opacity: 0.35;
+}
+
+.schema-profile-strip-popover {
+  padding: 8px 12px;
+  min-width: 200px;
+  font-size: 0.8rem;
+}
+
+.schema-profile-strip-popover-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--schema-color-muted);
+  opacity: 0.9;
+}
+
+.schema-profile-strip-popover table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.schema-profile-strip-popover td {
+  padding: 2px 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.schema-profile-strip-popover td.lbl {
+  color: var(--schema-color-muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.schema-profile-strip-popover tr[data-state="changed"] td {
+  background-color: var(--schema-color-changed);
+}
