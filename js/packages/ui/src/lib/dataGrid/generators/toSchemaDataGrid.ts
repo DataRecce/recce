@@ -14,6 +14,7 @@ import {
   type RowObjectType,
 } from "../../../api";
 import {
+  createProfileStripRenderer,
   createSchemaColumnNameRenderer,
   createSingleEnvColumnNameRenderer,
   renderIndexCell,
@@ -73,6 +74,12 @@ export interface SchemaDataGridOptions {
       current?: Record<string, unknown>;
     }
   >;
+  /**
+   * How to render inline-profile data. Wide (default) appends 5 base/current
+   * stat diff columns. Strip appends one compact "profile" column with a
+   * 5-square indicator + popover. Ignored when profileByColumn is undefined.
+   */
+  profileMode?: "wide" | "strip";
 }
 
 export interface SchemaDataGridResult {
@@ -218,64 +225,70 @@ export function toSchemaDataGrid(
     }
   }
 
-  // Append profile stat columns when profileByColumn is provided.
+  // Populate row-level stat fields regardless of mode — strip cell renderer
+  // reads the same base__*/current__* fields the wide columns would use.
   if (options.profileByColumn) {
-    const statSpecs = [
-      {
-        field: "not_null_proportion",
-        header: "% non-null",
-        columnType: "number" as const,
-        columnRenderMode: "percent" as const,
-      },
-      {
-        field: "min",
-        header: "min",
-        columnType: "text" as const,
-      },
-      {
-        field: "max",
-        header: "max",
-        columnType: "text" as const,
-      },
-      {
-        field: "avg",
-        header: "avg",
-        columnType: "number" as const,
-      },
-      {
-        field: "is_unique",
-        header: "unique",
-        columnType: "boolean" as const,
-      },
-    ];
-
-    for (const spec of statSpecs) {
-      const col = toDiffColumnConfigured({
-        name: spec.field,
-        columnStatus: "",
-        columnType: spec.columnType,
-        columnRenderMode: spec.columnRenderMode,
-        displayMode: "inline",
-      });
-      columns.push({
-        ...(col as ColDef<SchemaDiffRow>),
-        headerName: spec.header,
-      });
-    }
-
+    const STAT_FIELDS = [
+      "not_null_proportion",
+      "min",
+      "max",
+      "avg",
+      "is_unique",
+    ] as const;
     for (const row of rows) {
       const entry = options.profileByColumn.get(row.name.toLowerCase());
       if (!entry) continue;
-      for (const spec of statSpecs) {
-        const baseVal = entry.base?.[spec.field];
-        const currentVal = entry.current?.[spec.field];
+      for (const field of STAT_FIELDS) {
+        const baseVal = entry.base?.[field];
+        const currentVal = entry.current?.[field];
         if (baseVal !== undefined) {
-          (row as Record<string, unknown>)[`base__${spec.field}`] = baseVal;
+          (row as Record<string, unknown>)[`base__${field}`] = baseVal;
         }
         if (currentVal !== undefined) {
-          (row as Record<string, unknown>)[`current__${spec.field}`] =
-            currentVal;
+          (row as Record<string, unknown>)[`current__${field}`] = currentVal;
         }
+      }
+    }
+
+    const profileMode = options.profileMode ?? "wide";
+
+    if (profileMode === "strip") {
+      columns.push({
+        field: "__profile_strip",
+        headerName: "Profile",
+        width: 100,
+        minWidth: 90,
+        resizable: false,
+        cellRenderer: createProfileStripRenderer(),
+        cellClass: "schema-column schema-column-profile-strip",
+      });
+    } else {
+      // Wide (default) — keep existing 5-column diff layout
+      const statSpecs = [
+        {
+          field: "not_null_proportion",
+          header: "% non-null",
+          columnType: "number" as const,
+          columnRenderMode: "percent" as const,
+        },
+        { field: "min", header: "min", columnType: "text" as const },
+        { field: "max", header: "max", columnType: "text" as const },
+        { field: "avg", header: "avg", columnType: "number" as const },
+        { field: "is_unique", header: "unique", columnType: "boolean" as const },
+      ];
+
+      for (const spec of statSpecs) {
+        const col = toDiffColumnConfigured({
+          name: spec.field,
+          columnStatus: "",
+          columnType: spec.columnType,
+          columnRenderMode: spec.columnRenderMode,
+          displayMode: "inline",
+        });
+        columns.push({
+          ...(col as ColDef<SchemaDiffRow>),
+          headerName: spec.header,
+        });
       }
     }
   }

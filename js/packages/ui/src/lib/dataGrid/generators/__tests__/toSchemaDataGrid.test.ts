@@ -37,6 +37,7 @@ vi.mock("../../../../components/ui/dataGrid/schemaCells", () => ({
   createSchemaColumnNameRenderer: vi.fn(() => vi.fn()),
   createSingleEnvColumnNameRenderer: vi.fn(() => vi.fn()),
   renderIndexCell: vi.fn(),
+  createProfileStripRenderer: vi.fn(() => vi.fn()),
 }));
 
 // ============================================================================
@@ -1006,5 +1007,81 @@ describe("toSchemaDataGrid — profileByColumn", () => {
     );
     const statusRow = rows.find((r) => r.name === "STATUS") as RowObjectType;
     expect(statusRow.current__not_null_proportion).toBe(0.5);
+  });
+});
+
+describe("toSchemaDataGrid profile modes", () => {
+  const schemaDiff = {
+    amount: {
+      name: "amount",
+      baseIndex: 1,
+      currentIndex: 1,
+      baseType: "number",
+      currentType: "number",
+    },
+  } as unknown as Parameters<typeof toSchemaDataGrid>[0];
+
+  const profile = new Map<
+    string,
+    {
+      base?: Record<string, unknown>;
+      current?: Record<string, unknown>;
+    }
+  >([
+    [
+      "amount",
+      {
+        base: { not_null_proportion: 0.98, avg: 42.1 },
+        current: { not_null_proportion: 0.96, avg: 42.1 },
+      },
+    ],
+  ]);
+
+  it("wide mode appends five stat diff columns (default behaviour)", () => {
+    const { columns } = toSchemaDataGrid(schemaDiff, {
+      profileByColumn: profile,
+      profileMode: "wide",
+    });
+    const fields = (columns as { field?: string }[])
+      .map((c) => c.field)
+      .filter(Boolean) as string[];
+    expect(fields).toContain("not_null_proportion");
+    expect(fields).toContain("min");
+    expect(fields).toContain("max");
+    expect(fields).toContain("avg");
+    expect(fields).toContain("is_unique");
+  });
+
+  it("strip mode appends exactly one profile column", () => {
+    const { columns } = toSchemaDataGrid(schemaDiff, {
+      profileByColumn: profile,
+      profileMode: "strip",
+    });
+    const fields = (columns as { field?: string }[])
+      .map((c) => c.field)
+      .filter(Boolean) as string[];
+    expect(fields).not.toContain("not_null_proportion");
+    expect(fields).not.toContain("avg");
+    expect(fields.filter((f) => f === "__profile_strip")).toHaveLength(1);
+  });
+
+  it("strip column has a cellRenderer attached", () => {
+    const { columns } = toSchemaDataGrid(schemaDiff, {
+      profileByColumn: profile,
+      profileMode: "strip",
+    });
+    const stripCol = (columns as { field?: string; cellRenderer?: unknown }[])
+      .find((c) => c.field === "__profile_strip");
+    expect(stripCol?.cellRenderer).toBeTypeOf("function");
+  });
+
+  it("defaults to wide when profileMode is omitted", () => {
+    const { columns } = toSchemaDataGrid(schemaDiff, {
+      profileByColumn: profile,
+    });
+    const fields = (columns as { field?: string }[])
+      .map((c) => c.field)
+      .filter(Boolean) as string[];
+    expect(fields).toContain("not_null_proportion");
   });
 });
