@@ -120,8 +120,9 @@ function statState(row: SchemaDiffRow, field: string): StripState {
   const rec = row as unknown as Record<string, unknown>;
   const b = rec[`base__${field}`];
   const c = rec[`current__${field}`];
-  if (b === undefined && c === undefined) return "empty";
-  if (b === undefined || c === undefined) return "changed";
+  const absent = (v: unknown) => v === undefined || v === null;
+  if (absent(b) && absent(c)) return "empty";
+  if (absent(b) || absent(c)) return "changed";
   return b === c ? "same" : "changed";
 }
 

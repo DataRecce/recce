@@ -54,6 +54,23 @@ describe("createProfileStripRenderer", () => {
     }
   });
 
+  it("treats null base/current as 'empty' (not 'same')", () => {
+    const renderer = createProfileStripRenderer();
+    render(
+      <>
+        {renderer(
+          makeParams({
+            name: "amount",
+            base__not_null_proportion: null,
+            current__not_null_proportion: null,
+          } as Partial<SchemaDiffRow>),
+        )}
+      </>,
+    );
+    const squares = screen.getAllByTestId("strip-square");
+    expect(squares[0]).toHaveAttribute("data-state", "empty");
+  });
+
   it("opens a popover on click showing base → current per stat", async () => {
     const renderer = createProfileStripRenderer();
     const user = userEvent.setup();
