@@ -267,4 +267,52 @@ describe("PrivateSchemaView expand button", () => {
       expect.arrayContaining(["status", "amount"]),
     );
   });
+
+  it("resets expand state when navigating to a different model", async () => {
+    setup({
+      // Impacted set contains "status" for both models, so after reset the
+      // default scope is [status] (not empty).
+      impactedColumnIds: new Set([
+        "model.jaffle.orders_status",
+        "model.jaffle.customers_status",
+      ]),
+      profileByColumn: new Map([["status", { current: {} }]]),
+    });
+    const user = (await import("@testing-library/user-event")).default.setup();
+    const { findByRole, rerender } = render(
+      <SchemaView
+        ref={createRef<DataGridHandle>()}
+        base={baseNode()}
+        current={baseNode()}
+      />,
+    );
+    // Expand on model A
+    const btn = await findByRole("button", {
+      name: /profile remaining columns/i,
+    });
+    await user.click(btn);
+    expect(mockUseInlineProfile.mock.calls.at(-1)?.[0].columns).toEqual(
+      expect.arrayContaining(["status", "amount"]),
+    );
+
+    // Rerender with a different model — should fall back to impacted-only
+    const otherNode = {
+      id: "model.jaffle.customers",
+      name: "customers",
+      resource_type: "model",
+      columns: {
+        status: { type: "text", name: "status", index: 0 },
+        amount: { type: "number", name: "amount", index: 1 },
+      },
+    } as unknown as Parameters<typeof SchemaView>[0]["current"];
+    rerender(
+      <SchemaView
+        ref={createRef<DataGridHandle>()}
+        base={otherNode}
+        current={otherNode}
+      />,
+    );
+    const lastArgs = mockUseInlineProfile.mock.calls.at(-1)?.[0];
+    expect(lastArgs.columns).toEqual(["status"]);
+  });
 });

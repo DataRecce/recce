@@ -255,8 +255,16 @@ export function PrivateSchemaView(
   ]);
 
   const modelName = current?.name ?? base?.name;
+  const nodeIdForProfile = current?.id ?? base?.id;
 
   const [expanded, setExpanded] = useState(false);
+
+  // Reset expand state when the user navigates to a different model, so each
+  // model starts in the default impacted-columns-only scope.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: nodeIdForProfile is intentionally the trigger
+  useEffect(() => {
+    setExpanded(false);
+  }, [nodeIdForProfile]);
 
   const columnsToProfile = expanded
     ? columnsInBothEnvs
