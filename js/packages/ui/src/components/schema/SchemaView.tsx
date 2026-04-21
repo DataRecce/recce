@@ -1,5 +1,6 @@
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import "./style.css";
 import type {
   CellClickedEvent,
@@ -255,17 +256,20 @@ export function PrivateSchemaView(
 
   const modelName = current?.name ?? base?.name;
 
+  const [expanded, setExpanded] = useState(false);
+
+  const columnsToProfile = expanded
+    ? columnsInBothEnvs
+    : impactedColumnsForProfile;
+
   const {
     profileByColumn,
-    isLoading: _profileLoading,
+    isLoading: profileLoading,
     error: profileError,
   } = useInlineProfile({
     modelName,
-    columns: impactedColumnsForProfile,
-    enabled:
-      inlineProfileActive &&
-      isProfilable &&
-      impactedColumnsForProfile.length > 0,
+    columns: columnsToProfile,
+    enabled: inlineProfileActive && isProfilable && columnsToProfile.length > 0,
   });
 
   const [gridApi, setGridApi] = useState<GridApi<SchemaDiffRow> | null>(null);
@@ -459,6 +463,30 @@ export function PrivateSchemaView(
         </MuiAlert>
       ) : null}
       <SchemaLegend />
+      {inlineProfileActive && isProfilable
+        ? (() => {
+            const uncoveredCount = columnsInBothEnvs.filter(
+              (c) => !profileByColumn.has(c.toLowerCase()),
+            ).length;
+            if (uncoveredCount === 0) return null;
+            const label =
+              profileByColumn.size === 0
+                ? "Profile all columns"
+                : "Profile remaining columns";
+            return (
+              <Box sx={{ px: 1, py: 0.5 }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setExpanded(true)}
+                  disabled={profileLoading}
+                >
+                  {profileLoading ? "Profiling…" : label}
+                </Button>
+              </Box>
+            );
+          })()
+        : null}
       {rows.length > 0 && (
         <ScreenshotDataGrid
           style={{

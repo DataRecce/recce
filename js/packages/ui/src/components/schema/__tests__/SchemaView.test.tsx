@@ -183,3 +183,88 @@ describe("PrivateSchemaView inline profile", () => {
     expect(fields).toContain("is_unique");
   });
 });
+
+describe("PrivateSchemaView expand button", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockScreenshotDataGrid.mockClear();
+  });
+
+  it("renders 'Profile all columns' when impacted set is empty", async () => {
+    setup({ impactedColumnIds: new Set() });
+    const { findByRole } = render(
+      <SchemaView
+        ref={createRef<DataGridHandle>()}
+        base={baseNode()}
+        current={baseNode()}
+      />,
+    );
+    const btn = await findByRole("button", { name: /profile all columns/i });
+    expect(btn).toBeInTheDocument();
+  });
+
+  it("renders 'Profile remaining columns' when impacted set is populated", async () => {
+    setup({
+      impactedColumnIds: new Set(["model.jaffle.orders_status"]),
+      profileByColumn: new Map([["status", { current: {} }]]),
+    });
+    const { findByRole } = render(
+      <SchemaView
+        ref={createRef<DataGridHandle>()}
+        base={baseNode()}
+        current={baseNode()}
+      />,
+    );
+    const btn = await findByRole("button", {
+      name: /profile remaining columns/i,
+    });
+    expect(btn).toBeInTheDocument();
+  });
+
+  it("hides the button when every profilable column is already covered", () => {
+    setup({
+      impactedColumnIds: new Set([
+        "model.jaffle.orders_status",
+        "model.jaffle.orders_amount",
+      ]),
+      profileByColumn: new Map([
+        ["status", { current: {} }],
+        ["amount", { current: {} }],
+      ]),
+    });
+    const { queryByRole } = render(
+      <SchemaView
+        ref={createRef<DataGridHandle>()}
+        base={baseNode()}
+        current={baseNode()}
+      />,
+    );
+    expect(
+      queryByRole("button", { name: /profile (all|remaining) columns/i }),
+    ).toBeNull();
+  });
+
+  it("clicking the button re-calls useInlineProfile with all columns", async () => {
+    setup({
+      impactedColumnIds: new Set(["model.jaffle.orders_status"]),
+      profileByColumn: new Map([["status", { current: {} }]]),
+    });
+    const user = (await import("@testing-library/user-event")).default.setup();
+    const { findByRole } = render(
+      <SchemaView
+        ref={createRef<DataGridHandle>()}
+        base={baseNode()}
+        current={baseNode()}
+      />,
+    );
+    const btn = await findByRole("button", {
+      name: /profile remaining columns/i,
+    });
+    await user.click(btn);
+    // Last call should now request both columns
+    const lastArgs = mockUseInlineProfile.mock.calls.at(-1)?.[0];
+    expect(lastArgs.columns).toEqual(
+      expect.arrayContaining(["status", "amount"]),
+    );
+  });
+});
