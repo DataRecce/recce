@@ -1,6 +1,7 @@
 import MuiAlert from "@mui/material/Alert";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
 import "./style.css";
 import type {
   CellClickedEvent,
@@ -473,7 +474,15 @@ export function PrivateSchemaView(
 
       {profileError ? (
         <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
-          Couldn&apos;t load column profile
+          {(() => {
+            const msg =
+              profileError instanceof Error
+                ? profileError.message
+                : String(profileError);
+            return msg
+              ? `Couldn't load column profile: ${msg}`
+              : "Couldn't load column profile";
+          })()}
         </MuiAlert>
       ) : null}
       <SchemaLegend />
@@ -488,6 +497,21 @@ export function PrivateSchemaView(
           }}
         >
           <ProfileModeToggle value={profileMode} onChange={setProfileMode} />
+          {profileLoading ? (
+            <Box
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 0.75,
+                color: "text.secondary",
+                fontSize: "0.75rem",
+              }}
+              aria-live="polite"
+            >
+              <CircularProgress size={14} thickness={5} />
+              <span>Profiling…</span>
+            </Box>
+          ) : null}
           {(() => {
             const uncoveredCount = columnsInBothEnvs.filter(
               (c) => !profileByColumn.has(c.toLowerCase()),
