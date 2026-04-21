@@ -5,8 +5,8 @@
  * @description Cell components and render functions for Schema grid views
  */
 
-import type { ICellRendererParams } from "ag-grid-community";
 import MuiPopover from "@mui/material/Popover";
+import type { ICellRendererParams } from "ag-grid-community";
 import React, { useState } from "react";
 import type { NodeData, RowObjectType } from "../../../api";
 import type { SchemaDiffRow, SchemaRow } from "../../schema";

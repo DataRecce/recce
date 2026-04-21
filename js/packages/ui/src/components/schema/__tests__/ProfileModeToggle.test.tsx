@@ -10,14 +10,14 @@ import { ProfileModeToggle } from "../ProfileModeToggle";
 
 describe("ProfileModeToggle", () => {
   it("renders three toggle buttons", () => {
-    render(<ProfileModeToggle value="grid" onChange={() => {}} />);
+    render(<ProfileModeToggle value="grid" onChange={vi.fn()} />);
     expect(screen.getByRole("button", { name: /wide/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /strip/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /grid/i })).toBeInTheDocument();
   });
 
   it("marks the current mode as selected (aria-pressed=true)", () => {
-    render(<ProfileModeToggle value="strip" onChange={() => {}} />);
+    render(<ProfileModeToggle value="strip" onChange={vi.fn()} />);
     expect(screen.getByRole("button", { name: /strip/i })).toHaveAttribute(
       "aria-pressed",
       "true",

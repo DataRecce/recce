@@ -12,7 +12,11 @@ export interface ProfileModeToggleProps {
 
 const MODES: { mode: ProfileMode; label: string; tooltip: string }[] = [
   { mode: "wide", label: "Wide", tooltip: "Wide: full base/current columns" },
-  { mode: "strip", label: "Strip", tooltip: "Strip: compact 5-square indicator" },
+  {
+    mode: "strip",
+    label: "Strip",
+    tooltip: "Strip: compact 5-square indicator",
+  },
   { mode: "grid", label: "Grid", tooltip: "Grid: card gallery per column" },
 ];
 

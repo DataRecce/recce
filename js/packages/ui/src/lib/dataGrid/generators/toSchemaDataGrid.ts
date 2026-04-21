@@ -262,7 +262,8 @@ export function toSchemaDataGrid(
           (row as Record<string, unknown>)[`base__${spec.field}`] = baseVal;
         }
         if (currentVal !== undefined) {
-          (row as Record<string, unknown>)[`current__${spec.field}`] = currentVal;
+          (row as Record<string, unknown>)[`current__${spec.field}`] =
+            currentVal;
         }
       }
     }

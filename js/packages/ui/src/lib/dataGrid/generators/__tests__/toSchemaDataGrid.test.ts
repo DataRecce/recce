@@ -1070,8 +1070,9 @@ describe("toSchemaDataGrid profile modes", () => {
       profileByColumn: profile,
       profileMode: "strip",
     });
-    const stripCol = (columns as { field?: string; cellRenderer?: unknown }[])
-      .find((c) => c.field === "__profile_strip");
+    const stripCol = (
+      columns as { field?: string; cellRenderer?: unknown }[]
+    ).find((c) => c.field === "__profile_strip");
     expect(stripCol?.cellRenderer).toBeTypeOf("function");
   });
 

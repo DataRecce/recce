@@ -6,8 +6,14 @@
 export type { SchemaRow } from "../../lib/dataGrid/generators/toSchemaDataGrid";
 // ColumnNameCell - cell renderer for column names with diff action menu
 export { ColumnNameCell, type ColumnNameCellProps } from "./ColumnNameCell";
+export {
+  ProfileModeToggle,
+  type ProfileModeToggleProps,
+} from "./ProfileModeToggle";
+export {
+  SchemaGalleryView,
+  type SchemaGalleryViewProps,
+} from "./SchemaGalleryView";
 export { SchemaLegend, SchemaView, SingleEnvSchemaView } from "./SchemaView";
-export { ProfileModeToggle, type ProfileModeToggleProps } from "./ProfileModeToggle";
-export { SchemaGalleryView, type SchemaGalleryViewProps } from "./SchemaGalleryView";
 // Schema diff types
 export type { SchemaDiffRow, SchemaDiffStatus } from "./types";

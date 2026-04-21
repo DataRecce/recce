@@ -25,7 +25,8 @@ const QUADRANTS = [
 
 function classifyInteresting(row: SchemaDiffRow): CardStatus | null {
   if (row.baseIndex === undefined) return "added";
-  if (row.baseType !== undefined && row.baseType !== row.currentType) return "typechg";
+  if (row.baseType !== undefined && row.baseType !== row.currentType)
+    return "typechg";
   if (row.definitionChanged) return "defchg";
   if (row.isImpacted) return "impacted";
   return null;
@@ -86,7 +87,8 @@ function Card({ row, status }: { row: SchemaDiffRow; status: CardStatus }) {
       </div>
       <div className="schema-card-quads">
         {QUADRANTS.map(({ field, label, pct }) => {
-          const changed = status === "added" ? false : isQuadChanged(row, field);
+          const changed =
+            status === "added" ? false : isQuadChanged(row, field);
           return (
             <div
               key={field}
@@ -95,7 +97,9 @@ function Card({ row, status }: { row: SchemaDiffRow; status: CardStatus }) {
               data-changed={String(changed)}
             >
               <span className="schema-card-quad-lbl">{label}</span>
-              <span className="schema-card-quad-val">{showQuadValue(field, pct)}</span>
+              <span className="schema-card-quad-val">
+                {showQuadValue(field, pct)}
+              </span>
             </div>
           );
         })}
@@ -141,7 +145,9 @@ export function SchemaGalleryView({ rows }: SchemaGalleryViewProps) {
       )}
       {other.length > 0 && (
         <section data-testid="other-section" className="schema-gallery-section">
-          <h4 className="schema-gallery-section-title">Other ({other.length})</h4>
+          <h4 className="schema-gallery-section-title">
+            Other ({other.length})
+          </h4>
           <div className="schema-gallery-strip">
             {other.map((row) => {
               const isRemoved = row.currentIndex === undefined;

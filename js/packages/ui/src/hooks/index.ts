@@ -50,7 +50,6 @@ export {
   useInlineProfile,
 } from "./useInlineProfile";
 export { useIsDark } from "./useIsDark";
-export { type ProfileMode, useProfileMode } from "./useProfileMode";
 export {
   extractColumns,
   type UseModelColumnsReturn,
@@ -66,6 +65,7 @@ export {
   type UseMultiNodesActionReturn,
   useMultiNodesAction,
 } from "./useMultiNodesAction";
+export { type ProfileMode, useProfileMode } from "./useProfileMode";
 export { type UseRunResult, useRun } from "./useRun";
 export { type ThemeColors, useThemeColors } from "./useThemeColors";
 export {

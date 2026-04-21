@@ -173,6 +173,8 @@ describe("SchemaGalleryView chip variants", () => {
     const rows = [row({ name: "id" })];
     const { container } = render(<SchemaGalleryView rows={rows} />);
     expect(container.querySelector(".schema-gallery-chip-removed")).toBeNull();
-    expect(container.querySelector(".schema-gallery-chip-reordered")).toBeNull();
+    expect(
+      container.querySelector(".schema-gallery-chip-reordered"),
+    ).toBeNull();
   });
 });

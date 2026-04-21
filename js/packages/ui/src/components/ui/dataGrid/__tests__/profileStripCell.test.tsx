@@ -5,12 +5,14 @@
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
 import type { ICellRendererParams } from "ag-grid-community";
+import { describe, expect, it } from "vitest";
 import type { SchemaDiffRow } from "../../../../lib/dataGrid/generators/toSchemaDataGrid";
 import { createProfileStripRenderer } from "../schemaCells";
 
-function makeParams(row: Partial<SchemaDiffRow>): ICellRendererParams<SchemaDiffRow> {
+function makeParams(
+  row: Partial<SchemaDiffRow>,
+): ICellRendererParams<SchemaDiffRow> {
   const { name = "amount", ...rest } = row;
   return {
     data: { name, ...rest } as SchemaDiffRow,
@@ -20,24 +22,24 @@ function makeParams(row: Partial<SchemaDiffRow>): ICellRendererParams<SchemaDiff
 describe("createProfileStripRenderer", () => {
   it("renders 5 squares per cell", () => {
     const renderer = createProfileStripRenderer();
-    render(
-      <>{renderer(makeParams({ name: "amount" }))}</>,
-    );
+    render(<>{renderer(makeParams({ name: "amount" }))}</>);
     expect(screen.getAllByTestId("strip-square")).toHaveLength(5);
   });
 
   it("marks changed stats with the 'changed' modifier", () => {
     const renderer = createProfileStripRenderer();
     render(
-      <>{renderer(
-        makeParams({
-          name: "amount",
-          base__not_null_proportion: 0.98,
-          current__not_null_proportion: 0.96,
-          base__avg: 42.1,
-          current__avg: 42.1,
-        } as Partial<SchemaDiffRow>),
-      )}</>,
+      <>
+        {renderer(
+          makeParams({
+            name: "amount",
+            base__not_null_proportion: 0.98,
+            current__not_null_proportion: 0.96,
+            base__avg: 42.1,
+            current__avg: 42.1,
+          } as Partial<SchemaDiffRow>),
+        )}
+      </>,
     );
     const squares = screen.getAllByTestId("strip-square");
     // Order: [null%, min, max, avg, unique]
@@ -75,15 +77,17 @@ describe("createProfileStripRenderer", () => {
     const renderer = createProfileStripRenderer();
     const user = userEvent.setup();
     render(
-      <>{renderer(
-        makeParams({
-          name: "amount",
-          base__not_null_proportion: 0.98,
-          current__not_null_proportion: 0.96,
-          base__min: 0.5,
-          current__min: 0.5,
-        } as Partial<SchemaDiffRow>),
-      )}</>,
+      <>
+        {renderer(
+          makeParams({
+            name: "amount",
+            base__not_null_proportion: 0.98,
+            current__not_null_proportion: 0.96,
+            base__min: 0.5,
+            current__min: 0.5,
+          } as Partial<SchemaDiffRow>),
+        )}
+      </>,
     );
     await user.click(screen.getByTestId("strip-button"));
     expect(await screen.findByText(/null%/i)).toBeInTheDocument();

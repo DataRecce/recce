@@ -464,7 +464,9 @@
 }
 
 /* Card statuses */
-.schema-card-impacted { border-color: var(--schema-color-impacted-accent); }
+.schema-card-impacted {
+  border-color: var(--schema-color-impacted-accent);
+}
 .schema-card-impacted .schema-card-head {
   background-color: var(--schema-color-impacted);
   border-bottom-color: var(--schema-color-impacted-accent);
@@ -474,7 +476,9 @@
   color: var(--schema-badge-impacted-fg);
 }
 
-.schema-card-added { border-color: var(--schema-color-added-accent); }
+.schema-card-added {
+  border-color: var(--schema-color-added-accent);
+}
 .schema-card-added .schema-card-head {
   background-color: var(--schema-color-added);
   border-bottom-color: var(--schema-color-added-accent);
@@ -484,13 +488,17 @@
   color: var(--schema-badge-added-fg);
 }
 
-.schema-card-typechg { border-color: var(--schema-color-changed-accent); }
+.schema-card-typechg {
+  border-color: var(--schema-color-changed-accent);
+}
 .schema-card-typechg .schema-card-head {
   background-color: var(--schema-color-changed);
   border-bottom-color: var(--schema-color-changed-accent);
 }
 
-.schema-card-defchg { border-color: var(--schema-color-changed-accent); }
+.schema-card-defchg {
+  border-color: var(--schema-color-changed-accent);
+}
 .schema-card-defchg .schema-card-head {
   background-color: var(--schema-color-changed);
   border-bottom-color: var(--schema-color-changed-accent);
