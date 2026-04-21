@@ -280,8 +280,10 @@ export function toSchemaDataGrid(
         cellRenderer: createProfileStripRenderer(),
         cellClass: "schema-column schema-column-profile-strip",
       });
-    } else {
-      // Wide (default) — keep existing 5-column diff layout
+    } else if (profileMode !== "grid") {
+      // Wide — 5-column base/current diff layout. "grid" intentionally
+      // falls through with no extra columns, since the caller renders
+      // SchemaGalleryView and discards the column list.
       for (const spec of PROFILE_STAT_SPECS) {
         const col = toDiffColumnConfigured({
           name: spec.field,

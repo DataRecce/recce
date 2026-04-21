@@ -34,7 +34,7 @@ function classifyInteresting(row: SchemaDiffRow): CardStatus | null {
 
 function formatQuadValue(v: unknown, pct = false): string {
   if (v === undefined || v === null) return "—";
-  if (typeof v === "boolean") return v ? "✓" : "—";
+  if (typeof v === "boolean") return v ? "✓" : "✗";
   if (typeof v === "number") {
     if (pct) return `${(v * 100).toFixed(1)}%`;
     return String(v);
