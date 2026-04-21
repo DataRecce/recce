@@ -8,5 +8,6 @@ export type { SchemaRow } from "../../lib/dataGrid/generators/toSchemaDataGrid";
 export { ColumnNameCell, type ColumnNameCellProps } from "./ColumnNameCell";
 export { SchemaLegend, SchemaView, SingleEnvSchemaView } from "./SchemaView";
 export { ProfileModeToggle, type ProfileModeToggleProps } from "./ProfileModeToggle";
+export { SchemaGalleryView, type SchemaGalleryViewProps } from "./SchemaGalleryView";
 // Schema diff types
 export type { SchemaDiffRow, SchemaDiffStatus } from "./types";
