@@ -50,7 +50,7 @@ export {
   useInlineProfile,
 } from "./useInlineProfile";
 export { useIsDark } from "./useIsDark";
-export { type ProfileMode, STORAGE_KEY, useProfileMode } from "./useProfileMode";
+export { type ProfileMode, useProfileMode } from "./useProfileMode";
 export {
   extractColumns,
   type UseModelColumnsReturn,
