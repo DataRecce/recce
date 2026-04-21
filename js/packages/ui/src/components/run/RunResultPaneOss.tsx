@@ -9,8 +9,7 @@
  * 2. Injects OSS-specific context and behavior (tracking, clipboard, API client)
  *
  * OSS-specific behaviors injected:
- * - Analytics tracking (Amplitude via trackCopyToClipboard, trackShareState)
- * - Share state context (RecceShareStateContext)
+ * - Analytics tracking (Amplitude via trackCopyToClipboard)
  * - API client configuration (useApiConfig)
  * - Screenshot/clipboard functionality (useCopyToClipboardButton)
  * - CSV export functionality (useCSVExport)
@@ -37,12 +36,10 @@ import {
   useApiConfig,
   useCopyToClipboardButton,
   useCSVExport,
-  useRecceShareStateContext,
   useRun,
 } from "../../hooks";
-import { trackCopyToClipboard, trackShareState } from "../../lib/api/track";
+import { trackCopyToClipboard } from "../../lib/api/track";
 import { isHttpError } from "../../lib/fetchClient";
-import AuthModal from "../app/AuthModal";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide";
 import { DualSqlEditor, SqlEditor } from "../query";
 import { toaster } from "../ui/Toaster";
@@ -119,25 +116,6 @@ const DualSqlEditorAdapter = ({
 );
 
 // ============================================================================
-// Auth Modal Adapter Component
-// ============================================================================
-
-const AuthModalAdapter = ({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) => (
-  <AuthModal
-    parentOpen={open}
-    handleParentClose={() => onClose()}
-    ignoreCookie
-    variant="enable-share"
-  />
-);
-
-// ============================================================================
 // PrivateLoadableRunView - Main Implementation (OSS Wrapper)
 // ============================================================================
 
@@ -154,7 +132,7 @@ export const PrivateLoadableRunView = ({
   onClose?: () => void;
   isSingleEnvironment?: boolean;
 }) => {
-  const { featureToggles, authed } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
   const { runAction } = useRecceActionContext();
   const { error, run, onCancel, isRunning } = useRun(runId);
   const [viewOptions, setViewOptions] = useState<ViewOptionTypes>();
@@ -162,7 +140,6 @@ export const PrivateLoadableRunView = ({
   const router = useRouter();
   const { apiClient } = useApiConfig();
   const { basePath } = useRouteConfig();
-  const { handleShareClick } = useRecceShareStateContext();
 
   // Get the result view component from registry
   let RunResultView: RegistryEntry["RunResultView"] | undefined;
@@ -188,12 +165,6 @@ export const PrivateLoadableRunView = ({
       runAction(run.type, run.params as unknown as AxiosQueryParams);
     }
   }, [run, runAction]);
-
-  // Share to cloud handler
-  const handleShareToCloud = useCallback(async () => {
-    await handleShareClick();
-    trackShareState({ name: "create" });
-  }, [handleShareClick]);
 
   // Copy to clipboard handler with tracking
   const handleCopyAsImage = useCallback(async () => {
@@ -269,8 +240,6 @@ export const PrivateLoadableRunView = ({
       onCopyMouseEnter={onMouseEnter}
       onCopyMouseLeave={onMouseLeave}
       csvExport={csvExport}
-      authed={authed}
-      onShareToCloud={handleShareToCloud}
       // Checklist handlers
       onGoToCheck={handleGoToCheck}
       onAddToChecklist={handleAddToChecklist}
@@ -278,7 +247,6 @@ export const PrivateLoadableRunView = ({
       SingleEnvironmentNotification={SingleEnvironmentSetupNotification}
       SqlEditorComponent={SqlEditorAdapter}
       DualSqlEditorComponent={DualSqlEditorAdapter}
-      AuthModalComponent={AuthModalAdapter}
       RunResultView={RunResultView}
       resultViewRef={ref as Ref<RefTypes>}
     />

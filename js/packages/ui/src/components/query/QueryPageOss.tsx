@@ -137,7 +137,7 @@ export const QueryPageOss = () => {
     }
 
     for (const key in lineageGraph.nodes) {
-      const schema = lineageGraph.nodes[key].data.data.current?.schema;
+      const schema = lineageGraph.nodes[key].data.schema;
       if (schema) {
         countMap[schema] = (countMap[schema] || 0) + 1;
       }

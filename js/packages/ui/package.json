@@ -177,12 +177,12 @@
   "devDependencies": {
     "@tailwindcss/cli": "^4.2.2",
     "@tailwindcss/postcss": "^4.2.2",
-    "@tsdown/css": "^0.21.7",
+    "@tsdown/css": "^0.21.9",
     "postcss": "^8.5.0",
     "read-excel-file": "^8.0.3",
     "tailwindcss": "^4.2.2",
-    "tsdown": "^0.21.7",
-    "typedoc": "^0.28.18",
+    "tsdown": "^0.21.9",
+    "typedoc": "^0.28.19",
     "typedoc-plugin-markdown": "^4.11.0",
     "typescript": "^5.9.0"
   },

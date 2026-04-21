@@ -41,7 +41,7 @@ interface SandboxViewProps {
  *
  * This wrapper:
  * 1. Handles query execution with React Query mutations
- * 2. Fetches raw_code on demand via /api/model/{model_id} when it is
+ * 2. Fetches raw_code on demand via /api/models/{model_id} when it is
  *    absent from the /info lineage payload (DRC-3263).
  * 3. Injects OSS-specific components (DiffEditor, QueryForm, RunResultPane)
  * 4. Provides OSS-specific tracking and feedback toasts

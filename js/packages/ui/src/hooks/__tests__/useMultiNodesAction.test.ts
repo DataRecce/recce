@@ -84,9 +84,6 @@ const createMockNode = (
   const id = overrides.id ?? "model.test.test_model";
   const name = overrides.name ?? "test_model";
   const resourceType = overrides.resourceType ?? "model";
-  const primary_key = overrides.primary_key ?? "id";
-  const hasCurrent = overrides.hasCurrent ?? true;
-
   return {
     id,
     position: { x: 0, y: 0 },
@@ -94,21 +91,6 @@ const createMockNode = (
     data: {
       id,
       name,
-      from: "both",
-      data: {
-        base: {
-          name,
-          resource_type: resourceType,
-          primary_key: primary_key,
-        },
-        current: hasCurrent
-          ? {
-              name,
-              resource_type: resourceType,
-              primary_key: primary_key,
-            }
-          : undefined,
-      },
       resourceType,
       parents: {},
       children: {},
@@ -526,19 +508,6 @@ describe("useMultiNodesAction", () => {
         data: {
           id: "model.test.no_pk",
           name: "no_pk",
-          from: "both",
-          data: {
-            base: {
-              name: "no_pk",
-              resource_type: "model",
-              primary_key: undefined,
-            },
-            current: {
-              name: "no_pk",
-              resource_type: "model",
-              primary_key: undefined, // No primary key
-            },
-          },
           resourceType: "model",
           parents: {},
           children: {},
@@ -561,14 +530,13 @@ describe("useMultiNodesAction", () => {
       });
     });
 
-    it("calls submitRun with value_diff type and correct params", async () => {
+    it("skips nodes when primary_key is not available (DRC-3260)", async () => {
+      // After DRC-3260, primary_key is no longer inline on the graph node.
+      // Value diff always skips until on-demand fetch is implemented.
       const node = createMockNode({
         id: "model.test.my_model",
         name: "my_model",
-        primary_key: "user_id",
       });
-      mockSubmitRun.mockResolvedValue({ run_id: "test-run-id" });
-      mockWaitRun.mockResolvedValue(createMockRun({ result: { diff: [] } }));
 
       const { result } = renderHook(() =>
         useMultiNodesAction([node], defaultOptions),
@@ -578,24 +546,18 @@ describe("useMultiNodesAction", () => {
         await result.current.runValueDiff();
       });
 
-      expect(mockSubmitRun).toHaveBeenCalledWith(
-        "value_diff",
-        { model: "my_model", primary_key: "user_id" },
-        { nowait: true },
-        mockApiClient,
-      );
+      expect(mockSubmitRun).not.toHaveBeenCalled();
+      expect(result.current.actionState.actions[node.id]).toEqual({
+        mode: "per_node",
+        status: "skipped",
+        skipReason:
+          "No primary key found. The first unique column is used as primary key.",
+      });
     });
 
-    it("processes nodes sequentially", async () => {
+    it("skips all nodes sequentially when primary_key unavailable", async () => {
       const node1 = createMockNode({ id: "model.test.model1", name: "model1" });
       const node2 = createMockNode({ id: "model.test.model2", name: "model2" });
-
-      let submitCallCount = 0;
-      mockSubmitRun.mockImplementation(() => {
-        submitCallCount++;
-        return Promise.resolve({ run_id: `run-${submitCallCount}` });
-      });
-      mockWaitRun.mockResolvedValue(createMockRun({ result: { diff: [] } }));
 
       const { result } = renderHook(() =>
         useMultiNodesAction([node1, node2], defaultOptions),
@@ -605,8 +567,8 @@ describe("useMultiNodesAction", () => {
         await result.current.runValueDiff();
       });
 
-      // Should have been called twice, once for each node
-      expect(mockSubmitRun).toHaveBeenCalledTimes(2);
+      // All nodes should be skipped — no submitRun calls
+      expect(mockSubmitRun).not.toHaveBeenCalled();
     });
 
     it("updates total to number of nodes", async () => {
@@ -970,30 +932,22 @@ describe("useMultiNodesAction", () => {
       expect(mockOnActionCompleted).toHaveBeenCalled();
     });
 
-    it("handles per_node mode errors without stopping other nodes", async () => {
+    it("handles multi_nodes mode errors gracefully", async () => {
       const node1 = createMockNode({ id: "model.test.model1", name: "model1" });
       const node2 = createMockNode({ id: "model.test.model2", name: "model2" });
 
-      let callCount = 0;
-      mockSubmitRun.mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) {
-          return Promise.reject(new Error("First node failed"));
-        }
-        return Promise.resolve({ run_id: "run-2" });
-      });
-      mockWaitRun.mockResolvedValue(createMockRun({ result: { diff: [] } }));
+      mockSubmitRun.mockRejectedValue(new Error("API error"));
 
       const { result } = renderHook(() =>
         useMultiNodesAction([node1, node2], defaultOptions),
       );
 
       await act(async () => {
-        await result.current.runValueDiff();
+        await result.current.runRowCount();
       });
 
-      // Should have tried both nodes
-      expect(mockSubmitRun).toHaveBeenCalledTimes(2);
+      // Should have been called once (multi_nodes batches all nodes in one call)
+      expect(mockSubmitRun).toHaveBeenCalledTimes(1);
       expect(result.current.actionState.status).toBe("completed");
     });
   });

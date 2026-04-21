@@ -170,7 +170,7 @@ const createMockModelNode = (
     }>;
     change: {
       category?: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
-      columns?: Record<string, "modified" | "added" | "removed"> | null;
+      columns?: Record<string, "modified" | "added" | "removed">;
     };
   }> = {},
 ): LineageGraphNode => ({
@@ -180,30 +180,13 @@ const createMockModelNode = (
   data: {
     id: overrides.id ?? "model.test.node1",
     name: overrides.name ?? "node1",
-    from: "both" as const,
     resourceType: overrides.resourceType ?? "model",
     changeStatus: overrides.changeStatus,
     parents: {},
     children: {},
-    data: {
-      base: {
-        id: "model.test.node1",
-        unique_id: "model.test.node1",
-        name: overrides.name ?? "node1",
-        columns: { col1: { name: "col1", type: "INTEGER" } },
-        ...overrides.base,
-      },
-      current: {
-        id: "model.test.node1",
-        unique_id: "model.test.node1",
-        name: overrides.name ?? "node1",
-        columns: { col1: { name: "col1", type: "INTEGER" } },
-        ...overrides.current,
-      },
-    },
     change: {
       category: "unknown" as const,
-      columns: null,
+      columns: undefined,
       ...overrides.change,
     },
   },
@@ -960,19 +943,9 @@ describe("LineageViewContextMenu", () => {
     });
 
     it("disables items for added columns (not in base)", () => {
-      const nodeWithAddedColumn = createMockColumnNode();
-      nodeWithAddedColumn.data.node.data.base = {
-        id: "node1",
-        unique_id: "model.test.node1",
-        name: "node1",
-        columns: {},
-      };
-      nodeWithAddedColumn.data.node.data.current = {
-        id: "node1",
-        unique_id: "model.test.node1",
-        name: "node1",
-        columns: { col1: { name: "col1", type: "INTEGER" } },
-      };
+      const nodeWithAddedColumn = createMockColumnNode({
+        changeStatus: "added",
+      });
 
       render(
         <ColumnNodeContextMenu
@@ -989,19 +962,9 @@ describe("LineageViewContextMenu", () => {
     });
 
     it("disables items for removed columns (not in current)", () => {
-      const nodeWithRemovedColumn = createMockColumnNode();
-      nodeWithRemovedColumn.data.node.data.base = {
-        id: "node1",
-        unique_id: "model.test.node1",
-        name: "node1",
-        columns: { col1: { name: "col1", type: "INTEGER" } },
-      };
-      nodeWithRemovedColumn.data.node.data.current = {
-        id: "node1",
-        unique_id: "model.test.node1",
-        name: "node1",
-        columns: {},
-      };
+      const nodeWithRemovedColumn = createMockColumnNode({
+        changeStatus: "removed",
+      });
 
       render(
         <ColumnNodeContextMenu

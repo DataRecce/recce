@@ -37,25 +37,8 @@ function createMockLineageGraph(nodeIds: string[]): LineageGraph {
       data: {
         id,
         name: id,
-        from: "both",
-        data: {
-          base: {
-            id,
-            name: id,
-            unique_id: id,
-            resource_type: "model",
-            package_name: "test",
-            columns: {},
-          },
-          current: {
-            id,
-            name: id,
-            unique_id: id,
-            resource_type: "model",
-            package_name: "test",
-            columns: {},
-          },
-        },
+        resourceType: "model",
+        packageName: "test",
         parents: {},
         children: {},
       },
@@ -145,10 +128,6 @@ describe("toReactFlow", () => {
 
   it("should skip column nodes when newCllExperience is true", () => {
     const graph = createMockLineageGraph(["model.test.a"]);
-    graph.nodes["model.test.a"].data.data.current!.columns = {
-      id: { name: "id", type: "integer" },
-      name: { name: "name", type: "string" },
-    };
 
     const cll = {
       current: {
@@ -181,16 +160,6 @@ describe("toReactFlow", () => {
 
   it("preserves column node positions relative to parent", () => {
     const lineageGraph = createMockLineageGraph(["node1"]);
-    // Add columns to the node
-    lineageGraph.nodes.node1.data.data.current = {
-      ...lineageGraph.nodes.node1.data.data.current!,
-      columns: {
-        col1: {
-          name: "col1",
-          type: "varchar",
-        },
-      },
-    };
 
     const existingPositions = new Map([["node1", { x: 200, y: 300 }]]);
 

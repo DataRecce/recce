@@ -236,7 +236,7 @@ export function RowCountTag({
           aria-label="Query Row Count"
           size="small"
           onClick={onRefresh}
-          disabled={node.data.from === "base"}
+          disabled={node.data.changeStatus === "removed"}
           sx={{ p: 0, ml: 0.5 }}
         >
           <PiRepeat size={12} />
