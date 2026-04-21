@@ -7,6 +7,8 @@ export type CardStatus = "impacted" | "typechg" | "defchg" | "added";
 
 export interface SchemaGalleryViewProps {
   rows: SchemaDiffRow[];
+  /** Optional click handler — fires with the column name when a card is clicked */
+  onColumnClick?: (columnName: string) => void;
 }
 
 const STATUS_LABEL: Record<CardStatus, string> = {
@@ -32,12 +34,25 @@ function classifyInteresting(row: SchemaDiffRow): CardStatus | null {
   return null;
 }
 
+function toNumeric(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string") {
+    // The profile backend returns numbers as strings (e.g., "69.370000").
+    const n = Number(v);
+    if (Number.isFinite(n) && v.trim() !== "") return n;
+  }
+  return null;
+}
+
 function formatQuadValue(v: unknown, pct = false): string {
   if (v === undefined || v === null) return "—";
   if (typeof v === "boolean") return v ? "✓" : "✗";
-  if (typeof v === "number") {
-    if (pct) return `${(v * 100).toFixed(1)}%`;
-    return String(v);
+  const n = toNumeric(v);
+  if (n !== null) {
+    if (pct) return `${(n * 100).toFixed(2)}%`;
+    if (Number.isInteger(n)) return String(n);
+    // Trim trailing zeros so 69.37 stays 69.37, not 69.3700
+    return Number(n.toFixed(2)).toString();
   }
   return String(v);
 }
@@ -49,10 +64,23 @@ function isQuadChanged(row: SchemaDiffRow, field: string): boolean {
   const absent = (v: unknown) => v === undefined || v === null;
   if (absent(b) && absent(c)) return false;
   if (absent(b) || absent(c)) return true;
+  // Compare numerically when both sides parse as numbers — avoids false
+  // positives from inconsistent string formatting (e.g. "69.370000" vs "69.37").
+  const bn = toNumeric(b);
+  const cn = toNumeric(c);
+  if (bn !== null && cn !== null) return bn !== cn;
   return b !== c;
 }
 
-function Card({ row, status }: { row: SchemaDiffRow; status: CardStatus }) {
+function Card({
+  row,
+  status,
+  onClick,
+}: {
+  row: SchemaDiffRow;
+  status: CardStatus;
+  onClick?: () => void;
+}) {
   const rec = row as unknown as Record<string, unknown>;
   const absent = (v: unknown) => v === undefined || v === null;
   const renderQuadValue = (field: string, pct: boolean) => {
@@ -76,10 +104,24 @@ function Card({ row, status }: { row: SchemaDiffRow; status: CardStatus }) {
       </>
     );
   };
+  const clickable = Boolean(onClick);
   return (
     <div
-      className={`schema-card schema-card-${status}`}
+      className={`schema-card schema-card-${status}${clickable ? " schema-card-clickable" : ""}`}
       data-testid={`card-${row.name}`}
+      onClick={onClick}
+      onKeyDown={
+        clickable && onClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
     >
       <div className="schema-card-head">
         <div className="schema-card-name-row">
@@ -121,7 +163,24 @@ function Card({ row, status }: { row: SchemaDiffRow; status: CardStatus }) {
   );
 }
 
-export function SchemaGalleryView({ rows }: SchemaGalleryViewProps) {
+function extractTotalRows(
+  rows: SchemaDiffRow[],
+): { base: number | null; current: number | null } {
+  let base: number | null = null;
+  let current: number | null = null;
+  for (const row of rows) {
+    const rec = row as unknown as Record<string, unknown>;
+    if (base === null) base = toNumeric(rec.base__row_count);
+    if (current === null) current = toNumeric(rec.current__row_count);
+    if (base !== null && current !== null) break;
+  }
+  return { base, current };
+}
+
+export function SchemaGalleryView({
+  rows,
+  onColumnClick,
+}: SchemaGalleryViewProps) {
   const interesting: { row: SchemaDiffRow; status: CardStatus }[] = [];
   const other: SchemaDiffRow[] = [];
   for (const row of rows) {
@@ -129,6 +188,12 @@ export function SchemaGalleryView({ rows }: SchemaGalleryViewProps) {
     if (status) interesting.push({ row, status });
     else other.push(row);
   }
+  const totalRows = extractTotalRows(rows);
+  const hasRowCount = totalRows.base !== null || totalRows.current !== null;
+  const rowsChanged =
+    totalRows.base !== null &&
+    totalRows.current !== null &&
+    totalRows.base !== totalRows.current;
 
   return (
     <Box
@@ -141,6 +206,27 @@ export function SchemaGalleryView({ rows }: SchemaGalleryViewProps) {
         height: "100%",
       }}
     >
+      {hasRowCount && (
+        <div
+          data-testid="gallery-total-rows"
+          className={`schema-gallery-total-rows${rowsChanged ? " schema-gallery-total-rows-changed" : ""}`}
+        >
+          <span className="schema-gallery-total-rows-label">total rows</span>
+          {rowsChanged ? (
+            <span className="schema-gallery-total-rows-val">
+              <span className="schema-gallery-total-rows-base">
+                {formatQuadValue(totalRows.base)}
+              </span>
+              <span className="schema-gallery-total-rows-arrow">→</span>
+              <span>{formatQuadValue(totalRows.current)}</span>
+            </span>
+          ) : (
+            <span className="schema-gallery-total-rows-val">
+              {formatQuadValue(totalRows.current ?? totalRows.base)}
+            </span>
+          )}
+        </div>
+      )}
       {interesting.length > 0 && (
         <section
           data-testid="interesting-section"
@@ -151,7 +237,14 @@ export function SchemaGalleryView({ rows }: SchemaGalleryViewProps) {
           </h4>
           <div className="schema-gallery-grid">
             {interesting.map(({ row, status }) => (
-              <Card key={row.name} row={row} status={status} />
+              <Card
+                key={row.name}
+                row={row}
+                status={status}
+                onClick={
+                  onColumnClick ? () => onColumnClick(row.name) : undefined
+                }
+              />
             ))}
           </div>
         </section>
@@ -165,15 +258,37 @@ export function SchemaGalleryView({ rows }: SchemaGalleryViewProps) {
             {other.map((row) => {
               const isRemoved = row.currentIndex === undefined;
               const isReordered = Boolean(row.reordered);
+              // Removed columns don't support CLL navigation.
+              const clickable = Boolean(onColumnClick) && !isRemoved;
               const classes = [
                 "schema-gallery-chip",
                 isRemoved ? "schema-gallery-chip-removed" : "",
                 isReordered ? "schema-gallery-chip-reordered" : "",
+                clickable ? "schema-gallery-chip-clickable" : "",
               ]
                 .filter(Boolean)
                 .join(" ");
+              const handleClick = clickable
+                ? () => onColumnClick?.(row.name)
+                : undefined;
               return (
-                <div key={row.name} className={classes}>
+                <div
+                  key={row.name}
+                  className={classes}
+                  onClick={handleClick}
+                  onKeyDown={
+                    handleClick
+                      ? (e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleClick();
+                          }
+                        }
+                      : undefined
+                  }
+                  role={clickable ? "button" : undefined}
+                  tabIndex={clickable ? 0 : undefined}
+                >
                   <span>{row.name}</span>
                   <span className="schema-gallery-chip-type">
                     {row.currentType ?? row.baseType ?? ""}

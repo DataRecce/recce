@@ -97,22 +97,33 @@ export interface SingleEnvSchemaDataGridResult {
 
 // Single source of truth for which inline-profile stats appear in both
 // row-level hydration (base__*/current__* fields) and wide-mode column defs.
+// row_count is hydrated onto rows for the gallery's total-rows label but is
+// intentionally omitted from the wide-mode column list (it would duplicate
+// data across every row).
 const PROFILE_STAT_SPECS: readonly {
   field: string;
   header: string;
   columnType: "number" | "text" | "boolean";
   columnRenderMode?: "percent";
+  wideColumn?: boolean;
 }[] = [
   {
     field: "not_null_proportion",
     header: "% non-null",
     columnType: "number",
     columnRenderMode: "percent",
+    wideColumn: true,
   },
-  { field: "min", header: "min", columnType: "text" },
-  { field: "max", header: "max", columnType: "text" },
-  { field: "avg", header: "avg", columnType: "number" },
-  { field: "is_unique", header: "unique", columnType: "boolean" },
+  { field: "min", header: "min", columnType: "text", wideColumn: true },
+  { field: "max", header: "max", columnType: "text", wideColumn: true },
+  { field: "avg", header: "avg", columnType: "number", wideColumn: true },
+  {
+    field: "is_unique",
+    header: "unique",
+    columnType: "boolean",
+    wideColumn: true,
+  },
+  { field: "row_count", header: "rows", columnType: "number" },
 ];
 
 // ============================================================================
@@ -285,6 +296,7 @@ export function toSchemaDataGrid(
       // falls through with no extra columns, since the caller renders
       // SchemaGalleryView and discards the column list.
       for (const spec of PROFILE_STAT_SPECS) {
+        if (!spec.wideColumn) continue;
         const col = toDiffColumnConfigured({
           name: spec.field,
           columnStatus: "",

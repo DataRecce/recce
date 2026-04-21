@@ -10,6 +10,7 @@ export interface ColumnProfileStats {
   max?: string | number | null;
   avg?: number | null;
   is_unique?: boolean | null;
+  row_count?: number | null;
 }
 
 export type ProfileByColumn = Map<
@@ -37,6 +38,7 @@ const STAT_FIELDS = [
   "max",
   "avg",
   "is_unique",
+  "row_count",
 ] as const;
 
 /**

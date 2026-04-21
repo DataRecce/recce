@@ -512,7 +512,7 @@ export function PrivateSchemaView(
       ) : null}
       {rows.length > 0 &&
         (profileMode === "grid" && inlineProfileActive && isProfilable ? (
-          <SchemaGalleryView rows={rows} />
+          <SchemaGalleryView rows={rows} onColumnClick={handleViewCll} />
         ) : (
           <ScreenshotDataGrid
             style={{

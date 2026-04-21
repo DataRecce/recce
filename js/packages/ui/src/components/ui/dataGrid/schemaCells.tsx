@@ -6,6 +6,7 @@
  */
 
 import MuiPopover from "@mui/material/Popover";
+import Tooltip from "@mui/material/Tooltip";
 import type { ICellRendererParams } from "ag-grid-community";
 import React, { useState } from "react";
 import type { NodeData, RowObjectType } from "../../../api";
@@ -158,13 +159,13 @@ function ProfileStripCell({ row }: { row: SchemaDiffRow }) {
         {STRIP_STATS.map(({ field, label }) => {
           const state = statState(row, field);
           return (
-            <span
-              key={field}
-              data-testid="strip-square"
-              data-state={state}
-              className={`schema-profile-strip-square schema-profile-strip-square-${state}`}
-              title={label}
-            />
+            <Tooltip key={field} title={label} arrow placement="top">
+              <span
+                data-testid="strip-square"
+                data-state={state}
+                className={`schema-profile-strip-square schema-profile-strip-square-${state}`}
+              />
+            </Tooltip>
           );
         })}
       </button>

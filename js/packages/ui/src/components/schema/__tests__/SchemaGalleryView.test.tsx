@@ -150,8 +150,8 @@ describe("SchemaGalleryView card rendering", () => {
     const nullQuad = within(screen.getByTestId("card-amount")).getByTestId(
       "quad-not_null_proportion",
     );
-    expect(within(nullQuad).getByText("98.0%")).toBeInTheDocument();
-    expect(within(nullQuad).getByText("96.0%")).toBeInTheDocument();
+    expect(within(nullQuad).getByText("98.00%")).toBeInTheDocument();
+    expect(within(nullQuad).getByText("96.00%")).toBeInTheDocument();
     expect(within(nullQuad).getByText("→")).toBeInTheDocument();
   });
 
