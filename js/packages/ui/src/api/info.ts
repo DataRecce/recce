@@ -202,7 +202,7 @@ export async function getServerInfo(
 }
 
 /**
- * Per-environment model detail returned by /api/model/:model
+ * Per-environment model detail returned by /api/models/:model
  *
  * `raw_code` is served on-demand here so it can be stripped from the bulk
  * /api/info lineage payload (DRC-3263).
@@ -214,7 +214,7 @@ export interface ModelEnvDetail {
 }
 
 /**
- * Model info result from /api/model/:model endpoint
+ * Model info result from /api/models/:model endpoint
  */
 export interface ModelInfoResult {
   model: {
@@ -231,7 +231,7 @@ export async function getModelInfo(
   client: ApiClient,
 ): Promise<ModelInfoResult> {
   const response = await client.get<never, ApiResponse<ModelInfoResult>>(
-    `/api/model/${model}`,
+    `/api/models/${model}`,
   );
   return response.data;
 }

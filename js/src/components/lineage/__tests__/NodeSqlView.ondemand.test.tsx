@@ -3,7 +3,7 @@
  * @description Tests for the on-demand raw_code fetch in NodeSqlViewOss.
  *
  * Covers DRC-3263: when raw_code is stripped from the /info lineage payload,
- * NodeSqlViewOss fetches it via /api/model/{id} and merges it into the node
+ * NodeSqlViewOss fetches it via /api/models/{id} and merges it into the node
  * before delegating to the base NodeSqlView.
  *
  * Scenarios:
