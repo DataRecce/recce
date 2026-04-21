@@ -693,7 +693,7 @@ async def select_nodes(input: SelectNodesInput):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.get("/api/model/{model_id}")
+@app.get("/api/models/{model_id}")
 async def get_columns(model_id: str):
     context = default_context()
     try:

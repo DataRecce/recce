@@ -18,7 +18,7 @@ interface NodeSqlViewProps {
  *
  * This wrapper:
  * 1. Handles loading state from useRecceServerFlag
- * 2. Fetches raw_code on demand via /api/model/{model_id}. Uses
+ * 2. Fetches raw_code on demand via /api/models/{model_id}. Uses
  *    React Query with a 5-minute cache.
  * 3. Injects editor components (CodeEditor, DiffEditor)
  * 4. Provides dark mode detection via useIsDark hook
