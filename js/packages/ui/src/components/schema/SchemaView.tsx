@@ -510,11 +510,10 @@ export function PrivateSchemaView(
           })()}
         </Box>
       ) : null}
-      {rows.length > 0 && profileMode === "grid" && inlineProfileActive ? (
-        <SchemaGalleryView rows={rows} />
-      ) : null}
       {rows.length > 0 &&
-        !(profileMode === "grid" && inlineProfileActive) && (
+        (profileMode === "grid" && inlineProfileActive ? (
+          <SchemaGalleryView rows={rows} />
+        ) : (
           <ScreenshotDataGrid
             style={{
               blockSize: "auto",
@@ -537,7 +536,7 @@ export function PrivateSchemaView(
             containerClassName="no-track-pii-safe"
             rowClassName="no-track-pii-safe"
           />
-        )}
+        ))}
     </Box>
   );
 }

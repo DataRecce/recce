@@ -397,7 +397,7 @@ describe("PrivateSchemaView render mode routing", () => {
     expect(mockSchemaGalleryView).not.toHaveBeenCalled();
   });
 
-  it("renders SchemaGalleryView (not ag-grid) in grid mode", () => {
+  it("renders SchemaGalleryView in grid mode when inline profile is active", () => {
     setup({
       profileMode: "grid",
       impactedColumnIds: new Set(["model.jaffle.orders_status"]),
@@ -411,6 +411,19 @@ describe("PrivateSchemaView render mode routing", () => {
     );
     expect(mockSchemaGalleryView).toHaveBeenCalled();
     expect(mockScreenshotDataGrid).not.toHaveBeenCalled();
+  });
+
+  it("falls back to ag-grid in grid mode when inline profile is disabled", () => {
+    setup({ profileMode: "grid", inlineProfile: false });
+    render(
+      <SchemaView
+        ref={createRef<DataGridHandle>()}
+        base={baseNode()}
+        current={baseNode()}
+      />,
+    );
+    expect(mockScreenshotDataGrid).toHaveBeenCalled();
+    expect(mockSchemaGalleryView).not.toHaveBeenCalled();
   });
 
   it("passes strip profileMode through to the grid columns", () => {
