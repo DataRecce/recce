@@ -140,7 +140,6 @@ export function CloudShareButtonOss() {
       >
         Share
       </Button>
-
       <Popover
         open={open}
         anchorEl={anchorEl}
@@ -192,7 +191,13 @@ export function CloudShareButtonOss() {
           )}
 
           {popoverState === "waiting" && (
-            <Stack spacing={2} alignItems="center" sx={{ py: 1 }}>
+            <Stack
+              spacing={2}
+              sx={{
+                alignItems: "center",
+                py: 1,
+              }}
+            >
               <CircularProgress size={40} />
               <Typography sx={{ fontWeight: 500, fontSize: "1.1rem" }}>
                 Waiting for signup...
@@ -214,7 +219,13 @@ export function CloudShareButtonOss() {
           )}
 
           {popoverState === "reload" && (
-            <Stack spacing={2} alignItems="center" sx={{ py: 1 }}>
+            <Stack
+              spacing={2}
+              sx={{
+                alignItems: "center",
+                py: 1,
+              }}
+            >
               <Box
                 component="img"
                 sx={{ height: "5rem", objectFit: "contain" }}
@@ -244,7 +255,13 @@ export function CloudShareButtonOss() {
           )}
 
           {popoverState === "error" && (
-            <Stack spacing={2} alignItems="center" sx={{ py: 1 }}>
+            <Stack
+              spacing={2}
+              sx={{
+                alignItems: "center",
+                py: 1,
+              }}
+            >
               <Typography sx={{ fontWeight: 500, fontSize: "1.1rem" }}>
                 Connection Failed
               </Typography>

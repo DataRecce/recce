@@ -143,8 +143,11 @@ function CheckDescriptionComponent({
         </Stack>
         <Typography
           variant="caption"
-          color="text.secondary"
-          sx={{ display: "block", mt: 0.5 }}
+          sx={{
+            color: "text.secondary",
+            display: "block",
+            mt: 0.5,
+          }}
         >
           {navigator.platform.includes("Mac") ? "⌘" : "Ctrl"}+Enter to save,
           Escape to cancel

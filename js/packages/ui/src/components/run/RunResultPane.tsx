@@ -598,8 +598,10 @@ const RunStatusAndDateDisplay = memo(({ run }: { run: Run }) => {
     <Typography variant="body2" sx={{ color: "text.secondary" }}>
       <Box
         component="span"
-        sx={{ color: getStatusColor(statusText) }}
-        fontWeight={600}
+        sx={{
+          fontWeight: 600,
+          color: getStatusColor(statusText),
+        }}
       >
         {statusText}
       </Box>
@@ -738,7 +740,6 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
             onClose={() => setShowSingleEnvNotification(false)}
           />
         )}
-
       {/* Header with tabs and actions */}
       <Box
         sx={{
@@ -763,8 +764,11 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
         <Stack
           direction="row"
           spacing={1}
-          sx={{ overflow: "hidden", pr: 1 }}
-          alignItems="center"
+          sx={{
+            alignItems: "center",
+            overflow: "hidden",
+            pr: 1,
+          }}
         >
           {run && <RunStatusAndDateDisplay run={run} />}
           <Button
@@ -807,7 +811,6 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
           </IconButton>
         </Stack>
       </Box>
-
       {/* Tab content */}
       {tabValue === "result" && (RunResultView || children) && (
         <RunView
@@ -823,11 +826,9 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
           {children}
         </RunView>
       )}
-
       {tabValue === "params" && run && (
         <ParamView type={run.type} params={run.params} />
       )}
-
       {tabValue === "query" && run && isQuery && queryParams?.sql_template && (
         <>
           {isQueryDiff && DualSqlEditorComponent ? (

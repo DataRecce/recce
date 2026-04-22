@@ -362,7 +362,13 @@ export function useImageDownloadModal() {
         </IconButton>
         <DialogContent>
           <Stack sx={{ px: "10px", gap: "10px" }}>
-            <Stack direction="row" alignItems="center" spacing="5px">
+            <Stack
+              direction="row"
+              spacing="5px"
+              sx={{
+                alignItems: "center",
+              }}
+            >
               <Box component={PiInfo} sx={{ color: "error.main" }} />
               <Typography sx={{ fontWeight: 500, display: "inline" }}>
                 Copy to the Clipboard
@@ -378,7 +384,6 @@ export function useImageDownloadModal() {
             sx={{ maxWidth: "100%" }}
           />
         </DialogContent>
-
         <DialogActions>
           <Button sx={{ mr: 1.5 }} onClick={onClose}>
             Close

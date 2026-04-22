@@ -152,7 +152,13 @@ function NodeComparisonDemo() {
       <Typography variant="h6">Light Mode</Typography>
       <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
         <Box>
-          <Typography variant="caption" color="text.secondary" gutterBottom>
+          <Typography
+            variant="caption"
+            gutterBottom
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Modified (changed)
           </Typography>
           <NodeWithColumns
@@ -170,7 +176,13 @@ function NodeComparisonDemo() {
         </Box>
 
         <Box>
-          <Typography variant="caption" color="text.secondary" gutterBottom>
+          <Typography
+            variant="caption"
+            gutterBottom
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Added
           </Typography>
           <NodeWithColumns
@@ -188,7 +200,13 @@ function NodeComparisonDemo() {
         </Box>
 
         <Box>
-          <Typography variant="caption" color="text.secondary" gutterBottom>
+          <Typography
+            variant="caption"
+            gutterBottom
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Removed
           </Typography>
           <NodeWithColumns
@@ -206,7 +224,13 @@ function NodeComparisonDemo() {
         </Box>
 
         <Box>
-          <Typography variant="caption" color="text.secondary" gutterBottom>
+          <Typography
+            variant="caption"
+            gutterBottom
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Impacted (downstream)
           </Typography>
           <NodeWithColumns
@@ -225,7 +249,13 @@ function NodeComparisonDemo() {
         </Box>
 
         <Box>
-          <Typography variant="caption" color="text.secondary" gutterBottom>
+          <Typography
+            variant="caption"
+            gutterBottom
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Unchanged
           </Typography>
           <NodeWithColumns
@@ -243,12 +273,10 @@ function NodeComparisonDemo() {
           />
         </Box>
       </Box>
-
       <Typography variant="h6" sx={{ mt: 2 }}>
         Schema Sidebar — Light Mode
       </Typography>
       <SidebarRowsDemo />
-
       <Typography variant="h6" sx={{ mt: 2 }}>
         Dark Mode
       </Typography>
@@ -364,7 +392,6 @@ function NodeComparisonDemo() {
           />
         </Box>
       </Box>
-
       <Typography variant="h6" sx={{ mt: 2 }}>
         Schema Sidebar — Dark Mode
       </Typography>

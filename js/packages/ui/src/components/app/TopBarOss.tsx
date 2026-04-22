@@ -117,7 +117,13 @@ export const TopBarOss = () => {
             borderColor: "rgba(255,255,255,0.8)",
           }}
         >
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: "center",
+            }}
+          >
             <Box>cloud mode</Box>
             <Box
               sx={{
@@ -161,7 +167,13 @@ export const TopBarOss = () => {
             borderColor: "rgba(255,255,255,0.8)",
           }}
         >
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: "center",
+            }}
+          >
             <Box>demo mode</Box>
             <Box
               sx={{
@@ -194,7 +206,6 @@ export const TopBarOss = () => {
         </Badge>
       )}
       <Box sx={{ flex: 1 }} />
-
       {(isDemoSite || featureToggles.mode === "read only") && (
         <>
           <LinkIcon icon={FaGithub} href="https://github.com/DataRecce/recce" />

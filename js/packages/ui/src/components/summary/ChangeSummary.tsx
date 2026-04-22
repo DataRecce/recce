@@ -37,7 +37,11 @@ function SummaryText({
   tip?: ReactNode;
 }) {
   return (
-    <Stack alignItems="stretch">
+    <Stack
+      sx={{
+        alignItems: "stretch",
+      }}
+    >
       <Typography sx={{ fontSize: "0.875rem", color: "grey.600" }}>
         {name}
         {tip && (
@@ -72,11 +76,18 @@ function ChangeStatusCountLabel({
   const { icon, color } = getIconForChangeStatus(changeStatus);
 
   return (
-    <Stack alignItems="stretch">
+    <Stack
+      sx={{
+        alignItems: "stretch",
+      }}
+    >
       <Stack
         direction="row"
-        alignItems="center"
-        sx={{ fontSize: "0.875rem", color: "grey.600" }}
+        sx={{
+          alignItems: "center",
+          fontSize: "0.875rem",
+          color: "grey.600",
+        }}
       >
         {icon && (
           <Box component={icon} sx={{ mr: "5px", color, fontSize: "1rem" }} />

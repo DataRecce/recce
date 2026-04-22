@@ -169,7 +169,13 @@ export default function AuthModal({
       ) : (
         <>
           <DialogContent className="space-y-2 self-center font-light">
-            <Stack spacing={2} alignItems="center" sx={{ pt: "1rem" }}>
+            <Stack
+              spacing={2}
+              sx={{
+                alignItems: "center",
+                pt: "1rem",
+              }}
+            >
               <Box
                 component="img"
                 sx={{ height: "6rem", objectFit: "contain", mx: "auto", mb: 1 }}

@@ -173,11 +173,13 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
             placement="top"
           >
             <Box
-              gap="5px"
-              display="flex"
-              alignItems="center"
-              lineHeight="normal"
-              height="100%"
+              sx={{
+                gap: "5px",
+                display: "flex",
+                alignItems: "center",
+                lineHeight: "normal",
+                height: "100%",
+              }}
             >
               <DiffTextComp
                 value={formattedCurrent}
@@ -185,8 +187,10 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
                 grayOut={currentGrayOut}
               />
               <Typography
-                fontSize="0.75rem"
                 color={netChange >= 0 ? "green.600" : "red.600"}
+                sx={{
+                  fontSize: "0.75rem",
+                }}
               >
                 {deltaText}
               </Typography>

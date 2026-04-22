@@ -230,9 +230,11 @@ export const CheckListOss = ({
                         {...provided.draggableProps}
                         {...provided.dragHandleProps}
                         style={style}
-                        sx={{ width: "100%" }}
-                        borderBottom="1px solid"
-                        borderColor="divider"
+                        sx={{
+                          borderBottom: "1px solid",
+                          borderColor: "divider",
+                          width: "100%",
+                        }}
                       >
                         <ChecklistItem
                           key={check.check_id}

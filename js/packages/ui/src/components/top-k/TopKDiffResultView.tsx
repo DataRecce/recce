@@ -174,7 +174,12 @@ function transformTopKDiffData(
     content: (
       <>
         <TopKTitle model={params.model} columnName={params.column_name} />
-        <Stack direction="row" alignItems="center">
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <Box sx={{ flex: 1 }} />
           <TopKBarChart
             baseData={baseTopK}

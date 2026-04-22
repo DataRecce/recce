@@ -276,7 +276,14 @@ function SingleEnvActionButtons({
   const ProfileIcon = runTypeIcons?.profile ?? DefaultIcon;
 
   return (
-    <Stack direction="row" alignItems="center" flexWrap="wrap" gap={1}>
+    <Stack
+      direction="row"
+      sx={{
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 1,
+      }}
+    >
       <Button
         size="xsmall"
         variant="outlined"
@@ -344,10 +351,12 @@ function ExploreHeaderButtons({
   return (
     <Stack
       direction="row"
-      alignItems="center"
-      sx={{ mr: 1 }}
-      flexWrap="wrap"
-      gap={1}
+      sx={{
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 1,
+        mr: 1,
+      }}
     >
       <Button
         size="xsmall"
@@ -435,16 +444,30 @@ function DiffActionButtons({
   };
 
   return (
-    <Stack direction="row" alignItems="center" flexWrap="wrap" gap={2}>
-      <Typography variant="caption" fontWeight="bold">
+    <Stack
+      direction="row"
+      sx={{
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 2,
+      }}
+    >
+      <Typography
+        variant="caption"
+        sx={{
+          fontWeight: "bold",
+        }}
+      >
         Diff
       </Typography>
       <Stack
         direction="row"
-        alignItems="center"
-        flexWrap="wrap"
-        gap={1}
-        width="93%"
+        sx={{
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 1,
+          width: "93%",
+        }}
       >
         <ConnectionPopoverWrapper display={metadataOnly}>
           <Button
@@ -635,12 +658,19 @@ export function NodeView<TNode extends NodeViewNodeData>({
       }}
     >
       {/* Header row: name + close button */}
-      <Stack direction="row" alignItems="center">
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: "center",
+        }}
+      >
         <Box sx={{ flex: "0 1 20%", p: 2 }}>
           <Typography
             variant="subtitle1"
-            fontWeight={600}
             className="no-track-pii-safe"
+            sx={{
+              fontWeight: 600,
+            }}
           >
             {node.data.name}
           </Typography>
@@ -661,7 +691,6 @@ export function NodeView<TNode extends NodeViewNodeData>({
           </IconButton>
         </Box>
       </Stack>
-
       {/* Tags row: resource type, row count */}
       <Box sx={{ color: "text.secondary", pl: 2 }}>
         <Stack direction="row" spacing={1}>
@@ -682,7 +711,6 @@ export function NodeView<TNode extends NodeViewNodeData>({
                 ))}
         </Stack>
       </Box>
-
       {/* Action buttons row */}
       {isModelSeedOrSnapshot && (
         <Box sx={{ pl: 2, py: 1 }}>
@@ -705,7 +733,6 @@ export function NodeView<TNode extends NodeViewNodeData>({
           )}
         </Box>
       )}
-
       {/* Content area: tabs for columns and code */}
       {withColumns && (
         <Box
@@ -809,7 +836,6 @@ export function NodeView<TNode extends NodeViewNodeData>({
           </Box>
         </Box>
       )}
-
       {/* Sandbox dialog */}
       {SandboxDialog && (
         <SandboxDialog
