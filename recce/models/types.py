@@ -230,7 +230,11 @@ class CllNode(BaseModel):
     name: str
     package_name: str
     resource_type: str
-    raw_code: Optional[str] = None
+    # raw_code is populated from the manifest for server-side CLL computation
+    # (see DbtAdapter.get_cll_cached) but is excluded from serialization — no
+    # frontend consumer reads it off a CLL-sourced node, and it bloats the
+    # /api/cll payload significantly.
+    raw_code: Optional[str] = Field(default=None, exclude=True)
     source_name: Optional[str] = None
 
     # change analysis
