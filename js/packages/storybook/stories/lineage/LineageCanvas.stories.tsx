@@ -353,7 +353,12 @@ function CllToggleDemo() {
           }
           label="Column-Level Lineage"
         />
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           {cllEnabled
             ? "CLL enabled - columns visible inside nodes"
             : "CLL disabled - positions should be preserved"}
@@ -524,12 +529,16 @@ function ColumnClickingReflowDemo() {
       >
         <Typography variant="h6">Column Clicking Reflow</Typography>
         {reflowDetected && (
-          <Typography variant="body2" color="error.contrastText">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "error.contrastText",
+            }}
+          >
             ⚠️ REFLOW DETECTED! Count: {reflowCount}
           </Typography>
         )}
       </Box>
-
       {/* Main content */}
       <Box sx={{ flex: 1, display: "flex", minHeight: 0 }}>
         {/* Lineage Canvas */}
@@ -557,10 +566,20 @@ function ColumnClickingReflowDemo() {
           }}
         >
           <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
-            <Typography variant="subtitle1" fontWeight="bold">
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: "bold",
+              }}
+            >
               stg_orders
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Click columns to view their lineage
             </Typography>
           </Box>
@@ -572,7 +591,12 @@ function ColumnClickingReflowDemo() {
               onClick={handleClearSelection}
               style={{ cursor: "pointer" }}
             >
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Clear selection
               </Typography>
             </Box>
@@ -607,13 +631,20 @@ function ColumnClickingReflowDemo() {
                   <Box>
                     <Typography
                       variant="body2"
-                      fontWeight={isSelected ? "bold" : "normal"}
+                      sx={{
+                        fontWeight: isSelected ? "bold" : "normal",
+                      }}
                     >
                       {index + 1}. {columnName}
                       {!isClickable && " (no CLL data)"}
                     </Typography>
                   </Box>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     {columnName === "order_id"
                       ? "BIGINT"
                       : columnName === "customer_id"
@@ -629,7 +660,12 @@ function ColumnClickingReflowDemo() {
 
           {/* Instructions */}
           <Box sx={{ p: 2, borderTop: 1, borderColor: "divider" }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               <strong>How to reproduce:</strong>
               <br />
               1. Click on &quot;customer_id&quot; column
@@ -800,12 +836,16 @@ function LargeGraphReflowDemo() {
       >
         <Typography variant="h6">Large Graph Reflow</Typography>
         {reflowDetected && (
-          <Typography variant="body2" color="error.contrastText">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "error.contrastText",
+            }}
+          >
             ⚠️ REFLOW DETECTED! Count: {reflowCount}
           </Typography>
         )}
       </Box>
-
       {/* Main content */}
       <Box sx={{ flex: 1, display: "flex", minHeight: 0 }}>
         {/* Lineage Canvas */}
@@ -833,10 +873,20 @@ function LargeGraphReflowDemo() {
           }}
         >
           <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
-            <Typography variant="subtitle1" fontWeight="bold">
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: "bold",
+              }}
+            >
               order_items
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Click columns to view their lineage
             </Typography>
           </Box>
@@ -848,7 +898,12 @@ function LargeGraphReflowDemo() {
               onClick={handleClearSelection}
               style={{ cursor: "pointer" }}
             >
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Clear selection
               </Typography>
             </Box>
@@ -884,13 +939,20 @@ function LargeGraphReflowDemo() {
                   <Box>
                     <Typography
                       variant="body2"
-                      fontWeight={isSelected ? "bold" : "normal"}
+                      sx={{
+                        fontWeight: isSelected ? "bold" : "normal",
+                      }}
                     >
                       {index + 1}. {columnName}
                       {!isClickable && " (no CLL data)"}
                     </Typography>
                   </Box>
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     TEXT
                   </Typography>
                 </Box>
@@ -900,7 +962,12 @@ function LargeGraphReflowDemo() {
 
           {/* Instructions */}
           <Box sx={{ p: 2, borderTop: 1, borderColor: "divider" }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               <strong>How to reproduce:</strong>
               <br />
               1. Click on &quot;ORDER_ID&quot; column

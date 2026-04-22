@@ -57,15 +57,17 @@ function TabBadge<T>({
 
   return (
     <Box
-      bgcolor="brand.main"
-      display="flex"
-      justifyContent="center"
-      alignItems="center"
-      p={1}
-      borderRadius="100%"
-      color="white"
-      fontWeight={700}
-      fontSize="0.75rem"
+      sx={{
+        bgcolor: "brand.main",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        p: 1,
+        borderRadius: "100%",
+        color: "white",
+        fontWeight: 700,
+        fontSize: "0.75rem",
+      }}
     >
       <span>{count}</span>
     </Box>

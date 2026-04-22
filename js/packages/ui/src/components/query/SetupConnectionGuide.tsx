@@ -27,7 +27,12 @@ export function SetupConnectionGuide({
   return (
     <div className="flex flex-1 h-full min-h-0 m-2 p-4 bg-blue-50 rounded-lg shadow-md justify-center">
       <div className="w-4/5 flex flex-col overflow-y-auto gap-6 px-8 pb-8">
-        <Stack alignItems="center" spacing={2}>
+        <Stack
+          spacing={2}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <Box
             sx={{
               p: 1,

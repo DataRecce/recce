@@ -235,9 +235,9 @@ function SandboxTopBar({
   return (
     <Stack
       direction="row"
-      justifyContent="flex-end"
-      alignItems="center"
       sx={{
+        justifyContent: "flex-end",
+        alignItems: "center",
         p: "4pt 8pt",
         gap: "5px",
         height: "54px",
@@ -491,8 +491,11 @@ export function SandboxView({
       >
         <Stack
           direction="row"
-          alignItems="center"
-          sx={{ height: "100%", gap: "10px" }}
+          sx={{
+            alignItems: "center",
+            height: "100%",
+            gap: "10px",
+          }}
         >
           <Box
             component="img"

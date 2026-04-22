@@ -124,7 +124,12 @@ export function ToasterProvider({ children }: { children: ReactNode }) {
           >
             <Stack spacing={0.5}>
               {toast.title && (
-                <Typography variant="subtitle2" fontWeight="bold">
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    fontWeight: "bold",
+                  }}
+                >
                   {toast.title}
                 </Typography>
               )}
@@ -270,7 +275,12 @@ export function Toaster() {
           >
             <Stack spacing={0.5}>
               {toast.title && (
-                <Typography variant="subtitle2" fontWeight="bold">
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    fontWeight: "bold",
+                  }}
+                >
                   {toast.title}
                 </Typography>
               )}

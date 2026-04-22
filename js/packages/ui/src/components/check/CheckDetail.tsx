@@ -215,7 +215,12 @@ function CheckDetailComponent({
                 {name}
               </Typography>
             )}
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {type} {isApproved && "• Approved"}
             </Typography>
           </Box>
@@ -229,7 +234,6 @@ function CheckDetailComponent({
           />
         </Box>
       </Box>
-
       {/* Main content area */}
       <Box sx={{ display: "flex", flexGrow: 1, overflow: "hidden" }}>
         {/* Main panel */}

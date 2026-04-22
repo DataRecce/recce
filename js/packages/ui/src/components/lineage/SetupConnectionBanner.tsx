@@ -73,9 +73,13 @@ export function SetupConnectionBanner({
     >
       <Stack
         direction="row"
-        alignItems="center"
-        sx={{ flex: 1, fontSize: "0.875rem", color: "cyan.600" }}
         spacing={1}
+        sx={{
+          alignItems: "center",
+          flex: 1,
+          fontSize: "0.875rem",
+          color: "cyan.600",
+        }}
       >
         <Box component={PiInfo} />
         <Typography sx={{ fontSize: "inherit", color: "inherit" }}>

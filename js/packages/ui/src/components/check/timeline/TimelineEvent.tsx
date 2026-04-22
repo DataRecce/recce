@@ -201,17 +201,34 @@ function StateChangeEventComponent({ event }: { event: TimelineEventData }) {
         <Stack
           direction="row"
           spacing={0.5}
-          flexWrap="wrap"
-          alignItems="center"
+          sx={{
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
         >
           <UserAvatar actor={actor} />
-          <Typography variant="body2" fontWeight="500">
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: "500",
+            }}
+          >
             {actorName}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             {message}
           </Typography>
-          <Typography variant="caption" color="text.disabled">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.disabled",
+            }}
+          >
             {relativeTime}
           </Typography>
         </Stack>
@@ -331,7 +348,13 @@ function CommentEventComponent({
           <EventIcon event={event} />
         </Box>
         <Box sx={{ display: "flex", flex: 1, alignItems: "center" }}>
-          <Typography variant="body2" color="text.disabled" fontStyle="italic">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.disabled",
+              fontStyle: "italic",
+            }}
+          >
             Comment deleted
           </Typography>
         </Box>
@@ -348,29 +371,48 @@ function CommentEventComponent({
         <Stack
           direction="row"
           spacing={0.5}
-          sx={{ mb: 0.5 }}
-          flexWrap="wrap"
-          alignItems="center"
+          sx={{
+            flexWrap: "wrap",
+            alignItems: "center",
+            mb: 0.5,
+          }}
         >
           <UserAvatar actor={actor} />
-          <Typography variant="body2" fontWeight="500">
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: "500",
+            }}
+          >
             {actorName}
             {isAuthor && (
               <Typography
                 component="span"
                 variant="body2"
-                color="text.secondary"
+                sx={{
+                  color: "text.secondary",
+                }}
               >
                 {" "}
                 (Author)
               </Typography>
             )}
           </Typography>
-          <Typography variant="caption" color="text.disabled">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.disabled",
+            }}
+          >
             {relativeTime}
           </Typography>
           {event.is_edited && (
-            <Typography variant="caption" color="text.disabled">
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.disabled",
+              }}
+            >
               (edited)
             </Typography>
           )}
@@ -401,8 +443,10 @@ function CommentEventComponent({
             <Stack
               direction="row"
               spacing={1}
-              sx={{ mt: 1 }}
-              justifyContent="flex-end"
+              sx={{
+                justifyContent: "flex-end",
+                mt: 1,
+              }}
             >
               <Button
                 size="small"
@@ -444,7 +488,6 @@ function CommentEventComponent({
                 {event.content}
               </Typography>
             )}
-
             {/* Edit/Delete buttons - only visible to author on hover */}
             {isAuthor && (onEdit || onDelete) && (
               <Stack
@@ -502,7 +545,9 @@ function CommentEventComponent({
                         <Stack
                           direction="row"
                           spacing={1}
-                          justifyContent="flex-end"
+                          sx={{
+                            justifyContent: "flex-end",
+                          }}
                         >
                           <Button
                             size="small"

@@ -216,7 +216,13 @@ export const Filename = () => {
 
   return (
     <>
-      <Stack direction="row" alignItems="center" justifyContent="center">
+      <Stack
+        direction="row"
+        sx={{
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         <Box sx={{ fontWeight: 600 }}>
           {titleReadOnlyState ?? fileName ?? titleNewInstance}
         </Box>
