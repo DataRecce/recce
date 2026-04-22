@@ -187,8 +187,8 @@ export function createInlineRenderCell(config: InlineRenderCellConfig = {}) {
                 grayOut={currentGrayOut}
               />
               <Typography
-                color={netChange >= 0 ? "green.600" : "red.600"}
                 sx={{
+                  color: netChange >= 0 ? "green.600" : "red.600",
                   fontSize: "0.75rem",
                 }}
               >
