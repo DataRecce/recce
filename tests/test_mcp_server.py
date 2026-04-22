@@ -349,6 +349,11 @@ class TestRecceMCPServer:
             check_id=check_id,
             triggered_by="user",
         )
+        # Auto-approve: successful run → is_checked=True
+        mock_check_dao.update_check_by_id.assert_called_once()
+        approve_call = mock_check_dao.update_check_by_id.call_args
+        assert approve_call[0][0] == check_id
+        assert approve_call[0][1].is_checked is True
 
     @pytest.mark.asyncio
     async def test_tool_create_check_idempotent_update(self, mcp_server):
@@ -388,13 +393,17 @@ class TestRecceMCPServer:
 
         assert result["check_id"] == str(check_id)
         assert result["created"] is False
-        mock_check_dao.update_check_by_id.assert_called_once()
-        call_args = mock_check_dao.update_check_by_id.call_args
-        assert call_args[0][0] == check_id
-        patch_in = call_args[0][1]
+        # Two calls: (1) name/desc update, (2) auto-approve after successful run
+        assert mock_check_dao.update_check_by_id.call_count == 2
+        first_call = mock_check_dao.update_check_by_id.call_args_list[0]
+        assert first_call[0][0] == check_id
+        patch_in = first_call[0][1]
         assert patch_in.name == "Updated name"
         assert patch_in.description == "Updated description"
-        assert patch_in.is_checked is None  # Not touching approval
+        # Second call: auto-approve (is_checked=True) after run succeeded
+        second_call = mock_check_dao.update_check_by_id.call_args_list[1]
+        assert second_call[0][0] == check_id
+        assert second_call[0][1].is_checked is True
 
     @pytest.mark.asyncio
     async def test_tool_create_check_metadata_run_for_schema_diff(self, mcp_server):
@@ -440,6 +449,11 @@ class TestRecceMCPServer:
         mock_submit.assert_not_called()
         # Verify a metadata run was created via RunDAO
         mock_run_dao.create.assert_called_once()
+        # Auto-approve: metadata run succeeded → is_checked=True
+        mock_check_dao.update_check_by_id.assert_called_once()
+        approve_call = mock_check_dao.update_check_by_id.call_args
+        assert approve_call[0][0] == check_id
+        assert approve_call[0][1].is_checked is True
 
     @pytest.mark.asyncio
     async def test_tool_create_check_run_failure(self, mcp_server):
