@@ -53,23 +53,9 @@ export const createLineageGraph = (
       data: {
         id: "model.myproject.customers",
         name: "customers",
-        from: "both",
-        data: {
-          base: {
-            id: "model.myproject.customers",
-            unique_id: "model.myproject.customers",
-            name: "customers",
-            schema: "analytics",
-          },
-          current: {
-            id: "model.myproject.customers",
-            unique_id: "model.myproject.customers",
-            name: "customers",
-            schema: "analytics",
-          },
-        },
         resourceType: "model",
         packageName: "myproject",
+        schema: "analytics",
         parents: {},
         children: {},
       },
@@ -81,23 +67,9 @@ export const createLineageGraph = (
       data: {
         id: "model.myproject.orders",
         name: "orders",
-        from: "both",
-        data: {
-          base: {
-            id: "model.myproject.orders",
-            unique_id: "model.myproject.orders",
-            name: "orders",
-            schema: "staging",
-          },
-          current: {
-            id: "model.myproject.orders",
-            unique_id: "model.myproject.orders",
-            name: "orders",
-            schema: "analytics",
-          },
-        },
         resourceType: "model",
         packageName: "myproject",
+        schema: "analytics",
         parents: {},
         children: {},
       },

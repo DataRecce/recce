@@ -77,6 +77,37 @@ def assert_cll_contain_columns(cll_data: CllData, columns):
         assert column[1] == cll_data.columns[column_key].name, f"Column {column[1]} name mismatch"
 
 
+def test_cll_response_excludes_raw_code(dbt_test_helper, disable_cll_cache):
+    """The /api/cll payload must not contain raw_code on any node — it bloats the
+    response and no frontend consumer reads it off a CLL-sourced node. Server-side
+    code may still read the attribute off CllNode in memory."""
+    import json
+
+    from recce.server import CllOutput
+
+    dbt_test_helper.create_model(
+        "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql='select c from {{ ref("model1") }} where c > 0',
+        curr_columns={"c": "int"},
+        depends_on=["model.model1"],
+    )
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    # In-memory CllNode still has raw_code populated for server-side CLL compute
+    cll_node, _ = adapter.get_cll_node("model.model1")
+    assert cll_node.raw_code == "select 1 as c"
+
+    # But the serialized /api/cll response must not contain raw_code
+    cll = adapter.get_cll()
+    payload = json.loads(CllOutput(current=cll).model_dump_json())
+    for node_id, node in payload["current"]["nodes"].items():
+        assert "raw_code" not in node, f"raw_code leaked into /api/cll response for {node_id}"
+
+
 def test_cll_basic(dbt_test_helper, disable_cll_cache):
     dbt_test_helper.create_model(
         "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
@@ -201,12 +232,17 @@ def _set_compiled_code(adapter, node_id, compiled_code, base=False):
 
     The test helper's set_artifacts round-trips through writable_manifest() which
     strips compiled_code. This helper patches it back directly on both the
-    WritableManifest and the Manifest used by the adapter.
+    WritableManifest and the resolved Manifest used by the adapter.
     """
     writable = adapter.curr_manifest if not base else adapter.base_manifest
     if node_id in writable.nodes:
         writable.nodes[node_id].compiled_code = compiled_code
         writable.nodes[node_id].compiled = True
+
+    resolved = adapter.manifest if not base else adapter.previous_state.manifest
+    if node_id in resolved.nodes:
+        resolved.nodes[node_id].compiled_code = compiled_code
+        resolved.nodes[node_id].compiled = True
 
 
 def test_cll_with_compiled_code(dbt_test_helper):

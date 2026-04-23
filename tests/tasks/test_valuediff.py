@@ -344,6 +344,70 @@ def test_value_diff_skips_column_named_column_name(dbt_test_helper):
 # causing type conversion errors during SQL execution.
 
 
+def test_value_diff_digit_starting_column(dbt_test_helper):
+    """Test that columns starting with digits are properly quoted in SQL.
+
+    Regression test for GitHub #1311 / DRC-3247: column names like '47_1_TransId'
+    must be quoted in generated SQL, otherwise the parser reads '47' as a numeric
+    literal and fails.
+    """
+    csv_data_base = """
+        47_1_TransId,name,age
+        1,Alice,30
+        2,Bob,25
+        """
+
+    csv_data_curr = """
+        47_1_TransId,name,age
+        1,Alice,31
+        2,Bob,25
+        """
+
+    dbt_test_helper.create_model("digit_col", csv_data_base, csv_data_curr)
+
+    # ValueDiffTask with digit-starting primary key
+    params = {"model": "digit_col", "primary_key": ["47_1_TransId"]}
+    task = ValueDiffTask(params)
+    run_result = task.execute()
+    assert run_result.summary.total == 2
+    assert run_result.summary.added == 0
+    assert run_result.summary.removed == 0
+
+    # ValueDiffDetailTask with digit-starting primary key
+    task = ValueDiffDetailTask(params)
+    run_result = task.execute()
+    # Row 1 has age change (30 -> 31), should appear as 2 detail rows
+    assert len(run_result.data) == 2
+
+
+def test_value_diff_digit_starting_composite_key(dbt_test_helper):
+    """Test composite primary key with digit-starting columns."""
+    csv_data_base = """
+        47_1_TransId,2nd_key,value
+        1,A,100
+        2,B,200
+        """
+
+    csv_data_curr = """
+        47_1_TransId,2nd_key,value
+        1,A,100
+        2,B,250
+        """
+
+    dbt_test_helper.create_model("digit_composite", csv_data_base, csv_data_curr)
+
+    params = {"model": "digit_composite", "primary_key": ["47_1_TransId", "2nd_key"]}
+    task = ValueDiffTask(params)
+    run_result = task.execute()
+    assert run_result.summary.total == 2
+    assert run_result.summary.added == 0
+    assert run_result.summary.removed == 0
+
+    task = ValueDiffDetailTask(params)
+    run_result = task.execute()
+    assert len(run_result.data) == 2
+
+
 # =============================================================================
 # Validator Tests
 # =============================================================================

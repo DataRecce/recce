@@ -198,6 +198,14 @@ For each major version bump:
    ```
 4. Apply any required codemods or manual migrations
 
+### Package-Specific Migrations
+
+**`@biomejs/biome`**: Any time this package is updated, run:
+```bash
+cd js && pnpm biome migrate --write
+```
+This updates `biome.json` schema references and applies any config migrations for the new version. Always commit the resulting `biome.json` changes alongside the version bump.
+
 If a migration is unclear or risky, **ask the user for clarification** before proceeding.
 
 ## Phase 6: Test Everything

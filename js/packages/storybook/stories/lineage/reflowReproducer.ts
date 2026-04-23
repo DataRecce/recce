@@ -1330,14 +1330,9 @@ export function createReflowLineageGraph(): LineageGraph {
       data: {
         id,
         name: nodeData.name,
-        from: "both",
         changeStatus,
         resourceType: nodeData.resource_type,
         packageName: nodeData.package_name,
-        data: {
-          base: { ...lineage.base.nodes[id], unique_id: id } as AnyNode,
-          current: { ...nodeData, unique_id: id } as AnyNode,
-        },
         parents: {},
         children: {},
       },
@@ -1360,7 +1355,7 @@ export function createReflowLineageGraph(): LineageGraph {
         type: "lineageGraphEdge",
         source: parentId,
         target: childId,
-        data: { from: "both" },
+        data: {},
       };
 
       // Set up parent relationships

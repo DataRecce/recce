@@ -431,8 +431,6 @@ function createLineageGraphNode(
     columnData[col.name] = { name: col.name, type: col.type };
   }
 
-  const config = materialized ? { materialized } : undefined;
-
   return {
     id,
     type: "lineageGraphNode",
@@ -440,30 +438,9 @@ function createLineageGraphNode(
     data: {
       id,
       name,
-      from: "both",
       changeStatus,
       resourceType,
       packageName: "demo",
-      data: {
-        base: {
-          id,
-          name,
-          unique_id: id,
-          resource_type: resourceType,
-          package_name: "demo",
-          columns: columnData,
-          config,
-        },
-        current: {
-          id,
-          name,
-          unique_id: id,
-          resource_type: resourceType,
-          package_name: "demo",
-          columns: columnData,
-          config,
-        },
-      },
       parents: {},
       children: {},
     },
@@ -684,49 +661,49 @@ export function createCllLineageGraph(): LineageGraph {
       type: "lineageGraphEdge",
       source: "source.demo.raw_users",
       target: "model.demo.stg_users",
-      data: { from: "both" },
+      data: {},
     },
     "source.demo.raw_orders->model.demo.stg_orders": {
       id: "source.demo.raw_orders->model.demo.stg_orders",
       type: "lineageGraphEdge",
       source: "source.demo.raw_orders",
       target: "model.demo.stg_orders",
-      data: { from: "both" },
+      data: {},
     },
     "model.demo.stg_users->model.demo.dim_users": {
       id: "model.demo.stg_users->model.demo.dim_users",
       type: "lineageGraphEdge",
       source: "model.demo.stg_users",
       target: "model.demo.dim_users",
-      data: { from: "both" },
+      data: {},
     },
     "model.demo.stg_orders->model.demo.fct_orders": {
       id: "model.demo.stg_orders->model.demo.fct_orders",
       type: "lineageGraphEdge",
       source: "model.demo.stg_orders",
       target: "model.demo.fct_orders",
-      data: { from: "both" },
+      data: {},
     },
     "model.demo.dim_users->model.demo.fct_orders": {
       id: "model.demo.dim_users->model.demo.fct_orders",
       type: "lineageGraphEdge",
       source: "model.demo.dim_users",
       target: "model.demo.fct_orders",
-      data: { from: "both" },
+      data: {},
     },
     "model.demo.dim_users->model.demo.mart_customer_orders": {
       id: "model.demo.dim_users->model.demo.mart_customer_orders",
       type: "lineageGraphEdge",
       source: "model.demo.dim_users",
       target: "model.demo.mart_customer_orders",
-      data: { from: "both" },
+      data: {},
     },
     "model.demo.fct_orders->model.demo.mart_customer_orders": {
       id: "model.demo.fct_orders->model.demo.mart_customer_orders",
       type: "lineageGraphEdge",
       source: "model.demo.fct_orders",
       target: "model.demo.mart_customer_orders",
-      data: { from: "both" },
+      data: {},
     },
   };
 
@@ -1127,7 +1104,7 @@ export function createCllData(): ColumnLineageData {
 // JAFFLE SHOP DUCKDB (LARGE MOCK GRAPH)
 // =============================================================================
 
-import type { LineageDiffData, NodeData } from "@datarecce/ui/api";
+import type { MergedLineageResponse, NodeData } from "@datarecce/ui/api";
 import jaffleData from "./jaffle.json";
 
 /**
@@ -1138,15 +1115,36 @@ import jaffleData from "./jaffle.json";
  * Layers: 12 seeds, 12 staging, 25 intermediate, 35 marts, 15 metrics
  */
 export function jaffleShopLineageGraph(): LineageGraph {
-  const lineageData = {
-    metadata: { pr_url: "" },
-    nodes: jaffleData.nodes as Record<string, NodeData>,
-    parent_map: jaffleData.parent_map,
-  };
+  const oldNodes = jaffleData.nodes as Record<string, NodeData>;
+  const diff = jaffleData.diff as Record<
+    string,
+    { change_status: "added" | "removed" | "modified"; change: unknown }
+  >;
 
-  return buildLineageGraph(
-    lineageData,
-    lineageData,
-    jaffleData.diff as LineageDiffData,
-  );
+  // Convert old-format nodes + diff into MergedLineageResponse
+  const mergedNodes: MergedLineageResponse["nodes"] = {};
+  for (const [id, node] of Object.entries(oldNodes)) {
+    const diffEntry = diff[id];
+    mergedNodes[id] = {
+      name: node.name,
+      resource_type: node.resource_type ?? "model",
+      package_name: node.package_name ?? "jaffle_shop",
+      change_status: diffEntry?.change_status,
+      change:
+        diffEntry?.change as MergedLineageResponse["nodes"][string]["change"],
+    };
+  }
+
+  const mergedEdges: MergedLineageResponse["edges"] = [];
+  for (const [childId, parentIds] of Object.entries(jaffleData.parent_map)) {
+    for (const parentId of parentIds as string[]) {
+      mergedEdges.push({ source: parentId, target: childId });
+    }
+  }
+
+  return buildLineageGraph({
+    nodes: mergedNodes,
+    edges: mergedEdges,
+    metadata: { base: {}, current: {} },
+  });
 }

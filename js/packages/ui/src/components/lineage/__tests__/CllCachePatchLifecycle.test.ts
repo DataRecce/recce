@@ -8,8 +8,8 @@
  * of refetching lineage from the server. This file validates:
  *
  * 1. The cache updater function correctly merges CLL change data into
- *    the cached ServerInfoResult.lineage.diff
- * 2. The patched diff flows through buildLineageGraph to produce correct
+ *    the cached ServerInfoResult.lineage nodes
+ * 2. The patched lineage flows through buildLineageGraph to produce correct
  *    changeStatus on nodes
  * 3. The conditions under which patching occurs vs. is skipped
  * 4. The patching doesn't corrupt unrelated parts of the cache
@@ -27,13 +27,12 @@ import type {
   ColumnLineageData,
 } from "../../../api/cll";
 import type {
-  LineageData,
-  LineageDiffData,
-  NodeData,
+  MergedLineageResponse,
+  MergedNodeData,
   ServerInfoResult,
 } from "../../../api/info";
 import { buildLineageGraph } from "../../../contexts/lineage/utils";
-import { patchLineageDiffFromCll } from "../patchLineageDiffFromCll";
+import { patchLineageFromCll } from "../patchLineageDiffFromCll";
 
 // ---------------------------------------------------------------------------
 // Helpers — mirror the cache-patching logic from LineageViewOss.tsx
@@ -55,10 +54,7 @@ function applyCachePatch(
         if (!old) return old;
         return {
           ...old,
-          lineage: {
-            ...old.lineage,
-            diff: patchLineageDiffFromCll(old.lineage.diff, cllData),
-          },
+          lineage: patchLineageFromCll(old.lineage, cllData),
         };
       },
     );
@@ -86,29 +82,38 @@ function buildCllApiInput(
 const NODE_A = "model.test.orders";
 const NODE_B = "model.test.customers";
 
-function createNodeData(id: string, name: string): NodeData {
-  return {
-    id,
-    unique_id: id,
-    name,
-    resource_type: "model",
-    columns: {},
-  };
-}
-
-function createLineageData(): LineageData {
-  return {
-    metadata: { pr_url: "" },
-    nodes: {
-      [NODE_A]: createNodeData(NODE_A, "orders"),
-      [NODE_B]: createNodeData(NODE_B, "customers"),
+function createMergedLineage(
+  nodeOverrides: Record<string, Partial<MergedNodeData>> = {},
+): MergedLineageResponse {
+  const defaultNodes: Record<string, MergedNodeData> = {
+    [NODE_A]: {
+      name: "orders",
+      resource_type: "model",
+      package_name: "test",
     },
-    parent_map: { [NODE_A]: [NODE_B] },
+    [NODE_B]: {
+      name: "customers",
+      resource_type: "model",
+      package_name: "test",
+    },
+  };
+
+  // Merge overrides
+  const nodes: Record<string, MergedNodeData> = { ...defaultNodes };
+  for (const [id, overrides] of Object.entries(nodeOverrides)) {
+    nodes[id] = { ...nodes[id], ...overrides };
+  }
+
+  return {
+    nodes,
+    edges: [{ source: NODE_B, target: NODE_A }],
+    metadata: { base: {}, current: {} },
   };
 }
 
-function createServerInfoResult(diff: LineageDiffData = {}): ServerInfoResult {
-  const lineageData = createLineageData();
+function createServerInfoResult(
+  nodeOverrides: Record<string, Partial<MergedNodeData>> = {},
+): ServerInfoResult {
   return {
     state_metadata: {
       schema_version: "1",
@@ -122,11 +127,7 @@ function createServerInfoResult(diff: LineageDiffData = {}): ServerInfoResult {
     demo: false,
     codespace: false,
     support_tasks: {},
-    lineage: {
-      base: lineageData,
-      current: lineageData,
-      diff,
-    },
+    lineage: createMergedLineage(nodeOverrides),
   };
 }
 
@@ -153,17 +154,22 @@ function createCllResponse(
   };
 }
 
-function createQueryClient(diff: LineageDiffData = {}): QueryClient {
+function createQueryClient(
+  nodeOverrides: Record<string, Partial<MergedNodeData>> = {},
+): QueryClient {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  qc.setQueryData(cacheKeys.lineage(), createServerInfoResult(diff));
+  qc.setQueryData(cacheKeys.lineage(), createServerInfoResult(nodeOverrides));
   return qc;
 }
 
-function getCachedDiff(qc: QueryClient): LineageDiffData | undefined {
+function getCachedNode(
+  qc: QueryClient,
+  nodeId: string,
+): MergedNodeData | undefined {
   const data = qc.getQueryData<ServerInfoResult>(cacheKeys.lineage());
-  return data?.lineage.diff;
+  return data?.lineage.nodes[nodeId];
 }
 
 // ---------------------------------------------------------------------------
@@ -176,7 +182,7 @@ describe("CLL cache patch lifecycle", () => {
   // =========================================================================
 
   describe("cache patching after CLL with change_analysis", () => {
-    it("patches lineage diff when CLL returns change data", () => {
+    it("patches node change_status when CLL returns change data", () => {
       const qc = createQueryClient();
       const cllData = createCllResponse({
         [NODE_A]: createCllNodeData({
@@ -200,21 +206,18 @@ describe("CLL cache patch lifecycle", () => {
         cllData,
       );
 
-      const diff = getCachedDiff(qc);
-      expect(diff?.[NODE_A]).toEqual({
-        change_status: "modified",
-        change: {
-          category: "breaking",
-          columns: { order_id: "modified" },
-        },
+      const node = getCachedNode(qc, NODE_A);
+      expect(node?.change_status).toBe("modified");
+      expect(node?.change).toEqual({
+        category: "breaking",
+        columns: { order_id: "modified" },
       });
     });
 
-    it("preserves existing diff entries for nodes not in CLL response", () => {
-      const existingDiff: LineageDiffData = {
-        [NODE_B]: { change_status: "added", change: null },
-      };
-      const qc = createQueryClient(existingDiff);
+    it("preserves existing nodes not in CLL response", () => {
+      const qc = createQueryClient({
+        [NODE_B]: { change_status: "added" },
+      });
 
       const cllData = createCllResponse({
         [NODE_A]: createCllNodeData({
@@ -227,12 +230,9 @@ describe("CLL cache patch lifecycle", () => {
 
       applyCachePatch(qc, { node_id: NODE_A, change_analysis: true }, cllData);
 
-      const diff = getCachedDiff(qc);
-      expect(diff?.[NODE_B]).toEqual({
-        change_status: "added",
-        change: null,
-      });
-      expect(diff?.[NODE_A]).toBeDefined();
+      const nodeB = getCachedNode(qc, NODE_B);
+      expect(nodeB?.change_status).toBe("added");
+      expect(getCachedNode(qc, NODE_A)?.change_status).toBe("modified");
     });
 
     it("patches multiple nodes from impact radius CLL response", () => {
@@ -257,9 +257,8 @@ describe("CLL cache patch lifecycle", () => {
         cllData,
       );
 
-      const diff = getCachedDiff(qc);
-      expect(diff?.[NODE_A]?.change_status).toBe("modified");
-      expect(diff?.[NODE_B]?.change_status).toBe("added");
+      expect(getCachedNode(qc, NODE_A)?.change_status).toBe("modified");
+      expect(getCachedNode(qc, NODE_B)?.change_status).toBe("added");
     });
   });
 
@@ -285,8 +284,9 @@ describe("CLL cache patch lifecycle", () => {
         cllData,
       );
 
-      const diff = getCachedDiff(qc);
-      expect(diff?.[NODE_A]).toBeUndefined();
+      // Node should be unchanged (no change_status)
+      const node = getCachedNode(qc, NODE_A);
+      expect(node?.change_status).toBeUndefined();
     });
 
     it("skips patching when change_analysis is undefined", () => {
@@ -301,8 +301,8 @@ describe("CLL cache patch lifecycle", () => {
 
       applyCachePatch(qc, { node_id: NODE_A, column: "order_id" }, cllData);
 
-      const diff = getCachedDiff(qc);
-      expect(diff?.[NODE_A]).toBeUndefined();
+      const node = getCachedNode(qc, NODE_A);
+      expect(node?.change_status).toBeUndefined();
     });
 
     it("handles empty cache gracefully (returns undefined)", () => {
@@ -359,11 +359,11 @@ describe("CLL cache patch lifecycle", () => {
   });
 
   // =========================================================================
-  // End-to-end: patched cache → buildLineageGraph
+  // End-to-end: patched cache -> buildLineageGraph
   // =========================================================================
 
   describe("end-to-end: cache patch flows through buildLineageGraph", () => {
-    it("buildLineageGraph picks up changeStatus from patched diff", () => {
+    it("buildLineageGraph picks up changeStatus from patched nodes", () => {
       const qc = createQueryClient();
 
       // Simulate CLL call with change_analysis
@@ -389,13 +389,9 @@ describe("CLL cache patch lifecycle", () => {
       const cached = qc.getQueryData<ServerInfoResult>(cacheKeys.lineage());
       expect(cached).toBeDefined();
 
-      const graph = buildLineageGraph(
-        cached!.lineage.base,
-        cached!.lineage.current,
-        cached!.lineage.diff,
-      );
+      const graph = buildLineageGraph(cached!.lineage);
 
-      // The node should have changeStatus from the patched diff
+      // The node should have changeStatus from the patched lineage
       const node = graph.nodes[NODE_A];
       expect(node).toBeDefined();
       expect(node.data.changeStatus).toBe("modified");
@@ -406,22 +402,18 @@ describe("CLL cache patch lifecycle", () => {
     });
 
     it("buildLineageGraph shows unpatched node without changeStatus", () => {
-      const qc = createQueryClient(); // empty diff
+      const qc = createQueryClient(); // no overrides
 
       const cached = qc.getQueryData<ServerInfoResult>(cacheKeys.lineage());
-      const graph = buildLineageGraph(
-        cached!.lineage.base,
-        cached!.lineage.current,
-        cached!.lineage.diff,
-      );
+      const graph = buildLineageGraph(cached!.lineage);
 
-      // With empty diff and same base/current, no changeStatus
+      // With no change_status, node should not have changeStatus
       const node = graph.nodes[NODE_A];
       expect(node).toBeDefined();
       expect(node.data.changeStatus).toBeUndefined();
     });
 
-    it("subsequent patches accumulate in the diff", () => {
+    it("subsequent patches accumulate in cached nodes", () => {
       const qc = createQueryClient();
 
       // First CLL: patch NODE_A
@@ -451,17 +443,12 @@ describe("CLL cache patch lifecycle", () => {
         }),
       );
 
-      const diff = getCachedDiff(qc);
-      expect(diff?.[NODE_A]?.change_status).toBe("modified");
-      expect(diff?.[NODE_B]?.change_status).toBe("added");
+      expect(getCachedNode(qc, NODE_A)?.change_status).toBe("modified");
+      expect(getCachedNode(qc, NODE_B)?.change_status).toBe("added");
 
       // Both should flow through to the graph
       const cached = qc.getQueryData<ServerInfoResult>(cacheKeys.lineage());
-      const graph = buildLineageGraph(
-        cached!.lineage.base,
-        cached!.lineage.current,
-        cached!.lineage.diff,
-      );
+      const graph = buildLineageGraph(cached!.lineage);
 
       expect(graph.nodes[NODE_A].data.changeStatus).toBe("modified");
       expect(graph.nodes[NODE_B].data.changeStatus).toBe("added");
@@ -498,37 +485,13 @@ describe("CLL cache patch lifecycle", () => {
       expect(afterPatch?.support_tasks).toEqual(beforePatch?.support_tasks);
     });
 
-    it("does not mutate lineage.base or lineage.current", () => {
-      const qc = createQueryClient();
-      const beforePatch = qc.getQueryData<ServerInfoResult>(
-        cacheKeys.lineage(),
-      );
-      const baseBefore = JSON.stringify(beforePatch?.lineage.base);
-      const currentBefore = JSON.stringify(beforePatch?.lineage.current);
-
-      applyCachePatch(
-        qc,
-        { node_id: NODE_A, change_analysis: true },
-        createCllResponse({
-          [NODE_A]: createCllNodeData({
-            id: NODE_A,
-            name: "orders",
-            change_status: "modified",
-            change_category: "breaking",
-          }),
-        }),
-      );
-
-      const afterPatch = qc.getQueryData<ServerInfoResult>(cacheKeys.lineage());
-      expect(JSON.stringify(afterPatch?.lineage.base)).toBe(baseBefore);
-      expect(JSON.stringify(afterPatch?.lineage.current)).toBe(currentBefore);
-    });
-
-    it("creates new diff object reference (immutable update)", () => {
+    it("creates new lineage object reference (immutable update)", () => {
       const qc = createQueryClient({
-        [NODE_B]: { change_status: "added", change: null },
+        [NODE_B]: { change_status: "added" },
       });
-      const beforeDiff = getCachedDiff(qc);
+      const beforeLineage = qc.getQueryData<ServerInfoResult>(
+        cacheKeys.lineage(),
+      )?.lineage;
 
       applyCachePatch(
         qc,
@@ -543,9 +506,11 @@ describe("CLL cache patch lifecycle", () => {
         }),
       );
 
-      const afterDiff = getCachedDiff(qc);
+      const afterLineage = qc.getQueryData<ServerInfoResult>(
+        cacheKeys.lineage(),
+      )?.lineage;
       // Should be a new object (React Query needs referential inequality)
-      expect(afterDiff).not.toBe(beforeDiff);
+      expect(afterLineage).not.toBe(beforeLineage);
     });
   });
 
@@ -554,12 +519,6 @@ describe("CLL cache patch lifecycle", () => {
   // =========================================================================
 
   describe("re-entry guard prevents infinite loop", () => {
-    /**
-     * Mirrors the cllCachePatchRef guard from LineageViewOss.tsx.
-     * After setQueryData, lineageGraph recomputes and the useLayoutEffect
-     * re-fires. The guard tells the effect to reuse the previous CLL result
-     * instead of re-calling the API and re-patching.
-     */
     interface CllCachePatchRef {
       pending: boolean;
       cllData?: ColumnLineageData;
@@ -635,9 +594,8 @@ describe("CLL cache patch lifecycle", () => {
       guard.cllData = cllData2;
       applyCachePatch(qc, { node_id: NODE_B, change_analysis: true }, cllData2);
 
-      const diff = getCachedDiff(qc);
-      expect(diff?.[NODE_A]?.change_status).toBe("modified");
-      expect(diff?.[NODE_B]?.change_status).toBe("added");
+      expect(getCachedNode(qc, NODE_A)?.change_status).toBe("modified");
+      expect(getCachedNode(qc, NODE_B)?.change_status).toBe("added");
     });
   });
 });

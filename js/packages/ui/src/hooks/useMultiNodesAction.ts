@@ -460,8 +460,11 @@ export const useMultiNodesAction = (
       node_count: nodes.length,
     });
 
+    // After DRC-3260, primary_key is no longer inline on the graph node.
+    // Users can still run value diff on individual nodes where the detail
+    // view fetches the primary key on demand.
     await submitRunsPerNodes("value_diff", (node) => {
-      const primaryKey = node.data.data.current?.primary_key;
+      const primaryKey = undefined as string | undefined; // TODO: DRC-3260 - fetch from /api/model
       if (!primaryKey) {
         return {
           skipReason:

@@ -35,8 +35,11 @@ class ValueDiffMixin:
             if len(primary_key) == 0:
                 raise RecceException("Primary key cannot be empty")
             sql_template = r"""
-            {%- set column_list = primary_key %}
-            {%- set columns_csv = column_list | join(', ') %}
+            {%- set quoted_cols = [] %}
+            {%- for col in primary_key %}
+                {%- do quoted_cols.append(adapter.quote(col)) %}
+            {%- endfor %}
+            {%- set columns_csv = quoted_cols | join(', ') %}
 
             with validation_errors as (
                 select
@@ -128,7 +131,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
 
         {%- for field in primary_keys -%}
             {%- do fields.append(
-                "coalesce(cast(" ~ field ~ " as " ~ dbt.type_string() ~ "), '" ~ default_null_value  ~"')"
+                "coalesce(cast(" ~ adapter.quote(field) ~ " as " ~ dbt.type_string() ~ "), '" ~ default_null_value  ~"')"
             ) -%}
 
             {%- if not loop.last %}
@@ -146,19 +149,21 @@ class ValueDiffTask(Task, ValueDiffMixin):
             select {{ _pk }} as _pk, * from {{ curr_relation }}
         ),
 
+        {%- set _quoted_col = adapter.quote(column_to_compare) -%}
+
         joined as (
             select
                 coalesce(a_query._pk, b_query._pk) as _pk,
-                a_query.{{ column_to_compare }} as a_query_value,
-                b_query.{{ column_to_compare }} as b_query_value,
+                a_query.{{ _quoted_col }} as a_query_value,
+                b_query.{{ _quoted_col }} as b_query_value,
                 case
-                    when a_query.{{ column_to_compare }} = b_query.{{ column_to_compare }} then 'perfect match'
-                    when a_query.{{ column_to_compare }} is null and b_query.{{ column_to_compare }} is null then 'both are null'
+                    when a_query.{{ _quoted_col }} = b_query.{{ _quoted_col }} then 'perfect match'
+                    when a_query.{{ _quoted_col }} is null and b_query.{{ _quoted_col }} is null then 'both are null'
                     when a_query._pk is null then 'missing from {{ a_relation_name }}'
                     when b_query._pk is null then 'missing from {{ b_relation_name }}'
-                    when a_query.{{ column_to_compare }} is null then 'value is null in {{ a_relation_name }} only'
-                    when b_query.{{ column_to_compare }} is null then 'value is null in {{ b_relation_name }} only'
-                    when a_query.{{ column_to_compare }} != b_query.{{ column_to_compare }} then 'values do not match'
+                    when a_query.{{ _quoted_col }} is null then 'value is null in {{ a_relation_name }} only'
+                    when b_query.{{ _quoted_col }} is null then 'value is null in {{ b_relation_name }} only'
+                    when a_query.{{ _quoted_col }} != b_query.{{ _quoted_col }} then 'values do not match'
                     else 'unknown' -- this should never happen
                 end as match_status
             from a_query
@@ -377,10 +382,19 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
                 columns.insert(0, primary_key)
 
         sql_template = r"""
-                       with a_query as (select {{ columns | join (',\n') }}
+                       {%- set _quoted_cols = [] -%}
+                       {%- for col in columns -%}
+                           {%- do _quoted_cols.append(adapter.quote(col)) -%}
+                       {%- endfor -%}
+                       {%- set _quoted_pks = [] -%}
+                       {%- for pk in primary_keys -%}
+                           {%- do _quoted_pks.append(adapter.quote(pk)) -%}
+                       {%- endfor -%}
+
+                       with a_query as (select {{ _quoted_cols | join (',\n') }}
                        from {{ base_relation }}
                            ), b_query as (
-                       select {{ columns | join (',\n') }}
+                       select {{ _quoted_cols | join (',\n') }}
                        from {{ curr_relation }}
                            ), a_intersect_b as (
                        select *
@@ -421,7 +435,7 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
                        select *
                        from all_records
                        where not (in_a and in_b)
-                       order by {{ primary_keys | join (',\n') }}, in_a desc, in_b desc
+                       order by {{ _quoted_pks | join (',\n') }}, in_a desc, in_b desc
                            limit {{ limit }}
                        """
 

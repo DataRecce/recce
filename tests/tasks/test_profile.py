@@ -56,6 +56,49 @@ def test_profile_diff_with_selected_columns(dbt_test_helper):
     assert len(run_result.base.data) == 2
 
 
+# Empty table has no rows — the SQL used to divide by count(*) and fail with
+# "division by zero". After the nullif() fix, an empty side produces one row
+# per column with row_count=0 and NULL proportions.
+csv_data_empty = """
+        customer_id,name,age
+        """
+
+
+def test_profile_diff_current_empty(dbt_test_helper):
+    dbt_test_helper.create_model("customers", csv_data_base, csv_data_empty)
+    params = dict(model="customers")
+    task = ProfileDiffTask(params)
+    run_result = task.execute()
+
+    # Still returns a row per column on both sides.
+    assert len(run_result.base.data) == 3
+    assert len(run_result.current.data) == 3
+
+    # Row counts are populated: base has 3, current has 0.
+    def _row_count(df, col_name):
+        col_names = [c.name for c in df.columns]
+        idx_name = col_names.index("column_name")
+        idx_rc = col_names.index("row_count")
+        for row in df.data:
+            if row[idx_name] == col_name:
+                return row[idx_rc]
+        return None
+
+    assert _row_count(run_result.base, "customer_id") == 3
+    assert _row_count(run_result.current, "customer_id") == 0
+
+
+def test_profile_diff_both_empty(dbt_test_helper):
+    dbt_test_helper.create_model("customers", csv_data_empty, csv_data_empty)
+    params = dict(model="customers")
+    task = ProfileDiffTask(params)
+    run_result = task.execute()
+
+    # No crash; one row per column on each side.
+    assert len(run_result.base.data) == 3
+    assert len(run_result.current.data) == 3
+
+
 def test_validator():
     from recce.tasks.profile import ProfileCheckValidator
 

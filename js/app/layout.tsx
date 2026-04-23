@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "@fontsource/montserrat/800.css";
 import "./global.css";
 import Providers from "@datarecce/ui/components/app/Providers";
 import { GoogleTagManager } from "@next/third-parties/google";

@@ -90,6 +90,7 @@ vi.mock("@datarecce/ui/components/run/RunList", () => ({
     onGoToCheck,
     getRunIcon,
     hideAddToChecklist,
+    disableAddToChecklist,
     title,
     headerActions,
     emptyMessage,
@@ -107,6 +108,7 @@ vi.mock("@datarecce/ui/components/run/RunList", () => ({
     onGoToCheck?: (checkId: string) => void;
     getRunIcon?: (runType: string) => React.ReactNode;
     hideAddToChecklist?: boolean;
+    disableAddToChecklist?: boolean;
     title?: string;
     headerActions?: React.ReactNode;
     emptyMessage?: string;
@@ -128,6 +130,10 @@ vi.mock("@datarecce/ui/components/run/RunList", () => ({
               typeof run.name === "string" && run.name.trim().length > 0
                 ? run.name
                 : "<no name>";
+            const showAddToChecklist =
+              !hideAddToChecklist &&
+              !run.checkId &&
+              (onAddToChecklist || disableAddToChecklist);
             return (
               <div
                 key={run.id}
@@ -136,8 +142,9 @@ vi.mock("@datarecce/ui/components/run/RunList", () => ({
               >
                 <span>{name}</span>
                 {getRunIcon?.(run.type)}
-                {!hideAddToChecklist && !run.checkId ? (
+                {showAddToChecklist ? (
                   <button
+                    disabled={disableAddToChecklist}
                     onClick={(event) => {
                       event.stopPropagation();
                       onAddToChecklist?.(run.id);
@@ -612,6 +619,28 @@ describe("RunList", () => {
           name: /Add to Checklist/i,
         });
         expect(button).not.toBeInTheDocument();
+      });
+    });
+
+    it("shows disabled add to checklist when checklistPermissionDenied", async () => {
+      const run = createMockRun({ check_id: undefined });
+      mockListRuns.mockResolvedValue([run]);
+
+      mockUseRecceInstanceContext.mockReturnValue({
+        featureToggles: {
+          disableUpdateChecklist: true,
+          checklistPermissionDenied: true,
+        },
+      });
+
+      renderWithQueryClient(<RunListOss />);
+
+      await waitFor(() => {
+        const button = screen.getByRole("button", {
+          name: /Add to Checklist/i,
+        });
+        expect(button).toBeInTheDocument();
+        expect(button).toBeDisabled();
       });
     });
   });

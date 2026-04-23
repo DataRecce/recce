@@ -28,7 +28,18 @@ vi.mock("@datarecce/ui/contexts", () => ({
 // Mock @datarecce/ui/hooks
 vi.mock("@datarecce/ui/hooks", () => ({
   useIsDark: vi.fn(() => false),
+  useApiConfig: vi.fn(() => ({ apiClient: { get: vi.fn() } })),
 }));
+
+// Mock useQuery so on-demand raw_code fetch never actually runs in these tests
+// (raw_code is always supplied inline by the test fixtures).
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
+  };
+});
 
 // Mock editor components from @datarecce/ui/primitives
 vi.mock("@datarecce/ui/primitives", () => ({
@@ -104,6 +115,7 @@ import type { LineageGraphNode } from "@datarecce/ui";
 import { NodeSqlViewOss as NodeSqlView } from "@datarecce/ui/components/lineage";
 import { useRecceServerFlag } from "@datarecce/ui/contexts";
 import { useIsDark } from "@datarecce/ui/hooks";
+import { useQuery } from "@tanstack/react-query";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -112,13 +124,10 @@ import userEvent from "@testing-library/user-event";
 // ============================================================================
 
 /**
- * Creates a mock LineageGraphNode for testing
+ * Creates a mock LineageGraphNode for testing.
  *
- * Important: Use explicit null to indicate "no data" vs undefined which uses defaults
- * - hasBase: false => no base data object at all
- * - hasBase: true (default) => has base data with raw_code
- * - hasCurrent: false => no current data object at all
- * - hasCurrent: true (default) => has current data with raw_code
+ * Model detail (raw_code) is now served via `useQuery` mock, not embedded in node data.
+ * Call `mockModelDetail(...)` before render to set up the raw_code returned by the API.
  */
 const createMockNode = (
   overrides: {
@@ -135,17 +144,8 @@ const createMockNode = (
   const id = overrides.id ?? "model.test.my_model";
   const resourceType = overrides.resourceType ?? "model";
 
-  // Determine if we should include base/current data
   const hasBase = overrides.hasBase ?? true;
   const hasCurrent = overrides.hasCurrent ?? true;
-
-  // Default values when data exists
-  const baseRawCode = hasBase
-    ? (overrides.baseRawCode ?? "SELECT * FROM base_table")
-    : undefined;
-  const currentRawCode = hasCurrent
-    ? (overrides.currentRawCode ?? "SELECT * FROM current_table")
-    : undefined;
   const baseName = hasBase ? (overrides.baseName ?? "my_model") : undefined;
   const currentName = hasCurrent
     ? (overrides.currentName ?? "my_model")
@@ -158,37 +158,52 @@ const createMockNode = (
     data: {
       id,
       name: baseName ?? currentName ?? "unknown",
-      from: "both",
-      data: {
-        base: hasBase
-          ? {
-              id,
-              unique_id: id,
-              name: baseName ?? "my_model",
-              resource_type: resourceType,
-              package_name: "test_package",
-              columns: {},
-              raw_code: baseRawCode,
-            }
-          : undefined,
-        current: hasCurrent
-          ? {
-              id,
-              unique_id: id,
-              name: currentName ?? "my_model",
-              resource_type: resourceType,
-              package_name: "test_package",
-              columns: {},
-              raw_code: currentRawCode,
-            }
-          : undefined,
-      },
       resourceType,
       packageName: "test_package",
       parents: {},
       children: {},
     },
   };
+};
+
+/**
+ * Set up the useQuery mock to return model detail data.
+ * Must be called before render() for each test that needs raw_code.
+ */
+const mockModelDetail = (
+  overrides: {
+    baseRawCode?: string;
+    currentRawCode?: string;
+    baseName?: string;
+    currentName?: string;
+    hasBase?: boolean;
+    hasCurrent?: boolean;
+  } = {},
+) => {
+  const hasBase = overrides.hasBase ?? true;
+  const hasCurrent = overrides.hasCurrent ?? true;
+  const baseRawCode = hasBase
+    ? (overrides.baseRawCode ?? "SELECT * FROM base_table")
+    : undefined;
+  const currentRawCode = hasCurrent
+    ? (overrides.currentRawCode ?? "SELECT * FROM current_table")
+    : undefined;
+  const baseName = hasBase ? (overrides.baseName ?? "my_model") : undefined;
+  const currentName = hasCurrent
+    ? (overrides.currentName ?? "my_model")
+    : undefined;
+
+  (useQuery as Mock).mockReturnValue({
+    data: {
+      model: {
+        base: hasBase ? { raw_code: baseRawCode, name: baseName } : undefined,
+        current: hasCurrent
+          ? { raw_code: currentRawCode, name: currentName }
+          : undefined,
+      },
+    },
+    isLoading: false,
+  });
 };
 
 // ============================================================================
@@ -208,6 +223,9 @@ describe("NodeSqlView", () => {
       isLoading: false,
     });
     mockUseIsDark.mockReturnValue(false);
+
+    // Default model detail (raw_code) for tests that render editors
+    mockModelDetail();
   });
 
   // ==========================================================================
@@ -318,7 +336,8 @@ describe("NodeSqlView", () => {
 
     it("CodeEditor displays base raw_code", () => {
       const baseCode = "SELECT id, name FROM users";
-      const node = createMockNode({ baseRawCode: baseCode });
+      mockModelDetail({ baseRawCode: baseCode });
+      const node = createMockNode();
       render(<NodeSqlView node={node} />);
 
       const editor = screen.getByTestId("code-editor");
@@ -358,10 +377,8 @@ describe("NodeSqlView", () => {
     });
 
     it("handles missing base raw_code gracefully", () => {
-      // Create node with base data but no raw_code property
-      const node = createMockNode({
-        baseRawCode: "",
-      });
+      mockModelDetail({ baseRawCode: "" });
+      const node = createMockNode();
       render(<NodeSqlView node={node} />);
 
       const editor = screen.getByTestId("code-editor");
@@ -391,7 +408,8 @@ describe("NodeSqlView", () => {
 
     it("DiffEditor has correct original (base) code", () => {
       const baseCode = "SELECT * FROM base";
-      const node = createMockNode({ baseRawCode: baseCode });
+      mockModelDetail({ baseRawCode: baseCode });
+      const node = createMockNode();
       render(<NodeSqlView node={node} />);
 
       const editor = screen.getByTestId("diff-editor");
@@ -400,7 +418,8 @@ describe("NodeSqlView", () => {
 
     it("DiffEditor has correct modified (current) code", () => {
       const currentCode = "SELECT * FROM current";
-      const node = createMockNode({ currentRawCode: currentCode });
+      mockModelDetail({ currentRawCode: currentCode });
+      const node = createMockNode();
       render(<NodeSqlView node={node} />);
 
       const editor = screen.getByTestId("diff-editor");
@@ -432,9 +451,8 @@ describe("NodeSqlView", () => {
     });
 
     it("handles missing base raw_code gracefully", () => {
-      const node = createMockNode({
-        baseRawCode: "",
-      });
+      mockModelDetail({ baseRawCode: "" });
+      const node = createMockNode();
       render(<NodeSqlView node={node} />);
 
       const editor = screen.getByTestId("diff-editor");
@@ -442,9 +460,8 @@ describe("NodeSqlView", () => {
     });
 
     it("handles missing current raw_code gracefully", () => {
-      const node = createMockNode({
-        currentRawCode: "",
-      });
+      mockModelDetail({ currentRawCode: "" });
+      const node = createMockNode();
       render(<NodeSqlView node={node} />);
 
       const editor = screen.getByTestId("diff-editor");
@@ -479,6 +496,7 @@ describe("NodeSqlView", () => {
 
     it("dialog shows model name", async () => {
       const user = userEvent.setup();
+      mockModelDetail({ baseName: "test_model_name" });
       const node = createMockNode({ baseName: "test_model_name" });
       render(<NodeSqlView node={node} />);
 
@@ -491,6 +509,7 @@ describe("NodeSqlView", () => {
 
     it("dialog uses current name if base name is not available", async () => {
       const user = userEvent.setup();
+      mockModelDetail({ hasBase: false, currentName: "current_only_model" });
       const node = createMockNode({
         hasBase: false,
         currentName: "current_only_model",
@@ -563,7 +582,8 @@ describe("NodeSqlView", () => {
 
       const user = userEvent.setup();
       const baseCode = "SELECT * FROM base";
-      const node = createMockNode({ baseRawCode: baseCode });
+      mockModelDetail({ baseRawCode: baseCode });
+      const node = createMockNode();
       render(<NodeSqlView node={node} />);
 
       const expandButton = screen.getByRole("button", { name: /expand/i });
@@ -680,9 +700,8 @@ describe("NodeSqlView", () => {
 
   describe("edge cases", () => {
     it("handles node with only base data", () => {
-      const node = createMockNode({
-        hasCurrent: false,
-      });
+      mockModelDetail({ hasCurrent: false });
+      const node = createMockNode();
       render(<NodeSqlView node={node} />);
 
       const editor = screen.getByTestId("diff-editor");
@@ -694,9 +713,8 @@ describe("NodeSqlView", () => {
     });
 
     it("handles node with only current data", () => {
-      const node = createMockNode({
-        hasBase: false,
-      });
+      mockModelDetail({ hasBase: false });
+      const node = createMockNode();
       render(<NodeSqlView node={node} />);
 
       const editor = screen.getByTestId("diff-editor");
@@ -708,10 +726,8 @@ describe("NodeSqlView", () => {
     });
 
     it("handles node with empty string raw_code", () => {
-      const node = createMockNode({
-        baseRawCode: "",
-        currentRawCode: "",
-      });
+      mockModelDetail({ baseRawCode: "", currentRawCode: "" });
+      const node = createMockNode();
       render(<NodeSqlView node={node} />);
 
       const editor = screen.getByTestId("diff-editor");

@@ -1,6 +1,7 @@
-import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
+  getModelInfo,
   LOCAL_STORAGE_KEYS,
   type QueryParams,
   type SubmitOptions,
@@ -40,30 +41,91 @@ interface SandboxViewProps {
  *
  * This wrapper:
  * 1. Handles query execution with React Query mutations
- * 2. Injects OSS-specific components (DiffEditor, QueryForm, RunResultPane)
- * 3. Provides OSS-specific tracking and feedback toasts
- * 4. Manages run state via useRecceActionContext
+ * 2. Fetches raw_code on demand via /api/models/{model_id} when it is
+ *    absent from the /info lineage payload (DRC-3263).
+ * 3. Injects OSS-specific components (DiffEditor, QueryForm, RunResultPane)
+ * 4. Provides OSS-specific tracking and feedback toasts
+ * 5. Manages run state via useRecceActionContext
  *
  * The underlying BaseSandboxView from @datarecce/ui is framework-agnostic
  * and accepts components as props for dependency injection.
  */
 export function SandboxViewOss({ isOpen, onClose, current }: SandboxViewProps) {
-  const [modifiedCode, setModifiedCode] = useState<string>(
-    current?.raw_code ?? "",
-  );
-  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   const { showRunId, clearRunResult } = useRecceActionContext();
   const { primaryKeys, setPrimaryKeys } = useRecceQueryContext();
   const { data: flags, isLoading } = useRecceServerFlag();
   const { apiClient } = useApiConfig();
   const isDark = useIsDark();
 
-  // Reset modifiedCode when modal opens
+  // On-demand fetch for raw_code when the lineage payload strips it.
+  // Loose equality (== null) to catch both JSON null and undefined.
+  const inlineRawCode = current?.raw_code;
+  const needsFetch = isOpen && !!current?.id && inlineRawCode == null;
+
+  const { data: modelDetail, isLoading: isModelDetailLoading } = useQuery({
+    queryKey: ["modelDetail", current?.id ?? ""],
+    queryFn: () => getModelInfo(current?.id ?? "", apiClient),
+    enabled: needsFetch && !!apiClient,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  const resolvedRawCode = useMemo(() => {
+    if (inlineRawCode != null) {
+      return inlineRawCode;
+    }
+    // Prefer current.raw_code; fall back to base so the editor still has
+    // something meaningful to show for sources / added models.
+    return (
+      modelDetail?.model.current?.raw_code ??
+      modelDetail?.model.base?.raw_code ??
+      undefined
+    );
+  }, [inlineRawCode, modelDetail]);
+
+  const resolvedCurrent: SandboxNodeData | undefined = useMemo(() => {
+    if (!current) {
+      return undefined;
+    }
+    if (resolvedRawCode === current.raw_code) {
+      return current;
+    }
+    return { ...current, raw_code: resolvedRawCode };
+  }, [current, resolvedRawCode]);
+
+  // Track the modified code. Start empty; initialize from resolvedRawCode
+  // once it is available so we never seed state with placeholder text.
+  const [modifiedCode, setModifiedCode] = useState<string>("");
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  const [prevResolvedRawCode, setPrevResolvedRawCode] = useState<
+    string | undefined
+  >(resolvedRawCode);
+
+  // Track whether the user has manually edited the buffer since the dialog
+  // opened. Prevents overwriting a deliberate clear with fetched code.
+  const userHasEdited = useRef(false);
+  const handleUserEdit = useCallback((code: string) => {
+    userHasEdited.current = true;
+    setModifiedCode(code);
+  }, []);
+
   if (isOpen !== prevIsOpen) {
     setPrevIsOpen(isOpen);
     if (isOpen) {
-      setModifiedCode(current?.raw_code ?? "");
+      userHasEdited.current = false;
+      setModifiedCode(resolvedRawCode ?? "");
+      setPrevResolvedRawCode(resolvedRawCode);
     }
+  } else if (
+    isOpen &&
+    resolvedRawCode !== prevResolvedRawCode &&
+    !userHasEdited.current
+  ) {
+    // Fetch resolved after the dialog was already open — seed the editor
+    // with the freshly resolved raw_code, but only if the user hasn't
+    // edited the modified buffer.
+    setPrevResolvedRawCode(resolvedRawCode);
+    setModifiedCode(resolvedRawCode ?? "");
   }
 
   const queryFn = async () => {
@@ -162,7 +224,7 @@ export function SandboxViewOss({ isOpen, onClose, current }: SandboxViewProps) {
     <BaseSandboxView
       isOpen={isOpen}
       onClose={handleClose}
-      current={current}
+      current={resolvedCurrent}
       DiffEditor={DiffEditor}
       QueryForm={QueryForm}
       RunResultPane={RunResultPane}
@@ -170,8 +232,9 @@ export function SandboxViewOss({ isOpen, onClose, current }: SandboxViewProps) {
       primaryKeys={primaryKeys ?? []}
       onPrimaryKeysChange={setPrimaryKeys}
       isPending={isPending}
+      isCodeLoading={needsFetch && isModelDetailLoading}
       onRunQuery={runQuery}
-      onModifiedCodeChange={setModifiedCode}
+      onModifiedCodeChange={handleUserEdit}
       onShowFeedback={() => feedbackToast(true)}
       tracking={{
         onPreviewChange: trackPreviewChange,

@@ -10,7 +10,12 @@ import requests
 from rich.console import Console
 
 from recce.git import commit_hash_from_branch, current_branch, hosting_repo
-from recce.state import s3_sse_c_headers
+from recce.state import (
+    filter_headers_for_presigned_url,
+    normalize_s3_metadata,
+    s3_metadata_headers,
+    s3_sse_c_headers,
+)
 from recce.util.recce_cloud import PresignedUrlMethod, RecceCloud
 
 
@@ -180,9 +185,12 @@ def upload_dbt_artifacts(target_path: str, branch: str, token: str, password: st
 
     headers = s3_sse_c_headers(password)
     if metadata:
-        headers["x-amz-tagging"] = urlencode(metadata)
+        normalized = normalize_s3_metadata(metadata)
+        headers["x-amz-tagging"] = urlencode(normalized)
+        headers.update(s3_metadata_headers(metadata))
+    headers = filter_headers_for_presigned_url(presigned_url, headers)
     response = requests.put(presigned_url, data=open(compress_file_path, "rb").read(), headers=headers)
-    if response.status_code != 200:
+    if response.status_code not in (200, 204):
         raise Exception({response.text})
 
     # Clean up the compressed artifacts

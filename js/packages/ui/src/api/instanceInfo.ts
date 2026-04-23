@@ -25,6 +25,7 @@ export interface RecceInstanceInfo {
   organization_name?: string;
   web_url?: string;
   python_version?: string;
+  user_role?: string;
 }
 
 /**

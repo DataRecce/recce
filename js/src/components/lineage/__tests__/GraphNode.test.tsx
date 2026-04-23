@@ -53,6 +53,7 @@ vi.mock("@datarecce/ui/contexts", () => ({
   useRouteConfig: vi.fn(() => ({ basePath: "" })),
   useLineageGraphContext: vi.fn(),
   useLineageViewContextSafe: vi.fn(),
+  useRecceServerFlag: vi.fn(() => ({ data: undefined })),
 }));
 
 // Mock @datarecce/ui/components/lineage
@@ -189,13 +190,6 @@ const mockThemeColors = {
   isDark: false,
 };
 
-const createMockNodeData = () => ({
-  id: "test-node-1",
-  unique_id: "model.test.test_model",
-  name: "test_model",
-  columns: {},
-});
-
 const createMockNode = (
   overrides: Partial<LineageGraphNode["data"]> = {},
 ): LineageGraphNode => ({
@@ -205,11 +199,6 @@ const createMockNode = (
   data: {
     id: "test-node-1",
     name: "test_model",
-    from: "both",
-    data: {
-      base: createMockNodeData(),
-      current: createMockNodeData(),
-    },
     resourceType: "model",
     packageName: "test_package",
     parents: {},
@@ -828,7 +817,7 @@ describe("GraphNode", () => {
             source: "parent-1",
             target: "test-node-1",
             type: "lineageGraphEdge",
-            data: { from: "both" },
+            data: {},
           },
         },
       });
@@ -847,7 +836,7 @@ describe("GraphNode", () => {
             source: "test-node-1",
             target: "child-1",
             type: "lineageGraphEdge",
-            data: { from: "both" },
+            data: {},
           },
         },
       });
@@ -884,7 +873,7 @@ describe("GraphNode", () => {
             source: "parent-1",
             target: "test-node-1",
             type: "lineageGraphEdge",
-            data: { from: "both" },
+            data: {},
           },
         },
         children: {
@@ -893,7 +882,7 @@ describe("GraphNode", () => {
             source: "test-node-1",
             target: "child-1",
             type: "lineageGraphEdge",
-            data: { from: "both" },
+            data: {},
           },
         },
       });

@@ -22,7 +22,7 @@ import MuiTooltip from "@mui/material/Tooltip";
 import { type NodeProps, useStore } from "@xyflow/react";
 import { memo } from "react";
 import type { LineageGraphNode } from "../..";
-import { COLUMN_HEIGHT, isSchemaChanged } from "../..";
+import { COLUMN_HEIGHT } from "../..";
 import { isRowCountDiffRun, type RowCountDiff } from "../../api";
 import {
   useLineageGraphContext,
@@ -110,10 +110,8 @@ function NodeRunsAggregatedDisplay({
   }
 
   let schemaChanged: boolean | undefined;
-  if (node?.data.data.base && node.data.data.current) {
-    const baseColumns = node.data.data.base.columns;
-    const currColumns = node.data.data.current.columns;
-    schemaChanged = isSchemaChanged(baseColumns, currColumns);
+  if (node?.data.change?.columns) {
+    schemaChanged = Object.keys(node.data.change.columns).length > 0;
   }
 
   let rowCountChanged: boolean | undefined;
@@ -297,10 +295,13 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     showContextMenu,
     viewOptions,
     cll,
+    impactedNodeIds,
+    newCllExperience,
     showColumnLevelLineage,
     setChangeAnalysisMode,
   } = useLineageViewContextSafe();
   const { isActionAvailable } = useLineageGraphContext();
+  const isImpacted = newCllExperience ? impactedNodeIds.has(id) : false;
 
   // Computed state
   const changeCategory = cll?.current.nodes[id]
@@ -362,10 +363,11 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
         label: name,
         changeStatus: nodeChangeStatus,
         resourceType,
-        materialized:
-          data.data?.current?.config?.materialized ??
-          data.data?.base?.config?.materialized,
+        materialized: data.materialized,
       }}
+      // New CLL experience props
+      newCllExperience={newCllExperience}
+      isImpacted={isImpacted}
       // Interactive props
       interactive={interactive}
       selectMode={nodeSelectMode}

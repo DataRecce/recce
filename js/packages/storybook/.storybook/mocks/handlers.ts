@@ -94,9 +94,9 @@ function createModelInfoResponse(
  * MSW request handlers for Recce API endpoints
  */
 export const handlers = [
-  // Handler for /api/model/:model endpoint
+  // Handler for /api/models/:model endpoint
   // Used by useModelColumns hook when columns aren't available in context
-  http.get("/api/model/:model", ({ params }) => {
+  http.get("/api/models/:model", ({ params }) => {
     const model = params.model as string;
     const response = createModelInfoResponse(model);
 

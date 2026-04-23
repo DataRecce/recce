@@ -62,11 +62,6 @@ const createMockLineageGraph = (
       data: {
         id: "model.test.my_model",
         name: "my_model",
-        from: "both",
-        data: {
-          base: undefined,
-          current: undefined,
-        },
         parents: {},
         children: {},
       },

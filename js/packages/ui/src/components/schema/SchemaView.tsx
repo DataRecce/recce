@@ -16,7 +16,11 @@ import {
   useState,
 } from "react";
 import type { NodeData } from "../../api";
-import { useLineageGraphContext, useLineageViewContext } from "../../contexts";
+import {
+  useLineageGraphContext,
+  useLineageViewContext,
+  useRecceServerFlag,
+} from "../../contexts";
 import { trackColumnLevelLineage } from "../../lib/api/track";
 import type {
   SchemaDiffRow,
@@ -27,6 +31,7 @@ import {
   EmptyRowsRenderer,
   ScreenshotDataGrid,
 } from "../../primitives";
+
 import { createDataGridFromData } from "../ui/dataGrid";
 
 export function SchemaLegend() {
@@ -215,10 +220,21 @@ export function PrivateSchemaView(
   ref: Ref<DataGridHandle>,
 ) {
   const lineageViewContext = useLineageViewContext();
+  const { data: serverFlags } = useRecceServerFlag();
+  const newCllExperience = serverFlags?.new_cll_experience ?? false;
   const [gridApi, setGridApi] = useState<GridApi<SchemaDiffRow> | null>(null);
   const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(
     new Map(),
   );
+
+  // Use the frozen impacted column set from impact analysis so sidebar
+  // highlights stay stable when navigating between models/columns.
+  const impactedColumns = useMemo(() => {
+    if (!newCllExperience) return undefined;
+    const frozen = lineageViewContext?.impactedColumnIds;
+    return frozen?.size ? frozen : undefined;
+  }, [newCllExperience, lineageViewContext?.impactedColumnIds]);
+
   const { columns, rows } = useMemo(() => {
     const resourceType = current?.resource_type ?? base?.resource_type;
     const node =
@@ -226,12 +242,29 @@ export function PrivateSchemaView(
       ["model", "seed", "snapshot", "source"].includes(resourceType)
         ? (current ?? base)
         : undefined;
+    const nodeId = current?.id ?? base?.id;
 
     return createDataGridFromData(
       { type: "schema_diff", base: base?.columns, current: current?.columns },
-      { node, cllRunningMap, showMenu, columnChanges, onViewCode },
+      {
+        node,
+        cllRunningMap,
+        showMenu,
+        columnChanges,
+        onViewCode,
+        impactedColumns,
+        nodeId,
+      },
     );
-  }, [base, current, cllRunningMap, showMenu, columnChanges, onViewCode]);
+  }, [
+    base,
+    current,
+    cllRunningMap,
+    showMenu,
+    columnChanges,
+    onViewCode,
+    impactedColumns,
+  ]);
 
   const { lineageGraph, isActionAvailable } = useLineageGraphContext();
   const changeAnalysisAvailable = isActionAvailable("change_analysis");
@@ -323,6 +356,8 @@ export function PrivateSchemaView(
     ) {
       // Any change (structural or definition-only) gets the changed row background
       className = "row-changed";
+    } else if (row.isImpacted) {
+      className = "row-impacted";
     } else {
       className = "row-normal";
     }
@@ -375,7 +410,7 @@ export function PrivateSchemaView(
           rows={rows}
           rowHeight={35}
           renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
-          className="rdg-light no-track-pii-safe"
+          className={`rdg-light no-track-pii-safe${newCllExperience ? " cll-experience" : ""}`}
           ref={ref}
           getRowId={getRowId}
           getRowClass={getRowClass}

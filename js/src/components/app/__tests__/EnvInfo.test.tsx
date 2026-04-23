@@ -96,21 +96,7 @@ const createMockLineageGraph = (): LineageGraph => ({
       data: {
         id: "node1",
         name: "node1",
-        from: "both",
-        data: {
-          base: {
-            id: "node1",
-            unique_id: "node1",
-            name: "node1",
-            schema: "schema_a",
-          },
-          current: {
-            id: "node1",
-            unique_id: "node1",
-            name: "node1",
-            schema: "schema_a",
-          },
-        },
+        schema: "schema_a",
         resourceType: "model",
         packageName: "test",
         parents: {},
@@ -124,21 +110,7 @@ const createMockLineageGraph = (): LineageGraph => ({
       data: {
         id: "node2",
         name: "node2",
-        from: "both",
-        data: {
-          base: {
-            id: "node2",
-            unique_id: "node2",
-            name: "node2",
-            schema: "schema_b",
-          },
-          current: {
-            id: "node2",
-            unique_id: "node2",
-            name: "node2",
-            schema: "schema_c",
-          },
-        },
+        schema: "schema_c",
         resourceType: "model",
         packageName: "test",
         parents: {},
@@ -190,8 +162,10 @@ describe("EnvInfo", () => {
     it("displays schema names for base and current", () => {
       render(<EnvInfo />);
 
-      expect(screen.getByText("schema_a, schema_b")).toBeInTheDocument();
-      expect(screen.getByText("schema_a, schema_c")).toBeInTheDocument();
+      // With merged lineage, both nodes have no changeStatus so schemas
+      // appear in both base and current sets
+      const schemaElements = screen.getAllByText("schema_a, schema_c");
+      expect(schemaElements.length).toBeGreaterThanOrEqual(2);
     });
 
     it("displays relative time for base and current", () => {
@@ -752,9 +726,11 @@ describe("extractSchemas", () => {
     const lineageGraph = createMockLineageGraph();
     const [baseSchemas, currentSchemas] = extractSchemas(lineageGraph);
 
+    // With merged lineage, both nodes have no changeStatus so schemas
+    // appear in both base and current sets
     expect(baseSchemas.size).toBe(2);
     expect(baseSchemas.has("schema_a")).toBe(true);
-    expect(baseSchemas.has("schema_b")).toBe(true);
+    expect(baseSchemas.has("schema_c")).toBe(true);
 
     expect(currentSchemas.size).toBe(2);
     expect(currentSchemas.has("schema_a")).toBe(true);
@@ -825,21 +801,7 @@ describe("extractSchemas", () => {
           data: {
             id: "node1",
             name: "node1",
-            from: "both",
-            data: {
-              base: {
-                id: "node1",
-                unique_id: "node1",
-                name: "node1",
-                schema: "schema_a",
-              },
-              current: {
-                id: "node1",
-                unique_id: "node1",
-                name: "node1",
-                schema: "schema_a",
-              },
-            },
+            schema: "schema_a",
             resourceType: "model",
             packageName: "test",
             parents: {},
@@ -853,21 +815,7 @@ describe("extractSchemas", () => {
           data: {
             id: "node2",
             name: "node2",
-            from: "both",
-            data: {
-              base: {
-                id: "node2",
-                unique_id: "node2",
-                name: "node2",
-                schema: "schema_a",
-              },
-              current: {
-                id: "node2",
-                unique_id: "node2",
-                name: "node2",
-                schema: "schema_a",
-              },
-            },
+            schema: "schema_a",
             resourceType: "model",
             packageName: "test",
             parents: {},
