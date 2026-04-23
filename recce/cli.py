@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import click
 
@@ -318,6 +318,7 @@ def init(cache_db, **kwargs):
 
     import json
     import logging
+    import shutil
     import tempfile
     import time
 
@@ -325,9 +326,15 @@ def init(cache_db, **kwargs):
     from rich.console import Console
     from rich.progress import Progress
 
+    from recce import __version__
     from recce.adapter.dbt_adapter import DbtAdapter
     from recce.core import load_context
     from recce.util.cll import _DEFAULT_DB_PATH, CllCache, get_cll_cache, set_cll_cache
+    from recce.util.per_node_db import SCHEMA_VERSION as PER_NODE_DB_SCHEMA_VERSION
+    from recce.util.per_node_db import (
+        PerNodeDbWriter,
+        extract_rows_from_artifacts,
+    )
 
     logger = logging.getLogger("recce")
     console = Console()
@@ -343,9 +350,15 @@ def init(cache_db, **kwargs):
     cloud_client = None
     cloud_org_id = None
     cloud_project_id = None
+    # In cloud mode, cll_cache.db and per_node.db are written to a tempdir that
+    # is scoped to this invocation. cll_cache.db keeps its warm-cache perf but
+    # never leaves the container; per_node.db is uploaded then the dir is GC'd.
+    cloud_scratch_dir: Optional[Path] = None
 
     if is_cloud:
         from recce.util.recce_cloud import RecceCloud, RecceCloudException
+
+        cloud_scratch_dir = Path(tempfile.mkdtemp(prefix="recce-cll-"))
 
         cloud_token = kwargs.get("cloud_token") or kwargs.get("api_token")
         if not cloud_token:
@@ -434,8 +447,13 @@ def init(cache_db, **kwargs):
         # Download existing CLL cache for warm start.
         # Try current session first, then fall back to production (base) session.
         # Use streaming to avoid loading large cache files entirely into memory.
-        if cache_db is None:
-            cache_db = _DEFAULT_DB_PATH
+        #
+        # In cloud mode, cll_cache.db is scoped to cloud_scratch_dir so it
+        # never gets uploaded back to Cloud. A user-provided --cache-db is
+        # intentionally ignored here because ECS task filesystems are ephemeral
+        # and the cache is not meant to persist across runs.
+        assert cloud_scratch_dir is not None  # set above when is_cloud
+        cache_db = str(cloud_scratch_dir / "cll_cache.db")
         Path(cache_db).parent.mkdir(parents=True, exist_ok=True)
 
         def _stream_download_to_file(url: str, dest: Path) -> int:
@@ -671,10 +689,55 @@ def init(cache_db, **kwargs):
     stats = cache.stats
     console.print(f"\nCache saved to [bold]{cache_db}[/bold] ({stats['entries']} entries)")
 
+    # In cloud mode, emit per_node.db — a pure-artifact SQLite that Cloud
+    # streams to serve lineage without proxying to an ephemeral Recce instance.
+    per_node_db_path: Optional[Path] = None
+    if is_cloud:
+        assert cloud_scratch_dir is not None
+        per_node_db_path = cloud_scratch_dir / "per_node.db"
+        console.print("\n[bold]Emitting per-node SQLite...[/bold]")
+        t_pn_start = time.perf_counter()
+        try:
+            with PerNodeDbWriter(per_node_db_path) as writer:
+                writer.write_meta(
+                    schema_version=str(PER_NODE_DB_SCHEMA_VERSION),
+                    session_id=session_id or "",
+                    recce_version=__version__,
+                    generated_at=str(int(time.time())),
+                )
+                envs_to_emit = [
+                    ("current", dbt_adapter.curr_manifest, dbt_adapter.curr_catalog),
+                    ("base", dbt_adapter.base_manifest, dbt_adapter.base_catalog),
+                ]
+                for env_name, manifest, catalog in envs_to_emit:
+                    if manifest is None:
+                        continue
+                    manifest_dict = manifest.to_dict() if hasattr(manifest, "to_dict") else manifest
+                    catalog_dict = (
+                        catalog.to_dict() if (catalog is not None and hasattr(catalog, "to_dict")) else catalog
+                    )
+                    node_rows, column_rows, edge_rows, test_rows = extract_rows_from_artifacts(
+                        manifest_dict, catalog_dict, env_name
+                    )
+                    writer.write_nodes(node_rows)
+                    writer.write_columns(column_rows)
+                    writer.write_edges(edge_rows)
+                    writer.write_tests(test_rows)
+            pn_elapsed = time.perf_counter() - t_pn_start
+            pn_size_mb = per_node_db_path.stat().st_size / 1024 / 1024
+            console.print(
+                f"  per_node.db saved to [bold]{per_node_db_path}[/bold] ({pn_size_mb:.1f} MB, {pn_elapsed:.1f}s)"
+            )
+        except Exception as e:
+            logger.warning("[recce init] Failed to emit per_node.db: %s", e)
+            console.print(f"  [[yellow]Warning[/yellow]] Failed to emit per_node.db: {e}")
+            per_node_db_path = None
+
     # Upload results to Cloud if in cloud mode
     if is_cloud and cloud_client:
         console.print("\n[bold]Uploading results to Cloud...[/bold]")
         upload_failures = []
+        upload_succeeded = False
         try:
             upload_urls = cloud_client.get_upload_urls_by_session_id(cloud_org_id, cloud_project_id, session_id)
 
@@ -704,29 +767,39 @@ def init(cache_db, **kwargs):
                     "  [[yellow]Warning[/yellow]] No cll_map_url in upload URLs (Cloud server may need update)"
                 )
 
-            # Upload CLL cache
-            cll_cache_upload_url = upload_urls.get("cll_cache_url")
-            if cll_cache_upload_url and Path(cache_db).is_file():
+            # Upload per_node.db. Graceful degradation: if Cloud hasn't added
+            # the per_node_db_url key yet, log a warning and continue — this
+            # keeps old CLI versions compatible with new Cloud and vice versa.
+            per_node_db_upload_url = upload_urls.get("per_node_db_url")
+            if per_node_db_upload_url and per_node_db_path and per_node_db_path.is_file():
                 try:
-                    with open(cache_db, "rb") as f:
+                    with open(per_node_db_path, "rb") as f:
                         resp = requests.put(
-                            cll_cache_upload_url,
+                            per_node_db_upload_url,
                             data=f,
                             headers={"Content-Type": "application/octet-stream"},
                             timeout=_UPLOAD_TIMEOUT,
                         )
                     if resp.status_code in (200, 204):
-                        console.print(f"  Uploaded cll_cache.db ({Path(cache_db).stat().st_size / 1024 / 1024:.1f} MB)")
-                    else:
-                        upload_failures.append("cll_cache.db")
                         console.print(
-                            f"  [[yellow]Warning[/yellow]] Failed to upload cll_cache.db: HTTP {resp.status_code}"
+                            f"  Uploaded per_node.db ({per_node_db_path.stat().st_size / 1024 / 1024:.1f} MB)"
+                        )
+                    else:
+                        upload_failures.append("per_node.db")
+                        console.print(
+                            f"  [[yellow]Warning[/yellow]] Failed to upload per_node.db: HTTP {resp.status_code}"
                         )
                 except requests.RequestException as e:
-                    upload_failures.append("cll_cache.db")
-                    console.print(f"  [[yellow]Warning[/yellow]] Failed to upload cll_cache.db: {e}")
-            elif not cll_cache_upload_url:
-                logger.debug("No cll_cache_url in upload URLs — cache upload not supported yet")
+                    upload_failures.append("per_node.db")
+                    console.print(f"  [[yellow]Warning[/yellow]] Failed to upload per_node.db: {e}")
+            elif not per_node_db_upload_url:
+                console.print(
+                    "  [[yellow]Warning[/yellow]] No per_node_db_url in upload URLs (Cloud server may need update)"
+                )
+
+            # cll_cache.db is local-only in cloud mode: it lives in
+            # cloud_scratch_dir and is not uploaded. The tempdir is GC'd
+            # below when upload succeeds; on failure it lingers for debugging.
 
             if upload_failures:
                 console.print(
@@ -735,9 +808,16 @@ def init(cache_db, **kwargs):
                 )
             else:
                 console.print("[bold green]Cloud upload complete.[/bold green]")
+                upload_succeeded = True
         except Exception as e:
             logger.warning("[recce init] Cloud upload failed: %s", e)
             console.print(f"  [[yellow]Warning[/yellow]] Cloud upload failed: {e}")
+        finally:
+            # Only clean the scratch dir on success. On failure we keep it for
+            # debugging — ECS task death will reclaim it anyway when the
+            # container exits.
+            if upload_succeeded and cloud_scratch_dir is not None:
+                shutil.rmtree(cloud_scratch_dir, ignore_errors=True)
     else:
         console.print("Run [bold]recce server --enable-cll-cache[/bold] to use the cached lineage.")
 

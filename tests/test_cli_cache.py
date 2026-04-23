@@ -1238,7 +1238,7 @@ class TestInitCloud:
             },
             upload_urls={
                 "cll_map_url": "https://s3.example.com/upload/cll_map.json",
-                "cll_cache_url": "https://s3.example.com/upload/cll_cache.db",
+                "per_node_db_url": "https://s3.example.com/upload/per_node.db",
             },
         )
 
@@ -1258,7 +1258,7 @@ class TestInitCloud:
         def mock_get(url, **kwargs):
             return _make_mock_response(200, manifest_bytes)
 
-        # CLL map upload succeeds, cache upload fails
+        # CLL map upload succeeds, per_node.db upload fails
         def mock_put(url, **kwargs):
             if "cll_map" in url:
                 return _make_mock_response(200)
@@ -1292,7 +1292,7 @@ class TestInitCloud:
 
         assert result.exit_code == 0
         assert "completed with warnings" in result.output
-        assert "cll_cache.db" in result.output
+        assert "per_node.db" in result.output
 
 
 class TestInitLocalCllMap:
