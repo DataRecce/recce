@@ -11,15 +11,16 @@ async function parseExcelBlob(blob: Blob): Promise<{
   columns: string[];
   rows: unknown[][];
 }> {
-  // read-excel-file accepts Blob in browser environments
-  const jsonData = await readXlsxFile(blob);
+  // read-excel-file v8 returns sheet objects: { sheet, data }[]
+  const sheets = await readXlsxFile(blob);
+  const sheetData = sheets[0]?.data ?? [];
 
-  if (jsonData.length === 0) {
+  if (sheetData.length === 0) {
     return { columns: [], rows: [] };
   }
 
-  const columns = (jsonData[0] as unknown[]).map(String);
-  const rows = jsonData.slice(1);
+  const columns = (sheetData[0] as unknown[]).map(String);
+  const rows = sheetData.slice(1) as unknown[][];
 
   return { columns, rows };
 }

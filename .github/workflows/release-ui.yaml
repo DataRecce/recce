@@ -193,11 +193,13 @@ jobs:
               echo "npm_tag=latest" >> $GITHUB_OUTPUT
             fi
           else
-            # Manual dispatch - use input version or package.json
+            # Manual dispatch - use input version or recce/VERSION
             if [[ -n "${{ inputs.version }}" ]]; then
               npm_version="${{ inputs.version }}"
             else
-              npm_version=$(node -p "require('./package.json').version")
+              # Read base version from recce/VERSION (e.g., "1.44.0.dev0" -> "1.44.0")
+              python_version=$(cat "${GITHUB_WORKSPACE}/recce/VERSION")
+              npm_version=$(echo "$python_version" | sed -E 's/\.dev[0-9]*$//')
             fi
 
             if [[ "${{ steps.release_type.outputs.type }}" == "nightly" ]]; then
@@ -324,3 +326,31 @@ jobs:
             echo "npm install @datarecce/ui@${version}" >> $GITHUB_STEP_SUMMARY
           fi
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        if: steps.check_artifact.outputs.skip != 'true' && steps.patch_version.outputs.npm_tag == 'latest'
+        continue-on-error: true
+        with:
+          app-id: ${{ secrets.RECCE_ACTION_BOT_APP_ID }}
+          private-key: ${{ secrets.RECCE_ACTION_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Trigger Bump @datarecce/ui in recce-cloud-infra
+        id: dispatch
+        if: steps.check_artifact.outputs.skip != 'true' && steps.patch_version.outputs.npm_tag == 'latest' && steps.app-token.outcome == 'success'
+        continue-on-error: true
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: 'bump-recce-ui.yml'
+          repo: 'DataRecce/recce-cloud-infra'
+          ref: 'main'
+          inputs: '{ "version": "${{ steps.patch_version.outputs.version }}" }'
+          token: '${{ steps.app-token.outputs.token }}'
+
+      - name: Handle dispatch failure
+        if: steps.app-token.outcome == 'failure' || steps.dispatch.outcome == 'failure'
+        run: |
+          echo "::warning::Failed to trigger Bump @datarecce/ui workflow in recce-cloud-infra"
+          echo "::warning::Please manually trigger the bump at: https://github.com/DataRecce/recce-cloud-infra/actions/workflows/bump-recce-ui.yml"
+          echo "::warning::Use version: ${{ steps.patch_version.outputs.version }}"

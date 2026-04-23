@@ -3802,17 +3802,9 @@ export function createLargeReproducerLineageGraph(): LineageGraph {
       data: {
         id,
         name: nodeData.name,
-        from: "both",
         changeStatus,
         resourceType: nodeData.resource_type,
         packageName: nodeData.package_name,
-        data: {
-          base: {
-            ...((largeReproducerLineage.base.nodes as AnyNode)[id] || {}),
-            unique_id: id,
-          } as AnyNode,
-          current: { ...nodeData, unique_id: id } as AnyNode,
-        },
         parents: {},
         children: {},
       },
@@ -3835,7 +3827,7 @@ export function createLargeReproducerLineageGraph(): LineageGraph {
         type: "lineageGraphEdge",
         source: parentId,
         target: childId,
-        data: { from: "both" },
+        data: {},
       };
 
       // Set up parent relationships

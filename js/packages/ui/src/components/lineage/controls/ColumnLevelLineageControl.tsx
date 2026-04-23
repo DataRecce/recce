@@ -102,6 +102,20 @@ export interface ColumnLevelLineageControlProps {
    * Callback to set change analysis mode on/off.
    */
   setChangeAnalysisMode?: (active: boolean) => void;
+
+  /**
+   * Whether the new CLL experience is enabled.
+   * When true and changeAnalysisMode is active, the Impact Radius button
+   * is hidden (impact is always on) and the global impact mode message
+   * is suppressed.
+   */
+  newCllExperience?: boolean;
+
+  /**
+   * Whether change analysis mode is currently active.
+   * Used with newCllExperience to determine button/message visibility.
+   */
+  changeAnalysisMode?: boolean;
 }
 
 /**
@@ -211,13 +225,21 @@ export const ColumnLevelLineageControl = ({
   onResetCll,
   onCenterNode,
   setChangeAnalysisMode,
+  newCllExperience = false,
+  changeAnalysisMode = false,
 }: ColumnLevelLineageControlProps) => {
   const cllInput = viewOptions.column_level_lineage;
   const noCatalogCurrent = !lineageGraph?.catalogMetadata.current;
 
+  // In new CLL experience, hide the button once impact is active (one-way ratchet)
+  const hideImpactButton = newCllExperience && changeAnalysisMode;
+
+  // In new CLL experience, only show mode message for column-specific CLL (Layer 3)
+  const showModeMessage = cllInput && !(newCllExperience && !cllInput.column);
+
   return (
     <Stack direction="row" spacing="5px">
-      {!singleEnvMode && (
+      {!singleEnvMode && !hideImpactButton && (
         <Box sx={{ borderRadius: 1, boxShadow: 3 }}>
           <MuiTooltip
             enterDelay={50}
@@ -241,7 +263,10 @@ export const ColumnLevelLineageControl = ({
                   bgcolor: "background.paper",
                 }}
                 disabled={
-                  !interactive || noCatalogCurrent || !changeAnalysisAvailable
+                  !interactive ||
+                  noCatalogCurrent ||
+                  !changeAnalysisAvailable ||
+                  action.isPending
                 }
                 startIcon={<FaRegDotCircle />}
                 onClick={() => {
@@ -258,7 +283,7 @@ export const ColumnLevelLineageControl = ({
           </MuiTooltip>
         </Box>
       )}
-      {cllInput && (
+      {showModeMessage && (
         <Stack
           direction="row"
           alignItems="center"

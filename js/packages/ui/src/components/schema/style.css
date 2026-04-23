@@ -1,6 +1,13 @@
 /**
  * Schema diff color palette
- * Uses CSS custom properties for theme-aware colors
+ * Uses CSS custom properties for theme-aware colors.
+ *
+ * Default palette is the long-standing pale yellow/orange "changed" hue.
+ * The new CLL experience overrides "changed" with a deeper brown and adds
+ * "impacted-accent" + impacted badge colors under the `.cll-experience`
+ * selector below. JS counterparts live in ../lineage/styles.tsx
+ * (cllChangeStatusColors / cllChangeStatusBackgrounds*) — keep them in sync
+ * by hand; there is no build-time check.
  */
 
 /* Light mode (default) */
@@ -28,6 +35,9 @@
   --schema-badge-added-fg: rgb(22 110 40);
   --schema-badge-removed-bg: rgb(248 81 73 / 0.2);
   --schema-badge-removed-fg: rgb(180 40 35);
+  --schema-color-impacted: rgb(255 243 200);
+  --schema-color-impacted-hover: rgb(255 237 175);
+  --schema-color-impacted-active: rgb(255 229 145);
 }
 
 /* Dark mode */
@@ -54,6 +64,41 @@
   --schema-badge-added-fg: rgb(80 200 100);
   --schema-badge-removed-bg: rgb(248 81 73 / 0.2);
   --schema-badge-removed-fg: rgb(255 120 115);
+  --schema-color-impacted: rgb(60 52 28);
+  --schema-color-impacted-hover: rgb(75 65 33);
+  --schema-color-impacted-active: rgb(90 78 38);
+}
+
+/*
+ * New CLL experience overrides — scoped to the schema sidebar wrapper
+ * (`.cll-experience`) added by SchemaView when `new_cll_experience` is on.
+ * Mirrors cllChangeStatus* in ../lineage/styles.tsx.
+ */
+.cll-experience {
+  --schema-color-changed: rgb(255 237 175);
+  --schema-color-changed-hover: rgb(255 229 145);
+  --schema-color-changed-active: rgb(255 220 115);
+  --schema-color-changed-accent: rgb(212 133 11);
+  --schema-color-impacted: rgb(254 249 227);
+  --schema-color-impacted-hover: rgb(254 243 199);
+  --schema-color-impacted-active: rgb(253 237 175);
+  --schema-color-impacted-accent: rgb(252 211 77);
+  --schema-badge-impacted-bg: rgb(252 211 77 / 0.35);
+  --schema-badge-impacted-fg: rgb(146 64 14);
+}
+
+.dark .cll-experience,
+.cll-experience.dark {
+  --schema-color-changed: rgb(75 65 33);
+  --schema-color-changed-hover: rgb(90 78 38);
+  --schema-color-changed-active: rgb(105 91 43);
+  --schema-color-changed-accent: rgb(212 133 11);
+  --schema-color-impacted: rgb(50 44 24);
+  --schema-color-impacted-hover: rgb(60 52 28);
+  --schema-color-impacted-active: rgb(70 61 32);
+  --schema-color-impacted-accent: rgb(180 83 9);
+  --schema-badge-impacted-bg: rgb(180 83 9 / 0.25);
+  --schema-badge-impacted-fg: rgb(252 211 77);
 }
 
 /* Row backgrounds must be applied to cells because rows use display:contents */
@@ -120,6 +165,22 @@
   background-color: var(--schema-color-changed-active);
 }
 
+.row-impacted {
+  background-color: var(--schema-color-impacted);
+  box-shadow: inset 3px 0 0 var(--schema-color-impacted-accent);
+}
+
+.row-impacted:hover,
+.row-impacted[aria-selected="true"],
+.row-impacted.ag-row-selected {
+  background-color: var(--schema-color-impacted-hover);
+}
+
+.row-impacted[aria-selected="true"]:hover,
+.row-impacted.ag-row-selected:hover {
+  background-color: var(--schema-color-impacted-active);
+}
+
 .row-selectable {
   cursor: pointer;
 }
@@ -175,6 +236,11 @@
 .schema-change-badge-removed {
   background-color: var(--schema-badge-removed-bg);
   color: var(--schema-badge-removed-fg);
+}
+
+.schema-change-badge-impacted {
+  background-color: var(--schema-badge-impacted-bg);
+  color: var(--schema-badge-impacted-fg);
 }
 
 /* Index change styling for reordered columns */

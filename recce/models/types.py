@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Dict, List, Literal, Optional, Set
+from typing import Any, Dict, List, Literal, Optional, Set
 
-from pydantic import UUID4, BaseModel, Field
+from pydantic import UUID4, BaseModel, ConfigDict, Field
 
 from recce.util.pydantic_model import pydantic_model_dump
 
@@ -161,6 +161,46 @@ class LineageDiff(BaseModel):
     diff: dict[str, NodeDiff]
 
 
+class MergedNode(BaseModel):
+    """A single node in the merged lineage wire-format response.
+
+    Uses exclude_none so unchanged nodes omit change_status/change.
+    Uses by_alias so schema_name serializes as "schema".
+    Uses extra="ignore" so **source unpacking from lineage dicts works.
+    """
+
+    name: str
+    resource_type: str
+    package_name: str = ""
+    schema_name: str | None = Field(None, alias="schema")
+    materialized: str | None = None
+    tags: list[str] | None = None
+    source_name: str | None = None
+    change_status: ChangeStatus | None = None
+    change: NodeChange | None = None
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        extra="ignore",
+    )
+
+
+class MergedEdge(BaseModel):
+    """A single edge in the merged lineage wire-format response."""
+
+    source: str
+    target: str
+    change_status: Literal["added", "removed"] | None = None  # edges are never "modified"
+
+
+class MergedLineage(BaseModel):
+    """Top-level merged lineage object returned by /api/info."""
+
+    nodes: dict[str, MergedNode]
+    edges: list[MergedEdge]
+    metadata: dict[str, Any]
+
+
 # Column Level Linage
 class CllColumnDep(BaseModel):
     node: str
@@ -190,7 +230,11 @@ class CllNode(BaseModel):
     name: str
     package_name: str
     resource_type: str
-    raw_code: Optional[str] = None
+    # raw_code is populated from the manifest for server-side CLL computation
+    # (see DbtAdapter.get_cll_cached) but is excluded from serialization — no
+    # frontend consumer reads it off a CLL-sourced node, and it bloats the
+    # /api/cll payload significantly.
+    raw_code: Optional[str] = Field(default=None, exclude=True)
     source_name: Optional[str] = None
 
     # change analysis

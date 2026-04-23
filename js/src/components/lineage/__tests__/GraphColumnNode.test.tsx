@@ -110,13 +110,6 @@ const mockThemeColors = {
   isDark: false,
 };
 
-const createMockNodeData = () => ({
-  id: "node1",
-  unique_id: "model.test.test_model",
-  name: "test_model",
-  columns: {},
-});
-
 const createMockColumnNode = (
   overrides: Partial<LineageGraphColumnNode["data"]> = {},
 ): LineageGraphColumnNode => ({
@@ -128,8 +121,6 @@ const createMockColumnNode = (
     node: {
       id: "node1",
       name: "test_model",
-      from: "both",
-      data: { base: createMockNodeData(), current: createMockNodeData() },
       resourceType: "model",
       packageName: "test_package",
       parents: {},

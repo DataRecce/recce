@@ -130,12 +130,14 @@ export function calculateChangeSummary(
     else if (lineageGraph.nodes[nodeId].data.changeStatus === "modified")
       modifies++;
 
-    const base = lineageGraph.nodes[nodeId].data.data.base;
-    const current = lineageGraph.nodes[nodeId].data.data.current;
-    const columnChange = calculateColumnChange(base, current);
-    col_added += columnChange.adds;
-    col_removed += columnChange.removes;
-    col_changed += columnChange.modifies;
+    const columnChanges = lineageGraph.nodes[nodeId].data.change?.columns;
+    if (columnChanges) {
+      for (const status of Object.values(columnChanges)) {
+        if (status === "added") col_added++;
+        else if (status === "removed") col_removed++;
+        else if (status === "modified") col_changed++;
+      }
+    }
   });
 
   return { adds, removes, modifies, col_added, col_removed, col_changed };

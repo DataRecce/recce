@@ -34,6 +34,7 @@ export function createSchemaColumnNameRenderer(
         cllRunning={cllRunningMap?.get(row.name) ?? false}
         showMenu={showMenu}
         onViewCode={onViewCode}
+        isImpacted={row.isImpacted}
       />
     );
   };

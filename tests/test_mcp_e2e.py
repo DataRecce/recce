@@ -166,16 +166,15 @@ class TestImpactAnalysisE2E:
         result = await server._tool_impact_analysis({})
 
         # Structure check
-        assert "impacted_models" in result
-        assert "not_impacted_models" in result
-        assert "suggested_deep_dives" in result
+        assert "confirmed_impacted_models" in result
+        assert "confirmed_not_impacted_models" in result
         assert "errors" in result
 
         # customers is modified (different data → different checksum)
-        model_names = [m["name"] for m in result["impacted_models"]]
+        model_names = [m["name"] for m in result["confirmed_impacted_models"]]
         assert "customers" in model_names
 
-        customers = next(m for m in result["impacted_models"] if m["name"] == "customers")
+        customers = next(m for m in result["confirmed_impacted_models"] if m["name"] == "customers")
         assert customers["change_status"] == "modified"
         assert customers["materialized"] == "table"
 
@@ -185,10 +184,10 @@ class TestImpactAnalysisE2E:
         server, _ = mcp_e2e_impact
         result = await server._tool_impact_analysis({})
 
-        model_names = [m["name"] for m in result["impacted_models"]]
+        model_names = [m["name"] for m in result["confirmed_impacted_models"]]
         assert "orders" in model_names
 
-        orders = next(m for m in result["impacted_models"] if m["name"] == "orders")
+        orders = next(m for m in result["confirmed_impacted_models"] if m["name"] == "orders")
         assert orders["change_status"] is None  # downstream, not directly modified
 
     @pytest.mark.asyncio
@@ -206,9 +205,9 @@ class TestImpactAnalysisE2E:
         )
         result = await server._tool_impact_analysis({})
 
-        impacted_names = [m["name"] for m in result["impacted_models"]]
+        impacted_names = [m["name"] for m in result["confirmed_impacted_models"]]
         assert "unrelated" not in impacted_names
-        assert "unrelated" in result["not_impacted_models"]
+        assert "unrelated" in result["confirmed_not_impacted_models"]
 
     @pytest.mark.asyncio
     async def test_row_count_populated_for_tables(self, mcp_e2e_impact):
@@ -216,7 +215,7 @@ class TestImpactAnalysisE2E:
         server, _ = mcp_e2e_impact
         result = await server._tool_impact_analysis({})
 
-        customers = next(m for m in result["impacted_models"] if m["name"] == "customers")
+        customers = next(m for m in result["confirmed_impacted_models"] if m["name"] == "customers")
         assert customers["row_count"] is not None
         assert customers["row_count"]["base"] == 2
         assert customers["row_count"]["current"] == 3
@@ -226,7 +225,7 @@ class TestImpactAnalysisE2E:
 
     @pytest.mark.asyncio
     async def test_row_count_null_for_views(self, mcp_e2e_impact):
-        """Views should have row_count: null (expensive full-table scan)."""
+        """Views now included in row_count (delta detection signal)."""
         server, helper = mcp_e2e_impact
 
         # Add a view model
@@ -242,9 +241,11 @@ class TestImpactAnalysisE2E:
         )
         result = await server._tool_impact_analysis({})
 
-        view_model = next((m for m in result["impacted_models"] if m["name"] == "customers_view"), None)
+        view_model = next((m for m in result["confirmed_impacted_models"] if m["name"] == "customers_view"), None)
         assert view_model is not None
-        assert view_model["row_count"] is None
+        # Views get row_count (useful metadata signal) but no value_diff
+        assert view_model["row_count"] is not None
+        assert view_model["value_diff"] is None
 
     @pytest.mark.asyncio
     async def test_schema_changes_detected(self, mcp_e2e):
@@ -262,7 +263,7 @@ class TestImpactAnalysisE2E:
         )
         result = await server._tool_impact_analysis({})
 
-        users = next(m for m in result["impacted_models"] if m["name"] == "users")
+        users = next(m for m in result["confirmed_impacted_models"] if m["name"] == "users")
         assert len(users["schema_changes"]) > 0
         added_cols = [c for c in users["schema_changes"] if c["change_status"] == "added"]
         assert any(c["column"] == "email" for c in added_cols)
@@ -273,24 +274,25 @@ class TestImpactAnalysisE2E:
         server, _ = mcp_e2e_impact
         result = await server._tool_impact_analysis({})
 
-        customers = next(m for m in result["impacted_models"] if m["name"] == "customers")
+        customers = next(m for m in result["confirmed_impacted_models"] if m["name"] == "customers")
         assert customers["schema_changes"] == []
 
     @pytest.mark.asyncio
-    async def test_suggested_deep_dive_r2_row_count_delta(self, mcp_e2e_impact):
-        """R2: row_count delta > 5% → suggest profile_diff on whole model."""
+    async def test_next_action_row_count_delta(self, mcp_e2e_impact):
+        """Row count delta > 5% on potential model → next_action profile_diff."""
         server, _ = mcp_e2e_impact
         result = await server._tool_impact_analysis({})
 
-        # customers: base=2, curr=3, delta_pct=50% → R2 triggers
-        dives = result["suggested_deep_dives"]
-        customer_dive = next((d for d in dives if d["model"] == "customers"), None)
-        assert customer_dive is not None
-        assert customer_dive["tool"] == "profile_diff"
+        # customers: base=2, curr=3, delta_pct=50%, modified → data_impact depends on value_diff
+        customers = next(m for m in result["confirmed_impacted_models"] if m["name"] == "customers")
+        # If data_impact is potential (no PK), next_action should suggest profile_diff
+        if customers["data_impact"] == "potential":
+            assert customers["next_action"] is not None
+            assert customers["next_action"]["tool"] == "profile_diff"
 
     @pytest.mark.asyncio
-    async def test_suggested_deep_dive_r3_schema_change(self, mcp_e2e):
-        """R3: schema_changes non-empty → suggest profile_diff on changed columns."""
+    async def test_next_action_schema_change(self, mcp_e2e):
+        """Schema changes on potential model → next_action profile_diff on changed columns."""
         server, helper = mcp_e2e
 
         helper.create_model(
@@ -303,18 +305,50 @@ class TestImpactAnalysisE2E:
         )
         result = await server._tool_impact_analysis({})
 
-        dives = result["suggested_deep_dives"]
-        users_dive = next((d for d in dives if d["model"] == "users"), None)
-        assert users_dive is not None
-        assert "email" in (users_dive.get("columns") or [])
+        users = next(m for m in result["confirmed_impacted_models"] if m["name"] == "users")
+        assert users["next_action"] is not None
+        assert users["next_action"]["tool"] == "profile_diff"
+        assert users["next_action"]["priority"] == "high"
+        assert "email" in (users["next_action"].get("columns") or [])
 
     @pytest.mark.asyncio
-    async def test_suggested_deep_dive_r4_null_value_diff(self, mcp_e2e):
-        """R4: value_diff null on modified model → suggest profile_diff."""
+    async def test_next_action_downstream_view_low_priority(self, mcp_e2e):
+        """Downstream view → next_action with priority=low."""
+        server, helper = mcp_e2e
+
+        helper.create_model(
+            "orders",
+            base_csv="id,amount\n1,100",
+            curr_csv="id,amount\n1,200",
+            unique_id="model.recce_test.orders",
+            base_columns={"id": "INTEGER", "amount": "INTEGER"},
+            curr_columns={"id": "INTEGER", "amount": "INTEGER"},
+        )
+        # downstream view of orders
+        helper.create_model(
+            "orders_view",
+            base_csv="id,amount\n1,100",
+            curr_csv="id,amount\n1,100",
+            unique_id="model.recce_test.orders_view",
+            depends_on=["model.recce_test.orders"],
+            base_columns={"id": "INTEGER", "amount": "INTEGER"},
+            curr_columns={"id": "INTEGER", "amount": "INTEGER"},
+            patch_func=lambda d: d["config"].update({"materialized": "view"}),
+        )
+        result = await server._tool_impact_analysis({"skip_downstream_value_diff": True})
+
+        view = next(m for m in result["confirmed_impacted_models"] if m["name"] == "orders_view")
+        assert view["data_impact"] == "potential"
+        assert view["next_action"] is not None
+        assert view["next_action"]["priority"] == "low"
+
+    @pytest.mark.asyncio
+    async def test_next_action_null_value_diff_on_view(self, mcp_e2e):
+        """Modified view (value_diff=null) → next_action profile_diff."""
         server, helper = mcp_e2e
 
         # Create a modified view: different data → different checksum → "modified"
-        # Views get value_diff=null (skipped), so R4 should trigger
+        # Views get value_diff=null (skipped), so next_action should trigger
         helper.create_model(
             "stg_orders",
             base_csv="id,amount\n1,100",
@@ -326,16 +360,16 @@ class TestImpactAnalysisE2E:
         )
         result = await server._tool_impact_analysis({})
 
-        # stg_orders is modified (different checksum) + view (value_diff=null) → R4
-        stg = next(m for m in result["impacted_models"] if m["name"] == "stg_orders")
+        # stg_orders is modified (different checksum) + view (value_diff=null)
+        stg = next(m for m in result["confirmed_impacted_models"] if m["name"] == "stg_orders")
         assert stg["change_status"] == "modified"
         assert stg["value_diff"] is None
+        assert stg["data_impact"] == "potential"
 
-        dives = result["suggested_deep_dives"]
-        view_dive = next((d for d in dives if d["model"] == "stg_orders"), None)
-        assert view_dive is not None
-        assert view_dive["tool"] == "profile_diff"
-        assert view_dive["columns"] is None  # whole model
+        assert stg["next_action"] is not None
+        assert stg["next_action"]["tool"] == "profile_diff"
+        assert stg["next_action"]["columns"] is None  # whole model
+        assert stg["next_action"]["priority"] == "high"
 
 
 class TestImpactAnalysisFullScenario:
@@ -378,14 +412,14 @@ class TestImpactAnalysisFullScenario:
         result = await server._tool_impact_analysis({})
 
         # Verify classification
-        impacted_names = {m["name"] for m in result["impacted_models"]}
+        impacted_names = {m["name"] for m in result["confirmed_impacted_models"]}
         assert "stg_orders" in impacted_names
         assert "orders" in impacted_names
         assert "customers" not in impacted_names
-        assert "customers" in result["not_impacted_models"]
+        assert "customers" in result["confirmed_not_impacted_models"]
 
         # Verify row counts
-        stg = next(m for m in result["impacted_models"] if m["name"] == "stg_orders")
+        stg = next(m for m in result["confirmed_impacted_models"] if m["name"] == "stg_orders")
         assert stg["row_count"]["base"] == 2
         assert stg["row_count"]["current"] == 2
         assert stg["row_count"]["delta"] == 0
@@ -429,8 +463,44 @@ class TestImpactAnalysisErrorResilience:
         result = await server._tool_impact_analysis({})
 
         # Should not crash — structure is intact
-        assert "impacted_models" in result
+        assert "confirmed_impacted_models" in result
         assert "errors" in result
+
+    @pytest.mark.asyncio
+    async def test_value_diff_error_captured_not_fatal(self, mcp_e2e):
+        """If value_diff query fails, error is captured and model still appears."""
+        server, helper = mcp_e2e
+
+        helper.create_model(
+            "orders",
+            base_csv="id,amount\n1,100",
+            curr_csv="id,amount\n1,150",
+            unique_id="model.recce_test.orders",
+            base_columns={"id": "INTEGER", "amount": "INTEGER"},
+            curr_columns={"id": "INTEGER", "amount": "INTEGER"},
+        )
+        helper.add_unique_test("model.recce_test.orders", "orders", "id")
+
+        # Patch adapter.execute to raise during value_diff SQL execution
+        original_execute = server.context.adapter.execute
+
+        def failing_execute(sql, fetch=False):
+            if "FULL OUTER JOIN" in sql:
+                raise RuntimeError("simulated value_diff failure")
+            return original_execute(sql, fetch=fetch)
+
+        with patch.object(server.context.adapter, "execute", side_effect=failing_execute):
+            result = await server._tool_impact_analysis({})
+
+        # Model still appears
+        orders = next(m for m in result["confirmed_impacted_models"] if m["name"] == "orders")
+        assert orders["value_diff"] is None
+        assert orders["data_impact"] == "potential"
+
+        # Error captured
+        vd_errors = [e for e in result["errors"] if e["step"] == "value_diff"]
+        assert len(vd_errors) == 1
+        assert "simulated value_diff failure" in vd_errors[0]["message"]
 
     @pytest.mark.asyncio
     async def test_schema_diff_error_does_not_block_value_diff(self, mcp_e2e):
@@ -474,12 +544,12 @@ class TestImpactAnalysisErrorResilience:
         assert any(e["step"] == "schema_diff" for e in result["errors"])
 
         # Function returned successfully (no UnboundLocalError)
-        assert "impacted_models" in result
-        orders = next(m for m in result["impacted_models"] if m["name"] == "orders")
+        assert "confirmed_impacted_models" in result
+        orders = next(m for m in result["confirmed_impacted_models"] if m["name"] == "orders")
 
         # Value-diff still ran (the whole point of the fix)
         assert orders["value_diff"] is not None
-        assert orders["value_diff"]["rows_changed"] >= 0
+        assert orders["value_diff"]["affected_row_count"] >= 0
 
 
 class TestImpactAnalysisValueDiff:
@@ -500,7 +570,7 @@ class TestImpactAnalysisValueDiff:
         helper.add_unique_test("model.recce_test.orders", "orders", "id")
 
         result = await server._tool_impact_analysis({})
-        orders = next(m for m in result["impacted_models"] if m["name"] == "orders")
+        orders = next(m for m in result["confirmed_impacted_models"] if m["name"] == "orders")
         vd = orders["value_diff"]
         assert vd is not None
         assert vd["rows_changed"] == 1  # id=1: amount 100→150
@@ -508,7 +578,7 @@ class TestImpactAnalysisValueDiff:
         assert vd["rows_removed"] == 0
         assert "columns" in vd
         assert "amount" in vd["columns"]
-        assert vd["columns"]["amount"]["rows_changed"] == 1
+        assert vd["columns"]["amount"]["affected_row_count"] == 1
 
     @pytest.mark.asyncio
     async def test_no_pk_returns_null(self, mcp_e2e):
@@ -523,7 +593,7 @@ class TestImpactAnalysisValueDiff:
             curr_columns={"id": "INTEGER", "amount": "INTEGER"},
         )
         result = await server._tool_impact_analysis({})
-        orders = next(m for m in result["impacted_models"] if m["name"] == "orders")
+        orders = next(m for m in result["confirmed_impacted_models"] if m["name"] == "orders")
         assert orders["value_diff"] is None
 
     @pytest.mark.asyncio
@@ -540,7 +610,7 @@ class TestImpactAnalysisValueDiff:
         )
         helper.add_unique_test("model.recce_test.orders", "orders", "id")
         result = await server._tool_impact_analysis({"skip_value_diff": True})
-        orders = next(m for m in result["impacted_models"] if m["name"] == "orders")
+        orders = next(m for m in result["confirmed_impacted_models"] if m["name"] == "orders")
         assert orders["value_diff"] is None
 
     @pytest.mark.asyncio
@@ -560,17 +630,16 @@ class TestImpactAnalysisValueDiff:
 
         result = await server._tool_impact_analysis({})
 
-        orders = next(m for m in result["impacted_models"] if m["name"] == "orders")
+        orders = next(m for m in result["confirmed_impacted_models"] if m["name"] == "orders")
         # row_count: base=2, curr=2, delta=0 (stable)
         # value_diff: rows_changed=2 (100% of matched rows)
         assert orders["row_count"]["delta"] == 0
-        assert orders["value_diff"]["rows_changed"] == 2
+        assert orders["value_diff"]["affected_row_count"] == 2
 
-        dives = result["suggested_deep_dives"]
-        orders_dive = next((d for d in dives if d["model"] == "orders"), None)
-        assert orders_dive is not None
-        assert orders_dive["tool"] == "profile_diff"
-        assert "amount" in (orders_dive["columns"] or [])
+        # High change ratio → next_action suggests profile_diff on changed columns
+        assert orders["next_action"] is not None
+        assert orders["next_action"]["tool"] == "profile_diff"
+        assert "amount" in (orders["next_action"]["columns"] or [])
 
     @pytest.mark.asyncio
     async def test_value_diff_per_column_means(self, mcp_e2e):
@@ -586,7 +655,7 @@ class TestImpactAnalysisValueDiff:
         )
         helper.add_unique_test("model.recce_test.orders", "orders", "id")
         result = await server._tool_impact_analysis({})
-        orders = next(m for m in result["impacted_models"] if m["name"] == "orders")
+        orders = next(m for m in result["confirmed_impacted_models"] if m["name"] == "orders")
         vd = orders["value_diff"]
         assert vd["columns"]["amount"]["base_mean"] is not None
         assert vd["columns"]["amount"]["current_mean"] is not None

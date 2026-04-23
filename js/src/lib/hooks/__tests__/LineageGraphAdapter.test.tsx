@@ -193,14 +193,6 @@ function TestWrapper({ children }: { children: React.ReactNode }) {
 function createServerInfoResult(
   overrides: Partial<ServerInfoResult> = {},
 ): ServerInfoResult {
-  const defaultLineageData = {
-    metadata: { pr_url: "" },
-    nodes: {},
-    parent_map: {},
-    manifest_metadata: null,
-    catalog_metadata: null,
-  };
-
   return {
     state_metadata: {
       schema_version: "1.0",
@@ -215,9 +207,9 @@ function createServerInfoResult(
     codespace: false,
     support_tasks: {},
     lineage: {
-      base: defaultLineageData,
-      current: defaultLineageData,
-      diff: {},
+      nodes: {},
+      edges: [],
+      metadata: { base: {}, current: {} },
     },
     ...overrides,
   };
@@ -785,37 +777,32 @@ describe("LineageGraphAdapter", () => {
     it("provides dbt manifest metadata from lineage", async () => {
       const serverInfo = createServerInfoResult({
         lineage: {
-          base: {
-            metadata: { pr_url: "" },
-            nodes: {},
-            parent_map: {},
-            manifest_metadata: {
-              dbt_version: "1.7.0",
-              dbt_schema_version: "v11",
-              generated_at: "2024-01-01T00:00:00Z",
-              adapter_type: "snowflake",
-              env: {},
-              invocation_id: "inv-123",
-              project_name: "my_project",
+          nodes: {},
+          edges: [],
+          metadata: {
+            base: {
+              manifest_metadata: {
+                dbt_version: "1.7.0",
+                dbt_schema_version: "v11",
+                generated_at: "2024-01-01T00:00:00Z",
+                adapter_type: "snowflake",
+                env: {},
+                invocation_id: "inv-123",
+                project_name: "my_project",
+              },
             },
-            catalog_metadata: null,
-          },
-          current: {
-            metadata: { pr_url: "" },
-            nodes: {},
-            parent_map: {},
-            manifest_metadata: {
-              dbt_version: "1.8.0",
-              dbt_schema_version: "v11",
-              generated_at: "2024-01-02T00:00:00Z",
-              adapter_type: "snowflake",
-              env: {},
-              invocation_id: "inv-456",
-              project_name: "my_project",
+            current: {
+              manifest_metadata: {
+                dbt_version: "1.8.0",
+                dbt_schema_version: "v11",
+                generated_at: "2024-01-02T00:00:00Z",
+                adapter_type: "snowflake",
+                env: {},
+                invocation_id: "inv-456",
+                project_name: "my_project",
+              },
             },
-            catalog_metadata: null,
           },
-          diff: {},
         },
       });
 

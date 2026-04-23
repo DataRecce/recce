@@ -34,8 +34,6 @@ function createMockNode(id: string, name: string): LineageGraphNode {
     data: {
       id,
       name,
-      from: "both",
-      data: {},
       parents: {},
       children: {},
     },

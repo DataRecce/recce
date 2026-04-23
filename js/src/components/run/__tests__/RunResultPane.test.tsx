@@ -102,13 +102,15 @@ function MockRunResultPane({
 
   // Get data from hoisted mocks (mimics real component calling hooks)
   const { run, error, isRunning } = hoistedMocks.useRun();
-  const { featureToggles, authed } = hoistedMocks.useRecceInstanceContext();
+  const { featureToggles } = hoistedMocks.useRecceInstanceContext();
   const { runAction } = hoistedMocks.useRecceActionContext();
 
   const disableDatabaseQuery = featureToggles?.disableDatabaseQuery ?? false;
   const disableShare = featureToggles?.disableShare ?? false;
   const disableUpdateChecklist =
     featureToggles?.disableUpdateChecklist ?? false;
+  const checklistPermissionDenied =
+    featureToggles?.checklistPermissionDenied ?? false;
   const csvExport = { canExportCSV: true };
 
   const isQuery =
@@ -238,40 +240,34 @@ function MockRunResultPane({
             },
             "Download as CSV",
           ),
-          !disableShare &&
-            (authed
-              ? React.createElement(
-                  "div",
-                  { key: "share-cloud", role: "menuitem" },
-                  "Share to Cloud",
-                )
-              : React.createElement(
-                  "div",
-                  { key: "share-item", role: "menuitem" },
-                  "Share",
-                )),
         ]),
-      // Add to Checklist button
-      !disableUpdateChecklist &&
-        (checkId
-          ? React.createElement(
-              "button",
-              {
-                key: "go-to-check",
-                disabled: !run?.run_id || !run?.result || !!error,
-                onClick: () => onGoToCheck?.(checkId),
-              },
-              "Go to Check",
-            )
+      // Go to Check — always available (viewers can navigate to existing checks)
+      checkId
+        ? React.createElement(
+            "button",
+            {
+              key: "go-to-check",
+              disabled: !run?.run_id || !run?.result || !!error,
+              onClick: () => onGoToCheck?.(checkId),
+            },
+            "Go to Check",
+          )
+        : // Add to Checklist — hide for non-permission reasons; show disabled for permission denial
+          disableUpdateChecklist && !checklistPermissionDenied
+          ? null
           : React.createElement(
               "button",
               {
                 key: "add-to-checklist",
-                disabled: !run?.run_id || !run?.result || !!error,
+                disabled:
+                  !run?.run_id ||
+                  !run?.result ||
+                  !!error ||
+                  checklistPermissionDenied,
                 onClick: onAddToChecklist,
               },
               "Add to Checklist",
-            )),
+            ),
       // Close button
       React.createElement(
         "button",
@@ -851,7 +847,7 @@ describe("RunResultPane", () => {
       });
     });
 
-    it("shows Share to Cloud option when authenticated", async () => {
+    it("shows standard menu items regardless of auth status", async () => {
       hoistedMocks.useRecceInstanceContext.mockReturnValue({
         featureToggles: {
           disableShare: false,
@@ -866,23 +862,11 @@ describe("RunResultPane", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole("menuitem", { name: /Share to Cloud/i }),
+          screen.getByRole("menuitem", { name: /Copy as Image/i }),
         ).toBeInTheDocument();
-      });
-    });
-
-    it("shows Share option when not authenticated", async () => {
-      renderWithQueryClient(<RunResultPane />);
-
-      const shareButton = screen.getByRole("button", { name: /Share/i });
-      fireEvent.click(shareButton);
-
-      await waitFor(() => {
-        const shareItems = screen.getAllByRole("menuitem", {
-          name: /Share/i,
-        });
-        // Should have at least one Share menu item
-        expect(shareItems.length).toBeGreaterThan(0);
+        expect(
+          screen.getByRole("menuitem", { name: /Copy as CSV/i }),
+        ).toBeInTheDocument();
       });
     });
   });
@@ -1064,6 +1048,57 @@ describe("RunResultPane", () => {
       });
 
       renderWithQueryClient(<RunResultPane />);
+
+      expect(
+        screen.queryByRole("button", { name: /Add to Checklist/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows disabled button with tooltip when checklistPermissionDenied", () => {
+      hoistedMocks.useRecceInstanceContext.mockReturnValue({
+        featureToggles: {
+          disableUpdateChecklist: true,
+          checklistPermissionDenied: true,
+        },
+      });
+
+      renderWithQueryClient(<RunResultPane />);
+
+      const addButton = screen.getByRole("button", {
+        name: /Add to Checklist/i,
+      });
+      expect(addButton).toBeInTheDocument();
+      expect(addButton).toBeDisabled();
+    });
+
+    it("shows Go to Check for viewer when run is linked to existing check", () => {
+      hoistedMocks.useRecceInstanceContext.mockReturnValue({
+        featureToggles: {
+          disableUpdateChecklist: true,
+          checklistPermissionDenied: true,
+        },
+      });
+
+      hoistedMocks.useRun.mockReturnValue({
+        error: null,
+        run: {
+          run_id: "test-run-id",
+          type: "query",
+          params: {},
+          result: { data: [] },
+          check_id: "existing-check-123",
+        },
+        onCancel: hoistedMocks.mockOnCancel,
+        isRunning: false,
+      });
+
+      renderWithQueryClient(<RunResultPane />);
+
+      const goToCheckButton = screen.getByRole("button", {
+        name: /Go to Check/i,
+      });
+      expect(goToCheckButton).toBeInTheDocument();
+      expect(goToCheckButton).not.toBeDisabled();
 
       expect(
         screen.queryByRole("button", { name: /Add to Checklist/i }),

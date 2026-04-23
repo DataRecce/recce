@@ -49,11 +49,14 @@ function isNodeShowingChangeAnalysis(
  * Mirrors what showColumnLevelLineage does after the fix.
  * It replaces column_level_lineage wholesale, and clears changeAnalysisMode
  * when CLL is turned off entirely.
+ *
+ * In new CLL experience, changeAnalysisMode is never cleared (one-way ratchet).
  */
 function applyShowColumnLevelLineage(
   viewOptions: LineageDiffViewOptions,
   cllInput: CllInput | undefined,
   changeAnalysisMode: boolean,
+  newCllExperience = false,
 ): { viewOptions: LineageDiffViewOptions; changeAnalysisMode: boolean } {
   return {
     viewOptions: {
@@ -61,7 +64,9 @@ function applyShowColumnLevelLineage(
       column_level_lineage: cllInput,
     },
     // Clear change analysis mode when CLL is turned off
-    changeAnalysisMode: cllInput ? changeAnalysisMode : false,
+    // In new CLL experience, impact is a one-way ratchet — never disable it.
+    changeAnalysisMode:
+      cllInput || newCllExperience ? changeAnalysisMode : false,
   };
 }
 
@@ -77,15 +82,44 @@ function buildColumnClickInput(nodeId: string, column: string): CllInput {
  * Mirrors the refreshLayout clearing behavior: when CLL is cleared by any
  * path (reselect, selectParentNodes, selectChildNodes), changeAnalysisMode
  * is also cleared.
+ *
+ * In new CLL experience, changeAnalysisMode is preserved (one-way ratchet).
  */
 function applyRefreshLayoutCllClearing(
   viewOptions: LineageDiffViewOptions,
   changeAnalysisMode: boolean,
+  newCllExperience = false,
 ): { viewOptions: LineageDiffViewOptions; changeAnalysisMode: boolean } {
-  if (!viewOptions.column_level_lineage) {
+  if (!viewOptions.column_level_lineage && !newCllExperience) {
     return { viewOptions, changeAnalysisMode: false };
   }
   return { viewOptions, changeAnalysisMode };
+}
+
+/**
+ * Mirrors resetColumnLevelLineage when called without `previous` arg.
+ * In new CLL experience + changeAnalysisMode, resets to Layer 2 (global impact).
+ * Otherwise clears CLL entirely.
+ */
+function applyResetColumnLevelLineage(
+  viewOptions: LineageDiffViewOptions,
+  changeAnalysisMode: boolean,
+  newCllExperience = false,
+): { viewOptions: LineageDiffViewOptions; changeAnalysisMode: boolean } {
+  if (newCllExperience && changeAnalysisMode) {
+    return applyShowColumnLevelLineage(
+      viewOptions,
+      { change_analysis: true, no_upstream: true },
+      changeAnalysisMode,
+      newCllExperience,
+    );
+  }
+  return applyShowColumnLevelLineage(
+    viewOptions,
+    undefined,
+    changeAnalysisMode,
+    newCllExperience,
+  );
 }
 
 /**
@@ -125,8 +159,6 @@ function createLineageGraph(
       data: {
         id,
         name: id.split(".").pop() ?? id,
-        from: "both",
-        data: { base: undefined, current: undefined },
         resourceType: "model",
         packageName: "test",
         parents: {},
@@ -458,6 +490,91 @@ describe("CLL change_analysis state propagation", () => {
       ));
 
       expect(changeAnalysisMode).toBe(false);
+    });
+  });
+
+  // =========================================================================
+  // New CLL experience: one-way ratchet behavior
+  // =========================================================================
+
+  describe("new CLL experience — one-way ratchet", () => {
+    it("changeAnalysisMode survives CLL being turned off", () => {
+      let { viewOptions, changeAnalysisMode } = activateImpactRadius(
+        {},
+        MODIFIED_NODE,
+      );
+
+      // CLL turned off — in new experience, changeAnalysisMode is preserved
+      ({ viewOptions, changeAnalysisMode } = applyShowColumnLevelLineage(
+        viewOptions,
+        undefined,
+        changeAnalysisMode,
+        true,
+      ));
+
+      expect(changeAnalysisMode).toBe(true);
+    });
+
+    it("changeAnalysisMode survives reselect/selectParentNodes path", () => {
+      let { viewOptions, changeAnalysisMode } = activateImpactRadius(
+        {},
+        MODIFIED_NODE,
+      );
+
+      // Reselect clears CLL
+      viewOptions = { ...viewOptions, column_level_lineage: undefined };
+      ({ viewOptions, changeAnalysisMode } = applyRefreshLayoutCllClearing(
+        viewOptions,
+        changeAnalysisMode,
+        true,
+      ));
+
+      expect(changeAnalysisMode).toBe(true);
+    });
+
+    it("reset from Layer 3 returns to Layer 2 (global impact)", () => {
+      // Step 1: Impact Radius active
+      let { viewOptions, changeAnalysisMode } = activateImpactRadius(
+        {},
+        MODIFIED_NODE,
+      );
+
+      // Step 2: User clicks column → Layer 3
+      ({ viewOptions, changeAnalysisMode } = applyShowColumnLevelLineage(
+        viewOptions,
+        buildColumnClickInput(MODIFIED_NODE, "order_id"),
+        changeAnalysisMode,
+        true,
+      ));
+
+      // Step 3: User hits reset (X button) → should return to Layer 2
+      ({ viewOptions, changeAnalysisMode } = applyResetColumnLevelLineage(
+        viewOptions,
+        changeAnalysisMode,
+        true,
+      ));
+
+      expect(changeAnalysisMode).toBe(true);
+      expect(viewOptions.column_level_lineage).toEqual({
+        change_analysis: true,
+        no_upstream: true,
+      });
+    });
+
+    it("without newCllExperience, reset still clears CLL entirely", () => {
+      let { viewOptions, changeAnalysisMode } = activateImpactRadius(
+        {},
+        MODIFIED_NODE,
+      );
+
+      ({ viewOptions, changeAnalysisMode } = applyResetColumnLevelLineage(
+        viewOptions,
+        changeAnalysisMode,
+        false,
+      ));
+
+      expect(changeAnalysisMode).toBe(false);
+      expect(viewOptions.column_level_lineage).toBeUndefined();
     });
   });
 });
