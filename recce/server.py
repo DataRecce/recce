@@ -95,6 +95,9 @@ class AppState:
     web_url: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
+    mcp_server: Optional[Any] = None
+    mcp_session_manager: Optional[Any] = None
+    mcp_startup_error: Optional[str] = None
 
 
 def schedule_lifetime_termination(app_state):
@@ -268,6 +271,13 @@ async def lifespan(fastapi: FastAPI):
     app_state.startup_error = None
     app_state.startup_ctx = None
 
+    # Coordination for MCP lifecycle task.
+    # Must live on the lifespan coroutine's own task scope — anyio scope
+    # inside StreamableHTTPSessionManager.run() cannot be entered in one
+    # task and exited in another.
+    ctx_ready_event = asyncio.Event()
+    mcp_shutdown_event = asyncio.Event()
+
     async def background_load():
         try:
             ctx = await asyncio.to_thread(_do_lifespan_setup, app_state)
@@ -295,10 +305,85 @@ async def lifespan(fastapi: FastAPI):
         finally:
             clear_startup_tracker()
             ready_event.set()
+            ctx_ready_event.set()  # release MCP lifecycle task
+
+    async def mcp_lifecycle():
+        """Build, mount, and hold open the MCP session in a single task scope.
+
+        All steps in this function run in the same asyncio task to respect
+        the task-affinity of anyio cancel scopes inside
+        StreamableHTTPSessionManager.run().
+        """
+        await ctx_ready_event.wait()
+
+        # If context failed to load, skip MCP.
+        if app_state.startup_error:
+            return
+        # If MCP is disabled, skip.
+        if not app_state.kwargs or not app_state.kwargs.get("mcp_enabled", True):
+            logger.info("[MCP] Disabled via --no-mcp / RECCE_DISABLE_MCP")
+            return
+
+        ctx = app_state.startup_ctx
+        if ctx is None:
+            return
+
+        try:
+            from recce.event import log_mcp_startup
+            from recce.mcp_server import build_mcp_server
+            from recce.mcp_transport import attach_mcp_to_fastapi
+
+            mode = None
+            mode_str = app_state.kwargs.get("mode")
+            if mode_str:
+                try:
+                    mode = RecceServerMode(mode_str)
+                except ValueError:
+                    pass
+
+            single_env = app_state.flag.get("single_env_onboarding", False) if app_state.flag else False
+            debug = app_state.kwargs.get("debug", False)
+
+            rmcp = build_mcp_server(
+                ctx,
+                mode=mode,
+                single_env=single_env,
+                debug=debug,
+                state_loader=app_state.state_loader,
+            )
+            session_manager = attach_mcp_to_fastapi(app, rmcp, prefix="/mcp")
+
+            app_state.mcp_server = rmcp
+            app_state.mcp_session_manager = session_manager
+
+            # Telemetry is non-fatal — a failure here must not mark MCP as broken.
+            try:
+                log_mcp_startup(
+                    enabled=True,
+                    transports="streamable_http+sse",
+                    command=app_state.command or "server",
+                )
+            except Exception:
+                logger.exception("[MCP] log_mcp_startup failed; continuing")
+
+            # Hold the session manager open until the lifespan signals shutdown.
+            async with session_manager.run():
+                await mcp_shutdown_event.wait()
+        except Exception as e:
+            logger.exception("[MCP] Failed to build/mount MCP server; REST will continue")
+            app_state.mcp_startup_error = str(e)
 
     task = asyncio.create_task(background_load())
+    mcp_task = asyncio.create_task(mcp_lifecycle())
 
     yield  # Server starts accepting connections immediately
+
+    # Signal MCP shutdown and wait for clean exit — same task scope as its entry.
+    mcp_shutdown_event.set()
+    try:
+        await mcp_task
+    except Exception:
+        logger.exception("[MCP] mcp_lifecycle task errored during shutdown")
 
     # Wait for background loading to complete before teardown
     await task
@@ -1403,6 +1488,50 @@ api_prefix = "/api"
 app.include_router(check_router, prefix=api_prefix)
 app.include_router(check_events_router, prefix=api_prefix)
 app.include_router(run_router, prefix=api_prefix)
+
+# Fallback handler for /mcp* when MCP is unmounted (disabled, failed, or still loading).
+# This MUST be added BEFORE the SPA static-files catch-all so /mcp* doesn't return SPA HTML.
+# At runtime, attach_mcp_to_fastapi() inserts the real /mcp Mount at position 0 in
+# app.routes, which shadows this fallback when MCP is up.
+
+
+@app.api_route("/mcp", methods=["GET", "POST", "DELETE"])
+@app.api_route("/mcp/{path:path}", methods=["GET", "POST", "DELETE"])
+async def _mcp_fallback(request: Request, path: str = ""):
+    state: AppState = app.state
+    if state.mcp_session_manager is not None:
+        # MCP is mounted; this fallback should not be hit because the mount
+        # is at app.routes[0]. Defensive 404.
+        return JSONResponse(status_code=404, content={"detail": "Not Found"})
+    if state.mcp_startup_error:
+        # The full exception string lives in the server logs; do not echo it
+        # to remote clients (it can leak paths, config values, etc.).
+        return JSONResponse(
+            status_code=503,
+            content={
+                "jsonrpc": "2.0",
+                "id": None,
+                "error": {
+                    "code": -32603,
+                    "message": "MCP server failed to start. Check server logs for details.",
+                },
+            },
+        )
+    if not state.kwargs or not state.kwargs.get("mcp_enabled", True):
+        return JSONResponse(status_code=404, content={"detail": "MCP disabled"})
+    # Context still loading — typical during the very first second of startup
+    return JSONResponse(
+        status_code=503,
+        content={
+            "jsonrpc": "2.0",
+            "id": None,
+            "error": {
+                "code": -32002,
+                "message": "Recce context still loading; retry shortly",
+            },
+        },
+    )
+
 
 static_folder_path = Path(__file__).parent / "data"
 

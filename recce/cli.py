@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import click
 
@@ -131,6 +131,17 @@ def add_options(options):
         return func
 
     return _add_options
+
+
+def _resolve_mcp_enabled(mcp_flag: Optional[bool]) -> bool:
+    """Resolve --mcp / --no-mcp / RECCE_DISABLE_MCP precedence.
+
+    Explicit CLI flag wins over env var. Default is enabled.
+    """
+    if mcp_flag is not None:
+        return mcp_flag
+    env_disable = os.environ.get("RECCE_DISABLE_MCP", "").strip().lower()
+    return env_disable not in ("1", "true", "yes")
 
 
 dbt_related_options = [
@@ -918,6 +929,13 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
     help="The idle timeout in seconds. If 0, idle timeout is disabled. Maximum value is capped by lifetime.",
     type=int,
 )
+@click.option(
+    "--mcp/--no-mcp",
+    "mcp_flag",
+    default=None,  # tri-state: None = use env var fallback, True/False = explicit
+    show_default=False,
+    help="Enable/disable the MCP endpoint at /mcp. Default: enabled. " "Override default with RECCE_DISABLE_MCP=1.",
+)
 @click.option("--review", is_flag=True, help="Open the state file in the review mode.")
 @click.option("--single-env", is_flag=True, help="Launch in single environment mode directly.")
 @click.option(
@@ -946,7 +964,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @add_options(recce_cloud_options)
 @add_options(recce_cloud_auth_options)
 @add_options(recce_hidden_options)
-def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
+def server(host, port, lifetime, idle_timeout=0, state_file=None, mcp_flag=None, **kwargs):
     """
     Launch the recce server
 
@@ -995,6 +1013,7 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
 
     handle_debug_flag(**kwargs)
     patch_derived_args(kwargs)
+    kwargs["mcp_enabled"] = _resolve_mcp_enabled(mcp_flag)
 
     server_mode = kwargs.get("mode") if kwargs.get("mode") else RecceServerMode.server
     is_review = kwargs.get("review", False)
@@ -2331,23 +2350,29 @@ def mcp_server(state_file, sse, host, port, **kwargs):
     from recce.util.api_token import prepare_api_token, show_invalid_api_token_message
 
     # In stdio mode, stdout is the JSON-RPC transport — all human-readable
-    # output must go to stderr to avoid MCP client parse errors.
+    # output (including the deprecation warning) must go to stderr.
     console = Console(stderr=True) if not sse else Console()
+
+    # Deprecation notice — issued before any other output so it's visible
+    # even when the server starts successfully.
+    console.print(
+        "[yellow]DeprecationWarning:[/yellow] `recce mcp-server` is deprecated. "
+        "Use `recce server` (MCP enabled by default at /mcp) instead. "
+        "This command will be removed in a future release."
+    )
+
     try:
-        # Import here to avoid import errors if mcp is not installed
-        from recce.mcp_server import run_mcp_server
+        from recce.mcp_server import build_mcp_server
+        from recce.mcp_transport import run_mcp_sse_legacy, run_mcp_stdio
     except ImportError as e:
         console.print(f"[[red]Error[/red]] Failed to import MCP server: {e}")
         console.print(r"Please install the MCP package: pip install 'recce\[mcp]'")
         exit(1)
 
-    # Initialize Recce Config
     RecceConfig(config_file=kwargs.get("config"))
-
     handle_debug_flag(**kwargs)
     patch_derived_args(kwargs)
 
-    # Prepare API token
     try:
         api_token = prepare_api_token(**kwargs)
         kwargs["api_token"] = api_token
@@ -2355,21 +2380,18 @@ def mcp_server(state_file, sse, host, port, **kwargs):
         show_invalid_api_token_message()
         exit(1)
 
-    # Create state loader using shared function (for cloud mode or when state_file is provided)
     is_cloud = kwargs.get("cloud", False)
+    state_loader = None
     if is_cloud or state_file:
         state_loader = create_state_loader_by_args(state_file, **kwargs)
-        kwargs["state_loader"] = state_loader
 
-    # Check Single Environment Onboarding Mode
-    # When target-base/ doesn't exist, fall back to single-env mode:
-    # set target_base_path = target_path so both envs load the same artifacts,
-    # making all diffs show no changes. The MCP server adds _warning to responses.
+    # Single-environment fallback (matches existing behavior)
+    single_env = False
     if not is_cloud:
         project_dir_path = Path(kwargs.get("project_dir") or "./")
         target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
         if not target_base_path.is_dir():
-            kwargs["single_env"] = True
+            single_env = True
             kwargs["target_base_path"] = kwargs.get("target_path")
             console.print(
                 "[yellow]Base artifacts not found. "
@@ -2377,17 +2399,41 @@ def mcp_server(state_file, sse, host, port, **kwargs):
             )
             console.print("To enable diffing: dbt docs generate --target-path target-base")
 
+    # Load context up front (stdio cannot defer this; SSE legacy doesn't either)
+    from recce.core import load_context
+    from recce.server import RecceServerMode
+
+    mode_str = kwargs.get("mode")
+    mode = None
+    if mode_str:
+        try:
+            mode = RecceServerMode(mode_str)
+        except ValueError:
+            pass
+    debug = kwargs.get("debug", False)
+
+    # Pass state_loader through so RecceContext.load() imports state from the
+    # state file / cloud as expected for `recce mcp-server <state_file>` and
+    # --cloud modes. Mirrors the pattern used by `setup_server` in server.py.
+    context = load_context(**kwargs, state_loader=state_loader)
+
+    rmcp = build_mcp_server(
+        context,
+        mode=mode,
+        single_env=single_env,
+        debug=debug,
+        state_loader=state_loader,
+    )
+
     try:
         if sse:
-            console.print(f"Starting Recce MCP Server in HTTP/SSE mode on {host}:{port}...")
+            console.print(f"Starting Recce MCP Server in legacy SSE mode on {host}:{port}...")
             console.print(f"SSE endpoint: http://{host}:{port}/sse")
+            asyncio.run(run_mcp_sse_legacy(rmcp, host=host, port=port))
         else:
             console.print("Starting Recce MCP Server in stdio mode...")
-
-        # Run the server (stdio or SSE based on --sse flag)
-        asyncio.run(run_mcp_server(sse=sse, host=host, port=port, **kwargs))
+            asyncio.run(run_mcp_stdio(rmcp))
     except (asyncio.CancelledError, KeyboardInterrupt):
-        # Graceful shutdown (e.g., Ctrl+C)
         console.print("[yellow]MCP Server interrupted[/yellow]")
         exit(0)
     except Exception as e:

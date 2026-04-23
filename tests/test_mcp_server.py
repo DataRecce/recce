@@ -2564,3 +2564,33 @@ class TestImpactAnalysisBehavior:
         assert "max_affected_row_count" in result
         assert "total_affected_row_count" not in result
         assert "suggested_deep_dives" not in result
+
+
+class TestBuildMcpServer:
+    """Tests for the build_mcp_server() builder function"""
+
+    def test_returns_recce_mcp_server_instance(self):
+        from recce.mcp_server import build_mcp_server
+
+        mock_context = MagicMock(spec=RecceContext)
+        rmcp = build_mcp_server(mock_context)
+        assert isinstance(rmcp, RecceMCPServer)
+        assert rmcp.context is mock_context
+        assert rmcp.server.name == "recce"
+
+    def test_passes_through_optional_kwargs(self):
+        from recce.mcp_server import build_mcp_server
+
+        mock_context = MagicMock(spec=RecceContext)
+        mock_state_loader = MagicMock()
+        rmcp = build_mcp_server(
+            mock_context,
+            mode=RecceServerMode.preview,
+            single_env=True,
+            debug=True,
+            state_loader=mock_state_loader,
+        )
+        assert rmcp.mode == RecceServerMode.preview
+        assert rmcp.single_env is True
+        assert rmcp.mcp_logger.debug is True
+        assert rmcp.state_loader is mock_state_loader

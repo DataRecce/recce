@@ -207,6 +207,23 @@ def log_api_event(endpoint_name, prop):
     _collector.schedule_flush()
 
 
+def log_mcp_startup(enabled: bool, transports: str = "", command: str = "server"):
+    """Record an MCP-startup event for usage telemetry.
+
+    Args:
+        enabled: True if MCP was successfully mounted; False if disabled or failed.
+        transports: Comma-joined transport names that were activated
+                    (e.g. "streamable_http+sse" or "stdio" or "" if disabled).
+        command: Which Click command booted the server ("server" or "mcp_server").
+    """
+    prop = dict(
+        enabled=enabled,
+        transports=transports,
+        command=command,
+    )
+    log_event(prop, "mcp_startup")
+
+
 def log_load_state(command="server", single_env=False):
     from recce.models import CheckDAO
 
