@@ -330,6 +330,7 @@ def init(cache_db, **kwargs):
     from recce.adapter.dbt_adapter import DbtAdapter
     from recce.core import load_context
     from recce.util.cll import _DEFAULT_DB_PATH, CllCache, get_cll_cache, set_cll_cache
+    from recce.util.info_emitter import emit_info_and_lineage_diff
     from recce.util.per_node_db import SCHEMA_VERSION as PER_NODE_DB_SCHEMA_VERSION
     from recce.util.per_node_db import (
         PerNodeDbWriter,
@@ -350,7 +351,6 @@ def init(cache_db, **kwargs):
     cloud_client = None
     cloud_org_id = None
     cloud_project_id = None
-
     if is_cloud:
         from recce.util.recce_cloud import RecceCloud, RecceCloudException
 
@@ -680,12 +680,38 @@ def init(cache_db, **kwargs):
 
     # In cloud mode, emit per_node.db — a pure-artifact SQLite that Cloud
     # streams to serve lineage without proxying to an ephemeral Recce instance.
-    # The scratch dir is always cleaned up, even on upload failure, so
-    # long-lived Cloud deploys don't accumulate recce-per-node-* directories
-    # in /tmp on retries.
+    # Also emit info.json + lineage_diff.json — pre-computed artifacts that
+    # serve Cloud's /info and /select endpoints without re-computing lineage
+    # from raw dbt artifacts on every request.
+    # Both scratch dirs are always cleaned up, even on upload failure, so
+    # long-lived Cloud deploys don't accumulate recce-per-node-* or
+    # recce-metadata-* directories in /tmp on retries.
     if is_cloud:
         per_node_scratch = Path(tempfile.mkdtemp(prefix="recce-per-node-"))
+        metadata_scratch = Path(tempfile.mkdtemp(prefix="recce-metadata-"))
         try:
+            # Emit info.json + lineage_diff.json up front — these are pure
+            # artifact derivations and don't depend on the upload URL keys.
+            info_path: Optional[Path] = metadata_scratch / "info.json"
+            lineage_diff_path: Optional[Path] = metadata_scratch / "lineage_diff.json"
+            console.print("\n[bold]Emitting lineage metadata...[/bold]")
+            t_meta_start = time.perf_counter()
+            try:
+                emit_info_and_lineage_diff(dbt_adapter, info_path, lineage_diff_path)
+                meta_elapsed = time.perf_counter() - t_meta_start
+                info_size_kb = info_path.stat().st_size / 1024
+                lineage_diff_size_kb = lineage_diff_path.stat().st_size / 1024
+                console.print(
+                    f"  Metadata saved to [bold]{metadata_scratch}[/bold] "
+                    f"(info.json {info_size_kb:.1f} KB, lineage_diff.json {lineage_diff_size_kb:.1f} KB, "
+                    f"{meta_elapsed:.1f}s)"
+                )
+            except Exception as e:
+                logger.warning("[recce init] Failed to emit metadata artifacts: %s", e)
+                console.print(f"  [[yellow]Warning[/yellow]] Failed to emit metadata artifacts: {e}")
+                info_path = None
+                lineage_diff_path = None
+
             if cloud_client:
                 console.print("\n[bold]Uploading results to Cloud...[/bold]")
                 upload_failures: list[str] = []
@@ -847,6 +873,43 @@ def init(cache_db, **kwargs):
                     elif not cll_cache_upload_url:
                         logger.debug("No cll_cache_url in upload URLs — cache upload not supported yet")
 
+                    # Upload info.json and lineage_diff.json. Graceful
+                    # degradation: if Cloud hasn't added the info_url /
+                    # lineage_diff_url keys yet, log a warning and continue —
+                    # keeps old CLI + new Cloud (and vice versa) compatible.
+                    metadata_uploads = [
+                        ("info.json", info_path, "info_url"),
+                        ("lineage_diff.json", lineage_diff_path, "lineage_diff_url"),
+                    ]
+                    for display_name, local_path, url_key in metadata_uploads:
+                        metadata_upload_url = upload_urls.get(url_key)
+                        if metadata_upload_url and local_path is not None and local_path.is_file():
+                            try:
+                                with open(local_path, "rb") as f:
+                                    resp = requests.put(
+                                        metadata_upload_url,
+                                        data=f,
+                                        headers={"Content-Type": "application/json"},
+                                        timeout=_UPLOAD_TIMEOUT,
+                                    )
+                                if resp.status_code in (200, 204):
+                                    size_kb = local_path.stat().st_size / 1024
+                                    console.print(f"  Uploaded {display_name} ({size_kb:.1f} KB)")
+                                else:
+                                    upload_failures.append(display_name)
+                                    console.print(
+                                        f"  [[yellow]Warning[/yellow]] Failed to upload {display_name}: "
+                                        f"HTTP {resp.status_code}"
+                                    )
+                            except requests.RequestException as e:
+                                upload_failures.append(display_name)
+                                console.print(f"  [[yellow]Warning[/yellow]] Failed to upload {display_name}: {e}")
+                        elif not metadata_upload_url:
+                            console.print(
+                                f"  [[yellow]Warning[/yellow]] No {url_key} in upload URLs "
+                                "(Cloud server may need update)"
+                            )
+
                     if upload_failures:
                         console.print(
                             f"[bold yellow]Cloud upload completed with warnings[/bold yellow] "
@@ -855,10 +918,11 @@ def init(cache_db, **kwargs):
                     else:
                         console.print("[bold green]Cloud upload complete.[/bold green]")
         finally:
-            # Always remove the per_node.db scratch dir — it is throwaway per
+            # Always remove both scratch dirs — they are throwaway per
             # invocation. cll_cache.db lives at ~/.recce/cll_cache.db (or the
             # user-provided --cache-db) and is NOT touched here.
             shutil.rmtree(per_node_scratch, ignore_errors=True)
+            shutil.rmtree(metadata_scratch, ignore_errors=True)
     else:
         console.print("Run [bold]recce server --enable-cll-cache[/bold] to use the cached lineage.")
 
