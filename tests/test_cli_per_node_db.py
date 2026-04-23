@@ -2,21 +2,21 @@
 
 Covers:
   1. Cloud-mode integration: per_node.db is uploaded when Cloud returns the
-     per_node_db_url key; cll_cache.db is never uploaded (cloud mode writes it
-     to a tempdir and it is cleaned up on success).
+     per_node_db_url key; cll_cache.db continues to be uploaded via
+     cll_cache_url (warm-cache reuse across sessions).
   2. Local-mode non-regression: `recce init` without --cloud still writes to
      the user-specified cache_db and does not emit per_node.db / upload.
   3. Contract test vs. DbtAdapter.get_model(): extract_rows_from_artifacts →
      SQLite → reconstructed get_model() payload structurally matches the
      live adapter's response for the same manifest + catalog fixtures.
-  4. Mode-switching safety: running cloud mode does not collide with a later
-     local-mode run's --cache-db; the cloud tempdir is cleaned up.
+  4. Mode-switching safety: running cloud mode once, then local mode, does not
+     corrupt ~/.recce/cll_cache.db — warm-cache behavior IS preserved across
+     invocations, and only the per_node.db tempdir is cleaned up.
 """
 
 from __future__ import annotations
 
 import json
-import os
 import sqlite3
 import tempfile
 from pathlib import Path
@@ -128,11 +128,11 @@ def _setup_target_dir(tmp_path: Path) -> Path:
 
 
 class TestCloudModeEmitsPerNodeDb:
-    """Cloud mode emits per_node.db, uploads it, and never uploads cll_cache.db."""
+    """Cloud mode uploads both per_node.db and cll_cache.db."""
 
     @patch("recce.core.load_context")
-    def test_per_node_db_uploaded_when_url_present(self, mock_load_context, runner, tmp_path, tmp_db):
-        """Happy path: per_node_db_url is present → PUT to that URL."""
+    def test_both_artifacts_uploaded_when_urls_present(self, mock_load_context, runner, tmp_path, tmp_db):
+        """Happy path: per_node_db_url AND cll_cache_url both receive PUTs."""
         manifest_bytes = b'{"nodes": {}}'
 
         mock_client = _make_mock_cloud_client(
@@ -141,7 +141,6 @@ class TestCloudModeEmitsPerNodeDb:
             upload_urls={
                 "cll_map_url": "https://s3.example.com/upload/cll_map.json",
                 "per_node_db_url": "https://s3.example.com/upload/per_node.db",
-                # cll_cache_url included to prove it is NOT used in cloud mode.
                 "cll_cache_url": "https://s3.example.com/upload/cll_cache.db",
             },
         )
@@ -198,8 +197,8 @@ class TestCloudModeEmitsPerNodeDb:
         assert "Cloud upload complete" in result.output
         # per_node.db URL was called
         assert any("per_node.db" in url for url in put_calls), put_calls
-        # cll_cache.db URL was NOT called, even though the key is present
-        assert not any("cll_cache" in url for url in put_calls), put_calls
+        # cll_cache.db URL WAS called — warm-cache reuse depends on it.
+        assert any("cll_cache.db" in url for url in put_calls), put_calls
 
     @patch("recce.core.load_context")
     def test_warns_when_per_node_db_url_missing(self, mock_load_context, runner, tmp_path, tmp_db):
@@ -255,8 +254,10 @@ class TestCloudModeEmitsPerNodeDb:
         assert "No per_node_db_url" in result.output
 
     @patch("recce.core.load_context")
-    def test_scratch_dir_cleaned_up_on_success(self, mock_load_context, runner, tmp_path, tmp_db):
-        """After a successful cloud upload, the recce-cll-* tempdir is removed."""
+    def test_per_node_scratch_cleaned_cache_preserved(self, mock_load_context, runner, tmp_path, tmp_db):
+        """After a successful cloud upload: per_node scratch dir is removed;
+        cache_db at user-specified path remains intact (its parent dir exists).
+        """
         manifest_bytes = b'{"nodes": {}}'
 
         mock_client = _make_mock_cloud_client(
@@ -265,6 +266,7 @@ class TestCloudModeEmitsPerNodeDb:
             upload_urls={
                 "cll_map_url": "https://s3.example.com/upload/cll_map.json",
                 "per_node_db_url": "https://s3.example.com/upload/per_node.db",
+                "cll_cache_url": "https://s3.example.com/upload/cll_cache.db",
             },
         )
 
@@ -289,6 +291,8 @@ class TestCloudModeEmitsPerNodeDb:
             path = original_mkdtemp(*args, **kwargs)
             dirs_created.append(path)
             return path
+
+        cache_db_parent = Path(tmp_db).parent
 
         with (
             patch("recce.util.recce_cloud.RecceCloud", return_value=mock_client),
@@ -318,11 +322,15 @@ class TestCloudModeEmitsPerNodeDb:
             )
 
         assert result.exit_code == 0
-        # At least one of the tracked dirs is the recce-cll-* scratch dir.
-        scratch_dirs = [d for d in dirs_created if Path(d).name.startswith("recce-cll-")]
-        assert scratch_dirs, f"no recce-cll-* tempdir was created (got: {dirs_created})"
-        for sd in scratch_dirs:
-            assert not Path(sd).exists(), f"scratch dir {sd} was not cleaned up after success"
+        # per_node scratch dirs cleaned up
+        per_node_dirs = [d for d in dirs_created if Path(d).name.startswith("recce-per-node-")]
+        assert per_node_dirs, f"no recce-per-node-* tempdir was created (got: {dirs_created})"
+        for sd in per_node_dirs:
+            assert not Path(sd).exists(), f"per_node scratch {sd} was not cleaned up after success"
+        # cache_db path is NOT rmtree'd — its parent dir still exists, and so
+        # does the cache.db itself (since we wrote to it during the run).
+        assert cache_db_parent.exists(), "cache.db parent dir must persist — it is NOT a scratch dir"
+        assert Path(tmp_db).exists(), "cache.db at user-specified path must persist"
 
 
 # ---------------------------------------------------------------------------
@@ -558,12 +566,14 @@ class TestContractWithGetModel:
 
 
 class TestModeSwitchingSafety:
-    """Cloud-mode tempdir must not collide with local-mode --cache-db."""
+    """Cloud → local switches must preserve the warm cache at --cache-db."""
 
     @patch("recce.core.load_context")
-    def test_cloud_then_local_no_collision(self, mock_load_context, runner, tmp_path):
-        """After a cloud run, a local run against a separate --cache-db works normally."""
-        # --- Cloud run (writes to scratch tempdir, cleaned up on success) ---
+    def test_cloud_then_local_preserves_warm_cache(self, mock_load_context, runner, tmp_path):
+        """Cloud run writes to --cache-db; a subsequent local run against the
+        SAME --cache-db sees the entries it wrote — warm-cache reuse works.
+        """
+        # --- Cloud run (writes to user --cache-db; uploads it to cll_cache_url) ---
         manifest_bytes = b'{"nodes": {}}'
         mock_client = _make_mock_cloud_client(
             download_urls={"manifest_url": "https://s3.example.com/manifest.json"},
@@ -571,6 +581,7 @@ class TestModeSwitchingSafety:
             upload_urls={
                 "cll_map_url": "https://s3.example.com/upload/cll_map.json",
                 "per_node_db_url": "https://s3.example.com/upload/per_node.db",
+                "cll_cache_url": "https://s3.example.com/upload/cll_cache.db",
             },
         )
         nodes = {"model.test.a": _make_mock_node(raw_code="SELECT a FROM src")}
@@ -593,7 +604,7 @@ class TestModeSwitchingSafety:
             dirs_created.append(path)
             return path
 
-        cloud_cache_db = str(tmp_path / "unused-cloud-cache.db")
+        shared_cache_db = str(tmp_path / "shared-cache.db")
         with (
             patch("recce.util.recce_cloud.RecceCloud", return_value=mock_client),
             patch("requests.get", side_effect=lambda *a, **kw: _make_mock_response(200, manifest_bytes)),
@@ -614,26 +625,27 @@ class TestModeSwitchingSafety:
                     "--session-id",
                     "sess-1",
                     "--cache-db",
-                    cloud_cache_db,
+                    shared_cache_db,
                     "--project-dir",
                     str(tmp_path / "cloudproj"),
                 ],
                 catch_exceptions=False,
             )
         assert cloud_result.exit_code == 0, cloud_result.output
-        # Cloud mode should have ignored the user --cache-db and used a scratch dir.
-        assert not os.path.exists(cloud_cache_db), "cloud mode should not write to user --cache-db"
-        # Scratch dir cleaned up on success.
-        scratch_dirs = [d for d in dirs_created if Path(d).name.startswith("recce-cll-")]
-        assert scratch_dirs
-        assert all(not Path(d).exists() for d in scratch_dirs)
+        # Cloud mode writes the cache at the user --cache-db path (warm-cache reuse).
+        assert Path(shared_cache_db).exists(), "cloud mode must write cache.db to the user path"
+        # per_node tempdir cleaned up after success; cache.db is NOT rmtree'd.
+        per_node_dirs = [d for d in dirs_created if Path(d).name.startswith("recce-per-node-")]
+        assert per_node_dirs
+        assert all(not Path(d).exists() for d in per_node_dirs)
+        # No recce-cll-* scratch dir is created anymore (cache.db lives at the user path).
+        assert not any(Path(d).name.startswith("recce-cll-") for d in dirs_created)
 
-        # --- Local run (writes to a distinct --cache-db path) ---
+        # --- Local run (against the SAME --cache-db path) ---
         local_proj = tmp_path / "localproj"
         local_proj.mkdir()
         (local_proj / "target").mkdir()
         (local_proj / "target" / "manifest.json").write_text("{}")
-        local_db = str(tmp_path / "local-cache.db")
 
         with patch(
             "recce.adapter.dbt_adapter.DbtAdapter._serialize_cll_data",
@@ -641,15 +653,15 @@ class TestModeSwitchingSafety:
         ):
             local_result = runner.invoke(
                 cli,
-                ["init", "--cache-db", local_db, "--project-dir", str(local_proj)],
+                ["init", "--cache-db", shared_cache_db, "--project-dir", str(local_proj)],
                 catch_exceptions=False,
             )
 
         assert local_result.exit_code == 0
-        # Local mode writes the cache at the user path and does NOT leak into the cloud scratch paths.
-        assert Path(local_db).exists()
-        # Local cache is a valid SQLite CLL cache (stats callable).
-        cache = CllCache(db_path=local_db)
+        # Shared cache.db still exists and is a valid CLL cache — warm-cache
+        # reuse works across invocations (cloud → local).
+        assert Path(shared_cache_db).exists()
+        cache = CllCache(db_path=shared_cache_db)
         assert cache.stats["entries"] >= 0
 
         # Sanity: SCHEMA_VERSION used by the per_node.db emitter is numeric.

@@ -350,15 +350,16 @@ def init(cache_db, **kwargs):
     cloud_client = None
     cloud_org_id = None
     cloud_project_id = None
-    # In cloud mode, cll_cache.db and per_node.db are written to a tempdir that
-    # is scoped to this invocation. cll_cache.db keeps its warm-cache perf but
-    # never leaves the container; per_node.db is uploaded then the dir is GC'd.
-    cloud_scratch_dir: Optional[Path] = None
+    # per_node.db is a throwaway per-task artifact (each cloud task regenerates
+    # it fresh from the uploaded manifest/catalog). It lives in its own tempdir
+    # that is cleaned up after a successful upload. cll_cache.db, by contrast,
+    # persists at ~/.recce/cll_cache.db to serve cross-session warm-cache reuse.
+    per_node_scratch: Optional[Path] = None
 
     if is_cloud:
         from recce.util.recce_cloud import RecceCloud, RecceCloudException
 
-        cloud_scratch_dir = Path(tempfile.mkdtemp(prefix="recce-cll-"))
+        per_node_scratch = Path(tempfile.mkdtemp(prefix="recce-per-node-"))
 
         cloud_token = kwargs.get("cloud_token") or kwargs.get("api_token")
         if not cloud_token:
@@ -447,13 +448,8 @@ def init(cache_db, **kwargs):
         # Download existing CLL cache for warm start.
         # Try current session first, then fall back to production (base) session.
         # Use streaming to avoid loading large cache files entirely into memory.
-        #
-        # In cloud mode, cll_cache.db is scoped to cloud_scratch_dir so it
-        # never gets uploaded back to Cloud. A user-provided --cache-db is
-        # intentionally ignored here because ECS task filesystems are ephemeral
-        # and the cache is not meant to persist across runs.
-        assert cloud_scratch_dir is not None  # set above when is_cloud
-        cache_db = str(cloud_scratch_dir / "cll_cache.db")
+        if cache_db is None:
+            cache_db = _DEFAULT_DB_PATH
         Path(cache_db).parent.mkdir(parents=True, exist_ok=True)
 
         def _stream_download_to_file(url: str, dest: Path) -> int:
@@ -693,8 +689,8 @@ def init(cache_db, **kwargs):
     # streams to serve lineage without proxying to an ephemeral Recce instance.
     per_node_db_path: Optional[Path] = None
     if is_cloud:
-        assert cloud_scratch_dir is not None
-        per_node_db_path = cloud_scratch_dir / "per_node.db"
+        assert per_node_scratch is not None
+        per_node_db_path = per_node_scratch / "per_node.db"
         console.print("\n[bold]Emitting per-node SQLite...[/bold]")
         t_pn_start = time.perf_counter()
         try:
@@ -797,9 +793,31 @@ def init(cache_db, **kwargs):
                     "  [[yellow]Warning[/yellow]] No per_node_db_url in upload URLs (Cloud server may need update)"
                 )
 
-            # cll_cache.db is local-only in cloud mode: it lives in
-            # cloud_scratch_dir and is not uploaded. The tempdir is GC'd
-            # below when upload succeeds; on failure it lingers for debugging.
+            # Upload CLL cache. cll_cache.db is load-bearing across sessions —
+            # build_full_cll_map reuses its warm entries on subsequent runs —
+            # so Cloud uploads it alongside per_node.db.
+            cll_cache_upload_url = upload_urls.get("cll_cache_url")
+            if cll_cache_upload_url and Path(cache_db).is_file():
+                try:
+                    with open(cache_db, "rb") as f:
+                        resp = requests.put(
+                            cll_cache_upload_url,
+                            data=f,
+                            headers={"Content-Type": "application/octet-stream"},
+                            timeout=_UPLOAD_TIMEOUT,
+                        )
+                    if resp.status_code in (200, 204):
+                        console.print(f"  Uploaded cll_cache.db ({Path(cache_db).stat().st_size / 1024 / 1024:.1f} MB)")
+                    else:
+                        upload_failures.append("cll_cache.db")
+                        console.print(
+                            f"  [[yellow]Warning[/yellow]] Failed to upload cll_cache.db: HTTP {resp.status_code}"
+                        )
+                except requests.RequestException as e:
+                    upload_failures.append("cll_cache.db")
+                    console.print(f"  [[yellow]Warning[/yellow]] Failed to upload cll_cache.db: {e}")
+            elif not cll_cache_upload_url:
+                logger.debug("No cll_cache_url in upload URLs — cache upload not supported yet")
 
             if upload_failures:
                 console.print(
@@ -813,11 +831,11 @@ def init(cache_db, **kwargs):
             logger.warning("[recce init] Cloud upload failed: %s", e)
             console.print(f"  [[yellow]Warning[/yellow]] Cloud upload failed: {e}")
         finally:
-            # Only clean the scratch dir on success. On failure we keep it for
-            # debugging — ECS task death will reclaim it anyway when the
-            # container exits.
-            if upload_succeeded and cloud_scratch_dir is not None:
-                shutil.rmtree(cloud_scratch_dir, ignore_errors=True)
+            # Clean up per_node.db scratch dir only. cll_cache.db lives at
+            # ~/.recce/cll_cache.db (or the user-provided --cache-db path) and
+            # must persist across invocations for warm-cache reuse.
+            if upload_succeeded and per_node_scratch is not None:
+                shutil.rmtree(per_node_scratch, ignore_errors=True)
     else:
         console.print("Run [bold]recce server --enable-cll-cache[/bold] to use the cached lineage.")
 
