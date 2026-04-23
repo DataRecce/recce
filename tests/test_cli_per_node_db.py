@@ -17,8 +17,11 @@ Covers:
 from __future__ import annotations
 
 import json
+import os
+import random
 import sqlite3
 import tempfile
+import time
 from pathlib import Path
 from typing import Optional
 from unittest.mock import MagicMock, patch
@@ -666,3 +669,138 @@ class TestModeSwitchingSafety:
 
         # Sanity: SCHEMA_VERSION used by the per_node.db emitter is numeric.
         assert int(SCHEMA_VERSION) >= 1
+
+
+# ---------------------------------------------------------------------------
+# 5. Scale validation (PR 3)
+# ---------------------------------------------------------------------------
+#
+# Validates size, extraction speed, and SQLite read-latency characteristics of
+# per_node.db on realistic dbt artifacts (jaffle-shop-expand, ~1918 nodes).
+#
+# Gated behind RECCE_SCALE_TESTS=1 and marked `@pytest.mark.scale` so CI and
+# normal `make test` runs skip it. The on-disk fixture is not committed — if
+# the directory is missing the test gracefully skips.
+
+_SCALE_FIXTURE_DIR = Path("/Users/evenwei/InfuseAI/workspace/jaffle-shop-expand-main")
+_SCALE_ENABLED = os.getenv("RECCE_SCALE_TESTS") == "1"
+
+
+@pytest.mark.scale
+@pytest.mark.skipif(not _SCALE_ENABLED, reason="set RECCE_SCALE_TESTS=1 to run")
+class TestPerNodeDbScale:
+    """Scale characteristics on the jaffle-shop-expand project (~1918 nodes)."""
+
+    @pytest.fixture(scope="class")
+    def scale_artifacts(self) -> tuple[dict, dict]:
+        manifest_path = _SCALE_FIXTURE_DIR / "manifest.json"
+        catalog_path = _SCALE_FIXTURE_DIR / "catalog.json"
+        if not manifest_path.exists() or not catalog_path.exists():
+            pytest.skip(f"scale fixtures not found at {_SCALE_FIXTURE_DIR}")
+        with open(manifest_path) as f:
+            manifest = json.load(f)
+        with open(catalog_path) as f:
+            catalog = json.load(f)
+        return manifest, catalog
+
+    @pytest.fixture(scope="class")
+    def scale_db(self, scale_artifacts, tmp_path_factory) -> Path:
+        """Emit per_node.db once for this class and reuse it across tests."""
+        manifest, catalog = scale_artifacts
+        db_path = tmp_path_factory.mktemp("scale") / "per_node.db"
+        # Approximate an empty-diff scenario: same artifacts for base + current.
+        # This validates the scale characteristics on realistic data — it is
+        # not a true paired-env correctness test.
+        with PerNodeDbWriter(db_path) as w:
+            for env in ("base", "current"):
+                nodes, columns, edges, tests = extract_rows_from_artifacts(manifest, catalog, env)
+                w.write_nodes(nodes)
+                w.write_columns(columns)
+                w.write_edges(edges)
+                w.write_tests(tests)
+        return db_path
+
+    def test_extraction_under_2s(self, scale_artifacts):
+        """extract_rows_from_artifacts completes in < 2s on 1918-node project."""
+        manifest, catalog = scale_artifacts
+        start = time.perf_counter_ns()
+        nodes, columns, edges, tests = extract_rows_from_artifacts(manifest, catalog, "current")
+        elapsed_s = (time.perf_counter_ns() - start) / 1e9
+        # Sanity on output size before asserting timing.
+        assert len(nodes) >= 1000
+        assert elapsed_s < 2.0, f"extraction took {elapsed_s:.3f}s (budget 2.0s)"
+
+    def test_db_file_size_under_budget(self, scale_db):
+        """per_node.db file size stays within budget on jaffle-shop-expand.
+
+        Budget is generous enough to cover dual-env emission (~33 MB measured
+        on this 1918-node project) with headroom; a regression to 2x would
+        trip it.
+        """
+        size_bytes = scale_db.stat().st_size
+        size_mb = size_bytes / (1024 * 1024)
+        assert size_mb <= 40.0, f"per_node.db is {size_mb:.2f} MB (budget 40 MB)"
+
+    def test_node_count_matches_manifest(self, scale_artifacts, scale_db):
+        """Row count in `nodes` matches manifest nodes+sources count per env."""
+        manifest, _ = scale_artifacts
+        expected = len(manifest.get("nodes") or {}) + len(manifest.get("sources") or {})
+        # +exposures/metrics/semantic_models if present (these are tiny).
+        for section in ("exposures", "metrics", "semantic_models"):
+            expected += len(manifest.get(section) or {})
+
+        conn = sqlite3.connect(str(scale_db))
+        try:
+            current_count = conn.execute("SELECT COUNT(*) FROM nodes WHERE env = 'current'").fetchone()[0]
+        finally:
+            conn.close()
+        assert current_count == expected, f"nodes(current)={current_count}, expected={expected}"
+
+    def test_point_read_p95_under_5ms(self, scale_db):
+        """100-iteration point-read P95 on random node_id PKs is < 5 ms."""
+        # Open RO connection via URI (read-only mode avoids any write-lock overhead).
+        uri = f"file:{scale_db}?mode=ro"
+        conn = sqlite3.connect(uri, uri=True)
+        try:
+            rows = conn.execute("SELECT node_id FROM nodes WHERE env = 'current'").fetchall()
+            node_ids = [r[0] for r in rows]
+            assert len(node_ids) >= 100, f"need ≥100 nodes for point-read sample, got {len(node_ids)}"
+
+            rng = random.Random(42)
+            sample = rng.sample(node_ids, 100)
+            sample.sort()  # pick once, iterate — no per-iter randomness.
+
+            timings_ns: list[int] = []
+            for node_id in sample:
+                t0 = time.perf_counter_ns()
+                conn.execute(
+                    "SELECT primary_key, raw_code FROM nodes WHERE node_id = ? AND env = ?",
+                    (node_id, "current"),
+                ).fetchone()
+                timings_ns.append(time.perf_counter_ns() - t0)
+        finally:
+            conn.close()
+
+        timings_ns.sort()
+        p95_ms = timings_ns[int(0.95 * len(timings_ns)) - 1] / 1e6
+        assert p95_ms < 5.0, f"point-read P95 = {p95_ms:.3f} ms (budget 5 ms)"
+
+    def test_range_query_under_50ms(self, scale_artifacts, scale_db):
+        """Range query on resource_type + env returns expected count in < 50 ms."""
+        manifest, _ = scale_artifacts
+        expected_models = sum(1 for n in (manifest.get("nodes") or {}).values() if n.get("resource_type") == "model")
+
+        uri = f"file:{scale_db}?mode=ro"
+        conn = sqlite3.connect(uri, uri=True)
+        try:
+            t0 = time.perf_counter_ns()
+            rows = conn.execute(
+                "SELECT * FROM nodes WHERE resource_type = ? AND env = ?",
+                ("model", "current"),
+            ).fetchall()
+            elapsed_ms = (time.perf_counter_ns() - t0) / 1e6
+        finally:
+            conn.close()
+
+        assert len(rows) == expected_models, f"range query returned {len(rows)}, expected {expected_models}"
+        assert elapsed_ms < 50.0, f"range query took {elapsed_ms:.3f} ms (budget 50 ms)"
