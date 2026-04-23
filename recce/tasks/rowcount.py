@@ -253,7 +253,7 @@ class RowCountDiffParams(BaseModel):
     select: Optional[str] = None
     exclude: Optional[str] = None
     packages: Optional[list[str]] = None
-    view_mode: Optional[Literal["all", "changed_models"]] = None
+    view_mode: Optional[Literal["all", "changed_models", "body_changes"]] = None
 
 
 class RowCountDiffTask(Task, QueryMixin):

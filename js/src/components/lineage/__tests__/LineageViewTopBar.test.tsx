@@ -370,6 +370,20 @@ describe("LineageViewTopBar", () => {
       expect(modeButton).toBeDefined();
     });
 
+    it("shows Body Changes when view mode is body_changes", () => {
+      mockUseLineageViewContextSafe.mockReturnValue(
+        createMockLineageViewContext({
+          viewOptions: { view_mode: "body_changes" },
+        }),
+      );
+
+      render(<LineageViewTopBar />);
+
+      expect(
+        screen.getByRole("button", { name: /Body Changes/i }),
+      ).toBeInTheDocument();
+    });
+
     it("opens mode menu when clicked", async () => {
       render(<LineageViewTopBar />);
 
@@ -396,9 +410,40 @@ describe("LineageViewTopBar", () => {
           screen.getByRole("radio", { name: /Changed Models/i }),
         ).toBeInTheDocument();
         expect(
+          screen.getByRole("radio", { name: /Body Changes/i }),
+        ).toBeInTheDocument();
+        expect(
           screen.getByRole("radio", { name: /^All$/i }),
         ).toBeInTheDocument();
       });
+    });
+
+    it("calls onViewOptionsChanged when mode is changed to body_changes", async () => {
+      const mockOnViewOptionsChanged = vi.fn();
+      mockUseLineageViewContextSafe.mockReturnValue(
+        createMockLineageViewContext({
+          viewOptions: { view_mode: "changed_models" },
+          onViewOptionsChanged: mockOnViewOptionsChanged,
+        }),
+      );
+
+      render(<LineageViewTopBar />);
+
+      const modeButton = screen.getByRole("button", {
+        name: /Changed Models/i,
+      });
+      fireEvent.click(modeButton);
+
+      await waitFor(() => {
+        const bodyChangesMenuItem = screen.getByRole("menuitem", {
+          name: /Body Changes/i,
+        });
+        fireEvent.click(bodyChangesMenuItem);
+      });
+
+      expect(mockOnViewOptionsChanged).toHaveBeenCalledWith(
+        expect.objectContaining({ view_mode: "body_changes" }),
+      );
     });
 
     it("calls onViewOptionsChanged when mode is changed to all", async () => {

@@ -13,7 +13,7 @@ import type { CllInput } from "./cll";
 // ============================================================================
 
 export interface LineageDiffViewOptions {
-  view_mode?: "changed_models" | "all";
+  view_mode?: "changed_models" | "all" | "body_changes";
   node_ids?: string[];
   packages?: string[];
   select?: string;
