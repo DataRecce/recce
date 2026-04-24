@@ -335,6 +335,230 @@ class TestCloudModeEmitsPerNodeDb:
         assert cache_db_parent.exists(), "cache.db parent dir must persist — it is NOT a scratch dir"
         assert Path(tmp_db).exists(), "cache.db at user-specified path must persist"
 
+    @patch("recce.core.load_context")
+    def test_scratch_cleaned_even_when_per_node_upload_fails(self, mock_load_context, runner, tmp_path, tmp_db):
+        """HTTP 500 on per_node.db upload must NOT leak the scratch tempdir.
+
+        Previously cleanup was gated on upload_succeeded, which meant any
+        failed upload (including the common timeout / 500 case) would leave
+        a multi-MB recce-per-node-* dir in /tmp. On long-lived Cloud deploys
+        (scheduled retries) this accumulates — the cleanup is now
+        unconditional.
+        """
+        manifest_bytes = b'{"nodes": {}}'
+        mock_client = _make_mock_cloud_client(
+            download_urls={"manifest_url": "https://s3.example.com/manifest.json"},
+            base_download_urls={"manifest_url": "https://s3.example.com/base-manifest.json"},
+            upload_urls={
+                "cll_map_url": "https://s3.example.com/upload/cll_map.json",
+                "per_node_db_url": "https://s3.example.com/upload/per_node.db",
+                "cll_cache_url": "https://s3.example.com/upload/cll_cache.db",
+            },
+        )
+
+        nodes = {"model.test.a": _make_mock_node(raw_code="SELECT a FROM src")}
+        adapter = _make_mock_adapter(nodes)
+        adapter.get_cll_cached.return_value = MagicMock()
+        mock_cll_map = MagicMock()
+        mock_cll_map.nodes = {}
+        mock_cll_map.columns = {}
+        mock_cll_map.model_dump.return_value = {"nodes": {}, "columns": {}}
+        adapter.build_full_cll_map.return_value = mock_cll_map
+
+        mock_ctx = MagicMock()
+        mock_ctx.adapter = adapter
+        mock_load_context.return_value = mock_ctx
+
+        original_mkdtemp = tempfile.mkdtemp
+        dirs_created: list[str] = []
+
+        def tracking_mkdtemp(*args, **kwargs):
+            path = original_mkdtemp(*args, **kwargs)
+            dirs_created.append(path)
+            return path
+
+        def failing_put(url, **kwargs):
+            if "per_node.db" in url:
+                return _make_mock_response(500)
+            return _make_mock_response(200)
+
+        with (
+            patch("recce.util.recce_cloud.RecceCloud", return_value=mock_client),
+            patch("requests.get", side_effect=lambda *a, **kw: _make_mock_response(200, manifest_bytes)),
+            patch("requests.put", side_effect=failing_put),
+            patch("tempfile.mkdtemp", side_effect=tracking_mkdtemp),
+            patch(
+                "recce.adapter.dbt_adapter.DbtAdapter._serialize_cll_data",
+                return_value='{"nodes":{}, "columns":{}, "parent_map":{}}',
+            ),
+        ):
+            result = runner.invoke(
+                cli,
+                [
+                    "init",
+                    "--cloud",
+                    "--cloud-token",
+                    "ghp_testtoken",
+                    "--session-id",
+                    "sess-1",
+                    "--cache-db",
+                    tmp_db,
+                    "--project-dir",
+                    str(tmp_path),
+                ],
+                catch_exceptions=False,
+            )
+
+        # CLI still exits 0 — upload failure is a warning, not an error.
+        assert result.exit_code == 0, result.output
+        assert "Failed to upload per_node.db" in result.output
+        # Scratch dir is cleaned even though upload failed.
+        per_node_dirs = [d for d in dirs_created if Path(d).name.startswith("recce-per-node-")]
+        assert per_node_dirs, f"no recce-per-node-* tempdir was created (got: {dirs_created})"
+        for sd in per_node_dirs:
+            assert not Path(sd).exists(), f"per_node scratch {sd} leaked on upload failure"
+
+    @patch("recce.core.load_context")
+    def test_scratch_cleaned_when_upload_url_fetch_raises(self, mock_load_context, runner, tmp_path, tmp_db):
+        """If get_upload_urls_by_session_id raises, we still clean up scratch."""
+        manifest_bytes = b'{"nodes": {}}'
+
+        mock_client = _make_mock_cloud_client(
+            download_urls={"manifest_url": "https://s3.example.com/manifest.json"},
+            base_download_urls={"manifest_url": "https://s3.example.com/base-manifest.json"},
+        )
+        mock_client.get_upload_urls_by_session_id.side_effect = RuntimeError("cloud down")
+
+        nodes = {"model.test.a": _make_mock_node(raw_code="SELECT a FROM src")}
+        adapter = _make_mock_adapter(nodes)
+        adapter.get_cll_cached.return_value = MagicMock()
+        mock_cll_map = MagicMock()
+        mock_cll_map.nodes = {}
+        mock_cll_map.columns = {}
+        mock_cll_map.model_dump.return_value = {"nodes": {}, "columns": {}}
+        adapter.build_full_cll_map.return_value = mock_cll_map
+
+        mock_ctx = MagicMock()
+        mock_ctx.adapter = adapter
+        mock_load_context.return_value = mock_ctx
+
+        original_mkdtemp = tempfile.mkdtemp
+        dirs_created: list[str] = []
+
+        def tracking_mkdtemp(*args, **kwargs):
+            path = original_mkdtemp(*args, **kwargs)
+            dirs_created.append(path)
+            return path
+
+        with (
+            patch("recce.util.recce_cloud.RecceCloud", return_value=mock_client),
+            patch("requests.get", side_effect=lambda *a, **kw: _make_mock_response(200, manifest_bytes)),
+            patch("requests.put", side_effect=lambda *a, **kw: _make_mock_response(200)),
+            patch("tempfile.mkdtemp", side_effect=tracking_mkdtemp),
+            patch(
+                "recce.adapter.dbt_adapter.DbtAdapter._serialize_cll_data",
+                return_value='{"nodes":{}, "columns":{}, "parent_map":{}}',
+            ),
+        ):
+            result = runner.invoke(
+                cli,
+                [
+                    "init",
+                    "--cloud",
+                    "--cloud-token",
+                    "ghp_testtoken",
+                    "--session-id",
+                    "sess-1",
+                    "--cache-db",
+                    tmp_db,
+                    "--project-dir",
+                    str(tmp_path),
+                ],
+                catch_exceptions=False,
+            )
+
+        assert result.exit_code == 0, result.output
+        assert "Cloud upload failed" in result.output
+        per_node_dirs = [d for d in dirs_created if Path(d).name.startswith("recce-per-node-")]
+        assert per_node_dirs
+        for sd in per_node_dirs:
+            assert not Path(sd).exists(), f"per_node scratch {sd} leaked on get_upload_urls failure"
+
+    @patch("recce.core.load_context")
+    def test_emit_failure_degrades_gracefully(self, mock_load_context, runner, tmp_path, tmp_db):
+        """If PerNodeDbWriter raises, CLI logs a warning and other artifacts
+        still upload. per_node.db is skipped (its URL never sees a PUT).
+        """
+        manifest_bytes = b'{"nodes": {}}'
+
+        mock_client = _make_mock_cloud_client(
+            download_urls={"manifest_url": "https://s3.example.com/manifest.json"},
+            base_download_urls={"manifest_url": "https://s3.example.com/base-manifest.json"},
+            upload_urls={
+                "cll_map_url": "https://s3.example.com/upload/cll_map.json",
+                "per_node_db_url": "https://s3.example.com/upload/per_node.db",
+                "cll_cache_url": "https://s3.example.com/upload/cll_cache.db",
+            },
+        )
+
+        nodes = {"model.test.a": _make_mock_node(raw_code="SELECT a FROM src")}
+        adapter = _make_mock_adapter(nodes)
+        adapter.get_cll_cached.return_value = MagicMock()
+        mock_cll_map = MagicMock()
+        mock_cll_map.nodes = {}
+        mock_cll_map.columns = {}
+        mock_cll_map.model_dump.return_value = {"nodes": {}, "columns": {}}
+        adapter.build_full_cll_map.return_value = mock_cll_map
+
+        mock_ctx = MagicMock()
+        mock_ctx.adapter = adapter
+        mock_load_context.return_value = mock_ctx
+
+        put_calls: list[str] = []
+
+        def track_put(url, **kwargs):
+            put_calls.append(url)
+            return _make_mock_response(200)
+
+        class _FailingWriter:
+            def __init__(self, *_a, **_kw):
+                raise RuntimeError("disk full, say")
+
+        with (
+            patch("recce.util.recce_cloud.RecceCloud", return_value=mock_client),
+            patch("requests.get", side_effect=lambda *a, **kw: _make_mock_response(200, manifest_bytes)),
+            patch("requests.put", side_effect=track_put),
+            patch("recce.util.per_node_db.PerNodeDbWriter", _FailingWriter),
+            patch(
+                "recce.adapter.dbt_adapter.DbtAdapter._serialize_cll_data",
+                return_value='{"nodes":{}, "columns":{}, "parent_map":{}}',
+            ),
+        ):
+            result = runner.invoke(
+                cli,
+                [
+                    "init",
+                    "--cloud",
+                    "--cloud-token",
+                    "ghp_testtoken",
+                    "--session-id",
+                    "sess-1",
+                    "--cache-db",
+                    tmp_db,
+                    "--project-dir",
+                    str(tmp_path),
+                ],
+                catch_exceptions=False,
+            )
+
+        assert result.exit_code == 0, result.output
+        assert "Failed to emit per_node.db" in result.output
+        # per_node.db URL never receives a PUT because emission failed.
+        assert not any("per_node.db" in url for url in put_calls), put_calls
+        # cll_map.json and cll_cache.db still upload.
+        assert any("cll_map.json" in url for url in put_calls), put_calls
+        assert any("cll_cache.db" in url for url in put_calls), put_calls
+
 
 # ---------------------------------------------------------------------------
 # 2. Local-mode non-regression
@@ -679,10 +903,16 @@ class TestModeSwitchingSafety:
 # per_node.db on realistic dbt artifacts (jaffle-shop-expand, ~1918 nodes).
 #
 # Gated behind RECCE_SCALE_TESTS=1 and marked `@pytest.mark.scale` so CI and
-# normal `make test` runs skip it. The on-disk fixture is not committed — if
-# the directory is missing the test gracefully skips.
+# normal `make test` runs skip it. The fixture directory is not committed —
+# point RECCE_SCALE_FIXTURE_DIR at a dbt project's ``target`` dir (must
+# contain ``manifest.json`` and ``catalog.json``). The default path
+# ``tests/fixtures/jaffle-shop-expand`` is checked as a fallback so local
+# contributors can drop artifacts in place without setting an env var. If
+# neither is populated the scale class skips gracefully.
 
-_SCALE_FIXTURE_DIR = Path("/Users/evenwei/InfuseAI/workspace/jaffle-shop-expand-main")
+_SCALE_FIXTURE_DIR = Path(
+    os.getenv("RECCE_SCALE_FIXTURE_DIR") or (Path(__file__).parent / "fixtures" / "jaffle-shop-expand")
+)
 _SCALE_ENABLED = os.getenv("RECCE_SCALE_TESTS") == "1"
 
 

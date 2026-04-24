@@ -142,8 +142,13 @@ class PerNodeDbWriter:
 
     The writer is a context manager. It commits on clean exit and rolls back
     on exception. Schema is created idempotently on open. ``PRAGMA
-    journal_mode = WAL`` and ``PRAGMA user_version = SCHEMA_VERSION`` are
-    applied once at open time.
+    user_version = SCHEMA_VERSION`` is applied once at open time.
+
+    The default rollback-journal mode is used rather than WAL: this file is
+    written once by a single process and immediately uploaded, so the main
+    file must be self-contained at close time. WAL would require an explicit
+    truncating checkpoint to guarantee that, with no benefit for a one-shot
+    writer that has no concurrent readers.
     """
 
     def __init__(self, db_path: str | Path) -> None:
@@ -152,8 +157,6 @@ class PerNodeDbWriter:
 
     def __enter__(self) -> "PerNodeDbWriter":
         self._conn = sqlite3.connect(self._db_path)
-        # WAL mode is persisted on the DB file, not the connection.
-        self._conn.execute("PRAGMA journal_mode = WAL")
         self._conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         for stmt in _SCHEMA_STATEMENTS:
             self._conn.execute(stmt)
@@ -161,7 +164,8 @@ class PerNodeDbWriter:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
-        assert self._conn is not None
+        if self._conn is None:
+            return
         try:
             if exc_type is None:
                 self._conn.commit()
@@ -247,27 +251,25 @@ def _iter_manifest_nodes(manifest: dict) -> Iterator[tuple[str, dict]]:
                 yield node_id, node
 
 
-def _derive_tests_and_primary_key(
+def _derive_tests(
     node_id: str,
     node: dict,
     manifest: dict,
     env: Env,
-) -> tuple[list[NodeTestRow], Optional[str]]:
-    """Derive ``node_tests`` rows and a ``primary_key`` for a single node.
+) -> list[NodeTestRow]:
+    """Derive ``node_tests`` rows for a single node.
 
-    Mirrors ``DbtAdapter.get_model`` (recce/adapter/dbt_adapter/__init__.py:459-474):
-    looks at ``child_map[node_id]`` for test children named
-    ``not_null_<name>_<col>`` or ``unique_<name>_<col>``. The first column with
-    a ``unique_`` test wins as primary_key.
+    Mirrors ``DbtAdapter.get_model``: looks at ``child_map[node_id]`` for test
+    children named ``not_null_<name>_<col>`` or ``unique_<name>_<col>`` and
+    emits one row per matching test.
     """
     child_map = manifest.get("child_map") or {}
     children = child_map.get(node_id) or []
     node_name = node.get("name")
     if not node_name:
-        return [], None
+        return []
 
     tests: list[NodeTestRow] = []
-    primary_key: Optional[str] = None
     not_null_prefix = f"not_null_{node_name}_"
     unique_prefix = f"unique_{node_name}_"
 
@@ -298,10 +300,27 @@ def _derive_tests_and_primary_key(
                     test_type="unique",
                 )
             )
-            if primary_key is None:
-                primary_key = col
 
-    return tests, primary_key
+    return tests
+
+
+def _pick_primary_key(
+    ordered_column_names: list[str],
+    unique_column_names: set[str],
+) -> Optional[str]:
+    """Select a ``primary_key`` by scanning columns in their stored order.
+
+    Mirrors ``DbtAdapter.get_model``'s rule: the first column that has a
+    ``unique_`` test wins. The adapter walks warehouse column order; we walk
+    the column order we will persist in the ``columns`` table — catalog order
+    first (generated from warehouse queries) then any manifest-only columns.
+    Consumers that prefer their own tiebreaker can ignore the stored
+    ``primary_key`` and re-derive from ``node_tests`` + warehouse columns.
+    """
+    for col in ordered_column_names:
+        if col in unique_column_names:
+            return col
+    return None
 
 
 def extract_rows_from_artifacts(
@@ -322,8 +341,39 @@ def extract_rows_from_artifacts(
     test_rows: list[NodeTestRow] = []
 
     for node_id, node in _iter_manifest_nodes(manifest):
-        tests, primary_key = _derive_tests_and_primary_key(node_id, node, manifest, env)
+        tests = _derive_tests(node_id, node, manifest, env)
         test_rows.extend(tests)
+
+        catalog_node = catalog_nodes.get(node_id) if catalog_nodes else None
+        catalog_cols = (catalog_node or {}).get("columns") or {}
+        manifest_cols = node.get("columns") or {}
+
+        # Union of catalog + manifest column names preserves ordering:
+        # catalog first (dtypes authoritative), then any manifest-only cols.
+        ordered_cols: list[str] = []
+        seen: set[str] = set()
+        for col_name, col_info in catalog_cols.items():
+            if col_name in seen:
+                continue
+            seen.add(col_name)
+            ordered_cols.append(col_name)
+            column_rows.append(
+                ColumnRow(
+                    node_id=node_id,
+                    env=env,
+                    column_name=col_name,
+                    data_type=(col_info or {}).get("type"),
+                )
+            )
+        for col_name in manifest_cols.keys():
+            if col_name in seen:
+                continue
+            seen.add(col_name)
+            ordered_cols.append(col_name)
+            column_rows.append(ColumnRow(node_id=node_id, env=env, column_name=col_name, data_type=None))
+
+        unique_cols = {t.column_name for t in tests if t.test_type == "unique"}
+        primary_key = _pick_primary_key(ordered_cols, unique_cols)
 
         node_rows.append(
             NodeRow(
@@ -338,31 +388,6 @@ def extract_rows_from_artifacts(
                 node_json=_encode_node(node),
             )
         )
-
-        catalog_node = catalog_nodes.get(node_id) if catalog_nodes else None
-        catalog_cols = (catalog_node or {}).get("columns") or {}
-        manifest_cols = node.get("columns") or {}
-
-        # Union of catalog + manifest column names preserves ordering:
-        # catalog first (dtypes authoritative), then any manifest-only cols.
-        seen: set[str] = set()
-        for col_name, col_info in catalog_cols.items():
-            if col_name in seen:
-                continue
-            seen.add(col_name)
-            column_rows.append(
-                ColumnRow(
-                    node_id=node_id,
-                    env=env,
-                    column_name=col_name,
-                    data_type=(col_info or {}).get("type"),
-                )
-            )
-        for col_name in manifest_cols.keys():
-            if col_name in seen:
-                continue
-            seen.add(col_name)
-            column_rows.append(ColumnRow(node_id=node_id, env=env, column_name=col_name, data_type=None))
 
     edge_rows: list[EdgeRow] = []
     for parent_id, children in (manifest.get("child_map") or {}).items():

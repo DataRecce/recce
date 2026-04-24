@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from pathlib import Path
 
 import pytest
 
@@ -44,7 +45,7 @@ def _node_row(node_id: str, env: str = "current", **overrides) -> NodeRow:
     return NodeRow(**kwargs)
 
 
-def test_schema_created_with_wal_mode(db_path):
+def test_schema_created_with_rollback_journal(db_path):
     with PerNodeDbWriter(db_path):
         pass
 
@@ -52,7 +53,10 @@ def test_schema_created_with_wal_mode(db_path):
     try:
         journal_mode = conn.execute("PRAGMA journal_mode").fetchone()[0]
         user_version = conn.execute("PRAGMA user_version").fetchone()[0]
-        assert journal_mode.lower() == "wal"
+        # We deliberately stay on the default rollback journal rather than
+        # WAL: this file is uploaded as a single artifact with no -wal/-shm
+        # sidecars, so the main file must be self-contained at close.
+        assert journal_mode.lower() != "wal", f"unexpected journal_mode={journal_mode!r}"
         assert user_version == SCHEMA_VERSION
 
         tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()}
@@ -62,6 +66,43 @@ def test_schema_created_with_wal_mode(db_path):
         assert "idx_edges_child_env" in indexes
         # Plan doc dropped this redundant index -- make sure we did not ship it.
         assert "idx_columns_node_env" not in indexes
+
+        # The main file must be fully self-contained — no residual -wal/-shm
+        # sidecars for the uploader to miss.
+        assert not Path(f"{db_path}-wal").exists()
+        assert not Path(f"{db_path}-shm").exists()
+    finally:
+        conn.close()
+
+
+def test_no_wal_sidecars_after_writes(db_path):
+    """After writing and closing, only the main file exists on disk."""
+    with PerNodeDbWriter(db_path) as w:
+        w.write_nodes([_node_row("model.pkg.a")])
+        w.write_edges([EdgeRow(parent_id="model.pkg.a", child_id="model.pkg.b", env="current")])
+
+    assert Path(db_path).exists()
+    assert not Path(f"{db_path}-wal").exists()
+    assert not Path(f"{db_path}-shm").exists()
+
+
+def test_rollback_on_exception(db_path):
+    """An exception inside the with-block rolls back row writes."""
+
+    class _Boom(RuntimeError):
+        pass
+
+    with pytest.raises(_Boom):
+        with PerNodeDbWriter(db_path) as w:
+            w.write_nodes([_node_row("model.pkg.a")])
+            raise _Boom("writer should rollback")
+
+    conn = _open(db_path)
+    try:
+        # Schema DDL was committed at __enter__ (by design) so the table
+        # exists — but no row should have persisted from the failed txn.
+        count = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
+        assert count == 0, f"expected 0 nodes after rollback, got {count}"
     finally:
         conn.close()
 
@@ -278,3 +319,96 @@ def test_empty_manifest():
     assert columns == []
     assert edges == []
     assert tests == []
+
+
+def test_primary_key_follows_catalog_column_order_with_multiple_unique_tests():
+    """When a model has two unique tests, primary_key matches the column that
+    comes first in catalog order — which is the warehouse column order that
+    ``DbtAdapter.get_model`` also walks when picking its tiebreaker. This
+    previously diverged: the emitter picked by child_map order which bears
+    no relation to warehouse order.
+    """
+    manifest = {
+        "nodes": {
+            "model.pkg.m": {
+                "name": "m",
+                "resource_type": "model",
+                "package_name": "pkg",
+                "columns": {"a": {"name": "a"}, "b": {"name": "b"}},
+            },
+            "test.pkg.unique_m_b.x": {
+                "name": "unique_m_b",
+                "resource_type": "test",
+                "package_name": "pkg",
+            },
+            "test.pkg.unique_m_a.y": {
+                "name": "unique_m_a",
+                "resource_type": "test",
+                "package_name": "pkg",
+            },
+        },
+        # NOTE: child_map lists unique_m_b BEFORE unique_m_a. The old
+        # derivation would pick "b" here, but catalog column order says "a".
+        "child_map": {
+            "model.pkg.m": ["test.pkg.unique_m_b.x", "test.pkg.unique_m_a.y"],
+            "test.pkg.unique_m_b.x": [],
+            "test.pkg.unique_m_a.y": [],
+        },
+    }
+    catalog = {
+        "nodes": {
+            "model.pkg.m": {
+                "columns": {
+                    "a": {"type": "INTEGER"},
+                    "b": {"type": "INTEGER"},
+                }
+            }
+        }
+    }
+
+    nodes, _, _, tests = extract_rows_from_artifacts(manifest, catalog, "current")
+    m = next(n for n in nodes if n.node_id == "model.pkg.m")
+
+    # Both unique tests must still be recorded (consumers may re-derive).
+    unique_cols = {t.column_name for t in tests if t.test_type == "unique"}
+    assert unique_cols == {"a", "b"}
+
+    # primary_key follows catalog column order — "a" wins even though "b"
+    # appears first in child_map.
+    assert m.primary_key == "a"
+
+
+def test_primary_key_falls_back_to_manifest_column_order_without_catalog():
+    """With no catalog, manifest column order is the only signal we have.
+    It still beats child_map order because manifest column declarations
+    typically match column definition order in the model SQL.
+    """
+    manifest = {
+        "nodes": {
+            "model.pkg.m": {
+                "name": "m",
+                "resource_type": "model",
+                "package_name": "pkg",
+                # Manifest columns: a first, then b.
+                "columns": {"a": {"name": "a"}, "b": {"name": "b"}},
+            },
+            "test.pkg.unique_m_b.x": {
+                "name": "unique_m_b",
+                "resource_type": "test",
+                "package_name": "pkg",
+            },
+            "test.pkg.unique_m_a.y": {
+                "name": "unique_m_a",
+                "resource_type": "test",
+                "package_name": "pkg",
+            },
+        },
+        # child_map order is b-first; emitter must not use it as the tiebreaker.
+        "child_map": {
+            "model.pkg.m": ["test.pkg.unique_m_b.x", "test.pkg.unique_m_a.y"],
+        },
+    }
+
+    nodes, _, _, _ = extract_rows_from_artifacts(manifest, None, "current")
+    m = next(n for n in nodes if n.node_id == "model.pkg.m")
+    assert m.primary_key == "a"

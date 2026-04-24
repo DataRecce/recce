@@ -350,16 +350,9 @@ def init(cache_db, **kwargs):
     cloud_client = None
     cloud_org_id = None
     cloud_project_id = None
-    # per_node.db is a throwaway per-task artifact (each cloud task regenerates
-    # it fresh from the uploaded manifest/catalog). It lives in its own tempdir
-    # that is cleaned up after a successful upload. cll_cache.db, by contrast,
-    # persists at ~/.recce/cll_cache.db to serve cross-session warm-cache reuse.
-    per_node_scratch: Optional[Path] = None
 
     if is_cloud:
         from recce.util.recce_cloud import RecceCloud, RecceCloudException
-
-        per_node_scratch = Path(tempfile.mkdtemp(prefix="recce-per-node-"))
 
         cloud_token = kwargs.get("cloud_token") or kwargs.get("api_token")
         if not cloud_token:
@@ -687,155 +680,166 @@ def init(cache_db, **kwargs):
 
     # In cloud mode, emit per_node.db — a pure-artifact SQLite that Cloud
     # streams to serve lineage without proxying to an ephemeral Recce instance.
-    per_node_db_path: Optional[Path] = None
+    # The scratch dir is always cleaned up, even on upload failure, so
+    # long-lived Cloud deploys don't accumulate recce-per-node-* directories
+    # in /tmp on retries.
     if is_cloud:
-        assert per_node_scratch is not None
-        per_node_db_path = per_node_scratch / "per_node.db"
-        console.print("\n[bold]Emitting per-node SQLite...[/bold]")
-        t_pn_start = time.perf_counter()
+        per_node_scratch = Path(tempfile.mkdtemp(prefix="recce-per-node-"))
         try:
-            with PerNodeDbWriter(per_node_db_path) as writer:
-                writer.write_meta(
-                    schema_version=str(PER_NODE_DB_SCHEMA_VERSION),
-                    session_id=session_id or "",
-                    recce_version=__version__,
-                    generated_at=str(int(time.time())),
-                )
-                envs_to_emit = [
-                    ("current", dbt_adapter.curr_manifest, dbt_adapter.curr_catalog),
-                    ("base", dbt_adapter.base_manifest, dbt_adapter.base_catalog),
-                ]
-                for env_name, manifest, catalog in envs_to_emit:
-                    if manifest is None:
-                        continue
-                    manifest_dict = manifest.to_dict() if hasattr(manifest, "to_dict") else manifest
-                    catalog_dict = (
-                        catalog.to_dict() if (catalog is not None and hasattr(catalog, "to_dict")) else catalog
+            per_node_db_path: Optional[Path] = per_node_scratch / "per_node.db"
+            console.print("\n[bold]Emitting per-node SQLite...[/bold]")
+            t_pn_start = time.perf_counter()
+            try:
+                with PerNodeDbWriter(per_node_db_path) as writer:
+                    writer.write_meta(
+                        schema_version=str(PER_NODE_DB_SCHEMA_VERSION),
+                        session_id=session_id or "",
+                        recce_version=__version__,
+                        generated_at=str(int(time.time())),
                     )
-                    node_rows, column_rows, edge_rows, test_rows = extract_rows_from_artifacts(
-                        manifest_dict, catalog_dict, env_name
-                    )
-                    writer.write_nodes(node_rows)
-                    writer.write_columns(column_rows)
-                    writer.write_edges(edge_rows)
-                    writer.write_tests(test_rows)
-            pn_elapsed = time.perf_counter() - t_pn_start
-            pn_size_mb = per_node_db_path.stat().st_size / 1024 / 1024
-            console.print(
-                f"  per_node.db saved to [bold]{per_node_db_path}[/bold] ({pn_size_mb:.1f} MB, {pn_elapsed:.1f}s)"
-            )
-        except Exception as e:
-            logger.warning("[recce init] Failed to emit per_node.db: %s", e)
-            console.print(f"  [[yellow]Warning[/yellow]] Failed to emit per_node.db: {e}")
-            per_node_db_path = None
-
-    # Upload results to Cloud if in cloud mode
-    if is_cloud and cloud_client:
-        console.print("\n[bold]Uploading results to Cloud...[/bold]")
-        upload_failures = []
-        upload_succeeded = False
-        try:
-            upload_urls = cloud_client.get_upload_urls_by_session_id(cloud_org_id, cloud_project_id, session_id)
-
-            # Upload CLL map
-            cll_map_upload_url = upload_urls.get("cll_map_url")
-            if cll_map_upload_url and cll_map_path.is_file():
-                try:
-                    with open(cll_map_path, "rb") as f:
-                        resp = requests.put(
-                            cll_map_upload_url,
-                            data=f,
-                            headers={"Content-Type": "application/json"},
-                            timeout=_UPLOAD_TIMEOUT,
+                    envs_to_emit = [
+                        ("current", dbt_adapter.curr_manifest, dbt_adapter.curr_catalog),
+                        ("base", dbt_adapter.base_manifest, dbt_adapter.base_catalog),
+                    ]
+                    for env_name, manifest, catalog in envs_to_emit:
+                        if manifest is None:
+                            continue
+                        manifest_dict = manifest.to_dict() if hasattr(manifest, "to_dict") else manifest
+                        catalog_dict = (
+                            catalog.to_dict() if (catalog is not None and hasattr(catalog, "to_dict")) else catalog
                         )
-                    if resp.status_code in (200, 204):
-                        console.print(f"  Uploaded cll_map.json ({cll_map_path.stat().st_size / 1024 / 1024:.1f} MB)")
-                    else:
-                        upload_failures.append("cll_map.json")
-                        console.print(
-                            f"  [[yellow]Warning[/yellow]] Failed to upload cll_map.json: HTTP {resp.status_code}"
+                        node_rows, column_rows, edge_rows, test_rows = extract_rows_from_artifacts(
+                            manifest_dict, catalog_dict, env_name
                         )
-                except requests.RequestException as e:
-                    upload_failures.append("cll_map.json")
-                    console.print(f"  [[yellow]Warning[/yellow]] Failed to upload cll_map.json: {e}")
-            elif not cll_map_upload_url:
+                        writer.write_nodes(node_rows)
+                        writer.write_columns(column_rows)
+                        writer.write_edges(edge_rows)
+                        writer.write_tests(test_rows)
+                pn_elapsed = time.perf_counter() - t_pn_start
+                pn_size_mb = per_node_db_path.stat().st_size / 1024 / 1024
                 console.print(
-                    "  [[yellow]Warning[/yellow]] No cll_map_url in upload URLs (Cloud server may need update)"
+                    f"  per_node.db saved to [bold]{per_node_db_path}[/bold] ({pn_size_mb:.1f} MB, {pn_elapsed:.1f}s)"
                 )
+            except Exception as e:
+                logger.warning("[recce init] Failed to emit per_node.db: %s", e)
+                console.print(f"  [[yellow]Warning[/yellow]] Failed to emit per_node.db: {e}")
+                per_node_db_path = None
 
-            # Upload per_node.db. Graceful degradation: if Cloud hasn't added
-            # the per_node_db_url key yet, log a warning and continue — this
-            # keeps old CLI versions compatible with new Cloud and vice versa.
-            per_node_db_upload_url = upload_urls.get("per_node_db_url")
-            if per_node_db_upload_url and per_node_db_path and per_node_db_path.is_file():
+            # Upload results to Cloud.
+            if cloud_client:
+                console.print("\n[bold]Uploading results to Cloud...[/bold]")
+                upload_failures: list[str] = []
                 try:
-                    with open(per_node_db_path, "rb") as f:
-                        resp = requests.put(
-                            per_node_db_upload_url,
-                            data=f,
-                            headers={"Content-Type": "application/octet-stream"},
-                            timeout=_UPLOAD_TIMEOUT,
-                        )
-                    if resp.status_code in (200, 204):
+                    upload_urls = cloud_client.get_upload_urls_by_session_id(cloud_org_id, cloud_project_id, session_id)
+
+                    # Upload CLL map
+                    cll_map_upload_url = upload_urls.get("cll_map_url")
+                    if cll_map_upload_url and cll_map_path.is_file():
+                        try:
+                            with open(cll_map_path, "rb") as f:
+                                resp = requests.put(
+                                    cll_map_upload_url,
+                                    data=f,
+                                    headers={"Content-Type": "application/json"},
+                                    timeout=_UPLOAD_TIMEOUT,
+                                )
+                            if resp.status_code in (200, 204):
+                                console.print(
+                                    f"  Uploaded cll_map.json ({cll_map_path.stat().st_size / 1024 / 1024:.1f} MB)"
+                                )
+                            else:
+                                upload_failures.append("cll_map.json")
+                                console.print(
+                                    f"  [[yellow]Warning[/yellow]] Failed to upload cll_map.json: "
+                                    f"HTTP {resp.status_code}"
+                                )
+                        except requests.RequestException as e:
+                            upload_failures.append("cll_map.json")
+                            console.print(f"  [[yellow]Warning[/yellow]] Failed to upload cll_map.json: {e}")
+                    elif not cll_map_upload_url:
                         console.print(
-                            f"  Uploaded per_node.db ({per_node_db_path.stat().st_size / 1024 / 1024:.1f} MB)"
+                            "  [[yellow]Warning[/yellow]] No cll_map_url in upload URLs "
+                            "(Cloud server may need update)"
+                        )
+
+                    # Upload per_node.db. Graceful degradation: if Cloud hasn't added
+                    # the per_node_db_url key yet, log a warning and continue — this
+                    # keeps old CLI versions compatible with new Cloud and vice versa.
+                    per_node_db_upload_url = upload_urls.get("per_node_db_url")
+                    if per_node_db_upload_url and per_node_db_path and per_node_db_path.is_file():
+                        try:
+                            with open(per_node_db_path, "rb") as f:
+                                resp = requests.put(
+                                    per_node_db_upload_url,
+                                    data=f,
+                                    headers={"Content-Type": "application/octet-stream"},
+                                    timeout=_UPLOAD_TIMEOUT,
+                                )
+                            if resp.status_code in (200, 204):
+                                console.print(
+                                    f"  Uploaded per_node.db "
+                                    f"({per_node_db_path.stat().st_size / 1024 / 1024:.1f} MB)"
+                                )
+                            else:
+                                upload_failures.append("per_node.db")
+                                console.print(
+                                    f"  [[yellow]Warning[/yellow]] Failed to upload per_node.db: "
+                                    f"HTTP {resp.status_code}"
+                                )
+                        except requests.RequestException as e:
+                            upload_failures.append("per_node.db")
+                            console.print(f"  [[yellow]Warning[/yellow]] Failed to upload per_node.db: {e}")
+                    elif not per_node_db_upload_url:
+                        console.print(
+                            "  [[yellow]Warning[/yellow]] No per_node_db_url in upload URLs "
+                            "(Cloud server may need update)"
+                        )
+
+                    # Upload CLL cache. cll_cache.db is load-bearing across sessions —
+                    # build_full_cll_map reuses its warm entries on subsequent runs —
+                    # so Cloud uploads it alongside per_node.db.
+                    cll_cache_upload_url = upload_urls.get("cll_cache_url")
+                    if cll_cache_upload_url and Path(cache_db).is_file():
+                        try:
+                            with open(cache_db, "rb") as f:
+                                resp = requests.put(
+                                    cll_cache_upload_url,
+                                    data=f,
+                                    headers={"Content-Type": "application/octet-stream"},
+                                    timeout=_UPLOAD_TIMEOUT,
+                                )
+                            if resp.status_code in (200, 204):
+                                console.print(
+                                    f"  Uploaded cll_cache.db "
+                                    f"({Path(cache_db).stat().st_size / 1024 / 1024:.1f} MB)"
+                                )
+                            else:
+                                upload_failures.append("cll_cache.db")
+                                console.print(
+                                    f"  [[yellow]Warning[/yellow]] Failed to upload cll_cache.db: "
+                                    f"HTTP {resp.status_code}"
+                                )
+                        except requests.RequestException as e:
+                            upload_failures.append("cll_cache.db")
+                            console.print(f"  [[yellow]Warning[/yellow]] Failed to upload cll_cache.db: {e}")
+                    elif not cll_cache_upload_url:
+                        logger.debug("No cll_cache_url in upload URLs — cache upload not supported yet")
+
+                    if upload_failures:
+                        console.print(
+                            f"[bold yellow]Cloud upload completed with warnings[/bold yellow] "
+                            f"(failed: {', '.join(upload_failures)})"
                         )
                     else:
-                        upload_failures.append("per_node.db")
-                        console.print(
-                            f"  [[yellow]Warning[/yellow]] Failed to upload per_node.db: HTTP {resp.status_code}"
-                        )
-                except requests.RequestException as e:
-                    upload_failures.append("per_node.db")
-                    console.print(f"  [[yellow]Warning[/yellow]] Failed to upload per_node.db: {e}")
-            elif not per_node_db_upload_url:
-                console.print(
-                    "  [[yellow]Warning[/yellow]] No per_node_db_url in upload URLs (Cloud server may need update)"
-                )
-
-            # Upload CLL cache. cll_cache.db is load-bearing across sessions —
-            # build_full_cll_map reuses its warm entries on subsequent runs —
-            # so Cloud uploads it alongside per_node.db.
-            cll_cache_upload_url = upload_urls.get("cll_cache_url")
-            if cll_cache_upload_url and Path(cache_db).is_file():
-                try:
-                    with open(cache_db, "rb") as f:
-                        resp = requests.put(
-                            cll_cache_upload_url,
-                            data=f,
-                            headers={"Content-Type": "application/octet-stream"},
-                            timeout=_UPLOAD_TIMEOUT,
-                        )
-                    if resp.status_code in (200, 204):
-                        console.print(f"  Uploaded cll_cache.db ({Path(cache_db).stat().st_size / 1024 / 1024:.1f} MB)")
-                    else:
-                        upload_failures.append("cll_cache.db")
-                        console.print(
-                            f"  [[yellow]Warning[/yellow]] Failed to upload cll_cache.db: HTTP {resp.status_code}"
-                        )
-                except requests.RequestException as e:
-                    upload_failures.append("cll_cache.db")
-                    console.print(f"  [[yellow]Warning[/yellow]] Failed to upload cll_cache.db: {e}")
-            elif not cll_cache_upload_url:
-                logger.debug("No cll_cache_url in upload URLs — cache upload not supported yet")
-
-            if upload_failures:
-                console.print(
-                    f"[bold yellow]Cloud upload completed with warnings[/bold yellow] "
-                    f"(failed: {', '.join(upload_failures)})"
-                )
-            else:
-                console.print("[bold green]Cloud upload complete.[/bold green]")
-                upload_succeeded = True
-        except Exception as e:
-            logger.warning("[recce init] Cloud upload failed: %s", e)
-            console.print(f"  [[yellow]Warning[/yellow]] Cloud upload failed: {e}")
+                        console.print("[bold green]Cloud upload complete.[/bold green]")
+                except Exception as e:
+                    logger.warning("[recce init] Cloud upload failed: %s", e)
+                    console.print(f"  [[yellow]Warning[/yellow]] Cloud upload failed: {e}")
         finally:
-            # Clean up per_node.db scratch dir only. cll_cache.db lives at
-            # ~/.recce/cll_cache.db (or the user-provided --cache-db path) and
-            # must persist across invocations for warm-cache reuse.
-            if upload_succeeded and per_node_scratch is not None:
-                shutil.rmtree(per_node_scratch, ignore_errors=True)
+            # Always remove the per_node.db scratch dir — it is throwaway per
+            # invocation. cll_cache.db lives at ~/.recce/cll_cache.db (or the
+            # user-provided --cache-db) and is NOT touched here.
+            shutil.rmtree(per_node_scratch, ignore_errors=True)
     else:
         console.print("Run [bold]recce server --enable-cll-cache[/bold] to use the cached lineage.")
 
