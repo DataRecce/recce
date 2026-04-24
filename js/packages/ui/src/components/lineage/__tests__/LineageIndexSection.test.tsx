@@ -139,6 +139,49 @@ describe("LineageIndexSection", () => {
     expect(screen.getByText("child_15")).toBeInTheDocument();
   });
 
+  test("renders the center icon when onCenterFocus is provided and calls it on click without collapsing", () => {
+    const parents = { p1: {} as never };
+    const node = makeNode("focus", { parents });
+    const nodesById = makeNodesById(["p1"]);
+    const onCenterFocus = vi.fn();
+
+    render(
+      <LineageIndexSection
+        node={node}
+        nodesById={nodesById}
+        onCenterFocus={onCenterFocus}
+      />,
+    );
+    const centerBtn = screen.getByLabelText("Center on canvas");
+    fireEvent.click(centerBtn);
+    expect(onCenterFocus).toHaveBeenCalledTimes(1);
+    // Section should stay expanded (row still visible).
+    expect(screen.getByText("p1")).toBeInTheDocument();
+  });
+
+  test("hides the back button when onBack is not provided and shows it when it is", () => {
+    const parents = { p1: {} as never };
+    const node = makeNode("focus", { parents });
+    const nodesById = makeNodesById(["p1"]);
+
+    const { rerender } = render(
+      <LineageIndexSection node={node} nodesById={nodesById} />,
+    );
+    expect(
+      screen.queryByLabelText("Back to previous node"),
+    ).not.toBeInTheDocument();
+
+    const onBack = vi.fn();
+    rerender(
+      <LineageIndexSection node={node} nodesById={nodesById} onBack={onBack} />,
+    );
+    const backBtn = screen.getByLabelText("Back to previous node");
+    fireEvent.click(backBtn);
+    expect(onBack).toHaveBeenCalledTimes(1);
+    // Section should stay expanded after clicking back.
+    expect(screen.getByText("p1")).toBeInTheDocument();
+  });
+
   test("collapses and expands on header click", () => {
     const parents = { p1: {} as never };
     const node = makeNode("focus", { parents });

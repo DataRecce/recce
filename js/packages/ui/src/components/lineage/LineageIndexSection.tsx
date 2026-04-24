@@ -17,12 +17,15 @@ import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import InputBase from "@mui/material/InputBase";
 import Stack from "@mui/material/Stack";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { useMemo, useState } from "react";
 import {
+  MdArrowBack,
   MdArrowDownward,
   MdArrowUpward,
   MdChevronRight,
+  MdGpsFixed,
   MdSearch,
 } from "react-icons/md";
 import type { LineageGraphNode } from "../../contexts/lineage/types";
@@ -54,10 +57,21 @@ export interface LineageIndexSectionProps {
    */
   nodesById?: Record<string, LineageGraphNode>;
   /**
-   * Called when a row is clicked. The consumer should refocus the panel and
-   * re-center the lineage canvas on the given node id.
+   * Called when a row is clicked. Should refocus the panel to the given node.
+   * The canvas is NOT re-centered automatically — use the header's crosshair
+   * icon (onCenterFocus) for that.
    */
   onNavigate?: (nodeId: string) => void;
+  /**
+   * Called when the back button is clicked. Omit (or pass undefined) to hide
+   * the back button — the consumer signals "no history" by not supplying it.
+   */
+  onBack?: () => void;
+  /**
+   * Called when the crosshair icon in the header is clicked. Should pan/zoom
+   * the lineage canvas onto the currently focused node.
+   */
+  onCenterFocus?: () => void;
   /** Optional initial expanded state. Defaults to true. */
   defaultExpanded?: boolean;
 }
@@ -342,6 +356,8 @@ export function LineageIndexSection({
   node,
   nodesById,
   onNavigate,
+  onBack,
+  onCenterFocus,
   defaultExpanded = true,
 }: LineageIndexSectionProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -421,6 +437,36 @@ export function LineageIndexSection({
         >
           Upstream & Downstream
         </Typography>
+        {onBack && (
+          <Tooltip title="Back to previous node" placement="top">
+            <IconButton
+              size="small"
+              aria-label="Back to previous node"
+              onClick={(e) => {
+                e.stopPropagation();
+                onBack();
+              }}
+              sx={{ p: 0.25, color: "text.secondary" }}
+            >
+              <MdArrowBack size={14} />
+            </IconButton>
+          </Tooltip>
+        )}
+        {onCenterFocus && (
+          <Tooltip title="Center on canvas" placement="top">
+            <IconButton
+              size="small"
+              aria-label="Center on canvas"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCenterFocus();
+              }}
+              sx={{ p: 0.25, color: "text.secondary" }}
+            >
+              <MdGpsFixed size={14} />
+            </IconButton>
+          </Tooltip>
+        )}
         <Stack
           direction="row"
           spacing={1}

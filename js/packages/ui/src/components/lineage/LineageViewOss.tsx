@@ -340,6 +340,13 @@ export function PrivateLineageView(
     : undefined;
 
   /**
+   * Stack of previously focused node ids, used by the Upstream & Downstream
+   * section's "back" button. Only the panel's own navigation pushes here —
+   * clicking a node on the canvas clears it (fresh context).
+   */
+  const [focusedHistory, setFocusedHistory] = useState<string[]>([]);
+
+  /**
    * Select mode: the behavior of clicking on nodes
    * - (undefined): no selection
    * - selecting: selecting nodes
@@ -649,18 +656,37 @@ export function PrivateLineageView(
 
   const onNodeViewClosed = () => {
     setFocusedNodeId(undefined);
+    setFocusedHistory([]);
   };
 
   /**
-   * Navigate the Model Detail panel to a different node and re-center the
-   * lineage canvas on it. Used by the Upstream & Downstream index inside
-   * the panel (LineageIndexSection) — clicking a row should behave like
-   * clicking that node on the canvas.
+   * Navigate the Model Detail panel to a different node without touching the
+   * canvas. The canvas is only re-centered on explicit request (via the
+   * crosshair icon in LineageIndexSection). The current focus is pushed onto
+   * focusedHistory so the "back" button can return to it.
    */
-  const navigateToNode = async (nodeId: string) => {
+  const navigateToNode = (nodeId: string) => {
     if (!lineageGraph?.nodes[nodeId]) return;
+    if (focusedNodeId && focusedNodeId !== nodeId) {
+      setFocusedHistory((h) => [...h, focusedNodeId]);
+    }
     setFocusedNodeId(nodeId);
-    await centerNode(nodeId);
+  };
+
+  const navigateBack = () => {
+    setFocusedHistory((h) => {
+      if (h.length === 0) return h;
+      const previous = h[h.length - 1];
+      if (lineageGraph?.nodes[previous]) {
+        setFocusedNodeId(previous);
+      }
+      return h.slice(0, -1);
+    });
+  };
+
+  const centerFocusedNode = () => {
+    if (!focusedNodeId) return;
+    void centerNode(focusedNodeId);
   };
 
   const centerNode = async (nodeId: string) => {
@@ -793,12 +819,14 @@ export function PrivateLineageView(
     closeContextMenu();
     if (!selectMode) {
       setFocusedNodeId(node.id);
+      setFocusedHistory([]);
     } else if (selectMode === "action_result") {
       const action = multiNodeAction.actionState.actions[node.id];
       if (action.run?.run_id) {
         showRunId(action.run.run_id);
       }
       setFocusedNodeId(node.id);
+      setFocusedHistory([]);
     } else {
       const newSet = new Set(selectedNodeIds);
       if (selectedNodeIds.has(node.id)) {
@@ -1525,6 +1553,8 @@ export function PrivateLineageView(
               node={focusedNode}
               onCloseNode={onNodeViewClosed}
               onNavigateToNode={navigateToNode}
+              onBack={focusedHistory.length > 0 ? navigateBack : undefined}
+              onCenterFocused={centerFocusedNode}
             />
           </Box>
         ) : (

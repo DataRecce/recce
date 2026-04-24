@@ -57,8 +57,12 @@ import { NodeTag } from "./tags";
 interface NodeViewProps {
   node: LineageGraphNode;
   onCloseNode: () => void;
-  /** Navigate to another node: refocus the panel + re-center the canvas. */
+  /** Navigate to another node: refocus the panel (canvas is not re-centered). */
   onNavigateToNode?: (nodeId: string) => void;
+  /** Return to the previously focused node. Omit to hide the back button. */
+  onBack?: () => void;
+  /** Pan/zoom the lineage canvas onto the currently focused node. */
+  onCenterFocused?: () => void;
 }
 
 const ResourceTypeTag = ({ node }: { node: LineageGraphNode }) => {
@@ -108,6 +112,8 @@ export function NodeViewOss({
   node,
   onCloseNode,
   onNavigateToNode,
+  onBack,
+  onCenterFocused,
 }: NodeViewProps) {
   const router = useRouter();
   const { runAction } = useRecceActionContext();
@@ -367,6 +373,8 @@ export function NodeViewOss({
             node={node}
             nodesById={lineageGraph?.nodes}
             onNavigate={onNavigateToNode}
+            onBack={onBack}
+            onCenterFocus={onCenterFocused}
           />
         ) : undefined
       }
