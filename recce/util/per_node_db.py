@@ -332,8 +332,10 @@ def extract_rows_from_artifacts(
 
     - ``manifest`` must be a raw dict (e.g. ``json.load(manifest.json)``).
     - ``catalog`` may be ``None``; when absent, all ``data_type`` are ``None``.
-    - Column names come from the catalog when available; otherwise from the
-      manifest's ``columns`` section (tests-as-columns).
+    - Column names come from the catalog when available; otherwise from each
+      node's ``columns`` metadata in the manifest (model/source column
+      definitions). Tests are NOT part of columns — they are derived
+      separately into ``node_tests`` rows via ``_derive_tests``.
     """
     catalog_nodes = ((catalog or {}).get("nodes") or {}) if catalog else {}
     node_rows: list[NodeRow] = []

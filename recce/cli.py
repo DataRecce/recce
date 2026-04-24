@@ -686,51 +686,81 @@ def init(cache_db, **kwargs):
     if is_cloud:
         per_node_scratch = Path(tempfile.mkdtemp(prefix="recce-per-node-"))
         try:
-            per_node_db_path: Optional[Path] = per_node_scratch / "per_node.db"
-            console.print("\n[bold]Emitting per-node SQLite...[/bold]")
-            t_pn_start = time.perf_counter()
-            try:
-                with PerNodeDbWriter(per_node_db_path) as writer:
-                    writer.write_meta(
-                        schema_version=str(PER_NODE_DB_SCHEMA_VERSION),
-                        session_id=session_id or "",
-                        recce_version=__version__,
-                        generated_at=str(int(time.time())),
-                    )
-                    envs_to_emit = [
-                        ("current", dbt_adapter.curr_manifest, dbt_adapter.curr_catalog),
-                        ("base", dbt_adapter.base_manifest, dbt_adapter.base_catalog),
-                    ]
-                    for env_name, manifest, catalog in envs_to_emit:
-                        if manifest is None:
-                            continue
-                        manifest_dict = manifest.to_dict() if hasattr(manifest, "to_dict") else manifest
-                        catalog_dict = (
-                            catalog.to_dict() if (catalog is not None and hasattr(catalog, "to_dict")) else catalog
-                        )
-                        node_rows, column_rows, edge_rows, test_rows = extract_rows_from_artifacts(
-                            manifest_dict, catalog_dict, env_name
-                        )
-                        writer.write_nodes(node_rows)
-                        writer.write_columns(column_rows)
-                        writer.write_edges(edge_rows)
-                        writer.write_tests(test_rows)
-                pn_elapsed = time.perf_counter() - t_pn_start
-                pn_size_mb = per_node_db_path.stat().st_size / 1024 / 1024
-                console.print(
-                    f"  per_node.db saved to [bold]{per_node_db_path}[/bold] ({pn_size_mb:.1f} MB, {pn_elapsed:.1f}s)"
-                )
-            except Exception as e:
-                logger.warning("[recce init] Failed to emit per_node.db: %s", e)
-                console.print(f"  [[yellow]Warning[/yellow]] Failed to emit per_node.db: {e}")
-                per_node_db_path = None
-
-            # Upload results to Cloud.
             if cloud_client:
                 console.print("\n[bold]Uploading results to Cloud...[/bold]")
                 upload_failures: list[str] = []
+                upload_urls: Optional[dict] = None
                 try:
                     upload_urls = cloud_client.get_upload_urls_by_session_id(cloud_org_id, cloud_project_id, session_id)
+                except Exception as e:
+                    logger.warning("[recce init] Cloud upload failed: %s", e)
+                    console.print(f"  [[yellow]Warning[/yellow]] Cloud upload failed: {e}")
+
+                if upload_urls is not None:
+                    # Emit per_node.db only when Cloud declares support for it.
+                    # Against an older Cloud without per_node_db_url, emitting
+                    # the SQLite file is pure waste — it is a cloud-only
+                    # artifact with no local consumer.
+                    per_node_db_upload_url = upload_urls.get("per_node_db_url")
+                    per_node_db_path: Optional[Path] = None
+                    if per_node_db_upload_url:
+                        per_node_db_path = per_node_scratch / "per_node.db"
+                        console.print("\n[bold]Emitting per-node SQLite...[/bold]")
+                        t_pn_start = time.perf_counter()
+                        try:
+                            with PerNodeDbWriter(per_node_db_path) as writer:
+                                writer.write_meta(
+                                    schema_version=str(PER_NODE_DB_SCHEMA_VERSION),
+                                    session_id=session_id or "",
+                                    recce_version=__version__,
+                                    generated_at=str(int(time.time())),
+                                )
+                                # Use has_target / has_base to match the CLL
+                                # cache loop above. When only one env has
+                                # artifacts, context_kwargs path-swaps the
+                                # missing path to the present one so
+                                # load_context doesn't fail — so both manifests
+                                # are non-None but represent the SAME env. The
+                                # flags are the only truth about which env
+                                # actually has artifacts.
+                                envs_to_emit = []
+                                if has_target:
+                                    envs_to_emit.append(
+                                        ("current", dbt_adapter.curr_manifest, dbt_adapter.curr_catalog)
+                                    )
+                                if has_base:
+                                    envs_to_emit.append(("base", dbt_adapter.base_manifest, dbt_adapter.base_catalog))
+                                for env_name, manifest, catalog in envs_to_emit:
+                                    if manifest is None:
+                                        continue
+                                    manifest_dict = manifest.to_dict() if hasattr(manifest, "to_dict") else manifest
+                                    catalog_dict = (
+                                        catalog.to_dict()
+                                        if (catalog is not None and hasattr(catalog, "to_dict"))
+                                        else catalog
+                                    )
+                                    node_rows, column_rows, edge_rows, test_rows = extract_rows_from_artifacts(
+                                        manifest_dict, catalog_dict, env_name
+                                    )
+                                    writer.write_nodes(node_rows)
+                                    writer.write_columns(column_rows)
+                                    writer.write_edges(edge_rows)
+                                    writer.write_tests(test_rows)
+                            pn_elapsed = time.perf_counter() - t_pn_start
+                            pn_size_mb = per_node_db_path.stat().st_size / 1024 / 1024
+                            console.print(
+                                f"  per_node.db saved to [bold]{per_node_db_path}[/bold] "
+                                f"({pn_size_mb:.1f} MB, {pn_elapsed:.1f}s)"
+                            )
+                        except Exception as e:
+                            logger.warning("[recce init] Failed to emit per_node.db: %s", e)
+                            console.print(f"  [[yellow]Warning[/yellow]] Failed to emit per_node.db: {e}")
+                            per_node_db_path = None
+                    else:
+                        console.print(
+                            "  [[yellow]Warning[/yellow]] No per_node_db_url in upload URLs "
+                            "(Cloud server may need update) — skipping per_node.db emit"
+                        )
 
                     # Upload CLL map
                     cll_map_upload_url = upload_urls.get("cll_map_url")
@@ -762,10 +792,7 @@ def init(cache_db, **kwargs):
                             "(Cloud server may need update)"
                         )
 
-                    # Upload per_node.db. Graceful degradation: if Cloud hasn't added
-                    # the per_node_db_url key yet, log a warning and continue — this
-                    # keeps old CLI versions compatible with new Cloud and vice versa.
-                    per_node_db_upload_url = upload_urls.get("per_node_db_url")
+                    # Upload per_node.db (only when Cloud supports it AND we emitted).
                     if per_node_db_upload_url and per_node_db_path and per_node_db_path.is_file():
                         try:
                             with open(per_node_db_path, "rb") as f:
@@ -789,11 +816,6 @@ def init(cache_db, **kwargs):
                         except requests.RequestException as e:
                             upload_failures.append("per_node.db")
                             console.print(f"  [[yellow]Warning[/yellow]] Failed to upload per_node.db: {e}")
-                    elif not per_node_db_upload_url:
-                        console.print(
-                            "  [[yellow]Warning[/yellow]] No per_node_db_url in upload URLs "
-                            "(Cloud server may need update)"
-                        )
 
                     # Upload CLL cache. cll_cache.db is load-bearing across sessions —
                     # build_full_cll_map reuses its warm entries on subsequent runs —
@@ -832,9 +854,6 @@ def init(cache_db, **kwargs):
                         )
                     else:
                         console.print("[bold green]Cloud upload complete.[/bold green]")
-                except Exception as e:
-                    logger.warning("[recce init] Cloud upload failed: %s", e)
-                    console.print(f"  [[yellow]Warning[/yellow]] Cloud upload failed: {e}")
         finally:
             # Always remove the per_node.db scratch dir — it is throwaway per
             # invocation. cll_cache.db lives at ~/.recce/cll_cache.db (or the

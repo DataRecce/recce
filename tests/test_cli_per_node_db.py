@@ -559,6 +559,118 @@ class TestCloudModeEmitsPerNodeDb:
         assert any("cll_map.json" in url for url in put_calls), put_calls
         assert any("cll_cache.db" in url for url in put_calls), put_calls
 
+    @patch("recce.core.load_context")
+    def test_no_base_rows_when_only_target_has_artifacts(self, mock_load_context, runner, tmp_path, tmp_db):
+        """Phantom env='base' guard: when only target/ is populated, the
+        earlier path-swap in ``init`` points target-base at target so
+        ``load_context`` doesn't fail — both manifests end up loaded but
+        represent the SAME (current) env. The emit loop must key off
+        has_target / has_base, not ``manifest is None``, otherwise the
+        current env's rows would ship in per_node.db under the fabricated
+        env='base' label.
+        """
+        import sqlite3 as _sqlite3
+
+        # Only current-env manifest is downloaded. base_download_urls is empty
+        # → target-base/manifest.json is never written → has_base == False.
+        manifest_bytes = b'{"nodes": {}, "child_map": {}}'
+        mock_client = _make_mock_cloud_client(
+            download_urls={"manifest_url": "https://s3.example.com/manifest.json"},
+            base_download_urls={},
+            upload_urls={
+                "cll_map_url": "https://s3.example.com/upload/cll_map.json",
+                "per_node_db_url": "https://s3.example.com/upload/per_node.db",
+                "cll_cache_url": "https://s3.example.com/upload/cll_cache.db",
+            },
+        )
+
+        nodes = {"model.test.a": _make_mock_node(raw_code="SELECT a FROM src")}
+        adapter = _make_mock_adapter(nodes)
+        adapter.get_cll_cached.return_value = MagicMock()
+        mock_cll_map = MagicMock()
+        mock_cll_map.nodes = {}
+        mock_cll_map.columns = {}
+        mock_cll_map.model_dump.return_value = {"nodes": {}, "columns": {}}
+        adapter.build_full_cll_map.return_value = mock_cll_map
+
+        # Simulate the path-swap outcome: both manifests are loaded, both
+        # point at the SAME object (the current-env manifest). `.nodes` on the
+        # manifest object must carry `.resource_type` attributes because the
+        # CLL cache loop iterates it; `.to_dict()` is what our emitter sees.
+        shared_manifest_dict = {
+            "nodes": {
+                "model.test.a": {
+                    "name": "a",
+                    "resource_type": "model",
+                    "package_name": "test",
+                    "columns": {"id": {"name": "id"}},
+                }
+            },
+            "child_map": {"model.test.a": []},
+        }
+        shared_manifest = MagicMock()
+        shared_manifest.to_dict.return_value = shared_manifest_dict
+        shared_manifest.nodes = {"model.test.a": _make_mock_node(raw_code="SELECT a FROM src")}
+        shared_manifest.metadata.adapter_type = "duckdb"
+        adapter.curr_manifest = shared_manifest
+        adapter.base_manifest = shared_manifest  # Same object — what the path-swap produces.
+        adapter.curr_catalog = None
+        adapter.base_catalog = None
+
+        mock_ctx = MagicMock()
+        mock_ctx.adapter = adapter
+        mock_load_context.return_value = mock_ctx
+
+        captured: dict[str, bytes] = {}
+
+        def capture_put(url, data=None, **kwargs):
+            if "per_node.db" in url:
+                captured["per_node_db"] = data.read() if hasattr(data, "read") else (data or b"")
+            return _make_mock_response(200)
+
+        with (
+            patch("recce.util.recce_cloud.RecceCloud", return_value=mock_client),
+            patch("requests.get", side_effect=lambda *a, **kw: _make_mock_response(200, manifest_bytes)),
+            patch("requests.put", side_effect=capture_put),
+            patch(
+                "recce.adapter.dbt_adapter.DbtAdapter._serialize_cll_data",
+                return_value='{"nodes":{}, "columns":{}, "parent_map":{}}',
+            ),
+        ):
+            result = runner.invoke(
+                cli,
+                [
+                    "init",
+                    "--cloud",
+                    "--cloud-token",
+                    "ghp_testtoken",
+                    "--session-id",
+                    "sess-1",
+                    "--cache-db",
+                    tmp_db,
+                    "--project-dir",
+                    str(tmp_path),
+                ],
+                catch_exceptions=False,
+            )
+
+        assert result.exit_code == 0, result.output
+        assert "per_node_db" in captured, "per_node.db was never PUT"
+
+        # Inspect the uploaded bytes directly — the scratch dir is already
+        # cleaned up by the CLI's finally block.
+        capture_path = tmp_path / "uploaded_per_node.db"
+        capture_path.write_bytes(captured["per_node_db"])
+        conn = _sqlite3.connect(str(capture_path))
+        try:
+            base_count = conn.execute("SELECT COUNT(*) FROM nodes WHERE env = 'base'").fetchone()[0]
+            current_count = conn.execute("SELECT COUNT(*) FROM nodes WHERE env = 'current'").fetchone()[0]
+        finally:
+            conn.close()
+
+        assert base_count == 0, f"phantom base rows: got {base_count}, expected 0"
+        assert current_count >= 1, f"expected ≥1 current-env node, got {current_count}"
+
 
 # ---------------------------------------------------------------------------
 # 2. Local-mode non-regression
