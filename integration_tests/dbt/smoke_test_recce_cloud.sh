@@ -102,8 +102,8 @@ recce-cloud doctor --json > doctor.pre.json || true
 echo "--- recce-cloud doctor output ---"
 cat doctor.pre.json
 echo "---------------------------------"
-jq -e '.login.passed == true' doctor.pre.json > /dev/null
-jq -e '.project_binding.passed == true' doctor.pre.json > /dev/null
+jq -e '.login.status == "pass"' doctor.pre.json > /dev/null
+jq -e '.project_binding.status == "pass"' doctor.pre.json > /dev/null
 
 # --------------------------------------------------------------------
 # 6. Upload PR artifacts by session name
