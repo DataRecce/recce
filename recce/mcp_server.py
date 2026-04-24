@@ -536,7 +536,10 @@ class RecceMCPServer:
                                     "primary_key": {
                                         "oneOf": [
                                             {"type": "string"},
-                                            {"type": "array", "items": {"type": "string"}},
+                                            {
+                                                "type": "array",
+                                                "items": {"type": "string"},
+                                            },
                                         ],
                                         "description": "Primary key column(s) for joining base and current",
                                     },
@@ -571,7 +574,10 @@ class RecceMCPServer:
                                     "primary_key": {
                                         "oneOf": [
                                             {"type": "string"},
-                                            {"type": "array", "items": {"type": "string"}},
+                                            {
+                                                "type": "array",
+                                                "items": {"type": "string"},
+                                            },
                                         ],
                                         "description": "Primary key column(s) for joining base and current",
                                     },
@@ -817,7 +823,14 @@ class RecceMCPServer:
                 if self.mode != RecceServerMode.server and name in blocked_tools_in_non_server:
                     # Allowed tools = all registered minus blocked
                     allowed_tools = sorted(
-                        {"lineage_diff", "schema_diff", "get_model", "get_cll", "get_server_info", "select_nodes"}
+                        {
+                            "lineage_diff",
+                            "schema_diff",
+                            "get_model",
+                            "get_cll",
+                            "get_server_info",
+                            "select_nodes",
+                        }
                     )
                     raise ValueError(
                         f"Tool '{name}' is not available in {self.mode.value} mode. "
@@ -1003,7 +1016,10 @@ class RecceMCPServer:
         )
 
         # Build simplified result
-        result = {"nodes": nodes_df.model_dump(mode="json"), "edges": edges_df.model_dump(mode="json")}
+        result = {
+            "nodes": nodes_df.model_dump(mode="json"),
+            "edges": edges_df.model_dump(mode="json"),
+        }
 
         return result
 
@@ -1439,7 +1455,13 @@ class RecceMCPServer:
                             "columns": columns_result,
                         }
                 except Exception as e:
-                    errors.append({"step": "value_diff", "model": model["name"], "message": str(e)})
+                    errors.append(
+                        {
+                            "step": "value_diff",
+                            "model": model["name"],
+                            "message": str(e),
+                        }
+                    )
 
         # Step 4: Compute per-model affected_row_count, data_impact, and next_action
         max_affected = 0
@@ -1677,15 +1699,17 @@ class RecceMCPServer:
 
     async def _tool_run_check(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Run a single check by ID"""
+        from recce.apis.check_api import PatchCheckIn
         from recce.apis.run_func import submit_run
         from recce.models import CheckDAO
-        from recce.models.types import RunType
+        from recce.models.types import RunStatus, RunType
 
         check_id = arguments.get("check_id")
         if not check_id:
             raise ValueError("check_id is required")
 
-        check = CheckDAO().find_check_by_id(check_id)
+        check_dao = CheckDAO()
+        check = check_dao.find_check_by_id(check_id)
         if not check:
             raise ValueError(f"Check with ID {check_id} not found")
 
@@ -1704,15 +1728,26 @@ class RecceMCPServer:
                     result=result,
                     triggered_by=triggered_by,
                 )
+                # Auto-approve metadata checks (always succeed if no exception)
+                check_dao.update_check_by_id(check_id, PatchCheckIn(is_checked=True))
                 return run.model_dump(mode="json")
             except RecceException as e:
                 raise ValueError(str(e)) from e
 
         try:
             run, future = submit_run(
-                check.type, params=check.params or {}, check_id=check_id, triggered_by=triggered_by
+                check.type,
+                params=check.params or {},
+                check_id=check_id,
+                triggered_by=triggered_by,
             )
             run.result = await future
+            # Auto-approve on successful run — same policy as _tool_create_check.
+            # PM decision: Passed = Approved (a check that ran successfully is
+            # considered reviewed by the agent). Without this, preset checks
+            # (created via API before the agent runs) stay ⏳ Unapproved forever.
+            if run.status == RunStatus.FINISHED and not run.error:
+                check_dao.update_check_by_id(check_id, PatchCheckIn(is_checked=True))
             return run.model_dump(mode="json")
         except RecceException as e:
             raise ValueError(str(e)) from e
@@ -1813,7 +1848,11 @@ class RecceMCPServer:
         """Run the MCP server in stdio mode"""
         try:
             async with stdio_server() as (read_stream, write_stream):
-                await self.server.run(read_stream, write_stream, self.server.create_initialization_options())
+                await self.server.run(
+                    read_stream,
+                    write_stream,
+                    self.server.create_initialization_options(),
+                )
         finally:
             # Export state on shutdown if state_loader is available
             if self.state_loader and self.context:
@@ -1861,7 +1900,11 @@ class RecceMCPServer:
             logger.info(f"[MCP HTTP] SSE connection established from {client_info}")
             try:
                 async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
-                    await self.server.run(streams[0], streams[1], self.server.create_initialization_options())
+                    await self.server.run(
+                        streams[0],
+                        streams[1],
+                        self.server.create_initialization_options(),
+                    )
             finally:
                 logger.info(f"[MCP HTTP] SSE connection closed from {client_info}")
             return Response()  # Required to avoid NoneType error
@@ -1934,7 +1977,10 @@ async def run_mcp_server(
     single_env = kwargs.pop("single_env", False)
 
     # Setup logging
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
 
     # Load Recce context
     context = load_context(**kwargs)
@@ -1953,7 +1999,13 @@ async def run_mcp_server(
     debug = kwargs.get("debug", False)
 
     # Create MCP server with state_loader for graceful shutdown
-    server = RecceMCPServer(context, mode=mode, debug=debug, state_loader=state_loader, single_env=single_env)
+    server = RecceMCPServer(
+        context,
+        mode=mode,
+        debug=debug,
+        state_loader=state_loader,
+        single_env=single_env,
+    )
 
     # Run in either stdio or SSE mode
     if sse:

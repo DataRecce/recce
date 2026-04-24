@@ -341,15 +341,19 @@ class TestSubmitRunParamsPropagation:
             # Wait for the task to complete
             await asyncio.wrap_future(future)
 
-            # The update_run_result coroutine is scheduled via
-            # asyncio.run_coroutine_threadsafe from the executor thread.
-            # Its callback chain (call_soon_threadsafe → create Task →
-            # execute coroutine) spans multiple event loop iterations,
-            # so a brief sleep lets the loop fully process it.
-            await asyncio.sleep(0.1)
+            # update_run_result is now called synchronously inside the
+            # executor thread (DRC-3307), so run state is fully updated
+            # by the time the future resolves — no sleep needed.
 
             # Verify params were normalized
             assert run.params["primary_key"] == ["CUSTOMER_ID"]
+
+            # Verify run status is set (previously required sleep due to
+            # run_coroutine_threadsafe race condition)
+            from recce.models.types import RunStatus
+
+            assert run.status == RunStatus.FINISHED
+            assert run.result is not None
 
     @pytest.mark.asyncio
     async def test_triggered_by_propagates_to_run(self, mock_context, mock_task_class):
@@ -370,7 +374,6 @@ class TestSubmitRunParamsPropagation:
 
             # Clean up: wait for the future to complete
             await asyncio.wrap_future(future)
-            await asyncio.sleep(0.1)
 
     @pytest.mark.asyncio
     async def test_triggered_by_defaults_to_none(self, mock_context, mock_task_class):
@@ -390,7 +393,6 @@ class TestSubmitRunParamsPropagation:
 
             # Clean up: wait for the future to complete
             await asyncio.wrap_future(future)
-            await asyncio.sleep(0.1)
 
     @pytest.mark.asyncio
     async def test_run_params_unchanged_when_task_has_no_params(self, mock_context):
@@ -500,7 +502,10 @@ class TestGenerateRunNameRowCountDiff:
         from recce.apis.run_func import generate_run_name
         from recce.models.types import Run, RunType
 
-        run = Run(type=RunType.ROW_COUNT_DIFF, params={"node_ids": ["model.jaffle_shop.customers"]})
+        run = Run(
+            type=RunType.ROW_COUNT_DIFF,
+            params={"node_ids": ["model.jaffle_shop.customers"]},
+        )
         assert generate_run_name(run) == "Row count diff of customers"
 
     def test_row_count_diff_node_ids_multiple(self):
@@ -566,7 +571,10 @@ class TestGenerateRunNameMetadataTypes:
         from recce.apis.run_func import generate_run_name
         from recce.models.types import Run, RunType
 
-        run = Run(type=RunType.SCHEMA_DIFF, params={"node_ids": ["model.jaffle_shop.customers"]})
+        run = Run(
+            type=RunType.SCHEMA_DIFF,
+            params={"node_ids": ["model.jaffle_shop.customers"]},
+        )
         assert generate_run_name(run) == "Schema diff of customers"
 
     def test_schema_diff_multiple_node_ids(self):
@@ -574,6 +582,7 @@ class TestGenerateRunNameMetadataTypes:
         from recce.models.types import Run, RunType
 
         run = Run(
-            type=RunType.SCHEMA_DIFF, params={"node_ids": ["model.jaffle_shop.customers", "model.jaffle_shop.orders"]}
+            type=RunType.SCHEMA_DIFF,
+            params={"node_ids": ["model.jaffle_shop.customers", "model.jaffle_shop.orders"]},
         )
         assert generate_run_name(run) == "Schema diff of 2 nodes"
