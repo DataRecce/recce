@@ -651,6 +651,18 @@ export function PrivateLineageView(
     setFocusedNodeId(undefined);
   };
 
+  /**
+   * Navigate the Model Detail panel to a different node and re-center the
+   * lineage canvas on it. Used by the Upstream & Downstream index inside
+   * the panel (LineageIndexSection) — clicking a row should behave like
+   * clicking that node on the canvas.
+   */
+  const navigateToNode = async (nodeId: string) => {
+    if (!lineageGraph?.nodes[nodeId]) return;
+    setFocusedNodeId(nodeId);
+    await centerNode(nodeId);
+  };
+
   const centerNode = async (nodeId: string) => {
     let node = nodes.find((n) => n.id === nodeId);
     if (!node) {
@@ -1509,7 +1521,11 @@ export function PrivateLineageView(
               height: "100%",
             }}
           >
-            <NodeView node={focusedNode} onCloseNode={onNodeViewClosed} />
+            <NodeView
+              node={focusedNode}
+              onCloseNode={onNodeViewClosed}
+              onNavigateToNode={navigateToNode}
+            />
           </Box>
         ) : (
           <Box></Box>

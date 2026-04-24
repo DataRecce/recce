@@ -39,6 +39,7 @@ import { SetupConnectionPopover } from "../app";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide";
 import { findByRunType } from "../run";
 import { SchemaView, SingleEnvSchemaView } from "../schema";
+import { LineageIndexSection } from "./LineageIndexSection";
 import { NodeSqlViewOss } from "./NodeSqlViewOss";
 import { RowCountDiffTag, RowCountTag } from "./NodeTag";
 import {
@@ -56,6 +57,8 @@ import { NodeTag } from "./tags";
 interface NodeViewProps {
   node: LineageGraphNode;
   onCloseNode: () => void;
+  /** Navigate to another node: refocus the panel + re-center the canvas. */
+  onNavigateToNode?: (nodeId: string) => void;
 }
 
 const ResourceTypeTag = ({ node }: { node: LineageGraphNode }) => {
@@ -101,10 +104,14 @@ function OssNotificationComponent({ onClose }: { onClose: () => void }) {
  * - Connection popover wrapper for database setup prompts
  * - Sandbox dialog component
  */
-export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
+export function NodeViewOss({
+  node,
+  onCloseNode,
+  onNavigateToNode,
+}: NodeViewProps) {
   const router = useRouter();
   const { runAction } = useRecceActionContext();
-  const { isActionAvailable, envInfo } = useLineageGraphContext();
+  const { isActionAvailable, envInfo, lineageGraph } = useLineageGraphContext();
   const { singleEnv: isSingleEnvOnboarding, featureToggles } =
     useRecceInstanceContext();
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
@@ -353,6 +360,16 @@ export function NodeViewOss({ node, onCloseNode }: NodeViewProps) {
       // Callbacks
       actionCallbacks={actionCallbacks}
       isActionAvailable={isActionAvailable}
+      // Lineage index (upstream/downstream) section above the tabs
+      lineageIndexSlot={
+        onNavigateToNode ? (
+          <LineageIndexSection
+            node={node}
+            nodesById={lineageGraph?.nodes}
+            onNavigate={onNavigateToNode}
+          />
+        ) : undefined
+      }
     />
   );
 }
