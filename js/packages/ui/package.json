@@ -179,7 +179,7 @@
     "@tailwindcss/postcss": "^4.2.2",
     "@tsdown/css": "^0.21.9",
     "postcss": "^8.5.0",
-    "read-excel-file": "^8.0.3",
+    "read-excel-file": "^9.0.6",
     "tailwindcss": "^4.2.2",
     "tsdown": "^0.21.9",
     "typedoc": "^0.28.19",
