@@ -544,10 +544,13 @@ class TestRecceMCPServer:
         mock_check.type = RunType.ROW_COUNT_DIFF
         mock_check.params = {"node_names": ["model_a"]}
 
-        # Create mock run
+        # Create mock run — status must be FINISHED for auto-approve to trigger
+        from recce.models.types import RunStatus
+
         mock_run = MagicMock()
         mock_run.run_id = run_id
         mock_run.type = RunType.ROW_COUNT_DIFF
+        mock_run.status = RunStatus.FINISHED
         mock_run.result = {"results": [{"node_id": "model.project.model_a", "base": 100, "current": 105, "diff": 5}]}
         mock_run.error = None
         mock_run.check_id = check_id
@@ -575,6 +578,11 @@ class TestRecceMCPServer:
         assert result["type"] == "row_count_diff"
         assert "check_id" in result
         assert result["check_id"] == str(check_id)
+
+        # Verify auto-approve: successful run → is_checked=True (DRC-3307)
+        from recce.apis.check_api import PatchCheckIn
+
+        mock_check_dao.update_check_by_id.assert_called_once_with(str(check_id), PatchCheckIn(is_checked=True))
 
     @pytest.mark.asyncio
     async def test_tool_run_check_with_lineage_diff(self, mcp_server):
@@ -619,6 +627,10 @@ class TestRecceMCPServer:
         assert "check_id" in result
         # Verify a metadata run was persisted
         mock_run_dao.create.assert_called_once()
+        # Verify auto-approve: metadata checks always auto-approve (DRC-3307)
+        from recce.apis.check_api import PatchCheckIn
+
+        mock_check_dao.update_check_by_id.assert_called_once_with(str(check_id), PatchCheckIn(is_checked=True))
 
     @pytest.mark.asyncio
     async def test_tool_run_check_with_schema_diff(self, mcp_server):
@@ -663,6 +675,10 @@ class TestRecceMCPServer:
         assert "check_id" in result
         # Verify a metadata run was persisted
         mock_run_dao.create.assert_called_once()
+        # Verify auto-approve: metadata checks always auto-approve (DRC-3307)
+        from recce.apis.check_api import PatchCheckIn
+
+        mock_check_dao.update_check_by_id.assert_called_once_with(str(check_id), PatchCheckIn(is_checked=True))
 
     @pytest.mark.asyncio
     async def test_tool_value_diff(self, mcp_server):
