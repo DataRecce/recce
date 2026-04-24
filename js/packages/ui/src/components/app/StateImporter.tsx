@@ -163,7 +163,13 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
             spacing={1}
             sx={{ px: "5px", borderRadius: 1 }}
           >
-            <Stack direction="row" alignItems="center" spacing={0.5}>
+            <Stack
+              direction="row"
+              spacing={0.5}
+              sx={{
+                alignItems: "center",
+              }}
+            >
               <Box component={PiInfo} sx={{ color: "error.main" }} />
               <Typography
                 component="span"

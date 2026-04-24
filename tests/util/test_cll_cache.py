@@ -366,7 +366,8 @@ class TestSerializationRoundTrip(unittest.TestCase):
             assert rest_node.name == orig_node.name
             assert rest_node.package_name == orig_node.package_name
             assert rest_node.resource_type == orig_node.resource_type
-            assert rest_node.raw_code == orig_node.raw_code
+            # raw_code is deliberately excluded from CllNode serialization
+            assert rest_node.raw_code is None
             assert rest_node.source_name == orig_node.source_name
 
         # Columns
@@ -564,7 +565,8 @@ class TestCacheVsFreshEquivalence(unittest.TestCase):
             assert fn.name == cn.name
             assert fn.package_name == cn.package_name
             assert fn.resource_type == cn.resource_type
-            assert fn.raw_code == cn.raw_code
+            # raw_code is excluded from serialization, so cached copy is always None
+            assert cn.raw_code is None
             assert fn.source_name == cn.source_name
 
         # Columns

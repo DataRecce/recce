@@ -359,10 +359,15 @@ export function CloudUploadDialogOss({
           </DialogActions>
         </>
       )}
-
       {dialogState === "uploading" && (
         <DialogContent>
-          <Stack spacing={1.5} alignItems="center" sx={{ py: 3 }}>
+          <Stack
+            spacing={1.5}
+            sx={{
+              alignItems: "center",
+              py: 3,
+            }}
+          >
             <CircularProgress size={36} />
             <Typography sx={{ fontWeight: 500, fontSize: "1rem" }}>
               Uploading artifacts...
@@ -378,7 +383,6 @@ export function CloudUploadDialogOss({
           </Stack>
         </DialogContent>
       )}
-
       {dialogState === "dw_setup" &&
         connectionInfo &&
         (() => {
@@ -498,10 +502,15 @@ export function CloudUploadDialogOss({
             </>
           );
         })()}
-
       {dialogState === "dw_saving" && (
         <DialogContent>
-          <Stack spacing={1.5} alignItems="center" sx={{ py: 3 }}>
+          <Stack
+            spacing={1.5}
+            sx={{
+              alignItems: "center",
+              py: 3,
+            }}
+          >
             <CircularProgress size={36} />
             <Typography sx={{ fontWeight: 500, fontSize: "1rem" }}>
               Setting up warehouse connection...
@@ -509,7 +518,6 @@ export function CloudUploadDialogOss({
           </Stack>
         </DialogContent>
       )}
-
       {dialogState === "success" && (
         <DialogContent sx={{ position: "relative" }}>
           <IconButton
@@ -520,7 +528,14 @@ export function CloudUploadDialogOss({
           >
             <PiX />
           </IconButton>
-          <Stack spacing={1.5} alignItems="center" sx={{ pt: 2, pb: 1 }}>
+          <Stack
+            spacing={1.5}
+            sx={{
+              alignItems: "center",
+              pt: 2,
+              pb: 1,
+            }}
+          >
             <Box
               component={PiCheckCircle}
               sx={{ fontSize: 36, color: "success.main" }}
@@ -567,11 +582,16 @@ export function CloudUploadDialogOss({
           </Stack>
         </DialogContent>
       )}
-
       {dialogState === "dw_error" && (
         <>
           <DialogContent>
-            <Stack spacing={1.5} alignItems="center" sx={{ py: 2 }}>
+            <Stack
+              spacing={1.5}
+              sx={{
+                alignItems: "center",
+                py: 2,
+              }}
+            >
               <Typography sx={{ fontWeight: 500, fontSize: "1rem" }}>
                 Warehouse Setup Failed
               </Typography>
@@ -605,11 +625,16 @@ export function CloudUploadDialogOss({
           </DialogActions>
         </>
       )}
-
       {dialogState === "error" && (
         <>
           <DialogContent>
-            <Stack spacing={1.5} alignItems="center" sx={{ py: 2 }}>
+            <Stack
+              spacing={1.5}
+              sx={{
+                alignItems: "center",
+                py: 2,
+              }}
+            >
               <Typography sx={{ fontWeight: 500, fontSize: "1rem" }}>
                 Upload Failed
               </Typography>

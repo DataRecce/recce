@@ -49,8 +49,10 @@ const QueryModeToggle = () => {
       <Stack
         direction="row"
         spacing={0.5}
-        alignItems="center"
-        fontSize="0.75rem"
+        sx={{
+          alignItems: "center",
+          fontSize: "0.75rem",
+        }}
       >
         <Typography variant="body2" sx={{ fontSize: "0.75rem" }}>
           Custom Queries

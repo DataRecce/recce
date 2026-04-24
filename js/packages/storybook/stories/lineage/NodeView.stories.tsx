@@ -23,7 +23,12 @@ import { fn } from "storybook/test";
 function StubSchemaView({ base, current }: SchemaViewProps) {
   return (
     <Box sx={{ p: 2 }}>
-      <Typography variant="body2" color="text.secondary">
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         Schema diff view — base has{" "}
         {base?.columns ? Object.keys(base.columns).length : 0} columns, current
         has {current?.columns ? Object.keys(current.columns).length : 0} columns

@@ -452,9 +452,11 @@ export function CheckDetailOss({
                   {isPresetCheck && (
                     <MuiTooltip title="This is a preset check">
                       <Box
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
                       >
                         <FaBookmark
                           size="1rem"
@@ -643,8 +645,8 @@ export function CheckDetailOss({
                 {relativeTime && (
                   <Typography
                     variant="caption"
-                    color="text.secondary"
                     sx={{
+                      color: "text.secondary",
                       ml: 1,
                       whiteSpace: "nowrap",
                       overflow: "hidden",
@@ -754,7 +756,12 @@ export function CheckDetailOss({
                             height: "100%",
                           }}
                         >
-                          <Stack spacing={2} alignItems="center">
+                          <Stack
+                            spacing={2}
+                            sx={{
+                              alignItems: "center",
+                            }}
+                          >
                             <Box>
                               This action is part of the initial preset and has
                               not been performed yet. Once performed, the result
@@ -828,7 +835,13 @@ export function CheckDetailOss({
           >
             <DialogTitle>Preset Check Template</DialogTitle>
             <DialogContent>
-              <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: "bold",
+                  mb: 2,
+                }}
+              >
                 Please{" "}
                 <Typography
                   component="span"

@@ -142,7 +142,12 @@ export function StateSynchronizer() {
                   value="merge"
                   control={<Radio />}
                   label={
-                    <Stack direction="row" alignItems="center">
+                    <Stack
+                      direction="row"
+                      sx={{
+                        alignItems: "center",
+                      }}
+                    >
                       Merge
                       <MuiTooltip title="This will merge the local and remote states.">
                         <Box
@@ -159,7 +164,12 @@ export function StateSynchronizer() {
                   value="overwrite"
                   control={<Radio />}
                   label={
-                    <Stack direction="row" alignItems="center">
+                    <Stack
+                      direction="row"
+                      sx={{
+                        alignItems: "center",
+                      }}
+                    >
                       Overwrite
                       <MuiTooltip title="This will overwrite the remote state file with the local state.">
                         <Box
@@ -176,7 +186,12 @@ export function StateSynchronizer() {
                   value="revert"
                   control={<Radio />}
                   label={
-                    <Stack direction="row" alignItems="center">
+                    <Stack
+                      direction="row"
+                      sx={{
+                        alignItems: "center",
+                      }}
+                    >
                       Revert
                       <MuiTooltip title="This will discard local changes and revert to the cloud state.">
                         <Box

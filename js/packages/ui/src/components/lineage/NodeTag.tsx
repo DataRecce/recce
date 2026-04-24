@@ -43,7 +43,13 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   }
   if (base === null || current === null) {
     return (
-      <Stack direction="row" alignItems="center" spacing={0.5}>
+      <Stack
+        direction="row"
+        spacing={0.5}
+        sx={{
+          alignItems: "center",
+        }}
+      >
         <Typography variant="body2" component="span">
           {baseLabel}
         </Typography>
@@ -56,7 +62,13 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   }
   if (base === current) {
     return (
-      <Stack direction="row" alignItems="center" spacing={0.5}>
+      <Stack
+        direction="row"
+        spacing={0.5}
+        sx={{
+          alignItems: "center",
+        }}
+      >
         <Typography variant="body2" component="span">
           {currentLabel}
         </Typography>
@@ -71,7 +83,13 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   }
   if (base < current) {
     return (
-      <Stack direction="row" alignItems="center" spacing={0.5}>
+      <Stack
+        direction="row"
+        spacing={0.5}
+        sx={{
+          alignItems: "center",
+        }}
+      >
         <Typography variant="body2" component="span">
           {currentLabel}
         </Typography>
@@ -89,7 +107,13 @@ function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
     );
   }
   return (
-    <Stack direction="row" alignItems="center" spacing={0.5}>
+    <Stack
+      direction="row"
+      spacing={0.5}
+      sx={{
+        alignItems: "center",
+      }}
+    >
       <Typography variant="body2" component="span">
         {currentLabel}
       </Typography>

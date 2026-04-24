@@ -87,7 +87,12 @@ function CheckEmptyStateComponent({
         minHeight: 300,
       }}
     >
-      <Stack spacing={2} alignItems="center">
+      <Stack
+        spacing={2}
+        sx={{
+          alignItems: "center",
+        }}
+      >
         {/* Icon */}
         {icon && (
           <Box

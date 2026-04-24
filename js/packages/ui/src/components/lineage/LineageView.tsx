@@ -363,7 +363,11 @@ export const LineageView = forwardRef<LineageViewRef, LineageViewProps>(
             justifyContent: "center",
           }}
         >
-          <Typography color="text.secondary">
+          <Typography
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             No lineage data available. Provide data via LineageGraphProvider or
             lineageGraph prop.
           </Typography>
@@ -383,7 +387,11 @@ export const LineageView = forwardRef<LineageViewRef, LineageViewProps>(
             justifyContent: "center",
           }}
         >
-          <Typography color="text.secondary">
+          <Typography
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             No nodes match the current filter criteria.
           </Typography>
         </Box>

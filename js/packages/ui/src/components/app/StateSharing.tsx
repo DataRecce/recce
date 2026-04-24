@@ -114,7 +114,13 @@ export function TopLevelShare() {
           {LOADING_MESSAGES[messageIndex]}
         </Typography>
       )}
-      <Stack direction="row" spacing={0.5} alignItems="center">
+      <Stack
+        direction="row"
+        spacing={0.5}
+        sx={{
+          alignItems: "center",
+        }}
+      >
         {shareUrl && (
           <>
             <Box

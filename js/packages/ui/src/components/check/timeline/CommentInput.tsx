@@ -128,7 +128,13 @@ function CommentInputComponent({
           },
         }}
       />
-      <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
+      <Stack
+        direction="row"
+        sx={{
+          justifyContent: "flex-end",
+          mt: 2,
+        }}
+      >
         <Button
           size="small"
           color="iochmara"

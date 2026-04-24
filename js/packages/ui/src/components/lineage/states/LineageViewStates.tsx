@@ -48,7 +48,12 @@ export function LineageViewError({ error, onRetry }: LineageViewErrorProps) {
         justifyContent: "center",
       }}
     >
-      <Stack alignItems="center" spacing={1}>
+      <Stack
+        spacing={1}
+        sx={{
+          alignItems: "center",
+        }}
+      >
         <Box>
           Failed to load lineage data. This could be because the server has been
           terminated or there is a network error.
@@ -97,7 +102,12 @@ export function LineageViewNoChanges({
         justifyContent: "center",
       }}
     >
-      <Stack alignItems="center" spacing={1}>
+      <Stack
+        spacing={1}
+        sx={{
+          alignItems: "center",
+        }}
+      >
         <>No change detected</>
         <Button
           color="iochmara"
