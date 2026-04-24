@@ -904,6 +904,17 @@ def init(cache_db, **kwargs):
                             except requests.RequestException as e:
                                 upload_failures.append(display_name)
                                 console.print(f"  [[yellow]Warning[/yellow]] Failed to upload {display_name}: {e}")
+                        elif metadata_upload_url and (local_path is None or not local_path.is_file()):
+                            # URL present but local artifact missing — emit failed
+                            # partway (e.g., info.json written but lineage_diff.json
+                            # write raised). Record the failure so the summary
+                            # surfaces it instead of printing a misleading
+                            # "Cloud upload complete."
+                            upload_failures.append(display_name)
+                            console.print(
+                                f"  [[yellow]Warning[/yellow]] Skipping upload of {display_name}: "
+                                "local artifact missing (emission failed)"
+                            )
                         elif not metadata_upload_url:
                             console.print(
                                 f"  [[yellow]Warning[/yellow]] No {url_key} in upload URLs "

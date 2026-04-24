@@ -550,3 +550,107 @@ class TestMetadataScratchDir:
         # Cleaned up after a successful upload
         for sd in metadata_scratch_dirs:
             assert not Path(sd).exists(), f"scratch dir {sd} should be cleaned up on success"
+
+
+# ---------------------------------------------------------------------------
+# 5. Partial emit failure: first file written, second write raises
+# ---------------------------------------------------------------------------
+
+
+class TestPartialEmitFailure:
+    """Partial emit failure must surface in the upload summary, not a false
+    'Cloud upload complete.' message.
+
+    Scenario: ``emit_info_and_lineage_diff`` writes info.json successfully, then
+    the second write (lineage_diff.json) raises (e.g. disk full). The caller's
+    except arm resets both local paths to None. Without a guard in the upload
+    loop the ``elif not metadata_upload_url`` branch never fires (URL IS
+    present), and ``upload_failures`` stays empty — so the CLI falsely prints
+    'Cloud upload complete.'.
+
+    The fix: treat ``URL present + local file missing`` as a failure and
+    append to ``upload_failures``.
+    """
+
+    @patch("recce.core.load_context")
+    def test_partial_emit_failure_surfaces_in_summary(self, mock_load_context, runner, tmp_path, tmp_db):
+        manifest_bytes = b'{"nodes": {}}'
+
+        mock_client = _make_mock_cloud_client(
+            download_urls={"manifest_url": "https://s3.example.com/manifest.json"},
+            base_download_urls={"manifest_url": "https://s3.example.com/base-manifest.json"},
+            upload_urls={
+                "cll_map_url": "https://s3.example.com/upload/cll_map.json",
+                "info_url": "https://s3.example.com/upload/info.json",
+                "lineage_diff_url": "https://s3.example.com/upload/lineage_diff.json",
+            },
+        )
+
+        nodes = {"model.test.a": _make_mock_node(raw_code="SELECT a FROM src")}
+        adapter = _make_mock_adapter(nodes)
+        adapter.get_cll_cached.return_value = MagicMock()
+        mock_cll_map = MagicMock()
+        mock_cll_map.nodes = {}
+        mock_cll_map.columns = {}
+        mock_cll_map.model_dump.return_value = {"nodes": {}, "columns": {}}
+        adapter.build_full_cll_map.return_value = mock_cll_map
+
+        mock_ctx = MagicMock()
+        mock_ctx.adapter = adapter
+        mock_load_context.return_value = mock_ctx
+
+        put_urls: list[str] = []
+
+        def mock_put(url, **kwargs):
+            put_urls.append(url)
+            return _make_mock_response(200)
+
+        def partial_emit_side_effect(adapter, info_path: Path, lineage_diff_path: Path):
+            """Write info.json but raise before lineage_diff.json is written."""
+            info_path.parent.mkdir(parents=True, exist_ok=True)
+            info_path.write_bytes(b'{"adapter_type":"duckdb","lineage":{"nodes":{},"edges":[],"metadata":{}}}')
+            # Simulate failure on the second write (e.g. disk full, serialization error).
+            raise OSError("simulated disk full on lineage_diff.json write")
+
+        with (
+            patch("recce.util.recce_cloud.RecceCloud", return_value=mock_client),
+            patch("requests.get", side_effect=lambda *a, **kw: _make_mock_response(200, manifest_bytes)),
+            patch("requests.put", side_effect=mock_put),
+            patch("recce.util.info_emitter.emit_info_and_lineage_diff", side_effect=partial_emit_side_effect),
+            patch(
+                "recce.adapter.dbt_adapter.DbtAdapter._serialize_cll_data",
+                return_value='{"nodes":{}, "columns":{}, "parent_map":{}}',
+            ),
+        ):
+            result = runner.invoke(
+                cli,
+                [
+                    "init",
+                    "--cloud",
+                    "--cloud-token",
+                    "ghp_testtoken",
+                    "--session-id",
+                    "sess-1",
+                    "--cache-db",
+                    tmp_db,
+                    "--project-dir",
+                    str(tmp_path),
+                ],
+                catch_exceptions=False,
+            )
+
+        # The emit-time warning is visible.
+        assert "Failed to emit metadata artifacts" in result.output
+        # Neither metadata artifact should have been PUT — both local paths are None.
+        assert not any("info.json" in u for u in put_urls), f"info.json should not be uploaded: {put_urls}"
+        assert not any(
+            "lineage_diff.json" in u for u in put_urls
+        ), f"lineage_diff.json should not be uploaded: {put_urls}"
+        # The upload loop surfaces both missing artifacts as warnings.
+        assert "Skipping upload of info.json" in result.output
+        assert "Skipping upload of lineage_diff.json" in result.output
+        # Final summary reflects the failure — NOT a misleading "Cloud upload complete.".
+        assert "Cloud upload completed with warnings" in result.output
+        assert "info.json" in result.output
+        assert "lineage_diff.json" in result.output
+        assert "Cloud upload complete." not in result.output
