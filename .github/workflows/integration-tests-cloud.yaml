@@ -189,3 +189,52 @@ jobs:
             }"
         env:
           SLACK_WEBHOOK_URL_DEV: ${{ secrets.SLACK_WEBHOOK_URL_DEV }}
+
+  # Staging recce-cloud CLI smoke test (standalone package, RECCE_API_TOKEN auth)
+  # Runs daily after nightly build; prod variant will be added once staging is stable.
+  smoke-test-recce-cloud-staging:
+    needs: resolve-environment
+    if: needs.resolve-environment.outputs.environment == 'staging'
+    concurrency:
+      group: smoke-test-recce-cloud-staging
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        include:
+          - python-version: "3.11"
+            dbt-version: "1.8"
+          - python-version: "3.13"
+            dbt-version: "latest"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Install recce-cloud and dbt
+        run: |
+          uv venv --python ${{ matrix.python-version }}
+          uv pip install ./recce_cloud
+          if [ "${{ matrix.dbt-version }}" == "latest" ]; then
+            uv pip install dbt-core dbt-duckdb
+          else
+            uv pip install dbt-core~=${{ matrix.dbt-version }}.0 dbt-duckdb~=${{ matrix.dbt-version }}.0
+          fi
+
+      - name: Run smoke test - recce-cloud CLI (staging)
+        run: |
+          source .venv/bin/activate
+          ./integration_tests/dbt/smoke_test_recce_cloud.sh
+        env:
+          RECCE_API_TOKEN: ${{ secrets.RECCE_CLOUD_TOKEN_STAGING }}
+          RECCE_ORG: ${{ vars.RECCE_SMOKE_TEST_ORG_STAGING }}
+          RECCE_PROJECT: ${{ vars.RECCE_SMOKE_TEST_PROJECT_STAGING }}
+          RECCE_CLOUD_API_HOST: ${{ vars.RECCE_CLOUD_API_HOST_STAGING }}
+          PY: ${{ matrix.python-version }}
+          DBT: ${{ matrix.dbt-version }}
