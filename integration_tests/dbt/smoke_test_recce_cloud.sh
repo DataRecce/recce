@@ -92,9 +92,16 @@ recce-cloud init --org "$RECCE_ORG" --project "$RECCE_PROJECT"
 recce-cloud init --status
 
 # --------------------------------------------------------------------
-# 5. Doctor baseline
+# 5. Doctor baseline (informational)
+#
+# `recce-cloud doctor` exits non-zero if ANY of its four checks fails,
+# and Production Metadata / Dev Session can legitimately be unpopulated
+# in a fresh test project. We only enforce login + project_binding here.
 # --------------------------------------------------------------------
-recce-cloud doctor --json > doctor.pre.json
+recce-cloud doctor --json > doctor.pre.json || true
+echo "--- recce-cloud doctor output ---"
+cat doctor.pre.json
+echo "---------------------------------"
 jq -e '.login.passed == true' doctor.pre.json > /dev/null
 jq -e '.project_binding.passed == true' doctor.pre.json > /dev/null
 
