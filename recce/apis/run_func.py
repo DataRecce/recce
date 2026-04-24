@@ -134,7 +134,13 @@ def submit_run(type, params, check_id=None, triggered_by=None):
         if dbt_adaptor.adapter is None:
             raise RecceException("Recce Server is not launched under DBT project folder.")
 
-    run = Run(type=run_type, params=params, check_id=check_id, status=RunStatus.RUNNING, triggered_by=triggered_by)
+    run = Run(
+        type=run_type,
+        params=params,
+        check_id=check_id,
+        status=RunStatus.RUNNING,
+        triggered_by=triggered_by,
+    )
     run.name = generate_run_name(run)
     RunDAO().create(run)
 
@@ -146,8 +152,15 @@ def submit_run(type, params, check_id=None, triggered_by=None):
 
     task.progress_listener = progress_listener
 
-    async def update_run_result(run, result, error, updated_params=None):
-        """Update run with result, error, and optionally updated params."""
+    def update_run_result(run, result, error, updated_params=None):
+        """Update run with result, error, and optionally updated params.
+
+        Called synchronously inside the executor thread (fn) so that
+        run.status and run.result are set BEFORE the future resolves.
+        Previously this was async + scheduled via run_coroutine_threadsafe,
+        causing a race condition where callers saw stale run.status after
+        await future (DRC-3307).
+        """
         if run is None:
             return
         if result is not None:
@@ -191,10 +204,10 @@ def submit_run(type, params, check_id=None, triggered_by=None):
                     logger.warning(f"Failed to serialize task.params: {e}")
                     updated_params = None
 
-            asyncio.run_coroutine_threadsafe(update_run_result(run, result, None, updated_params), loop)
+            update_run_result(run, result, None, updated_params)
             return result
         except BaseException as e:
-            asyncio.run_coroutine_threadsafe(update_run_result(run, None, e, None), loop)
+            update_run_result(run, None, e, None)
             if isinstance(e, RecceException) and e.is_raise is False:
                 return None
             import sentry_sdk
@@ -264,7 +277,10 @@ def materialize_run_results(runs: List[Run], nodes: List[str] = None):
                     node_result = result[key] = {}
                 else:
                     node_result = result.get(key)
-                node_result["row_count_diff"] = {"run_id": run.run_id, "result": node_run_result}
+                node_result["row_count_diff"] = {
+                    "run_id": run.run_id,
+                    "result": node_run_result,
+                }
         elif run.type == RunType.ROW_COUNT:
             for model_name, node_run_result in run.result.items():
                 key = mame_to_unique_id.get(model_name, model_name)
@@ -277,5 +293,8 @@ def materialize_run_results(runs: List[Run], nodes: List[str] = None):
                     node_result = result[key] = {}
                 else:
                     node_result = result.get(key)
-                node_result["row_count"] = {"run_id": run.run_id, "result": node_run_result}
+                node_result["row_count"] = {
+                    "run_id": run.run_id,
+                    "result": node_run_result,
+                }
     return result
