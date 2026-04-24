@@ -286,8 +286,8 @@ export const ColumnLevelLineageControl = ({
       {showModeMessage && (
         <Stack
           direction="row"
-          alignItems="center"
           sx={{
+            alignItems: "center",
             borderRadius: 1,
             boxShadow: 3,
             border: "1px solid",

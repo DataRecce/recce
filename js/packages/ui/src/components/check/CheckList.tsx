@@ -98,7 +98,13 @@ function CheckListComponent({
           height: 200,
         }}
       >
-        <Typography color="text.secondary">Loading checks...</Typography>
+        <Typography
+          sx={{
+            color: "text.secondary",
+          }}
+        >
+          Loading checks...
+        </Typography>
       </Box>
     );
   }
@@ -124,7 +130,13 @@ function CheckListComponent({
               height: 200,
             }}
           >
-            <Typography color="text.secondary">No checks</Typography>
+            <Typography
+              sx={{
+                color: "text.secondary",
+              }}
+            >
+              No checks
+            </Typography>
           </Box>
         )}
       </Box>

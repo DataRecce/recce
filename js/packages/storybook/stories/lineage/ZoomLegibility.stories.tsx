@@ -254,7 +254,12 @@ function FitToChangedDemo() {
           color="warning"
           size="small"
         />
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           Initial view centers on changed (modified/added/removed) nodes only,
           not the full graph. Labels are readable immediately.
         </Typography>
@@ -322,7 +327,12 @@ function SideBySideDemo() {
         }}
       >
         <Typography variant="h6">Side-by-Side: Before vs After</Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           Left: old behavior (no zoom floor). Right: new behavior (minZoom =
           {LEGIBLE_MIN_ZOOM}).
         </Typography>

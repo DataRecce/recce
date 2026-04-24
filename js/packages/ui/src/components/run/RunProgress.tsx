@@ -119,7 +119,6 @@ function RunProgressComponent({
           </>
         )
       )}
-
       {/* Linear progress bar */}
       {isRunning && variant === "linear" && (
         <Box sx={{ width: "100%", maxWidth: 300 }}>
@@ -131,25 +130,30 @@ function RunProgressComponent({
           {hasProgress && (
             <Typography
               variant="caption"
-              color="text.secondary"
-              sx={{ mt: 0.5, display: "block" }}
+              sx={{
+                color: "text.secondary",
+                mt: 0.5,
+                display: "block",
+              }}
             >
               {Math.round(progress)}%
             </Typography>
           )}
         </Box>
       )}
-
       {/* Status badge */}
       {showStatus && <RunStatusBadge status={status} size="medium" />}
-
       {/* Message */}
       {message && !isFailed && (
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           {message}
         </Typography>
       )}
-
       {/* Error message */}
       {isFailed && errorMessage && (
         <Box
@@ -160,7 +164,12 @@ function RunProgressComponent({
             maxWidth: 400,
           }}
         >
-          <Typography variant="body2" color="error.contrastText">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "error.contrastText",
+            }}
+          >
             {errorMessage}
           </Typography>
         </Box>

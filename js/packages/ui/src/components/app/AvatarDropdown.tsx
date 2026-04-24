@@ -109,7 +109,12 @@ export default function AvatarDropdown() {
         <Box sx={{ px: 2, py: 1.5 }}>
           {isLoading && (
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Typography variant="body2" color="text.primary">
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.primary",
+                }}
+              >
                 Loading...
               </Typography>
               <CircularProgress size={16} />
@@ -122,11 +127,22 @@ export default function AvatarDropdown() {
           )}
           {showUserInfo && (
             <>
-              <Typography variant="body2" fontWeight="600" color="text.primary">
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: "600",
+                  color: "text.primary",
+                }}
+              >
                 {user.login}
               </Typography>
               {user.email && (
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   {user.email}
                 </Typography>
               )}

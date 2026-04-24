@@ -284,8 +284,19 @@ export const RunView = forwardRef<unknown, RunViewProps>(function RunView(
           bgcolor: isDark ? "grey.900" : "grey.50",
         }}
       >
-        <Stack spacing={2} alignItems="center">
-          <Stack direction="row" alignItems="center" spacing={1}>
+        <Stack
+          spacing={2}
+          sx={{
+            alignItems: "center",
+          }}
+        >
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: "center",
+            }}
+          >
             {progressValue == null ? (
               <CircularProgress size={32} />
             ) : (

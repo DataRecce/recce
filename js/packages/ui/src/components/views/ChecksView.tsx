@@ -392,7 +392,11 @@ function ChecksViewComponent({
                 justifyContent: "center",
               }}
             >
-              <Typography color="text.secondary">
+              <Typography
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Select a check from the list to view details
               </Typography>
             </Box>

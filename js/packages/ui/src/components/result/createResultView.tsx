@@ -307,8 +307,8 @@ export function createResultView<
         />
         <ScreenshotBox
           ref={ref as Ref<HTMLDivElement>}
-          height="100%"
           backgroundColor={isDark ? "#1f2937" : "white"}
+          sx={{ height: "100%" }}
         >
           {data.content}
         </ScreenshotBox>
