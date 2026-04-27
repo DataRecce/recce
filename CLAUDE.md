@@ -65,6 +65,24 @@ When asked to "publish ui" or "release ui package":
 - `summary.py` row count gotcha: `base`/`curr` can be `None` (TABLE_NOT_FOUND, PERMISSION_DENIED). Guard with `is None` check before arithmetic — `dict.get(key, 0)` does NOT protect when key exists with `None` value. N/A display includes reason: `"N/A (table_not_found)"`.
 - Format changes to MCP tool responses require both deterministic tests AND BQ/LLM eval to prove agent behavior unchanged.
 
+## Cloud vs Local Mode Exception Types
+
+`CheckDAO` / `RunDAO` operations have cloud-mode and local-mode branches that
+raise DIFFERENT exception classes. `RecceCloudException` (defined in
+`recce/util/recce_cloud.py`) inherits from `Exception`, NOT from
+`RecceException`. When wrapping a DAO operation in `try / except RecceException`,
+cloud-mode failures escape the wrapper and break the consistent error contract.
+
+**Rule**: For DAO operations that may run in cloud mode, either:
+- Use `except (RecceException, RecceCloudException)` to catch both, OR
+- Move the DAO call OUTSIDE the typed-exception wrapper (mirrors
+  `_tool_create_check`'s structure, which keeps `update_check_by_id`
+  unguarded so cloud failures propagate as expected).
+
+**Where this matters**: any new code in `mcp_server.py` or `*_api.py` that
+adds a DAO write inside an existing `try / except RecceException` block.
+Origin: PR #1342 review (DRC-3307).
+
 ## Frontend Style Conventions
 
 - **Storybook imports:** Never import from `ui/src` internal paths (e.g., `../../../ui/src/...`). Always use `@datarecce/ui/components` or other `@datarecce/ui` package exports. This keeps the package boundary intact.
