@@ -184,7 +184,7 @@
     "tsdown": "^0.21.10",
     "typedoc": "^0.28.19",
     "typedoc-plugin-markdown": "^4.11.0",
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   },
   "scripts": {
     "build": "rm -rf dist/ && tsdown && pnpm build:styles",
