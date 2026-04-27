@@ -76,7 +76,7 @@ These are declared in `@datarecce/ui`'s `dependencies` and installed automatical
 | `react-syntax-highlighter` | `^16.1.1` | Code highlighting |
 | `remark-gfm` | `^4.0.0` | GFM markdown |
 | `usehooks-ts` | `^3.1.1` | React hooks |
-| `write-excel-file` | `^3.0.0` | Excel export |
+| `write-excel-file` | `^4.0.2` | Excel export. Bumped from `^3.0.0` for the v4 major; `@datarecce/ui`'s public `toExcelBlob` still returns `Promise<Blob>`, so the upgrade is transparent for consumers. |
 | `yaml` | `^2.8.0` | YAML parser |
 
 ## Version Range Policy

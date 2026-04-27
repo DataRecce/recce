@@ -18,14 +18,12 @@
         "name": "next"
       }
     ],
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
       "@theme/*": ["./theme/*"],
       "@datarecce/ui": ["./packages/ui/src/index.ts"],
       "@datarecce/ui/*": ["./packages/ui/src/*"]
     },
-    "downlevelIteration": true,
     "types": ["node", "vitest/globals", "@testing-library/jest-dom"]
   },
   "include": [
