@@ -176,13 +176,22 @@ def submit_run(type, params, check_id=None, triggered_by=None):
         but multi-store sequences are not serialized with the loop.
         Mitigations applied here:
 
-        - Status is written BEFORE result/error so a reader who sees a
-          terminal status can trust that it is observing the final state
-          on the next read of result/error (no "result-present +
-          status-RUNNING" window).
+        - Status is written BEFORE result/error so a completion-signal
+          reader (e.g., wait_run_handler polling on `result is not None`)
+          never observes the inverse window ("result-present +
+          status-RUNNING"). A snapshot reader that grabs both fields in
+          a single render may briefly see (FINISHED, result=None) for
+          the sub-µs gap between the two stores; accepted as practically
+          unobservable, and snapshot readers are expected to re-poll.
         - When status == CANCELLED (set by cancel_run from the loop),
           neither the success nor the failure path overwrites it — the
-          cancellation sentinel is preserved.
+          cancellation sentinel is preserved. Note: the guard is
+          check-then-assign, not atomic. A sub-µs GIL window remains
+          where cancel_run can flip status between the check and the
+          overwrite; this is best-effort against the macroscopic race
+          (cancel before executor enters), accepted as practically
+          unobservable. Use threading.Lock or threading.Event if a
+          future caller needs full atomicity.
         """
         if run is None:
             return
