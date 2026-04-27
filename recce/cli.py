@@ -702,7 +702,7 @@ def init(cache_db, **kwargs):
                 info_size_kb = info_path.stat().st_size / 1024
                 lineage_diff_size_kb = lineage_diff_path.stat().st_size / 1024
                 console.print(
-                    f"  Metadata saved to [bold]{metadata_scratch}[/bold] "
+                    f"  Metadata emitted "
                     f"(info.json {info_size_kb:.1f} KB, lineage_diff.json {lineage_diff_size_kb:.1f} KB, "
                     f"{meta_elapsed:.1f}s)"
                 )
@@ -774,10 +774,7 @@ def init(cache_db, **kwargs):
                                     writer.write_tests(test_rows)
                             pn_elapsed = time.perf_counter() - t_pn_start
                             pn_size_mb = per_node_db_path.stat().st_size / 1024 / 1024
-                            console.print(
-                                f"  per_node.db saved to [bold]{per_node_db_path}[/bold] "
-                                f"({pn_size_mb:.1f} MB, {pn_elapsed:.1f}s)"
-                            )
+                            console.print(f"  per_node.db emitted " f"({pn_size_mb:.1f} MB, {pn_elapsed:.1f}s)")
                         except Exception as e:
                             logger.warning("[recce init] Failed to emit per_node.db: %s", e)
                             console.print(f"  [[yellow]Warning[/yellow]] Failed to emit per_node.db: {e}")
