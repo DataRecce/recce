@@ -1700,6 +1700,7 @@ class RecceMCPServer:
     async def _tool_run_check(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Run a single check by ID"""
         from recce.apis.check_api import PatchCheckIn
+        from recce.apis.check_func import export_persistent_state
         from recce.apis.run_func import submit_run
         from recce.models import CheckDAO
         from recce.models.types import RunStatus, RunType
@@ -1714,6 +1715,7 @@ class RecceMCPServer:
             raise ValueError(f"Check with ID {check_id} not found")
 
         triggered_by = arguments.get("triggered_by", "user")
+        run_succeeded = False
 
         if check.type in (RunType.LINEAGE_DIFF, RunType.SCHEMA_DIFF):
             try:
@@ -1728,29 +1730,38 @@ class RecceMCPServer:
                     result=result,
                     triggered_by=triggered_by,
                 )
-                # Auto-approve metadata checks (always succeed if no exception)
-                check_dao.update_check_by_id(check_id, PatchCheckIn(is_checked=True))
-                return run.model_dump(mode="json")
+                run_succeeded = True
+                run_dump = run.model_dump(mode="json")
+            except RecceException as e:
+                raise ValueError(str(e)) from e
+        else:
+            try:
+                run, future = submit_run(
+                    check.type,
+                    params=check.params or {},
+                    check_id=check_id,
+                    triggered_by=triggered_by,
+                )
+                run.result = await future
+                run_succeeded = run.status == RunStatus.FINISHED and not run.error
+                run_dump = run.model_dump(mode="json")
             except RecceException as e:
                 raise ValueError(str(e)) from e
 
-        try:
-            run, future = submit_run(
-                check.type,
-                params=check.params or {},
-                check_id=check_id,
-                triggered_by=triggered_by,
-            )
-            run.result = await future
-            # Auto-approve on successful run — same policy as _tool_create_check.
-            # PM decision: Passed = Approved (a check that ran successfully is
-            # considered reviewed by the agent). Without this, preset checks
-            # (created via API before the agent runs) stay ⏳ Unapproved forever.
-            if run.status == RunStatus.FINISHED and not run.error:
-                check_dao.update_check_by_id(check_id, PatchCheckIn(is_checked=True))
-            return run.model_dump(mode="json")
-        except RecceException as e:
-            raise ValueError(str(e)) from e
+        # Auto-approve on successful run — same gate as _tool_create_check (line 1832:
+        # run_executed and not run_error). PM decision: Passed = Approved (See: DRC-3307).
+        # For metadata-only types (lineage_diff/schema_diff), an empty result IS valid
+        # evidence: zero changes confirms the upstream PR did not affect lineage/schema.
+        # The auto-approve runs OUTSIDE the RecceException try blocks so a cloud-side
+        # failure (RecceCloudException, which is NOT a RecceException subclass) is not
+        # silently absorbed by the wrapper above. Same persistence policy as
+        # _tool_create_check: state is exported to disk/cloud after the approval.
+        if run_succeeded:
+            check_dao.update_check_by_id(check_id, PatchCheckIn(is_checked=True))
+            logger.info(f"Auto-approved check {check_id} (triggered_by={triggered_by})")
+            await asyncio.get_event_loop().run_in_executor(None, export_persistent_state)
+
+        return run_dump
 
     async def _tool_create_check(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Create a persistent check from analysis findings."""

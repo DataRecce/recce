@@ -157,23 +157,49 @@ def submit_run(type, params, check_id=None, triggered_by=None):
 
         Called synchronously inside the executor thread (fn) so that
         run.status and run.result are set BEFORE the future resolves.
-        Previously this was async + scheduled via run_coroutine_threadsafe,
-        causing a race condition where callers saw stale run.status after
-        await future (DRC-3307).
+
+        DRC-3307 historical context: previously this was async + scheduled
+        via run_coroutine_threadsafe(...), which let callers observe stale
+        run.status after `await future`. Consumer-side defensive guards
+        (e.g., recce-cloud-infra `derive_check_run_status` race-workaround)
+        explicitly cite this fix as the reason for their existence.
+
+        Sunset condition: the synchronous-call requirement is safe to
+        remove (and this docstring archeology along with it) once the
+        recce-cloud-infra defensive guards in derive_check_run_status are
+        removed — those guards depend on this rationale being preserved
+        here as the canonical justification.
+
+        Cross-thread store ordering: this runs in the executor thread while
+        async callers read run.status / run.result from the event-loop
+        thread. CPython's GIL makes each individual attribute store atomic,
+        but multi-store sequences are not serialized with the loop.
+        Mitigations applied here:
+
+        - Status is written BEFORE result/error so a reader who sees a
+          terminal status can trust that it is observing the final state
+          on the next read of result/error (no "result-present +
+          status-RUNNING" window).
+        - When status == CANCELLED (set by cancel_run from the loop),
+          neither the success nor the failure path overwrites it — the
+          cancellation sentinel is preserved.
         """
         if run is None:
             return
-        if result is not None:
-            run.result = result
-            run.status = RunStatus.FINISHED
         if updated_params is not None:
             # Merge updated params (preserves any fields not in updated_params)
             run.params.update(updated_params)
+        if result is not None:
+            # Status BEFORE result: see "Cross-thread store ordering" above.
+            if run.status != RunStatus.CANCELLED:
+                run.status = RunStatus.FINISHED
+            run.result = result
         if error is not None:
-            failed_reason = str(error) if str(error) != "None" else repr(error)
-            run.error = failed_reason
+            # Status BEFORE error: same reason as above.
             if run.status != RunStatus.CANCELLED:
                 run.status = RunStatus.FAILED
+            failed_reason = str(error) if str(error) != "None" else repr(error)
+            run.error = failed_reason
         run.progress = None
 
     def fn():

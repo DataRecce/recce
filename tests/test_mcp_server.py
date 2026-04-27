@@ -566,10 +566,13 @@ class TestRecceMCPServer:
         mock_check_dao = MagicMock()
         mock_check_dao.find_check_by_id.return_value = mock_check
 
-        with patch("recce.models.CheckDAO", return_value=mock_check_dao):
-            with patch("recce.apis.run_func.submit_run") as mock_submit_run:
-                mock_submit_run.return_value = (mock_run, asyncio.sleep(0))
-                result = await server._tool_run_check({"check_id": str(check_id)})
+        with (
+            patch("recce.models.CheckDAO", return_value=mock_check_dao),
+            patch("recce.apis.run_func.submit_run") as mock_submit_run,
+            patch("recce.apis.check_func.export_persistent_state"),
+        ):
+            mock_submit_run.return_value = (mock_run, asyncio.sleep(0))
+            result = await server._tool_run_check({"check_id": str(check_id)})
 
         # Verify the result
         assert "run_id" in result
@@ -579,7 +582,9 @@ class TestRecceMCPServer:
         assert "check_id" in result
         assert result["check_id"] == str(check_id)
 
-        # Verify auto-approve: successful run → is_checked=True (DRC-3307)
+        # Regression: successful task-branch run must auto-approve (DRC-3307 root cause).
+        # If this fails, the auto-approve gate (run.status == FINISHED and not run.error)
+        # has been changed and preset checks will silently stay Unapproved.
         from recce.apis.check_api import PatchCheckIn
 
         mock_check_dao.update_check_by_id.assert_called_once_with(str(check_id), PatchCheckIn(is_checked=True))
@@ -619,6 +624,7 @@ class TestRecceMCPServer:
         with (
             patch("recce.models.CheckDAO", return_value=mock_check_dao),
             patch("recce.models.RunDAO", return_value=mock_run_dao),
+            patch("recce.apis.check_func.export_persistent_state"),
         ):
             result = await server._tool_run_check({"check_id": str(check_id)})
 
@@ -627,7 +633,8 @@ class TestRecceMCPServer:
         assert "check_id" in result
         # Verify a metadata run was persisted
         mock_run_dao.create.assert_called_once()
-        # Verify auto-approve: metadata checks always auto-approve (DRC-3307)
+        # Regression: metadata-branch (lineage_diff) success must auto-approve.
+        # An empty result IS valid evidence (zero changes confirms no lineage shift).
         from recce.apis.check_api import PatchCheckIn
 
         mock_check_dao.update_check_by_id.assert_called_once_with(str(check_id), PatchCheckIn(is_checked=True))
@@ -667,6 +674,7 @@ class TestRecceMCPServer:
         with (
             patch("recce.models.CheckDAO", return_value=mock_check_dao),
             patch("recce.models.RunDAO", return_value=mock_run_dao),
+            patch("recce.apis.check_func.export_persistent_state"),
         ):
             result = await server._tool_run_check({"check_id": str(check_id)})
 
@@ -675,10 +683,49 @@ class TestRecceMCPServer:
         assert "check_id" in result
         # Verify a metadata run was persisted
         mock_run_dao.create.assert_called_once()
-        # Verify auto-approve: metadata checks always auto-approve (DRC-3307)
+        # Regression: metadata-branch (schema_diff) success must auto-approve.
+        # An empty result IS valid evidence (zero schema changes is a meaningful signal).
         from recce.apis.check_api import PatchCheckIn
 
         mock_check_dao.update_check_by_id.assert_called_once_with(str(check_id), PatchCheckIn(is_checked=True))
+
+    @pytest.mark.asyncio
+    async def test_tool_run_check_metadata_branch_recce_exception_no_auto_approve(self, mcp_server):
+        """Negative-path coverage: when _tool_lineage_diff raises RecceException,
+        control jumps to `raise ValueError(str(e))` and update_check_by_id MUST
+        NOT be called. Without this guard, a future regression that moves
+        auto-approve before the result computation would silently pass."""
+        server, mock_context = mcp_server
+        from uuid import uuid4
+
+        from recce.exceptions import RecceException
+        from recce.models.types import RunType
+
+        check_id = uuid4()
+        mock_check = MagicMock()
+        mock_check.check_id = check_id
+        mock_check.name = "Lineage Check"
+        mock_check.type = RunType.LINEAGE_DIFF
+        mock_check.params = {"select": "model_a"}
+
+        # Force _tool_lineage_diff to raise — get_lineage_diff is the path it
+        # delegates through, raising RecceException simulates an upstream failure.
+        mock_context.get_lineage_diff.side_effect = RecceException("simulated lineage failure")
+
+        mock_check_dao = MagicMock()
+        mock_check_dao.find_check_by_id.return_value = mock_check
+
+        with (
+            patch("recce.models.CheckDAO", return_value=mock_check_dao),
+            patch("recce.apis.check_func.export_persistent_state") as mock_export,
+        ):
+            with pytest.raises(ValueError, match="simulated lineage failure"):
+                await server._tool_run_check({"check_id": str(check_id)})
+
+        # Auto-approve must NOT fire on the failure path
+        mock_check_dao.update_check_by_id.assert_not_called()
+        # Persistence must NOT fire when run did not succeed
+        mock_export.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_tool_value_diff(self, mcp_server):
@@ -1225,6 +1272,7 @@ class TestCreateCheckTriggeredBy:
         with (
             patch("recce.models.CheckDAO", return_value=mock_check_dao),
             patch("recce.apis.run_func.submit_run", return_value=(mock_run, asyncio.sleep(0))) as mock_submit,
+            patch("recce.apis.check_func.export_persistent_state"),
         ):
             await server._tool_run_check({"check_id": str(check_id), "triggered_by": "recce_ai"})
 
@@ -1259,6 +1307,7 @@ class TestCreateCheckTriggeredBy:
         with (
             patch("recce.models.CheckDAO", return_value=mock_check_dao),
             patch("recce.apis.run_func.submit_run", return_value=(mock_run, asyncio.sleep(0))) as mock_submit,
+            patch("recce.apis.check_func.export_persistent_state"),
         ):
             await server._tool_run_check({"check_id": str(check_id)})
 
@@ -1807,6 +1856,7 @@ class TestCallToolHandler:
         with (
             patch("recce.models.CheckDAO", return_value=mock_check_dao2),
             patch("recce.models.RunDAO", return_value=mock_run_dao),
+            patch("recce.apis.check_func.export_persistent_state"),
         ):
             r = await self._invoke_call_tool(server, "run_check", {"check_id": str(check_id)})
         assert r.root.isError is not True
