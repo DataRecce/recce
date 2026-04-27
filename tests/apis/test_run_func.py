@@ -341,15 +341,15 @@ class TestSubmitRunParamsPropagation:
             # Wait for the task to complete
             await asyncio.wrap_future(future)
 
-            # update_run_result is now called synchronously inside the
-            # executor thread (DRC-3307), so run state is fully updated
-            # by the time the future resolves — no sleep needed.
+            # Regression guard for DRC-3307 root cause: run.status MUST be
+            # set BEFORE the future resolves. If this assertion needs a
+            # sleep/poll to pass, update_run_result is being scheduled
+            # async again (e.g., via run_coroutine_threadsafe) instead of
+            # called synchronously inside the executor thread.
 
             # Verify params were normalized
             assert run.params["primary_key"] == ["CUSTOMER_ID"]
 
-            # Verify run status is set (previously required sleep due to
-            # run_coroutine_threadsafe race condition)
             from recce.models.types import RunStatus
 
             assert run.status == RunStatus.FINISHED
@@ -393,6 +393,73 @@ class TestSubmitRunParamsPropagation:
 
             # Clean up: wait for the future to complete
             await asyncio.wrap_future(future)
+
+    @pytest.mark.asyncio
+    async def test_cancel_sentinel_preserved_on_success(self, mock_context, mock_task_class):
+        """Regression: if cancel_run flips run.status = CANCELLED while the
+        executor thread is finishing a successful task, update_run_result
+        must NOT overwrite CANCELLED with FINISHED. Without this guard, a
+        cancel-mid-execution race silently disappears."""
+        from recce.apis.run_func import submit_run
+        from recce.models.types import RunStatus
+
+        with patch("recce.apis.run_func.create_task") as mock_create_task:
+            mock_task = mock_task_class({"model": "customers", "primary_key": ["customer_id"]})
+            mock_create_task.return_value = mock_task
+
+            run, future = submit_run(
+                type="value_diff",
+                params={"model": "customers", "primary_key": ["customer_id"]},
+            )
+            # Simulate cancel_run flipping the sentinel BEFORE the executor
+            # thread finishes — the success path should observe CANCELLED
+            # and refuse to overwrite it.
+            run.status = RunStatus.CANCELLED
+
+            await asyncio.wrap_future(future)
+
+            assert run.status == RunStatus.CANCELLED, "update_run_result success path overwrote CANCELLED sentinel"
+
+    @pytest.mark.asyncio
+    async def test_repr_fallback_when_str_error_is_none_string(self, mock_context):
+        """Coverage for the ``repr(error)`` fallback in update_run_result.
+        If a task raises an exception whose ``str(e) == "None"`` (e.g.,
+        ``Exception(None)``), the failed_reason falls back to ``repr(e)``
+        so the run.error field carries useful information."""
+        from recce.apis.run_func import submit_run
+        from recce.models.types import RunStatus
+
+        class TaskRaisingNoneException:
+            def __init__(self, params):
+                self.params = None
+                self.is_cancelled = False
+                self._progress_listener = None
+
+            @property
+            def progress_listener(self):
+                return self._progress_listener
+
+            @progress_listener.setter
+            def progress_listener(self, value):
+                self._progress_listener = value
+
+            def execute(self):
+                raise Exception(None)
+
+            def cancel(self):
+                self.is_cancelled = True
+
+        with patch("recce.apis.run_func.create_task") as mock_create_task:
+            mock_create_task.return_value = TaskRaisingNoneException({})
+
+            run, future = submit_run(type="value_diff", params={})
+            await asyncio.wrap_future(future)
+
+            assert run.status == RunStatus.FAILED
+            # repr(Exception(None)) is "Exception(None)" — proves we fell
+            # through the str(e) == "None" branch and recorded a useful value.
+            assert run.error is not None
+            assert run.error != "None"
 
     @pytest.mark.asyncio
     async def test_run_params_unchanged_when_task_has_no_params(self, mock_context):
