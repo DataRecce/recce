@@ -8,11 +8,11 @@
  * MUI modules so TypeScript knows we're augmenting rather than replacing them.
  */
 
-import type {} from "@mui/material/styles";
+import type {} from "@mui/material/Badge";
 import type {} from "@mui/material/Button";
 import type {} from "@mui/material/Chip";
-import type {} from "@mui/material/Badge";
 import type {} from "@mui/material/CircularProgress";
+import type {} from "@mui/material/styles";
 
 // Palette augmentations
 declare module "@mui/material/styles" {
