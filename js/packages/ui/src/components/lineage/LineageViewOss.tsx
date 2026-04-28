@@ -92,6 +92,7 @@ import { ColumnLevelLineageControlOss } from "./ColumnLevelLineageControlOss";
 import { computeColumnLineage } from "./computeColumnLineage";
 import { computeImpactedColumns } from "./computeImpactedColumns";
 import { computeIsImpacted } from "./computeIsImpacted";
+import { computeWholeModelImpact } from "./computeWholeModelImpact";
 import {
   EXPLORE_MIN_ZOOM,
   edgeTypes,
@@ -134,11 +135,22 @@ export const MINIMAP_NODE_THRESHOLD = 500;
  *
  * The expensive part is `computeImpactedColumns` (DFS over parent_map), so we
  * run it once and thread the result into per-node checks.
+ *
+ * When `downstreamOfBreaking` is `true`, we additionally walk the lineage
+ * graph downstream from every breaking node and surface the result so
+ * consumers can paint the whole-model-impact treatment (sidebar wash, node
+ * mark, sidebar header).
  */
 function computeImpactedSets(
   lineageGraph: LineageGraph,
   cll: ColumnLineageData,
-): { nodeIds: Set<string>; columnIds: Set<string> } {
+  downstreamOfBreaking = false,
+): {
+  nodeIds: Set<string>;
+  columnIds: Set<string>;
+  wholeModelImpactedNodeIds?: Set<string>;
+  wholeModelImpactCauseMap?: Map<string, string>;
+} {
   const columnIds = computeImpactedColumns(cll);
   const nodeIds = new Set<string>();
   for (const nodeId of Object.keys(lineageGraph.nodes)) {
@@ -154,7 +166,20 @@ function computeImpactedSets(
       nodeIds.add(nodeId);
     }
   }
-  return { nodeIds, columnIds };
+  if (!downstreamOfBreaking) {
+    return { nodeIds, columnIds };
+  }
+  const whole = computeWholeModelImpact(lineageGraph, cll);
+  // Whole-model-impacted models also count as "impacted" for the broader
+  // CLL highlight set — everything downstream of a breaking node has at
+  // least all-columns affected.
+  for (const id of whole.nodeIds) nodeIds.add(id);
+  return {
+    nodeIds,
+    columnIds,
+    wholeModelImpactedNodeIds: whole.nodeIds,
+    wholeModelImpactCauseMap: whole.causeMap,
+  };
 }
 
 /**
@@ -485,8 +510,11 @@ export function PrivateLineageView(
   const {
     impactedNodeIds,
     impactedColumnIds,
+    wholeModelImpactedNodeIds,
+    wholeModelImpactCauseMap,
     publish: publishImpactSets,
   } = usePublishedImpactSets();
+  const downstreamOfBreaking = serverFlags?.downstream_of_breaking ?? false;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only run when lineageGraph changes (initial load/refetch).
   useLayoutEffect(() => {
@@ -609,7 +637,7 @@ export function PrivateLineageView(
       // Compute impacted sets once; thread into ancestry to avoid redundant DFS.
       const impacted =
         newCllExperience && cll
-          ? computeImpactedSets(lineageGraph, cll)
+          ? computeImpactedSets(lineageGraph, cll, downstreamOfBreaking)
           : undefined;
 
       const [nodes, edges, nodeColumnSetMap] = await toReactFlow(lineageGraph, {
@@ -937,7 +965,7 @@ export function PrivateLineageView(
 
     const impacted =
       newCllExperience && cll
-        ? computeImpactedSets(lineageGraph, cll)
+        ? computeImpactedSets(lineageGraph, cll, downstreamOfBreaking)
         : undefined;
 
     const [newNodes, newEdges, newNodeColumnSetMap] = await toReactFlow(
@@ -1191,6 +1219,8 @@ export function PrivateLineageView(
     deselect,
     impactedNodeIds,
     impactedColumnIds,
+    wholeModelImpactedNodeIds,
+    wholeModelImpactCauseMap,
     isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
     isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),
     isEdgeHighlighted: (source, target) => {
