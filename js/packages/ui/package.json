@@ -171,20 +171,20 @@
     "react-syntax-highlighter": "^16.1.1",
     "remark-gfm": "^4.0.0",
     "usehooks-ts": "^3.1.1",
-    "write-excel-file": "^3.0.0",
+    "write-excel-file": "^4.0.2",
     "yaml": "^2.8.0"
   },
   "devDependencies": {
-    "@tailwindcss/cli": "^4.2.2",
-    "@tailwindcss/postcss": "^4.2.2",
-    "@tsdown/css": "^0.21.9",
+    "@tailwindcss/cli": "^4.2.4",
+    "@tailwindcss/postcss": "^4.2.4",
+    "@tsdown/css": "^0.21.10",
     "postcss": "^8.5.0",
-    "read-excel-file": "^8.0.3",
-    "tailwindcss": "^4.2.2",
-    "tsdown": "^0.21.9",
+    "read-excel-file": "^9.0.6",
+    "tailwindcss": "^4.2.4",
+    "tsdown": "^0.21.10",
     "typedoc": "^0.28.19",
     "typedoc-plugin-markdown": "^4.11.0",
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   },
   "scripts": {
     "build": "rm -rf dist/ && tsdown && pnpm build:styles",

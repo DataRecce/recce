@@ -11,7 +11,7 @@ async function parseExcelBlob(blob: Blob): Promise<{
   columns: string[];
   rows: unknown[][];
 }> {
-  // read-excel-file v8 returns sheet objects: { sheet, data }[]
+  // readXlsxFile returns sheet objects: { sheet, data }[]
   const sheets = await readXlsxFile(blob);
   const sheetData = sheets[0]?.data ?? [];
 
