@@ -260,6 +260,17 @@ export interface LineageViewContextType {
   impactedNodeIds: Set<string>;
   /** Frozen set of column IDs that are impacted, same lifecycle as impactedNodeIds. */
   impactedColumnIds: Set<string>;
+  /** Frozen set of node IDs that have *whole-model impact* — every column is
+   *  affected because they sit downstream of a breaking change. Populated only
+   *  when the `downstream_of_breaking` server flag is on; otherwise an empty
+   *  Set. Used to drive the node-level mark on the lineage graph and the
+   *  sidebar wash + header.
+   *  @see computeWholeModelImpact */
+  wholeModelImpactedNodeIds: Set<string>;
+  /** For each whole-model-impacted node, the closest upstream breaking
+   *  model's display name. Drives the sidebar header text. Empty Map when
+   *  the flag is off. */
+  wholeModelImpactCauseMap: Map<string, string>;
   /** Set change analysis mode on/off */
   setChangeAnalysisMode: (active: boolean) => void;
 
