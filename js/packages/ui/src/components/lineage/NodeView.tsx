@@ -160,13 +160,6 @@ export interface NodeViewProps<
     base?: NodeData;
     current?: NodeData;
   };
-  /**
-   * Optional slot rendered above the Columns/Code tabs. Used by consumers
-   * to inject the collapsible Upstream & Downstream section without coupling
-   * NodeView to the lineage graph context.
-   */
-  lineageIndexSlot?: ReactNode;
-
   // =========================================================================
   // DEPENDENCY INJECTION: Components
   // =========================================================================
@@ -603,7 +596,6 @@ export function NodeView<TNode extends NodeViewNodeData>({
   isSingleEnv,
   featureToggles,
   modelDetail,
-  lineageIndexSlot,
   // Injected components
   SchemaView,
   SingleEnvSchemaView,
@@ -764,9 +756,6 @@ export function NodeView<TNode extends NodeViewNodeData>({
               </NotificationComponent>
             </Box>
           )}
-
-          {/* Lineage index slot (Upstream & Downstream collapsible) */}
-          {lineageIndexSlot}
 
           {/* Tabs */}
           <Tabs

@@ -39,7 +39,6 @@ import { SetupConnectionPopover } from "../app";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide";
 import { findByRunType } from "../run";
 import { SchemaView, SingleEnvSchemaView } from "../schema";
-import { LineageIndexSection } from "./LineageIndexSection";
 import { NodeSqlViewOss } from "./NodeSqlViewOss";
 import { RowCountDiffTag, RowCountTag } from "./NodeTag";
 import {
@@ -117,7 +116,7 @@ export function NodeViewOss({
 }: NodeViewProps) {
   const router = useRouter();
   const { runAction } = useRecceActionContext();
-  const { isActionAvailable, envInfo, lineageGraph } = useLineageGraphContext();
+  const { isActionAvailable, envInfo } = useLineageGraphContext();
   const { singleEnv: isSingleEnvOnboarding, featureToggles } =
     useRecceInstanceContext();
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
@@ -366,18 +365,6 @@ export function NodeViewOss({
       // Callbacks
       actionCallbacks={actionCallbacks}
       isActionAvailable={isActionAvailable}
-      // Lineage index (upstream/downstream) section above the tabs
-      lineageIndexSlot={
-        onNavigateToNode ? (
-          <LineageIndexSection
-            node={node}
-            nodesById={lineageGraph?.nodes}
-            onNavigate={onNavigateToNode}
-            onBack={onBack}
-            onCenterFocus={onCenterFocused}
-          />
-        ) : undefined
-      }
     />
   );
 }
