@@ -1212,6 +1212,13 @@ def diff(
     help="Enable the new column-level lineage visual experience.",
     envvar="RECCE_NEW_CLL_EXPERIENCE",
 )
+@click.option(
+    "--downstream-of-breaking",
+    is_flag=True,
+    help="Highlight downstream models impacted by a *breaking* change (red) "
+    "differently from non-breaking impacts (amber). Requires --new-cll-experience.",
+    envvar="RECCE_DOWNSTREAM_OF_BREAKING",
+)
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -1281,6 +1288,7 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         "disable_cll_cache": True,
         "impact_at_startup": False,
         "new_cll_experience": False,
+        "downstream_of_breaking": False,
     }
     console = Console()
 
@@ -1332,6 +1340,11 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         flag["impact_at_startup"] = True
 
     if kwargs.get("new_cll_experience", False):
+        flag["new_cll_experience"] = True
+
+    if kwargs.get("downstream_of_breaking", False):
+        # Implies new_cll_experience — the surface lives inside the new CLL UI.
+        flag["downstream_of_breaking"] = True
         flag["new_cll_experience"] = True
 
     # Create state loader using shared function

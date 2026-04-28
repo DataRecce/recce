@@ -9,6 +9,11 @@ export interface RecceServerFlags {
   disable_cll_cache: boolean;
   impact_at_startup: boolean;
   new_cll_experience: boolean;
+  /**
+   * Highlight downstream models of a *breaking* change (red) distinctly from
+   * downstream of non-breaking changes (amber). Implies new_cll_experience.
+   */
+  downstream_of_breaking: boolean;
 }
 
 /**
