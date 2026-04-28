@@ -39,6 +39,7 @@ import { SetupConnectionPopover } from "../app";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide";
 import { findByRunType } from "../run";
 import { SchemaView, SingleEnvSchemaView } from "../schema";
+import { LineageTabContent } from "./LineageTabContent";
 import { NodeSqlViewOss } from "./NodeSqlViewOss";
 import { RowCountDiffTag, RowCountTag } from "./NodeTag";
 import {
@@ -62,6 +63,10 @@ interface NodeViewProps {
   onBack?: () => void;
   /** Pan/zoom the lineage canvas onto the currently focused node. */
   onCenterFocused?: () => void;
+  /** Stack of previously focused node ids, oldest first. */
+  historyTrail?: string[];
+  /** Jump to an entry in the history (breadcrumb click). */
+  onJumpToHistory?: (index: number) => void;
 }
 
 const ResourceTypeTag = ({ node }: { node: LineageGraphNode }) => {
@@ -113,10 +118,12 @@ export function NodeViewOss({
   onNavigateToNode,
   onBack,
   onCenterFocused,
+  historyTrail,
+  onJumpToHistory,
 }: NodeViewProps) {
   const router = useRouter();
   const { runAction } = useRecceActionContext();
-  const { isActionAvailable, envInfo } = useLineageGraphContext();
+  const { isActionAvailable, envInfo, lineageGraph } = useLineageGraphContext();
   const { singleEnv: isSingleEnvOnboarding, featureToggles } =
     useRecceInstanceContext();
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
@@ -365,6 +372,19 @@ export function NodeViewOss({
       // Callbacks
       actionCallbacks={actionCallbacks}
       isActionAvailable={isActionAvailable}
+      lineageTabContent={
+        onNavigateToNode ? (
+          <LineageTabContent
+            node={node}
+            nodesById={lineageGraph?.nodes}
+            onNavigate={onNavigateToNode}
+            onBack={onBack}
+            onCenterFocus={onCenterFocused}
+            historyTrail={historyTrail}
+            onJumpToHistory={onJumpToHistory}
+          />
+        ) : undefined
+      }
     />
   );
 }

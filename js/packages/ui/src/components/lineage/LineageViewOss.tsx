@@ -340,8 +340,8 @@ export function PrivateLineageView(
     : undefined;
 
   /**
-   * Stack of previously focused node ids, used by the Upstream & Downstream
-   * section's "back" button. Only the panel's own navigation pushes here —
+   * Stack of previously focused node ids, used by the Lineage tab's "back"
+   * button and breadcrumb. Only the panel's own navigation pushes here —
    * clicking a node on the canvas clears it (fresh context).
    */
   const [focusedHistory, setFocusedHistory] = useState<string[]>([]);
@@ -662,8 +662,8 @@ export function PrivateLineageView(
   /**
    * Navigate the Model Detail panel to a different node without touching the
    * canvas. The canvas is only re-centered on explicit request (via the
-   * crosshair icon in LineageIndexSection). The current focus is pushed onto
-   * focusedHistory so the "back" button can return to it.
+   * crosshair icon in the Lineage tab's focus card). The current focus is
+   * pushed onto focusedHistory so the "back" button can return to it.
    */
   const navigateToNode = (nodeId: string) => {
     if (!lineageGraph?.nodes[nodeId]) return;
@@ -681,6 +681,21 @@ export function PrivateLineageView(
         setFocusedNodeId(previous);
       }
       return h.slice(0, -1);
+    });
+  };
+
+  /**
+   * Jump back to a specific entry in the focused history (breadcrumb click).
+   * Truncates everything after `index` and refocuses on the entry at `index`.
+   */
+  const navigateToHistoryIndex = (index: number) => {
+    setFocusedHistory((h) => {
+      if (index < 0 || index >= h.length) return h;
+      const target = h[index];
+      if (lineageGraph?.nodes[target]) {
+        setFocusedNodeId(target);
+      }
+      return h.slice(0, index);
     });
   };
 
@@ -1555,6 +1570,8 @@ export function PrivateLineageView(
               onNavigateToNode={navigateToNode}
               onBack={focusedHistory.length > 0 ? navigateBack : undefined}
               onCenterFocused={centerFocusedNode}
+              historyTrail={focusedHistory}
+              onJumpToHistory={navigateToHistoryIndex}
             />
           </Box>
         ) : (
