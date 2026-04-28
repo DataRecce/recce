@@ -296,12 +296,14 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     viewOptions,
     cll,
     impactedNodeIds,
+    wholeModelImpactedNodeIds,
     newCllExperience,
     showColumnLevelLineage,
     setChangeAnalysisMode,
   } = useLineageViewContextSafe();
   const { isActionAvailable } = useLineageGraphContext();
   const isImpacted = newCllExperience ? impactedNodeIds.has(id) : false;
+  const isWholeModelImpacted = wholeModelImpactedNodeIds.has(id);
 
   // Computed state
   const changeCategory = cll?.current.nodes[id]
@@ -368,6 +370,7 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
       // New CLL experience props
       newCllExperience={newCllExperience}
       isImpacted={isImpacted}
+      isWholeModelImpacted={isWholeModelImpacted}
       // Interactive props
       interactive={interactive}
       selectMode={nodeSelectMode}

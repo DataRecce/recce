@@ -235,6 +235,21 @@ export function PrivateSchemaView(
     return frozen?.size ? frozen : undefined;
   }, [newCllExperience, lineageViewContext?.impactedColumnIds]);
 
+  // Whole-model impact (downstream of a breaking change). Drives the sidebar
+  // wash + grouping header (Q4 #1 & #3 of the `downstream-of-breaking`
+  // design). Empty Set when the flag is off — the wash + header simply do not
+  // render in that case.
+  const nodeId = current?.id ?? base?.id;
+  const isWholeModelImpacted = !!(
+    nodeId && lineageViewContext?.wholeModelImpactedNodeIds.has(nodeId)
+  );
+  const wholeModelImpactCause =
+    nodeId && lineageViewContext?.wholeModelImpactCauseMap.get(nodeId);
+  const isOwnBreakingCause =
+    !!wholeModelImpactCause &&
+    !!current?.name &&
+    wholeModelImpactCause === current.name;
+
   const { columns, rows } = useMemo(() => {
     const resourceType = current?.resource_type ?? base?.resource_type;
     const node =
@@ -383,7 +398,23 @@ export function PrivateSchemaView(
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        // Whole-model impact wash — covers the entire sidebar so the reviewer
+        // reads "every column here is affected" at a glance, without the
+        // visual noise of N per-row amber rows. Reuses the existing CLL
+        // impacted background tokens (no new colors).
+        ...(isWholeModelImpacted && {
+          backgroundColor: "var(--schema-color-impacted)",
+          boxShadow: "inset 4px 0 0 var(--schema-color-impacted-accent)",
+        }),
+      }}
+      className={isWholeModelImpacted ? "cll-experience" : undefined}
+      data-testid={isWholeModelImpacted ? "whole-model-impact-wash" : undefined}
+    >
       {catalogMissingMessage ? (
         <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
           {catalogMissingMessage}
@@ -394,6 +425,24 @@ export function PrivateSchemaView(
         </MuiAlert>
       ) : (
         <></>
+      )}
+
+      {isWholeModelImpacted && (
+        <Box
+          data-testid="whole-model-impact-header"
+          sx={{
+            px: 1,
+            py: 0.75,
+            fontSize: "0.75rem",
+            fontWeight: 600,
+            color: "var(--schema-badge-impacted-fg, rgb(146 64 14))",
+            borderBottom: "1px solid var(--schema-color-impacted-accent)",
+          }}
+        >
+          {isOwnBreakingCause
+            ? "Whole-model impact — breaking change in this model"
+            : `Whole-model impact — downstream of ${wholeModelImpactCause}`}
+        </Box>
       )}
 
       <SchemaLegend />

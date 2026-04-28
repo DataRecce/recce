@@ -143,6 +143,11 @@ export interface LineageNodeProps {
   newCllExperience?: boolean;
   /** Whether this node is impacted by CLL analysis */
   isImpacted?: boolean;
+  /** Whether this node has *whole-model impact* — every column is affected
+   *  because it sits downstream of a breaking change. Renders a node-level
+   *  badge on top of the impacted treatment so the state is readable at
+   *  zoomed-out lineage view (Q4 #2 of `downstream-of-breaking`). */
+  isWholeModelImpacted?: boolean;
 
   // === Callbacks ===
   /** Callback when node is clicked */
@@ -317,6 +322,7 @@ function LineageNodeComponent({
   // New CLL experience props (fall back to data for ReactFlow passthrough)
   newCllExperience: newCllExperienceProp,
   isImpacted: isImpactedProp,
+  isWholeModelImpacted = false,
   // Callbacks
   onNodeClick,
   onNodeDoubleClick,
@@ -551,6 +557,42 @@ function LineageNodeComponent({
               color={titleColor}
               resourceType={resourceType}
             />
+
+            {/* Whole-model impact badge — readable at zoomed-out lineage
+                view, persists regardless of hover state. Reuses the existing
+                CLL impacted accent color (no new color tokens). */}
+            {isWholeModelImpacted && (
+              <Tooltip
+                title="Whole-model impact — every column affected by an upstream breaking change"
+                placement="top"
+              >
+                <Box
+                  aria-label="whole-model impact"
+                  data-testid="whole-model-impact-badge"
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "0.65rem",
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    height: 16,
+                    minWidth: 16,
+                    px: 0.5,
+                    borderRadius: "3px",
+                    color: isDark ? "rgb(252 211 77)" : "rgb(146 64 14)",
+                    backgroundColor: isDark
+                      ? "rgb(180 83 9 / 0.25)"
+                      : "rgb(252 211 77 / 0.35)",
+                    border: `1px solid ${
+                      isDark ? "rgb(180 83 9)" : "rgb(252 211 77)"
+                    }`,
+                  }}
+                >
+                  ALL
+                </Box>
+              </Tooltip>
+            )}
 
             {/* Hover actions vs icons */}
             {isHovered ? (
