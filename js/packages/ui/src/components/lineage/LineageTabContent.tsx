@@ -26,6 +26,7 @@ import {
   MdSearch,
 } from "react-icons/md";
 import type { LineageGraphNode } from "../../contexts/lineage/types";
+import { useThemeColors } from "../../hooks";
 import { changeStatusColors } from "./styles";
 
 // ---------------------------------------------------------------------------
@@ -162,6 +163,7 @@ function SectionHeader({
 }) {
   const isUp = direction === "up";
   const ArrowIcon = isUp ? MdArrowUpward : MdArrowDownward;
+  const { background } = useThemeColors();
   return (
     <Stack
       direction="row"
@@ -170,7 +172,7 @@ function SectionHeader({
       sx={{
         px: 1.5,
         py: 0.875,
-        backgroundColor: "grey.50",
+        backgroundColor: background.subtle,
         borderTop: "1px solid",
         borderBottom: "1px solid",
         borderColor: "divider",
@@ -304,6 +306,7 @@ function FocusCard({
   onCenterFocus?: () => void;
 }) {
   const status = getChangeStatus(node);
+  const { isDark, background } = useThemeColors();
   return (
     <Stack
       direction="row"
@@ -312,7 +315,7 @@ function FocusCard({
       sx={{
         px: 1.5,
         py: 1.25,
-        backgroundColor: "rgb(255 245 241)",
+        backgroundColor: isDark ? background.emphasized : "rgb(255 245 241)",
         borderTop: "1px solid",
         borderBottom: "1px solid",
         borderColor: "divider",
@@ -486,6 +489,8 @@ export function LineageTabContent({
   historyTrail,
   onJumpToHistory,
 }: LineageTabContentProps) {
+  const { background } = useThemeColors();
+
   // Per-side filter + pagination state.
   const [queryUp, setQueryUp] = useState("");
   const [queryDown, setQueryDown] = useState("");
@@ -597,7 +602,7 @@ export function LineageTabContent({
             py: 0.75,
             borderBottom: "1px solid",
             borderColor: "divider",
-            backgroundColor: "grey.50",
+            backgroundColor: background.subtle,
             minWidth: 0,
           }}
         >
