@@ -1,7 +1,7 @@
 ---
 id: 004
 title: recce-mcp-dev
-status: intake
+status: suggestions
 source: commission seed
 started: 2026-04-29T07:38:04Z
 completed:
