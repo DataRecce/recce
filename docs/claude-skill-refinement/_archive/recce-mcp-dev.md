@@ -11,6 +11,7 @@ worktree:
 issue:
 pr:
 mod-block:
+archived: 2026-04-29T08:46:03Z
 ---
 
 Recce-specific MCP development skill — auto-triggers when modifying `recce/mcp_server.py`, MCP tool handlers, error classification, or MCP tests. Lives at `.claude/skills/recce-mcp-dev/`. Goal of this entity: understand its trigger conditions and TDD posture, categorize it (domain-implementation), and evaluate whether it could be a workflow stage agent for an MCP-feature workflow, integrate as a guard mod that fires on dispatch when MCP files are touched, or stay as a passive auto-triggered companion.
