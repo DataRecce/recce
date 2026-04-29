@@ -80,3 +80,8 @@ If the user says yes, invoke `/recce-mcp-e2e`. If a dbt project path was used ea
 ## File Map
 
 `recce/mcp_server.py` (server + handlers), `recce/tasks/rowcount.py` (error indicators, RowCountStatus), `recce/run.py` (CLI preset), `recce/summary.py` (display logic), `recce/event/__init__.py` (Sentry)
+
+## Spacedock integration
+
+- Categorization record (claude-skill-refinement workflow, entity 004): [`docs/claude-skill-refinement/recce-mcp-dev.md`](../../../docs/claude-skill-refinement/recce-mcp-dev.md)
+- Sibling skill invoked by the E2E Verification Gate (`/recce-mcp-e2e`): [`.claude/skills/recce-mcp-e2e/SKILL.md`](../recce-mcp-e2e/SKILL.md)
