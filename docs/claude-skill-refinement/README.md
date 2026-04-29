@@ -174,6 +174,7 @@ Claude skills under `.claude/skills/` that have been processed by this workflow:
 - [`address-dependabot`](../../.claude/skills/address-dependabot/skill.md) — Consolidate open Dependabot PRs into a single tested branch and PR.
 - [`claude-code-review`](../../.claude/skills/claude-code-review/SKILL.md) — Review a PR for critical issues; post findings as a PR comment and formal GitHub review.
 - [`linear-deep-dive`](../../.claude/skills/linear-deep-dive/SKILL.md) — Analyze a Linear issue or project end-to-end and orchestrate the right delivery skills.
+- [`recce-mcp-e2e`](../../.claude/skills/recce-mcp-e2e/SKILL.md) — Run end-to-end verification of all 8 MCP tools against a real dbt project before merging MCP PRs.
 
 ## Mods
 
