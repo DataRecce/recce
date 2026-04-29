@@ -160,6 +160,13 @@ export interface NodeViewProps<
     base?: NodeData;
     current?: NodeData;
   };
+  /**
+   * Optional slot rendered as a "Lineage" tab body. When provided, a tab
+   * labeled "Lineage" appears as the FIRST tab (alongside Columns/Code).
+   * Consumers inject this to expose the focused node's upstream/downstream
+   * without coupling NodeView to the lineage graph context.
+   */
+  lineageTabContent?: ReactNode;
 
   // =========================================================================
   // DEPENDENCY INJECTION: Components
@@ -597,6 +604,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
   isSingleEnv,
   featureToggles,
   modelDetail,
+  lineageTabContent,
   // Injected components
   SchemaView,
   SingleEnvSchemaView,
@@ -758,82 +766,105 @@ export function NodeView<TNode extends NodeViewNodeData>({
             </Box>
           )}
 
-          {/* Tabs */}
-          <Tabs
-            value={tabValue}
-            onChange={(_, newValue) => setTabValue(newValue)}
-            sx={{ borderBottom: 1, borderColor: "divider" }}
-          >
-            <Tab
-              label={
-                <Box
-                  component="span"
-                  sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
+          {/* Tabs — when lineageTabContent is provided, "Lineage" is index 0 */}
+          {(() => {
+            const lineageTabIndex = lineageTabContent ? 0 : -1;
+            const columnsTabIndex = lineageTabContent ? 1 : 0;
+            const codeTabIndex = lineageTabContent ? 2 : 1;
+            return (
+              <>
+                <Tabs
+                  value={tabValue}
+                  onChange={(_, newValue) => setTabValue(newValue)}
+                  sx={{ borderBottom: 1, borderColor: "divider" }}
                 >
-                  Columns
-                  {hasSchemaChanges && (
-                    <Box
-                      component="span"
-                      sx={{
-                        color: "amber.main",
-                        fontSize: "0.5rem",
-                        lineHeight: 1,
-                      }}
-                    >
-                      ●
-                    </Box>
-                  )}
-                </Box>
-              }
-            />
-            <Tab
-              label={
-                <Box
-                  component="span"
-                  sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
-                >
-                  Code
-                  {hasCodeChanges && (
-                    <Box
-                      component="span"
-                      sx={{
-                        color: "amber.main",
-                        fontSize: "0.5rem",
-                        lineHeight: 1,
-                      }}
-                    >
-                      ●
-                    </Box>
-                  )}
-                </Box>
-              }
-            />
-          </Tabs>
+                  {lineageTabContent && <Tab label="Lineage" />}
+                  <Tab
+                    label={
+                      <Box
+                        component="span"
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.75,
+                        }}
+                      >
+                        Columns
+                        {hasSchemaChanges && (
+                          <Box
+                            component="span"
+                            sx={{
+                              color: "amber.main",
+                              fontSize: "0.5rem",
+                              lineHeight: 1,
+                            }}
+                          >
+                            ●
+                          </Box>
+                        )}
+                      </Box>
+                    }
+                  />
+                  <Tab
+                    label={
+                      <Box
+                        component="span"
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.75,
+                        }}
+                      >
+                        Code
+                        {hasCodeChanges && (
+                          <Box
+                            component="span"
+                            sx={{
+                              color: "amber.main",
+                              fontSize: "0.5rem",
+                              lineHeight: 1,
+                            }}
+                          >
+                            ●
+                          </Box>
+                        )}
+                      </Box>
+                    }
+                  />
+                </Tabs>
 
-          {/* Tab panels */}
-          <Box sx={{ overflow: "auto", height: "calc(100% - 48px)" }}>
-            <TabPanel value={tabValue} index={0}>
-              <Box sx={{ overflowY: "auto", height: "100%" }}>
-                {isSingleEnv
-                  ? SingleEnvSchemaView && (
-                      <SingleEnvSchemaView current={current} />
-                    )
-                  : SchemaView && (
-                      <SchemaView
-                        base={base}
-                        current={current}
-                        columnChanges={node.data.change?.columns}
-                        onViewCode={() => setTabValue(1)}
-                      />
-                    )}
-              </Box>
-            </TabPanel>
-            <TabPanel value={tabValue} index={1}>
-              <Box sx={{ height: "100%" }}>
-                {NodeSqlView && <NodeSqlView node={node} />}
-              </Box>
-            </TabPanel>
-          </Box>
+                {/* Tab panels */}
+                <Box sx={{ overflow: "auto", height: "calc(100% - 48px)" }}>
+                  {lineageTabContent && (
+                    <TabPanel value={tabValue} index={lineageTabIndex}>
+                      <Box sx={{ height: "100%" }}>{lineageTabContent}</Box>
+                    </TabPanel>
+                  )}
+                  <TabPanel value={tabValue} index={columnsTabIndex}>
+                    <Box sx={{ overflowY: "auto", height: "100%" }}>
+                      {isSingleEnv
+                        ? SingleEnvSchemaView && (
+                            <SingleEnvSchemaView current={current} />
+                          )
+                        : SchemaView && (
+                            <SchemaView
+                              base={base}
+                              current={current}
+                              columnChanges={node.data.change?.columns}
+                              onViewCode={() => setTabValue(codeTabIndex)}
+                            />
+                          )}
+                    </Box>
+                  </TabPanel>
+                  <TabPanel value={tabValue} index={codeTabIndex}>
+                    <Box sx={{ height: "100%" }}>
+                      {NodeSqlView && <NodeSqlView node={node} />}
+                    </Box>
+                  </TabPanel>
+                </Box>
+              </>
+            );
+          })()}
         </Box>
       )}
       {/* Sandbox dialog */}
