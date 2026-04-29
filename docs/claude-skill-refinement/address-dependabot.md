@@ -1,7 +1,7 @@
 ---
 id: 001
 title: address-dependabot
-status: suggestions
+status: approval
 source: commission seed
 started: 2026-04-29T01:06:20Z
 completed:
