@@ -1,13 +1,13 @@
 ---
 id: 003
 title: linear-deep-dive
-status: approval
+status: execute
 source: commission seed
 started: 2026-04-29T02:30:20Z
 completed:
 verdict:
 score:
-worktree:
+worktree: .worktrees/spacedock-ensign-linear-deep-dive
 issue:
 pr:
 ---
