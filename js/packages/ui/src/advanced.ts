@@ -89,6 +89,14 @@ export {
   type LineageCanvasProps,
 } from "./components/lineage/LineageCanvas";
 /**
+ * Lineage tab body — direct upstream/downstream + breadcrumb path —
+ * intended to be injected into NodeView's `lineageTabContent` slot.
+ */
+export {
+  LineageTabContent,
+  type LineageTabContentProps,
+} from "./components/lineage/LineageTabContent";
+/**
  * OSS-specific toReactFlow with Column-Level Lineage (CLL) support.
  *
  * Converts a LineageGraph to React Flow nodes and edges, including
@@ -104,7 +112,6 @@ export {
  * ```
  */
 export { layout, toReactFlow } from "./components/lineage/lineage";
-
 /**
  * Node detail panel with Columns and Code tabs.
  */

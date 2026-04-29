@@ -4,37 +4,13 @@
  * Combines data from lineage graph context with API calls for column details.
  */
 
+import { useQuery } from "@tanstack/react-query";
 import _ from "lodash";
-import { useCallback, useEffect, useState } from "react";
+import { useMemo } from "react";
 import { getModelInfo, type NodeColumnData } from "../api";
-import {
-  type LineageGraphNode,
-  useLineageGraphContext,
-} from "../contexts/lineage";
+import { useLineageGraphContext } from "../contexts/lineage";
 import type { ApiClient } from "../lib/fetchClient";
 import { useApiConfigOptional } from "../providers";
-
-/**
- * Stable empty array used when inline column data is unavailable.
- * Must be a module-level constant — a `[]` literal inside a hook body
- * creates a new reference every render, breaking the `prevNodeColumns`
- * identity check and causing an infinite re-render loop.
- */
-const EMPTY_COLUMNS: NodeColumnData[] = [];
-
-/**
- * Extract columns from a lineage graph node.
- *
- * After DRC-3260, inline column data is no longer available on the graph node.
- * This function always returns an empty array; the API fetch path in
- * useModelColumns provides the actual column data.
- *
- * @deprecated Kept for backward compatibility. Will be removed once all
- * callers migrate to on-demand API fetch.
- */
-export function extractColumns(_node: LineageGraphNode): NodeColumnData[] {
-  return EMPTY_COLUMNS;
-}
 
 /**
  * Create a union of base and current columns by name.
@@ -72,8 +48,12 @@ export interface UseModelColumnsReturn {
 /**
  * Hook to fetch model column information.
  *
- * This hook combines data from the lineage graph context (if available)
- * with API calls to get detailed column information for a model.
+ * This hook resolves the lineage node by `model` name and fetches the model
+ * detail (columns + primary_key) via TanStack Query. The query key
+ * `["modelDetail", node.id]` and `staleTime` are deliberately aligned with
+ * the `useQuery` calls in NodeViewOss / NodeSqlViewOss / SandboxViewOss /
+ * SchemaDiffView / SchemaSummary so that all consumers share a single cache
+ * entry and a single in-flight request per node (DRC-3343).
  *
  * @param model - The model name to fetch columns for
  * @param client - Axios instance for API calls (optional - will use context if not provided)
@@ -105,71 +85,55 @@ export function useModelColumns(
     },
   });
 
-  // After DRC-3260, inline column data is no longer on the graph node.
-  // Always use the API fetch path below.
-  // IMPORTANT: uses module-level EMPTY_COLUMNS for referential stability —
-  // a `[]` literal here caused infinite re-render (new ref every render).
-  const nodeColumns = EMPTY_COLUMNS;
+  const enabled = !!apiClient && !!node?.id;
 
-  const [columns, setColumns] = useState<NodeColumnData[]>([]);
-  const [primaryKey, setPrimaryKey] = useState<string>();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [prevNodeColumns, setPrevNodeColumns] = useState<NodeColumnData[]>([]);
-  const [prevNodeId, setPrevNodeId] = useState(node?.id);
-
-  // After DRC-3260, primary_key is no longer inline on the graph node.
-  // The API fetch path below provides it.
-  const nodePrimaryKey = undefined;
-
-  const fetchData = useCallback(async () => {
-    if (!node || !apiClient) {
-      return;
-    }
-    try {
-      const data = await getModelInfo(node.id, apiClient);
-      const modelInfo = data.model;
-      if (!modelInfo.base.columns || !modelInfo.current.columns) {
-        setColumns([]);
-        setIsLoading(false);
-        return;
+  // Shares cache + in-flight request with NodeViewOss / NodeSqlViewOss /
+  // SandboxViewOss / SchemaDiffView / SchemaSummary, all of which use the
+  // same ["modelDetail", node.id] queryKey and staleTime.
+  const {
+    data,
+    isLoading: queryLoading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["modelDetail", node?.id],
+    queryFn: () => {
+      // `enabled` guarantees both `node?.id` and `apiClient` are defined
+      // before this function runs.
+      if (!node?.id || !apiClient) {
+        throw new Error("useModelColumns: missing node id or api client");
       }
-      setPrimaryKey(modelInfo.current.primary_key);
-      const baseColumns = Object.values(modelInfo.base.columns);
-      const currentColumns = Object.values(modelInfo.current.columns);
-      setColumns(unionColumns(baseColumns, currentColumns));
-      setIsLoading(false);
-    } catch (err) {
-      setError(err as Error);
-      setIsLoading(false);
-    }
-  }, [node, apiClient]);
+      return getModelInfo(node.id, apiClient);
+    },
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  // Adjust state during render when node changes
-  if (nodeColumns !== prevNodeColumns || node?.id !== prevNodeId) {
-    setPrevNodeColumns(nodeColumns);
-    setPrevNodeId(node?.id);
-
-    if (nodeColumns.length > 0) {
-      setColumns(nodeColumns);
-      setPrimaryKey(nodePrimaryKey);
-      setIsLoading(false);
-    } else if (node?.id === undefined) {
-      setColumns([]);
-      setIsLoading(false);
+  const { columns, primaryKey } = useMemo(() => {
+    const modelInfo = data?.model;
+    if (!modelInfo?.base.columns || !modelInfo.current.columns) {
+      return {
+        columns: [] as NodeColumnData[],
+        primaryKey: modelInfo?.current.primary_key,
+      };
     }
-    // Note: fetchData case is handled separately in effect below
-  }
+    const baseColumns = Object.values(modelInfo.base.columns);
+    const currentColumns = Object.values(modelInfo.current.columns);
+    return {
+      columns: unionColumns(baseColumns, currentColumns),
+      primaryKey: modelInfo.current.primary_key,
+    };
+  }, [data]);
 
-  // Fetch data effect - only runs when we need to fetch
-  useEffect(() => {
-    if (nodeColumns.length === 0 && node?.id !== undefined) {
-      fetchData().catch((e: unknown) => {
-        // error is already handled in fetchData()
-        console.error(e);
-      });
-    }
-  }, [fetchData, node?.id]);
+  // When the query is disabled (no model resolved or no api client), match
+  // the prior hook contract of returning isLoading=false rather than the
+  // TanStack default of true.
+  const isLoading = enabled ? queryLoading : false;
+
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError
+      : new Error(String(queryError))
+    : null;
 
   return { columns, primaryKey, isLoading, error };
 }
