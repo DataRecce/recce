@@ -1,7 +1,7 @@
 ---
 id: 005
 title: recce-mcp-e2e
-status: suggestions
+status: approval
 source: commission seed
 started: 2026-04-29T07:38:05Z
 completed:
