@@ -1301,7 +1301,14 @@ export function PrivateLineageView(
     },
     addLineageDiffCheck: async () => {
       // create lineage diff check based on the current lineage view (ignoring focus/selection).
-      const check = await createLineageDiffCheck(viewOptions, apiClient);
+      // body_changes mode is resolved server-side via `state:modified.body+macros+contract`,
+      // so persist the resolved node_ids on the saved check — the presentational
+      // LineageView (used by saved-check rendering) cannot re-resolve client-side.
+      const persistViewOptions =
+        viewOptions.view_mode === "body_changes" && !viewOptions.node_ids
+          ? { ...viewOptions, node_ids: filteredNodeIds }
+          : viewOptions;
+      const check = await createLineageDiffCheck(persistViewOptions, apiClient);
       // the mode is tracked for analytics purposes.
       let selectedMode: "multi" | "single" | "none";
       if (selectMode === "selecting") {
@@ -1376,6 +1383,24 @@ export function PrivateLineageView(
   }
 
   if (viewMode === "changed_models" && !lineageGraph.modifiedSet.length) {
+    return (
+      <LineageViewNoChanges
+        viewOptions={viewOptions}
+        onViewOptionsChanged={handleViewOptionsChanged}
+      />
+    );
+  }
+
+  // body_changes: server-side selector (state:modified.body+macros+contract)
+  // can return empty even when modifiedSet contains config-only changes. By
+  // this point the resolver has produced a result (initialNodes guard above);
+  // an empty filteredNodeIds means no body/macro/contract changes to show.
+  // Skip when the caller pinned an explicit non-empty node_ids list (saved-check semantics).
+  if (
+    viewMode === "body_changes" &&
+    !(viewOptions.node_ids && viewOptions.node_ids.length > 0) &&
+    filteredNodeIds.length === 0
+  ) {
     return (
       <LineageViewNoChanges
         viewOptions={viewOptions}

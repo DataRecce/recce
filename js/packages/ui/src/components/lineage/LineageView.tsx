@@ -201,11 +201,10 @@ export const LineageView = forwardRef<LineageViewRef, LineageViewProps>(
       if (viewOptions?.node_ids && viewOptions.node_ids.length > 0) {
         // Explicit node selection
         selectedNodeIds = viewOptions.node_ids;
-      } else if (
-        viewOptions?.view_mode === "changed_models" ||
-        viewOptions?.view_mode === "body_changes"
-      ) {
-        // Changed models or body changes (filtering done server-side via selector)
+      } else if (viewOptions?.view_mode === "changed_models") {
+        // Changed models — uses every node with any change_status (including
+        // config-only). For body_changes, saved checks must carry explicit
+        // node_ids resolved server-side; otherwise no client-side filter exists.
         selectedNodeIds = lineageGraph.modifiedSet;
       }
 
