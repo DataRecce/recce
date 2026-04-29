@@ -10,7 +10,7 @@ score:
 worktree: .worktrees/spacedock-ensign-address-dependabot
 issue:
 pr:
-mod-block:
+mod-block: merge:pr-merge
 ---
 
 Dependency consolidation skill. Lives at `.claude/skills/address-dependabot/`. Goal of this entity: understand its scope (Dependabot PR consolidation), categorize it (release/automation), and decide whether it belongs as a Spacedock workflow, a mod on an existing release workflow, or stays as-is as a standalone skill referenced from a release runbook.
