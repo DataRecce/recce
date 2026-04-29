@@ -172,3 +172,4 @@ Verified by: Completed actions section lists each action item with a file path t
 Claude skills under `.claude/skills/` that have been processed by this workflow:
 
 - [`address-dependabot`](../../.claude/skills/address-dependabot/skill.md) — Consolidate open Dependabot PRs into a single tested branch and PR.
+- [`linear-deep-dive`](../../.claude/skills/linear-deep-dive/SKILL.md) — Analyze a Linear issue or project end-to-end and orchestrate the right delivery skills.
