@@ -168,8 +168,8 @@ function SectionHeader({
     <Stack
       direction="row"
       spacing={0.75}
-      alignItems="center"
       sx={{
+        alignItems: "center",
         px: 1.5,
         py: 0.875,
         backgroundColor: background.subtle,
@@ -231,9 +231,9 @@ function FilterInput({ direction, query, onChange }: FilterInputProps) {
     >
       <Stack
         direction="row"
-        alignItems="center"
         spacing={0.5}
         sx={{
+          alignItems: "center",
           border: "1px solid",
           borderColor: "divider",
           borderRadius: "4px",
@@ -310,9 +310,9 @@ function FocusCard({
   return (
     <Stack
       direction="row"
-      alignItems="center"
       spacing={1}
       sx={{
+        alignItems: "center",
         px: 1.5,
         py: 1.25,
         backgroundColor: isDark ? background.emphasized : "rgb(255 245 241)",
@@ -398,9 +398,9 @@ function PathBreadcrumb({
   return (
     <Stack
       direction="row"
-      alignItems="center"
       spacing={0.75}
       sx={{
+        alignItems: "center",
         minWidth: 0,
         flex: 1,
         overflow: "hidden",
@@ -595,9 +595,9 @@ export function LineageTabContent({
       {showToolbar && (
         <Stack
           direction="row"
-          alignItems="center"
           spacing={1}
           sx={{
+            alignItems: "center",
             px: 1.25,
             py: 0.75,
             borderBottom: "1px solid",
