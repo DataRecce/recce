@@ -395,6 +395,7 @@ function PathBreadcrumb({
   currentName,
   onJumpBack,
 }: PathBreadcrumbProps) {
+  const { isDark } = useThemeColors();
   return (
     <Stack
       direction="row"
@@ -437,7 +438,9 @@ function PathBreadcrumb({
           color: "text.primary",
           cursor: onJumpBack ? "pointer" : "default",
           textDecoration: "underline",
-          textDecorationColor: "rgb(0 0 0 / 0.25)",
+          textDecorationColor: isDark
+            ? "rgb(255 255 255 / 0.35)"
+            : "rgb(0 0 0 / 0.25)",
           textUnderlineOffset: "2px",
           overflow: "hidden",
           textOverflow: "ellipsis",
