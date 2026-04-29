@@ -674,14 +674,11 @@ export function PrivateLineageView(
   };
 
   const navigateBack = () => {
-    setFocusedHistory((h) => {
-      if (h.length === 0) return h;
-      const previous = h[h.length - 1];
-      if (lineageGraph?.nodes[previous]) {
-        setFocusedNodeId(previous);
-      }
-      return h.slice(0, -1);
-    });
+    if (focusedHistory.length === 0) return;
+    const previous = focusedHistory[focusedHistory.length - 1];
+    if (!lineageGraph?.nodes[previous]) return;
+    setFocusedNodeId(previous);
+    setFocusedHistory((h) => h.slice(0, -1));
   };
 
   /**
@@ -689,14 +686,11 @@ export function PrivateLineageView(
    * Truncates everything after `index` and refocuses on the entry at `index`.
    */
   const navigateToHistoryIndex = (index: number) => {
-    setFocusedHistory((h) => {
-      if (index < 0 || index >= h.length) return h;
-      const target = h[index];
-      if (lineageGraph?.nodes[target]) {
-        setFocusedNodeId(target);
-      }
-      return h.slice(0, index);
-    });
+    if (index < 0 || index >= focusedHistory.length) return;
+    const target = focusedHistory[index];
+    if (!lineageGraph?.nodes[target]) return;
+    setFocusedNodeId(target);
+    setFocusedHistory((h) => h.slice(0, index));
   };
 
   const centerFocusedNode = () => {
