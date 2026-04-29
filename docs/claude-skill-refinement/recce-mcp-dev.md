@@ -1,13 +1,13 @@
 ---
 id: 004
 title: recce-mcp-dev
-status: approval
+status: execute
 source: commission seed
 started: 2026-04-29T07:38:04Z
 completed:
 verdict:
 score:
-worktree:
+worktree: .worktrees/spacedock-ensign-recce-mcp-dev
 issue:
 pr:
 ---
