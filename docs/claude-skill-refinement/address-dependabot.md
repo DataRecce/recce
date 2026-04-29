@@ -1,13 +1,13 @@
 ---
 id: 001
 title: address-dependabot
-status: approval
+status: execute
 source: commission seed
 started: 2026-04-29T01:06:20Z
 completed:
 verdict:
 score:
-worktree:
+worktree: .worktrees/spacedock-ensign-address-dependabot
 issue:
 pr:
 mod-block:
