@@ -1,18 +1,19 @@
-# Draft — `claude-code-review` integration proposal
+# Draft — `claude-code-review` integration proposal (cycle 2)
 
-This draft is the captain-facing companion to entity 002 (`claude-code-review.md`) at the `approval` stage. It is readable on its own without the entity's Suggestions section.
+This draft is the captain-facing companion to entity 002 (`claude-code-review.md`) at the `approval` stage. It is readable on its own without the entity's Suggestions section. Cycle 2 reflects captain feedback from the cycle-1 approval gate: Pick #1 carries forward unchanged; Pick #2 is reshaped into a single mod with plugin-detection-then-skill-resolution.
 
 ## Skill being integrated
 
-- **Skill path:** `.claude/skills/claude-code-review/SKILL.md` (single-file, 7.2K, no `references/` or `bin/`).
-- **Trigger (verbatim from frontmatter):** "Use when asked to review a PR, or when /review is invoked with a PR number or URL. Performs a focused code review checking for bugs, security, performance, and test gaps, then posts findings as a PR comment and formal GitHub review."
+- **In-repo skill path:** `.claude/skills/claude-code-review/SKILL.md` (single-file, 7.2K, single-pass review).
+- **Plugin variant path (when recce-dev is enabled):** resolved at runtime via `~/.claude/plugins/installed_plugins.json`. On the captain's current environment the resolved path is `~/.claude/plugins/cache/recce-marketplace/recce-dev/1.0.1/skills/claude-code-review/SKILL.md` (multi-pass adversarial variant).
+- **Trigger (verbatim from in-repo SKILL.md frontmatter):** "Use when asked to review a PR, or when /review is invoked with a PR number or URL. Performs a focused code review checking for bugs, security, performance, and test gaps, then posts findings as a PR comment and formal GitHub review."
 - **Categorization (from intake):** `review`. Single-actor pipeline, no subagent dispatch. Output is a posted PR comment plus a formal `gh pr review --approve | --request-changes` verdict.
 
 ## Proposed integration: two picks
 
-### Pick #1 — `reference-doc` (primary, low-cost)
+### Pick #1 — `reference-doc` (primary, low-cost) — unchanged from cycle 1
 
-Append a `claude-code-review` entry to the existing "Related skills" subsection in `docs/claude-skill-refinement/README.md`. This is the same shape the captain approved for `address-dependabot` (entity 001).
+Append a `claude-code-review` entry to the existing "Related skills" subsection in `docs/claude-skill-refinement/README.md`. This is the same shape the captain approved for `address-dependabot` (entity 001) and was approved as-is at the cycle-1 approval gate.
 
 **Proposed README diff (verbatim text to add):**
 
@@ -22,24 +23,60 @@ Append a `claude-code-review` entry to the existing "Related skills" subsection 
 
 That is the entire change for pick #1 — one new line under the existing `## Related skills` heading at the bottom of the README.
 
-**Why this is the safe pick:** zero runtime change to how the skill executes; it remains a slash-invoked single-actor pipeline. The change is documentation only, discoverable from the workflow that catalogued it, with no Spacedock agent or mod surface introduced.
+**Why this is the safe pick:** zero runtime change to how the skill executes. The change is documentation only, discoverable from the workflow that catalogued it, with no Spacedock agent or mod surface introduced.
 
 **Spacedock primitive tie-in:** none — this is documentation, not orchestration.
 
-### Pick #2 — `mod` (secondary, deliberative)
+### Pick #2 — `mod` (secondary, reshaped per cycle-1 captain feedback)
 
-Install a new mod at `docs/claude-skill-refinement/_mods/claude-code-review.md` that runs *after* `pr-merge` on the `merge` lifecycle hook. The new mod invokes the in-repo skill's 9-step pipeline against the PR that pr-merge just created, posting a self-review and a formal `gh pr review` verdict.
+Install a single new mod at `docs/claude-skill-refinement/_mods/claude-code-review.md` that runs *after* `pr-merge` on the `merge` lifecycle hook. The mod (1) detects whether the `recce-dev` plugin is enabled in the captain's environment and resolves the right `SKILL.md` path, (2) runs that variant's pipeline against the freshly-created PR, with two intake-flagged adaptations baked in.
 
 **Spacedock primitive tie-in:** the `merge` hook is documented in `~/.claude/plugins/cache/spacedock/spacedock/0.10.2/mods/pr-merge.md` (lines 27-86). Mods chain by lexical filename order in the workflow's `_mods/` directory; `claude-code-review.md` sorts after `pr-merge.md`, so the FO runs pr-merge first (creating the PR) and this mod second (reviewing it).
 
-**Spawn-vs-inline tie-in:** mods run inline in the FO's own execution thread. The skill is already inline-only (intake finding), so no agent fan-out is introduced — the mod simply has the FO follow the skill's 9 steps as itself.
+**Spawn-vs-inline tie-in:** mods run inline in the FO's own execution thread. The skill is already inline-only (intake finding), so no agent fan-out is introduced — the mod simply has the FO follow the resolved skill's steps as itself.
 
-**Proposed `_mods/claude-code-review.md` body (full text):**
+#### Plugin-detection mechanism (cycle-2 design)
+
+The cycle-1 design did not specify a detection mechanism. The captain's prior probe at `~/.claude/plugins/cache/recce-dev/recce-dev/*/skills/claude-code-review` returned empty because it hard-coded `recce-dev` as the marketplace directory; the actual marketplace name on disk for this plugin is `recce-marketplace`. The cycle-2 design uses three layered checks:
+
+**Gate A — installed-plugins manifest (authoritative for installPath).** Claude Code's `~/.claude/plugins/installed_plugins.json` is the canonical record of what is installed. Plugins are keyed as `{plugin-name}@{marketplace-name}`. For recce-dev that key is `recce-dev@recce-marketplace`, with a resolved `installPath` field that points directly at the versioned plugin directory. The mod reads this rather than guessing the on-disk directory layout:
+
+```bash
+PLUGIN_INSTALL_PATH=$(jq -r '."recce-dev@recce-marketplace"[0].installPath // empty' \
+  ~/.claude/plugins/installed_plugins.json 2>/dev/null)
+```
+
+**Gate B — enabledPlugins settings flag (authoritative for active state).** Installed does not mean enabled. Claude Code's settings files have an `enabledPlugins` map keyed by the same `{plugin-name}@{marketplace-name}` form. The mod consults the project-level settings first (project `.claude/settings.json` overrides user `~/.claude/settings.json` per Claude Code's standard precedence), falls back to the user-level, and defaults to `false` if neither sets the flag:
+
+```bash
+PROJECT_FLAG=$(jq -r '.enabledPlugins["recce-dev@recce-marketplace"] // empty' \
+  /Users/jaredmscott/repos/recce/recce/.claude/settings.json 2>/dev/null)
+USER_FLAG=$(jq -r '.enabledPlugins["recce-dev@recce-marketplace"] // empty' \
+  ~/.claude/settings.json 2>/dev/null)
+ENABLED_FLAG="${PROJECT_FLAG:-${USER_FLAG:-false}}"
+```
+
+**Gate C — filesystem existence check (defensive against stale manifest).** The manifest can be stale (plugin removed without manifest cleanup); Gate C catches it. Combined with Gates A and B:
+
+```bash
+if [[ -n "$PLUGIN_INSTALL_PATH" && "$ENABLED_FLAG" == "true" \
+      && -f "$PLUGIN_INSTALL_PATH/skills/claude-code-review/SKILL.md" ]]; then
+  SKILL_PATH="$PLUGIN_INSTALL_PATH/skills/claude-code-review/SKILL.md"
+  SKILL_VARIANT="recce-dev plugin (multi-pass)"
+else
+  SKILL_PATH="/Users/jaredmscott/repos/recce/recce/.claude/skills/claude-code-review/SKILL.md"
+  SKILL_VARIANT="in-repo (single-pass)"
+fi
+```
+
+This three-gate approach (manifest → enabled → file exists) gives robust detection without depending on any single mechanism. A plain glob like `~/.claude/plugins/cache/*/recce-dev/*/skills/claude-code-review/SKILL.md` would also match the file but would not respect the captain's enable choice, so the layered approach is preferred.
+
+#### Proposed `_mods/claude-code-review.md` body (full text)
 
 ````markdown
 ---
 name: claude-code-review
-description: Self-review the PR that pr-merge just opened, using the in-repo claude-code-review skill
+description: Self-review the PR that pr-merge just opened, using the recce-dev plugin variant when enabled, otherwise the in-repo skill
 version: 0.1.0
 ---
 
@@ -47,12 +84,12 @@ version: 0.1.0
 
 Chains after the `pr-merge` mod on the `merge` hook. After pr-merge has pushed
 the worktree branch and created a PR (and stamped the entity's `pr` field),
-this mod runs the in-repo `.claude/skills/claude-code-review/SKILL.md` 9-step
-pipeline against the new PR and posts a self-review.
+this mod resolves which `claude-code-review` skill variant to follow and runs
+that variant's pipeline against the new PR.
 
-This is an audit signal, not an independent reviewer. The author and the
-reviewer are both this same FO instance; the reader should treat the review
-as "the AI's own pre-merge check," not as a substitute for human review.
+This is an audit signal, not an independent reviewer — author and reviewer
+are both the same FO instance. The captain has accepted that trade-off as
+team practice.
 
 ## Hook: merge
 
@@ -63,46 +100,93 @@ If `pr-merge` declined to push, fell back to local merge, or otherwise did
 not set the entity's `pr` field, skip this mod entirely — there is no PR to
 review.
 
-### Adaptations from the standalone skill
+### Step 1 — Resolve which skill variant to follow
 
-The skill assumes a fresh slash invocation. Two of its assumptions need
-adapting when running as a chained mod inside an FO that just opened the PR:
+Use a three-gate detection mechanism. The recce-dev plugin variant is preferred
+when available because the captain has indicated the multi-pass adversarial
+review is the desired output shape; the in-repo single-pass skill is the fallback.
 
-1. **Step 5 (checkout) is a no-op in this context.** The pr-merge mod runs
-   inside the worktree directory, which is already checked out to the PR's
-   `head.ref`. Skip the `git fetch origin "$HEAD_REF" && git checkout "$HEAD_REF"`
-   block. Verify by running `git rev-parse --abbrev-ref HEAD` and confirming
-   it matches the PR's `head.ref`; if it does not (unexpected), abort the
-   mod and report to the captain rather than mutating the worktree state.
+```bash
+# Gate A — read the installed-plugins manifest
+PLUGIN_INSTALL_PATH=$(jq -r '."recce-dev@recce-marketplace"[0].installPath // empty' \
+  ~/.claude/plugins/installed_plugins.json 2>/dev/null)
 
-2. **Step 4 (prior-comment lookup) must not hard-code `claude[bot]`.** The
-   FO posts under whatever identity `gh auth` provides — that may or may not
-   be `claude[bot]`. Resolve dynamically:
+# Gate B — check enabledPlugins (project precedence over user)
+PROJECT_FLAG=$(jq -r '.enabledPlugins["recce-dev@recce-marketplace"] // empty' \
+  "$PROJECT_ROOT/.claude/settings.json" 2>/dev/null)
+USER_FLAG=$(jq -r '.enabledPlugins["recce-dev@recce-marketplace"] // empty' \
+  ~/.claude/settings.json 2>/dev/null)
+ENABLED_FLAG="${PROJECT_FLAG:-${USER_FLAG:-false}}"
 
-   ```bash
-   POSTER=$(gh api /user --jq '.login')
-   COMMENT_ID=$(gh api repos/{owner}/{repo}/issues/{pr_number}/comments \
-     --jq "[.[] | select(.user.login == \"$POSTER\" and (.body // \"\" | contains(\"<!-- claude-code-review -->\")))] | first | .id // empty")
-   ```
+# Gate C — confirm the resolved file exists, otherwise fall back to the in-repo skill
+if [[ -n "$PLUGIN_INSTALL_PATH" && "$ENABLED_FLAG" == "true" \
+      && -f "$PLUGIN_INSTALL_PATH/skills/claude-code-review/SKILL.md" ]]; then
+  SKILL_PATH="$PLUGIN_INSTALL_PATH/skills/claude-code-review/SKILL.md"
+  SKILL_VARIANT="recce-dev plugin (multi-pass)"
+else
+  SKILL_PATH="$PROJECT_ROOT/.claude/skills/claude-code-review/SKILL.md"
+  SKILL_VARIANT="in-repo (single-pass)"
+fi
 
-   This keeps the idempotent-update behavior (one self-review comment, edited
-   on subsequent runs) regardless of poster identity.
+echo "Self-review will use: $SKILL_VARIANT at $SKILL_PATH"
+```
 
-### Pipeline
+Read `$SKILL_PATH` and follow the steps in that file, with the two adaptations
+documented below. Both variants share the `<!-- claude-code-review -->`
+sentinel and the `gh api` / `gh pr review` command surface, so the adaptations
+apply identically to either.
 
-Follow the skill's 9 steps as written, with the two adaptations above:
+### Step 2 — Adaptation: skip the skill's checkout step
 
-1. Parse PR number from the entity's `pr` field (strip `#`, `owner/repo#` prefixes).
-2. Fetch PR details via `gh api`.
-3. If draft, skip and report.
-4. Look up prior `<!-- claude-code-review -->` comment by the dynamically-resolved poster identity.
-5. **Skipped** — worktree is already on `head.ref`.
-6. Run `gh pr diff` and read changed files in the worktree.
-7. Run repo verification commands (`make test`, `make flake8`, `pnpm test`, etc.) per the skill's Step 7 selection rule.
-8. Write the review body to `/tmp/review_body.md` and post (PATCH if `COMMENT_ID` is set, otherwise create).
-9. Submit `gh pr review --approve` or `--request-changes`.
+Both skill variants include a fetch + checkout block to switch to the PR
+branch. Inside a worktree-stage mod, the worktree is *already* on the
+entity's branch (pr-merge runs from the worktree directory). Verify and skip:
 
-### Iron rules (inherited from the skill)
+```bash
+CURRENT_BRANCH=$(cd "$WORKTREE_DIR" && git rev-parse --abbrev-ref HEAD)
+EXPECTED_BRANCH=$(gh api "repos/{owner}/{repo}/pulls/$PR_NUMBER" --jq '.head.ref')
+if [[ "$CURRENT_BRANCH" != "$EXPECTED_BRANCH" ]]; then
+  echo "Aborting self-review: worktree on '$CURRENT_BRANCH', PR head is '$EXPECTED_BRANCH'." \
+    "pr-merge should have left the worktree on the PR branch."
+  exit 1
+fi
+# Worktree is on the PR branch — no fetch/checkout needed.
+```
+
+If the verification fails, abort the mod and report to the captain rather
+than mutating worktree state.
+
+### Step 3 — Adaptation: dynamic poster identity for prior-comment lookup
+
+Both skill variants hard-code `user.login == "claude[bot]"` in the prior-comment
+lookup. The mod runs under whatever `gh auth` identity the FO has — that may
+or may not be `claude[bot]`. Resolve dynamically:
+
+```bash
+POSTER=$(gh api /user --jq '.login')
+COMMENT_ID=$(gh api "repos/{owner}/{repo}/issues/$PR_NUMBER/comments" \
+  --jq "[.[] | select(.user.login == \"$POSTER\" and (.body // \"\" | contains(\"<!-- claude-code-review -->\")))] | first | .id // empty")
+```
+
+This keeps the idempotent-update behavior (one self-review comment, edited
+on subsequent runs) regardless of poster identity. Both skill variants
+recognize the `<!-- claude-code-review -->` sentinel.
+
+### Step 4 — Run the resolved skill's review pipeline
+
+Follow `$SKILL_PATH`'s remaining steps verbatim:
+
+- Parse PR number from the entity's `pr` field (strip `#`, `owner/repo#` prefixes).
+- Run the diff review and verification commands the resolved skill prescribes
+  (the in-repo single-pass skill runs `make test`, `make flake8`, `pnpm test`,
+  `pnpm lint`, `pnpm type:check`; the plugin multi-pass variant has its own
+  selection — both are read from `$SKILL_PATH` at runtime, not hard-coded
+  here, so the mod automatically tracks upstream skill changes).
+- Write the review body to `/tmp/review_body.md` and post (PATCH if
+  `COMMENT_ID` is set, otherwise create).
+- Submit `gh pr review --approve` or `--request-changes`.
+
+### Iron rules (inherited from whichever skill variant resolved)
 
 - No file modifications. The mod runs the skill's read-only verification, never edits source.
 - Critical issues only. No style nits.
@@ -113,32 +197,34 @@ Follow the skill's 9 steps as written, with the two adaptations above:
 
 - `gh` not authenticated → warn captain, skip the mod, do not block pr-merge.
 - Verification commands fail → record the failure in the review body as a
-  finding (per the skill's existing Step 7 rule) and proceed to post.
+  finding (per the resolved skill's existing rule) and proceed to post.
 - Prior-comment lookup throws → abort and post a fresh comment instead of
   silently duplicating; report the lookup failure to the captain.
+- Manifest read fails → log the failure, fall back to the in-repo skill
+  rather than skipping the review entirely.
 ````
 
-## Honest mismatches the captain should weigh before approving Pick #2
+## Mismatches still in scope (cycle 2)
 
-These are surfaced explicitly so the captain can reject pick #2 cleanly without invalidating pick #1:
+Each mismatch below has a concrete resolution baked into the mod design above. They are surfaced explicitly so the captain can sign off on them along with the picks.
 
-1. **Working-tree side effect (intake-flagged).** The skill's Step 5 mutates the local working tree by checking out the PR branch. The mod adapts by skipping Step 5 when the worktree is already on `head.ref`. This adaptation is straightforward but introduces a divergence between the standalone skill behavior and the mod-chained behavior — a future skill update that adds new pre-Step-5 logic will need to be re-applied to the mod by hand.
+1. **Working-tree side effect (intake-flagged).** The skill's checkout step mutates the local working tree. Resolution: the mod verifies the worktree is already on the PR's `head.ref` (it should be, since pr-merge ran from the worktree) and skips the checkout when the verification passes. If the verification fails, the mod aborts rather than mutating worktree state.
 
-2. **`claude[bot]` identity assumption (intake-flagged).** The skill's prior-comment lookup is hard-coded to `user.login == "claude[bot]"`. The mod adapts by resolving the poster identity dynamically. If the upstream skill is later updated to also resolve identity dynamically, the mod's adaptation becomes redundant; if the upstream skill changes its sentinel marker or comment shape, the mod can drift silently.
+2. **Hard-coded `claude[bot]` identity assumption (intake-flagged).** The skill's prior-comment lookup is hard-coded to `user.login == "claude[bot]"`. Resolution: the mod resolves the poster identity dynamically via `gh api /user --jq '.login'` before running the lookup. Idempotent-update behavior is preserved across runs regardless of poster identity. Both skill variants share the `<!-- claude-code-review -->` sentinel, so this fix is variant-agnostic.
 
-3. **Self-review credibility ceiling.** The mod produces an audit signal that the FO ran the skill against its own PR. It is not an independent review. A reasonable captain might decide the per-PR API cost (gh API calls + `make test` + `pnpm test` + posting) and the noise (a guaranteed self-review on every workflow PR, even trivial ones) outweigh the audit value. If so, the right call is `reference-doc`-only — the skill remains directly invokable on demand for any PR a human wants to review, without the mod auto-running it on every workflow PR.
+## Mismatch downgraded per cycle-1 captain acceptance
 
-4. **Two skills with the same slash command.** The `recce-dev` plugin ships a parallel `claude-code-review` skill description that claims a "structured multi-pass code review with adversarial reading" — the in-repo skill at `.claude/skills/claude-code-review/SKILL.md` is single-pass. The mod calls the in-repo single-pass version. If a future captain wants the multi-pass plugin variant instead, the mod body would need editing to invoke that plugin slash command. This is a forkability concern for the mod, not an issue for the reference-doc pick.
+3. **Self-review credibility (downgraded to one-line acknowledgement).** Captain accepted self-review on freshly-created PRs as already team practice; cycle-2 design treats the audit signal as sufficient and does not re-litigate.
 
 ## What this draft deliberately does NOT recommend
 
 - **`workflow-stage-agent`:** no existing workflow has a review stage. Recommending a stage agent without a target stage would violate the workflow README's "recommending integration mechanisms that don't exist in Spacedock" anti-pattern.
-- **`commission-seed`:** the captain rejected the equivalent commission-seed proposal for `address-dependabot` (entity 001 cycle-1) on the grounds that wrapping a single self-contained skill in a Spacedock workflow adds ceremony without value. The same logic applies here. Furthermore, the skill is already exposed via two parallel surfaces (in-repo `.claude/skills/` and the `recce-dev` plugin) — adding a workflow on top would be a third surface.
+- **`commission-seed`:** the captain rejected the equivalent commission-seed proposal for `address-dependabot` (entity 001 cycle-1) on the grounds that wrapping a single self-contained skill in a Spacedock workflow adds ceremony without value. The same logic applies here. Furthermore, with the mod now consuming both variants via the detection mechanism, there is no second surface to consolidate via a workflow.
 - **`keep-as-is`:** strictly dominated by the `reference-doc` pick. Both produce no runtime change; `reference-doc` adds one line of discoverability documentation at zero ongoing cost.
 
 ## Recommended approval path
 
 - **If the captain wants the safe path** (matches the `address-dependabot` precedent, no new mod surface): approve pick #1 only. The execute stage produces a single README edit. Action items #2 and #3 from the entity body are dropped with a "skipped per approval gate" note in the Completed actions section.
-- **If the captain wants the audit signal** despite the mismatches: approve picks #1 and #2 together. The execute stage produces the README edit (action item #1), the new mod file at `_mods/claude-code-review.md` (action item #2), and a "Mods" subsection in the workflow README naming the chain order (action item #3).
+- **If the captain wants the audit signal**: approve picks #1 and #2 together. The execute stage produces the README edit (action item #1), the new mod file at `_mods/claude-code-review.md` (action item #2 — note the cycle-2 design uses the three-gate plugin detection), and a "Mods" subsection in the workflow README naming the chain order (action item #3).
 
 Either outcome is a clean approval. The picks are deliberately separated so the captain does not have to choose between "all or nothing."
