@@ -72,26 +72,21 @@ Read the entire `skill.md` (a single 12.6K file at `.claude/skills/address-depen
 
 ## Suggestions
 
-**Recommendation:** `commission-seed` + `reference-doc` (combined). The full reviewable draft is at `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/address-dependabot-draft.md` — read the draft for the complete proposal; this section is the captain's-eye summary.
+**Recommendation:** `reference-doc` (sole pick). The full reviewable draft is at `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/address-dependabot-draft.md` — read the draft for the complete proposal; this section is the captain's-eye summary.
 
-**Primary pick — `commission-seed` (Integration A in the draft):** Commission a `dependabot-batch` workflow via `/spacedock:commission`. The skill's 9 phases map cleanly onto a 7-stage Spacedock workflow (`queued` -> `inventory` -> `classify` -> `approve-classification` (gate) -> `apply-and-migrate` (worktree) -> `test` (worktree) -> `push-and-pr` (terminal)). The skill's two existing human pause points — "ask on major bumps" and "unsure if `@datarecce/ui` floor bump is needed" — collapse into a single approval gate at `approve-classification`, after which the rest runs unattended. The skill body itself stays at `.claude/skills/address-dependabot/skill.md` and is referenced from the workflow README's per-stage `Outputs` bullets — the workflow orchestrates, the skill remains the source of truth for *how* each phase actually executes.
+**Pick — `reference-doc`:** Append a "Related skills" subsection to `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/README.md` that lists `address-dependabot` with a relative link back to `.claude/skills/address-dependabot/skill.md`. This makes the skill discoverable from the workflow that catalogued it without locking the captain into any new orchestration. Cheap, no logic change, no new workflow.
 
-**Secondary pick — `reference-doc` (Integration B in the draft):** Independent of Integration A, add a "Related skills" reference to `docs/claude-skill-refinement/README.md` so future captains discover the skill from the workflow it inspired. Cheap, no logic change.
+**Why no `commission-seed` recommendation:** A prior cycle proposed commissioning a new `dependabot-batch` workflow whose 7 stages would mirror the skill's 9 phases. Captain rejected that at the approval gate — the additional ceremony (per-batch entity files, gate review of the classification table, worktree dispatch for apply/test) is more overhead than the current single `/address-dependabot` invocation warrants. The skill works today as autonomous CLI orchestration with two natural human pause points; wrapping it in Spacedock stages does not earn its keep at the current batch volume. If batch volume grows or per-run audit trails become valuable, the captain can revisit this in a new entity.
 
-**Why no `mod` recommendation:** Mods are designed for sharp lifecycle behaviors at `startup` / `idle` / `merge` hooks (see `_mods/pr-merge.md` for the canonical example). A 9-phase pipeline with mid-pipeline human pause points is the wrong shape for a single hook function. Notably, the `push-and-pr` terminal stage of Integration A *reuses* the pr-merge mod's `merge` hook — that is the appropriate mod surface for this skill, not a new dedicated mod.
+**Why no `mod` recommendation:** Mods are designed for sharp lifecycle behaviors at `startup` / `idle` / `merge` hooks (see `_mods/pr-merge.md` for the canonical example). A 9-phase pipeline with mid-pipeline human pause points is the wrong shape for a single hook function. The skill's terminal push/PR step would naturally reuse the pr-merge mod's `merge` hook *if* the skill were ever wrapped in a Spacedock workflow — but absent that wrapping (see rejection above), there is no mod surface to add.
 
-**Why no `workflow-stage-agent` recommendation:** No existing Spacedock workflow has a stage this skill naturally plugs into. The skill IS the workflow — Integration A reflects that.
+**Why no `workflow-stage-agent` recommendation:** No existing Spacedock workflow has a stage this skill naturally plugs into. The skill is a self-contained 9-phase pipeline, not a sub-step of some larger orchestration.
 
 ### Action items (for the execute stage)
 
 Each item below names a target file path and a one-line description of what goes there.
 
-1. **Run `/spacedock:commission`** with the mission statement quoted in the draft (Integration A section). Commission emits the following files automatically:
-   - `/Users/jaredmscott/repos/recce/recce/docs/dependabot-batch/README.md` — workflow scaffolding with the 7 stages, schema reference, and entity template (commission's Phase 2a).
-   - `/Users/jaredmscott/repos/recce/recce/docs/dependabot-batch/_mods/pr-merge.md` — copied from the Spacedock plugin to handle the terminal `push-and-pr` stage (commission's Phase 2c, conditional on a worktree stage existing — `apply-and-migrate` and `test` are worktree stages, so this triggers).
-   - `/Users/jaredmscott/repos/recce/recce/docs/dependabot-batch/{slug}.md` — one initial seed entity per batch the captain wants to track. Seed slug example: `2026-04-batch.md`.
-2. **Edit `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/README.md`** — append a "Related skills" subsection at the bottom listing `address-dependabot` with a relative link to `.claude/skills/address-dependabot/skill.md`. This is the `reference-doc` half of the recommendation and is independent of whether commission runs.
-3. **Leave `/Users/jaredmscott/repos/recce/recce/.claude/skills/address-dependabot/skill.md` unchanged.** The skill remains the source of truth for per-phase execution; the new workflow orchestrates around it. (Filename lowercase-vs-uppercase is a separate concern not in scope here — flagged in Intake for the captain's awareness.)
+1. **Edit `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/README.md`** — append a "Related skills" subsection at the bottom that lists `address-dependabot` with a relative link to `.claude/skills/address-dependabot/skill.md` and a one-line description ("Consolidate open Dependabot PRs into a single tested branch and PR.").
 
 ### Draft document
 
@@ -99,7 +94,7 @@ A reviewable standalone draft for the captain is saved at:
 
 - `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/address-dependabot-draft.md`
 
-It contains the full mission statement to feed `/spacedock:commission`, the 7-stage table with worktree/gate annotations, the file list, the rationale for rejecting `mod` and `workflow-stage-agent`, and a recommended approval path (approve B unconditionally; approve A only if per-batch audit trails are wanted).
+It contains the proposed README subsection text verbatim, the rationale for the sole `reference-doc` recommendation, and the rejection rationale for `commission-seed`, `mod`, and `workflow-stage-agent`.
 
 ## Stage Report: suggestions
 
@@ -127,3 +122,16 @@ Required revisions for the next suggestions pass:
 - Reduce the integration recommendation in the Suggestions section to a single primitive (`reference-doc`).
 - Update or replace `docs/claude-skill-refinement/address-dependabot-draft.md` so it reflects only the reference-doc proposal — most of the existing draft is about Integration A and is now stale.
 - Preserve the rationale for rejecting `mod` and `workflow-stage-agent`; those rejections still hold.
+
+## Stage Report: suggestions (cycle 2)
+
+- DONE: Revised Suggestions section names `reference-doc` as the SOLE integration recommendation; the prior `commission-seed` (Integration A) is removed entirely. Rationale for previously rejecting `mod` and `workflow-stage-agent` is preserved.
+  Suggestions section rewritten: single recommendation `reference-doc`; new "Why no `commission-seed` recommendation" paragraph documents the cycle-1 rejection; existing rejection rationale for `mod` and `workflow-stage-agent` is preserved (and updated to reflect that there is no longer a Spacedock workflow to attach a mod to).
+- DONE: Action items list contains ONLY the README 'Related skills' edit targeting `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/README.md`; no entries reference `docs/dependabot-batch/...` or `/spacedock:commission`.
+  Action items reduced to a single numbered item: edit `docs/claude-skill-refinement/README.md` to append a "Related skills" subsection. No `docs/dependabot-batch/...` or `/spacedock:commission` references remain.
+- DONE: `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/address-dependabot-draft.md` is rewritten to reflect only the reference-doc proposal; no remaining commission-seed / dependabot-batch content.
+  Draft fully rewritten via Write: now contains the proposed README subsection text verbatim, rationale for the sole `reference-doc` pick, and the cycle-1 rejection of `commission-seed` documented under "What this draft deliberately does NOT recommend" so it is not re-proposed.
+
+### Summary
+
+Reduced the Suggestions section to the sole `reference-doc` recommendation per cycle-1 captain feedback: a one-subsection edit to `docs/claude-skill-refinement/README.md` linking back to `.claude/skills/address-dependabot/skill.md`. Removed all `commission-seed` action items and rewrote the draft document to match. Preserved the rejection rationale for `mod` and `workflow-stage-agent`, and added an explicit rejection note for `commission-seed` so the rejected proposal is not re-suggested in future cycles.
