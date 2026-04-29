@@ -1,9 +1,9 @@
 ---
 id: 003
 title: linear-deep-dive
-status: queued
+status: intake
 source: commission seed
-started:
+started: 2026-04-29T02:30:20Z
 completed:
 verdict:
 score:
