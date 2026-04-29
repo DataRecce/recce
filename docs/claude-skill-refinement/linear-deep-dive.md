@@ -1,7 +1,7 @@
 ---
 id: 003
 title: linear-deep-dive
-status: intake
+status: suggestions
 source: commission seed
 started: 2026-04-29T02:30:20Z
 completed:
