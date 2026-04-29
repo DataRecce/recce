@@ -1,9 +1,9 @@
 ---
 id: 004
 title: recce-mcp-dev
-status: queued
+status: intake
 source: commission seed
-started:
+started: 2026-04-29T07:38:04Z
 completed:
 verdict:
 score:
