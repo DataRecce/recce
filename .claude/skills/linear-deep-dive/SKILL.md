@@ -322,6 +322,8 @@ Present findings to the user before proposing next steps.
 
 Use this flow when the input is a Linear **project** (not a single issue). A project is a collection of issues organized by milestones with a shared goal, description, and timeline.
 
+> **Spacedock alternative.** For multi-issue projects you intend to work across multiple sessions, the [`linear-delivery`](../../../docs/workflows/linear-delivery/README.md) workflow can seed N entities at commission time from a Linear project URL — milestone/priority become entity scores, and dispatch ordering replaces the in-conversation 4-option execution prompt at Step 11. See **Spacedock integration** at the bottom of this file.
+
 ### 8. Fetch Project
 
 Retrieve the project with its full context:
@@ -605,3 +607,16 @@ When working through a project (Steps 8-12), apply the same status transitions t
 - **Report progress between issues.** The user should always know where they are in the execution plan.
 - **Pause at milestone boundaries.** Completing a milestone is a natural checkpoint — report it and confirm the next phase.
 - **Carry context forward.** Reuse codebase knowledge from earlier issues — don't re-explore the same files from scratch.
+
+---
+
+## Spacedock integration
+
+A Spacedock workflow generalizes this skill for persistent multi-session use: [`docs/workflows/linear-delivery/`](../../../docs/workflows/linear-delivery/README.md). The workflow's stages (`triage → analysis → approval → implementation → review → done`) mirror this skill's per-issue lifecycle, with the Linear MCP `save_issue` calls centralized in a `linear-status-sync` mod that enforces the iron rule from `references/linear-issue-lifecycle.md` at one chokepoint.
+
+**Decision rule.** Prefer the workflow for persistent multi-session state; use this skill for one-shot conversation flow.
+
+- Use the **workflow** when: the issue or project will span multiple Claude Code sessions, you want on-disk record of *what stage we're at* per issue, you are processing many issues in priority order and want first-officer dispatch to handle the queue, or you want the captain-gated approval and PR merge gate enforced by the workflow scaffolding.
+- Use this **skill** directly when: you want a single in-conversation flow start-to-finish, the issue is small enough to fit in one session, or you don't want the overhead of a per-entity markdown file.
+
+The workflow seeds from this skill — its analysis stage carries forward the classification rubric, key-files table, and skill-chain mapping documented above (lines 78, 145, 219–266). The skill chain itself (`brainstorming` / `writing-plans` / `executing-plans` / `systematic-debugging` / `TDD`) is invoked at the workflow's `implementation` stage exactly as it is here.
