@@ -4,10 +4,10 @@ title: linear-deep-dive
 status: execute
 source: commission seed
 started: 2026-04-29T02:30:20Z
-completed:
-verdict:
+completed: 2026-04-29T07:34:02Z
+verdict: PASSED
 score:
-worktree: .worktrees/spacedock-ensign-linear-deep-dive
+worktree:
 issue:
 pr:
 mod-block:
