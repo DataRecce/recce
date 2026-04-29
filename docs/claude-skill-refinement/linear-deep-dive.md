@@ -1,7 +1,7 @@
 ---
 id: 003
 title: linear-deep-dive
-status: approval
+status: suggestions
 source: commission seed
 started: 2026-04-29T02:30:20Z
 completed:
@@ -139,3 +139,28 @@ Read the full SKILL.md (22.0K, 608 lines) and the single `references/linear-issu
 ### Summary
 
 Recommended `commission-seed` (primary) + `reference-doc` (complementary). The `linear-deep-dive` skill already encodes a per-entity lifecycle that maps cleanly onto a Spacedock workflow (`triage → analysis → approval → implementation → review → done`); the `pr-merge` mod handles the merge gate and a small new `linear-status-sync` mod centralizes the iron rule from `references/linear-issue-lifecycle.md` at three `stage-enter` hooks. The dual-mode design collapses by treating project-mode as the multi-entity seeding case (issue priority → entity score → first-officer dispatch ordering) rather than a parallel workflow. Five concrete action items with target paths and explicit rejections of `mod` / `workflow-stage-agent` / `keep-as-is` are recorded. Standalone draft at `linear-deep-dive-draft.md` for captain review at the approval gate.
+
+### Feedback Cycles
+
+**Cycle 1 — 2026-04-29 (approval -> suggestions)**
+
+Captain verdict at approval gate: APPROVED with conditions.
+
+Confirmed picks (no change required):
+
+- `commission-seed` for one new workflow per Linear delivery flow — accepted.
+- `linear-status-sync` mod with `stage-enter:implementation/review/done` hooks — accepted.
+- `reference-doc` complementary tie-back — accepted.
+
+Required revisions for the cycle-2 suggestions pass:
+
+- **PATH CHANGE.** The new workflow must live at `/Users/jaredmscott/repos/recce/recce/docs/workflows/linear-delivery/` (NOT `docs/linear-delivery/` as currently proposed). Update action items 1, 2, and 3 to use the new prefix:
+  - `docs/workflows/linear-delivery/README.md` (workflow scaffolding)
+  - `docs/workflows/linear-delivery/_mods/pr-merge.md` (vendored)
+  - `docs/workflows/linear-delivery/_mods/linear-status-sync.md` (new)
+- **NEW: deeper cross-reference at `docs/workflows/README.md`.** Currently `docs/workflows/` does not exist. The cycle-2 action items must include creating `docs/workflows/README.md` as an index page that lists workflows (starting with `linear-delivery/` and presumably `claude-skill-refinement/` as well — captain's call whether to also relocate that, but the index entry should at minimum reference the existing `docs/claude-skill-refinement/` location). The `docs/claude-skill-refinement/README.md` "Related skills" entry from action item 4 stays as-is — it's a separate primitive (skill-back-to-workflow link), not a substitute for the workflows index.
+- Update `docs/claude-skill-refinement/linear-deep-dive-draft.md` to reflect the path change and the new workflows-index action item.
+
+Out of scope per captain (preserved as-is):
+
+- Action item 5 (edit `.claude/skills/linear-deep-dive/SKILL.md` to add a "Spacedock integration" subsection) — captain did not flag this; keep as proposed.
