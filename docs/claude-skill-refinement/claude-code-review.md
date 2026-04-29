@@ -1,7 +1,7 @@
 ---
 id: 002
 title: claude-code-review
-status: intake
+status: suggestions
 source: commission seed
 started: 2026-04-29T02:30:19Z
 completed:
