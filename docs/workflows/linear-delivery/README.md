@@ -135,11 +135,19 @@ The original skill's interactive 4-option execution prompt (SKILL.md §11) becom
 This workflow ships with two mods under `_mods/`. The first officer auto-discovers mods by filesystem scan at startup; there is no explicit mod registration in this README's frontmatter.
 
 - **`pr-merge`** (vendored from the plugin) — owns PR creation (`merge` hook), merge detection (`startup`/`idle` hooks), and entity advancement on merge. Located at `_mods/pr-merge.md`.
-- **`linear-status-sync`** (workflow-specific) — owns Linear MCP `save_issue` calls. Hooks `startup` and `idle` to reconcile Linear state against the entity's workflow `status` via the `linear-state` frontmatter field; uses no `merge` hook (that point is owned by `pr-merge`). Mapping: `triage`/`analysis`/`approval` → Triage; `implementation` → In Progress; `review` → In Review; `done` → Done (only after `gh pr view --json state` returns MERGED). Located at `_mods/linear-status-sync.md`. Cites `.claude/skills/linear-deep-dive/references/linear-issue-lifecycle.md` as the authority for the iron rule.
+- **`linear-status-sync`** (workflow-specific) — owns Linear MCP `save_issue` calls. Hooks `startup` and `idle` to reconcile Linear state against the entity's workflow `status` via the `linear-state` frontmatter field; uses no `merge` hook (that point is owned by `pr-merge`). Mapping: `triage`/`analysis`/`approval` → Triage; `implementation` → In Progress; `review` → In Review; `done` → Done (only after `gh pr view --json state` returns MERGED). On the first reconciliation for a seeded entity (when `linear-state` is empty), the mod bootstraps from Linear via `get_issue` rather than pushing — this avoids regressing the Linear state for issues seeded mid-flight. Subsequent reconciliations apply a forward-only direction check (canonical order `Triage < In Progress < In Review < Done`) and skip backward pushes with a captain warning. Located at `_mods/linear-status-sync.md`. Cites `.claude/skills/linear-deep-dive/references/linear-issue-lifecycle.md` as the authority for the iron rule.
 
 Mods run in lexical filename order; `linear-status-sync` (l) runs before `pr-merge` (p) on every shared hook tick. The Linear `Done` sync therefore lags `pr-merge`'s archival by exactly one idle tick — by design, since the Done sync re-runs `gh pr view` against the archived entity to re-verify the merge before mutating Linear.
 
 ## Workflow State
+
+The captain-runnable bash blocks below pin `spacedock/0.10.2` to match this workflow's `commissioned-by` frontmatter. When the spacedock plugin updates, resolve the latest installed version dynamically with:
+
+```bash
+SPACEDOCK_BIN="$(ls -d ~/.claude/plugins/cache/spacedock/spacedock/*/skills/commission/bin/status 2>/dev/null | sort -V | tail -1)"
+```
+
+and substitute `$SPACEDOCK_BIN` for the pinned path. The first officer's runtime resolves the plugin path itself and is unaffected by the pinning here.
 
 View the workflow overview:
 
@@ -198,7 +206,7 @@ Each AC names a property of the finished entity (not a stage action) and how it 
 Verified by: Deep Dive section in the entity body names a classification tag from the allowed set and a proposed downstream skill chain.
 
 **AC-2 — Linear status synchronized.**
-Verified by: After each stage transition, the entity's `linear-state` field reflects the implied Linear state for its current `status` (per the mapping in `_mods/linear-status-sync.md`). Reconciliation runs on the next `idle` tick after each transition. Done is only set after `gh pr view --json state` returns `MERGED`.
+Verified by: For each forward stage transition, the entity's `linear-state` field reaches the implied Linear state for its current `status` (per the mapping in `_mods/linear-status-sync.md`) by the next `idle` tick after the transition. The first reconciliation for a freshly-seeded entity bootstraps `linear-state` from Linear via `get_issue` (not by pushing); subsequent ticks push forward only. Backward transitions (workflow status moving to a stage with a lower implied Linear state) skip the push with a captain warning to avoid regressing externally-set state. Done is only set after `gh pr view --json state` returns `MERGED`.
 
 **AC-3 — PR linked.**
 Verified by: The entity's `pr` field is populated and the PR body cross-references the entity via the audit link template from `_mods/pr-merge.md`.

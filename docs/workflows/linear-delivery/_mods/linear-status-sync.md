@@ -1,7 +1,7 @@
 ---
 name: linear-status-sync
 description: Synchronize Linear issue status with workflow stage transitions for the linear-delivery workflow
-version: 0.2.0
+version: 0.3.0
 ---
 
 # Linear Status Sync
@@ -43,13 +43,24 @@ The `review` mapping treats the entity as `In Review` once it reaches the `revie
 For each entity in the workflow directory (active entities AND `_archive/` — the `done` sync only fires after `pr-merge` has already archived the entity, so the archived files must be in scope):
 
 1. Skip the entity if `linear-id` is empty or missing. Warn once per session per missing entity (track by entity `id` so the warning does not repeat across ticks).
-2. Determine the implied Linear state from the entity's `status` per the mapping above.
-3. If the implied state matches the entity's `linear-state` field, skip — already synced.
-4. Otherwise:
+2. **First-reconciliation bootstrap.** If the entity's `linear-state` field is empty (never synced), do NOT push state to Linear. Instead, read the current Linear state via `mcp__claude_ai_Linear_2__get_issue` with `id: {linear-id}`, and write the returned state into the entity's `linear-state` frontmatter (using the active/archive write rule below). Skip the remaining steps for this entity on this tick. Rationale: a freshly-seeded entity has `status: triage`, but the underlying Linear issue may already be `In Progress` or beyond (e.g., a project-mode seed of an issue that began outside this workflow). Pushing `Triage` on first sync would silently regress Linear state for the broader team. The next idle tick treats the now-populated `linear-state` as the comparison baseline and pushes only when the workflow advances past it.
+3. Determine the implied Linear state from the entity's `status` per the mapping above.
+4. If the implied state matches the entity's `linear-state` field, skip — already synced.
+5. **Direction check.** Compute the canonical ordering `Triage < In Progress < In Review < Done`. If the implied state's order is *less than* the `linear-state`'s order, this is a backward transition — do NOT push. Warn the captain once per entity per session: `{slug}: workflow status implies {implied}, but linear-state is at {linear-state}; skipping push to avoid regressing externally-set Linear state.` Rationale: pushing backward could clobber a teammate's manual update or a legitimate later-stage transition that happened outside this workflow. The known-legitimate backward transition (PR closed without merge → `In Progress`, per the lifecycle reference) is currently handled by the captain clearing `linear-state` to force a re-bootstrap; future revisions of this mod may add an explicit closed-without-merge handler.
+6. **Forward push** (implied state's order > `linear-state`'s order):
    - **Iron rule guardrail (when implied is `Done`).** Strip any `#` or `owner/repo#` prefix from the entity's `pr` field, then run `gh pr view {pr-number} --json state --jq '.state'`. If the result is anything other than `MERGED`, do NOT call `save_issue`. Report a one-line warning naming the entity and the PR state, and leave `linear-state` unchanged. The iron rule applies: never mark Done until merged is verified. If `gh` is unavailable, skip Done syncs only — other transitions still proceed.
    - Call `mcp__claude_ai_Linear_2__save_issue` with `id: {linear-id}` and `state: {implied state}`.
-   - On success, update the entity's `linear-state` frontmatter via `status --workflow-dir docs/workflows/linear-delivery --set {slug} linear-state={new state}` and commit the change with message `linear-sync: {slug} {old state} -> {new state}`.
-5. If `mcp__claude_ai_Linear_2__save_issue` is unavailable (Linear MCP server not connected), warn the captain once per session and skip Linear sync for the rest of the session.
+   - On success, update the entity's `linear-state` frontmatter (see active/archive write rule below) and commit the change with message `linear-sync: {slug} {old state} -> {new state}`.
+7. If `mcp__claude_ai_Linear_2__save_issue` (or `get_issue` during bootstrap) is unavailable (Linear MCP server not connected), warn the captain once per session and skip Linear sync for the rest of the session.
+
+### Active vs archive write rule
+
+`bin/status --set` resolves entity slugs only against the active workflow directory — `resolve_entity_path` checks `{workflow_dir}/{slug}.md` and `{workflow_dir}/{slug}/index.md`, never `_archive/`. So `linear-state` writes split by location:
+
+- **Active entity** (file at `{workflow_dir}/{slug}.md` or `{workflow_dir}/{slug}/index.md`): use `status --workflow-dir docs/workflows/linear-delivery --set {slug} linear-state={new state}`. The mechanism handles worktree redirection automatically when the entity has a non-empty `worktree` field.
+- **Archived entity** (file at `{workflow_dir}/_archive/{slug}.md` or `{workflow_dir}/_archive/{slug}/index.md`): edit the `linear-state:` line in the archived file's YAML frontmatter directly (Edit tool or equivalent in-place rewrite). `bin/status --set` exits 1 with `Error: entity not found` for archived slugs.
+
+Both paths conclude with the same git commit message format. The split exists because the only realistic way `linear-state` write reaches an archived file is the post-archival Done sync — by the time `pr-merge` archives, the entity is no longer reachable through `status --set`.
 
 ## Hook: startup
 
@@ -66,7 +77,7 @@ Mods run in lexical filename order: `linear-status-sync` (l) runs before `pr-mer
 - `linear-status-sync.idle` runs first, scanning entities at their pre-tick `status`.
 - `pr-merge.idle` runs next, potentially advancing review-stage entities to `done` and archiving them when their PR reaches `MERGED` state.
 
-The `done` sync therefore lags by one idle tick — when `pr-merge.idle` archives an entity, the archived file's `status` is `done`, but `linear-state` is still `In Review`. The next `idle` tick scans `_archive/`, finds the archived entity needs a sync, runs the iron-rule `gh pr view` check (which still returns `MERGED` for a merged PR), syncs Linear to `Done`, and updates `linear-state` in the archive copy.
+The `done` sync therefore lags by one idle tick — when `pr-merge.idle` archives an entity, the archived file's `status` is `done`, but `linear-state` is still `In Review`. The next `idle` tick scans `_archive/`, finds the archived entity needs a sync, runs the iron-rule `gh pr view` check (which still returns `MERGED` for a merged PR), syncs Linear to `Done`, and updates `linear-state` in the archived file via the archive write path documented above (direct frontmatter edit — `status --set` does not reach `_archive/`).
 
 This one-tick lag is intentional: the iron rule is "never mark Done until merge is verified by the same authority that triggered archival" (`gh pr view --json state`), so re-running the check on the archived entity is a feature, not a bug — it defends against a manual override or race that would archive without true merge.
 
