@@ -11,6 +11,7 @@ worktree:
 issue:
 pr:
 mod-block:
+archived: 2026-04-29T07:33:45Z
 ---
 
 PR review skill triggered by `/review` and PR URLs. Lives at `.claude/skills/claude-code-review/`. Goal of this entity: understand its review methodology (multi-pass, adversarial, severity-based) and decide if it should be wrapped as a Spacedock workflow stage agent (e.g., review stage in a PR pipeline), a commissioned PR-review workflow seed, or stay as a directly-invokable skill referenced from a release workflow.
