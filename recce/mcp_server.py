@@ -241,9 +241,9 @@ class RecceMCPServer:
                             },
                             "view_mode": {
                                 "type": "string",
-                                "enum": ["changed_models", "all"],
+                                "enum": ["changed_models", "all", "body_changes"],
                                 "default": "changed_models",
-                                "description": "View mode: 'changed_models' for only changed models (default), 'all' for all models",
+                                "description": "View mode: 'changed_models' for only changed models (default), 'all' for all models, 'body_changes' for SQL body/macro/contract changes only",
                             },
                         },
                     },
@@ -362,8 +362,8 @@ class RecceMCPServer:
                             },
                             "view_mode": {
                                 "type": "string",
-                                "enum": ["all", "changed_models"],
-                                "description": "View mode: 'all' for all models, 'changed_models' for only changed models (optional)",
+                                "enum": ["all", "changed_models", "body_changes"],
+                                "description": "View mode: 'all' for all models, 'changed_models' for only changed models (optional), 'body_changes' for SQL body/macro/contract changes only",
                             },
                         },
                     },

@@ -1919,7 +1919,7 @@ class DbtAdapter(BaseAdapter):
         select: Optional[str] = None,
         exclude: Optional[str] = None,
         packages: Optional[list[str]] = None,
-        view_mode: Optional[Literal["all", "changed_models"]] = None,
+        view_mode: Optional[Literal["all", "changed_models", "body_changes"]] = None,
     ) -> Set[str]:
         import dbt.compilation
         from dbt.compilation import Compiler
@@ -1953,8 +1953,14 @@ class DbtAdapter(BaseAdapter):
         if packages is not None:
             package_spec = SelectionUnion([_parse_difference([f"package:{p}"], None) for p in packages])
             specs.append(package_spec)
-        if view_mode and view_mode == "changed_models":
+        if view_mode == "changed_models":
             specs.append(_parse_difference(["1+state:modified+"], None))
+        elif view_mode == "body_changes":
+            specs.append(
+                _parse_difference(
+                    ["1+state:modified.body+", "1+state:modified.macros+", "1+state:modified.contract+"], None
+                )
+            )
         spec = SelectionIntersection(specs)
 
         manifest = Manifest()
