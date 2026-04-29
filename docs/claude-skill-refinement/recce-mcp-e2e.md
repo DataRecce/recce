@@ -93,3 +93,74 @@ Comparative against the strongest alternative `analysis`: the difference is the 
 ### Summary
 
 Read the full `recce-mcp-e2e` skill (SKILL.md plus the load-bearing `test_mcp_e2e_template.py`; no `references/`, no `bin/`) and categorized it as `review`: a captain-driven pre-merge verification skill that runs 13 named checks across full-mode (8 tools) and single-env-mode (3 _warning + 2 no-warning) suites against a real two-environment dbt project. Its scope is one project, one warehouse, one representative model auto-discovered from `target/manifest.json`; no multi-adapter matrix, no enumerated error-path coverage, no CI wiring. Pre-merge gating is advisory — the script exits 1 on failure but is deleted by Step 7 cleanup, leaving the merge decision to the captain. Notable findings: SKILL.md vs. template inconsistency around `run_check` skip-when-no-preset-checks vs. "all 13 must PASS"; the warehouse-agnostic harness silently relies on the dbt project's profile; `PYTHONPATH` injection is mandatory when `recce-nightly` is co-installed.
+
+## Suggestions
+
+**Recommendation:** `reference-doc` only. The full reviewable draft is at `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/recce-mcp-e2e-draft.md` — the draft stands alone; this section is the captain's-eye summary tying the pick to a Spacedock primitive and the intake's pre-merge gating posture, plus the four explicitly-rejected primitives.
+
+The intake established two load-bearing properties: (a) the skill is `review`-class, producing a 13-check PASS/FAIL verdict; (b) its pre-merge gating posture is advisory captain-driven verification, not an automated blocking gate — the script exits 1 on failure but is deleted by Step 7 cleanup, leaving the merge decision to the captain. The pick below preserves both: a README "Related skills" entry surfaces the skill from the workflow that catalogued it without changing how the skill runs, and without re-hosting it as a mod or workflow stage that would impose ceremony the skill is not shaped for.
+
+### Pick — `reference-doc` (sole pick)
+
+Append a `recce-mcp-e2e` entry to the existing "Related skills" subsection of `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/README.md` (the subsection added by entity 001 and extended by entities 002 and 003). The entry links to `.claude/skills/recce-mcp-e2e/SKILL.md` with a one-line description: "Run end-to-end verification of all 8 MCP tools against a real dbt project before merging MCP PRs." This is the same primitive shape the captain approved for entities 001, 002, and 003 — discoverability without orchestration.
+
+**Tie to Spacedock primitive:** documentation only. No mod hook, no commission stage, no ensign agent role. The pick does not touch any Spacedock primitive other than the workflow README itself.
+
+**Tie to the intake's verification scope and pre-merge gating posture:** the intake recorded that the skill produces a 13-check PASS/FAIL verdict in advisory mode (the captain decides whether to merge based on the report; there is no CI wiring, and Step 7 deletes the test file before any CI could consume the exit code). A `reference-doc` entry preserves that advisory shape — the skill stays invocable on demand under its existing trigger conditions ("After modifying `recce/mcp_server.py` or `_tool_*` handlers", "Before merging any MCP-related PR" — SKILL.md lines 12–14), and the captain still owns the merge decision.
+
+### Why no `mod` recommendation
+
+A `merge`-hook mod is exactly the pattern entity 002 used for `claude-code-review` — and at first glance the parallel is tempting: both skills are `review`-class, both produce verdicts, both are pre-merge concerns. The parallel breaks down on the actual trigger surface:
+
+1. **Trigger mismatch with this workflow's PRs.** The `claude-skill-refinement` workflow opens PRs that touch documentation under `docs/claude-skill-refinement/` and skill metadata under `.claude/skills/` — it does not modify `recce/mcp_server.py` or any MCP tool handlers. The skill's negative trigger (SKILL.md line 15) explicitly excludes this: "**Not for**: unit test changes only, frontend-only changes, **docs-only changes**" (emphasis added). Wiring an E2E mod to fire on every workflow PR would invoke a 13-tool verification suite for changes that the skill itself disqualifies. That is the wrong shape: the cost (a real dbt warehouse query against a real project) is paid every time, the value (catching MCP regressions) is zero by construction because no MCP code was touched.
+
+2. **Required input not available in the mod context.** The skill's Step 1 (SKILL.md line 28) is "**Resolve project path** from argument or user input" — without a captain-supplied dbt project path the skill cannot run at all. A `merge` hook fires after PR creation in a non-interactive code path; there is no captain-supplied path, and `_mods/pr-merge.md` does not surface a slot for one. Hard-coding a path in the mod body would make the workflow non-portable across captains' machines and dependent on a specific dbt project being available at a known absolute path. Reading a path from settings is plausible but adds configuration surface for a benefit (covering doc-only PRs) the skill itself rejects.
+
+3. **Cost asymmetry vs. claude-code-review.** The `claude-code-review` mod is cheap to fire on every PR — it makes a few `gh` API calls and at most runs the project's existing test/lint/type-check commands, all of which are required-anyway artifacts. The `recce-mcp-e2e` skill issues real warehouse queries (`SELECT count(*) FROM {{ ref(...) }}` per tool), spins up a `RecceMCPServer`, loads dbt context twice (full mode + simulated single-env), and templates and deletes a test file in the captain's filesystem. That is a heavyweight per-PR action with documented cosmetic noise (the `portalocker` thread error, SKILL.md line 67) that any CI gate would have to allowlist.
+
+4. **No `merge`-hook chaining benefit.** The `_mods/` directory currently runs in lexical order: `claude-code-review` (`c`) before `pr-merge` (`p`) — but per cycle-2 entity 002's mod body, the `claude-code-review` mod itself fires *after* `pr-merge` has set the entity's `pr` field, by reading that field in its own logic rather than by lexical position. A `recce-mcp-e2e.md` slotted into `_mods/` would land at `r` — last on the chain — but it has no PR-creation work to do (`pr-merge` already pushed and made the PR), no review verdict to chain with `claude-code-review` (which already posted), and no E2E surface to verify (the workflow does not touch MCP code). All chain neighbors do something with the entity's `pr` field; an E2E mod here would have no meaningful work to do on entity 005's own PR.
+
+If the project ever commissions a separate workflow whose entities DO modify `recce/mcp_server.py` (an "MCP feature" workflow), THAT workflow's `_mods/` directory could host a `recce-mcp-e2e.md` mod tied to a verification stage. That is a different entity in a different workflow, not a deliverable of this entity in this workflow.
+
+### Why no `workflow-stage-agent` recommendation
+
+The same logic, restated for this primitive: the only workflow currently in this repository is `claude-skill-refinement` itself, whose stages are `queued`, `intake`, `suggestions`, `approval`, `execute`. None of those is a verification stage for MCP code; none has any expectation of MCP-tool surface. There is no existing slot for a `recce-mcp-e2e` stage agent to plug into. Per the workflow README's `Bad` examples for suggestions ("recommending integration mechanisms that don't exist in Spacedock"), recommending a stage agent without a target stage would be vacuous. An ensign-dispatched verification stage on a future MCP-feature workflow is the right home for stage-agent integration; that future workflow does not yet exist.
+
+### Why no `commission-seed` recommendation
+
+Entity 001 (`address-dependabot`) had a near-identical posture (one-shot CLI invocation, no per-run audit trail required at current volume) and the captain rejected commission-seed at the approval gate because the additional ceremony was more overhead than the current single slash-command invocation warranted. The same precedent applies here, and arguably more strongly: this skill runs even less frequently than `address-dependabot` (only when MCP server code changes — typically a small number of PRs per release window) and produces a single PASS/FAIL verdict with no inter-run state worth tracking. Wrapping it in a Spacedock workflow with per-invocation entity files, status fields, and an approval gate would replace a 60-second invocation with multi-stage state management.
+
+If verification volume grows or per-run audit trails become valuable (e.g., a regression-tracking dashboard across MCP releases), the captain can revisit this in a new entity. Today, commission-seed is dominated by `reference-doc`.
+
+### Why no `keep-as-is` recommendation
+
+`keep-as-is` would mean the entity produces no artifact at all — no doc edit, no mod install, no scaffolding. The captain commissioned this workflow specifically to surface integration recommendations and produce documentation linking the skills back from the workflow that catalogued them. Returning `keep-as-is` for a skill the workflow catalogued would be a null result. The `reference-doc` pick is strictly cheaper (one README subsection entry, three sibling entries already present) and delivers the AC-2 requirement, so `keep-as-is` is dominated.
+
+### Action items (for the execute stage)
+
+Each item below names a target file path and a one-line description of what goes there.
+
+1. **Edit `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/README.md`** — append a `recce-mcp-e2e` entry to the existing "Related skills" subsection (currently listing `address-dependabot`, `claude-code-review`, `linear-deep-dive`) with a relative link to `.claude/skills/recce-mcp-e2e/SKILL.md` and the one-line description "Run end-to-end verification of all 8 MCP tools against a real dbt project before merging MCP PRs."
+
+No `_mods/` change. No new workflow scaffolding. No mod chain re-ordering needed (the existing `pr-merge` and `claude-code-review` mods are unchanged).
+
+### Draft document
+
+A reviewable standalone draft for the captain is saved at:
+
+- `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/recce-mcp-e2e-draft.md`
+
+It contains the proposed README "Related skills" entry verbatim, the rationale for the sole `reference-doc` pick tied to the intake's advisory pre-merge gating posture, and the explicit rejection rationale for `mod`, `workflow-stage-agent`, `commission-seed`, and `keep-as-is` so the captain can deliberate each pick without needing to read the entity's Suggestions section.
+
+## Stage Report: suggestions
+
+- DONE: Pick at least one integration primitive from the allowed set (`workflow-stage-agent` | `mod` | `commission-seed` | `reference-doc` | `keep-as-is`); tie the pick to a specific Spacedock primitive (mod hook lifecycle point, commission stage, ensign agent role) AND to the verification scope + pre-merge gating posture you recorded at intake. The pre-merge gating angle matters: a `merge`-hook mod that blocks on E2E failure has very different cost/value than a passive reference doc.
+  Picked `reference-doc` as the sole pick — tied to a "Related skills" README subsection (same primitive shape captain approved for entities 001, 002, 003) and tied to the intake's advisory pre-merge gating posture (the skill produces a 13-check verdict but the captain owns the merge decision; no CI wiring; Step 7 deletes the test file before any CI could consume exit code 1). Explicitly addressed why a `merge`-hook mod (the alternative the checklist flags) is the wrong shape here despite the entity-002 precedent: the workflow's own PRs do not touch MCP code (the skill's negative trigger explicitly excludes docs-only changes); the skill requires a captain-supplied project path the mod context cannot supply; the per-PR cost of warehouse queries is asymmetric with `claude-code-review`'s cheap `gh`+test calls; and an E2E mod on this workflow would have no work to do on its own entity PRs.
+- DONE: Each action item names a target file path and a one-line description. Explicitly justify any rejected primitives. If recommending a mod with `merge` hook, name the chaining order with respect to the existing pr-merge mod and (potentially) the claude-code-review mod entity 002 added.
+  One numbered action item with absolute target path: edit `docs/claude-skill-refinement/README.md` "Related skills". Explicit four-point rejection rationale provided for `mod` (trigger mismatch with workflow PRs, missing required project-path input, cost asymmetry vs. claude-code-review, no chaining benefit on entity 005's own PR). Explicit rejection rationale provided for `workflow-stage-agent` (no MCP-feature workflow exists to slot into), `commission-seed` (entity-001 precedent dominates), and `keep-as-is` (dominated by `reference-doc`). The mod chain ordering with respect to `pr-merge` and `claude-code-review` is documented in the `mod` rejection rationale (point 4) rather than recommended, since the recommendation is no mod.
+- DONE: Save a reviewable standalone draft to `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/recce-mcp-e2e-draft.md`. The draft must be readable without the entity's Suggestions section — captain reviews the draft alongside the suggestions.
+  Saved to `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/recce-mcp-e2e-draft.md` — contains the proposed README subsection entry verbatim, the rationale for the sole `reference-doc` pick tied to the intake's advisory pre-merge gating posture, and the explicit four-point rejection rationale for `mod` plus single-paragraph rejections of `workflow-stage-agent`, `commission-seed`, and `keep-as-is`. Readable end-to-end without the entity's Suggestions section.
+
+### Summary
+
+Recommended `reference-doc` only for `recce-mcp-e2e`. The pick mirrors the captain-approved precedent across entities 001, 002, and 003: a one-entry README subsection edit linking the skill from the workflow that catalogued it. Explicitly rejected `mod` (despite the entity-002 `claude-code-review` precedent) because the workflow's own PRs are doc-only and the skill's own negative trigger excludes that case, the skill needs a captain-supplied project path the mod context cannot supply, the per-PR cost of warehouse queries is asymmetric with `claude-code-review`'s cheap calls, and an E2E mod here would have no work to do on entity 005's own PR. Rejected `workflow-stage-agent` (no MCP-feature workflow exists), `commission-seed` (entity-001 precedent), and `keep-as-is` (dominated). Standalone draft saved to `docs/claude-skill-refinement/recce-mcp-e2e-draft.md`.
