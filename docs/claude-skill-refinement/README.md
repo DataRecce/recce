@@ -172,3 +172,11 @@ Verified by: Completed actions section lists each action item with a file path t
 Claude skills under `.claude/skills/` that have been processed by this workflow:
 
 - [`address-dependabot`](../../.claude/skills/address-dependabot/skill.md) — Consolidate open Dependabot PRs into a single tested branch and PR.
+- [`claude-code-review`](../../.claude/skills/claude-code-review/SKILL.md) — Review a PR for critical issues; post findings as a PR comment and formal GitHub review.
+
+## Mods
+
+Mods extend this workflow's lifecycle hooks. The first officer runs them in lexical order from `_mods/`. On the `merge` hook the order is:
+
+1. [`pr-merge`](_mods/pr-merge.md) — Push the worktree branch and create the entity's PR.
+2. [`claude-code-review`](_mods/claude-code-review.md) — After the PR is created, run the `claude-code-review` skill against it (recce-dev plugin variant when enabled, in-repo skill otherwise) and post a self-review.
