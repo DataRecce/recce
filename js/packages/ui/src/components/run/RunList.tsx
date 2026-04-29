@@ -389,8 +389,8 @@ function RunListComponent({
       {/* Header */}
       <Stack
         direction="row"
-        alignItems="center"
         sx={{
+          alignItems: "center",
           flex: "0 0 auto",
           px: 2,
           py: 1.5,
@@ -402,7 +402,6 @@ function RunListComponent({
         <Box sx={{ flex: 1 }} />
         {headerActions}
       </Stack>
-
       {/* List content */}
       <Box
         sx={{

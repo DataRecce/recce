@@ -162,29 +162,56 @@ const SelectFilterTooltip = () => {
   const isDark = useIsDark();
   const codeBlockSx = getCodeBlockSx(isDark);
   return (
-    <Stack alignItems="flex-start" spacing={0}>
-      <Typography fontSize="10pt" color="text.secondary" pb={1}>
+    <Stack
+      spacing={0}
+      sx={{
+        alignItems: "flex-start",
+      }}
+    >
+      <Typography
+        sx={{
+          fontSize: "10pt",
+          color: "text.secondary",
+          pb: 1,
+        }}
+      >
         Select nodes by dbt node selector syntax
       </Typography>
-      <Typography fontSize="8pt">
+      <Typography
+        sx={{
+          fontSize: "8pt",
+        }}
+      >
         <Box component="code" sx={codeBlockSx}>
           model_name
         </Box>{" "}
         Select a node
       </Typography>
-      <Typography fontSize="8pt">
+      <Typography
+        sx={{
+          fontSize: "8pt",
+        }}
+      >
         <Box component="code" sx={codeBlockSx}>
           model_name+
         </Box>{" "}
         Select downstream nodes
       </Typography>
-      <Typography fontSize="8pt">
+      <Typography
+        sx={{
+          fontSize: "8pt",
+        }}
+      >
         <Box component="code" sx={codeBlockSx}>
           +model_name
         </Box>{" "}
         Select upstream nodes
       </Typography>
-      <Typography fontSize="8pt">
+      <Typography
+        sx={{
+          fontSize: "8pt",
+        }}
+      >
         <Box component="code" sx={codeBlockSx}>
           model*
         </Box>{" "}
@@ -546,7 +573,11 @@ interface ControlItemProps {
 const ControlItem = ({ label, children, style }: ControlItemProps) => {
   return (
     <Box style={style} sx={{ maxWidth: 300 }}>
-      <Typography fontSize="8pt">
+      <Typography
+        sx={{
+          fontSize: "8pt",
+        }}
+      >
         {(label ?? "").trim() || <>&nbsp;</>}
       </Typography>
       {children}
@@ -626,15 +657,22 @@ export const LineageViewTopBar = ({
   return (
     <Stack
       direction="row"
-      alignItems="center"
-      borderBottom={1}
-      borderColor="neutral.light"
-      sx={{ width: "100%", p: "4pt 8pt", gap: "0.5rem" }}
+      sx={{
+        alignItems: "center",
+        borderBottom: 1,
+        borderColor: "neutral.light",
+        width: "100%",
+        p: "4pt 8pt",
+        gap: "0.5rem",
+      }}
     >
       <Stack
         direction="row"
-        alignItems="center"
-        sx={{ flex: 1, gap: "0.5rem" }}
+        sx={{
+          alignItems: "center",
+          flex: 1,
+          gap: "0.5rem",
+        }}
       >
         {historyToggleSlot}
         <ControlItem label="Mode" style={{ flexShrink: 1 }}>
@@ -671,7 +709,12 @@ export const LineageViewTopBar = ({
         {isMultiSelect && (
           <>
             <ControlItem label="" style={{ flexShrink: 0 }}>
-              <Typography fontSize="9pt" color="text.secondary">
+              <Typography
+                sx={{
+                  fontSize: "9pt",
+                  color: "text.secondary",
+                }}
+              >
                 {selectedNodes.length > 1
                   ? `${selectedNodes.length} nodes selected`
                   : `${selectedNodes.length} node selected`}

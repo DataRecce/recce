@@ -177,7 +177,6 @@ export type {
 export {
   CheckContextAdapter,
   defaultSqlQuery,
-  extractColumns,
   IGNORE_SCREENSHOT_CLASS,
   LineageGraphAdapter,
   QueryContextAdapter,

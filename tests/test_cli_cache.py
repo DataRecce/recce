@@ -1258,7 +1258,7 @@ class TestInitCloud:
         def mock_get(url, **kwargs):
             return _make_mock_response(200, manifest_bytes)
 
-        # CLL map upload succeeds, cache upload fails
+        # CLL map upload succeeds, cll_cache.db upload fails
         def mock_put(url, **kwargs):
             if "cll_map" in url:
                 return _make_mock_response(200)

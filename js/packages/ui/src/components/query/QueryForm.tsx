@@ -32,7 +32,13 @@ export const QueryForm = ({
   return (
     <Box sx={{ display: "flex" }} {...props}>
       <Stack spacing={0} sx={{ m: "0 0.5rem" }}>
-        <Stack direction="row" alignItems="center" spacing={0.5}>
+        <Stack
+          direction="row"
+          spacing={0.5}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <Typography
             component="label"
             sx={{ fontSize: "0.625rem", color: "text.secondary" }}

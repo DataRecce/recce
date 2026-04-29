@@ -105,6 +105,7 @@ profile = "black"
 [tool.pytest.ini_options]
 markers = [
     "asyncio: mark test as an async test (used by pytest-asyncio)",
+    "scale: mark test as a scale/perf validation (skipped unless RECCE_SCALE_TESTS=1)",
 ]
 asyncio_default_fixture_loop_scope = "function"
 addopts = "--ignore=tests/adapter/dbt_adapter/test_proj/dbt_packages"

@@ -134,7 +134,13 @@ def submit_run(type, params, check_id=None, triggered_by=None):
         if dbt_adaptor.adapter is None:
             raise RecceException("Recce Server is not launched under DBT project folder.")
 
-    run = Run(type=run_type, params=params, check_id=check_id, status=RunStatus.RUNNING, triggered_by=triggered_by)
+    run = Run(
+        type=run_type,
+        params=params,
+        check_id=check_id,
+        status=RunStatus.RUNNING,
+        triggered_by=triggered_by,
+    )
     run.name = generate_run_name(run)
     RunDAO().create(run)
 
@@ -146,21 +152,63 @@ def submit_run(type, params, check_id=None, triggered_by=None):
 
     task.progress_listener = progress_listener
 
-    async def update_run_result(run, result, error, updated_params=None):
-        """Update run with result, error, and optionally updated params."""
+    def update_run_result(run, result, error, updated_params=None):
+        """Update run with result, error, and optionally updated params.
+
+        Called synchronously inside the executor thread (fn) so that
+        run.status and run.result are set BEFORE the future resolves.
+
+        DRC-3307 historical context: previously this was async + scheduled
+        via run_coroutine_threadsafe(...), which let callers observe stale
+        run.status after `await future`. Consumer-side defensive guards
+        (e.g., recce-cloud-infra `derive_check_run_status` race-workaround)
+        explicitly cite this fix as the reason for their existence.
+
+        Sunset condition: the synchronous-call requirement is safe to
+        remove (and this docstring archeology along with it) once the
+        recce-cloud-infra defensive guards in derive_check_run_status are
+        removed — those guards depend on this rationale being preserved
+        here as the canonical justification.
+
+        Cross-thread store ordering: this runs in the executor thread while
+        async callers read run.status / run.result from the event-loop
+        thread. CPython's GIL makes each individual attribute store atomic,
+        but multi-store sequences are not serialized with the loop.
+        Mitigations applied here:
+
+        - Status is written BEFORE result/error so a completion-signal
+          reader (e.g., wait_run_handler polling on `result is not None`)
+          never observes the inverse window ("result-present +
+          status-RUNNING"). A snapshot reader that grabs both fields in
+          a single render may briefly see (FINISHED, result=None) for
+          the sub-µs gap between the two stores; accepted as practically
+          unobservable, and snapshot readers are expected to re-poll.
+        - When status == CANCELLED (set by cancel_run from the loop),
+          neither the success nor the failure path overwrites it — the
+          cancellation sentinel is preserved. Note: the guard is
+          check-then-assign, not atomic. A sub-µs GIL window remains
+          where cancel_run can flip status between the check and the
+          overwrite; this is best-effort against the macroscopic race
+          (cancel before executor enters), accepted as practically
+          unobservable. Use threading.Lock or threading.Event if a
+          future caller needs full atomicity.
+        """
         if run is None:
             return
-        if result is not None:
-            run.result = result
-            run.status = RunStatus.FINISHED
         if updated_params is not None:
             # Merge updated params (preserves any fields not in updated_params)
             run.params.update(updated_params)
+        if result is not None:
+            # Status BEFORE result: see "Cross-thread store ordering" above.
+            if run.status != RunStatus.CANCELLED:
+                run.status = RunStatus.FINISHED
+            run.result = result
         if error is not None:
-            failed_reason = str(error) if str(error) != "None" else repr(error)
-            run.error = failed_reason
+            # Status BEFORE error: same reason as above.
             if run.status != RunStatus.CANCELLED:
                 run.status = RunStatus.FAILED
+            failed_reason = str(error) if str(error) != "None" else repr(error)
+            run.error = failed_reason
         run.progress = None
 
     def fn():
@@ -191,10 +239,10 @@ def submit_run(type, params, check_id=None, triggered_by=None):
                     logger.warning(f"Failed to serialize task.params: {e}")
                     updated_params = None
 
-            asyncio.run_coroutine_threadsafe(update_run_result(run, result, None, updated_params), loop)
+            update_run_result(run, result, None, updated_params)
             return result
         except BaseException as e:
-            asyncio.run_coroutine_threadsafe(update_run_result(run, None, e, None), loop)
+            update_run_result(run, None, e, None)
             if isinstance(e, RecceException) and e.is_raise is False:
                 return None
             import sentry_sdk
@@ -264,7 +312,10 @@ def materialize_run_results(runs: List[Run], nodes: List[str] = None):
                     node_result = result[key] = {}
                 else:
                     node_result = result.get(key)
-                node_result["row_count_diff"] = {"run_id": run.run_id, "result": node_run_result}
+                node_result["row_count_diff"] = {
+                    "run_id": run.run_id,
+                    "result": node_run_result,
+                }
         elif run.type == RunType.ROW_COUNT:
             for model_name, node_run_result in run.result.items():
                 key = mame_to_unique_id.get(model_name, model_name)
@@ -277,5 +328,8 @@ def materialize_run_results(runs: List[Run], nodes: List[str] = None):
                     node_result = result[key] = {}
                 else:
                     node_result = result.get(key)
-                node_result["row_count"] = {"run_id": run.run_id, "result": node_run_result}
+                node_result["row_count"] = {
+                    "run_id": run.run_id,
+                    "result": node_run_result,
+                }
     return result

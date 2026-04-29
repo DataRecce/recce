@@ -171,7 +171,13 @@ function RowCountDisplay({ data }: { data: RowCountDiffData }) {
   // One null
   if (base === null || current === null) {
     return (
-      <Stack direction="row" alignItems="center" spacing={0.5}>
+      <Stack
+        direction="row"
+        spacing={0.5}
+        sx={{
+          alignItems: "center",
+        }}
+      >
         <Typography variant="body2" component="span">
           {baseLabel}
         </Typography>
@@ -188,7 +194,13 @@ function RowCountDisplay({ data }: { data: RowCountDiffData }) {
   // Equal
   if (base === current) {
     return (
-      <Stack direction="row" alignItems="center" spacing={0.5}>
+      <Stack
+        direction="row"
+        spacing={0.5}
+        sx={{
+          alignItems: "center",
+        }}
+      >
         <Typography variant="body2" component="span">
           {currentLabel}
         </Typography>
@@ -205,7 +217,13 @@ function RowCountDisplay({ data }: { data: RowCountDiffData }) {
   // Increase
   if (base < current) {
     return (
-      <Stack direction="row" alignItems="center" spacing={0.5}>
+      <Stack
+        direction="row"
+        spacing={0.5}
+        sx={{
+          alignItems: "center",
+        }}
+      >
         <Typography variant="body2" component="span">
           {currentLabel}
         </Typography>
@@ -225,7 +243,13 @@ function RowCountDisplay({ data }: { data: RowCountDiffData }) {
 
   // Decrease
   return (
-    <Stack direction="row" alignItems="center" spacing={0.5}>
+    <Stack
+      direction="row"
+      spacing={0.5}
+      sx={{
+        alignItems: "center",
+      }}
+    >
       <Typography variant="body2" component="span">
         {currentLabel}
       </Typography>

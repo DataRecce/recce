@@ -18,6 +18,10 @@ export * from "./hooks";
 export { LineageCanvas, type LineageCanvasProps } from "./LineageCanvas";
 export { LineagePageOss } from "./LineagePageOss";
 export {
+  LineageTabContent,
+  type LineageTabContentProps,
+} from "./LineageTabContent";
+export {
   LineageView,
   type LineageViewProps,
   type LineageViewRef,

@@ -359,33 +359,33 @@ const sharedThemeOptions: ThemeOptions = {
       styleOverrides: {
         root: {
           borderRadius: 6,
-        },
-        standardSuccess: {
-          backgroundColor: "var(--mui-palette-success-light)",
-          color: "var(--mui-palette-success-dark)",
-          "& .MuiAlert-icon": {
+          "&.MuiAlert-standard.MuiAlert-colorSuccess": {
+            backgroundColor: "var(--mui-palette-success-light)",
             color: "var(--mui-palette-success-dark)",
+            "& .MuiAlert-icon": {
+              color: "var(--mui-palette-success-dark)",
+            },
           },
-        },
-        standardWarning: {
-          backgroundColor: "var(--mui-palette-warning-light)",
-          color: "var(--mui-palette-warning-dark)",
-          "& .MuiAlert-icon": {
+          "&.MuiAlert-standard.MuiAlert-colorWarning": {
+            backgroundColor: "var(--mui-palette-warning-light)",
             color: "var(--mui-palette-warning-dark)",
+            "& .MuiAlert-icon": {
+              color: "var(--mui-palette-warning-dark)",
+            },
           },
-        },
-        standardError: {
-          backgroundColor: "var(--mui-palette-error-light)",
-          color: "var(--mui-palette-error-dark)",
-          "& .MuiAlert-icon": {
+          "&.MuiAlert-standard.MuiAlert-colorError": {
+            backgroundColor: "var(--mui-palette-error-light)",
             color: "var(--mui-palette-error-dark)",
+            "& .MuiAlert-icon": {
+              color: "var(--mui-palette-error-dark)",
+            },
           },
-        },
-        standardInfo: {
-          backgroundColor: "var(--mui-palette-info-light)",
-          color: "var(--mui-palette-info-dark)",
-          "& .MuiAlert-icon": {
+          "&.MuiAlert-standard.MuiAlert-colorInfo": {
+            backgroundColor: "var(--mui-palette-info-light)",
             color: "var(--mui-palette-info-dark)",
+            "& .MuiAlert-icon": {
+              color: "var(--mui-palette-info-dark)",
+            },
           },
         },
       },

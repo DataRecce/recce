@@ -43,6 +43,6 @@ export function toExcelBlob(
 
   const dataRows: Row[] = rows.map((row) => row.map(toExcelCell));
 
-  // write-excel-file returns a Blob when no fileName is provided
-  return writeXlsxFile([headerRow, ...dataRows], {});
+  // write-excel-file v4 returns an object with toBlob()/toBuffer()/etc methods
+  return writeXlsxFile([headerRow, ...dataRows]).toBlob();
 }

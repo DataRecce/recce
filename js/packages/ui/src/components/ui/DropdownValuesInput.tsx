@@ -215,7 +215,6 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
           </Typography>
         )}
       </Button>
-
       <Menu
         anchorEl={anchorEl}
         open={open}
@@ -336,7 +335,14 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
             title="Please use filter to find more items"
             placement="top"
           >
-            <Box px={1.5} py={0.5} color="text.secondary" fontSize="8pt">
+            <Box
+              sx={{
+                px: 1.5,
+                py: 0.5,
+                color: "text.secondary",
+                fontSize: "8pt",
+              }}
+            >
               and {filteredList.length - limit} more items...
             </Box>
           </MuiTooltip>

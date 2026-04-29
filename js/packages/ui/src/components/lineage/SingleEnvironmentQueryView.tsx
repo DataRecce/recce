@@ -98,10 +98,21 @@ export function BaseEnvironmentSetupGuide({
       }}
     >
       <Stack
-        sx={{ width: "80%", overflowY: "auto", gap: 3, px: 4, pb: 4 }}
-        alignSelf="center"
+        sx={{
+          alignSelf: "center",
+          width: "80%",
+          overflowY: "auto",
+          gap: 3,
+          px: 4,
+          pb: 4,
+        }}
       >
-        <Stack alignItems="center" spacing={2}>
+        <Stack
+          spacing={2}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <Box
             sx={{
               p: 1,
@@ -195,7 +206,13 @@ export function BaseEnvironmentSetupNotification({
   docsUrl = "https://docs.reccehq.com/configure-diff/",
 }: BaseEnvironmentSetupNotificationProps = {}) {
   return (
-    <Stack direction="row" spacing="10px" alignItems="flex-start">
+    <Stack
+      direction="row"
+      spacing="10px"
+      sx={{
+        alignItems: "flex-start",
+      }}
+    >
       <Box
         component={RiMindMap}
         sx={{ color: "iochmara.main", fontSize: 20 }}
