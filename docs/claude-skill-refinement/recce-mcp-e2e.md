@@ -1,9 +1,9 @@
 ---
 id: 005
 title: recce-mcp-e2e
-status: queued
+status: intake
 source: commission seed
-started:
+started: 2026-04-29T07:38:05Z
 completed:
 verdict:
 score:
