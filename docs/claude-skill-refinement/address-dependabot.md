@@ -136,3 +136,20 @@ Required revisions for the next suggestions pass:
 ### Summary
 
 Reduced the Suggestions section to the sole `reference-doc` recommendation per cycle-1 captain feedback: a one-subsection edit to `docs/claude-skill-refinement/README.md` linking back to `.claude/skills/address-dependabot/skill.md`. Removed all `commission-seed` action items and rewrote the draft document to match. Preserved the rejection rationale for `mod` and `workflow-stage-agent`, and added an explicit rejection note for `commission-seed` so the rejected proposal is not re-suggested in future cycles.
+
+## Completed actions
+
+1. **Append "Related skills" subsection to `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/README.md`** — added at the bottom of the README; lists `address-dependabot` with a relative link to `.claude/skills/address-dependabot/skill.md` and the one-line description "Consolidate open Dependabot PRs into a single tested branch and PR." Commit: `beb83fbd`.
+
+## Stage Report: execute
+
+- DONE: `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/README.md` has a new 'Related skills' subsection appended at the bottom that lists `address-dependabot`, links to `.claude/skills/address-dependabot/skill.md` (relative path), and includes a one-line description from the Suggestions action item.
+  Worktree copy of the README ends with `## Related skills` listing `[\`address-dependabot\`](../../.claude/skills/address-dependabot/skill.md) — Consolidate open Dependabot PRs into a single tested branch and PR.` Commit `beb83fbd` on branch `spacedock-ensign/address-dependabot`.
+- DONE: The entity body gains a `## Completed actions` section that lists the README edit with the absolute file path and the commit SHA produced in the worktree branch.
+  Section added immediately above this stage report; names the absolute path `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/README.md` and the worktree commit SHA `beb83fbd`.
+- DONE: No files outside the approved scope are modified — specifically, no new `docs/dependabot-batch/...` directory, no edits to `.claude/skills/address-dependabot/skill.md`, no edits to the workflow `_mods/` directory.
+  Verified via `git status` (clean) and `git show --stat beb83fbd` showing only `docs/claude-skill-refinement/README.md` changed; no `docs/dependabot-batch/`, no `.claude/skills/`, no `_mods/` paths touched.
+
+### Summary
+
+Executed the sole approved action item: appended a "Related skills" subsection to the workflow README on the worktree branch, linking the `address-dependabot` skill back to `.claude/skills/address-dependabot/skill.md` with the description from the Suggestions section. The commit (`beb83fbd`) touches only the README — no new workflow scaffolding, no skill edits, no mod changes. The captain-rejected `commission-seed` proposal was honored: nothing under `docs/dependabot-batch/` was created.
