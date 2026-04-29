@@ -4,10 +4,10 @@ title: address-dependabot
 status: execute
 source: commission seed
 started: 2026-04-29T01:06:20Z
-completed:
-verdict:
+completed: 2026-04-29T02:25:50Z
+verdict: PASSED
 score:
-worktree: .worktrees/spacedock-ensign-address-dependabot
+worktree:
 issue:
 pr:
 mod-block:
