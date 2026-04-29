@@ -175,3 +175,24 @@ It contains the full TL;DR, primitive-by-primitive recommendation, why-this-is-n
 ### Summary
 
 Recommend `reference-doc` (primary) plus implicit `keep-as-is` (complementary): one row appended to the workflow README's Related skills section, plus a two-line "Spacedock integration" footer in the skill's own `SKILL.md` cross-linking sibling `recce-mcp-e2e`. Rejected `mod`, `workflow-stage-agent`, and `commission-seed` with hook-level (`startup`/`idle`/`merge` don't subscribe to file-edits) and precedent-level (entity 001 rejected, entity 003 approved) rationale. Standalone draft at `docs/claude-skill-refinement/recce-mcp-dev-draft.md` is reviewable on its own.
+
+## Completed actions
+
+1. **Action item 1 — README Related skills row.** Appended a `recce-mcp-dev` entry to the `## Related skills` subsection of [`docs/claude-skill-refinement/README.md`](README.md) linking to [`../../.claude/skills/recce-mcp-dev/SKILL.md`](../../.claude/skills/recce-mcp-dev/SKILL.md) with the one-line description from Suggestions §Action items. Commit: `d35b4673`.
+
+2. **Action item 2 — Spacedock integration footer in SKILL.md.** Appended a `## Spacedock integration` subsection to the bottom of [`../../.claude/skills/recce-mcp-dev/SKILL.md`](../../.claude/skills/recce-mcp-dev/SKILL.md) (after the existing `## File Map`) with two pointers: one to this categorization record at [`recce-mcp-dev.md`](recce-mcp-dev.md) and one to the sibling skill at [`../../.claude/skills/recce-mcp-e2e/SKILL.md`](../../.claude/skills/recce-mcp-e2e/SKILL.md). Commit: `d35b4673`.
+
+3. **Action item 3 — Cross-entity coordination with entity 005 (`recce-mcp-e2e`).** No file produced — coordination note only. Verified at execute time that `.claude/skills/recce-mcp-e2e/SKILL.md` exists in the worktree at the expected path; the relative link in action item 2 resolves correctly. The two skills remain a pair; if entity 005 relocates the file, that entity's worktree branch will update the cross-link before the FO merges both branches into the feature branch.
+
+## Stage Report: execute
+
+- DONE: Action item 1 artifact: append a `recce-mcp-dev` row to the existing 'Related skills' subsection of `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/README.md` with a relative link to `.claude/skills/recce-mcp-dev/SKILL.md` and the one-line description from the entity's Suggestions section.
+  Row appended in commit `d35b4673`; relative link `../../.claude/skills/recce-mcp-dev/SKILL.md` matches the existing rows' link style.
+- DONE: Action item 2 artifact: append a 'Spacedock integration' subsection to the bottom of `/Users/jaredmscott/repos/recce/recce/.claude/skills/recce-mcp-dev/SKILL.md` (after the existing `## File Map`) with two pointers — one to the workflow refinement entity at `docs/claude-skill-refinement/_archive/recce-mcp-dev.md` (or current location if not yet archived), and one to the sibling skill at `.claude/skills/recce-mcp-e2e/SKILL.md`.
+  Subsection appended in commit `d35b4673`. Pointed at the current (non-archived) location `docs/claude-skill-refinement/recce-mcp-dev.md` — entity is still live in the workflow, not yet archived.
+- DONE: The entity body's `## Completed actions` section accounts for ALL THREE Suggestions action items including action item 3 (cross-entity coordination note, no file produced) — mark it explicitly with text like 'No file produced — coordination note only' so the captain sees the SKIPPED-by-design state at the gate.
+  Completed actions section added above this report with all three items; action item 3 is marked "No file produced — coordination note only" verbatim.
+
+### Summary
+
+Executed two file edits and one coordination check. Edited `docs/claude-skill-refinement/README.md` to add a `recce-mcp-dev` row to the Related skills list, and appended a `## Spacedock integration` subsection to `.claude/skills/recce-mcp-dev/SKILL.md` cross-linking entity 004 and sibling skill `recce-mcp-e2e`. Verified the sibling skill's SKILL.md exists at the expected relative path. All three Suggestions action items recorded under `## Completed actions`; commit `d35b4673` carries both artifact edits.
