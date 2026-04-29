@@ -1,9 +1,9 @@
 ---
 id: 002
 title: claude-code-review
-status: queued
+status: intake
 source: commission seed
-started:
+started: 2026-04-29T02:30:19Z
 completed:
 verdict:
 score:
