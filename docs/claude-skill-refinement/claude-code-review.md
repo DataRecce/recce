@@ -1,7 +1,7 @@
 ---
 id: 002
 title: claude-code-review
-status: approval
+status: suggestions
 source: commission seed
 started: 2026-04-29T02:30:19Z
 completed:
@@ -148,3 +148,25 @@ It contains the proposed README "Related skills" entry verbatim, the proposed `_
 ### Summary
 
 Recommended `reference-doc` (primary) + `mod` (secondary, deliberative) for the `claude-code-review` skill. Pick #1 mirrors the captain-approved `address-dependabot` precedent: a one-entry README subsection edit linking the skill from the workflow it catalogued. Pick #2 proposes a `merge`-hook mod that chains after `pr-merge` to invoke the skill's 9-step pipeline as a self-review on every PR the workflow opens — surfaced with three explicit mismatches (working-tree no-op, `claude[bot]` identity filter, self-review credibility) so the captain can reject it cleanly without disturbing pick #1. Rejected `workflow-stage-agent` (no existing review-stage slot), `commission-seed` (compounds surface; `recce-dev` plugin already ships a parallel variant), and `keep-as-is` (dominated by `reference-doc`). Standalone draft saved to `docs/claude-skill-refinement/claude-code-review-draft.md`.
+
+### Feedback Cycles
+
+**Cycle 1 — 2026-04-29 (approval -> suggestions)**
+
+Captain verdict at approval gate:
+
+- APPROVED Pick #1 (`reference-doc`) — keep as-is.
+- ADJUST Pick #2 (`mod`) — captain wants the mod kept, but reshaped:
+  - The mod must detect whether the `recce-dev` Claude Code plugin is enabled in the captain's environment.
+  - When `recce-dev` IS enabled, invoke the `claude-code-review` skill from THAT plugin. Note: the recce-dev variant is described as "structured multi-pass code review with adversarial reading" while the in-repo variant is single-pass; captain wants the plugin variant when available.
+  - When `recce-dev` is NOT enabled, fall back to invoking the in-repo `claude-code-review` skill at `.claude/skills/claude-code-review/SKILL.md`.
+- The captain ACCEPTS the "self-review credibility" mismatch — running self-review on a freshly-created PR is already team practice. Downgrade that mismatch in the cycle-2 proposal to a one-liner acknowledging it.
+- The intake-flagged "working-tree no-op (Step 5)" and "`claude[bot]` identity filter" mismatches remain in scope; the cycle-2 mod design must address them.
+
+Required revisions for the cycle-2 suggestions pass:
+
+- Specify a plugin-detection mechanism for Pick #2. A targeted filesystem probe at `~/.claude/plugins/cache/recce-dev/recce-dev/*/skills/claude-code-review` returned empty in the captain's current environment; the cycle-2 design must work against whatever the actual recce-dev plugin layout is on disk (or via the installed-plugin manifest if Claude Code provides one). Document the chosen mechanism explicitly so the execute stage has marching orders.
+- The mod body is a single file with a plugin-vs-local conditional — not two separate mods.
+- Drop the "self-review credibility" mismatch from the deliberative discussion; downgrade to one sentence noting captain acceptance.
+- Keep the "working-tree no-op" and "`claude[bot]` identity" mismatches and their resolutions in the cycle-2 design.
+- Update `docs/claude-skill-refinement/claude-code-review-draft.md` to reflect all of the above.
