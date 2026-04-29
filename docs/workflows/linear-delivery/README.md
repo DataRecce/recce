@@ -4,9 +4,6 @@ entity-type: linear_issue
 entity-label: issue
 entity-label-plural: issues
 id-style: sequential
-mods:
-  - pr-merge
-  - linear-status-sync
 stages:
   defaults:
     worktree: false
@@ -57,6 +54,7 @@ Every issue file has YAML frontmatter. Fields are documented below; see **Issue 
 | `linear-id` | string | Linear identifier (e.g., `DRC-2893`) — required for `linear-status-sync` to call `save_issue` |
 | `linear-url` | string | Full Linear URL — for captain reference |
 | `linear-branch` | string | The `gitBranchName` from Linear — used as the worktree branch name |
+| `linear-state` | enum | Last-synced Linear state, one of: `Triage`, `In Progress`, `In Review`, `Done`, or empty (never synced). Updated by the `linear-status-sync` mod after each successful Linear `save_issue` call; the mod compares this against the entity's `status` to detect when a sync is needed. |
 | `started` | ISO 8601 | When active work began |
 | `completed` | ISO 8601 | When the entity reached terminal status |
 | `verdict` | enum | PASSED or REJECTED — set at final stage |
@@ -96,7 +94,7 @@ The captain reviews the analysis and proposed approach, then either approves (ad
 
 ### `implementation`
 
-The worker runs the proposed downstream skill chain in an isolated worktree on the issue's `linear-branch`. The `linear-status-sync` mod's `stage-enter:implementation` hook sets the Linear issue to **In Progress** when this stage begins.
+The worker runs the proposed downstream skill chain in an isolated worktree on the issue's `linear-branch`. On the next `idle` tick after this stage is entered, the `linear-status-sync` mod reconciles the entity's `linear-state` field, calling Linear `save_issue` to set **In Progress**.
 
 - **Inputs:** Approved Deep Dive section, target file paths from the proposed approach.
 - **Outputs:** Concrete code changes in the worktree branch — committed at meaningful units, ready for PR creation. The entity body gains an "Implementation" section with stage-report `[x]` DONE items mapped to commits.
@@ -105,21 +103,23 @@ The worker runs the proposed downstream skill chain in an isolated worktree on t
 
 ### `review`
 
-The first officer (via the `pr-merge` mod) creates the PR and waits for merge. The `linear-status-sync` mod's `stage-enter:review` hook sets the Linear issue to **In Review** after PR creation. The merge itself is the implicit gate — `pr-merge`'s `startup`/`idle` hooks detect MERGED and advance to `done`.
+The entity stays at `review` with its worktree branch ready to push, awaiting captain approval at the gate. When the captain approves, the first officer tries to advance `review → done` (terminal); the merge-hook mechanism intercepts and runs `pr-merge.merge`, which presents a draft PR summary for a second captain approval (PR APPROVAL GUARDRAIL) and, on approval, pushes the branch and creates the PR (setting the entity's `pr` field). The entity stays at `review` with `pr` and `mod-block` set until the `pr-merge.startup` or `pr-merge.idle` hook detects the PR is `MERGED`, at which point it advances directly to `done`.
+
+The two captain prompts at this transition (review-gate ack and PR APPROVAL GUARDRAIL) cover the same logical "ready to push" decision and are normally answered consecutively. On the next `idle` tick after the entity reaches `review`, the `linear-status-sync` mod reconciles Linear to **In Review**.
 
 - **Inputs:** Implementation stage's worktree branch and Implementation section.
-- **Outputs:** A GitHub PR referenced in the entity's `pr` field; the entity stays at `review` with `pr` set until the PR merges.
-- **Good:** PR body follows the `pr-merge` mod's template; Linear issue moves to In Review immediately after PR creation; the entity does not advance to `done` before merge confirmation.
-- **Bad:** Marking the entity `done` before `gh pr view` returns MERGED; skipping the Linear status update; pushing without captain approval (see `pr-merge.md` PR APPROVAL GUARDRAIL).
+- **Outputs:** A GitHub PR referenced in the entity's `pr` field; the entity stays at `review` with `pr` and `mod-block` set until the PR merges.
+- **Good:** PR body follows the `pr-merge` mod's template; `linear-status-sync` reconciles to In Review on the first idle tick after the stage is entered; the entity does not advance to `done` before merge confirmation.
+- **Bad:** Marking the entity `done` before `gh pr view` returns MERGED; pushing without captain approval at the PR APPROVAL GUARDRAIL.
 
 ### `done`
 
-Terminal stage. The `pr-merge` startup/idle hook detected the PR was merged. The `linear-status-sync` mod's `stage-enter:done` hook verifies merge state via `gh pr view` and sets the Linear issue to **Done**. The iron rule from `.claude/skills/linear-deep-dive/references/linear-issue-lifecycle.md` is enforced here: never mark Done before the PR is merged to `main`.
+Terminal stage. The `pr-merge.startup`/`idle` hook detected the PR was merged, advanced the entity to `done`, and archived it. On the next `idle` tick after archival, the `linear-status-sync` mod re-verifies merge state via `gh pr view --json state` (the iron-rule guardrail from `.claude/skills/linear-deep-dive/references/linear-issue-lifecycle.md`) and, if `MERGED`, calls Linear `save_issue` to set **Done**, then updates the archived entity's `linear-state` field to match. If `gh pr view` returns anything other than `MERGED`, the mod refuses to mark Linear Done — the iron rule is enforced regardless of whether `pr-merge` already archived. The Linear sync therefore lags `pr-merge`'s archival by exactly one idle tick (see `_mods/linear-status-sync.md` "Ordering relative to `pr-merge`").
 
 - **Inputs:** The entity at `review` with `pr` set and the corresponding PR in MERGED state.
-- **Outputs:** Entity archived to `_archive/{slug}.md` with `status: done`, `verdict: PASSED`, `completed` set to ISO 8601 now, `worktree` cleared. Linear issue is at **Done**.
-- **Good:** Linear status update happens after PR merge confirmation, not before; the entity file is archived; the worktree is removed via `git worktree remove`.
-- **Bad:** Linear marked Done before merge; archive happens before Linear status update; worktree leaks on disk after archival.
+- **Outputs:** Entity archived to `_archive/{slug}.md` with `status: done`, `verdict: PASSED`, `completed` set to ISO 8601 now, `worktree` cleared. Linear issue moves to **Done** on the idle tick after archival.
+- **Good:** `linear-status-sync` re-runs `gh pr view --json state` against the archived entity's `pr` field before calling Linear `save_issue`; the entity file is archived; the worktree is removed via `git worktree remove`.
+- **Bad:** Linear marked Done before `gh pr view` returns MERGED; the `linear-status-sync` re-verification skipped on archived entities; worktree leaks on disk after archival.
 
 ## Mode handling
 
@@ -132,10 +132,12 @@ The original skill's interactive 4-option execution prompt (SKILL.md §11) becom
 
 ## Mods
 
-This workflow enables two mods. Both live under `_mods/` and are loaded by the first officer at startup.
+This workflow ships with two mods under `_mods/`. The first officer auto-discovers mods by filesystem scan at startup; there is no explicit mod registration in this README's frontmatter.
 
 - **`pr-merge`** (vendored from the plugin) — owns PR creation (`merge` hook), merge detection (`startup`/`idle` hooks), and entity advancement on merge. Located at `_mods/pr-merge.md`.
-- **`linear-status-sync`** (workflow-specific) — owns Linear MCP `save_issue` calls at three stage transitions: `stage-enter:implementation` → In Progress, `stage-enter:review` → In Review, `stage-enter:done` → Done (after `gh pr view --json state` returns MERGED). Located at `_mods/linear-status-sync.md`. Cites `.claude/skills/linear-deep-dive/references/linear-issue-lifecycle.md` as the authority for the iron rule.
+- **`linear-status-sync`** (workflow-specific) — owns Linear MCP `save_issue` calls. Hooks `startup` and `idle` to reconcile Linear state against the entity's workflow `status` via the `linear-state` frontmatter field; uses no `merge` hook (that point is owned by `pr-merge`). Mapping: `triage`/`analysis`/`approval` → Triage; `implementation` → In Progress; `review` → In Review; `done` → Done (only after `gh pr view --json state` returns MERGED). Located at `_mods/linear-status-sync.md`. Cites `.claude/skills/linear-deep-dive/references/linear-issue-lifecycle.md` as the authority for the iron rule.
+
+Mods run in lexical filename order; `linear-status-sync` (l) runs before `pr-merge` (p) on every shared hook tick. The Linear `Done` sync therefore lags `pr-merge`'s archival by exactly one idle tick — by design, since the Done sync re-runs `gh pr view` against the archived entity to re-verify the merge before mutating Linear.
 
 ## Workflow State
 
@@ -176,6 +178,7 @@ source: linear-issue:DRC-XXXX
 linear-id: DRC-XXXX
 linear-url: https://linear.app/recce/issue/DRC-XXXX/...
 linear-branch:
+linear-state:
 started:
 completed:
 verdict:
@@ -195,7 +198,7 @@ Each AC names a property of the finished entity (not a stage action) and how it 
 Verified by: Deep Dive section in the entity body names a classification tag from the allowed set and a proposed downstream skill chain.
 
 **AC-2 — Linear status synchronized.**
-Verified by: At each lifecycle transition (implementation, review, done), the corresponding Linear issue status is updated by the `linear-status-sync` mod. Done is only set after `gh pr view --json state` returns `MERGED`.
+Verified by: After each stage transition, the entity's `linear-state` field reflects the implied Linear state for its current `status` (per the mapping in `_mods/linear-status-sync.md`). Reconciliation runs on the next `idle` tick after each transition. Done is only set after `gh pr view --json state` returns `MERGED`.
 
 **AC-3 — PR linked.**
 Verified by: The entity's `pr` field is populated and the PR body cross-references the entity via the audit link template from `_mods/pr-merge.md`.

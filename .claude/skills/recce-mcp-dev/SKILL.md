@@ -83,5 +83,4 @@ If the user says yes, invoke `/recce-mcp-e2e`. If a dbt project path was used ea
 
 ## Spacedock integration
 
-- Categorization record (claude-skill-refinement workflow, entity 004): [`docs/claude-skill-refinement/recce-mcp-dev.md`](../../../docs/claude-skill-refinement/recce-mcp-dev.md)
 - Sibling skill invoked by the E2E Verification Gate (`/recce-mcp-e2e`): [`.claude/skills/recce-mcp-e2e/SKILL.md`](../recce-mcp-e2e/SKILL.md)

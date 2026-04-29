@@ -1,12 +1,18 @@
 ---
 name: linear-status-sync
 description: Synchronize Linear issue status with workflow stage transitions for the linear-delivery workflow
-version: 0.1.0
+version: 0.2.0
 ---
 
 # Linear Status Sync
 
-Owns Linear MCP `save_issue` calls at workflow stage transitions for the `linear-delivery` workflow. Centralizes the iron rule from `.claude/skills/linear-deep-dive/references/linear-issue-lifecycle.md` ("NEVER mark a Linear issue as Done until the PR that closes it has been merged to `main`") at one chokepoint instead of scattering it across stage agents.
+Owns Linear MCP `save_issue` calls for the `linear-delivery` workflow. Centralizes the iron rule from `.claude/skills/linear-deep-dive/references/linear-issue-lifecycle.md` ("NEVER mark a Linear issue as Done until the PR that closes it has been merged to `main`") at one chokepoint instead of scattering it across stage agents.
+
+## Hook lifecycle
+
+Spacedock fires three hook points: `startup`, `idle`, `merge`. This mod hooks `startup` (one reconciliation pass at FO boot) and `idle` (a reconciliation pass whenever the FO has no dispatchable work). Stage transitions are picked up at the next `idle` tick after the transition, since `stage-enter` is not a Spacedock hook point.
+
+The `merge` hook is owned by the sibling `pr-merge` mod; this mod does NOT register a `merge` hook to avoid contention over which mod advances the entity.
 
 ## Authority
 
@@ -14,57 +20,59 @@ This mod's status-transition rules come from `.claude/skills/linear-deep-dive/re
 
 ## Required entity fields
 
-Each entity processed by this mod MUST have a `linear-id` field in its YAML frontmatter (e.g., `linear-id: DRC-2893`). If `linear-id` is empty or missing, the mod skips the entity and reports a one-line warning to the captain identifying the entity by `id` and `title`. Do not error out — the workflow may legitimately host issues that are not yet linked to Linear (e.g., a draft entity awaiting captain assignment).
+Each entity processed by this mod MUST have:
 
-## Hook: stage-enter:implementation
+- `linear-id` (e.g., `linear-id: DRC-2893`) — the Linear identifier the mod calls `save_issue` against. If empty or missing, the mod skips the entity and warns the captain once per session per missing entity.
+- `linear-state` — the last-synced Linear state for this entity, one of `Triage`, `In Progress`, `In Review`, `Done`, or empty (never synced). The mod compares the entity's `status` against this field to detect when a sync is needed and updates it after each successful sync.
 
-Fires when an entity advances into the `implementation` stage. The captain has approved the proposed approach at the `approval` gate; work is about to begin in a worktree.
+Both fields are declared in this workflow's entity schema (see workflow README's Schema section).
 
-Action: call `mcp__claude_ai_Linear_2__save_issue` with:
+## Status → Linear state mapping
 
-- `id`: the entity's `linear-id`
-- `state`: `"In Progress"`
+| Workflow `status` | Implied Linear state |
+|---|---|
+| `triage`, `analysis`, `approval` | `Triage` |
+| `implementation` | `In Progress` |
+| `review` | `In Review` |
+| `done` | `Done` (only after `gh pr view` confirms `MERGED`) |
 
-If the call fails (network, auth, Linear API error), report a one-line warning to the captain naming the entity and the underlying error. Do NOT block the stage transition — local work proceeds regardless. The captain may retry the sync manually via the Linear UI or by re-dispatching the stage-enter hook.
+The `review` mapping treats the entity as `In Review` once it reaches the `review` stage, regardless of whether the entity's `pr` field is yet populated. The brief window between entering `review` and `pr-merge.merge` setting the `pr` field is short and infrequent enough that an early "In Review" Linear state is acceptable; the next `idle` tick after `pr-merge.merge` runs reconciles by no-op (the implied state is unchanged).
 
-If `mcp__claude_ai_Linear_2__save_issue` is not available (Linear MCP server not connected), warn the captain once per session and skip Linear sync for the rest of the session.
+## Reconciliation logic
 
-## Hook: stage-enter:review
+For each entity in the workflow directory (active entities AND `_archive/` — the `done` sync only fires after `pr-merge` has already archived the entity, so the archived files must be in scope):
 
-Fires when an entity advances into the `review` stage. The `pr-merge` mod's `merge` hook has just created the PR; the entity's `pr` field is populated. The Linear issue should now reflect "PR opened, not yet merged" → **In Review** per the lifecycle table.
+1. Skip the entity if `linear-id` is empty or missing. Warn once per session per missing entity (track by entity `id` so the warning does not repeat across ticks).
+2. Determine the implied Linear state from the entity's `status` per the mapping above.
+3. If the implied state matches the entity's `linear-state` field, skip — already synced.
+4. Otherwise:
+   - **Iron rule guardrail (when implied is `Done`).** Strip any `#` or `owner/repo#` prefix from the entity's `pr` field, then run `gh pr view {pr-number} --json state --jq '.state'`. If the result is anything other than `MERGED`, do NOT call `save_issue`. Report a one-line warning naming the entity and the PR state, and leave `linear-state` unchanged. The iron rule applies: never mark Done until merged is verified. If `gh` is unavailable, skip Done syncs only — other transitions still proceed.
+   - Call `mcp__claude_ai_Linear_2__save_issue` with `id: {linear-id}` and `state: {implied state}`.
+   - On success, update the entity's `linear-state` frontmatter via `status --workflow-dir docs/workflows/linear-delivery --set {slug} linear-state={new state}` and commit the change with message `linear-sync: {slug} {old state} -> {new state}`.
+5. If `mcp__claude_ai_Linear_2__save_issue` is unavailable (Linear MCP server not connected), warn the captain once per session and skip Linear sync for the rest of the session.
 
-Action: call `mcp__claude_ai_Linear_2__save_issue` with:
+## Hook: startup
 
-- `id`: the entity's `linear-id`
-- `state`: `"In Review"`
+Run the reconciliation logic above. This catches state drift across sessions — for example, a Linear status manually changed in the UI between sessions, or an entity that advanced to `done` while the FO was offline.
 
-Failure handling matches `stage-enter:implementation`: warn but do not block.
+## Hook: idle
 
-Ordering note: this hook runs AFTER `pr-merge.merge` has populated the entity's `pr` field. The first officer is responsible for hook ordering; this mod assumes `pr-merge` runs first when both apply.
+Run the reconciliation logic above. The FO fires `idle` whenever no entity is dispatchable; this is the documented Spacedock hook point closest to "the workflow just transitioned an entity," which is when Linear state typically needs an update.
 
-## Hook: stage-enter:done
+## Ordering relative to `pr-merge`
 
-Fires when an entity advances into the terminal `done` stage. The `pr-merge` mod's `startup` or `idle` hook has detected the PR is MERGED and is advancing the entity. Linear should now move to **Done**.
+Mods run in lexical filename order: `linear-status-sync` (l) runs before `pr-merge` (p). On any given idle tick:
 
-**Iron rule guardrail.** Before calling `save_issue`, this hook re-verifies the PR merge state to defend against bad transitions (e.g., a manual stage advance that bypassed `pr-merge`). Run:
+- `linear-status-sync.idle` runs first, scanning entities at their pre-tick `status`.
+- `pr-merge.idle` runs next, potentially advancing review-stage entities to `done` and archiving them when their PR reaches `MERGED` state.
 
-```bash
-gh pr view {pr-number} --json state --jq '.state'
-```
+The `done` sync therefore lags by one idle tick — when `pr-merge.idle` archives an entity, the archived file's `status` is `done`, but `linear-state` is still `In Review`. The next `idle` tick scans `_archive/`, finds the archived entity needs a sync, runs the iron-rule `gh pr view` check (which still returns `MERGED` for a merged PR), syncs Linear to `Done`, and updates `linear-state` in the archive copy.
 
-where `{pr-number}` is the entity's `pr` field with any `#` or `owner/repo#` prefix stripped.
+This one-tick lag is intentional: the iron rule is "never mark Done until merge is verified by the same authority that triggered archival" (`gh pr view --json state`), so re-running the check on the archived entity is a feature, not a bug — it defends against a manual override or race that would archive without true merge.
 
-- If the result is `MERGED`, proceed with the Linear update.
-- If the result is anything else (`OPEN`, `CLOSED`, error), do NOT call `save_issue`. Report a one-line error to the captain: `"{entity title}: refused to mark Linear Done — PR {pr-number} is in state {state}, not MERGED. The iron rule from references/linear-issue-lifecycle.md applies."` The first officer should bounce the entity back from `done` to `review` (manual captain intervention).
+## Why use `idle`/`startup` rather than `merge`
 
-If `gh` is not available, warn the captain and SKIP the Linear sync (do not assume MERGED). This is the correct conservative behavior — the iron rule is "never mark Done until merged is verified", and an unverified state is not a verified merged state.
-
-If the merge check passes, action: call `mcp__claude_ai_Linear_2__save_issue` with:
-
-- `id`: the entity's `linear-id`
-- `state`: `"Done"`
-
-Failure handling matches the other hooks: warn but do not block. Local archival proceeds; the captain can sync Linear manually if the API call fails after the merge check has already passed.
+The `merge` hook fires once per entity (at terminal-stage entry). Linear status needs three syncs per entity (`In Progress`, `In Review`, `Done`). Using `idle` lets the mod reconcile incrementally as the entity moves through stages, without requiring a custom hook point that Spacedock does not fire. The `startup` companion ensures correct state across session restarts.
 
 ## Why a separate mod
 
@@ -72,4 +80,4 @@ Centralizing Linear status mutations in this mod (rather than inlining `save_iss
 
 1. **Single chokepoint for the iron rule.** The "never Done until merged" guardrail lives in exactly one file, not scattered across stage agents that may forget to enforce it.
 2. **Stage agents stay MCP-agnostic.** The `analysis` and `implementation` ensigns can run without the Linear MCP server connected — the workflow simply skips Linear sync with a warning if the server is unavailable.
-3. **Extension point for future status hooks.** If the team adds a new transition (e.g., a `blocked` state for stalled issues), a single mod edit covers it.
+3. **Extension point for future status hooks.** If the team adds a new transition (e.g., a `blocked` state for stalled issues), a single mapping-table edit covers it.
