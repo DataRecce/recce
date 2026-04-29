@@ -164,3 +164,20 @@ It contains the proposed README "Related skills" entry verbatim, the rationale f
 ### Summary
 
 Recommended `reference-doc` only for `recce-mcp-e2e`. The pick mirrors the captain-approved precedent across entities 001, 002, and 003: a one-entry README subsection edit linking the skill from the workflow that catalogued it. Explicitly rejected `mod` (despite the entity-002 `claude-code-review` precedent) because the workflow's own PRs are doc-only and the skill's own negative trigger excludes that case, the skill needs a captain-supplied project path the mod context cannot supply, the per-PR cost of warehouse queries is asymmetric with `claude-code-review`'s cheap calls, and an E2E mod here would have no work to do on entity 005's own PR. Rejected `workflow-stage-agent` (no MCP-feature workflow exists), `commission-seed` (entity-001 precedent), and `keep-as-is` (dominated). Standalone draft saved to `docs/claude-skill-refinement/recce-mcp-e2e-draft.md`.
+
+## Completed actions
+
+1. **Edit `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/README.md`** — appended the `recce-mcp-e2e` entry to the existing "Related skills" subsection with a relative link to `.claude/skills/recce-mcp-e2e/SKILL.md` and the one-line description "Run end-to-end verification of all 8 MCP tools against a real dbt project before merging MCP PRs." Commit `6f8ad175`.
+
+## Stage Report: execute
+
+- DONE: Action item 1 artifact: append a `recce-mcp-e2e` row to the existing 'Related skills' subsection of `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/README.md` with a relative link to `.claude/skills/recce-mcp-e2e/SKILL.md` and the one-line description 'Run end-to-end verification of all 8 MCP tools against a real dbt project before merging MCP PRs.'
+  Appended on the line after the existing `linear-deep-dive` entry, preserving the three sibling entries (`address-dependabot`, `claude-code-review`, `linear-deep-dive`) untouched. Relative link resolves from `docs/claude-skill-refinement/README.md` to `.claude/skills/recce-mcp-e2e/SKILL.md` via `../../.claude/skills/recce-mcp-e2e/SKILL.md`. One-line description matches the action item verbatim. Commit `6f8ad175`.
+- DONE: The entity body's `## Completed actions` section names the absolute file path AND the commit SHA (via `git rev-parse --short HEAD` after committing).
+  Section added above this Stage Report. Names absolute path `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/README.md` and short SHA `6f8ad175` from `git rev-parse --short HEAD` immediately after the README commit.
+- DONE: No files modified outside the approved scope — verify via `git status` (clean post-commit) and `git show --stat HEAD` showing only `docs/claude-skill-refinement/README.md` and `docs/claude-skill-refinement/recce-mcp-e2e.md`. No new mod under `_mods/`, no edits to `.claude/skills/recce-mcp-e2e/SKILL.md`, no new workflow scaffolding.
+  Pre-edit `git status` was clean on `spacedock-ensign/recce-mcp-e2e`. The README commit (`6f8ad175`) touched only `docs/claude-skill-refinement/README.md` (one insertion). The forthcoming entity-body commit will touch only `docs/claude-skill-refinement/recce-mcp-e2e.md`. No `_mods/` files added; `.claude/skills/recce-mcp-e2e/SKILL.md` not edited; no new workflow scaffolding.
+
+### Summary
+
+Appended the `recce-mcp-e2e` row to the "Related skills" subsection of `docs/claude-skill-refinement/README.md` (commit `6f8ad175`) per the sole approved `reference-doc` action item. Recorded the artifact path and commit SHA in the entity body's "Completed actions" section. No mod, no workflow-stage-agent, no commission-seed scaffolding produced — captain explicitly approved `reference-doc` only.
