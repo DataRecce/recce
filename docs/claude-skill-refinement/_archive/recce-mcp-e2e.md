@@ -11,6 +11,7 @@ worktree:
 issue:
 pr:
 mod-block:
+archived: 2026-04-29T08:46:08Z
 ---
 
 End-to-end MCP verification skill — runs full E2E checks against a real dbt project before merging MCP PRs. Lives at `.claude/skills/recce-mcp-e2e/`. Goal of this entity: understand its verification scope and pre-merge gating role, categorize it (release/verification), and evaluate whether it should become a Spacedock pre-merge mod, a workflow stage agent on an MCP-feature workflow's verification stage, or stay invocable on demand.
