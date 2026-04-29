@@ -11,6 +11,7 @@ worktree:
 issue:
 pr:
 mod-block:
+archived: 2026-04-29T07:34:05Z
 ---
 
 Linear issue/project analysis and orchestration skill. Lives at `.claude/skills/linear-deep-dive/` (includes a `references/` directory worth inspecting). Goal of this entity: understand its dual mode (issue analysis vs. project planning), evaluate whether it could seed a commissioned ticket-to-implementation workflow, become a workflow stage agent for an issue-driven workflow, or remain a standalone analysis tool referenced from intake-style workflows.
