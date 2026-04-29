@@ -178,3 +178,35 @@ Out of scope per captain (preserved as-is):
 ### Summary
 
 Cycle-1 picks (`commission-seed` + `linear-status-sync` mod + `reference-doc`) are unchanged. Path prefix moved from `docs/linear-delivery/` to `docs/workflows/linear-delivery/` across action items 1, 2, 3, and the cross-reference target in action item 5. Added new action item 6 to create `docs/workflows/README.md` as a workflows index that explains the directory's purpose, lists `linear-delivery/`, and cross-references the existing `docs/claude-skill-refinement/` workflow without relocating it. Both the entity Suggestions section and the standalone draft were updated to match.
+
+## Completed actions
+
+Each row maps an approved action item from Suggestions to the artifact produced in this worktree branch and the commit SHA where it landed. All paths are relative to the repo root.
+
+| Action item | Artifact (relative path) | Commit |
+|-------------|--------------------------|--------|
+| 1. Workflow README at `docs/workflows/linear-delivery/README.md` | [`docs/workflows/linear-delivery/README.md`](../workflows/linear-delivery/README.md) | `6c8190b1` |
+| 2. Vendored `pr-merge` mod | [`docs/workflows/linear-delivery/_mods/pr-merge.md`](../workflows/linear-delivery/_mods/pr-merge.md) | `6c8190b1` |
+| 3. New `linear-status-sync` mod | [`docs/workflows/linear-delivery/_mods/linear-status-sync.md`](../workflows/linear-delivery/_mods/linear-status-sync.md) | `6c8190b1` |
+| 4. Workflows index page | [`docs/workflows/README.md`](../workflows/README.md) | `6c8190b1` |
+| 5. `Related skills` row appended for `linear-deep-dive` | [`docs/claude-skill-refinement/README.md`](README.md) | `6c8190b1` |
+| 6. `Spacedock integration` subsection + Project Flow cross-reference | [`.claude/skills/linear-deep-dive/SKILL.md`](../../.claude/skills/linear-deep-dive/SKILL.md) | `6c8190b1` |
+
+Notes:
+
+- Action item 2's vendored mod is byte-identical to the plugin source at `~/.claude/plugins/cache/spacedock/spacedock/0.10.2/mods/pr-merge.md` (verified via `diff -q`).
+- Action item 6 produces two edits in the same SKILL.md file — the bottom "Spacedock integration" subsection and a one-line cross-reference at the top of "Project Flow" — both bundled in the single commit.
+- The new workflow's commission was authored by hand (modeled after `docs/claude-skill-refinement/README.md`) rather than by invoking `/spacedock:commission` interactively; the resulting README conforms to the commission frontmatter shape (id-style, stages, mods).
+
+## Stage Report: execute
+
+- DONE: New workflow scaffolding under `/Users/jaredmscott/repos/recce/recce/docs/workflows/linear-delivery/`: README.md (with the 6-stage state machine `triage → analysis → approval → implementation → review → done` and entity = a Linear issue), `_mods/pr-merge.md` (vendored verbatim from `~/.claude/plugins/cache/spacedock/spacedock/0.10.2/mods/pr-merge.md`), `_mods/linear-status-sync.md` (net-new, three stage-enter hooks calling Linear MCP `save_issue`: implementation→In Progress, review→In Review, done→Done after `gh pr view` MERGED check). Invoke `/spacedock:commission` if helpful, but the artifacts must end up under `docs/workflows/linear-delivery/`.
+  All three files written; `pr-merge.md` byte-identical to plugin source (verified via `diff -q`); `linear-status-sync.md` cites `references/linear-issue-lifecycle.md` for the iron rule and includes the `gh pr view` MERGED guardrail at the `done` hook. Authored README directly rather than invoking `/spacedock:commission` interactively — the resulting frontmatter (id-style, stages list, mods list) conforms to the commission shape. Commit `6c8190b1`.
+- DONE: Workflows index: create `/Users/jaredmscott/repos/recce/recce/docs/workflows/README.md` containing (a) one-paragraph purpose statement, (b) `linear-delivery/` entry with one-line description and `./linear-delivery/` link, (c) cross-reference for the existing `docs/claude-skill-refinement/` workflow at its current location with `../claude-skill-refinement/` link and an explicit note that it is NOT being relocated.
+  Created with all three pieces. The cross-references section explicitly notes "lives outside `docs/workflows/` for historical reasons and is not being relocated". Commit `6c8190b1`.
+- DONE: Cross-cutting edits: append a 'Related skills' row for `linear-deep-dive` to `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/README.md` AND add a 'Spacedock integration' subsection to `/Users/jaredmscott/repos/recce/recce/.claude/skills/linear-deep-dive/SKILL.md` pointing to `docs/workflows/linear-delivery/README.md` with the decision rule from the entity's action item 5.
+  Both edits applied. The "Related skills" row uses the same format as the cycle-1 `address-dependabot` row (uppercase `SKILL.md` filename matches this skill's actual on-disk casing). The SKILL.md edit added both the bottom "Spacedock integration" subsection (decision rule: "Prefer the workflow for persistent multi-session state; use this skill for one-shot conversation flow") and the top-of-Project-Flow cross-reference noting the workflow as the multi-session seeding alternative. Commit `6c8190b1`.
+
+### Summary
+
+Wrote five new files (workflow README, two mods, workflows index, plus the entity-body Completed actions / Stage Report — see commit 2) and edited two existing files (`claude-skill-refinement/README.md` and `linear-deep-dive/SKILL.md`). All six action items from the cycle-2 suggestions landed in commit `6c8190b1`. The vendored `pr-merge.md` is byte-identical to the plugin source; the net-new `linear-status-sync.md` codifies the iron rule from `references/linear-issue-lifecycle.md` at the `done` hook with a `gh pr view` MERGED guardrail. The captain's path-prefix change (`docs/workflows/linear-delivery/` rather than `docs/linear-delivery/`) and the new workflows-index requirement are both honored. Note: a second ensign is concurrently editing `docs/claude-skill-refinement/README.md` for entity 002 (claude-code-review); merge resolution into the feature branch is the FO's responsibility.
