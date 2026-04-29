@@ -113,3 +113,17 @@ It contains the full mission statement to feed `/spacedock:commission`, the 7-st
 ### Summary
 
 Recommended `commission-seed` + `reference-doc` for the address-dependabot skill: commission a `dependabot-batch` workflow whose 7 stages map onto the skill's 9 phases with the existing human pause points consolidated into a single `approve-classification` gate, and reuse the shipped `pr-merge` mod for the terminal push/PR stage. Rejected `mod` (wrong shape for a multi-phase pipeline; pr-merge already covers the only mod surface needed) and `workflow-stage-agent` (no existing workflow to slot into). Full reviewable draft saved to `docs/claude-skill-refinement/address-dependabot-draft.md`.
+
+### Feedback Cycles
+
+**Cycle 1 — 2026-04-29 (approval -> suggestions)**
+
+Captain verdict at approval gate: REJECTED Integration A (`commission-seed`); APPROVED Integration B (`reference-doc`).
+
+Required revisions for the next suggestions pass:
+
+- Drop Integration A (`commission-seed` for a new `dependabot-batch` workflow) entirely — the captain does not want a new workflow commissioned. Remove all action items related to `/spacedock:commission` and `docs/dependabot-batch/...` artifacts.
+- Keep Integration B (`reference-doc`) as the sole recommendation: append a "Related skills" subsection to `docs/claude-skill-refinement/README.md` that links the workflow back to `.claude/skills/address-dependabot/skill.md`.
+- Reduce the integration recommendation in the Suggestions section to a single primitive (`reference-doc`).
+- Update or replace `docs/claude-skill-refinement/address-dependabot-draft.md` so it reflects only the reference-doc proposal — most of the existing draft is about Integration A and is now stale.
+- Preserve the rationale for rejecting `mod` and `workflow-stage-agent`; those rejections still hold.
