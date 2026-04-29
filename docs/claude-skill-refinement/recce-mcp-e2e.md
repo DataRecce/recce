@@ -10,6 +10,7 @@ score:
 worktree: .worktrees/spacedock-ensign-recce-mcp-e2e
 issue:
 pr:
+mod-block: merge:pr-merge
 ---
 
 End-to-end MCP verification skill — runs full E2E checks against a real dbt project before merging MCP PRs. Lives at `.claude/skills/recce-mcp-e2e/`. Goal of this entity: understand its verification scope and pre-merge gating role, categorize it (release/verification), and evaluate whether it should become a Spacedock pre-merge mod, a workflow stage agent on an MCP-feature workflow's verification stage, or stay invocable on demand.
