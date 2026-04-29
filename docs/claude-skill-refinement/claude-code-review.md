@@ -1,13 +1,13 @@
 ---
 id: 002
 title: claude-code-review
-status: approval
+status: execute
 source: commission seed
 started: 2026-04-29T02:30:19Z
 completed:
 verdict:
 score:
-worktree:
+worktree: .worktrees/spacedock-ensign-claude-code-review
 issue:
 pr:
 ---
