@@ -4,10 +4,10 @@ title: recce-mcp-e2e
 status: execute
 source: commission seed
 started: 2026-04-29T07:38:05Z
-completed:
-verdict:
+completed: 2026-04-29T08:46:06Z
+verdict: PASSED
 score:
-worktree: .worktrees/spacedock-ensign-recce-mcp-e2e
+worktree:
 issue:
 pr:
 mod-block:
