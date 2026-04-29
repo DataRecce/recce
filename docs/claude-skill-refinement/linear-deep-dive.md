@@ -10,7 +10,7 @@ score:
 worktree: .worktrees/spacedock-ensign-linear-deep-dive
 issue:
 pr:
-mod-block: merge:pr-merge
+mod-block:
 ---
 
 Linear issue/project analysis and orchestration skill. Lives at `.claude/skills/linear-deep-dive/` (includes a `references/` directory worth inspecting). Goal of this entity: understand its dual mode (issue analysis vs. project planning), evaluate whether it could seed a commissioned ticket-to-implementation workflow, become a workflow stage agent for an issue-driven workflow, or remain a standalone analysis tool referenced from intake-style workflows.
