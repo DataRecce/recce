@@ -1,13 +1,13 @@
 ---
 id: 005
 title: recce-mcp-e2e
-status: approval
+status: execute
 source: commission seed
 started: 2026-04-29T07:38:05Z
 completed:
 verdict:
 score:
-worktree:
+worktree: .worktrees/spacedock-ensign-recce-mcp-e2e
 issue:
 pr:
 ---
