@@ -126,3 +126,52 @@ This places the skill firmly in "test discipline" territory rather than "TDD." F
 ### Summary
 
 `recce-mcp-dev` is a single-file domain-implementation reference for the Recce MCP server: no `references/` dir, no `bin/` scripts. Its triggers are quoted directly from the frontmatter and span `mcp_server.py`, tool handlers, error classification, MCP tests, and tool-response format changes. The skill enforces test-coverage discipline across three layers and a captain-gated E2E prompt, but it does NOT mandate strict TDD — it is test-aware, not test-first. Notable non-obvious dependency: a hard runtime link to sibling skill `/recce-mcp-e2e` and a split contract with the project CLAUDE.md "MCP Tool Response Contracts" section.
+
+## Suggestions
+
+This is a captain's-eye summary of the integration recommendation. The reviewable standalone draft is at `docs/claude-skill-refinement/recce-mcp-dev-draft.md` — captain reviews both at approval.
+
+### Picks
+
+**Primary:** `reference-doc` — append a Related skills row to `docs/claude-skill-refinement/README.md` so the source skill is discoverable from the workflow that catalogued it. Mirrors the precedent set by entity 001 (`address-dependabot`) and continued by entities 002 and 003.
+
+**Complementary:** `keep-as-is` (implicit) — the skill body itself stays unchanged at `.claude/skills/recce-mcp-dev/SKILL.md`. The only edit to the skill's own directory is a two-line "Spacedock integration" footer that points at the sibling skill `recce-mcp-e2e`, since the E2E Verification Gate already names that skill by slash command but does not name a discoverable file path.
+
+### Rationale tied to triggers and TDD posture
+
+Intake recorded auto-trigger file patterns (`recce/mcp_server.py`, `_tool_*` handlers, `_classify_db_error`, `recce/tasks/rowcount.py`, `tests/test_mcp_server.py`, `tests/test_mcp_e2e.py`, "adding new MCP tools or changing tool response formats") and a test-aware (not strict-TDD) posture. The skill's value comes from firing exactly when those files are touched, via Claude Code's built-in skill auto-loader. No Spacedock primitive can subscribe to file-edit events:
+
+- **`mod` rejected:** Spacedock supports three lifecycle hooks — `startup`, `idle`, `merge`. None corresponds to "the agent is touching `recce/mcp_server.py` right now." Saying "this could be a mod" without naming a hook is exactly the bad-pattern the workflow README flags.
+- **`workflow-stage-agent` rejected:** No MCP-feature workflow exists in `docs/`. Commissioning one purely to host this skill as a stage agent would orphan the auto-trigger contract.
+- **`commission-seed` rejected:** Per-MCP-change unit of work has no persistent on-disk identity, no captain-gated stages between work, and no merge gate beyond the project's general PR workflow. Captain rejected `commission-seed` for entity 001 (`address-dependabot`, single-skill / no multi-stage lifecycle); same calculus applies here. Captain approved it for entity 003 (`linear-deep-dive`) only because that skill encoded a `Triage → In Progress → In Review → Done` lifecycle — `recce-mcp-dev` encodes nothing comparable.
+
+`reference-doc` is the only Spacedock primitive that adds value (workflow discoverability) without breaking the auto-trigger contract that makes the skill work today.
+
+### Action items (for the execute stage)
+
+1. **Edit `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/README.md`** — append a row to the existing `Related skills` section listing `recce-mcp-dev` with a relative link to `.claude/skills/recce-mcp-dev/SKILL.md` and a one-line description: "Recce-specific MCP development guidance — auto-triggers when modifying `recce/mcp_server.py`, MCP tool handlers, error classification, or MCP tests."
+
+2. **Edit `/Users/jaredmscott/repos/recce/recce/.claude/skills/recce-mcp-dev/SKILL.md`** — append a "Spacedock integration" subsection at the bottom (after `## File Map`) with two lines: a pointer to the workflow refinement entity at `docs/claude-skill-refinement/recce-mcp-dev.md` for the categorization record, and a pointer to the sibling skill at `.claude/skills/recce-mcp-e2e/SKILL.md` so the `/recce-mcp-e2e` invocation in the E2E Verification Gate has a discoverable file-path reference. No changes to existing body content.
+
+3. **Coordinate with entity 005 (`recce-mcp-e2e`) at execute (no file produced).** The two skills are intentionally a pair; if entity 005 lands first, this entity's action item 2 should pick up the path it landed on. Verified at intake: `.claude/skills/recce-mcp-e2e/SKILL.md` exists today and entity 005's likely `reference-doc`-shaped action items do not relocate it.
+
+### Draft document
+
+The reviewable standalone draft (readable without this Suggestions section) is at:
+
+`/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/recce-mcp-dev-draft.md`
+
+It contains the full TL;DR, primitive-by-primitive recommendation, why-this-is-not-entity-003 contrast, action items, rejection rationale for `mod` / `workflow-stage-agent` / `commission-seed`, risks/counterarguments, and captain's decision points.
+
+## Stage Report: suggestions
+
+- DONE: Pick at least one integration primitive from the allowed set (`workflow-stage-agent` | `mod` | `commission-seed` | `reference-doc` | `keep-as-is`); tie the pick to a specific Spacedock primitive AND to the auto-trigger file patterns + TDD posture you recorded at intake.
+  Picked `reference-doc` (primary) + implicit `keep-as-is` (complementary). Tied to the auto-trigger contract — Claude Code's built-in skill auto-loader is the trigger surface; no Spacedock hook (`startup`/`idle`/`merge`) corresponds to file-edit events. TDD posture (test-aware, not strict-TDD) reinforces that the skill's value is passive guidance, not a multi-stage process worth commissioning.
+- DONE: Each action item names a target file path and a one-line description. Explicitly justify any rejected primitives — captain has rejected `commission-seed` for single-skill workflows previously (entity 001) but approved it for multi-stage process skills (entity 003); use that precedent in your rationale.
+  Three action items with absolute target file paths and one-line descriptions. Rejection rationale for `mod`, `workflow-stage-agent`, `commission-seed` provided in Suggestions §Rationale and expanded in the draft, citing entity 001 (rejected) and entity 003 (approved) precedent explicitly.
+- DONE: Save a reviewable standalone draft to `/Users/jaredmscott/repos/recce/recce/docs/claude-skill-refinement/recce-mcp-dev-draft.md`. The draft must be readable without the entity's Suggestions section.
+  Draft created at the requested path. Self-contained — opens with TL;DR, restates picks, includes full rationale, action items, rejected-primitives section with hook-by-hook analysis, risks, and captain decision points. Does not require reading the Suggestions section first.
+
+### Summary
+
+Recommend `reference-doc` (primary) plus implicit `keep-as-is` (complementary): one row appended to the workflow README's Related skills section, plus a two-line "Spacedock integration" footer in the skill's own `SKILL.md` cross-linking sibling `recce-mcp-e2e`. Rejected `mod`, `workflow-stage-agent`, and `commission-seed` with hook-level (`startup`/`idle`/`merge` don't subscribe to file-edits) and precedent-level (entity 001 rejected, entity 003 approved) rationale. Standalone draft at `docs/claude-skill-refinement/recce-mcp-dev-draft.md` is reviewable on its own.
