@@ -5,9 +5,3 @@ This directory is the canonical home for plain-text Spacedock workflows in this 
 ## Workflows
 
 - [`linear-delivery/`](./linear-delivery/) — Take a Linear issue from triage through to merged code, end-to-end.
-
-## Cross-references
-
-The following workflow lives outside `docs/workflows/` for historical reasons and is not being relocated. It is listed here for discoverability only:
-
-- [`../claude-skill-refinement/`](../claude-skill-refinement/) — Refine and integrate Claude skills under `.claude/skills/` into Spacedock primitives.
