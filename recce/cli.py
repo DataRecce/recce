@@ -2460,6 +2460,7 @@ def read_only(ctx, state_file=None, **kwargs):
 @click.option("--sse", is_flag=True, default=False, help="Start in HTTP/SSE mode instead of stdio mode")
 @click.option("--host", default="localhost", help="Host to bind to in SSE mode (default: localhost)")
 @click.option("--port", default=8000, type=int, help="Port to bind to in SSE mode (default: 8000)")
+@click.option("--session", "cloud_session", type=click.STRING, help="Recce Cloud session ID for cloud MCP mode")
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -2539,6 +2540,15 @@ def mcp_server(state_file, sse, host, port, **kwargs):
 
     handle_debug_flag(**kwargs)
     patch_derived_args(kwargs)
+    is_cloud_mcp = kwargs.get("cloud", False)
+    cloud_session = kwargs.pop("cloud_session", None)
+
+    if is_cloud_mcp and not cloud_session:
+        console.print("[[red]Error[/red]] --session is required when using --cloud with recce mcp-server.")
+        exit(1)
+    if cloud_session and not is_cloud_mcp:
+        console.print("[[red]Error[/red]] --cloud is required when using --session with recce mcp-server.")
+        exit(1)
 
     # Prepare API token
     try:
@@ -2548,20 +2558,24 @@ def mcp_server(state_file, sse, host, port, **kwargs):
         show_invalid_api_token_message()
         exit(1)
 
-    # Create state loader using shared function (for cloud mode or when state_file is provided)
-    is_cloud = kwargs.get("cloud", False)
-    if is_cloud or state_file:
+    # Create state loader using shared function when running local MCP with a state file.
+    # Cloud MCP proxies to a spawned Recce Cloud instance and must not load local context/state.
+    if not is_cloud_mcp and state_file:
         state_loader = create_state_loader_by_args(state_file, **kwargs)
         kwargs["state_loader"] = state_loader
 
-    # Check Single Environment Onboarding Mode
-    # When target-base/ doesn't exist, fall back to single-env mode:
-    # set target_base_path = target_path so both envs load the same artifacts,
+    # Check Single Environment Onboarding Mode (local startup hint only).
+    # When target-base/ doesn't exist, fall back to single-env mode: set
+    # target_base_path = target_path so both envs load the same artifacts,
     # making all diffs show no changes. The MCP server adds _warning to responses.
-    if not is_cloud:
+    # Skipped in cloud mode and when the user hasn't pointed at a dbt project — in
+    # the latter case the server will start unconfigured and the agent flips it via
+    # the set_backend MCP tool.
+    if not is_cloud_mcp:
         project_dir_path = Path(kwargs.get("project_dir") or "./")
+        target_path = project_dir_path.joinpath(Path(kwargs.get("target_path", "target")))
         target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
-        if not target_base_path.is_dir():
+        if target_path.is_dir() and not target_base_path.is_dir():
             kwargs["single_env"] = True
             kwargs["target_base_path"] = kwargs.get("target_path")
             console.print(
@@ -2574,11 +2588,16 @@ def mcp_server(state_file, sse, host, port, **kwargs):
         if sse:
             console.print(f"Starting Recce MCP Server in HTTP/SSE mode on {host}:{port}...")
             console.print(f"SSE endpoint: http://{host}:{port}/sse")
+        elif is_cloud_mcp:
+            console.print("Starting Recce MCP Server in cloud stdio mode...")
         else:
-            console.print("Starting Recce MCP Server in stdio mode...")
+            console.print(
+                "Starting Recce MCP Server in stdio mode "
+                "(use the set_backend MCP tool to switch local/cloud at runtime)..."
+            )
 
         # Run the server (stdio or SSE based on --sse flag)
-        asyncio.run(run_mcp_server(sse=sse, host=host, port=port, **kwargs))
+        asyncio.run(run_mcp_server(sse=sse, host=host, port=port, session=cloud_session, **kwargs))
     except (asyncio.CancelledError, KeyboardInterrupt):
         # Graceful shutdown (e.g., Ctrl+C)
         console.print("[yellow]MCP Server interrupted[/yellow]")

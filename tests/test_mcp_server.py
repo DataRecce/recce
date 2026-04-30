@@ -1376,13 +1376,20 @@ class TestRunMCPServer:
     @pytest.mark.asyncio
     @patch("recce.mcp_server.load_context")
     async def test_run_mcp_server_context_error(self, mock_load_context):
-        """Test run_mcp_server handles context loading errors"""
-        # Make load_context raise an exception
+        """run_mcp_server stays alive when context load fails — it boots unconfigured.
+
+        The Claude Skill auto-launches the MCP at Claude Code startup; a missing
+        local dbt project must NOT crash the server. The agent can flip the
+        backend at runtime via the set_backend MCP tool.
+        """
+        from recce.mcp_server import RecceMCPServer
+
         mock_load_context.side_effect = FileNotFoundError("manifest.json not found")
 
-        # The function should raise the exception
-        with pytest.raises(FileNotFoundError):
+        with patch.object(RecceMCPServer, "run") as mock_run:
             await run_mcp_server()
+
+        mock_run.assert_awaited_once()
 
 
 def test_mcp_cli_command_exists():

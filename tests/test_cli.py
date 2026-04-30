@@ -266,8 +266,12 @@ class TestCommandMCPServer(TestCase):
     def test_cmd_mcp_server_single_env_when_base_missing(
         self, mock_prepare_api_token, mock_recce_config, mock_run_mcp_server, mock_asyncio_run
     ):
-        """When target-base/ directory doesn't exist, single_env mode is activated."""
-        with patch.object(Path, "is_dir", return_value=False):
+        """target-path exists but target-base/ doesn't → single_env mode activates."""
+
+        def is_dir_side_effect(path):
+            return "target-base" not in str(path)
+
+        with patch.object(Path, "is_dir", autospec=True, side_effect=is_dir_side_effect):
             result = self.runner.invoke(
                 cli_command_mcp_server,
                 ["--target-path", "target", "--target-base-path", "target-base"],
@@ -308,6 +312,37 @@ class TestCommandMCPServer(TestCase):
         assert call_kwargs["target_base_path"] == "target-base"
 
         # No single-env guidance in output
+        assert "Base artifacts not found" not in result.output
+
+    @patch("asyncio.run")
+    @patch("recce.mcp_server.run_mcp_server", new_callable=MagicMock)
+    @patch("recce.config.RecceConfig")
+    @patch("recce.util.api_token.prepare_api_token", return_value="token-abc")
+    def test_cmd_mcp_server_cloud_requires_session(
+        self, mock_prepare_api_token, mock_recce_config, mock_run_mcp_server, mock_asyncio_run
+    ):
+        result = self.runner.invoke(cli_command_mcp_server, ["--cloud"])
+
+        assert result.exit_code == 1
+        assert "--session is required" in result.output
+        mock_run_mcp_server.assert_not_called()
+
+    @patch("asyncio.run")
+    @patch("recce.mcp_server.run_mcp_server", new_callable=MagicMock)
+    @patch("recce.config.RecceConfig")
+    @patch("recce.util.api_token.prepare_api_token", return_value="token-abc")
+    def test_cmd_mcp_server_cloud_passes_session_and_skips_single_env(
+        self, mock_prepare_api_token, mock_recce_config, mock_run_mcp_server, mock_asyncio_run
+    ):
+        with patch.object(Path, "is_dir", return_value=False):
+            result = self.runner.invoke(cli_command_mcp_server, ["--cloud", "--session", "sess-123"])
+
+        assert result.exit_code == 0
+        mock_run_mcp_server.assert_called_once()
+        call_kwargs = mock_run_mcp_server.call_args.kwargs
+        assert call_kwargs["cloud"] is True
+        assert call_kwargs["session"] == "sess-123"
+        assert "single_env" not in call_kwargs
         assert "Base artifacts not found" not in result.output
 
 
