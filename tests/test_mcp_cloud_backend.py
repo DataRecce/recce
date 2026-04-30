@@ -1,5 +1,5 @@
 import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -192,3 +192,127 @@ async def test_run_mcp_server_cloud_mode_requires_session_and_token():
 
     with pytest.raises(ValueError, match="--cloud is required"):
         await run_mcp_server(session="sess-123", api_token="token-abc")
+
+
+@pytest.mark.asyncio
+async def test_run_mcp_server_starts_unconfigured_when_load_context_fails():
+    """No CLI flags + no dbt project → server boots with no backend; agent flips it later."""
+    captured = {}
+
+    def capture_init(self_obj, *args, **kwargs):
+        captured["context"] = kwargs.get("context", args[0] if args else None)
+        captured["backend"] = kwargs.get("backend")
+
+    with (
+        patch("recce.mcp_server.load_context", side_effect=RuntimeError("no dbt project")),
+        patch("recce.event.get_recce_api_token", return_value=None),
+        patch.object(RecceMCPServer, "__init__", side_effect=capture_init, return_value=None) as mock_init,
+        patch.object(RecceMCPServer, "run") as mock_run,
+    ):
+        await run_mcp_server()
+
+    mock_init.assert_called_once()
+    init_kwargs = mock_init.call_args.kwargs
+    assert init_kwargs.get("context") is None or mock_init.call_args.args[0] is None
+    assert "backend" not in init_kwargs or init_kwargs["backend"] is None
+    mock_run.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_set_backend_swaps_to_cloud_at_runtime():
+    """A set_backend(mode='cloud', session_id=...) call swaps the backend in place."""
+    cloud_backend = AsyncMock()
+    cloud_backend.instance_status = "ready"
+
+    server = RecceMCPServer(api_token="token-abc")
+    assert server.context is None and server.backend is None
+
+    with patch("recce.mcp_server.CloudBackend.create", return_value=cloud_backend) as mock_create:
+        result = await server._tool_set_backend({"mode": "cloud", "session_id": "sess-123"})
+
+    mock_create.assert_awaited_once_with(session_id="sess-123", api_token="token-abc")
+    assert server.backend is cloud_backend
+    assert result == {"mode": "cloud", "session_id": "sess-123", "instance_status": "ready"}
+
+
+@pytest.mark.asyncio
+async def test_set_backend_cloud_requires_session_and_token():
+    server = RecceMCPServer(api_token=None)
+
+    with pytest.raises(ValueError, match="session_id is required"):
+        await server._tool_set_backend({"mode": "cloud"})
+
+    with patch("recce.event.get_recce_api_token", return_value=None):
+        with pytest.raises(ValueError, match="recce connect-to-cloud"):
+            await server._tool_set_backend({"mode": "cloud", "session_id": "sess-123"})
+
+
+@pytest.mark.asyncio
+async def test_set_backend_local_exports_state_when_swapping_away():
+    """local → cloud swap exports pending local state so it isn't lost."""
+    cloud_backend = AsyncMock()
+    cloud_backend.instance_status = "ready"
+
+    state_loader = MagicMock()
+    state_loader.export.return_value = None
+
+    fake_context = type("Ctx", (), {})()
+    fake_context.export_state = lambda: {"snapshot": True}
+
+    server = RecceMCPServer(api_token="token-abc")
+    server.context = fake_context
+    server.state_loader = state_loader
+    server._local_cache_key = ("/proj", "target", "target-base")
+
+    with patch("recce.mcp_server.CloudBackend.create", return_value=cloud_backend):
+        await server._tool_set_backend({"mode": "cloud", "session_id": "sess-123"})
+
+    state_loader.export.assert_called_once_with({"snapshot": True})
+
+
+@pytest.mark.asyncio
+async def test_set_backend_invalid_mode_raises():
+    server = RecceMCPServer()
+    with pytest.raises(ValueError, match="Invalid mode"):
+        await server._tool_set_backend({"mode": "bogus"})
+
+
+@pytest.mark.asyncio
+async def test_unconfigured_server_blocks_normal_tools_but_allows_set_backend():
+    """Tools other than set_backend / get_server_info are gated when unconfigured."""
+    server = RecceMCPServer()
+    handler = server.server.request_handlers[CallToolRequest]
+
+    # Normal tool blocked
+    blocked = await handler(
+        CallToolRequest(
+            method="tools/call",
+            params=CallToolRequestParams(name="lineage_diff", arguments={}),
+        )
+    )
+    assert blocked.root.isError is True
+    assert "No backend configured" in blocked.root.content[0].text
+
+    # get_server_info returns mode='none'
+    info = await handler(
+        CallToolRequest(
+            method="tools/call",
+            params=CallToolRequestParams(name="get_server_info", arguments={}),
+        )
+    )
+    assert '"mode": "none"' in info.root.content[0].text
+
+
+@pytest.mark.asyncio
+async def test_cloud_get_server_info_includes_mode_field(cloud_requests):
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, {"adapter_type": "dbt", "review_mode": False, "support_tasks": {}}),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="token-abc")
+
+    info = await backend.call_tool("get_server_info", {})
+
+    assert info["mode"] == "cloud"
+    assert info["cloud_mode"] is True
+    assert info["session_id"] == "sess-123"

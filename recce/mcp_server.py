@@ -12,6 +12,7 @@ import os
 import textwrap
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib.parse import quote
 
@@ -139,6 +140,7 @@ class CloudBackend:
     async def _tool_get_server_info(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         info = await self._request("GET", "info")
         result = {
+            "mode": "cloud",
             "adapter_type": info.get("adapter_type"),
             "review_mode": info.get("review_mode"),
             "support_tasks": info.get("support_tasks", {}),
@@ -468,12 +470,16 @@ class RecceMCPServer:
         state_loader=None,
         single_env: bool = False,
         backend: Optional[CloudBackend] = None,
+        api_token: Optional[str] = None,
     ):
         self.context = context
         self.backend = backend
         self.state_loader = state_loader
         self.mode = mode or RecceServerMode.server
         self.single_env = single_env
+        self.api_token = api_token
+        self._backend_lock = asyncio.Lock()
+        self._local_cache_key: Optional[tuple] = None
         self.server = Server("recce", instructions=self._build_instructions())
         self.mcp_logger = MCPLogger(debug=debug, log_file=log_file)
         self._setup_handlers()
@@ -659,12 +665,51 @@ class RecceMCPServer:
             tools.append(
                 Tool(
                     name="get_server_info",
-                    description="Get server context information including adapter type, git branch, "
+                    description="Get server context information including current backend mode "
+                    "('local', 'cloud', or 'none' when unconfigured), adapter type, git branch, "
                     "supported tasks, and review mode status. Useful for diagnostics and "
                     "understanding which diff tools are available.",
                     inputSchema={
                         "type": "object",
                         "properties": {},
+                    },
+                )
+            )
+            tools.append(
+                Tool(
+                    name="set_backend",
+                    description=(
+                        "Switch the MCP server's active backend at runtime. Use this when the user "
+                        "wants to move between local dbt project review and a Recce Cloud session "
+                        "(e.g., reviewing a PR) without restarting Claude Code. Confirm the swap by "
+                        "calling get_server_info afterward and checking the 'mode' field."
+                    ),
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "mode": {
+                                "type": "string",
+                                "enum": ["local", "cloud"],
+                                "description": "Target backend.",
+                            },
+                            "session_id": {
+                                "type": "string",
+                                "description": "Required when mode='cloud'. Recce Cloud session ID.",
+                            },
+                            "project_dir": {
+                                "type": "string",
+                                "description": "Optional dbt project directory for mode='local' (defaults to cwd).",
+                            },
+                            "target_path": {
+                                "type": "string",
+                                "description": "Optional dbt target path for mode='local' (default 'target').",
+                            },
+                            "target_base_path": {
+                                "type": "string",
+                                "description": "Optional dbt base target path for mode='local' (default 'target-base').",
+                            },
+                        },
+                        "required": ["mode"],
                     },
                 )
             )
@@ -1154,6 +1199,11 @@ class RecceMCPServer:
                     "create_check",
                     "impact_analysis",
                 }
+                # Unconfigured-mode gate: when neither a local context nor a cloud
+                # backend is set, only set_backend and get_server_info are usable.
+                if self.context is None and self.backend is None and name not in {"set_backend", "get_server_info"}:
+                    raise ValueError("No backend configured. Call set_backend(mode='local'|'cloud', ...) first.")
+
                 if self.mode != RecceServerMode.server and name in blocked_tools_in_non_server:
                     # Allowed tools = all registered minus blocked
                     allowed_tools = sorted(
@@ -1171,7 +1221,15 @@ class RecceMCPServer:
                         f"Only {', '.join(repr(t) for t in allowed_tools)} are available in this mode."
                     )
 
-                if self.backend is not None:
+                if name == "set_backend":
+                    result = await self._tool_set_backend(arguments)
+                elif name == "get_server_info" and self.context is None and self.backend is None:
+                    result = {
+                        "mode": "none",
+                        "configured": False,
+                        "message": "No backend configured. Call set_backend(mode='local'|'cloud', ...) first.",
+                    }
+                elif self.backend is not None:
                     result = await self.backend.call_tool(name, arguments)
                 elif name == "lineage_diff":
                     result = await self._tool_lineage_diff(arguments)
@@ -1948,9 +2006,11 @@ class RecceMCPServer:
         """Get server context information"""
         context = self.context
         result = {
+            "mode": "local",
             "adapter_type": context.adapter_type,
             "review_mode": context.review_mode,
             "support_tasks": context.support_tasks(),
+            "single_env": self.single_env,
         }
 
         # Add git and pull_request info if state_loader is available
@@ -1965,6 +2025,78 @@ class RecceMCPServer:
                 logger.warning(f"[MCP] Failed to load git/PR info: {e}")
 
         return result
+
+    async def _tool_set_backend(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Switch the active backend (local or cloud) at runtime.
+
+        Tool calls already serialize through MCP stdio, but the lock guards against
+        re-entrancy during the slow parts of a swap (CloudBackend.create, load_context).
+        Local context is cached by (project_dir, target_path, target_base_path) so flips
+        don't re-parse manifests. On `local -> cloud` swap with a state_loader set, the
+        local state is exported at the swap moment so pending work isn't lost.
+        """
+        mode = arguments.get("mode")
+        if mode not in ("local", "cloud"):
+            raise ValueError(f"Invalid mode '{mode}'. Use 'local' or 'cloud'.")
+
+        async with self._backend_lock:
+            if mode == "cloud":
+                session_id = arguments.get("session_id")
+                if not session_id:
+                    raise ValueError("session_id is required when mode='cloud'.")
+
+                api_token = self.api_token
+                if not api_token:
+                    from recce.event import get_recce_api_token
+
+                    api_token = get_recce_api_token()
+                if not api_token:
+                    raise ValueError("Recce Cloud API token not found. Run `recce connect-to-cloud` first.")
+
+                # Best-effort export of local state before swapping away.
+                if self.context is not None and self.state_loader is not None:
+                    try:
+                        self.state_loader.export(self.context.export_state())
+                    except Exception as e:
+                        logger.warning(f"[MCP] Failed to export local state on swap to cloud: {e}")
+
+                new_backend = await CloudBackend.create(session_id=session_id, api_token=api_token)
+                self.backend = new_backend
+                self.api_token = api_token
+                logger.info(f"[MCP] Backend switched to cloud (session_id={session_id})")
+                return {
+                    "mode": "cloud",
+                    "session_id": session_id,
+                    "instance_status": new_backend.instance_status,
+                }
+
+            # mode == "local"
+            project_dir = arguments.get("project_dir")
+            target_path = arguments.get("target_path", "target")
+            target_base_path = arguments.get("target_base_path", "target-base")
+            cache_key = (project_dir, target_path, target_base_path)
+
+            if self.context is None or self._local_cache_key != cache_key:
+                # Reset the global so RecceContext.load runs fresh against new params.
+                from recce import core as _core
+
+                _core.recce_context = None
+                load_kwargs = {"target_path": target_path, "target_base_path": target_base_path}
+                if project_dir:
+                    load_kwargs["project_dir"] = project_dir
+                self.context = load_context(**load_kwargs)
+                self._local_cache_key = cache_key
+
+                base_path = Path(project_dir or "./").joinpath(target_base_path)
+                self.single_env = not base_path.is_dir()
+                logger.info(f"[MCP] Loaded local context (project_dir={project_dir}, single_env={self.single_env})")
+
+            self.backend = None
+            return {
+                "mode": "local",
+                "adapter_type": self.context.adapter_type,
+                "single_env": self.single_env,
+            }
 
     async def _tool_select_nodes(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Resolve dbt selector to node IDs"""
@@ -2340,46 +2472,61 @@ async def run_mcp_server(
     if session and not cloud:
         raise ValueError("--cloud is required when --session is provided")
 
+    # Resolve initial mode from CLI hints. Both unset is allowed: the server starts
+    # unconfigured and the agent flips it via the set_backend tool. Failed local-context
+    # load also falls through to unconfigured so the long-lived MCP keeps running.
+    mode_str = kwargs.get("mode")
+    server_mode = None
+    if mode_str:
+        try:
+            server_mode = RecceServerMode(mode_str)
+        except ValueError:
+            logger.warning(f"Invalid mode '{mode_str}', using default server mode")
+
+    api_token = kwargs.get("api_token")
+    if not api_token:
+        from recce.event import get_recce_api_token
+
+        api_token = get_recce_api_token()
+
     if cloud:
         if not session:
             raise ValueError("--session is required when --cloud is provided")
-
-        api_token = kwargs.get("api_token")
-        if not api_token:
-            from recce.event import get_recce_api_token
-
-            api_token = get_recce_api_token()
         if not api_token:
             raise ValueError("Recce Cloud API token not found. Run `recce connect-to-cloud` first.")
 
         backend = await CloudBackend.create(session_id=session, api_token=api_token)
         server = RecceMCPServer(
             backend=backend,
-            mode=RecceServerMode.server,
+            mode=server_mode or RecceServerMode.server,
             debug=debug,
+            api_token=api_token,
         )
     else:
-        # Load Recce context
-        context = load_context(**kwargs)
+        context = None
+        try:
+            context = load_context(**kwargs)
+        except Exception as e:
+            logger.warning(
+                f"[MCP] No local dbt context loaded ({e}); starting unconfigured. "
+                "Use the set_backend tool to attach a backend."
+            )
 
-        # Extract mode from kwargs (defaults to server mode)
-        mode_str = kwargs.get("mode")
-        mode = None
-        if mode_str:
-            # Convert string mode to RecceServerMode enum
-            try:
-                mode = RecceServerMode(mode_str)
-            except ValueError:
-                logger.warning(f"Invalid mode '{mode_str}', using default server mode")
-
-        # Create MCP server with state_loader for graceful shutdown
         server = RecceMCPServer(
             context,
-            mode=mode,
+            mode=server_mode,
             debug=debug,
             state_loader=state_loader,
             single_env=single_env,
+            api_token=api_token,
         )
+        if context is not None:
+            cache_key = (
+                kwargs.get("project_dir"),
+                kwargs.get("target_path", "target"),
+                kwargs.get("target_base_path", "target-base"),
+            )
+            server._local_cache_key = cache_key
 
     # Run in either stdio or SSE mode
     if sse:
