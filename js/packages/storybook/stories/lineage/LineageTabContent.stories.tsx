@@ -58,7 +58,11 @@ function buildArgs(opts: {
   changeStatusByName?: Record<string, "added" | "removed" | "modified">;
   focusChangeStatus?: "added" | "removed" | "modified";
   historyTrail?: string[];
-}): Pick<LineageTabContentProps, "node" | "nodesById" | "historyTrail"> {
+  impactedNodeIds?: string[];
+}): Pick<
+  LineageTabContentProps,
+  "node" | "nodesById" | "historyTrail" | "impactedNodeIds"
+> {
   const parents = opts.parents ?? [];
   const children = opts.children ?? [];
   const allIds = Array.from(new Set([...parents, ...children, opts.focusId]));
@@ -76,6 +80,9 @@ function buildArgs(opts: {
     node,
     nodesById,
     historyTrail: opts.historyTrail,
+    impactedNodeIds: opts.impactedNodeIds
+      ? new Set(opts.impactedNodeIds)
+      : undefined,
   };
 }
 
@@ -129,6 +136,11 @@ const meta: Meta<typeof LineageTabContent> = {
     onJumpToHistory: {
       description:
         "Called with the history index when the breadcrumb's previous-step is clicked.",
+    },
+    impactedNodeIds: {
+      description:
+        "Frozen set of node ids in the current Impact Analysis result. When non-empty and the focused node is in the set, neighbor rows that participate in the impact chain are decorated with an amber rail/tint/arrow + directional tooltip.",
+      control: "object",
     },
   },
 };
@@ -251,5 +263,112 @@ export const LeafNode: Story = {
 export const Isolated: Story = {
   args: {
     ...buildArgs({ focusId: "scratch_model" }),
+  },
+};
+
+// =============================================================================
+// Impact Analysis Marks
+// =============================================================================
+
+/**
+ * Impact Analysis is active and reaches the focused node. One upstream parent
+ * (`stg_payments`) is in the impact set and is marked with an amber rail/tint
+ * and a trailing arrow icon (tooltip: "Impacts this model"). All three
+ * downstream children inherit the focus's change, so each is marked
+ * (tooltip: "Impacted by this model"). Section headers carry an amber count
+ * pill on each side.
+ */
+export const ImpactAnalysisActive: Story = {
+  args: {
+    ...buildArgs({
+      focusId: "customers",
+      parents: ["stg_customers", "stg_orders", "stg_payments"],
+      children: [
+        "customer_order_pattern",
+        "customer_segments",
+        "mart_customers_daily",
+      ],
+      focusChangeStatus: "modified",
+      changeStatusByName: {
+        stg_payments: "modified",
+        customer_segments: "modified",
+      },
+      impactedNodeIds: [
+        "customers",
+        "stg_payments",
+        "customer_order_pattern",
+        "customer_segments",
+        "mart_customers_daily",
+      ],
+    }),
+  },
+};
+
+/**
+ * Stress test for "12 of 15 impacted" density. The pale tint stays calm
+ * across many marked rows, so the unimpacted minority (audit / archive /
+ * temp_debug) reads as the standout group.
+ */
+export const ImpactAnalysisDense: Story = {
+  args: {
+    ...buildArgs({
+      focusId: "customers",
+      parents: ["stg_payments"],
+      children: [
+        "mart_customers_daily",
+        "mart_customers_weekly",
+        "mart_customers_yearly",
+        "mart_retention",
+        "mart_ltv",
+        "mart_churn",
+        "mart_activation",
+        "mart_cohorts",
+        "customer_segments",
+        "customer_segments4",
+        "customer_order_pattern",
+        "rfm_scores",
+        "audit_customers",
+        "archive_customers",
+        "temp_debug_customers",
+      ],
+      focusChangeStatus: "modified",
+      changeStatusByName: {
+        stg_payments: "modified",
+        mart_ltv: "added",
+        customer_segments: "modified",
+      },
+      impactedNodeIds: [
+        "customers",
+        "stg_payments",
+        "mart_customers_daily",
+        "mart_customers_weekly",
+        "mart_customers_yearly",
+        "mart_retention",
+        "mart_ltv",
+        "mart_churn",
+        "mart_activation",
+        "mart_cohorts",
+        "customer_segments",
+        "customer_segments4",
+        "customer_order_pattern",
+        "rfm_scores",
+      ],
+    }),
+  },
+};
+
+/**
+ * Impact Analysis is on but the focused node itself is NOT in the impact
+ * set. Per design rules, no row should be marked — upstream chains can't
+ * reach an unimpacted focus, and nothing downstream propagates from one.
+ */
+export const ImpactAnalysisFocusOutsideSet: Story = {
+  args: {
+    ...buildArgs({
+      focusId: "customers",
+      parents: ["stg_customers", "stg_orders"],
+      children: ["customer_segments"],
+      impactedNodeIds: ["unrelated_model_a", "unrelated_model_b"],
+    }),
   },
 };

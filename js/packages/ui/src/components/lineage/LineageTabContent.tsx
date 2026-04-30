@@ -10,6 +10,15 @@
  *  - UPSTREAM section: direct parents (filterable / paginated)
  *  - Focused-node card (orange accent)
  *  - DOWNSTREAM section: direct children (filterable / paginated)
+ *
+ * Impact Analysis marks (DRC-3344):
+ *  When the focused node and a direct neighbor are both in the impact set,
+ *  the neighbor's row is decorated with: a 3-px amber left rail, an 8% amber
+ *  background tint, and a trailing amber arrow icon. The amber color matches
+ *  the canvas amber border / schema badge "!" — `rgb(255 173 21)`.
+ *  Tooltip differs by direction:
+ *    - Upstream marked row → "Impacts this model"
+ *    - Downstream marked row → "Impacted by this model"
  */
 
 import Box from "@mui/material/Box";
@@ -28,6 +37,19 @@ import {
 import type { LineageGraphNode } from "../../contexts/lineage/types";
 import { useThemeColors } from "../../hooks";
 import { changeStatusColors } from "./styles";
+
+// ---------------------------------------------------------------------------
+// Impact-mark visual tokens
+// ---------------------------------------------------------------------------
+
+/** Established amber for impact (canvas border, schema badge "!"). */
+const IMPACT_AMBER = "rgb(255 173 21)";
+const IMPACT_TINT_LIGHT = "rgb(255 173 21 / 0.08)";
+const IMPACT_TINT_DARK = "rgb(255 173 21 / 0.06)";
+/** Header chip background and foreground. */
+const IMPACT_CHIP_BG_LIGHT = "rgb(255 245 234)";
+const IMPACT_CHIP_BG_DARK = "rgb(255 173 21 / 0.12)";
+const IMPACT_CHIP_FG = "rgb(180 83 9)";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -61,6 +83,13 @@ export interface LineageTabContentProps {
   historyTrail?: string[];
   /** Jump to an entry in the history (breadcrumb click). */
   onJumpToHistory?: (index: number) => void;
+  /**
+   * Frozen set of node ids in the current Impact Analysis result. When
+   * provided and non-empty, neighbor rows that participate in the impact
+   * chain are decorated with an amber rail/tint/arrow + directional tooltip.
+   * Omit (or pass an empty set) to render rows as today.
+   */
+  impactedNodeIds?: Set<string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -113,14 +142,27 @@ function StatusDot({ status }: { status: ChangeStatus }) {
 interface DirectRowProps {
   name: string;
   status: ChangeStatus;
+  direction: Direction;
+  /** When true, decorate the row with the impact mark (rail + tint + arrow). */
+  impacted?: boolean;
   onClick?: () => void;
 }
 
-function DirectRow({ name, status, onClick }: DirectRowProps) {
+function DirectRow({
+  name,
+  status,
+  direction,
+  impacted,
+  onClick,
+}: DirectRowProps) {
+  const { isDark } = useThemeColors();
+  const tooltip =
+    direction === "up" ? "Impacts this model" : "Impacted by this model";
   return (
     <Box
       onClick={onClick}
       sx={{
+        position: "relative",
         display: "flex",
         alignItems: "center",
         gap: 0.75,
@@ -133,9 +175,27 @@ function DirectRow({ name, status, onClick }: DirectRowProps) {
         lineHeight: 1.3,
         color: "text.primary",
         minWidth: 0,
+        backgroundColor: impacted
+          ? isDark
+            ? IMPACT_TINT_DARK
+            : IMPACT_TINT_LIGHT
+          : undefined,
         "&:hover": onClick ? { backgroundColor: "action.hover" } : undefined,
       }}
     >
+      {impacted && (
+        <Box
+          aria-hidden="true"
+          sx={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: "3px",
+            backgroundColor: IMPACT_AMBER,
+          }}
+        />
+      )}
       <StatusDot status={status} />
       <Box
         component="span"
@@ -150,6 +210,26 @@ function DirectRow({ name, status, onClick }: DirectRowProps) {
       >
         {name}
       </Box>
+      {impacted && (
+        <Tooltip title={tooltip} placement="top" arrow>
+          <Box
+            component="span"
+            aria-label={tooltip}
+            data-testid="lineage-impact-mark"
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "16px",
+              height: "16px",
+              color: IMPACT_AMBER,
+              flex: "0 0 auto",
+            }}
+          >
+            <MdArrowDownward size={12} />
+          </Box>
+        </Tooltip>
+      )}
     </Box>
   );
 }
@@ -157,13 +237,17 @@ function DirectRow({ name, status, onClick }: DirectRowProps) {
 function SectionHeader({
   direction,
   directCount,
+  impactCount,
 }: {
   direction: Direction;
   directCount: number;
+  /** Number of direct neighbors on this side that are part of the impact chain. */
+  impactCount?: number;
 }) {
   const isUp = direction === "up";
   const ArrowIcon = isUp ? MdArrowUpward : MdArrowDownward;
-  const { background } = useThemeColors();
+  const { isDark, background } = useThemeColors();
+  const showChip = (impactCount ?? 0) > 0;
   return (
     <Stack
       direction="row"
@@ -191,6 +275,40 @@ function SectionHeader({
       <Box component="span" sx={{ color: "text.disabled", fontWeight: 500 }}>
         · {directCount} direct
       </Box>
+      {showChip && (
+        <Box
+          component="span"
+          data-testid="lineage-impact-chip"
+          sx={{
+            ml: 0.75,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px",
+            px: "7px",
+            py: "1px",
+            borderRadius: "999px",
+            backgroundColor: isDark
+              ? IMPACT_CHIP_BG_DARK
+              : IMPACT_CHIP_BG_LIGHT,
+            color: IMPACT_CHIP_FG,
+            fontSize: "10px",
+            fontWeight: 600,
+            letterSpacing: "0.02em",
+          }}
+        >
+          <Box
+            component="span"
+            aria-hidden="true"
+            sx={{
+              width: "5px",
+              height: "5px",
+              borderRadius: "50%",
+              backgroundColor: IMPACT_AMBER,
+            }}
+          />
+          {isUp ? `${impactCount} impacting` : `${impactCount} impacted`}
+        </Box>
+      )}
     </Stack>
   );
 }
@@ -491,6 +609,7 @@ export function LineageTabContent({
   onCenterFocus,
   historyTrail,
   onJumpToHistory,
+  impactedNodeIds,
 }: LineageTabContentProps) {
   const { background } = useThemeColors();
 
@@ -527,6 +646,26 @@ export function LineageTabContent({
     () => filterIds(childIds, queryDown, nodesById),
     [childIds, queryDown, nodesById],
   );
+
+  // Impact analysis is only "on" when the caller supplied a non-empty set.
+  // The focused node must itself be in the impact set for any neighbor to be
+  // marked: upstream chains can't reach a focus that isn't impacted, and
+  // nothing downstream propagates from one. Mirrors the design rules.
+  const focusInImpact =
+    (impactedNodeIds?.size ?? 0) > 0 &&
+    (impactedNodeIds?.has(node.id) ?? false);
+
+  const isImpacted = (neighborId: string): boolean => {
+    if (!focusInImpact) return false;
+    return impactedNodeIds?.has(neighborId) ?? false;
+  };
+
+  const upImpactCount = focusInImpact
+    ? parentIds.filter((id) => impactedNodeIds?.has(id)).length
+    : 0;
+  const downImpactCount = focusInImpact
+    ? childIds.filter((id) => impactedNodeIds?.has(id)).length
+    : 0;
 
   const renderDirection = (direction: Direction) => {
     const isUp = direction === "up";
@@ -565,6 +704,8 @@ export function LineageTabContent({
               key={`${direction}-${id}`}
               name={getDisplayName(id, nodesById)}
               status={getChangeStatus(nodesById?.[id])}
+              direction={direction}
+              impacted={isImpacted(id)}
               onClick={onNavigate ? () => onNavigate(id) : undefined}
             />
           ))
@@ -652,12 +793,20 @@ export function LineageTabContent({
 
       {/* Scrollable body */}
       <Box sx={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
-        <SectionHeader direction="up" directCount={parentIds.length} />
+        <SectionHeader
+          direction="up"
+          directCount={parentIds.length}
+          impactCount={upImpactCount}
+        />
         {renderDirection("up")}
 
         <FocusCard node={node} onCenterFocus={onCenterFocus} />
 
-        <SectionHeader direction="down" directCount={childIds.length} />
+        <SectionHeader
+          direction="down"
+          directCount={childIds.length}
+          impactCount={downImpactCount}
+        />
         {renderDirection("down")}
       </Box>
     </Box>

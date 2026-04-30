@@ -19,6 +19,7 @@ import { getModelInfo, type LineageGraphNode } from "../..";
 import { createSchemaDiffCheck } from "../../api";
 import {
   useLineageGraphContext,
+  useLineageViewContext,
   useRecceActionContext,
   useRecceInstanceContext,
   useRouteConfig,
@@ -124,6 +125,11 @@ export function NodeViewOss({
   const router = useRouter();
   const { runAction } = useRecceActionContext();
   const { isActionAvailable, envInfo, lineageGraph } = useLineageGraphContext();
+  // Optional view context — present whenever NodeViewOss renders inside a
+  // LineageView (which is always, in OSS today). Falls back to undefined for
+  // tests/Storybook that mount NodeView directly without the provider.
+  const lineageViewCtx = useLineageViewContext();
+  const impactedNodeIds = lineageViewCtx?.impactedNodeIds;
   const { singleEnv: isSingleEnvOnboarding, featureToggles } =
     useRecceInstanceContext();
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
@@ -382,6 +388,7 @@ export function NodeViewOss({
             onCenterFocus={onCenterFocused}
             historyTrail={historyTrail}
             onJumpToHistory={onJumpToHistory}
+            impactedNodeIds={impactedNodeIds}
           />
         ) : undefined
       }
