@@ -310,6 +310,37 @@ class TestCommandMCPServer(TestCase):
         # No single-env guidance in output
         assert "Base artifacts not found" not in result.output
 
+    @patch("asyncio.run")
+    @patch("recce.mcp_server.run_mcp_server", new_callable=MagicMock)
+    @patch("recce.config.RecceConfig")
+    @patch("recce.util.api_token.prepare_api_token", return_value="token-abc")
+    def test_cmd_mcp_server_cloud_requires_session(
+        self, mock_prepare_api_token, mock_recce_config, mock_run_mcp_server, mock_asyncio_run
+    ):
+        result = self.runner.invoke(cli_command_mcp_server, ["--cloud"])
+
+        assert result.exit_code == 1
+        assert "--session is required" in result.output
+        mock_run_mcp_server.assert_not_called()
+
+    @patch("asyncio.run")
+    @patch("recce.mcp_server.run_mcp_server", new_callable=MagicMock)
+    @patch("recce.config.RecceConfig")
+    @patch("recce.util.api_token.prepare_api_token", return_value="token-abc")
+    def test_cmd_mcp_server_cloud_passes_session_and_skips_single_env(
+        self, mock_prepare_api_token, mock_recce_config, mock_run_mcp_server, mock_asyncio_run
+    ):
+        with patch.object(Path, "is_dir", return_value=False):
+            result = self.runner.invoke(cli_command_mcp_server, ["--cloud", "--session", "sess-123"])
+
+        assert result.exit_code == 0
+        mock_run_mcp_server.assert_called_once()
+        call_kwargs = mock_run_mcp_server.call_args.kwargs
+        assert call_kwargs["cloud"] is True
+        assert call_kwargs["session"] == "sess-123"
+        assert "single_env" not in call_kwargs
+        assert "Base artifacts not found" not in result.output
+
 
 def test_cli_shows_update_available_warning():
     """CLI should show update available warning when a newer version exists."""

@@ -13,7 +13,9 @@ import textwrap
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from urllib.parse import quote
 
+import requests
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
@@ -33,6 +35,7 @@ from recce.tasks.rowcount import (
 )
 from recce.tasks.top_k import TopKDiffTask
 from recce.tasks.valuediff import ValueDiffDetailTask, ValueDiffTask
+from recce.util.recce_cloud import RECCE_CLOUD_API_HOST, RecceCloudException
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +48,335 @@ SINGLE_ENV_WARNING = (
     "Base environment not configured \u2014 comparisons show no changes. "
     "Run `dbt docs generate --target-path target-base` to enable diffing."
 )
+
+
+class InstanceSpawningError(RuntimeError):
+    """Raised when a Recce Cloud session instance is not ready yet."""
+
+    def __init__(self):
+        super().__init__("Recce Cloud instance is still spawning; retry shortly.")
+
+
+class CloudBackend:
+    """MCP tool backend that proxies calls to a Recce Cloud session instance."""
+
+    RUN_TOOL_TYPES = {
+        "row_count_diff": "row_count_diff",
+        "query_diff": "query_diff",
+        "profile_diff": "profile_diff",
+        "value_diff": "value_diff",
+        "value_diff_detail": "value_diff_detail",
+        "top_k_diff": "top_k_diff",
+        "histogram_diff": "histogram_diff",
+    }
+
+    def __init__(self, session_id: str, api_token: str, cloud_host: str = RECCE_CLOUD_API_HOST):
+        self.session_id = session_id
+        self.api_token = api_token
+        self.cloud_host = cloud_host.rstrip("/")
+        self.instance_status = None
+
+    @classmethod
+    async def create(cls, session_id: str, api_token: str):
+        backend = cls(session_id=session_id, api_token=api_token)
+        spawn_response = await backend._request("POST", "instance", json={})
+        if isinstance(spawn_response, dict):
+            backend.instance_status = spawn_response.get("status") or spawn_response.get("instance_status")
+        return backend
+
+    def _url(self, api_name: str) -> str:
+        return f"{self.cloud_host}/api/v2/sessions/{quote(self.session_id, safe='')}/{api_name.lstrip('/')}"
+
+    async def _request(self, method: str, api_name: str, **kwargs):
+        url = self._url(api_name)
+        headers = {
+            **kwargs.pop("headers", {}),
+            "Authorization": f"Bearer {self.api_token}",
+        }
+        response = await asyncio.to_thread(requests.request, method, url, headers=headers, **kwargs)
+        if response.status_code == 405:
+            raise InstanceSpawningError()
+        if response.status_code < 200 or response.status_code >= 300:
+            raise RecceCloudException(
+                message=f"Failed to call Recce Cloud session endpoint {api_name}.",
+                reason=response.text,
+                status_code=response.status_code,
+            )
+        if response.status_code == 204 or not response.text:
+            return {}
+        try:
+            return response.json()
+        except ValueError:
+            return {"text": response.text}
+
+    async def call_tool(self, name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        if name == "get_server_info":
+            return await self._tool_get_server_info(arguments)
+        if name == "select_nodes":
+            return await self._tool_select_nodes(arguments)
+        if name == "get_model":
+            return await self._tool_get_model(arguments)
+        if name == "get_cll":
+            return await self._tool_get_cll(arguments)
+        if name == "lineage_diff":
+            return await self._tool_lineage_diff(arguments)
+        if name == "schema_diff":
+            return await self._tool_schema_diff(arguments)
+        if name == "query":
+            return await self._tool_query(arguments)
+        if name in self.RUN_TOOL_TYPES:
+            return await self._tool_run_backed(self.RUN_TOOL_TYPES[name], arguments)
+        if name == "list_checks":
+            return await self._tool_list_checks(arguments)
+        if name == "run_check":
+            return await self._tool_run_check(arguments)
+        if name == "create_check":
+            return await self._tool_create_check(arguments)
+        if name == "impact_analysis":
+            return await self._tool_impact_analysis(arguments)
+        raise ValueError(f"Unknown tool: {name}")
+
+    async def _tool_get_server_info(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        info = await self._request("GET", "info")
+        result = {
+            "adapter_type": info.get("adapter_type"),
+            "review_mode": info.get("review_mode"),
+            "support_tasks": info.get("support_tasks", {}),
+            "cloud_mode": True,
+            "session_id": self.session_id,
+        }
+        if self.instance_status:
+            result["instance_status"] = self.instance_status
+        if info.get("git"):
+            result["git"] = info["git"]
+        if info.get("pull_request"):
+            result["pull_request"] = info["pull_request"]
+        return result
+
+    async def _tool_select_nodes(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "select", json=arguments)
+
+    async def _tool_get_model(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        model_id = arguments.get("node_id") or arguments.get("model_id")
+        if not model_id:
+            raise ValueError("node_id is required")
+        return await self._request("GET", f"models/{quote(model_id, safe='')}")
+
+    async def _tool_get_cll(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        return await self._request("POST", "cll", json=arguments)
+
+    async def _tool_query(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        run_type = "query_base" if arguments.get("base") else "query"
+        params = {k: v for k, v in arguments.items() if k != "base"}
+        return await self._tool_run_backed(run_type, params)
+
+    async def _tool_run_backed(self, run_type: str, params: Dict[str, Any]) -> Dict[str, Any]:
+        run = await self._request(
+            "POST",
+            "runs",
+            json={"type": run_type, "params": params, "nowait": False},
+        )
+        return run.get("result", run)
+
+    async def _tool_list_checks(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        checks = await self._request("GET", "checks")
+        checks_list = []
+        for check in checks or []:
+            checks_list.append(
+                {
+                    "check_id": str(check.get("check_id")),
+                    "name": check.get("name"),
+                    "type": check.get("type"),
+                    "description": check.get("description") or "",
+                    "params": check.get("params") or {},
+                    "is_checked": check.get("is_checked", False),
+                    "is_preset": check.get("is_preset", False),
+                }
+            )
+        return {
+            "checks": checks_list,
+            "total": len(checks_list),
+            "approved": len([check for check in checks_list if check["is_checked"]]),
+        }
+
+    async def _tool_run_check(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        check_id = arguments.get("check_id")
+        if not check_id:
+            raise ValueError("check_id is required")
+        run = await self._request("POST", f"checks/{quote(str(check_id), safe='')}/run", json={"nowait": False})
+        if self._run_succeeded(run):
+            await self._auto_approve(check_id)
+        return run
+
+    async def _tool_create_check(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        check_type = arguments["type"]
+        check = await self._request(
+            "POST",
+            "checks",
+            json={
+                "name": arguments.get("name"),
+                "description": arguments.get("description", ""),
+                "type": check_type,
+                "params": arguments.get("params", {}),
+                "view_options": arguments.get("view_options", {}),
+            },
+        )
+        check_id = check.get("check_id")
+        run_executed = False
+        run_error = None
+        # Match local: execute a run for every type except `simple` (which has no
+        # executable run). lineage_diff/schema_diff are recorded server-side via
+        # POST /checks/{id}/run, mirroring local _create_metadata_run.
+        if check_id and check_type != "simple":
+            run = await self._request("POST", f"checks/{quote(str(check_id), safe='')}/run", json={"nowait": False})
+            run_executed = True
+            run_error = run.get("error")
+            if self._run_succeeded(run):
+                await self._auto_approve(check_id)
+        result = {"check_id": str(check_id), "created": True, "run_executed": run_executed}
+        if run_error:
+            result["run_error"] = run_error
+        return result
+
+    async def _auto_approve(self, check_id) -> None:
+        """Best-effort auto-approve on successful run.
+
+        The run already succeeded; an approve-side failure must not blow up the
+        tool response. Mirrors the local-mode invariant that auto-approve is a
+        post-success side-effect, not part of the run contract.
+        """
+        try:
+            await self._request("PATCH", f"checks/{quote(str(check_id), safe='')}", json={"is_checked": True})
+        except (RecceCloudException, InstanceSpawningError) as e:
+            logger.warning(f"[MCP] Auto-approve failed for check {check_id}: {e}")
+
+    async def _tool_lineage_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        info = await self._request("GET", "info")
+        lineage = info.get("lineage", {})
+        nodes = lineage.get("nodes", {})
+        selected = await self._selected_nodes(arguments, nodes)
+        impacted = set((await self._request("POST", "select", json={"select": "state:modified+"})).get("nodes", []))
+
+        selected_nodes = {node_id: node for node_id, node in nodes.items() if node_id in selected}
+        id_to_idx = {node_id: idx for idx, node_id in enumerate(selected_nodes.keys())}
+        nodes_df = DataFrame.from_data(
+            columns={
+                "idx": "integer",
+                "id": "text",
+                "name": "text",
+                "resource_type": "text",
+                "materialized": "text",
+                "change_status": "text",
+                "impacted": "boolean",
+            },
+            data=[
+                (
+                    id_to_idx[node_id],
+                    node_id,
+                    node.get("name"),
+                    node.get("resource_type"),
+                    node.get("materialized"),
+                    node.get("change_status"),
+                    node_id in impacted,
+                )
+                for node_id, node in selected_nodes.items()
+            ],
+        )
+
+        edge_rows = []
+        for edge in lineage.get("edges", []):
+            source = edge.get("source")
+            target = edge.get("target")
+            if source in id_to_idx and target in id_to_idx:
+                edge_rows.append((id_to_idx[source], id_to_idx[target]))
+        edges_df = DataFrame.from_data(columns={"from": "integer", "to": "integer"}, data=edge_rows)
+        return {"nodes": nodes_df.model_dump(mode="json"), "edges": edges_df.model_dump(mode="json")}
+
+    async def _tool_schema_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        info = await self._request("GET", "info")
+        nodes = info.get("lineage", {}).get("nodes", {})
+        selected = await self._selected_nodes(arguments, nodes)
+        changes = []
+        for node_id, node in nodes.items():
+            if node_id not in selected:
+                continue
+            column_changes = (node.get("change") or {}).get("columns") or {}
+            for column, change_status in column_changes.items():
+                changes.append((node_id, column, change_status))
+        limit = 100
+        return DataFrame.from_data(
+            columns={"node_id": "text", "column": "text", "change_status": "text"},
+            data=changes[:limit],
+            limit=limit,
+            more=len(changes) > limit,
+        ).model_dump(mode="json")
+
+    async def _tool_impact_analysis(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        info = await self._request("GET", "info")
+        nodes = info.get("lineage", {}).get("nodes", {})
+        select = arguments.get("select", "state:modified.body+ state:modified.macros+ state:modified.contract+")
+        impacted_node_ids = set((await self._request("POST", "select", json={"select": select})).get("nodes", []))
+        modified_node_ids = set(
+            (await self._request("POST", "select", json={"select": "state:modified"})).get("nodes", [])
+        )
+
+        impacted_models = []
+        not_impacted_models = []
+        for node_id, node in nodes.items():
+            if not node_id.startswith("model."):
+                continue
+            entry = {
+                "name": node.get("name"),
+                "change_status": node.get("change_status") if node_id in modified_node_ids else None,
+                "materialized": node.get("materialized"),
+                "row_count": None,
+                "schema_changes": [
+                    {"column": column, "change_status": status}
+                    for column, status in ((node.get("change") or {}).get("columns") or {}).items()
+                ],
+                "value_diff": None,
+                "affected_row_count": None,
+                "data_impact": "potential",
+                "next_action": {
+                    "tool": "profile_diff",
+                    "columns": None,
+                    "reason": "cloud impact analysis uses metadata-only triage",
+                    "priority": "high" if node_id in modified_node_ids else "medium",
+                },
+            }
+            if node_id in impacted_node_ids:
+                impacted_models.append(entry)
+            else:
+                not_impacted_models.append(node.get("name"))
+
+        return {
+            "_guidance": "Cloud impact analysis classifies lineage impact from session metadata.",
+            "classification_source": "lineage_dag",
+            "max_affected_row_count": 0,
+            "confirmed_impacted_models": impacted_models,
+            "confirmed_not_impacted_models": not_impacted_models,
+            "errors": [],
+        }
+
+    async def _selected_nodes(self, arguments: Dict[str, Any], nodes: Dict[str, Any]):
+        if (
+            arguments.get("select")
+            or arguments.get("exclude")
+            or arguments.get("packages")
+            or arguments.get("view_mode")
+        ):
+            payload = {
+                key: arguments.get(key)
+                for key in ("select", "exclude", "packages", "view_mode")
+                if arguments.get(key) is not None
+            }
+            return set((await self._request("POST", "select", json=payload)).get("nodes", []))
+        return set(nodes.keys())
+
+    @staticmethod
+    def _run_succeeded(run: Dict[str, Any]) -> bool:
+        status = str(run.get("status", "")).lower()
+        return not run.get("error") and status in {"finished", "success", "succeeded"}
 
 
 def _truncate_strings(obj: Any, max_length: int = 200) -> Any:
@@ -129,14 +461,16 @@ class RecceMCPServer:
 
     def __init__(
         self,
-        context: RecceContext,
+        context: Optional[RecceContext] = None,
         mode: Optional[RecceServerMode] = None,
         debug: bool = False,
         log_file: str = "logs/recce-mcp.json",
         state_loader=None,
         single_env: bool = False,
+        backend: Optional[CloudBackend] = None,
     ):
         self.context = context
+        self.backend = backend
         self.state_loader = state_loader
         self.mode = mode or RecceServerMode.server
         self.single_env = single_env
@@ -837,7 +1171,9 @@ class RecceMCPServer:
                         f"Only {', '.join(repr(t) for t in allowed_tools)} are available in this mode."
                     )
 
-                if name == "lineage_diff":
+                if self.backend is not None:
+                    result = await self.backend.call_tool(name, arguments)
+                elif name == "lineage_diff":
                     result = await self._tool_lineage_diff(arguments)
                 elif name == "schema_diff":
                     result = await self._tool_schema_diff(arguments)
@@ -894,6 +1230,7 @@ class RecceMCPServer:
                 error_msg = str(e)
                 self.mcp_logger.log_tool_call(name, arguments, {}, duration_ms, error=error_msg)
 
+                is_expected_cloud_error = isinstance(e, (RecceCloudException, InstanceSpawningError))
                 classification = self._classify_db_error(error_msg)
                 if classification:
                     logger.warning(
@@ -905,6 +1242,8 @@ class RecceMCPServer:
                             1,
                             attributes={"tool": name, "error_type": classification},
                         )
+                elif is_expected_cloud_error:
+                    logger.warning(f"[MCP] Expected cloud error in tool {name} ({duration_ms:.2f}ms): {error_msg}")
                 else:
                     logger.error(f"[MCP] Error executing tool {name} ({duration_ms:.2f}ms): {error_msg}")
                     logger.exception("[MCP] Full traceback:")
@@ -1969,6 +2308,8 @@ async def run_mcp_server(
     sse: bool = False,
     host: str = "localhost",
     port: int = 8000,
+    cloud: bool = False,
+    session: Optional[str] = None,
     **kwargs,
 ):
     """
@@ -1993,30 +2334,52 @@ async def run_mcp_server(
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
-    # Load Recce context
-    context = load_context(**kwargs)
-
-    # Extract mode from kwargs (defaults to server mode)
-    mode_str = kwargs.get("mode")
-    mode = None
-    if mode_str:
-        # Convert string mode to RecceServerMode enum
-        try:
-            mode = RecceServerMode(mode_str)
-        except ValueError:
-            logger.warning(f"Invalid mode '{mode_str}', using default server mode")
-
     # Extract debug flag from kwargs
     debug = kwargs.get("debug", False)
 
-    # Create MCP server with state_loader for graceful shutdown
-    server = RecceMCPServer(
-        context,
-        mode=mode,
-        debug=debug,
-        state_loader=state_loader,
-        single_env=single_env,
-    )
+    if session and not cloud:
+        raise ValueError("--cloud is required when --session is provided")
+
+    if cloud:
+        if not session:
+            raise ValueError("--session is required when --cloud is provided")
+
+        api_token = kwargs.get("api_token")
+        if not api_token:
+            from recce.event import get_recce_api_token
+
+            api_token = get_recce_api_token()
+        if not api_token:
+            raise ValueError("Recce Cloud API token not found. Run `recce connect-to-cloud` first.")
+
+        backend = await CloudBackend.create(session_id=session, api_token=api_token)
+        server = RecceMCPServer(
+            backend=backend,
+            mode=RecceServerMode.server,
+            debug=debug,
+        )
+    else:
+        # Load Recce context
+        context = load_context(**kwargs)
+
+        # Extract mode from kwargs (defaults to server mode)
+        mode_str = kwargs.get("mode")
+        mode = None
+        if mode_str:
+            # Convert string mode to RecceServerMode enum
+            try:
+                mode = RecceServerMode(mode_str)
+            except ValueError:
+                logger.warning(f"Invalid mode '{mode_str}', using default server mode")
+
+        # Create MCP server with state_loader for graceful shutdown
+        server = RecceMCPServer(
+            context,
+            mode=mode,
+            debug=debug,
+            state_loader=state_loader,
+            single_env=single_env,
+        )
 
     # Run in either stdio or SSE mode
     if sse:
