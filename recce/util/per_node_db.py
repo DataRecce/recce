@@ -352,12 +352,18 @@ def extract_rows_from_artifacts(
 
         # Union of catalog + manifest column names preserves ordering:
         # catalog first (dtypes authoritative), then any manifest-only cols.
+        # Dedup is case-insensitive: Snowflake catalog folds identifiers to
+        # uppercase while schema.yml typically declares them lowercase, so a
+        # case-sensitive check would emit BOTH ``ID`` and ``id`` for the same
+        # warehouse column. Catalog wins because it reflects the real
+        # identifier in the warehouse.
         ordered_cols: list[str] = []
-        seen: set[str] = set()
+        seen_canonical: set[str] = set()
         for col_name, col_info in catalog_cols.items():
-            if col_name in seen:
+            canonical = col_name.lower()
+            if canonical in seen_canonical:
                 continue
-            seen.add(col_name)
+            seen_canonical.add(canonical)
             ordered_cols.append(col_name)
             column_rows.append(
                 ColumnRow(
@@ -368,9 +374,10 @@ def extract_rows_from_artifacts(
                 )
             )
         for col_name in manifest_cols.keys():
-            if col_name in seen:
+            canonical = col_name.lower()
+            if canonical in seen_canonical:
                 continue
-            seen.add(col_name)
+            seen_canonical.add(canonical)
             ordered_cols.append(col_name)
             column_rows.append(ColumnRow(node_id=node_id, env=env, column_name=col_name, data_type=None))
 

@@ -321,6 +321,50 @@ def test_empty_manifest():
     assert tests == []
 
 
+def test_catalog_wins_over_manifest_when_column_casing_differs():
+    """Snowflake catalog reports columns uppercase (warehouse truth) while
+    manifest schema.yml usually declares them lowercase. The two sources used
+    to be unioned with a case-sensitive seen-set, so a single node ended up
+    with both ``ID`` and ``id`` rows in ``per_node.db.columns`` — surfaced as
+    duplicate columns in the side panel. Catalog wins because it reflects
+    real warehouse identifiers; the manifest entry is dropped.
+    """
+    manifest = {
+        "nodes": {
+            "model.pkg.m": {
+                "name": "m",
+                "resource_type": "model",
+                "package_name": "pkg",
+                "columns": {
+                    "id": {"name": "id"},
+                    "amount": {"name": "amount"},
+                    "manifest_only": {"name": "manifest_only"},
+                },
+            },
+        },
+        "child_map": {"model.pkg.m": []},
+    }
+    catalog = {
+        "nodes": {
+            "model.pkg.m": {
+                "columns": {
+                    "ID": {"type": "INTEGER"},
+                    "AMOUNT": {"type": "NUMBER"},
+                },
+            },
+        },
+    }
+
+    _, columns, _, _ = extract_rows_from_artifacts(manifest, catalog, "current")
+
+    names = [c.column_name for c in columns]
+    assert names == ["ID", "AMOUNT", "manifest_only"]
+    by_name = {c.column_name: c for c in columns}
+    assert by_name["ID"].data_type == "INTEGER"
+    assert by_name["AMOUNT"].data_type == "NUMBER"
+    assert by_name["manifest_only"].data_type is None
+
+
 def test_primary_key_follows_catalog_column_order_with_multiple_unique_tests():
     """When a model has two unique tests, primary_key matches the column that
     comes first in catalog order — which is the warehouse column order that
