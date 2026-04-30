@@ -978,9 +978,9 @@ class DbtAdapter(BaseAdapter):
                         changed_columns_final[column_name] = changed_columns[column_name.lower()]
 
                 change.columns = changed_columns_final
-            except Exception:
+            except Exception as e:
                 # TODO: telemetry
-                pass
+                logger.warning("[change-analysis] %s failed: %s: %s", node_id, type(e).__name__, e)
 
         breaking_perf_tracker.end_lineage_diff()
         log_performance("change analysis per node", breaking_perf_tracker.to_dict())
