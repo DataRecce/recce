@@ -328,6 +328,11 @@ def test_catalog_wins_over_manifest_when_column_casing_differs():
     with both ``ID`` and ``id`` rows in ``per_node.db.columns`` — surfaced as
     duplicate columns in the side panel. Catalog wins because it reflects
     real warehouse identifiers; the manifest entry is dropped.
+
+    Test column names (derived from schema.yml-cased dbt-generated test
+    names) are also normalized to the stored catalog casing so that
+    ``node_tests.column_name`` joins back to ``columns.column_name`` and
+    ``_pick_primary_key`` can find unique tests on catalog-cased columns.
     """
     manifest = {
         "nodes": {
@@ -341,8 +346,23 @@ def test_catalog_wins_over_manifest_when_column_casing_differs():
                     "manifest_only": {"name": "manifest_only"},
                 },
             },
+            "test.pkg.unique_m_id.aaa": {
+                "name": "unique_m_id",
+                "resource_type": "test",
+                "package_name": "pkg",
+            },
+            "test.pkg.not_null_m_amount.bbb": {
+                "name": "not_null_m_amount",
+                "resource_type": "test",
+                "package_name": "pkg",
+            },
         },
-        "child_map": {"model.pkg.m": []},
+        "child_map": {
+            "model.pkg.m": [
+                "test.pkg.unique_m_id.aaa",
+                "test.pkg.not_null_m_amount.bbb",
+            ],
+        },
     }
     catalog = {
         "nodes": {
@@ -355,7 +375,7 @@ def test_catalog_wins_over_manifest_when_column_casing_differs():
         },
     }
 
-    _, columns, _, _ = extract_rows_from_artifacts(manifest, catalog, "current")
+    nodes, columns, _, tests = extract_rows_from_artifacts(manifest, catalog, "current")
 
     names = [c.column_name for c in columns]
     assert names == ["ID", "AMOUNT", "manifest_only"]
@@ -363,6 +383,17 @@ def test_catalog_wins_over_manifest_when_column_casing_differs():
     assert by_name["ID"].data_type == "INTEGER"
     assert by_name["AMOUNT"].data_type == "NUMBER"
     assert by_name["manifest_only"].data_type is None
+
+    # node_tests.column_name follows catalog casing so it joins back to
+    # columns.column_name without case-folding in the reader.
+    test_cols = {(t.column_name, t.test_type) for t in tests}
+    assert ("ID", "unique") in test_cols
+    assert ("AMOUNT", "not_null") in test_cols
+
+    # primary_key is derived from the column ↔ unique-test join — must be
+    # the catalog-cased "ID", not None.
+    by_node = {n.node_id: n for n in nodes}
+    assert by_node["model.pkg.m"].primary_key == "ID"
 
 
 def test_primary_key_follows_catalog_column_order_with_multiple_unique_tests():

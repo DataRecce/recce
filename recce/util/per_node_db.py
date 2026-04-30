@@ -343,8 +343,7 @@ def extract_rows_from_artifacts(
     test_rows: list[NodeTestRow] = []
 
     for node_id, node in _iter_manifest_nodes(manifest):
-        tests = _derive_tests(node_id, node, manifest, env)
-        test_rows.extend(tests)
+        raw_tests = _derive_tests(node_id, node, manifest, env)
 
         catalog_node = catalog_nodes.get(node_id) if catalog_nodes else None
         catalog_cols = (catalog_node or {}).get("columns") or {}
@@ -381,7 +380,32 @@ def extract_rows_from_artifacts(
             ordered_cols.append(col_name)
             column_rows.append(ColumnRow(node_id=node_id, env=env, column_name=col_name, data_type=None))
 
-        unique_cols = {t.column_name for t in tests if t.test_type == "unique"}
+        # Normalize test column names to the casing we just stored in
+        # ``columns``. dbt generates test names like ``unique_<model>_<col>``
+        # from schema.yml (typically lowercase) while ``column_rows`` now
+        # holds catalog casing (UPPERCASE on Snowflake). Without this
+        # normalization, ``node_tests.column_name`` would not join back to
+        # ``columns.column_name`` — breaking ``_pick_primary_key`` below and
+        # the cloud reader's ``tests_by_column`` lookup downstream.
+        canonical_to_stored = {col.lower(): col for col in ordered_cols}
+        normalized_tests: list[NodeTestRow] = []
+        for t in raw_tests:
+            stored = canonical_to_stored.get(t.column_name.lower())
+            if stored is None or stored == t.column_name:
+                normalized_tests.append(t)
+            else:
+                normalized_tests.append(
+                    NodeTestRow(
+                        node_id=t.node_id,
+                        env=t.env,
+                        column_name=stored,
+                        test_name=t.test_name,
+                        test_type=t.test_type,
+                    )
+                )
+        test_rows.extend(normalized_tests)
+
+        unique_cols = {t.column_name for t in normalized_tests if t.test_type == "unique"}
         primary_key = _pick_primary_key(ordered_cols, unique_cols)
 
         node_rows.append(
