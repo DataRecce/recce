@@ -2564,14 +2564,18 @@ def mcp_server(state_file, sse, host, port, **kwargs):
         state_loader = create_state_loader_by_args(state_file, **kwargs)
         kwargs["state_loader"] = state_loader
 
-    # Check Single Environment Onboarding Mode
-    # When target-base/ doesn't exist, fall back to single-env mode:
-    # set target_base_path = target_path so both envs load the same artifacts,
+    # Check Single Environment Onboarding Mode (local startup hint only).
+    # When target-base/ doesn't exist, fall back to single-env mode: set
+    # target_base_path = target_path so both envs load the same artifacts,
     # making all diffs show no changes. The MCP server adds _warning to responses.
+    # Skipped in cloud mode and when the user hasn't pointed at a dbt project — in
+    # the latter case the server will start unconfigured and the agent flips it via
+    # the set_backend MCP tool.
     if not is_cloud_mcp:
         project_dir_path = Path(kwargs.get("project_dir") or "./")
+        target_path = project_dir_path.joinpath(Path(kwargs.get("target_path", "target")))
         target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
-        if not target_base_path.is_dir():
+        if target_path.is_dir() and not target_base_path.is_dir():
             kwargs["single_env"] = True
             kwargs["target_base_path"] = kwargs.get("target_path")
             console.print(
@@ -2587,7 +2591,10 @@ def mcp_server(state_file, sse, host, port, **kwargs):
         elif is_cloud_mcp:
             console.print("Starting Recce MCP Server in cloud stdio mode...")
         else:
-            console.print("Starting Recce MCP Server in stdio mode...")
+            console.print(
+                "Starting Recce MCP Server in stdio mode "
+                "(use the set_backend MCP tool to switch local/cloud at runtime)..."
+            )
 
         # Run the server (stdio or SSE based on --sse flag)
         asyncio.run(run_mcp_server(sse=sse, host=host, port=port, session=cloud_session, **kwargs))

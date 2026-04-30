@@ -266,8 +266,12 @@ class TestCommandMCPServer(TestCase):
     def test_cmd_mcp_server_single_env_when_base_missing(
         self, mock_prepare_api_token, mock_recce_config, mock_run_mcp_server, mock_asyncio_run
     ):
-        """When target-base/ directory doesn't exist, single_env mode is activated."""
-        with patch.object(Path, "is_dir", return_value=False):
+        """target-path exists but target-base/ doesn't → single_env mode activates."""
+
+        def is_dir_side_effect(path):
+            return "target-base" not in str(path)
+
+        with patch.object(Path, "is_dir", autospec=True, side_effect=is_dir_side_effect):
             result = self.runner.invoke(
                 cli_command_mcp_server,
                 ["--target-path", "target", "--target-base-path", "target-base"],
