@@ -321,6 +321,116 @@ def test_empty_manifest():
     assert tests == []
 
 
+def test_catalog_is_authoritative_when_present():
+    """When the catalog covers a node, it is the only source of truth for
+    that node's column list:
+
+    * Catalog casing (UPPERCASE on Snowflake) wins over schema.yml casing,
+      so columns appear once instead of as ``ID`` + ``id`` duplicates.
+    * Test column names (parsed from dbt-generated lowercase test names)
+      are remapped to catalog casing so ``node_tests.column_name`` joins
+      ``columns.column_name`` and ``_pick_primary_key`` recovers a PK.
+    * schema.yml columns and tests on columns the warehouse doesn't have
+      (phantom / drift) are dropped — surfacing them produces false
+      schema-change alarms across sessions and SQL errors on profile.
+    """
+    manifest = {
+        "nodes": {
+            "model.pkg.m": {
+                "name": "m",
+                "resource_type": "model",
+                "package_name": "pkg",
+                "columns": {
+                    "id": {"name": "id"},
+                    "amount": {"name": "amount"},
+                    "phantom_col": {"name": "phantom_col"},
+                },
+            },
+            "test.pkg.unique_m_id.aaa": {
+                "name": "unique_m_id",
+                "resource_type": "test",
+                "package_name": "pkg",
+            },
+            "test.pkg.not_null_m_amount.bbb": {
+                "name": "not_null_m_amount",
+                "resource_type": "test",
+                "package_name": "pkg",
+            },
+            "test.pkg.not_null_m_phantom_col.ccc": {
+                "name": "not_null_m_phantom_col",
+                "resource_type": "test",
+                "package_name": "pkg",
+            },
+        },
+        "child_map": {
+            "model.pkg.m": [
+                "test.pkg.unique_m_id.aaa",
+                "test.pkg.not_null_m_amount.bbb",
+                "test.pkg.not_null_m_phantom_col.ccc",
+            ],
+        },
+    }
+    catalog = {
+        "nodes": {
+            "model.pkg.m": {
+                "columns": {
+                    "ID": {"type": "INTEGER"},
+                    "AMOUNT": {"type": "NUMBER"},
+                },
+            },
+        },
+    }
+
+    nodes, columns, _, tests = extract_rows_from_artifacts(manifest, catalog, "current")
+
+    # phantom_col was declared in schema.yml but the catalog doesn't have
+    # it, so the warehouse can't confirm it. It is dropped.
+    names = [c.column_name for c in columns]
+    assert names == ["ID", "AMOUNT"]
+    by_name = {c.column_name: c for c in columns}
+    assert by_name["ID"].data_type == "INTEGER"
+    assert by_name["AMOUNT"].data_type == "NUMBER"
+
+    # Tests on phantom_col are also dropped — node_tests must stay
+    # joinable to columns.
+    test_cols = {(t.column_name, t.test_type) for t in tests}
+    assert ("ID", "unique") in test_cols
+    assert ("AMOUNT", "not_null") in test_cols
+    assert not any(t.column_name.lower() == "phantom_col" for t in tests)
+
+    # primary_key derived from the column ↔ unique-test join, catalog-cased.
+    by_node = {n.node_id: n for n in nodes}
+    assert by_node["model.pkg.m"].primary_key == "ID"
+
+
+def test_manifest_fallback_when_catalog_has_no_entry_for_node():
+    """If the catalog has no entry for a node (model never built, or no
+    catalog at all), the manifest's ``columns`` block is the best-effort
+    fallback — preserve manifest casing exactly.
+    """
+    manifest = {
+        "nodes": {
+            "model.pkg.unbuilt": {
+                "name": "unbuilt",
+                "resource_type": "model",
+                "package_name": "pkg",
+                "columns": {
+                    "alpha": {"name": "alpha"},
+                    "beta": {"name": "beta"},
+                },
+            },
+        },
+        "child_map": {"model.pkg.unbuilt": []},
+    }
+    catalog = {"nodes": {}}  # node absent from catalog
+
+    _, columns, _, _ = extract_rows_from_artifacts(manifest, catalog, "current")
+
+    names = [c.column_name for c in columns]
+    assert names == ["alpha", "beta"]
+    assert all(c.data_type is None for c in columns)
+
+
 def test_primary_key_follows_catalog_column_order_with_multiple_unique_tests():
     """When a model has two unique tests, primary_key matches the column that
     comes first in catalog order — which is the warehouse column order that
