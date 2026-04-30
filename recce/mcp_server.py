@@ -696,6 +696,15 @@ class RecceMCPServer:
                                 "type": "string",
                                 "description": "Required when mode='cloud'. Recce Cloud session ID.",
                             },
+                            "api_token": {
+                                "type": "string",
+                                "description": (
+                                    "Optional Recce Cloud API token for mode='cloud'. "
+                                    "Overrides the token loaded at startup or from "
+                                    "~/.recce/profile.yml. Useful for rotating credentials or "
+                                    "connecting without prior `recce connect-to-cloud`."
+                                ),
+                            },
                             "project_dir": {
                                 "type": "string",
                                 "description": "Optional dbt project directory for mode='local' (defaults to cwd).",
@@ -2045,7 +2054,9 @@ class RecceMCPServer:
                 if not session_id:
                     raise ValueError("session_id is required when mode='cloud'.")
 
-                api_token = self.api_token
+                # Resolution order: explicit arg > self.api_token (startup) > profile.yml.
+                # An explicit arg also persists to self.api_token so subsequent swaps reuse it.
+                api_token = arguments.get("api_token") or self.api_token
                 if not api_token:
                     from recce.event import get_recce_api_token
 

@@ -236,6 +236,40 @@ async def test_set_backend_swaps_to_cloud_at_runtime():
 
 
 @pytest.mark.asyncio
+async def test_set_backend_accepts_explicit_api_token_arg():
+    """Explicit api_token in set_backend overrides any token loaded at startup."""
+    cloud_backend = AsyncMock()
+    cloud_backend.instance_status = "ready"
+
+    server = RecceMCPServer(api_token="startup-token")
+
+    with patch("recce.mcp_server.CloudBackend.create", return_value=cloud_backend) as mock_create:
+        await server._tool_set_backend({"mode": "cloud", "session_id": "sess-123", "api_token": "rotated-token"})
+
+    mock_create.assert_awaited_once_with(session_id="sess-123", api_token="rotated-token")
+    # Subsequent swaps should reuse the rotated token without needing it again.
+    assert server.api_token == "rotated-token"
+
+
+@pytest.mark.asyncio
+async def test_set_backend_explicit_token_works_without_startup_token():
+    """Server launched bare can authenticate cloud entirely via set_backend args."""
+    cloud_backend = AsyncMock()
+    cloud_backend.instance_status = "ready"
+
+    server = RecceMCPServer(api_token=None)
+
+    with (
+        patch("recce.mcp_server.CloudBackend.create", return_value=cloud_backend) as mock_create,
+        patch("recce.event.get_recce_api_token") as mock_profile_token,
+    ):
+        await server._tool_set_backend({"mode": "cloud", "session_id": "sess-123", "api_token": "explicit-token"})
+
+    mock_create.assert_awaited_once_with(session_id="sess-123", api_token="explicit-token")
+    mock_profile_token.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_set_backend_cloud_requires_session_and_token():
     server = RecceMCPServer(api_token=None)
 
