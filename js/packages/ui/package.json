@@ -136,8 +136,8 @@
     }
   },
   "dependencies": {
-    "@amplitude/analytics-core": "^2.41.2",
-    "@amplitude/unified": "1.0.1",
+    "@amplitude/analytics-core": "^2.48.0",
+    "@amplitude/unified": "1.1.0",
     "@codemirror/lang-sql": "^6.10.0",
     "@codemirror/lang-yaml": "^6.1.0",
     "@codemirror/merge": "^6.12.0",
@@ -149,7 +149,7 @@
     "@hello-pangea/dnd": "^18.0.0",
     "@mui/material": "^9.0.0",
     "@mui/system": "^9.0.0",
-    "@tanstack/react-query": "^5.0.0",
+    "@tanstack/react-query": "^5.100.6",
     "@uiw/codemirror-theme-github": "^4.25.7",
     "@uiw/react-codemirror": "^4.25.7",
     "@xyflow/react": "^12.10.1",
@@ -171,15 +171,15 @@
     "react-syntax-highlighter": "^16.1.1",
     "remark-gfm": "^4.0.0",
     "usehooks-ts": "^3.1.1",
-    "write-excel-file": "^4.0.2",
+    "write-excel-file": "^4.0.4",
     "yaml": "^2.8.0"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.2.4",
     "@tailwindcss/postcss": "^4.2.4",
     "@tsdown/css": "^0.21.10",
-    "postcss": "^8.5.0",
-    "read-excel-file": "^9.0.6",
+    "postcss": "^8.5.13",
+    "read-excel-file": "^9.0.7",
     "tailwindcss": "^4.2.4",
     "tsdown": "^0.21.10",
     "typedoc": "^0.28.19",
