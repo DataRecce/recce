@@ -567,3 +567,215 @@ async def test_cloud_get_server_info_includes_mode_field(cloud_requests):
     assert info["mode"] == "cloud"
     assert info["cloud_mode"] is True
     assert info["session_id"] == "sess-123"
+
+
+@pytest.mark.asyncio
+async def test_cloud_backend_request_returns_text_payload_for_non_json(cloud_requests):
+    """Non-JSON 200 response falls back to {'text': <body>} instead of raising."""
+
+    class NonJsonResponse(MockResponse):
+        def json(self):
+            raise ValueError("not json")
+
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        NonJsonResponse(200, payload=None, text="hello"),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="t")
+
+    result = await backend._request("GET", "info")
+    assert result == {"text": "hello"}
+
+
+@pytest.mark.asyncio
+async def test_cloud_backend_call_tool_unknown_name_raises(cloud_requests):
+    cloud_requests.return_value = MockResponse(204)
+    backend = await CloudBackend.create(session_id="sess-123", api_token="t")
+
+    with pytest.raises(ValueError, match="Unknown tool"):
+        await backend.call_tool("not_a_tool", {})
+
+
+@pytest.mark.asyncio
+async def test_cloud_get_server_info_includes_optional_fields(cloud_requests):
+    cloud_requests.side_effect = [
+        MockResponse(200, {"status": "ready"}),  # spawn returns status
+        MockResponse(
+            200,
+            {
+                "adapter_type": "dbt",
+                "review_mode": True,
+                "support_tasks": {},
+                "git": {"branch": "feature/x"},
+                "pull_request": {"number": 42},
+            },
+        ),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="t")
+
+    info = await backend.call_tool("get_server_info", {})
+
+    assert info["instance_status"] == "ready"
+    assert info["git"] == {"branch": "feature/x"}
+    assert info["pull_request"] == {"number": 42}
+
+
+@pytest.mark.asyncio
+async def test_cloud_get_model_requires_model_id(cloud_requests):
+    cloud_requests.return_value = MockResponse(204)
+    backend = await CloudBackend.create(session_id="sess-123", api_token="t")
+
+    with pytest.raises(ValueError, match="model_id is required"):
+        await backend.call_tool("get_model", {})
+
+
+@pytest.mark.asyncio
+async def test_cloud_run_check_requires_check_id(cloud_requests):
+    cloud_requests.return_value = MockResponse(204)
+    backend = await CloudBackend.create(session_id="sess-123", api_token="t")
+
+    with pytest.raises(ValueError, match="check_id is required"):
+        await backend.call_tool("run_check", {})
+
+
+@pytest.mark.asyncio
+async def test_cloud_create_check_propagates_run_error(cloud_requests):
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, {"check_id": "check-1"}),
+        MockResponse(200, {"run_id": "run-1", "status": "failed", "error": "boom"}),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="t")
+
+    result = await backend.call_tool(
+        "create_check",
+        {"name": "q", "type": "query", "params": {"sql_template": "select 1"}},
+    )
+
+    assert result["run_executed"] is True
+    assert result["run_error"] == "boom"
+
+
+@pytest.mark.asyncio
+async def test_set_backend_cloud_swallows_state_export_exception():
+    """Best-effort export must not block the cloud swap."""
+    cloud_backend = AsyncMock()
+    cloud_backend.instance_status = "ready"
+
+    state_loader = MagicMock()
+    state_loader.export.side_effect = RuntimeError("export failed")
+
+    fake_context = type("Ctx", (), {})()
+    fake_context.export_state = lambda: {"snapshot": True}
+
+    server = RecceMCPServer(api_token="token-abc")
+    server.context = fake_context
+    server.state_loader = state_loader
+
+    with patch("recce.mcp_server.CloudBackend.create", return_value=cloud_backend):
+        result = await server._tool_set_backend({"mode": "cloud", "session_id": "sess-123"})
+
+    assert result["mode"] == "cloud"
+    state_loader.export.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_set_backend_local_loads_context_and_returns_metadata():
+    """mode='local' invokes load_context and returns adapter_type / single_env."""
+    fake_context = MagicMock()
+    fake_context.adapter_type = "dbt"
+
+    server = RecceMCPServer()
+
+    with (
+        patch("recce.mcp_server.load_context", return_value=fake_context) as mock_load,
+        patch("recce.mcp_server.Path") as mock_path,
+    ):
+        # target/ exists, target-base/ doesn't → single-env fallback engages.
+        target_dir = MagicMock()
+        target_dir.is_dir.return_value = True
+        base_dir = MagicMock()
+        base_dir.is_dir.return_value = False
+        # First Path() call computes base_path, second computes target_dir.
+        mock_path.return_value.joinpath.side_effect = [base_dir, target_dir]
+
+        result = await server._tool_set_backend(
+            {"mode": "local", "project_dir": "/proj", "target_path": "target", "target_base_path": "target-base"}
+        )
+
+    assert result == {"mode": "local", "adapter_type": "dbt", "single_env": True}
+    # effective_base swapped to target_path because target-base/ missing
+    load_kwargs = mock_load.call_args.kwargs
+    assert load_kwargs["target_base_path"] == "target"
+    assert server.context is fake_context
+    assert server.backend is None
+
+
+@pytest.mark.asyncio
+async def test_set_backend_local_keeps_dual_env_when_base_dir_present():
+    """Both target/ and target-base/ exist → single_env stays False."""
+    fake_context = MagicMock()
+    fake_context.adapter_type = "dbt"
+
+    server = RecceMCPServer()
+
+    with (
+        patch("recce.mcp_server.load_context", return_value=fake_context) as mock_load,
+        patch("recce.mcp_server.Path") as mock_path,
+    ):
+        base_dir = MagicMock()
+        base_dir.is_dir.return_value = True
+        target_dir = MagicMock()
+        target_dir.is_dir.return_value = True
+        mock_path.return_value.joinpath.side_effect = [base_dir, target_dir]
+
+        result = await server._tool_set_backend({"mode": "local"})
+
+    assert result["single_env"] is False
+    # target_base_path preserved (no fallback to target_path)
+    assert mock_load.call_args.kwargs["target_base_path"] == "target-base"
+
+
+@pytest.mark.asyncio
+async def test_cloud_backend_routes_run_tool_types_through_run_backed(cloud_requests):
+    """RUN_TOOL_TYPES tools (e.g., row_count_diff) dispatch via _tool_run_backed."""
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, {"run_id": "run-1", "result": {"customers": {"base": 1, "curr": 2}}}),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="t")
+
+    result = await backend.call_tool("row_count_diff", {"node_names": ["customers"]})
+
+    assert result == {"customers": {"base": 1, "curr": 2}}
+    runs_call = cloud_requests.call_args_list[1]
+    assert runs_call.args[1].endswith("/runs")
+    assert runs_call.kwargs["json"]["type"] == "row_count_diff"
+
+
+@pytest.mark.asyncio
+async def test_run_mcp_server_warns_and_continues_on_invalid_mode_str():
+    """An unknown --mode value logs a warning but doesn't abort startup."""
+    with (
+        patch("recce.mcp_server.load_context", side_effect=RuntimeError("no project")),
+        patch("recce.event.get_recce_api_token", return_value=None),
+        patch.object(RecceMCPServer, "run") as mock_run,
+    ):
+        await run_mcp_server(mode="bogus-mode")
+
+    mock_run.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_run_mcp_server_sse_mode_dispatches_to_run_sse():
+    """sse=True routes to run_sse() instead of run()."""
+    with (
+        patch("recce.mcp_server.load_context", side_effect=RuntimeError("no project")),
+        patch("recce.event.get_recce_api_token", return_value=None),
+        patch.object(RecceMCPServer, "run_sse") as mock_run_sse,
+        patch.object(RecceMCPServer, "run") as mock_run,
+    ):
+        await run_mcp_server(sse=True, host="0.0.0.0", port=9000)
+
+    mock_run_sse.assert_awaited_once_with(host="0.0.0.0", port=9000)
+    mock_run.assert_not_called()
