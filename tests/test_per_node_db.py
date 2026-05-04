@@ -305,12 +305,16 @@ def test_extract_rows_from_artifacts_basic():
     assert ("model.pkg.b", "not_null") in test_types
 
 
-def test_extract_rows_with_null_catalog():
+def test_no_columns_emitted_without_catalog():
+    """No catalog at all → no column rows for any node. Mirrors OSS
+    ``DbtAdapter.get_lineage_cached``, which only attaches a ``columns``
+    field when ``catalog.nodes`` has the entry. We never fall back to
+    schema.yml — that would surface phantom columns and lower-cased names
+    that disagree with the warehouse.
+    """
     manifest = _synthetic_manifest()
     _, columns, _, _ = extract_rows_from_artifacts(manifest, None, "base")
-    assert columns, "expected columns derived from manifest even without catalog"
-    assert all(c.data_type is None for c in columns)
-    assert all(c.env == "base" for c in columns)
+    assert columns == []
 
 
 def test_empty_manifest():
@@ -319,6 +323,207 @@ def test_empty_manifest():
     assert columns == []
     assert edges == []
     assert tests == []
+
+
+def test_catalog_is_authoritative_when_present():
+    """When the catalog covers a node, it is the only source of truth for
+    that node's column list:
+
+    * Catalog casing (UPPERCASE on Snowflake) wins over schema.yml casing,
+      so columns appear once instead of as ``ID`` + ``id`` duplicates.
+    * Test column names (parsed from dbt-generated lowercase test names)
+      are remapped to catalog casing so ``node_tests.column_name`` joins
+      ``columns.column_name`` and ``_pick_primary_key`` recovers a PK.
+    * schema.yml columns and tests on columns the warehouse doesn't have
+      (phantom / drift) are dropped — surfacing them produces false
+      schema-change alarms across sessions and SQL errors on profile.
+    """
+    manifest = {
+        "nodes": {
+            "model.pkg.m": {
+                "name": "m",
+                "resource_type": "model",
+                "package_name": "pkg",
+                "columns": {
+                    "id": {"name": "id"},
+                    "amount": {"name": "amount"},
+                    "phantom_col": {"name": "phantom_col"},
+                },
+            },
+            "test.pkg.unique_m_id.aaa": {
+                "name": "unique_m_id",
+                "resource_type": "test",
+                "package_name": "pkg",
+            },
+            "test.pkg.not_null_m_amount.bbb": {
+                "name": "not_null_m_amount",
+                "resource_type": "test",
+                "package_name": "pkg",
+            },
+            "test.pkg.not_null_m_phantom_col.ccc": {
+                "name": "not_null_m_phantom_col",
+                "resource_type": "test",
+                "package_name": "pkg",
+            },
+        },
+        "child_map": {
+            "model.pkg.m": [
+                "test.pkg.unique_m_id.aaa",
+                "test.pkg.not_null_m_amount.bbb",
+                "test.pkg.not_null_m_phantom_col.ccc",
+            ],
+        },
+    }
+    catalog = {
+        "nodes": {
+            "model.pkg.m": {
+                "columns": {
+                    "ID": {"type": "INTEGER"},
+                    "AMOUNT": {"type": "NUMBER"},
+                },
+            },
+        },
+    }
+
+    nodes, columns, _, tests = extract_rows_from_artifacts(manifest, catalog, "current")
+
+    # phantom_col was declared in schema.yml but the catalog doesn't have
+    # it, so the warehouse can't confirm it. It is dropped.
+    names = [c.column_name for c in columns]
+    assert names == ["ID", "AMOUNT"]
+    by_name = {c.column_name: c for c in columns}
+    assert by_name["ID"].data_type == "INTEGER"
+    assert by_name["AMOUNT"].data_type == "NUMBER"
+
+    # Tests on phantom_col are also dropped — node_tests must stay
+    # joinable to columns.
+    test_cols = {(t.column_name, t.test_type) for t in tests}
+    assert ("ID", "unique") in test_cols
+    assert ("AMOUNT", "not_null") in test_cols
+    assert not any(t.column_name.lower() == "phantom_col" for t in tests)
+
+    # primary_key derived from the column ↔ unique-test join, catalog-cased.
+    by_node = {n.node_id: n for n in nodes}
+    assert by_node["model.pkg.m"].primary_key == "ID"
+
+
+def test_no_columns_when_neither_catalog_has_node():
+    """When neither the same-env catalog nor the cross-env catalog has
+    an entry for the node, emit zero column rows. schema.yml is NOT a
+    fallback (matches OSS bulk lineage; avoids phantom columns and
+    lowercase-vs-warehouse case disagreement).
+    """
+    manifest = {
+        "nodes": {
+            "model.pkg.unbuilt": {
+                "name": "unbuilt",
+                "resource_type": "model",
+                "package_name": "pkg",
+                "columns": {
+                    "alpha": {"name": "alpha"},
+                    "beta": {"name": "beta"},
+                },
+            },
+        },
+        "child_map": {"model.pkg.unbuilt": []},
+    }
+    catalog = {"nodes": {}}
+    cross_env_catalog = {"nodes": {}}
+
+    _, columns, _, _ = extract_rows_from_artifacts(manifest, catalog, "current", cross_env_catalog=cross_env_catalog)
+    assert columns == []
+
+
+def test_cross_env_catalog_fills_in_when_same_env_catalog_partial():
+    """Reproduces the MR 5666 scenario: the customer ran
+    ``dbt docs generate --select`` so the current-env catalog only has the
+    changed models. For unchanged models, the base-env catalog still has
+    them — borrow that catalog's column list + casing + types.
+
+    Without this fallback, the same logical column would appear UPPERCASE
+    in base env and lowercase in current env (manifest fallback), producing
+    a false schema-change alarm.
+    """
+    manifest = {
+        "nodes": {
+            "model.pkg.m": {
+                "name": "m",
+                "resource_type": "model",
+                "package_name": "pkg",
+                # schema.yml uses lowercase — what we'd get if we fell
+                # back to manifest. The test asserts we DON'T.
+                "columns": {
+                    "id": {"name": "id"},
+                    "amount": {"name": "amount"},
+                },
+            },
+        },
+        "child_map": {"model.pkg.m": []},
+    }
+    # Current-env catalog is empty (partial docs build skipped this node).
+    catalog = {"nodes": {}}
+    # Base-env catalog has the node with warehouse casing.
+    cross_env_catalog = {
+        "nodes": {
+            "model.pkg.m": {
+                "columns": {
+                    "ID": {"type": "INTEGER"},
+                    "AMOUNT": {"type": "NUMBER"},
+                },
+            },
+        },
+    }
+
+    _, columns, _, _ = extract_rows_from_artifacts(manifest, catalog, "current", cross_env_catalog=cross_env_catalog)
+
+    names = [c.column_name for c in columns]
+    assert names == ["ID", "AMOUNT"], "expected base-env catalog casing, not manifest lowercase"
+    by_name = {c.column_name: c for c in columns}
+    assert by_name["ID"].data_type == "INTEGER"
+    assert by_name["AMOUNT"].data_type == "NUMBER"
+
+
+def test_same_env_catalog_wins_over_cross_env_catalog():
+    """When both catalogs have the node, prefer this env's own catalog —
+    it's authoritative for this env's warehouse. Cross-env is a fallback,
+    not a source of truth competing with same-env data.
+    """
+    manifest = {
+        "nodes": {
+            "model.pkg.m": {
+                "name": "m",
+                "resource_type": "model",
+                "package_name": "pkg",
+            },
+        },
+        "child_map": {"model.pkg.m": []},
+    }
+    catalog = {
+        "nodes": {
+            "model.pkg.m": {
+                "columns": {
+                    "ID": {"type": "INTEGER"},
+                    "NEW_COL": {"type": "TEXT"},
+                },
+            },
+        },
+    }
+    cross_env_catalog = {
+        "nodes": {
+            "model.pkg.m": {
+                "columns": {
+                    "ID": {"type": "INTEGER"},
+                    "OLD_COL": {"type": "BOOLEAN"},
+                },
+            },
+        },
+    }
+
+    _, columns, _, _ = extract_rows_from_artifacts(manifest, catalog, "current", cross_env_catalog=cross_env_catalog)
+
+    names = [c.column_name for c in columns]
+    assert names == ["ID", "NEW_COL"], "should use same-env catalog only"
+    assert "OLD_COL" not in names
 
 
 def test_primary_key_follows_catalog_column_order_with_multiple_unique_tests():
@@ -378,10 +583,11 @@ def test_primary_key_follows_catalog_column_order_with_multiple_unique_tests():
     assert m.primary_key == "a"
 
 
-def test_primary_key_falls_back_to_manifest_column_order_without_catalog():
-    """With no catalog, manifest column order is the only signal we have.
-    It still beats child_map order because manifest column declarations
-    typically match column definition order in the model SQL.
+def test_primary_key_is_none_without_catalog():
+    """Without a catalog (same-env or cross-env), there are no column rows
+    to anchor the primary_key derivation, and orphan tests are dropped.
+    primary_key is therefore None — matches OSS, which raises rather than
+    silently inventing columns from schema.yml.
     """
     manifest = {
         "nodes": {
@@ -389,7 +595,6 @@ def test_primary_key_falls_back_to_manifest_column_order_without_catalog():
                 "name": "m",
                 "resource_type": "model",
                 "package_name": "pkg",
-                # Manifest columns: a first, then b.
                 "columns": {"a": {"name": "a"}, "b": {"name": "b"}},
             },
             "test.pkg.unique_m_b.x": {
@@ -403,12 +608,13 @@ def test_primary_key_falls_back_to_manifest_column_order_without_catalog():
                 "package_name": "pkg",
             },
         },
-        # child_map order is b-first; emitter must not use it as the tiebreaker.
         "child_map": {
             "model.pkg.m": ["test.pkg.unique_m_b.x", "test.pkg.unique_m_a.y"],
         },
     }
 
-    nodes, _, _, _ = extract_rows_from_artifacts(manifest, None, "current")
+    nodes, columns, _, tests = extract_rows_from_artifacts(manifest, None, "current")
     m = next(n for n in nodes if n.node_id == "model.pkg.m")
-    assert m.primary_key == "a"
+    assert m.primary_key is None
+    assert columns == []
+    assert tests == []

@@ -752,21 +752,41 @@ def init(cache_db, **kwargs):
                                 envs_to_emit = []
                                 if has_target:
                                     envs_to_emit.append(
-                                        ("current", dbt_adapter.curr_manifest, dbt_adapter.curr_catalog)
+                                        (
+                                            "current",
+                                            dbt_adapter.curr_manifest,
+                                            dbt_adapter.curr_catalog,
+                                            dbt_adapter.base_catalog,
+                                        )
                                     )
                                 if has_base:
-                                    envs_to_emit.append(("base", dbt_adapter.base_manifest, dbt_adapter.base_catalog))
-                                for env_name, manifest, catalog in envs_to_emit:
+                                    envs_to_emit.append(
+                                        (
+                                            "base",
+                                            dbt_adapter.base_manifest,
+                                            dbt_adapter.base_catalog,
+                                            dbt_adapter.curr_catalog,
+                                        )
+                                    )
+
+                                def _to_dict(artifact):
+                                    return (
+                                        artifact.to_dict()
+                                        if (artifact is not None and hasattr(artifact, "to_dict"))
+                                        else artifact
+                                    )
+
+                                for env_name, manifest, catalog, cross_catalog in envs_to_emit:
                                     if manifest is None:
                                         continue
                                     manifest_dict = manifest.to_dict() if hasattr(manifest, "to_dict") else manifest
-                                    catalog_dict = (
-                                        catalog.to_dict()
-                                        if (catalog is not None and hasattr(catalog, "to_dict"))
-                                        else catalog
-                                    )
+                                    catalog_dict = _to_dict(catalog)
+                                    cross_catalog_dict = _to_dict(cross_catalog)
                                     node_rows, column_rows, edge_rows, test_rows = extract_rows_from_artifacts(
-                                        manifest_dict, catalog_dict, env_name
+                                        manifest_dict,
+                                        catalog_dict,
+                                        env_name,
+                                        cross_env_catalog=cross_catalog_dict,
                                     )
                                     writer.write_nodes(node_rows)
                                     writer.write_columns(column_rows)
