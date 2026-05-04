@@ -159,9 +159,9 @@ class CloudBackend:
         return await self._request("POST", "select", json=arguments)
 
     async def _tool_get_model(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        model_id = arguments.get("node_id") or arguments.get("model_id")
+        model_id = arguments.get("model_id") or arguments.get("node_id")
         if not model_id:
-            raise ValueError("node_id is required")
+            raise ValueError("model_id is required")
         return await self._request("GET", f"models/{quote(model_id, safe='')}")
 
     async def _tool_get_cll(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -2092,14 +2092,25 @@ class RecceMCPServer:
                 from recce import core as _core
 
                 _core.recce_context = None
-                load_kwargs = {"target_path": target_path, "target_base_path": target_base_path}
+
+                # Mirror CLI single-env fallback: if target/ exists but target-base/
+                # doesn't, point both envs at target/ so load_context() doesn't fail
+                # on a missing base manifest.
+                base_path = Path(project_dir or "./").joinpath(target_base_path)
+                target_dir = Path(project_dir or "./").joinpath(target_path)
+                effective_base = target_base_path
+                if target_dir.is_dir() and not base_path.is_dir():
+                    effective_base = target_path
+                    self.single_env = True
+                else:
+                    self.single_env = not base_path.is_dir()
+
+                load_kwargs = {"target_path": target_path, "target_base_path": effective_base}
                 if project_dir:
                     load_kwargs["project_dir"] = project_dir
                 self.context = load_context(**load_kwargs)
                 self._local_cache_key = cache_key
 
-                base_path = Path(project_dir or "./").joinpath(target_base_path)
-                self.single_env = not base_path.is_dir()
                 logger.info(f"[MCP] Loaded local context (project_dir={project_dir}, single_env={self.single_env})")
 
             self.backend = None
@@ -2494,8 +2505,12 @@ async def run_mcp_server(
         except ValueError:
             logger.warning(f"Invalid mode '{mode_str}', using default server mode")
 
-    api_token = kwargs.get("api_token")
-    if not api_token:
+    # Only fall back to ~/.recce/profile.yml when api_token is absent from kwargs.
+    # An explicit None means the CLI's prepare_api_token() already inspected the
+    # profile and rejected an invalid token — re-reading would silently reuse it.
+    if "api_token" in kwargs:
+        api_token = kwargs.get("api_token")
+    else:
         from recce.event import get_recce_api_token
 
         api_token = get_recce_api_token()

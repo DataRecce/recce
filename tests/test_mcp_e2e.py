@@ -1173,6 +1173,53 @@ class TestMCPProtocolE2E:
             assert expected == tool_names
 
     @pytest.mark.asyncio
+    async def test_call_set_backend_via_protocol_flips_unconfigured_to_cloud(self):
+        """End-to-end: unconfigured server → set_backend(cloud) over MCP → get_server_info reflects swap."""
+        from unittest.mock import AsyncMock
+
+        cloud_backend = AsyncMock()
+        cloud_backend.instance_status = "ready"
+        cloud_backend.session_id = "sess-123"
+        cloud_backend.call_tool.return_value = {
+            "mode": "cloud",
+            "adapter_type": "dbt",
+            "review_mode": True,
+            "support_tasks": {},
+            "cloud_mode": True,
+            "session_id": "sess-123",
+        }
+
+        server = RecceMCPServer(api_token="token-abc")
+        assert server.context is None and server.backend is None
+
+        with patch("recce.mcp_server.CloudBackend.create", return_value=cloud_backend):
+            async with create_mcp_client(server) as client:
+                # Before swap: normal tools blocked.
+                blocked = await client.call_tool("lineage_diff", {})
+                assert blocked.isError
+                assert "No backend configured" in blocked.content[0].text
+
+                # Flip via protocol-level set_backend.
+                swap = await client.call_tool(
+                    "set_backend",
+                    {"mode": "cloud", "session_id": "sess-123"},
+                )
+                assert not swap.isError
+                swap_data = json.loads(swap.content[0].text)
+                assert swap_data == {
+                    "mode": "cloud",
+                    "session_id": "sess-123",
+                    "instance_status": "ready",
+                }
+
+                # After swap: get_server_info delegates to the cloud backend.
+                info = await client.call_tool("get_server_info", {})
+                assert not info.isError
+                info_data = json.loads(info.content[0].text)
+                assert info_data["mode"] == "cloud"
+                assert info_data["session_id"] == "sess-123"
+
+    @pytest.mark.asyncio
     async def test_call_row_count_diff_via_protocol(self, mcp_e2e_with_data):
         server, _ = mcp_e2e_with_data
         async with create_mcp_client(server) as client:
