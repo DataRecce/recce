@@ -40,6 +40,7 @@ import { SetupConnectionPopover } from "../app";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide";
 import { findByRunType } from "../run";
 import { SchemaView, SingleEnvSchemaView } from "../schema";
+import { computeLineageTabImpactSets } from "./computeLineageTabImpactSets";
 import { LineageTabContent } from "./LineageTabContent";
 import { NodeSqlViewOss } from "./NodeSqlViewOss";
 import { RowCountDiffTag, RowCountTag } from "./NodeTag";
@@ -127,29 +128,10 @@ export function NodeViewOss({
   const { isActionAvailable, envInfo, lineageGraph } = useLineageGraphContext();
   // Optional: undefined in tests/Storybook that mount NodeView without LineageView.
   const lineageViewCtx = useLineageViewContext();
-  // Per-direction impact sets for the Lineage tab. impactingNodeIds covers
-  // partial_breaking and removed too — they propagate impact but the backend
-  // keeps them out of result_node_ids (anchors live on columns / extra_node_ids).
-  const { impactingNodeIds, impactedNodeIds } = useMemo(() => {
-    const cllNodes = lineageViewCtx?.cll?.current.nodes;
-    if (!cllNodes) {
-      return { impactingNodeIds: undefined, impactedNodeIds: undefined };
-    }
-    const impacting = new Set<string>();
-    const impacted = new Set<string>();
-    for (const [id, n] of Object.entries(cllNodes)) {
-      if (n.impacted === true) {
-        impacted.add(id);
-        impacting.add(id);
-      } else if (
-        n.change_category === "partial_breaking" ||
-        n.change_status === "removed"
-      ) {
-        impacting.add(id);
-      }
-    }
-    return { impactingNodeIds: impacting, impactedNodeIds: impacted };
-  }, [lineageViewCtx?.cll]);
+  const { impactingNodeIds, impactedNodeIds } = useMemo(
+    () => computeLineageTabImpactSets(lineageViewCtx?.cll),
+    [lineageViewCtx?.cll],
+  );
   const { singleEnv: isSingleEnvOnboarding, featureToggles } =
     useRecceInstanceContext();
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();

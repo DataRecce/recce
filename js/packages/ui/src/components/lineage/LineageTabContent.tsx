@@ -151,12 +151,7 @@ function filterIds(
   );
 }
 
-function getChipTitle(
-  interactive: boolean,
-  onlyImpact: boolean,
-  isUp: boolean,
-): string | undefined {
-  if (!interactive) return undefined;
+function getChipTitle(onlyImpact: boolean, isUp: boolean): string {
   if (onlyImpact) return "Show all models";
   return isUp ? "Show only impacting models" : "Show only impacted models";
 }
@@ -456,7 +451,7 @@ function SectionHeader({
         (onToggleOnlyImpact ? (
           <ChipButton
             label={label}
-            title={getChipTitle(true, !!onlyImpact, isUp) ?? label}
+            title={getChipTitle(!!onlyImpact, isUp)}
             active={!!onlyImpact}
             isDark={isDark}
             onClick={onToggleOnlyImpact}
