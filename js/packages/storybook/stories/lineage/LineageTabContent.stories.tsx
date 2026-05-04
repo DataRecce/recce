@@ -388,20 +388,3 @@ export const ImpactAnalysisDense: Story = {
     }),
   },
 };
-
-/**
- * Impact Analysis is on but the focused node itself is NOT in either set.
- * Per design rules, no row should be marked — upstream chains can't reach
- * an uninvolved focus, and nothing downstream propagates from one.
- */
-export const ImpactAnalysisFocusOutsideSet: Story = {
-  args: {
-    ...buildArgs({
-      focusId: "customers",
-      parents: ["stg_customers", "stg_orders"],
-      children: ["customer_segments"],
-      impactingNodeIds: ["unrelated_model_a"],
-      impactedNodeIds: ["unrelated_model_b"],
-    }),
-  },
-};

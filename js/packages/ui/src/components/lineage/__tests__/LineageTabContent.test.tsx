@@ -463,6 +463,49 @@ describe("LineageTabContent", () => {
     expect(chip).toHaveAttribute("aria-pressed", "false");
   });
 
+  test("status dot reflects 'impacted' for unchanged-but-impacted neighbors (matches canvas)", () => {
+    // customer_order_pattern is unchanged in the project but impacted by a
+    // breaking upstream change. The canvas shows it with the amber border;
+    // the panel's status dot must also surface that state via data-status.
+    const children = {
+      customer_order_pattern: {} as never,
+      truly_unchanged: {} as never,
+    };
+    const node = makeNode("customers", { children });
+    const nodesById = makeNodesById([
+      "customer_order_pattern",
+      "truly_unchanged",
+      "customers",
+    ]);
+
+    render(
+      <LineageTabContent
+        node={node}
+        nodesById={nodesById}
+        impactingNodeIds={new Set(["customers"])}
+        impactedNodeIds={new Set(["customers", "customer_order_pattern"])}
+      />,
+    );
+
+    const dotFor = (name: string): HTMLElement => {
+      const row = screen.getByText(name).parentElement as HTMLElement;
+      const dots = row.querySelectorAll<HTMLElement>(
+        "[data-testid='lineage-status-dot']",
+      );
+      // Each row has exactly one dot.
+      return dots[0];
+    };
+
+    expect(dotFor("customer_order_pattern")).toHaveAttribute(
+      "data-status",
+      "impacted",
+    );
+    expect(dotFor("truly_unchanged")).toHaveAttribute(
+      "data-status",
+      "unchanged",
+    );
+  });
+
   test("focusInImpact triggers when focus is impacting (source of breaking change) even if not impacted", () => {
     // Focus is stg_orders (partial_breaking modified, impacted=false). It
     // doesn't itself receive upstream impact, but it's the SOURCE of impact

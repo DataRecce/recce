@@ -36,7 +36,7 @@ import {
 } from "react-icons/md";
 import type { LineageGraphNode } from "../../contexts/lineage/types";
 import { useThemeColors } from "../../hooks";
-import { changeStatusColors } from "./styles";
+import { changeStatusColors, cllChangeStatusColors } from "./styles";
 
 // ---------------------------------------------------------------------------
 // Impact-mark visual tokens
@@ -130,15 +130,44 @@ function filterIds(
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function StatusDot({ status }: { status: ChangeStatus }) {
+/**
+ * Pick the dot/bar color for a node — mirrors the canvas: an unchanged node
+ * that the CLL flags as impacted (e.g. unchanged-but-receives-upstream-impact)
+ * uses the impacted amber instead of the neutral "unchanged" gray.
+ */
+function getNodeStatusColor(
+  status: ChangeStatus,
+  cllImpacted: boolean | undefined,
+): string {
+  if (status === "unchanged" && cllImpacted) {
+    return cllChangeStatusColors.impacted;
+  }
+  return changeStatusColors[status];
+}
+
+function StatusDot({
+  status,
+  cllImpacted,
+}: {
+  status: ChangeStatus;
+  /** True when `cll.current.nodes[id].impacted === true`. Used to color
+   *  the dot amber on unchanged-but-impacted rows, matching the canvas. */
+  cllImpacted?: boolean;
+}) {
+  // Effective status: unchanged-but-impacted is "impacted" for visual
+  // purposes. Exposed as a data attribute for testability.
+  const effectiveStatus =
+    status === "unchanged" && cllImpacted ? "impacted" : status;
   return (
     <Box
       component="span"
+      data-testid="lineage-status-dot"
+      data-status={effectiveStatus}
       sx={{
         width: "8px",
         height: "8px",
         borderRadius: "2px",
-        backgroundColor: changeStatusColors[status],
+        backgroundColor: getNodeStatusColor(status, cllImpacted),
         flex: "0 0 auto",
       }}
     />
@@ -151,6 +180,11 @@ interface DirectRowProps {
   direction: Direction;
   /** When true, decorate the row with the impact mark (rail + tint + arrow). */
   impacted?: boolean;
+  /** Whether this node carries the canonical CLL `impacted = true` flag —
+   *  used to color the status dot amber on unchanged-but-impacted rows so
+   *  the panel matches the canvas. Independent of `impacted` (which is
+   *  direction-aware and drives the row decoration). */
+  cllImpacted?: boolean;
   onClick?: () => void;
 }
 
@@ -159,6 +193,7 @@ function DirectRow({
   status,
   direction,
   impacted,
+  cllImpacted,
   onClick,
 }: DirectRowProps) {
   const { isDark } = useThemeColors();
@@ -202,7 +237,7 @@ function DirectRow({
           }}
         />
       )}
-      <StatusDot status={status} />
+      <StatusDot status={status} cllImpacted={cllImpacted} />
       <Box
         component="span"
         sx={{
@@ -463,12 +498,21 @@ function ShowMoreRow({ hidden, onClick }: ShowMoreRowProps) {
 function FocusCard({
   node,
   onCenterFocus,
+  cllImpacted,
 }: {
   node: LineageGraphNode;
   onCenterFocus?: () => void;
+  /** True when the focused node carries `cll.impacted = true`. Drives the
+   *  amber accent on unchanged-but-impacted focus models, matching the canvas. */
+  cllImpacted?: boolean;
 }) {
   const status = getChangeStatus(node);
   const { isDark, background } = useThemeColors();
+  const accentColor = getNodeStatusColor(status, cllImpacted);
+  // Unchanged-but-impacted focus reads as "Impacted" rather than "Unchanged"
+  // so the badge text matches the amber accent.
+  const statusLabel =
+    status === "unchanged" && cllImpacted ? "impacted" : status;
   return (
     <Stack
       direction="row"
@@ -489,7 +533,7 @@ function FocusCard({
           width: "4px",
           height: "26px",
           borderRadius: "2px",
-          backgroundColor: changeStatusColors[status],
+          backgroundColor: accentColor,
           flex: "0 0 auto",
         }}
       />
@@ -529,7 +573,7 @@ function FocusCard({
           px: 0.875,
           py: "2px",
           borderRadius: "3px",
-          color: changeStatusColors[status],
+          color: accentColor,
           backgroundColor: "background.paper",
           border: "1px solid",
           borderColor: "divider",
@@ -537,7 +581,7 @@ function FocusCard({
           flex: "0 0 auto",
         }}
       >
-        {status}
+        {statusLabel}
       </Box>
     </Stack>
   );
@@ -769,6 +813,7 @@ export function LineageTabContent({
               status={getChangeStatus(nodesById?.[id])}
               direction={direction}
               impacted={isImpactedNeighbor(id, direction)}
+              cllImpacted={impactedNodeIds?.has(id) ?? false}
               onClick={onNavigate ? () => onNavigate(id) : undefined}
             />
           ))
@@ -868,7 +913,11 @@ export function LineageTabContent({
         />
         {renderDirection("up")}
 
-        <FocusCard node={node} onCenterFocus={onCenterFocus} />
+        <FocusCard
+          node={node}
+          onCenterFocus={onCenterFocus}
+          cllImpacted={impactedNodeIds?.has(node.id) ?? false}
+        />
 
         <SectionHeader
           direction="down"
