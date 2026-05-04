@@ -125,24 +125,11 @@ export function NodeViewOss({
   const router = useRouter();
   const { runAction } = useRecceActionContext();
   const { isActionAvailable, envInfo, lineageGraph } = useLineageGraphContext();
-  // Optional view context — present whenever NodeViewOss renders inside a
-  // LineageView (which is always, in OSS today). Falls back to undefined for
-  // tests/Storybook that mount NodeView directly without the provider.
+  // Optional: undefined in tests/Storybook that mount NodeView without LineageView.
   const lineageViewCtx = useLineageViewContext();
-  // Lineage-tab impact marks: derive two direction-specific sets from CLL.
-  //
-  //  - `impactedNodeIds` (downstream rail): exactly `cll.impacted = true` —
-  //    the canonical "this node's data is affected" flag.
-  //
-  //  - `impactingNodeIds` (upstream rail): everything in `impactedNodeIds`
-  //    PLUS the two cases the backend's `cll.impacted` deliberately misses
-  //    even though they propagate impact:
-  //      • `partial_breaking` — only the changed columns become anchors,
-  //        so the source node itself stays out of `result_node_ids`.
-  //      • `removed`         — handled via `extra_node_ids`, also outside
-  //        `result_node_ids`.
-  //    `non_breaking` modified nodes are correctly excluded (their change
-  //    doesn't reach any consumer).
+  // Per-direction impact sets for the Lineage tab. impactingNodeIds covers
+  // partial_breaking and removed too — they propagate impact but the backend
+  // keeps them out of result_node_ids (anchors live on columns / extra_node_ids).
   const { impactingNodeIds, impactedNodeIds } = useMemo(() => {
     const cllNodes = lineageViewCtx?.cll?.current.nodes;
     if (!cllNodes) {

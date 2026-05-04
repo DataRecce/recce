@@ -251,7 +251,7 @@ describe("LineageTabContent", () => {
   });
 
   // -------------------------------------------------------------------------
-  // Impact Analysis row marks (DRC-3344)
+  // Impact Analysis row marks
   // -------------------------------------------------------------------------
 
   test("renders no impact marks when both impact sets are omitted", () => {
@@ -286,9 +286,7 @@ describe("LineageTabContent", () => {
   });
 
   test("renders no impact marks when the focused node is not in either set", () => {
-    // Even with active impact sets, if the focus model itself is not in the
-    // chain then no neighbor row should be marked — upstream chains can't
-    // reach an uninvolved focus and nothing downstream propagates from one.
+    // Active impact sets but uninvolved focus → no marks.
     const parents = { p1: {} as never };
     const children = { c1: {} as never };
     const node = makeNode("focus", { parents, children });
@@ -308,8 +306,6 @@ describe("LineageTabContent", () => {
   });
 
   test("marks an upstream parent only when it is in impactingNodeIds", () => {
-    // Focus has two parents — only one propagates impact. The marked row
-    // should carry the upstream-direction tooltip "Impacts this model".
     const parents = {
       p_propagates: {} as never,
       p_silent: {} as never,
@@ -332,10 +328,7 @@ describe("LineageTabContent", () => {
   });
 
   test("does NOT mark an upstream parent that is only in impactedNodeIds", () => {
-    // The downstream-side `impactedNodeIds` must not bleed into the upstream
-    // rail. A self-modified-but-non_breaking parent (which lives in
-    // impactedNodeIds via the broader canvas semantics, but NOT in
-    // impactingNodeIds) should stay unmarked.
+    // impactedNodeIds (downstream-side) must not bleed into the upstream rail.
     const parents = { stg_payments: {} as never };
     const node = makeNode("customers", { parents });
     const nodesById = makeNodesById(["stg_payments", "customers"]);
@@ -353,9 +346,7 @@ describe("LineageTabContent", () => {
   });
 
   test("marks an upstream parent for the partial_breaking case (impacting=true, impacted=false)", () => {
-    // stg_orders is partial_breaking — propagates impact even though its own
-    // CLL `impacted` flag is false. It should appear in `impactingNodeIds`
-    // and be marked as upstream.
+    // partial_breaking: in impactingNodeIds but not impactedNodeIds.
     const parents = { stg_orders: {} as never };
     const node = makeNode("int_throughput", { parents });
     const nodesById = makeNodesById(["stg_orders", "int_throughput"]);
@@ -402,8 +393,6 @@ describe("LineageTabContent", () => {
     const node = makeNode("focus", { parents, children });
     const nodesById = makeNodesById(["p1", "c1", "c2", "focus"]);
 
-    // Only the downstream side has impacted neighbors — header chip should
-    // appear there, and stay hidden on the upstream header.
     render(
       <LineageTabContent
         node={node}
@@ -441,32 +430,27 @@ describe("LineageTabContent", () => {
       />,
     );
 
-    // Baseline: all three children visible.
     expect(screen.getByText("c_impacted_a")).toBeInTheDocument();
     expect(screen.getByText("c_isolated")).toBeInTheDocument();
     expect(screen.getByText("c_impacted_b")).toBeInTheDocument();
 
-    // The downstream chip is the only chip rendered (no upstream impact).
     const chip = screen.getByTestId("lineage-impact-chip");
     expect(chip).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(chip);
 
-    // After toggling, only impacted children remain.
     expect(screen.getByText("c_impacted_a")).toBeInTheDocument();
     expect(screen.getByText("c_impacted_b")).toBeInTheDocument();
     expect(screen.queryByText("c_isolated")).not.toBeInTheDocument();
     expect(chip).toHaveAttribute("aria-pressed", "true");
 
-    // Clicking again restores the full list.
     fireEvent.click(chip);
     expect(screen.getByText("c_isolated")).toBeInTheDocument();
     expect(chip).toHaveAttribute("aria-pressed", "false");
   });
 
   test("status dot reflects 'impacted' for unchanged-but-impacted neighbors (matches canvas)", () => {
-    // customer_order_pattern is unchanged in the project but impacted by a
-    // breaking upstream change. The canvas shows it with the amber border;
-    // the panel's status dot must also surface that state via data-status.
+    // customer_order_pattern is unchanged but receives upstream impact —
+    // the dot's data-status must read "impacted", matching the canvas.
     const children = {
       customer_order_pattern: {} as never,
       truly_unchanged: {} as never,
@@ -492,7 +476,6 @@ describe("LineageTabContent", () => {
       const dots = row.querySelectorAll<HTMLElement>(
         "[data-testid='lineage-status-dot']",
       );
-      // Each row has exactly one dot.
       return dots[0];
     };
 
@@ -507,9 +490,8 @@ describe("LineageTabContent", () => {
   });
 
   test("focusInImpact triggers when focus is impacting (source of breaking change) even if not impacted", () => {
-    // Focus is stg_orders (partial_breaking modified, impacted=false). It
-    // doesn't itself receive upstream impact, but it's the SOURCE of impact
-    // to its children — downstream marks must still render.
+    // Focus is the partial_breaking source (impacted=false but in
+    // impactingNodeIds) — downstream marks must still render.
     const children = { int_throughput: {} as never };
     const node = makeNode("stg_orders", { children });
     const nodesById = makeNodesById(["stg_orders", "int_throughput"]);

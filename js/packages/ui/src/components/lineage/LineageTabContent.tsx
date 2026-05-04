@@ -11,14 +11,10 @@
  *  - Focused-node card (orange accent)
  *  - DOWNSTREAM section: direct children (filterable / paginated)
  *
- * Impact Analysis marks (DRC-3344):
- *  When the focused node and a direct neighbor are both in the impact set,
- *  the neighbor's row is decorated with: a 3-px amber left rail, an 8% amber
- *  background tint, and a trailing amber arrow icon. The amber color matches
- *  the canvas amber border / schema badge "!" — `rgb(255 173 21)`.
- *  Tooltip differs by direction:
- *    - Upstream marked row → "Impacts this model"
- *    - Downstream marked row → "Impacted by this model"
+ * Impact marks: when the focused node and a neighbor are both in the impact
+ * set, the row gets a yellow rail/tint/arrow (matching the canvas via
+ * `cllChangeStatusColors.impacted`). Tooltip is "Impacts this model"
+ * upstream / "Impacted by this model" downstream.
  */
 
 import Box from "@mui/material/Box";
@@ -42,14 +38,19 @@ import { changeStatusColors, cllChangeStatusColors } from "./styles";
 // Impact-mark visual tokens
 // ---------------------------------------------------------------------------
 
-/** Established amber for impact (canvas border, schema badge "!"). */
-const IMPACT_AMBER = "rgb(255 173 21)";
-const IMPACT_TINT_LIGHT = "rgb(255 173 21 / 0.08)";
-const IMPACT_TINT_DARK = "rgb(255 173 21 / 0.06)";
-/** Header chip background and foreground. */
-const IMPACT_CHIP_BG_LIGHT = "rgb(255 245 234)";
-const IMPACT_CHIP_BG_DARK = "rgb(255 173 21 / 0.12)";
-const IMPACT_CHIP_FG = "rgb(180 83 9)";
+// All impact visuals derive from cllChangeStatusColors.impacted, the same
+// color used by the canvas impacted node border / "!" badge. Chip palette
+// mirrors --schema-badge-impacted-* in schema/style.css's .cll-experience
+// block. The active-filter state uses a deeper amber so white text stays
+// legible (yellow + white would fail contrast).
+const IMPACT_ACCENT = cllChangeStatusColors.impacted; // rgb(252 211 77)
+const IMPACT_TINT_LIGHT = "rgb(252 211 77 / 0.18)";
+const IMPACT_TINT_DARK = "rgb(252 211 77 / 0.10)";
+const IMPACT_CHIP_BG_LIGHT = "rgb(252 211 77 / 0.35)";
+const IMPACT_CHIP_BG_DARK = "rgb(180 83 9 / 0.25)";
+const IMPACT_CHIP_FG_LIGHT = "rgb(146 64 14)";
+const IMPACT_CHIP_FG_DARK = "rgb(252 211 77)";
+const IMPACT_CHIP_ACTIVE_BG = "rgb(180 83 9)";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -84,17 +85,11 @@ export interface LineageTabContentProps {
   /** Jump to an entry in the history (breadcrumb click). */
   onJumpToHistory?: (index: number) => void;
   /**
-   * Nodes that propagate impact downward — used to decorate matching rows in
-   * the UPSTREAM rail. A node propagates impact if it has its own breaking
-   * or partial_breaking change, is added/removed, or itself receives upstream
-   * impact (and passes the changed data through).
+   * Nodes that propagate impact downward (own breaking/partial_breaking change,
+   * added/removed, or receive upstream impact). Drives upstream rail marks.
    */
   impactingNodeIds?: Set<string>;
-  /**
-   * Nodes whose data is impacted by upstream changes (the canonical CLL
-   * `impacted = true` flag) — used to decorate matching rows in the
-   * DOWNSTREAM rail.
-   */
+  /** Nodes with CLL `impacted = true`. Drives downstream rail marks. */
   impactedNodeIds?: Set<string>;
 }
 
@@ -130,11 +125,7 @@ function filterIds(
 // Sub-components
 // ---------------------------------------------------------------------------
 
-/**
- * Pick the dot/bar color for a node — mirrors the canvas: an unchanged node
- * that the CLL flags as impacted (e.g. unchanged-but-receives-upstream-impact)
- * uses the impacted amber instead of the neutral "unchanged" gray.
- */
+/** Unchanged-but-impacted nodes use the impacted color, matching the canvas. */
 function getNodeStatusColor(
   status: ChangeStatus,
   cllImpacted: boolean | undefined,
@@ -150,12 +141,9 @@ function StatusDot({
   cllImpacted,
 }: {
   status: ChangeStatus;
-  /** True when `cll.current.nodes[id].impacted === true`. Used to color
-   *  the dot amber on unchanged-but-impacted rows, matching the canvas. */
+  /** When true, color the dot as impacted (matches canvas). */
   cllImpacted?: boolean;
 }) {
-  // Effective status: unchanged-but-impacted is "impacted" for visual
-  // purposes. Exposed as a data attribute for testability.
   const effectiveStatus =
     status === "unchanged" && cllImpacted ? "impacted" : status;
   return (
@@ -180,10 +168,8 @@ interface DirectRowProps {
   direction: Direction;
   /** When true, decorate the row with the impact mark (rail + tint + arrow). */
   impacted?: boolean;
-  /** Whether this node carries the canonical CLL `impacted = true` flag —
-   *  used to color the status dot amber on unchanged-but-impacted rows so
-   *  the panel matches the canvas. Independent of `impacted` (which is
-   *  direction-aware and drives the row decoration). */
+  /** Carries CLL `impacted = true` — drives the dot color, independent of
+   *  `impacted` above (which drives row decoration). */
   cllImpacted?: boolean;
   onClick?: () => void;
 }
@@ -233,7 +219,7 @@ function DirectRow({
             top: 0,
             bottom: 0,
             width: "3px",
-            backgroundColor: IMPACT_AMBER,
+            backgroundColor: IMPACT_ACCENT,
           }}
         />
       )}
@@ -263,7 +249,7 @@ function DirectRow({
               justifyContent: "center",
               width: "16px",
               height: "16px",
-              color: IMPACT_AMBER,
+              color: IMPACT_ACCENT,
               flex: "0 0 auto",
             }}
           >
@@ -288,9 +274,7 @@ function SectionHeader({
   impactCount?: number;
   /** Current state of the per-side "only impact" filter toggle. */
   onlyImpact?: boolean;
-  /** Click handler that toggles the chip into a filter button. When provided
-   *  AND impactCount > 0, the chip becomes interactive: click to keep only
-   *  the impacted rows; click again to restore the full list. */
+  /** When provided and impactCount > 0, the chip becomes a filter toggle. */
   onToggleOnlyImpact?: () => void;
 }) {
   const isUp = direction === "up";
@@ -353,15 +337,18 @@ function SectionHeader({
               py: "1px",
               borderRadius: "999px",
               backgroundColor: onlyImpact
-                ? IMPACT_AMBER
+                ? IMPACT_CHIP_ACTIVE_BG
                 : isDark
                   ? IMPACT_CHIP_BG_DARK
                   : IMPACT_CHIP_BG_LIGHT,
-              color: onlyImpact ? "#fff" : IMPACT_CHIP_FG,
+              color: onlyImpact
+                ? "#fff"
+                : isDark
+                  ? IMPACT_CHIP_FG_DARK
+                  : IMPACT_CHIP_FG_LIGHT,
               fontSize: "10px",
               fontWeight: 600,
               letterSpacing: "0.02em",
-              // Render as a button when interactive, with no native chrome.
               border: "none",
               font: "inherit",
               cursor: chipInteractive ? "pointer" : "default",
@@ -381,7 +368,11 @@ function SectionHeader({
                 width: "5px",
                 height: "5px",
                 borderRadius: "50%",
-                backgroundColor: onlyImpact ? "#fff" : IMPACT_AMBER,
+                backgroundColor: onlyImpact
+                  ? "#fff"
+                  : isDark
+                    ? IMPACT_CHIP_FG_DARK
+                    : IMPACT_CHIP_FG_LIGHT,
               }}
             />
             {chipLabel}
@@ -502,15 +493,12 @@ function FocusCard({
 }: {
   node: LineageGraphNode;
   onCenterFocus?: () => void;
-  /** True when the focused node carries `cll.impacted = true`. Drives the
-   *  amber accent on unchanged-but-impacted focus models, matching the canvas. */
+  /** Drives the impacted accent on unchanged-but-impacted focus. */
   cllImpacted?: boolean;
 }) {
   const status = getChangeStatus(node);
   const { isDark, background } = useThemeColors();
   const accentColor = getNodeStatusColor(status, cllImpacted);
-  // Unchanged-but-impacted focus reads as "Impacted" rather than "Unchanged"
-  // so the badge text matches the amber accent.
   const statusLabel =
     status === "unchanged" && cllImpacted ? "impacted" : status;
   return (
@@ -707,8 +695,7 @@ export function LineageTabContent({
   const [queryDown, setQueryDown] = useState("");
   const [visibleUp, setVisibleUp] = useState(INITIAL_PAGE_SIZE);
   const [visibleDown, setVisibleDown] = useState(INITIAL_PAGE_SIZE);
-  // Per-side "only show impact" toggle, driven by clicking the section
-  // header's amber count chip. Resets when focus changes.
+  // Per-side "only show impact" toggle, driven by the header chip.
   const [onlyImpactUp, setOnlyImpactUp] = useState(false);
   const [onlyImpactDown, setOnlyImpactDown] = useState(false);
 
@@ -742,10 +729,8 @@ export function LineageTabContent({
     [childIds, queryDown, nodesById],
   );
 
-  // Impact analysis only "fires" when the caller supplied at least one
-  // non-empty set. The focused node must itself participate (be impacting OR
-  // impacted) for any neighbor to be marked — a focus model with no role in
-  // the chain neither receives upstream impact nor propagates anything.
+  // Skip marks if the focus isn't itself in the impact chain — it has no
+  // neighbors to "impact" or "be impacted by".
   const impactActive =
     (impactingNodeIds?.size ?? 0) > 0 || (impactedNodeIds?.size ?? 0) > 0;
   const focusInImpact =
@@ -753,9 +738,6 @@ export function LineageTabContent({
     ((impactingNodeIds?.has(node.id) ?? false) ||
       (impactedNodeIds?.has(node.id) ?? false));
 
-  // Direction-specific predicates. Upstream rail uses `impactingNodeIds`
-  // (parents that propagate impact to the focused node); downstream rail uses
-  // `impactedNodeIds` (children whose data the focused node's change reaches).
   const isImpactedNeighbor = (neighborId: string, dir: Direction): boolean => {
     if (!focusInImpact) return false;
     const set = dir === "up" ? impactingNodeIds : impactedNodeIds;
@@ -774,7 +756,6 @@ export function LineageTabContent({
     const allDirect = isUp ? parentIds : childIds;
     const baseFiltered = isUp ? filteredParentIds : filteredChildIds;
     const onlyImpact = isUp ? onlyImpactUp : onlyImpactDown;
-    // Apply the chip's "only show impact" filter on top of the text filter.
     const filtered = onlyImpact
       ? baseFiltered.filter((id) => isImpactedNeighbor(id, direction))
       : baseFiltered;

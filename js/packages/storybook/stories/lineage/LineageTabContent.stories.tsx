@@ -280,11 +280,9 @@ export const Isolated: Story = {
 // =============================================================================
 
 /**
- * Impact Analysis is active and reaches the focused node. Among upstream
- * parents only `stg_payments` is itself modified, BUT its change is
- * non_breaking and doesn't propagate — so it is NOT in `impactingNodeIds`
- * and stays unmarked. All three downstream children receive the focus's
- * breaking change, so each appears in `impactedNodeIds` and is marked.
+ * Impact Analysis active. `stg_payments` is non_breaking modified, so it
+ * stays out of `impactingNodeIds` and is unmarked. All three children
+ * receive the focus's breaking change and are marked.
  */
 export const ImpactAnalysisActive: Story = {
   args: {
@@ -301,8 +299,6 @@ export const ImpactAnalysisActive: Story = {
         stg_payments: "modified",
         customer_segments: "modified",
       },
-      // customers (focused) is impacting + impacted; stg_payments is
-      // self-modified-but-non_breaking, so it is excluded from impacting.
       impactingNodeIds: ["customers"],
       impactedNodeIds: [
         "customers",
@@ -315,11 +311,9 @@ export const ImpactAnalysisActive: Story = {
 };
 
 /**
- * partial_breaking upstream — `stg_orders` is modified with
- * `change_category = "partial_breaking"`, so it propagates impact downward
- * even though its own `cll.impacted = false`. Focused on
- * `int_order_throughput_by_hour` (impacted=true), the upstream rail marks
- * `stg_orders` as "Impacts this model".
+ * partial_breaking upstream — `stg_orders` is in `impactingNodeIds` but not
+ * in `impactedNodeIds` (its own `cll.impacted = false`), and the upstream
+ * rail still marks it as "Impacts this model".
  */
 export const ImpactAnalysisPartialBreaking: Story = {
   args: {
@@ -328,8 +322,6 @@ export const ImpactAnalysisPartialBreaking: Story = {
       parents: ["stg_orders"],
       children: [],
       changeStatusByName: { stg_orders: "modified" },
-      // stg_orders is impacting (partial_breaking propagates) but not
-      // impacted; the focused node is impacted but does not itself propagate.
       impactingNodeIds: ["stg_orders"],
       impactedNodeIds: ["int_order_throughput_by_hour"],
     }),
