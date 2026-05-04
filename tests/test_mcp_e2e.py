@@ -1164,6 +1164,7 @@ class TestMCPProtocolE2E:
                 "get_model",
                 "get_cll",
                 "get_server_info",
+                "set_backend",
                 "select_nodes",
                 "list_checks",
                 "run_check",

@@ -338,6 +338,223 @@ async def test_unconfigured_server_blocks_normal_tools_but_allows_set_backend():
 
 
 @pytest.mark.asyncio
+async def test_cloud_lineage_diff_filters_nodes_and_marks_impacted(cloud_requests):
+    info_payload = {
+        "lineage": {
+            "nodes": {
+                "model.pkg.a": {
+                    "name": "a",
+                    "resource_type": "model",
+                    "materialized": "table",
+                    "change_status": "modified",
+                },
+                "model.pkg.b": {
+                    "name": "b",
+                    "resource_type": "model",
+                    "materialized": "view",
+                    "change_status": None,
+                },
+                "model.pkg.c": {
+                    "name": "c",
+                    "resource_type": "model",
+                    "materialized": "table",
+                    "change_status": None,
+                },
+            },
+            "edges": [
+                {"source": "model.pkg.a", "target": "model.pkg.b"},
+                {"source": "model.pkg.b", "target": "model.pkg.c"},
+                {"source": "model.pkg.x", "target": "model.pkg.a"},  # source not in selected
+            ],
+        }
+    }
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, info_payload),
+        MockResponse(200, {"nodes": ["model.pkg.a", "model.pkg.b"]}),  # selected via select arg
+        MockResponse(200, {"nodes": ["model.pkg.a", "model.pkg.b"]}),  # impacted (state:modified+)
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="t")
+
+    result = await backend.call_tool("lineage_diff", {"select": "state:modified+"})
+
+    nodes_rows = result["nodes"]["data"]
+    edges_rows = result["edges"]["data"]
+    # Two selected nodes, both impacted
+    assert len(nodes_rows) == 2
+    names = {row[2] for row in nodes_rows}
+    assert names == {"a", "b"}
+    impacted_flags = {row[1]: row[6] for row in nodes_rows}  # id -> impacted
+    assert impacted_flags["model.pkg.a"] is True
+    assert impacted_flags["model.pkg.b"] is True
+    # Only the a→b edge survives (both endpoints in selected set)
+    assert edges_rows == [(0, 1)] or edges_rows == [[0, 1]]
+
+
+@pytest.mark.asyncio
+async def test_cloud_lineage_diff_defaults_to_all_nodes_when_no_filter(cloud_requests):
+    info_payload = {
+        "lineage": {
+            "nodes": {"model.pkg.a": {"name": "a", "resource_type": "model"}},
+            "edges": [],
+        }
+    }
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, info_payload),
+        MockResponse(200, {"nodes": []}),  # impacted query
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="t")
+
+    result = await backend.call_tool("lineage_diff", {})
+
+    # No select/exclude passed → only 2 cloud calls after instance spawn (info + impacted)
+    methods_paths = [(c.args[0], c.args[1]) for c in cloud_requests.call_args_list[1:]]
+    assert methods_paths[0][1].endswith("/info")
+    assert methods_paths[1][1].endswith("/select")
+    assert len(result["nodes"]["data"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_cloud_schema_diff_returns_column_changes(cloud_requests):
+    info_payload = {
+        "lineage": {
+            "nodes": {
+                "model.pkg.a": {
+                    "change": {"columns": {"col1": "added", "col2": "removed"}},
+                },
+                "model.pkg.b": {
+                    "change": {"columns": {"colx": "modified"}},
+                },
+            }
+        }
+    }
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, info_payload),
+        MockResponse(200, {"nodes": ["model.pkg.a"]}),  # select filters to a only
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="t")
+
+    result = await backend.call_tool("schema_diff", {"select": "state:modified"})
+
+    rows = result["data"]
+    assert len(rows) == 2
+    cols = {row[1] for row in rows}
+    assert cols == {"col1", "col2"}
+
+
+@pytest.mark.asyncio
+async def test_cloud_schema_diff_no_filter_includes_all_nodes(cloud_requests):
+    info_payload = {
+        "lineage": {
+            "nodes": {
+                "model.pkg.a": {"change": {"columns": {"c1": "added"}}},
+                "model.pkg.b": {"change": None},
+            }
+        }
+    }
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, info_payload),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="t")
+
+    result = await backend.call_tool("schema_diff", {})
+
+    rows = result["data"]
+    assert len(rows) == 1
+    assert rows[0][1] == "c1"
+
+
+@pytest.mark.asyncio
+async def test_cloud_impact_analysis_classifies_models(cloud_requests):
+    info_payload = {
+        "lineage": {
+            "nodes": {
+                "model.pkg.a": {
+                    "name": "a",
+                    "materialized": "table",
+                    "change_status": "modified",
+                    "change": {"columns": {"c1": "added"}},
+                },
+                "model.pkg.b": {
+                    "name": "b",
+                    "materialized": "view",
+                    "change_status": None,
+                },
+                "source.pkg.s": {"name": "s"},  # non-model, skipped
+            }
+        }
+    }
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, info_payload),
+        MockResponse(200, {"nodes": ["model.pkg.a", "model.pkg.b"]}),  # impacted
+        MockResponse(200, {"nodes": ["model.pkg.a"]}),  # modified
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="t")
+
+    result = await backend.call_tool("impact_analysis", {})
+
+    assert result["classification_source"] == "lineage_dag"
+    impacted_names = {m["name"] for m in result["confirmed_impacted_models"]}
+    assert impacted_names == {"a", "b"}
+    a_entry = next(m for m in result["confirmed_impacted_models"] if m["name"] == "a")
+    assert a_entry["change_status"] == "modified"
+    assert a_entry["next_action"]["priority"] == "high"
+    assert a_entry["schema_changes"] == [{"column": "c1", "change_status": "added"}]
+    b_entry = next(m for m in result["confirmed_impacted_models"] if m["name"] == "b")
+    assert b_entry["change_status"] is None
+    assert b_entry["next_action"]["priority"] == "medium"
+    assert result["confirmed_not_impacted_models"] == []
+
+
+@pytest.mark.asyncio
+async def test_cloud_impact_analysis_uses_explicit_select(cloud_requests):
+    info_payload = {"lineage": {"nodes": {"model.pkg.a": {"name": "a"}}}}
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, info_payload),
+        MockResponse(200, {"nodes": []}),
+        MockResponse(200, {"nodes": []}),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="t")
+
+    await backend.call_tool("impact_analysis", {"select": "tag:critical+"})
+
+    select_payload = cloud_requests.call_args_list[2].kwargs["json"]
+    assert select_payload == {"select": "tag:critical+"}
+    # Default select should NOT have been used
+    assert "state:modified.body+" not in str(select_payload)
+
+
+@pytest.mark.asyncio
+async def test_cloud_selected_nodes_passes_only_set_filters(cloud_requests):
+    """_selected_nodes should forward exclude/packages/view_mode but skip None values."""
+    info_payload = {"lineage": {"nodes": {"model.pkg.a": {}}}}
+    cloud_requests.side_effect = [
+        MockResponse(204),
+        MockResponse(200, info_payload),
+        MockResponse(200, {"nodes": ["model.pkg.a"]}),
+    ]
+    backend = await CloudBackend.create(session_id="sess-123", api_token="t")
+
+    await backend.call_tool(
+        "schema_diff",
+        {"exclude": "tag:internal", "packages": ["pkg"], "view_mode": "all"},
+    )
+
+    select_payload = cloud_requests.call_args_list[2].kwargs["json"]
+    assert select_payload == {
+        "exclude": "tag:internal",
+        "packages": ["pkg"],
+        "view_mode": "all",
+    }
+    assert "select" not in select_payload
+
+
+@pytest.mark.asyncio
 async def test_cloud_get_server_info_includes_mode_field(cloud_requests):
     cloud_requests.side_effect = [
         MockResponse(204),
