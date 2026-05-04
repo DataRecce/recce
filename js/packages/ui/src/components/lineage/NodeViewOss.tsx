@@ -129,7 +129,40 @@ export function NodeViewOss({
   // LineageView (which is always, in OSS today). Falls back to undefined for
   // tests/Storybook that mount NodeView directly without the provider.
   const lineageViewCtx = useLineageViewContext();
-  const impactedNodeIds = lineageViewCtx?.impactedNodeIds;
+  // Lineage-tab impact marks: derive two direction-specific sets from CLL.
+  //
+  //  - `impactedNodeIds` (downstream rail): exactly `cll.impacted = true` —
+  //    the canonical "this node's data is affected" flag.
+  //
+  //  - `impactingNodeIds` (upstream rail): everything in `impactedNodeIds`
+  //    PLUS the two cases the backend's `cll.impacted` deliberately misses
+  //    even though they propagate impact:
+  //      • `partial_breaking` — only the changed columns become anchors,
+  //        so the source node itself stays out of `result_node_ids`.
+  //      • `removed`         — handled via `extra_node_ids`, also outside
+  //        `result_node_ids`.
+  //    `non_breaking` modified nodes are correctly excluded (their change
+  //    doesn't reach any consumer).
+  const { impactingNodeIds, impactedNodeIds } = useMemo(() => {
+    const cllNodes = lineageViewCtx?.cll?.current.nodes;
+    if (!cllNodes) {
+      return { impactingNodeIds: undefined, impactedNodeIds: undefined };
+    }
+    const impacting = new Set<string>();
+    const impacted = new Set<string>();
+    for (const [id, n] of Object.entries(cllNodes)) {
+      if (n.impacted === true) {
+        impacted.add(id);
+        impacting.add(id);
+      } else if (
+        n.change_category === "partial_breaking" ||
+        n.change_status === "removed"
+      ) {
+        impacting.add(id);
+      }
+    }
+    return { impactingNodeIds: impacting, impactedNodeIds: impacted };
+  }, [lineageViewCtx?.cll]);
   const { singleEnv: isSingleEnvOnboarding, featureToggles } =
     useRecceInstanceContext();
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
@@ -388,6 +421,7 @@ export function NodeViewOss({
             onCenterFocus={onCenterFocused}
             historyTrail={historyTrail}
             onJumpToHistory={onJumpToHistory}
+            impactingNodeIds={impactingNodeIds}
             impactedNodeIds={impactedNodeIds}
           />
         ) : undefined

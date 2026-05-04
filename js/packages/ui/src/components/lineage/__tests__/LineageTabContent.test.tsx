@@ -254,7 +254,7 @@ describe("LineageTabContent", () => {
   // Impact Analysis row marks (DRC-3344)
   // -------------------------------------------------------------------------
 
-  test("renders no impact marks when impactedNodeIds is omitted", () => {
+  test("renders no impact marks when both impact sets are omitted", () => {
     const parents = { p1: {} as never };
     const children = { c1: {} as never };
     const node = makeNode("focus", { parents, children });
@@ -266,7 +266,7 @@ describe("LineageTabContent", () => {
     expect(screen.queryByTestId("lineage-impact-chip")).not.toBeInTheDocument();
   });
 
-  test("renders no impact marks when impactedNodeIds is empty", () => {
+  test("renders no impact marks when both sets are empty", () => {
     const parents = { p1: {} as never };
     const children = { c1: {} as never };
     const node = makeNode("focus", { parents, children });
@@ -276,6 +276,7 @@ describe("LineageTabContent", () => {
       <LineageTabContent
         node={node}
         nodesById={nodesById}
+        impactingNodeIds={new Set()}
         impactedNodeIds={new Set()}
       />,
     );
@@ -284,10 +285,10 @@ describe("LineageTabContent", () => {
     expect(screen.queryByTestId("lineage-impact-chip")).not.toBeInTheDocument();
   });
 
-  test("renders no impact marks when the focused node is not in the impact set", () => {
-    // Even with an active impact set, if the focus model itself is not
-    // impacted then no neighbor row should be marked — upstream chains can't
-    // reach an unimpacted focus.
+  test("renders no impact marks when the focused node is not in either set", () => {
+    // Even with active impact sets, if the focus model itself is not in the
+    // chain then no neighbor row should be marked — upstream chains can't
+    // reach an uninvolved focus and nothing downstream propagates from one.
     const parents = { p1: {} as never };
     const children = { c1: {} as never };
     const node = makeNode("focus", { parents, children });
@@ -297,7 +298,8 @@ describe("LineageTabContent", () => {
       <LineageTabContent
         node={node}
         nodesById={nodesById}
-        impactedNodeIds={new Set(["p1", "c1"])}
+        impactingNodeIds={new Set(["p1"])}
+        impactedNodeIds={new Set(["c1"])}
       />,
     );
 
@@ -305,21 +307,22 @@ describe("LineageTabContent", () => {
     expect(screen.queryByTestId("lineage-impact-chip")).not.toBeInTheDocument();
   });
 
-  test("marks an upstream parent only when both it and the focus are in the impact set", () => {
-    // Focus has two parents — only one is in the impact set. The marked row
+  test("marks an upstream parent only when it is in impactingNodeIds", () => {
+    // Focus has two parents — only one propagates impact. The marked row
     // should carry the upstream-direction tooltip "Impacts this model".
     const parents = {
-      p_marked: {} as never,
-      p_unmarked: {} as never,
+      p_propagates: {} as never,
+      p_silent: {} as never,
     };
     const node = makeNode("focus", { parents });
-    const nodesById = makeNodesById(["p_marked", "p_unmarked", "focus"]);
+    const nodesById = makeNodesById(["p_propagates", "p_silent", "focus"]);
 
     render(
       <LineageTabContent
         node={node}
         nodesById={nodesById}
-        impactedNodeIds={new Set(["focus", "p_marked"])}
+        impactingNodeIds={new Set(["p_propagates"])}
+        impactedNodeIds={new Set(["focus"])}
       />,
     );
 
@@ -328,19 +331,63 @@ describe("LineageTabContent", () => {
     expect(marks[0]).toHaveAttribute("aria-label", "Impacts this model");
   });
 
-  test("marks a downstream child when it is in the impact set, with downstream tooltip", () => {
-    const children = {
-      c_marked: {} as never,
-      c_unmarked: {} as never,
-    };
-    const node = makeNode("focus", { children });
-    const nodesById = makeNodesById(["c_marked", "c_unmarked", "focus"]);
+  test("does NOT mark an upstream parent that is only in impactedNodeIds", () => {
+    // The downstream-side `impactedNodeIds` must not bleed into the upstream
+    // rail. A self-modified-but-non_breaking parent (which lives in
+    // impactedNodeIds via the broader canvas semantics, but NOT in
+    // impactingNodeIds) should stay unmarked.
+    const parents = { stg_payments: {} as never };
+    const node = makeNode("customers", { parents });
+    const nodesById = makeNodesById(["stg_payments", "customers"]);
 
     render(
       <LineageTabContent
         node={node}
         nodesById={nodesById}
-        impactedNodeIds={new Set(["focus", "c_marked"])}
+        impactingNodeIds={new Set()}
+        impactedNodeIds={new Set(["customers"])}
+      />,
+    );
+
+    expect(screen.queryByTestId("lineage-impact-mark")).not.toBeInTheDocument();
+  });
+
+  test("marks an upstream parent for the partial_breaking case (impacting=true, impacted=false)", () => {
+    // stg_orders is partial_breaking — propagates impact even though its own
+    // CLL `impacted` flag is false. It should appear in `impactingNodeIds`
+    // and be marked as upstream.
+    const parents = { stg_orders: {} as never };
+    const node = makeNode("int_throughput", { parents });
+    const nodesById = makeNodesById(["stg_orders", "int_throughput"]);
+
+    render(
+      <LineageTabContent
+        node={node}
+        nodesById={nodesById}
+        impactingNodeIds={new Set(["stg_orders"])}
+        impactedNodeIds={new Set(["int_throughput"])}
+      />,
+    );
+
+    const marks = screen.getAllByTestId("lineage-impact-mark");
+    expect(marks).toHaveLength(1);
+    expect(marks[0]).toHaveAttribute("aria-label", "Impacts this model");
+  });
+
+  test("marks a downstream child when it is in impactedNodeIds, with downstream tooltip", () => {
+    const children = {
+      c_impacted: {} as never,
+      c_isolated: {} as never,
+    };
+    const node = makeNode("focus", { children });
+    const nodesById = makeNodesById(["c_impacted", "c_isolated", "focus"]);
+
+    render(
+      <LineageTabContent
+        node={node}
+        nodesById={nodesById}
+        impactingNodeIds={new Set(["focus"])}
+        impactedNodeIds={new Set(["focus", "c_impacted"])}
       />,
     );
 
@@ -361,6 +408,7 @@ describe("LineageTabContent", () => {
       <LineageTabContent
         node={node}
         nodesById={nodesById}
+        impactingNodeIds={new Set(["focus"])}
         impactedNodeIds={new Set(["focus", "c1", "c2"])}
       />,
     );
@@ -368,6 +416,73 @@ describe("LineageTabContent", () => {
     const chips = screen.getAllByTestId("lineage-impact-chip");
     expect(chips).toHaveLength(1);
     expect(chips[0]).toHaveTextContent("2 impacted");
+  });
+
+  test("clicking the impact chip filters the side to only impacted rows; clicking again restores", () => {
+    const children = {
+      c_impacted_a: {} as never,
+      c_isolated: {} as never,
+      c_impacted_b: {} as never,
+    };
+    const node = makeNode("focus", { children });
+    const nodesById = makeNodesById([
+      "c_impacted_a",
+      "c_isolated",
+      "c_impacted_b",
+      "focus",
+    ]);
+
+    render(
+      <LineageTabContent
+        node={node}
+        nodesById={nodesById}
+        impactingNodeIds={new Set(["focus"])}
+        impactedNodeIds={new Set(["focus", "c_impacted_a", "c_impacted_b"])}
+      />,
+    );
+
+    // Baseline: all three children visible.
+    expect(screen.getByText("c_impacted_a")).toBeInTheDocument();
+    expect(screen.getByText("c_isolated")).toBeInTheDocument();
+    expect(screen.getByText("c_impacted_b")).toBeInTheDocument();
+
+    // The downstream chip is the only chip rendered (no upstream impact).
+    const chip = screen.getByTestId("lineage-impact-chip");
+    expect(chip).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(chip);
+
+    // After toggling, only impacted children remain.
+    expect(screen.getByText("c_impacted_a")).toBeInTheDocument();
+    expect(screen.getByText("c_impacted_b")).toBeInTheDocument();
+    expect(screen.queryByText("c_isolated")).not.toBeInTheDocument();
+    expect(chip).toHaveAttribute("aria-pressed", "true");
+
+    // Clicking again restores the full list.
+    fireEvent.click(chip);
+    expect(screen.getByText("c_isolated")).toBeInTheDocument();
+    expect(chip).toHaveAttribute("aria-pressed", "false");
+  });
+
+  test("focusInImpact triggers when focus is impacting (source of breaking change) even if not impacted", () => {
+    // Focus is stg_orders (partial_breaking modified, impacted=false). It
+    // doesn't itself receive upstream impact, but it's the SOURCE of impact
+    // to its children — downstream marks must still render.
+    const children = { int_throughput: {} as never };
+    const node = makeNode("stg_orders", { children });
+    const nodesById = makeNodesById(["stg_orders", "int_throughput"]);
+
+    render(
+      <LineageTabContent
+        node={node}
+        nodesById={nodesById}
+        impactingNodeIds={new Set(["stg_orders"])}
+        impactedNodeIds={new Set(["int_throughput"])}
+      />,
+    );
+
+    const marks = screen.getAllByTestId("lineage-impact-mark");
+    expect(marks).toHaveLength(1);
+    expect(marks[0]).toHaveAttribute("aria-label", "Impacted by this model");
   });
 
   test("filter and pagination reset when the focused node changes", () => {

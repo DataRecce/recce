@@ -58,10 +58,11 @@ function buildArgs(opts: {
   changeStatusByName?: Record<string, "added" | "removed" | "modified">;
   focusChangeStatus?: "added" | "removed" | "modified";
   historyTrail?: string[];
+  impactingNodeIds?: string[];
   impactedNodeIds?: string[];
 }): Pick<
   LineageTabContentProps,
-  "node" | "nodesById" | "historyTrail" | "impactedNodeIds"
+  "node" | "nodesById" | "historyTrail" | "impactingNodeIds" | "impactedNodeIds"
 > {
   const parents = opts.parents ?? [];
   const children = opts.children ?? [];
@@ -80,6 +81,9 @@ function buildArgs(opts: {
     node,
     nodesById,
     historyTrail: opts.historyTrail,
+    impactingNodeIds: opts.impactingNodeIds
+      ? new Set(opts.impactingNodeIds)
+      : undefined,
     impactedNodeIds: opts.impactedNodeIds
       ? new Set(opts.impactedNodeIds)
       : undefined,
@@ -137,9 +141,14 @@ const meta: Meta<typeof LineageTabContent> = {
       description:
         "Called with the history index when the breadcrumb's previous-step is clicked.",
     },
+    impactingNodeIds: {
+      description:
+        "Nodes that propagate impact downward (own breaking/partial_breaking change OR receives upstream impact). Used to mark the upstream rail.",
+      control: "object",
+    },
     impactedNodeIds: {
       description:
-        "Frozen set of node ids in the current Impact Analysis result. When non-empty and the focused node is in the set, neighbor rows that participate in the impact chain are decorated with an amber rail/tint/arrow + directional tooltip.",
+        "Nodes whose data is impacted by upstream changes (CLL `impacted = true`). Used to mark the downstream rail.",
       control: "object",
     },
   },
@@ -271,12 +280,11 @@ export const Isolated: Story = {
 // =============================================================================
 
 /**
- * Impact Analysis is active and reaches the focused node. One upstream parent
- * (`stg_payments`) is in the impact set and is marked with an amber rail/tint
- * and a trailing arrow icon (tooltip: "Impacts this model"). All three
- * downstream children inherit the focus's change, so each is marked
- * (tooltip: "Impacted by this model"). Section headers carry an amber count
- * pill on each side.
+ * Impact Analysis is active and reaches the focused node. Among upstream
+ * parents only `stg_payments` is itself modified, BUT its change is
+ * non_breaking and doesn't propagate — so it is NOT in `impactingNodeIds`
+ * and stays unmarked. All three downstream children receive the focus's
+ * breaking change, so each appears in `impactedNodeIds` and is marked.
  */
 export const ImpactAnalysisActive: Story = {
   args: {
@@ -293,13 +301,37 @@ export const ImpactAnalysisActive: Story = {
         stg_payments: "modified",
         customer_segments: "modified",
       },
+      // customers (focused) is impacting + impacted; stg_payments is
+      // self-modified-but-non_breaking, so it is excluded from impacting.
+      impactingNodeIds: ["customers"],
       impactedNodeIds: [
         "customers",
-        "stg_payments",
         "customer_order_pattern",
         "customer_segments",
         "mart_customers_daily",
       ],
+    }),
+  },
+};
+
+/**
+ * partial_breaking upstream — `stg_orders` is modified with
+ * `change_category = "partial_breaking"`, so it propagates impact downward
+ * even though its own `cll.impacted = false`. Focused on
+ * `int_order_throughput_by_hour` (impacted=true), the upstream rail marks
+ * `stg_orders` as "Impacts this model".
+ */
+export const ImpactAnalysisPartialBreaking: Story = {
+  args: {
+    ...buildArgs({
+      focusId: "int_order_throughput_by_hour",
+      parents: ["stg_orders"],
+      children: [],
+      changeStatusByName: { stg_orders: "modified" },
+      // stg_orders is impacting (partial_breaking propagates) but not
+      // impacted; the focused node is impacted but does not itself propagate.
+      impactingNodeIds: ["stg_orders"],
+      impactedNodeIds: ["int_order_throughput_by_hour"],
     }),
   },
 };
@@ -337,9 +369,9 @@ export const ImpactAnalysisDense: Story = {
         mart_ltv: "added",
         customer_segments: "modified",
       },
+      impactingNodeIds: ["customers", "mart_ltv"],
       impactedNodeIds: [
         "customers",
-        "stg_payments",
         "mart_customers_daily",
         "mart_customers_weekly",
         "mart_customers_yearly",
@@ -358,9 +390,9 @@ export const ImpactAnalysisDense: Story = {
 };
 
 /**
- * Impact Analysis is on but the focused node itself is NOT in the impact
- * set. Per design rules, no row should be marked — upstream chains can't
- * reach an unimpacted focus, and nothing downstream propagates from one.
+ * Impact Analysis is on but the focused node itself is NOT in either set.
+ * Per design rules, no row should be marked — upstream chains can't reach
+ * an uninvolved focus, and nothing downstream propagates from one.
  */
 export const ImpactAnalysisFocusOutsideSet: Story = {
   args: {
@@ -368,7 +400,8 @@ export const ImpactAnalysisFocusOutsideSet: Story = {
       focusId: "customers",
       parents: ["stg_customers", "stg_orders"],
       children: ["customer_segments"],
-      impactedNodeIds: ["unrelated_model_a", "unrelated_model_b"],
+      impactingNodeIds: ["unrelated_model_a"],
+      impactedNodeIds: ["unrelated_model_b"],
     }),
   },
 };

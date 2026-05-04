@@ -84,10 +84,16 @@ export interface LineageTabContentProps {
   /** Jump to an entry in the history (breadcrumb click). */
   onJumpToHistory?: (index: number) => void;
   /**
-   * Frozen set of node ids in the current Impact Analysis result. When
-   * provided and non-empty, neighbor rows that participate in the impact
-   * chain are decorated with an amber rail/tint/arrow + directional tooltip.
-   * Omit (or pass an empty set) to render rows as today.
+   * Nodes that propagate impact downward — used to decorate matching rows in
+   * the UPSTREAM rail. A node propagates impact if it has its own breaking
+   * or partial_breaking change, is added/removed, or itself receives upstream
+   * impact (and passes the changed data through).
+   */
+  impactingNodeIds?: Set<string>;
+  /**
+   * Nodes whose data is impacted by upstream changes (the canonical CLL
+   * `impacted = true` flag) — used to decorate matching rows in the
+   * DOWNSTREAM rail.
    */
   impactedNodeIds?: Set<string>;
 }
@@ -238,16 +244,35 @@ function SectionHeader({
   direction,
   directCount,
   impactCount,
+  onlyImpact,
+  onToggleOnlyImpact,
 }: {
   direction: Direction;
   directCount: number;
   /** Number of direct neighbors on this side that are part of the impact chain. */
   impactCount?: number;
+  /** Current state of the per-side "only impact" filter toggle. */
+  onlyImpact?: boolean;
+  /** Click handler that toggles the chip into a filter button. When provided
+   *  AND impactCount > 0, the chip becomes interactive: click to keep only
+   *  the impacted rows; click again to restore the full list. */
+  onToggleOnlyImpact?: () => void;
 }) {
   const isUp = direction === "up";
   const ArrowIcon = isUp ? MdArrowUpward : MdArrowDownward;
   const { isDark, background } = useThemeColors();
   const showChip = (impactCount ?? 0) > 0;
+  const chipInteractive = !!onToggleOnlyImpact;
+  const chipLabel = isUp
+    ? `${impactCount} impacting`
+    : `${impactCount} impacted`;
+  const chipTitle = chipInteractive
+    ? onlyImpact
+      ? "Show all models"
+      : isUp
+        ? "Show only impacting models"
+        : "Show only impacted models"
+    : undefined;
   return (
     <Stack
       direction="row"
@@ -276,38 +301,57 @@ function SectionHeader({
         · {directCount} direct
       </Box>
       {showChip && (
-        <Box
-          component="span"
-          data-testid="lineage-impact-chip"
-          sx={{
-            ml: 0.75,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "4px",
-            px: "7px",
-            py: "1px",
-            borderRadius: "999px",
-            backgroundColor: isDark
-              ? IMPACT_CHIP_BG_DARK
-              : IMPACT_CHIP_BG_LIGHT,
-            color: IMPACT_CHIP_FG,
-            fontSize: "10px",
-            fontWeight: 600,
-            letterSpacing: "0.02em",
-          }}
-        >
+        <Tooltip title={chipTitle ?? ""} placement="top" arrow>
           <Box
-            component="span"
-            aria-hidden="true"
+            component={chipInteractive ? "button" : "span"}
+            type={chipInteractive ? "button" : undefined}
+            data-testid="lineage-impact-chip"
+            aria-pressed={chipInteractive ? onlyImpact : undefined}
+            aria-label={chipTitle ?? chipLabel}
+            onClick={onToggleOnlyImpact}
             sx={{
-              width: "5px",
-              height: "5px",
-              borderRadius: "50%",
-              backgroundColor: IMPACT_AMBER,
+              ml: 0.75,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+              px: "7px",
+              py: "1px",
+              borderRadius: "999px",
+              backgroundColor: onlyImpact
+                ? IMPACT_AMBER
+                : isDark
+                  ? IMPACT_CHIP_BG_DARK
+                  : IMPACT_CHIP_BG_LIGHT,
+              color: onlyImpact ? "#fff" : IMPACT_CHIP_FG,
+              fontSize: "10px",
+              fontWeight: 600,
+              letterSpacing: "0.02em",
+              // Render as a button when interactive, with no native chrome.
+              border: "none",
+              font: "inherit",
+              cursor: chipInteractive ? "pointer" : "default",
+              "&:hover": chipInteractive
+                ? {
+                    filter: onlyImpact
+                      ? "brightness(0.95)"
+                      : "brightness(0.97)",
+                  }
+                : undefined,
             }}
-          />
-          {isUp ? `${impactCount} impacting` : `${impactCount} impacted`}
-        </Box>
+          >
+            <Box
+              component="span"
+              aria-hidden="true"
+              sx={{
+                width: "5px",
+                height: "5px",
+                borderRadius: "50%",
+                backgroundColor: onlyImpact ? "#fff" : IMPACT_AMBER,
+              }}
+            />
+            {chipLabel}
+          </Box>
+        </Tooltip>
       )}
     </Stack>
   );
@@ -609,6 +653,7 @@ export function LineageTabContent({
   onCenterFocus,
   historyTrail,
   onJumpToHistory,
+  impactingNodeIds,
   impactedNodeIds,
 }: LineageTabContentProps) {
   const { background } = useThemeColors();
@@ -618,6 +663,10 @@ export function LineageTabContent({
   const [queryDown, setQueryDown] = useState("");
   const [visibleUp, setVisibleUp] = useState(INITIAL_PAGE_SIZE);
   const [visibleDown, setVisibleDown] = useState(INITIAL_PAGE_SIZE);
+  // Per-side "only show impact" toggle, driven by clicking the section
+  // header's amber count chip. Resets when focus changes.
+  const [onlyImpactUp, setOnlyImpactUp] = useState(false);
+  const [onlyImpactDown, setOnlyImpactDown] = useState(false);
 
   // Reset state when the focused node changes. node.id is intentionally
   // the trigger — the effect doesn't *use* it, only watches it.
@@ -627,6 +676,8 @@ export function LineageTabContent({
     setQueryDown("");
     setVisibleUp(INITIAL_PAGE_SIZE);
     setVisibleDown(INITIAL_PAGE_SIZE);
+    setOnlyImpactUp(false);
+    setOnlyImpactDown(false);
   }, [node.id]);
 
   const parentIds = useMemo(
@@ -647,21 +698,28 @@ export function LineageTabContent({
     [childIds, queryDown, nodesById],
   );
 
-  // Impact analysis is only "on" when the caller supplied a non-empty set.
-  // The focused node must itself be in the impact set for any neighbor to be
-  // marked: upstream chains can't reach a focus that isn't impacted, and
-  // nothing downstream propagates from one. Mirrors the design rules.
+  // Impact analysis only "fires" when the caller supplied at least one
+  // non-empty set. The focused node must itself participate (be impacting OR
+  // impacted) for any neighbor to be marked — a focus model with no role in
+  // the chain neither receives upstream impact nor propagates anything.
+  const impactActive =
+    (impactingNodeIds?.size ?? 0) > 0 || (impactedNodeIds?.size ?? 0) > 0;
   const focusInImpact =
-    (impactedNodeIds?.size ?? 0) > 0 &&
-    (impactedNodeIds?.has(node.id) ?? false);
+    impactActive &&
+    ((impactingNodeIds?.has(node.id) ?? false) ||
+      (impactedNodeIds?.has(node.id) ?? false));
 
-  const isImpacted = (neighborId: string): boolean => {
+  // Direction-specific predicates. Upstream rail uses `impactingNodeIds`
+  // (parents that propagate impact to the focused node); downstream rail uses
+  // `impactedNodeIds` (children whose data the focused node's change reaches).
+  const isImpactedNeighbor = (neighborId: string, dir: Direction): boolean => {
     if (!focusInImpact) return false;
-    return impactedNodeIds?.has(neighborId) ?? false;
+    const set = dir === "up" ? impactingNodeIds : impactedNodeIds;
+    return set?.has(neighborId) ?? false;
   };
 
   const upImpactCount = focusInImpact
-    ? parentIds.filter((id) => impactedNodeIds?.has(id)).length
+    ? parentIds.filter((id) => impactingNodeIds?.has(id)).length
     : 0;
   const downImpactCount = focusInImpact
     ? childIds.filter((id) => impactedNodeIds?.has(id)).length
@@ -670,7 +728,12 @@ export function LineageTabContent({
   const renderDirection = (direction: Direction) => {
     const isUp = direction === "up";
     const allDirect = isUp ? parentIds : childIds;
-    const filtered = isUp ? filteredParentIds : filteredChildIds;
+    const baseFiltered = isUp ? filteredParentIds : filteredChildIds;
+    const onlyImpact = isUp ? onlyImpactUp : onlyImpactDown;
+    // Apply the chip's "only show impact" filter on top of the text filter.
+    const filtered = onlyImpact
+      ? baseFiltered.filter((id) => isImpactedNeighbor(id, direction))
+      : baseFiltered;
     const query = isUp ? queryUp : queryDown;
     const setQuery = isUp ? setQueryUp : setQueryDown;
     const visible = isUp ? visibleUp : visibleDown;
@@ -705,7 +768,7 @@ export function LineageTabContent({
               name={getDisplayName(id, nodesById)}
               status={getChangeStatus(nodesById?.[id])}
               direction={direction}
-              impacted={isImpacted(id)}
+              impacted={isImpactedNeighbor(id, direction)}
               onClick={onNavigate ? () => onNavigate(id) : undefined}
             />
           ))
@@ -797,6 +860,11 @@ export function LineageTabContent({
           direction="up"
           directCount={parentIds.length}
           impactCount={upImpactCount}
+          onlyImpact={onlyImpactUp}
+          onToggleOnlyImpact={() => {
+            setOnlyImpactUp((v) => !v);
+            setVisibleUp(INITIAL_PAGE_SIZE);
+          }}
         />
         {renderDirection("up")}
 
@@ -806,6 +874,11 @@ export function LineageTabContent({
           direction="down"
           directCount={childIds.length}
           impactCount={downImpactCount}
+          onlyImpact={onlyImpactDown}
+          onToggleOnlyImpact={() => {
+            setOnlyImpactDown((v) => !v);
+            setVisibleDown(INITIAL_PAGE_SIZE);
+          }}
         />
         {renderDirection("down")}
       </Box>
