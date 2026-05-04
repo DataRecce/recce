@@ -35,22 +35,37 @@ import { useThemeColors } from "../../hooks";
 import { changeStatusColors, cllChangeStatusColors } from "./styles";
 
 // ---------------------------------------------------------------------------
-// Impact-mark visual tokens
+// Impact-mark visual tokens (scoped to this component — no other consumer)
 // ---------------------------------------------------------------------------
 
 // All impact visuals derive from cllChangeStatusColors.impacted, the same
-// color used by the canvas impacted node border / "!" badge. Chip palette
-// mirrors --schema-badge-impacted-* in schema/style.css's .cll-experience
-// block. The active-filter state uses a deeper amber so white text stays
-// legible (yellow + white would fail contrast).
-const IMPACT_ACCENT = cllChangeStatusColors.impacted; // rgb(252 211 77)
-const IMPACT_TINT_LIGHT = "rgb(252 211 77 / 0.18)";
-const IMPACT_TINT_DARK = "rgb(252 211 77 / 0.10)";
-const IMPACT_CHIP_BG_LIGHT = "rgb(252 211 77 / 0.35)";
-const IMPACT_CHIP_BG_DARK = "rgb(180 83 9 / 0.25)";
-const IMPACT_CHIP_FG_LIGHT = "rgb(146 64 14)";
-const IMPACT_CHIP_FG_DARK = "rgb(252 211 77)";
+// color used by the canvas impacted node border / "!" badge. The active
+// chip uses a deeper amber so white text stays legible — yellow + white
+// would fail contrast. Mirrors --schema-badge-impacted-* in
+// schema/style.css's .cll-experience block; keep both in sync.
+const impactTint = {
+  light: "rgb(252 211 77 / 0.18)",
+  dark: "rgb(252 211 77 / 0.10)",
+} as const;
+
+const impactChipBg = {
+  light: "rgb(252 211 77 / 0.35)",
+  dark: "rgb(180 83 9 / 0.25)",
+} as const;
+
+const impactChipFg = {
+  light: "rgb(146 64 14)",
+  dark: "rgb(252 211 77)",
+} as const;
+
 const IMPACT_CHIP_ACTIVE_BG = "rgb(180 83 9)";
+
+/** Text/thin-icon color for impacted accents — needs stronger contrast than
+ *  the canvas amber (`cllChangeStatusColors.impacted`), which works only as a
+ *  filled shape (dot, rail, chip bg). Mirrors the chip foreground palette. */
+function impactedTextColor(isDark: boolean): string {
+  return isDark ? impactChipFg.dark : impactChipFg.light;
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -69,6 +84,7 @@ const PAGE_STEP = 20;
 
 type Direction = "up" | "down";
 type ChangeStatus = "added" | "removed" | "modified" | "unchanged";
+type EffectiveStatus = ChangeStatus | "impacted";
 
 export interface LineageTabContentProps {
   node: LineageGraphNode;
@@ -94,11 +110,25 @@ export interface LineageTabContentProps {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Status helpers
 // ---------------------------------------------------------------------------
 
 function getChangeStatus(node: LineageGraphNode | undefined): ChangeStatus {
   return node?.data.changeStatus ?? "unchanged";
+}
+
+/** Unchanged-but-impacted nodes display as "impacted", matching the canvas. */
+function effectiveStatus(
+  status: ChangeStatus,
+  cllImpacted: boolean | undefined,
+): EffectiveStatus {
+  return status === "unchanged" && cllImpacted ? "impacted" : status;
+}
+
+function colorForEffective(status: EffectiveStatus): string {
+  return status === "impacted"
+    ? cllChangeStatusColors.impacted
+    : changeStatusColors[status];
 }
 
 function getDisplayName(
@@ -121,20 +151,19 @@ function filterIds(
   );
 }
 
+function getChipTitle(
+  interactive: boolean,
+  onlyImpact: boolean,
+  isUp: boolean,
+): string | undefined {
+  if (!interactive) return undefined;
+  if (onlyImpact) return "Show all models";
+  return isUp ? "Show only impacting models" : "Show only impacted models";
+}
+
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
-
-/** Unchanged-but-impacted nodes use the impacted color, matching the canvas. */
-function getNodeStatusColor(
-  status: ChangeStatus,
-  cllImpacted: boolean | undefined,
-): string {
-  if (status === "unchanged" && cllImpacted) {
-    return cllChangeStatusColors.impacted;
-  }
-  return changeStatusColors[status];
-}
 
 function StatusDot({
   status,
@@ -144,18 +173,17 @@ function StatusDot({
   /** When true, color the dot as impacted (matches canvas). */
   cllImpacted?: boolean;
 }) {
-  const effectiveStatus =
-    status === "unchanged" && cllImpacted ? "impacted" : status;
+  const effective = effectiveStatus(status, cllImpacted);
   return (
     <Box
       component="span"
       data-testid="lineage-status-dot"
-      data-status={effectiveStatus}
+      data-status={effective}
       sx={{
         width: "8px",
         height: "8px",
         borderRadius: "2px",
-        backgroundColor: getNodeStatusColor(status, cllImpacted),
+        backgroundColor: colorForEffective(effective),
         flex: "0 0 auto",
       }}
     />
@@ -167,10 +195,10 @@ interface DirectRowProps {
   status: ChangeStatus;
   direction: Direction;
   /** When true, decorate the row with the impact mark (rail + tint + arrow). */
-  impacted?: boolean;
+  decorateAsImpacted?: boolean;
   /** Carries CLL `impacted = true` — drives the dot color, independent of
-   *  `impacted` above (which drives row decoration). */
-  cllImpacted?: boolean;
+   *  `decorateAsImpacted` (which drives row decoration). */
+  dotImpacted?: boolean;
   onClick?: () => void;
 }
 
@@ -178,8 +206,8 @@ function DirectRow({
   name,
   status,
   direction,
-  impacted,
-  cllImpacted,
+  decorateAsImpacted,
+  dotImpacted,
   onClick,
 }: DirectRowProps) {
   const { isDark } = useThemeColors();
@@ -202,15 +230,15 @@ function DirectRow({
         lineHeight: 1.3,
         color: "text.primary",
         minWidth: 0,
-        backgroundColor: impacted
+        backgroundColor: decorateAsImpacted
           ? isDark
-            ? IMPACT_TINT_DARK
-            : IMPACT_TINT_LIGHT
+            ? impactTint.dark
+            : impactTint.light
           : undefined,
         "&:hover": onClick ? { backgroundColor: "action.hover" } : undefined,
       }}
     >
-      {impacted && (
+      {decorateAsImpacted && (
         <Box
           aria-hidden="true"
           sx={{
@@ -219,11 +247,11 @@ function DirectRow({
             top: 0,
             bottom: 0,
             width: "3px",
-            backgroundColor: IMPACT_ACCENT,
+            backgroundColor: cllChangeStatusColors.impacted,
           }}
         />
       )}
-      <StatusDot status={status} cllImpacted={cllImpacted} />
+      <StatusDot status={status} cllImpacted={dotImpacted} />
       <Box
         component="span"
         sx={{
@@ -237,7 +265,7 @@ function DirectRow({
       >
         {name}
       </Box>
-      {impacted && (
+      {decorateAsImpacted && (
         <Tooltip title={tooltip} placement="top" arrow>
           <Box
             component="span"
@@ -249,10 +277,11 @@ function DirectRow({
               justifyContent: "center",
               width: "16px",
               height: "16px",
-              color: IMPACT_ACCENT,
+              color: impactedTextColor(isDark),
               flex: "0 0 auto",
             }}
           >
+            {/* Arrow is direction-agnostic; the tooltip carries the direction. */}
             <MdArrowDownward size={12} />
           </Box>
         </Tooltip>
@@ -260,6 +289,118 @@ function DirectRow({
     </Box>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Impact chip — shown in section headers when impactCount > 0
+// ---------------------------------------------------------------------------
+
+interface ChipPaletteProps {
+  isDark: boolean;
+  active: boolean;
+}
+
+function chipBackground({ isDark, active }: ChipPaletteProps): string {
+  if (active) return IMPACT_CHIP_ACTIVE_BG;
+  return isDark ? impactChipBg.dark : impactChipBg.light;
+}
+
+function chipForeground({ isDark, active }: ChipPaletteProps): string {
+  if (active) return "#fff";
+  return isDark ? impactChipFg.dark : impactChipFg.light;
+}
+
+const CHIP_BASE_SX = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "4px",
+  ml: 0.75,
+  px: "7px",
+  py: "1px",
+  borderRadius: "999px",
+  fontSize: "10px",
+  fontWeight: 600,
+  letterSpacing: "0.02em",
+};
+
+function ChipDot({ color }: { color: string }) {
+  return (
+    <Box
+      component="span"
+      aria-hidden="true"
+      sx={{
+        width: "5px",
+        height: "5px",
+        borderRadius: "50%",
+        backgroundColor: color,
+      }}
+    />
+  );
+}
+
+function ChipBadge({ label, isDark }: { label: string; isDark: boolean }) {
+  const palette = { isDark, active: false };
+  return (
+    <Box
+      component="span"
+      data-testid="lineage-impact-chip"
+      aria-label={label}
+      sx={{
+        ...CHIP_BASE_SX,
+        backgroundColor: chipBackground(palette),
+        color: chipForeground(palette),
+      }}
+    >
+      <ChipDot color={chipForeground(palette)} />
+      {label}
+    </Box>
+  );
+}
+
+function ChipButton({
+  label,
+  title,
+  active,
+  isDark,
+  onClick,
+}: {
+  label: string;
+  title: string;
+  active: boolean;
+  isDark: boolean;
+  onClick: () => void;
+}) {
+  const palette = { isDark, active };
+  return (
+    <Tooltip title={title} placement="top" arrow>
+      <Box
+        component="button"
+        type="button"
+        data-testid="lineage-impact-chip"
+        aria-pressed={active}
+        aria-label={title}
+        onClick={onClick}
+        sx={{
+          ...CHIP_BASE_SX,
+          backgroundColor: chipBackground(palette),
+          color: chipForeground(palette),
+          border: "none",
+          font: "inherit",
+          cursor: "pointer",
+          "&:hover": {
+            filter: active ? "brightness(0.95)" : "brightness(0.97)",
+          },
+        }}
+      >
+        <ChipDot color={chipForeground(palette)} />
+        {label}
+      </Box>
+    </Tooltip>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Section header
+// ---------------------------------------------------------------------------
 
 function SectionHeader({
   direction,
@@ -280,18 +421,10 @@ function SectionHeader({
   const isUp = direction === "up";
   const ArrowIcon = isUp ? MdArrowUpward : MdArrowDownward;
   const { isDark, background } = useThemeColors();
-  const showChip = (impactCount ?? 0) > 0;
-  const chipInteractive = !!onToggleOnlyImpact;
-  const chipLabel = isUp
-    ? `${impactCount} impacting`
-    : `${impactCount} impacted`;
-  const chipTitle = chipInteractive
-    ? onlyImpact
-      ? "Show all models"
-      : isUp
-        ? "Show only impacting models"
-        : "Show only impacted models"
-    : undefined;
+  const count = impactCount ?? 0;
+  const showChip = count > 0;
+  const label = isUp ? `${count} impacting` : `${count} impacted`;
+
   return (
     <Stack
       direction="row"
@@ -319,66 +452,18 @@ function SectionHeader({
       <Box component="span" sx={{ color: "text.disabled", fontWeight: 500 }}>
         · {directCount} direct
       </Box>
-      {showChip && (
-        <Tooltip title={chipTitle ?? ""} placement="top" arrow>
-          <Box
-            component={chipInteractive ? "button" : "span"}
-            type={chipInteractive ? "button" : undefined}
-            data-testid="lineage-impact-chip"
-            aria-pressed={chipInteractive ? onlyImpact : undefined}
-            aria-label={chipTitle ?? chipLabel}
+      {showChip &&
+        (onToggleOnlyImpact ? (
+          <ChipButton
+            label={label}
+            title={getChipTitle(true, !!onlyImpact, isUp) ?? label}
+            active={!!onlyImpact}
+            isDark={isDark}
             onClick={onToggleOnlyImpact}
-            sx={{
-              ml: 0.75,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-              px: "7px",
-              py: "1px",
-              borderRadius: "999px",
-              backgroundColor: onlyImpact
-                ? IMPACT_CHIP_ACTIVE_BG
-                : isDark
-                  ? IMPACT_CHIP_BG_DARK
-                  : IMPACT_CHIP_BG_LIGHT,
-              color: onlyImpact
-                ? "#fff"
-                : isDark
-                  ? IMPACT_CHIP_FG_DARK
-                  : IMPACT_CHIP_FG_LIGHT,
-              fontSize: "10px",
-              fontWeight: 600,
-              letterSpacing: "0.02em",
-              border: "none",
-              font: "inherit",
-              cursor: chipInteractive ? "pointer" : "default",
-              "&:hover": chipInteractive
-                ? {
-                    filter: onlyImpact
-                      ? "brightness(0.95)"
-                      : "brightness(0.97)",
-                  }
-                : undefined,
-            }}
-          >
-            <Box
-              component="span"
-              aria-hidden="true"
-              sx={{
-                width: "5px",
-                height: "5px",
-                borderRadius: "50%",
-                backgroundColor: onlyImpact
-                  ? "#fff"
-                  : isDark
-                    ? IMPACT_CHIP_FG_DARK
-                    : IMPACT_CHIP_FG_LIGHT,
-              }}
-            />
-            {chipLabel}
-          </Box>
-        </Tooltip>
-      )}
+          />
+        ) : (
+          <ChipBadge label={label} isDark={isDark} />
+        ))}
     </Stack>
   );
 }
@@ -497,10 +582,15 @@ function FocusCard({
   cllImpacted?: boolean;
 }) {
   const status = getChangeStatus(node);
+  const effective = effectiveStatus(status, cllImpacted);
   const { isDark, background } = useThemeColors();
-  const accentColor = getNodeStatusColor(status, cllImpacted);
-  const statusLabel =
-    status === "unchanged" && cllImpacted ? "impacted" : status;
+  const accentColor = colorForEffective(effective);
+  // Pill text needs more contrast than the canvas amber on a paper bg —
+  // use the deeper "text" amber when the status is impacted.
+  const pillTextColor =
+    effective === "impacted" ? impactedTextColor(isDark) : accentColor;
+  const pillBorderColor =
+    effective === "impacted" ? impactedTextColor(isDark) : "divider";
   return (
     <Stack
       direction="row"
@@ -561,15 +651,15 @@ function FocusCard({
           px: 0.875,
           py: "2px",
           borderRadius: "3px",
-          color: accentColor,
+          color: pillTextColor,
           backgroundColor: "background.paper",
           border: "1px solid",
-          borderColor: "divider",
+          borderColor: pillBorderColor,
           textTransform: "capitalize",
           flex: "0 0 auto",
         }}
       >
-        {statusLabel}
+        {effective}
       </Box>
     </Stack>
   );
@@ -793,8 +883,8 @@ export function LineageTabContent({
               name={getDisplayName(id, nodesById)}
               status={getChangeStatus(nodesById?.[id])}
               direction={direction}
-              impacted={isImpactedNeighbor(id, direction)}
-              cllImpacted={impactedNodeIds?.has(id) ?? false}
+              decorateAsImpacted={isImpactedNeighbor(id, direction)}
+              dotImpacted={impactedNodeIds?.has(id) ?? false}
               onClick={onNavigate ? () => onNavigate(id) : undefined}
             />
           ))
