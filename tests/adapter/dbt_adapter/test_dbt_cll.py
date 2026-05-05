@@ -399,13 +399,17 @@ def test_cll_with_compiled_code_alias_collision_falls_back(dbt_test_helper):
     )
 
 
-def test_cll_with_compiled_code_unknown_parent_does_not_500(dbt_test_helper):
+def test_cll_with_compiled_code_unknown_parent_does_not_500(dbt_test_helper, caplog):
     """Regression for #1354: compiled SQL referencing a table not in depends_on.nodes
     and not matching any model/source in the project must not raise KeyError.
 
     Calls get_cll_cached directly to bypass build_full_cll_map's blanket
     exception swallow — that's the path that produced the user's 500.
+    Also asserts a single deduped warning is emitted naming the unresolved
+    parent, so the silent-skip path stays observable.
     """
+    import logging
+
     dbt_test_helper.create_model(
         "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
     )
@@ -427,13 +431,23 @@ def test_cll_with_compiled_code_unknown_parent_does_not_500(dbt_test_helper):
     )
 
     # Must not raise. Known parent edge survives; ghost_table is dropped.
-    cll_data = adapter.get_cll_cached("model.model2")
+    with caplog.at_level(logging.WARNING, logger="uvicorn"):
+        cll_data = adapter.get_cll_cached("model.model2")
     assert cll_data is not None
     column_id = build_column_key("model.model2", "c")
     parents = cll_data.parent_map.get(column_id) or set()
     assert build_column_key("model.model1", "c") in parents
     # Ghost table must not appear as a parent in any form
     assert not any("ghost_table" in p for p in parents)
+
+    # Exactly one warning per node, naming the unresolved parent.
+    cll_warnings = [
+        r for r in caplog.records if r.levelno == logging.WARNING and "unresolved parents" in r.getMessage()
+    ]
+    assert len(cll_warnings) == 1, f"expected single deduped warning, got {len(cll_warnings)}"
+    msg = cll_warnings[0].getMessage()
+    assert "model.model2" in msg
+    assert "ghost_table" in msg
 
 
 def test_cll_with_compiled_code_unknown_parent_falls_back_to_project_lookup(dbt_test_helper):
@@ -562,8 +576,13 @@ def test_resolve_compiled_table(dbt_test_helper):
     # Falls back to source identifier
     assert adapter._resolve_compiled_table({}, manifest, "tbl") == "source.src.tbl"
 
-    # Unknown table → None (no exception)
-    assert adapter._resolve_compiled_table({}, manifest, "ghost_table") is None
+    # Unknown table → None, and the miss is memoized so repeats short-circuit
+    # rather than rescanning the manifest.
+    table_id_map = {}
+    assert adapter._resolve_compiled_table(table_id_map, manifest, "ghost_table") is None
+    assert "ghost_table" in table_id_map and table_id_map["ghost_table"] is None
+    # Cached miss is honored on subsequent calls (still returns None)
+    assert adapter._resolve_compiled_table(table_id_map, manifest, "ghost_table") is None
 
 
 def test_resolve_compiled_table_skips_non_relation_resource_types():
@@ -621,8 +640,11 @@ def test_resolve_compiled_table_returns_none_on_ambiguous_alias(dbt_test_helper)
 
     manifest = as_manifest(adapter.get_manifest(base=False))
 
-    # Two nodes share alias "shared_alias" — ambiguous, must not resolve.
-    assert adapter._resolve_compiled_table({}, manifest, "shared_alias") is None
+    # Two nodes share alias "shared_alias" — ambiguous, must not resolve,
+    # and the ambiguity must be cached as None to avoid rescanning.
+    table_id_map = {}
+    assert adapter._resolve_compiled_table(table_id_map, manifest, "shared_alias") is None
+    assert "shared_alias" in table_id_map and table_id_map["shared_alias"] is None
 
 
 def test_seed(dbt_test_helper, disable_cll_cache):
