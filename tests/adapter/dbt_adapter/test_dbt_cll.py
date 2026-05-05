@@ -647,6 +647,27 @@ def test_resolve_compiled_table_returns_none_on_ambiguous_alias(dbt_test_helper)
     assert "shared_alias" in table_id_map and table_id_map["shared_alias"] is None
 
 
+def test_resolve_compiled_table_ambiguous_source_identifier():
+    """Two sources sharing an identifier (e.g. same table name in different
+    source schemas) must also bail to None instead of arbitrarily picking one.
+    Covers the symmetric ambiguity branch in the sources scan.
+    """
+    from types import SimpleNamespace
+
+    manifest = SimpleNamespace(
+        nodes={},
+        sources={
+            "source.s1.dup": SimpleNamespace(identifier="dup", name="dup"),
+            "source.s2.dup": SimpleNamespace(identifier="dup", name="dup"),
+        },
+    )
+
+    table_id_map: dict = {}
+    assert DbtAdapter._resolve_compiled_table(table_id_map, manifest, "dup") is None
+    # Negative result must be cached so repeats don't rescan
+    assert "dup" in table_id_map and table_id_map["dup"] is None
+
+
 def test_seed(dbt_test_helper, disable_cll_cache):
     csv_data_curr = """
     customer_id,name,age
