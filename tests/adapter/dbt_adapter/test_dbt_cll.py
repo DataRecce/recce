@@ -554,14 +554,75 @@ def test_resolve_compiled_table(dbt_test_helper):
     # Case-insensitive match against the map
     assert adapter._resolve_compiled_table(table_id_map, manifest, "MODEL1") == "model.model1"
 
-    # Falls back to project-wide alias scan
-    assert adapter._resolve_compiled_table({}, manifest, "vw_intermediate") == "model.intermediate"
+    # Falls back to project-wide alias scan, and memoizes the result
+    table_id_map = {}
+    assert adapter._resolve_compiled_table(table_id_map, manifest, "vw_intermediate") == "model.intermediate"
+    assert table_id_map.get("vw_intermediate") == "model.intermediate"
 
     # Falls back to source identifier
     assert adapter._resolve_compiled_table({}, manifest, "tbl") == "source.src.tbl"
 
     # Unknown table → None (no exception)
     assert adapter._resolve_compiled_table({}, manifest, "ghost_table") is None
+
+
+def test_resolve_compiled_table_skips_non_relation_resource_types():
+    """Project-wide fallback must not match non-relation manifest nodes (e.g.
+    tests, analyses) — only model/seed/snapshot nodes produce database
+    relations. We use a lightweight stub manifest because dbt's ModelNode
+    rejects resource_type values outside its Literal type.
+    """
+    from types import SimpleNamespace
+
+    manifest = SimpleNamespace(
+        nodes={
+            "model.real": SimpleNamespace(resource_type="model", alias=None, name="real"),
+            # Test/analysis nodes whose names alias-collide with a real reference
+            "test.ghost_table": SimpleNamespace(resource_type="test", alias=None, name="ghost_table"),
+            "analysis.also_ghost": SimpleNamespace(resource_type="analysis", alias=None, name="also_ghost"),
+        },
+        sources={},
+    )
+
+    # Model resolves
+    assert DbtAdapter._resolve_compiled_table({}, manifest, "real") == "model.real"
+    # Test and analysis nodes are filtered out
+    assert DbtAdapter._resolve_compiled_table({}, manifest, "ghost_table") is None
+    assert DbtAdapter._resolve_compiled_table({}, manifest, "also_ghost") is None
+
+
+def test_resolve_compiled_table_returns_none_on_ambiguous_alias(dbt_test_helper):
+    """Two project models sharing the same alias must NOT silently resolve to
+    one of them — that would produce incorrect lineage. Return None so the
+    caller skips the dependency, mirroring the has_alias_collision safeguard
+    on the depends_on-derived map.
+    """
+
+    def patch_alias(node):
+        node["alias"] = "shared_alias"
+
+    dbt_test_helper.create_model(
+        "stg_orders",
+        unique_id="model.pkg1.stg_orders",
+        curr_sql="select 1 as id",
+        curr_columns={"id": "int"},
+        patch_func=patch_alias,
+    )
+    dbt_test_helper.create_model(
+        "raw_orders",
+        unique_id="model.pkg2.raw_orders",
+        curr_sql="select 1 as id",
+        curr_columns={"id": "int"},
+        patch_func=patch_alias,
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+    from recce.adapter.dbt_adapter import as_manifest
+
+    manifest = as_manifest(adapter.get_manifest(base=False))
+
+    # Two nodes share alias "shared_alias" — ambiguous, must not resolve.
+    assert adapter._resolve_compiled_table({}, manifest, "shared_alias") is None
 
 
 def test_seed(dbt_test_helper, disable_cll_cache):
