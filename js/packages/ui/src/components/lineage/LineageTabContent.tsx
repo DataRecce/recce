@@ -32,39 +32,26 @@ import {
 } from "react-icons/md";
 import type { LineageGraphNode } from "../../contexts/lineage/types";
 import { useThemeColors } from "../../hooks";
-import { changeStatusColors, cllChangeStatusColors } from "./styles";
+import {
+  changeStatusColors,
+  cllChangeStatusColors,
+  cllImpactedAccent,
+  cllImpactedBadgeBg,
+  cllImpactedBadgeFg,
+} from "./styles";
 
-// ---------------------------------------------------------------------------
-// Impact-mark visual tokens (scoped to this component — no other consumer)
-// ---------------------------------------------------------------------------
-
-// All impact visuals derive from cllChangeStatusColors.impacted, the same
-// color used by the canvas impacted node border / "!" badge. The active
-// chip uses a deeper amber so white text stays legible — yellow + white
-// would fail contrast. Mirrors --schema-badge-impacted-* in
-// schema/style.css's .cll-experience block; keep both in sync.
+// Translucent overlay (vs. the solid `cllChangeStatusBackgrounds*.impacted`
+// canvas fill) so the row's `background.paper` shows through.
 const impactTint = {
   light: "rgb(252 211 77 / 0.18)",
   dark: "rgb(252 211 77 / 0.10)",
 } as const;
 
-const impactChipBg = {
-  light: "rgb(252 211 77 / 0.35)",
-  dark: "rgb(180 83 9 / 0.25)",
-} as const;
-
-const impactChipFg = {
-  light: "rgb(146 64 14)",
-  dark: "rgb(252 211 77)",
-} as const;
-
-const IMPACT_CHIP_ACTIVE_BG = "rgb(180 83 9)";
-
 /** Text/thin-icon color for impacted accents — needs stronger contrast than
  *  the canvas amber (`cllChangeStatusColors.impacted`), which works only as a
  *  filled shape (dot, rail, chip bg). Mirrors the chip foreground palette. */
 function impactedTextColor(isDark: boolean): string {
-  return isDark ? impactChipFg.dark : impactChipFg.light;
+  return isDark ? cllImpactedBadgeFg.dark : cllImpactedBadgeFg.light;
 }
 
 // ---------------------------------------------------------------------------
@@ -295,13 +282,14 @@ interface ChipPaletteProps {
 }
 
 function chipBackground({ isDark, active }: ChipPaletteProps): string {
-  if (active) return IMPACT_CHIP_ACTIVE_BG;
-  return isDark ? impactChipBg.dark : impactChipBg.light;
+  // Active: deeper amber so white text passes contrast (yellow + white fails).
+  if (active) return cllImpactedAccent.dark;
+  return isDark ? cllImpactedBadgeBg.dark : cllImpactedBadgeBg.light;
 }
 
 function chipForeground({ isDark, active }: ChipPaletteProps): string {
   if (active) return "#fff";
-  return isDark ? impactChipFg.dark : impactChipFg.light;
+  return isDark ? cllImpactedBadgeFg.dark : cllImpactedBadgeFg.light;
 }
 
 const CHIP_BASE_SX = {
