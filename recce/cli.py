@@ -134,8 +134,15 @@ def add_options(options):
 
 
 dbt_related_options = [
-    click.option("--target", "-t", help="Which target to load for the given profile.", type=click.STRING),
-    click.option("--profile", help="Which existing profile to load.", type=click.STRING),
+    click.option(
+        "--target",
+        "-t",
+        help="Which target to load for the given profile.",
+        type=click.STRING,
+    ),
+    click.option(
+        "--profile", help="Which existing profile to load.", type=click.STRING
+    ),
     click.option(
         "--project-dir",
         help="Which directory to look in for the dbt_project.yml file.",
@@ -152,8 +159,18 @@ dbt_related_options = [
 
 sqlmesh_related_options = [
     click.option("--sqlmesh", is_flag=True, help="Use SQLMesh ", hidden=True),
-    click.option("--sqlmesh-envs", is_flag=False, help="SQLMesh envs to compare. SOURCE:TARGET", hidden=True),
-    click.option("--sqlmesh-config", is_flag=False, help="SQLMesh config name to use", hidden=True),
+    click.option(
+        "--sqlmesh-envs",
+        is_flag=False,
+        help="SQLMesh envs to compare. SOURCE:TARGET",
+        hidden=True,
+    ),
+    click.option(
+        "--sqlmesh-config",
+        is_flag=False,
+        help="SQLMesh config name to use",
+        hidden=True,
+    ),
 ]
 
 recce_options = [
@@ -165,7 +182,11 @@ recce_options = [
         show_default=True,
     ),
     click.option(
-        "--error-log", help="Path to the error log file.", type=click.Path(), default=RECCE_ERROR_LOG_FILE, hidden=True
+        "--error-log",
+        help="Path to the error log file.",
+        type=click.Path(),
+        default=RECCE_ERROR_LOG_FILE,
+        hidden=True,
     ),
     click.option("--debug", is_flag=True, help="Enable debug mode.", hidden=True),
 ]
@@ -173,7 +194,10 @@ recce_options = [
 recce_cloud_options = [
     click.option("--cloud", is_flag=True, help="Fetch the state file from cloud."),
     click.option(
-        "--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN"
+        "--cloud-token",
+        help="The GitHub token used by Recce Cloud.",
+        type=click.STRING,
+        envvar="GITHUB_TOKEN",
     ),
     click.option(
         "--state-file-host",
@@ -234,7 +258,10 @@ recce_hidden_options = [
         "--session-id",
         help="The session ID triggers this instance.",
         type=click.STRING,
-        envvar=["RECCE_SESSION_ID", "RECCE_SNAPSHOT_ID"],  # Backward compatibility with RECCE_SNAPSHOT_ID
+        envvar=[
+            "RECCE_SESSION_ID",
+            "RECCE_SNAPSHOT_ID",
+        ],  # Backward compatibility with RECCE_SNAPSHOT_ID
         hidden=True,
     ),
 ]
@@ -244,7 +271,9 @@ def _execute_sql(context, sql_template, base=False):
     try:
         import pandas as pd
     except ImportError:
-        print("'pandas' package not found. You can install it using the command: 'pip install pandas'.")
+        print(
+            "'pandas' package not found. You can install it using the command: 'pip install pandas'."
+        )
         exit(1)
 
     from recce.adapter.dbt_adapter import DbtAdapter
@@ -254,7 +283,9 @@ def _execute_sql(context, sql_template, base=False):
         sql = dbt_adapter.generate_sql(sql_template, base)
         response, result = dbt_adapter.execute(sql, fetch=True, auto_begin=True)
         table = result
-        df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
+        df = pd.DataFrame(
+            [row.values() for row in table.rows], columns=table.column_names
+        )
         return df
 
 
@@ -271,7 +302,10 @@ def cli(ctx, **kwargs):
         error_console.print(
             f"[[yellow]Update Available[/yellow]] A new version of Recce {__latest_version__} is available.",
         )
-        error_console.print("Please update using the command: 'pip install --upgrade recce'.", end="\n\n")
+        error_console.print(
+            "Please update using the command: 'pip install --upgrade recce'.",
+            end="\n\n",
+        )
 
 
 @cli.command(cls=TrackCommand)
@@ -356,10 +390,14 @@ def init(cache_db, **kwargs):
 
         cloud_token = kwargs.get("cloud_token") or kwargs.get("api_token")
         if not cloud_token:
-            console.print("[[red]Error[/red]] --cloud requires --cloud-token or --api-token (or GITHUB_TOKEN env var).")
+            console.print(
+                "[[red]Error[/red]] --cloud requires --cloud-token or --api-token (or GITHUB_TOKEN env var)."
+            )
             exit(1)
         if not session_id:
-            console.print("[[red]Error[/red]] --cloud requires --session-id (or RECCE_SESSION_ID env var).")
+            console.print(
+                "[[red]Error[/red]] --cloud requires --session-id (or RECCE_SESSION_ID env var)."
+            )
             exit(1)
 
         cloud_client = RecceCloud(token=cloud_token)
@@ -377,30 +415,41 @@ def init(cache_db, **kwargs):
             console.print(f"[[red]Error[/red]] Failed to get session: {e}")
             exit(1)
         if session_info.get("status") == "error":
-            console.print(f"[[red]Error[/red]] Failed to get session: {session_info.get('message', 'Access denied')}")
+            console.print(
+                f"[[red]Error[/red]] Failed to get session: {session_info.get('message', 'Access denied')}"
+            )
             exit(1)
         cloud_org_id = session_info.get("org_id")
         cloud_project_id = session_info.get("project_id")
         if not cloud_org_id or not cloud_project_id:
-            console.print(f"[[red]Error[/red]] Session {session_id} missing org_id or project_id.")
+            console.print(
+                f"[[red]Error[/red]] Session {session_id} missing org_id or project_id."
+            )
             exit(1)
 
         # Download artifacts to local target directories
         console.print("Downloading artifacts from Cloud...")
         try:
-            download_urls = cloud_client.get_download_urls_by_session_id(cloud_org_id, cloud_project_id, session_id)
+            download_urls = cloud_client.get_download_urls_by_session_id(
+                cloud_org_id, cloud_project_id, session_id
+            )
         except RecceCloudException as e:
             console.print(f"[[red]Error[/red]] Failed to get download URLs: {e}")
             exit(1)
 
         project_dir_path = Path(kwargs.get("project_dir") or "./")
         target_path = project_dir_path / kwargs.get("target_path", "target")
-        target_base_path = project_dir_path / kwargs.get("target_base_path", "target-base")
+        target_base_path = project_dir_path / kwargs.get(
+            "target_base_path", "target-base"
+        )
         target_path.mkdir(parents=True, exist_ok=True)
         target_base_path.mkdir(parents=True, exist_ok=True)
 
         # Download current session artifacts
-        for artifact_key, filename in [("manifest_url", "manifest.json"), ("catalog_url", "catalog.json")]:
+        for artifact_key, filename in [
+            ("manifest_url", "manifest.json"),
+            ("catalog_url", "catalog.json"),
+        ]:
             url = download_urls.get(artifact_key)
             if url:
                 try:
@@ -413,7 +462,9 @@ def init(cache_db, **kwargs):
                             f"  [[yellow]Warning[/yellow]] Failed to download {filename}: HTTP {resp.status_code}"
                         )
                 except requests.RequestException as e:
-                    console.print(f"  [[yellow]Warning[/yellow]] Failed to download {filename}: {e}")
+                    console.print(
+                        f"  [[yellow]Warning[/yellow]] Failed to download {filename}: {e}"
+                    )
 
         # Download base session artifacts
         try:
@@ -421,22 +472,31 @@ def init(cache_db, **kwargs):
                 cloud_org_id, cloud_project_id, session_id=session_id
             )
         except RecceCloudException as e:
-            console.print(f"  [[yellow]Warning[/yellow]] Failed to get base session URLs: {e}")
+            console.print(
+                f"  [[yellow]Warning[/yellow]] Failed to get base session URLs: {e}"
+            )
             base_download_urls = {}
-        for artifact_key, filename in [("manifest_url", "manifest.json"), ("catalog_url", "catalog.json")]:
+        for artifact_key, filename in [
+            ("manifest_url", "manifest.json"),
+            ("catalog_url", "catalog.json"),
+        ]:
             url = base_download_urls.get(artifact_key)
             if url:
                 try:
                     resp = requests.get(url, timeout=_METADATA_TIMEOUT)
                     if resp.status_code == 200:
                         (target_base_path / filename).write_bytes(resp.content)
-                        console.print(f"  Downloaded base {filename} to {target_base_path}")
+                        console.print(
+                            f"  Downloaded base {filename} to {target_base_path}"
+                        )
                     else:
                         console.print(
                             f"  [[yellow]Warning[/yellow]] Failed to download base {filename}: HTTP {resp.status_code}"
                         )
                 except requests.RequestException as e:
-                    console.print(f"  [[yellow]Warning[/yellow]] Failed to download base {filename}: {e}")
+                    console.print(
+                        f"  [[yellow]Warning[/yellow]] Failed to download base {filename}: {e}"
+                    )
 
         # Download existing CLL cache for warm start.
         # Try current session first, then fall back to production (base) session.
@@ -451,7 +511,9 @@ def init(cache_db, **kwargs):
             if resp.status_code != 200:
                 return 0
             total = 0
-            with tempfile.NamedTemporaryFile(dir=dest.parent, delete=False, suffix=".tmp") as tmp:
+            with tempfile.NamedTemporaryFile(
+                dir=dest.parent, delete=False, suffix=".tmp"
+            ) as tmp:
                 tmp_path = Path(tmp.name)
                 try:
                     for chunk in resp.iter_content(chunk_size=8192):
@@ -473,10 +535,14 @@ def init(cache_db, **kwargs):
             try:
                 nbytes = _stream_download_to_file(cll_cache_url, Path(cache_db))
                 if nbytes > 0:
-                    console.print(f"  Downloaded CLL cache from session ({nbytes / 1024 / 1024:.1f} MB)")
+                    console.print(
+                        f"  Downloaded CLL cache from session ({nbytes / 1024 / 1024:.1f} MB)"
+                    )
                     cache_downloaded = True
             except requests.RequestException as e:
-                console.print(f"  [[yellow]Warning[/yellow]] Failed to download CLL cache: {e}")
+                console.print(
+                    f"  [[yellow]Warning[/yellow]] Failed to download CLL cache: {e}"
+                )
 
         if not cache_downloaded:
             # Fall back to production (base) session cache
@@ -485,13 +551,19 @@ def init(cache_db, **kwargs):
                 try:
                     nbytes = _stream_download_to_file(base_cache_url, Path(cache_db))
                     if nbytes > 0:
-                        console.print(f"  Downloaded CLL cache from base session ({nbytes / 1024 / 1024:.1f} MB)")
+                        console.print(
+                            f"  Downloaded CLL cache from base session ({nbytes / 1024 / 1024:.1f} MB)"
+                        )
                         cache_downloaded = True
                 except requests.RequestException as e:
-                    console.print(f"  [[yellow]Warning[/yellow]] Failed to download base CLL cache: {e}")
+                    console.print(
+                        f"  [[yellow]Warning[/yellow]] Failed to download base CLL cache: {e}"
+                    )
 
         if not cache_downloaded:
-            console.print("  [dim]No existing CLL cache found — will compute from scratch[/dim]")
+            console.print(
+                "  [dim]No existing CLL cache found — will compute from scratch[/dim]"
+            )
 
     if cache_db is None:
         cache_db = _DEFAULT_DB_PATH
@@ -508,7 +580,9 @@ def init(cache_db, **kwargs):
     if not is_cloud:
         project_dir_path = Path(kwargs.get("project_dir") or "./")
         target_path = project_dir_path / kwargs.get("target_path", "target")
-        target_base_path = project_dir_path / kwargs.get("target_base_path", "target-base")
+        target_base_path = project_dir_path / kwargs.get(
+            "target_base_path", "target-base"
+        )
 
     has_target = (target_path / "manifest.json").is_file()
     has_base = (target_base_path / "manifest.json").is_file()
@@ -525,10 +599,14 @@ def init(cache_db, **kwargs):
     # If only one env exists, use it for both (so load_context doesn't fail)
     context_kwargs = {**kwargs}
     if has_target and not has_base:
-        console.print("[dim]Only target/ found — building cache for current environment only.[/dim]")
+        console.print(
+            "[dim]Only target/ found — building cache for current environment only.[/dim]"
+        )
         context_kwargs["target_base_path"] = kwargs.get("target_path", "target")
     elif has_base and not has_target:
-        console.print("[dim]Only target-base/ found — building cache for base environment only.[/dim]")
+        console.print(
+            "[dim]Only target-base/ found — building cache for base environment only.[/dim]"
+        )
         context_kwargs["target_path"] = kwargs.get("target_base_path", "target-base")
 
     try:
@@ -559,7 +637,8 @@ def init(cache_db, **kwargs):
         curr_ids = [
             nid
             for nid in dbt_adapter.curr_manifest.nodes
-            if dbt_adapter.curr_manifest.nodes[nid].resource_type in ("model", "snapshot")
+            if dbt_adapter.curr_manifest.nodes[nid].resource_type
+            in ("model", "snapshot")
         ]
         envs.append(("current", curr_ids, False))
 
@@ -567,18 +646,26 @@ def init(cache_db, **kwargs):
         base_ids = [
             nid
             for nid in dbt_adapter.base_manifest.nodes
-            if dbt_adapter.base_manifest.nodes[nid].resource_type in ("model", "snapshot")
+            if dbt_adapter.base_manifest.nodes[nid].resource_type
+            in ("model", "snapshot")
         ]
         envs.append(("base", base_ids, True))
 
     with Progress(console=console, transient=True) as progress:
         for env_name, node_ids, is_base in envs:
-            console.print(f"\n[bold]{env_name}[/bold] environment: {len(node_ids)} models")
+            console.print(
+                f"\n[bold]{env_name}[/bold] environment: {len(node_ids)} models"
+            )
             t_start = time.perf_counter()
 
-            manifest = dbt_adapter.base_manifest if is_base else dbt_adapter.curr_manifest
+            manifest = (
+                dbt_adapter.base_manifest if is_base else dbt_adapter.curr_manifest
+            )
             catalog = dbt_adapter.base_catalog if is_base else dbt_adapter.curr_catalog
-            adapter_type = getattr(manifest.metadata, "adapter_type", None) or dbt_adapter.adapter.type()
+            adapter_type = (
+                getattr(manifest.metadata, "adapter_type", None)
+                or dbt_adapter.adapter.type()
+            )
 
             success = 0
             fail = 0
@@ -598,8 +685,12 @@ def init(cache_db, **kwargs):
                         col_names = list(catalog.nodes[nid].columns.keys())
 
                 checksum = DbtAdapter._get_node_checksum(manifest, nid)
-                parent_checksums = [DbtAdapter._get_node_checksum(manifest, pid) for pid in p_list]
-                content_key = DbtAdapter._make_node_content_key(checksum, parent_checksums, col_names, adapter_type)
+                parent_checksums = [
+                    DbtAdapter._get_node_checksum(manifest, pid) for pid in p_list
+                ]
+                content_key = DbtAdapter._make_node_content_key(
+                    checksum, parent_checksums, col_names, adapter_type
+                )
                 cached_json = cache.get_node(nid, content_key)
                 if cached_json:
                     cache_hits += 1
@@ -613,13 +704,17 @@ def init(cache_db, **kwargs):
                         fail += 1
                         progress.advance(task)
                         continue
-                    batch_to_store.append((nid, content_key, DbtAdapter._serialize_cll_data(cll_data)))
+                    batch_to_store.append(
+                        (nid, content_key, DbtAdapter._serialize_cll_data(cll_data))
+                    )
                     success += 1
                 except Exception as e:
                     fail += 1
                     if fail <= 3:
                         console.print(f"  [dim red]  skip: {nid}: {e}[/dim red]")
-                    logger.debug("[recce init] CLL computation failed for %s: %s", nid, e)
+                    logger.debug(
+                        "[recce init] CLL computation failed for %s: %s", nid, e
+                    )
                 progress.advance(task)
 
             if batch_to_store:
@@ -645,7 +740,9 @@ def init(cache_db, **kwargs):
 
             dbt_adapter.get_cll_cached.cache_clear()
             if fail > 3:
-                console.print(f"  [dim]... and {fail - 3} more skipped (see logs for details)[/dim]")
+                console.print(
+                    f"  [dim]... and {fail - 3} more skipped (see logs for details)[/dim]"
+                )
 
     # Build and save the full CLL map as JSON.
     # The per-node SQLite cache is warm from the loop above, so this is fast.
@@ -676,7 +773,9 @@ def init(cache_db, **kwargs):
         console.print(f"  [[yellow]Warning[/yellow]] Failed to build CLL map: {e}")
 
     stats = cache.stats
-    console.print(f"\nCache saved to [bold]{cache_db}[/bold] ({stats['entries']} entries)")
+    console.print(
+        f"\nCache saved to [bold]{cache_db}[/bold] ({stats['entries']} entries)"
+    )
 
     # In cloud mode, emit per_node.db — a pure-artifact SQLite that Cloud
     # streams to serve lineage without proxying to an ephemeral Recce instance.
@@ -708,7 +807,9 @@ def init(cache_db, **kwargs):
                 )
             except Exception as e:
                 logger.warning("[recce init] Failed to emit metadata artifacts: %s", e)
-                console.print(f"  [[yellow]Warning[/yellow]] Failed to emit metadata artifacts: {e}")
+                console.print(
+                    f"  [[yellow]Warning[/yellow]] Failed to emit metadata artifacts: {e}"
+                )
                 info_path = None
                 lineage_diff_path = None
 
@@ -717,10 +818,14 @@ def init(cache_db, **kwargs):
                 upload_failures: list[str] = []
                 upload_urls: Optional[dict] = None
                 try:
-                    upload_urls = cloud_client.get_upload_urls_by_session_id(cloud_org_id, cloud_project_id, session_id)
+                    upload_urls = cloud_client.get_upload_urls_by_session_id(
+                        cloud_org_id, cloud_project_id, session_id
+                    )
                 except Exception as e:
                     logger.warning("[recce init] Cloud upload failed: %s", e)
-                    console.print(f"  [[yellow]Warning[/yellow]] Cloud upload failed: {e}")
+                    console.print(
+                        f"  [[yellow]Warning[/yellow]] Cloud upload failed: {e}"
+                    )
 
                 if upload_urls is not None:
                     # Emit per_node.db only when Cloud declares support for it.
@@ -772,21 +877,35 @@ def init(cache_db, **kwargs):
                                 def _to_dict(artifact):
                                     return (
                                         artifact.to_dict()
-                                        if (artifact is not None and hasattr(artifact, "to_dict"))
+                                        if (
+                                            artifact is not None
+                                            and hasattr(artifact, "to_dict")
+                                        )
                                         else artifact
                                     )
 
-                                for env_name, manifest, catalog, cross_catalog in envs_to_emit:
+                                for (
+                                    env_name,
+                                    manifest,
+                                    catalog,
+                                    cross_catalog,
+                                ) in envs_to_emit:
                                     if manifest is None:
                                         continue
-                                    manifest_dict = manifest.to_dict() if hasattr(manifest, "to_dict") else manifest
+                                    manifest_dict = (
+                                        manifest.to_dict()
+                                        if hasattr(manifest, "to_dict")
+                                        else manifest
+                                    )
                                     catalog_dict = _to_dict(catalog)
                                     cross_catalog_dict = _to_dict(cross_catalog)
-                                    node_rows, column_rows, edge_rows, test_rows = extract_rows_from_artifacts(
-                                        manifest_dict,
-                                        catalog_dict,
-                                        env_name,
-                                        cross_env_catalog=cross_catalog_dict,
+                                    node_rows, column_rows, edge_rows, test_rows = (
+                                        extract_rows_from_artifacts(
+                                            manifest_dict,
+                                            catalog_dict,
+                                            env_name,
+                                            cross_env_catalog=cross_catalog_dict,
+                                        )
                                     )
                                     writer.write_nodes(node_rows)
                                     writer.write_columns(column_rows)
@@ -794,10 +913,17 @@ def init(cache_db, **kwargs):
                                     writer.write_tests(test_rows)
                             pn_elapsed = time.perf_counter() - t_pn_start
                             pn_size_mb = per_node_db_path.stat().st_size / 1024 / 1024
-                            console.print(f"  per_node.db emitted " f"({pn_size_mb:.1f} MB, {pn_elapsed:.1f}s)")
+                            console.print(
+                                f"  per_node.db emitted "
+                                f"({pn_size_mb:.1f} MB, {pn_elapsed:.1f}s)"
+                            )
                         except Exception as e:
-                            logger.warning("[recce init] Failed to emit per_node.db: %s", e)
-                            console.print(f"  [[yellow]Warning[/yellow]] Failed to emit per_node.db: {e}")
+                            logger.warning(
+                                "[recce init] Failed to emit per_node.db: %s", e
+                            )
+                            console.print(
+                                f"  [[yellow]Warning[/yellow]] Failed to emit per_node.db: {e}"
+                            )
                             per_node_db_path = None
                     else:
                         console.print(
@@ -828,7 +954,9 @@ def init(cache_db, **kwargs):
                                 )
                         except requests.RequestException as e:
                             upload_failures.append("cll_map.json")
-                            console.print(f"  [[yellow]Warning[/yellow]] Failed to upload cll_map.json: {e}")
+                            console.print(
+                                f"  [[yellow]Warning[/yellow]] Failed to upload cll_map.json: {e}"
+                            )
                     elif not cll_map_upload_url:
                         console.print(
                             "  [[yellow]Warning[/yellow]] No cll_map_url in upload URLs "
@@ -836,13 +964,19 @@ def init(cache_db, **kwargs):
                         )
 
                     # Upload per_node.db (only when Cloud supports it AND we emitted).
-                    if per_node_db_upload_url and per_node_db_path and per_node_db_path.is_file():
+                    if (
+                        per_node_db_upload_url
+                        and per_node_db_path
+                        and per_node_db_path.is_file()
+                    ):
                         try:
                             with open(per_node_db_path, "rb") as f:
                                 resp = requests.put(
                                     per_node_db_upload_url,
                                     data=f,
-                                    headers={"Content-Type": "application/octet-stream"},
+                                    headers={
+                                        "Content-Type": "application/octet-stream"
+                                    },
                                     timeout=_UPLOAD_TIMEOUT,
                                 )
                             if resp.status_code in (200, 204):
@@ -858,7 +992,9 @@ def init(cache_db, **kwargs):
                                 )
                         except requests.RequestException as e:
                             upload_failures.append("per_node.db")
-                            console.print(f"  [[yellow]Warning[/yellow]] Failed to upload per_node.db: {e}")
+                            console.print(
+                                f"  [[yellow]Warning[/yellow]] Failed to upload per_node.db: {e}"
+                            )
 
                     # Upload CLL cache. cll_cache.db is load-bearing across sessions —
                     # build_full_cll_map reuses its warm entries on subsequent runs —
@@ -870,7 +1006,9 @@ def init(cache_db, **kwargs):
                                 resp = requests.put(
                                     cll_cache_upload_url,
                                     data=f,
-                                    headers={"Content-Type": "application/octet-stream"},
+                                    headers={
+                                        "Content-Type": "application/octet-stream"
+                                    },
                                     timeout=_UPLOAD_TIMEOUT,
                                 )
                             if resp.status_code in (200, 204):
@@ -886,9 +1024,13 @@ def init(cache_db, **kwargs):
                                 )
                         except requests.RequestException as e:
                             upload_failures.append("cll_cache.db")
-                            console.print(f"  [[yellow]Warning[/yellow]] Failed to upload cll_cache.db: {e}")
+                            console.print(
+                                f"  [[yellow]Warning[/yellow]] Failed to upload cll_cache.db: {e}"
+                            )
                     elif not cll_cache_upload_url:
-                        logger.debug("No cll_cache_url in upload URLs — cache upload not supported yet")
+                        logger.debug(
+                            "No cll_cache_url in upload URLs — cache upload not supported yet"
+                        )
 
                     # Upload info.json and lineage_diff.json. Graceful
                     # degradation: if Cloud hasn't added the info_url /
@@ -900,7 +1042,11 @@ def init(cache_db, **kwargs):
                     ]
                     for display_name, local_path, url_key in metadata_uploads:
                         metadata_upload_url = upload_urls.get(url_key)
-                        if metadata_upload_url and local_path is not None and local_path.is_file():
+                        if (
+                            metadata_upload_url
+                            and local_path is not None
+                            and local_path.is_file()
+                        ):
                             try:
                                 with open(local_path, "rb") as f:
                                     resp = requests.put(
@@ -911,7 +1057,9 @@ def init(cache_db, **kwargs):
                                     )
                                 if resp.status_code in (200, 204):
                                     size_kb = local_path.stat().st_size / 1024
-                                    console.print(f"  Uploaded {display_name} ({size_kb:.1f} KB)")
+                                    console.print(
+                                        f"  Uploaded {display_name} ({size_kb:.1f} KB)"
+                                    )
                                 else:
                                     upload_failures.append(display_name)
                                     console.print(
@@ -920,8 +1068,12 @@ def init(cache_db, **kwargs):
                                     )
                             except requests.RequestException as e:
                                 upload_failures.append(display_name)
-                                console.print(f"  [[yellow]Warning[/yellow]] Failed to upload {display_name}: {e}")
-                        elif metadata_upload_url and (local_path is None or not local_path.is_file()):
+                                console.print(
+                                    f"  [[yellow]Warning[/yellow]] Failed to upload {display_name}: {e}"
+                                )
+                        elif metadata_upload_url and (
+                            local_path is None or not local_path.is_file()
+                        ):
                             # URL present but local artifact missing — emit failed
                             # partway (e.g., info.json written but lineage_diff.json
                             # write raised). Record the failure so the summary
@@ -952,7 +1104,9 @@ def init(cache_db, **kwargs):
             shutil.rmtree(per_node_scratch, ignore_errors=True)
             shutil.rmtree(metadata_scratch, ignore_errors=True)
     else:
-        console.print("Run [bold]recce server --enable-cll-cache[/bold] to use the cached lineage.")
+        console.print(
+            "Run [bold]recce server --enable-cll-cache[/bold] to use the cached lineage."
+        )
 
 
 @cli.command(cls=TrackCommand)
@@ -981,22 +1135,32 @@ def debug(**kwargs):
         manifest_path = target_path / "manifest.json"
         manifest_is_ready = manifest_path.is_file()
         if manifest_is_ready:
-            console.print(f"[[green]OK[/green]] Manifest JSON file exists : {manifest_path}")
+            console.print(
+                f"[[green]OK[/green]] Manifest JSON file exists : {manifest_path}"
+            )
         else:
-            console.print(f"[[red]MISS[/red]] Manifest JSON file not found: {manifest_path}")
+            console.print(
+                f"[[red]MISS[/red]] Manifest JSON file not found: {manifest_path}"
+            )
 
         catalog_path = target_path / "catalog.json"
         catalog_is_ready = catalog_path.is_file()
         if catalog_is_ready:
-            console.print(f"[[green]OK[/green]] Catalog JSON file exists: {catalog_path}")
+            console.print(
+                f"[[green]OK[/green]] Catalog JSON file exists: {catalog_path}"
+            )
         else:
-            console.print(f"[[red]MISS[/red]] Catalog JSON file not found: {catalog_path}")
+            console.print(
+                f"[[red]MISS[/red]] Catalog JSON file not found: {catalog_path}"
+            )
 
         return [True, manifest_is_ready, catalog_is_ready]
 
     project_dir_path = Path(kwargs.get("project_dir") or "./")
     target_path = project_dir_path.joinpath(Path(kwargs.get("target_path", "target")))
-    target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
+    target_base_path = project_dir_path.joinpath(
+        Path(kwargs.get("target_base_path", "target-base"))
+    )
 
     curr_is_ready = check_artifacts("Development", target_path)
     base_is_ready = check_artifacts("Base", target_base_path)
@@ -1018,7 +1182,9 @@ def debug(**kwargs):
     if all(curr_is_ready) and all(base_is_ready) and conn_is_ready:
         console.print("[[green]OK[/green]] Ready to launch! Type 'recce server'.")
     elif all(curr_is_ready) and conn_is_ready:
-        console.print("[[orange3]OK[/orange3]] Ready to launch with [i]limited features[/i]. Type 'recce server'.")
+        console.print(
+            "[[orange3]OK[/orange3]] Ready to launch with [i]limited features[/i]. Type 'recce server'."
+        )
 
     if not curr_is_ready[0]:
         console.print(
@@ -1049,7 +1215,9 @@ def debug(**kwargs):
             )
 
     if not conn_is_ready:
-        console.print("[[orange3]TIP[/orange3]] Run 'dbt debug' to check the connection.")
+        console.print(
+            "[[orange3]TIP[/orange3]] Run 'dbt debug' to check the connection."
+        )
 
 
 @cli.command(hidden=True, cls=TrackCommand)
@@ -1087,12 +1255,24 @@ def _split_comma_separated(ctx, param, value):
     help="Comma-separated list of primary key columns.",
     callback=_split_comma_separated,
 )
-@click.option("--keep-shape", is_flag=True, help="Keep unchanged columns. Otherwise, unchanged columns are hidden.")
 @click.option(
-    "--keep-equal", is_flag=True, help='Keep values that are equal. Otherwise, equal values are shown as "-".'
+    "--keep-shape",
+    is_flag=True,
+    help="Keep unchanged columns. Otherwise, unchanged columns are hidden.",
+)
+@click.option(
+    "--keep-equal",
+    is_flag=True,
+    help='Keep values that are equal. Otherwise, equal values are shown as "-".',
 )
 @add_options(dbt_related_options)
-def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equal: bool = False, **kwargs):
+def diff(
+    sql,
+    primary_keys: List[str] = None,
+    keep_shape: bool = False,
+    keep_equal: bool = False,
+    **kwargs,
+):
     """
     Run queries on base and current environments and diff the results
 
@@ -1114,16 +1294,29 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 
     before_aligned, after_aligned = before.align(after)
     diff = before_aligned.compare(
-        after_aligned, result_names=("base", "current"), keep_equal=keep_equal, keep_shape=keep_shape
+        after_aligned,
+        result_names=("base", "current"),
+        keep_equal=keep_equal,
+        keep_shape=keep_shape,
     )
     print(diff.to_string(na_rep="-") if not diff.empty else "no changes")
 
 
 @cli.command(cls=TrackCommand)
 @click.argument("state_file", required=False)
-@click.option("--host", default="localhost", show_default=True, help="The host to bind to.")
-@click.option("--port", default=8000, show_default=True, help="The port to bind to.", type=int)
-@click.option("--lifetime", default=0, show_default=True, help="The lifetime of the server in seconds.", type=int)
+@click.option(
+    "--host", default="localhost", show_default=True, help="The host to bind to."
+)
+@click.option(
+    "--port", default=8000, show_default=True, help="The port to bind to.", type=int
+)
+@click.option(
+    "--lifetime",
+    default=0,
+    show_default=True,
+    help="The lifetime of the server in seconds.",
+    type=int,
+)
 @click.option(
     "--idle-timeout",
     default=0,
@@ -1132,7 +1325,9 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
     type=int,
 )
 @click.option("--review", is_flag=True, help="Open the state file in the review mode.")
-@click.option("--single-env", is_flag=True, help="Launch in single environment mode directly.")
+@click.option(
+    "--single-env", is_flag=True, help="Launch in single environment mode directly."
+)
 @click.option(
     "--enable-cll-cache",
     is_flag=True,
@@ -1238,7 +1433,9 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
     # Check Single Environment Onboarding Mode if not in cloud mode and not in review mode
     if not is_cloud and not is_review:
         project_dir_path = Path(kwargs.get("project_dir") or "./")
-        target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
+        target_base_path = project_dir_path.joinpath(
+            Path(kwargs.get("target_base_path", "target-base"))
+        )
         if not target_base_path.is_dir():
             # Mark as single env onboarding mode if user provides the target-path only
             flag["single_env_onboarding"] = True
@@ -1357,7 +1554,9 @@ DEFAULT_RECCE_STATE_FILE = "recce_state.json"
 )
 @click.option("--state-file", help="Path of the import state file.", type=click.Path())
 @click.option("--summary", help="Path of the summary markdown file.", type=click.Path())
-@click.option("--skip-query", is_flag=True, help="Skip running the queries for the checks.")
+@click.option(
+    "--skip-query", is_flag=True, help="Skip running the queries for the checks."
+)
 @click.option("--skip-check", is_flag=True, help="Skip running the checks.")
 @click.option(
     "--git-current-branch",
@@ -1366,10 +1565,15 @@ DEFAULT_RECCE_STATE_FILE = "recce_state.json"
     envvar="GITHUB_HEAD_REF",
 )
 @click.option(
-    "--git-base-branch", help="The git branch of the base environment.", type=click.STRING, envvar="GITHUB_BASE_REF"
+    "--git-base-branch",
+    help="The git branch of the base environment.",
+    type=click.STRING,
+    envvar="GITHUB_BASE_REF",
 )
 @click.option(
-    "--github-pull-request-url", help="The github pull request url to use for the lineage.", type=click.STRING
+    "--github-pull-request-url",
+    help="The github pull request url to use for the lineage.",
+    type=click.STRING,
 )
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
@@ -1448,7 +1652,6 @@ def run(output, **kwargs):
     # Verify the output state file path
     try:
         if os.path.isdir(output) or output.endswith("/"):
-
             output_dir = Path(output)
             # Create the directory if not exists
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -1507,7 +1710,10 @@ def summary(state_file, **kwargs):
     )
 
     state_loader = create_state_loader(
-        review_mode=True, cloud_mode=cloud_mode, state_file=state_file, cloud_options=cloud_options
+        review_mode=True,
+        cloud_mode=cloud_mode,
+        state_file=state_file,
+        cloud_options=cloud_options,
     )
     state_loader.load()
 
@@ -1550,7 +1756,9 @@ def connect_to_cloud():
 
     connect_url, callback_port = prepare_connection_url(public_key)
     console.rule("Connecting to Recce Cloud")
-    console.print("Attempting to automatically open the Recce Cloud authorization page in your default browser.")
+    console.print(
+        "Attempting to automatically open the Recce Cloud authorization page in your default browser."
+    )
     console.print("If the browser does not open, please open the following URL:")
     console.print(connect_url)
     webbrowser.open(connect_url)
@@ -1566,7 +1774,12 @@ def cloud(**kwargs):
 
 
 @cloud.command(cls=TrackCommand)
-@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--cloud-token",
+    help="The GitHub token used by Recce Cloud.",
+    type=click.STRING,
+    envvar="GITHUB_TOKEN",
+)
 @click.option(
     "--state-file-host",
     help="The host to fetch the state file from.",
@@ -1582,7 +1795,12 @@ def cloud(**kwargs):
     type=click.STRING,
     envvar="RECCE_STATE_PASSWORD",
 )
-@click.option("--force", "-f", help="Bypasses the confirmation prompt. Purge the state file directly.", is_flag=True)
+@click.option(
+    "--force",
+    "-f",
+    help="Bypasses the confirmation prompt. Purge the state file directly.",
+    is_flag=True,
+)
 @add_options(recce_options)
 def purge(**kwargs):
     """
@@ -1605,15 +1823,22 @@ def purge(**kwargs):
     try:
         console.rule("Check Recce State from Cloud")
         state_loader = create_state_loader(
-            review_mode=False, cloud_mode=True, state_file=None, cloud_options=cloud_options
+            review_mode=False,
+            cloud_mode=True,
+            state_file=None,
+            cloud_options=cloud_options,
         )
         state_loader.load()
     except Exception:
-        console.print("[[yellow]Skip[/yellow]] Cannot access existing state file from cloud. Purge it directly.")
+        console.print(
+            "[[yellow]Skip[/yellow]] Cannot access existing state file from cloud. Purge it directly."
+        )
 
     if state_loader is None:
         try:
-            if force_to_purge is True or click.confirm("\nDo you want to purge the state file?"):
+            if force_to_purge is True or click.confirm(
+                "\nDo you want to purge the state file?"
+            ):
                 rc, err_msg = RecceCloudStateManager(cloud_options).purge_cloud_state()
                 if rc is True:
                     console.rule("Purged Successfully")
@@ -1632,13 +1857,19 @@ def purge(**kwargs):
 
     pr_info = info.get("pull_request")
     console.print("[green]State File hosted by[/green]", info.get("source"))
-    console.print("[green]GitHub Repository[/green]", info.get("pull_request").repository)
+    console.print(
+        "[green]GitHub Repository[/green]", info.get("pull_request").repository
+    )
     console.print(f"[green]GitHub Pull Request[/green]\n{pr_info.title} #{pr_info.id}")
-    console.print(f"Branch merged into [blue]{pr_info.base_branch}[/blue] from [blue]{pr_info.branch}[/blue]")
+    console.print(
+        f"Branch merged into [blue]{pr_info.base_branch}[/blue] from [blue]{pr_info.branch}[/blue]"
+    )
     console.print(pr_info.url)
 
     try:
-        if force_to_purge is True or click.confirm("\nDo you want to purge the state file?"):
+        if force_to_purge is True or click.confirm(
+            "\nDo you want to purge the state file?"
+        ):
             response = state_loader.purge()
             if response is True:
                 console.rule("Purged Successfully")
@@ -1653,7 +1884,12 @@ def purge(**kwargs):
 
 @cloud.command(cls=TrackCommand)
 @click.argument("state_file", type=click.Path(exists=True))
-@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--cloud-token",
+    help="The GitHub token used by Recce Cloud.",
+    type=click.STRING,
+    envvar="GITHUB_TOKEN",
+)
 @click.option(
     "--state-file-host",
     help="The host to fetch the state file from.",
@@ -1689,7 +1925,10 @@ def upload(state_file, **kwargs):
 
     # load local state
     state_loader = create_state_loader(
-        review_mode=False, cloud_mode=False, state_file=state_file, cloud_options=cloud_options
+        review_mode=False,
+        cloud_mode=False,
+        state_file=state_file,
+        cloud_options=cloud_options,
     )
     state_loader.load()
 
@@ -1709,7 +1948,9 @@ def upload(state_file, **kwargs):
 
     cloud_state_file_exists = state_manager.check_cloud_state_exists()
 
-    if cloud_state_file_exists and not click.confirm("\nDo you want to overwrite the existing state file?"):
+    if cloud_state_file_exists and not click.confirm(
+        "\nDo you want to overwrite the existing state file?"
+    ):
         return 0
 
     console.print(state_manager.upload_state_to_cloud(state_loader.state))
@@ -1724,7 +1965,12 @@ def upload(state_file, **kwargs):
     default=DEFAULT_RECCE_STATE_FILE,
     show_default=True,
 )
-@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--cloud-token",
+    help="The GitHub token used by Recce Cloud.",
+    type=click.STRING,
+    envvar="GITHUB_TOKEN",
+)
 @click.option(
     "--state-file-host",
     help="The host to fetch the state file from.",
@@ -1778,7 +2024,12 @@ def download(**kwargs):
 
 
 @cloud.command(cls=TrackCommand)
-@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--cloud-token",
+    help="The GitHub token used by Recce Cloud.",
+    type=click.STRING,
+    envvar="GITHUB_TOKEN",
+)
 @click.option(
     "--branch",
     "-b",
@@ -1825,7 +2076,11 @@ def upload_artifacts(**kwargs):
 
     try:
         rc = upload_dbt_artifacts(
-            target_path, branch=branch, token=cloud_token, password=password, debug=kwargs.get("debug", False)
+            target_path,
+            branch=branch,
+            token=cloud_token,
+            password=password,
+            debug=kwargs.get("debug", False),
         )
         console.rule("Uploaded Successfully")
         console.print(
@@ -1857,7 +2112,9 @@ def _download_artifacts(branch, cloud_token, console, kwargs, password, target_p
         )
     except Exception as e:
         console.rule("Failed to Download", style="red")
-        console.print("[[red]Error[/red]] Failed to download the dbt artifacts from cloud.")
+        console.print(
+            "[[red]Error[/red]] Failed to download the dbt artifacts from cloud."
+        )
         reason = str(e)
 
         if (
@@ -1870,7 +2127,9 @@ def _download_artifacts(branch, cloud_token, console, kwargs, password, target_p
             )
         elif "The specified key does not exist" in reason:
             console.print("Reason: The dbt artifacts is not found in the cloud.")
-            console.print("Please upload the dbt artifacts to the cloud before downloading it.")
+            console.print(
+                "Please upload the dbt artifacts to the cloud before downloading it."
+            )
         else:
             console.print(f"Reason: {reason}")
         rc = 1
@@ -1878,7 +2137,12 @@ def _download_artifacts(branch, cloud_token, console, kwargs, password, target_p
 
 
 @cloud.command(cls=TrackCommand)
-@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--cloud-token",
+    help="The GitHub token used by Recce Cloud.",
+    type=click.STRING,
+    envvar="GITHUB_TOKEN",
+)
 @click.option(
     "--branch",
     "-b",
@@ -1901,7 +2165,12 @@ def _download_artifacts(branch, cloud_token, console, kwargs, password, target_p
     envvar="RECCE_STATE_PASSWORD",
     required=True,
 )
-@click.option("--force", "-f", help="Bypasses the confirmation prompt. Download the artifacts directly.", is_flag=True)
+@click.option(
+    "--force",
+    "-f",
+    help="Bypasses the confirmation prompt. Download the artifacts directly.",
+    is_flag=True,
+)
 @add_options(recce_options)
 def download_artifacts(**kwargs):
     """
@@ -1922,11 +2191,18 @@ def download_artifacts(**kwargs):
     password = kwargs.get("password")
     target_path = kwargs.get("target_path")
     branch = kwargs.get("branch") or current_branch()
-    return _download_artifacts(branch, cloud_token, console, kwargs, password, target_path)
+    return _download_artifacts(
+        branch, cloud_token, console, kwargs, password, target_path
+    )
 
 
 @cloud.command(cls=TrackCommand)
-@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--cloud-token",
+    help="The GitHub token used by Recce Cloud.",
+    type=click.STRING,
+    envvar="GITHUB_TOKEN",
+)
 @click.option(
     "--branch",
     "-b",
@@ -1949,7 +2225,12 @@ def download_artifacts(**kwargs):
     envvar="RECCE_STATE_PASSWORD",
     required=True,
 )
-@click.option("--force", "-f", help="Bypasses the confirmation prompt. Download the artifacts directly.", is_flag=True)
+@click.option(
+    "--force",
+    "-f",
+    help="Bypasses the confirmation prompt. Download the artifacts directly.",
+    is_flag=True,
+)
 @add_options(recce_options)
 def download_base_artifacts(**kwargs):
     """
@@ -1972,15 +2253,23 @@ def download_base_artifacts(**kwargs):
     # If recce can't infer default branch from "GITHUB_BASE_REF" and current_default_branch()
     if branch is None:
         console.print(
-            "[[red]Error[/red]] Please provide your base branch name with '--branch' to download the base " "artifacts."
+            "[[red]Error[/red]] Please provide your base branch name with '--branch' to download the base "
+            "artifacts."
         )
         exit(1)
 
-    return _download_artifacts(branch, cloud_token, console, kwargs, password, target_path)
+    return _download_artifacts(
+        branch, cloud_token, console, kwargs, password, target_path
+    )
 
 
 @cloud.command(cls=TrackCommand)
-@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--cloud-token",
+    help="The GitHub token used by Recce Cloud.",
+    type=click.STRING,
+    envvar="GITHUB_TOKEN",
+)
 @click.option(
     "--branch",
     "-b",
@@ -1988,7 +2277,12 @@ def download_base_artifacts(**kwargs):
     type=click.STRING,
     envvar="GITHUB_HEAD_REF",
 )
-@click.option("--force", "-f", help="Bypasses the confirmation prompt. Delete the artifacts directly.", is_flag=True)
+@click.option(
+    "--force",
+    "-f",
+    help="Bypasses the confirmation prompt. Delete the artifacts directly.",
+    is_flag=True,
+)
 @add_options(recce_options)
 def delete_artifacts(**kwargs):
     """
@@ -2011,28 +2305,43 @@ def delete_artifacts(**kwargs):
     force = kwargs.get("force", False)
 
     if not force:
-        if not click.confirm(f'Do you want to delete artifacts from branch "{branch}"?'):
+        if not click.confirm(
+            f'Do you want to delete artifacts from branch "{branch}"?'
+        ):
             console.print("Deletion cancelled.")
             return 0
 
     try:
-        delete_dbt_artifacts(branch=branch, token=cloud_token, debug=kwargs.get("debug", False))
-        console.print(f"[[green]Success[/green]] Artifacts deleted from branch: {branch}")
+        delete_dbt_artifacts(
+            branch=branch, token=cloud_token, debug=kwargs.get("debug", False)
+        )
+        console.print(
+            f"[[green]Success[/green]] Artifacts deleted from branch: {branch}"
+        )
         return 0
     except click.exceptions.Abort:
         pass
     except RecceCloudException as e:
-        console.print("[[red]Error[/red]] Failed to delete the dbt artifacts from cloud.")
+        console.print(
+            "[[red]Error[/red]] Failed to delete the dbt artifacts from cloud."
+        )
         console.print(f"Reason: {e.reason}")
         exit(1)
     except Exception as e:
-        console.print("[[red]Error[/red]] Failed to delete the dbt artifacts from cloud.")
+        console.print(
+            "[[red]Error[/red]] Failed to delete the dbt artifacts from cloud."
+        )
         console.print(f"Reason: {e}")
         exit(1)
 
 
 @cloud.command(cls=TrackCommand, name="list-organizations")
-@click.option("--api-token", help="The Recce Cloud API token.", type=click.STRING, envvar="RECCE_API_TOKEN")
+@click.option(
+    "--api-token",
+    help="The Recce Cloud API token.",
+    type=click.STRING,
+    envvar="RECCE_API_TOKEN",
+)
 @add_options(recce_options)
 def list_organizations(**kwargs):
     """
@@ -2072,7 +2381,9 @@ def list_organizations(**kwargs):
         table.add_column("Display Name", style="yellow")
 
         for org in organizations:
-            table.add_row(str(org.get("id", "")), org.get("name", ""), org.get("display_name", ""))
+            table.add_row(
+                str(org.get("id", "")), org.get("name", ""), org.get("display_name", "")
+            )
 
         console.print(table)
 
@@ -2092,7 +2403,12 @@ def list_organizations(**kwargs):
     type=click.STRING,
     envvar="RECCE_ORGANIZATION_ID",
 )
-@click.option("--api-token", help="The Recce Cloud API token.", type=click.STRING, envvar="RECCE_API_TOKEN")
+@click.option(
+    "--api-token",
+    help="The Recce Cloud API token.",
+    type=click.STRING,
+    envvar="RECCE_API_TOKEN",
+)
 @add_options(recce_options)
 def list_projects(**kwargs):
     """
@@ -2131,8 +2447,12 @@ def list_projects(**kwargs):
 
     organization = kwargs.get("organization")
     if not organization:
-        console.print("[[red]Error[/red]] Organization ID is required. Please provide it via:")
-        console.print("  --organization <id> or set RECCE_ORGANIZATION_ID environment variable")
+        console.print(
+            "[[red]Error[/red]] Organization ID is required. Please provide it via:"
+        )
+        console.print(
+            "  --organization <id> or set RECCE_ORGANIZATION_ID environment variable"
+        )
         exit(1)
 
     try:
@@ -2151,7 +2471,11 @@ def list_projects(**kwargs):
         table.add_column("Display Name", style="yellow")
 
         for project in projects:
-            table.add_row(str(project.get("id", "")), project.get("name", ""), project.get("display_name", ""))
+            table.add_row(
+                str(project.get("id", "")),
+                project.get("name", ""),
+                project.get("display_name", ""),
+            )
 
         console.print(table)
 
@@ -2178,7 +2502,12 @@ def list_projects(**kwargs):
     type=click.STRING,
     envvar="RECCE_PROJECT_ID",
 )
-@click.option("--api-token", help="The Recce Cloud API token.", type=click.STRING, envvar="RECCE_API_TOKEN")
+@click.option(
+    "--api-token",
+    help="The Recce Cloud API token.",
+    type=click.STRING,
+    envvar="RECCE_API_TOKEN",
+)
 @add_options(recce_options)
 def list_sessions(**kwargs):
     """
@@ -2226,12 +2555,18 @@ def list_sessions(**kwargs):
 
     # Validate required parameters
     if not organization:
-        console.print("[[red]Error[/red]] Organization ID is required. Please provide it via:")
-        console.print("  --organization <id> or set RECCE_ORGANIZATION_ID environment variable")
+        console.print(
+            "[[red]Error[/red]] Organization ID is required. Please provide it via:"
+        )
+        console.print(
+            "  --organization <id> or set RECCE_ORGANIZATION_ID environment variable"
+        )
         exit(1)
 
     if not project:
-        console.print("[[red]Error[/red]] Project ID is required. Please provide it via:")
+        console.print(
+            "[[red]Error[/red]] Project ID is required. Please provide it via:"
+        )
         console.print("  --project <id> or set RECCE_PROJECT_ID environment variable")
         exit(1)
 
@@ -2270,7 +2605,8 @@ def github(**kwargs):
 
 
 @github.command(
-    cls=TrackCommand, short_help="Download the artifacts from the GitHub repository based on the current Pull Request."
+    cls=TrackCommand,
+    short_help="Download the artifacts from the GitHub repository based on the current Pull Request.",
 )
 @click.option(
     "--github-token",
@@ -2328,7 +2664,10 @@ def share(state_file, **kwargs):
 
     # load local state
     state_loader = create_state_loader(
-        review_mode=True, cloud_mode=False, state_file=state_file, cloud_options=cloud_options
+        review_mode=True,
+        cloud_mode=False,
+        state_file=state_file,
+        cloud_options=cloud_options,
     )
     state_loader.load()
 
@@ -2352,7 +2691,10 @@ def share(state_file, **kwargs):
     try:
         response = state_manager.share_state(state_file_name, state_loader.state)
         if response.get("status") == "error":
-            console.print("[[red]Error[/red]] Failed to share the state.\n" f"Reason: {response.get('message')}")
+            console.print(
+                "[[red]Error[/red]] Failed to share the state.\n"
+                f"Reason: {response.get('message')}"
+            )
         else:
             console.print(f"Shared Link: {response.get('share_url')}")
     except RecceCloudException as e:
@@ -2431,7 +2773,10 @@ def upload_session(**kwargs):
 
     try:
         rc = upload_artifacts_to_session(
-            target_path, session_id=session_id, token=api_token, debug=kwargs.get("debug", False)
+            target_path,
+            session_id=session_id,
+            token=api_token,
+            debug=kwargs.get("debug", False),
         )
         console.rule("Uploaded Successfully")
         console.print(
@@ -2439,7 +2784,9 @@ def upload_session(**kwargs):
         )
     except Exception as e:
         console.rule("Failed to Upload Session", style="red")
-        console.print(f"[[red]Error[/red]] Failed to upload the dbt artifacts to the session {session_id}.")
+        console.print(
+            f"[[red]Error[/red]] Failed to upload the dbt artifacts to the session {session_id}."
+        )
         console.print(f"Reason: {e}")
         rc = 1
     return rc
@@ -2462,10 +2809,25 @@ def snapshot(**kwargs):
 
 @cli.command(hidden=True, cls=TrackCommand)
 @click.argument("state_file", required=True)
-@click.option("--host", default="localhost", show_default=True, help="The host to bind to.")
-@click.option("--port", default=8000, show_default=True, help="The port to bind to.", type=int)
-@click.option("--lifetime", default=0, show_default=True, help="The lifetime of the server in seconds.", type=int)
-@click.option("--share-url", help="The share URL triggers this instance.", type=click.STRING, envvar="RECCE_SHARE_URL")
+@click.option(
+    "--host", default="localhost", show_default=True, help="The host to bind to."
+)
+@click.option(
+    "--port", default=8000, show_default=True, help="The port to bind to.", type=int
+)
+@click.option(
+    "--lifetime",
+    default=0,
+    show_default=True,
+    help="The lifetime of the server in seconds.",
+    type=int,
+)
+@click.option(
+    "--share-url",
+    help="The share URL triggers this instance.",
+    type=click.STRING,
+    envvar="RECCE_SHARE_URL",
+)
 @click.pass_context
 def read_only(ctx, state_file=None, **kwargs):
     from recce.server import RecceServerMode
@@ -2477,10 +2839,26 @@ def read_only(ctx, state_file=None, **kwargs):
 
 @cli.command(cls=TrackCommand)
 @click.argument("state_file", required=False)
-@click.option("--sse", is_flag=True, default=False, help="Start in HTTP/SSE mode instead of stdio mode")
-@click.option("--host", default="localhost", help="Host to bind to in SSE mode (default: localhost)")
-@click.option("--port", default=8000, type=int, help="Port to bind to in SSE mode (default: 8000)")
-@click.option("--session", "cloud_session", type=click.STRING, help="Recce Cloud session ID for cloud MCP mode")
+@click.option(
+    "--sse",
+    is_flag=True,
+    default=False,
+    help="Start in HTTP/SSE mode instead of stdio mode",
+)
+@click.option(
+    "--host",
+    default="localhost",
+    help="Host to bind to in SSE mode (default: localhost)",
+)
+@click.option(
+    "--port", default=8000, type=int, help="Port to bind to in SSE mode (default: 8000)"
+)
+@click.option(
+    "--session",
+    "cloud_session",
+    type=click.STRING,
+    help="Recce Cloud session ID for cloud MCP mode",
+)
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -2564,10 +2942,14 @@ def mcp_server(state_file, sse, host, port, **kwargs):
     cloud_session = kwargs.pop("cloud_session", None)
 
     if is_cloud_mcp and not cloud_session:
-        console.print("[[red]Error[/red]] --session is required when using --cloud with recce mcp-server.")
+        console.print(
+            "[[red]Error[/red]] --session is required when using --cloud with recce mcp-server."
+        )
         exit(1)
     if cloud_session and not is_cloud_mcp:
-        console.print("[[red]Error[/red]] --cloud is required when using --session with recce mcp-server.")
+        console.print(
+            "[[red]Error[/red]] --cloud is required when using --session with recce mcp-server."
+        )
         exit(1)
 
     # Prepare API token
@@ -2593,8 +2975,12 @@ def mcp_server(state_file, sse, host, port, **kwargs):
     # the set_backend MCP tool.
     if not is_cloud_mcp:
         project_dir_path = Path(kwargs.get("project_dir") or "./")
-        target_path = project_dir_path.joinpath(Path(kwargs.get("target_path", "target")))
-        target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
+        target_path = project_dir_path.joinpath(
+            Path(kwargs.get("target_path", "target"))
+        )
+        target_base_path = project_dir_path.joinpath(
+            Path(kwargs.get("target_base_path", "target-base"))
+        )
         if target_path.is_dir() and not target_base_path.is_dir():
             kwargs["single_env"] = True
             kwargs["target_base_path"] = kwargs.get("target_path")
@@ -2602,11 +2988,15 @@ def mcp_server(state_file, sse, host, port, **kwargs):
                 "[yellow]Base artifacts not found. "
                 "Starting in single-environment mode (diffs will show no changes).[/yellow]"
             )
-            console.print("To enable diffing: dbt docs generate --target-path target-base")
+            console.print(
+                "To enable diffing: dbt docs generate --target-path target-base"
+            )
 
     try:
         if sse:
-            console.print(f"Starting Recce MCP Server in HTTP/SSE mode on {host}:{port}...")
+            console.print(
+                f"Starting Recce MCP Server in HTTP/SSE mode on {host}:{port}..."
+            )
             console.print(f"SSE endpoint: http://{host}:{port}/sse")
         elif is_cloud_mcp:
             console.print("Starting Recce MCP Server in cloud stdio mode...")
@@ -2617,7 +3007,11 @@ def mcp_server(state_file, sse, host, port, **kwargs):
             )
 
         # Run the server (stdio or SSE based on --sse flag)
-        asyncio.run(run_mcp_server(sse=sse, host=host, port=port, session=cloud_session, **kwargs))
+        asyncio.run(
+            run_mcp_server(
+                sse=sse, host=host, port=port, session=cloud_session, **kwargs
+            )
+        )
     except (asyncio.CancelledError, KeyboardInterrupt):
         # Graceful shutdown (e.g., Ctrl+C)
         console.print("[yellow]MCP Server interrupted[/yellow]")
@@ -2712,6 +3106,168 @@ def clear_cache(cache_db):
                 os.remove(sidecar)
             except OSError:
                 pass
+
+
+def check_base_freshness(
+    target_base_path: str = "target-base",
+    target_path: str = "target",
+    freshness_threshold_hours: float = 48.0,
+) -> dict:
+    """
+    Check whether the base artifacts in target_base_path are fresh.
+
+    Returns a dict with keys:
+        status: FRESH | STALE_TIME | STALE_SHA | MISSING
+        recommendation: reuse | docs_generate | full_build
+        message: human-readable explanation
+        artifact_age_hours: float or None
+        base_sha: str or None  (DBT_GIT_SHA from manifest metadata)
+        current_sha: str or None  (current HEAD SHA)
+        threshold_hours: float
+    """
+    import json
+    import time
+
+    manifest_path = Path(target_base_path) / "manifest.json"
+    result: dict = {
+        "status": None,
+        "recommendation": None,
+        "message": None,
+        "artifact_age_hours": None,
+        "base_sha": None,
+        "current_sha": None,
+        "threshold_hours": freshness_threshold_hours,
+    }
+
+    if not manifest_path.exists():
+        result["status"] = "MISSING"
+        result["recommendation"] = "full_build"
+        result["message"] = (
+            f"Base artifacts not found at '{target_base_path}/manifest.json'. "
+            "Run: git stash; git checkout <base>; dbt build --target-path target-base; "
+            "git checkout <target>; git stash pop"
+        )
+        return result
+
+    # Compute artifact age from mtime
+    mtime = manifest_path.stat().st_mtime
+    now = time.time()
+    artifact_age_hours = (now - mtime) / 3600.0
+    result["artifact_age_hours"] = artifact_age_hours
+
+    # Time-based freshness check
+    if artifact_age_hours > freshness_threshold_hours:
+        result["status"] = "STALE_TIME"
+        result["recommendation"] = "docs_generate"
+        result["message"] = (
+            f"Base artifacts are stale ({artifact_age_hours:.1f} hours old, "
+            f"threshold: {freshness_threshold_hours}h). "
+            "Run: dbt docs generate --target-path target-base"
+        )
+        return result
+
+    # SHA-based freshness check (best-effort: skip if field absent or git unavailable)
+    try:
+        with open(manifest_path) as f:
+            manifest_data = json.load(f)
+        base_sha = manifest_data.get("metadata", {}).get("env", {}).get("DBT_GIT_SHA")
+        result["base_sha"] = base_sha
+
+        if base_sha is not None:
+            from recce.git import current_commit_hash
+
+            current_sha = current_commit_hash()
+            result["current_sha"] = current_sha
+            if current_sha and base_sha != current_sha:
+                result["status"] = "STALE_SHA"
+                result["recommendation"] = "docs_generate"
+                result["message"] = (
+                    f"Base artifacts are stale (generated at {base_sha[:7]}, "
+                    f"current HEAD: {current_sha[:7]}). "
+                    "Run: dbt docs generate --target-path target-base"
+                )
+                return result
+    except Exception:
+        # Best-effort: if manifest is unreadable or git is unavailable, skip SHA check
+        pass
+
+    result["status"] = "FRESH"
+    result["recommendation"] = "reuse"
+    result["message"] = (
+        f"Base artifacts are fresh ({artifact_age_hours:.1f} hours old). "
+        "Reuse existing artifacts."
+    )
+    return result
+
+
+@cli.command(name="check-base", cls=TrackCommand)
+@click.option(
+    "--target-base-path",
+    default="target-base",
+    show_default=True,
+    help="Path to the base artifacts directory.",
+    type=click.Path(),
+)
+@click.option(
+    "--target-path",
+    default="target",
+    show_default=True,
+    help="Path to the current target artifacts directory.",
+    type=click.Path(),
+)
+@click.option(
+    "--format",
+    "output_format",
+    default="json",
+    show_default=True,
+    type=click.Choice(["json", "text"]),
+    help="Output format: json (default) or text for human-readable output.",
+)
+@click.option(
+    "--freshness-threshold-hours",
+    default=48.0,
+    show_default=True,
+    type=float,
+    help="Age threshold in hours after which artifacts are considered STALE_TIME.",
+)
+def check_base(target_base_path, target_path, output_format, freshness_threshold_hours):
+    """Check freshness of base artifacts for diff operations.
+
+    Exits 0 when status is FRESH; exits 1 when STALE_TIME, STALE_SHA, or MISSING.
+    """
+    import json
+
+    result = check_base_freshness(
+        target_base_path=target_base_path,
+        target_path=target_path,
+        freshness_threshold_hours=freshness_threshold_hours,
+    )
+
+    if output_format == "json":
+        click.echo(json.dumps(result, indent=2))
+    else:
+        from rich.console import Console
+
+        console = Console()
+        status = result["status"]
+        age = result.get("artifact_age_hours")
+        msg = result.get("message", "")
+        color_map = {
+            "FRESH": "green",
+            "STALE_TIME": "yellow",
+            "STALE_SHA": "yellow",
+            "MISSING": "red",
+        }
+        color = color_map.get(status, "white")
+        console.print(f"[{color}]Status: {status}[/{color}]")
+        if age is not None:
+            console.print(f"Age: {age:.1f}h (threshold: {result['threshold_hours']}h)")
+        console.print(f"Recommendation: {result['recommendation']}")
+        if msg:
+            console.print(msg)
+
+    if result["status"] != "FRESH":
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
