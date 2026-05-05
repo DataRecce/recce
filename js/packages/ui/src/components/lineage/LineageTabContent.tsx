@@ -320,25 +320,6 @@ function ChipDot({ color }: { color: string }) {
   );
 }
 
-function ChipBadge({ label, isDark }: { label: string; isDark: boolean }) {
-  const palette = { isDark, active: false };
-  return (
-    <Box
-      component="span"
-      data-testid="lineage-impact-chip"
-      aria-label={label}
-      sx={{
-        ...CHIP_BASE_SX,
-        backgroundColor: chipBackground(palette),
-        color: chipForeground(palette),
-      }}
-    >
-      <ChipDot color={chipForeground(palette)} />
-      {label}
-    </Box>
-  );
-}
-
 function ChipButton({
   label,
   title,
@@ -397,9 +378,9 @@ function SectionHeader({
   /** Number of direct neighbors on this side that are part of the impact chain. */
   impactCount?: number;
   /** Current state of the per-side "only impact" filter toggle. */
-  onlyImpact?: boolean;
-  /** When provided and impactCount > 0, the chip becomes a filter toggle. */
-  onToggleOnlyImpact?: () => void;
+  onlyImpact: boolean;
+  /** Toggles the per-side "only impacted" filter. */
+  onToggleOnlyImpact: () => void;
 }) {
   const isUp = direction === "up";
   const ArrowIcon = isUp ? MdArrowUpward : MdArrowDownward;
@@ -435,18 +416,15 @@ function SectionHeader({
       <Box component="span" sx={{ color: "text.disabled", fontWeight: 500 }}>
         · {directCount} direct
       </Box>
-      {showChip &&
-        (onToggleOnlyImpact ? (
-          <ChipButton
-            label={label}
-            title={getChipTitle(!!onlyImpact, isUp)}
-            active={!!onlyImpact}
-            isDark={isDark}
-            onClick={onToggleOnlyImpact}
-          />
-        ) : (
-          <ChipBadge label={label} isDark={isDark} />
-        ))}
+      {showChip && (
+        <ChipButton
+          label={label}
+          title={getChipTitle(onlyImpact, isUp)}
+          active={onlyImpact}
+          isDark={isDark}
+          onClick={onToggleOnlyImpact}
+        />
+      )}
     </Stack>
   );
 }
