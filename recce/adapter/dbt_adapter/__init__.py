@@ -1542,6 +1542,31 @@ class DbtAdapter(BaseAdapter):
             schema[table_name] = columns
         return schema
 
+    @staticmethod
+    def _resolve_compiled_table(table_id_map: dict, manifest, table_name: str) -> Optional[str]:
+        """Resolve a table name from compiled SQL to a parent unique_id.
+
+        Tries the pre-built map (from depends_on.nodes) first, then falls back
+        to a project-wide alias/identifier scan so models referenced via raw
+        SQL or stale compiled_code still resolve. Returns None if no match —
+        the caller should skip the dependency rather than raise.
+        """
+        key = table_name.lower()
+        if key in table_id_map:
+            return table_id_map[key]
+
+        for unique_id, manifest_node in manifest.nodes.items():
+            candidate = getattr(manifest_node, "alias", None) or manifest_node.name
+            if candidate and candidate.lower() == key:
+                return unique_id
+
+        for unique_id, manifest_src in manifest.sources.items():
+            candidate = getattr(manifest_src, "identifier", None) or manifest_src.name
+            if candidate and candidate.lower() == key:
+                return unique_id
+
+        return None
+
     @lru_cache(maxsize=128)
     def get_cll_cached(self, node_id: str, base: Optional[bool] = False) -> Optional[CllData]:
         cll_tracker = CLLPerformanceTracking()
@@ -1703,8 +1728,19 @@ class DbtAdapter(BaseAdapter):
         # parent map for node
         depends_on = set(parent_list)
         for d in m2c:
-            parent_key = f"{table_id_map[d.node.lower()]}_{d.column}"
-            depends_on.add(parent_key)
+            parent_id = self._resolve_compiled_table(table_id_map, manifest, d.node)
+            if parent_id is None:
+                # Compiled SQL references a table that isn't in depends_on.nodes
+                # and doesn't match any model/source in the project (e.g. raw
+                # SQL with a hard-coded relation, stale compiled_code, or a
+                # macro that emits direct table names). Skip rather than 500.
+                logger.warning(
+                    "[cll] %s: skipping unresolved parent %r in compiled SQL",
+                    node_id,
+                    d.node,
+                )
+                continue
+            depends_on.add(f"{parent_id}_{d.column}")
         cll_data.parent_map[node_id] = depends_on
 
         # parent map for columns
@@ -1713,8 +1749,10 @@ class DbtAdapter(BaseAdapter):
             column_id = f"{node.id}_{name}"
             if name in c2c_map:
                 for d in c2c_map[name].depends_on:
-                    parent_key = f"{table_id_map[d.node.lower()]}_{d.column}"
-                    depends_on.add(parent_key)
+                    parent_id = self._resolve_compiled_table(table_id_map, manifest, d.node)
+                    if parent_id is None:
+                        continue
+                    depends_on.add(f"{parent_id}_{d.column}")
                 column.transformation_type = c2c_map[name].transformation_type
             cll_data.parent_map[column_id] = set(depends_on)
 
