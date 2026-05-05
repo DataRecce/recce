@@ -381,6 +381,20 @@ class CloudBackend:
         return not run.get("error") and status in {"finished", "success", "succeeded"}
 
 
+SENSITIVE_ARG_KEYS = {"api_token"}
+
+
+def _redact_sensitive_args(arguments: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a shallow copy of arguments with sensitive values masked.
+
+    Used to prevent secrets (e.g. cloud API tokens passed to set_backend) from
+    leaking into stderr logs or the persistent debug log file.
+    """
+    if not isinstance(arguments, dict):
+        return arguments
+    return {k: ("***" if k in SENSITIVE_ARG_KEYS and v else v) for k, v in arguments.items()}
+
+
 def _truncate_strings(obj: Any, max_length: int = 200) -> Any:
     """Recursively truncate strings longer than max_length in nested dicts and lists"""
     if isinstance(obj, dict):
@@ -1188,9 +1202,12 @@ class RecceMCPServer:
             """Handle tool calls"""
             start_time = time.perf_counter()
 
+            # Redact sensitive arguments before logging to stderr or persistent log file
+            log_arguments = _redact_sensitive_args(arguments)
+
             # Log incoming request
             logger.info(f"[MCP] Tool call received: {name}")
-            logger.info(f"[MCP] Arguments: {json.dumps(arguments, indent=2)}")
+            logger.info(f"[MCP] Arguments: {json.dumps(log_arguments, indent=2)}")
 
             try:
                 # Check if tool is blocked in non-server mode
@@ -1280,7 +1297,7 @@ class RecceMCPServer:
                     raise ValueError(f"Unknown tool: {name}")
 
                 duration_ms = (time.perf_counter() - start_time) * 1000
-                self.mcp_logger.log_tool_call(name, arguments, result, duration_ms)
+                self.mcp_logger.log_tool_call(name, log_arguments, result, duration_ms)
 
                 # Log outgoing response
                 response_json = json.dumps(result, indent=2)
@@ -1295,7 +1312,7 @@ class RecceMCPServer:
             except Exception as e:
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 error_msg = str(e)
-                self.mcp_logger.log_tool_call(name, arguments, {}, duration_ms, error=error_msg)
+                self.mcp_logger.log_tool_call(name, log_arguments, {}, duration_ms, error=error_msg)
 
                 is_expected_cloud_error = isinstance(e, (RecceCloudException, InstanceSpawningError))
                 classification = self._classify_db_error(error_msg)

@@ -779,3 +779,39 @@ async def test_run_mcp_server_sse_mode_dispatches_to_run_sse():
 
     mock_run_sse.assert_awaited_once_with(host="0.0.0.0", port=9000)
     mock_run.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_set_backend_api_token_redacted_in_logs(caplog):
+    """api_token passed to set_backend must NOT appear in stderr or persistent log file."""
+    import logging
+
+    backend = AsyncMock()
+    backend.call_tool.return_value = {"ok": True}
+    server = RecceMCPServer(api_token=None)
+
+    handler = server.server.request_handlers[CallToolRequest]
+    request = CallToolRequest(
+        method="tools/call",
+        params=CallToolRequestParams(
+            name="set_backend",
+            arguments={"mode": "cloud", "session_id": "sess-123", "api_token": "sk-real-secret"},
+        ),
+    )
+
+    with (
+        caplog.at_level(logging.INFO, logger="recce.mcp_server"),
+        patch("recce.mcp_server.CloudBackend.create", return_value=backend),
+        patch.object(server.mcp_logger, "log_tool_call") as mock_log_tool_call,
+    ):
+        await handler(request)
+
+    # Stderr/console logs must not contain the raw token
+    assert "sk-real-secret" not in caplog.text
+    assert "***" in caplog.text
+
+    # Persistent debug log file (mcp_logger.log_tool_call) must receive redacted args
+    assert mock_log_tool_call.called
+    logged_args = mock_log_tool_call.call_args.args[1]
+    assert logged_args["api_token"] == "***"
+    assert logged_args["session_id"] == "sess-123"
