@@ -1542,6 +1542,53 @@ class DbtAdapter(BaseAdapter):
             schema[table_name] = columns
         return schema
 
+    # Resource types that produce database relations (and can therefore be
+    # legitimate parents in compiled SQL). Excludes test/analysis nodes whose
+    # `name` could otherwise alias-collide with a real model.
+    _RELATION_RESOURCE_TYPES = frozenset({"model", "seed", "snapshot"})
+
+    @staticmethod
+    def _resolve_compiled_table(table_id_map: dict, manifest, table_name: str) -> Optional[str]:
+        """Resolve a table name from compiled SQL to a parent unique_id.
+
+        Tries the pre-built map (from depends_on.nodes) first, then falls back
+        to a project-wide alias/identifier scan over relation-producing nodes
+        (model/seed/snapshot) and sources, so models referenced via raw SQL or
+        stale compiled_code still resolve. Returns None when no match OR when
+        more than one node/source matches — picking arbitrarily on ambiguity
+        would silently produce incorrect lineage, mirroring the existing
+        `has_alias_collision` safeguard on the depends_on-derived map.
+
+        On a successful project-wide resolution, the result is memoized into
+        ``table_id_map`` so repeated lookups for the same name in the same
+        ``get_cll_cached`` call are O(1) instead of O(N) per scan.
+        """
+        key = table_name.lower()
+        if key in table_id_map:
+            return table_id_map[key]
+
+        matches: List[str] = []
+        for unique_id, manifest_node in manifest.nodes.items():
+            if getattr(manifest_node, "resource_type", None) not in DbtAdapter._RELATION_RESOURCE_TYPES:
+                continue
+            candidate = getattr(manifest_node, "alias", None) or manifest_node.name
+            if candidate and candidate.lower() == key:
+                matches.append(unique_id)
+                if len(matches) > 1:
+                    return None  # ambiguous — bail early
+
+        for unique_id, manifest_src in manifest.sources.items():
+            candidate = getattr(manifest_src, "identifier", None) or manifest_src.name
+            if candidate and candidate.lower() == key:
+                matches.append(unique_id)
+                if len(matches) > 1:
+                    return None
+
+        if len(matches) == 1:
+            table_id_map[key] = matches[0]
+            return matches[0]
+        return None
+
     @lru_cache(maxsize=128)
     def get_cll_cached(self, node_id: str, base: Optional[bool] = False) -> Optional[CllData]:
         cll_tracker = CLLPerformanceTracking()
@@ -1700,11 +1747,23 @@ class DbtAdapter(BaseAdapter):
         cll_data.nodes[node.id] = node
         cll_data.columns = {f"{node.id}_{col.name}": col for col in node.columns.values()}
 
+        # Collect unresolved parent names across both node-level and column-
+        # level dependency loops, then log once per node. Compiled SQL may
+        # reference tables that aren't in depends_on.nodes and don't match any
+        # model/source in the project (raw SQL with a hard-coded relation,
+        # stale compiled_code, or a macro emitting direct table names). Skip
+        # those rather than 500. Dedup avoids log spam when the same unresolved
+        # name appears across many column dependencies.
+        unresolved: Set[str] = set()
+
         # parent map for node
         depends_on = set(parent_list)
         for d in m2c:
-            parent_key = f"{table_id_map[d.node.lower()]}_{d.column}"
-            depends_on.add(parent_key)
+            parent_id = self._resolve_compiled_table(table_id_map, manifest, d.node)
+            if parent_id is None:
+                unresolved.add(d.node)
+                continue
+            depends_on.add(f"{parent_id}_{d.column}")
         cll_data.parent_map[node_id] = depends_on
 
         # parent map for columns
@@ -1713,10 +1772,20 @@ class DbtAdapter(BaseAdapter):
             column_id = f"{node.id}_{name}"
             if name in c2c_map:
                 for d in c2c_map[name].depends_on:
-                    parent_key = f"{table_id_map[d.node.lower()]}_{d.column}"
-                    depends_on.add(parent_key)
+                    parent_id = self._resolve_compiled_table(table_id_map, manifest, d.node)
+                    if parent_id is None:
+                        unresolved.add(d.node)
+                        continue
+                    depends_on.add(f"{parent_id}_{d.column}")
                 column.transformation_type = c2c_map[name].transformation_type
             cll_data.parent_map[column_id] = set(depends_on)
+
+        if unresolved:
+            logger.warning(
+                "[cll] %s: skipping unresolved parents %s in compiled SQL",
+                node_id,
+                sorted(unresolved),
+            )
 
         cll_tracker.end_column_lineage()
         log_performance("column level lineage per node", cll_tracker.to_dict())

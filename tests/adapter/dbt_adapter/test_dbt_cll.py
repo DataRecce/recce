@@ -399,6 +399,232 @@ def test_cll_with_compiled_code_alias_collision_falls_back(dbt_test_helper):
     )
 
 
+def test_cll_with_compiled_code_unknown_parent_does_not_500(dbt_test_helper):
+    """Regression for #1354: compiled SQL referencing a table not in depends_on.nodes
+    and not matching any model/source in the project must not raise KeyError.
+
+    Calls get_cll_cached directly to bypass build_full_cll_map's blanket
+    exception swallow — that's the path that produced the user's 500.
+    """
+    dbt_test_helper.create_model(
+        "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql='select c from {{ ref("model1") }}',
+        curr_columns={"c": "int"},
+        depends_on=["model.model1"],
+    )
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+    # compiled_code references a table that exists in the warehouse but is
+    # NOT registered as a dbt ref/source. Mirrors the issue reporter's
+    # `connect_appointment_totals` / `connect_login_counts` symptoms.
+    _set_compiled_code(
+        adapter,
+        "model.model2",
+        "select model1.c " 'from "main"."model1" ' 'join "main"."ghost_table" on model1.c = ghost_table.c',
+    )
+
+    # Must not raise. Known parent edge survives; ghost_table is dropped.
+    cll_data = adapter.get_cll_cached("model.model2")
+    assert cll_data is not None
+    column_id = build_column_key("model.model2", "c")
+    parents = cll_data.parent_map.get(column_id) or set()
+    assert build_column_key("model.model1", "c") in parents
+    # Ghost table must not appear as a parent in any form
+    assert not any("ghost_table" in p for p in parents)
+
+
+def test_cll_with_compiled_code_unknown_parent_falls_back_to_project_lookup(dbt_test_helper):
+    """Regression for #1354: compiled SQL may reference a real model in the
+    project that's missing from this node's depends_on.nodes (raw SQL ref,
+    stale compiled_code, custom macro). The fallback project-wide alias scan
+    should resolve it.
+    """
+    dbt_test_helper.create_model(
+        "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
+    )
+    # other_model exists in the project but is NOT in model2's depends_on
+    dbt_test_helper.create_model(
+        "other_model",
+        unique_id="model.other_model",
+        curr_sql="select 1 as c",
+        curr_columns={"c": "int"},
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        # depends_on only lists model.model1, but compiled_code references
+        # other_model directly (raw SQL).
+        curr_sql='select model1.c from {{ ref("model1") }}',
+        curr_columns={"c": "int"},
+        depends_on=["model.model1"],
+    )
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+    _set_compiled_code(
+        adapter,
+        "model.model2",
+        "select model1.c " 'from "main"."model1" ' 'join "main"."other_model" on model1.c = other_model.c',
+    )
+
+    # Must not raise. The fallback resolves "other_model" via project-wide scan.
+    cll_data = adapter.get_cll_cached("model.model2")
+    assert cll_data is not None
+    # other_model is referenced in the JOIN — it shows up in the node-level
+    # parent_map (m2c), not the selected-column c2c_map.
+    node_parents = cll_data.parent_map.get("model.model2") or set()
+    assert build_column_key("model.other_model", "c") in node_parents
+    # The selected column 'c' still lineages back to model1.c
+    column_id = build_column_key("model.model2", "c")
+    column_parents = cll_data.parent_map.get(column_id) or set()
+    assert build_column_key("model.model1", "c") in column_parents
+
+
+def test_cll_with_compiled_code_unknown_parent_alias_fallback(dbt_test_helper):
+    """Regression for #1354: project-wide fallback must respect custom aliases
+    (the reporter's `generate_alias_name` macro produces e.g. `vw_<name>`).
+    """
+
+    def patch_alias(node):
+        node["alias"] = "vw_intermediate"
+
+    dbt_test_helper.create_model(
+        "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
+    )
+    # An "intermediate view" with a vw_ alias, NOT in model2's depends_on
+    dbt_test_helper.create_model(
+        "intermediate",
+        unique_id="model.intermediate",
+        curr_sql="select 1 as c",
+        curr_columns={"c": "int"},
+        patch_func=patch_alias,
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql='select c from {{ ref("model1") }}',
+        curr_columns={"c": "int"},
+        depends_on=["model.model1"],
+    )
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+    _set_compiled_code(
+        adapter,
+        "model.model2",
+        "select model1.c " 'from "main"."model1" ' 'join "main"."vw_intermediate" on model1.c = vw_intermediate.c',
+    )
+
+    cll_data = adapter.get_cll_cached("model.model2")
+    assert cll_data is not None
+    # vw_intermediate is referenced in the JOIN — node-level parent_map.
+    node_parents = cll_data.parent_map.get("model.model2") or set()
+    # Fallback must match by alias (`vw_intermediate`), not by model name.
+    assert build_column_key("model.intermediate", "c") in node_parents
+
+
+def test_resolve_compiled_table(dbt_test_helper):
+    """_resolve_compiled_table: pre-built map first, then project-wide fallback,
+    then None for unknown."""
+
+    def patch_alias(node):
+        node["alias"] = "vw_intermediate"
+
+    dbt_test_helper.create_model(
+        "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
+    )
+    dbt_test_helper.create_model(
+        "intermediate",
+        unique_id="model.intermediate",
+        curr_sql="select 1 as c",
+        curr_columns={"c": "int"},
+        patch_func=patch_alias,
+    )
+    dbt_test_helper.create_source(
+        "src", "tbl", unique_id="source.src.tbl", curr_csv="id\n1\n", curr_columns={"id": "int"}
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+    from recce.adapter.dbt_adapter import as_manifest
+
+    manifest = as_manifest(adapter.get_manifest(base=False))
+
+    # Pre-built map wins (priority over project scan)
+    table_id_map = {"model1": "model.model1"}
+    assert adapter._resolve_compiled_table(table_id_map, manifest, "model1") == "model.model1"
+    # Case-insensitive match against the map
+    assert adapter._resolve_compiled_table(table_id_map, manifest, "MODEL1") == "model.model1"
+
+    # Falls back to project-wide alias scan, and memoizes the result
+    table_id_map = {}
+    assert adapter._resolve_compiled_table(table_id_map, manifest, "vw_intermediate") == "model.intermediate"
+    assert table_id_map.get("vw_intermediate") == "model.intermediate"
+
+    # Falls back to source identifier
+    assert adapter._resolve_compiled_table({}, manifest, "tbl") == "source.src.tbl"
+
+    # Unknown table → None (no exception)
+    assert adapter._resolve_compiled_table({}, manifest, "ghost_table") is None
+
+
+def test_resolve_compiled_table_skips_non_relation_resource_types():
+    """Project-wide fallback must not match non-relation manifest nodes (e.g.
+    tests, analyses) — only model/seed/snapshot nodes produce database
+    relations. We use a lightweight stub manifest because dbt's ModelNode
+    rejects resource_type values outside its Literal type.
+    """
+    from types import SimpleNamespace
+
+    manifest = SimpleNamespace(
+        nodes={
+            "model.real": SimpleNamespace(resource_type="model", alias=None, name="real"),
+            # Test/analysis nodes whose names alias-collide with a real reference
+            "test.ghost_table": SimpleNamespace(resource_type="test", alias=None, name="ghost_table"),
+            "analysis.also_ghost": SimpleNamespace(resource_type="analysis", alias=None, name="also_ghost"),
+        },
+        sources={},
+    )
+
+    # Model resolves
+    assert DbtAdapter._resolve_compiled_table({}, manifest, "real") == "model.real"
+    # Test and analysis nodes are filtered out
+    assert DbtAdapter._resolve_compiled_table({}, manifest, "ghost_table") is None
+    assert DbtAdapter._resolve_compiled_table({}, manifest, "also_ghost") is None
+
+
+def test_resolve_compiled_table_returns_none_on_ambiguous_alias(dbt_test_helper):
+    """Two project models sharing the same alias must NOT silently resolve to
+    one of them — that would produce incorrect lineage. Return None so the
+    caller skips the dependency, mirroring the has_alias_collision safeguard
+    on the depends_on-derived map.
+    """
+
+    def patch_alias(node):
+        node["alias"] = "shared_alias"
+
+    dbt_test_helper.create_model(
+        "stg_orders",
+        unique_id="model.pkg1.stg_orders",
+        curr_sql="select 1 as id",
+        curr_columns={"id": "int"},
+        patch_func=patch_alias,
+    )
+    dbt_test_helper.create_model(
+        "raw_orders",
+        unique_id="model.pkg2.raw_orders",
+        curr_sql="select 1 as id",
+        curr_columns={"id": "int"},
+        patch_func=patch_alias,
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+    from recce.adapter.dbt_adapter import as_manifest
+
+    manifest = as_manifest(adapter.get_manifest(base=False))
+
+    # Two nodes share alias "shared_alias" — ambiguous, must not resolve.
+    assert adapter._resolve_compiled_table({}, manifest, "shared_alias") is None
+
+
 def test_seed(dbt_test_helper, disable_cll_cache):
     csv_data_curr = """
     customer_id,name,age
