@@ -46,7 +46,6 @@ import {
   useThemeColors,
 } from "../../hooks";
 import { useMultiNodesActionOss as useMultiNodesAction } from "../../hooks/useMultiNodesActionOss";
-import useValueDiffAlertDialog from "../../hooks/useValueDiffAlertDialogOss";
 import {
   trackCopyToClipboard,
   trackMultiNodesAction,
@@ -1016,8 +1015,6 @@ export function PrivateLineageView(
     });
   };
 
-  const valueDiffAlertDialog = useValueDiffAlertDialog();
-
   // biome-ignore lint/correctness/useExhaustiveDependencies: handleViewOptionsChanged and onNodeClick are intentionally omitted
   useEffect(() => {
     const runResultType = run?.type;
@@ -1286,17 +1283,11 @@ export function PrivateLineageView(
         );
         trackMultiNodesAction({ type: "value_diff", selected: "single" });
       } else {
-        const nodeCount =
-          selectMode === "selecting"
-            ? selectedNodes.length
-            : filteredNodeIds.length;
-        if (await valueDiffAlertDialog.confirm(nodeCount)) {
-          await multiNodeAction.runValueDiff();
-          trackMultiNodesAction({
-            type: "value_diff",
-            selected: selectMode === "selecting" ? "multi" : "none",
-          });
-        }
+        await multiNodeAction.runValueDiff();
+        trackMultiNodesAction({
+          type: "value_diff",
+          selected: selectMode === "selecting" ? "multi" : "none",
+        });
       }
     },
     addLineageDiffCheck: async () => {
@@ -1572,7 +1563,6 @@ export function PrivateLineageView(
           <Box></Box>
         )}
       </HSplit>
-      {valueDiffAlertDialog.AlertDialog}
     </LineageViewContext.Provider>
   );
 }
