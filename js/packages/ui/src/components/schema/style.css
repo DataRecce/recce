@@ -5,9 +5,11 @@
  * Default palette is the long-standing pale yellow/orange "changed" hue.
  * The new CLL experience overrides "changed" with a deeper brown and adds
  * "impacted-accent" + impacted badge colors under the `.cll-experience`
- * selector below. JS counterparts live in ../lineage/styles.tsx
- * (cllChangeStatusColors / cllChangeStatusBackgrounds*) — keep them in sync
- * by hand; there is no build-time check.
+ * selector below. JS counterparts live in ../lineage/styles.tsx — keep
+ * them in sync by hand; there is no build-time check:
+ *   - cllChangeStatusColors / cllChangeStatusBackgrounds* — row & accent
+ *   - cllImpactedAccent — --schema-color-impacted-accent
+ *   - cllImpactedBadgeBg / cllImpactedBadgeFg — --schema-badge-impacted-*
  */
 
 /* Light mode (default) */
