@@ -19,6 +19,7 @@ import { getModelInfo, type LineageGraphNode } from "../..";
 import { createSchemaDiffCheck } from "../../api";
 import {
   useLineageGraphContext,
+  useLineageViewContext,
   useRecceActionContext,
   useRecceInstanceContext,
   useRouteConfig,
@@ -39,6 +40,7 @@ import { SetupConnectionPopover } from "../app";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide";
 import { findByRunType } from "../run";
 import { SchemaView, SingleEnvSchemaView } from "../schema";
+import { computeLineageTabImpactSets } from "./computeLineageTabImpactSets";
 import { LineageTabContent } from "./LineageTabContent";
 import { NodeSqlViewOss } from "./NodeSqlViewOss";
 import { RowCountDiffTag, RowCountTag } from "./NodeTag";
@@ -124,6 +126,12 @@ export function NodeViewOss({
   const router = useRouter();
   const { runAction } = useRecceActionContext();
   const { isActionAvailable, envInfo, lineageGraph } = useLineageGraphContext();
+  // Optional: undefined in tests/Storybook that mount NodeView without LineageView.
+  const lineageViewCtx = useLineageViewContext();
+  const { impactingNodeIds, impactedNodeIds } = useMemo(
+    () => computeLineageTabImpactSets(lineageViewCtx?.cll),
+    [lineageViewCtx?.cll],
+  );
   const { singleEnv: isSingleEnvOnboarding, featureToggles } =
     useRecceInstanceContext();
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
@@ -382,6 +390,8 @@ export function NodeViewOss({
             onCenterFocus={onCenterFocused}
             historyTrail={historyTrail}
             onJumpToHistory={onJumpToHistory}
+            impactingNodeIds={impactingNodeIds}
+            impactedNodeIds={impactedNodeIds}
           />
         ) : undefined
       }

@@ -349,14 +349,6 @@ vi.mock("@datarecce/ui/components/lineage/SetupConnectionBannerOss", () => ({
   default: vi.fn(() => null),
 }));
 
-vi.mock("@datarecce/ui/hooks/useValueDiffAlertDialogOss", () => ({
-  __esModule: true,
-  default: vi.fn(() => ({
-    confirm: vi.fn().mockResolvedValue(true),
-    AlertDialog: null,
-  })),
-}));
-
 // Mock useMultiNodesAction
 const mockMultiNodesAction = {
   actionState: {

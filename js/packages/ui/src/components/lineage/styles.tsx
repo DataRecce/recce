@@ -697,3 +697,27 @@ export const cllChangeStatusBackgroundsDark: Record<
   impacted: "rgb(50 44 24)",
   unchanged: "rgb(38 38 38)",
 };
+
+/**
+ * Impacted accent + badge palette. Mirrors `--schema-color-impacted-accent`
+ * and `--schema-badge-impacted-{bg,fg}` in ../schema/style.css under
+ * `.cll-experience` — keep both in sync by hand (no build-time check).
+ */
+const IMPACTED_HUE_LIGHT = "252 211 77"; // matches cllChangeStatusColors.impacted
+const IMPACTED_HUE_DARK = "180 83 9";
+
+export const cllImpactedAccent = {
+  light: cllChangeStatusColors.impacted,
+  dark: `rgb(${IMPACTED_HUE_DARK})`,
+} as const;
+
+export const cllImpactedBadgeBg = {
+  light: `rgb(${IMPACTED_HUE_LIGHT} / 0.35)`,
+  dark: `rgb(${IMPACTED_HUE_DARK} / 0.25)`,
+} as const;
+
+export const cllImpactedBadgeFg = {
+  // Text-contrast hue, not derivable from the accent.
+  light: "rgb(146 64 14)",
+  dark: cllImpactedAccent.light,
+} as const;
