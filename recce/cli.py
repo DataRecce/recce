@@ -2937,20 +2937,47 @@ def mcp_server(state_file, sse, host, port, **kwargs):
     RecceConfig(config_file=kwargs.get("config"))
 
     handle_debug_flag(**kwargs)
-    patch_derived_args(kwargs)
-    is_cloud_mcp = kwargs.get("cloud", False)
-    cloud_session = kwargs.pop("cloud_session", None)
 
-    if is_cloud_mcp and not cloud_session:
-        console.print(
-            "[[red]Error[/red]] --session is required when using --cloud with recce mcp-server."
-        )
+    # Three MCP server modes:
+    #
+    # - cloud-session  (public)   `--cloud --session <id>`
+    #     CloudBackend proxies tool calls to a live Recce Cloud session instance
+    #     (POST /api/v2/sessions/{id}/instance to spawn, then runs/queries against
+    #     the live session). Exposed to end users.
+    #
+    # - cloud-snapshot (internal) `RECCE_SESSION_ID` / `RECCE_SNAPSHOT_ID` env
+    #     CloudStateLoader downloads the session's state file from S3 and the
+    #     server runs as a local MCP against that frozen snapshot. Used by the
+    #     Recce Summary agent (the AI-summary backend inside Recce Cloud) — it
+    #     boots an MCP server pointed at a finished session's state to generate
+    #     summaries. Not intended for end users; the env-var entrypoint is what
+    #     keeps the contract with the Summary agent stable.
+    #
+    # - local         (default)   no flags / no env
+    #     Local MCP from local dbt artifacts (and optional state file).
+    #
+    # We must capture the explicit --cloud / --session flags BEFORE running
+    # patch_derived_args — that helper promotes session_id (which Click also
+    # reads from RECCE_SESSION_ID) to cloud=True for the legacy snapshot path,
+    # and after that we can no longer tell explicit-cloud-session apart from
+    # env-driven snapshot mode.
+    cloud_session = kwargs.pop("cloud_session", None)
+    explicit_cloud = kwargs.get("cloud", False)
+    is_cloud_session = explicit_cloud or bool(cloud_session)
+
+    patch_derived_args(kwargs)
+
+    if explicit_cloud and not cloud_session:
+        console.print("[[red]Error[/red]] --session is required when using --cloud with recce mcp-server.")
         exit(1)
-    if cloud_session and not is_cloud_mcp:
-        console.print(
-            "[[red]Error[/red]] --cloud is required when using --session with recce mcp-server."
-        )
+    if cloud_session and not explicit_cloud:
+        console.print("[[red]Error[/red]] --cloud is required when using --session with recce mcp-server.")
         exit(1)
+
+    # cloud-snapshot: cloud=True was set by patch_derived_args via
+    # RECCE_SESSION_ID/RECCE_SNAPSHOT_ID env (Recce Summary agent invocation),
+    # but the user didn't pass --cloud --session.
+    is_cloud_snapshot = kwargs.get("cloud", False) and not is_cloud_session
 
     # Prepare API token
     try:
@@ -2960,9 +2987,9 @@ def mcp_server(state_file, sse, host, port, **kwargs):
         show_invalid_api_token_message()
         exit(1)
 
-    # Create state loader using shared function when running local MCP with a state file.
-    # Cloud MCP proxies to a spawned Recce Cloud instance and must not load local context/state.
-    if not is_cloud_mcp and state_file:
+    # cloud-session skips local context entirely (CloudBackend handles everything).
+    # Otherwise load a state file if provided locally OR via cloud snapshot.
+    if not is_cloud_session and (state_file or is_cloud_snapshot):
         state_loader = create_state_loader_by_args(state_file, **kwargs)
         kwargs["state_loader"] = state_loader
 
@@ -2970,10 +2997,8 @@ def mcp_server(state_file, sse, host, port, **kwargs):
     # When target-base/ doesn't exist, fall back to single-env mode: set
     # target_base_path = target_path so both envs load the same artifacts,
     # making all diffs show no changes. The MCP server adds _warning to responses.
-    # Skipped in cloud mode and when the user hasn't pointed at a dbt project — in
-    # the latter case the server will start unconfigured and the agent flips it via
-    # the set_backend MCP tool.
-    if not is_cloud_mcp:
+    # Skipped in cloud-session and cloud-snapshot modes — they bring their own state.
+    if not is_cloud_session and not is_cloud_snapshot:
         project_dir_path = Path(kwargs.get("project_dir") or "./")
         target_path = project_dir_path.joinpath(
             Path(kwargs.get("target_path", "target"))
@@ -2992,19 +3017,35 @@ def mcp_server(state_file, sse, host, port, **kwargs):
                 "To enable diffing: dbt docs generate --target-path target-base"
             )
 
+    # Don't let env-derived cloud=True trigger run_mcp_server's CloudBackend branch
+    # — cloud-snapshot runs as a local MCP against the downloaded state file.
+    if not is_cloud_session:
+        kwargs["cloud"] = False
+
     try:
-        if sse:
-            console.print(
-                f"Starting Recce MCP Server in HTTP/SSE mode on {host}:{port}..."
-            )
-            console.print(f"SSE endpoint: http://{host}:{port}/sse")
-        elif is_cloud_mcp:
-            console.print("Starting Recce MCP Server in cloud stdio mode...")
+        if is_cloud_session:
+            if sse:
+                console.print(f"Starting Recce MCP Server in cloud-session HTTP/SSE mode on {host}:{port}...")
+                console.print(f"SSE endpoint: http://{host}:{port}/sse")
+            else:
+                console.print("Starting Recce MCP Server in cloud-session stdio mode...")
+        elif is_cloud_snapshot:
+            session_label = kwargs.get("session_id") or kwargs.get("share_url")
+            console.print(f"Loading Recce state from cloud snapshot ({session_label})...")
+            if sse:
+                console.print(f"Starting Recce MCP Server in cloud-snapshot HTTP/SSE mode on {host}:{port}...")
+                console.print(f"SSE endpoint: http://{host}:{port}/sse")
+            else:
+                console.print("Starting Recce MCP Server in cloud-snapshot stdio mode...")
         else:
-            console.print(
-                "Starting Recce MCP Server in stdio mode "
-                "(use the set_backend MCP tool to switch local/cloud at runtime)..."
-            )
+            if sse:
+                console.print(f"Starting Recce MCP Server in HTTP/SSE mode on {host}:{port}...")
+                console.print(f"SSE endpoint: http://{host}:{port}/sse")
+            else:
+                console.print(
+                    "Starting Recce MCP Server in stdio mode "
+                    "(use the set_backend MCP tool to switch local/cloud at runtime)..."
+                )
 
         # Run the server (stdio or SSE based on --sse flag)
         asyncio.run(

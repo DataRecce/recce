@@ -345,6 +345,69 @@ class TestCommandMCPServer(TestCase):
         assert "single_env" not in call_kwargs
         assert "Base artifacts not found" not in result.output
 
+    @patch("asyncio.run")
+    @patch("recce.mcp_server.run_mcp_server", new_callable=MagicMock)
+    @patch("recce.cli.create_state_loader_by_args")
+    @patch("recce.config.RecceConfig")
+    @patch("recce.util.api_token.prepare_api_token", return_value="token-abc")
+    def test_cmd_mcp_server_cloud_snapshot_mode_via_env_var(
+        self,
+        mock_prepare_api_token,
+        mock_recce_config,
+        mock_create_state_loader,
+        mock_run_mcp_server,
+        mock_asyncio_run,
+    ):
+        # cloud-snapshot mode (used by the Recce Summary agent):
+        # `recce mcp-server --sse` with RECCE_SESSION_ID in the environment runs
+        # as a LOCAL MCP backed by a snapshot state file downloaded from S3, NOT
+        # as a live cloud-session via CloudBackend.
+        mock_state_loader = MagicMock()
+        mock_create_state_loader.return_value = mock_state_loader
+
+        with patch.object(Path, "is_dir", return_value=False):
+            result = self.runner.invoke(
+                cli_command_mcp_server,
+                ["--sse"],
+                env={"RECCE_SESSION_ID": "sess-from-env"},
+            )
+
+        assert result.exit_code == 0, result.output
+        # Snapshot mode: state loader created with cloud-derived options
+        mock_create_state_loader.assert_called_once()
+        mock_run_mcp_server.assert_called_once()
+        call_kwargs = mock_run_mcp_server.call_args.kwargs
+        # Cloud-live branch must NOT fire — env var is snapshot mode
+        assert call_kwargs["cloud"] is False
+        assert call_kwargs["session"] is None
+        assert call_kwargs["state_loader"] is mock_state_loader
+
+    @patch("asyncio.run")
+    @patch("recce.mcp_server.run_mcp_server", new_callable=MagicMock)
+    @patch("recce.cli.create_state_loader_by_args")
+    @patch("recce.config.RecceConfig")
+    @patch("recce.util.api_token.prepare_api_token", return_value="token-abc")
+    def test_cmd_mcp_server_cloud_session_mode_skips_state_loader(
+        self,
+        mock_prepare_api_token,
+        mock_recce_config,
+        mock_create_state_loader,
+        mock_run_mcp_server,
+        mock_asyncio_run,
+    ):
+        # cloud-session mode (public): explicit --cloud --session uses CloudBackend
+        # to proxy a live session — no state loader, no local context.
+        with patch.object(Path, "is_dir", return_value=False):
+            result = self.runner.invoke(cli_command_mcp_server, ["--cloud", "--session", "sess-explicit"])
+
+        assert result.exit_code == 0, result.output
+        mock_create_state_loader.assert_not_called()
+        mock_run_mcp_server.assert_called_once()
+        call_kwargs = mock_run_mcp_server.call_args.kwargs
+        assert call_kwargs["cloud"] is True
+        assert call_kwargs["session"] == "sess-explicit"
+        assert "state_loader" not in call_kwargs
+
 
 def test_cli_shows_update_available_warning():
     """CLI should show update available warning when a newer version exists."""
