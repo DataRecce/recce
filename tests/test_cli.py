@@ -345,6 +345,32 @@ class TestCommandMCPServer(TestCase):
         assert "single_env" not in call_kwargs
         assert "Base artifacts not found" not in result.output
 
+    @patch("asyncio.run")
+    @patch("recce.mcp_server.run_mcp_server", new_callable=MagicMock)
+    @patch("recce.config.RecceConfig")
+    @patch("recce.util.api_token.prepare_api_token", return_value="token-abc")
+    def test_cmd_mcp_server_session_id_env_var_satisfies_cloud_session(
+        self, mock_prepare_api_token, mock_recce_config, mock_run_mcp_server, mock_asyncio_run
+    ):
+        # DRC-3383 regression: the AI-summary entrypoint invokes `recce mcp-server --sse`
+        # with RECCE_SESSION_ID set in the environment. patch_derived_args() promotes
+        # session_id to cloud=True, so the new --session validation must accept the
+        # session_id env var as the session source — otherwise the CLI exits before
+        # the MCP server starts.
+        with patch.object(Path, "is_dir", return_value=False):
+            result = self.runner.invoke(
+                cli_command_mcp_server,
+                ["--sse"],
+                env={"RECCE_SESSION_ID": "sess-from-env"},
+            )
+
+        assert result.exit_code == 0, result.output
+        assert "--session is required" not in result.output
+        mock_run_mcp_server.assert_called_once()
+        call_kwargs = mock_run_mcp_server.call_args.kwargs
+        assert call_kwargs["cloud"] is True
+        assert call_kwargs["session"] == "sess-from-env"
+
 
 def test_cli_shows_update_available_warning():
     """CLI should show update available warning when a newer version exists."""
