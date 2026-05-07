@@ -3110,15 +3110,14 @@ def clear_cache(cache_db):
 
 def check_base_freshness(
     target_base_path: str = "target-base",
-    target_path: str = "target",
     freshness_threshold_hours: float = 48.0,
 ) -> dict:
     """
     Check whether the base artifacts in target_base_path are fresh.
 
     Returns a dict with keys:
-        status: FRESH | STALE_TIME | STALE_SHA | MISSING
-        recommendation: reuse | docs_generate | full_build
+        status: "fresh" | "stale_time" | "stale_sha" | "missing"
+        recommendation: "reuse" | "docs_generate" | "full_build"
         message: human-readable explanation
         artifact_age_hours: float or None
         base_sha: str or None  (DBT_GIT_SHA from manifest metadata)
@@ -3126,7 +3125,10 @@ def check_base_freshness(
         threshold_hours: float
     """
     import json
+    import logging
     import time
+
+    _logger = logging.getLogger("recce")
 
     manifest_path = Path(target_base_path) / "manifest.json"
     result: dict = {
@@ -3140,11 +3142,11 @@ def check_base_freshness(
     }
 
     if not manifest_path.exists():
-        result["status"] = "MISSING"
+        result["status"] = "missing"
         result["recommendation"] = "full_build"
         result["message"] = (
             f"Base artifacts not found at '{target_base_path}/manifest.json'. "
-            "Run: git stash; git checkout <base>; dbt build --target-path target-base; "
+            f"Run: git stash; git checkout <base>; dbt build --target-path {target_base_path}; "
             "git checkout <target>; git stash pop"
         )
         return result
@@ -3157,12 +3159,12 @@ def check_base_freshness(
 
     # Time-based freshness check
     if artifact_age_hours > freshness_threshold_hours:
-        result["status"] = "STALE_TIME"
+        result["status"] = "stale_time"
         result["recommendation"] = "docs_generate"
         result["message"] = (
             f"Base artifacts are stale ({artifact_age_hours:.1f} hours old, "
             f"threshold: {freshness_threshold_hours}h). "
-            "Run: dbt docs generate --target-path target-base"
+            f"Run: dbt docs generate --target-path {target_base_path}"
         )
         return result
 
@@ -3179,19 +3181,20 @@ def check_base_freshness(
             current_sha = current_commit_hash()
             result["current_sha"] = current_sha
             if current_sha and base_sha != current_sha:
-                result["status"] = "STALE_SHA"
+                result["status"] = "stale_sha"
                 result["recommendation"] = "docs_generate"
                 result["message"] = (
                     f"Base artifacts are stale (generated at {base_sha[:7]}, "
                     f"current HEAD: {current_sha[:7]}). "
-                    "Run: dbt docs generate --target-path target-base"
+                    f"Run: dbt docs generate --target-path {target_base_path}"
                 )
                 return result
-    except Exception:
-        # Best-effort: if manifest is unreadable or git is unavailable, skip SHA check
-        pass
+    except Exception as e:
+        # Best-effort: if manifest is unreadable or git is unavailable, skip SHA check.
+        # Log at debug so the reason is recoverable without surfacing in normal output.
+        _logger.debug(f"check_base_freshness: SHA check skipped ({e})")
 
-    result["status"] = "FRESH"
+    result["status"] = "fresh"
     result["recommendation"] = "reuse"
     result["message"] = (
         f"Base artifacts are fresh ({artifact_age_hours:.1f} hours old). "
@@ -3202,17 +3205,17 @@ def check_base_freshness(
 
 @cli.command(name="check-base", cls=TrackCommand)
 @click.option(
+    "--project-dir",
+    help="Which directory to look in for the dbt_project.yml file. "
+    "target-base-path is resolved relative to this when not absolute.",
+    type=click.Path(),
+    envvar="DBT_PROJECT_DIR",
+)
+@click.option(
     "--target-base-path",
     default="target-base",
     show_default=True,
-    help="Path to the base artifacts directory.",
-    type=click.Path(),
-)
-@click.option(
-    "--target-path",
-    default="target",
-    show_default=True,
-    help="Path to the current target artifacts directory.",
+    help="Path to the base artifacts directory (relative to --project-dir if not absolute).",
     type=click.Path(),
 )
 @click.option(
@@ -3228,18 +3231,29 @@ def check_base_freshness(
     default=48.0,
     show_default=True,
     type=float,
-    help="Age threshold in hours after which artifacts are considered STALE_TIME.",
+    help="Age threshold in hours after which artifacts are considered stale_time.",
 )
-def check_base(target_base_path, target_path, output_format, freshness_threshold_hours):
+def check_base(project_dir, target_base_path, output_format, freshness_threshold_hours):
     """Check freshness of base artifacts for diff operations.
 
-    Exits 0 when status is FRESH; exits 1 when STALE_TIME, STALE_SHA, or MISSING.
+    Exit codes:
+      0 - fresh
+      1 - missing (rebuild required: full_build)
+      2 - stale_time / stale_sha (regenerate when convenient: docs_generate)
     """
     import json
 
+    # Honor --project-dir / DBT_PROJECT_DIR like every other dbt-aware command.
+    # An absolute target-base-path bypasses the join.
+    project_dir_path = Path(project_dir) if project_dir else Path("./")
+    resolved_target_base = (
+        Path(target_base_path)
+        if Path(target_base_path).is_absolute()
+        else project_dir_path / target_base_path
+    )
+
     result = check_base_freshness(
-        target_base_path=target_base_path,
-        target_path=target_path,
+        target_base_path=str(resolved_target_base),
         freshness_threshold_hours=freshness_threshold_hours,
     )
 
@@ -3253,10 +3267,10 @@ def check_base(target_base_path, target_path, output_format, freshness_threshold
         age = result.get("artifact_age_hours")
         msg = result.get("message", "")
         color_map = {
-            "FRESH": "green",
-            "STALE_TIME": "yellow",
-            "STALE_SHA": "yellow",
-            "MISSING": "red",
+            "fresh": "green",
+            "stale_time": "yellow",
+            "stale_sha": "yellow",
+            "missing": "red",
         }
         color = color_map.get(status, "white")
         console.print(f"[{color}]Status: {status}[/{color}]")
@@ -3266,8 +3280,14 @@ def check_base(target_base_path, target_path, output_format, freshness_threshold
         if msg:
             console.print(msg)
 
-    if result["status"] != "FRESH":
+    # Distinct exit codes so shell automation can branch without parsing JSON.
+    status = result["status"]
+    if status == "fresh":
+        return
+    if status == "missing":
         raise SystemExit(1)
+    # stale_time, stale_sha (and any future non-fresh status)
+    raise SystemExit(2)
 
 
 if __name__ == "__main__":

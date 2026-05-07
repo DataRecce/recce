@@ -738,7 +738,15 @@ class RecceMCPServer:
                     description="Get server context information including current backend mode "
                     "('local', 'cloud', or 'none' when unconfigured), adapter type, git branch, "
                     "supported tasks, and review mode status. Useful for diagnostics and "
-                    "understanding which diff tools are available.",
+                    "understanding which diff tools are available.\n\n"
+                    "The 'base_status' field is a single-cased enum (all lowercase) reporting "
+                    "whether the local target-base/ artifacts are usable for diff operations:\n"
+                    "  - 'fresh': artifacts are within the freshness threshold and SHA matches; safe to diff.\n"
+                    "  - 'stale_time': artifacts older than the freshness threshold; diff results may be outdated.\n"
+                    "  - 'stale_sha': artifacts were generated against a different git SHA than current HEAD.\n"
+                    "  - 'missing': no manifest.json under target-base/; diffs will fail until rebuilt.\n"
+                    "  - 'single_env': server is running in single-env mode; diff is not applicable.\n"
+                    "  - 'unknown': freshness check did not run (e.g., cloud mode or check skipped).",
                     inputSchema={
                         "type": "object",
                         "properties": {},
@@ -2170,7 +2178,8 @@ class RecceMCPServer:
         }
 
         # Include base_status so agents can programmatically detect stale state.
-        # Values: "FRESH" | "STALE_TIME" | "STALE_SHA" | "MISSING" | "single_env" | "unknown"
+        # All-lowercase enum (matches the recommendation field's casing):
+        # "fresh" | "stale_time" | "stale_sha" | "missing" | "single_env" | "unknown"
         if self.single_env:
             result["base_status"] = "single_env"
         else:
@@ -2738,28 +2747,31 @@ async def run_mcp_server(
             )
             server._local_cache_key = cache_key
 
-            # Freshness check (M2, AC-3): warn on stale base artifacts at startup.
+            # Freshness check (M2, AC-3): warn on stale or missing base artifacts at startup.
             # Lazy import to avoid circular import; best-effort — startup never fails here.
             try:
                 from recce.cli import check_base_freshness
 
                 _tb = kwargs.get("target_base_path", "target-base")
-                _tp = kwargs.get("target_path", "target")
-                _freshness = check_base_freshness(
-                    target_base_path=_tb,
-                    target_path=_tp,
-                )
-                server._base_status = _freshness.get("status", "FRESH")
-                if server._base_status in ("STALE_TIME", "STALE_SHA"):
+                _freshness = check_base_freshness(target_base_path=_tb)
+                server._base_status = _freshness.get("status", "fresh")
+                if server._base_status in ("stale_time", "stale_sha"):
                     _age = _freshness.get("artifact_age_hours") or 0
-                    import sys
-
-                    print(
-                        f"[Warning] Base artifacts are stale ({_age:.1f} hours old). "
-                        "Diffs may not reflect the latest base.\n"
-                        "Run: dbt docs generate --target-path target-base"
-                        "   (or use recce check-base for full diagnosis)",
-                        file=sys.stderr,
+                    logger.warning(
+                        f"Base artifacts are stale ({_age:.1f} hours old). "
+                        "Diffs may not reflect the latest base. "
+                        f"Run: dbt docs generate --target-path {_tb} "
+                        "(or use `recce check-base` for full diagnosis)"
+                    )
+                elif server._base_status == "missing":
+                    # MISSING is the most actionable failure of the three: diffs
+                    # will fail outright, not silently mislead. Surface it loudly
+                    # alongside the rebuild path.
+                    logger.warning(
+                        f"Base artifacts not found at '{_tb}/manifest.json'. "
+                        "Diff tools will fail until base artifacts are built. "
+                        f"Run: dbt build --target-path {_tb} "
+                        "(or use `recce check-base` for full diagnosis)"
                     )
             except Exception as _e:
                 logger.debug(f"[MCP] Base freshness check skipped: {_e}")
