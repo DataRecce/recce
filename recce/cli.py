@@ -2561,7 +2561,9 @@ def mcp_server(state_file, sse, host, port, **kwargs):
     handle_debug_flag(**kwargs)
     patch_derived_args(kwargs)
     is_cloud_mcp = kwargs.get("cloud", False)
-    cloud_session = kwargs.pop("cloud_session", None)
+    # DRC-3383: also accept the session_id env var (RECCE_SESSION_ID) — patch_derived_args()
+    # already promotes session_id to cloud=True, so the validation must honor the same source.
+    cloud_session = kwargs.pop("cloud_session", None) or kwargs.get("session_id")
 
     if is_cloud_mcp and not cloud_session:
         console.print("[[red]Error[/red]] --session is required when using --cloud with recce mcp-server.")
