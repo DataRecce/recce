@@ -71,9 +71,7 @@ class CloudBackend:
         "histogram_diff": "histogram_diff",
     }
 
-    def __init__(
-        self, session_id: str, api_token: str, cloud_host: str = RECCE_CLOUD_API_HOST
-    ):
+    def __init__(self, session_id: str, api_token: str, cloud_host: str = RECCE_CLOUD_API_HOST):
         self.session_id = session_id
         self.api_token = api_token
         self.cloud_host = cloud_host.rstrip("/")
@@ -84,9 +82,7 @@ class CloudBackend:
         backend = cls(session_id=session_id, api_token=api_token)
         spawn_response = await backend._request("POST", "instance", json={})
         if isinstance(spawn_response, dict):
-            backend.instance_status = spawn_response.get(
-                "status"
-            ) or spawn_response.get("instance_status")
+            backend.instance_status = spawn_response.get("status") or spawn_response.get("instance_status")
         return backend
 
     def _url(self, api_name: str) -> str:
@@ -98,9 +94,7 @@ class CloudBackend:
             **kwargs.pop("headers", {}),
             "Authorization": f"Bearer {self.api_token}",
         }
-        response = await asyncio.to_thread(
-            requests.request, method, url, headers=headers, **kwargs
-        )
+        response = await asyncio.to_thread(requests.request, method, url, headers=headers, **kwargs)
         if response.status_code == 405:
             raise InstanceSpawningError()
         if response.status_code < 200 or response.status_code >= 300:
@@ -178,9 +172,7 @@ class CloudBackend:
         params = {k: v for k, v in arguments.items() if k != "base"}
         return await self._tool_run_backed(run_type, params)
 
-    async def _tool_run_backed(
-        self, run_type: str, params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _tool_run_backed(self, run_type: str, params: Dict[str, Any]) -> Dict[str, Any]:
         run = await self._request(
             "POST",
             "runs",
@@ -281,17 +273,9 @@ class CloudBackend:
         lineage = info.get("lineage", {})
         nodes = lineage.get("nodes", {})
         selected = await self._selected_nodes(arguments, nodes)
-        impacted = set(
-            (
-                await self._request(
-                    "POST", "select", json={"select": "state:modified+"}
-                )
-            ).get("nodes", [])
-        )
+        impacted = set((await self._request("POST", "select", json={"select": "state:modified+"})).get("nodes", []))
 
-        selected_nodes = {
-            node_id: node for node_id, node in nodes.items() if node_id in selected
-        }
+        selected_nodes = {node_id: node for node_id, node in nodes.items() if node_id in selected}
         id_to_idx = {node_id: idx for idx, node_id in enumerate(selected_nodes.keys())}
         nodes_df = DataFrame.from_data(
             columns={
@@ -323,9 +307,7 @@ class CloudBackend:
             target = edge.get("target")
             if source in id_to_idx and target in id_to_idx:
                 edge_rows.append((id_to_idx[source], id_to_idx[target]))
-        edges_df = DataFrame.from_data(
-            columns={"from": "integer", "to": "integer"}, data=edge_rows
-        )
+        edges_df = DataFrame.from_data(columns={"from": "integer", "to": "integer"}, data=edge_rows)
         return {
             "nodes": nodes_df.model_dump(mode="json"),
             "edges": edges_df.model_dump(mode="json"),
@@ -357,15 +339,9 @@ class CloudBackend:
             "select",
             "state:modified.body+ state:modified.macros+ state:modified.contract+",
         )
-        impacted_node_ids = set(
-            (await self._request("POST", "select", json={"select": select})).get(
-                "nodes", []
-            )
-        )
+        impacted_node_ids = set((await self._request("POST", "select", json={"select": select})).get("nodes", []))
         modified_node_ids = set(
-            (
-                await self._request("POST", "select", json={"select": "state:modified"})
-            ).get("nodes", [])
+            (await self._request("POST", "select", json={"select": "state:modified"})).get("nodes", [])
         )
 
         impacted_models = []
@@ -375,16 +351,12 @@ class CloudBackend:
                 continue
             entry = {
                 "name": node.get("name"),
-                "change_status": node.get("change_status")
-                if node_id in modified_node_ids
-                else None,
+                "change_status": node.get("change_status") if node_id in modified_node_ids else None,
                 "materialized": node.get("materialized"),
                 "row_count": None,
                 "schema_changes": [
                     {"column": column, "change_status": status}
-                    for column, status in (
-                        (node.get("change") or {}).get("columns") or {}
-                    ).items()
+                    for column, status in ((node.get("change") or {}).get("columns") or {}).items()
                 ],
                 "value_diff": None,
                 "affected_row_count": None,
@@ -422,9 +394,7 @@ class CloudBackend:
                 for key in ("select", "exclude", "packages", "view_mode")
                 if arguments.get(key) is not None
             }
-            return set(
-                (await self._request("POST", "select", json=payload)).get("nodes", [])
-            )
+            return set((await self._request("POST", "select", json=payload)).get("nodes", []))
         return set(nodes.keys())
 
     @staticmethod
@@ -444,9 +414,7 @@ def _redact_sensitive_args(arguments: Dict[str, Any]) -> Dict[str, Any]:
     """
     if not isinstance(arguments, dict):
         return arguments
-    return {
-        k: ("***" if k in SENSITIVE_ARG_KEYS and v else v) for k, v in arguments.items()
-    }
+    return {k: ("***" if k in SENSITIVE_ARG_KEYS and v else v) for k, v in arguments.items()}
 
 
 def _truncate_strings(obj: Any, max_length: int = 200) -> Any:
@@ -596,9 +564,7 @@ class RecceMCPServer:
         @self.server.list_tools()
         async def list_tools() -> List[Tool]:
             """List all available tools based on server mode"""
-            logger.info(
-                f"[MCP] list_tools called (mode: {self.mode.value if self.mode else 'server'})"
-            )
+            logger.info(f"[MCP] list_tools called (mode: {self.mode.value if self.mode else 'server'})")
             tools = []
 
             # Always available in all modes
@@ -1291,19 +1257,10 @@ class RecceMCPServer:
                 }
                 # Unconfigured-mode gate: when neither a local context nor a cloud
                 # backend is set, only set_backend and get_server_info are usable.
-                if (
-                    self.context is None
-                    and self.backend is None
-                    and name not in {"set_backend", "get_server_info"}
-                ):
-                    raise ValueError(
-                        "No backend configured. Call set_backend(mode='local'|'cloud', ...) first."
-                    )
+                if self.context is None and self.backend is None and name not in {"set_backend", "get_server_info"}:
+                    raise ValueError("No backend configured. Call set_backend(mode='local'|'cloud', ...) first.")
 
-                if (
-                    self.mode != RecceServerMode.server
-                    and name in blocked_tools_in_non_server
-                ):
+                if self.mode != RecceServerMode.server and name in blocked_tools_in_non_server:
                     # Allowed tools = all registered minus blocked
                     allowed_tools = sorted(
                         {
@@ -1322,11 +1279,7 @@ class RecceMCPServer:
 
                 if name == "set_backend":
                     result = await self._tool_set_backend(arguments)
-                elif (
-                    name == "get_server_info"
-                    and self.context is None
-                    and self.backend is None
-                ):
+                elif name == "get_server_info" and self.context is None and self.backend is None:
                     result = {
                         "mode": "none",
                         "configured": False,
@@ -1381,9 +1334,7 @@ class RecceMCPServer:
                 logger.info(f"[MCP] Tool response for {name} ({duration_ms:.2f}ms):")
                 # Truncate large responses for console readability
                 if len(response_json) > 1000:
-                    logger.debug(
-                        f"[MCP] {response_json[:1000]}... (truncated, {len(response_json)} chars total)"
-                    )
+                    logger.debug(f"[MCP] {response_json[:1000]}... (truncated, {len(response_json)} chars total)")
                 else:
                     logger.debug(f"[MCP] {response_json}")
 
@@ -1391,13 +1342,9 @@ class RecceMCPServer:
             except Exception as e:
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 error_msg = str(e)
-                self.mcp_logger.log_tool_call(
-                    name, log_arguments, {}, duration_ms, error=error_msg
-                )
+                self.mcp_logger.log_tool_call(name, log_arguments, {}, duration_ms, error=error_msg)
 
-                is_expected_cloud_error = isinstance(
-                    e, (RecceCloudException, InstanceSpawningError)
-                )
+                is_expected_cloud_error = isinstance(e, (RecceCloudException, InstanceSpawningError))
                 classification = self._classify_db_error(error_msg)
                 if classification:
                     logger.warning(
@@ -1410,13 +1357,9 @@ class RecceMCPServer:
                             attributes={"tool": name, "error_type": classification},
                         )
                 elif is_expected_cloud_error:
-                    logger.warning(
-                        f"[MCP] Expected cloud error in tool {name} ({duration_ms:.2f}ms): {error_msg}"
-                    )
+                    logger.warning(f"[MCP] Expected cloud error in tool {name} ({duration_ms:.2f}ms): {error_msg}")
                 else:
-                    logger.error(
-                        f"[MCP] Error executing tool {name} ({duration_ms:.2f}ms): {error_msg}"
-                    )
+                    logger.error(f"[MCP] Error executing tool {name} ({duration_ms:.2f}ms): {error_msg}")
                     logger.exception("[MCP] Full traceback:")
 
                 # Re-raise so MCP SDK sets isError=True in the protocol response
@@ -1666,9 +1609,7 @@ class RecceMCPServer:
             result = result.model_dump(mode="json")
         return self._maybe_add_single_env_warning(result)
 
-    async def _tool_value_diff_detail(
-        self, arguments: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _tool_value_diff_detail(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute value diff detail task"""
         task = ValueDiffDetailTask(params=arguments)
         result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
@@ -1706,9 +1647,7 @@ class RecceMCPServer:
         if not col_info:
             col_info = columns.get(column_name.lower())
         if not col_info or not col_info.get("type"):
-            raise ValueError(
-                f"Cannot determine column type for '{column_name}' in model '{model}'"
-            )
+            raise ValueError(f"Cannot determine column type for '{column_name}' in model '{model}'")
 
         params = {**arguments, "column_type": col_info["type"]}
         task = HistogramDiffTask(params=params)
@@ -1766,10 +1705,7 @@ class RecceMCPServer:
                 model_entry = {
                     "name": name,
                     "change_status": (
-                        change_status
-                        if node_id in modified_node_ids
-                        or change_status in ("added", "removed")
-                        else None
+                        change_status if node_id in modified_node_ids or change_status in ("added", "removed") else None
                     ),
                     "materialized": materialized,
                     "row_count": None,
@@ -1781,16 +1717,12 @@ class RecceMCPServer:
                 not_impacted_models.append(name)
 
         # Step 2a: Row count diff (skip removed models; include views for delta detection)
-        countable_models = [
-            m for m in impacted_models if m["change_status"] != "removed"
-        ]
+        countable_models = [m for m in impacted_models if m["change_status"] != "removed"]
         if countable_models:
             countable_names = [m["name"] for m in countable_models]
             try:
                 task = RowCountDiffTask(params={"node_names": countable_names})
-                row_count_result = await asyncio.get_event_loop().run_in_executor(
-                    None, task.execute
-                )
+                row_count_result = await asyncio.get_event_loop().run_in_executor(None, task.execute)
 
                 for model in countable_models:
                     name = model["name"]
@@ -1805,9 +1737,7 @@ class RecceMCPServer:
                                 "base": base,
                                 "current": curr,
                                 "delta": delta,
-                                "delta_pct": round(delta_pct, 1)
-                                if delta_pct is not None
-                                else None,
+                                "delta_pct": round(delta_pct, 1) if delta_pct is not None else None,
                             }
                         elif curr is not None:
                             # Added model (no base)
@@ -1838,9 +1768,7 @@ class RecceMCPServer:
                     continue
 
                 base_cols = set(base_nodes.get(node_id, {}).get("columns", {}).keys())
-                curr_cols = set(
-                    current_nodes.get(node_id, {}).get("columns", {}).keys()
-                )
+                curr_cols = set(current_nodes.get(node_id, {}).get("columns", {}).keys())
 
                 changes = []
                 for col in curr_cols - base_cols:
@@ -1880,12 +1808,8 @@ class RecceMCPServer:
                         continue  # only PK column, no value diff to compute
 
                     # Build relations for base and current schemas
-                    base_rel = self.context.adapter.create_relation(
-                        model["name"], base=True
-                    )
-                    curr_rel = self.context.adapter.create_relation(
-                        model["name"], base=False
-                    )
+                    base_rel = self.context.adapter.create_relation(model["name"], base=True)
+                    curr_rel = self.context.adapter.create_relation(model["name"], base=False)
                     if not base_rel or not curr_rel:
                         continue
 
@@ -1921,20 +1845,10 @@ class RecceMCPServer:
                             f'COUNT(CASE WHEN b."{pk}" IS NOT NULL AND c."{pk}" IS NOT NULL '
                             f'AND b."{col}" IS DISTINCT FROM c."{col}" THEN 1 END) AS "{col}__changed"'
                         )
-                        col_type = (
-                            columns_info[col]
-                            .get("type", "")
-                            .upper()
-                            .split("(")[0]
-                            .strip()
-                        )
+                        col_type = columns_info[col].get("type", "").upper().split("(")[0].strip()
                         if col_type in numeric_types:
-                            per_col_parts.append(
-                                f'AVG(b."{col}") AS "{col}__base_mean"'
-                            )
-                            per_col_parts.append(
-                                f'AVG(c."{col}") AS "{col}__curr_mean"'
-                            )
+                            per_col_parts.append(f'AVG(b."{col}") AS "{col}__base_mean"')
+                            per_col_parts.append(f'AVG(c."{col}") AS "{col}__curr_mean"')
 
                     per_col_sql = ",\n  ".join(per_col_parts)
 
@@ -1970,24 +1884,14 @@ class RecceMCPServer:
                         for col in non_pk_cols:
                             col_changed = int(row[col_idx])
                             col_idx += 1
-                            col_type = (
-                                columns_info[col]
-                                .get("type", "")
-                                .upper()
-                                .split("(")[0]
-                                .strip()
-                            )
+                            col_type = columns_info[col].get("type", "").upper().split("(")[0].strip()
                             base_mean = None
                             current_mean = None
                             if col_type in numeric_types:
                                 raw_base = row[col_idx]
                                 raw_curr = row[col_idx + 1]
-                                base_mean = (
-                                    float(raw_base) if raw_base is not None else None
-                                )
-                                current_mean = (
-                                    float(raw_curr) if raw_curr is not None else None
-                                )
+                                base_mean = float(raw_base) if raw_base is not None else None
+                                current_mean = float(raw_curr) if raw_curr is not None else None
                                 col_idx += 2
                             columns_result[col] = {
                                 "affected_row_count": col_changed,
@@ -2018,10 +1922,7 @@ class RecceMCPServer:
             # affected_row_count: value_diff total (priority) or abs(row_count.delta) (fallback)
             if model["value_diff"] is not None:
                 model["affected_row_count"] = model["value_diff"]["affected_row_count"]
-            elif (
-                model["row_count"] is not None
-                and model["row_count"].get("delta") is not None
-            ):
+            elif model["row_count"] is not None and model["row_count"].get("delta") is not None:
                 model["affected_row_count"] = abs(model["row_count"]["delta"])
             else:
                 model["affected_row_count"] = None
@@ -2040,10 +1941,7 @@ class RecceMCPServer:
             if model["data_impact"] == "potential":
                 model["affected_row_count"] = None
 
-            if (
-                model["affected_row_count"] is not None
-                and model["affected_row_count"] > max_affected
-            ):
+            if model["affected_row_count"] is not None and model["affected_row_count"] > max_affected:
                 max_affected = model["affected_row_count"]
 
             # next_action: only for "potential" models — confirmed/none need no follow-up
@@ -2093,9 +1991,7 @@ class RecceMCPServer:
                     and model["row_count"]["delta_pct"] is not None
                     and abs(model["row_count"]["delta_pct"]) <= 5
                 ):
-                    total_matched = (model["row_count"]["current"] or 0) - vd[
-                        "rows_added"
-                    ]
+                    total_matched = (model["row_count"]["current"] or 0) - vd["rows_added"]
                     if total_matched > 0 and vd["rows_changed"] / total_matched > 0.2:
                         top_cols = [
                             col
@@ -2111,12 +2007,8 @@ class RecceMCPServer:
 
         if sentry_metrics:
             duration = time.time() - start_time
-            sentry_metrics.distribution(
-                "mcp.impact_analysis.duration", duration, unit="second"
-            )
-            sentry_metrics.distribution(
-                "mcp.impact_analysis.impacted_count", len(impacted_models)
-            )
+            sentry_metrics.distribution("mcp.impact_analysis.duration", duration, unit="second")
+            sentry_metrics.distribution("mcp.impact_analysis.impacted_count", len(impacted_models))
 
         result = {
             "_guidance": (
@@ -2225,27 +2117,19 @@ class RecceMCPServer:
 
                     api_token = get_recce_api_token()
                 if not api_token:
-                    raise ValueError(
-                        "Recce Cloud API token not found. Run `recce connect-to-cloud` first."
-                    )
+                    raise ValueError("Recce Cloud API token not found. Run `recce connect-to-cloud` first.")
 
                 # Best-effort export of local state before swapping away.
                 if self.context is not None and self.state_loader is not None:
                     try:
                         self.state_loader.export(self.context.export_state())
                     except Exception as e:
-                        logger.warning(
-                            f"[MCP] Failed to export local state on swap to cloud: {e}"
-                        )
+                        logger.warning(f"[MCP] Failed to export local state on swap to cloud: {e}")
 
-                new_backend = await CloudBackend.create(
-                    session_id=session_id, api_token=api_token
-                )
+                new_backend = await CloudBackend.create(session_id=session_id, api_token=api_token)
                 self.backend = new_backend
                 self.api_token = api_token
-                logger.info(
-                    f"[MCP] Backend switched to cloud (session_id={session_id})"
-                )
+                logger.info(f"[MCP] Backend switched to cloud (session_id={session_id})")
                 return {
                     "mode": "cloud",
                     "session_id": session_id,
@@ -2285,9 +2169,7 @@ class RecceMCPServer:
                 self.context = load_context(**load_kwargs)
                 self._local_cache_key = cache_key
 
-                logger.info(
-                    f"[MCP] Loaded local context (project_dir={project_dir}, single_env={self.single_env})"
-                )
+                logger.info(f"[MCP] Loaded local context (project_dir={project_dir}, single_env={self.single_env})")
 
             self.backend = None
             return {
@@ -2428,9 +2310,7 @@ class RecceMCPServer:
         if run_succeeded:
             check_dao.update_check_by_id(check_id, PatchCheckIn(is_checked=True))
             logger.info(f"Auto-approved check {check_id} (triggered_by={triggered_by})")
-            await asyncio.get_event_loop().run_in_executor(
-                None, export_persistent_state
-            )
+            await asyncio.get_event_loop().run_in_executor(None, export_persistent_state)
 
         return run_dump
 
@@ -2497,9 +2377,7 @@ class RecceMCPServer:
             except Exception as e:
                 run_error = str(e)
         else:
-            run, future = submit_run(
-                check_type, params=params, check_id=check_id, triggered_by=triggered_by
-            )
+            run, future = submit_run(check_type, params=params, check_id=check_id, triggered_by=triggered_by)
             await future
             # submit_run's future always resolves (errors caught internally).
             # Check run.status, not the return value.
@@ -2550,17 +2428,12 @@ class RecceMCPServer:
                     if msg is not None:
                         console.print(f"[yellow]On shutdown:[/yellow] {msg}")
                     else:
-                        if (
-                            hasattr(self.state_loader, "state_file")
-                            and self.state_loader.state_file
-                        ):
+                        if hasattr(self.state_loader, "state_file") and self.state_loader.state_file:
                             console.print(
                                 f"[yellow]On shutdown:[/yellow] State exported to '{self.state_loader.state_file}'"
                             )
                         else:
-                            console.print(
-                                "[yellow]On shutdown:[/yellow] State exported successfully"
-                            )
+                            console.print("[yellow]On shutdown:[/yellow] State exported successfully")
                 except Exception as e:
                     logger.exception(f"Failed to export state on shutdown: {e}")
 
@@ -2585,16 +2458,10 @@ class RecceMCPServer:
 
         async def handle_sse_request(request: Request):
             """Handle SSE connection (GET /sse) following official MCP example"""
-            client_info = (
-                f"{request.client.host}:{request.client.port}"
-                if request.client
-                else "unknown"
-            )
+            client_info = f"{request.client.host}:{request.client.port}" if request.client else "unknown"
             logger.info(f"[MCP HTTP] SSE connection established from {client_info}")
             try:
-                async with sse.connect_sse(
-                    request.scope, request.receive, request._send
-                ) as streams:
+                async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
                     await self.server.run(
                         streams[0],
                         streams[1],
@@ -2710,9 +2577,7 @@ async def run_mcp_server(
         if not session:
             raise ValueError("--session is required when --cloud is provided")
         if not api_token:
-            raise ValueError(
-                "Recce Cloud API token not found. Run `recce connect-to-cloud` first."
-            )
+            raise ValueError("Recce Cloud API token not found. Run `recce connect-to-cloud` first.")
 
         backend = await CloudBackend.create(session_id=session, api_token=api_token)
         server = RecceMCPServer(
@@ -2750,9 +2615,17 @@ async def run_mcp_server(
             # Freshness check (M2, AC-3): warn on stale or missing base artifacts at startup.
             # Lazy import to avoid circular import; best-effort — startup never fails here.
             try:
-                from recce.cli import check_base_freshness
+                from recce.cli import check_base_freshness, resolve_target_base_path
 
-                _tb = kwargs.get("target_base_path", "target-base")
+                # Honor --project-dir like the CLI does. Without this, MCP
+                # startup looks for ./target-base/manifest.json relative to
+                # CWD, missing artifacts that exist at --project-dir-relative
+                # paths (or worse, picking up a stale manifest from another
+                # project that happens to live in CWD).
+                _tb = resolve_target_base_path(
+                    kwargs.get("project_dir"),
+                    kwargs.get("target_base_path", "target-base"),
+                )
                 _freshness = check_base_freshness(target_base_path=_tb)
                 server._base_status = _freshness.get("status", "fresh")
                 if server._base_status in ("stale_time", "stale_sha"):

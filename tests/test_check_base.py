@@ -16,17 +16,24 @@ Coverage:
     - test_cli_exit_code_missing     — missing → exit 1
     - test_cli_exit_code_stale_time  — stale_time → exit 2
     - test_cli_project_dir_resolves  — --project-dir joins onto target-base-path
+
+  Helper (`resolve_target_base_path`):
+    - test_resolve_relative_joins_with_project_dir
+    - test_resolve_absolute_bypasses_project_dir
+    - test_resolve_no_project_dir_uses_cwd
+    - test_resolve_mcp_startup_finds_artifacts_under_project_dir
 """
 
 import json
 import os
 import time
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
 
-from recce.cli import check_base, check_base_freshness
+from recce.cli import check_base, check_base_freshness, resolve_target_base_path
 
 
 @pytest.fixture()
@@ -267,3 +274,59 @@ def test_cli_project_dir_resolves(tmp_path):
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     assert payload["status"] == "fresh"
+
+
+# ---------------------------------------------------------------------------
+# resolve_target_base_path() — shared by CLI and MCP startup so the join logic
+# cannot drift (round-2 review: MCP startup was missing the join after the CLI
+# was fixed).
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_relative_joins_with_project_dir():
+    """A relative target-base-path is joined under project-dir."""
+    resolved = resolve_target_base_path("/foo/bar", "target-base")
+    assert Path(resolved) == Path("/foo/bar") / "target-base"
+
+
+def test_resolve_absolute_bypasses_project_dir():
+    """An absolute target-base-path bypasses the join entirely."""
+    resolved = resolve_target_base_path("/foo/bar", "/tmp/abs/target-base")
+    assert Path(resolved) == Path("/tmp/abs/target-base")
+
+
+def test_resolve_no_project_dir_uses_cwd():
+    """When project_dir is None, resolution is relative to CWD ('./')."""
+    resolved = resolve_target_base_path(None, "target-base")
+    # Don't compare against a CWD-dependent absolute path; just verify the
+    # relative path semantics: joining ./ with target-base.
+    assert Path(resolved) == Path("./") / "target-base"
+
+
+def test_resolve_mcp_startup_finds_artifacts_under_project_dir(tmp_path):
+    """Regression for the round-2 review finding: MCP startup must use the
+    same resolution as the CLI so artifacts under --project-dir are found.
+
+    Mirrors test_cli_project_dir_resolves: builds a fresh manifest at
+    {project_dir}/target-base/manifest.json, then asserts that the resolution
+    helper produces a path whose freshness check returns 'fresh'. Without the
+    helper, MCP startup would look at ./target-base relative to CWD and miss
+    the artifact entirely.
+    """
+    project_dir = tmp_path / "my_dbt_project"
+    project_dir.mkdir()
+    target_base = project_dir / "target-base"
+    target_base.mkdir()
+    manifest_sha = "abc1234def5678901234567890123456789012ab"
+    manifest = {"metadata": {"env": {"DBT_GIT_SHA": manifest_sha}}}
+    (target_base / "manifest.json").write_text(json.dumps(manifest))
+
+    # The MCP startup-equivalent invocation: pass project_dir + relative
+    # target_base_path to the shared helper, then run the freshness check.
+    resolved = resolve_target_base_path(str(project_dir), "target-base")
+    assert Path(resolved) == target_base
+
+    with patch("recce.git.current_commit_hash", return_value=manifest_sha):
+        result = check_base_freshness(target_base_path=resolved)
+
+    assert result["status"] == "fresh", result
