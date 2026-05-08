@@ -235,48 +235,16 @@ export function PrivateSchemaView(
     return frozen?.size ? frozen : undefined;
   }, [newCllExperience, lineageViewContext?.impactedColumnIds]);
 
-  // Whole-model treatment (Q4 / Q9-Q11 of the `downstream-of-breaking`
-  // design). Empty Sets when the flag is off — the wash + header simply
-  // do not render in that case.
-  const nodeId = current?.id ?? base?.id;
-  const isBreakingSource = !!(
-    nodeId && lineageViewContext?.breakingSourceNodeIds.has(nodeId)
-  );
-  const isWholeModelImpactedDownstream =
-    !!(nodeId && lineageViewContext?.wholeModelImpactedNodeIds.has(nodeId)) &&
-    !isBreakingSource;
-  // Either treatment requires the wash + header. Source wins (Q11): a node
-  // that is both a source and downstream of another source is rendered as a
-  // source — brown wash + source-flavored header.
-  const showWholeModelTreatment =
-    isBreakingSource || isWholeModelImpactedDownstream;
-  const wholeModelImpactCauses =
-    nodeId && lineageViewContext?.wholeModelImpactCauseMap.get(nodeId);
-  // Multi-ancestor header text (Q7). Sort for stable rendering.
-  const ancestorList: string[] = wholeModelImpactCauses
-    ? [...wholeModelImpactCauses].sort()
-    : [];
-  // Filter out self for the downstream-only narrative (a downstream node
-  // would never be its own cause; this only matters for safety).
-  const downstreamCauses = ancestorList.filter((n) => n !== current?.name);
-  const joinedCauses = downstreamCauses.join(", ");
-  // Per Q7: list all causes by default; fall back to a generic
-  // pluralization when there are >3 ancestors OR the joined name list
-  // exceeds 60 chars (would otherwise break the header layout).
-  const useGenericFallback =
-    downstreamCauses.length > 3 || joinedCauses.length > 60;
-  const downstreamHeaderText = useGenericFallback
-    ? "Whole-model impact — downstream of multiple changes"
-    : `Whole-model impact — downstream of ${joinedCauses}`;
-  const headerText = isBreakingSource
-    ? "Whole-model change in this model"
-    : downstreamHeaderText;
-  // When falling back to generic phrasing, expose the full ancestor list
-  // via the `title` attribute so a hover tooltip is still informative
-  // (Q7 — "names available via hover/expand").
-  const headerTitle = useGenericFallback
-    ? `Closest upstream whole-model changes: ${joinedCauses}`
-    : undefined;
+  // Whole-model treatment (DRC-3341 — `--downstream-of-breaking`). The
+  // wash + header + "ALL" badge moved up to NodeView so they span every
+  // sidebar tab (Lineage / Columns / Code). SchemaView no longer renders
+  // them itself.
+  //
+  // Multi-ancestor list intentionally omitted in v1 — adds visual noise
+  // without clear value. The closest upstream causes are still computed
+  // and exposed via `LineageViewContext.wholeModelImpactCauseMap` for
+  // future use (e.g., a hover tooltip or expandable detail). See Q7 in
+  // the DRC-3341 spec.
 
   const { columns, rows } = useMemo(() => {
     const resourceType = current?.resource_type ?? base?.resource_type;
@@ -431,28 +399,7 @@ export function PrivateSchemaView(
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        // Whole-model wash — covers the entire sidebar so the reviewer
-        // reads "every column here is affected" at a glance, without the
-        // visual noise of N per-row amber rows. Brown for breaking
-        // sources (Q10), amber for downstream-only impacted (Q4 #1).
-        // Reuses existing CLL background tokens (no new color tokens).
-        ...(isBreakingSource && {
-          backgroundColor: "var(--schema-color-changed)",
-          boxShadow: "inset 4px 0 0 var(--schema-color-changed-accent)",
-        }),
-        ...(isWholeModelImpactedDownstream && {
-          backgroundColor: "var(--schema-color-impacted)",
-          boxShadow: "inset 4px 0 0 var(--schema-color-impacted-accent)",
-        }),
       }}
-      className={showWholeModelTreatment ? "cll-experience" : undefined}
-      data-testid={
-        isBreakingSource
-          ? "whole-model-source-wash"
-          : isWholeModelImpactedDownstream
-            ? "whole-model-impact-wash"
-            : undefined
-      }
     >
       {catalogMissingMessage ? (
         <MuiAlert severity="warning" sx={{ fontSize: "12px", p: 1 }}>
@@ -464,31 +411,6 @@ export function PrivateSchemaView(
         </MuiAlert>
       ) : (
         <></>
-      )}
-
-      {showWholeModelTreatment && (
-        <Box
-          data-testid={
-            isBreakingSource
-              ? "whole-model-source-header"
-              : "whole-model-impact-header"
-          }
-          title={headerTitle}
-          sx={{
-            px: 1,
-            py: 0.75,
-            fontSize: "0.75rem",
-            fontWeight: 600,
-            color: isBreakingSource
-              ? "var(--schema-badge-changed-fg, rgb(160 100 0))"
-              : "var(--schema-badge-impacted-fg, rgb(146 64 14))",
-            borderBottom: isBreakingSource
-              ? "1px solid var(--schema-color-changed-accent)"
-              : "1px solid var(--schema-color-impacted-accent)",
-          }}
-        >
-          {headerText}
-        </Box>
       )}
 
       <SchemaLegend />
