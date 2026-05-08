@@ -144,10 +144,16 @@ export interface LineageNodeProps {
   /** Whether this node is impacted by CLL analysis */
   isImpacted?: boolean;
   /** Whether this node has *whole-model impact* — every column is affected
-   *  because it sits downstream of a breaking change. Renders a node-level
-   *  badge on top of the impacted treatment so the state is readable at
-   *  zoomed-out lineage view (Q4 #2 of `downstream-of-breaking`). */
+   *  because it sits downstream of a breaking change. Renders an amber
+   *  "ALL" badge so the state is readable at zoomed-out lineage view
+   *  (Q4 #2 / Q8 of `downstream-of-breaking`). Mutually exclusive with
+   *  `isBreakingSource` (Q11 — source wins). */
   isWholeModelImpacted?: boolean;
+  /** Whether this node is itself the *source* of a whole-model change —
+   *  its own `change_category === "breaking"`. Renders a brown "ALL" badge
+   *  (Q9: same primitive, "changed" color). Takes precedence over
+   *  `isWholeModelImpacted` per Q11 ("source wins"). */
+  isBreakingSource?: boolean;
 
   // === Callbacks ===
   /** Callback when node is clicked */
@@ -323,6 +329,7 @@ function LineageNodeComponent({
   newCllExperience: newCllExperienceProp,
   isImpacted: isImpactedProp,
   isWholeModelImpacted = false,
+  isBreakingSource = false,
   // Callbacks
   onNodeClick,
   onNodeDoubleClick,
@@ -558,17 +565,32 @@ function LineageNodeComponent({
               resourceType={resourceType}
             />
 
-            {/* Whole-model impact badge — readable at zoomed-out lineage
-                view, persists regardless of hover state. Reuses the existing
-                CLL impacted accent color (no new color tokens). */}
-            {isWholeModelImpacted && (
+            {/* Whole-model badge — same primitive for both source and
+                impacted nodes (Q9: "if you see a badge, look at the color:
+                brown is the cause, amber is the effect"). Persists
+                regardless of hover state so it's readable at zoomed-out
+                lineage view. Source wins (Q11): when both flags are true
+                the brown source treatment dominates. */}
+            {(isBreakingSource || isWholeModelImpacted) && (
               <Tooltip
-                title="Whole-model impact — every column affected by an upstream breaking change"
+                title={
+                  isBreakingSource
+                    ? "Whole-model change — every row of this model is potentially affected"
+                    : "Whole-model impact — every column affected by an upstream whole-model change"
+                }
                 placement="top"
               >
                 <Box
-                  aria-label="whole-model impact"
-                  data-testid="whole-model-impact-badge"
+                  aria-label={
+                    isBreakingSource
+                      ? "whole-model change"
+                      : "whole-model impact"
+                  }
+                  data-testid={
+                    isBreakingSource
+                      ? "whole-model-source-badge"
+                      : "whole-model-impact-badge"
+                  }
                   sx={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -580,12 +602,32 @@ function LineageNodeComponent({
                     minWidth: 16,
                     px: 0.5,
                     borderRadius: "3px",
-                    color: isDark ? "rgb(252 211 77)" : "rgb(146 64 14)",
-                    backgroundColor: isDark
-                      ? "rgb(180 83 9 / 0.25)"
-                      : "rgb(252 211 77 / 0.35)",
+                    // Brown (changed) for sources, amber (impacted) for
+                    // downstream — Q9/Q10/Q11. Source-wins is enforced by
+                    // GraphNodeOss zeroing out isWholeModelImpacted when
+                    // isBreakingSource is true.
+                    color: isBreakingSource
+                      ? isDark
+                        ? "rgb(255 200 80)"
+                        : "rgb(160 100 0)"
+                      : isDark
+                        ? "rgb(252 211 77)"
+                        : "rgb(146 64 14)",
+                    backgroundColor: isBreakingSource
+                      ? isDark
+                        ? "rgb(255 173 21 / 0.2)"
+                        : "rgb(255 173 21 / 0.25)"
+                      : isDark
+                        ? "rgb(180 83 9 / 0.25)"
+                        : "rgb(252 211 77 / 0.35)",
                     border: `1px solid ${
-                      isDark ? "rgb(180 83 9)" : "rgb(252 211 77)"
+                      isBreakingSource
+                        ? isDark
+                          ? "rgb(212 133 11)"
+                          : "rgb(212 133 11)"
+                        : isDark
+                          ? "rgb(180 83 9)"
+                          : "rgb(252 211 77)"
                     }`,
                   }}
                 >

@@ -297,13 +297,19 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
     cll,
     impactedNodeIds,
     wholeModelImpactedNodeIds,
+    breakingSourceNodeIds,
     newCllExperience,
     showColumnLevelLineage,
     setChangeAnalysisMode,
   } = useLineageViewContextSafe();
   const { isActionAvailable } = useLineageGraphContext();
   const isImpacted = newCllExperience ? impactedNodeIds.has(id) : false;
-  const isWholeModelImpacted = wholeModelImpactedNodeIds.has(id);
+  // Q11 — source wins. A node that is both a breaking source AND downstream
+  // of another breaking source classifies as a source. The badge color
+  // primitive in LineageNode reads `isBreakingSource` first.
+  const isBreakingSource = breakingSourceNodeIds.has(id);
+  const isWholeModelImpacted =
+    wholeModelImpactedNodeIds.has(id) && !isBreakingSource;
 
   // Computed state
   const changeCategory = cll?.current.nodes[id]
@@ -371,6 +377,7 @@ function GraphNodeComponent(nodeProps: GraphNodeProps) {
       newCllExperience={newCllExperience}
       isImpacted={isImpacted}
       isWholeModelImpacted={isWholeModelImpacted}
+      isBreakingSource={isBreakingSource}
       // Interactive props
       interactive={interactive}
       selectMode={nodeSelectMode}

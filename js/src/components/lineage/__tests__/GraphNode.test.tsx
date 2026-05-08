@@ -250,6 +250,11 @@ const createMockContext = (
   viewOptions: {},
   cll: undefined,
   showColumnLevelLineage: vi.fn(),
+  // CLL impact sets — empty by default. GraphNodeOss reads `.has()` on each
+  // of these to decide whether to render the impacted/whole-model badges.
+  impactedNodeIds: new Set<string>(),
+  wholeModelImpactedNodeIds: new Set<string>(),
+  breakingSourceNodeIds: new Set<string>(),
   ...overrides,
 });
 
