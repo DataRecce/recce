@@ -402,42 +402,61 @@ describe("LineageNode", () => {
   // ==========================================================================
 
   describe("change analysis", () => {
-    const changeCategories: ChangeCategory[] = [
-      "breaking",
-      "non_breaking",
-      "partial_breaking",
-      "unknown",
+    // Per DRC-3341 captain review: "Breaking" and "Partial Breaking"
+    // labels were dropped from the graph node. The "ALL" badge already
+    // carries the whole-model-change signal, and the per-row `~` / `!`
+    // glyphs carry the column-level signal. Only "Non Breaking"
+    // (additive) and "Unknown" (classifier failed) still render.
+    const labelledCategories: { category: ChangeCategory; label: string }[] = [
+      { category: "non_breaking", label: "Non Breaking" },
+      { category: "unknown", label: "Unknown" },
     ];
 
     it.each(
-      changeCategories,
-    )("shows %s category label when showChangeAnalysis is true", (category) => {
-      const labels: Record<ChangeCategory, string> = {
-        breaking: "Breaking",
-        non_breaking: "Non Breaking",
-        partial_breaking: "Partial Breaking",
-        unknown: "Unknown",
-      };
+      labelledCategories,
+    )(
+      "shows $category category label when showChangeAnalysis is true",
+      ({ category, label }) => {
+        const props = createMockNodeProps(
+          { showChangeAnalysis: true, changeCategory: category },
+          { label: "test" },
+        );
 
-      const props = createMockNodeProps(
-        { showChangeAnalysis: true, changeCategory: category },
-        { label: "test" },
-      );
+        render(<LineageNode {...props} />);
 
-      render(<LineageNode {...props} />);
+        expect(screen.getByText(label)).toBeInTheDocument();
+      },
+    );
 
-      expect(screen.getByText(labels[category])).toBeInTheDocument();
-    });
+    const unlabelledCategories: ChangeCategory[] = [
+      "breaking",
+      "partial_breaking",
+    ];
+
+    it.each(unlabelledCategories)(
+      "does not show category label for %s (carried by ALL badge / row glyphs)",
+      (category) => {
+        const props = createMockNodeProps(
+          { showChangeAnalysis: true, changeCategory: category },
+          { label: "test" },
+        );
+
+        render(<LineageNode {...props} />);
+
+        expect(screen.queryByText("Breaking")).not.toBeInTheDocument();
+        expect(screen.queryByText("Partial Breaking")).not.toBeInTheDocument();
+      },
+    );
 
     it("does not show category label when showChangeAnalysis is false", () => {
       const props = createMockNodeProps(
-        { showChangeAnalysis: false, changeCategory: "breaking" },
+        { showChangeAnalysis: false, changeCategory: "non_breaking" },
         { label: "test" },
       );
 
       render(<LineageNode {...props} />);
 
-      expect(screen.queryByText("Breaking")).not.toBeInTheDocument();
+      expect(screen.queryByText("Non Breaking")).not.toBeInTheDocument();
     });
   });
 

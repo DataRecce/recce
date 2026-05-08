@@ -172,10 +172,18 @@ export interface LineageNodeProps {
 // CONSTANTS
 // =============================================================================
 
-const CHANGE_CATEGORY_LABELS: Record<ChangeCategory, string> = {
-  breaking: "Breaking",
+// "Breaking" / "Partial Breaking" labels are intentionally null. The
+// brown "ALL" badge already carries the whole-model-change signal, and
+// the per-row `~` / `!` glyphs already carry the column-level
+// "changed" / "impacted" signal. Keeping the bottom-row labels for
+// these two categories duplicates the message and clutters the graph.
+// "Non Breaking" (additive) and "Unknown" (classifier failed) still
+// render — both have no other graph-level visual treatment.
+// See DRC-3341 captain visual review notes.
+const CHANGE_CATEGORY_LABELS: Record<ChangeCategory, string | null> = {
+  breaking: null,
   non_breaking: "Non Breaking",
-  partial_breaking: "Partial Breaking",
+  partial_breaking: null,
   unknown: "Unknown",
 };
 
@@ -702,7 +710,9 @@ function LineageNodeComponent({
                   <Box sx={{ flexGrow: 1 }} />
                   {actionTag}
                 </>
-              ) : showChangeAnalysis && changeCategory ? (
+              ) : showChangeAnalysis &&
+                changeCategory &&
+                CHANGE_CATEGORY_LABELS[changeCategory] ? (
                 <Typography
                   sx={{
                     height: 20,
