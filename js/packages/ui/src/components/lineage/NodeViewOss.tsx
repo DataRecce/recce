@@ -132,6 +132,13 @@ export function NodeViewOss({
     () => computeLineageTabImpactSets(lineageViewCtx?.cll),
     [lineageViewCtx?.cll],
   );
+  // Whole-model treatment (DRC-3341). Q11 — source wins. A node that is
+  // both a breaking source AND downstream of another breaking source
+  // classifies as a source, so we zero out the downstream flag here.
+  const isBreakingSource = !!lineageViewCtx?.breakingSourceNodeIds.has(node.id);
+  const isWholeModelImpactedDownstream =
+    !!lineageViewCtx?.wholeModelImpactedNodeIds.has(node.id) &&
+    !isBreakingSource;
   const { singleEnv: isSingleEnvOnboarding, featureToggles } =
     useRecceInstanceContext();
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
@@ -331,6 +338,8 @@ export function NodeViewOss({
       onCloseNode={onCloseNode}
       isSingleEnv={isSingleEnvOnboarding ?? false}
       featureToggles={featureToggles}
+      isBreakingSource={isBreakingSource}
+      isWholeModelImpactedDownstream={isWholeModelImpactedDownstream}
       modelDetail={(() => {
         if (!modelDetail) return undefined;
         const hasBase =

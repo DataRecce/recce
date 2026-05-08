@@ -168,6 +168,22 @@ export interface NodeViewProps<
    */
   lineageTabContent?: ReactNode;
 
+  /**
+   * Whole-model treatment props (DRC-3341 / `--downstream-of-breaking`).
+   * When either is true, the entire NodeView panel renders with a wash
+   * (brown for source, amber for downstream-only impact), a header line
+   * naming the impact state, and an "ALL" badge next to the model name.
+   * The treatment spans every tab (Lineage / Columns / Code) so the
+   * reviewer never loses the impact context when switching tabs.
+   *
+   * Source wins (Q11 of the spec): a node that is both a source and
+   * downstream of another source must arrive here with `isBreakingSource`
+   * true and `isWholeModelImpactedDownstream` false. The two are not
+   * additive; the consumer is responsible for that exclusivity.
+   */
+  isBreakingSource?: boolean;
+  isWholeModelImpactedDownstream?: boolean;
+
   // =========================================================================
   // DEPENDENCY INJECTION: Components
   // =========================================================================
@@ -605,6 +621,8 @@ export function NodeView<TNode extends NodeViewNodeData>({
   featureToggles,
   modelDetail,
   lineageTabContent,
+  isBreakingSource = false,
+  isWholeModelImpactedDownstream = false,
   // Injected components
   SchemaView,
   SingleEnvSchemaView,
@@ -657,13 +675,44 @@ export function NodeView<TNode extends NodeViewNodeData>({
     },
   };
 
+  // Whole-model treatment (DRC-3341). Either flag triggers the wash +
+  // header + badge. The two are mutually exclusive — the consumer
+  // (NodeViewOss) zeroes `isWholeModelImpactedDownstream` out when
+  // `isBreakingSource` is true (Q11 — source wins). Reuses the existing
+  // `--schema-color-changed*` (brown) and `--schema-color-impacted*`
+  // (amber) tokens — no new color tokens introduced.
+  const showWholeModelTreatment =
+    isBreakingSource || isWholeModelImpactedDownstream;
+  const wholeModelHeaderText = isBreakingSource
+    ? "Whole-model change in this model"
+    : "Whole-model impact";
+
   return (
     <Box
       sx={{
         height: "100%",
         display: "flex",
         flexDirection: "column",
+        // Whole-model wash — covers the entire NodeView panel so the
+        // treatment is visible across every tab (Lineage / Columns / Code).
+        // Inset shadow on the left edge gives a slightly more prominent
+        // "this whole model is impacted" cue than v1's 4px stripe.
+        ...(isBreakingSource && {
+          backgroundColor: "var(--schema-color-changed)",
+          boxShadow: "inset 6px 0 0 var(--schema-color-changed-accent)",
+        }),
+        ...(isWholeModelImpactedDownstream && {
+          backgroundColor: "var(--schema-color-impacted)",
+          boxShadow: "inset 6px 0 0 var(--schema-color-impacted-accent)",
+        }),
       }}
+      data-testid={
+        isBreakingSource
+          ? "whole-model-source-wash"
+          : isWholeModelImpactedDownstream
+            ? "whole-model-impact-wash"
+            : undefined
+      }
     >
       {/* Header row: name + close button */}
       <Stack
@@ -672,16 +721,70 @@ export function NodeView<TNode extends NodeViewNodeData>({
           alignItems: "center",
         }}
       >
-        <Box sx={{ flex: "0 1 20%", p: 2 }}>
+        <Box
+          sx={{
+            flex: "0 1 20%",
+            p: 2,
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            minWidth: 0,
+          }}
+        >
           <Typography
             variant="subtitle1"
             className="no-track-pii-safe"
             sx={{
               fontWeight: 600,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
             {node.data.name}
           </Typography>
+          {/* "ALL" badge — same primitive as the LineageNode graph badge,
+              colored brown for whole-model-changed sources and amber for
+              downstream-only whole-model impact. Visible regardless of the
+              currently active tab. */}
+          {showWholeModelTreatment && (
+            <Box
+              data-testid={
+                isBreakingSource
+                  ? "whole-model-source-badge"
+                  : "whole-model-impact-badge"
+              }
+              aria-label={
+                isBreakingSource ? "whole-model change" : "whole-model impact"
+              }
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "0.65rem",
+                fontWeight: 700,
+                lineHeight: 1,
+                height: 18,
+                minWidth: 22,
+                px: 0.5,
+                borderRadius: "3px",
+                color: isBreakingSource
+                  ? "rgb(160 100 0)"
+                  : "rgb(146 64 14)",
+                backgroundColor: isBreakingSource
+                  ? "rgb(255 173 21 / 0.25)"
+                  : "rgb(252 211 77 / 0.35)",
+                border: `1px solid ${
+                  isBreakingSource
+                    ? "rgb(212 133 11)"
+                    : "rgb(252 211 77)"
+                }`,
+                flexShrink: 0,
+              }}
+            >
+              ALL
+            </Box>
+          )}
         </Box>
         <Box sx={{ flexGrow: 1 }} />
         {!isSingleEnv && isModelSeedOrSnapshot && (
@@ -739,6 +842,39 @@ export function NodeView<TNode extends NodeViewNodeData>({
               ConnectionPopoverWrapper={ConnectionPopoverWrapper}
             />
           )}
+        </Box>
+      )}
+      {/* Whole-model header — sits above the Tabs strip so it spans every
+          tab. Multi-ancestor list intentionally omitted in v1: it adds
+          visual noise without clear value. The closest upstream causes are
+          still computed and exposed via
+          `LineageViewContext.wholeModelImpactCauseMap` for future use
+          (e.g., a hover tooltip or expandable detail). See Q7 in the
+          DRC-3341 spec. */}
+      {showWholeModelTreatment && (
+        <Box
+          data-testid={
+            isBreakingSource
+              ? "whole-model-source-header"
+              : "whole-model-impact-header"
+          }
+          sx={{
+            px: 2,
+            py: 0.75,
+            fontSize: "0.75rem",
+            fontWeight: 600,
+            color: isBreakingSource
+              ? "rgb(160 100 0)"
+              : "rgb(146 64 14)",
+            borderTop: isBreakingSource
+              ? "1px solid var(--schema-color-changed-accent)"
+              : "1px solid var(--schema-color-impacted-accent)",
+            borderBottom: isBreakingSource
+              ? "1px solid var(--schema-color-changed-accent)"
+              : "1px solid var(--schema-color-impacted-accent)",
+          }}
+        >
+          {wholeModelHeaderText}
         </Box>
       )}
       {/* Content area: tabs for columns and code */}
