@@ -205,7 +205,11 @@ class CloudBackend:
         check_id = arguments.get("check_id")
         if not check_id:
             raise ValueError("check_id is required")
-        run = await self._request("POST", f"checks/{quote(str(check_id), safe='')}/run", json={"nowait": False})
+        run = await self._request(
+            "POST",
+            f"checks/{quote(str(check_id), safe='')}/run",
+            json={"nowait": False},
+        )
         if self._run_succeeded(run):
             await self._auto_approve(check_id)
         return run
@@ -230,12 +234,20 @@ class CloudBackend:
         # executable run). lineage_diff/schema_diff are recorded server-side via
         # POST /checks/{id}/run, mirroring local _create_metadata_run.
         if check_id and check_type != "simple":
-            run = await self._request("POST", f"checks/{quote(str(check_id), safe='')}/run", json={"nowait": False})
+            run = await self._request(
+                "POST",
+                f"checks/{quote(str(check_id), safe='')}/run",
+                json={"nowait": False},
+            )
             run_executed = True
             run_error = run.get("error")
             if self._run_succeeded(run):
                 await self._auto_approve(check_id)
-        result = {"check_id": str(check_id), "created": True, "run_executed": run_executed}
+        result = {
+            "check_id": str(check_id),
+            "created": True,
+            "run_executed": run_executed,
+        }
         if run_error:
             result["run_error"] = run_error
         return result
@@ -248,7 +260,11 @@ class CloudBackend:
         post-success side-effect, not part of the run contract.
         """
         try:
-            await self._request("PATCH", f"checks/{quote(str(check_id), safe='')}", json={"is_checked": True})
+            await self._request(
+                "PATCH",
+                f"checks/{quote(str(check_id), safe='')}",
+                json={"is_checked": True},
+            )
         except (RecceCloudException, InstanceSpawningError) as e:
             logger.warning(f"[MCP] Auto-approve failed for check {check_id}: {e}")
 
@@ -292,7 +308,10 @@ class CloudBackend:
             if source in id_to_idx and target in id_to_idx:
                 edge_rows.append((id_to_idx[source], id_to_idx[target]))
         edges_df = DataFrame.from_data(columns={"from": "integer", "to": "integer"}, data=edge_rows)
-        return {"nodes": nodes_df.model_dump(mode="json"), "edges": edges_df.model_dump(mode="json")}
+        return {
+            "nodes": nodes_df.model_dump(mode="json"),
+            "edges": edges_df.model_dump(mode="json"),
+        }
 
     async def _tool_schema_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         info = await self._request("GET", "info")
@@ -316,7 +335,10 @@ class CloudBackend:
     async def _tool_impact_analysis(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         info = await self._request("GET", "info")
         nodes = info.get("lineage", {}).get("nodes", {})
-        select = arguments.get("select", "state:modified.body+ state:modified.macros+ state:modified.contract+")
+        select = arguments.get(
+            "select",
+            "state:modified.body+ state:modified.macros+ state:modified.contract+",
+        )
         impacted_node_ids = set((await self._request("POST", "select", json={"select": select})).get("nodes", []))
         modified_node_ids = set(
             (await self._request("POST", "select", json={"select": "state:modified"})).get("nodes", [])
@@ -682,7 +704,15 @@ class RecceMCPServer:
                     description="Get server context information including current backend mode "
                     "('local', 'cloud', or 'none' when unconfigured), adapter type, git branch, "
                     "supported tasks, and review mode status. Useful for diagnostics and "
-                    "understanding which diff tools are available.",
+                    "understanding which diff tools are available.\n\n"
+                    "The 'base_status' field is a single-cased enum (all lowercase) reporting "
+                    "whether the local target-base/ artifacts are usable for diff operations:\n"
+                    "  - 'fresh': artifacts are within the freshness threshold and SHA matches; safe to diff.\n"
+                    "  - 'stale_time': artifacts older than the freshness threshold; diff results may be outdated.\n"
+                    "  - 'stale_sha': artifacts were generated against a different git SHA than current HEAD.\n"
+                    "  - 'missing': no manifest.json under target-base/; diffs will fail until rebuilt.\n"
+                    "  - 'single_env': server is running in single-env mode; diff is not applicable.\n"
+                    "  - 'unknown': freshness check did not run (e.g., cloud mode or check skipped).",
                     inputSchema={
                         "type": "object",
                         "properties": {},
@@ -2039,6 +2069,14 @@ class RecceMCPServer:
             "single_env": self.single_env,
         }
 
+        # Include base_status so agents can programmatically detect stale state.
+        # All-lowercase enum (matches the recommendation field's casing):
+        # "fresh" | "stale_time" | "stale_sha" | "missing" | "single_env" | "unknown"
+        if self.single_env:
+            result["base_status"] = "single_env"
+        else:
+            result["base_status"] = getattr(self, "_base_status", "unknown")
+
         # Add git and pull_request info if state_loader is available
         if context.state_loader:
             try:
@@ -2122,7 +2160,10 @@ class RecceMCPServer:
                 else:
                     self.single_env = not base_path.is_dir()
 
-                load_kwargs = {"target_path": target_path, "target_base_path": effective_base}
+                load_kwargs = {
+                    "target_path": target_path,
+                    "target_base_path": effective_base,
+                }
                 if project_dir:
                     load_kwargs["project_dir"] = project_dir
                 self.context = load_context(**load_kwargs)
@@ -2570,6 +2611,43 @@ async def run_mcp_server(
                 kwargs.get("target_base_path", "target-base"),
             )
             server._local_cache_key = cache_key
+
+            # Freshness check (M2, AC-3): warn on stale or missing base artifacts at startup.
+            # Lazy import to avoid circular import; best-effort — startup never fails here.
+            try:
+                from recce.cli import check_base_freshness, resolve_target_base_path
+
+                # Honor --project-dir like the CLI does. Without this, MCP
+                # startup looks for ./target-base/manifest.json relative to
+                # CWD, missing artifacts that exist at --project-dir-relative
+                # paths (or worse, picking up a stale manifest from another
+                # project that happens to live in CWD).
+                _tb = resolve_target_base_path(
+                    kwargs.get("project_dir"),
+                    kwargs.get("target_base_path", "target-base"),
+                )
+                _freshness = check_base_freshness(target_base_path=_tb)
+                server._base_status = _freshness.get("status", "fresh")
+                if server._base_status in ("stale_time", "stale_sha"):
+                    _age = _freshness.get("artifact_age_hours") or 0
+                    logger.warning(
+                        f"Base artifacts are stale ({_age:.1f} hours old). "
+                        "Diffs may not reflect the latest base. "
+                        f"Run: dbt docs generate --target-path {_tb} "
+                        "(or use `recce check-base` for full diagnosis)"
+                    )
+                elif server._base_status == "missing":
+                    # MISSING is the most actionable failure of the three: diffs
+                    # will fail outright, not silently mislead. Surface it loudly
+                    # alongside the rebuild path.
+                    logger.warning(
+                        f"Base artifacts not found at '{_tb}/manifest.json'. "
+                        "Diff tools will fail until base artifacts are built. "
+                        f"Run: dbt build --target-path {_tb} "
+                        "(or use `recce check-base` for full diagnosis)"
+                    )
+            except Exception as _e:
+                logger.debug(f"[MCP] Base freshness check skipped: {_e}")
 
     # Run in either stdio or SSE mode
     if sse:

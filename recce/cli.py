@@ -134,7 +134,12 @@ def add_options(options):
 
 
 dbt_related_options = [
-    click.option("--target", "-t", help="Which target to load for the given profile.", type=click.STRING),
+    click.option(
+        "--target",
+        "-t",
+        help="Which target to load for the given profile.",
+        type=click.STRING,
+    ),
     click.option("--profile", help="Which existing profile to load.", type=click.STRING),
     click.option(
         "--project-dir",
@@ -152,8 +157,18 @@ dbt_related_options = [
 
 sqlmesh_related_options = [
     click.option("--sqlmesh", is_flag=True, help="Use SQLMesh ", hidden=True),
-    click.option("--sqlmesh-envs", is_flag=False, help="SQLMesh envs to compare. SOURCE:TARGET", hidden=True),
-    click.option("--sqlmesh-config", is_flag=False, help="SQLMesh config name to use", hidden=True),
+    click.option(
+        "--sqlmesh-envs",
+        is_flag=False,
+        help="SQLMesh envs to compare. SOURCE:TARGET",
+        hidden=True,
+    ),
+    click.option(
+        "--sqlmesh-config",
+        is_flag=False,
+        help="SQLMesh config name to use",
+        hidden=True,
+    ),
 ]
 
 recce_options = [
@@ -165,7 +180,11 @@ recce_options = [
         show_default=True,
     ),
     click.option(
-        "--error-log", help="Path to the error log file.", type=click.Path(), default=RECCE_ERROR_LOG_FILE, hidden=True
+        "--error-log",
+        help="Path to the error log file.",
+        type=click.Path(),
+        default=RECCE_ERROR_LOG_FILE,
+        hidden=True,
     ),
     click.option("--debug", is_flag=True, help="Enable debug mode.", hidden=True),
 ]
@@ -173,7 +192,10 @@ recce_options = [
 recce_cloud_options = [
     click.option("--cloud", is_flag=True, help="Fetch the state file from cloud."),
     click.option(
-        "--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN"
+        "--cloud-token",
+        help="The GitHub token used by Recce Cloud.",
+        type=click.STRING,
+        envvar="GITHUB_TOKEN",
     ),
     click.option(
         "--state-file-host",
@@ -234,7 +256,10 @@ recce_hidden_options = [
         "--session-id",
         help="The session ID triggers this instance.",
         type=click.STRING,
-        envvar=["RECCE_SESSION_ID", "RECCE_SNAPSHOT_ID"],  # Backward compatibility with RECCE_SNAPSHOT_ID
+        envvar=[
+            "RECCE_SESSION_ID",
+            "RECCE_SNAPSHOT_ID",
+        ],  # Backward compatibility with RECCE_SNAPSHOT_ID
         hidden=True,
     ),
 ]
@@ -271,7 +296,10 @@ def cli(ctx, **kwargs):
         error_console.print(
             f"[[yellow]Update Available[/yellow]] A new version of Recce {__latest_version__} is available.",
         )
-        error_console.print("Please update using the command: 'pip install --upgrade recce'.", end="\n\n")
+        error_console.print(
+            "Please update using the command: 'pip install --upgrade recce'.",
+            end="\n\n",
+        )
 
 
 @cli.command(cls=TrackCommand)
@@ -400,7 +428,10 @@ def init(cache_db, **kwargs):
         target_base_path.mkdir(parents=True, exist_ok=True)
 
         # Download current session artifacts
-        for artifact_key, filename in [("manifest_url", "manifest.json"), ("catalog_url", "catalog.json")]:
+        for artifact_key, filename in [
+            ("manifest_url", "manifest.json"),
+            ("catalog_url", "catalog.json"),
+        ]:
             url = download_urls.get(artifact_key)
             if url:
                 try:
@@ -423,7 +454,10 @@ def init(cache_db, **kwargs):
         except RecceCloudException as e:
             console.print(f"  [[yellow]Warning[/yellow]] Failed to get base session URLs: {e}")
             base_download_urls = {}
-        for artifact_key, filename in [("manifest_url", "manifest.json"), ("catalog_url", "catalog.json")]:
+        for artifact_key, filename in [
+            ("manifest_url", "manifest.json"),
+            ("catalog_url", "catalog.json"),
+        ]:
             url = base_download_urls.get(artifact_key)
             if url:
                 try:
@@ -776,7 +810,12 @@ def init(cache_db, **kwargs):
                                         else artifact
                                     )
 
-                                for env_name, manifest, catalog, cross_catalog in envs_to_emit:
+                                for (
+                                    env_name,
+                                    manifest,
+                                    catalog,
+                                    cross_catalog,
+                                ) in envs_to_emit:
                                     if manifest is None:
                                         continue
                                     manifest_dict = manifest.to_dict() if hasattr(manifest, "to_dict") else manifest
@@ -1087,12 +1126,24 @@ def _split_comma_separated(ctx, param, value):
     help="Comma-separated list of primary key columns.",
     callback=_split_comma_separated,
 )
-@click.option("--keep-shape", is_flag=True, help="Keep unchanged columns. Otherwise, unchanged columns are hidden.")
 @click.option(
-    "--keep-equal", is_flag=True, help='Keep values that are equal. Otherwise, equal values are shown as "-".'
+    "--keep-shape",
+    is_flag=True,
+    help="Keep unchanged columns. Otherwise, unchanged columns are hidden.",
+)
+@click.option(
+    "--keep-equal",
+    is_flag=True,
+    help='Keep values that are equal. Otherwise, equal values are shown as "-".',
 )
 @add_options(dbt_related_options)
-def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equal: bool = False, **kwargs):
+def diff(
+    sql,
+    primary_keys: List[str] = None,
+    keep_shape: bool = False,
+    keep_equal: bool = False,
+    **kwargs,
+):
     """
     Run queries on base and current environments and diff the results
 
@@ -1114,7 +1165,10 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 
     before_aligned, after_aligned = before.align(after)
     diff = before_aligned.compare(
-        after_aligned, result_names=("base", "current"), keep_equal=keep_equal, keep_shape=keep_shape
+        after_aligned,
+        result_names=("base", "current"),
+        keep_equal=keep_equal,
+        keep_shape=keep_shape,
     )
     print(diff.to_string(na_rep="-") if not diff.empty else "no changes")
 
@@ -1123,7 +1177,13 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @click.argument("state_file", required=False)
 @click.option("--host", default="localhost", show_default=True, help="The host to bind to.")
 @click.option("--port", default=8000, show_default=True, help="The port to bind to.", type=int)
-@click.option("--lifetime", default=0, show_default=True, help="The lifetime of the server in seconds.", type=int)
+@click.option(
+    "--lifetime",
+    default=0,
+    show_default=True,
+    help="The lifetime of the server in seconds.",
+    type=int,
+)
 @click.option(
     "--idle-timeout",
     default=0,
@@ -1366,10 +1426,15 @@ DEFAULT_RECCE_STATE_FILE = "recce_state.json"
     envvar="GITHUB_HEAD_REF",
 )
 @click.option(
-    "--git-base-branch", help="The git branch of the base environment.", type=click.STRING, envvar="GITHUB_BASE_REF"
+    "--git-base-branch",
+    help="The git branch of the base environment.",
+    type=click.STRING,
+    envvar="GITHUB_BASE_REF",
 )
 @click.option(
-    "--github-pull-request-url", help="The github pull request url to use for the lineage.", type=click.STRING
+    "--github-pull-request-url",
+    help="The github pull request url to use for the lineage.",
+    type=click.STRING,
 )
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
@@ -1448,7 +1513,6 @@ def run(output, **kwargs):
     # Verify the output state file path
     try:
         if os.path.isdir(output) or output.endswith("/"):
-
             output_dir = Path(output)
             # Create the directory if not exists
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -1507,7 +1571,10 @@ def summary(state_file, **kwargs):
     )
 
     state_loader = create_state_loader(
-        review_mode=True, cloud_mode=cloud_mode, state_file=state_file, cloud_options=cloud_options
+        review_mode=True,
+        cloud_mode=cloud_mode,
+        state_file=state_file,
+        cloud_options=cloud_options,
     )
     state_loader.load()
 
@@ -1566,7 +1633,12 @@ def cloud(**kwargs):
 
 
 @cloud.command(cls=TrackCommand)
-@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--cloud-token",
+    help="The GitHub token used by Recce Cloud.",
+    type=click.STRING,
+    envvar="GITHUB_TOKEN",
+)
 @click.option(
     "--state-file-host",
     help="The host to fetch the state file from.",
@@ -1582,7 +1654,12 @@ def cloud(**kwargs):
     type=click.STRING,
     envvar="RECCE_STATE_PASSWORD",
 )
-@click.option("--force", "-f", help="Bypasses the confirmation prompt. Purge the state file directly.", is_flag=True)
+@click.option(
+    "--force",
+    "-f",
+    help="Bypasses the confirmation prompt. Purge the state file directly.",
+    is_flag=True,
+)
 @add_options(recce_options)
 def purge(**kwargs):
     """
@@ -1605,7 +1682,10 @@ def purge(**kwargs):
     try:
         console.rule("Check Recce State from Cloud")
         state_loader = create_state_loader(
-            review_mode=False, cloud_mode=True, state_file=None, cloud_options=cloud_options
+            review_mode=False,
+            cloud_mode=True,
+            state_file=None,
+            cloud_options=cloud_options,
         )
         state_loader.load()
     except Exception:
@@ -1653,7 +1733,12 @@ def purge(**kwargs):
 
 @cloud.command(cls=TrackCommand)
 @click.argument("state_file", type=click.Path(exists=True))
-@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--cloud-token",
+    help="The GitHub token used by Recce Cloud.",
+    type=click.STRING,
+    envvar="GITHUB_TOKEN",
+)
 @click.option(
     "--state-file-host",
     help="The host to fetch the state file from.",
@@ -1689,7 +1774,10 @@ def upload(state_file, **kwargs):
 
     # load local state
     state_loader = create_state_loader(
-        review_mode=False, cloud_mode=False, state_file=state_file, cloud_options=cloud_options
+        review_mode=False,
+        cloud_mode=False,
+        state_file=state_file,
+        cloud_options=cloud_options,
     )
     state_loader.load()
 
@@ -1724,7 +1812,12 @@ def upload(state_file, **kwargs):
     default=DEFAULT_RECCE_STATE_FILE,
     show_default=True,
 )
-@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--cloud-token",
+    help="The GitHub token used by Recce Cloud.",
+    type=click.STRING,
+    envvar="GITHUB_TOKEN",
+)
 @click.option(
     "--state-file-host",
     help="The host to fetch the state file from.",
@@ -1778,7 +1871,12 @@ def download(**kwargs):
 
 
 @cloud.command(cls=TrackCommand)
-@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--cloud-token",
+    help="The GitHub token used by Recce Cloud.",
+    type=click.STRING,
+    envvar="GITHUB_TOKEN",
+)
 @click.option(
     "--branch",
     "-b",
@@ -1825,7 +1923,11 @@ def upload_artifacts(**kwargs):
 
     try:
         rc = upload_dbt_artifacts(
-            target_path, branch=branch, token=cloud_token, password=password, debug=kwargs.get("debug", False)
+            target_path,
+            branch=branch,
+            token=cloud_token,
+            password=password,
+            debug=kwargs.get("debug", False),
         )
         console.rule("Uploaded Successfully")
         console.print(
@@ -1878,7 +1980,12 @@ def _download_artifacts(branch, cloud_token, console, kwargs, password, target_p
 
 
 @cloud.command(cls=TrackCommand)
-@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--cloud-token",
+    help="The GitHub token used by Recce Cloud.",
+    type=click.STRING,
+    envvar="GITHUB_TOKEN",
+)
 @click.option(
     "--branch",
     "-b",
@@ -1901,7 +2008,12 @@ def _download_artifacts(branch, cloud_token, console, kwargs, password, target_p
     envvar="RECCE_STATE_PASSWORD",
     required=True,
 )
-@click.option("--force", "-f", help="Bypasses the confirmation prompt. Download the artifacts directly.", is_flag=True)
+@click.option(
+    "--force",
+    "-f",
+    help="Bypasses the confirmation prompt. Download the artifacts directly.",
+    is_flag=True,
+)
 @add_options(recce_options)
 def download_artifacts(**kwargs):
     """
@@ -1926,7 +2038,12 @@ def download_artifacts(**kwargs):
 
 
 @cloud.command(cls=TrackCommand)
-@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--cloud-token",
+    help="The GitHub token used by Recce Cloud.",
+    type=click.STRING,
+    envvar="GITHUB_TOKEN",
+)
 @click.option(
     "--branch",
     "-b",
@@ -1949,7 +2066,12 @@ def download_artifacts(**kwargs):
     envvar="RECCE_STATE_PASSWORD",
     required=True,
 )
-@click.option("--force", "-f", help="Bypasses the confirmation prompt. Download the artifacts directly.", is_flag=True)
+@click.option(
+    "--force",
+    "-f",
+    help="Bypasses the confirmation prompt. Download the artifacts directly.",
+    is_flag=True,
+)
 @add_options(recce_options)
 def download_base_artifacts(**kwargs):
     """
@@ -1980,7 +2102,12 @@ def download_base_artifacts(**kwargs):
 
 
 @cloud.command(cls=TrackCommand)
-@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--cloud-token",
+    help="The GitHub token used by Recce Cloud.",
+    type=click.STRING,
+    envvar="GITHUB_TOKEN",
+)
 @click.option(
     "--branch",
     "-b",
@@ -1988,7 +2115,12 @@ def download_base_artifacts(**kwargs):
     type=click.STRING,
     envvar="GITHUB_HEAD_REF",
 )
-@click.option("--force", "-f", help="Bypasses the confirmation prompt. Delete the artifacts directly.", is_flag=True)
+@click.option(
+    "--force",
+    "-f",
+    help="Bypasses the confirmation prompt. Delete the artifacts directly.",
+    is_flag=True,
+)
 @add_options(recce_options)
 def delete_artifacts(**kwargs):
     """
@@ -2032,7 +2164,12 @@ def delete_artifacts(**kwargs):
 
 
 @cloud.command(cls=TrackCommand, name="list-organizations")
-@click.option("--api-token", help="The Recce Cloud API token.", type=click.STRING, envvar="RECCE_API_TOKEN")
+@click.option(
+    "--api-token",
+    help="The Recce Cloud API token.",
+    type=click.STRING,
+    envvar="RECCE_API_TOKEN",
+)
 @add_options(recce_options)
 def list_organizations(**kwargs):
     """
@@ -2092,7 +2229,12 @@ def list_organizations(**kwargs):
     type=click.STRING,
     envvar="RECCE_ORGANIZATION_ID",
 )
-@click.option("--api-token", help="The Recce Cloud API token.", type=click.STRING, envvar="RECCE_API_TOKEN")
+@click.option(
+    "--api-token",
+    help="The Recce Cloud API token.",
+    type=click.STRING,
+    envvar="RECCE_API_TOKEN",
+)
 @add_options(recce_options)
 def list_projects(**kwargs):
     """
@@ -2151,7 +2293,11 @@ def list_projects(**kwargs):
         table.add_column("Display Name", style="yellow")
 
         for project in projects:
-            table.add_row(str(project.get("id", "")), project.get("name", ""), project.get("display_name", ""))
+            table.add_row(
+                str(project.get("id", "")),
+                project.get("name", ""),
+                project.get("display_name", ""),
+            )
 
         console.print(table)
 
@@ -2178,7 +2324,12 @@ def list_projects(**kwargs):
     type=click.STRING,
     envvar="RECCE_PROJECT_ID",
 )
-@click.option("--api-token", help="The Recce Cloud API token.", type=click.STRING, envvar="RECCE_API_TOKEN")
+@click.option(
+    "--api-token",
+    help="The Recce Cloud API token.",
+    type=click.STRING,
+    envvar="RECCE_API_TOKEN",
+)
 @add_options(recce_options)
 def list_sessions(**kwargs):
     """
@@ -2270,7 +2421,8 @@ def github(**kwargs):
 
 
 @github.command(
-    cls=TrackCommand, short_help="Download the artifacts from the GitHub repository based on the current Pull Request."
+    cls=TrackCommand,
+    short_help="Download the artifacts from the GitHub repository based on the current Pull Request.",
 )
 @click.option(
     "--github-token",
@@ -2328,7 +2480,10 @@ def share(state_file, **kwargs):
 
     # load local state
     state_loader = create_state_loader(
-        review_mode=True, cloud_mode=False, state_file=state_file, cloud_options=cloud_options
+        review_mode=True,
+        cloud_mode=False,
+        state_file=state_file,
+        cloud_options=cloud_options,
     )
     state_loader.load()
 
@@ -2431,7 +2586,10 @@ def upload_session(**kwargs):
 
     try:
         rc = upload_artifacts_to_session(
-            target_path, session_id=session_id, token=api_token, debug=kwargs.get("debug", False)
+            target_path,
+            session_id=session_id,
+            token=api_token,
+            debug=kwargs.get("debug", False),
         )
         console.rule("Uploaded Successfully")
         console.print(
@@ -2464,8 +2622,19 @@ def snapshot(**kwargs):
 @click.argument("state_file", required=True)
 @click.option("--host", default="localhost", show_default=True, help="The host to bind to.")
 @click.option("--port", default=8000, show_default=True, help="The port to bind to.", type=int)
-@click.option("--lifetime", default=0, show_default=True, help="The lifetime of the server in seconds.", type=int)
-@click.option("--share-url", help="The share URL triggers this instance.", type=click.STRING, envvar="RECCE_SHARE_URL")
+@click.option(
+    "--lifetime",
+    default=0,
+    show_default=True,
+    help="The lifetime of the server in seconds.",
+    type=int,
+)
+@click.option(
+    "--share-url",
+    help="The share URL triggers this instance.",
+    type=click.STRING,
+    envvar="RECCE_SHARE_URL",
+)
 @click.pass_context
 def read_only(ctx, state_file=None, **kwargs):
     from recce.server import RecceServerMode
@@ -2477,10 +2646,24 @@ def read_only(ctx, state_file=None, **kwargs):
 
 @cli.command(cls=TrackCommand)
 @click.argument("state_file", required=False)
-@click.option("--sse", is_flag=True, default=False, help="Start in HTTP/SSE mode instead of stdio mode")
-@click.option("--host", default="localhost", help="Host to bind to in SSE mode (default: localhost)")
+@click.option(
+    "--sse",
+    is_flag=True,
+    default=False,
+    help="Start in HTTP/SSE mode instead of stdio mode",
+)
+@click.option(
+    "--host",
+    default="localhost",
+    help="Host to bind to in SSE mode (default: localhost)",
+)
 @click.option("--port", default=8000, type=int, help="Port to bind to in SSE mode (default: 8000)")
-@click.option("--session", "cloud_session", type=click.STRING, help="Recce Cloud session ID for cloud MCP mode")
+@click.option(
+    "--session",
+    "cloud_session",
+    type=click.STRING,
+    help="Recce Cloud session ID for cloud MCP mode",
+)
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -2759,6 +2942,200 @@ def clear_cache(cache_db):
                 os.remove(sidecar)
             except OSError:
                 pass
+
+
+def resolve_target_base_path(
+    project_dir: str | None,
+    target_base_path: str,
+) -> str:
+    """Resolve ``target_base_path`` against ``project_dir`` like every dbt-aware
+    command does.
+
+    An absolute ``target_base_path`` bypasses the join. Relative paths are
+    joined onto ``project_dir`` (or CWD if ``project_dir`` is None).
+
+    Shared by the ``recce check-base`` CLI command and the ``recce mcp-server``
+    startup freshness check so they cannot drift — having two copies of the
+    join logic was the root cause of the round-2 review finding (CLI was
+    fixed, MCP startup was missed).
+    """
+    base = Path(target_base_path)
+    if base.is_absolute():
+        return str(base)
+    return str(Path(project_dir or "./") / base)
+
+
+def check_base_freshness(
+    target_base_path: str = "target-base",
+    freshness_threshold_hours: float = 48.0,
+) -> dict:
+    """
+    Check whether the base artifacts in target_base_path are fresh.
+
+    Returns a dict with keys:
+        status: "fresh" | "stale_time" | "stale_sha" | "missing"
+        recommendation: "reuse" | "docs_generate" | "full_build"
+        message: human-readable explanation
+        artifact_age_hours: float or None
+        base_sha: str or None  (DBT_GIT_SHA from manifest metadata)
+        current_sha: str or None  (current HEAD SHA)
+        threshold_hours: float
+    """
+    import json
+    import logging
+    import time
+
+    _logger = logging.getLogger("recce")
+
+    manifest_path = Path(target_base_path) / "manifest.json"
+    result: dict = {
+        "status": None,
+        "recommendation": None,
+        "message": None,
+        "artifact_age_hours": None,
+        "base_sha": None,
+        "current_sha": None,
+        "threshold_hours": freshness_threshold_hours,
+    }
+
+    if not manifest_path.exists():
+        result["status"] = "missing"
+        result["recommendation"] = "full_build"
+        result["message"] = (
+            f"Base artifacts not found at '{target_base_path}/manifest.json'. "
+            f"Run: git stash; git checkout <base>; dbt build --target-path {target_base_path}; "
+            "git checkout <target>; git stash pop"
+        )
+        return result
+
+    # Compute artifact age from mtime
+    mtime = manifest_path.stat().st_mtime
+    now = time.time()
+    artifact_age_hours = (now - mtime) / 3600.0
+    result["artifact_age_hours"] = artifact_age_hours
+
+    # Time-based freshness check
+    if artifact_age_hours > freshness_threshold_hours:
+        result["status"] = "stale_time"
+        result["recommendation"] = "docs_generate"
+        result["message"] = (
+            f"Base artifacts are stale ({artifact_age_hours:.1f} hours old, "
+            f"threshold: {freshness_threshold_hours}h). "
+            f"Run: dbt docs generate --target-path {target_base_path}"
+        )
+        return result
+
+    # SHA-based freshness check (best-effort: skip if field absent or git unavailable)
+    try:
+        with open(manifest_path) as f:
+            manifest_data = json.load(f)
+        base_sha = manifest_data.get("metadata", {}).get("env", {}).get("DBT_GIT_SHA")
+        result["base_sha"] = base_sha
+
+        if base_sha is not None:
+            from recce.git import current_commit_hash
+
+            current_sha = current_commit_hash()
+            result["current_sha"] = current_sha
+            if current_sha and base_sha != current_sha:
+                result["status"] = "stale_sha"
+                result["recommendation"] = "docs_generate"
+                result["message"] = (
+                    f"Base artifacts are stale (generated at {base_sha[:7]}, "
+                    f"current HEAD: {current_sha[:7]}). "
+                    f"Run: dbt docs generate --target-path {target_base_path}"
+                )
+                return result
+    except Exception as e:
+        # Best-effort: if manifest is unreadable or git is unavailable, skip SHA check.
+        # Log at debug so the reason is recoverable without surfacing in normal output.
+        _logger.debug(f"check_base_freshness: SHA check skipped ({e})")
+
+    result["status"] = "fresh"
+    result["recommendation"] = "reuse"
+    result["message"] = f"Base artifacts are fresh ({artifact_age_hours:.1f} hours old). " "Reuse existing artifacts."
+    return result
+
+
+@cli.command(name="check-base", cls=TrackCommand)
+@click.option(
+    "--project-dir",
+    help="Which directory to look in for the dbt_project.yml file. "
+    "target-base-path is resolved relative to this when not absolute.",
+    type=click.Path(),
+    envvar="DBT_PROJECT_DIR",
+)
+@click.option(
+    "--target-base-path",
+    default="target-base",
+    show_default=True,
+    help="Path to the base artifacts directory (relative to --project-dir if not absolute).",
+    type=click.Path(),
+)
+@click.option(
+    "--format",
+    "output_format",
+    default="json",
+    show_default=True,
+    type=click.Choice(["json", "text"]),
+    help="Output format: json (default) or text for human-readable output.",
+)
+@click.option(
+    "--freshness-threshold-hours",
+    default=48.0,
+    show_default=True,
+    type=float,
+    help="Age threshold in hours after which artifacts are considered stale_time.",
+)
+def check_base(project_dir, target_base_path, output_format, freshness_threshold_hours):
+    """Check freshness of base artifacts for diff operations.
+
+    Exit codes:
+      0 - fresh
+      1 - missing (rebuild required: full_build)
+      2 - stale_time / stale_sha (regenerate when convenient: docs_generate)
+    """
+    import json
+
+    # Honor --project-dir / DBT_PROJECT_DIR like every other dbt-aware command.
+    resolved_target_base = resolve_target_base_path(project_dir, target_base_path)
+
+    result = check_base_freshness(
+        target_base_path=resolved_target_base,
+        freshness_threshold_hours=freshness_threshold_hours,
+    )
+
+    if output_format == "json":
+        click.echo(json.dumps(result, indent=2))
+    else:
+        from rich.console import Console
+
+        console = Console()
+        status = result["status"]
+        age = result.get("artifact_age_hours")
+        msg = result.get("message", "")
+        color_map = {
+            "fresh": "green",
+            "stale_time": "yellow",
+            "stale_sha": "yellow",
+            "missing": "red",
+        }
+        color = color_map.get(status, "white")
+        console.print(f"[{color}]Status: {status}[/{color}]")
+        if age is not None:
+            console.print(f"Age: {age:.1f}h (threshold: {result['threshold_hours']}h)")
+        console.print(f"Recommendation: {result['recommendation']}")
+        if msg:
+            console.print(msg)
+
+    # Distinct exit codes so shell automation can branch without parsing JSON.
+    status = result["status"]
+    if status == "fresh":
+        return
+    if status == "missing":
+        raise SystemExit(1)
+    # stale_time, stale_sha (and any future non-fresh status)
+    raise SystemExit(2)
 
 
 if __name__ == "__main__":
