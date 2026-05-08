@@ -149,7 +149,8 @@ function computeImpactedSets(
   nodeIds: Set<string>;
   columnIds: Set<string>;
   wholeModelImpactedNodeIds?: Set<string>;
-  wholeModelImpactCauseMap?: Map<string, string>;
+  breakingSourceNodeIds?: Set<string>;
+  wholeModelImpactCauseMap?: Map<string, Set<string>>;
 } {
   const columnIds = computeImpactedColumns(cll);
   const nodeIds = new Set<string>();
@@ -173,11 +174,12 @@ function computeImpactedSets(
   // Whole-model-impacted models also count as "impacted" for the broader
   // CLL highlight set — everything downstream of a breaking node has at
   // least all-columns affected.
-  for (const id of whole.nodeIds) nodeIds.add(id);
+  for (const id of whole.wholeModelImpactedNodeIds) nodeIds.add(id);
   return {
     nodeIds,
     columnIds,
-    wholeModelImpactedNodeIds: whole.nodeIds,
+    wholeModelImpactedNodeIds: whole.wholeModelImpactedNodeIds,
+    breakingSourceNodeIds: whole.breakingSourceNodeIds,
     wholeModelImpactCauseMap: whole.causeMap,
   };
 }
@@ -511,6 +513,7 @@ export function PrivateLineageView(
     impactedNodeIds,
     impactedColumnIds,
     wholeModelImpactedNodeIds,
+    breakingSourceNodeIds,
     wholeModelImpactCauseMap,
     publish: publishImpactSets,
   } = usePublishedImpactSets();
@@ -1220,6 +1223,7 @@ export function PrivateLineageView(
     impactedNodeIds,
     impactedColumnIds,
     wholeModelImpactedNodeIds,
+    breakingSourceNodeIds,
     wholeModelImpactCauseMap,
     isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
     isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),

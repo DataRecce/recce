@@ -261,16 +261,25 @@ export interface LineageViewContextType {
   /** Frozen set of column IDs that are impacted, same lifecycle as impactedNodeIds. */
   impactedColumnIds: Set<string>;
   /** Frozen set of node IDs that have *whole-model impact* — every column is
-   *  affected because they sit downstream of a breaking change. Populated only
-   *  when the `downstream_of_breaking` server flag is on; otherwise an empty
-   *  Set. Used to drive the node-level mark on the lineage graph and the
-   *  sidebar wash + header.
+   *  affected because they sit downstream of a breaking change (or are
+   *  themselves a breaking source). Populated only when the
+   *  `downstream_of_breaking` server flag is on; otherwise an empty Set.
+   *  Used to drive the amber sidebar wash + node mark on
+   *  downstream-only impacted nodes.
    *  @see computeWholeModelImpact */
   wholeModelImpactedNodeIds: Set<string>;
-  /** For each whole-model-impacted node, the closest upstream breaking
-   *  model's display name. Drives the sidebar header text. Empty Map when
-   *  the flag is off. */
-  wholeModelImpactCauseMap: Map<string, string>;
+  /** Frozen set of node IDs whose own `change_category === "breaking"` — the
+   *  *sources* of whole-model impact waves. Subset of
+   *  `wholeModelImpactedNodeIds`. Drives the brown (changed) treatment per
+   *  Q9/Q10/Q11: a node in this set renders with the brown badge + brown
+   *  wash + source-flavored header even if it is also downstream of another
+   *  breaking source ("source wins"). */
+  breakingSourceNodeIds: Set<string>;
+  /** For each whole-model-impacted node, the set of closest upstream breaking
+   *  model display names (Q7 — multi-ancestor). A breaking-source node maps
+   *  to its own name. Drives the sidebar header text. Empty Map when the
+   *  flag is off. */
+  wholeModelImpactCauseMap: Map<string, Set<string>>;
   /** Set change analysis mode on/off */
   setChangeAnalysisMode: (active: boolean) => void;
 

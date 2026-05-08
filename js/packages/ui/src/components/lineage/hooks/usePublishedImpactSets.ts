@@ -10,17 +10,28 @@ export interface ImpactSets {
    */
   wholeModelImpactedNodeIds?: Set<string>;
   /**
-   * Optional cause map: whole-model-impacted nodeId → name of the closest
-   * upstream breaking model. Drives the sidebar header text.
+   * Optional set of node IDs whose own `change_category === "breaking"` —
+   * the *sources* of whole-model impact waves. Subset of
+   * `wholeModelImpactedNodeIds`. Drives the brown-vs-amber treatment
+   * (Q9/Q10/Q11 of the `downstream-of-breaking` design): a node in this
+   * set renders with the brown "changed" color family even if it is also
+   * downstream of another source ("source wins").
    */
-  wholeModelImpactCauseMap?: Map<string, string>;
+  breakingSourceNodeIds?: Set<string>;
+  /**
+   * Optional cause map: whole-model-impacted nodeId → set of names of the
+   * closest upstream breaking models. A breaking-source node maps to its
+   * own name. Drives the sidebar header text.
+   */
+  wholeModelImpactCauseMap?: Map<string, Set<string>>;
 }
 
 export interface UsePublishedImpactSetsResult {
   impactedNodeIds: Set<string>;
   impactedColumnIds: Set<string>;
   wholeModelImpactedNodeIds: Set<string>;
-  wholeModelImpactCauseMap: Map<string, string>;
+  breakingSourceNodeIds: Set<string>;
+  wholeModelImpactCauseMap: Map<string, Set<string>>;
   publish: (sets: ImpactSets) => void;
 }
 
@@ -37,14 +48,18 @@ export function usePublishedImpactSets(): UsePublishedImpactSetsResult {
   const [wholeModelImpactedNodeIds, setWholeModelImpactedNodeIds] = useState<
     Set<string>
   >(() => new Set());
+  const [breakingSourceNodeIds, setBreakingSourceNodeIds] = useState<
+    Set<string>
+  >(() => new Set());
   const [wholeModelImpactCauseMap, setWholeModelImpactCauseMap] = useState<
-    Map<string, string>
+    Map<string, Set<string>>
   >(() => new Map());
 
   const publish = useCallback((sets: ImpactSets) => {
     setImpactedNodeIds(sets.nodeIds);
     setImpactedColumnIds(sets.columnIds);
     setWholeModelImpactedNodeIds(sets.wholeModelImpactedNodeIds ?? new Set());
+    setBreakingSourceNodeIds(sets.breakingSourceNodeIds ?? new Set());
     setWholeModelImpactCauseMap(sets.wholeModelImpactCauseMap ?? new Map());
   }, []);
 
@@ -52,6 +67,7 @@ export function usePublishedImpactSets(): UsePublishedImpactSetsResult {
     impactedNodeIds,
     impactedColumnIds,
     wholeModelImpactedNodeIds,
+    breakingSourceNodeIds,
     wholeModelImpactCauseMap,
     publish,
   };
