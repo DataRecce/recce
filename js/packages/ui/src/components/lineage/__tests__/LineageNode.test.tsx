@@ -414,39 +414,38 @@ describe("LineageNode", () => {
 
     it.each(
       labelledCategories,
-    )(
-      "shows $category category label when showChangeAnalysis is true",
-      ({ category, label }) => {
-        const props = createMockNodeProps(
-          { showChangeAnalysis: true, changeCategory: category },
-          { label: "test" },
-        );
+    )("shows $category category label when showChangeAnalysis is true", ({
+      category,
+      label,
+    }) => {
+      const props = createMockNodeProps(
+        { showChangeAnalysis: true, changeCategory: category },
+        { label: "test" },
+      );
 
-        render(<LineageNode {...props} />);
+      render(<LineageNode {...props} />);
 
-        expect(screen.getByText(label)).toBeInTheDocument();
-      },
-    );
+      expect(screen.getByText(label)).toBeInTheDocument();
+    });
 
     const unlabelledCategories: ChangeCategory[] = [
       "breaking",
       "partial_breaking",
     ];
 
-    it.each(unlabelledCategories)(
-      "does not show category label for %s (carried by ALL badge / row glyphs)",
-      (category) => {
-        const props = createMockNodeProps(
-          { showChangeAnalysis: true, changeCategory: category },
-          { label: "test" },
-        );
+    it.each(
+      unlabelledCategories,
+    )("does not show category label for %s (carried by ALL badge / row glyphs)", (category) => {
+      const props = createMockNodeProps(
+        { showChangeAnalysis: true, changeCategory: category },
+        { label: "test" },
+      );
 
-        render(<LineageNode {...props} />);
+      render(<LineageNode {...props} />);
 
-        expect(screen.queryByText("Breaking")).not.toBeInTheDocument();
-        expect(screen.queryByText("Partial Breaking")).not.toBeInTheDocument();
-      },
-    );
+      expect(screen.queryByText("Breaking")).not.toBeInTheDocument();
+      expect(screen.queryByText("Partial Breaking")).not.toBeInTheDocument();
+    });
 
     it("does not show category label when showChangeAnalysis is false", () => {
       const props = createMockNodeProps(

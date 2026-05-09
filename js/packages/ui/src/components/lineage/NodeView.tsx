@@ -768,16 +768,12 @@ export function NodeView<TNode extends NodeViewNodeData>({
                 minWidth: 22,
                 px: 0.5,
                 borderRadius: "3px",
-                color: isBreakingSource
-                  ? "rgb(160 100 0)"
-                  : "rgb(146 64 14)",
+                color: isBreakingSource ? "rgb(160 100 0)" : "rgb(146 64 14)",
                 backgroundColor: isBreakingSource
                   ? "rgb(255 173 21 / 0.25)"
                   : "rgb(252 211 77 / 0.35)",
                 border: `1px solid ${
-                  isBreakingSource
-                    ? "rgb(212 133 11)"
-                    : "rgb(252 211 77)"
+                  isBreakingSource ? "rgb(212 133 11)" : "rgb(252 211 77)"
                 }`,
                 flexShrink: 0,
               }}
@@ -863,9 +859,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
             py: 0.75,
             fontSize: "0.75rem",
             fontWeight: 600,
-            color: isBreakingSource
-              ? "rgb(160 100 0)"
-              : "rgb(146 64 14)",
+            color: isBreakingSource ? "rgb(160 100 0)" : "rgb(146 64 14)",
             borderTop: isBreakingSource
               ? "1px solid var(--schema-color-changed-accent)"
               : "1px solid var(--schema-color-impacted-accent)",
