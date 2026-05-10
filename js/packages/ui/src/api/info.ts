@@ -153,6 +153,38 @@ export interface StateMetadata {
 }
 
 /**
+ * Session staleness fields returned by the backend when the PR session's
+ * frozen-snapshot base may have diverged from the project's current shared base.
+ * All fields are null for legacy sessions (pre-DRC-3309) or OSS mode.
+ */
+export interface SessionStaleness {
+  /** ID of the shared-base session that was cloned into this PR session. */
+  source_session_id: string | null;
+  /** Timestamp of the shared-base session at clone time (ISO 8601). */
+  source_session_updated_at: string | null;
+  /** ID of the project's current shared-base session. */
+  current_base_session_id: string | null;
+  /** Timestamp of the project's current shared-base session (ISO 8601). */
+  current_base_updated_at: string | null;
+}
+
+/**
+ * Returns true when the PR session's frozen snapshot is outdated relative to
+ * the project's current shared base.
+ *
+ * Conditions:
+ * - source_session_id must be non-null (i.e. session was auto-snapshotted)
+ * - Either the source session ID or its timestamp differs from the current base
+ */
+export function isSessionBaseOutdated(s: SessionStaleness): boolean {
+  return (
+    s.source_session_id !== null &&
+    (s.source_session_id !== s.current_base_session_id ||
+      s.source_session_updated_at !== s.current_base_updated_at)
+  );
+}
+
+/**
  * Git information
  */
 export interface GitInfo {
@@ -187,6 +219,8 @@ export interface ServerInfoResult {
   demo: boolean;
   codespace: boolean;
   support_tasks: Record<string, boolean>;
+  /** Session staleness fields (cloud mode only, null for OSS / legacy sessions). */
+  session_staleness?: SessionStaleness;
 }
 
 /**

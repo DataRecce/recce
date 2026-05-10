@@ -78,10 +78,11 @@ export type {
   NodeData,
   PullRequestInfo,
   ServerInfoResult,
+  SessionStaleness,
   SQLMeshInfo,
   StateMetadata,
 } from "./info";
-export { getModelInfo, getServerInfo } from "./info";
+export { getModelInfo, getServerInfo, isSessionBaseOutdated } from "./info";
 // Instance info API
 export type { RecceInstanceInfo, ServerMode } from "./instanceInfo";
 export { getRecceInstanceInfo } from "./instanceInfo";

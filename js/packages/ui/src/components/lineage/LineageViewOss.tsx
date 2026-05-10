@@ -119,6 +119,7 @@ import type { NodeChangeStatus } from "./nodes/LineageNode";
 import { patchLineageFromCll } from "./patchLineageDiffFromCll";
 import SetupConnectionBanner from "./SetupConnectionBannerOss";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
+import { StalenessBanner } from "./StalenessBanner";
 import {
   LineageViewError,
   LineageViewLoading,
@@ -261,6 +262,7 @@ export function PrivateLineageView(
   } = useLineageGraphContext();
 
   const { featureToggles, singleEnv } = useRecceInstanceContext();
+
   const { data: serverFlags } = useRecceServerFlag();
   const newCllExperience = serverFlags?.new_cll_experience ?? false;
   const { runId, showRunId, closeRunResult, runAction, isRunResultOpen } =
@@ -1392,6 +1394,7 @@ export function PrivateLineageView(
           spacing={0}
           sx={{ contain: "strict", position: "relative" }}
         >
+          <StalenessBanner />
           {interactive && (
             <>
               <LineageViewTopBar />

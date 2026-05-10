@@ -75,6 +75,10 @@ type WebSocketPayload =
   | {
       command: "broadcast";
       event: WebSocketBroadcastEvent;
+    }
+  | {
+      type: "metadata_updated";
+      data: { session_id: string };
     };
 
 interface UseLineageWatcherOptions {
@@ -170,8 +174,16 @@ function useLineageWatcher({
       }
       try {
         const data = JSON.parse(event.data as string) as WebSocketPayload;
-        if (data.command === "refresh") {
-          const { eventType, srcPath } = data.event;
+        // Handle metadata_updated event (emitted by backend after shared-base refresh).
+        // Invalidates all caches so the lineage view re-renders with the new base.
+        if ("type" in data && data.type === "metadata_updated") {
+          invalidateCaches();
+          return;
+        }
+        // Narrow to the command-based union variants
+        const cmd = data as Extract<WebSocketPayload, { command: string }>;
+        if (cmd.command === "refresh") {
+          const { eventType, srcPath } = cmd.event;
           const [targetName, fileName] = srcPath.split("/").slice(-2);
           // Extract filename without extension (browser-compatible alternative to path.parse)
           const name = fileName.replace(/\.[^/.]+$/, "");
@@ -188,11 +200,11 @@ function useLineageWatcher({
             );
           }
           invalidateCaches();
-        } else if (data.command === "relaunch") {
+        } else if (cmd.command === "relaunch") {
           setEnvStatus("relaunch");
         } else {
           // Handle broadcast events
-          const { id, title, description, status, duration } = data.event;
+          const { id, title, description, status, duration } = cmd.event;
           setArtifactsUpdatedToastId(
             toaster.create({
               id: id || "broadcast",

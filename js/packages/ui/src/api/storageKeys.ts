@@ -6,6 +6,7 @@ export const LOCAL_STORAGE_KEYS = {
   bypassSaveOverwrite: `${localPrefix}-bypass-save-overwrite`,
   previewChangeFeedbackID: `${localPrefix}-preview-change-feedback`,
   prepareEnvGuideID: `${localPrefix}-prepare-env`,
+  snapshotBaseIntroSeen: "recce_snapshot_base_intro_seen",
 };
 
 const sessionPrefix = "recce";
