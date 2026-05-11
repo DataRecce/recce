@@ -52,6 +52,10 @@ export function StalenessBanner() {
   });
 
   // Track previous staleness to detect the true→false transition.
+  // Note: this ref is component-local, so it does NOT survive remounts. If the
+  // user navigates away after clicking Refresh and the WS event arrives while a
+  // different route is mounted, the success toast is skipped on return (the
+  // cache is correct: banner hidden, no error). Accepted limitation for slice 2.
   const prevOutdated = useRef<boolean | null>(null);
 
   const outdated = staleness != null ? isSessionBaseOutdated(staleness) : false;
@@ -111,10 +115,10 @@ export function StalenessBanner() {
       // the useEffect above clears it.
       // The 30s timeout handles the fallback if WS never arrives.
     } catch {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
+      // If the timeout already fired, it already toasted — skip the second toast.
+      if (!timeoutRef.current) return;
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
       setRefreshing(false);
       toaster.error({
         description: "Refresh failed — try again.",
@@ -139,8 +143,9 @@ export function StalenessBanner() {
       <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
         <MdInfo color="inherit" size={16} />
         <Typography variant="body2" sx={{ flex: 1 }}>
-          Production data has changed since this PR&apos;s base was captured.
-          Comparisons may not reflect current state.
+          {noSharedBase
+            ? "This PR's base snapshot may be out of date, and no shared base is currently configured for this project. Comparisons may not reflect current state."
+            : "Production data has changed since this PR's base was captured. Comparisons may not reflect current state."}
         </Typography>
         <Tooltip
           title={

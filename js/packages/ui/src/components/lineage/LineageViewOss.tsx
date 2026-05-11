@@ -119,7 +119,6 @@ import type { NodeChangeStatus } from "./nodes/LineageNode";
 import { patchLineageFromCll } from "./patchLineageDiffFromCll";
 import SetupConnectionBanner from "./SetupConnectionBannerOss";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
-import { StalenessBanner } from "./StalenessBanner";
 import {
   LineageViewError,
   LineageViewLoading,
@@ -1394,7 +1393,6 @@ export function PrivateLineageView(
           spacing={0}
           sx={{ contain: "strict", position: "relative" }}
         >
-          <StalenessBanner />
           {interactive && (
             <>
               <LineageViewTopBar />

@@ -20,6 +20,7 @@ import {
 } from "../../contexts";
 import { useIsDark } from "../../hooks/useIsDark";
 import { trackInit } from "../../lib/api/track";
+import { StalenessBanner } from "../lineage/StalenessBanner";
 import { RunListOss, RunResultPaneOss as RunResultPane } from "../run";
 import { HSplit, VSplit } from "../ui";
 import AuthModal from "./AuthModal";
@@ -80,6 +81,7 @@ export function MainLayout({ children, lineage }: MainLayoutProps) {
         overflow: "hidden",
       }}
     >
+      <StalenessBanner />
       <TopBar />
       <NavBar />
       <Main isLineageRoute={isLineageRoute} lineage={lineage}>

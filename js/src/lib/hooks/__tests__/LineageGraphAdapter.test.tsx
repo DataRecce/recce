@@ -10,11 +10,7 @@
  */
 
 import type { RunsAggregated, ServerInfoResult } from "@datarecce/ui/api";
-import {
-  QueryClient,
-  QueryClientProvider,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { type MockedFunction, vi } from "vitest";
