@@ -96,3 +96,10 @@ export * from "./styles";
 export * from "./tags";
 // Top bar component for lineage view
 export * from "./topbar";
+// Whole-model treatment palette (DRC-3341)
+export {
+  type WholeModelTreatmentKind,
+  type WholeModelTreatmentTokens,
+  wholeModelTreatmentKind,
+  wholeModelTreatmentTokens,
+} from "./wholeModelTreatment";

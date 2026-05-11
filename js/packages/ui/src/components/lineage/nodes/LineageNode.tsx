@@ -33,6 +33,10 @@ import {
   getIconForResourceType,
   getStyleForImpacted,
 } from "../styles";
+import {
+  wholeModelTreatmentKind,
+  wholeModelTreatmentTokens,
+} from "../wholeModelTreatment";
 
 // =============================================================================
 // TYPES
@@ -578,71 +582,56 @@ function LineageNodeComponent({
                 brown is the cause, amber is the effect"). Persists
                 regardless of hover state so it's readable at zoomed-out
                 lineage view. Source wins (Q11): when both flags are true
-                the brown source treatment dominates. */}
-            {(isBreakingSource || isWholeModelImpacted) && (
-              <Tooltip
-                title={
-                  isBreakingSource
-                    ? "Whole-model change — every row of this model is potentially affected"
-                    : "Whole-model impact — every column affected by an upstream whole-model change"
-                }
-                placement="top"
-              >
-                <Box
-                  aria-label={
-                    isBreakingSource
-                      ? "whole-model change"
-                      : "whole-model impact"
+                the brown source treatment dominates, enforced upstream by
+                GraphNodeOss. */}
+            {(() => {
+              const badgeKind = wholeModelTreatmentKind({
+                isBreakingSource,
+                isWholeModelImpactedDownstream: isWholeModelImpacted,
+              });
+              if (!badgeKind) return null;
+              const tokens = wholeModelTreatmentTokens(badgeKind, isDark);
+              return (
+                <Tooltip
+                  title={
+                    badgeKind === "source"
+                      ? "Whole-model change — every row of this model is potentially affected"
+                      : "Whole-model impact — every column affected by an upstream whole-model change"
                   }
-                  data-testid={
-                    isBreakingSource
-                      ? "whole-model-source-badge"
-                      : "whole-model-impact-badge"
-                  }
-                  sx={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "0.65rem",
-                    fontWeight: 700,
-                    lineHeight: 1,
-                    height: 16,
-                    minWidth: 16,
-                    px: 0.5,
-                    borderRadius: "3px",
-                    // Brown (changed) for sources, amber (impacted) for
-                    // downstream — Q9/Q10/Q11. Source-wins is enforced by
-                    // GraphNodeOss zeroing out isWholeModelImpacted when
-                    // isBreakingSource is true.
-                    color: isBreakingSource
-                      ? isDark
-                        ? "rgb(255 200 80)"
-                        : "rgb(160 100 0)"
-                      : isDark
-                        ? "rgb(252 211 77)"
-                        : "rgb(146 64 14)",
-                    backgroundColor: isBreakingSource
-                      ? isDark
-                        ? "rgb(255 173 21 / 0.2)"
-                        : "rgb(255 173 21 / 0.25)"
-                      : isDark
-                        ? "rgb(180 83 9 / 0.25)"
-                        : "rgb(252 211 77 / 0.35)",
-                    border: `1px solid ${
-                      isBreakingSource
-                        ? isDark
-                          ? "rgb(212 133 11)"
-                          : "rgb(212 133 11)"
-                        : isDark
-                          ? "rgb(180 83 9)"
-                          : "rgb(252 211 77)"
-                    }`,
-                  }}
+                  placement="top"
                 >
-                  ALL
-                </Box>
-              </Tooltip>
-            )}
+                  <Box
+                    aria-label={
+                      badgeKind === "source"
+                        ? "whole-model change"
+                        : "whole-model impact"
+                    }
+                    data-testid={
+                      badgeKind === "source"
+                        ? "whole-model-source-badge"
+                        : "whole-model-impact-badge"
+                    }
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "0.65rem",
+                      fontWeight: 700,
+                      lineHeight: 1,
+                      height: 16,
+                      minWidth: 16,
+                      px: 0.5,
+                      borderRadius: "3px",
+                      color: tokens.fg,
+                      backgroundColor: tokens.badgeBg,
+                      border: `1px solid ${tokens.badgeBorder}`,
+                    }}
+                  >
+                    ALL
+                  </Box>
+                </Tooltip>
+              );
+            })()}
 
             {/* Hover actions vs icons */}
             {isHovered ? (

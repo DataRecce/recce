@@ -18,6 +18,10 @@ import { IoClose } from "react-icons/io5";
 
 import type { NodeData } from "../../api/info";
 import { DisableTooltipMessages } from "../../constants";
+import {
+  wholeModelTreatmentKind,
+  wholeModelTreatmentTokens,
+} from "./wholeModelTreatment";
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -675,17 +679,21 @@ export function NodeView<TNode extends NodeViewNodeData>({
     },
   };
 
-  // Whole-model treatment (DRC-3341). Either flag triggers the wash +
-  // header + badge. The two are mutually exclusive — the consumer
-  // (NodeViewOss) zeroes `isWholeModelImpactedDownstream` out when
-  // `isBreakingSource` is true (Q11 — source wins). Reuses the existing
-  // `--schema-color-changed*` (brown) and `--schema-color-impacted*`
-  // (amber) tokens — no new color tokens introduced.
-  const showWholeModelTreatment =
-    isBreakingSource || isWholeModelImpactedDownstream;
-  const wholeModelHeaderText = isBreakingSource
-    ? "Whole-model change in this model"
-    : "Whole-model impact";
+  // Whole-model treatment (DRC-3341). Q11 source-wins is enforced upstream
+  // by NodeViewOss — at most one of the flags is true. The brown vs amber
+  // palette comes from `wholeModelTreatmentTokens` so every site that
+  // renders the wash / badge / header pulls from one place.
+  const treatmentKind = wholeModelTreatmentKind({
+    isBreakingSource,
+    isWholeModelImpactedDownstream,
+  });
+  const treatment = treatmentKind
+    ? wholeModelTreatmentTokens(treatmentKind)
+    : null;
+  const wholeModelHeaderText =
+    treatmentKind === "source"
+      ? "Whole-model change in this model"
+      : "Whole-model impact";
 
   return (
     <Box
@@ -693,23 +701,18 @@ export function NodeView<TNode extends NodeViewNodeData>({
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        // Whole-model wash — covers the entire NodeView panel so the
-        // treatment is visible across every tab (Lineage / Columns / Code).
-        // Inset shadow on the left edge gives a slightly more prominent
-        // "this whole model is impacted" cue than v1's 4px stripe.
-        ...(isBreakingSource && {
-          backgroundColor: "var(--schema-color-changed)",
-          boxShadow: "inset 6px 0 0 var(--schema-color-changed-accent)",
-        }),
-        ...(isWholeModelImpactedDownstream && {
-          backgroundColor: "var(--schema-color-impacted)",
-          boxShadow: "inset 6px 0 0 var(--schema-color-impacted-accent)",
+        // Wash covers the entire NodeView so the treatment spans every tab
+        // (Lineage / Columns / Code). 6px inset accent on the left edge is
+        // slightly more prominent than the 4px stripe used in v1.
+        ...(treatment && {
+          backgroundColor: treatment.washBg,
+          boxShadow: `inset 6px 0 0 ${treatment.washAccent}`,
         }),
       }}
       data-testid={
-        isBreakingSource
+        treatmentKind === "source"
           ? "whole-model-source-wash"
-          : isWholeModelImpactedDownstream
+          : treatmentKind === "downstream"
             ? "whole-model-impact-wash"
             : undefined
       }
@@ -747,15 +750,17 @@ export function NodeView<TNode extends NodeViewNodeData>({
               colored brown for whole-model-changed sources and amber for
               downstream-only whole-model impact. Visible regardless of the
               currently active tab. */}
-          {showWholeModelTreatment && (
+          {treatment && (
             <Box
               data-testid={
-                isBreakingSource
+                treatmentKind === "source"
                   ? "whole-model-source-badge"
                   : "whole-model-impact-badge"
               }
               aria-label={
-                isBreakingSource ? "whole-model change" : "whole-model impact"
+                treatmentKind === "source"
+                  ? "whole-model change"
+                  : "whole-model impact"
               }
               sx={{
                 display: "inline-flex",
@@ -768,13 +773,9 @@ export function NodeView<TNode extends NodeViewNodeData>({
                 minWidth: 22,
                 px: 0.5,
                 borderRadius: "3px",
-                color: isBreakingSource ? "rgb(160 100 0)" : "rgb(146 64 14)",
-                backgroundColor: isBreakingSource
-                  ? "rgb(255 173 21 / 0.25)"
-                  : "rgb(252 211 77 / 0.35)",
-                border: `1px solid ${
-                  isBreakingSource ? "rgb(212 133 11)" : "rgb(252 211 77)"
-                }`,
+                color: treatment.fg,
+                backgroundColor: treatment.badgeBg,
+                border: `1px solid ${treatment.badgeBorder}`,
                 flexShrink: 0,
               }}
             >
@@ -847,10 +848,10 @@ export function NodeView<TNode extends NodeViewNodeData>({
           `LineageViewContext.wholeModelImpactCauseMap` for future use
           (e.g., a hover tooltip or expandable detail). See Q7 in the
           DRC-3341 spec. */}
-      {showWholeModelTreatment && (
+      {treatment && (
         <Box
           data-testid={
-            isBreakingSource
+            treatmentKind === "source"
               ? "whole-model-source-header"
               : "whole-model-impact-header"
           }
@@ -859,13 +860,9 @@ export function NodeView<TNode extends NodeViewNodeData>({
             py: 0.75,
             fontSize: "0.75rem",
             fontWeight: 600,
-            color: isBreakingSource ? "rgb(160 100 0)" : "rgb(146 64 14)",
-            borderTop: isBreakingSource
-              ? "1px solid var(--schema-color-changed-accent)"
-              : "1px solid var(--schema-color-impacted-accent)",
-            borderBottom: isBreakingSource
-              ? "1px solid var(--schema-color-changed-accent)"
-              : "1px solid var(--schema-color-impacted-accent)",
+            color: treatment.fg,
+            borderTop: `1px solid ${treatment.washAccent}`,
+            borderBottom: `1px solid ${treatment.washAccent}`,
           }}
         >
           {wholeModelHeaderText}

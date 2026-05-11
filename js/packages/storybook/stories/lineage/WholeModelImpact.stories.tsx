@@ -1,4 +1,7 @@
-import { SchemaLegend } from "@datarecce/ui/components";
+import {
+  SchemaLegend,
+  wholeModelTreatmentTokens,
+} from "@datarecce/ui/components";
 import type { LineageNodeProps } from "@datarecce/ui/primitives";
 import { LineageNode, ScreenshotDataGrid } from "@datarecce/ui/primitives";
 import Box from "@mui/material/Box";
@@ -66,6 +69,7 @@ interface PanelFixtureProps {
  */
 function PanelFixture({ modelName, variant, rows }: PanelFixtureProps) {
   const isSource = variant === "source";
+  const tokens = wholeModelTreatmentTokens(isSource ? "source" : "downstream");
   const headerText = isSource
     ? "Whole-model change in this model"
     : "Whole-model impact";
@@ -81,12 +85,8 @@ function PanelFixture({ modelName, variant, rows }: PanelFixtureProps) {
         width: 460,
         border: 1,
         borderColor: "divider",
-        backgroundColor: isSource
-          ? "var(--schema-color-changed)"
-          : "var(--schema-color-impacted)",
-        boxShadow: isSource
-          ? "inset 6px 0 0 var(--schema-color-changed-accent)"
-          : "inset 6px 0 0 var(--schema-color-impacted-accent)",
+        backgroundColor: tokens.washBg,
+        boxShadow: `inset 6px 0 0 ${tokens.washAccent}`,
       }}
     >
       {/* Panel header row — model name + "ALL" badge + (mock) close affordance */}
@@ -122,13 +122,9 @@ function PanelFixture({ modelName, variant, rows }: PanelFixtureProps) {
               minWidth: 22,
               px: 0.5,
               borderRadius: "3px",
-              color: isSource ? "rgb(160 100 0)" : "rgb(146 64 14)",
-              backgroundColor: isSource
-                ? "rgb(255 173 21 / 0.25)"
-                : "rgb(252 211 77 / 0.35)",
-              border: `1px solid ${
-                isSource ? "rgb(212 133 11)" : "rgb(252 211 77)"
-              }`,
+              color: tokens.fg,
+              backgroundColor: tokens.badgeBg,
+              border: `1px solid ${tokens.badgeBorder}`,
               flexShrink: 0,
             }}
           >
@@ -154,13 +150,9 @@ function PanelFixture({ modelName, variant, rows }: PanelFixtureProps) {
           py: 0.75,
           fontSize: "0.75rem",
           fontWeight: 600,
-          color: isSource ? "rgb(160 100 0)" : "rgb(146 64 14)",
-          borderTop: isSource
-            ? "1px solid var(--schema-color-changed-accent)"
-            : "1px solid var(--schema-color-impacted-accent)",
-          borderBottom: isSource
-            ? "1px solid var(--schema-color-changed-accent)"
-            : "1px solid var(--schema-color-impacted-accent)",
+          color: tokens.fg,
+          borderTop: `1px solid ${tokens.washAccent}`,
+          borderBottom: `1px solid ${tokens.washAccent}`,
         }}
       >
         {headerText}
