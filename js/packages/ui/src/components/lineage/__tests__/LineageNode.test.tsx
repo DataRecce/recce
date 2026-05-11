@@ -402,41 +402,31 @@ describe("LineageNode", () => {
   // ==========================================================================
 
   describe("change analysis", () => {
-    // Per DRC-3341 captain review: "Breaking" and "Partial Breaking"
-    // labels were dropped from the graph node. The "ALL" badge already
-    // carries the whole-model-change signal, and the per-row `~` / `!`
-    // glyphs carry the column-level signal. Only "Additive" (the spec's
-    // UI term for `non_breaking`) and "Unknown" (classifier failed)
-    // still render.
-    const labelledCategories: { category: ChangeCategory; label: string }[] = [
-      { category: "non_breaking", label: "Additive" },
-      { category: "unknown", label: "Unknown" },
-    ];
-
-    it.each(
-      labelledCategories,
-    )("shows $category category label when showChangeAnalysis is true", ({
-      category,
-      label,
-    }) => {
+    // Per DRC-3341 captain review: "Breaking", "Partial Breaking", and
+    // "Additive" labels were dropped from the graph node — the brown ALL
+    // badge, per-row `~`/`!` glyphs, and green ADD badge carry those
+    // signals respectively. Only "Unknown" (classifier failed) still
+    // renders as a bottom-row label.
+    it("shows Unknown category label when showChangeAnalysis is true", () => {
       const props = createMockNodeProps(
-        { showChangeAnalysis: true, changeCategory: category },
+        { showChangeAnalysis: true, changeCategory: "unknown" },
         { label: "test" },
       );
 
       render(<LineageNode {...props} />);
 
-      expect(screen.getByText(label)).toBeInTheDocument();
+      expect(screen.getByText("Unknown")).toBeInTheDocument();
     });
 
     const unlabelledCategories: ChangeCategory[] = [
       "breaking",
       "partial_breaking",
+      "non_breaking",
     ];
 
     it.each(
       unlabelledCategories,
-    )("does not show category label for %s (carried by ALL badge / row glyphs)", (category) => {
+    )("does not show category label for %s (carried by badge or row glyph)", (category) => {
       const props = createMockNodeProps(
         { showChangeAnalysis: true, changeCategory: category },
         { label: "test" },
@@ -446,17 +436,60 @@ describe("LineageNode", () => {
 
       expect(screen.queryByText("Breaking")).not.toBeInTheDocument();
       expect(screen.queryByText("Partial Breaking")).not.toBeInTheDocument();
+      expect(screen.queryByText("Additive")).not.toBeInTheDocument();
     });
 
     it("does not show category label when showChangeAnalysis is false", () => {
       const props = createMockNodeProps(
-        { showChangeAnalysis: false, changeCategory: "non_breaking" },
+        { showChangeAnalysis: false, changeCategory: "unknown" },
         { label: "test" },
       );
 
       render(<LineageNode {...props} />);
 
-      expect(screen.queryByText("Additive")).not.toBeInTheDocument();
+      expect(screen.queryByText("Unknown")).not.toBeInTheDocument();
+    });
+
+    it("renders the green ADD badge for non_breaking (additive) changes", () => {
+      const props = createMockNodeProps(
+        { changeCategory: "non_breaking" },
+        { label: "test" },
+      );
+
+      render(<LineageNode {...props} />);
+
+      const badge = screen.getByTestId("additive-change-badge");
+      expect(badge).toBeInTheDocument();
+      expect(badge).toHaveTextContent("ADD");
+    });
+
+    it("source/downstream badges win priority over additive when stacked", () => {
+      // Defensive — if a consumer ever passes both an additive category
+      // AND a whole-model flag, the brown/amber badge must still win.
+      const breakingProps = createMockNodeProps(
+        { changeCategory: "non_breaking", isBreakingSource: true },
+        { label: "src" },
+      );
+      const { unmount } = render(<LineageNode {...breakingProps} />);
+      expect(
+        screen.queryByTestId("additive-change-badge"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId("whole-model-source-badge"),
+      ).toBeInTheDocument();
+      unmount();
+
+      const impactedProps = createMockNodeProps(
+        { changeCategory: "non_breaking", isWholeModelImpacted: true },
+        { label: "imp" },
+      );
+      render(<LineageNode {...impactedProps} />);
+      expect(
+        screen.queryByTestId("additive-change-badge"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId("whole-model-impact-badge"),
+      ).toBeInTheDocument();
     });
   });
 

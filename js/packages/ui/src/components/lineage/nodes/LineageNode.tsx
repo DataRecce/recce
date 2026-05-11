@@ -177,18 +177,16 @@ export interface LineageNodeProps {
 // =============================================================================
 
 // "Breaking" / "Partial Breaking" labels are intentionally null. The
-// brown "ALL" badge already carries the whole-model-change signal, and
-// the per-row `~` / `!` glyphs already carry the column-level
-// "changed" / "impacted" signal. Keeping the bottom-row labels for
-// these two categories duplicates the message and clutters the graph.
-// "Additive" (the spec's UI term for `non_breaking` — a change that only
-// adds a column or otherwise leaves existing rows/values untouched) and
-// "Unknown" (classifier failed) still render — both have no other
-// graph-level visual treatment.
+// brown "ALL" badge carries the whole-model-change signal, the per-row
+// `~` / `!` glyphs carry the column-level "changed" / "impacted" signal,
+// and the green "ADD" badge carries the additive-change signal — so the
+// bottom-row labels for those three categories would be redundant. Only
+// "Unknown" (classifier failed) still renders as a label, because there's
+// no other graph-level visual for it.
 // See DRC-3341 spec §Vocabulary and captain visual review notes.
 const CHANGE_CATEGORY_LABELS: Record<ChangeCategory, string | null> = {
   breaking: null,
-  non_breaking: "Additive",
+  non_breaking: null,
   partial_breaking: null,
   unknown: "Unknown",
 };
@@ -579,40 +577,50 @@ function LineageNodeComponent({
               resourceType={resourceType}
             />
 
-            {/* Whole-model badge — same primitive for both source and
-                impacted nodes (Q9: "if you see a badge, look at the color:
-                brown is the cause, amber is the effect"). Persists
-                regardless of hover state so it's readable at zoomed-out
-                lineage view. Source wins (Q11): when both flags are true
-                the brown source treatment dominates, enforced upstream by
-                GraphNodeOss. */}
+            {/* Node badge — one primitive, three colors (Q9 + additive
+                follow-up). Color carries the meaning:
+                  brown ALL = whole-model-changed source (cause)
+                  amber ALL = whole-model impact (effect)
+                  green ADD = additive-only local change (safe)
+                Precedence (strongest wins): source > downstream > additive.
+                Persists regardless of hover so it's readable at zoomed-out
+                lineage view. */}
             {(() => {
+              const isAdditive =
+                changeCategory === "non_breaking" &&
+                !isBreakingSource &&
+                !isWholeModelImpacted;
               const badgeKind = wholeModelTreatmentKind({
                 isBreakingSource,
                 isWholeModelImpactedDownstream: isWholeModelImpacted,
+                isAdditive,
               });
               if (!badgeKind) return null;
               const tokens = wholeModelTreatmentTokens(badgeKind, isDark);
+              const badgeText = badgeKind === "additive" ? "ADD" : "ALL";
+              const tooltipText = {
+                source:
+                  "Whole-model change — every row of this model is potentially affected",
+                downstream:
+                  "Whole-model impact — every column affected by an upstream whole-model change",
+                additive:
+                  "Additive change — adds a column or otherwise leaves existing rows untouched",
+              }[badgeKind];
+              const ariaLabel = {
+                source: "whole-model change",
+                downstream: "whole-model impact",
+                additive: "additive change",
+              }[badgeKind];
+              const testId = {
+                source: "whole-model-source-badge",
+                downstream: "whole-model-impact-badge",
+                additive: "additive-change-badge",
+              }[badgeKind];
               return (
-                <Tooltip
-                  title={
-                    badgeKind === "source"
-                      ? "Whole-model change — every row of this model is potentially affected"
-                      : "Whole-model impact — every column affected by an upstream whole-model change"
-                  }
-                  placement="top"
-                >
+                <Tooltip title={tooltipText} placement="top">
                   <Box
-                    aria-label={
-                      badgeKind === "source"
-                        ? "whole-model change"
-                        : "whole-model impact"
-                    }
-                    data-testid={
-                      badgeKind === "source"
-                        ? "whole-model-source-badge"
-                        : "whole-model-impact-badge"
-                    }
+                    aria-label={ariaLabel}
+                    data-testid={testId}
                     sx={{
                       display: "inline-flex",
                       alignItems: "center",
@@ -629,7 +637,7 @@ function LineageNodeComponent({
                       border: `1px solid ${tokens.badgeBorder}`,
                     }}
                   >
-                    ALL
+                    {badgeText}
                   </Box>
                 </Tooltip>
               );

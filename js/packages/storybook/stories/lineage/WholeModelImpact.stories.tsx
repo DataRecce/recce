@@ -519,3 +519,86 @@ export const SourceAndSourceWins: Story = {
     </Stack>
   ),
 };
+
+// ============================================================================
+// Additive-change badge — captain follow-up after AC-1..AC-4
+// ============================================================================
+
+export const AdditiveBadge: Story = {
+  name: "Additive: green ADD badge on the graph",
+  parameters: {
+    docs: {
+      description: {
+        story: `Captain follow-up after AC-1..AC-4: a model whose only change is additive (\`non_breaking\` — adds a column, leaves existing rows and column values untouched) deserves a graph-level signal that it's *safe*. Green "ADD" badge on the lineage node, no sidebar wash (the per-row green \`+\` glyph in the schema view already calls out the added column).
+
+Precedence: source (brown) > downstream (amber) > additive (green). If a model is additive AND under any whole-model treatment, the stronger badge wins.`,
+      },
+    },
+  },
+  render: () => (
+    <Stack
+      direction="row"
+      spacing={3}
+      sx={{ alignItems: "flex-start", flexWrap: "wrap" }}
+    >
+      <Stack spacing={1}>
+        <Typography variant="subtitle2">Additive only</Typography>
+        <NodeFixture
+          label="stg_customers"
+          data={{
+            label: "stg_customers",
+            resourceType: "model",
+            changeStatus: "modified",
+          }}
+          showChangeAnalysis
+          changeCategory="non_breaking"
+        />
+        <Typography
+          variant="caption"
+          sx={{ color: "text.secondary", maxWidth: 320 }}
+        >
+          Green ADD badge: this model added a column. No upstream whole-model
+          change.
+        </Typography>
+      </Stack>
+
+      <Stack spacing={1}>
+        <Typography variant="subtitle2">For comparison: source</Typography>
+        <NodeFixture
+          label="stg_orders"
+          isBreakingSource
+          data={{
+            label: "stg_orders",
+            resourceType: "model",
+            changeStatus: "modified",
+          }}
+        />
+        <Typography
+          variant="caption"
+          sx={{ color: "text.secondary", maxWidth: 320 }}
+        >
+          Brown ALL badge: this model's own change is whole-model.
+        </Typography>
+      </Stack>
+
+      <Stack spacing={1}>
+        <Typography variant="subtitle2">For comparison: downstream</Typography>
+        <NodeFixture
+          label="fct_orders"
+          isWholeModelImpacted
+          data={{
+            label: "fct_orders",
+            resourceType: "model",
+            changeStatus: "unchanged",
+          }}
+        />
+        <Typography
+          variant="caption"
+          sx={{ color: "text.secondary", maxWidth: 320 }}
+        >
+          Amber ALL badge: downstream of a whole-model change.
+        </Typography>
+      </Stack>
+    </Stack>
+  ),
+};
