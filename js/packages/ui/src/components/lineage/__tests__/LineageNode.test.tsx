@@ -405,10 +405,11 @@ describe("LineageNode", () => {
     // Per DRC-3341 captain review: "Breaking" and "Partial Breaking"
     // labels were dropped from the graph node. The "ALL" badge already
     // carries the whole-model-change signal, and the per-row `~` / `!`
-    // glyphs carry the column-level signal. Only "Non Breaking"
-    // (additive) and "Unknown" (classifier failed) still render.
+    // glyphs carry the column-level signal. Only "Additive" (the spec's
+    // UI term for `non_breaking`) and "Unknown" (classifier failed)
+    // still render.
     const labelledCategories: { category: ChangeCategory; label: string }[] = [
-      { category: "non_breaking", label: "Non Breaking" },
+      { category: "non_breaking", label: "Additive" },
       { category: "unknown", label: "Unknown" },
     ];
 
@@ -455,7 +456,7 @@ describe("LineageNode", () => {
 
       render(<LineageNode {...props} />);
 
-      expect(screen.queryByText("Non Breaking")).not.toBeInTheDocument();
+      expect(screen.queryByText("Additive")).not.toBeInTheDocument();
     });
   });
 

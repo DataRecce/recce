@@ -181,12 +181,14 @@ export interface LineageNodeProps {
 // the per-row `~` / `!` glyphs already carry the column-level
 // "changed" / "impacted" signal. Keeping the bottom-row labels for
 // these two categories duplicates the message and clutters the graph.
-// "Non Breaking" (additive) and "Unknown" (classifier failed) still
-// render — both have no other graph-level visual treatment.
-// See DRC-3341 captain visual review notes.
+// "Additive" (the spec's UI term for `non_breaking` — a change that only
+// adds a column or otherwise leaves existing rows/values untouched) and
+// "Unknown" (classifier failed) still render — both have no other
+// graph-level visual treatment.
+// See DRC-3341 spec §Vocabulary and captain visual review notes.
 const CHANGE_CATEGORY_LABELS: Record<ChangeCategory, string | null> = {
   breaking: null,
-  non_breaking: "Non Breaking",
+  non_breaking: "Additive",
   partial_breaking: null,
   unknown: "Unknown",
 };
