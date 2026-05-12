@@ -44,6 +44,11 @@ export const highlightBoxShadow =
   "rgba(0, 0, 0, 0.25) 0px 54px 55px, rgba(0, 0, 0, 0.12) 0px -12px 30px, rgba(0, 0, 0, 0.12) 0px 4px 6px, rgba(0, 0, 0, 0.17) 0px 12px 13px, rgba(0, 0, 0, 0.09) 0px -3px 5px";
 
 export interface HookOptions {
+  /**
+   * @deprecated Capture is unified on `@zumer/snapdom` as of v1.48. This option is
+   * accepted for backwards compatibility but has no effect — all captures use snapdom.
+   */
+  renderLibrary?: "html2canvas" | "html-to-image";
   imageType?: "png" | "jpeg";
   backgroundColor?: string | null;
   boardEffect?: boolean;
@@ -114,6 +119,15 @@ export function useCopyToClipboard({
       }
     }
 
+    // Force images to inline-block so they layout inside the cloned subtree.
+    // Declared outside the try so the finally block can always remove it,
+    // even if snapdom.toCanvas throws.
+    const style = document.createElement("style");
+    document.head.appendChild(style);
+    style.sheet?.insertRule(
+      "body > div:last-child img { display: inline-block; }",
+    );
+
     try {
       nodeToUse.style.overflow = "hidden";
       nodeToUse.style.border = boardEffect ? borderStyle : "";
@@ -122,23 +136,20 @@ export function useCopyToClipboard({
       // Firefox v125+: some DOM-to-image engines can't read clone height correctly without this
       nodeToUse.style.height = `${String(nodeToUse.offsetHeight)}px`;
 
-      // Force images to inline-block so they layout inside the cloned subtree
-      const style = document.createElement("style");
-      document.head.appendChild(style);
-      style.sheet?.insertRule(
-        "body > div:last-child img { display: inline-block; }",
-      );
       const filter = ignoreElements
         ? (n: Element) => !ignoreElements(n)
         : undefined;
 
       setStatus("loading");
+      // filterMode: "remove" matches the historical html-to-image behavior
+      // (excluded nodes are dropped rather than hidden with visibility:hidden,
+      // which would leave layout gaps in the captured image).
       const canvas: HTMLCanvasElement = await snapdom.toCanvas(nodeToUse, {
         filter: filter,
+        filterMode: "remove",
         backgroundColor: backgroundColor ?? colors.neutral[100],
       });
 
-      style.remove();
       const outputCanvas = shadowEffect
         ? document.createElement("canvas")
         : canvas;
@@ -166,6 +177,7 @@ export function useCopyToClipboard({
       console.error("Error converting to image", error);
       throw error;
     } finally {
+      style.remove();
       resetStyles();
     }
   };

@@ -289,14 +289,16 @@ export const LineageView = forwardRef<LineageViewRef, LineageViewProps>(
       }
 
       try {
-        const canvas = await snapdom.toCanvas(containerRef.current, {
+        // dpr: 1, scale: 2 produces exactly 2x CSS pixels regardless of
+        // device DPR, matching html-to-image's previous pixelRatio: 2 semantics.
+        // (snapdom's default dpr is window.devicePixelRatio; without dpr: 1
+        // we'd get 4x on retina displays.)
+        const blob = await snapdom.toBlob(containerRef.current, {
           backgroundColor: "#ffffff",
+          dpr: 1,
           scale: 2,
+          type: "png",
         });
-        const dataUrl = canvas.toDataURL("image/png");
-
-        const response = await fetch(dataUrl);
-        const blob = await response.blob();
 
         await navigator.clipboard.write([
           new ClipboardItem({
