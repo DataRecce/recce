@@ -11,7 +11,7 @@
 
 import type { RunsAggregated, ServerInfoResult } from "@datarecce/ui/api";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { type MockedFunction, vi } from "vitest";
 
@@ -150,7 +150,7 @@ afterAll(() => {
 });
 
 import { buildLineageGraph } from "@datarecce/ui";
-import { aggregateRuns, getServerInfo } from "@datarecce/ui/api";
+import { aggregateRuns, cacheKeys, getServerInfo } from "@datarecce/ui/api";
 import {
   IdleTimeoutProvider,
   RecceInstanceInfoProvider,
@@ -174,10 +174,17 @@ function createTestQueryClient() {
 }
 
 /**
- * Test wrapper that provides all required contexts
+ * Test wrapper that provides all required contexts.
+ * Accepts an optional pre-created queryClient for tests that need to spy on it.
  */
-function TestWrapper({ children }: { children: React.ReactNode }) {
-  const queryClient = createTestQueryClient();
+function TestWrapper({
+  children,
+  client,
+}: {
+  children: React.ReactNode;
+  client?: QueryClient;
+}) {
+  const queryClient = client ?? createTestQueryClient();
   return (
     <QueryClientProvider client={queryClient}>
       <RecceInstanceInfoProvider>
@@ -923,6 +930,77 @@ describe("LineageGraphAdapter", () => {
       // Verify the provider received the data
       expect(screen.getByTestId("adapter-type")).toHaveTextContent("bigquery");
       expect(screen.getByTestId("review-mode")).toHaveTextContent("true");
+    });
+  });
+
+  describe("WebSocket metadata_updated message", () => {
+    it("invalidates lineage, checks, and runs caches when metadata_updated is received", async () => {
+      // Capture the WebSocket instance so we can simulate messages
+      let wsInstance: MockWebSocket | null = null;
+      const OriginalMockWS =
+        global.WebSocket as unknown as typeof MockWebSocket;
+      class CapturingWS extends OriginalMockWS {
+        constructor(url: string) {
+          super(url);
+          wsInstance = this;
+        }
+      }
+      // @ts-expect-error - MockWebSocket doesn't fully implement WebSocket
+      global.WebSocket = CapturingWS;
+
+      // Use a pre-created queryClient so we can spy on invalidateQueries.
+      const queryClient = createTestQueryClient();
+      const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+      mockGetServerInfo.mockResolvedValue(createServerInfoResult());
+      mockAggregateRuns.mockResolvedValue({});
+
+      render(
+        <TestWrapper client={queryClient}>
+          <LineageGraphAdapter>
+            <TestConsumer />
+          </LineageGraphAdapter>
+        </TestWrapper>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("is-loading")).toHaveTextContent("false");
+      });
+
+      // Wait for WS connection to be established
+      await waitFor(() => {
+        expect(wsInstance).not.toBeNull();
+      });
+
+      // Reset spy so we only capture calls from the WS event, not from initial load.
+      invalidateSpy.mockClear();
+
+      // Simulate a metadata_updated WS message
+      await act(async () => {
+        wsInstance!.onmessage?.(
+          new MessageEvent("message", {
+            data: JSON.stringify({
+              type: "metadata_updated",
+              data: { session_id: "some-session-id" },
+            }),
+          }),
+        );
+      });
+
+      // invalidateCaches() must have been called with each of the three query keys.
+      // A regression that removes any of these would be caught here.
+      await waitFor(() => {
+        const keys = invalidateSpy.mock.calls.map(
+          (args) => (args[0] as { queryKey: unknown }).queryKey,
+        );
+        expect(keys).toContainEqual(cacheKeys.lineage());
+        expect(keys).toContainEqual(cacheKeys.checks());
+        expect(keys).toContainEqual(cacheKeys.runs());
+      });
+
+      // Restore original mock
+      // @ts-expect-error - MockWebSocket doesn't fully implement WebSocket
+      global.WebSocket = OriginalMockWS;
     });
   });
 });
