@@ -4,7 +4,7 @@ import Box from "@mui/material/Box";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import type { Edge, Node } from "@xyflow/react";
-import { toPng } from "html-to-image";
+import { snapdom } from "@zumer/snapdom";
 import {
   forwardRef,
   type Ref,
@@ -289,10 +289,11 @@ export const LineageView = forwardRef<LineageViewRef, LineageViewProps>(
       }
 
       try {
-        const dataUrl = await toPng(containerRef.current, {
+        const canvas = await snapdom.toCanvas(containerRef.current, {
           backgroundColor: "#ffffff",
-          pixelRatio: 2,
+          scale: 2,
         });
+        const dataUrl = canvas.toDataURL("image/png");
 
         const response = await fetch(dataUrl);
         const blob = await response.blob();

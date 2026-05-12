@@ -7,9 +7,9 @@ import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
+import { snapdom } from "@zumer/snapdom";
 import { format } from "date-fns";
 import saveAs from "file-saver";
-import { toCanvas } from "html-to-image";
 import React, {
   type RefObject,
   useCallback,
@@ -22,18 +22,6 @@ import { PiCopy, PiInfo } from "react-icons/pi";
 import type { DataGridHandle } from "../primitives";
 import { colors } from "../theme";
 import { useClipBoardToast } from "./useClipBoardToast";
-
-// Dynamic import for html2canvas-pro (externalized to consuming app)
-type Html2CanvasFn = (
-  element: HTMLElement,
-  options?: Record<string, unknown>,
-) => Promise<HTMLCanvasElement>;
-
-const loadHtml2Canvas = async (): Promise<Html2CanvasFn> => {
-  // Use the package's main export - it resolves to ESM via package.json exports
-  const module = await import("html2canvas-pro");
-  return module.default as Html2CanvasFn;
-};
 
 // Type to represent DataGridHandle which may have an element property
 type DataGridRefType = DataGridHandle & { element?: HTMLElement };
@@ -56,7 +44,6 @@ export const highlightBoxShadow =
   "rgba(0, 0, 0, 0.25) 0px 54px 55px, rgba(0, 0, 0, 0.12) 0px -12px 30px, rgba(0, 0, 0, 0.12) 0px 4px 6px, rgba(0, 0, 0, 0.17) 0px 12px 13px, rgba(0, 0, 0, 0.09) 0px -3px 5px";
 
 export interface HookOptions {
-  renderLibrary?: "html2canvas" | "html-to-image";
   imageType?: "png" | "jpeg";
   backgroundColor?: string | null;
   boardEffect?: boolean;
@@ -79,7 +66,6 @@ export interface BlobHookReturn {
 }
 
 export function useCopyToClipboard({
-  renderLibrary = "html2canvas",
   imageType = "png",
   backgroundColor = null,
   boardEffect = true,
@@ -133,34 +119,24 @@ export function useCopyToClipboard({
       nodeToUse.style.border = boardEffect ? borderStyle : "";
       nodeToUse.style.borderRadius = boardEffect ? borderRadius : "";
       nodeToUse.style.backgroundColor = backgroundColor ?? colors.neutral[100];
-      // after firefox v125, html2canvas can't get the correct style height of the element to clone
+      // Firefox v125+: some DOM-to-image engines can't read clone height correctly without this
       nodeToUse.style.height = `${String(nodeToUse.offsetHeight)}px`;
 
-      // Add style to make images inline-block
-      // ref: https://github.com/niklasvh/html2canvas/issues/2107#issuecomment-1316354455
+      // Force images to inline-block so they layout inside the cloned subtree
       const style = document.createElement("style");
       document.head.appendChild(style);
       style.sheet?.insertRule(
         "body > div:last-child img { display: inline-block; }",
       );
       const filter = ignoreElements
-        ? (n: HTMLElement) => !ignoreElements(n)
+        ? (n: Element) => !ignoreElements(n)
         : undefined;
 
       setStatus("loading");
-      let canvas: HTMLCanvasElement;
-      if (renderLibrary === "html2canvas") {
-        const html2canvas = await loadHtml2Canvas();
-        canvas = await html2canvas(nodeToUse, {
-          logging: false,
-          backgroundColor: backgroundColor ?? colors.neutral[100],
-          ignoreElements: ignoreElements,
-        });
-      } else {
-        canvas = await toCanvas(nodeToUse, {
-          filter: filter,
-        }); // Use html-to-image for copy reactflow graph
-      }
+      const canvas: HTMLCanvasElement = await snapdom.toCanvas(nodeToUse, {
+        filter: filter,
+        backgroundColor: backgroundColor ?? colors.neutral[100],
+      });
 
       style.remove();
       const outputCanvas = shadowEffect
