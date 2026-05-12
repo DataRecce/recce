@@ -53,9 +53,8 @@ export default defineConfig({
     // react-split uses split.js for resizable panes
     "react-split",
     "split.js",
-    // html-to-image and html2canvas-pro are used for screenshot functionality
-    "html-to-image",
-    "html2canvas-pro",
+    // snapdom is used for screenshot functionality
+    "@zumer/snapdom",
     // Utility packages - externalize to prevent CJS interop issues
     "js-cookie",
     "file-saver",

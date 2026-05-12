@@ -26,8 +26,6 @@ overrides:
   '@mui/system': ^9.0.0
   '@xyflow/react': ^12.10.2
   '@dagrejs/dagre': 3.0.0
-  html-to-image: 1.11.13
-  html2canvas-pro: 2.0.2
   ag-grid-community: ^35.2.1
   ag-grid-react: ^35.2.1
   lodash: ^4.18.1
@@ -136,6 +134,9 @@ importers:
       '@xyflow/react':
         specifier: ^12.10.2
         version: 12.10.2(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@zumer/snapdom':
+        specifier: ^2.12.0
+        version: 2.12.0
       ag-grid-community:
         specifier: ^35.2.1
         version: 35.2.1
@@ -160,12 +161,6 @@ importers:
       happy-dom:
         specifier: ^20.9.0
         version: 20.9.0
-      html-to-image:
-        specifier: 1.11.13
-        version: 1.11.13
-      html2canvas-pro:
-        specifier: 2.0.2
-        version: 2.0.2
       import-in-the-middle:
         specifier: ^3.0.1
         version: 3.0.1
@@ -417,6 +412,9 @@ importers:
       '@xyflow/react':
         specifier: ^12.10.2
         version: 12.10.2(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@zumer/snapdom':
+        specifier: ^2.12.0
+        version: 2.12.0
       ag-grid-community:
         specifier: ^35.2.1
         version: 35.2.1
@@ -435,12 +433,6 @@ importers:
       file-saver:
         specifier: ^2.0.5
         version: 2.0.5
-      html-to-image:
-        specifier: 1.11.13
-        version: 1.11.13
-      html2canvas-pro:
-        specifier: 2.0.2
-        version: 2.0.2
       js-cookie:
         specifier: ^3.0.5
         version: 3.0.5
@@ -2814,6 +2806,9 @@ packages:
   '@xyflow/system@0.0.76':
     resolution: {integrity: sha512-hvwvnRS1B3REwVDlWexsq7YQaPZeG3/mKo1jv38UmnpWmxihp14bW6VtEOuHEwJX2FvzFw8k77LyKSk/wiZVNA==}
 
+  '@zumer/snapdom@2.12.0':
+    resolution: {integrity: sha512-TdLGu+1RkKI3JKfMFvn1gRPD/rl8hrAeN6aFjjd0w7S39nulbd94ChxSlfH7nSCm8kzuQkeWFxIsij4+Mk1RDg==}
+
   abort-controller@3.0.0:
     resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
     engines: {node: '>=6.5'}
@@ -3146,9 +3141,6 @@ packages:
 
   css-box-model@1.2.1:
     resolution: {integrity: sha512-a7Vr4Q/kd/aw96bnJG332W9V9LkJO69JRcaCYDUqjp6/z0w6VcZjgAcTbgFxEPfBgdnAwlh3iwu+hLopa+flJw==}
-
-  css-line-break@2.1.0:
-    resolution: {integrity: sha512-FHcKFCZcAha3LwfVBhCQbW2nCNbkZXn7KVUJcsT5/P8YmfsVja0FMPJr0B903j/E69HUphKiV9iQArX8SDYA4w==}
 
   css.escape@1.5.1:
     resolution: {integrity: sha512-YUifsXXuknHlUsmlgyY0PKzgPOr7/FjCePfHNt0jxm83wHZi44VDMQ7/fGNkjY3/jV1MC+1CmZbaHzugyeRtpg==}
@@ -3514,15 +3506,8 @@ packages:
   html-escaper@2.0.2:
     resolution: {integrity: sha512-H2iMtd0I4Mt5eYiapRdIDjp+XzelXQ0tFE4JS7YFwFevXXMmOp9myNrUvCg0D6ws8iqkRPBfKHgbwig1SmlLfg==}
 
-  html-to-image@1.11.13:
-    resolution: {integrity: sha512-cuOPoI7WApyhBElTTb9oqsawRvZ0rHhaHwghRLlTuffoD1B2aDemlCruLeZrUIIdvG7gs9xeELEPm6PhuASqrg==}
-
   html-url-attributes@3.0.1:
     resolution: {integrity: sha512-ol6UPyBWqsrO6EJySPz2O7ZSr856WDrEzM5zMqp+FJJLGMW35cLYmmZnl0vztAZxRUoNZJFTCohfjuIJ8I4QBQ==}
-
-  html2canvas-pro@2.0.2:
-    resolution: {integrity: sha512-9G/t0XgCZWonLwL0JwI7su6NdbOPUY7Ur4Ihpp8+XMaW9ibA2nDXF181Jr6tm94k8lX6sthpaXB3XqEnsMd5Cw==}
-    engines: {node: '>=16.0.0'}
 
   https-proxy-agent@5.0.1:
     resolution: {integrity: sha512-dFcAjpTQFgoLMzC2VwU+C/CbS7uRL0lWmxDITmqm7C+7F0Odmj6s9l6alZc6AELXhrnggM2CeWSXHGOdX2YtwA==}
@@ -4640,9 +4625,6 @@ packages:
   text-decoder@1.2.7:
     resolution: {integrity: sha512-vlLytXkeP4xvEq2otHeJfSQIRyWxo/oZGEbXrtEEF9Hnmrdly59sUbzZ/QgyWuLYHctCHxFF4tRQZNQ9k60ExQ==}
 
-  text-segmentation@1.0.3:
-    resolution: {integrity: sha512-iOiPUo/BGnZ6+54OsWxZidGCsdU8YbE4PSpdPinp7DeMtUJNJBoJ/ouUSTJjHkh1KntHaltHl/gDs2FC4i5+Nw==}
-
   third-party-capital@1.0.20:
     resolution: {integrity: sha512-oB7yIimd8SuGptespDAZnNkzIz+NWaJCu2RMsbs4Wmp9zSDUM8Nhi3s2OOcqYuv3mN4hitXc8DVx+LyUmbUDiA==}
 
@@ -4838,9 +4820,6 @@ packages:
 
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
-
-  utrie@1.0.2:
-    resolution: {integrity: sha512-1MLa5ouZiOmQzUbjbu9VmjLzn1QLXBhwpUa7kdLUQK+KQ5KA9I1vk5U4YHe/X2Ch7PYnJfWuWT+VbuxbGwljhw==}
 
   vfile-message@4.0.3:
     resolution: {integrity: sha512-QTHzsGd1EhbZs4AsQ20JX1rC3cOlt/IWJruk893DfLRr57lcnOeMaWG4K0JrRta4mIJZKth2Au3mM3u03/JWKw==}
@@ -7463,6 +7442,8 @@ snapshots:
       d3-selection: 3.0.0
       d3-zoom: 3.0.0
 
+  '@zumer/snapdom@2.12.0': {}
+
   abort-controller@3.0.0:
     dependencies:
       event-target-shim: 5.0.1
@@ -7760,10 +7741,6 @@ snapshots:
   css-box-model@1.2.1:
     dependencies:
       tiny-invariant: 1.3.3
-
-  css-line-break@2.1.0:
-    dependencies:
-      utrie: 1.0.2
 
   css.escape@1.5.1: {}
 
@@ -8106,14 +8083,7 @@ snapshots:
 
   html-escaper@2.0.2: {}
 
-  html-to-image@1.11.13: {}
-
   html-url-attributes@3.0.1: {}
-
-  html2canvas-pro@2.0.2:
-    dependencies:
-      css-line-break: 2.1.0
-      text-segmentation: 1.0.3
 
   https-proxy-agent@5.0.1:
     dependencies:
@@ -9486,10 +9456,6 @@ snapshots:
     transitivePeerDependencies:
       - react-native-b4a
 
-  text-segmentation@1.0.3:
-    dependencies:
-      utrie: 1.0.2
-
   third-party-capital@1.0.20: {}
 
   tiny-invariant@1.3.3: {}
@@ -9671,10 +9637,6 @@ snapshots:
       react: 19.2.5
 
   util-deprecate@1.0.2: {}
-
-  utrie@1.0.2:
-    dependencies:
-      base64-arraybuffer: 1.0.2
 
   vfile-message@4.0.3:
     dependencies:
