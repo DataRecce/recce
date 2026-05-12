@@ -18,12 +18,7 @@ import React, {
   useState,
 } from "react";
 import { IoClose } from "react-icons/io5";
-import {
-  aggregateRuns,
-  cacheKeys,
-  getServerInfo,
-  markRelaunchHintCompleted,
-} from "../api";
+import { aggregateRuns, cacheKeys, markRelaunchHintCompleted } from "../api";
 import {
   RecceInstanceDisconnectedModalContent,
   ServerDisconnectedModalContent,
@@ -40,6 +35,7 @@ import {
 import { trackSingleEnvironment } from "../lib/api/track";
 import { PUBLIC_API_URL, RECCE_SUPPORT_CALENDAR_URL } from "../lib/const";
 import { useApiConfig } from "./useApiConfig";
+import { useServerInfo } from "./useServerInfo";
 
 type LineageWatcherStatus = "pending" | "connected" | "disconnected";
 type EnvWatcherStatus = undefined | "relaunch";
@@ -285,10 +281,7 @@ export function LineageGraphAdapter({ children }: LineageGraphAdapterProps) {
   // Get configured API client from context
   const { apiClient, apiPrefix, baseUrl } = useApiConfig();
 
-  const queryServerInfo = useQuery({
-    queryKey: cacheKeys.lineage(),
-    queryFn: () => getServerInfo(apiClient),
-  });
+  const queryServerInfo = useServerInfo();
 
   const queryRunAggregated = useQuery({
     queryKey: cacheKeys.runsAggregated(),

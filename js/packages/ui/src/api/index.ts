@@ -82,7 +82,12 @@ export type {
   SQLMeshInfo,
   StateMetadata,
 } from "./info";
-export { getModelInfo, getServerInfo, isSessionBaseOutdated } from "./info";
+export {
+  getModelInfo,
+  getServerInfo,
+  isSessionBaseOutdated,
+  refreshSessionBase,
+} from "./info";
 // Instance info API
 export type { RecceInstanceInfo, ServerMode } from "./instanceInfo";
 export { getRecceInstanceInfo } from "./instanceInfo";

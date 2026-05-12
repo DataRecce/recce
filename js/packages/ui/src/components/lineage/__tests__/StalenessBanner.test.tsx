@@ -42,12 +42,27 @@ vi.mock("../../../contexts", () => ({
   useLineageGraphContext: () => mockUseLineageGraphContext(),
 }));
 
-vi.mock("../../../hooks", () => ({
-  useApiConfig: () => ({
-    apiClient: { get: mockApiGet, post: mockApiPost },
-    apiPrefix: "",
-  }),
-}));
+// Inline a thin stand-in for useServerInfo that subscribes via useQuery to
+// the same queryKey used by the real hook. Tests pre-seed the queryClient
+// with that key, so the banner sees the seeded data through the real React
+// Query subscription path (preserves the H1 reactive-subscription coverage).
+vi.mock("../../../hooks", async () => {
+  const reactQuery = await vi.importActual<
+    typeof import("@tanstack/react-query")
+  >("@tanstack/react-query");
+  return {
+    useApiConfig: () => ({
+      apiClient: { get: mockApiGet, post: mockApiPost },
+      apiPrefix: "",
+    }),
+    useServerInfo: (options?: { select?: (d: ServerInfoResult) => unknown }) =>
+      reactQuery.useQuery({
+        queryKey: cacheKeys.lineage(),
+        queryFn: () => Promise.resolve({} as ServerInfoResult),
+        select: options?.select,
+      }),
+  };
+});
 
 vi.mock("../../ui/Toaster", () => ({
   toaster: {
@@ -333,6 +348,23 @@ describe("StalenessBanner", () => {
             description: expect.stringContaining("Base refreshed"),
           }),
         );
+      });
+    });
+  });
+
+  describe("FirstTimePopover anchor (regression: PR #1366 review)", () => {
+    it("opens FirstTimePopover when banner mounts and localStorage flag is absent", async () => {
+      // The popover's anchor must be a state-backed ref so MUI re-renders
+      // after the banner DOM commits. A plain useRef would leave anchorEl
+      // null on first render and the popover would stay closed.
+      localStorageMock.clear();
+
+      renderWithStaleness(OUTDATED_STALENESS);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/Recce now snapshots your base data/),
+        ).toBeInTheDocument();
       });
     });
   });

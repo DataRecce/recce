@@ -269,3 +269,15 @@ export async function getModelInfo(
   );
   return response.data;
 }
+
+/**
+ * Refresh the PR session's frozen-snapshot base from the project's current
+ * shared base. Backend resolves the session via the `/api/v2/sessions/<id>`
+ * mount prefix (cloud mode); takes no body.
+ *
+ * On success, the backend emits a `metadata_updated` WS event which the
+ * frontend uses to invalidate the lineage cache.
+ */
+export async function refreshSessionBase(client: ApiClient): Promise<void> {
+  await client.post<never, ApiResponse<void>>("/api/refresh-base");
+}

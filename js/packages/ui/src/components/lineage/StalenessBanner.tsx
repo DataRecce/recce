@@ -6,18 +6,11 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { MdInfo } from "react-icons/md";
-import {
-  cacheKeys,
-  getServerInfo,
-  isSessionBaseOutdated,
-  type ServerInfoResult,
-  type SessionStaleness,
-} from "../../api";
+import { isSessionBaseOutdated, refreshSessionBase } from "../../api";
 import { useLineageGraphContext } from "../../contexts";
-import { useApiConfig } from "../../hooks";
+import { useApiConfig, useServerInfo } from "../../hooks";
 import { toaster } from "../ui/Toaster";
 import { FirstTimePopover } from "./FirstTimePopover";
 
@@ -40,15 +33,17 @@ export function StalenessBanner() {
   const { apiClient } = useApiConfig();
   const [refreshing, setRefreshing] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const bannerRef = useRef<HTMLDivElement | null>(null);
+  // State-backed ref so MUI Popover gets a re-render after the banner DOM
+  // commits. A plain useRef does not trigger a re-render, so FirstTimePopover
+  // would receive anchorEl=null on first render and stay closed even after
+  // its internal setOpen(true) fires. See PR #1366 review.
+  const [bannerEl, setBannerEl] = useState<HTMLDivElement | null>(null);
 
-  // Subscribe to session_staleness via useQuery using the same key/queryFn as
-  // LineageGraphAdapter. React Query deduplicates the request — no extra network
-  // round-trip occurs. The select keeps re-renders scoped to staleness changes only.
-  const { data: staleness } = useQuery({
-    queryKey: cacheKeys.lineage(),
-    queryFn: () => getServerInfo(apiClient),
-    select: (d: ServerInfoResult) => d.session_staleness,
+  // Subscribe to session_staleness via the shared useServerInfo hook so this
+  // banner tracks any future options (staleTime/enabled) added in
+  // LineageGraphAdapter without drift. React Query deduplicates by key.
+  const { data: staleness } = useServerInfo({
+    select: (d) => d.session_staleness,
   });
 
   // Track previous staleness to detect the true→false transition.
@@ -109,7 +104,7 @@ export function StalenessBanner() {
     }, REFRESH_TIMEOUT_MS);
 
     try {
-      await apiClient.post("/api/refresh-base");
+      await refreshSessionBase(apiClient);
       // Do NOT clear refreshing here — WS metadata_updated → query invalidate →
       // useQuery subscription updates staleness → outdated flips to false →
       // the useEffect above clears it.
@@ -130,7 +125,7 @@ export function StalenessBanner() {
 
   return (
     <Box
-      ref={bannerRef}
+      ref={setBannerEl}
       role="status"
       sx={{
         bgcolor: "warning.light",
@@ -169,7 +164,7 @@ export function StalenessBanner() {
           </span>
         </Tooltip>
       </Stack>
-      <FirstTimePopover anchorEl={bannerRef.current} />
+      <FirstTimePopover anchorEl={bannerEl} />
     </Box>
   );
 }
