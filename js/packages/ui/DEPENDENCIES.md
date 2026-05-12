@@ -62,12 +62,11 @@ These are declared in `@datarecce/ui`'s `dependencies` and installed automatical
 |---------|-------|----------|
 | `@dagrejs/dagre` | `^1.1.0` | Graph layout |
 | `@tanstack/react-query` | `^5.0.0` | Data fetching |
+| `@zumer/snapdom` | `^2.12.0` | DOM-to-image / screenshot capture |
 | `axios` | `^1.0.0` | HTTP client |
 | `common-tags` | `^1.8.0` | Template literals |
 | `date-fns` | `^4.1.0` | Date utilities |
 | `file-saver` | `^2.0.5` | File download |
-| `html-to-image` | `^1.11.11` | Screenshot capture |
-| `html2canvas-pro` | `^1.5.0` | HTML to canvas |
 | `js-cookie` | `^3.0.5` | Cookie management |
 | `lodash` | `^4.17.21` | Utility library |
 | `react-icons` | `^5.6.0` | Icon library |
