@@ -139,7 +139,7 @@ The repo runs on pnpm v11.1.1 (since DRC-3439, 2026-05-13). Four non-obvious beh
 
 3. **pnpm 11 silently appends placeholder lines.** If you run `pnpm install` in a non-TTY context and it hits an ignored build, pnpm appends `<pkg>: set this to true or false` to `pnpm-workspace.yaml#allowBuilds`. Always `git status` after running install — never commit these placeholders.
 
-4. **`packageManager` must be exact semver.** Corepack rejects ranges like `pnpm@11`. Pin the full `pnpm@11.x.y+sha512:<integrity>` via `corepack use pnpm@11.x.y`.
+4. **`packageManager` must be exact semver.** Corepack rejects ranges like `pnpm@11`. Pin the full `pnpm@11.x.y+sha512.<integrity>` via `corepack use pnpm@11.x.y` (note the `.` separator between `sha512` and the hash — not `:`).
 
 Canonical `allowBuilds` examples live in recce-cloud-infra:
 - `recce-cloud-infra/recce-cloud/pnpm-workspace.yaml`
