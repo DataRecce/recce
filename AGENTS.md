@@ -124,10 +124,28 @@ git commit -s -m "feat(check): add timeline component"
 | Layer | Stack |
 |-------|-------|
 | Backend | Python 3.10-3.13, FastAPI, Click, Pydantic, dbt adapters, uv (package manager) |
-| Frontend | Node.js 20+, Next.js 16, React 19, TypeScript 5.9, MUI 7, Biome 2.4, Tailwind 4 |
+| Frontend | Node.js 24+, Next.js 16, React 19, TypeScript 5.9, MUI 7, Biome 2.4, Tailwind 4 |
 | Testing | pytest, Vitest, React Testing Library, Playwright |
 
 ---
+
+## pnpm v11 — strictDepBuilds + allowBuilds
+
+The repo runs on pnpm v11.1.1 (since DRC-3439, 2026-05-13). Four non-obvious behaviors to know:
+
+1. **`strictDepBuilds: true` is on by default.** Any transitive package with a `postinstall` script that isn't explicitly listed in `js/pnpm-workspace.yaml#allowBuilds` will cause `pnpm install --frozen-lockfile` to hard-fail in CI with `ERR_PNPM_IGNORED_BUILDS`. When a new dep is added that triggers this, add it to `allowBuilds` as `true` (run its postinstall) or `false` (acknowledge it exists, do NOT run postinstall).
+
+2. **Local repro requires CI parity.** Use `CI=true pnpm install --frozen-lockfile` to match CI exactly. The `--ignore-scripts` flag will MASK this failure — do not use it as a verification path.
+
+3. **pnpm 11 silently appends placeholder lines.** If you run `pnpm install` in a non-TTY context and it hits an ignored build, pnpm appends `<pkg>: set this to true or false` to `pnpm-workspace.yaml#allowBuilds`. Always `git status` after running install — never commit these placeholders.
+
+4. **`packageManager` must be exact semver.** Corepack rejects ranges like `pnpm@11`. Pin the full `pnpm@11.x.y+sha512.<integrity>` via `corepack use pnpm@11.x.y` (note the `.` separator between `sha512` and the hash — not `:`).
+
+Canonical `allowBuilds` examples live in recce-cloud-infra:
+- `recce-cloud-infra/recce-cloud/pnpm-workspace.yaml`
+- `recce-cloud-infra/recce_instance_launcher/recce_agent/pnpm-workspace.yaml`
+
+Cross-reference those for prior decisions on shared transitive deps (e.g., `protobufjs: false`).
 
 ## Common Pitfalls
 
