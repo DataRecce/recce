@@ -124,7 +124,7 @@ git commit -s -m "feat(check): add timeline component"
 | Layer | Stack |
 |-------|-------|
 | Backend | Python 3.10-3.13, FastAPI, Click, Pydantic, dbt adapters, uv (package manager) |
-| Frontend | Node.js 20+, Next.js 16, React 19, TypeScript 5.9, MUI 7, Biome 2.4, Tailwind 4 |
+| Frontend | Node.js 24+, Next.js 16, React 19, TypeScript 5.9, MUI 7, Biome 2.4, Tailwind 4 |
 | Testing | pytest, Vitest, React Testing Library, Playwright |
 
 ---
