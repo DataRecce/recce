@@ -108,9 +108,10 @@ export interface RunViewOssProps<VO = ViewOptionTypes> {
  *
  * States:
  * 1. **Error state**: Shows error message from API response or run.error
- * 2. **Running state**: Shows loading spinner with progress and cancel button
- * 3. **Loading state**: Shows spinner when run is undefined
- * 4. **Result state**: Renders RunResultView or children with run results,
+ * 2. **Cancelled state**: Shows terminal "Cancelled" indicator when run.status === "Cancelled"
+ * 3. **Running state**: Shows loading spinner with progress and cancel button
+ * 4. **Loading state**: Shows spinner when run is undefined
+ * 5. **Result state**: Renders RunResultView or children with run results,
  *    wrapped in Sentry error boundary for crash reporting
  *
  * @example
