@@ -1,0 +1,80 @@
+import { useCallback, useEffect, useState } from "react";
+
+const STORAGE_KEY = "recce:canceledRuns";
+const MAX_ENTRIES = 200;
+
+function readFromStorage(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((x): x is string => typeof x === "string");
+  } catch {
+    return [];
+  }
+}
+
+function writeToStorage(ids: string[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+  } catch {
+    // Quota / private-mode failures: silently drop.
+  }
+}
+
+export interface UseCanceledRunsResult {
+  has: (runId: string) => boolean;
+  add: (runId: string) => void;
+}
+
+export function useCanceledRuns(): UseCanceledRunsResult {
+  const [ids, setIds] = useState<string[]>(() => readFromStorage());
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== STORAGE_KEY) return;
+      // Prefer the event's newValue (matches actual cross-tab semantics where
+      // the other tab has already written before this event fires); fall back
+      // to re-reading storage when newValue is absent.
+      if (e.newValue == null) {
+        setIds(readFromStorage());
+        return;
+      }
+      try {
+        const parsed = JSON.parse(e.newValue);
+        if (!Array.isArray(parsed)) {
+          setIds([]);
+          return;
+        }
+        setIds(parsed.filter((x): x is string => typeof x === "string"));
+      } catch {
+        setIds(readFromStorage());
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  const has = useCallback((runId: string) => ids.includes(runId), [ids]);
+
+  const add = useCallback((runId: string) => {
+    setIds((prev) => {
+      if (prev.includes(runId)) return prev;
+      const next = [...prev, runId];
+      const trimmed =
+        next.length > MAX_ENTRIES
+          ? next.slice(next.length - MAX_ENTRIES)
+          : next;
+      writeToStorage(trimmed);
+      return trimmed;
+    });
+  }, []);
+
+  return { has, add };
+}
