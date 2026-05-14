@@ -1,4 +1,6 @@
 import asyncio
+import logging
+import time
 import typing as t
 from typing import List, Optional
 from uuid import UUID
@@ -19,10 +21,21 @@ from recce.apis.export_utils import (
     stream_tsv_rows,
     wrap_sql_with_export_limit,
 )
-from recce.apis.run_func import cancel_run, materialize_run_results, submit_run
+from recce.apis.run_func import (
+    _invoke_task_cancel,
+    _mark_run_cancelled,
+    materialize_run_results,
+    submit_run,
+)
 from recce.event import log_api_event
 from recce.exceptions import RecceException
 from recce.models import RunDAO
+
+logger = logging.getLogger("uvicorn")
+
+# Adapter cancel calls (e.g., Snowflake) may hang on the warehouse side.
+# Bound the wait so a stuck warehouse cannot block the FastAPI event loop.
+CANCEL_TIMEOUT_SECONDS = 2.0
 
 run_router = APIRouter(tags=["run"])
 
@@ -67,12 +80,93 @@ async def create_run_handler(input: CreateRunIn):
         return run
 
 
+def _resolve_adapter_type() -> Optional[str]:
+    """Best-effort adapter type discovery for telemetry.
+
+    Returns the active context's ``adapter_type`` string (e.g. ``"dbt"``
+    or ``"sqlmesh"``) when available. Returns ``None`` rather than raising
+    so a missing or partially-initialized context does not break the
+    cancel handler — adapter type is a nice-to-have telemetry field, not
+    a precondition.
+    """
+    try:
+        from recce.core import default_context
+
+        return getattr(default_context(), "adapter_type", None)
+    except Exception:
+        return None
+
+
 @run_router.post("/runs/{run_id}/cancel")
 async def cancel_run_handler(run_id: UUID):
+    """Cancel a running query.
+
+    The synchronous status flip happens first so the UI sees CANCELLED on
+    the next poll. The adapter cancel (which may hang on warehouses like
+    Snowflake) runs in a worker thread bounded by ``CANCEL_TIMEOUT_SECONDS``
+    so a stuck warehouse cannot block the FastAPI event loop.
+
+    Always returns 200 — the UI has already detached client-side; a
+    failed, timed-out, or unknown-run cancel is a telemetry concern, not
+    a user-facing error. The ``cancel_run`` event records outcome so
+    adapter teams can measure cancel-honor rates per warehouse.
+    """
+    start = time.monotonic()
+    outcome = "acknowledged"
+    task_kind: Optional[str] = None
+    adapter_type = _resolve_adapter_type()
+    task = None
+
     try:
-        cancel_run(run_id)
+        run, task = _mark_run_cancelled(str(run_id))
+        run_type = getattr(run, "type", None)
+        # RunType is an Enum; record the string value for clean telemetry.
+        task_kind = getattr(run_type, "value", run_type) if run_type is not None else None
+    except RecceException:
+        # Run or task already gone (e.g., already terminal, double-cancel
+        # race). UX is already detached client-side, so this is an ack.
+        log_api_event(
+            "cancel_run",
+            dict(
+                run_id=str(run_id),
+                task_kind=None,
+                adapter_type=adapter_type,
+                elapsed_ms_at_cancel=int((time.monotonic() - start) * 1000),
+                outcome="acknowledged",
+            ),
+        )
+        return
+
+    try:
+        await asyncio.wait_for(
+            asyncio.to_thread(_invoke_task_cancel, task),
+            timeout=CANCEL_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        outcome = "timed_out"
+        logger.warning(
+            "cancel_run timed out after %.1fs (run_id=%s)",
+            CANCEL_TIMEOUT_SECONDS,
+            run_id,
+        )
     except NotImplementedError:
+        # Adapter does not implement cancel — UX has already detached.
+        # Recording as ``errored`` would just generate dashboard noise.
         pass
+    except Exception as e:
+        outcome = "errored"
+        logger.warning("cancel_run errored (run_id=%s): %s", run_id, e)
+
+    log_api_event(
+        "cancel_run",
+        dict(
+            run_id=str(run_id),
+            task_kind=task_kind,
+            adapter_type=adapter_type,
+            elapsed_ms_at_cancel=int((time.monotonic() - start) * 1000),
+            outcome=outcome,
+        ),
+    )
 
 
 @run_router.get("/runs/{run_id}/wait")
