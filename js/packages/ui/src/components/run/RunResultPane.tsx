@@ -54,6 +54,7 @@ import {
 } from "react-icons/pi";
 import YAML from "yaml";
 import type { Run, RunParamTypes } from "../../api";
+import { useCanceledRuns } from "../../hooks/useCanceledRuns";
 import { useIsDark } from "../../hooks/useIsDark";
 import { CodeEditor } from "../../primitives";
 import { formatRowCount } from "../../utils";
@@ -518,6 +519,15 @@ const DefaultAddToCheckButton = memo(
     onGoToCheck,
     onAddToChecklist,
   }: AddToCheckButtonProps) => {
+    // Hide the Add-to-Check surface entirely when the user has canceled this
+    // run; a late-arriving server result (warehouse didn't honor the cancel)
+    // must not re-enable the action. Hooks must run unconditionally — the
+    // conditional is only on the render output.
+    const canceledRuns = useCanceledRuns();
+    if (runId && canceledRuns.has(runId)) {
+      return null;
+    }
+
     const checkId = run?.check_id;
     const disabled = !runId || !run?.result || hasError;
 
@@ -697,6 +707,8 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
   children,
 }: RunResultPaneProps<VO, RefType>) {
   const isDark = useIsDark();
+  const canceledRuns = useCanceledRuns();
+  const userCanceled = runId ? canceledRuns.has(runId) : false;
   const [tabValue, setTabValue] = useState<RunResultPaneTabValue>("result");
   const [showSingleEnvNotification, setShowSingleEnvNotification] =
     useState(true);
@@ -706,8 +718,10 @@ function RunResultPaneComponent<VO = unknown, RefType = unknown>({
     run?.type === "query_diff" ||
     run?.type === "query_base";
 
+  // Gate the export/share menu on the sticky cancel set too: a late-arriving
+  // server result must not re-enable copy/export after the user has canceled.
   const disableCopyToClipboard =
-    !runId || !run?.result || !!error || tabValue !== "result";
+    !runId || !run?.result || !!error || tabValue !== "result" || userCanceled;
 
   const handleCopyAsImage = useCallback(async () => {
     await onCopyAsImage?.();
