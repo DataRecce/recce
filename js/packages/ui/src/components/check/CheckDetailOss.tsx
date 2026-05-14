@@ -121,7 +121,6 @@ export function CheckDetailOss({
   const { successToast, failToast } = useClipBoardToast();
   const [submittedRunId, setSubmittedRunId] = useState<string>();
   const [progress] = useState<Run["progress"]>();
-  const [isAborting, setAborting] = useState(false);
   const [isPresetCheckTemplateOpen, setIsPresetCheckTemplateOpen] =
     useState(false);
   const [menuAnchorEl, setMenuAnchorEl] = useState<HTMLElement | null>(null);
@@ -213,7 +212,6 @@ export function CheckDetailOss({
   }, [check, checkId, queryClient, refreshCheckList, apiClient]);
 
   const handleCancel = useCallback(async () => {
-    setAborting(true);
     if (!trackedRunId) {
       return;
     }
@@ -731,7 +729,6 @@ export function CheckDetailOss({
                         <RunViewOss
                           ref={ref as unknown as Ref<RefTypes>}
                           isRunning={isRunning}
-                          isAborting={isAborting}
                           run={
                             trackedRunId
                               ? run

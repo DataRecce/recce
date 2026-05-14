@@ -115,9 +115,6 @@ export interface RunViewProps {
   /** Progress information for the current run */
   progress?: Run["progress"];
 
-  /** Whether the run is being aborted */
-  isAborting?: boolean;
-
   /**
    * Whether this is a check detail view.
    * @deprecated This prop may be removed in future versions.
@@ -217,7 +214,6 @@ export interface RunViewProps {
 export const RunView = forwardRef<unknown, RunViewProps>(function RunView(
   {
     isRunning,
-    isAborting,
     progress,
     error,
     run,
@@ -234,6 +230,7 @@ export const RunView = forwardRef<unknown, RunViewProps>(function RunView(
   const isDark = useIsDark();
   const errorMessage =
     (error as ApiError | undefined)?.response?.data?.detail ?? run?.error;
+  const isCancelled = run?.status === "Cancelled";
 
   // ============================================================================
   // Error State
@@ -256,6 +253,28 @@ export const RunView = forwardRef<unknown, RunViewProps>(function RunView(
       >
         Error: <span className="no-track-pii-safe">{errorMessage}</span>
       </MuiAlert>
+    );
+  }
+
+  // ============================================================================
+  // Cancelled State
+  // ============================================================================
+  if (isCancelled) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: "1rem",
+          height: "100%",
+          bgcolor: isDark ? "grey.900" : "grey.50",
+        }}
+      >
+        <Stack spacing={1} sx={{ alignItems: "center" }}>
+          <Typography>Cancelled</Typography>
+        </Stack>
+      </Box>
     );
   }
 
@@ -329,19 +348,13 @@ export const RunView = forwardRef<unknown, RunViewProps>(function RunView(
               </Box>
             )}
 
-            {isAborting ? (
-              <Typography>Aborting...</Typography>
-            ) : (
-              <Typography className="no-track-pii-safe">
-                {loadingMessage}
-              </Typography>
-            )}
+            <Typography className="no-track-pii-safe">
+              {loadingMessage}
+            </Typography>
           </Stack>
-          {!isAborting && (
-            <Button variant="contained" onClick={onCancel} size="small">
-              Cancel
-            </Button>
-          )}
+          <Button variant="contained" onClick={onCancel} size="small">
+            Cancel
+          </Button>
         </Stack>
       </Box>
     );

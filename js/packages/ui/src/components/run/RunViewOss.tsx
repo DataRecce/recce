@@ -65,9 +65,6 @@ export interface RunViewOssProps<VO = ViewOptionTypes> {
   /** Progress information for the current run */
   progress?: Run["progress"];
 
-  /** Whether the run is being aborted */
-  isAborting?: boolean;
-
   /**
    * Whether this is a check detail view.
    * @deprecated This prop may be removed in future versions.
