@@ -89,13 +89,14 @@ async def test_cancel_handler_records_acknowledged(tmp_run):
 
 
 @pytest.mark.asyncio
-async def test_cancel_handler_returns_within_3s_when_task_cancel_hangs(tmp_run):
+async def test_cancel_handler_returns_within_3s_when_task_cancel_hangs(tmp_run, caplog):
     """Hung adapter cancel: handler returns within 3s, outcome=timed_out.
 
     Without the asyncio.to_thread + wait_for wrap, a 60s sleep inside
     task.cancel would block the event loop. With it, the handler must
     bail at the 2s timeout.
     """
+    import logging
     import time
 
     from recce.apis import run_func
@@ -113,9 +114,12 @@ async def test_cancel_handler_returns_within_3s_when_task_cancel_hangs(tmp_run):
     run_func.running_tasks[str(tmp_run.run_id)] = HangingTask()
 
     events = []
-    with patch(
-        "recce.apis.run_api.log_api_event",
-        side_effect=lambda name, props: events.append((name, props)),
+    with (
+        caplog.at_level(logging.WARNING, logger="uvicorn"),
+        patch(
+            "recce.apis.run_api.log_api_event",
+            side_effect=lambda name, props: events.append((name, props)),
+        ),
     ):
         start = asyncio.get_event_loop().time()
         await cancel_run_handler(tmp_run.run_id)
@@ -125,11 +129,19 @@ async def test_cancel_handler_returns_within_3s_when_task_cancel_hangs(tmp_run):
     cancel_events = [e for e in events if e[0] == "cancel_run"]
     assert len(cancel_events) == 1
     assert cancel_events[0][1]["outcome"] == "timed_out"
+    # Logger emits a warning so operators see the timeout in the server log.
+    assert any(
+        "cancel_run timed out" in r.getMessage() and str(tmp_run.run_id) in r.getMessage()
+        for r in caplog.records
+        if r.levelno == logging.WARNING
+    ), "expected a logger.warning citing the timeout and run_id"
 
 
 @pytest.mark.asyncio
-async def test_cancel_handler_records_errored(tmp_run):
+async def test_cancel_handler_records_errored(tmp_run, caplog):
     """Adapter raises a generic exception: outcome=errored, no exception escapes."""
+    import logging
+
     from recce.apis import run_func
     from recce.apis.run_api import cancel_run_handler
 
@@ -142,15 +154,24 @@ async def test_cancel_handler_records_errored(tmp_run):
     run_func.running_tasks[str(tmp_run.run_id)] = ErrorTask()
 
     events = []
-    with patch(
-        "recce.apis.run_api.log_api_event",
-        side_effect=lambda name, props: events.append((name, props)),
+    with (
+        caplog.at_level(logging.WARNING, logger="uvicorn"),
+        patch(
+            "recce.apis.run_api.log_api_event",
+            side_effect=lambda name, props: events.append((name, props)),
+        ),
     ):
         await cancel_run_handler(tmp_run.run_id)  # must not raise
 
     cancel_events = [e for e in events if e[0] == "cancel_run"]
     assert len(cancel_events) == 1
     assert cancel_events[0][1]["outcome"] == "errored"
+    # Logger emits a warning so operators see the adapter exception.
+    assert any(
+        "cancel_run errored" in r.getMessage() and "adapter blew up" in r.getMessage()
+        for r in caplog.records
+        if r.levelno == logging.WARNING
+    ), "expected a logger.warning citing the adapter exception"
 
 
 @pytest.mark.asyncio

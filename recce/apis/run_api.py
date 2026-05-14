@@ -110,6 +110,13 @@ async def cancel_run_handler(run_id: UUID):
     failed, timed-out, or unknown-run cancel is a telemetry concern, not
     a user-facing error. The ``cancel_run`` event records outcome so
     adapter teams can measure cancel-honor rates per warehouse.
+
+    Thread-leak note: on timeout, the worker thread continues running
+    until the adapter call eventually returns. Python has no thread-kill
+    primitive, so a wedged warehouse-side cancel will leave one Python
+    thread parked on the connection until the OS-level call unblocks.
+    This is acceptable because cancel is low-frequency and the leak is
+    bounded by the warehouse's own connection timeout.
     """
     start = time.monotonic()
     outcome = "acknowledged"
