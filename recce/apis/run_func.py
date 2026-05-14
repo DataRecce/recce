@@ -1,11 +1,12 @@
 import asyncio
 import logging
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from recce.core import default_context
 from recce.exceptions import RecceException
 from recce.models import Run, RunDAO, RunType
 from recce.models.types import RunStatus
+from recce.tasks.core import Task
 
 running_tasks = {}
 logger = logging.getLogger("uvicorn")
@@ -257,7 +258,7 @@ def submit_run(type, params, check_id=None, triggered_by=None):
     return run, future
 
 
-def _mark_run_cancelled(run_id):
+def _mark_run_cancelled(run_id: str) -> Tuple[Run, Task]:
     """Synchronously flip run status to CANCELLED. Cannot hang.
 
     Returns ``(run, task)``. Raises ``RecceException`` if either the
@@ -270,6 +271,10 @@ def _mark_run_cancelled(run_id):
     render the Cancelled state. Callers can now bound the cancel
     duration via :func:`_invoke_task_cancel` without leaving the run in
     RUNNING while the warehouse round-trip is in flight.
+
+    See :func:`submit_run`'s ``update_run_result`` (the
+    "Cross-thread store ordering" note) for the sub-µs GIL window race
+    that the status guard at run_func.py:203-209 covers.
     """
     run = RunDAO().find_run_by_id(run_id)
     if run is None:
@@ -283,7 +288,7 @@ def _mark_run_cancelled(run_id):
     return run, task
 
 
-def _invoke_task_cancel(task):
+def _invoke_task_cancel(task: Task) -> None:
     """Invoke the task's cancel hook. May hang on adapter cancel.
 
     Callers that run on an async event loop should wrap this with
@@ -293,7 +298,7 @@ def _invoke_task_cancel(task):
     task.cancel()
 
 
-def cancel_run(run_id):
+def cancel_run(run_id: str) -> None:
     """Backwards-compatible shim.
 
     Marks the run cancelled, then invokes the task's cancel hook
