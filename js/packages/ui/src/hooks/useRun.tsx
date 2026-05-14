@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Run } from "../api";
 import { cacheKeys, cancelRun, runTypeHasRef, waitRun } from "../api";
@@ -6,10 +6,10 @@ import type { RegistryEntry } from "../components/run";
 import { findByRunType } from "../components/run";
 import { useRunsAggregated } from "../contexts";
 import { useApiConfig } from "./useApiConfig";
+import { useCanceledRuns } from "./useCanceledRuns";
 
 export interface UseRunResult {
   run?: Run;
-  aborting: boolean;
   isRunning: boolean;
   error: Error | null;
   onCancel: () => Promise<void>;
@@ -18,66 +18,49 @@ export interface UseRunResult {
 
 export const useRun = (runId?: string): UseRunResult => {
   const { apiClient } = useApiConfig();
-  // Initialize to true when runId is provided - a newly submitted run is typically running.
-  // The first successful fetch will update this to false if the run has already completed.
-  const [isRunning, setIsRunning] = useState(!!runId);
-  const [aborting, setAborting] = useState(false);
-  const [, refetchRunsAggregated] = useRunsAggregated();
+  const queryClient = useQueryClient();
+  const canceledRuns = useCanceledRuns();
 
-  // Track the run ID that has been detected as complete to prevent re-triggering
-  // This ref persists across renders and prevents the race condition where
-  // React Query's fast polling (50ms) fires before state updates propagate
+  const [isRunning, setIsRunning] = useState(!!runId);
+  const [, refetchRunsAggregated] = useRunsAggregated();
   const completedRunIdRef = useRef<string | null>(null);
 
-  // Reset isRunning to true when runId changes (new run submitted)
-  // This ensures polling starts immediately for newly submitted runs
   useEffect(() => {
     if (runId) {
       setIsRunning(true);
-      // Clear the completed ref so we can detect completion for the new run
       completedRunIdRef.current = null;
     }
   }, [runId]);
 
+  const userCanceled = runId ? canceledRuns.has(runId) : false;
+  const polling = isRunning && !userCanceled;
+
   const { error, data: run } = useQuery({
     queryKey: cacheKeys.run(runId ?? ""),
     queryFn: async () => {
-      // Cast from library Run to OSS Run for discriminated union support
-      return (await waitRun(runId ?? "", isRunning ? 2 : 0, apiClient)) as Run;
+      return (await waitRun(runId ?? "", polling ? 2 : 0, apiClient)) as Run;
     },
-    enabled: !!runId,
-    refetchInterval: isRunning ? 50 : false,
+    enabled: !!runId && !userCanceled,
+    refetchInterval: polling ? 50 : false,
     retry: false,
   });
 
-  // Control polling based on run completion status
-  // Uses useEffect instead of state-during-render to avoid race conditions
-  // with React Query's fast polling interval (50ms)
   useEffect(() => {
     if (!run) return;
-
-    // Normalize status to lowercase for case-insensitive comparison
-    // Backend may return "Running" (capitalized) or "running" (lowercase)
     const normalizedStatus = run.status?.toLowerCase();
-
-    // Check if run has completed (has result or error)
     const isComplete = !!(error || run.result || run.error);
     const isStatusComplete = normalizedStatus && normalizedStatus !== "running";
-
     if (isComplete || isStatusComplete) {
-      // Only trigger state update once per completed run
       if (completedRunIdRef.current !== run.run_id) {
         completedRunIdRef.current = run.run_id;
         setIsRunning(false);
       }
-    } else if (normalizedStatus === "running") {
-      // Run is still in progress
+    } else if (normalizedStatus === "running" && !userCanceled) {
       completedRunIdRef.current = null;
       setIsRunning(true);
     }
-  }, [run, error]);
+  }, [run, error, userCanceled]);
 
-  // Side effect: refetch aggregated runs when row count runs complete
   useEffect(() => {
     if (
       (error || run?.result || run?.error) &&
@@ -87,15 +70,27 @@ export const useRun = (runId?: string): UseRunResult => {
     }
   }, [run, error, refetchRunsAggregated]);
 
-  const onCancel = useCallback(async () => {
-    setAborting(true);
-    if (!runId) {
-      return;
-    }
+  const onCancel = useCallback((): Promise<void> => {
+    if (!runId) return Promise.resolve();
 
-    await cancelRun(runId, apiClient);
-    return;
-  }, [runId, apiClient]);
+    queryClient.setQueryData<Run | undefined>(cacheKeys.run(runId), (prev) =>
+      prev
+        ? { ...prev, status: "Cancelled" }
+        : ({
+            run_id: runId,
+            status: "Cancelled",
+            type: "unknown",
+          } as unknown as Run),
+    );
+    canceledRuns.add(runId);
+    setIsRunning(false);
+    completedRunIdRef.current = runId;
+
+    // Fire-and-forget: cancelRun swallows network errors internally, so we
+    // intentionally do not await it. The UI has already detached above.
+    void cancelRun(runId, apiClient);
+    return Promise.resolve();
+  }, [runId, apiClient, queryClient, canceledRuns]);
 
   let RunResultView: RegistryEntry["RunResultView"] | undefined;
   if (run && runTypeHasRef(run.type)) {
@@ -106,7 +101,6 @@ export const useRun = (runId?: string): UseRunResult => {
   return {
     run,
     isRunning,
-    aborting,
     error,
     onCancel,
     RunResultView,
