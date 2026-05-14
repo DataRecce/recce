@@ -72,7 +72,10 @@ interface SchemaViewProps {
   enableScreenshot?: boolean;
   showMenu?: boolean;
   /** Per-column change status from breaking change analysis */
-  columnChanges?: Record<string, "added" | "removed" | "modified"> | null;
+  columnChanges?: Record<
+    string,
+    "added" | "removed" | "modified" | "unknown"
+  > | null;
   /** Callback when user clicks a definition-changed badge to view SQL diff */
   onViewCode?: () => void;
 }
@@ -352,9 +355,10 @@ export function PrivateSchemaView(
     } else if (
       row.baseType !== row.currentType ||
       row.reordered === true ||
-      row.definitionChanged === true
+      row.definitionChanged === true ||
+      row.changeUnknown === true
     ) {
-      // Any change (structural or definition-only) gets the changed row background
+      // Any change (structural, definition-only, or unknown) gets the changed row background
       className = "row-changed";
     } else if (row.isImpacted) {
       className = "row-impacted";

@@ -92,6 +92,32 @@ def is_non_breaking_change(
     return True
 
 
+def is_unknown_change(
+    original_sql,
+    modified_sql,
+    expected_changed_columns: dict[str, ChangeStatus] = None,
+    old_schema=None,
+    new_schema=None,
+    dialect=None,
+):
+    result = parse_change_category(
+        original_sql,
+        modified_sql,
+        old_schema=old_schema,
+        new_schema=new_schema,
+        dialect=dialect,
+    )
+    if result.category != "unknown":
+        return False
+
+    if expected_changed_columns is not None:
+        diff = DeepDiff(expected_changed_columns, result.columns, ignore_order=True)
+        if len(diff) > 0:
+            return False
+
+    return True
+
+
 class BreakingChangeTest(unittest.TestCase):
     def test_identical(self):
         original_sql = """
@@ -1425,3 +1451,85 @@ class BreakingChangeTest(unittest.TestCase):
         select * from renamed
         """
         assert is_non_breaking_change(original_sql, modified_sql, {"is_promotion": "added"})
+
+
+class UnresolvableCteChangeTest(unittest.TestCase):
+    """DRC-3409: when parent schema is missing, sqlglot's qualify is skipped,
+    so column references through CTEs cannot be resolved back to their source.
+    The analyzer should fail loudly with "unknown" rather than silently
+    swallowing the change into a no-marker state."""
+
+    CTE_SQL_ORIGINAL = textwrap.dedent(
+        """
+        with renamed as (
+            select order_id, customer_id, w from Orders
+        ),
+        overridden as (
+            select order_id, customer_id, w from renamed
+        )
+        select order_id, customer_id, w from overridden
+        """
+    )
+
+    CTE_SQL_MODIFIED = textwrap.dedent(
+        """
+        with renamed as (
+            select order_id, customer_id, w from Orders
+        ),
+        overridden as (
+            select order_id, customer_id,
+                   case when customer_id = 1 then 0 else w end as w
+            from renamed
+        )
+        select order_id, customer_id, w from overridden
+        """
+    )
+
+    def test_cte_internal_change_detected_with_schema(self):
+        """Sanity baseline: with schema, the CTE-internal change is detected."""
+        assert is_partial_breaking_change(
+            self.CTE_SQL_ORIGINAL,
+            self.CTE_SQL_MODIFIED,
+            {"w": "modified"},
+        )
+
+    def test_cte_internal_change_unknown_without_schema(self):
+        """With no schema, the same change should surface as 'unknown',
+        not be silently swallowed into 'non_breaking' with empty columns."""
+        result = parse_change_category(
+            self.CTE_SQL_ORIGINAL,
+            self.CTE_SQL_MODIFIED,
+        )
+        assert result.category == "unknown", f"expected unknown, got {result.category}"
+        assert result.columns is not None
+        assert result.columns.get("w") == "unknown", f"expected w=unknown, got {result.columns}"
+
+    def test_cte_internal_change_unknown_with_empty_schema(self):
+        """Mimics 205DataLab's degraded Paradime catalog: schema dict has
+        source keys but the inner column dicts are empty."""
+        empty_schema = {"Orders": {}}
+        assert is_unknown_change(
+            self.CTE_SQL_ORIGINAL,
+            self.CTE_SQL_MODIFIED,
+            {"order_id": "unknown", "customer_id": "unknown", "w": "unknown"},
+            old_schema=empty_schema,
+            new_schema=empty_schema,
+        )
+
+    def test_outer_column_added_remains_visible_without_schema(self):
+        """Loud-fail must not mask outer-level adds/removes — those are still
+        observable even when qualify is skipped."""
+        original_sql = textwrap.dedent(
+            """
+            with renamed as (select order_id, w from Orders)
+            select order_id, w from renamed
+            """
+        )
+        modified_sql = textwrap.dedent(
+            """
+            with renamed as (select order_id, w, x from Orders)
+            select order_id, w, x from renamed
+            """
+        )
+        result = parse_change_category(original_sql, modified_sql)
+        assert result.columns.get("x") == "added", f"expected x=added, got {result.columns}"

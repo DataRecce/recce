@@ -33,6 +33,12 @@ export interface SchemaDiffRow extends RowObjectType {
   baseType?: string;
   /** True when the column's SQL definition changed but name/type stayed the same */
   definitionChanged?: boolean;
+  /**
+   * True when the analyzer couldn't determine the column's change status
+   * (e.g., CTE-internal column with missing parent schema). Mutually exclusive
+   * with definitionChanged.
+   */
+  changeUnknown?: boolean;
   /** True when the column traces upstream to a changed column via CLL parent_map */
   isImpacted?: boolean;
 }
@@ -53,7 +59,10 @@ export interface SchemaDataGridOptions {
   /** Whether to show the column action menu (default: true) */
   showMenu?: boolean;
   /** Per-column change status from breaking change analysis */
-  columnChanges?: Record<string, "added" | "removed" | "modified"> | null;
+  columnChanges?: Record<
+    string,
+    "added" | "removed" | "modified" | "unknown"
+  > | null;
   /** Callback when user clicks a definition-changed badge to view SQL diff */
   onViewCode?: () => void;
   /** Set of impacted column IDs from CLL parent_map walk (e.g. "model.jaffle_shop.orders_STATUS") */
@@ -161,12 +170,12 @@ export function toSchemaDataGrid(
           )
         : undefined,
       cellClass: "schema-column",
-      // Include definitionChanged and isImpacted in the value so ag-grid
-      // re-renders the cell when the badge/background state changes
+      // Include definitionChanged, isImpacted, and changeUnknown in the value
+      // so ag-grid re-renders the cell when the badge/background state changes
       valueGetter: (params) => {
         const row = params.data;
         return row
-          ? `${row.name}|${row.definitionChanged ?? false}|${row.isImpacted ?? false}`
+          ? `${row.name}|${row.definitionChanged ?? false}|${row.isImpacted ?? false}|${row.changeUnknown ?? false}`
           : "";
       },
     },
@@ -191,6 +200,14 @@ export function toSchemaDataGrid(
         !row.reordered
       ) {
         row.definitionChanged = true;
+      } else if (
+        changeStatus === "unknown" &&
+        !isAdded &&
+        !isRemoved &&
+        !isTypeChanged &&
+        !row.reordered
+      ) {
+        row.changeUnknown = true;
       }
     }
   }

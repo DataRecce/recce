@@ -136,6 +136,7 @@ ChangeStatus = Literal[
     "added",
     "removed",
     "modified",
+    "unknown",
 ]
 ChangeCategory = Literal[
     "breaking",

@@ -110,6 +110,25 @@ def _diff_select_scope(old_scope: Scope, new_scope: Scope, scope_changes_map: di
 
         return ref_change_category.columns.get(column_name)
 
+    def _unresolvable_cte_change() -> bool:
+        # When qualify is skipped (no parent schema), column refs through CTEs
+        # don't carry a table qualifier, so source_column_change_status can't
+        # trace inner-scope changes back to outer projections. Detect that
+        # state so we can fail loudly instead of swallowing the change.
+        # Only consider sources actually selected by this scope — unused CTEs
+        # in the WITH clause are inert.
+        for _, src in new_scope.selected_sources.values():
+            if not isinstance(src, Scope):
+                continue
+            src_change = scope_changes_map.get(src)
+            if src_change is None:
+                continue
+            if src_change.category in ("breaking", "partial_breaking", "unknown"):
+                return True
+            if src_change.columns:
+                return True
+        return False
+
     # selects
     old_column_map = {projection.alias_or_name: projection for projection in old_select.selects}
     new_column_map = {projection.alias_or_name: projection for projection in new_select.selects}
@@ -229,6 +248,14 @@ def _diff_select_scope(old_scope: Scope, new_scope: Scope, scope_changes_map: di
                     change_category = "breaking"
                 elif selected_column_change_status(ref_column) is not None:
                     change_category = "breaking"
+
+    # Loud-fail: a CTE/subquery source has a real change that we never tied
+    # to any outer projection. Without that link we cannot tell which outer
+    # columns are affected, so surface every outer column as "unknown" rather
+    # than silently reporting "no-change". See DRC-3409.
+    if change_category not in ("breaking",) and not changed_columns and _unresolvable_cte_change():
+        change_category = "unknown"
+        changed_columns = {column_name: "unknown" for column_name in new_column_map.keys()}
 
     return NodeChange(category=change_category, columns=changed_columns)
 
