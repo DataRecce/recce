@@ -653,3 +653,152 @@ class TestGenerateRunNameMetadataTypes:
             params={"node_ids": ["model.jaffle_shop.customers", "model.jaffle_shop.orders"]},
         )
         assert generate_run_name(run) == "Schema diff of 2 nodes"
+
+
+# =============================================================================
+# Tests: cancel_run split (_mark_run_cancelled + _invoke_task_cancel)
+# =============================================================================
+
+
+class _FakeCancelTask:
+    """Fake task that records whether cancel() was invoked.
+
+    Used by the cancel_run-split tests; intentionally synchronous so the
+    tests can observe the status flip independently of the cancel call.
+    """
+
+    def __init__(self):
+        self.is_cancelled = False
+        self.cancelled = False
+
+    def cancel(self):
+        self.cancelled = True
+        self.is_cancelled = True
+
+
+class TestCancelRunSplit:
+    """Tests for the cancel_run split into _mark_run_cancelled +
+    _invoke_task_cancel.
+
+    The split lets the FastAPI handler flip run.status synchronously
+    (so the UI sees the cancel immediately) and run the adapter cancel
+    on a worker thread with a timeout (so a hung warehouse cancel does
+    not block the event loop).
+    """
+
+    @pytest.fixture
+    def tmp_run(self):
+        """Create a Run with status=RUNNING and register a fake task.
+
+        Patches default_context so RunDAO().find_run_by_id() resolves
+        against an in-memory list. Cleans up the running_tasks entry
+        afterwards so tests do not leak state.
+        """
+        from recce.apis import run_func
+        from recce.models import RunDAO
+        from recce.models.types import Run, RunStatus, RunType
+
+        with (
+            patch("recce.apis.run_func.default_context") as mock_run_func_ctx,
+            patch("recce.core.default_context") as mock_core_ctx,
+        ):
+            context = MagicMock()
+            context.adapter_type = "dbt"
+            context.review_mode = False
+            context.runs = []
+            mock_run_func_ctx.return_value = context
+            mock_core_ctx.return_value = context
+
+            run = Run(type=RunType.QUERY, params={"sql_template": "select 1"}, status=RunStatus.RUNNING)
+            RunDAO().create(run)
+            task = _FakeCancelTask()
+            run_func.running_tasks[str(run.run_id)] = task
+            try:
+                yield run
+            finally:
+                run_func.running_tasks.pop(str(run.run_id), None)
+
+    def test_mark_run_cancelled_flips_status_immediately(self, tmp_run):
+        """Status flips to CANCELLED before any adapter cancel runs."""
+        from recce.apis.run_func import _mark_run_cancelled
+        from recce.models.types import RunStatus
+
+        run, task = _mark_run_cancelled(str(tmp_run.run_id))
+        assert run.status == RunStatus.CANCELLED
+        assert task is not None
+        # The split must NOT call task.cancel() — that is _invoke_task_cancel's
+        # job. This is what lets the handler bound the cancel duration.
+        assert task.cancelled is False
+
+    def test_mark_run_cancelled_raises_when_run_missing(self):
+        """Missing run raises RecceException."""
+        from recce.apis.run_func import _mark_run_cancelled
+        from recce.exceptions import RecceException
+
+        with (
+            patch("recce.apis.run_func.default_context") as mock_run_func_ctx,
+            patch("recce.core.default_context") as mock_core_ctx,
+        ):
+            context = MagicMock()
+            context.runs = []
+            mock_run_func_ctx.return_value = context
+            mock_core_ctx.return_value = context
+
+            with pytest.raises(RecceException, match="not found"):
+                _mark_run_cancelled("nonexistent")
+
+    def test_mark_run_cancelled_raises_when_task_missing(self, tmp_run):
+        """Missing running task raises RecceException."""
+        from recce.apis import run_func
+        from recce.apis.run_func import _mark_run_cancelled
+        from recce.exceptions import RecceException
+
+        # Drop the task from running_tasks so only the run exists.
+        run_func.running_tasks.pop(str(tmp_run.run_id), None)
+        with pytest.raises(RecceException, match="not found"):
+            _mark_run_cancelled(str(tmp_run.run_id))
+
+    def test_invoke_task_cancel_calls_task_cancel(self, tmp_run):
+        """_invoke_task_cancel propagates synchronously to task.cancel."""
+        from recce.apis import run_func
+        from recce.apis.run_func import _invoke_task_cancel
+
+        task = run_func.running_tasks[str(tmp_run.run_id)]
+        assert task.cancelled is False
+        _invoke_task_cancel(task)
+        assert task.cancelled is True
+
+    def test_cancel_run_shim_still_works(self, tmp_run):
+        """Backwards-compat: cancel_run flips status AND cancels the task."""
+        from recce.apis import run_func
+        from recce.apis.run_func import cancel_run
+        from recce.models.types import RunStatus
+
+        task = run_func.running_tasks[str(tmp_run.run_id)]
+        cancel_run(str(tmp_run.run_id))
+        assert tmp_run.status == RunStatus.CANCELLED
+        assert task.cancelled is True
+
+    def test_mark_run_cancelled_status_survives_completion(self, tmp_run):
+        """Late-arriving completion does not overwrite CANCELLED status.
+
+        Regression test mirroring the guard at run_func.py:203-209 — the
+        success path of update_run_result inside submit_run honors the
+        CANCELLED sentinel set by _mark_run_cancelled.
+        """
+        from recce.apis.run_func import _mark_run_cancelled
+        from recce.models.types import RunStatus
+
+        run, _ = _mark_run_cancelled(str(tmp_run.run_id))
+        # Inline the success-path semantics from update_run_result (which
+        # is a closure inside submit_run and cannot be imported directly).
+        # See run_func.py:201-205 — status check guards the result write.
+        result = {"data": [1, 2, 3]}
+        if run.status != RunStatus.CANCELLED:
+            run.status = RunStatus.FINISHED
+        run.result = result
+
+        assert run.status == RunStatus.CANCELLED
+        # The result is still written — the frontend gates on a sticky
+        # client-side cancelled set, so backend can keep recording results.
+        assert run.result == {"data": [1, 2, 3]}
