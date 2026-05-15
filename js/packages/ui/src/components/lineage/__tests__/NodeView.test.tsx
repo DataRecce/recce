@@ -219,7 +219,7 @@ describe("NodeView", () => {
       ).not.toBeInTheDocument();
     });
 
-    test("no treatment: title chip is absent", () => {
+    test("no treatment: title chip is absent and plain model name renders", () => {
       renderNodeViewWithTreatment(
         createNode("model", testColumns),
         {},
@@ -232,6 +232,8 @@ describe("NodeView", () => {
       expect(
         screen.queryByTestId("whole-model-source-title-chip"),
       ).not.toBeInTheDocument();
+      // The fallback branch must still render the model name as plain text.
+      expect(screen.getByText("test_node")).toBeInTheDocument();
     });
   });
 });

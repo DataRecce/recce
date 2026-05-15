@@ -174,11 +174,12 @@ export interface NodeViewProps<
 
   /**
    * Whole-model treatment props (DRC-3341 / `--downstream-of-breaking`).
-   * When either is true, the entire NodeView panel renders with a wash
-   * (brown for source, amber for downstream-only impact), a header line
-   * naming the impact state, and an "ALL" badge next to the model name.
-   * The treatment spans every tab (Lineage / Columns / Code) so the
-   * reviewer never loses the impact context when switching tabs.
+   * When either is true, the panel header wraps the model name in a
+   * title chip (`~` for source, `!` for downstream) and a 6px left-edge
+   * accent stripe runs the full panel height so the reviewer never
+   * loses impact context when switching tabs. The earlier panel wash
+   * and labeled header bar were dropped — see spec
+   * docs/superpowers/specs/2026-05-14-whole-model-treatment-redesign-design.md.
    *
    * Source wins (Q11 of the spec): a node that is both a source and
    * downstream of another source must arrive here with `isBreakingSource`
