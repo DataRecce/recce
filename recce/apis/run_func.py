@@ -74,6 +74,9 @@ def generate_run_name(run):
         model = params.get("model")
         column = params.get("column_name")
         return f"histogram diff of {model}.{column} ".capitalize()
+    elif run_type == RunType.PROFILE_DISTRIBUTION:
+        model = params.get("model")
+        return f"profile distribution of {model}".capitalize()
     elif run_type == RunType.LINEAGE_DIFF:
         return "Lineage diff"
     elif run_type == RunType.SCHEMA_DIFF:

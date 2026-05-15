@@ -65,6 +65,7 @@ from ...models.types import (
 from ...tasks import (
     HistogramDiffTask,
     ProfileDiffTask,
+    ProfileDistributionTask,
     QueryBaseTask,
     QueryDiffTask,
     QueryTask,
@@ -85,6 +86,7 @@ dbt_supported_registry: Dict[RunType, Type[Task]] = {
     RunType.VALUE_DIFF_DETAIL: ValueDiffDetailTask,
     RunType.PROFILE: ProfileTask,
     RunType.PROFILE_DIFF: ProfileDiffTask,
+    RunType.PROFILE_DISTRIBUTION: ProfileDistributionTask,
     RunType.ROW_COUNT: RowCountTask,
     RunType.ROW_COUNT_DIFF: RowCountDiffTask,
     RunType.TOP_K_DIFF: TopKDiffTask,
