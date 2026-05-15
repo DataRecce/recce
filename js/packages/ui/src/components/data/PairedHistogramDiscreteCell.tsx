@@ -3,23 +3,24 @@ import { useMemo } from "react";
 /**
  * Small categorical paired-bar chart for the discrete (low-cardinality)
  * data shape — both string-valued (country codes) and numeric-as-label
- * (HTTP status codes). Designed for the schema view's two render targets:
+ * (HTTP status codes). Cell-density sibling of HistogramChart/TopKBarChart;
+ * those keep their place on detail/popover surfaces where title + legend
+ * fit.
  *
- *   - Cell preset: ~120×40, no labels — fits inline in a grid column.
+ * Two render targets, same component:
+ *   - Cell preset: ~140×36, no labels — fits inline in a grid column.
  *   - Baseball-card preset: ~220×100, with abbreviated labels — primary
  *     visual on a SchemaGalleryView card.
  *
  * Visual: paired bars per category slot, current drawn on top of base with
  * 65% alpha. Divergence reads as color separation where bar heights differ.
- *
- * Lives in the storybook package and is NOT exported via @datarecce/ui.
- * If the design lands, promotion path is to add it under
- * `js/packages/ui/src/components/data/` alongside HistogramChart.
  */
 
-const BASE_FILL = "#F6AD55A5";
-const CURRENT_FILL = "#63B3EDA5";
-const CURRENT_STROKE = "#63B3ED";
+// Paired-bar palette. Each slot renders TWO side-by-side bars: base (orange)
+// on the left, current (blue) on the right. A 0% side renders no bar at all,
+// leaving a visible gap that reads as "category absent on this side."
+const BASE_FILL = "#F6AD55";
+const CURRENT_FILL = "#63B3ED";
 const BASELINE_RULE = "#9ca3af";
 const LABEL_COLOR = "#374151";
 const TRIM_COLOR = "#9ca3af";
@@ -35,11 +36,13 @@ export interface PairedHistogramDiscreteData {
 
 export interface PairedHistogramDiscreteCellProps {
   data: PairedHistogramDiscreteData;
-  /** Chart width in px. Default 120 (cell). Use ~220 for baseball-card. */
+  /** Chart width in px. Default 140 (cell). Use ~220 for baseball-card. */
   width?: number;
-  /** Chart height in px including labels. Default 40 (cell). Use ~100 for card. */
+  /** Chart height in px including labels. Default 36 (cell). Use ~100 for card. */
   height?: number;
-  /** Render value labels below bars. Default false (cell). True for card. */
+  /** Render value labels below bars. Default false — values shown on hover
+   * via the per-bar tooltip; in-chart labels collide at any non-trivial
+   * cardinality. True for card preset where there's room. */
   showLabels?: boolean;
   /**
    * Set when the caller has already trimmed an oversize distribution down
@@ -53,8 +56,8 @@ export interface PairedHistogramDiscreteCellProps {
 
 export function PairedHistogramDiscreteCell({
   data,
-  width = 120,
-  height = 40,
+  width = 140,
+  height = 36,
   showLabels = false,
   trimmed = false,
   labelMaxChars = 4,
@@ -70,6 +73,8 @@ export function PairedHistogramDiscreteCell({
       value,
       baseProp: baseProp[i],
       currProp: currProp[i],
+      baseCount: data.baseCounts[i],
+      currCount: data.currentCounts[i],
     }));
     const maxProp = Math.max(0.001, ...baseProp, ...currProp);
     return { slots, maxProp };
@@ -79,10 +84,13 @@ export function PairedHistogramDiscreteCell({
   // 2 px breathing room between bars and the next visual element.
   const chartHeight = Math.max(8, height - labelHeight - 2);
   const slotWidth = width / Math.max(1, slots.length);
-  // Bars take 80% of the slot — 10% padding each side keeps adjacent slots
-  // visually separated even when both base and current are near max.
-  const barX = (i: number) => i * slotWidth + slotWidth * 0.1;
-  const barW = slotWidth * 0.8;
+  // Slot layout: 10% padding each side, two bars side by side with a small
+  // gap. When one side's count is 0, that bar simply doesn't render —
+  // leaving a visible gap that signals "category absent on this side."
+  const slotPad = slotWidth * 0.1;
+  const innerW = slotWidth - slotPad * 2;
+  const gap = Math.max(1, Math.min(2, innerW * 0.1));
+  const pairBarW = Math.max(1, (innerW - gap) / 2);
 
   return (
     <svg
@@ -93,30 +101,48 @@ export function PairedHistogramDiscreteCell({
       role="img"
       aria-label="Paired baseline and current categorical distribution"
     >
-      <title>Paired histogram (discrete)</title>
-
       {slots.map((s, i) => {
         const baseH = (s.baseProp / maxProp) * chartHeight;
         const currH = (s.currProp / maxProp) * chartHeight;
+        const hoverTitle = formatDiscreteTooltip(s);
+        const slotX = i * slotWidth;
+        const baseX = slotX + slotPad;
+        const currX = slotX + slotPad + pairBarW + gap;
         return (
           // biome-ignore lint/suspicious/noArrayIndexKey: stable order
           <g key={i}>
+            {/* Invisible hit-target spans the full slot — hovering either
+             * bar (or the gap where one is absent) shows the same tooltip
+             * identifying this value. */}
             <rect
-              x={barX(i)}
-              y={chartHeight - baseH}
-              width={barW}
-              height={baseH}
-              fill={BASE_FILL}
-            />
-            <rect
-              x={barX(i)}
-              y={chartHeight - currH}
-              width={barW}
-              height={currH}
-              fill={CURRENT_FILL}
-              stroke={CURRENT_STROKE}
-              strokeWidth={0.5}
-            />
+              x={slotX}
+              y={0}
+              width={slotWidth}
+              height={chartHeight}
+              fill="transparent"
+            >
+              <title>{hoverTitle}</title>
+            </rect>
+            {baseH > 0 && (
+              <rect
+                x={baseX}
+                y={chartHeight - baseH}
+                width={pairBarW}
+                height={baseH}
+                fill={BASE_FILL}
+                pointerEvents="none"
+              />
+            )}
+            {currH > 0 && (
+              <rect
+                x={currX}
+                y={chartHeight - currH}
+                width={pairBarW}
+                height={currH}
+                fill={CURRENT_FILL}
+                pointerEvents="none"
+              />
+            )}
           </g>
         );
       })}
@@ -170,4 +196,17 @@ function truncate(s: string, maxChars: number): string {
   if (s.length <= maxChars) return s;
   if (maxChars <= 1) return "…";
   return `${s.slice(0, maxChars - 1)}…`;
+}
+
+function formatDiscreteTooltip(s: {
+  value: string;
+  baseProp: number;
+  currProp: number;
+}): string {
+  // One value = one bar identity. Always show base + current paired, even
+  // when one is 0% — the user reads the divergence directly from the two
+  // numbers; "only in X" framing got in the way.
+  const bp = `${(s.baseProp * 100).toFixed(1)}%`;
+  const cp = `${(s.currProp * 100).toFixed(1)}%`;
+  return `${s.value} [base: ${bp}, current: ${cp}]`;
 }

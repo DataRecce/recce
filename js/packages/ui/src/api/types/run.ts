@@ -54,7 +54,8 @@ export type RunType =
   | "row_count_diff"
   | "lineage_diff"
   | "top_k_diff"
-  | "histogram_diff";
+  | "histogram_diff"
+  | "profile_distribution";
 
 // ============================================================================
 // Run Status Types

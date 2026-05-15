@@ -90,6 +90,7 @@ export interface RunRegistry {
   value_diff_detail: RegistryEntry<DataGridHandle>;
   top_k_diff: RegistryEntry<HTMLDivElement>;
   histogram_diff: RegistryEntry<HTMLDivElement>;
+  profile_distribution: RegistryEntry<never>;
   lineage_diff: RegistryEntry<never>;
   schema_diff: RegistryEntry<never>;
   sandbox: RegistryEntry<never>;
@@ -194,6 +195,13 @@ export const registry: RunRegistry = {
     RunResultView:
       HistogramDiffResultView as RegistryEntry<HTMLDivElement>["RunResultView"],
     RunForm: HistogramDiffForm,
+  },
+  profile_distribution: {
+    // Internal-only run type; populates inline schema-view charts. No
+    // standalone form/result view — the run result is consumed by
+    // useInlineProfile and rendered alongside the schema grid.
+    title: "Profile Distribution",
+    icon: TbChartHistogram,
   },
   sandbox: {
     title: "Sandbox",

@@ -1,3 +1,7 @@
+import {
+  PairedHistogramContinuousCell,
+  PairedHistogramDiscreteCell,
+} from "@datarecce/ui/primitives";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
   type DiscreteDistribution,
@@ -8,8 +12,6 @@ import {
   type PairedHistogram,
   trimToTopN,
 } from "./fixtures";
-import { PairedHistogramContinuousCell } from "./PairedHistogramContinuousCell";
-import { PairedHistogramDiscreteCell } from "./PairedHistogramDiscreteCell";
 import { SidebarMock, SidebarRowMock } from "./surfaceMocks";
 
 /**

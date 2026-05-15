@@ -30,6 +30,16 @@ export {
 } from "./ScreenshotDataGrid";
 
 export {
+  PairedHistogramContinuousCell,
+  type PairedHistogramContinuousCellProps,
+  type PairedHistogramContinuousData,
+} from "./PairedHistogramContinuousCell";
+export {
+  PairedHistogramDiscreteCell,
+  type PairedHistogramDiscreteCellProps,
+  type PairedHistogramDiscreteData,
+} from "./PairedHistogramDiscreteCell";
+export {
   TopKBarChart,
   type TopKBarChartProps,
   type TopKDataset,

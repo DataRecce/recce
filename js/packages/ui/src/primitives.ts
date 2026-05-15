@@ -341,6 +341,24 @@ export {
   type TopKItem,
 } from "./components/data/TopKBarChart";
 
+/**
+ * Paired histogram cells (cell-density paired-bar charts for SchemaView).
+ *
+ * @remarks
+ * Continuous variant: PairedHistogramContinuousCell, *CellProps, *Data.
+ * Discrete variant: PairedHistogramDiscreteCell, *CellProps, *Data.
+ */
+export {
+  PairedHistogramContinuousCell,
+  type PairedHistogramContinuousCellProps,
+  type PairedHistogramContinuousData,
+} from "./components/data/PairedHistogramContinuousCell";
+export {
+  PairedHistogramDiscreteCell,
+  type PairedHistogramDiscreteCellProps,
+  type PairedHistogramDiscreteData,
+} from "./components/data/PairedHistogramDiscreteCell";
+
 // =============================================================================
 // SCHEMA PRIMITIVES
 // =============================================================================

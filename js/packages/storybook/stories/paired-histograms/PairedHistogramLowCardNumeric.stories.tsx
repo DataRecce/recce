@@ -1,6 +1,6 @@
+import { PairedHistogramDiscreteCell } from "@datarecce/ui/primitives";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { lowCardNumericHttp } from "./fixtures";
-import { PairedHistogramDiscreteCell } from "./PairedHistogramDiscreteCell";
 import { GalleryCardMock, GridRowMock } from "./surfaceMocks";
 
 /**

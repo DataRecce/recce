@@ -1,6 +1,6 @@
+import { PairedHistogramContinuousCell } from "@datarecce/ui/primitives";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { highCardOrderAmount } from "./fixtures";
-import { PairedHistogramContinuousCell } from "./PairedHistogramContinuousCell";
 import { GalleryCardMock, GridRowMock } from "./surfaceMocks";
 
 /**
