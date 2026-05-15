@@ -690,32 +690,20 @@ export function NodeView<TNode extends NodeViewNodeData>({
   const treatment = treatmentKind
     ? wholeModelTreatmentTokens(treatmentKind)
     : null;
-  const wholeModelHeaderText =
-    treatmentKind === "source"
-      ? "Whole-model change in this model"
-      : "Whole-model impact";
-
   return (
     <Box
       sx={{
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        // Wash covers the entire NodeView so the treatment spans every tab
-        // (Lineage / Columns / Code). 6px inset accent on the left edge is
-        // slightly more prominent than the 4px stripe used in v1.
+        // 6px left-edge accent stripe is the only panel-level signal that
+        // survives the title-chip redesign. The wash and labeled bar were
+        // dropped because the cumulative yellow read as a warning. See
+        // docs/superpowers/specs/2026-05-14-whole-model-treatment-redesign-design.md
         ...(treatment && {
-          backgroundColor: treatment.washBg,
           boxShadow: `inset 6px 0 0 ${treatment.washAccent}`,
         }),
       }}
-      data-testid={
-        treatmentKind === "source"
-          ? "whole-model-source-wash"
-          : treatmentKind === "downstream"
-            ? "whole-model-impact-wash"
-            : undefined
-      }
     >
       {/* Header row: name + close button */}
       <Stack
@@ -734,53 +722,85 @@ export function NodeView<TNode extends NodeViewNodeData>({
             minWidth: 0,
           }}
         >
-          <Typography
-            variant="subtitle1"
-            className="no-track-pii-safe"
-            sx={{
-              fontWeight: 600,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {node.data.name}
-          </Typography>
-          {/* "ALL" badge — same primitive as the LineageNode graph badge,
-              colored brown for whole-model-changed sources and amber for
-              downstream-only whole-model impact. Visible regardless of the
-              currently active tab. */}
-          {treatment && (
+          {treatment ? (
+            // Title chip — wraps the model name with the same !/~
+            // language used per-column in the schema grid. The chip is
+            // the panel's only whole-model signal in the header area;
+            // the wash and labeled bar were dropped (see spec
+            // 2026-05-14-whole-model-treatment-redesign-design.md).
             <Box
               data-testid={
                 treatmentKind === "source"
-                  ? "whole-model-source-badge"
-                  : "whole-model-impact-badge"
+                  ? "whole-model-source-title-chip"
+                  : "whole-model-impact-title-chip"
               }
               aria-label={
                 treatmentKind === "source"
                   ? "whole-model change"
                   : "whole-model impact"
               }
+              title={node.data.name}
               sx={{
                 display: "inline-flex",
                 alignItems: "center",
-                justifyContent: "center",
-                fontSize: "0.65rem",
-                fontWeight: 700,
-                lineHeight: 1,
-                height: 18,
-                minWidth: 22,
-                px: 0.5,
-                borderRadius: "3px",
+                gap: 0.75,
+                px: 1,
+                py: 0.25,
+                borderRadius: "6px",
+                backgroundColor: treatment.washBg,
+                border: `1px solid ${treatment.washAccent}`,
                 color: treatment.fg,
-                backgroundColor: treatment.badgeBg,
-                border: `1px solid ${treatment.badgeBorder}`,
-                flexShrink: 0,
+                minWidth: 0,
+                maxWidth: "100%",
               }}
             >
-              ALL
+              <Box
+                aria-hidden="true"
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 18,
+                  height: 18,
+                  borderRadius: "50%",
+                  backgroundColor: treatment.washAccent,
+                  color: "#fff",
+                  fontSize: "0.7rem",
+                  fontWeight: 800,
+                  lineHeight: 1,
+                  flexShrink: 0,
+                }}
+              >
+                {treatmentKind === "source" ? "~" : "!"}
+              </Box>
+              <Typography
+                variant="subtitle1"
+                component="span"
+                className="no-track-pii-safe"
+                sx={{
+                  fontWeight: 600,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  color: "inherit",
+                }}
+              >
+                {node.data.name}
+              </Typography>
             </Box>
+          ) : (
+            <Typography
+              variant="subtitle1"
+              className="no-track-pii-safe"
+              sx={{
+                fontWeight: 600,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {node.data.name}
+            </Typography>
           )}
         </Box>
         <Box sx={{ flexGrow: 1 }} />
@@ -839,33 +859,6 @@ export function NodeView<TNode extends NodeViewNodeData>({
               ConnectionPopoverWrapper={ConnectionPopoverWrapper}
             />
           )}
-        </Box>
-      )}
-      {/* Whole-model header — sits above the Tabs strip so it spans every
-          tab. Multi-ancestor list intentionally omitted in v1: it adds
-          visual noise without clear value. The closest upstream causes are
-          still computed and exposed via
-          `LineageViewContext.wholeModelImpactCauseMap` for future use
-          (e.g., a hover tooltip or expandable detail). See Q7 in the
-          DRC-3341 spec. */}
-      {treatment && (
-        <Box
-          data-testid={
-            treatmentKind === "source"
-              ? "whole-model-source-header"
-              : "whole-model-impact-header"
-          }
-          sx={{
-            px: 2,
-            py: 0.75,
-            fontSize: "0.75rem",
-            fontWeight: 600,
-            color: treatment.fg,
-            borderTop: `1px solid ${treatment.washAccent}`,
-            borderBottom: `1px solid ${treatment.washAccent}`,
-          }}
-        >
-          {wholeModelHeaderText}
         </Box>
       )}
       {/* Content area: tabs for columns and code */}
