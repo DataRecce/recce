@@ -92,7 +92,10 @@ function renderNodeView(
 
 function renderNodeViewWithTreatment(
   node: NodeViewNodeData,
-  treatment: { isBreakingSource?: boolean; isWholeModelImpactedDownstream?: boolean },
+  treatment: {
+    isBreakingSource?: boolean;
+    isWholeModelImpactedDownstream?: boolean;
+  },
   columns?: Record<string, NodeColumnData>,
 ) {
   return render(
@@ -103,7 +106,9 @@ function renderNodeViewWithTreatment(
       isSingleEnv={false}
       SchemaView={MockSchemaView}
       isBreakingSource={treatment.isBreakingSource ?? false}
-      isWholeModelImpactedDownstream={treatment.isWholeModelImpactedDownstream ?? false}
+      isWholeModelImpactedDownstream={
+        treatment.isWholeModelImpactedDownstream ?? false
+      }
     />,
   );
 }
@@ -185,9 +190,15 @@ describe("NodeView", () => {
       );
 
       // Old wash, labeled bar, and in-header [ALL] chip must be gone.
-      expect(screen.queryByTestId("whole-model-impact-wash")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("whole-model-impact-header")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("whole-model-impact-badge")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-impact-wash"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-impact-header"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-impact-badge"),
+      ).not.toBeInTheDocument();
     });
 
     test("source: removed surfaces are not rendered", () => {
@@ -197,9 +208,15 @@ describe("NodeView", () => {
         testColumns,
       );
 
-      expect(screen.queryByTestId("whole-model-source-wash")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("whole-model-source-header")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("whole-model-source-badge")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-source-wash"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-source-header"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-source-badge"),
+      ).not.toBeInTheDocument();
     });
 
     test("no treatment: title chip is absent", () => {
@@ -209,8 +226,12 @@ describe("NodeView", () => {
         testColumns,
       );
 
-      expect(screen.queryByTestId("whole-model-impact-title-chip")).not.toBeInTheDocument();
-      expect(screen.queryByTestId("whole-model-source-title-chip")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-impact-title-chip"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("whole-model-source-title-chip"),
+      ).not.toBeInTheDocument();
     });
   });
 });
