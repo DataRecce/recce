@@ -232,14 +232,35 @@ describe("useInlineProfile", () => {
   });
 
   it("polls waitRun until a result is produced", async () => {
-    mockSubmitRun.mockResolvedValue({ run_id: "run-4" });
-    mockWaitRun
-      .mockResolvedValueOnce({ run_id: "run-4", status: "Running" })
-      .mockResolvedValueOnce({
-        run_id: "run-4",
+    // The hook fires profile_diff and profile_distribution in parallel — use
+    // submitRun args to dispatch a distinct run_id per type so we can match
+    // them in waitRun.
+    mockSubmitRun.mockImplementation((type: string) =>
+      Promise.resolve({
+        run_id: type === "profile_diff" ? "profile-run" : "dist-run",
+      }),
+    );
+    // First profile_diff poll → Running; subsequent profile_diff poll →
+    // Finished with rows. The distribution run finishes immediately.
+    let profilePolls = 0;
+    mockWaitRun.mockImplementation((runId: string) => {
+      if (runId === "profile-run") {
+        profilePolls += 1;
+        if (profilePolls === 1) {
+          return Promise.resolve({ run_id: runId, status: "Running" });
+        }
+        return Promise.resolve({
+          run_id: runId,
+          status: "Finished",
+          result: resultWithTwoColumns,
+        });
+      }
+      return Promise.resolve({
+        run_id: runId,
         status: "Finished",
-        result: resultWithTwoColumns,
+        result: { columns: {} },
       });
+    });
 
     const { result } = renderHook(
       () =>
@@ -252,7 +273,8 @@ describe("useInlineProfile", () => {
     );
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
-    expect(mockWaitRun).toHaveBeenCalledTimes(2);
+    // profile_diff polled twice (Running → Finished).
+    expect(profilePolls).toBe(2);
     expect(result.current.profileByColumn.size).toBe(2);
   });
 });

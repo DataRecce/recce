@@ -1,7 +1,12 @@
 "use client";
 
 import Box from "@mui/material/Box";
+import type { ColumnDistribution } from "../../hooks/useInlineProfile";
 import type { SchemaDiffRow } from "../../lib/dataGrid/generators/toSchemaDataGrid";
+import {
+  PairedHistogramContinuousCell,
+  PairedHistogramDiscreteCell,
+} from "../data";
 import { formatProfileValue, toNumeric } from "./profileFormat";
 
 export type CardStatus = "impacted" | "typechg" | "defchg" | "added";
@@ -10,6 +15,17 @@ export interface SchemaGalleryViewProps {
   rows: SchemaDiffRow[];
   /** Optional click handler — fires with the column name when a card is clicked */
   onColumnClick?: (columnName: string) => void;
+  /**
+   * Per-column paired-histogram distribution data, keyed by lower-cased
+   * column name. When set, replaces the `unique` quadrant with a chart slot
+   * above the remaining min/max/null%.
+   */
+  distributionByName?: Map<string, ColumnDistribution>;
+  /**
+   * Lower-cased names of columns whose distribution is in flight. Cards in
+   * this set render a spinner in the chart slot until the fetch finishes.
+   */
+  pendingDistributionColumns?: Set<string>;
 }
 
 const STATUS_LABEL: Record<CardStatus, string> = {
@@ -19,11 +35,13 @@ const STATUS_LABEL: Record<CardStatus, string> = {
   added: "added",
 };
 
+// 3-quad layout (no `unique`) — leaves card real estate for the paired-
+// histogram chart slot above. `unique` was binary anyway, never carried
+// much per-column signal next to a chart.
 const QUADRANTS = [
   { field: "min", label: "min", pct: false },
   { field: "max", label: "max", pct: false },
   { field: "not_null_proportion", label: "null%", pct: true },
-  { field: "is_unique", label: "unique", pct: false },
 ] as const;
 
 function classifyInteresting(row: SchemaDiffRow): CardStatus | null {
@@ -52,14 +70,53 @@ function isQuadChanged(row: SchemaDiffRow, field: string): boolean {
   return b !== c;
 }
 
+function CardChart({ distribution }: { distribution: ColumnDistribution }) {
+  // Card-density chart sits in a slot ~180×44 inside a 200-300 px card. No
+  // labels — at this density the chart signals divergence; the card name +
+  // quads do the labelling.
+  if (distribution.kind === "topk") {
+    return (
+      <PairedHistogramDiscreteCell
+        data={{
+          values: distribution.values.map((v) => v ?? "∅"),
+          baseCounts: distribution.base_counts,
+          currentCounts: distribution.current_counts,
+          baseTotal: distribution.base_total,
+          currentTotal: distribution.current_total,
+        }}
+        width={180}
+        height={44}
+        trimmed={distribution.trimmed}
+      />
+    );
+  }
+  return (
+    <PairedHistogramContinuousCell
+      data={{
+        binEdges: distribution.bin_edges,
+        baseCounts: distribution.base_counts,
+        currentCounts: distribution.current_counts,
+        baseTotal: distribution.base_total,
+        currentTotal: distribution.current_total,
+      }}
+      width={180}
+      height={44}
+    />
+  );
+}
+
 function Card({
   row,
   status,
   onClick,
+  distribution,
+  pending,
 }: {
   row: SchemaDiffRow;
   status: CardStatus;
   onClick?: () => void;
+  distribution?: ColumnDistribution;
+  pending?: boolean;
 }) {
   const rec = row as unknown as Record<string, unknown>;
   const absent = (v: unknown) => v === undefined || v === null;
@@ -120,6 +177,21 @@ function Card({
           )}
         </div>
       </div>
+      {distribution ? (
+        <div
+          className="schema-card-chart"
+          data-testid={`card-chart-${row.name}`}
+        >
+          <CardChart distribution={distribution} />
+        </div>
+      ) : pending ? (
+        <div
+          className="schema-card-chart schema-card-chart-pending"
+          data-testid={`card-chart-pending-${row.name}`}
+        >
+          <span className="schema-distribution-pending" aria-label="Loading distribution" />
+        </div>
+      ) : null}
       <div className="schema-card-quads">
         {QUADRANTS.map(({ field, label, pct }) => {
           const changed =
@@ -160,6 +232,8 @@ function extractTotalRows(
 export function SchemaGalleryView({
   rows,
   onColumnClick,
+  distributionByName,
+  pendingDistributionColumns,
 }: SchemaGalleryViewProps) {
   const interesting: { row: SchemaDiffRow; status: CardStatus }[] = [];
   const other: SchemaDiffRow[] = [];
@@ -216,16 +290,21 @@ export function SchemaGalleryView({
             Interesting ({interesting.length})
           </h4>
           <div className="schema-gallery-grid">
-            {interesting.map(({ row, status }) => (
-              <Card
-                key={row.name}
-                row={row}
-                status={status}
-                onClick={
-                  onColumnClick ? () => onColumnClick(row.name) : undefined
-                }
-              />
-            ))}
+            {interesting.map(({ row, status }) => {
+              const key = row.name.toLowerCase();
+              return (
+                <Card
+                  key={row.name}
+                  row={row}
+                  status={status}
+                  distribution={distributionByName?.get(key)}
+                  pending={pendingDistributionColumns?.has(key)}
+                  onClick={
+                    onColumnClick ? () => onColumnClick(row.name) : undefined
+                  }
+                />
+              );
+            })}
           </div>
         </section>
       )}

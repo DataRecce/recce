@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react";
 
-export type ProfileMode = "wide" | "strip" | "grid";
+export type ProfileMode = "strip" | "grid";
 
 export const STORAGE_KEY = "recce:schema:profileMode";
 const DEFAULT_MODE: ProfileMode = "grid";
-const VALID_MODES: readonly ProfileMode[] = ["wide", "strip", "grid"];
+const VALID_MODES: readonly ProfileMode[] = ["strip", "grid"];
 
 function readStoredMode(): ProfileMode {
   if (typeof window === "undefined") return DEFAULT_MODE;

@@ -277,6 +277,7 @@ export function PrivateSchemaView(
 
   const {
     profileByColumn,
+    distributionByColumn,
     isLoading: profileLoading,
     error: profileError,
   } = useInlineProfile({
@@ -297,6 +298,27 @@ export function PrivateSchemaView(
     const frozen = lineageViewContext?.impactedColumnIds;
     return frozen?.size ? frozen : undefined;
   }, [newCllExperience, lineageViewContext?.impactedColumnIds]);
+
+  // Phase 2+3 of DRC-3390: distribution charts come exclusively from the
+  // backend `profile_distribution` task. No synthetic fallback — we'd rather
+  // show an empty slot or a spinner than a hallucinated chart.
+  const distributionForGrid = useMemo(
+    () =>
+      inlineProfileActive && isProfilable && distributionByColumn.size > 0
+        ? distributionByColumn
+        : undefined,
+    [inlineProfileActive, isProfilable, distributionByColumn],
+  );
+
+  // Columns that the backend run is currently fetching distribution data
+  // for. The grid renders a spinner in the Distribution cell for these
+  // until the run finishes.
+  const pendingDistributionColumns = useMemo(() => {
+    if (!inlineProfileActive || !isProfilable || !profileLoading) {
+      return undefined;
+    }
+    return new Set(columnsToProfile.map((c) => c.toLowerCase()));
+  }, [inlineProfileActive, isProfilable, profileLoading, columnsToProfile]);
 
   const { columns, rows } = useMemo(() => {
     const resourceType = current?.resource_type ?? base?.resource_type;
@@ -328,6 +350,8 @@ export function PrivateSchemaView(
               >)
             : undefined,
         profileMode,
+        distributionByName: distributionForGrid,
+        pendingDistributionColumns,
       },
     );
   }, [
@@ -340,6 +364,8 @@ export function PrivateSchemaView(
     impactedColumns,
     profileByColumn,
     profileMode,
+    distributionForGrid,
+    pendingDistributionColumns,
   ]);
 
   const { lineageGraph, isActionAvailable } = useLineageGraphContext();
@@ -536,7 +562,12 @@ export function PrivateSchemaView(
       ) : null}
       {rows.length > 0 &&
         (profileMode === "grid" && inlineProfileActive && isProfilable ? (
-          <SchemaGalleryView rows={rows} onColumnClick={handleViewCll} />
+          <SchemaGalleryView
+            rows={rows}
+            onColumnClick={handleViewCll}
+            distributionByName={distributionForGrid}
+            pendingDistributionColumns={pendingDistributionColumns}
+          />
         ) : (
           <ScreenshotDataGrid
             style={{

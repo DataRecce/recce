@@ -5,13 +5,16 @@
  * @description Cell components and render functions for Schema grid views
  */
 
-import Tooltip from "@mui/material/Tooltip";
 import type { ICellRendererParams } from "ag-grid-community";
 import type React from "react";
 import type { NodeData, RowObjectType } from "../../../api";
+import type { ColumnDistribution } from "../../../hooks/useInlineProfile";
+import {
+  PairedHistogramContinuousCell,
+  PairedHistogramDiscreteCell,
+} from "../../data";
 import type { SchemaDiffRow, SchemaRow } from "../../schema";
 import { ColumnNameCell } from "../../schema/ColumnNameCell";
-import { formatProfileValue, toNumeric } from "../../schema/profileFormat";
 
 // ============================================================================
 // Render Functions for toSchemaDataGrid.ts
@@ -103,132 +106,77 @@ export function renderIndexCell(
   return <span>{value}</span>;
 }
 
-// ============================================================================
-// Profile Strip Renderer (strip render mode)
-// ============================================================================
-
-const STRIP_STATS = [
-  { field: "not_null_proportion", label: "null%", pct: true },
-  { field: "min", label: "min", pct: false },
-  { field: "max", label: "max", pct: false },
-  { field: "avg", label: "avg", pct: false },
-  { field: "is_unique", label: "unique", pct: false },
-] as const;
-
-type StripState = "changed" | "same" | "empty";
-
-const absent = (v: unknown) => v === undefined || v === null;
-
-function statState(row: SchemaDiffRow, field: string): StripState {
-  const rec = row as unknown as Record<string, unknown>;
-  const b = rec[`base__${field}`];
-  const c = rec[`current__${field}`];
-  if (absent(b) && absent(c)) return "empty";
-  if (absent(b) || absent(c)) return "changed";
-  // Compare numerically when both are numeric strings — avoids false diffs
-  // from inconsistent trailing zeros like "69.370000" vs "69.37".
-  const bn = toNumeric(b);
-  const cn = toNumeric(c);
-  if (bn !== null && cn !== null) return bn === cn ? "same" : "changed";
-  return b === c ? "same" : "changed";
-}
-
-function ProfileStripCard({ row }: { row: SchemaDiffRow }) {
-  const rec = row as unknown as Record<string, unknown>;
-  const renderValue = (field: string, pct: boolean): React.ReactNode => {
-    const b = rec[`base__${field}`];
-    const c = rec[`current__${field}`];
-    if (absent(b) && absent(c)) return "—";
-    if (absent(b)) return formatProfileValue(c, pct);
-    if (absent(c)) return formatProfileValue(b, pct);
-    const bn = toNumeric(b);
-    const cn = toNumeric(c);
-    if (bn !== null && cn !== null && bn === cn) {
-      return formatProfileValue(c, pct);
-    }
-    if (!bn && !cn && b === c) return formatProfileValue(c, pct);
+/**
+ * Render the per-column paired-histogram cell. Picks discrete or continuous
+ * by `kind`; renders nothing when no distribution is available (e.g. text
+ * columns without an enumerable name, or columns we haven't profiled).
+ */
+function ProfileDistributionCell({
+  distribution,
+}: {
+  distribution: ColumnDistribution;
+}) {
+  if (distribution.kind === "topk") {
     return (
-      <>
-        <span className="schema-profile-hover-card-base">
-          {formatProfileValue(b, pct)}
-        </span>
-        <span className="schema-profile-hover-card-arrow">→</span>
-        <span>{formatProfileValue(c, pct)}</span>
-      </>
+      <PairedHistogramDiscreteCell
+        data={{
+          values: distribution.values.map((v) => v ?? "∅"),
+          baseCounts: distribution.base_counts,
+          currentCounts: distribution.current_counts,
+          baseTotal: distribution.base_total,
+          currentTotal: distribution.current_total,
+        }}
+        trimmed={distribution.trimmed}
+      />
     );
-  };
+  }
   return (
-    <div className="schema-profile-hover-card">
-      <div className="schema-profile-hover-card-head">
-        <span className="schema-profile-hover-card-name">{row.name}</span>
-      </div>
-      <div className="schema-profile-hover-card-stats">
-        {STRIP_STATS.map(({ field, label, pct }) => {
-          const state = statState(row, field);
-          return (
-            <div
-              key={field}
-              className="schema-profile-hover-card-stat"
-              data-state={state}
-            >
-              <span className="schema-profile-hover-card-stat-lbl">
-                {label}
-              </span>
-              <span className="schema-profile-hover-card-stat-val">
-                {renderValue(field, pct)}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <PairedHistogramContinuousCell
+      data={{
+        binEdges: distribution.bin_edges,
+        baseCounts: distribution.base_counts,
+        currentCounts: distribution.current_counts,
+        baseTotal: distribution.base_total,
+        currentTotal: distribution.current_total,
+      }}
+    />
   );
 }
 
-function ProfileStripCell({ row }: { row: SchemaDiffRow }) {
+function DistributionPendingDot() {
   return (
-    <Tooltip
-      title={<ProfileStripCard row={row} />}
-      arrow
-      placement="right"
-      enterDelay={150}
-      leaveDelay={50}
-      slotProps={{
-        tooltip: { className: "schema-profile-hover-tooltip" },
-      }}
-    >
-      <span
-        className="schema-profile-strip"
-        data-testid="strip-button"
-        aria-label={`Profile for ${row.name}`}
-      >
-        {STRIP_STATS.map(({ field, label }) => {
-          const state = statState(row, field);
-          return (
-            <span
-              key={field}
-              data-testid="strip-square"
-              data-state={state}
-              className={`schema-profile-strip-square schema-profile-strip-square-${state}`}
-              aria-label={label}
-            />
-          );
-        })}
-      </span>
-    </Tooltip>
+    <span
+      className="schema-distribution-pending"
+      role="img"
+      aria-label="Loading distribution"
+      data-testid="distribution-pending"
+    />
   );
 }
 
 /**
- * Creates a cellRenderer function for the inline-profile "strip" column.
- * Each cell renders 5 tiny squares (one per stat) + popover with details.
+ * Creates a cellRenderer function for the inline-profile "distribution" column.
+ * Distributions are passed in as a Map keyed by lower-cased column name —
+ * the SchemaDiffRow index signature only permits primitive fields, so the
+ * polymorphic distribution object cannot live on the row itself. The
+ * pending Set carries column names whose fetch is in flight; those render
+ * a small spinner instead of an empty slot.
  */
-export function createProfileStripRenderer(): (
-  params: ICellRendererParams<SchemaDiffRow>,
-) => React.ReactNode {
+export function createProfileDistributionRenderer(
+  distributionByName: Map<string, ColumnDistribution>,
+  pendingColumns: Set<string>,
+): (params: ICellRendererParams<SchemaDiffRow>) => React.ReactNode {
   return (params) => {
     const row = params.data;
     if (!row) return null;
-    return <ProfileStripCell row={row} />;
+    const key = row.name.toLowerCase();
+    const dist = distributionByName.get(key);
+    if (dist) {
+      return <ProfileDistributionCell distribution={dist} />;
+    }
+    if (pendingColumns.has(key)) {
+      return <DistributionPendingDot />;
+    }
+    return null;
   };
 }

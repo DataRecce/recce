@@ -95,7 +95,7 @@ describe("SchemaGalleryView card rendering", () => {
     expect(within(card).getByText(/text/i)).toBeInTheDocument();
   });
 
-  it("renders four quadrants with min/max/null%/unique", () => {
+  it("renders three quadrants with min/max/null% (unique replaced by chart slot)", () => {
     const rows = [
       row({
         name: "amount",
@@ -106,8 +106,6 @@ describe("SchemaGalleryView card rendering", () => {
         current__max: 999.99,
         base__not_null_proportion: 0.98,
         current__not_null_proportion: 0.96,
-        base__is_unique: false,
-        current__is_unique: false,
       } as Partial<SchemaDiffRow>),
     ];
     render(<SchemaGalleryView rows={rows} />);
@@ -115,7 +113,28 @@ describe("SchemaGalleryView card rendering", () => {
     expect(within(card).getByText(/min/i)).toBeInTheDocument();
     expect(within(card).getByText(/max/i)).toBeInTheDocument();
     expect(within(card).getByText(/null%/i)).toBeInTheDocument();
-    expect(within(card).getByText(/unique/i)).toBeInTheDocument();
+    expect(within(card).queryByText(/unique/i)).not.toBeInTheDocument();
+  });
+
+  it("renders a paired-histogram chart slot when distributionByName has the column", () => {
+    const rows = [row({ name: "country", isImpacted: true })];
+    const distributionByName = new Map([
+      [
+        "country",
+        {
+          kind: "topk" as const,
+          values: ["US", "GB", "DE"],
+          base_counts: [10, 8, 6],
+          current_counts: [12, 9, 5],
+          base_total: 24,
+          current_total: 26,
+        },
+      ],
+    ]);
+    render(
+      <SchemaGalleryView rows={rows} distributionByName={distributionByName} />,
+    );
+    expect(screen.getByTestId("card-chart-country")).toBeInTheDocument();
   });
 
   it("marks the changed quadrant with data-changed=true", () => {

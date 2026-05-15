@@ -14,13 +14,13 @@ import {
   type RowObjectType,
 } from "../../../api";
 import {
-  createProfileStripRenderer,
+  createProfileDistributionRenderer,
   createSchemaColumnNameRenderer,
   createSingleEnvColumnNameRenderer,
   renderIndexCell,
 } from "../../../components/ui/dataGrid/schemaCells";
+import type { ColumnDistribution } from "../../../hooks/useInlineProfile";
 import { mergeKeysWithStatus } from "../../../utils";
-import { toDiffColumnConfigured } from "../../../utils/dataGrid/configured";
 
 // ============================================================================
 // Types
@@ -75,14 +75,27 @@ export interface SchemaDataGridOptions {
     }
   >;
   /**
-   * How to render inline-profile data within the grid. Wide (default) appends
-   * 5 base/current stat diff columns. Strip appends one compact "profile"
-   * column with a 5-square indicator + popover. "grid" is treated the same
-   * as "wide" here — the caller renders SchemaGalleryView instead of the
-   * grid output, but still passes the mode through for type transparency.
-   * Ignored when profileByColumn is undefined.
+   * How to render inline-profile data within the grid. Strip (UI label:
+   * "Compact") shows only the distribution column. "grid" is handled by
+   * the caller (SchemaGalleryView), but still passes through for type
+   * transparency.
    */
-  profileMode?: "wide" | "strip" | "grid";
+  profileMode?: "strip" | "grid";
+  /**
+   * Optional per-column distribution data, keyed by lower-cased column name.
+   * Independent of profileByColumn so the schema grid can render paired-
+   * histogram cells in surfaces where inline-profile stats aren't available
+   * (e.g. backends that don't yet implement profile_diff). Distribution
+   * column is added when this map is non-empty OR pendingDistributionColumns
+   * is non-empty (so the column appears with spinners while loading).
+   */
+  distributionByName?: Map<string, ColumnDistribution>;
+  /**
+   * Lower-cased names of columns whose distribution is being fetched. The
+   * cell renders a spinner for these instead of an empty slot — gives
+   * a visible "we're working on it" cue without inventing data.
+   */
+  pendingDistributionColumns?: Set<string>;
 }
 
 export interface SchemaDataGridResult {
@@ -95,36 +108,16 @@ export interface SingleEnvSchemaDataGridResult {
   rows: SchemaRow[];
 }
 
-// Single source of truth for which inline-profile stats appear in both
-// row-level hydration (base__*/current__* fields) and wide-mode column defs.
-// row_count is hydrated onto rows for the gallery's total-rows label but is
-// intentionally omitted from the wide-mode column list (it would duplicate
-// data across every row).
-const PROFILE_STAT_SPECS: readonly {
-  field: string;
-  header: string;
-  columnType: "number" | "text" | "boolean";
-  columnRenderMode?: "percent";
-  wideColumn?: boolean;
-}[] = [
-  {
-    field: "not_null_proportion",
-    header: "% non-null",
-    columnType: "number",
-    columnRenderMode: "percent",
-    wideColumn: true,
-  },
-  { field: "min", header: "min", columnType: "text", wideColumn: true },
-  { field: "max", header: "max", columnType: "text", wideColumn: true },
-  { field: "avg", header: "avg", columnType: "number", wideColumn: true },
-  {
-    field: "is_unique",
-    header: "unique",
-    columnType: "boolean",
-    wideColumn: true,
-  },
-  { field: "row_count", header: "rows", columnType: "number" },
-];
+// Inline-profile stats hydrated onto each row as base__*/current__* fields.
+// Consumers (e.g. SchemaGalleryView) read these to render per-column stats.
+const PROFILE_STAT_FIELDS = [
+  "not_null_proportion",
+  "min",
+  "max",
+  "avg",
+  "is_unique",
+  "row_count",
+] as const;
 
 // ============================================================================
 // Data Transformation
@@ -259,57 +252,58 @@ export function toSchemaDataGrid(
     }
   }
 
-  // Populate row-level stat fields regardless of mode — strip cell renderer
-  // reads the same base__*/current__* fields the wide columns would use.
-  // PROFILE_STAT_SPECS is the single source of truth for which stats we show.
+  // Hydrate row-level stat fields so downstream consumers (SchemaGalleryView)
+  // can read them. Distribution data lives off-row in `distributionByName`
+  // because the SchemaDiffRow index signature only allows primitive values.
+  const profileMode = options.profileMode ?? "strip";
+  const distributionByName = new Map<string, ColumnDistribution>(
+    options.distributionByName ?? [],
+  );
+
   if (options.profileByColumn) {
     for (const row of rows) {
       const entry = options.profileByColumn.get(row.name.toLowerCase());
       if (!entry) continue;
-      for (const spec of PROFILE_STAT_SPECS) {
-        const baseVal = entry.base?.[spec.field];
-        const currentVal = entry.current?.[spec.field];
+      for (const field of PROFILE_STAT_FIELDS) {
+        const baseVal = entry.base?.[field];
+        const currentVal = entry.current?.[field];
         if (baseVal !== undefined) {
-          (row as Record<string, unknown>)[`base__${spec.field}`] = baseVal;
+          (row as Record<string, unknown>)[`base__${field}`] = baseVal;
         }
         if (currentVal !== undefined) {
-          (row as Record<string, unknown>)[`current__${spec.field}`] =
-            currentVal;
+          (row as Record<string, unknown>)[`current__${field}`] = currentVal;
         }
       }
-    }
-
-    const profileMode = options.profileMode ?? "wide";
-
-    if (profileMode === "strip") {
-      columns.push({
-        field: "__profile_strip",
-        headerName: "Profile",
-        width: 100,
-        minWidth: 90,
-        resizable: false,
-        cellRenderer: createProfileStripRenderer(),
-        cellClass: "schema-column schema-column-profile-strip",
-      });
-    } else if (profileMode !== "grid") {
-      // Wide — 5-column base/current diff layout. "grid" intentionally
-      // falls through with no extra columns, since the caller renders
-      // SchemaGalleryView and discards the column list.
-      for (const spec of PROFILE_STAT_SPECS) {
-        if (!spec.wideColumn) continue;
-        const col = toDiffColumnConfigured({
-          name: spec.field,
-          columnStatus: "",
-          columnType: spec.columnType,
-          columnRenderMode: spec.columnRenderMode,
-          displayMode: "inline",
-        });
-        columns.push({
-          ...(col as ColDef<SchemaDiffRow>),
-          headerName: spec.header,
-        });
+      const dist = (entry.current?.distribution ?? entry.base?.distribution) as
+        | ColumnDistribution
+        | null
+        | undefined;
+      if (dist) {
+        distributionByName.set(row.name.toLowerCase(), dist);
       }
     }
+  }
+
+  // Distribution column (DRC-3390). Appears in compact mode whenever we have
+  // distribution data, OR while a fetch is pending so the column shows up
+  // populated-with-spinners rather than popping in late.
+  const pending = options.pendingDistributionColumns ?? new Set<string>();
+  if (
+    (distributionByName.size > 0 || pending.size > 0) &&
+    profileMode !== "grid"
+  ) {
+    columns.push({
+      field: "__profile_distribution",
+      headerName: "Distribution",
+      width: 160,
+      minWidth: 140,
+      resizable: false,
+      cellRenderer: createProfileDistributionRenderer(
+        distributionByName,
+        pending,
+      ),
+      cellClass: "schema-column schema-column-profile-distribution",
+    });
   }
 
   return { columns, rows };

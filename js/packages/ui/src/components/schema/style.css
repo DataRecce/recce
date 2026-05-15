@@ -265,121 +265,6 @@
 }
 
 /* ============================================================================
-   Profile strip (inline-profile strip mode)
-   ============================================================================ */
-
-.schema-profile-strip {
-  display: inline-flex;
-  gap: 2px;
-  align-items: center;
-  padding: 2px 4px;
-}
-
-.schema-profile-strip-square {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-  border: 1px solid transparent;
-  display: inline-block;
-}
-
-.schema-profile-strip-square-same {
-  background-color: var(--schema-color-muted);
-  opacity: 0.25;
-}
-
-.schema-profile-strip-square-changed {
-  background-color: var(--schema-color-changed-accent);
-}
-
-.schema-profile-strip-square-empty {
-  background-color: transparent;
-  border-color: var(--schema-color-muted);
-  opacity: 0.35;
-}
-
-/* MUI Tooltip content — override default padding to host a card */
-.schema-profile-hover-tooltip {
-  background-color: var(--schema-color-normal) !important;
-  color: inherit !important;
-  padding: 0 !important;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.18) !important;
-  max-width: 280px !important;
-}
-
-.schema-profile-hover-tooltip .MuiTooltip-arrow {
-  color: var(--schema-color-normal) !important;
-}
-
-.schema-profile-hover-card {
-  font-family: inherit;
-  border: 1px solid var(--schema-color-muted);
-  border-radius: 6px;
-  min-width: 200px;
-  overflow: hidden;
-  background-color: var(--schema-color-normal);
-}
-
-.schema-profile-hover-card-head {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--schema-color-muted);
-  background-color: var(--schema-color-normal-hover);
-}
-
-.schema-profile-hover-card-name {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--schema-badge-changed-fg);
-}
-
-.schema-profile-hover-card-stats {
-  display: grid;
-  grid-template-columns: 1fr;
-}
-
-.schema-profile-hover-card-stat {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
-  padding: 5px 10px;
-  border-bottom: 1px solid var(--schema-color-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.schema-profile-hover-card-stat:last-child {
-  border-bottom: none;
-}
-
-.schema-profile-hover-card-stat[data-state="changed"] {
-  background-color: var(--schema-color-changed);
-}
-
-.schema-profile-hover-card-stat-lbl {
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  color: var(--schema-color-muted);
-}
-
-.schema-profile-hover-card-stat-val {
-  font-size: 0.85rem;
-  display: inline-flex;
-  gap: 4px;
-  align-items: baseline;
-}
-
-.schema-profile-hover-card-base {
-  color: var(--schema-color-muted);
-  font-size: 0.75rem;
-}
-
-.schema-profile-hover-card-arrow {
-  color: var(--schema-color-muted);
-  font-size: 0.75rem;
-}
-
-/* ============================================================================
    Schema gallery view (grid render mode)
    ============================================================================ */
 
@@ -531,28 +416,63 @@
   font-weight: 600;
 }
 
+.schema-card-chart {
+  padding: 4px 6px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-bottom: 1px solid var(--schema-color-muted);
+}
+
+.schema-card-chart-pending {
+  min-height: 44px;
+}
+
+/* Strip ag-grid's default cell padding + line-height so the 140 px paired-
+ * histogram SVG fills the cell horizontally and centers vertically without
+ * being pushed off-center by the row-height line-box. */
+.schema-column-profile-distribution {
+  padding: 0 4px !important;
+  line-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Small "loading" dot used in the distribution column + gallery chart slot
+ * while the backend's profile_distribution run is in flight. Subtle on
+ * purpose — we don't want a busy spinner per row drawing attention. */
+.schema-distribution-pending {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--schema-color-muted);
+  opacity: 0.6;
+  animation: schema-distribution-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes schema-distribution-pulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.7; }
+}
+
 .schema-card-quads {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .schema-card-quad {
-  padding: 6px 10px;
+  padding: 6px 8px;
   border-right: 1px solid var(--schema-color-muted);
-  border-bottom: 1px solid var(--schema-color-muted);
   display: flex;
   flex-direction: column;
   min-height: 34px;
   justify-content: center;
 }
 
-.schema-card-quad:nth-child(2n) {
+.schema-card-quad:last-child {
   border-right: none;
-}
-
-.schema-card-quad:nth-child(n + 3) {
-  border-bottom: none;
 }
 
 .schema-card-quad[data-changed="true"] {

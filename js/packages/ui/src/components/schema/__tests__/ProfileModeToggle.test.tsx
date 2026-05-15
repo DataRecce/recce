@@ -9,22 +9,20 @@ import { describe, expect, it, vi } from "vitest";
 import { ProfileModeToggle } from "../ProfileModeToggle";
 
 describe("ProfileModeToggle", () => {
-  it("renders three toggle buttons", () => {
+  it("renders two toggle buttons", () => {
     render(<ProfileModeToggle value="grid" onChange={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /wide/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /strip/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /compact/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /grid/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /wide/i })).toBeNull();
   });
 
   it("marks the current mode as selected (aria-pressed=true)", () => {
     render(<ProfileModeToggle value="strip" onChange={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /strip/i })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: /compact/i })).toHaveAttribute(
       "aria-pressed",
       "true",
-    );
-    expect(screen.getByRole("button", { name: /wide/i })).toHaveAttribute(
-      "aria-pressed",
-      "false",
     );
     expect(screen.getByRole("button", { name: /grid/i })).toHaveAttribute(
       "aria-pressed",
@@ -36,7 +34,7 @@ describe("ProfileModeToggle", () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
     render(<ProfileModeToggle value="grid" onChange={onChange} />);
-    await user.click(screen.getByRole("button", { name: /strip/i }));
+    await user.click(screen.getByRole("button", { name: /compact/i }));
     expect(onChange).toHaveBeenCalledWith("strip");
   });
 

@@ -17,7 +17,7 @@ vi.mock("../../ui/dataGrid/schemaCells", () => ({
   createSchemaColumnNameRenderer: vi.fn(() => vi.fn()),
   createSingleEnvColumnNameRenderer: vi.fn(() => vi.fn()),
   renderIndexCell: vi.fn(),
-  createProfileStripRenderer: vi.fn(() => vi.fn()),
+  createProfileDistributionRenderer: vi.fn(() => vi.fn()),
 }));
 
 // Mock the ScreenshotDataGrid primitive — we inspect props, not DOM
@@ -83,9 +83,11 @@ function setup(overrides: {
   newCll?: boolean;
   impactedColumnIds?: Set<string>;
   profileByColumn?: Map<string, unknown>;
+  distributionByColumn?: Map<string, unknown>;
+  distributionError?: unknown;
   isLoading?: boolean;
   error?: unknown;
-  profileMode?: "wide" | "strip" | "grid";
+  profileMode?: "strip" | "grid";
   setProfileMode?: (mode: string) => void;
 }) {
   mockUseRecceServerFlag.mockReturnValue({
@@ -105,11 +107,13 @@ function setup(overrides: {
   });
   mockUseInlineProfile.mockReturnValue({
     profileByColumn: overrides.profileByColumn ?? new Map(),
+    distributionByColumn: overrides.distributionByColumn ?? new Map(),
     isLoading: overrides.isLoading ?? false,
     error: overrides.error ?? null,
+    distributionError: overrides.distributionError ?? null,
   });
   mockUseProfileMode.mockReturnValue([
-    overrides.profileMode ?? "wide",
+    overrides.profileMode ?? "strip",
     overrides.setProfileMode ?? vi.fn(),
   ]);
 }
@@ -371,20 +375,7 @@ describe("PrivateSchemaView render mode routing", () => {
     expect(mockProfileModeToggle).toHaveBeenCalled();
   });
 
-  it("renders ag-grid (not gallery) in wide mode", () => {
-    setup({ profileMode: "wide" });
-    render(
-      <SchemaView
-        ref={createRef<DataGridHandle>()}
-        base={baseNode()}
-        current={baseNode()}
-      />,
-    );
-    expect(mockScreenshotDataGrid).toHaveBeenCalled();
-    expect(mockSchemaGalleryView).not.toHaveBeenCalled();
-  });
-
-  it("renders ag-grid (not gallery) in strip mode", () => {
+  it("renders ag-grid (not gallery) in compact (strip) mode", () => {
     setup({ profileMode: "strip" });
     render(
       <SchemaView
@@ -426,7 +417,7 @@ describe("PrivateSchemaView render mode routing", () => {
     expect(mockSchemaGalleryView).not.toHaveBeenCalled();
   });
 
-  it("passes strip profileMode through to the grid columns", () => {
+  it("compact (strip) mode skips wide stat columns; distribution column appears via inline-profile path", () => {
     setup({
       profileMode: "strip",
       impactedColumnIds: new Set(["model.jaffle.orders_status"]),
@@ -444,7 +435,8 @@ describe("PrivateSchemaView render mode routing", () => {
       columns: { field?: string }[];
     };
     const fields = gridProps.columns.map((c) => c.field).filter(Boolean);
-    expect(fields).toContain("__profile_strip");
+    expect(fields).not.toContain("__profile_strip");
     expect(fields).not.toContain("not_null_proportion");
+    expect(fields).not.toContain("min");
   });
 });
