@@ -606,7 +606,7 @@ export const LongModelName: Story = {
   parameters: {
     docs: {
       description: {
-        story: `Edge case for the title-chip surface. A very long model name must truncate with ellipsis inside the chip and expose the full name via the chip's tooltip (\`title\` attribute). Both the impact and source variants are shown; the chip width is bounded by the panel header layout.`,
+        story: `Edge case for the title-chip surface. Demonstrates ellipsis truncation when a model name exceeds the chip's bounded width; the full name is available via the chip's native \`title\` tooltip. Both the impact and source variants are shown.`,
       },
     },
   },

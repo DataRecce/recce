@@ -26,15 +26,15 @@
 export type WholeModelTreatmentKind = "source" | "downstream" | "additive";
 
 export interface WholeModelTreatmentTokens {
-  /** Sidebar / panel wash background. */
+  /** Sidebar title chip background; also the panel left-stripe color base. */
   washBg: string;
-  /** Sidebar / panel wash left-edge accent stripe. */
+  /** Sidebar left-edge accent stripe + title-chip border + glyph-disc fill. */
   washAccent: string;
-  /** "ALL" badge text + header line text + header line border. */
+  /** Title-chip text color (sidebar) and `[ALL]` badge text (graph node). */
   fg: string;
-  /** "ALL" badge background. */
+  /** `[ALL]` badge background (graph node only). */
   badgeBg: string;
-  /** "ALL" badge border. */
+  /** `[ALL]` badge border (graph node only). */
   badgeBorder: string;
 }
 

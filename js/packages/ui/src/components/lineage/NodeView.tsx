@@ -683,7 +683,7 @@ export function NodeView<TNode extends NodeViewNodeData>({
   // Whole-model treatment (DRC-3341). Q11 source-wins is enforced upstream
   // by NodeViewOss — at most one of the flags is true. The brown vs amber
   // palette comes from `wholeModelTreatmentTokens` so every site that
-  // renders the wash / badge / header pulls from one place.
+  // renders the title chip and left stripe pulls from one place.
   const treatmentKind = wholeModelTreatmentKind({
     isBreakingSource,
     isWholeModelImpactedDownstream,
