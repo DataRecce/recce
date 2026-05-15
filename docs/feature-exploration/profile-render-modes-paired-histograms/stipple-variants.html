@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Stipple variants — 50/50 overlap fills</title>
+<style>
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #1a1a1a;
+    color: #e5e5e5;
+    margin: 0;
+    padding: 24px 32px;
+  }
+  h1 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  .lede {
+    color: #999;
+    font-size: 13px;
+    margin: 0 0 32px;
+    max-width: 720px;
+    line-height: 1.5;
+  }
+  .palette {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 28px;
+    font-size: 12px;
+    color: #bbb;
+  }
+  .swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    vertical-align: middle;
+    margin-right: 4px;
+    border-radius: 2px;
+  }
+  table.variants {
+    border-collapse: collapse;
+    margin-bottom: 24px;
+    table-layout: fixed;
+  }
+  table.variants th, table.variants td {
+    border: 1px solid #333;
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  table.variants th {
+    background: #222;
+    font-size: 12px;
+    font-weight: 600;
+    color: #ddd;
+  }
+  table.variants th.col-variant { width: 220px; }
+  th.col-scenario { width: 168px; }
+  th.col-swatch { width: 100px; }
+  td.cell {
+    background: #1f1f1f;
+    width: 168px;
+    height: 44px;
+    padding: 4px;
+  }
+  td.swatch-cell {
+    background: #1f1f1f;
+    width: 100px;
+    height: 44px;
+    padding: 4px;
+  }
+  td.label {
+    font-size: 12px;
+    color: #ccc;
+    font-weight: 500;
+  }
+  td.label .desc {
+    display: block;
+    font-weight: 400;
+    color: #888;
+    font-size: 11px;
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+  .scenario-head {
+    background: #222;
+    text-align: center !important;
+    font-size: 11px !important;
+    color: #bbb !important;
+    font-weight: 500 !important;
+  }
+  svg { display: block; }
+</style>
+</head>
+<body>
+
+<h1>Stipple variants — 50/50 overlap</h1>
+<p class="lede">
+  The previous stipple (orange dots on blue field) was visually biased blue. Below: six attempts at a true 50/50 overlap texture, plus a large "swatch" preview so you can see the pattern at scale without histogram framing.
+</p>
+
+<div class="palette">
+  <span><span class="swatch" style="background:#F6AD55"></span>base (orange)</span>
+  <span><span class="swatch" style="background:#63B3ED"></span>current (blue)</span>
+</div>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- S1: ORIGINAL (biased blue) — for comparison -->
+    <pattern id="s1" patternUnits="userSpaceOnUse" width="4" height="4">
+      <rect width="4" height="4" fill="#63B3ED"/>
+      <circle cx="2" cy="2" r="0.9" fill="#F6AD55"/>
+    </pattern>
+
+    <!-- S2: 2×2 CHECKERBOARD — true 50/50, blocky -->
+    <pattern id="s2" patternUnits="userSpaceOnUse" width="4" height="4">
+      <rect x="0" y="0" width="2" height="2" fill="#F6AD55"/>
+      <rect x="2" y="2" width="2" height="2" fill="#F6AD55"/>
+      <rect x="2" y="0" width="2" height="2" fill="#63B3ED"/>
+      <rect x="0" y="2" width="2" height="2" fill="#63B3ED"/>
+    </pattern>
+
+    <!-- S3: FAT ORANGE DOTS on blue — orange circle r=1.6 covers ~50% of 4x4 -->
+    <pattern id="s3" patternUnits="userSpaceOnUse" width="4" height="4">
+      <rect width="4" height="4" fill="#63B3ED"/>
+      <circle cx="2" cy="2" r="1.6" fill="#F6AD55"/>
+    </pattern>
+
+    <!-- S4: TWO-TONE DOTS on dark — orange + blue dots, equal density, neutral ground -->
+    <pattern id="s4" patternUnits="userSpaceOnUse" width="6" height="6">
+      <rect width="6" height="6" fill="#3a3a3a"/>
+      <circle cx="1.5" cy="1.5" r="1.2" fill="#F6AD55"/>
+      <circle cx="4.5" cy="4.5" r="1.2" fill="#63B3ED"/>
+    </pattern>
+
+    <!-- S5: OFFSET ROWS — orange row, blue row, alternating with half-cell offset -->
+    <pattern id="s5" patternUnits="userSpaceOnUse" width="6" height="6">
+      <rect width="6" height="6" fill="#1f1f1f"/>
+      <circle cx="1.5" cy="1.5" r="1.2" fill="#F6AD55"/>
+      <circle cx="4.5" cy="1.5" r="1.2" fill="#F6AD55"/>
+      <circle cx="0" cy="4.5" r="1.2" fill="#63B3ED"/>
+      <circle cx="3" cy="4.5" r="1.2" fill="#63B3ED"/>
+      <circle cx="6" cy="4.5" r="1.2" fill="#63B3ED"/>
+    </pattern>
+
+    <!-- S6: INTERLOCKING SQUARES at 3px — orange and blue squares of equal area, smaller cell -->
+    <pattern id="s6" patternUnits="userSpaceOnUse" width="3" height="3">
+      <rect x="0" y="0" width="1.5" height="1.5" fill="#F6AD55"/>
+      <rect x="1.5" y="1.5" width="1.5" height="1.5" fill="#F6AD55"/>
+      <rect x="1.5" y="0" width="1.5" height="1.5" fill="#63B3ED"/>
+      <rect x="0" y="1.5" width="1.5" height="1.5" fill="#63B3ED"/>
+    </pattern>
+
+    <!-- S7: DIAGONAL DOT GRID — orange/blue dots staggered diagonally -->
+    <pattern id="s7" patternUnits="userSpaceOnUse" width="5" height="5">
+      <rect width="5" height="5" fill="#2a2a2a"/>
+      <circle cx="1.25" cy="1.25" r="1" fill="#F6AD55"/>
+      <circle cx="3.75" cy="3.75" r="1" fill="#63B3ED"/>
+    </pattern>
+  </defs>
+</svg>
+
+<table class="variants">
+  <thead>
+    <tr>
+      <th class="col-variant">Variant</th>
+      <th class="col-swatch scenario-head">Swatch (24 × 38, zoomable detail)</th>
+      <th class="col-scenario scenario-head">Identical (full overlap)</th>
+      <th class="col-scenario scenario-head">Slight shift right</th>
+      <th class="col-scenario scenario-head">Large divergence</th>
+    </tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
+
+<script>
+  const BINS = 24;
+  const W = 160;
+  const H = 44;
+  const CHART_H = 38;
+  const SLOT = W / BINS;
+  const BAR_INSET = 0.25;
+
+  const gaussian = (mu, sigma) => (x) => Math.exp(-((x - mu) ** 2) / (2 * sigma * sigma));
+
+  function normalize(arr, total) {
+    const s = arr.reduce((a, b) => a + b, 0);
+    if (s === 0) return arr.slice();
+    return arr.map((v) => Math.round((v / s) * total));
+  }
+
+  function buildScenario(spec) {
+    const baseRaw = [], currRaw = [];
+    for (let i = 0; i < BINS; i++) {
+      baseRaw.push(spec.base(i));
+      currRaw.push(spec.curr(i));
+    }
+    return {
+      baseCounts: normalize(baseRaw, 1000),
+      currentCounts: normalize(currRaw, 1000),
+      baseTotal: 1000,
+      currentTotal: 1000,
+    };
+  }
+
+  const scenarios = [
+    buildScenario({ base: gaussian(12, 4), curr: gaussian(12, 4) }),
+    buildScenario({ base: gaussian(10, 4), curr: gaussian(13, 4) }),
+    buildScenario({ base: gaussian(7, 3), curr: gaussian(17, 3) }),
+  ];
+
+  function heights(data) {
+    const baseP = data.baseCounts.map((c) => c / data.baseTotal);
+    const currP = data.currentCounts.map((c) => c / data.currentTotal);
+    const maxP = Math.max(0.001, ...baseP, ...currP);
+    return data.baseCounts.map((_, i) => ({
+      baseH: (baseP[i] / maxP) * CHART_H,
+      currH: (currP[i] / maxP) * CHART_H,
+    }));
+  }
+
+  function frame(inner) {
+    return `
+      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+        ${inner}
+        <line x1="0" y1="${CHART_H}" x2="${W}" y2="${CHART_H}" stroke="#9ca3af" stroke-width="0.5"/>
+      </svg>
+    `;
+  }
+
+  function renderStipple(data, patternId) {
+    const cells = heights(data);
+    const bars = cells.map(({ baseH, currH }, i) => {
+      const x = i * SLOT;
+      const w = Math.max(0.5, SLOT - BAR_INSET);
+      const minH = Math.min(baseH, currH);
+      const maxH = Math.max(baseH, currH);
+      const diffFill = baseH > currH ? '#F6AD55' : '#63B3ED';
+      let s = '';
+      if (minH > 0) s += `<rect x="${x}" y="${CHART_H - minH}" width="${w}" height="${minH}" fill="url(#${patternId})"/>`;
+      if (maxH > minH) s += `<rect x="${x}" y="${CHART_H - maxH}" width="${w}" height="${maxH - minH}" fill="${diffFill}"/>`;
+      return s;
+    }).join('');
+    return frame(bars);
+  }
+
+  // Big swatch — fill the whole area with the pattern so you can read it without histogram framing
+  function renderSwatch(patternId) {
+    return `
+      <svg width="96" height="38" viewBox="0 0 96 38">
+        <rect x="0" y="0" width="96" height="38" fill="url(#${patternId})"/>
+      </svg>
+    `;
+  }
+
+  const VARIANTS = [
+    {
+      id: 's1',
+      label: 'S1. Original stipple (biased)',
+      desc: 'Blue ground, small orange dot (r≈0.9 in 4px cell). ≈14% orange / 86% blue area — what shipped in the first prototype.',
+    },
+    {
+      id: 's2',
+      label: 'S2. 2×2 checkerboard',
+      desc: 'Hard 50/50 split. Each 2-px cell is solid orange or blue. Blocky, very orderly.',
+    },
+    {
+      id: 's3',
+      label: 'S3. Fat orange dots',
+      desc: 'Blue ground, larger orange dot (r=1.6 in 4px cell). ≈50% orange area but still feels "orange islands in blue".',
+    },
+    {
+      id: 's4',
+      label: 'S4. Two-tone dots on grey',
+      desc: 'Neutral grey ground with one orange + one blue dot per 6px cell. Reads as "both, equally" with neither color dominating.',
+    },
+    {
+      id: 's5',
+      label: 'S5. Offset orange-row / blue-row',
+      desc: 'Alternating horizontal rows of orange and blue dots, staggered. Like the underline of a sticky note.',
+    },
+    {
+      id: 's6',
+      label: 'S6. Tight 3-px checker',
+      desc: 'Smaller checker than S2 — pixels almost too tiny to resolve, reads as a muddy texture at distance.',
+    },
+    {
+      id: 's7',
+      label: 'S7. Diagonal dot grid',
+      desc: 'Dark ground with orange/blue dots on a 5-px diagonal lattice. More open feel than S4.',
+    },
+  ];
+
+  const tbody = document.getElementById('rows');
+  for (const v of VARIANTS) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="label">${v.label}<span class="desc">${v.desc}</span></td>
+      <td class="swatch-cell">${renderSwatch(v.id)}</td>
+      ${scenarios.map((s) => `<td class="cell">${renderStipple(s, v.id)}</td>`).join('')}
+    `;
+    tbody.appendChild(tr);
+  }
+</script>
+
+</body>
+</html>

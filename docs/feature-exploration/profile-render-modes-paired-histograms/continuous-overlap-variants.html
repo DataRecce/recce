@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Continuous overlap variants — paired histograms</title>
+<style>
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #1a1a1a;
+    color: #e5e5e5;
+    margin: 0;
+    padding: 24px 32px;
+  }
+  h1 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  .lede {
+    color: #999;
+    font-size: 13px;
+    margin: 0 0 32px;
+    max-width: 720px;
+    line-height: 1.5;
+  }
+  .palette {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 28px;
+    font-size: 12px;
+    color: #bbb;
+  }
+  .swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    vertical-align: middle;
+    margin-right: 4px;
+    border-radius: 2px;
+  }
+  table.variants {
+    border-collapse: collapse;
+    margin-bottom: 24px;
+    table-layout: fixed;
+  }
+  table.variants th, table.variants td {
+    border: 1px solid #333;
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  table.variants th {
+    background: #222;
+    font-size: 12px;
+    font-weight: 600;
+    color: #ddd;
+  }
+  table.variants th.col-variant { width: 180px; }
+  table.variants th.col-scenario { width: 168px; }
+  td.cell {
+    background: #1f1f1f;
+    width: 168px;
+    height: 44px;
+    padding: 4px;
+  }
+  td.label {
+    font-size: 12px;
+    color: #ccc;
+    font-weight: 500;
+  }
+  td.label .desc {
+    display: block;
+    font-weight: 400;
+    color: #888;
+    font-size: 11px;
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+  .scenario-head {
+    background: #222;
+    text-align: center !important;
+    font-size: 11px !important;
+    color: #bbb !important;
+    font-weight: 500 !important;
+  }
+  svg { display: block; }
+</style>
+</head>
+<body>
+
+<h1>Continuous overlap variants</h1>
+<p class="lede">
+  Five ways to show base/current agreement in a binned continuous histogram, replacing the "shmellow" taupe overlap zone. Each row is one rendering style; each column is a divergence scenario. Same data, same bin count (24).
+</p>
+
+<div class="palette">
+  <span><span class="swatch" style="background:#F6AD55"></span>base (orange)</span>
+  <span><span class="swatch" style="background:#63B3ED"></span>current (blue)</span>
+  <span><span class="swatch" style="background:#B5A99B"></span>shmellow (taupe — current production)</span>
+</div>
+
+<!-- SVG defs shared across all charts -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- Diagonal stripes: orange-blue alternating -->
+    <pattern id="hatch-overlap" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+      <rect width="3" height="6" fill="#F6AD55"/>
+      <rect x="3" width="3" height="6" fill="#63B3ED"/>
+    </pattern>
+    <!-- Stipple: orange dots on blue background -->
+    <pattern id="stipple-overlap" patternUnits="userSpaceOnUse" width="4" height="4">
+      <rect width="4" height="4" fill="#63B3ED"/>
+      <circle cx="2" cy="2" r="0.9" fill="#F6AD55"/>
+    </pattern>
+    <!-- Vertical stripes -->
+    <pattern id="vstripe-overlap" patternUnits="userSpaceOnUse" width="4" height="6">
+      <rect width="2" height="6" fill="#F6AD55"/>
+      <rect x="2" width="2" height="6" fill="#63B3ED"/>
+    </pattern>
+  </defs>
+</svg>
+
+<table class="variants">
+  <thead>
+    <tr>
+      <th class="col-variant">Variant</th>
+      <th class="col-scenario scenario-head">Identical (full overlap)</th>
+      <th class="col-scenario scenario-head">Slight shift right</th>
+      <th class="col-scenario scenario-head">Large divergence</th>
+      <th class="col-scenario scenario-head">Bimodal split</th>
+    </tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
+
+<p class="lede" style="margin-top:8px">
+  Render at cell density (160 × 44, 24 bins). Hover any bin to see the per-bin counts in the title attribute.
+</p>
+
+<script>
+  // ---- Data scenarios ----
+  const BINS = 24;
+
+  // Helpers
+  const gaussian = (mu, sigma) => (x) => Math.exp(-((x - mu) ** 2) / (2 * sigma * sigma));
+
+  function normalize(arr, total) {
+    const s = arr.reduce((a, b) => a + b, 0);
+    if (s === 0) return arr.slice();
+    return arr.map((v) => Math.round((v / s) * total));
+  }
+
+  function buildScenario(spec) {
+    const baseRaw = [], currRaw = [];
+    for (let i = 0; i < BINS; i++) {
+      baseRaw.push(spec.base(i));
+      currRaw.push(spec.curr(i));
+    }
+    return {
+      baseCounts: normalize(baseRaw, 1000),
+      currentCounts: normalize(currRaw, 1000),
+      baseTotal: 1000,
+      currentTotal: 1000,
+    };
+  }
+
+  const scenarios = [
+    // Identical: same gaussian on both
+    buildScenario({
+      base: gaussian(12, 4),
+      curr: gaussian(12, 4),
+    }),
+    // Slight shift
+    buildScenario({
+      base: gaussian(10, 4),
+      curr: gaussian(13, 4),
+    }),
+    // Large divergence
+    buildScenario({
+      base: gaussian(7, 3),
+      curr: gaussian(17, 3),
+    }),
+    // Bimodal split
+    buildScenario({
+      base: (i) => gaussian(8, 2.5)(i) + 0.4 * gaussian(18, 2.5)(i),
+      curr: (i) => 0.3 * gaussian(8, 2.5)(i) + gaussian(18, 2.5)(i),
+    }),
+  ];
+
+  // ---- Variant renderers ----
+  // All return SVG markup at 160 × 44, 24 bins, sharing the same chart area.
+
+  const W = 160;
+  const H = 44;
+  const CHART_H = 38;
+  const SLOT = W / BINS;
+  const BAR_INSET = 0.25;
+
+  // Compute heights as proportions normalised by the global max across both sides
+  function heights(data) {
+    const baseP = data.baseCounts.map((c) => c / data.baseTotal);
+    const currP = data.currentCounts.map((c) => c / data.currentTotal);
+    const maxP = Math.max(0.001, ...baseP, ...currP);
+    return data.baseCounts.map((_, i) => ({
+      baseH: (baseP[i] / maxP) * CHART_H,
+      currH: (currP[i] / maxP) * CHART_H,
+      bp: baseP[i],
+      cp: currP[i],
+    }));
+  }
+
+  function frame(inner) {
+    return `
+      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+        ${inner}
+        <line x1="0" y1="${CHART_H}" x2="${W}" y2="${CHART_H}" stroke="#9ca3af" stroke-width="0.5"/>
+      </svg>
+    `;
+  }
+
+  // VARIANT A: current production — shmellow taupe overlap
+  function renderShmellow(data) {
+    const cells = heights(data);
+    const bars = cells.map(({ baseH, currH }, i) => {
+      const x = i * SLOT;
+      const w = Math.max(0.5, SLOT - BAR_INSET);
+      const minH = Math.min(baseH, currH);
+      const maxH = Math.max(baseH, currH);
+      const diffFill = baseH > currH ? '#F6AD55' : '#63B3ED';
+      let s = '';
+      if (minH > 0) s += `<rect x="${x}" y="${CHART_H - minH}" width="${w}" height="${minH}" fill="#B5A99B"/>`;
+      if (maxH > minH) s += `<rect x="${x}" y="${CHART_H - maxH}" width="${w}" height="${maxH - minH}" fill="${diffFill}"/>`;
+      return s;
+    }).join('');
+    return frame(bars);
+  }
+
+  // VARIANT B: diagonal hatch (orange/blue stripes) for overlap
+  function renderHatch(data) {
+    const cells = heights(data);
+    const bars = cells.map(({ baseH, currH }, i) => {
+      const x = i * SLOT;
+      const w = Math.max(0.5, SLOT - BAR_INSET);
+      const minH = Math.min(baseH, currH);
+      const maxH = Math.max(baseH, currH);
+      const diffFill = baseH > currH ? '#F6AD55' : '#63B3ED';
+      let s = '';
+      if (minH > 0) s += `<rect x="${x}" y="${CHART_H - minH}" width="${w}" height="${minH}" fill="url(#hatch-overlap)"/>`;
+      if (maxH > minH) s += `<rect x="${x}" y="${CHART_H - maxH}" width="${w}" height="${maxH - minH}" fill="${diffFill}"/>`;
+      return s;
+    }).join('');
+    return frame(bars);
+  }
+
+  // VARIANT C: stipple (orange dots over blue) for overlap
+  function renderStipple(data) {
+    const cells = heights(data);
+    const bars = cells.map(({ baseH, currH }, i) => {
+      const x = i * SLOT;
+      const w = Math.max(0.5, SLOT - BAR_INSET);
+      const minH = Math.min(baseH, currH);
+      const maxH = Math.max(baseH, currH);
+      const diffFill = baseH > currH ? '#F6AD55' : '#63B3ED';
+      let s = '';
+      if (minH > 0) s += `<rect x="${x}" y="${CHART_H - minH}" width="${w}" height="${minH}" fill="url(#stipple-overlap)"/>`;
+      if (maxH > minH) s += `<rect x="${x}" y="${CHART_H - maxH}" width="${w}" height="${maxH - minH}" fill="${diffFill}"/>`;
+      return s;
+    }).join('');
+    return frame(bars);
+  }
+
+  // VARIANT D: paired narrow bars (orange + blue side-by-side per bin), like discrete cell
+  function renderPaired(data) {
+    const cells = heights(data);
+    const gap = Math.max(0.3, SLOT * 0.08);
+    const bw = Math.max(0.5, (SLOT - gap) / 2);
+    const bars = cells.map(({ baseH, currH }, i) => {
+      const xBase = i * SLOT;
+      const xCurr = xBase + bw + gap;
+      let s = '';
+      if (baseH > 0) s += `<rect x="${xBase}" y="${CHART_H - baseH}" width="${bw}" height="${baseH}" fill="#F6AD55"/>`;
+      if (currH > 0) s += `<rect x="${xCurr}" y="${CHART_H - currH}" width="${bw}" height="${currH}" fill="#63B3ED"/>`;
+      return s;
+    }).join('');
+    return frame(bars);
+  }
+
+  // VARIANT E: alpha-blend (semi-transparent orange + semi-transparent blue layered).
+  // Identical heights produce a purple-grey mix; divergence reads as the dominant tint.
+  function renderAlpha(data) {
+    const cells = heights(data);
+    const bars = cells.map(({ baseH, currH }, i) => {
+      const x = i * SLOT;
+      const w = Math.max(0.5, SLOT - BAR_INSET);
+      let s = '';
+      if (baseH > 0) s += `<rect x="${x}" y="${CHART_H - baseH}" width="${w}" height="${baseH}" fill="#F6AD55" fill-opacity="0.7"/>`;
+      if (currH > 0) s += `<rect x="${x}" y="${CHART_H - currH}" width="${w}" height="${currH}" fill="#63B3ED" fill-opacity="0.7"/>`;
+      return s;
+    }).join('');
+    return frame(bars);
+  }
+
+  // VARIANT F: solid orange behind, blue outline in front.
+  // The overlap zone visually reads as "solid orange with blue stroke around it";
+  // divergence is solid orange (when current is lower) or empty-with-blue-outline (when current is higher).
+  function renderOutline(data) {
+    const cells = heights(data);
+    const bars = cells.map(({ baseH, currH }, i) => {
+      const x = i * SLOT;
+      const w = Math.max(0.5, SLOT - BAR_INSET);
+      let s = '';
+      if (baseH > 0) s += `<rect x="${x}" y="${CHART_H - baseH}" width="${w}" height="${baseH}" fill="#F6AD55"/>`;
+      if (currH > 0) s += `<rect x="${x + 0.5}" y="${CHART_H - currH + 0.5}" width="${Math.max(0, w - 1)}" height="${Math.max(0, currH - 1)}" fill="none" stroke="#63B3ED" stroke-width="1"/>`;
+      return s;
+    }).join('');
+    return frame(bars);
+  }
+
+  // ---- Render table ----
+  const VARIANTS = [
+    {
+      key: 'shmellow',
+      label: 'A. Shmellow taupe (current)',
+      desc: 'Solid taupe agreement zone. Current production. The asymmetry complaint.',
+      fn: renderShmellow,
+    },
+    {
+      key: 'hatch',
+      label: 'B. Diagonal hatch',
+      desc: '6-px orange/blue stripes at 45°. Overlap = "both, alternating." Clear semantic, slight moiré.',
+      fn: renderHatch,
+    },
+    {
+      key: 'stipple',
+      label: 'C. Stipple dots',
+      desc: 'Tiny orange dots on a blue field. Texture, not color. Reads softer.',
+      fn: renderStipple,
+    },
+    {
+      key: 'paired',
+      label: 'D. Paired thin bars',
+      desc: 'Symmetric with the discrete cell. Each bin = two bars side-by-side. No overlap zone at all — eye composes the comparison.',
+      fn: renderPaired,
+    },
+    {
+      key: 'alpha',
+      label: 'E. Semi-transparent layered',
+      desc: 'Both bars drawn full-height with 70% alpha. Overlap reads as a purple-grey mix; lone bars stay vivid.',
+      fn: renderAlpha,
+    },
+    {
+      key: 'outline',
+      label: 'F. Solid base + outlined current',
+      desc: 'Base = filled orange. Current = blue outline (no fill). Agreement = filled orange with blue stroke. Divergence direction is unambiguous.',
+      fn: renderOutline,
+    },
+  ];
+
+  const tbody = document.getElementById('rows');
+  for (const v of VARIANTS) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="label">${v.label}<span class="desc">${v.desc}</span></td>
+      ${scenarios.map((s) => `<td class="cell">${v.fn(s)}</td>`).join('')}
+    `;
+    tbody.appendChild(tr);
+  }
+</script>
+
+</body>
+</html>
