@@ -2,19 +2,24 @@
  * Visual tokens for the DRC-3341 whole-model treatment and the adjacent
  * additive-change badge.
  *
- * - Brown family (`"source"`) — model is itself a whole-model-changed
- *   source. Renders the panel wash, "ALL" badge, and header line.
- * - Amber family (`"downstream"`) — model is downstream of a whole-model
- *   change. Same surfaces as source, amber-colored.
- * - Green family (`"additive"`) — model has an additive-only change
- *   (per spec §Vocabulary: `non_breaking`). Only renders a small green
- *   "ADD" badge on the lineage graph node; no sidebar wash or header
- *   (the per-column green `+` glyph already calls out the added column
- *   in the schema view).
+ * Surfaces (as of the 2026-05-14 redesign):
+ * - Sidebar panel — the title chip in `NodeView` wraps the model name
+ *   using `washBg`/`washAccent`/`fg` plus a `~` (source) or `!`
+ *   (downstream) glyph. The earlier panel-wide wash and labeled header
+ *   bar were dropped because the cumulative yellow read as a warning.
+ * - Lineage graph — the per-node `[ALL]` badge (source/downstream) and
+ *   `[ADD]` badge (additive) still use `badgeBg`/`badgeBorder`/`fg`.
+ *
+ * Families:
+ * - Brown (`"source"`) — model is itself a whole-model-changed source.
+ * - Amber (`"downstream"`) — model is downstream of a whole-model change.
+ * - Green (`"additive"`) — additive-only change (`non_breaking`). Only
+ *   the graph-node `[ADD]` badge renders; no sidebar surface today (the
+ *   per-column green `+` glyph already calls out the added column).
  *
  * Per Q9 of the spec: "if you see a badge, look at color — brown is the
  * cause, amber is the effect." Green extends that: a safe local addition
- * that doesn't propagate. Every site that paints these badges sources
+ * that doesn't propagate. Every site that paints these tokens sources
  * its colors from this helper.
  */
 
