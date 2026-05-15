@@ -13,22 +13,22 @@ import { createRow, getRowClass, schemaColumns } from "../schema/fixtures";
 /**
  * @file WholeModelImpact.stories.tsx
  * @description Visual coverage for the `--downstream-of-breaking` feature
- * (DRC-3341). Captain reviews these stories to verify each whole-model
- * treatment renders distinctly:
+ * (DRC-3341, post 2026-05-14 redesign). Captain reviews these stories to
+ * verify each whole-model treatment renders distinctly:
  *
- * - AC-1 — downstream-only whole-model impact (amber wash + amber "ALL"
- *   badge in the panel header + "Whole-model impact" header line).
+ * - AC-1 — downstream-only whole-model impact: amber title chip ("! name")
+ *   + amber left stripe + amber "ALL" badge on the lineage node.
  * - AC-2 — column-only impact vs whole-model impact, side by side, plus
- *   the both-apply case where the existing per-row `!` glyph stacks on
- *   top of the wash.
- * - AC-4 — whole-model-changed source (brown wash + brown "ALL" badge +
- *   "Whole-model change in this model" header), and the
- *   "source-also-downstream" case (Q11 — source wins; brown treatment
- *   dominates).
+ *   the both-apply case where the existing per-row `!` glyph stacks
+ *   alongside the title chip.
+ * - AC-4 — whole-model-changed source: brown title chip ("~ name") + brown
+ *   left stripe + brown "ALL" badge, and the "source-also-downstream"
+ *   case (Q11 — source wins; brown treatment dominates).
  *
- * The fixture mirrors NodeView's panel — wash on the broad container,
- * "ALL" badge in the panel header next to the model name, header line
- * sitting above the (mock) Tabs strip and a Schema grid below it.
+ * The fixture mirrors NodeView's panel — title chip + left stripe, with a
+ * (mock) tabs strip and Schema grid below it. The earlier wash + labeled
+ * header bar were dropped (see spec
+ * 2026-05-14-whole-model-treatment-redesign-design.md).
  * Multi-ancestor list is intentionally not surfaced in v1 (Q7 punt;
  * see DRC-3341 spec).
  */
@@ -57,27 +57,20 @@ interface PanelFixtureProps {
 /**
  * Hand-built reproduction of NodeView's panel-level whole-model
  * treatment. Rendering an actual `<NodeView>` here would require mocking
- * a chunk of the lineage context graph; the wash/badge/header combo is
- * small enough that a hand-built mock stays in sync without that cost.
+ * a chunk of the lineage context graph; the title-chip + left stripe
+ * combo is small enough that a hand-built mock stays in sync without
+ * that cost.
  *
- * Layout mirrors NodeView:
- * - Wash on the outer Box (covers the entire panel — would span Lineage
- *   / Columns / Code tabs in the real view).
- * - "ALL" badge inline with the model name in the header row.
- * - Header line ("Whole-model impact" / "Whole-model change in this
- *   model") sits between the action-buttons row and the (mock) tabs.
+ * Layout mirrors NodeView post-redesign:
+ * - 6px left-edge stripe on the outer Box.
+ * - Title chip wrapping the model name, with !/~ glyph disc.
+ * - No panel wash, no labeled header bar above the tabs.
  */
 function PanelFixture({ modelName, variant, rows }: PanelFixtureProps) {
   const isSource = variant === "source";
   const tokens = wholeModelTreatmentTokens(isSource ? "source" : "downstream");
-  const headerText = isSource
-    ? "Whole-model change in this model"
-    : "Whole-model impact";
   return (
     <Box
-      data-testid={
-        isSource ? "whole-model-source-wash" : "whole-model-impact-wash"
-      }
       sx={{
         display: "flex",
         flexDirection: "column",
@@ -85,77 +78,78 @@ function PanelFixture({ modelName, variant, rows }: PanelFixtureProps) {
         width: 460,
         border: 1,
         borderColor: "divider",
-        backgroundColor: tokens.washBg,
         boxShadow: `inset 6px 0 0 ${tokens.washAccent}`,
       }}
     >
-      {/* Panel header row — model name + "ALL" badge + (mock) close affordance */}
+      {/* Panel header row — title chip wraps the model name */}
       <Stack direction="row" sx={{ alignItems: "center", px: 2, py: 1.5 }}>
         <Stack
           direction="row"
           sx={{ alignItems: "center", gap: 1, minWidth: 0, flex: 1 }}
         >
-          <Typography
-            variant="subtitle1"
-            sx={{
-              fontWeight: 600,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {modelName}
-          </Typography>
           <Box
             data-testid={
-              isSource ? "whole-model-source-badge" : "whole-model-impact-badge"
+              isSource
+                ? "whole-model-source-title-chip"
+                : "whole-model-impact-title-chip"
             }
             aria-label={isSource ? "whole-model change" : "whole-model impact"}
+            title={modelName}
             sx={{
               display: "inline-flex",
               alignItems: "center",
-              justifyContent: "center",
-              fontSize: "0.65rem",
-              fontWeight: 700,
-              lineHeight: 1,
-              height: 18,
-              minWidth: 22,
-              px: 0.5,
-              borderRadius: "3px",
+              gap: 0.75,
+              px: 1,
+              py: 0.25,
+              borderRadius: "6px",
+              backgroundColor: tokens.washBg,
+              border: `1px solid ${tokens.washAccent}`,
               color: tokens.fg,
-              backgroundColor: tokens.badgeBg,
-              border: `1px solid ${tokens.badgeBorder}`,
-              flexShrink: 0,
+              minWidth: 0,
+              maxWidth: "100%",
             }}
           >
-            ALL
+            <Box
+              aria-hidden="true"
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 18,
+                height: 18,
+                borderRadius: "50%",
+                backgroundColor: tokens.washAccent,
+                color: "#fff",
+                fontSize: "0.7rem",
+                fontWeight: 800,
+                lineHeight: 1,
+                flexShrink: 0,
+              }}
+            >
+              {isSource ? "~" : "!"}
+            </Box>
+            <Typography
+              variant="subtitle1"
+              component="span"
+              sx={{
+                fontWeight: 600,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                color: "inherit",
+              }}
+            >
+              {modelName}
+            </Typography>
           </Box>
         </Stack>
         <Box sx={{ flexGrow: 1 }} />
       </Stack>
 
-      {/* Mock action buttons row — placeholder so the header sits in the
+      {/* Mock action buttons row — placeholder so the chip sits in the
           right vertical position relative to the rest of the panel. */}
       <Box sx={{ pl: 2, py: 1, fontSize: "0.7rem", color: "text.secondary" }}>
         Diff (action buttons placeholder)
-      </Box>
-
-      {/* Whole-model header line — sits above the Tabs strip. */}
-      <Box
-        data-testid={
-          isSource ? "whole-model-source-header" : "whole-model-impact-header"
-        }
-        sx={{
-          px: 2,
-          py: 0.75,
-          fontSize: "0.75rem",
-          fontWeight: 600,
-          color: tokens.fg,
-          borderTop: `1px solid ${tokens.washAccent}`,
-          borderBottom: `1px solid ${tokens.washAccent}`,
-        }}
-      >
-        {headerText}
       </Box>
 
       {/* Mock tabs strip — non-functional, just for visual context. */}
@@ -308,7 +302,7 @@ A captain reviews this story to confirm every whole-model state renders distinct
 - **Amber** (\`--schema-color-impacted-*\` / \`--schema-badge-impacted-*\`): a downstream node where every column is potentially affected. Renders on every node in the source's downstream subtree.
 - **Source wins (Q11)**: a node that is both a source and downstream of another source renders in brown.
 
-The wash + "ALL" badge + header line live on the NodeView panel, so the treatment spans every sidebar tab (Lineage / Columns / Code). The on-row \`!\` glyph (column-only impact) and the panel-wide wash (whole-model impact) compose without conflict — both are visible in the "Both apply" story.`,
+The title chip + left stripe live on the NodeView panel; the chip stays anchored to the model name, and the stripe runs the full height so the treatment is identifiable on any tab. The on-row \`!\` glyph (column-only impact) and the title chip (whole-model impact) compose without conflict — both are visible in the "Both apply" story.`,
       },
     },
   },
@@ -329,8 +323,8 @@ export const DownstreamOnly: Story = {
         story: `**AC-1.** \`fct_orders\` sits downstream of a model whose own SQL added a \`WHERE\` clause. Every column in \`fct_orders\` is now potentially affected.
 
 - Lineage node: amber "ALL" badge.
-- Sidebar panel: amber wash + amber "ALL" badge in the panel header + "Whole-model impact" header line above the tabs.
-- Schema rows: clean (no \`!\` per-row glyphs — the wash carries the story).`,
+- Sidebar panel: amber title chip wrapping the model name ("! fct_orders") + amber left-edge stripe.
+- Schema rows: clean (no \`!\` per-row glyphs — the title chip carries the story).`,
       },
     },
   },
@@ -363,9 +357,9 @@ export const ColumnOnlyVsWholeModelVsBoth: Story = {
       description: {
         story: `**AC-2.** Three sidebar panels side by side. A captain confirms the three states read as distinct:
 
-- **Column-only impact** (left): one row gets the existing \`!\` glyph. No wash. No header.
-- **Whole-model impact** (middle): wash + "ALL" badge + header. No per-row \`!\` (the wash covers it).
-- **Both apply** (right): wash + badge + header AND the per-row \`!\` glyph for the column on the column-level path. Different mechanisms (background vs row-glyph) compose without color collision (Q5).`,
+- **Column-only impact** (left): one row gets the existing \`!\` glyph. No title chip. No stripe.
+- **Whole-model impact** (middle): title chip + left stripe. No per-row \`!\` (the chip carries it).
+- **Both apply** (right): title chip + left stripe AND the per-row \`!\` glyph for the column on the column-level path. Different mechanisms (title chip vs row-glyph) compose without conflict (Q5).`,
       },
     },
   },
@@ -433,7 +427,7 @@ export const ColumnOnlyVsWholeModelVsBoth: Story = {
 
         <Stack spacing={1}>
           <Typography variant="subtitle2">
-            Both apply (wash + per-row !)
+            Both apply (title chip + per-row !)
           </Typography>
           <PanelFixture
             modelName="dim_customer_state"
@@ -457,8 +451,8 @@ export const SourceAndSourceWins: Story = {
       description: {
         story: `**AC-4.** Two source cases side by side:
 
-- **Source only** (left): \`stg_orders\` had its own \`WHERE\` clause edit. No upstream whole-model change. Brown badge on the node + brown wash + brown "ALL" badge in the panel header + "Whole-model change in this model" header.
-- **Source also downstream of another source** (right) — Q11 "source wins": \`fct_orders\` has its own \`GROUP BY\` edit AND sits downstream of \`stg_orders\` (also breaking). The source treatment dominates: brown badge + brown wash + brown "ALL" badge + source-flavored header.`,
+- **Source only** (left): \`stg_orders\` had its own \`WHERE\` clause edit. No upstream whole-model change. Brown title chip wrapping the model name ("~ stg_orders") + brown left stripe + brown "ALL" badge on the lineage node.
+- **Source also downstream of another source** (right) — Q11 "source wins": \`fct_orders\` has its own \`GROUP BY\` edit AND sits downstream of \`stg_orders\` (also breaking). The source treatment dominates: brown title chip wrapping the model name ("~ fct_orders") + brown left stripe + brown "ALL" badge on the lineage node.`,
       },
     },
   },
@@ -598,6 +592,47 @@ Precedence: source (brown) > downstream (amber) > additive (green). If a model i
         >
           Amber ALL badge: downstream of a whole-model change.
         </Typography>
+      </Stack>
+    </Stack>
+  ),
+};
+
+// ============================================================================
+// Long model name — verifies title-chip ellipsis behavior
+// ============================================================================
+
+export const LongModelName: Story = {
+  name: "Edge: long model name truncates inside the chip",
+  parameters: {
+    docs: {
+      description: {
+        story: `Edge case for the title-chip surface. A very long model name must truncate with ellipsis inside the chip and expose the full name via the chip's tooltip (\`title\` attribute). Both the impact and source variants are shown; the chip width is bounded by the panel header layout.`,
+      },
+    },
+  },
+  render: () => (
+    <Stack
+      direction="row"
+      spacing={3}
+      sx={{ alignItems: "flex-start", flexWrap: "wrap" }}
+    >
+      <Stack spacing={1}>
+        <Typography variant="subtitle2">
+          Long name — downstream impact
+        </Typography>
+        <PanelFixture
+          modelName="fct_extremely_long_model_name_with_many_segments_to_force_truncation"
+          variant="impacted"
+          rows={baseRows}
+        />
+      </Stack>
+      <Stack spacing={1}>
+        <Typography variant="subtitle2">Long name — source</Typography>
+        <PanelFixture
+          modelName="stg_extremely_long_model_name_with_many_segments_to_force_truncation"
+          variant="source"
+          rows={sourceRows}
+        />
       </Stack>
     </Stack>
   ),
