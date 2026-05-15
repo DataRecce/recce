@@ -24,7 +24,7 @@ const testColumns: Record<string, NodeColumnData> = {
 
 function createNode(
   resourceType: string,
-  columns?: Record<string, NodeColumnData>,
+  _columns?: Record<string, NodeColumnData>,
 ): NodeViewNodeData {
   return {
     id: `${resourceType}.test.node`,
