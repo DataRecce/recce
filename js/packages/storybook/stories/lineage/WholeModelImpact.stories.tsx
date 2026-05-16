@@ -71,6 +71,10 @@ function PanelFixture({ modelName, variant, rows }: PanelFixtureProps) {
   const tokens = wholeModelTreatmentTokens(isSource ? "source" : "downstream");
   return (
     <Box
+      // `cll-experience` scopes the fixture to the new CLL palette so
+      // the source and downstream tokens resolve symmetrically (mirror
+      // of NodeView's outer wrapper).
+      className="cll-experience"
       sx={{
         display: "flex",
         flexDirection: "column",
@@ -88,7 +92,6 @@ function PanelFixture({ modelName, variant, rows }: PanelFixtureProps) {
           sx={{ alignItems: "center", gap: 1, minWidth: 0, flex: 1 }}
         >
           <Box
-            className="cll-experience"
             data-testid={
               isSource
                 ? "whole-model-source-title-chip"

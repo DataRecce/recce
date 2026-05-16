@@ -693,6 +693,13 @@ export function NodeView<TNode extends NodeViewNodeData>({
     : null;
   return (
     <Box
+      // `cll-experience` scopes the panel to the new CLL palette so the
+      // source (`--schema-color-changed-accent`) and downstream
+      // (`--schema-color-impacted-accent`) tokens resolve symmetrically.
+      // Without this scope the impacted-accent var falls through to
+      // nothing, dropping the left stripe and the chip border on the
+      // downstream variant only.
+      className={treatment ? "cll-experience" : undefined}
       sx={{
         height: "100%",
         display: "flex",
@@ -727,11 +734,9 @@ export function NodeView<TNode extends NodeViewNodeData>({
             // Title chip — wraps the model name with the same !/~
             // language used per-column in the schema grid. Reuses the
             // existing `schema-change-badge` glyph so the chip stays in
-            // sync with the per-row treatment. `cll-experience` is
-            // required for the badge's CSS vars to resolve (see
-            // schema/style.css).
+            // sync with the per-row treatment. CSS vars resolve from
+            // the outer Box's `cll-experience` className.
             <Box
-              className="cll-experience"
               data-testid={
                 treatmentKind === "source"
                   ? "whole-model-source-title-chip"
