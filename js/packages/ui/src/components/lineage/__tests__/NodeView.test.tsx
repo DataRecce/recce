@@ -182,26 +182,28 @@ describe("NodeView", () => {
       expect(chip).toHaveTextContent("~");
     });
 
-    test("downstream-impact: removed surfaces are not rendered", () => {
+    test("downstream-impact: wash + labeled bar are gone; [ALL] badge sits next to chip", () => {
       renderNodeViewWithTreatment(
         createNode("model", testColumns),
         { isWholeModelImpactedDownstream: true },
         testColumns,
       );
 
-      // Old wash, labeled bar, and in-header [ALL] chip must be gone.
+      // Old panel wash and labeled bar are gone.
       expect(
         screen.queryByTestId("whole-model-impact-wash"),
       ).not.toBeInTheDocument();
       expect(
         screen.queryByTestId("whole-model-impact-header"),
       ).not.toBeInTheDocument();
+      // [ALL] badge is rendered next to the title chip (mirrors the
+      // lineage-graph badge so users get the same signal on both surfaces).
       expect(
-        screen.queryByTestId("whole-model-impact-badge"),
-      ).not.toBeInTheDocument();
+        screen.getByTestId("whole-model-impact-badge"),
+      ).toBeInTheDocument();
     });
 
-    test("source: removed surfaces are not rendered", () => {
+    test("source: wash + labeled bar are gone; [ALL] badge sits next to chip", () => {
       renderNodeViewWithTreatment(
         createNode("model", testColumns),
         { isBreakingSource: true },
@@ -215,8 +217,8 @@ describe("NodeView", () => {
         screen.queryByTestId("whole-model-source-header"),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByTestId("whole-model-source-badge"),
-      ).not.toBeInTheDocument();
+        screen.getByTestId("whole-model-source-badge"),
+      ).toBeInTheDocument();
     });
 
     test("no treatment: title chip is absent and plain model name renders", () => {

@@ -98,7 +98,11 @@ function PanelFixture({ modelName, variant, rows }: PanelFixtureProps) {
                 : "whole-model-impact-title-chip"
             }
             aria-label={isSource ? "whole-model change" : "whole-model impact"}
-            title={modelName}
+            title={
+              isSource
+                ? "The change in this model can affect all rows in this model"
+                : "The impact on this model may have impacted rows across all the columns"
+            }
             sx={{
               display: "inline-flex",
               alignItems: "center",
@@ -106,8 +110,8 @@ function PanelFixture({ modelName, variant, rows }: PanelFixtureProps) {
               px: 1,
               py: 0.25,
               borderRadius: "6px",
-              backgroundColor: tokens.washBg,
-              border: `1px solid ${tokens.washAccent}`,
+              backgroundColor: tokens.badgeBg,
+              border: `1px solid ${tokens.badgeBorder}`,
               color: tokens.fg,
               minWidth: 0,
             }}
@@ -135,6 +139,30 @@ function PanelFixture({ modelName, variant, rows }: PanelFixtureProps) {
             >
               {modelName}
             </Typography>
+          </Box>
+          <Box
+            aria-label={isSource ? "whole-model change" : "whole-model impact"}
+            data-testid={
+              isSource ? "whole-model-source-badge" : "whole-model-impact-badge"
+            }
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "0.65rem",
+              fontWeight: 700,
+              lineHeight: 1,
+              height: 18,
+              minWidth: 22,
+              px: 0.5,
+              borderRadius: "3px",
+              color: tokens.fg,
+              backgroundColor: tokens.badgeBg,
+              border: `1px solid ${tokens.badgeBorder}`,
+              flexShrink: 0,
+            }}
+          >
+            ALL
           </Box>
         </Stack>
         <Box sx={{ flexGrow: 1 }} />

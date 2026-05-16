@@ -18,6 +18,7 @@ import { IoClose } from "react-icons/io5";
 
 import type { NodeData } from "../../api/info";
 import { DisableTooltipMessages } from "../../constants";
+import { useIsDark } from "../../hooks";
 import {
   wholeModelTreatmentKind,
   wholeModelTreatmentTokens,
@@ -684,13 +685,28 @@ export function NodeView<TNode extends NodeViewNodeData>({
   // by NodeViewOss — at most one of the flags is true. The brown vs amber
   // palette comes from `wholeModelTreatmentTokens` so every site that
   // renders the title chip and left stripe pulls from one place.
+  // `isDark` flips the hardcoded `badge*` and `fg` values so the chip
+  // resolves to the same colors the lineage-graph node renders with.
+  const isDark = useIsDark();
   const treatmentKind = wholeModelTreatmentKind({
     isBreakingSource,
     isWholeModelImpactedDownstream,
   });
   const treatment = treatmentKind
-    ? wholeModelTreatmentTokens(treatmentKind)
+    ? wholeModelTreatmentTokens(treatmentKind, isDark)
     : null;
+  const titleChipTooltip =
+    treatmentKind === "source"
+      ? "The change in this model can affect all rows in this model"
+      : treatmentKind === "downstream"
+        ? "The impact on this model may have impacted rows across all the columns"
+        : "";
+  const badgeAriaLabel =
+    treatmentKind === "source" ? "whole-model change" : "whole-model impact";
+  const badgeTestId =
+    treatmentKind === "source"
+      ? "whole-model-source-badge"
+      : "whole-model-impact-badge";
   return (
     <Box
       // `cll-experience` scopes the panel to the new CLL palette so the
@@ -732,60 +748,58 @@ export function NodeView<TNode extends NodeViewNodeData>({
         >
           {treatment ? (
             // Title chip — wraps the model name with the same !/~
-            // language used per-column in the schema grid. Reuses the
-            // existing `schema-change-badge` glyph so the chip stays in
-            // sync with the per-row treatment. CSS vars resolve from
-            // the outer Box's `cll-experience` className.
-            <Box
-              data-testid={
-                treatmentKind === "source"
-                  ? "whole-model-source-title-chip"
-                  : "whole-model-impact-title-chip"
-              }
-              aria-label={
-                treatmentKind === "source"
-                  ? "whole-model change"
-                  : "whole-model impact"
-              }
-              title={node.data.name}
-              sx={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 0.75,
-                px: 1,
-                py: 0.25,
-                borderRadius: "6px",
-                backgroundColor: treatment.washBg,
-                border: `1px solid ${treatment.washAccent}`,
-                color: treatment.fg,
-                minWidth: 0,
-              }}
-            >
-              <span
-                aria-hidden="true"
-                className={
+            // language used per-column in the schema grid. Background,
+            // border, and text color all come from `treatment.badge*`/
+            // `treatment.fg`, the same fields the lineage-graph node
+            // badge uses, so light/dark mode stay symmetric across both
+            // surfaces.
+            <MuiTooltip title={titleChipTooltip} placement="top">
+              <Box
+                data-testid={
                   treatmentKind === "source"
-                    ? "schema-change-badge schema-change-badge-changed"
-                    : "schema-change-badge schema-change-badge-impacted"
+                    ? "whole-model-source-title-chip"
+                    : "whole-model-impact-title-chip"
                 }
-              >
-                {treatmentKind === "source" ? "~" : "!"}
-              </span>
-              <Typography
-                variant="subtitle1"
-                component="span"
-                className="no-track-pii-safe"
+                aria-label={badgeAriaLabel}
                 sx={{
-                  fontWeight: 600,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  color: "inherit",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 0.75,
+                  px: 1,
+                  py: 0.25,
+                  borderRadius: "6px",
+                  backgroundColor: treatment.badgeBg,
+                  border: `1px solid ${treatment.badgeBorder}`,
+                  color: treatment.fg,
+                  minWidth: 0,
                 }}
               >
-                {node.data.name}
-              </Typography>
-            </Box>
+                <span
+                  aria-hidden="true"
+                  className={
+                    treatmentKind === "source"
+                      ? "schema-change-badge schema-change-badge-changed"
+                      : "schema-change-badge schema-change-badge-impacted"
+                  }
+                >
+                  {treatmentKind === "source" ? "~" : "!"}
+                </span>
+                <Typography
+                  variant="subtitle1"
+                  component="span"
+                  className="no-track-pii-safe"
+                  sx={{
+                    fontWeight: 600,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    color: "inherit",
+                  }}
+                >
+                  {node.data.name}
+                </Typography>
+              </Box>
+            </MuiTooltip>
           ) : (
             <Typography
               variant="subtitle1"
@@ -799,6 +813,33 @@ export function NodeView<TNode extends NodeViewNodeData>({
             >
               {node.data.name}
             </Typography>
+          )}
+          {/* [ALL] badge on the right of the chip — mirrors the
+              lineage-graph node badge so a reader gets the same signal
+              in both surfaces. Same tokens, same colors. */}
+          {treatment && (
+            <Box
+              aria-label={badgeAriaLabel}
+              data-testid={badgeTestId}
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "0.65rem",
+                fontWeight: 700,
+                lineHeight: 1,
+                height: 18,
+                minWidth: 22,
+                px: 0.5,
+                borderRadius: "3px",
+                color: treatment.fg,
+                backgroundColor: treatment.badgeBg,
+                border: `1px solid ${treatment.badgeBorder}`,
+                flexShrink: 0,
+              }}
+            >
+              ALL
+            </Box>
           )}
         </Box>
         <Box sx={{ flexGrow: 1 }} />
